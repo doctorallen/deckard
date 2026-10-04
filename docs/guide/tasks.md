@@ -61,7 +61,7 @@ The fields are `due`, `scheduled`, `start`, `created`, `completion`, `cancelled`
 | Field | What it takes |
 | --- | --- |
 | **Description** | The words, tags and people included |
-| **Status** | Open or done. Completing writes the ✅ date; reopening removes it |
+| **Status** | Open or done. Completing writes the ✅ date, or `[completion:: …]` on a Dataview-format line; reopening removes it. `deckard.tasks.addDoneDate` turns the date off |
 | **Due**, **Scheduled**, **Start** | A date in plain words |
 | **Priority** | Highest to lowest, or none |
 | **Repeats** | A common rule, or any rule you write |

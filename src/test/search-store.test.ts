@@ -30,6 +30,20 @@ suite('Local search store', () => {
     }
   });
 
+  test('finds words in fenced code, though tags and tasks there are ignored', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
+    const store = new SearchStore(directory);
+    try {
+      const file = parseMarkdown('runbook.md', '# Runbook\n\n```sh\nkubectl rollout restart #notatag\n- [ ] not a task\n```\n');
+      assert.deepStrictEqual(file.tasks, []);
+      store.replace([file]);
+      assert.deepStrictEqual(store.search('kubectl').map((result) => result.filePath), ['runbook.md']);
+    } finally {
+      store.dispose();
+      rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    }
+  });
+
   test('a later scan updates edited notes, drops deleted ones, and adds new ones', () => {
     const directory = mkdtempSync(join(tmpdir(), 'deckard-search-'));
     const store = new SearchStore(directory);

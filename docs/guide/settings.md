@@ -92,6 +92,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.calendar.weekStart` | `sunday` | The day a week starts on: `sunday`, `monday`, or `locale` (VS Code's display language). It sets the Calendar, weekly notes and reviews, `this-week`, `last-week`, and `next-week`, and typed dates such as *next week*. |
 | `deckard.calendar.exportFile` | `""` | A calendar file (`.ics`) Deckard keeps up to date with your dated tasks, for a calendar app to subscribe to. A relative path is in the first workspace folder. See [Tasks in your calendar app](daily-notes.md#tasks-in-your-calendar-app). |
 | `deckard.calendar.exportQuery` | `is:open` | The search whose dated tasks the calendar file holds. |
+| `deckard.calendar.showWeekends` | `true` | Draws Saturday and Sunday in the Calendar and on the calendar page. Off, a week is its five working days; a task due on a weekend is still in the Tasks view and on the board. |
+| `deckard.calendar.showRepeats` | `true` | Shows every date a repeating task falls on in the weeks the Calendar draws, marked ↻, not only its next one. The dates are projected from the rule and never written. |
 | `deckard.calendar.dayPanel` | `false` | Shows the chosen day's daily note, tasks, and new notes under the Calendar. A click then chooses a day; a double-click or Enter opens its note. Set from **Open Day Panel** and **Close Day Panel** in the Calendar's `…` menu. |
 | `deckard.monthlyNoteTemplate` | `# {month}\n\n` | Used when a new monthly note is created. `{month}` becomes the month, such as `September 2026`, and `{date}` its first day. |
 | `deckard.periodicNote.reviewSections` | `[]` | Sections of your own at the end of a review, each `{ "title": …, "query": … }`. See [Writing a review](daily-notes.md#writing-a-review). |
@@ -155,6 +157,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.relatedNotesRecencyHalfLifeDays` | `0` | Lifts recent notes in Related Notes: a note this many days old gets half the lift of one written today. 0 turns it off. |
 | `deckard.entityNamespaceAliases` | `{ "org": "organization" }` | Maps one `#namespace` to another. For example, `{ "proj": "project", "leadership": "management" }` treats `#proj/atlas` as a project and collapses `#leadership/performance` into `#management/performance`. |
 | `deckard.personMarker` | `@` | The punctuation character that marks people. Set it to `~` to use `~mara-vale` for people and reserve `@inbox` for a lightweight tag. |
+| `deckard.developerMode` | `false` | Offers Deckard's own diagnostics, such as the Related Notes ranking breakdown on a tagged entry's hover and the score details in [Related notes](connections.md). Useful when tuning Related Notes; off for everyday note taking. |
 
 ---
 

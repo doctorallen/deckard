@@ -47,6 +47,16 @@
   finds it and VS Code keeps it up to date. Each GitHub release still
   carries the VSIX.
 
+### Fixed
+
+- **The guide says what Deckard does.** It said fenced code is left out of
+  the index, though its words are searchable; that note dates come only
+  from file times, though front matter comes first; and that completing a
+  task writes ✅, though a Dataview-format line gets `[completion:: …]`. It
+  now says so, says where the local cache lives and that deleting it is
+  safe, lists every setting (a test keeps it so), and the README's Quick
+  start begins with Get Started.
+
 ## 2.1.0 - 2026-10-04
 
 ### Highlights
