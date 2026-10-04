@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import type { IndexReader, IndexScanStatus, IndexUpdates } from '../../../../core/workspace/indexReader';
-import { createNoteTitleMap, parseWikiTarget, resolveWikiTarget, findLinkedSection } from '../../../../domain/index/backlinks';
+import { createNoteTitleMap, findLinkedBlock, findLinkedSection, parseWikiTarget, resolveWikiTarget } from '../../../../domain/index/backlinks';
 import type { Task } from '../../../../domain/model';
 import { readStatusNamespace } from '../../../../domain/tasks/taskPolicy';
 import type { NavigationService } from '../../../../services/navigationService';
@@ -64,7 +64,7 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
     const { indexer, navigation } = notes;
     this.handlers = {
       openNote: (message, page) => this.open(page, { filePath: message.filePath, line: message.line }, message),
-      openWikiLink: (message, page) => this.openWikiLink(page, message.target, message),
+      openWikiLink: (message, page) => this.openWikiLink(page, message, message),
       openInEditor: (message) => this.openInEditor(message.line, message.beside === true),
       openTag: openTag({ indexer, navigation, policy: 'lenient', openTag: (tagKey) => notes.onOpenTag(tagKey) }),
       toggleTask: toggleTask({ writes: notes.writes, findTask: (taskId): Task | undefined => indexer.getSnapshot().tasks.get(taskId) }),
@@ -128,9 +128,10 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
     this.page = page;
   }
 
-  /** Forgets the trail when the reader closes the tab. */
+  /** Forgets the note and the trail when the reader closes the tab, so the next tab starts its own. */
   public onDidDetach(): void {
     this.page = undefined;
+    this.current = undefined;
     this.back.length = 0;
     this.forward.length = 0;
   }
@@ -160,20 +161,26 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
     page.refresh();
   }
 
-  /** Follows a `[[link]]` to the note, heading, or line it names, when exactly one note has its name. */
-  private async openWikiLink(page: PageContext, target: string, how: { opposite?: true; beside?: true }): Promise<void> {
+  /**
+   * Follows a `[[link]]` to the note, heading, or line it names, when exactly
+   * one note has its name: read from the note it is written in, which for a
+   * link inside an embed is the embedded note, so `[[#Heading]]` there is
+   * that note's heading.
+   */
+  private async openWikiLink(page: PageContext, { target, from }: { target: string; from?: string }, how: { opposite?: true; beside?: true }): Promise<void> {
     const index = this.notes.indexer.getSnapshot();
     const link = parseWikiTarget(target);
+    const writtenIn = from && index.files.has(from) ? from : this.current?.filePath;
     const filePath = link.note
-      ? resolveWikiTarget(createNoteTitleMap(index), link.note, this.current?.filePath ?? '')
-      : this.current?.filePath;
+      ? resolveWikiTarget(createNoteTitleMap(index), link.note, writtenIn ?? '')
+      : writtenIn;
     const file = filePath ? index.files.get(filePath) : undefined;
     if (!filePath || !file) {
       void vscode.window.showInformationMessage(`No note is named "${link.note}" yet, or more than one is.`);
       return;
     }
-    const line = link.heading ? findLinkedSection(file, link.heading)?.startLine : blockLine(file.blockIds, link.block);
-    await this.open(page, { filePath, ...(line === undefined ? {} : { line }) }, how);
+    const line = link.heading ? findLinkedSection(file, link.heading)?.startLine : link.block && findLinkedBlock(file, link.block);
+    await this.open(page, { filePath, ...(line ? { line } : {}) }, how);
   }
 
   /** Opens the note shown in the editor, at the line asked, or its first. */
@@ -212,9 +219,4 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
   public get context(): PageContext | undefined {
     return this.page;
   }
-}
-
-/** The line a `^block` marker names in a note, if the link names one. */
-function blockLine(blockIds: Readonly<Record<string, number>> | undefined, block: string | undefined): number | undefined {
-  return block ? blockIds?.[block] : undefined;
 }

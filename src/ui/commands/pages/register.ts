@@ -73,10 +73,11 @@ function registerNotePageCommands(services: Services): vscode.Disposable[] {
       await openNoteAt(filePath, at, { opposite });
     }),
     registerCommand('deckard.openNotePage', async (filePath?: unknown, line?: unknown, options?: unknown) => {
-      const beside = typeof options === 'object' && options !== null && (options as { beside?: unknown }).beside === true;
+      const how = typeof options === 'object' && options !== null ? (options as { beside?: unknown; preserveFocus?: unknown }) : {};
+      const beside = how.beside === true;
       if (typeof filePath === 'string' && filePath) {
         const at = typeof line === 'number' && Number.isInteger(line) && line > 0 ? line : undefined;
-        await notePage.show({ filePath, ...(at ? { line: at } : {}) }, beside);
+        await notePage.show({ filePath, ...(at ? { line: at } : {}) }, beside, beside && how.preserveFocus === true);
         return;
       }
       const editor = vscode.window.activeTextEditor;

@@ -69,6 +69,8 @@ export interface NoteEmbedBlock {
   /** Where what it names is, to open it. */
   source?: { filePath: string; line: number };
   blocks?: NoteBlock[];
+  /** The tags the note it reads writes, for its blocks' buttons, when that is another note. */
+  tags?: Array<{ key: string; label: string }>;
   /** Why it draws nothing, when it does not. */
   missing?: string;
 }
@@ -142,10 +144,12 @@ export interface OpenNoteMessage {
   beside?: true;
 }
 
-/** Follows a `[[link]]` written in the note. */
+/** Follows a `[[link]]` written in the note, or in a note it embeds. */
 export interface OpenWikiLinkMessage {
   type: 'openWikiLink';
   target: string;
+  /** The note the link is written in, when it is an embedded note's rather than the one shown. */
+  from?: string;
   opposite?: true;
   beside?: true;
 }

@@ -94,6 +94,35 @@ suite('The note page host', () => {
     assert.deepStrictEqual(narrowNotePageMessage({ type: 'openInEditor', line: 3, beside: true }), { type: 'openInEditor', line: 3, beside: true });
   });
 
+  test('follows a link inside an embed from the note it is written in, and a marker only the note has', async () => {
+    const page = openNotePage();
+    page.controller.navigate({ filePath: 'notes/Atlas.md' });
+    page.host.refresh();
+    await page.send({ type: 'openWikiLink', target: '#Notes', from: 'notes/Review.md' });
+    assert.strictEqual(page.last().filePath, 'notes/Review.md');
+    assert.strictEqual(page.last().focusLine, 3, 'the embedded note’s heading, not the shown note’s');
+    await page.send({ type: 'openWikiLink', target: 'Atlas#^constructor' });
+    assert.strictEqual(page.last().filePath, 'notes/Atlas.md');
+    assert.strictEqual(page.last().focusLine, undefined, 'a marker every object inherits names no line');
+    assert.strictEqual(narrowNotePageMessage({ type: 'openWikiLink', target: 'A', from: 3 }), undefined);
+    assert.deepStrictEqual(narrowNotePageMessage({ type: 'openWikiLink', target: 'A', from: 'b.md' }), { type: 'openWikiLink', target: 'A', from: 'b.md' });
+  });
+
+  test('starts a new trail in a new tab once the reader closes the last', async () => {
+    const page = openNotePage();
+    page.controller.navigate({ filePath: 'notes/Atlas.md' });
+    page.host.refresh();
+    page.surface.dispose();
+    page.controller.navigate({ filePath: 'notes/Review.md' });
+    const reopened = new FakeSurface();
+    page.host.attach(reopened);
+    page.host.refresh();
+    const states = reopened.webview.posted.filter((message) => (message as { type?: string }).type === 'state');
+    const shown = (states[states.length - 1] as { data: NotePageSnapshot }).data;
+    assert.strictEqual(shown.filePath, 'notes/Review.md');
+    assert.deepStrictEqual(shown.history, { back: false, forward: false });
+  });
+
   test('comes back after a reload on the note it showed', async () => {
     const page = openNotePage();
     await page.controller.options.restore?.({ filePath: 'notes/Review.md', line: 4 });

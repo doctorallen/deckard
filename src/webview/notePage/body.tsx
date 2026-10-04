@@ -46,7 +46,7 @@ function drawToken(token: InlineToken, context: BodyContext): ComponentChild {
       return token.embed
         ? token.text
         : (
-          <button type="button" class="note-link" data-action="open-link" data-target={token.target} data-tip={`Open ${token.target} · Shift-click: the other way`}>
+          <button type="button" class="note-link" data-action="open-link" data-target={token.target} data-from={context.filePath} data-tip={`Open ${token.target} · Shift-click: the other way`}>
             {linkWords(token.text)}
           </button>
         );
@@ -195,7 +195,7 @@ function Embed({ block, context }: { readonly block: NoteEmbedBlock; readonly co
           : <span class="note-embed-title">{block.title}</span>}
       </header>
       {block.missing ? <p class="note-embed-missing">{block.missing}</p> : null}
-      {block.blocks ? <Blocks blocks={block.blocks} context={{ tags: context.tags, filePath: source?.filePath ?? context.filePath }} /> : null}
+      {block.blocks ? <Blocks blocks={block.blocks} context={{ tags: block.tags ?? context.tags, filePath: source?.filePath ?? context.filePath }} /> : null}
     </section>
   );
 }

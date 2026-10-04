@@ -143,6 +143,96 @@ suite('The note page', () => {
     ], 'Review sits under Atlas by its heading’s tag, and Kickoff under Review by up:');
   });
 
+  test('reads an embed of its own section, or of a note with front matter, at the lines it came from', () => {
+    const edge = indexOf({
+      'A.md': '# A\n\nintro\n\n![[#Sec]]\n\n## Sec\n\n- [ ] t1\n- [ ] t2\n- [ ] t3',
+      'B.md': '---\nx: 1\n---\n\n# B\n\n- [ ] b1\n- [ ] b2',
+      'C.md': '# C\n\n![[B]]',
+    });
+    const own = createNotePageSnapshot(edge, 'A.md', options).blocks.find((block) => block.kind === 'embed');
+    assert.ok(own?.kind === 'embed');
+    assert.deepStrictEqual(own.source, { filePath: 'A.md', line: 7 });
+    const ownList = own.blocks?.find((block) => block.kind === 'list');
+    assert.ok(ownList?.kind === 'list');
+    const tasksOfA = [...edge.tasks.values()].filter((task) => task.filePath === 'A.md');
+    assert.deepStrictEqual(
+      ownList.items.map((item) => [item.line, item.task?.taskId]),
+      tasksOfA.map((task) => [task.lineNumber, task.id]),
+      'each box ticks the task on its own line',
+    );
+    const whole = createNotePageSnapshot(edge, 'C.md', options).blocks.find((block) => block.kind === 'embed');
+    assert.ok(whole?.kind === 'embed');
+    assert.deepStrictEqual(kinds(whole.blocks ?? []), ['heading@5', 'list@7']);
+    const wholeList = whole.blocks?.[1];
+    assert.ok(wholeList?.kind === 'list');
+    const tasksOfB = [...edge.tasks.values()].filter((task) => task.filePath === 'B.md');
+    assert.deepStrictEqual(wholeList.items.map((item) => item.task?.taskId), tasksOfB.map((task) => task.id));
+  });
+
+  test('draws an embed in a list item or a quote, and leaves an attachment a line of text', () => {
+    const edge = indexOf({
+      'A.md': '# A\n\n- item\n  ![[B]]\n- ![[B]]\n\n> ![[B]]\n\n![[report.pdf]]',
+      'B.md': 'Bee.',
+    });
+    const blocks = createNotePageSnapshot(edge, 'A.md', options).blocks;
+    const list = blocks[0];
+    assert.ok(list.kind === 'list');
+    assert.deepStrictEqual(list.items.map((item) => kinds(item.blocks)), [['paragraph@3', 'embed@4'], ['embed@5']]);
+    const first = list.items[0].blocks[0];
+    assert.deepStrictEqual(first.kind === 'paragraph' && first.children, [{ kind: 'text', text: 'item' }], 'the marker is not drawn as words');
+    const quote = blocks[1];
+    assert.deepStrictEqual(quote.kind === 'quote' && kinds(quote.children), ['embed@7']);
+    assert.deepStrictEqual(kinds(blocks.slice(2)), ['paragraph@9'], 'an attachment is not a missing note');
+  });
+
+  test('takes the title from its heading without tags, marks, or a marker, and draws it once', () => {
+    const edge = indexOf({
+      'Tagged.md': '# Review **now** #project/atlas ^top\n\nBody.',
+      'Linked.md': '# Meet [[Dana|Dana R]]\n\nBody.',
+      'Late.md': 'Words first.\n\n# Heading',
+    });
+    const tagged = createNotePageSnapshot(edge, 'Tagged.md', options);
+    assert.strictEqual(tagged.title, 'Review now');
+    assert.deepStrictEqual(kinds(tagged.blocks), ['paragraph@3']);
+    assert.strictEqual(createNotePageSnapshot(edge, 'Linked.md', options).title, 'Meet Dana R');
+    assert.deepStrictEqual(kinds(createNotePageSnapshot(edge, 'Late.md', options).blocks), ['paragraph@1', 'heading@3'], 'a heading under words stays where it is');
+  });
+
+  test('reads an unindented list and a block as properties, and makes a tag only of what its field names', () => {
+    const edge = indexOf({
+      'P.md': [
+        '---',
+        'tags:',
+        '- project/atlas',
+        '- topic/finance',
+        'title: Atlas',
+        'description: |',
+        '  Two lines',
+        '  of words.',
+        'owner: "@dana"',
+        '---',
+        '# P',
+      ].join('\n'),
+    });
+    assert.deepStrictEqual(createNotePageSnapshot(edge, 'P.md', options).properties, [
+      { name: 'tags', values: [{ text: 'project/atlas', tagKey: '#project/atlas' }, { text: 'topic/finance', tagKey: '#topic/finance' }] },
+      { name: 'title', values: [{ text: 'Atlas' }] },
+      { name: 'description', values: [{ text: 'Two lines of words.' }] },
+      { name: 'owner', values: [{ text: '@dana', tagKey: '@dana' }] },
+    ]);
+  });
+
+  test('keeps a box the index reads no task from as words', () => {
+    const edge = indexOf({ 'Q.md': '# Q\n\n> - [ ] quoted' });
+    const quote = createNotePageSnapshot(edge, 'Q.md', options).blocks[0];
+    assert.ok(quote.kind === 'quote');
+    const list = quote.children[0];
+    assert.ok(list.kind === 'list');
+    assert.strictEqual(list.items[0].task, undefined);
+    const paragraph = list.items[0].blocks[0];
+    assert.deepStrictEqual(paragraph.kind === 'paragraph' && paragraph.children, [{ kind: 'text', text: '[ ] quoted' }]);
+  });
+
   test('says when the index has no such note', () => {
     const gone = createNotePageSnapshot(index, 'notes/Gone.md', options);
     assert.strictEqual(gone.missing, true);

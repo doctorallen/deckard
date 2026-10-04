@@ -49,8 +49,9 @@
   draw live, its front matter is a row of properties, a bar says how far
   along its tasks are, and **Linked from** lists what links to it. **Open in Editor**, or a double-click, goes to the
   line. Set `deckard.openNotesIn` to `page` to open every note there from
-  Deckard's pages, Find, and the Hubs view; **Shift**-click, or Shift+Enter,
-  always opens a note the other way.
+  Deckard's pages, Find, and the Hubs view; **Shift**-click on a page, or
+  Shift+Enter in Find, opens a note the other way, and the Hubs view's
+  right-click menu offers the other way.
 
 - **A task's steps at a glance in the editor.** A lens above a task with
   steps draws a bar of how many are done and names the next one; select it

@@ -496,7 +496,8 @@ export class QuickFind implements vscode.Disposable {
     // Where the reader reads notes, the editor or the note page, as
     // deckard.openNotesIn and Shift+Enter say.
     if (chooseNoteTarget(readOpenNotesIn(), opposite) === 'page') {
-      await vscode.commands.executeCommand('deckard.openNotePage', item.filePath, item.line, { beside });
+      // Beside, the page leaves the focus with Find, which stays open.
+      await vscode.commands.executeCommand('deckard.openNotePage', item.filePath, item.line, { beside, preserveFocus: beside });
     } else {
       await (beside
         ? openSourceAt({ filePath: item.filePath, line: item.line, beside: true, preview: false, preserveFocus: true })

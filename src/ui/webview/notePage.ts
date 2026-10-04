@@ -45,16 +45,18 @@ export class NotePagePanel implements vscode.Disposable {
 
   /**
    * Shows a note on the page, scrolled to `line` when given, opening the
-   * page, or bringing it forward, beside the editor when asked.
+   * page, or bringing it forward, beside the editor when asked; with
+   * `preserveFocus`, beside it without taking the focus from where it was
+   * asked, as Find, which stays open, asks.
    */
-  public async show(location: NoteLocation, beside = false): Promise<void> {
+  public async show(location: NoteLocation, beside = false, preserveFocus = false): Promise<void> {
     this.controller.navigate(location);
     if (!beside) {
       await this.page.show();
       return;
     }
-    const panel = this.page.open();
-    panel.reveal(vscode.ViewColumn.Beside);
+    const panel = this.page.open({ viewColumn: vscode.ViewColumn.Beside, preserveFocus });
+    panel.reveal(vscode.ViewColumn.Beside, preserveFocus);
     await this.page.host.whenPublished();
     this.page.host.refresh();
   }

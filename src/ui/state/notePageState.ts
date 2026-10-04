@@ -1,10 +1,11 @@
-import { getBacklinkIndex, noteTitle } from '../../domain/index/backlinks';
+import { findLinkedBlock, findLinkedSection, getBacklinkIndex, noteTitle, parseWikiTarget } from '../../domain/index/backlinks';
 import { findFrontmatterEnd, splitFrontmatterValues } from '../../domain/markdown/frontmatter';
 import { mapInlineTokens, tokenizeInline } from '../../domain/markdown/inline';
+import { readFrontmatterValueTag, stripTags } from '../../domain/markdown/parser';
 import { formatKeyWords, readTagNamespace } from '../../domain/markdown/tagKeys';
-import { MarkdownToken, parseBlockMarkdown } from '../../domain/markdown/markdownTokens';
+import { MarkdownToken, NoteEmbedMeta, parseBlockMarkdown } from '../../domain/markdown/markdownTokens';
 import { describeDueDate } from '../../domain/markdown/dueWording';
-import { EMBED_LINE, resolveEmbed, createSourceParser } from '../../domain/notes/embeds';
+import { resolveEmbed, createSourceParser } from '../../domain/notes/embeds';
 import { BLOCK_ID_PATTERN } from '../../domain/markdown/taskFields';
 import { DEFAULT_NOTE_COLUMNS, noteColumnLabel } from '../../domain/notes/noteColumns';
 import { QueryContext } from '../../domain/query/queryContext';
@@ -85,7 +86,8 @@ export function createNotePageSnapshot(
       backlinkCount: 0,
     };
   }
-  const title = hubNoteLabel(index, filePath);
+  const heading = file.sections.find((section) => !section.isInline);
+  const title = (heading ? plainText(withoutBlockId(tokenizeInline(stripTags(heading.heading)))).trim() : '') || noteTitle(filePath);
   const reading: Reading = { index, file, options, depth: 0 };
   const lines = file.content.split(/\r?\n/);
   const frontmatterEnd = findFrontmatterEnd(lines);
@@ -100,7 +102,7 @@ export function createNotePageSnapshot(
     ...describeHub(index, file, options.queryContext),
     ...describeNoteTasks(index, file, options.queryContext),
     tags: collectTags(file),
-    blocks: withoutTitleHeading(blocks, title),
+    blocks: withoutTitleHeading(blocks, heading?.startLine),
     backlinks,
     backlinkCount: count,
   };
@@ -116,22 +118,27 @@ interface Reading {
 
 /**
  * The note's first heading is its title, which the page draws above the
- * note; drawn again as the first block, it would say the title twice.
+ * note, its tags and marks aside; drawn again as the first block, it would
+ * say the title twice. Only a top-level heading that opens the note is
+ * taken: a note that starts with words keeps its heading where it is.
  */
-function withoutTitleHeading(blocks: NoteBlock[], title: string): NoteBlock[] {
+function withoutTitleHeading(blocks: NoteBlock[], titleLine: number | undefined): NoteBlock[] {
   const [first, ...rest] = blocks;
-  if (first?.kind === 'heading' && first.level === 1 && plainText(first.children).trim() === title) {
+  if (first?.kind === 'heading' && first.level === 1 && first.line === titleLine) {
     return rest;
   }
   return blocks;
 }
 
-/** Inline tokens' words, without their marks. */
+/** Inline tokens' words, without their marks; a `[[link]]` is the words it shows. */
 function plainText(tokens: readonly InlineToken[]): string {
   return tokens
     .map((token) => {
       if (token.kind === 'break') {
         return ' ';
+      }
+      if (token.kind === 'wikiLink') {
+        return /\|([^\]]+)\]\]$/.exec(token.text)?.[1]?.trim() || token.target;
       }
       return 'children' in token ? plainText(token.children) : token.text;
     })
@@ -143,10 +150,9 @@ function plainText(tokens: readonly InlineToken[]): string {
  * `offset` is how many lines of the note come before `markdown`.
  */
 function readNoteBlocks(markdown: string, offset: number, reading: Reading): NoteBlock[] {
-  const tokens = parseBlockMarkdown(markdown);
-  const sourceLines = markdown.split(/\r?\n/);
+  const tokens = parseBlockMarkdown(markdown, { embeds: true });
   const cursor: Cursor = { tokens, index: 0 };
-  return readBlocks(cursor, -1, { offset, sourceLines, reading });
+  return readBlocks(cursor, -1, { offset, reading });
 }
 
 /** markdown-it's flat list of block tokens, and how far the reader has read. */
@@ -155,10 +161,9 @@ interface Cursor {
   index: number;
 }
 
-/** Where the tokens came from: their offset in the note, their source lines, and the reading. */
+/** Where the tokens came from: their offset in the note, and the reading. */
 interface Source {
   offset: number;
-  sourceLines: readonly string[];
   reading: Reading;
 }
 
@@ -172,9 +177,7 @@ function readBlocks(cursor: Cursor, level: number, source: Source): NoteBlock[] 
       break;
     }
     const block = readBlock(token, cursor, source);
-    if (Array.isArray(block)) {
-      blocks.push(...block);
-    } else if (block) {
+    if (block) {
       blocks.push(block);
     }
   }
@@ -187,11 +190,13 @@ function lineOf(token: MarkdownToken, source: Source): number {
 }
 
 /** The block a token starts, read through its close; undefined for a token no block starts at. */
-function readBlock(token: MarkdownToken, cursor: Cursor, source: Source): NoteBlock | NoteBlock[] | undefined {
+function readBlock(token: MarkdownToken, cursor: Cursor, source: Source): NoteBlock | undefined {
   const line = lineOf(token, source);
   switch (token.type) {
     case 'paragraph_open':
-      return readParagraph(token, cursor, source, line);
+      return { kind: 'paragraph', line, children: readInline(cursor) };
+    case 'note_embed':
+      return readEmbed((token.meta as NoteEmbedMeta).target, line, source.reading);
     case 'heading_open':
       return { kind: 'heading', line, level: Number(token.tag.slice(1)) as 1 | 2 | 3 | 4 | 5 | 6, children: readInline(cursor) };
     case 'bullet_list_open':
@@ -232,63 +237,64 @@ function withoutBlockId(tokens: InlineToken[]): InlineToken[] {
 }
 
 /**
- * A paragraph, or the embeds in it: a `![[…]]` alone on its line is drawn
- * as what it names, as the preview's embed rule draws it, which takes such
- * a line out of the paragraph around it. The lines either side stay a
- * paragraph each.
+ * An embed, read as what it names, three deep, or as why it names nothing.
+ * Its blocks carry the lines of the note they are written in, so a box in
+ * them ticks that note's task and a double-click opens that note there.
  */
-function readParagraph(token: MarkdownToken, cursor: Cursor, source: Source, line: number): NoteBlock | NoteBlock[] {
-  const map = token.map;
-  const lines = map ? source.sourceLines.slice(map[0], map[1]) : [];
-  if (!map || !lines.some((text) => EMBED_LINE.test(text))) {
-    return { kind: 'paragraph', line, children: readInline(cursor) };
-  }
-  cursor.index += 2;
-  const blocks: NoteBlock[] = [];
-  let run: { start: number; lines: string[] } | undefined;
-  const closeRun = (): void => {
-    if (!run) {
-      return;
-    }
-    blocks.push({ kind: 'paragraph', line: run.start, children: withoutBlockId(tokenizeInline(run.lines.map((text) => text.trim()).join('\n'))) });
-    run = undefined;
-  };
-  lines.forEach((text, at) => {
-    const lineNumber = line + at;
-    const embed = EMBED_LINE.exec(text);
-    if (embed) {
-      closeRun();
-      blocks.push(readEmbed(embed[1], lineNumber, source.reading));
-      return;
-    }
-    run ??= { start: lineNumber, lines: [] };
-    run.lines.push(text);
-  });
-  closeRun();
-  return blocks;
-}
-
-/** An embed, read as what it names, three deep, or as why it names nothing. */
 function readEmbed(target: string, line: number, reading: Reading): NoteBlock {
   const resolved = resolveEmbed(target, reading.file.content, reading.index, createSourceParser());
   if (resolved.kind === 'missing') {
     return { kind: 'embed', line, target, title: target, missing: resolved.reason };
   }
-  const where = resolved.href ? readHref(resolved.href) : undefined;
-  const sourceFile = where ? reading.index.files.get(where.filePath) : undefined;
-  if (reading.depth + 1 > MAX_EMBED_DEPTH) {
-    return { kind: 'embed', line, target, title: resolved.title, ...(where ? { source: where } : {}) };
+  const where = locateEmbed(target, resolved.href, reading);
+  const source = where ? { source: { filePath: where.file.filePath, line: where.line } } : {};
+  if (!where || reading.depth + 1 > MAX_EMBED_DEPTH) {
+    return { kind: 'embed', line, target, title: resolved.title || target, ...source };
   }
-  const nested: Reading = { ...reading, file: sourceFile ?? reading.file, depth: reading.depth + 1 };
-  const startLine = where?.line ?? line;
+  const nested: Reading = { ...reading, file: where.file, depth: reading.depth + 1 };
   return {
     kind: 'embed',
     line,
     target,
-    title: resolved.title,
-    ...(where ? { source: where } : {}),
-    blocks: readNoteBlocks(resolved.content, startLine - 1, nested),
+    title: resolved.title || target,
+    ...source,
+    blocks: readNoteBlocks(resolved.content, where.contentLine - 1, nested),
+    ...(where.file === reading.file ? {} : { tags: collectTags(where.file) }),
   };
+}
+
+/**
+ * The note an embed reads, the line it names there, and the one-based line
+ * its content starts on: the marked line, the heading, or for a whole note
+ * the first line after its front matter and the blank lines the embed
+ * leaves out. An embed with no note name reads the note it is written in.
+ */
+function locateEmbed(
+  target: string,
+  href: string | undefined,
+  reading: Reading,
+): { file: ParsedFile; line: number; contentLine: number } | undefined {
+  const filePath = href ? readHref(href)?.filePath : reading.file.filePath;
+  const file = filePath === reading.file.filePath ? reading.file : filePath && reading.index.files.get(filePath);
+  if (!file) {
+    return undefined;
+  }
+  const { block, heading } = parseWikiTarget(target);
+  if (block) {
+    const line = findLinkedBlock(file, block);
+    return line === undefined ? undefined : { file, line, contentLine: line };
+  }
+  if (heading) {
+    const line = findLinkedSection(file, heading)?.startLine;
+    return line === undefined ? undefined : { file, line, contentLine: line };
+  }
+  const lines = file.content.split(/\r?\n/);
+  const end = findFrontmatterEnd(lines);
+  let contentLine = end === undefined ? 1 : end + 2;
+  while (end !== undefined && contentLine <= lines.length && lines[contentLine - 1] === '') {
+    contentLine += 1;
+  }
+  return { file, line: 1, contentLine };
 }
 
 /** The note and line a preview link names, `/notes/Atlas.md#L12`. */
@@ -388,26 +394,27 @@ function readList(open: MarkdownToken, cursor: Cursor, source: Source, line: num
 const TASK_BOX = /^\[([ xX])\][ \t]+/;
 
 /**
- * One item. When its first paragraph opens with a box, it is a task: the
- * box is taken off its words and given the task the index has on its line.
+ * One item. When its first paragraph opens with a box and the index has a
+ * task on its line, it is that task: the box is taken off its words and
+ * drawn as the task's. A box the index reads no task from, as in a quote or
+ * an ordered list, stays written, so what it says is not lost.
  */
 function readListItem(item: MarkdownToken, cursor: Cursor, source: Source): NoteListItem {
   const line = lineOf(item, source);
   const first = cursor.tokens[cursor.index];
   const inline = first?.type === 'paragraph_open' ? cursor.tokens[cursor.index + 1] : undefined;
   const box = inline?.type === 'inline' ? TASK_BOX.exec(inline.content) : null;
-  if (!box || !inline) {
+  const task = box ? source.reading.file.tasks.find((candidate) => candidate.lineNumber === line) : undefined;
+  if (!box || !inline || !task) {
     return { line, blocks: readBlocks(cursor, item.level, source) };
   }
   const children = withoutBlockId(tokenizeInline(inline.content.slice(box[0].length)));
   cursor.index += 3;
   const rest = readBlocks(cursor, item.level, source);
-  const file = source.reading.file;
-  const task = file.tasks.find((candidate) => candidate.lineNumber === line);
-  const indexed = task ? (source.reading.index.tasks.get(task.id) ?? task) : undefined;
+  const indexed = source.reading.index.tasks.get(task.id) ?? task;
   return {
     line,
-    ...(indexed ? { task: { taskId: indexed.id, completed: indexed.completed } } : {}),
+    task: { taskId: indexed.id, completed: indexed.completed },
     blocks: [{ kind: 'paragraph', line, children }, ...rest],
   };
 }
@@ -433,26 +440,28 @@ function readTableRows(cursor: Cursor, level: number): InlineToken[][][] {
 /** A front-matter line that starts a property: its name, and what follows the colon. */
 const PROPERTY_LINE = /^([A-Za-z][\w-]*)\s*:\s*(.*)$/;
 
+/** A YAML block scalar's opening, `|` or `>` with its chomping and indent marks. */
+const BLOCK_SCALAR = /^[|>][+-]?\d*\s*$/;
+
 /**
  * The note's front matter as properties, in the order written: each value
- * a tag when the note carries it as one, as `owner: "@dana"` or
- * `projects: [atlas]` do.
+ * a tag when the index reads one from it under its field, as `owner:
+ * "@dana"` or `projects: [atlas]`, and the note carries that tag. A list
+ * may be indented under its name or not, and a `|` or `>` block is its
+ * lines run together.
  */
 function readProperties(file: ParsedFile, lines: readonly string[], end: number | undefined): NoteProperty[] {
   if (end === undefined) {
     return [];
   }
   const tags = [...file.frontmatterTags, ...(file.hub?.describes ?? [])];
-  const tagOf = (value: string): string | undefined => {
-    const lowered = value.toLowerCase().replace(/^['"]|['"]$/g, '');
-    const found = tags.find(
-      (tag) =>
-        tag.key.toLowerCase() === lowered ||
-        tag.label.toLowerCase() === lowered ||
-        tag.key.toLowerCase() === `#${lowered}` ||
-        tag.key.toLowerCase().endsWith(`/${lowered}`),
-    );
-    return found?.key;
+  const tagOf = (name: string, value: string): string | undefined => {
+    const named = readFrontmatterValueTag(name, value);
+    if (!named) {
+      return undefined;
+    }
+    const label = named.label.toLowerCase();
+    return tags.find((tag) => tag.key === named.key || tag.label.toLowerCase() === label)?.key;
   };
   const properties: NoteProperty[] = [];
   for (let line = 1; line < end; line += 1) {
@@ -460,13 +469,10 @@ function readProperties(file: ParsedFile, lines: readonly string[], end: number 
     if (!match) {
       continue;
     }
-    const written = [match[2]];
-    while (line + 1 < end && /^\s+-\s/.test(lines[line + 1])) {
-      line += 1;
-      written.push(lines[line].replace(/^\s+-\s+/, ''));
-    }
-    const values = written.flatMap((value) => splitFrontmatterValues(value)).map((text) => {
-      const tagKey = tagOf(text);
+    const [written, last] = readPropertyValues(lines, line, end, match[2]);
+    line = last;
+    const values = written.map((text) => {
+      const tagKey = tagOf(match[1], text);
       return tagKey ? { text, tagKey } : { text };
     });
     if (values.length) {
@@ -474,6 +480,30 @@ function readProperties(file: ParsedFile, lines: readonly string[], end: number 
     }
   }
   return properties;
+}
+
+/**
+ * A property's values, from what follows its colon on `line` and the lines
+ * under it: a `- item` list, or a block's indented lines. Also the last
+ * line it takes, for the reader to go on after.
+ */
+function readPropertyValues(lines: readonly string[], line: number, end: number, value: string): [string[], number] {
+  let last = line;
+  if (BLOCK_SCALAR.test(value)) {
+    const block: string[] = [];
+    while (last + 1 < end && (/^\s+\S/.test(lines[last + 1]) || lines[last + 1].trim() === '')) {
+      last += 1;
+      block.push(lines[last].trim());
+    }
+    const text = block.filter(Boolean).join(' ');
+    return [text ? [text] : [], last];
+  }
+  const written = [value];
+  while (last + 1 < end && /^\s*-\s/.test(lines[last + 1])) {
+    last += 1;
+    written.push(lines[last].replace(/^\s*-\s+/, ''));
+  }
+  return [written.flatMap((text) => splitFrontmatterValues(text)), last];
 }
 
 /** For a hub note, its tag and how far along the tag's tasks are. */

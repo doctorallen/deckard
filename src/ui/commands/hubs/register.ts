@@ -5,6 +5,7 @@ import { HubTreeProvider } from '../../views/hubTree';
 import type { HubTreeNode } from '../../state/hubTree';
 import { registerCommand } from '../runCommand';
 import { openResultAt } from '../navigation';
+import { openNoteAt } from '../noteOpening';
 
 /**
  * The Hubs view: notes under the hub notes of the tags they are about, and
@@ -18,10 +19,10 @@ export function register(context: vscode.ExtensionContext, services: Services): 
   context.subscriptions.push(
     provider,
     view,
-    registerCommand('deckard.hubs.openHubNote', (node?: HubTreeNode) => {
-      const uri = node?.filePath ? services.indexer.getUri(node.filePath) : undefined;
-      return uri ? vscode.commands.executeCommand('vscode.open', uri) : undefined;
-    }),
+    // The hub note itself, where deckard.openNotesIn opens notes.
+    registerCommand('deckard.hubs.openHubNote', (node?: HubTreeNode) =>
+      node?.filePath ? openNoteAt(node.filePath, 1, { pin: true }) : undefined,
+    ),
     // A tree does not say which keys were held, so the other way to open a
     // note is on its menu: whichever of these deckard.openNotesIn does not pick.
     registerCommand('deckard.hubs.openInEditor', (node?: HubTreeNode) =>

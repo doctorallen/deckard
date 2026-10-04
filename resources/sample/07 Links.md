@@ -72,6 +72,12 @@ The threshold line, drawn from the relay note:
 10. In the Ghostline Relay note, put the cursor on the **Decision** heading
     and run **Deckard: Rename Heading**. Every `[[Ghostline Relay#Decision]]`
     link here is rewritten to the new name; **Undo** puts them back.
+11. Run **Deckard: Open Note as Page** here. The note is drawn on a Deckard
+    page: its links and tags open what they name, with Back and Forward,
+    the embed draws the line it names, and **Linked from** lists what links
+    here. Double-click a paragraph to go to its line in the editor. To open
+    every note there, set `deckard.openNotesIn` to `page`; **Shift**-click
+    opens a note the other way.
 
 Search by link in [[04 Search]]; the queries are there.
 

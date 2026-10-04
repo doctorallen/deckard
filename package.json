@@ -1329,12 +1329,12 @@
         },
         {
           "command": "deckard.hubs.openInEditor",
-          "when": "view == deckard.hubs && viewItem == hubChild && config.deckard.openNotesIn == page",
+          "when": "view == deckard.hubs && (viewItem == hubNote || viewItem == hubChild) && config.deckard.openNotesIn == page",
           "group": "deckard@2"
         },
         {
           "command": "deckard.hubs.openAsPage",
-          "when": "view == deckard.hubs && (viewItem == hubNote || viewItem == hubChild && config.deckard.openNotesIn != page)",
+          "when": "view == deckard.hubs && (viewItem == hubNote || viewItem == hubChild) && config.deckard.openNotesIn != page",
           "group": "deckard@2"
         },
         {

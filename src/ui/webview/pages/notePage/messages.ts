@@ -40,12 +40,18 @@ const narrowOpenNote: Narrower<OpenNoteMessage> = (value) => {
   return { type: 'openNote', filePath: value.filePath, ...(isLine(value.line) ? { line: value.line } : {}), ...modifiers };
 };
 
-/** A `[[link]]` to follow: what it names, as written. */
+/** Whether a value is a note path or a link target the page could send. */
+function isName(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_NAME_LENGTH;
+}
+
+/** A `[[link]]` to follow: what it names, as written, and the note it is written in when that is an embedded one. */
 const narrowOpenWikiLink: Narrower<OpenWikiLinkMessage> = (value) => {
   const modifiers = readModifiers(value);
-  return modifiers && typeof value.target === 'string' && value.target.length > 0 && value.target.length <= MAX_NAME_LENGTH
-    ? { type: 'openWikiLink', target: value.target, ...modifiers }
-    : undefined;
+  if (!modifiers || !isName(value.target) || (value.from !== undefined && !isName(value.from))) {
+    return undefined;
+  }
+  return { type: 'openWikiLink', target: value.target, ...(isName(value.from) ? { from: value.from } : {}), ...modifiers };
 };
 
 /** Open in Editor: at a line when given, beside when asked. */
