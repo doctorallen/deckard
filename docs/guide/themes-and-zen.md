@@ -21,6 +21,16 @@ In every theme, red means overdue or high priority, and nothing else.
 | **Cooper** | | |
 | <img src="../images/dashboard-cooper.png" alt="Cooper theme Dashboard." width="220"> | | |
 
+## What pages write
+
+Three preferences change what a page writes rather than how much it draws, so Display's steps never move them. Set them in Settings:
+
+- **Counts** (`deckard.display.counts`): the number beside a name, such as a widget's total, a group's count, a board column's tasks, or a tab's results, `shown` or `hidden`. Figures that are the point, such as Home's Due today and a calendar day's counts, always show.
+- **File & line** (`deckard.display.fileAndLine`): where an entry is written, under it on `hover` and focus, `always` under every entry, or `never`.
+- **Dates** (`deckard.display.dates`): a due date written `both` ways, "Overdue 2 days · 2026-10-02", only how far off, "Overdue 2 days", or only the `date` with its state, "Overdue · 2026-10-02". An overdue date always says Overdue, and a date over a month away keeps its date.
+
+Whatever is out of sight stays in the page for a screen reader, which hears every count, file, and date in full.
+
 ## Cards and tags
 
 Two looks you can turn on for every page, in any theme, from **Cards** and **Tags** in a page's gear, or in Settings:

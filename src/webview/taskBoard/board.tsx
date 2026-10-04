@@ -7,6 +7,7 @@ import type { ComponentChild } from 'preact';
 import type { TaskBoardCard, TaskBoardColumn, TaskBoardSettings, TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
 import type { ActionMenuGroup, ActionMenuItem } from '../shared/actionMenu';
 import { IconButton } from '../shared/buttons';
+import { DueText } from '../shared/dueText';
 import { EllipsisIcon } from '../shared/strokeIcons';
 import { formatSourceLocation, HeadingPathSteps, plainTitle, PriorityBadge, trimHeadingPath } from '../shared/taskRow';
 import { TaskTitle } from '../shared/taskTitle';
@@ -119,7 +120,9 @@ function CardDetails({ card }: { readonly card: TaskBoardCard }) {
         if (priority) {
           return <PriorityBadge key={`priority-${index}`} priority={priority[1]} />;
         }
-        return <span key={`detail-${index}`} class={detailClass(card, detail)}>{withDates(detail)}</span>;
+        // A due date is drawn in its parts, for Display's Dates preference.
+        const drawn = /^(due|overdue)\b/i.test(detail) && detail.includes(' · ') ? <DueText label={detail} dateClass="board-date" /> : withDates(detail);
+        return <span key={`detail-${index}`} class={detailClass(card, detail)}>{drawn}</span>;
       })}
     </p>
   );

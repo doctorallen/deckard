@@ -1818,6 +1818,55 @@
             "description": "How tags are drawn on every Deckard page: framed chips, or plain text. Either way a tag opens its page. Your own choice, the same in every workspace.",
             "order": 2
           },
+          "deckard.display.counts": {
+            "type": "string",
+            "enum": [
+              "shown",
+              "hidden"
+            ],
+            "default": "shown",
+            "scope": "application",
+            "enumDescriptions": [
+              "The number beside each name: a widget's total, a group's count, a column's tasks, a tab's results.",
+              "Those numbers left out of sight. A screen reader still reads each one, and figures that are the point, such as Home's Due today, always show."
+            ],
+            "description": "Whether pages draw the counts beside names. Display's steps never change it. Your own choice, the same in every workspace.",
+            "order": 2
+          },
+          "deckard.display.fileAndLine": {
+            "type": "string",
+            "enum": [
+              "hover",
+              "always",
+              "never"
+            ],
+            "default": "hover",
+            "scope": "application",
+            "enumDescriptions": [
+              "Under an entry while the pointer is on it or it has focus.",
+              "Under every entry.",
+              "Not drawn. A screen reader still reads it."
+            ],
+            "description": "Where pages draw the file and line an entry is written in. Display's steps never change it. Your own choice, the same in every workspace.",
+            "order": 2
+          },
+          "deckard.display.dates": {
+            "type": "string",
+            "enum": [
+              "both",
+              "relative",
+              "date"
+            ],
+            "default": "both",
+            "scope": "application",
+            "enumDescriptions": [
+              "How far off and the date: \"Overdue 2 days · 2026-10-02\".",
+              "Only how far off: \"Overdue 2 days\". A date over a month away still shows.",
+              "The date with its state: \"Overdue · 2026-10-02\"."
+            ],
+            "description": "How pages write a task's due date. An overdue date always says Overdue, and a screen reader hears the whole date either way. Display's steps never change it. Your own choice, the same in every workspace.",
+            "order": 2
+          },
           "deckard.showWhatsNew": {
             "type": "boolean",
             "default": true,

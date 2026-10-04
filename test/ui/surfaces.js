@@ -127,6 +127,10 @@ const NOW = new Date(2026, 8, 21, 12).getTime();
 /** Flat cards and tags as text: the looks a reader turns on, drawn on a few surfaces. */
 const LOOKS = { cards: 'flat', tags: 'text' };
 
+/** Display's preferences, each away from its default: what a page writes, drawn on Home and the board. */
+const WRITTEN_HOME = { counts: 'hidden', fileAndLine: 'never', dates: 'date' };
+const WRITTEN_BOARD = { counts: 'hidden', fileAndLine: 'always', dates: 'relative' };
+
 /**
  * The Dashboard as the host sends it: Home with its widgets, or the Tags
  * mode, at one moment.
@@ -175,6 +179,8 @@ function createDashboardSurfaces(index, preferences) {
     dashboard('dashboardHome', 'home', { hovered: ['.home-widget .row', '.home-widget'] }),
     // Flat cards and tags as text, the two looks a reader turns on.
     { ...dashboard('dashboardHomeLooks', 'home', { hovered: ['.home-widget .row', '.home-widget'] }), display: LOOKS },
+    // Counts hidden, file and line never, dates as the date with its state.
+    { ...dashboard('dashboardHomeWritten', 'home', { hovered: ['.home-widget .row', '.home-widget'] }), display: WRITTEN_HOME },
     dashboard('dashboardTags', 'browse', { hovered: ['.tag-row', '.row'] }),
     dashboard('dashboardArranging', 'home', {
       drive: [['click', '[data-action="customize-home"]']],
@@ -337,6 +343,23 @@ function createBoardSurfaces(boardIndex, preferences) {
       snapshot: () => createTaskBoard({
         index: boardIndex,
         preferences: { ...preferences.reader.value, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'project' },
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
+        tagTitleDisplayMode: 'inline',
+      }),
+      scrollers: ['html', '.board-cards'],
+      clippers: ['.board-column'],
+      hovered: ['.board-card'],
+    },
+    {
+      // Counts hidden, file and line under every card, dates as how far off.
+      name: 'taskBoardWritten',
+      page: 'taskBoard',
+      display: WRITTEN_BOARD,
+      viewport: [900, 700],
+      snapshot: () => createTaskBoard({
+        index: boardIndex,
+        preferences: preferences.reader.value,
         search: { query: '' },
         options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
         tagTitleDisplayMode: 'inline',

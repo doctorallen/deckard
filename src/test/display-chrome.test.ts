@@ -15,6 +15,11 @@ suite('Display choices on the page body', () => {
       ' data-styling="plain" data-help="hidden"',
       'Quiet',
     );
+    assert.strictEqual(
+      getPageTailCss({ theme: 'cooper', zen: false, display: { counts: 'hidden', fileAndLine: 'never', dates: 'date' } }).bodyAttribute,
+      ' data-counts="hidden" data-file-line="never" data-dates="date"',
+      'the preferences',
+    );
     assert.strictEqual(getPageTailCss({ theme: 'cooper', zen: false, display: { cards: 'flat' } }).bodyAttribute, ' data-cards="flat"');
     assert.strictEqual(
       getPageTailCss({ theme: 'lcars', zen: true, display: { cards: 'flat', tags: 'text' } }).bodyAttribute,

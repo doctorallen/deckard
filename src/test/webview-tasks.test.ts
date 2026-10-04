@@ -79,8 +79,16 @@ suite('The shared task parts draw what the template script drew', () => {
     shared().render(vnode, container);
     return container;
   };
-  /** The part drawn now is what the template drew for the case `name`. */
+  /**
+   * The part drawn now is what the template drew for the case `name`. A due
+   * date is drawn in its parts since, for Display's Dates preference, so it
+   * is compared by its text, which is the template's.
+   */
   const assertSame = (name: string, now: Element, what = name): void => {
+    for (const due of Array.from(now.querySelectorAll('.due-text'))) {
+      due.replaceWith(due.textContent ?? '');
+    }
+    now.normalize();
     assert.strictEqual(normalizeBody(now), drawnByTemplate(name), what);
   };
 

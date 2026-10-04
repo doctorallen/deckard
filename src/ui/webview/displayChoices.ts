@@ -21,6 +21,9 @@ export const DISPLAY_SETTINGS = {
   density: { key: 'display.density', values: ['auto', 'comfortable', 'compact'] },
   cardFrames: { key: 'display.cardFrames', values: ['raised', 'flat'] },
   tags: { key: 'display.tags', values: ['chips', 'text'] },
+  counts: { key: 'display.counts', values: ['shown', 'hidden'] },
+  fileAndLine: { key: 'display.fileAndLine', values: ['hover', 'always', 'never'] },
+  dates: { key: 'display.dates', values: ['both', 'relative', 'date'] },
 } as const;
 
 /** One of the display choices, by its setting's name. */
@@ -50,7 +53,20 @@ export function readDisplayChoices(): DisplayChoices {
     ...(scale.density === 'compact' ? { density: 'compact' as const } : {}),
     ...(deckard.get<string>(DISPLAY_SETTINGS.cardFrames.key) === 'flat' ? { cards: 'flat' as const } : {}),
     ...(deckard.get<string>(DISPLAY_SETTINGS.tags.key) === 'text' ? { tags: 'text' as const } : {}),
+    ...(deckard.get<string>(DISPLAY_SETTINGS.counts.key) === 'hidden' ? { counts: 'hidden' as const } : {}),
+    ...fileAndLine(deckard.get<string>(DISPLAY_SETTINGS.fileAndLine.key)),
+    ...dates(deckard.get<string>(DISPLAY_SETTINGS.dates.key)),
   };
+}
+
+/** File & line, when it isn't on hover. */
+function fileAndLine(value: string | undefined): Pick<DisplayChoices, 'fileAndLine'> {
+  return value === 'always' || value === 'never' ? { fileAndLine: value } : {};
+}
+
+/** Dates, when they aren't written both ways. */
+function dates(value: string | undefined): Pick<DisplayChoices, 'dates'> {
+  return value === 'relative' || value === 'date' ? { dates: value } : {};
 }
 
 /** Whether a settings change alters how pages are drawn. */

@@ -13,7 +13,9 @@ import { DeckardTheme } from './themeNames';
  * How a page is drawn, as Display resolves it (ui/state/displayLevel.ts),
  * each value named only when it isn't the default: plain theme styling,
  * help text hidden, compact density, flat rows rather than raised cards,
- * and tags as text rather than chips.
+ * tags as text rather than chips, counts beside names hidden, an entry's
+ * file and line always or never drawn, and due dates as only how far off
+ * or only the date.
  */
 export interface DisplayChoices {
   readonly styling?: 'plain';
@@ -21,6 +23,9 @@ export interface DisplayChoices {
   readonly density?: 'compact';
   readonly cards?: 'flat';
   readonly tags?: 'text';
+  readonly counts?: 'hidden';
+  readonly fileAndLine?: 'always' | 'never';
+  readonly dates?: 'relative' | 'date';
 }
 
 /** Zen's values, for a page given only the zen flag, as the test harness gives it. */
@@ -104,6 +109,9 @@ function bodyMarkers(chrome: PageChrome): string {
     display.density === 'compact' ? ' data-density="compact"' : '',
     display.cards === 'flat' ? ' data-cards="flat"' : '',
     display.tags === 'text' ? ' data-tags="text"' : '',
+    display.counts === 'hidden' ? ' data-counts="hidden"' : '',
+    display.fileAndLine ? ` data-file-line="${display.fileAndLine}"` : '',
+    display.dates ? ` data-dates="${display.dates}"` : '',
   ].join('');
 }
 
