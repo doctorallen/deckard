@@ -730,13 +730,14 @@ function offerExcludeHint(
  */
 function syncWalkthroughContext(context: vscode.ExtensionContext, indexer: IndexRoles<vscode.Uri>): void {
   const sync = (index: {
-    files: Map<string, unknown>;
+    files: Map<string, { links: readonly string[] }>;
     tags: Map<string, unknown>;
     tasks: Map<string, unknown>;
   }): void => {
     void vscode.commands.executeCommand('setContext', 'deckard.hasNotes', index.files.size > 0);
     void vscode.commands.executeCommand('setContext', 'deckard.hasTags', index.tags.size > 0);
     void vscode.commands.executeCommand('setContext', 'deckard.hasTasks', index.tasks.size > 0);
+    void vscode.commands.executeCommand('setContext', 'deckard.hasLinks', [...index.files.values()].some((file) => file.links.length > 0));
   };
   context.subscriptions.push(indexer.onDidUpdate(sync));
 }

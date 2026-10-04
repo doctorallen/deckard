@@ -17,7 +17,7 @@ Each [GitHub release](https://github.com/doctorallen/deckard/releases) also carr
 
 **Sample workspace:** run `Deckard: Create a Sample Workspace`. It opens a tour in this window when no folder is open, and otherwise in a new window or this one, as you choose. Its README, **Start here**, leads through ten notes, one per topic, each ending with **Try it**: the commands, keys, and searches to run. The notes are dated from the day you make them. Running the command again offers a fresh copy.
 
-**Walkthrough:** `Deckard: Get Started`, or **Walkthrough** in Home's gear, opens six steps: open a note, tag it, capture a task, see the workspace, find anything, and choose a theme. The last step also offers [Esper Themes](https://marketplace.visualstudio.com/items?itemName=esperinnovations.esper-themes), Deckard's looks as VS Code color themes for the editor. Each is checked off as you do it.
+**Walkthrough:** `Deckard: Get Started`, or **Walkthrough** in Home's gear, opens six steps: write a note, tag it and mention a person, link two notes, find anything, capture a task, and see the workspace. Each is checked off as you do it. It is the place to start: the sample workspace is offered from its first step.
 
 **In your own notes:**
 

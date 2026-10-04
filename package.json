@@ -115,8 +115,8 @@
         "steps": [
           {
             "id": "deckard.walkthrough.openNote",
-            "title": "Open or create a note",
-            "description": "Deckard indexes every saved Markdown file in the workspace. Start today's note, then write a line or two — or take the tour: a sample workspace of notes that show what Deckard does and say what to try.\n[Create today's note](command:deckard.createDailyNote)\n[Create a sample workspace](command:deckard.createSampleWorkspace)",
+            "title": "Write a note",
+            "description": "Deckard reads every saved Markdown file in the workspace. Start today's note and write a line or two: a / at the start of a line offers a task, a heading, a link, a table of tasks, or one of your templates. Or take the tour, a sample workspace of notes that show what Deckard does.\n[Create today's note](command:deckard.createDailyNote)\n[Create a sample workspace](command:deckard.createSampleWorkspace)",
             "media": {
               "markdown": "resources/walkthrough/notes.md"
             },
@@ -128,8 +128,8 @@
           },
           {
             "id": "deckard.walkthrough.addTags",
-            "title": "Tag what the note is about",
-            "description": "Write a tag such as #project/atlas on a heading or a task, or @dana for a person. Tags are what Deckard connects notes by.\n[Open Help](command:deckard.showHelp)",
+            "title": "Tag it, and mention a person",
+            "description": "Write a tag such as #project/atlas on a heading or a task to say what it is about, and @dana to say who. Cmd-click (Ctrl-click on Windows and Linux) a tag or a person to see every note and task that carries it.\n[Open Help](command:deckard.showHelp)",
             "media": {
               "markdown": "resources/walkthrough/tags.md"
             },
@@ -138,9 +138,33 @@
             ]
           },
           {
+            "id": "deckard.walkthrough.linkNotes",
+            "title": "Link two notes",
+            "description": "Write [[ and the start of another note's name to link it. That note then lists this one under Linked from, in the Context view and on its page, so a decision finds its meeting and a person finds every 1:1.\n[Open the Context view](command:deckard.relatedNotes.focus)",
+            "media": {
+              "markdown": "resources/walkthrough/links.md"
+            },
+            "completionEvents": [
+              "onContext:deckard.hasLinks"
+            ]
+          },
+          {
+            "id": "deckard.walkthrough.search",
+            "title": "Find anything",
+            "description": "Find (Ctrl+Shift+Alt+F; Cmd+Shift+Alt+F on macOS) searches as you type. A search page holds the whole result, and Refine narrows it. Write words, #tags, is:open, or updated >= 7d, joined with AND, OR, and NOT.\n[Find a note](command:deckard.searchWorkspace)",
+            "media": {
+              "image": "resources/walkthrough/search.png",
+              "altText": "A search page with its results and Refine beside them."
+            },
+            "completionEvents": [
+              "onCommand:deckard.searchWorkspace",
+              "onCommand:deckard.search"
+            ]
+          },
+          {
             "id": "deckard.walkthrough.captureTask",
             "title": "Capture a task",
-            "description": "Write a task from anywhere without leaving what you are doing. Capture adds it to today's note and reads a date or a priority from its last words, such as \"call Rhea friday\".\n[Capture a task](command:deckard.capture)\n[Open the Tasks view](command:deckard.agenda.focus)",
+            "description": "Write a task from anywhere without leaving what you are doing: Capture (Ctrl+Shift+Alt+N; Cmd+Shift+Alt+N on macOS) adds it to today's note and reads a date or a priority from its last words, such as \"call Rhea friday\".\n[Capture a task](command:deckard.capture)\n[Open the Tasks view](command:deckard.agenda.focus)",
             "media": {
               "image": "resources/walkthrough/tasks.png",
               "altText": "The Tasks view listing overdue, today's, and upcoming tasks beside a daily note."
@@ -153,7 +177,7 @@
           {
             "id": "deckard.walkthrough.openHome",
             "title": "See the workspace",
-            "description": "Home collects today's note, your tasks, what is due, and the searches you keep. Customize in its gear adds, resizes, and reorders the widgets.\n[Open the Dashboard](command:deckard.showDashboard)",
+            "description": "Home collects what is due today, what slipped, your tasks, and the notes you opened lately. Customize Home, beside its tabs, adds, resizes, and reorders the widgets.\n[Open the Dashboard](command:deckard.showDashboard)",
             "media": {
               "image": {
                 "dark": "resources/walkthrough/home-dark.png",
@@ -165,33 +189,6 @@
             },
             "completionEvents": [
               "onCommand:deckard.showDashboard"
-            ]
-          },
-          {
-            "id": "deckard.walkthrough.search",
-            "title": "Find anything",
-            "description": "Find searches as you type. A search page holds the whole result, and Refine narrows it. Write words, #tags, is:open, or updated >= 7d, joined with AND, OR, and NOT.\n[Find a note](command:deckard.searchWorkspace)",
-            "media": {
-              "image": "resources/walkthrough/search.png",
-              "altText": "A search page with its results and Refine beside them."
-            },
-            "completionEvents": [
-              "onCommand:deckard.searchWorkspace",
-              "onCommand:deckard.search"
-            ]
-          },
-          {
-            "id": "deckard.walkthrough.makeItYours",
-            "title": "Make it yours",
-            "description": "Deckard's pages come in eight looks. Choose Theme previews each as you move through them. Zen draws less frame around any of them. Esper Themes brings the looks to the editor too, as VS Code color themes.\n[Choose a theme](command:deckard.chooseTheme)\n[Enter zen mode](command:deckard.enableZenMode)\n[Get Esper Themes](command:extension.open?%5B%22esperinnovations.esper-themes%22%5D)",
-            "media": {
-              "image": "resources/walkthrough/themes.png",
-              "altText": "The Dashboard in four of Deckard's eight themes: Corpo, Replicant, LCARS, and Cooper."
-            },
-            "completionEvents": [
-              "onCommand:deckard.chooseTheme",
-              "onSettingChanged:deckard.theme",
-              "onSettingChanged:deckard.zenMode"
             ]
           }
         ],

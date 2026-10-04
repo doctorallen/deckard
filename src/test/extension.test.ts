@@ -320,7 +320,7 @@ suite('Extension Test Suite', () => {
     );
   });
 
-  test('walks a new reader through six steps it can check off', async () => {
+  test('walks a new reader through six steps it can check off, links before tasks', async () => {
     const extension = vscode.extensions.all.find(
       (candidate) => candidate.packageJSON.name === 'deckard-notes',
     );
@@ -335,7 +335,7 @@ suite('Extension Test Suite', () => {
     }> = contributes.walkthroughs[0].steps;
     assert.deepStrictEqual(
       steps.map((step) => step.id.replace('deckard.walkthrough.', '')),
-      ['openNote', 'addTags', 'captureTask', 'openHome', 'search', 'makeItYours'],
+      ['openNote', 'addTags', 'linkNotes', 'search', 'captureTask', 'openHome'],
     );
     const commands = new Set<string>(contributes.commands.map((command: { command: string }) => command.command));
     const views = new Set<string>(

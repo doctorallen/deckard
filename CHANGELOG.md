@@ -32,9 +32,17 @@
 - **Esper Themes, suggested once.** Deckard's looks also come as VS Code
   color themes for the whole editor, in Esper Themes. Once the first index
   is done, a machine without it is asked once, with **Install** and **See
-  Themes**; the walkthrough's **Make it yours** step links to it as well.
+  Themes**.
 
 ### Changed
+
+- **The walkthrough teaches links.** Get Started's six steps are now:
+  write a note (with the / menu), tag it and mention a person, link two
+  notes and see Linked from, find anything, capture a task, and see the
+  workspace. Links were the one thing the README promised that the
+  walkthrough never showed; choosing a theme left it for the palette, Help,
+  and every page's gear. Its steps give Windows and Linux keys beside
+  macOS's.
 
 - **A first Home lists each task once.** A new Home started with the Tasks
   view and an open tasks widget side by side, which listed the same tasks
