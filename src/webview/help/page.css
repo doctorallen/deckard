@@ -88,6 +88,12 @@ h3 { margin: 0 0 6px; font-size: var(--text-lg); line-height: 1.2; }
 .eyebrow { margin: 0 0 6px; }
 .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .card { cursor: default; }
+/* A Help card says nothing about where it is written, so under the pointer
+   its frame does not reach down to make room for that line (provenance.css):
+   reaching, it drew an empty strip below the card, the theme's edge with it. */
+.cards > .card { --reach: 0px; }
+.cards > .card:hover::after, .cards > .card:focus-within::after { content: none; }
+.cards > .card:hover, .cards > .card:focus-within { z-index: auto; border-bottom-left-radius: var(--corner-bl, 0); border-bottom-right-radius: var(--corner-br, 0); }
 @media (max-width: 900px) {
   main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; }
   h1 { font-size: 24px; }
