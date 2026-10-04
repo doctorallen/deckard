@@ -442,24 +442,67 @@
             ><div
               class="view-options-group"
             ><span
-              >Zen</span
+              >Page width</span
               ><div
-                aria-label="Zen mode"
+                aria-label="Page width"
                 class="segmented view-options-choices"
                 role="group"
               ><button
-                  aria-pressed="false"
-                  data-action="set-zen-mode"
-                  data-value="off"
-                  type="button"
-                >Off</button
-                ><button
                   aria-pressed="true"
                   class="active"
-                  data-action="set-zen-mode"
-                  data-value="on"
+                  data-action="set-display"
+                  data-display="pageWidth"
+                  data-value="column"
                   type="button"
-                >On</button
+                >Column</button
+                ><button
+                  aria-pressed="false"
+                  data-action="set-display"
+                  data-display="pageWidth"
+                  data-value="wide"
+                  type="button"
+                >Wide</button
+                ></div
+              ></div
+            ><div
+              class="is-stacked view-options-group"
+            ><span
+              >Display</span
+              ><div
+                class="view-options-display"
+              ><div
+                  aria-label="Display"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="full"
+                    type="button"
+                  >Full</button
+                  ><button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="quiet"
+                    type="button"
+                  >Quiet</button
+                  ><button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="zen"
+                    type="button"
+                  >Zen</button
+                  ></div
+                ><button
+                  class="view-options-link"
+                  data-action="display-command"
+                  data-command="customize"
+                  type="button"
+                >Customize…</button
                 ></div
               ></div
             ><div
@@ -872,10 +915,13 @@
           id="result-tab-notes"
           role="tab"
           tabindex="0"
-        >Notes (<span
-            data-search-count="notes"
-          >29</span
-          >)</button
+        >Notes<span
+            class="display-count"
+          > (<span
+              data-search-count="notes"
+            >29</span
+            >)</span
+          ></button
         ><button
           aria-controls="result-panel-tasks"
           aria-selected="false"
@@ -884,10 +930,13 @@
           id="result-tab-tasks"
           role="tab"
           tabindex="-1"
-        >Tasks (<span
-            data-search-count="tasks"
-          >54</span
-          >)</button
+        >Tasks<span
+            class="display-count"
+          > (<span
+              data-search-count="tasks"
+            >54</span
+            >)</span
+          ></button
         ></div
       ></div
     ><div
@@ -2671,7 +2720,21 @@
                 class="task-meta"
               ><span
                   class="due-date overdue"
-                >Overdue 6 days · 2026-09-15</span
+                ><span
+                    class="due-relative due-text"
+                  >Overdue<span
+                      class="due-distance"
+                    > 6 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-15</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 3</span
@@ -2724,7 +2787,21 @@
                 class="task-meta"
               ><span
                   class="due-date overdue"
-                >Overdue 5 days · 2026-09-16</span
+                ><span
+                    class="due-relative due-text"
+                  >Overdue<span
+                      class="due-distance"
+                    > 5 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-16</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 4</span
@@ -2777,7 +2854,21 @@
                 class="task-meta"
               ><span
                   class="due-date overdue"
-                >Overdue 4 days · 2026-09-17</span
+                ><span
+                    class="due-relative due-text"
+                  >Overdue<span
+                      class="due-distance"
+                    > 4 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-17</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 5</span
@@ -2830,7 +2921,21 @@
                 class="task-meta"
               ><span
                   class="due-date overdue"
-                >Overdue 3 days · 2026-09-18</span
+                ><span
+                    class="due-relative due-text"
+                  >Overdue<span
+                      class="due-distance"
+                    > 3 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-18</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 6</span
@@ -2883,7 +2988,21 @@
                 class="task-meta"
               ><span
                   class="due-date overdue"
-                >Overdue 2 days · 2026-09-19</span
+                ><span
+                    class="due-relative due-text"
+                  >Overdue<span
+                      class="due-distance"
+                    > 2 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-19</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 7</span
@@ -2936,7 +3055,21 @@
                 class="task-meta"
               ><span
                   class="due-date overdue"
-                >Overdue 1 day · 2026-09-20</span
+                ><span
+                    class="due-relative due-text"
+                  >Overdue<span
+                      class="due-distance"
+                    > 1 day</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-20</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 8</span
@@ -2989,7 +3122,18 @@
                 class="task-meta"
               ><span
                   class="due-date today"
-                >Due today · 2026-09-21</span
+                ><span
+                    class="due-relative due-text"
+                  >Due today<span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-21</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 9</span
@@ -3042,7 +3186,18 @@
                 class="task-meta"
               ><span
                   class="due-date today"
-                >Due today · 2026-09-21</span
+                ><span
+                    class="due-relative due-text"
+                  >Due today<span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-21</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 10</span
@@ -3095,7 +3250,18 @@
                 class="task-meta"
               ><span
                   class="due-date today"
-                >Due today · 2026-09-21</span
+                ><span
+                    class="due-relative due-text"
+                  >Due today<span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-21</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 11</span
@@ -3148,7 +3314,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due tomorrow · 2026-09-22</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > tomorrow</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-22</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 12</span
@@ -3201,7 +3381,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 2 days · 2026-09-23</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 2 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-23</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 13</span
@@ -3254,7 +3448,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 3 days · 2026-09-24</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 3 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-24</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 14</span
@@ -3307,7 +3515,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 4 days · 2026-09-25</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 4 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-25</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 15</span
@@ -3360,7 +3582,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 5 days · 2026-09-26</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 5 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-26</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 16</span
@@ -3413,7 +3649,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 5 days · 2026-09-26</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 5 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-26</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 17</span
@@ -3466,7 +3716,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 6 days · 2026-09-27</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 6 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-27</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 18</span
@@ -3519,7 +3783,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 7 days · 2026-09-28</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 7 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-28</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 19</span
@@ -3572,7 +3850,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 8 days · 2026-09-29</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 8 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-29</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 20</span
@@ -3625,7 +3917,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 9 days · 2026-09-30</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 9 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-30</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 21</span
@@ -3678,7 +3984,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 10 days · 2026-10-01</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 10 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-10-01</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 22</span
@@ -3731,7 +4051,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 10 days · 2026-10-01</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 10 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-10-01</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 23</span
@@ -3784,7 +4118,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 11 days · 2026-10-02</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 11 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-10-02</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 24</span
@@ -3837,7 +4185,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 12 days · 2026-10-03</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 12 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-10-03</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 25</span
@@ -3890,7 +4252,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 13 days · 2026-10-04</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 13 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-10-04</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 26</span
@@ -3943,7 +4319,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 14 days · 2026-10-05</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 14 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-10-05</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 27</span
@@ -3996,7 +4386,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 15 days · 2026-10-06</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 15 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-10-06</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 28</span
@@ -4049,7 +4453,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 15 days · 2026-10-06</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 15 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-10-06</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 29</span
@@ -4102,7 +4520,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 16 days · 2026-10-07</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 16 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-10-07</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 30</span
@@ -4155,7 +4587,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 17 days · 2026-10-08</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 17 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-10-08</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 31</span
@@ -4208,7 +4654,21 @@
                 class="task-meta"
               ><span
                   class="due-date"
-                >Due in 18 days · 2026-10-09</span
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > in 18 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-10-09</span
+                      ></span
+                    ></span
+                  ></span
                 ><span
                   class="task-source"
                 >tasks / line 32</span

@@ -2,6 +2,7 @@
   class="zen"
   data-density="compact"
   data-help="hidden"
+  data-level="zen"
   data-styling="plain"
 > <main
     id="app"
@@ -171,24 +172,67 @@
             ><div
               class="view-options-group"
             ><span
-              >Zen</span
+              >Page width</span
               ><div
-                aria-label="Zen mode"
+                aria-label="Page width"
                 class="segmented view-options-choices"
                 role="group"
               ><button
-                  aria-pressed="false"
-                  data-action="set-zen-mode"
-                  data-value="off"
-                  type="button"
-                >Off</button
-                ><button
                   aria-pressed="true"
                   class="active"
-                  data-action="set-zen-mode"
-                  data-value="on"
+                  data-action="set-display"
+                  data-display="pageWidth"
+                  data-value="column"
                   type="button"
-                >On</button
+                >Column</button
+                ><button
+                  aria-pressed="false"
+                  data-action="set-display"
+                  data-display="pageWidth"
+                  data-value="wide"
+                  type="button"
+                >Wide</button
+                ></div
+              ></div
+            ><div
+              class="is-stacked view-options-group"
+            ><span
+              >Display</span
+              ><div
+                class="view-options-display"
+              ><div
+                  aria-label="Display"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="full"
+                    type="button"
+                  >Full</button
+                  ><button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="quiet"
+                    type="button"
+                  >Quiet</button
+                  ><button
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="zen"
+                    type="button"
+                  >Zen</button
+                  ></div
+                ><button
+                  class="view-options-link"
+                  data-action="display-command"
+                  data-command="customize"
+                  type="button"
+                >Customize…</button
                 ></div
               ></div
             ><div

@@ -213,24 +213,67 @@
             ><div
               class="view-options-group"
             ><span
-              >Zen</span
+              >Page width</span
               ><div
-                aria-label="Zen mode"
+                aria-label="Page width"
                 class="segmented view-options-choices"
                 role="group"
               ><button
                   aria-pressed="true"
                   class="active"
-                  data-action="set-zen-mode"
-                  data-value="off"
+                  data-action="set-display"
+                  data-display="pageWidth"
+                  data-value="column"
                   type="button"
-                >Off</button
+                >Column</button
                 ><button
                   aria-pressed="false"
-                  data-action="set-zen-mode"
-                  data-value="on"
+                  data-action="set-display"
+                  data-display="pageWidth"
+                  data-value="wide"
                   type="button"
-                >On</button
+                >Wide</button
+                ></div
+              ></div
+            ><div
+              class="is-stacked view-options-group"
+            ><span
+              >Display</span
+              ><div
+                class="view-options-display"
+              ><div
+                  aria-label="Display"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="full"
+                    type="button"
+                  >Full</button
+                  ><button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="quiet"
+                    type="button"
+                  >Quiet</button
+                  ><button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="zen"
+                    type="button"
+                  >Zen</button
+                  ></div
+                ><button
+                  class="view-options-link"
+                  data-action="display-command"
+                  data-command="customize"
+                  type="button"
+                >Customize…</button
                 ></div
               ></div
             ><div
@@ -1590,9 +1633,21 @@
                   class="board-details source"
                 ><span
                     class="overdue"
-                  >overdue 6 days · <span
-                      class="board-date"
-                    >2026-09-15</span
+                  ><span
+                      class="due-relative due-text"
+                    >overdue<span
+                        class="due-distance"
+                      > 6 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-15</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><p
@@ -1683,9 +1738,21 @@
                   class="board-details source"
                 ><span
                     class="overdue"
-                  >overdue 5 days · <span
-                      class="board-date"
-                    >2026-09-16</span
+                  ><span
+                      class="due-relative due-text"
+                    >overdue<span
+                        class="due-distance"
+                      > 5 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-16</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -1767,9 +1834,21 @@
                   class="board-details source"
                 ><span
                     class="overdue"
-                  >overdue 4 days · <span
-                      class="board-date"
-                    >2026-09-17</span
+                  ><span
+                      class="due-relative due-text"
+                    >overdue<span
+                        class="due-distance"
+                      > 4 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-17</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -1851,9 +1930,21 @@
                   class="board-details source"
                 ><span
                     class="overdue"
-                  >overdue 3 days · <span
-                      class="board-date"
-                    >2026-09-18</span
+                  ><span
+                      class="due-relative due-text"
+                    >overdue<span
+                        class="due-distance"
+                      > 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-18</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -1935,9 +2026,21 @@
                   class="board-details source"
                 ><span
                     class="overdue"
-                  >overdue 2 days · <span
-                      class="board-date"
-                    >2026-09-19</span
+                  ><span
+                      class="due-relative due-text"
+                    >overdue<span
+                        class="due-distance"
+                      > 2 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-19</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -2019,9 +2122,21 @@
                   class="board-details source"
                 ><span
                     class="overdue"
-                  >overdue 1 day · <span
-                      class="board-date"
-                    >2026-09-20</span
+                  ><span
+                      class="due-relative due-text"
+                    >overdue<span
+                        class="due-distance"
+                      > 1 day</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-20</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -2103,9 +2218,18 @@
                   class="board-details source"
                 ><span
                     class="due-today"
-                  >due today · <span
-                      class="board-date"
-                    >2026-09-21</span
+                  ><span
+                      class="due-relative due-text"
+                    >due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-21</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -2187,9 +2311,18 @@
                   class="board-details source"
                 ><span
                     class="due-today"
-                  >due today · <span
-                      class="board-date"
-                    >2026-09-21</span
+                  ><span
+                      class="due-relative due-text"
+                    >due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-21</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -2271,9 +2404,18 @@
                   class="board-details source"
                 ><span
                     class="due-today"
-                  >due today · <span
-                      class="board-date"
-                    >2026-09-21</span
+                  ><span
+                      class="due-relative due-text"
+                    >due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-21</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -2354,9 +2496,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due tomorrow · <span
-                      class="board-date"
-                    >2026-09-22</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > tomorrow</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-22</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -2437,9 +2591,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 2 days · <span
-                      class="board-date"
-                    >2026-09-23</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 2 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-23</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -2520,9 +2686,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 3 days · <span
-                      class="board-date"
-                    >2026-09-24</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-24</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -2603,9 +2781,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 4 days · <span
-                      class="board-date"
-                    >2026-09-25</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 4 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-25</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -2686,9 +2876,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 5 days · <span
-                      class="board-date"
-                    >2026-09-26</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 5 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-26</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -2769,9 +2971,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 5 days · <span
-                      class="board-date"
-                    >2026-09-26</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 5 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-26</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -2852,9 +3066,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 6 days · <span
-                      class="board-date"
-                    >2026-09-27</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 6 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-27</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -2935,9 +3161,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 7 days · <span
-                      class="board-date"
-                    >2026-09-28</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 7 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-28</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -3018,9 +3256,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 8 days · <span
-                      class="board-date"
-                    >2026-09-29</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 8 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-29</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -3101,9 +3351,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 9 days · <span
-                      class="board-date"
-                    >2026-09-30</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 9 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-30</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -3184,9 +3446,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 10 days · <span
-                      class="board-date"
-                    >2026-10-01</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 10 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-01</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -3267,9 +3541,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 10 days · <span
-                      class="board-date"
-                    >2026-10-01</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 10 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-01</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -3350,9 +3636,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 11 days · <span
-                      class="board-date"
-                    >2026-10-02</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 11 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-02</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -3433,9 +3731,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 12 days · <span
-                      class="board-date"
-                    >2026-10-03</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 12 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-03</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -3516,9 +3826,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 13 days · <span
-                      class="board-date"
-                    >2026-10-04</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 13 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-04</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -3599,9 +3921,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 14 days · <span
-                      class="board-date"
-                    >2026-10-05</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 14 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-05</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -3682,9 +4016,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 15 days · <span
-                      class="board-date"
-                    >2026-10-06</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 15 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-06</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -3765,9 +4111,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 15 days · <span
-                      class="board-date"
-                    >2026-10-06</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 15 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-06</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -3848,9 +4206,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 16 days · <span
-                      class="board-date"
-                    >2026-10-07</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 16 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-07</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -3931,9 +4301,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 17 days · <span
-                      class="board-date"
-                    >2026-10-08</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 17 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-08</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -4014,9 +4396,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 18 days · <span
-                      class="board-date"
-                    >2026-10-09</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 18 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-09</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -4097,9 +4491,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 19 days · <span
-                      class="board-date"
-                    >2026-10-10</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 19 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-10</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -4180,9 +4586,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 20 days · <span
-                      class="board-date"
-                    >2026-10-11</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 20 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-11</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -4263,9 +4681,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 20 days · <span
-                      class="board-date"
-                    >2026-10-11</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 20 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-11</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -4346,9 +4776,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 21 days · <span
-                      class="board-date"
-                    >2026-10-12</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 21 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-12</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -4429,9 +4871,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 22 days · <span
-                      class="board-date"
-                    >2026-10-13</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 22 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-13</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -4512,9 +4966,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 23 days · <span
-                      class="board-date"
-                    >2026-10-14</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 23 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-14</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -4595,9 +5061,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 24 days · <span
-                      class="board-date"
-                    >2026-10-15</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 24 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-15</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -4678,9 +5156,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 25 days · <span
-                      class="board-date"
-                    >2026-10-16</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 25 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-16</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -4761,9 +5251,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 25 days · <span
-                      class="board-date"
-                    >2026-10-16</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 25 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-16</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
@@ -4844,9 +5346,21 @@
                 ><p
                   class="board-details source"
                 ><span
-                  >due in 26 days · <span
-                      class="board-date"
-                    >2026-10-17</span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 26 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-10-17</span
+                        ></span
+                      ></span
                     ></span
                   ></p
                 ><span
