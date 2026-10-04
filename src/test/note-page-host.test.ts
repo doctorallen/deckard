@@ -10,6 +10,7 @@ import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { NotePageController, NotePageControllerOptions } from '../ui/webview/pages/notePage/notePageController';
 import { narrowNotePageMessage } from '../ui/webview/pages/notePage/messages';
 import { ThemePreview } from '../ui/webview/themePreview';
+import { ActiveNotePage } from '../ui/webview/activeNotePage';
 import { FakeSurface } from './fakeWebview';
 import { REPOSITORY_ROOT } from './pageWebview';
 import { createTaskWrites } from './taskWrites';
@@ -29,7 +30,9 @@ function openNotePage() {
     onDidUpdate: (listener: () => void) => updates.event(listener),
   } as unknown as NotePageControllerOptions['indexer'];
   const openedTags: string[] = [];
+  const activeNotePage = new ActiveNotePage();
   const controller = new NotePageController({
+    activeNotePage,
     indexer,
     writes: createTaskWrites(),
     navigation: new NavigationService(),
@@ -43,7 +46,7 @@ function openNotePage() {
     const states = surface.webview.posted.filter((message) => (message as { type?: string }).type === 'state');
     return (states[states.length - 1] as { data: NotePageSnapshot }).data;
   };
-  return { controller, host, surface, last, send: (message: unknown) => surface.webview.send(message) };
+  return { controller, host, surface, last, activeNotePage, send: (message: unknown) => surface.webview.send(message) };
 }
 
 suite('The note page host', () => {
@@ -121,6 +124,30 @@ suite('The note page host', () => {
     const shown = (states[states.length - 1] as { data: NotePageSnapshot }).data;
     assert.strictEqual(shown.filePath, 'notes/Review.md');
     assert.deepStrictEqual(shown.history, { back: false, forward: false });
+  });
+
+  test('tells Related Notes the note it shows while it is in front, and lets go when it is not', async () => {
+    const page = openNotePage();
+    let heard = 0;
+    page.activeNotePage.onDidChange(() => {
+      heard += 1;
+    });
+    page.controller.navigate({ filePath: 'notes/Atlas.md' });
+    page.host.refresh();
+    assert.deepStrictEqual(page.activeNotePage.active?.location, { filePath: 'notes/Atlas.md' }, 'attached in front');
+    const before = heard;
+    page.host.refresh();
+    assert.strictEqual(heard, before, 'a redraw of the same note tells it nothing');
+    await page.send({ type: 'openNote', filePath: 'notes/Review.md', line: 3 });
+    assert.deepStrictEqual(page.activeNotePage.active?.location, { filePath: 'notes/Review.md', line: 3 });
+    assert.ok(heard > before, 'a new note is told');
+    page.surface.setVisible(false);
+    assert.strictEqual(page.activeNotePage.active, undefined, 'another tab in front');
+    page.surface.setVisible(true);
+    assert.ok(page.activeNotePage.active);
+    page.surface.dispose();
+    assert.strictEqual(page.activeNotePage.active, undefined, 'closed');
+    page.activeNotePage.dispose();
   });
 
   test('comes back after a reload on the note it showed', async () => {

@@ -15,6 +15,7 @@ import type { MessageHandlers, PageContext, PageController, PageOptions } from '
 import { PanelSurface } from '../../host/surface';
 import { openTag, toggleTask } from '../../host/sharedHandlers';
 import { getNotePageHtml } from '../../notePageHtml';
+import type { ActiveNotePage, NotePageSource } from '../../activeNotePage';
 import { narrowNotePageMessage } from './messages';
 
 /** A note the page has shown, and the line it was asked for at. */
@@ -31,6 +32,8 @@ export interface NotePageControllerOptions {
   onOpenTag: (tagKey: string) => void | Promise<void>;
   /** The extension's folder, which the page's style sheets are under. */
   extensionUri: vscode.Uri;
+  /** Where the page says it is in front, so Related Notes follows its note. */
+  activeNotePage?: ActiveNotePage;
 }
 
 /** How many notes Back holds, so a long reading leaves a bounded trail. */
@@ -42,7 +45,7 @@ const HISTORY_LIMIT = 50;
  * notes it has shown, for Back and Forward. It reads the note from the
  * index, so it follows each save.
  */
-export class NotePageController implements PageController<NotePageSnapshot, NotePagePageToHost> {
+export class NotePageController implements PageController<NotePageSnapshot, NotePagePageToHost>, NotePageSource {
   public readonly name = 'Note page';
   public readonly options: PageOptions = {
     retainContextWhenHidden: false,
@@ -58,6 +61,8 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
   /** Counts the notes asked for, so the page tells a new one from a redraw of the same. */
   private visit = 0;
   private page: PageContext | undefined;
+  /** The note and line Related Notes was last told of, so a redraw of the same tells it nothing. */
+  private announced: string | undefined;
 
   /** Reads from `notes.indexer`, and ticks tasks through `notes.writes`. */
   public constructor(private readonly notes: NotePageControllerOptions) {
@@ -113,9 +118,14 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
     });
   }
 
-  /** The tab says which note it shows. */
+  /** The tab says which note it shows, and Related Notes hears of a new one. */
   public onDidSendSnapshot(page: PageContext): void {
     this.page = page;
+    const announced = this.current ? `${this.current.filePath}:${this.current.line ?? ''}` : undefined;
+    if (announced !== this.announced) {
+      this.announced = announced;
+      this.notes.activeNotePage?.notifyChanged(this);
+    }
     const surface = page.surface;
     const title = this.buildTitle();
     if (surface instanceof PanelSurface && title) {
@@ -123,15 +133,37 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
     }
   }
 
-  /** Remembers the page, so a note asked for from elsewhere draws in it. */
+  /** Remembers the page, so a note asked for from elsewhere draws in it, and says whether it is in front. */
   public onDidAttach(page: PageContext): void {
     this.page = page;
+    this.updateActivity(page.surface?.active === true);
+  }
+
+  /** The panel coming to the front or leaving it says so, so Related Notes follows its note. */
+  public onDidChangeViewState(page: PageContext): void {
+    this.updateActivity(page.surface?.active === true);
+  }
+
+  /** The page stops being in front before its panel closes. */
+  public dispose(): void {
+    this.notes.activeNotePage?.release(this);
+  }
+
+  /** Says the page is in front, or is not. */
+  private updateActivity(active: boolean): void {
+    if (active) {
+      this.notes.activeNotePage?.setActive(this);
+    } else {
+      this.notes.activeNotePage?.release(this);
+    }
   }
 
   /** Forgets the note and the trail when the reader closes the tab, so the next tab starts its own. */
   public onDidDetach(): void {
     this.page = undefined;
     this.current = undefined;
+    this.announced = undefined;
+    this.notes.activeNotePage?.release(this);
     this.back.length = 0;
     this.forward.length = 0;
   }

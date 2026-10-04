@@ -77,7 +77,7 @@ function registerNotePageCommands(services: Services): vscode.Disposable[] {
       const beside = how.beside === true;
       if (typeof filePath === 'string' && filePath) {
         const at = typeof line === 'number' && Number.isInteger(line) && line > 0 ? line : undefined;
-        await notePage.show({ filePath, ...(at ? { line: at } : {}) }, beside, beside && how.preserveFocus === true);
+        await notePage.show({ filePath, ...(at ? { line: at } : {}) }, { beside, preserveFocus: how.preserveFocus === true });
         return;
       }
       const location = readEditorNote(indexer, filePath);
@@ -85,7 +85,9 @@ function registerNotePageCommands(services: Services): vscode.Disposable[] {
         void vscode.window.showInformationMessage('Open a note to read it as a page.');
         return;
       }
-      await notePage.show(location, beside);
+      // In the note's own group, in front of its editor, as Markdown's Open
+      // Preview opens there.
+      await notePage.show(location, { beside, ...(location.column ? { column: location.column } : {}) });
     }),
   ];
 }
@@ -96,14 +98,30 @@ function registerNotePageCommands(services: Services): vscode.Disposable[] {
  * the editor with the focus, or else the active editor's, at its cursor when
  * that editor shows it. Undefined when that is no note.
  */
-function readEditorNote(indexer: Services['indexer'], given: unknown): { filePath: string; line?: number } | undefined {
+function readEditorNote(
+  indexer: Services['indexer'],
+  given: unknown,
+): { filePath: string; line?: number; column?: vscode.ViewColumn } | undefined {
   const editor = vscode.window.activeTextEditor;
   const uri = given instanceof vscode.Uri ? given : editor?.document.uri;
   if (!uri || !indexer.isNotesFile(uri)) {
     return undefined;
   }
   const shown = editor?.document.uri.toString() === uri.toString() ? editor : undefined;
-  return { filePath: indexer.getFilePath(uri), ...(shown ? { line: shown.selection.active.line + 1 } : {}) };
+  const column = shown?.viewColumn ?? findTextTabColumn(uri);
+  return {
+    filePath: indexer.getFilePath(uri),
+    ...(shown ? { line: shown.selection.active.line + 1 } : {}),
+    ...(column ? { column } : {}),
+  };
+}
+
+/** The group a note's text tab is in, the active group first, when one holds it. */
+function findTextTabColumn(uri: vscode.Uri): vscode.ViewColumn | undefined {
+  const holds = (group: vscode.TabGroup): boolean =>
+    group.tabs.some((tab) => tab.input instanceof vscode.TabInputText && tab.input.uri.toString() === uri.toString());
+  const { activeTabGroup, all } = vscode.window.tabGroups;
+  return (holds(activeTabGroup) ? activeTabGroup : all.find(holds))?.viewColumn;
 }
 
 /** What the Notes Graph page runs on a node it was clicked or hovered on. */

@@ -61,7 +61,7 @@ Write `![[Note]]` on a line of its own and VS Code's Markdown preview draws that
 - **Linked from** lists the notes that link here, each with the lines that do.
 - **Open in Editor** opens the note at the line in view, and a double-click on a paragraph, a task, or a block opens the editor at its line. Shift-click a link to open its note in the editor instead.
 
-The page is one tab, reused for each note as VS Code's preview tab is, and it is reopened on the note it showed after a reload. It follows each save.
+The page is one tab, reused for each note as VS Code's preview tab is, and it is reopened on the note it showed after a reload. It follows each save. The unicorn button opens it in the note's own editor group, in front of the note's editor, as Markdown's **Open Preview** does; **Open in Editor** switches back. While the page is in front, the Context view's Related Notes follows the note it shows, as it follows a note in the editor, and picks the entry at the line the page was opened at.
 
 **Opening every note there.** Set `deckard.openNotesIn` to `page` and a note or task opened from any Deckard page opens on the note page, scrolled to its line, which is marked for a moment: a search page's cards and tasks, Related Notes, Home, the Task Board, the calendars, Stats, the Notes Graph, Find, the Hubs view, and the breadcrumb lens. The default, `editor`, opens them in the editor as before.
 

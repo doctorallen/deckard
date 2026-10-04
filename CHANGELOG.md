@@ -43,16 +43,18 @@
   outright with `up: "[[Atlas]]"`. A note's first line says where it sits,
   such as *Projects › Atlas › Vendor review*.
 
-- **Read a note as a page.** `Deckard: Open Note as Page`, the unicorn button
-  in a note's title bar, draws the note on
-  a Deckard page in your theme: its tags and `[[links]]` open what they
-  name, with Back and Forward, its tasks tick, its query blocks and embeds
-  draw live, its front matter is a row of properties, a bar says how far
-  along its tasks are, and **Linked from** lists what links to it. **Open in Editor**, or a double-click, goes to the
-  line. Set `deckard.openNotesIn` to `page` to open every note there from
-  Deckard's pages, Find, and the Hubs view; **Shift**-click on a page, or
-  Shift+Enter in Find, opens a note the other way, and the Hubs view's
-  right-click menu offers the other way.
+- **Read a note as a page.** `Deckard: Open Note as Page`, the unicorn
+  button in a note's title bar, draws the note on a Deckard page in your
+  theme: its tags and `[[links]]` open what they name, with Back and
+  Forward, its tasks tick, its query blocks and embeds draw live, its front
+  matter is a row of properties, a bar says how far along its tasks are, and
+  **Linked from** lists what links to it. The unicorn opens the page in
+  front of the note's editor, as Open Preview does, and Related Notes
+  follows the note the page shows. **Open in Editor**, or a double-click,
+  goes to the line. Set `deckard.openNotesIn` to `page` to open every note
+  there from Deckard's pages, Find, and the Hubs view; **Shift**-click on a
+  page, or Shift+Enter in Find, opens a note the other way, and the Hubs
+  view's right-click menu offers the other way.
 
 - **A task's steps at a glance in the editor.** A lens above a task with
   steps draws a bar of how many are done and names the next one; select it

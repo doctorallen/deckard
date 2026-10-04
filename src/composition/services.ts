@@ -49,6 +49,7 @@ import { LinkHealth } from '../ui/commands/linkHealth';
 import { CalendarView } from '../ui/webview/calendar';
 import { CalendarPanel } from '../ui/webview/calendarPage';
 import { ActiveCalendar } from '../ui/webview/activeCalendar';
+import { ActiveNotePage } from '../ui/webview/activeNotePage';
 import { ActiveHome } from '../ui/webview/activeHome';
 import { readManifestTools } from '../core/mcp/mcpProtocol';
 import { DeckardMcpServer } from '../ui/commands/mcpServer';
@@ -883,6 +884,9 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
   const { repository, display, usage, tagRenames } = parts.preferences;
   const { searchPanels, activeSearch, themePreview } = parts.search;
   const { activeCalendar, activeHome } = parts.calendar;
+  // The note page in front, whose note Related Notes follows.
+  const activeNotePage = new ActiveNotePage();
+  context.subscriptions.push(activeNotePage);
   const sidebarNotes = new SidebarNotesView({
     indexer,
     preferences: { reader: repository, display, usage, tagRenames },
@@ -892,6 +896,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     extensionUri: context.extensionUri,
     activeCalendar,
     activeHome,
+    activeNotePage,
     history,
     themePreview,
   });
@@ -936,6 +941,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
       await searchPanels.show(tagKey);
     },
     themePreview,
+    activeNotePage,
   });
   return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug, notePage };
 }

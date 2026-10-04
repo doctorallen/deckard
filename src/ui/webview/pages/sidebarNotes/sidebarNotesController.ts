@@ -31,6 +31,7 @@ import { collectNoteLinks, createLinksSearchQuery } from '../../../state/noteLin
 import { createSidebarSnapshot, EntryRelatedNotesDiagnostic } from '../../../state/relatedNotesRanking';
 import type { ActiveCalendar } from '../../activeCalendar';
 import type { ActiveHome } from '../../activeHome';
+import type { ActiveNotePage } from '../../activeNotePage';
 import type { ActiveSearch } from '../../activeSearch';
 import { onDidChangePageChrome } from '../../host/pageChrome';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
@@ -64,6 +65,8 @@ export interface SidebarNotesControllerOptions {
   activeCalendar?: ActiveCalendar;
   /** Home, whose widgets this offers to add while it is in front. */
   activeHome?: ActiveHome;
+  /** The note page, whose note this follows while it is in front, as it follows a note in the editor. */
+  activeNotePage?: ActiveNotePage;
   /** The history its links, tags, and renames are written to. */
   history: WorkspaceWriteHistory;
   /** The theme Choose Theme… is previewing, which the page draws in. */
@@ -173,6 +176,17 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     }
     if (activeCalendar) {
       disposables.push(activeCalendar.onDidChange(() => this.refresh()));
+    }
+    // The note page in front, or the note it shows changing, is the editor
+    // changing: the entry its line is in is chosen again.
+    if (this.sidebar.activeNotePage) {
+      disposables.push(
+        this.sidebar.activeNotePage.onDidChange(() => {
+          this.suppressAutomaticEntrySelection = false;
+          this.updateEntryContextFromActiveEditor(true);
+          this.refresh();
+        }),
+      );
     }
     // While the first scan runs, the waiting line says how far it has got.
     if (indexer.onDidProgress) {
@@ -725,11 +739,17 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
   }
 
   /**
-   * Reads the active note from the saved workspace index.
+   * Reads the active note from the saved workspace index: the note in the
+   * editor, or with no text editor in front, the note the note page shows,
+   * at the line it was asked for, which stands in for the cursor.
    */
   private getActiveFile(): ActiveFile | undefined {
-    const document = vscode.window.activeTextEditor?.document;
-    if (!document || !isMarkdownDocument(document)) {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      return this.getNotePageFile();
+    }
+    const document = editor.document;
+    if (!isMarkdownDocument(document)) {
       return undefined;
     }
 
@@ -741,7 +761,15 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     return {
       filePath,
       file,
+      line: editor.selection.active.line + 1,
     };
+  }
+
+  /** The note the note page shows while it is in front, if the index has it. */
+  private getNotePageFile(): ActiveFile | undefined {
+    const location = this.sidebar.activeNotePage?.active?.location;
+    const file = location ? this.sidebar.indexer.getSnapshot().files.get(location.filePath) : undefined;
+    return location && file ? { filePath: location.filePath, file, line: location.line } : undefined;
   }
 
   /**
@@ -751,22 +779,22 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     if (!fromSelection && this.entryContext?.source === 'manual') {
       return;
     }
-    const editor = vscode.window.activeTextEditor;
     const active = this.getActiveFile();
-    if (!editor || !active) {
+    if (!active) {
       this.entryContext = undefined;
       return;
     }
     if (!fromSelection && this.suppressAutomaticEntrySelection) {
       return;
     }
-    if (!shouldAutoSelectNoteSections(editor.document)) {
+    // The note page reads the setting as the window has it, as the ranking's settings do.
+    if (!shouldAutoSelectNoteSections(vscode.window.activeTextEditor?.document.uri)) {
       if (this.entryContext?.source === 'cursor') {
         this.entryContext = undefined;
       }
       return;
     }
-    const entry = findTaggedEntry(active.file, editor.selection.active.line + 1);
+    const entry = active.line === undefined ? undefined : findTaggedEntry(active.file, active.line);
     this.entryContext = entry
       ? {
           filePath: active.filePath,
@@ -1002,6 +1030,8 @@ function isSameEntryContext(left: EntryContext | undefined, right: EntryContext 
 interface ActiveFile {
   filePath: string;
   file: ParsedFile;
+  /** The one-based line the cursor is on, or the note page was asked for at; none for the page at the note's top. */
+  line?: number;
 }
 
 /** The entry Related Notes ranks for: chosen by the cursor, or by hand from a hover. */
@@ -1068,8 +1098,8 @@ function isMarkdownDocument(document: vscode.TextDocument): boolean {
 }
 
 /** Whether the cursor chooses the entry ranked for, as the note's folder sets it. */
-function shouldAutoSelectNoteSections(document: vscode.TextDocument): boolean {
-  return vscode.workspace.getConfiguration('deckard', document.uri).get<boolean>('autoSelectNoteSections', true);
+function shouldAutoSelectNoteSections(uri: vscode.Uri | undefined): boolean {
+  return vscode.workspace.getConfiguration('deckard', uri).get<boolean>('autoSelectNoteSections', true);
 }
 
 /** A message's type, for the log, or `invalid payload`. */
