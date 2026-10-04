@@ -223,6 +223,7 @@ const narrowOpenNote: Narrower<OpenNoteMessage> = (value) =>
 export const DASHBOARD_MESSAGES: NarrowingTable<DashboardPageToHost> = {
   setZenMode: narrowSetZenMode,
   chooseTheme: onlyType('chooseTheme'),
+  openGoTo: onlyType('openGoTo'),
   openSource: narrowOpenSource,
   toggleTask: narrowToggleTask,
   toggleFavorite: narrowToggleFavorite,

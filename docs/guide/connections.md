@@ -13,7 +13,7 @@ Open the **Context** view from the Deckard Activity Bar while editing a saved Ma
 - Each result shows its heading path and main reason for matching; daily notes also show their date, as in `2026-09-10 > Project Atlas > Check-in`. A nested child heading with the same tags as its parent comes first. Results show 50 at a time; **Show more** adds 50.
 - **Link button.** Beside each score, it writes a `[[Note#Heading]]` link to that entry at your cursor, replacing any selection. It names the heading without its tags, or the note alone when the heading repeats the note's title. A tagged line or task is linked through the heading above it. When two notes share the name, Deckard writes the link and says which notes it could mean.
 - **Parked notes** are not suggested unless the current note is parked; then they come last.
-- The title bar holds Home, the Task board, and today's note, with the Notes Graph and Help in its **…** menu.
+- Home, the Task board, the Notes Graph, and Help are in the **Pages** view above it, and in **Go to…**; see [Getting started](getting-started.md#finding-your-way).
 
 **Untagged notes.** A note with no tags lists up to ten entries with similar wording, under **Similar wording (no tags yet)**, marked weak, and above them **Tags used by similar notes**. Select **Add** beside a tag to write it on the heading or line at the cursor and save the note; the message offers **Undo**, as does **Undo Last Change**. A tagged note never gets this list. `deckard.enableKeywordLinks` turns it off along with the wording signal.
 

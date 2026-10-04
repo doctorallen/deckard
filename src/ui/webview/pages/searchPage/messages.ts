@@ -193,6 +193,7 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   excludeHubLinks: exactlyType('excludeHubLinks'),
   clearOverviewQuery: exactlyType('clearOverviewQuery'),
   openHelp: exactlyType('openHelp'),
+  openGoTo: exactlyType('openGoTo'),
   navigateSearchHistory: narrowNavigateSearchHistory,
   setOverviewQuery: narrowSetOverviewQuery,
 };

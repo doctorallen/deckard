@@ -28,6 +28,7 @@ import { getDashboardHtml } from '../../dashboardHtml';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import {
   chooseTheme,
+  openGoTo,
   openSource,
   openTag,
   parkTag,
@@ -349,12 +350,13 @@ export class DashboardController implements PageController<DashboardPageState, D
 
   /** The gear, a row's line, a task's box, and a tag's menu, as other pages answer them. */
   private sharedHandlers(): Handlers<
-    'setZenMode' | 'chooseTheme' | 'openSource' | 'toggleTask' | 'openTag' | 'renameTag' | 'parkTag' | 'unparkTag'
+    'setZenMode' | 'chooseTheme' | 'openGoTo' | 'openSource' | 'toggleTask' | 'openTag' | 'renameTag' | 'parkTag' | 'unparkTag'
   > {
     const { indexer, navigationService, preferences, navigation, writes } = this.home;
     return {
       setZenMode: setZenMode(),
       chooseTheme: chooseTheme(),
+      openGoTo: openGoTo(),
       // Only open a line that still identifies an indexed note or task.
       openSource: openSource({ indexer, navigation: navigationService, policy: 'entries', usage: preferences.usage }),
       toggleTask: toggleTask({ writes, findTask: (taskId) => indexer.getSnapshot().tasks.get(taskId) }),

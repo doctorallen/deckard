@@ -179,7 +179,7 @@ test('Help opens at Search', async () => {
 test('a tag\'s page shows the tag, its entity, and its hub note', async () => {
   const { view, panel } = await openOverview();
   assert.strictEqual(title(view), 'Project: Atlas');
-  assert.strictEqual(view.find('.eyebrow').textContent, 'DECKARD / SEARCH PAGE');
+  assert.strictEqual(view.find('.eyebrow').textContent, 'DECKARD ▾ / SEARCH PAGE');
   assert.ok(view.find('.hub'), 'the hub note leads the page');
   assert.strictEqual(panel.title, 'Project: Atlas');
   assert.strictEqual(box(view), '#project/atlas');
@@ -301,7 +301,7 @@ test('anything more than the one tag is a search, shown by its box alone', async
   await settle();
 
   assert.strictEqual(title(view), 'Search');
-  assert.strictEqual(view.find('.eyebrow').textContent, 'DECKARD / SEARCH PAGE');
+  assert.strictEqual(view.find('.eyebrow').textContent, 'DECKARD ▾ / SEARCH PAGE');
   assert.strictEqual(view.find('.hub'), null, 'the hub belongs to the tag alone');
   assert.strictEqual(box(view), '#project/atlas AND @ren-kade', 'a new term joins with AND');
   assert.deepStrictEqual(chips(view), ['#project/atlas', '@ren-kade']);

@@ -10,6 +10,7 @@ import type { SavedToTasksViewMessage, TaskBoardMessage, TaskBoardSnapshot, Togg
 import { checkNewStatusColumn, checkStatusNamespace } from '../../domain/tasks/taskColumns';
 import { type ActionMenuGroup, closeActionMenu, openActionMenu } from '../shared/actionMenu';
 import { HelpButton } from '../shared/buttons';
+import { Eyebrow } from '../shared/eyebrow';
 import { installKeySheet, type KeySection } from '../shared/keySheet';
 import { installMenuKeys } from '../shared/menuKeys';
 import { openSourceMessage } from '../shared/openSource';
@@ -194,7 +195,7 @@ function BoardPage({ state }: { readonly state: DrawnBoard }) {
   return (
     <>
       <header>
-        <div><p class="eyebrow">DECKARD / TASK BOARD</p><h1>Task Board</h1></div>
+        <div><Eyebrow trail="TASK BOARD" /><h1>Task Board</h1></div>
         <div class="board-header-actions">
           <span class="board-total">{`${shown}${shown === 1 ? ' task' : ' tasks'}`}</span>
           <HelpButton anchor="task-views" />

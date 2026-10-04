@@ -24,6 +24,7 @@ export type {
 import type {
   ChooseThemeMessage,
   DashboardTask,
+  OpenGoToMessage,
   OpenSearchMessage,
   OpenSourceMessage,
   OpenTagMessage,
@@ -372,6 +373,7 @@ export interface RecordRecentQueryMessage {
 export interface DashboardPageToHost {
   setZenMode: SetZenModeMessage;
   chooseTheme: ChooseThemeMessage;
+  openGoTo: OpenGoToMessage;
   openSource: OpenSourceMessage;
   toggleTask: ToggleTaskMessage;
   toggleFavorite: ToggleFavoriteMessage;

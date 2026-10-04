@@ -17,6 +17,7 @@ import type {
   ChooseThemeMessage,
   DashboardTask,
   ExportResultsMessage,
+  OpenGoToMessage,
   OpenHelpMessage,
   OpenSourceMessage,
   OpenTagMessage,
@@ -383,6 +384,7 @@ export interface TaskBoardPageToHost {
   setZenMode: SetZenModeMessage;
   chooseTheme: ChooseThemeMessage;
   openHelp: OpenHelpMessage;
+  openGoTo: OpenGoToMessage;
   showColumnRest: ShowColumnRestMessage;
   saveBoardSearch: SaveBoardSearchMessage;
   useSearchForAgenda: UseSearchForAgendaMessage;

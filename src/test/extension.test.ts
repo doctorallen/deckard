@@ -121,6 +121,7 @@ suite('Extension Test Suite', () => {
       commands.map((command: { command: string }) => command.command),
       [
         'deckard.showDashboard',
+        'deckard.goTo',
         'deckard.showNotesGraph',
         'deckard.showNotesGraphAroundNote',
         'deckard.showTaskBoard',

@@ -29,7 +29,7 @@ import { formatQueryBlock } from '../../../state/queryBlockState';
 import { SearchHistory, SearchHistoryEntry } from '../../../state/searchHistory';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
-import { chooseTheme, openHelp, openTag, parkTag, renameTag, setZenMode, toggleTask } from '../../host/sharedHandlers';
+import { chooseTheme, openGoTo, openHelp, openTag, parkTag, renameTag, setZenMode, toggleTask } from '../../host/sharedHandlers';
 import { getSearchPageHtml } from '../../searchPageHtml';
 import type { PageChrome } from '../../components';
 import { narrowSearchPageMessage } from './messages';
@@ -167,6 +167,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       setSearchPreview: (message) => preferences.display.setSearchPreview(message.preview),
       setSearchColumns: (message) => preferences.display.setDashboardColumns(message.section, message.columns),
       openHelp: openHelp('search'),
+      openGoTo: openGoTo(),
       saveTagOverviewFilter: (message, page) => this.saveSearch(page, message.query),
       mergeTags: (message) => this.mergeTags(message.sourceKey, message.targetKey),
       excludeHubLinks: () => excludeHubLinks(),

@@ -15,7 +15,7 @@ import { readSnapshotImages } from './noteImages';
 import type { PageChrome } from '../../components';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { PanelSurface } from '../../host/surface';
-import { openTag, toggleTask } from '../../host/sharedHandlers';
+import { openGoTo, openTag, toggleTask } from '../../host/sharedHandlers';
 import { getNotePageHtml } from '../../notePageHtml';
 import type { ActiveNotePage, NotePageSource } from '../../activeNotePage';
 import { narrowNotePageMessage } from './messages';
@@ -72,6 +72,7 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
   public constructor(private readonly notes: NotePageControllerOptions) {
     const { indexer, navigation } = notes;
     this.handlers = {
+      openGoTo: openGoTo(),
       openNote: (message, page) => this.open(page, { filePath: message.filePath, line: message.line }, message),
       openWikiLink: (message, page) => this.openWikiLink(page, message, message),
       openInEditor: (message) => this.openInEditor(message.line, message.beside === true),

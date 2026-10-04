@@ -7,6 +7,7 @@ import type { UnreadableNote } from '../../domain/model/workspaceIndex';
 import type { IndexingMessage, MessageOf, StateMessage } from './messaging';
 import type {
   MergeTagsMessage,
+  OpenGoToMessage,
   OpenSearchMessage,
   OpenSourceMessage,
   OpenTagMessage,
@@ -192,6 +193,7 @@ export interface StatsPageToHost {
   reindexWorkspace: ReindexWorkspaceMessage;
   mergeTags: MergeTagsMessage;
   createMissingNotes: CreateMissingNotesMessage;
+  openGoTo: OpenGoToMessage;
 }
 
 /** What the host sends the Stats page, by type. */

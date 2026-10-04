@@ -222,6 +222,11 @@
         "icon": "$(home)"
       },
       {
+        "command": "deckard.goTo",
+        "title": "Go to…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.showNotesGraph",
         "title": "Open Notes Graph",
         "category": "Deckard",
@@ -1247,36 +1252,6 @@
           "group": "navigation@2"
         },
         {
-          "command": "deckard.showDashboard",
-          "when": "view == deckard.relatedNotes",
-          "group": "navigation@1"
-        },
-        {
-          "command": "deckard.showTaskBoard",
-          "when": "view == deckard.relatedNotes",
-          "group": "navigation@2"
-        },
-        {
-          "command": "deckard.showCalendar",
-          "when": "view == deckard.relatedNotes",
-          "group": "navigation@3"
-        },
-        {
-          "command": "deckard.createDailyNote",
-          "when": "view == deckard.relatedNotes",
-          "group": "navigation@4"
-        },
-        {
-          "command": "deckard.showNotesGraph",
-          "when": "view == deckard.relatedNotes",
-          "group": "navigation@5"
-        },
-        {
-          "command": "deckard.showHelp",
-          "when": "view == deckard.relatedNotes",
-          "group": "navigation@6"
-        },
-        {
           "command": "deckard.calendar.openInEditor",
           "when": "view == deckard.calendar",
           "group": "navigation@1"
@@ -1399,6 +1374,11 @@
     },
     "keybindings": [
       {
+        "command": "deckard.goTo",
+        "key": "ctrl+shift+alt+p",
+        "mac": "cmd+shift+alt+p"
+      },
+      {
         "command": "deckard.searchWorkspace",
         "key": "ctrl+shift+alt+f",
         "mac": "cmd+shift+alt+f"
@@ -1470,6 +1450,12 @@
     },
     "views": {
       "deckard": [
+        {
+          "id": "deckard.pages",
+          "name": "Pages",
+          "icon": "resources/pages/home-dark.svg",
+          "contextualTitle": "Deckard Pages"
+        },
         {
           "id": "deckard.relatedNotes",
           "name": "Context",

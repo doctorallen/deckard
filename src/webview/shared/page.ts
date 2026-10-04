@@ -22,6 +22,7 @@ import { type ComponentChild, render } from 'preact';
 import { readPlace, restorePlace } from './place';
 import { followIndexing, watchBusy } from './status';
 import { installTip } from './tip';
+import { post } from './vscode';
 
 /** A page's state, and the one way to change it. */
 export interface PageStore<S> {
@@ -160,6 +161,17 @@ function installSharedBehavior(): void {
   guardDisabledControls();
   dismissProvenanceOnEscape();
   installTip();
+  openGoToFromEyebrow();
+}
+
+/** DECKARD in a page's eyebrow opens Go to…, on every page alike. */
+function openGoToFromEyebrow(): void {
+  document.addEventListener('click', (event) => {
+    const target = event.target as Element | null;
+    if (target?.closest?.('[data-go-to]')) {
+      post({ type: 'openGoTo' });
+    }
+  });
 }
 
 /**

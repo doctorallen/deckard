@@ -20,6 +20,7 @@ import type {
   DashboardTask,
   ExportResultsMessage,
   MergeTagsMessage,
+  OpenGoToMessage,
   OpenHelpMessage,
   OpenSourceMessage,
   OpenTagMessage,
@@ -304,6 +305,7 @@ export interface SearchPagePageToHost {
   pinNote: MessageAs<PinNoteMessage, 'pinNote'>;
   unpinNote: MessageAs<PinNoteMessage, 'unpinNote'>;
   openHelp: OpenHelpMessage;
+  openGoTo: OpenGoToMessage;
   openSource: OpenSourceMessage;
   toggleTask: ToggleTaskMessage;
   setRenderMode: SetRenderModeMessage;

@@ -4,6 +4,14 @@
 
 ### Added
 
+- **Pages, and Go to….** The Deckard sidebar opens with **Pages**: Home,
+  the Task Board, the Calendar, today's note, the Notes Graph, Find, Stats,
+  and Help, each a labeled row with a glyph of its own and a word on what is
+  there now, such as *3 tasks due today*. `Deckard: Go to…`
+  (Cmd/Ctrl+Shift+Alt+P) lists the same pages from anywhere, and so does
+  **DECKARD ▾** at the top of every page. The six icons that crowded the
+  Context view's title bar are gone.
+
 - **Images on the note page.** The note page draws a note's images,
   `![alt](img/flow.png)` and `![[flow.png]]`, at the page's width, and
   shows one at full size when selected. Each is read from beside the note

@@ -19,6 +19,7 @@ import type { NavigationService, SourcePolicy, TagPolicy } from '../../../servic
 import type { MessageHandler } from './pageController';
 import type {
   ChooseThemeMessage,
+  OpenGoToMessage,
   OpenHelpMessage,
   OpenSourceMessage,
   OpenTagMessage,
@@ -41,6 +42,11 @@ export function chooseTheme(): MessageHandler<ChooseThemeMessage> {
 /** The gear's zen row, written where the setting is set. */
 export function setZenMode(): MessageHandler<SetZenModeMessage> {
   return (message) => writeZenMode(message.enabled);
+}
+
+/** The DECKARD eyebrow: Go to…, which runs the command. */
+export function openGoTo(): MessageHandler<OpenGoToMessage> {
+  return () => vscode.commands.executeCommand('deckard.goTo');
 }
 
 /**

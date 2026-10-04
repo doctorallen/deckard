@@ -3,6 +3,7 @@
  * and how much is parked.
  */
 import type { DeckardStatsSnapshot, StatsTrend } from '../../ui/protocol/stats';
+import { Eyebrow } from '../shared/eyebrow';
 import { Metric, type MetricTrend } from '../shared/metric';
 import { counted } from './model';
 
@@ -34,7 +35,7 @@ export function StatsHeader({ updatedAt }: { readonly updatedAt: number }) {
   return (
     <header>
       <div>
-        <p class="eyebrow">DECKARD / STATS</p>
+        <Eyebrow trail="STATS" />
         <h1>Workspace Stats</h1>
       </div>
       <p class="updated">

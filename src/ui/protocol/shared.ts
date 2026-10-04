@@ -180,6 +180,11 @@ export interface OpenTaskBoardMessage {
   query?: string;
 }
 
+/** The DECKARD eyebrow selected: Go to…, Deckard's pages in one list. */
+export interface OpenGoToMessage {
+  type: 'openGoTo';
+}
+
 /** Opens the Help page. */
 export interface OpenHelpMessage {
   type: 'openHelp';

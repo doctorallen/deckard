@@ -7,6 +7,7 @@
  */
 import type { NoteBreadcrumb, NotePageMessage, NotePageSnapshot, NoteProperty } from '../../ui/protocol/notePage';
 import type { StateMessage } from '../../ui/protocol/messaging';
+import { Eyebrow } from '../shared/eyebrow';
 import { ProgressBar } from '../shared/progressBar';
 import { ProgressWords } from '../shared/progressWords';
 import { type ActionHandler, listenForActions, onHostMessage, readEmbeddedState, startPage } from '../shared/page';
@@ -156,7 +157,7 @@ function NotePage({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
     return (
       <>
         <Toolbar snapshot={snapshot} />
-        <header><p class="eyebrow">DECKARD / NOTE</p><h1>{snapshot.title}</h1></header>
+        <header><Eyebrow trail="NOTE" /><h1>{snapshot.title}</h1></header>
         <p class="note-missing">Deckard has no note at {snapshot.filePath} now. It may have been moved, renamed, or deleted.</p>
       </>
     );
@@ -165,7 +166,7 @@ function NotePage({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
     <>
       <Toolbar snapshot={snapshot} />
       <header class="note-header">
-        <p class="eyebrow">{snapshot.folder ? `DECKARD / NOTE / ${snapshot.folder.toUpperCase()}` : 'DECKARD / NOTE'}</p>
+        <Eyebrow trail={snapshot.folder ? `NOTE / ${snapshot.folder.toUpperCase()}` : 'NOTE'} />
         <h1>{snapshot.title}</h1>
         <Breadcrumbs crumbs={snapshot.breadcrumbs} />
         {snapshot.hub ? <HubLine hub={snapshot.hub} /> : null}

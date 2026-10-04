@@ -3,6 +3,7 @@
  * what wants doing, the gear, and the Home and Tags tabs.
  */
 import type { TaskGlance } from '../../ui/protocol/dashboard';
+import { Eyebrow } from '../shared/eyebrow';
 import { Metric } from '../shared/metric';
 import { themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
 import { TabSearchMarkIcon } from './icons';
@@ -67,7 +68,7 @@ function DashboardOptions({ snapshot, view }: DashboardDraw) {
 export function PageHeader(props: DashboardDraw) {
   return (
     <header>
-      <div><p class="eyebrow">DECKARD / WORKSPACE INDEX</p><h1>{`Dashboard: ${props.view.mode === 'home' ? 'Home' : 'Tags'}`}</h1></div>
+      <div><Eyebrow trail="WORKSPACE INDEX" /><h1>{`Dashboard: ${props.view.mode === 'home' ? 'Home' : 'Tags'}`}</h1></div>
       <div class="dashboard-header-actions"><TaskTiles glance={props.snapshot.taskGlance} /><DashboardOptions {...props} /></div>
     </header>
   );

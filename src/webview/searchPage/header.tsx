@@ -7,6 +7,7 @@ import type { ComponentChildren } from 'preact';
 import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { TagReference } from '../../ui/protocol/shared';
 import { HelpButton, IconButton } from '../shared/buttons';
+import { Eyebrow } from '../shared/eyebrow';
 import { LayoutSplitIcon, LayoutTabsIcon, RenderedIcon, SortIcon, SourceIcon } from '../shared/strokeIcons';
 import { TagLabel } from '../shared/tagLabel';
 import { themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
@@ -166,7 +167,7 @@ export function PageHeader({ snapshot }: { readonly snapshot: SearchPageSnapshot
   return (
     <header>
       <div>
-        <div class="overview-eyebrow"><p class="eyebrow">DECKARD / SEARCH PAGE</p></div>
+        <div class="overview-eyebrow"><Eyebrow trail="SEARCH PAGE" /></div>
         {snapshot.savedViewName
           ? <div class="saved-view-name" aria-label={`Saved search: ${snapshot.savedViewName}`}><span class="saved-view-name-label">Saved search:</span>{` ${snapshot.savedViewName}`}</div>
           : null}

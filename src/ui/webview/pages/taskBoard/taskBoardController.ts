@@ -35,7 +35,7 @@ import { formatQueryBlock, QueryBlockWriteOptions } from '../../../state/queryBl
 import { createTaskBoard } from '../../../state/taskBoardState';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
-import { chooseTheme, openHelp, openSource, openTag, ready, setZenMode } from '../../host/sharedHandlers';
+import { chooseTheme, openGoTo, openHelp, openSource, openTag, ready, setZenMode } from '../../host/sharedHandlers';
 import { getTaskBoardHtml } from '../../taskBoardHtml';
 import type { PageChrome } from '../../components';
 import { narrowTaskBoardMessage } from './messages';
@@ -346,7 +346,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   }
 
   /** The gear's theme, zen, and help, the page asking for its state, and a card's line and tags. */
-  private pageHandlers(): Pick<Handlers, 'setZenMode' | 'chooseTheme' | 'ready' | 'openHelp' | 'openSource' | 'openTag'> {
+  private pageHandlers(): Pick<Handlers, 'setZenMode' | 'chooseTheme' | 'ready' | 'openHelp' | 'openGoTo' | 'openSource' | 'openTag'> {
     const { indexer, navigation } = this.board;
     return {
       setZenMode: setZenMode(),
@@ -354,6 +354,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       ready: ready(),
       // Help opens at its Tasks view and Task board section, not its top.
       openHelp: openHelp('task-views'),
+      openGoTo: openGoTo(),
       // Only a task's own line opens: the board lists nothing else.
       openSource: openSource({ indexer, navigation, policy: 'tasks' }),
       openTag: openTag({ indexer, navigation, policy: 'exact', openTag: (tagKey) => this.board.openTag(tagKey) }),

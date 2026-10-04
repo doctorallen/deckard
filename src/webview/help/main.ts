@@ -202,16 +202,27 @@ function followGuideLink(event: Event, link: Element): void {
   }
 }
 
+/**
+ * The command a click runs, if any: one named in the guide, whose id the
+ * host checks, or Go to… from DECKARD in the eyebrow, as on every page.
+ */
+function clickedCommand(target: Element): string | undefined {
+  const button = target.closest('.command-link');
+  if (button) {
+    return button.getAttribute('data-command') ?? '';
+  }
+  return target.closest('[data-go-to]') ? 'deckard.goTo' : undefined;
+}
+
 /** A click on a command, the changelog, a guide link, Back, or the rail. */
 function onClick(event: MouseEvent): void {
   const target = event.target instanceof Element ? event.target : null;
   if (!target) {
     return;
   }
-  // A command named in the guide runs from it; the host checks the id.
-  const button = target.closest('.command-link');
-  if (button && vscode) {
-    vscode.postMessage({ type: 'runCommand', command: button.getAttribute('data-command') ?? '' });
+  const command = clickedCommand(target);
+  if (command !== undefined && vscode) {
+    vscode.postMessage({ type: 'runCommand', command });
   }
   if (target.closest('[data-action="open-changelog"]') && vscode) {
     event.preventDefault();

@@ -18,6 +18,7 @@ import {
   markedDate,
   tabStopDate,
 } from '../shared/calendar/model';
+import { Eyebrow } from '../shared/eyebrow';
 import { themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
 
 /** The page's layout: a month of weeks, or the chosen day's week. */
@@ -93,7 +94,7 @@ function PageHeader({ state, shown }: { readonly state: DrawnCalendarPage; reado
   return (
     <header class="calendar-page-header">
       <div>
-        <p class="eyebrow">DECKARD / CALENDAR</p>
+        <Eyebrow trail="CALENDAR" />
         <h1><button type="button" class="calendar-title" data-action="open-month" data-tip={monthLabel} aria-label={titleLabel}>{shown.title}</button></h1>
       </div>
       <div class="calendar-page-actions" role="group" aria-label="Calendar">

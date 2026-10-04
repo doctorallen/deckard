@@ -20,6 +20,7 @@ export const CALENDAR_PAGE_MESSAGES: NarrowingTable<CalendarPagePageToHost> = {
   setZenMode: narrowSetZenMode,
   chooseTheme: onlyType('chooseTheme'),
   openHelp: onlyType('openHelp'),
+  openGoTo: onlyType('openGoTo'),
 };
 
 /** A message from the calendar page, narrowed by its table, or undefined. */

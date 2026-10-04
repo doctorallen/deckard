@@ -201,6 +201,7 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   setBoardGroup: narrowSetBoardGroup,
   showColumnRest: narrowShowColumnRest,
   openHelp: exactlyType('openHelp'),
+  openGoTo: exactlyType('openGoTo'),
   setBoardQuery: narrowSetBoardQuery,
   setTaskLayout: narrowSetTaskLayout,
   setTableSort: narrowSetTableSort,

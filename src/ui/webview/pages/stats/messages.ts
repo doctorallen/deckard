@@ -90,6 +90,7 @@ export const STATS_MESSAGES: NarrowingTable<StatsPageToHost> = {
   openSearch: narrowOpenSearch,
   mergeTags: narrowMergeTags,
   reindexWorkspace: exactlyType('reindexWorkspace'),
+  openGoTo: exactlyType('openGoTo'),
   openTagList: narrowOpenTagList,
   mergeTagInto: narrowMergeTagInto,
   openNotesGraph: narrowOpenNotesGraph,
