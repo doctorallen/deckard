@@ -98,7 +98,7 @@ suite('Task Board page', () => {
     assert.strictEqual(menu.hidden, false);
     assert.strictEqual(button.getAttribute('aria-expanded'), 'true');
     const headings = page.findAll('#action-menu .menu-heading').map((heading) => heading.textContent);
-    assert.deepStrictEqual(headings, ['Status', 'Priority', 'Due', 'Steps', 'Done', 'Note']);
+    assert.deepStrictEqual(headings, ['Status', 'Priority', 'Due', 'For', 'Steps', 'Done', 'Note']);
     const labels = page.findAll('#action-menu [data-menu-value] .menu-label').map((item) => item.textContent);
     for (const label of ['No status', 'Todo', 'Doing', 'High', 'Due tomorrow', 'No due date', 'Complete it']) {
       assert.ok(labels.includes(label), `offers ${label}`);
