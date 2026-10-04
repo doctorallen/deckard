@@ -8,11 +8,11 @@ Run `Deckard: Open Dashboard` to open the **Home** and **Tags** tabs. Left/Right
 
 ### Home
 
-Three figures sit above Home: **Overdue** and **Due today**, as the [Tasks view](tasks.md#tasks-view) counts them, and **Open**, every open task. Each opens a search for what it counts, scoped by `deckard.agenda.query` when that is set. Workspace totals are on [Stats](#stats).
+Three figures sit above Home: **Due today** and **Overdue**, as the [Tasks view](tasks.md#tasks-view) counts them, and **Done this week**, every task finished since the week began. Each opens a search for what it counts; the first two are scoped by `deckard.agenda.query` when that is set. Open tasks and the other workspace totals are on [Stats](#stats).
 
 **What's new:** after an update that adds features, Home shows *Updated to Deckard 1.23.* once, with **What's new** and **Dismiss**. `deckard.showWhatsNew` turns the line off.
 
-**Widgets.** A new Home starts with Try next, the search box, the Tasks view, open tasks, favorite tags, and saved searches.
+**Widgets.** A new Home starts with Try next, the search box, the Tasks view, recently opened notes, favorite tags, and saved searches. In the Tasks view widget, the **Overdue** heading is red and each row under it says how late it is, such as *20 days late · 2026-09-01*. **Customize Home**, beside the Home and Tags tabs, adds, removes, resizes, and reorders widgets.
 
 | Widget | Shows | Leads to |
 |---|---|---|
@@ -52,7 +52,7 @@ Each offers **Undo**. If the heading is gone, the pin stays on its note and says
 
 **Paging**, in a widget's gear, shows all entries a page at a time, 3, 5, 10, or 20 to a page. The Agenda widget and a saved search's results are not paged.
 
-**Customize:** choose **Customize** in the View options gear, or on the line shown above the widgets until Home is arranged or the line dismissed. Then:
+**Customize:** choose **Customize Home** beside the Home and Tags tabs, or **Customize** in the View options gear. Then:
 
 - Drag a widget, or right-click to move it first or last. Switch it between half and full width.
 - Open its gear for entry count, paging, its search or saved search, or days to look back.

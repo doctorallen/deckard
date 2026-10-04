@@ -175,13 +175,12 @@ suite('Webview saved state', () => {
       assert.strictEqual(mode(page), 'home');
     });
 
-    test('Home is still being arranged, and its hint stays put away', () => {
+    test('Home is still being arranged', () => {
       page = openWebviewPage(renderPage('dashboard'), snapshot('home', false), {
         savedState: { ...SAVED, dashboardMode: 'home' },
       });
       assert.strictEqual(mode(page), 'home');
       assert.ok(page.findAll('.home-widget.is-editing').length > 0, 'arranging');
-      assert.strictEqual(page.findAll('[data-action="dismiss-home-hint"]').length, 0, 'no hint');
     });
 
     test('a value it does not know reads as the default', () => {
@@ -189,7 +188,6 @@ suite('Webview saved state', () => {
         savedState: { dashboardMode: 'tags', tagColumns: 7, tagNamespaceFilter: 5, editingHome: 0, homeHintDismissed: '' },
       });
       assert.strictEqual(mode(page), 'home');
-      assert.ok(page.find('[data-action="dismiss-home-hint"]'), 'the hint shows');
       assert.strictEqual(page.findAll('.home-widget.is-editing').length, 0, 'not arranging');
       keep(page);
       assert.deepStrictEqual(page.savedState(), {

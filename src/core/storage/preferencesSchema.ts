@@ -111,10 +111,11 @@ export const DEFAULT_DASHBOARD_WIDGETS: readonly DashboardWidgetConfig[] = [
   // One suggestion, when the notes are ready for it, and nothing otherwise.
   { id: 'tryNext', kind: 'tryNext', width: 'full' },
   { id: 'search', kind: 'search', width: 'full' },
-  // The Tasks view widget leads: what is overdue and due today comes before
-  // every open task.
+  // The Tasks view widget is the one list of tasks: what is overdue and due
+  // today. Beside it, the notes opened lately, so a first Home reads as
+  // notes as well as tasks, and lists no task twice.
   { id: 'agenda', kind: 'agenda', width: 'half', count: 5 },
-  { id: 'tasks', kind: 'tasks', width: 'half', count: 5, query: 'is:open' },
+  { id: 'recentNotes', kind: 'recentNotes', width: 'half', count: 5 },
   { id: 'favoriteTags', kind: 'favoriteTags', width: 'half', count: 8 },
   { id: 'savedSearches', kind: 'savedSearches', width: 'half' },
 ];

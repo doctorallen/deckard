@@ -17,7 +17,8 @@
 .dashboard-header-actions { display: flex; align-self: flex-start; align-items: flex-start; gap: 12px; margin-left: auto; }
 .dashboard-header-actions .view-options { order: 2; }
 .saved-filters { padding-top: 16px; }
-.dashboard-tabs-row { padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }
+.dashboard-tabs-row { display: flex; align-items: center; gap: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }
+.dashboard-customize { margin-left: auto; }
 .dashboard-tabs { display: inline-flex; margin-top: 18px; }
 .dashboard-tabs button + button { margin-left: -1px; }
 .dashboard-tabs button[aria-selected="true"] { position: relative; z-index: var(--z-raised); }
@@ -149,6 +150,8 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-quick-add-status { margin: 6px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-widget-group { margin: 12px 0 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-widget-group:first-child { margin-top: 0; }
+/* The Overdue heading carries the red its rows no longer repeat. */
+.home-widget-group.overdue { color: var(--danger); }
 .home-widget-empty { margin: 0; color: var(--muted); font-size: var(--text-sm); }
 .home-widget-footer { margin: 10px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-widget-footer .text-button { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; text-decoration: underline; cursor: pointer; }

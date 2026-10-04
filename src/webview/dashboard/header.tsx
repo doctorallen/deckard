@@ -10,20 +10,21 @@ import type { DashboardDraw } from './model';
 import type { TagFilter } from './tagNames';
 
 /** The tiles' counts and searches before the host has sent any. */
-const NO_GLANCE: TaskGlance = { overdue: 0, today: 0, open: 0, overdueQuery: 'is:overdue -is:needs-date', todayQuery: 'is:today', openQuery: 'is:open' };
+const NO_GLANCE: TaskGlance = { overdue: 0, today: 0, doneThisWeek: 0, overdueQuery: 'is:overdue -is:needs-date', todayQuery: 'is:today', doneQuery: 'done >= this-week' };
 
 /**
- * What wants doing, not how much is written: the Tasks view's Overdue and
- * Today, and every open task, each a search. Totals are on Stats. The
- * values stay neutral; the label says Overdue.
+ * What wants doing, not how much is written: what is due today first, then
+ * what slipped, then what got done this week, so the first figure is the
+ * day's work rather than the backlog. Each is a search; totals are on
+ * Stats. The values stay neutral; the label says Overdue.
  */
 function TaskTiles({ glance }: { readonly glance: TaskGlance | undefined }) {
   const tiles = glance || NO_GLANCE;
   return (
     <div class="metrics" role="group" aria-label="Tasks at a glance">
-      <Metric label="Overdue" value={tiles.overdue} query={tiles.overdueQuery} hint="Search the overdue tasks" code="TSK.OVR // 01" />
-      <Metric label="Due today" value={tiles.today} query={tiles.todayQuery} hint="Search what is due today" code="TSK.DUE // 02" />
-      <Metric label="Open" value={tiles.open} query={tiles.openQuery} hint="Search every open task" code="TSK.OPN // 03" />
+      <Metric label="Due today" value={tiles.today} query={tiles.todayQuery} hint="Search what is due today" code="TSK.DUE // 01" />
+      <Metric label="Overdue" value={tiles.overdue} query={tiles.overdueQuery} hint="Search the overdue tasks" code="TSK.OVR // 02" />
+      <Metric label="Done this week" value={tiles.doneThisWeek} query={tiles.doneQuery} hint="Search the tasks finished this week" code="TSK.DON // 03" />
     </div>
   );
 }
@@ -87,7 +88,7 @@ function TabSearchMark({ query, filter }: { readonly query: string; readonly fil
   );
 }
 
-/** Home and Tags, one tab stop between them, each naming the panel it shows. */
+/** Home and Tags, one tab stop between them, each naming the panel it shows, and on Home the way to arrange it. */
 export function ModeTabs({ view, filter }: { readonly view: DashboardDraw['view']; readonly filter: TagFilter }) {
   const home = view.mode === 'home';
   return (
@@ -99,6 +100,9 @@ export function ModeTabs({ view, filter }: { readonly view: DashboardDraw['view'
           <TabSearchMark query={view.browseQuery} filter={filter.namespaceLabel ? `Namespace: ${filter.namespaceLabel}` : ''} />
         </button>
       </div>
+      {home && !view.editingHome
+        ? <button type="button" class="text-button dashboard-customize" data-action="customize-home">Customize Home</button>
+        : null}
     </div>
   );
 }

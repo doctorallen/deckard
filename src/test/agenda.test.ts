@@ -60,10 +60,8 @@ suite('Agenda', () => {
       const matched = evaluateQuery(index, parseQuery('is:today').node, createQueryContext(Date.now())).tasks.map((task) => task.id).sort();
       assert.deepStrictEqual(matched, today);
       const glance = createTaskGlance(index, '', createQueryContext(now));
-      assert.deepStrictEqual(
-        [glance.overdue, glance.today, glance.open],
-        [2, 2, 6],
-      );
+      assert.deepStrictEqual([glance.overdue, glance.today], [2, 2]);
+      assert.strictEqual(glance.doneQuery, 'done >= this-week');
       assert.strictEqual(
         createTaskGlance(index, '#project/atlas', createQueryContext(now)).todayQuery,
         '(#project/atlas) AND is:today',
@@ -72,6 +70,16 @@ suite('Agenda', () => {
     } finally {
       Date.now = realNow;
     }
+  });
+
+  test('Done this week counts the tasks finished since the week began, whatever the Tasks view lists', () => {
+    // 2026-09-13 is a Sunday, the week's first day here.
+    const index = createIndex([
+      createTask({ id: 'this-week', completed: true, doneAt: at(9, 13) }),
+      createTask({ id: 'last-week', completed: true, doneAt: at(9, 12), lineNumber: 2 }),
+      createTask({ id: 'open', lineNumber: 3 }),
+    ]);
+    assert.strictEqual(createTaskGlance(index, 'is:open', createQueryContext(now)).doneThisWeek, 1);
   });
 
   test('splits Upcoming into a group per day when asked', () => {

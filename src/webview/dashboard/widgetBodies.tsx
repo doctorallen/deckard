@@ -76,6 +76,16 @@ function AgendaFooter({ widget }: { readonly widget: DashboardWidget }) {
   return parts.length ? <p class="home-widget-footer">{parts}</p> : null;
 }
 
+/**
+ * The rows under an Overdue heading: how late each is, muted, since the
+ * heading already says overdue in red and a column of red repeats it.
+ */
+function asLateRows(tasks: readonly DashboardTask[] | undefined): DashboardTask[] | undefined {
+  // Drawn muted, as a date past needing a new one is: the row's date is
+  // detail here, not the alarm.
+  return tasks?.map((task) => (task.dueLate ? { ...task, dueLabel: task.dueLate, overdue: false, stale: true } : task));
+}
+
 /** Overdue, today, and upcoming, each group that has a task, and the line under them. */
 function AgendaBody({ widget, home }: WidgetBodyProps) {
   const groups = (widget.agenda || []).filter((group) => group.count > 0);
@@ -83,8 +93,8 @@ function AgendaBody({ widget, home }: WidgetBodyProps) {
     <>
       {groups.length
         ? groups.map((group) => [
-          <h3 key={`${group.id}-heading`} class="home-widget-group">{`${group.label} `}<span class="tag-count">{group.count}</span></h3>,
-          <Tasks key={`${group.id}-tasks`} tasks={group.tasks} empty="" home={home} />,
+          <h3 key={`${group.id}-heading`} class={`home-widget-group${group.id === 'overdue' ? ' overdue' : ''}`}>{`${group.label} `}<span class="tag-count">{group.count}</span></h3>,
+          <Tasks key={`${group.id}-tasks`} tasks={group.id === 'overdue' ? asLateRows(group.tasks) : group.tasks} empty="" home={home} />,
         ])
         : <EmptyLine text="Nothing is overdue or due soon." />}
       <AgendaFooter widget={widget} />

@@ -451,8 +451,9 @@ export interface DashboardHostToPage {
 export interface TaskGlance {
   overdue: number;
   today: number;
-  open: number;
+  /** Tasks finished since the week began, parked ones aside. */
+  doneThisWeek: number;
   overdueQuery: string;
   todayQuery: string;
-  openQuery: string;
+  doneQuery: string;
 }

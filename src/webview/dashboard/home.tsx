@@ -67,34 +67,21 @@ function EditBar({ choices, full }: { readonly choices: readonly WidgetChoice[];
 }
 
 /**
- * The line over a resting Home. What's new comes first, and takes the line
- * while it has something to say. Then Home says it can be arranged, until it
- * has been, or the reader closes the line: a fixed line of instruction is
- * read the first few times and skipped after. Customize stays in the gear
- * throughout. It is not the customizing bar, and does not share its class:
- * that one means "Home is being edited".
+ * The line over a resting Home, while an update has something to say. Home
+ * used to say here that it could be arranged, until the line was put away,
+ * which left Customize in the gear alone; Customize Home now stays beside
+ * the Home and Tags tabs.
  */
-function HintBar({ snapshot, view }: DashboardDraw) {
-  if (snapshot.whatsNew) {
-    return (
-      <div class="home-hint-bar whats-new-bar">
-        <span>{`Updated to Deckard ${snapshot.whatsNew.version}.`}</span>
-        <span class="home-hint-actions">
-          <button type="button" data-action="open-whats-new">What's new</button>
-          <button type="button" data-action="dismiss-whats-new" data-tip="Stop saying so">Dismiss</button>
-        </span>
-      </div>
-    );
-  }
-  if (snapshot.homeArranged || view.homeHintDismissed) {
+function HintBar({ snapshot }: DashboardDraw) {
+  if (!snapshot.whatsNew) {
     return null;
   }
   return (
-    <div class="home-hint-bar">
-      <span>Home is yours to arrange.</span>
+    <div class="home-hint-bar whats-new-bar">
+      <span>{`Updated to Deckard ${snapshot.whatsNew.version}.`}</span>
       <span class="home-hint-actions">
-        <button type="button" data-action="customize-home">Customize</button>
-        <button type="button" data-action="dismiss-home-hint" data-tip="Stop saying so">Dismiss</button>
+        <button type="button" data-action="open-whats-new">What's new</button>
+        <button type="button" data-action="dismiss-whats-new" data-tip="Stop saying so">Dismiss</button>
       </span>
     </div>
   );

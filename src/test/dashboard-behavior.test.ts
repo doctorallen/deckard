@@ -136,20 +136,20 @@ suite('Dashboard behavior', () => {
     assert.deepStrictEqual(options.filter((value) => value && value !== '/'), ['org'], 'one namespace to filter by');
   });
 
-  test('leads with what is overdue, due today, and open, each a search', () => {
+  test('leads with what is due today, then overdue, then done this week, each a search', () => {
     const { page, snapshot } = open();
     const labels = page
       .findAll('.metrics .metric-label')
       .map((label) => label.textContent);
-    assert.deepStrictEqual(labels, ['Overdue', 'Due today', 'Open']);
+    assert.deepStrictEqual(labels, ['Due today', 'Overdue', 'Done this week']);
     const values = page
       .findAll('.metrics .metric-value')
       .map((value) => Number(value.textContent));
     const glance = snapshot.taskGlance!;
-    assert.deepStrictEqual(values, [glance.overdue, glance.today, glance.open]);
+    assert.deepStrictEqual(values, [glance.today, glance.overdue, glance.doneThisWeek]);
     assert.deepStrictEqual(
       page.findAll('.metrics .metric-open').map((tile) => tile.getAttribute('data-query')),
-      ['is:overdue -is:needs-date', 'is:today', 'is:open'],
+      ['is:today', 'is:overdue -is:needs-date', 'done >= this-week'],
     );
     assert.strictEqual(page.find('.metrics')?.getAttribute('aria-label'), 'Tasks at a glance');
   });
@@ -449,42 +449,14 @@ suite('Dashboard behavior', () => {
     assert.strictEqual(changed?.page, 1, 'a different page size is a different list');
   });
 
-  test('says Home can be arranged until it has been, or the line is put away', () => {
+  test('keeps Customize Home beside the tabs, arranged or not, and not while arranging', () => {
     const { page, snapshot } = open();
-    assert.ok(
-      page.document.querySelector('.home-hint-bar'),
-      'a Home still holding its first widgets says it can be arranged',
-    );
-
+    assert.strictEqual(page.text('.dashboard-customize'), 'Customize Home');
+    assert.strictEqual(page.document.querySelector('.home-hint-bar'), null, 'no line to put away');
     page.send({ ...snapshot, homeArranged: true });
-    assert.strictEqual(
-      page.document.querySelector('.home-hint-bar'),
-      null,
-      'an arranged Home no longer says so',
-    );
-    assert.ok(
-      page.document.querySelector('[data-action="customize-home"]'),
-      'and Customize is still on the page, in the gear',
-    );
-
-    page.send({ ...snapshot, homeArranged: false });
-    page.click('[data-action="dismiss-home-hint"]');
-    assert.strictEqual(
-      page.document.querySelector('.home-hint-bar'),
-      null,
-      'putting the line away removes it',
-    );
-    assert.strictEqual(
-      (page.savedState() as { homeHintDismissed?: boolean }).homeHintDismissed,
-      true,
-      'and is remembered across a reload',
-    );
-    page.send({ ...snapshot, homeArranged: false });
-    assert.strictEqual(
-      page.document.querySelector('.home-hint-bar'),
-      null,
-      'so a later state does not bring it back',
-    );
+    assert.ok(page.find('.dashboard-customize'), 'still there once Home is arranged');
+    page.click('.dashboard-customize');
+    assert.strictEqual(page.document.querySelector('.dashboard-customize'), null, 'arranging has its own Finish');
   });
 
   test('an empty workspace is offered today\'s note and the sample tour', () => {
@@ -525,18 +497,13 @@ suite('Dashboard behavior', () => {
     const { page, snapshot } = open();
     page.send({ ...snapshot, whatsNew: { version: '1.23' } });
     assert.strictEqual(page.text('.home-hint-bar span'), 'Updated to Deckard 1.23.');
-    assert.strictEqual(
-      page.document.querySelector('[data-action="dismiss-home-hint"]'),
-      null,
-      'one line at a time: the arrange hint waits',
-    );
     page.click('[data-action="open-whats-new"]');
     assert.ok(page.lastPosted('openWhatsNew'));
     page.click('[data-action="dismiss-whats-new"]');
     assert.ok(page.lastPosted('dismissWhatsNew'));
 
     page.send({ ...snapshot });
-    assert.strictEqual(page.text('.home-hint-bar span'), 'Home is yours to arrange.');
+    assert.strictEqual(page.document.querySelector('.home-hint-bar'), null, 'and says nothing once it is dismissed');
   });
 
   test('offers to rearrange Home, and to put it back', () => {

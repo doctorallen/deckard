@@ -36,6 +36,15 @@
 
 ### Changed
 
+- **A first Home lists each task once.** A new Home started with the Tasks
+  view and an open tasks widget side by side, which listed the same tasks
+  twice; it now starts with the Tasks view beside recently opened notes.
+  The figures above Home read **Due today**, **Overdue**, and **Done this
+  week**, the day's work first. Under the Tasks view widget's red
+  **Overdue** heading, each row says how late it is, muted, rather than a
+  column of red. **Customize Home** stays beside the tabs, in place of a
+  line that went away once dismissed.
+
 - **Stats reads like the other pages.** Its heading says **DECKARD /
   STATS** rather than *Local telemetry*, a word that reads as data leaving
   the machine, and its title sits at the left, under the heading, as every

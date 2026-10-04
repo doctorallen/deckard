@@ -43,7 +43,22 @@ function createIndex() {
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Opens the Dashboard and mounts its webview, wired to the real host.
+ * The Home most of these tests work on: one arranged with a tasks widget
+ * beside the Tasks view, as Home started before 2.2 and as anyone who adds
+ * one has it. A new Home starts without it; the first test checks that.
+ */
+const HOME_WITH_TASKS = [
+  { id: 'tryNext', kind: 'tryNext', width: 'full' },
+  { id: 'search', kind: 'search', width: 'full' },
+  { id: 'agenda', kind: 'agenda', width: 'half', count: 5 },
+  { id: 'tasks', kind: 'tasks', width: 'half', count: 5, query: 'is:open' },
+  { id: 'favoriteTags', kind: 'favoriteTags', width: 'half', count: 8 },
+  { id: 'savedSearches', kind: 'savedSearches', width: 'half' },
+];
+
+/**
+ * Opens the Dashboard and mounts its webview, wired to the real host, on
+ * HOME_WITH_TASKS.
  * `prepare` sets preferences first, as an earlier visit would have;
  * `indexerExtras` adds to the stand-in indexer, and `whatsNew` and `tryNext`
  * are the host's own, when a test gives them.
@@ -62,6 +77,7 @@ async function openDashboard(
     ...indexerExtras,
   };
   const preferences = createPreferences(createGlobalState());
+  await preferences.homeWidgets.setDashboardWidgets(HOME_WITH_TASKS);
   await prepare(preferences);
   const navigation = createNavigation();
   const dashboard = new DashboardPanel({
@@ -164,7 +180,7 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
     // Home starts with its default widgets.
     assert.deepStrictEqual(
       view.findAll('.home-widget').map((widget) => widget.dataset.widgetId),
-      ['search', 'agenda', 'tasks', 'favoriteTags', 'savedSearches'],
+      ['search', 'agenda', 'recentNotes', 'favoriteTags', 'savedSearches'],
     );
     const labels = view.findAll('.view-options-group').map((group) => group.children[0].textContent);
     assert.deepStrictEqual(labels, ['Home', 'Tag columns', 'Get started', 'Theme', 'Zen']);
@@ -401,7 +417,6 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   const widget = (id) => view.find(`.home-widget[data-widget-id="${id}"]`);
   assert.strictEqual(view.find('[data-action="remove-widget"]'), null, 'nothing to edit until asked');
 
-  assert.ok(view.find('.home-hint-bar'), 'a Home never arranged says it can be');
   view.click(view.find('[data-action="customize-home"]'));
   assert.ok(view.find('.home-edit-bar'), 'Home says it is being customized');
   assert.ok(widget('agenda').classList.contains('is-editing'));
@@ -467,7 +482,7 @@ test('customizing Home removes, resizes, adds, reorders, and resets widgets', as
   view.click(view.find('[data-action="reset-widgets"]'));
   await delay(20);
   vscode.window.showWarningMessage = warn;
-  assert.deepStrictEqual(ids(), ['tryNext', 'search', 'agenda', 'tasks', 'favoriteTags', 'savedSearches']);
+  assert.deepStrictEqual(ids(), ['tryNext', 'search', 'agenda', 'recentNotes', 'favoriteTags', 'savedSearches']);
 
   view.click(view.find('.home-edit-bar [data-action="finish-customizing"]'));
   assert.strictEqual(view.find('.home-edit-bar'), null);
@@ -549,14 +564,14 @@ test('the Tasks view widget reaches as far ahead as the Tasks view, at most 90 d
   }
 });
 
-test('the tiles say what is overdue, due today, and open, and each opens its search', async () => {
+test('the tiles say what is due today, overdue, and done this week, and each opens its search', async () => {
   const { view, navigation } = await openDashboard();
   const tiles = view.findAll('.metrics .metric-open');
   assert.deepStrictEqual(
     tiles.map((tile) => tile.querySelector('.metric-label').textContent),
-    ['Overdue', 'Due today', 'Open'],
+    ['Due today', 'Overdue', 'Done this week'],
   );
-  view.click(tiles[1]);
+  view.click(tiles[0]);
   await delay(20);
   assert.strictEqual(navigation.opened[navigation.opened.length - 1], 'search is:today');
 });
