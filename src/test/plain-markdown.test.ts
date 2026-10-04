@@ -50,6 +50,12 @@ suite('Copy as Plain Markdown', () => {
     assert.strictEqual(toPlainMarkdown('```js\n[[Atlas]] ![[x]]\n```', context), '```js\n[[Atlas]] ![[x]]\n```\n', 'other code is left as written');
   });
 
+  test('escapes a table cell’s backslashes and pipes, so the cell stays one cell', () => {
+    const odd = indexOf({ 'notes/Odd.md': '# Odd #odd\n- [ ] Path C:\\temp\\ | or a|b #odd' });
+    const table = toPlainMarkdown('```deckard view=table columns=title\n#odd is:task\n```', { ...context, index: odd });
+    assert.ok(table.includes('| ☐ Path C:\\\\temp\\\\ \\| or a\\|b |'), table);
+  });
+
   test('keeps a blank line around what it writes in, so the next line stays its own', () => {
     const out = toPlainMarkdown('Open:\n```deckard\n#project/atlas is:task is:open\n```\nThanks.', context);
     assert.strictEqual(out, 'Open:\n\n- [ ] Send the proposal (due 2026-10-09)\n\nThanks.\n');

@@ -216,8 +216,13 @@ function writeTaskTable(items: readonly QueryBlockItem[], options: QueryBlockOpt
   );
 }
 
-/** A pipe table, each cell's own pipes escaped so they stay in it. */
+/**
+ * A pipe table, each cell's own pipes escaped so they stay in it, and its
+ * backslashes first, so a cell that ends in one does not take the escape
+ * off the pipe after it.
+ */
 function writeTable(head: readonly string[], rows: ReadonlyArray<readonly string[]>): string {
-  const row = (cells: readonly string[]): string => `| ${cells.map((cell) => cell.replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ')).join(' | ')} |`;
+  const cellText = (cell: string): string => cell.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ');
+  const row = (cells: readonly string[]): string => `| ${cells.map(cellText).join(' | ')} |`;
   return [row(head), `| ${head.map(() => '---').join(' | ')} |`, ...rows.map(row)].join('\n');
 }
