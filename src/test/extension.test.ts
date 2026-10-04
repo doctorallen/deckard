@@ -346,10 +346,17 @@ suite('Extension Test Suite', () => {
     const compiled = ['extension.js', path.join('composition', 'services.js')]
       .map((file) => readFileSync(path.join(root, 'out', file), 'utf8'))
       .join('\n');
+    const registered = new Set(await vscode.commands.getCommands(true));
     let total = 0;
     for (const step of steps) {
       for (const match of step.description.matchAll(/\(command:([\w.]+)/g)) {
-        assert.ok(commands.has(match[1]) || views.has(match[1]), `${step.id} links ${match[1]}`);
+        const id = match[1];
+        // Deckard's own links name a contributed command or view; another,
+        // such as extension.open for Esper Themes, is one VS Code registers.
+        const known = id.startsWith('deckard.')
+          ? commands.has(id) || views.has(id)
+          : registered.has(id);
+        assert.ok(known, `${step.id} links ${id}`);
       }
       for (const event of step.completionEvents ?? []) {
         const key = /^onContext:(.+)$/.exec(event)?.[1];

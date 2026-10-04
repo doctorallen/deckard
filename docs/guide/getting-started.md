@@ -9,13 +9,15 @@ Deckard scans every `*.md` file in each workspace folder by default. Set a notes
 
 ## Install
 
-Download the VSIX attached to a GitHub release and run `Extensions: Install from VSIX...` in VS Code.
+Search for **Deckard** in the Extensions view and select **Install**, or install it from its [Visual Studio Marketplace page](https://marketplace.visualstudio.com/items?itemName=esperinnovations.deckard-notes). VS Code keeps it up to date from there.
+
+Each [GitHub release](https://github.com/doctorallen/deckard/releases) also carries the VSIX, for `Extensions: Install from VSIX...` where the Marketplace is out of reach.
 
 ## Get started
 
 **Sample workspace:** run `Deckard: Create a Sample Workspace`. It opens a tour in this window when no folder is open, and otherwise in a new window or this one, as you choose. Its README, **Start here**, leads through ten notes, one per topic, each ending with **Try it**: the commands, keys, and searches to run. The notes are dated from the day you make them. Running the command again offers a fresh copy.
 
-**Walkthrough:** `Deckard: Get Started`, or **Walkthrough** in Home's gear, opens six steps: open a note, tag it, capture a task, see the workspace, find anything, and choose a theme. Each is checked off as you do it.
+**Walkthrough:** `Deckard: Get Started`, or **Walkthrough** in Home's gear, opens six steps: open a note, tag it, capture a task, see the workspace, find anything, and choose a theme. The last step also offers [Esper Themes](https://marketplace.visualstudio.com/items?itemName=esperinnovations.esper-themes), Deckard's looks as VS Code color themes for the editor. Each is checked off as you do it.
 
 **In your own notes:**
 

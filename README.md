@@ -6,7 +6,7 @@
 
 **A local-first second brain for the Markdown notes already in your VS Code workspace.** Write `#tags`, `@people`, `[[links]]`, and `- [ ] tasks` the way you always have; Deckard connects them into one index and gives you a Dashboard, a Task board, search pages, a notes graph, and a sidebar of related notes — without changing how your notes are written or sending them anywhere.
 
-**[Read the guide](https://deckard.esperinnovations.com)** · [Getting started](https://deckard.esperinnovations.com/getting-started.html) · [Changelog](CHANGELOG.md)
+**[Read the guide](https://deckard.esperinnovations.com)** · [Getting started](https://deckard.esperinnovations.com/getting-started.html) · [Install from the Marketplace](https://marketplace.visualstudio.com/items?itemName=esperinnovations.deckard-notes) · [Changelog](CHANGELOG.md)
 
 <p align="center">
 	<img src="docs/images/dashboard.png" alt="Deckard's Dashboard: overdue, due today, and open tasks, and a Home of widgets." width="820">
@@ -70,7 +70,7 @@ Pick one with `Deckard: Choose Theme…` or **Theme** in any page's gear; moving
 
 ## Quick start
 
-1. Install the VSIX from the [latest release](https://github.com/doctorallen/deckard/releases/latest) with `Extensions: Install from VSIX...`. Deckard needs VS Code 1.134.0 or newer.
+1. Install [Deckard from the Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=esperinnovations.deckard-notes): search for **Deckard** in the Extensions view, or run `code --install-extension esperinnovations.deckard-notes`. Deckard needs VS Code 1.134.0 or newer.
 2. Run **`Deckard: Create a Sample Workspace`** for a ten-note tour you read and do — or open a folder of your own Markdown notes.
 3. Run **`Deckard: Open Dashboard`**, and select the Deckard icon in the Activity Bar for Context (related notes and more), the Tasks view, the Outline, and the calendar.
 4. Press the **?** on any Deckard page, or run `Deckard: Open Help`, for the quick glance; each section's **Read more** opens the full [guide](docs/guide/README.md).

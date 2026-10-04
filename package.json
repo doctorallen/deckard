@@ -183,7 +183,7 @@
           {
             "id": "deckard.walkthrough.makeItYours",
             "title": "Make it yours",
-            "description": "Deckard's pages come in eight looks. Choose Theme previews each as you move through them. Zen draws less frame around any of them.\n[Choose a theme](command:deckard.chooseTheme)\n[Enter zen mode](command:deckard.enableZenMode)",
+            "description": "Deckard's pages come in eight looks. Choose Theme previews each as you move through them. Zen draws less frame around any of them. Esper Themes brings the looks to the editor too, as VS Code color themes.\n[Choose a theme](command:deckard.chooseTheme)\n[Enter zen mode](command:deckard.enableZenMode)\n[Get Esper Themes](command:extension.open?%5B%22esperinnovations.esper-themes%22%5D)",
             "media": {
               "image": "resources/walkthrough/themes.png",
               "altText": "The Dashboard in four of Deckard's eight themes: Corpo, Replicant, LCARS, and Cooper."

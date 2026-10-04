@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Added
+
+- **Esper Themes, from the walkthrough.** The walkthrough's **Make it
+  yours** step offers Esper Themes, Deckard's looks as VS Code color themes
+  for the editor, and opens its Extensions page to install.
+
+### Changed
+
+- **Install from the Marketplace.** Deckard is on the Visual Studio
+  Marketplace as `esperinnovations.deckard-notes`, so the Extensions view
+  finds it and VS Code keeps it up to date. Each GitHub release still
+  carries the VSIX.
+
 ## 2.1.0 - 2026-10-04
 
 ### Highlights
