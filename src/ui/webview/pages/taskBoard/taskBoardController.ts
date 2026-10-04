@@ -21,6 +21,7 @@ import { readQueryContext } from '../../../commands/queryContext';
 import { offerSavedSearchOnHome } from '../../../commands/savedSearchHome';
 import { settingTarget, writeSetting } from '../../../commands/settings';
 import { openTask, quoteTaskTitle, TaskWrites, toggleTask as writeTaskToggle } from '../../../commands/taskActions';
+import { listPeopleRecency } from '../../../state/peopleRecency';
 import {
   captureIntoColumn,
   moveTaskToColumn,
@@ -429,7 +430,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   /** What a card or row does to its task, and a column's + Add task. */
   private taskHandlers(): Pick<
     Handlers,
-    'toggleTask' | 'moveTask' | 'pickTaskDate' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps' | 'addTaskToColumn'
+    'toggleTask' | 'moveTask' | 'pickTaskDate' | 'pickTaskAssignee' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps' | 'addTaskToColumn'
   > {
     const { indexer, preferences, writes } = this.board;
     return {
@@ -455,6 +456,27 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         const date = await askForDueDate(quoteTaskTitle(task));
         if (date !== null) {
           await setTasksDue(writes, [task], date);
+        }
+      },
+      pickTaskAssignee: async (message) => {
+        const index = indexer.getSnapshot();
+        const task = index.tasks.get(message.taskId);
+        if (!task) {
+          return;
+        }
+        const picked = await vscode.window.showQuickPick(
+          [
+            { label: 'Nobody', description: task.assignee ? '' : 'now', key: '' },
+            ...listPeopleRecency(index).map(({ tag }) => ({
+              label: tag.label,
+              description: task.assignee === tag.key ? 'now' : '',
+              key: tag.key,
+            })),
+          ],
+          { title: `Who is ${quoteTaskTitle(task)} for?`, placeHolder: 'People you write about, the most recent first' },
+        );
+        if (picked) {
+          await moveTaskToColumn(writes, task, `assignee:${picked.key}`, { index });
         }
       },
       moveTaskTo: async (message) => {

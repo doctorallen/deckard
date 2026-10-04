@@ -58,6 +58,7 @@ export function taskCardMoves(card: MovableTask, columnId: string, columns: read
     { label: 'Priority', items: priorityOptions },
     { label: 'Due', items: dueOptions },
     { label: 'This board', items: others },
+    { label: 'For', items: [{ value: 'pick-assignee', label: 'For someone…', key: 'f' }] },
     { label: 'Steps', items: [{ value: 'break-steps', label: card.steps ? 'Add steps…' : 'Break into steps…', key: 's' }] },
     { label: 'Done', items: card.completed ? [] : [{ value: 'done', label: 'Complete it', key: 'x' }] },
     { label: 'Note', items: [{ value: 'move-to', label: 'Move to…' }] },
@@ -158,7 +159,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
       data-tip-around=""
       tabIndex={tabStop ? 0 : -1}
       aria-label={cardName}
-      aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+      aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
       data-task-id={card.taskId}
       data-card-column={columnId}
       data-file-path={card.filePath}

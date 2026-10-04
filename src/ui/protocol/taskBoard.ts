@@ -337,6 +337,12 @@ export interface PickTaskDateMessage {
   taskId: string;
 }
 
+/** The board's f key and its menu's For someone…: ask the host who the task is for. */
+export interface PickTaskAssigneeMessage {
+  type: 'pickTaskAssignee';
+  taskId: string;
+}
+
 /** The card menu's Move to…: the task and its steps under another heading. */
 export interface MoveTaskToMessage {
   type: 'moveTaskTo';
@@ -368,6 +374,7 @@ export interface AddTaskToColumnMessage {
  */
 export interface TaskBoardPageToHost {
   pickTaskDate: PickTaskDateMessage;
+  pickTaskAssignee: PickTaskAssigneeMessage;
   moveTaskTo: MoveTaskToMessage;
   editTask: EditTaskMessage;
   breakIntoSteps: BreakIntoStepsMessage;

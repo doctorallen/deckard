@@ -49,7 +49,7 @@ The search icon in the [Tasks view](tasks.md#tasks-view)'s title opens the board
 
 The board is one Tab stop. Arrow keys move between cards and columns. On a focused card:
 
-- **x** completes it; **t** and **m** make it due today or tomorrow; **d** asks for a date in plain words.
+- **x** completes it; **t** and **m** make it due today or tomorrow; **d** asks for a date in plain words; **f** asks who it is for.
 - **1** to **5** set priority; **0** clears it.
 - **[** and **]** move it to the adjacent column.
 - **e** opens the task editor; **s** [breaks it into steps](tasks.md#breaking-a-task-into-steps); **Enter** opens its line, and **Cmd+Enter** (Ctrl+Enter on Windows and Linux) opens it beside the board.

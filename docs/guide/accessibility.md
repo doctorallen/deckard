@@ -17,7 +17,7 @@ Deckard is built to be used with a keyboard, a screen reader, high contrast, and
 | --- | --- |
 | Anywhere | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> Find, <kbd>…</kbd>+<kbd>N</kbd> Capture, <kbd>…</kbd>+<kbd>D</kbd> today's note (<kbd>Cmd</kbd> for <kbd>Ctrl</kbd> on macOS) |
 | Any right-click menu | <kbd>Shift</kbd>+<kbd>F10</kbd>, the context-menu key, or <kbd>Alt</kbd>+<kbd>Enter</kbd> opens it on what has focus; arrows move, <kbd>Enter</kbd> chooses, <kbd>Escape</kbd> closes |
-| Task board | One Tab stop; arrows move between cards and columns; on a card, **x** done, **t**/**m** due today or tomorrow, **d** a date, **1**–**5** priority, **[** and **]** the next column, **e** edit, **?** every key. See [Task board: Keyboard](task-board.md#keyboard) |
+| Task board | One Tab stop; arrows move between cards and columns; on a card, **x** done, **t**/**m** due today or tomorrow, **d** a date, **f** who it is for, **1**–**5** priority, **[** and **]** the next column, **e** edit, **?** every key. See [Task board: Keyboard](task-board.md#keyboard) |
 | A card's **⋯** menu | Each item shows its one-key shortcut |
 | Notes Graph | Tab to the graph, arrows select a dot, <kbd>Enter</kbd> opens it, <kbd>Alt</kbd>+<kbd>Enter</kbd> beside the graph, <kbd>Escape</kbd> clears |
 | Home and Tags tabs | <kbd>Left</kbd> and <kbd>Right</kbd> switch tabs |

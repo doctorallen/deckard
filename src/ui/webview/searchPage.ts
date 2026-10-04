@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import { describeMissingTag, reportFailure } from '../commands/notify';
 import { readEntityNamespaceAliases } from '../commands/parseSettings';
+import { askForIdentityOnce } from '../commands/identityPrompt';
 import { onDidChangePageChrome } from './host/pageChrome';
 import { ThemePreview } from './themePreview';
 
@@ -153,6 +154,7 @@ export class SearchPanels implements vscode.Disposable {
       return;
     }
     const text = queryText.trim();
+    askForIdentityOnce(text);
     const index = this.indexer.getSnapshot();
     const aliases = readEntityNamespaceAliases();
     const tagKeys = resolveQueryTagIntersection(index, parseQuery(text), aliases);

@@ -11,6 +11,8 @@ export interface CaptureReading {
   due?: string;
   priority?: TaskPriority;
   recurrence?: string;
+  /** Who the task is for, as the tag is written, from `for @dana` at the end or `@dana to …` at the start. */
+  assignee?: string;
 }
 
 /**
@@ -74,8 +76,9 @@ const LEAD_WORDS = new Set(['on', 'by', 'due']);
  * "Call Ren tomorrow" was written as a task called "Call Ren tomorrow" with
  * no due date, and landed nowhere a date would put it. The words at the end
  * of a capture are read as a task manager's quick add reads them: a day, a
- * priority, and a repeat rule, each taken off the end in any order, and the
- * rest is the task. Only unambiguous words are taken: a weekday is a whole
+ * priority, a repeat rule, and `for @someone`, each taken off the end in any
+ * order, and the rest is the task; `@someone to …` at the start hands it
+ * over too. Only unambiguous words are taken: a weekday is a whole
  * weekday name, or a short one after `on`, `by`, or `due`, so "the cat sat"
  * stays a sentence. The first word is never taken, so a task keeps a name.
  * When nothing reads, the line is the text exactly as typed, trimmed.
@@ -90,6 +93,7 @@ export function readCaptureText(
   const words = draft.description.trim().split(/[ \t]+/).filter(Boolean);
   const reading: TrailingReading = {};
   const clock = { now, options };
+  takeLeadingAssignee(words, reading);
 
   // Each pass takes one phrase off the end; the first that reads wins.
   let taken = true;
@@ -98,7 +102,7 @@ export function readCaptureText(
   }
 
   // Nothing read leaves the line exactly as it was typed.
-  if (reading.due === undefined && reading.priority === undefined && reading.recurrence === undefined) {
+  if (reading.due === undefined && reading.priority === undefined && reading.recurrence === undefined && reading.assignee === undefined) {
     return { line: text.trim() };
   }
   const line = formatTaskDraft({
@@ -107,6 +111,7 @@ export function readCaptureText(
     due: reading.due ?? draft.due,
     priority: reading.priority ?? draft.priority,
     recurrence: reading.recurrence ?? draft.recurrence,
+    assignee: reading.assignee ?? draft.assignee,
   });
   return { line, ...reading };
 }
@@ -178,8 +183,37 @@ function takeDay(words: string[], reading: TrailingReading, clock: DayClock): bo
   return true;
 }
 
+/**
+ * A person written as `@dana`, or as `@person/dana`. A bare mention is
+ * only a mention; it says who a task is for only with the words below.
+ */
+const PERSON = /^@[\p{L}\p{N}_][\p{L}\p{N}_/.-]*$/u;
+
+/**
+ * `for @dana` at the end: who the task is for. "Ask `@dana` about the deck"
+ * keeps Dana as a mention, since that is a task for whoever captured it.
+ */
+function takeAssignee(words: string[], reading: TrailingReading): boolean {
+  const person = words[words.length - 1];
+  if (reading.assignee !== undefined || words.length < 3 || !PERSON.test(person) || words[words.length - 2].toLowerCase() !== 'for') {
+    return false;
+  }
+  reading.assignee = person;
+  words.splice(words.length - 2);
+  return true;
+}
+
+/** `@dana to send the deck`: a hand-off, written as a task for Dana to send the deck. */
+function takeLeadingAssignee(words: string[], reading: TrailingReading): void {
+  if (words.length <= 2 || !PERSON.test(words[0]) || words[1].toLowerCase() !== 'to') {
+    return;
+  }
+  reading.assignee = words[0];
+  words.splice(0, 2);
+}
+
 /** The readers in the order a pass tries them. */
-const TRAILING_READERS: readonly TrailingReader[] = [takePriority, takeRecurrence, takeDay];
+const TRAILING_READERS: readonly TrailingReader[] = [takePriority, takeRecurrence, takeDay, takeAssignee];
 
 /** The day at the end of the words, and how many words it took with its lead. */
 function readTrailingDay(

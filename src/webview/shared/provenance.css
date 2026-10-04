@@ -140,4 +140,3 @@ body:has(:focus-visible) :is(.card, .note, .task-row, .home-row, .tag-row, .boar
    zoom. The pointer's hover still lays the line over the next entry, so a
    list does not jump under a moving mouse. */
 :is(.card, .note, .task-row, .home-row, .tag-row, .board-card):focus-within { margin-bottom: calc(var(--reach) + var(--space-2)); }
-

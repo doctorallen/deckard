@@ -4,6 +4,13 @@
 
 ### Added
 
+- **Say who a task is for as you write it.** Capture reads `for @dana` at
+  the end, or `@dana to …` at the start, as who the task is for (`👤 @dana`);
+  a person mentioned anywhere else stays a mention. A Task board card's ⋯
+  menu has **For someone…**, also the **f** key, in any grouping. The first
+  search in a window that uses `is:mine` or `is:waiting` while `deckard.me`
+  is empty says so, rather than quietly finding the tasks for nobody.
+
 - **Three pages for approving and using Deckard.** The guide gains *For
   your security reviewer* (what Deckard sends, stores, and runs, and over
   Remote-SSH), *What Deckard writes* (every change it makes to your files,

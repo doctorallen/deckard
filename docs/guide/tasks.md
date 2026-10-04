@@ -43,7 +43,9 @@ A `👤` field says who a task is for. Mentioning someone does not make the task
 - `👤` and `[assignee:: …]` are the same field in the two [task metadata](#task-metadata) formats. `🧑` is read too.
 - `@dana` and `#person/dana` are the same person, as in the [people](notes-and-links.md) views.
 - Search with `assignee = @dana`, `assignee = none`, `is:assigned`, or `is:unassigned`. `is:mine` finds tasks for you (set `deckard.me`, such as `@ren-kade`) plus tasks for nobody.
-- On the [Task board](task-board.md#task-board), group by **Person**. Drop a card on a person to set the field, or on **Nobody named** to clear it.
+- On the [Task board](task-board.md#task-board), group by **Person**. Drop a card on a person to set the field, or on **Nobody named** to clear it. In any grouping, a card's **⋯** menu has **For someone…** (key **f**), which lists the people you write about.
+- [Capture](#quick-capture) reads `for @dana` at the end, or `@dana to …` at the start, as who the task is for.
+- The first search in a window that uses `is:mine` or `is:waiting` while `deckard.me` is empty says so, with the setting a click away.
 - `deckard.tasks.assigneeFromPersonTag` treats the first person in a task's words as its owner when there is no `👤`.
 
 ### Dataview format
@@ -171,7 +173,7 @@ The status bar shows **3 due today**, or **1 overdue, 3 due today** in the warni
 
 Run `Deckard: Capture` and type a task. Deckard adds it as `- [ ] …` to today's daily note, creating it from your template if needed. If you close the box with words in it, the next Capture brings them back.
 
-- **Quick add.** Words at the end are read in any order: a day (`today`, `friday`, `next monday`, `in 3 days`, `oct 3`; or after `on`, `by`, or `due`, a short day such as `fri`, `+2w`, a date, or `10/3`), a priority (`p1` to `p4`, or `!!!`, `!!`, `!`), and a repeat rule (`every week`, `daily`). `Call Ren friday p2` becomes `- [ ] Call Ren ⏫ 📅 2026-10-02`, previewed as you type. **Keep the words as written** reads nothing. **Add as a note line** writes a plain `- …` item.
+- **Quick add.** Words at the end are read in any order: a day (`today`, `friday`, `next monday`, `in 3 days`, `oct 3`; or after `on`, `by`, or `due`, a short day such as `fri`, `+2w`, a date, or `10/3`), a priority (`p1` to `p4`, or `!!!`, `!!`, `!`), a repeat rule (`every week`, `daily`), and who it is for (`for @dana`). `@dana to …` at the start hands the task to Dana too; a person mentioned anywhere else stays a mention. `Call Ren friday p2` becomes `- [ ] Call Ren ⏫ 📅 2026-10-02`, and `Send the deck for @dana friday` becomes `- [ ] Send the deck 📅 2026-10-02 👤 @dana`, previewed as you type. **Keep the words as written** reads nothing. **Add as a note line** writes a plain `- …` item.
 - **Under a heading.** The list button, or `Deckard: Capture Under a Heading`, picks a heading from any note, starting with the five used last.
 - **From a selection.** Select up to 120 characters on one line and Capture starts from them, with a link to the heading they were under: `- [ ] Call Ren [[2026-09-22#Weekly review]] 📅 2026-10-02`. The link button turns it off. **Restore what you were typing** brings back your earlier draft.
 - Unsaved changes in an open note are kept, and the note is saved.

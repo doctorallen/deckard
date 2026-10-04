@@ -331,8 +331,8 @@ function openRowMenu(opener: HTMLElement): boolean {
     return false;
   }
   openActionMenu(opener, groups, (value) => {
-    if (value === 'pick-date' || value === 'move-to' || value === 'break-steps') {
-      const types = { 'pick-date': 'pickTaskDate', 'move-to': 'moveTaskTo', 'break-steps': 'breakIntoSteps' } as const;
+    if (value === 'pick-date' || value === 'pick-assignee' || value === 'move-to' || value === 'break-steps') {
+      const types = { 'pick-date': 'pickTaskDate', 'pick-assignee': 'pickTaskAssignee', 'move-to': 'moveTaskTo', 'break-steps': 'breakIntoSteps' } as const;
       editRow(row, (drawn) => ({ type: types[value], taskId: String(drawn.dataset.taskId) }), post);
       return;
     }
@@ -671,6 +671,7 @@ const BOARD_KEYS: KeySection = {
     ['x', 'Complete it, or reopen it'],
     ['t, m', 'Due today, due tomorrow'],
     ['d', 'Due on a date you type'],
+    ['f', 'For someone: who it is for'],
     ['1 to 5, 0', 'Priority, highest to lowest; 0 clears it'],
     ['[ ]', 'Move it to the column on the left or right'],
     ['e', 'Edit the whole task'],
