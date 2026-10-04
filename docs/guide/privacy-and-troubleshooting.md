@@ -35,7 +35,7 @@ Before a task edit or extraction, Deckard checks the source is unchanged since i
 - **Related Notes shows no results:** open a saved Markdown note containing a tag, then check that another saved note uses the same tag.
 - **A task is missing from the Tasks view:** it may be parked. Search `is:parked`.
 - **A task or section is missing:** confirm the task is an unordered checklist item, the heading is an ATX heading such as `## Heading`, and `deckard.parseInlineTags` is enabled for tagged non-heading lines.
-- **A heading is missing from the Outline:** the Outline shows ATX headings only, not underlined `Title`/`===` headings, and excludes headings in fenced code blocks.
+- **A heading is missing from Sections:** Sections shows ATX headings only, not underlined `Title`/`===` headings, and excludes headings in fenced code blocks.
 - **Content in a code block:** text in fenced code is found by Find and a search's words, but tags, tasks, and links inside it are ignored, and it is left out of completion.
 - **A numeric hash is missing:** numeric-only `#` tokens are not tags. Use an `@` marker or include a non-numeric character.
 - **Date sorting looks unexpected:** a note's created date is its `created:` or `date:` front matter, then a daily note's day, then the file's creation time; its updated date is its `updated:` front matter, then the file's modified time. A fresh clone resets file times, so notes without those front-matter dates all look created and updated on the day of the clone.

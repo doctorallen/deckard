@@ -19,12 +19,17 @@ import type {
   SidebarNotesPageState,
   SidebarNotesPageToHost,
   SidebarNotesSnapshot,
+  SidebarSections,
+  SectionLineMessage,
+  FilterSectionsMessage,
 } from '../../../protocol/sidebarNotes';
 import { appendTagToLine } from '../../../commands/bulkEdit';
 import { createWikiLink, insertWikiLink } from '../../../commands/insertLink';
 import { resolveSourceUri } from '../../../commands/navigation';
 import { describeRejectedEdit, noteName, reportFailure, reportStale } from '../../../commands/notify';
 import { linkMentions } from '../../../commands/unlinkedMentions';
+import type { OutlineNode } from '../../../state/outlineState';
+import { buildSidebarSections, findActiveLine } from '../../../state/sidebarSections';
 import { readLinkStyle } from '../../../commands/linkMaintenancePorts';
 import { formatNoteLink } from '../../../../domain/markdown/wikiLinks';
 import type { WorkspaceWriteHistory } from '../../../commands/workspaceWrites';
@@ -77,6 +82,16 @@ export interface SidebarNotesControllerOptions {
   navigation: NavigationService;
   /** The extension's folder, which the page's style sheets are under. */
   extensionUri: vscode.Uri;
+  /** The editor's note's headings, which the Sections list draws, when there is such a source. */
+  sections?: SectionsSource;
+}
+
+/** Where the Sections list's headings come from: the outline of the note in the editor, as typed. */
+export interface SectionsSource {
+  readSections(): { roots: readonly OutlineNode[]; documentUri?: vscode.Uri; filter?: { key: string; label: string }; tags: { key: string; label: string }[] };
+  readonly onDidChangeTreeData: vscode.Event<unknown>;
+  revealLine(line: number): Promise<void>;
+  setTagFilter(tag: { key: string; label: string } | undefined): void;
 }
 
 /** Writes a line to the log at Trace, under Related Notes' name. */
@@ -132,6 +147,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
    * anything has, or while nothing has been posted.
    */
   private current: { state: SidebarNotesPageState; day: string } | undefined;
+  /** The heading the Sections list marked as the cursor's, to redraw it only when the cursor leaves it. */
+  private sectionsActiveLine: number | undefined;
 
   /** Reads from `sidebar.indexer` and `sidebar.preferences`, and checks clicks through `sidebar.navigation`. */
   public constructor(private readonly sidebar: SidebarNotesControllerOptions) {
@@ -201,6 +218,9 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       );
     }
     disposables.push(activeSearch.onDidChange(() => this.refresh()), ...this.followEditor());
+    if (this.sidebar.sections) {
+      disposables.push(this.sidebar.sections.onDidChangeTreeData(() => this.refreshSections()));
+    }
     // The ranking reads the preferences, and not every write to them redraws
     // the sidebar, so any write means the state last posted may be out of date.
     const { reader } = this.sidebar.preferences;
@@ -482,6 +502,15 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       unparkTag: parkTag(),
       insertLink: (message: SidebarNotesPageToHost['insertLink']) => this.insertLink(message),
       linkMention: (message: LinkMentionMessage) => this.linkMention(message),
+      revealSection: (message: SectionLineMessage) => this.sidebar.sections?.revealLine(message.line),
+      focusSection: async (message: SectionLineMessage) => {
+        await this.sidebar.sections?.revealLine(message.line);
+        await vscode.commands.executeCommand('deckard.focusSection');
+      },
+      filterSections: (message: FilterSectionsMessage) => {
+        const tag = this.sidebar.sections?.readSections().tags.find((candidate) => candidate.key === message.tagKey);
+        this.sidebar.sections?.setTagFilter(tag);
+      },
       linkAllMentions: () => this.linkAllMentions(),
       addSuggestedTag: (message: SidebarNotesPageToHost['addSuggestedTag']) => this.addSuggestedTag(message.tagKey),
     };
@@ -543,6 +572,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
         this.updateEntryContextFromActiveEditor(true);
         if (!isSameEntryContext(previous, this.entryContext)) {
           this.scheduleRefresh();
+        } else if (this.sidebar.sections && this.cursorChangedSection(event.selections[0]?.active.line)) {
+          this.refreshSections();
         }
       }),
     ];
@@ -618,7 +649,69 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
    */
   private createSnapshot(): SidebarNotesSnapshot {
     const index = this.sidebar.indexer.getSnapshot();
-    return this.createPageSnapshot() ?? this.createUnreadNoteSnapshot() ?? this.createNoteSnapshot(index);
+    const page = this.createPageSnapshot();
+    if (page) {
+      return page;
+    }
+    const snapshot = this.createUnreadNoteSnapshot() ?? this.createNoteSnapshot(index);
+    const sections = this.createSections();
+    return sections ? { ...snapshot, sections } : snapshot;
+  }
+
+  /**
+   * The editor's note's headings, as the Sections list draws them: the
+   * outline as typed, unsaved lines included, with the heading the cursor is
+   * in when the list follows it. Undefined while no note is in the editor.
+   */
+  private createSections(): SidebarSections | undefined {
+    const source = this.sidebar.sections;
+    const editor = vscode.window.activeTextEditor;
+    if (!source || !editor) {
+      return undefined;
+    }
+    const { roots, documentUri, filter, tags } = source.readSections();
+    if (!documentUri || documentUri.toString() !== editor.document.uri.toString() || roots.length === 0 && !filter) {
+      return undefined;
+    }
+    const settings = vscode.workspace.getConfiguration('deckard', documentUri);
+    const sections = buildSidebarSections({
+      roots,
+      filter,
+      tags,
+      ...(settings.get<boolean>('outline.followCursor', true) ? { cursorLine: editor.selection.active.line + 1 } : {}),
+      showTags: settings.get<boolean>('outline.showTags', true),
+      showCounts: settings.get<boolean>('outline.showCounts', true) && !settings.get<boolean>('zenMode', false),
+    });
+    this.sectionsActiveLine = sections.activeLine;
+    return sections;
+  }
+
+  /** Whether the cursor, now on a zero-based line, sits in a different heading than the list marks. */
+  private cursorChangedSection(line: number | undefined): boolean {
+    if (line === undefined) {
+      return false;
+    }
+    const rows = this.currentState()?.sections?.rows;
+    return rows !== undefined && findActiveLine(rows, line + 1) !== this.sectionsActiveLine;
+  }
+
+  /**
+   * Redraws the Sections list alone: the state last ranked, sent again with
+   * the headings as they are now. Moving the cursor between headings, or
+   * typing one, ranks nothing again.
+   */
+  private refreshSections(): void {
+    const page = this.page;
+    const kept = this.currentState();
+    if (!page || !kept) {
+      this.scheduleRefresh();
+      return;
+    }
+    const sections = this.createSections();
+    const { sections: _old, ...rest } = kept;
+    const state: SidebarNotesPageState = sections ? { ...rest, sections } : rest;
+    this.current = { state, day: today() };
+    this.post(page, state);
   }
 
   /**

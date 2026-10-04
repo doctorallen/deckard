@@ -204,10 +204,6 @@
         "contents": "Hub notes and the notes about their tags appear here, as pages under the pages they belong to.\n\nA hub note describes a tag with describes: in its front matter, such as describes: project/atlas. A note is filed under it when its front matter or first heading carries the tag, or when it says up: \"[[Atlas]]\".\n[Read about hub notes](https://deckard.esperinnovations.com/search-pages.html#hub-notes)"
       },
       {
-        "view": "deckard.outline",
-        "contents": "Open a Markdown note to see its headings here.\n[Create today's note](command:deckard.createDailyNote)\n[Open Help](command:deckard.showHelp)"
-      },
-      {
         "view": "deckard.agenda",
         "contents": "Your open tasks appear here, grouped by when they are wanted.\n\nWrite one in a note as a checklist item, or capture one without leaving the editor.\n[Capture a task](command:deckard.capture)\n[Open the Task Board](command:deckard.showTaskBoard)",
         "when": "!deckard.agendaFiltered"
@@ -590,19 +586,6 @@
         "category": "Deckard"
       },
       {
-        "command": "deckard.outline.revealSection",
-        "title": "Reveal Outline Heading",
-        "category": "Deckard"
-      },
-      {
-        "command": "deckard.outline.openTagOverview",
-        "title": "Open a Tag's Search Page…"
-      },
-      {
-        "command": "deckard.outline.renameTag",
-        "title": "Rename Tag…"
-      },
-      {
         "command": "deckard.hubs.openHubNote",
         "title": "Open Hub Note",
         "icon": "$(go-to-file)"
@@ -626,18 +609,6 @@
         "icon": "$(group-by-ref-type)"
       },
       {
-        "command": "deckard.outline.enableFollowCursor",
-        "title": "Follow Cursor in Outline",
-        "category": "Deckard",
-        "icon": "$(eye-closed)"
-      },
-      {
-        "command": "deckard.outline.disableFollowCursor",
-        "title": "Stop Following Cursor in Outline",
-        "category": "Deckard",
-        "icon": "$(eye)"
-      },
-      {
         "command": "deckard.focusSection",
         "title": "Focus Section",
         "category": "Deckard",
@@ -650,14 +621,24 @@
         "icon": "$(unfold)"
       },
       {
+        "command": "deckard.outline.enableFollowCursor",
+        "title": "Mark the Cursor's Section in Sections",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.outline.disableFollowCursor",
+        "title": "Stop Marking the Cursor's Section",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.outline.filterByTag",
-        "title": "Filter Outline by Tag…",
+        "title": "Filter Sections by Tag…",
         "category": "Deckard",
         "icon": "$(filter)"
       },
       {
         "command": "deckard.outline.clearTagFilter",
-        "title": "Clear Outline Tag Filter",
+        "title": "Clear the Sections Filter",
         "category": "Deckard",
         "icon": "$(filter-filled)"
       },
@@ -815,6 +796,14 @@
     "menus": {
       "commandPalette": [
         {
+          "command": "deckard.outline.enableFollowCursor",
+          "when": "!deckard.outlineFollowCursor"
+        },
+        {
+          "command": "deckard.outline.disableFollowCursor",
+          "when": "deckard.outlineFollowCursor"
+        },
+        {
           "command": "deckard.search",
           "when": "false"
         },
@@ -845,18 +834,6 @@
         {
           "command": "deckard.showNotesGraphAroundNote",
           "when": "editorLangId == markdown && deckard.isNote"
-        },
-        {
-          "command": "deckard.outline.revealSection",
-          "when": "false"
-        },
-        {
-          "command": "deckard.outline.openTagOverview",
-          "when": "false"
-        },
-        {
-          "command": "deckard.outline.renameTag",
-          "when": "false"
         },
         {
           "command": "deckard.hubs.openHubNote",
@@ -921,14 +898,6 @@
         {
           "command": "deckard.unpinNote",
           "when": "editorLangId == markdown && deckard.activeNotePinned"
-        },
-        {
-          "command": "deckard.outline.enableFollowCursor",
-          "when": "!deckard.outlineFollowCursor"
-        },
-        {
-          "command": "deckard.outline.disableFollowCursor",
-          "when": "deckard.outlineFollowCursor"
         },
         {
           "command": "deckard.focusSection",
@@ -1278,31 +1247,6 @@
           "group": "navigation@2"
         },
         {
-          "command": "deckard.outline.enableFollowCursor",
-          "when": "view == deckard.outline && !deckard.outlineFollowCursor",
-          "group": "navigation@1"
-        },
-        {
-          "command": "deckard.outline.disableFollowCursor",
-          "when": "view == deckard.outline && deckard.outlineFollowCursor",
-          "group": "navigation@1"
-        },
-        {
-          "command": "deckard.unfoldAllSections",
-          "when": "view == deckard.outline && deckard.sectionFocused",
-          "group": "navigation@0"
-        },
-        {
-          "command": "deckard.outline.filterByTag",
-          "when": "view == deckard.outline && !deckard.outlineFiltered",
-          "group": "navigation@2"
-        },
-        {
-          "command": "deckard.outline.clearTagFilter",
-          "when": "view == deckard.outline && deckard.outlineFiltered",
-          "group": "navigation@2"
-        },
-        {
           "command": "deckard.showDashboard",
           "when": "view == deckard.relatedNotes",
           "group": "navigation@1"
@@ -1388,36 +1332,6 @@
           "command": "deckard.hubs.openAsPage",
           "when": "view == deckard.hubs && (viewItem == hubNote || viewItem == hubChild) && config.deckard.openNotesIn != page",
           "group": "deckard@2"
-        },
-        {
-          "command": "deckard.outline.openTagOverview",
-          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
-          "group": "deckard@1"
-        },
-        {
-          "command": "deckard.outline.renameTag",
-          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
-          "group": "deckard@2"
-        },
-        {
-          "command": "deckard.outline.filterByTag",
-          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
-          "group": "deckard@3"
-        },
-        {
-          "command": "deckard.parkTag",
-          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
-          "group": "deckard@4"
-        },
-        {
-          "command": "deckard.focusSection",
-          "when": "view == deckard.outline",
-          "group": "inline"
-        },
-        {
-          "command": "deckard.focusSection",
-          "when": "view == deckard.outline",
-          "group": "1_focus@1"
         },
         {
           "command": "deckard.agenda.editTask",
@@ -1562,12 +1476,6 @@
           "icon": "resources/views/related-notes.svg",
           "type": "webview",
           "contextualTitle": "Deckard Context"
-        },
-        {
-          "id": "deckard.outline",
-          "name": "Outline",
-          "icon": "resources/views/outline.svg",
-          "contextualTitle": "Deckard Outline"
         },
         {
           "id": "deckard.agenda",
@@ -1917,7 +1825,10 @@
           },
           "deckard.weeklyNote.naming": {
             "type": "string",
-            "enum": ["range", "iso"],
+            "enum": [
+              "range",
+              "iso"
+            ],
             "enumDescriptions": [
               "week-2026-09-13-2026-09-19: the week's first and last days.",
               "2026-W38: the ISO week, as many journaling tools name it."
@@ -2129,7 +2040,11 @@
           },
           "deckard.editor.preset": {
             "type": "string",
-            "enum": ["full", "tasks", "writing"],
+            "enum": [
+              "full",
+              "tasks",
+              "writing"
+            ],
             "enumDescriptions": [
               "Everything Deckard draws in the editor: counts, hints, previews, and lenses.",
               "What helps with tasks, and what reports a problem; no link counts, mention lenses, or breadcrumbs.",
@@ -2233,7 +2148,10 @@
           },
           "deckard.links.style": {
             "type": "string",
-            "enum": ["wiki", "markdown"],
+            "enum": [
+              "wiki",
+              "markdown"
+            ],
             "enumDescriptions": [
               "[[Atlas]], as Obsidian writes them.",
               "[Atlas](projects/Atlas.md), which GitHub, MkDocs, and other Markdown renderers show as links."
@@ -2503,18 +2421,18 @@
         "order": 4
       },
       {
-        "title": "Outline",
+        "title": "Sections",
         "properties": {
           "deckard.outline.showTags": {
             "type": "boolean",
             "default": true,
-            "description": "Show each heading's tags beside it in the Deckard Outline.",
+            "description": "Show each heading's tags beside it in the Context view's Sections.",
             "order": 0
           },
           "deckard.outline.followCursor": {
             "type": "boolean",
             "default": true,
-            "description": "Select the Deckard Outline heading that contains the editor cursor.",
+            "description": "Mark the heading the cursor is in, in the Context view's Sections.",
             "order": 1
           },
           "deckard.outline.inheritedTags": {
@@ -2527,7 +2445,7 @@
           "deckard.outline.showCounts": {
             "type": "boolean",
             "default": true,
-            "description": "Show beside each heading in the Deckard Outline how many of the tasks under it are done, such as 2/5, and how many links name it, such as ↩3.",
+            "description": "Show beside each heading in the Context view's Sections how many of the tasks under it are done, such as 2/5, and how many links name it, such as ↩3.",
             "order": 3
           }
         },

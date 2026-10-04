@@ -20,7 +20,7 @@ export const GUIDE_PAGES: Readonly<Record<string, string>> = {
   'search-pages': 'Search pages and tag overviews',
   'query-blocks': 'Query blocks',
   'home-and-stats': 'Home and Stats',
-  connections: 'Related notes, the graph, and the outline',
+  connections: 'Related notes, sections, and the graph',
   'daily-notes': 'Daily notes, reviews, and the calendar',
   organizing: 'Renaming, moving, and parking',
   'themes-and-zen': 'Themes and Zen mode',

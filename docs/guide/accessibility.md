@@ -4,7 +4,7 @@ Deckard is built to be used with a keyboard, a screen reader, high contrast, and
 
 ## Screen readers
 
-- **The sidebar views** (Tasks, Outline, Hubs) are native VS Code trees, read as any tree is. The **Context** and **Calendar** views and every page (Home, the Task board, search pages, the calendar page, Stats, Help, the Note page) are webviews.
+- **The sidebar views** Tasks and Hubs are native VS Code trees, read as any tree is. The **Context** and **Calendar** views and every page (Home, the Task board, search pages, the calendar page, Stats, Help, the Note page) are webviews.
 - **In a webview with NVDA or JAWS,** press <kbd>Insert</kbd>+<kbd>Space</kbd> (NVDA) or <kbd>Insert</kbd>+<kbd>Z</kbd> (JAWS) to switch to focus mode when you want Deckard's own keys, such as the Task board's; browse mode reads the page as a document. VoiceOver needs no switch.
 - **What changed is announced** through a status region, without moving focus: a card moved on the board, a widget added or removed on Home, and an Undo.
 - **Focus stays where it was** when a page redraws after an index update, and returns to the control that opened a menu or a dialog when it closes.

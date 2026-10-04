@@ -221,6 +221,8 @@ interface Core {
   workspace: ReturnType<typeof createVscodeWorkspace>;
   scanner: WorkspaceScanner<vscode.Uri>;
   indexer: IndexRoles<vscode.Uri>;
+  /** The editor's note's headings, as typed: the Context view's Sections, and what Focus Section reads. */
+  outline: OutlineTreeProvider;
 }
 
 /**
@@ -485,7 +487,10 @@ function createCore(context: vscode.ExtensionContext): Core {
   const scope = new ScopeStatusBar(context.workspaceState);
   context.subscriptions.push(scope);
   void scope.refresh();
-  return { history, workspace, scanner, indexer };
+  // The editor's note's headings, as typed: drawn as the Context view's
+  // Sections list, and read by Focus Section and the Sections filter.
+  const outline = new OutlineTreeProvider(indexer);
+  return { history, workspace, scanner, indexer, outline };
 }
 
 /** The preference repository, a service per capability over it, and its snapshots. */
@@ -942,6 +947,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     activeNotePage,
     history,
     themePreview,
+    sections: parts.core.outline,
   });
   parts.dashboard.activeHome = activeHome;
   const stats = new StatsPanel({
@@ -992,8 +998,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
 
 /** The Outline, the query blocks, the Tasks view and its service, the status bar, and capture. */
 function createTreesAndCapture(context: vscode.ExtensionContext, core: Core, preferences: PreferenceParts, writes: Omit<Writes, 'capture'>) {
-  const { indexer } = core;
-  const outline = new OutlineTreeProvider(indexer);
+  const { indexer, outline } = core;
   // A query block's checkboxes link to Deckard's URI handler, which ticks them.
   const queryBlocks = new QueryBlocks(indexer, {
     base: `${vscode.env.uriScheme}://${context.extension.id}`,
@@ -1119,9 +1124,10 @@ function tidyPreferencesOnUpdate(
   );
 }
 
-/** Registers the two sidebar webviews and creates the Outline and Tasks trees. */
+/** Registers the two sidebar webviews and creates the Tasks tree. */
 function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'taskStatusBar'>): void {
-  const { sidebarNotes, calendar, outline, agenda } = views;
+  // The Outline is no view of its own: the Context view draws it as Sections.
+  const { sidebarNotes, calendar, agenda } = views;
   context.subscriptions.push(
     // Neither Related Notes nor the Calendar is kept running while hidden
     // (Q1 of docs/implementation/20-webviews.md); their controllers say so too.
@@ -1132,12 +1138,6 @@ function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'tas
       webviewOptions: { retainContextWhenHidden: false },
     }),
   );
-  const outlineView = vscode.window.createTreeView('deckard.outline', {
-    treeDataProvider: outline,
-    showCollapseAll: true,
-  });
-  outline.attach(outlineView);
-  context.subscriptions.push(outlineView);
   const agendaView = vscode.window.createTreeView('deckard.agenda', {
     treeDataProvider: agenda,
     manageCheckboxStateManually: true,

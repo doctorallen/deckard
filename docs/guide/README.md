@@ -21,7 +21,7 @@ Everything Deckard does, one topic to a page. The [README](../../README.md) is t
 - [Search](search.md): Find in Notes, the search box, Refine, and the query language.
 - [Search pages and tag overviews](search-pages.md): a tag's page, hub notes, taking results out, editing them all at once, merging tags, and undoing a write.
 - [Query blocks](query-blocks.md): a live list of a search's results inside a note.
-- [Related notes, the graph, and the outline](connections.md): what makes a note related, the Notes Graph, and the Outline.
+- [Related notes, sections, and the graph](connections.md): what makes a note related, a note's sections in the Context view, and the Notes Graph.
 
 ## Seeing the whole
 

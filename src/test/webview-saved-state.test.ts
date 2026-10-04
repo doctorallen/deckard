@@ -464,14 +464,14 @@ suite('Webview saved state', () => {
       const view = open({ scrollY: 40 });
       assert.deepStrictEqual(view.savedState(), {
         scrollY: 40, noteLimit: 50, noteListKey: LIST, showEveryActiveTag: false, contextOpen: false,
-        linksOpen: { linked: true, mentions: false }, openLinkSections: [], expandedRefine: [], shownGroups: [],
+        linksOpen: { linked: true, mentions: false, sections: true }, showAllSections: false, openLinkSections: [], expandedRefine: [], shownGroups: [],
       });
       view.click('[data-action="show-more-notes"]');
       view.click('[data-action="show-every-active-tag"]');
       view.click('[data-action="toggle-link-section"]');
       assert.deepStrictEqual(view.savedState(), {
         scrollY: 40, noteLimit: 100, noteListKey: LIST, showEveryActiveTag: true, contextOpen: false,
-        linksOpen: { linked: true, mentions: false }, openLinkSections: ['notes/standup.md:2'], expandedRefine: [], shownGroups: [],
+        linksOpen: { linked: true, mentions: false, sections: true }, showAllSections: false, openLinkSections: ['notes/standup.md:2'], expandedRefine: [], shownGroups: [],
       });
       // A fold says it opened with a toggle event, queued as a task; the
       // page keeps the fold when the event comes, so the test waits for

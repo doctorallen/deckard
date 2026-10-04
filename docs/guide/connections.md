@@ -1,4 +1,4 @@
-# Related notes, the graph, and the outline
+# Related notes, sections, and the graph
 
 ## Related Notes
 
@@ -80,20 +80,19 @@ Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard 
 - **Display** sets node size, link thickness, and **Label fade zoom**. **Headings**: **By zoom** (default) draws a multi-heading file as one dot until you zoom past **Label fade zoom**; **Always** draws every heading; **Never** every file. **Links per note** runs from **Fewer** to **More**. **Advanced** holds **Favor rare tags**, **Links between groups**, and **Show every link**. **Reset graph settings** restores controls, clears filters, and reframes; **Undo** beside it reverses that for a few seconds.
 - **Forces** sets cluster centering, cluster cohesion, community spacing, repel strength, link strength, and link distance, live.
 
-## Outline
+## Sections
 
-Open **Outline** from the Deckard Activity Bar to see the active Markdown file's headings as a tree. Drag it into either sidebar.
+The **Context** view lists the note in the editor's headings under **Sections**, above its related notes, the way an outline would.
 
-![Deckard Outline listing a note's headings, with each heading's tags beside it.](../images/outline.png)
-
-- Each heading shows its title, without markers or tags, and its own tags beside it. A heading of only tags shows those tags as its title.
+- Each heading shows its title, without markers or tags, and its own tags beside it, each opening its page. A heading of only tags shows those tags as its title. Sub-headings sit in from their parents.
 - Untagged headings are kept for structure. Headings in fenced code blocks are ignored, and `Sprint #3` stays in the title. Underlined `Title`/`===` headings are not shown.
 - **2/5** means two of five tasks under the heading are done, sub-headings included; **↩3** means links in other notes name it three times. Zen hides them, and `deckard.outline.showCounts` turns them off.
-- The tree follows the file as you type.
-- Select a heading to jump to it. Right-click a tagged heading for **Open the Tag's Search Page** and **Rename Tag**.
-- The eye control sets whether the Outline follows the cursor; **Collapse all** is beside it.
-- **Focus Section**, the target button on a heading (also in the editor's **Deckard** submenu and Note Actions), folds the rest of the note away. **Unfold All Sections** or moving to another note ends it. It needs `editor.folding` on.
-- **Filter Outline by Tag…**, in the view title or a tagged heading's context menu, shows only headings with that tag or a tag under it (`#project` keeps `#project/atlas`), plus their parents. It stays until **Clear Outline Tag Filter**.
+- The list follows the note as you type, and marks the heading the cursor is in; `deckard.outline.followCursor` turns the mark off.
+- Select a heading to open it in the editor. **Focus**, beside a heading, folds the rest of the note away (also `Deckard: Focus Section`, in the editor's **Deckard** submenu and Note Actions). **Unfold All Sections** or moving to another note ends it. It needs `editor.folding` on.
+- **Show** above the list narrows it to the headings that carry one of the note's tags, or a tag under it (`#project` keeps `#project/atlas`), with their parents; `Deckard: Filter Sections by Tag…` does the same from the palette.
+- A long note shows its first twelve headings, with **Show all**. The group folds like **Linked from**, and stays as you leave it.
+
+The VS Code Outline beside the Explorer still lists every heading of any Markdown file; Sections is the same list with what Deckard knows about each.
 
 ---
 

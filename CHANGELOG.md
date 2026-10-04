@@ -87,6 +87,16 @@
 
 ### Changed
 
+- **The Outline is part of the Context view.** Deckard's Outline view sat
+  beside VS Code's own Outline under the same name. Its headings are now
+  **Sections** in the Context view, above the related notes: each opens
+  where it is, shows its own tags and `2/5 · ↩3`, and has **Focus**; the
+  heading the cursor is in is marked, **Show** narrows the list to one
+  tag's headings, and a long note shows its first twelve with **Show all**.
+  The `deckard.outline.*` settings work as before. The Outline's view and
+  its title-bar controls are gone; `Deckard: Filter Sections by Tag…` and
+  the cursor-marking commands keep their places in the palette.
+
 - **One look for dates and headings.** A due date still ahead is plain
   text everywhere, as on the Task board; only due today (amber) and overdue
   (red) take a color, so green no longer reads as done. A Home widget's
