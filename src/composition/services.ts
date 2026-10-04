@@ -85,6 +85,7 @@ import { SearchPanels } from '../ui/webview/searchPage';
 import { setZenMode, watchZenModeContext } from '../ui/webview/zenMode';
 import { getSampleStorageUri, SAMPLE_FOLDER_NAME, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
 import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/firstIndex';
+import { suggestEsperThemesOnce } from '../ui/commands/esperThemes';
 import { openSettingAction, settingLabel } from '../ui/commands/notify';
 import { PreferenceSnapshots } from '../core/storage/preferenceSnapshots';
 import { OutlineTreeProvider, syncOutlineFollowCursorContext } from '../ui/views/outlineTree';
@@ -247,6 +248,13 @@ export function createServices(context: vscode.ExtensionContext): Services {
   const search = createSearch(context, core, preferences, writes);
   const editor = createEditorProviders(context, core, preferences);
   offerExcludeHint(context, core.indexer, newWorkspace);
+  // Once per machine, after the first index has had its say; never in a test
+  // run, where a message arriving mid-test would land in what a test records.
+  if (context.extensionMode !== vscode.ExtensionMode.Test) {
+    void core.indexer.ready
+      .then(() => suggestEsperThemesOnce(context.globalState))
+      .catch((error: unknown) => reportError('Could not suggest Esper Themes', error));
+  }
   syncWalkthroughContext(context, core.indexer);
   createEditorContexts(context, core, preferences);
   const assistance = createLinksAndAssistance(context, core, preferences);

@@ -9,6 +9,8 @@ Run `Deckard: Choose Theme…`, or choose **Theme** in any page's gear. Moving t
 
 In every theme, red means overdue or high priority, and nothing else.
 
+**Esper Themes** brings these looks to the whole editor, as VS Code color themes, from the same makers. Deckard suggests it once, after its first index, on a machine without it; the walkthrough's **Make it yours** step and the [Marketplace](https://marketplace.visualstudio.com/items?itemName=esperinnovations.esper-themes) have it any time.
+
 | **Corpo** | **Corpo, in a light VS Code theme** | |
 | --- | --- | --- |
 | <img src="../images/dashboard-corpo.png" alt="Corpo theme Dashboard in a dark VS Code theme." width="220"> | <img src="../images/dashboard-corpo-light.png" alt="Corpo theme Dashboard in a light VS Code theme." width="220"> | |

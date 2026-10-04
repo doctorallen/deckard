@@ -4,9 +4,10 @@
 
 ### Added
 
-- **Esper Themes, from the walkthrough.** The walkthrough's **Make it
-  yours** step offers Esper Themes, Deckard's looks as VS Code color themes
-  for the editor, and opens its Extensions page to install.
+- **Esper Themes, suggested once.** Deckard's looks also come as VS Code
+  color themes for the whole editor, in Esper Themes. Once the first index
+  is done, a machine without it is asked once, with **Install** and **See
+  Themes**; the walkthrough's **Make it yours** step links to it as well.
 
 ### Changed
 
