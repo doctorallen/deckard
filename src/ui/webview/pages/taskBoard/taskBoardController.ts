@@ -44,6 +44,7 @@ import {
   openSource,
   openTag,
   ready,
+  displayCommand,
   setDisplay,
   setZenMode,
 } from '../../host/sharedHandlers';
@@ -357,11 +358,12 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   }
 
   /** The gear's theme, zen, and help, the page asking for its state, and a card's line and tags. */
-  private pageHandlers(): Pick<Handlers, 'setZenMode' | 'setDisplay' | 'chooseTheme' | 'ready' | 'openHelp' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'openTag'> {
+  private pageHandlers(): Pick<Handlers, 'setZenMode' | 'setDisplay' | 'displayCommand' | 'chooseTheme' | 'ready' | 'openHelp' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'openTag'> {
     const { indexer, navigation } = this.board;
     return {
       setZenMode: setZenMode(),
       setDisplay: setDisplay(),
+      displayCommand: displayCommand(),
       chooseTheme: chooseTheme(),
       ready: ready(),
       // Help opens at its Tasks view and Task board section, not its top.

@@ -1,7 +1,7 @@
 /**
  * The gear: a page's view options, in a disclosure that opens a menu of
- * rows, each a label over its choices. The theme and zen rows are the same
- * on every page that has a gear.
+ * rows, each a label over its choices. The theme, page width, Display,
+ * cards, and tags rows are the same on every page that has a gear.
  */
 import type { ComponentChildren } from 'preact';
 
@@ -80,17 +80,41 @@ export function ViewOptionChoices(props: ViewOptionChoicesProps) {
   );
 }
 
+/** The scale's steps as the gear names them. */
+const STEP_NAMES = { full: 'Full', quiet: 'Quiet', zen: 'Zen' } as const;
+
 /**
- * The gear's zen row, the same on every page that has a gear. Whether zen
- * is on is read from the body's class rather than from the page's snapshot,
- * so no page has to carry it through its state builder.
+ * The gear's Display row, the same on every page that has a gear: the three
+ * steps as pressed buttons, then, when the reader has set any of the
+ * settings the step moves, how many and a way to put the step's own values
+ * back, and Customize…, which opens Settings on Display. Read from the
+ * body's markers, which the page shell wrote from the settings.
  */
-export function zenOption(): ViewOptionGroup {
-  const enabled = document.body.classList.contains('zen');
+export function displayLevelOption(): ViewOptionGroup {
+  const marked = document.body.dataset.level;
+  const level = marked === 'quiet' || marked === 'zen' ? marked : 'full';
+  const changed = Number(document.body.dataset.changed ?? 0);
+  const name = STEP_NAMES[level];
   return {
-    label: 'Zen',
+    label: 'Display',
+    stacked: true,
     content: (
-      <ViewOptionChoices action="set-zen-mode" choices={[['off', 'Off'], ['on', 'On']]} selected={enabled ? 'on' : 'off'} label="Zen mode" />
+      <div class="view-options-display">
+        <ViewOptionChoices
+          action="set-display"
+          attributes={{ 'data-display': 'level' }}
+          choices={[['full', 'Full'], ['quiet', 'Quiet'], ['zen', 'Zen']]}
+          selected={level}
+          label="Display"
+        />
+        {changed > 0 ? (
+          <p class="view-options-changed">
+            {`${name} · ${changed} changed · `}
+            <button type="button" class="view-options-link" data-action="display-command" data-command="useStepValues">{`Use ${name}'s values`}</button>
+          </p>
+        ) : null}
+        <button type="button" class="view-options-link" data-action="display-command" data-command="customize">Customize…</button>
+      </div>
     ),
   };
 }
@@ -143,7 +167,7 @@ export function readThemeName(): string {
 }
 
 /**
- * The gear's theme row, directly above zen on every page with a gear: one
+ * The gear's theme row, at the top on every page with a gear: one
  * button naming the theme in use, which opens Choose Theme… to preview the
  * others on the open pages.
  */
@@ -161,7 +185,7 @@ export function themeOption(name: string = readThemeName()): ViewOptionGroup {
  * back to the gear. Call once, before the page's own listeners, so a click
  * that redraws the page is seen while its target is still in the menu.
  *
- * The zen and theme rows are handled here rather than by each page: they
+ * The Display and theme rows are handled here rather than by each page: they
  * post through the page's one handle, and the host redraws the page.
  */
 export function installViewOptions(): void {
@@ -169,16 +193,16 @@ export function installViewOptions(): void {
     const target = event.target as Element | null;
     const closest = (selector: string): HTMLElement | null =>
       (target?.closest ? target.closest<HTMLElement>(selector) : null);
-    const zen = closest('[data-action="set-zen-mode"]');
-    if (zen) {
-      post({ type: 'setZenMode', enabled: zen.dataset.value === 'on' });
-    }
     if (closest('[data-action="choose-theme"]')) {
       post({ type: 'chooseTheme' });
     }
     const display = closest('[data-action="set-display"]');
     if (display && display.dataset.display && display.dataset.value) {
       post({ type: 'setDisplay', setting: display.dataset.display, value: display.dataset.value });
+    }
+    const command = closest('[data-action="display-command"]');
+    if (command && command.dataset.command) {
+      post({ type: 'displayCommand', command: command.dataset.command });
     }
     const inside = closest('.view-options');
     document.querySelectorAll<HTMLDetailsElement>('.view-options[open]').forEach((options) => {

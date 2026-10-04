@@ -229,6 +229,16 @@ export interface ChooseThemeMessage {
 /** One of the Display settings a page's gear sets: the step, the page width, and the two looks. */
 export type GearDisplaySetting = 'level' | 'pageWidth' | 'cardFrames' | 'tags';
 
+/**
+ * The gear's Display row asking the host for one of its two links: put the
+ * step's own values back on the settings it moves, or open Settings filtered
+ * to Display.
+ */
+export interface DisplayCommandMessage {
+  type: 'displayCommand';
+  command: 'useStepValues' | 'customize';
+}
+
 /** The gear's Cards or Tags row: how cards or tags are drawn on every page. */
 export interface SetDisplayMessage {
   type: 'setDisplay';

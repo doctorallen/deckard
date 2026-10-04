@@ -175,19 +175,19 @@ suite('Zen mode', () => {
     assert.deepStrictEqual(after, before);
   });
 
-  test('offers the gear a zen row that says which way it is set', async () => {
-    const off = dashboard().find('[data-action="set-zen-mode"][data-value="on"]');
-    assert.strictEqual(off?.getAttribute('aria-pressed'), 'false');
+  test('offers the gear a Display row that says which step is in force', async () => {
+    const zenStep = '[data-action="set-display"][data-display="level"][data-value="zen"]';
+    assert.strictEqual(dashboard().find(zenStep)?.getAttribute('aria-pressed'), 'false');
 
     await setZen(true);
-    const on = dashboard().find('[data-action="set-zen-mode"][data-value="on"]');
-    assert.strictEqual(on?.getAttribute('aria-pressed'), 'true');
+    assert.strictEqual(dashboard().find(zenStep)?.getAttribute('aria-pressed'), 'true', 'Zen mode reads as the Zen step');
   });
 
-  test('every gear offers the theme above zen, and asks the host to choose one', () => {
+  test('every gear offers the theme, then the page width, then Display, and asks the host to choose a theme', () => {
     for (const page of [dashboard(), searchPage()]) {
       const labels = page.findAll('.view-options-group').map((group) => group.children[0].textContent);
-      assert.ok(labels.indexOf('Theme') >= 0 && labels.indexOf('Theme') === labels.indexOf('Zen') - 1, labels.join());
+      const theme = labels.indexOf('Theme');
+      assert.ok(theme >= 0 && labels[theme + 1] === 'Page width' && labels[theme + 2] === 'Display', labels.join());
       const button = page.find('[data-action="choose-theme"]');
       assert.strictEqual(button.textContent, 'Corpo…');
       assert.strictEqual(button.getAttribute('aria-label'), 'Theme: Corpo. Choose another');
@@ -198,12 +198,11 @@ suite('Zen mode', () => {
 
   test('posts the reader\'s choice to the host', async () => {
     const page = dashboard();
-    page.click('[data-action="set-zen-mode"][data-value="on"]');
+    page.click('[data-action="set-display"][data-display="level"][data-value="quiet"]');
+    assert.deepStrictEqual(page.lastPosted('setDisplay'), { type: 'setDisplay', setting: 'level', value: 'quiet' });
 
-    assert.deepStrictEqual(page.lastPosted('setZenMode'), {
-      type: 'setZenMode',
-      enabled: true,
-    });
+    page.click('[data-action="display-command"][data-command="customize"]');
+    assert.deepStrictEqual(page.lastPosted('displayCommand'), { type: 'displayCommand', command: 'customize' });
   });
 
   test('folds provenance and hides ornament, and keeps what carries meaning', () => {

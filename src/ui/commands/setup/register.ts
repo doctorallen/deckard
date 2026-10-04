@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import type { Services } from '../../../composition/services';
 import type { IndexRoles } from '../../../core/workspace/indexReader';
 import { checkSetup } from '../checkSetup';
+import { chooseDisplay } from '../chooseDisplay';
 import { chooseTheme, createChooseThemeDeps } from '../chooseTheme';
 import { createSampleWorkspace } from '../sampleWorkspace';
 import { registerCommand } from '../runCommand';
@@ -11,7 +12,7 @@ import { readEditorPreset } from '../../../domain/editor/editorPresets';
 
 /**
  * Setup and diagnostics: Show Log, Check Setup, the sample workspace, Choose
- * Theme…, the walkthrough, Reindex Workspace, and pausing Deckard in a
+ * Theme…, Choose Display…, the walkthrough, Reindex Workspace, and pausing Deckard in a
  * workspace.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
@@ -30,6 +31,7 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.chooseTheme', () =>
       chooseTheme(context.extension.packageJSON.contributes, createChooseThemeDeps(themePreview)),
     ),
+    registerCommand('deckard.chooseDisplay', () => chooseDisplay(themePreview)),
     registerCommand('deckard.openWalkthrough', () =>
       vscode.commands.executeCommand(
         'workbench.action.openWalkthrough',

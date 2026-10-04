@@ -167,3 +167,8 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options-choices button:first-child { border-radius: var(--control-radius) 0 0 var(--control-radius); }
 .view-options-choices button:last-child { border-radius: 0 var(--control-radius) var(--control-radius) 0; }
 .view-options-choices button.active { position: relative; z-index: var(--z-raised); }
+/* The Display row: its steps, then what the reader changed and Customize…. */
+.view-options-display { display: grid; justify-items: start; gap: var(--space-1); }
+.view-options-changed { margin: 0; }
+.view-options-link { min-height: 24px; padding: 0 2px; border: 0; background: none; color: var(--text); font: inherit; text-decoration: underline; cursor: pointer; }
+.view-options-link:hover, .view-options-link:focus-visible { color: var(--amber); }

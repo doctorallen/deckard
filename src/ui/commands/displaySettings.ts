@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 
-import { writeSetting } from '../commands/settings';
-import { resolveDisplayLevel, resolveScaleValues, type DisplayLevel } from '../state/displayLevel';
-import type { DisplayChoices } from './components';
+import { writeSetting } from './settings';
+import { changedScaleSettings, resolveDisplayLevel, resolveScaleValues, SCALE_SETTINGS, type DisplayChoices, type DisplayLevel, type ScaleSetting } from '../state/displayLevel';
 
 /**
  * Display, read from the settings and written from the gear: the step
@@ -40,15 +39,30 @@ export function readDisplayLevel(): DisplayLevel {
   return resolveDisplayLevel(set, deckard.get<boolean>('zenMode', false));
 }
 
-/** How pages are drawn now, each value only when it isn't the default. */
-export function readDisplayChoices(): DisplayChoices {
+/** The scale settings as the reader set them, `auto` or a value of their own. */
+export function readScaleSettings(): Record<ScaleSetting, unknown> {
   const deckard = vscode.workspace.getConfiguration('deckard');
-  const scale = resolveScaleValues(readDisplayLevel(), {
+  return {
     themeStyling: deckard.get(DISPLAY_SETTINGS.themeStyling.key),
     helpText: deckard.get(DISPLAY_SETTINGS.helpText.key),
     density: deckard.get(DISPLAY_SETTINGS.density.key),
-  });
+  };
+}
+
+/**
+ * How pages are drawn now, each value only when it isn't the default.
+ * `previewed` is a step Choose Display… is showing on the open pages before
+ * anything is written.
+ */
+export function readDisplayChoices(previewed?: DisplayLevel): DisplayChoices {
+  const deckard = vscode.workspace.getConfiguration('deckard');
+  const level = previewed ?? readDisplayLevel();
+  const set = readScaleSettings();
+  const scale = resolveScaleValues(level, set);
+  const changed = changedScaleSettings(set).length;
   return {
+    ...(level === 'full' ? {} : { level }),
+    ...(changed ? { changed } : {}),
     ...(scale.themeStyling === 'plain' ? { styling: 'plain' as const } : {}),
     ...(scale.helpText === 'hidden' ? { help: 'hidden' as const } : {}),
     ...(scale.density === 'compact' ? { density: 'compact' as const } : {}),
@@ -74,6 +88,21 @@ function dates(value: string | undefined): Pick<DisplayChoices, 'dates'> {
 /** Whether a settings change alters how pages are drawn. */
 export function affectsDisplayChoices(event: vscode.ConfigurationChangeEvent): boolean {
   return Object.values(DISPLAY_SETTINGS).some((setting) => event.affectsConfiguration(`deckard.${setting.key}`));
+}
+
+/**
+ * Puts the step's own values back: each setting the step moves goes back to
+ * Auto, in the user's settings, where every Display setting is written.
+ */
+export async function useStepValues(): Promise<void> {
+  for (const key of Object.keys(SCALE_SETTINGS) as ScaleSetting[]) {
+    await writeSetting(DISPLAY_SETTINGS[key].key, undefined, vscode.ConfigurationTarget.Global);
+  }
+}
+
+/** Opens Settings on Display's settings, where each one changed shows as Modified with its own Reset. */
+export async function customizeDisplay(): Promise<void> {
+  await vscode.commands.executeCommand('workbench.action.openSettings', 'deckard.display');
 }
 
 /**

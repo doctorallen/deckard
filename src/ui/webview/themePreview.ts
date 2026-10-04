@@ -1,6 +1,7 @@
 import { Emitter } from '../../shared/emitter';
 import type { Event } from '../../ports/events';
 import type { DeckardTheme } from './themeNames';
+import type { DisplayLevel } from '../state/displayLevel';
 
 /**
  * A theme shown on the open pages while Choose Theme… is moved through, and
@@ -17,9 +18,27 @@ export class ThemePreview {
   /** Fires when the previewed theme changes, so the pages redraw. */
   public readonly onDidChange: Event<void> = this.changeEmitter.event;
 
+  private previewedLevel: DisplayLevel | undefined;
+
   /** The theme being previewed, or undefined while none is. */
   public get current(): DeckardTheme | undefined {
     return this.previewed;
+  }
+
+  /** The Display step Choose Display… is previewing, or undefined while none is. */
+  public get level(): DisplayLevel | undefined {
+    return this.previewedLevel;
+  }
+
+  /** Shows a Display step on the open pages without writing it, or stops (undefined), as `show` does a theme. */
+  public showLevel(level: DisplayLevel | undefined, options: { silent?: boolean } = {}): void {
+    if (this.previewedLevel === level) {
+      return;
+    }
+    this.previewedLevel = level;
+    if (!options.silent) {
+      this.changeEmitter.fire();
+    }
   }
 
   /**

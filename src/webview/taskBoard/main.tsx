@@ -22,13 +22,13 @@ import { announce } from '../shared/status';
 import { taskTitleOf } from '../shared/taskRow';
 import { createUndoNotice } from '../shared/undoToast';
 import {
+  displayLevelOption,
   displayOptions,
   installViewOptions,
   pageWidthOption,
   themeOption,
   ViewOptionChoices,
   ViewOptions,
-  zenOption,
 } from '../shared/viewOptions';
 import { keptState, vscodeApi } from '../shared/vscode';
 import { GroupSwitch, TaskBoard, taskCardMoves } from './board';
@@ -167,7 +167,7 @@ function BoardViewOptions({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
         { label: 'Status columns', content: <StatusSettings snapshot={snapshot} drafts={drafts} />, stacked: true },
         themeOption(),
         pageWidthOption(),
-        zenOption(),
+        displayLevelOption(),
         ...displayOptions(),
       ]}
     />

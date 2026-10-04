@@ -118,24 +118,27 @@ suite('The shared page core draws what the template script drew', () => {
     assertSame(drawnBefore('helpButton'), drawnNow(element('HelpButton', {})), 'help');
   });
 
-  test('the gear with its theme and zen rows, and a row of choices', () => {
-    const viewOptions = (): void => {
-      const now = [shared().themeOption(), shared().zenOption(), {
-        label: 'Layout',
-        stacked: true,
-        content: element('ViewOptionChoices', {
-          action: 'set-layout', choices: [['list', 'List'], ['board', 'Board', 'Show as a board']], selected: 'board', label: 'Layout', attributes: { 'data-scope': 'home' },
-        }),
-      }];
-      const zen = core.document.body.classList.contains('zen');
-      assertSame(drawnBefore(zen ? 'viewOptions zen' : 'viewOptions'), drawnNow(element('ViewOptions', { groups: now })), `zen ${zen}`);
-    };
-    viewOptions();
-    core.document.body.classList.add('zen');
+  test('the gear\'s Display row: the three steps, what the reader changed, and Customize…', () => {
+    const body = core.document.body;
+    const row = (): Element => drawnNow(element('ViewOptions', { groups: [shared().displayLevelOption()] }));
+    const pressed = (drawn: Element): string[] =>
+      Array.from(drawn.querySelectorAll('[data-display="level"]')).map((button) => `${button.textContent}:${button.getAttribute('aria-pressed')}`);
+
+    let drawn = row();
+    assert.deepStrictEqual(pressed(drawn), ['Full:true', 'Quiet:false', 'Zen:false']);
+    assert.strictEqual(drawn.querySelector('.view-options-changed'), null, 'nothing changed, nothing to undo');
+    assert.ok(drawn.querySelector('[data-command="customize"]'), 'Customize… is always there');
+
+    body.dataset.level = 'quiet';
+    body.dataset.changed = '2';
     try {
-      viewOptions();
+      drawn = row();
+      assert.deepStrictEqual(pressed(drawn), ['Full:false', 'Quiet:true', 'Zen:false']);
+      assert.strictEqual(drawn.querySelector('.view-options-changed')?.textContent, "Quiet · 2 changed · Use Quiet's values");
+      assert.ok(drawn.querySelector('[data-command="useStepValues"]'));
     } finally {
-      core.document.body.classList.remove('zen');
+      delete body.dataset.level;
+      delete body.dataset.changed;
     }
   });
 

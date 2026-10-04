@@ -7,7 +7,7 @@ suite('Display choices on the page body', () => {
     assert.strictEqual(getPageTailCss({ theme: 'cooper', zen: false }).bodyAttribute, '');
     assert.strictEqual(
       getPageTailCss({ theme: 'cooper', zen: true }).bodyAttribute,
-      ' class="zen" data-styling="plain" data-help="hidden" data-density="compact"',
+      ' class="zen" data-level="zen" data-styling="plain" data-help="hidden" data-density="compact"',
       'zen with no choices given draws as Zen does',
     );
     assert.strictEqual(
@@ -21,6 +21,11 @@ suite('Display choices on the page body', () => {
       'the preferences',
     );
     assert.strictEqual(getPageTailCss({ theme: 'cooper', zen: false, display: { width: 'wide' } }).bodyAttribute, ' data-width="wide"', 'page width');
+    assert.strictEqual(
+      getPageTailCss({ theme: 'cooper', zen: false, display: { level: 'quiet', changed: 2, styling: 'plain' } }).bodyAttribute,
+      ' data-level="quiet" data-changed="2" data-styling="plain"',
+      'the step and how many of its settings the reader changed, for the gear',
+    );
     assert.strictEqual(getPageTailCss({ theme: 'cooper', zen: false, display: { cards: 'flat' } }).bodyAttribute, ' data-cards="flat"');
     assert.strictEqual(
       getPageTailCss({ theme: 'lcars', zen: true, display: { cards: 'flat', tags: 'text' } }).bodyAttribute,

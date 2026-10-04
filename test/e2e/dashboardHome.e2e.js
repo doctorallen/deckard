@@ -183,7 +183,7 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
       ['search', 'agenda', 'recentNotes', 'favoriteTags', 'savedSearches'],
     );
     const labels = view.findAll('.view-options-group').map((group) => group.children[0].textContent);
-    assert.deepStrictEqual(labels, ['Home', 'Tag columns', 'Get started', 'Theme', 'Zen', 'Cards', 'Tags']);
+    assert.deepStrictEqual(labels, ['Home', 'Tag columns', 'Get started', 'Theme', 'Page width', 'Display', 'Cards', 'Tags']);
   }
 });
 
@@ -987,7 +987,7 @@ test('Quick add takes no longer a task than the host adds', async () => {
   assert.match(view.find('.home-quick-add-status').textContent, /Added/);
 });
 
-test('the gear turns zen on through the host, and the page carries the marker', async () => {
+test('the gear\'s Display row moves the step through the host, and the page carries the markers', async () => {
   const { view, panel } = await openDashboard();
   try {
     // Off to begin with: the sheet ships either way, the marker does not.
@@ -995,7 +995,7 @@ test('the gear turns zen on through the host, and the page carries the marker', 
     assert.ok(loadPage(panel.webview.html).includes('body[data-density=compact] {'), 'the Display sheet ships');
     assert.ok(!panel.webview.html.includes('<body class="zen"'), 'zen starts off');
 
-    view.click(view.find('[data-action="set-zen-mode"][data-value="on"]'));
+    view.click(view.find('[data-action="set-display"][data-display="level"][data-value="zen"]'));
     await delay(20);
 
     // The page posts intent; the host is what writes Display's step,
@@ -1004,15 +1004,10 @@ test('the gear turns zen on through the host, and the page carries the marker', 
       vscode._test.configurationUpdates.filter((update) => update.name === 'deckard.display.level'),
       [{ name: 'deckard.display.level', value: 'zen', target: vscode.ConfigurationTarget.Global }],
     );
-    // And the context key follows it, so the palette offers the other command.
-    assert.deepStrictEqual(
-      vscode._test.executedCommands.filter((entry) => entry.args[0] === 'deckard.zenMode'),
-      [{ command: 'setContext', args: ['deckard.zenMode', true] }],
-    );
 
     // A page drawn while the setting is on carries the marker the sheet needs.
     const { panel: second, view: secondView } = await openDashboard();
-    assert.ok(second.webview.html.includes('<body class="zen" data-styling="plain" data-help="hidden" data-density="compact">'), 'zen marks the body as Zen draws it');
+    assert.ok(second.webview.html.includes('<body class="zen" data-level="zen" data-styling="plain" data-help="hidden" data-density="compact">'), 'zen marks the body as Zen draws it');
 
     // Nothing was taken off the page to achieve it.
     assert.ok(secondView.find('.eyebrow'), 'the eyebrow is still drawn');

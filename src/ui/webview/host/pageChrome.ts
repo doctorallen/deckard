@@ -2,8 +2,9 @@ import * as vscode from 'vscode';
 
 import { getDeckardTheme } from '../themes';
 import type { ThemePreview } from '../themePreview';
-import { affectsDisplayChoices, readDisplayChoices, readDisplayLevel } from '../displayChoices';
+import { affectsDisplayChoices, readDisplayChoices, readDisplayLevel } from '../../commands/displaySettings';
 import type { PageChrome } from '../components';
+import type { DisplayLevel } from '../../state/displayLevel';
 
 /**
  * The look a page is written in, read now: the theme `themePreview` is
@@ -11,8 +12,9 @@ import type { PageChrome } from '../components';
  * are drawn. A host reads it
  * each time it writes a page, so the page builders read no settings.
  */
-export function readPageChrome(themePreview?: { readonly current: PageChrome['theme'] | undefined }): PageChrome {
-  return { theme: getDeckardTheme(themePreview), zen: readDisplayLevel() === 'zen', display: readDisplayChoices() };
+export function readPageChrome(themePreview?: { readonly current: PageChrome['theme'] | undefined; readonly level?: DisplayLevel }): PageChrome {
+  const level = themePreview?.level ?? readDisplayLevel();
+  return { theme: getDeckardTheme(themePreview), zen: level === 'zen', display: readDisplayChoices(themePreview?.level) };
 }
 
 /** Whether a settings change alters how a page is drawn rather than what it says. */

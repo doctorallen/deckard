@@ -144,3 +144,27 @@ export function planZenMove(
     editorOff: ZEN_EDITOR_SETTINGS.filter((key) => unset(editor[key])),
   };
 }
+
+/**
+ * How a page is drawn, as Display resolves it (ui/state/displayLevel.ts),
+ * each value named only when it isn't the default: plain theme styling,
+ * help text hidden, compact density, flat rows rather than raised cards,
+ * tags as text rather than chips, counts beside names hidden, an entry's
+ * file and line always or never drawn, and due dates as only how far off
+ * or only the date, and pages as wide as their panel.
+ */
+export interface DisplayChoices {
+  /** The step, when it isn't Full, for the gear's Display row. */
+  readonly level?: 'quiet' | 'zen';
+  /** How many of the settings the step moves the reader has set themselves. */
+  readonly changed?: number;
+  readonly styling?: 'plain';
+  readonly help?: 'hidden';
+  readonly density?: 'compact';
+  readonly cards?: 'flat';
+  readonly tags?: 'text';
+  readonly counts?: 'hidden';
+  readonly fileAndLine?: 'always' | 'never';
+  readonly dates?: 'relative' | 'date';
+  readonly width?: 'wide';
+}

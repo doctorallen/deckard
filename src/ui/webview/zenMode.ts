@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import { writeSetting } from '../commands/settings';
 import { planZenMove, ZEN_EDITOR_SETTINGS, zenToggleTarget } from '../state/displayLevel';
-import { DISPLAY_SETTINGS, readDisplayLevel } from './displayChoices';
+import { DISPLAY_SETTINGS, readDisplayLevel } from '../commands/displaySettings';
 
 /** The context key the palette's and title bar's Zen commands are gated on. */
 export const zenModeContextKey = 'deckard.zenMode';

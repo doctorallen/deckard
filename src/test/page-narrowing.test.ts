@@ -15,6 +15,7 @@ import {
   narrowParkTag,
   narrowPinNote,
   narrowRenameTag,
+  narrowDisplayCommand,
   narrowSetDisplay,
   narrowSetZenMode,
   narrowToggleTask,
@@ -96,7 +97,7 @@ suite('Page message narrowing', () => {
     ]);
   });
 
-  test('the gear\'s Cards or Tags row: which setting, and a short lowercase value', () => {
+  test('the gear\'s Display rows: which setting, and a short lowercase value', () => {
     const display = narrowWith<{ setDisplay: ReturnType<typeof narrowSetDisplay> }>({ setDisplay: narrowSetDisplay });
     check(display, [
       [{ type: 'setDisplay', setting: 'cardFrames', value: 'flat', extra: 1 }, { type: 'setDisplay', setting: 'cardFrames', value: 'flat' }],
@@ -107,6 +108,16 @@ suite('Page message narrowing', () => {
       [{ type: 'setDisplay', setting: 'theme', value: 'cooper' }, undefined],
       [{ type: 'setDisplay', setting: 'tags', value: 'Text' }, undefined],
       [{ type: 'setDisplay', setting: 'tags' }, undefined],
+    ]);
+  });
+
+  test('the gear\'s Display links: the step\'s values, or Customize…', () => {
+    const command = narrowWith<{ displayCommand: ReturnType<typeof narrowDisplayCommand> }>({ displayCommand: narrowDisplayCommand });
+    check(command, [
+      [{ type: 'displayCommand', command: 'useStepValues', extra: 1 }, { type: 'displayCommand', command: 'useStepValues' }],
+      [{ type: 'displayCommand', command: 'customize' }, { type: 'displayCommand', command: 'customize' }],
+      [{ type: 'displayCommand', command: 'reset' }, undefined],
+      [{ type: 'displayCommand' }, undefined],
     ]);
   });
 

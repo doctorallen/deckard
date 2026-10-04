@@ -35,6 +35,7 @@ import {
   openTag,
   parkTag,
   renameTag,
+  displayCommand,
   setDisplay,
   setZenMode,
   toggleTask,
@@ -353,12 +354,13 @@ export class DashboardController implements PageController<DashboardPageState, D
 
   /** The gear, a row's line, a task's box, and a tag's menu, as other pages answer them. */
   private sharedHandlers(): Handlers<
-    'setZenMode' | 'setDisplay' | 'chooseTheme' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'toggleTask' | 'openTag' | 'renameTag' | 'parkTag' | 'unparkTag'
+    'setZenMode' | 'setDisplay' | 'displayCommand' | 'chooseTheme' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'toggleTask' | 'openTag' | 'renameTag' | 'parkTag' | 'unparkTag'
   > {
     const { indexer, navigationService, preferences, navigation, writes } = this.home;
     return {
       setZenMode: setZenMode(),
       setDisplay: setDisplay(),
+      displayCommand: displayCommand(),
       chooseTheme: chooseTheme(),
       openGoTo: openGoTo(),
       listGoTo: listGoTo({ indexer, current: 'home' }),

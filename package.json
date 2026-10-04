@@ -654,6 +654,11 @@
         "icon": "$(symbol-color)"
       },
       {
+        "command": "deckard.chooseDisplay",
+        "title": "Choose Display…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.enableZenMode",
         "title": "Enter Zen",
         "category": "Deckard",

@@ -202,6 +202,7 @@ suite('Extension Test Suite', () => {
         'deckard.outline.filterByTag',
         'deckard.outline.clearTagFilter',
         'deckard.chooseTheme',
+        'deckard.chooseDisplay',
         'deckard.enableZenMode',
         'deckard.disableZenMode',
         'deckard.toggleZen',

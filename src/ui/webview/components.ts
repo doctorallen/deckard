@@ -7,30 +7,14 @@
  * redraws a page in another look is in host/pageChrome.ts.
  */
 
+import type { DisplayChoices } from '../state/displayLevel';
 import { DeckardTheme } from './themeNames';
 
-/**
- * How a page is drawn, as Display resolves it (ui/state/displayLevel.ts),
- * each value named only when it isn't the default: plain theme styling,
- * help text hidden, compact density, flat rows rather than raised cards,
- * tags as text rather than chips, counts beside names hidden, an entry's
- * file and line always or never drawn, and due dates as only how far off
- * or only the date, and pages as wide as their panel.
- */
-export interface DisplayChoices {
-  readonly styling?: 'plain';
-  readonly help?: 'hidden';
-  readonly density?: 'compact';
-  readonly cards?: 'flat';
-  readonly tags?: 'text';
-  readonly counts?: 'hidden';
-  readonly fileAndLine?: 'always' | 'never';
-  readonly dates?: 'relative' | 'date';
-  readonly width?: 'wide';
-}
+export type { DisplayChoices };
+
 
 /** Zen's values, for a page given only the zen flag, as the test harness gives it. */
-const ZEN_DISPLAY: DisplayChoices = { styling: 'plain', help: 'hidden', density: 'compact' };
+const ZEN_DISPLAY: DisplayChoices = { level: 'zen', styling: 'plain', help: 'hidden', density: 'compact' };
 
 /**
  * The look a page is written in: the theme its host read, preview and all,
@@ -105,6 +89,8 @@ function bodyMarkers(chrome: PageChrome): string {
   const display = chrome.display ?? (chrome.zen ? ZEN_DISPLAY : {});
   return [
     chrome.zen ? ' class="zen"' : '',
+    display.level ? ` data-level="${display.level}"` : '',
+    display.changed ? ` data-changed="${display.changed}"` : '',
     display.styling === 'plain' ? ' data-styling="plain"' : '',
     display.help === 'hidden' ? ' data-help="hidden"' : '',
     display.density === 'compact' ? ' data-density="compact"' : '',
