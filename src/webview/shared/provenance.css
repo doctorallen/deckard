@@ -123,3 +123,21 @@ body.provenance-dismissed .home-row .home-row-detail, body.provenance-dismissed 
 .card:hover .source ~ .source, .card:focus-within .source ~ .source,
 .task-row:hover .task-source ~ .task-source, .task-row:focus-within .task-source ~ .task-source,
 .board-card:hover .task-source ~ .task-source, .board-card:focus-within .task-source ~ .task-source { top: calc(100% + 20px); }
+
+/* Focus and the pointer each mark one entry. While the keyboard has focus
+   somewhere, an entry under a resting pointer no longer carries its line
+   down, so only the focused entry looks active. */
+body:has(:focus-visible) :is(.card, .note, .task-row, .home-row, .tag-row, .board-card):hover:not(:focus-within)::after { content: none; }
+body:has(:focus-visible) :is(.card, .note, .task-row, .home-row, .tag-row, .board-card):hover:not(:focus-within) :is(.source, .task-source, .home-row-detail, .tag-count) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+/* A focused entry makes room for its carried-down line, pushing the next
+   entry down rather than covering its title, for a keyboard reader at any
+   zoom. The pointer's hover still lays the line over the next entry, so a
+   list does not jump under a moving mouse. */
+:is(.card, .note, .task-row, .home-row, .tag-row, .board-card):focus-within { margin-bottom: calc(var(--reach) + var(--space-2)); }
+

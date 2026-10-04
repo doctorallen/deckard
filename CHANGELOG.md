@@ -51,6 +51,13 @@
 
 ### Changed
 
+- **Focus is easier to follow.** A focused row or card now pushes the next
+  one down to show where it is written, rather than laying that line over
+  the next title; while the keyboard has focus, the row under a resting
+  pointer no longer opens too, so one entry looks active, not two. The Task
+  board's columns are lists to a screen reader, which says how many cards
+  each holds and where each card is, such as *3 of 13*.
+
 - **Names that say what they do.** `Deckard: Search Notes and Tasks` and
   `Deckard: Open Search Page` were one job under two names; they are now
   `Deckard: Open Search Page…`, which takes a search or opens every note.

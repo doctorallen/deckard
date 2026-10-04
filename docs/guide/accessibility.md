@@ -8,6 +8,7 @@ Deckard is built to be used with a keyboard, a screen reader, high contrast, and
 - **In a webview with NVDA or JAWS,** press <kbd>Insert</kbd>+<kbd>Space</kbd> (NVDA) or <kbd>Insert</kbd>+<kbd>Z</kbd> (JAWS) to switch to focus mode when you want Deckard's own keys, such as the Task board's; browse mode reads the page as a document. VoiceOver needs no switch.
 - **What changed is announced** through a status region, without moving focus: a card moved on the board, a widget added or removed on Home, and an Undo.
 - **Focus stays where it was** when a page redraws after an index update, and returns to the control that opened a menu or a dialog when it closes.
+- **The Task board's columns are lists:** entering one says how many cards it holds, and each card where it is, such as *3 of 13*.
 - **Task metadata reads better in Dataview format.** A screen reader reads `📅 2026-10-07` as "calendar 2026-10-07" and `⏫` as an arrow; `[due:: 2026-10-07]` and `[priority:: high]` read as words. Set `deckard.tasks.metadataFormat` to `dataview` for new metadata; Deckard reads both formats and keeps each task's own.
 
 ## Keyboard
@@ -31,6 +32,7 @@ Every command is in the Command Palette under **Deckard:**, and each can be give
 - **Contrast:** every text color in every theme meets WCAG AA (4.5:1) against its background; a test checks it on each change.
 - **Color is never the only signal:** an overdue date says *overdue*, a priority says its level, and red means overdue or high priority and nothing else.
 - **Zoom:** pages reflow with VS Code's zoom (`window.zoomLevel`) and at narrow widths; the calendar page and Help fold to one column.
+- **Focus is its own mark.** The focused entry has the focus ring and opens its *file / line* below it, pushing the next entry down rather than covering it; while you use the keyboard, an entry under a resting pointer stays as it is.
 - **Motion:** with your system's reduce-motion setting on, pages hold still: no animated transitions or smooth scrolling.
 - **Zen** turns decoration down on any page; see [Themes and Zen mode](themes-and-zen.md#zen-mode).
 
