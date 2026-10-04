@@ -18,6 +18,7 @@ import { CREATE_MISSING_NOTES_COMMAND } from '../commands/linkHealth';
 import { resolveSourceUri } from '../commands/navigation';
 import { getRolloverLookbackDays, getRolloverMode } from '../commands/rollover';
 import { LINK_MENTIONS_COMMAND } from '../commands/unlinkedMentions';
+import { readEditorToggle } from './editorToggles';
 import { LazyCodeLens, locate, resolveLazyCodeLens } from './codeLenses';
 import { whenPublished } from '../../core/workspace/publishing';
 import { findLinkProblems, findMissingNoteNames } from '../../domain/links/linkProblems';
@@ -123,10 +124,6 @@ export class EditorLenses
     if (!this.isReady || !isMarkdownFile(document.uri)) {
       return [];
     }
-    const configuration = vscode.workspace.getConfiguration(
-      'deckard.editor',
-      document.uri,
-    );
     // Zen keeps the lenses that report a problem or act on today's note,
     // and drops the suggestion to link a note's mentions.
     const zen = vscode.workspace
@@ -134,7 +131,7 @@ export class EditorLenses
       .get<boolean>('zenMode', false);
     const groups = this.groups.filter(
       (group) =>
-        configuration.get<boolean>(group.setting, true) &&
+        readEditorToggle(group.setting, document.uri) &&
         !(zen && group.setting === 'unlinkedMentions'),
     );
     if (groups.length === 0) {

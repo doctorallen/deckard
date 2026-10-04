@@ -4,6 +4,12 @@
 
 ### Added
 
+- **Editor presets.** `Deckard: Choose Editor Preset…` picks what Deckard
+  draws in the editor in one choice: **Full**, as now; **Tasks**, task hints
+  and problem reports without link counts, mention lenses, or breadcrumbs;
+  or **Writing**, a quiet page with the / menu, hover previews, and problem
+  reports. Any `deckard.editor.*` switch you set yourself still wins.
+
 - **Daily notes where you keep them.** `deckard.periodicNotes.folder` puts
   new daily, weekly, and monthly notes in a folder inside the notes folder,
   such as `journal/{yyyy}`; notes already elsewhere are still found.

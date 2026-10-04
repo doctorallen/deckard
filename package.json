@@ -309,6 +309,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.chooseEditorPreset",
+        "title": "Choose Editor Preset…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.createDailyNote",
         "title": "Create Daily Note",
         "category": "Deckard",
@@ -2120,6 +2125,18 @@
             "scope": "resource",
             "default": true,
             "markdownDescription": "Highlight the tagged section or task the cursor is in, in Markdown notes. Its colors are `deckard.sectionHighlightBackground` and `deckard.sectionHighlightBorder`.",
+            "order": 0
+          },
+          "deckard.editor.preset": {
+            "type": "string",
+            "enum": ["full", "tasks", "writing"],
+            "enumDescriptions": [
+              "Everything Deckard draws in the editor: counts, hints, previews, and lenses.",
+              "What helps with tasks, and what reports a problem; no link counts, mention lenses, or breadcrumbs.",
+              "A quiet page for writing: the / menu, hover previews, and problem reports only."
+            ],
+            "default": "full",
+            "description": "What Deckard draws in the editor, as one choice. A deckard.editor.* setting you change yourself wins over it.",
             "order": 0
           },
           "deckard.editor.referenceCounts": {

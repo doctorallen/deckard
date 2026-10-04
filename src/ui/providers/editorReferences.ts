@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { readEditorToggle } from './editorToggles';
 import { extractTagSpans } from '../../domain/markdown/parser';
 import { escapeMarkdown, pluralize } from '../../shared/text';
 import { measure } from '../../shared/timing';
@@ -380,7 +381,7 @@ function readSetting(
   if (name === 'referenceCounts' && configuration.get<boolean>('zenMode', false)) {
     return false;
   }
-  return configuration.get<boolean>(`editor.${name}`, true);
+  return readEditorToggle(name, document.uri);
 }
 
 /** A count that lists links or tasks in VS Code's references peek. */

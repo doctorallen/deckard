@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { readEditorToggle } from './editorToggles';
 import { KeyedDebouncer } from '../../shared/debounce';
 import { measure } from '../../shared/timing';
 import { findTaskLineMarks } from '../state/taskLineMarks';
@@ -21,11 +22,11 @@ const REDRAW_SETTINGS = [
 function readOptions(uri: vscode.Uri): { dim: boolean; hints: boolean } {
   const configuration = vscode.workspace.getConfiguration('deckard', uri);
   return {
-    dim: configuration.get<boolean>('editor.dimTaskMetadata', true),
+    dim: readEditorToggle('dimTaskMetadata', uri),
     // Zen quiets the editor: the hints go, the dimming stays, since dimming
     // is itself a way of quieting.
     hints:
-      configuration.get<boolean>('editor.taskDueHints', true) &&
+      readEditorToggle('taskDueHints', uri) &&
       !configuration.get<boolean>('zenMode', false),
   };
 }

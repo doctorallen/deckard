@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { reportFailure, reportNeedsFolder } from './notify';
+
+import { readEditorToggle } from '../providers/editorToggles';import { reportFailure, reportNeedsFolder } from './notify';
 
 import { pluralize } from '../../shared/text';
 import { measure } from '../../shared/timing';
@@ -180,9 +181,7 @@ export class LinkHealth implements vscode.Disposable {
       !this.isReady ||
       !isMarkdownFile(document.uri) ||
       !this.indexer.isNotesFile(document.uri) ||
-      !vscode.workspace
-        .getConfiguration('deckard', document.uri)
-        .get<boolean>('editor.linkDiagnostics', true)
+      !readEditorToggle('linkDiagnostics', document.uri)
     ) {
       this.diagnostics.delete(document.uri);
       return;

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { readEditorToggle } from './editorToggles';
 import { KeyedDebouncer } from '../../shared/debounce';
 import {
   describeRepeatRuleProblem,
@@ -84,7 +85,7 @@ export class RepeatRuleHealth implements vscode.Disposable {
   public check(document: vscode.TextDocument): void {
     if (
       !this.isNotesFile(document.uri) ||
-      !vscode.workspace.getConfiguration('deckard', document.uri).get<boolean>('editor.repeatDiagnostics', true)
+      !readEditorToggle('repeatDiagnostics', document.uri)
     ) {
       this.diagnostics.delete(document.uri);
       return;

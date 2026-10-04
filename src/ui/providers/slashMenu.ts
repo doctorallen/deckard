@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { readEditorToggle } from './editorToggles';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import type { NoteFiles } from '../../core/workspace/indexReader';
 import { findFencedLines } from '../../domain/markdown/lineShapes';
@@ -59,7 +60,7 @@ export class SlashMenuProvider implements vscode.Disposable {
     position: vscode.Position,
   ): Promise<vscode.CompletionItem[]> {
     if (
-      !vscode.workspace.getConfiguration('deckard.editor', document.uri).get<boolean>('slashMenu', true) ||
+      !readEditorToggle('slashMenu', document.uri) ||
       !isMarkdownFile(document.uri) ||
       !(this.indexer.isNotesFile?.(document.uri) ?? true)
     ) {

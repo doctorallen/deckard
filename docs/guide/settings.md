@@ -39,6 +39,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.taskReminderTime": "",
 	"deckard.board.statusNamespace": "status",
 	"deckard.board.statuses": ["todo", "doing", "waiting"],
+	"deckard.editor.preset": "full",
 	"deckard.editor.referenceCounts": true,
 	"deckard.editor.hoverPreviews": true,
 	"deckard.editor.linkDiagnostics": true,
@@ -126,6 +127,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.taskReminderTime` | Empty | A time of day, such as `09:00`, from which Deckard says how many tasks are due, once a day. Empty means no reminder. |
 | `deckard.board.statusNamespace` | `status` | The tag namespace that holds a task's status on the task board, so the default reads `#status/doing`. |
 | `deckard.board.statuses` | `["todo", "doing", "waiting"]` | The task board's status columns, in order. An unlisted status found on a task gets a column after them. |
+| `deckard.editor.preset` | `full` | What Deckard draws in the editor, as one choice: `full`, everything; `tasks`, task hints and problem reports without link counts, mention lenses, or breadcrumbs; `writing`, the / menu, hover previews, and problem reports only. A `deckard.editor.*` setting you change yourself wins over it. `Deckard: Choose Editor Preset…` sets it. |
 | `deckard.editor.referenceCounts` | `true` | Shows backlink, heading-reference, and open-task counts above a note's lines. |
 | `deckard.editor.hoverPreviews` | `true` | Previews a `[[Wiki link]]`'s target and summarizes a tag's entries on hover. |
 | `deckard.editor.linkDiagnostics` | `true` | Marks a `[[Wiki link]]` that opens no note and offers to create a missing one. |
