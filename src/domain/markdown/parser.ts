@@ -34,7 +34,7 @@ import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
  * (steps' parent links, say) changes it, so the local cache, which keeps
  * parsed notes, is rebuilt rather than served in the old shape.
  */
-export const PARSE_FORMAT = 'other-checkboxes';
+export const PARSE_FORMAT = 'citations';
 
 /** A heading as the parser found it: its 1-based line, its level, and its words. */
 interface HeadingMatch {
@@ -1104,6 +1104,7 @@ function findTagMatches(
     return [];
   }
   const skipped = findCodeAndLinkRanges(text);
+  const citations = text.includes('[') ? findCitationRanges(text) : [];
   return markers.flatMap((markerIndex) => {
     const rawName = readTagNameAt(text, markerIndex);
     if (rawName === undefined) {
@@ -1111,6 +1112,10 @@ function findTagMatches(
     }
     const marker = text[markerIndex];
     if (isNumericHashTag(marker, rawName) || isInRanges(skipped, markerIndex)) {
+      return [];
+    }
+    // `[@smith2020; @lee2019]` cites; it names no one.
+    if ((marker === '@' || marker === activePersonMarker) && isInRanges(citations, markerIndex)) {
       return [];
     }
 
@@ -1123,6 +1128,24 @@ function findTagMatches(
       },
     ];
   });
+}
+
+/**
+ * A bracketed Pandoc citation: `[@smith2020]`, `[see @lee2019, p. 3]`, or
+ * `[@a; @b]`, but not a `[[link]]`, a `[text](link)`, a checkbox, or a
+ * Dataview field such as `[assignee:: @dana]`.
+ */
+const CITATION_GROUP = /(?<!\[)\[(?!\[)([^\]\n]*@[^\]\n]*)\](?!\(|\])/g;
+
+/** Where each bracketed citation sits in `text`, brackets included. */
+function findCitationRanges(text: string): Array<{ start: number; end: number }> {
+  const ranges: Array<{ start: number; end: number }> = [];
+  for (const match of text.matchAll(CITATION_GROUP)) {
+    if (!match[1].includes('::')) {
+      ranges.push({ start: match.index, end: match.index + match[0].length });
+    }
+  }
+  return ranges;
 }
 
 /** The UTF-16 codes of `#` and `@`. */
@@ -1309,8 +1332,12 @@ function compileTagPattern(personMarker: string): RegExp {
   const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
   // The name ends on a letter, digit, or `_`, and the next character is none
   // of those, so `#tag-` is `#tag` and `#café` is not cut short at the `é`.
+  // A person marker inside an open `[`, as in a Pandoc citation such as
+  // `[@smith2020; @lee2019]`, is a citation key, not a person; a Dataview
+  // field such as `[assignee:: @dana]` is still read, by its `::`.
+  const citation = `(?!(?<=\\[(?:(?!::)[^\\]\\n])*)[@${escapedMarker}])`;
   return new RegExp(
-    `(^|[^${TAG_WORD_CHARACTERS}#])([#@${escapedMarker}])(${TAG_NAME_SOURCE})(?<=[${TAG_WORD_CHARACTERS}])(?![${TAG_WORD_CHARACTERS}])`,
+    `(^|[^${TAG_WORD_CHARACTERS}#])${citation}([#@${escapedMarker}])(${TAG_NAME_SOURCE})(?<=[${TAG_WORD_CHARACTERS}])(?![${TAG_WORD_CHARACTERS}])`,
     'gu',
   );
 }

@@ -18,6 +18,8 @@ Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people
 - A task is its own entry under every setting.
 - Changing the setting reindexes the workspace automatically, and writes nothing to your notes.
 
+**Citations.** A Pandoc citation in brackets, such as `[@smith2020; @lee2019, p. 33]` or `[see @kim2021]`, names no person, so citation keys never become people or offer to merge as tags that look alike. A Dataview field such as `[assignee:: @dana]` and link text such as `[@sam](…)` still name their person.
+
 **Links.** A `[[link]]` names a note by its file name without `.md`, or by any name in its `aliases:` front matter, such as `aliases: [Atlas Program, AP]`. `[[Atlas.md]]` works too, and opens `Atlas`. A name two notes share opens neither. A link in fenced code or inline code, such as `` `[[Atlas]]` ``, is an example: it links nothing. A link to an image or other attachment, such as `![[diagram.png]]`, is not a note, so it is never a missing one.
 
 **Markdown links count too.** A relative link such as `[the decision](../adr/0042.md#decision-record)`, the kind GitHub and MkDocs render, links its note just as `[[0042]]` would: it shows in Linked from, the Notes Graph, Related Notes, and Stats, and a `#fragment` written as a heading's slug finds that heading. A link to a web page, to a path from the root, or to a file outside your notes links no note, and is never reported as a missing one. Deckard writes `[[links]]` when it makes one, such as from a mention; `deckard.links.style` set to `markdown` writes `[Atlas](projects/Atlas.md)` instead. Renaming a note rewrites its `[[links]]`; VS Code's own `markdown.updateLinksOnFileMove.enabled` rewrites Markdown links.

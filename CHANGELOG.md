@@ -116,6 +116,12 @@
 
 ### Fixed
 
+- **Citations are not people.** A Pandoc citation such as
+  `[@smith2020; @lee2019]` made each key a person, and Stats offered to
+  merge keys that looked alike. A person marker inside a bracketed citation
+  is now left alone; `[assignee:: @dana]` and `[@sam](…)` still name their
+  person. The parse format changes, so the cache is rebuilt.
+
 - **The guide says what Deckard does.** It said fenced code is left out of
   the index, though its words are searchable; that note dates come only
   from file times, though front matter comes first; and that completing a
