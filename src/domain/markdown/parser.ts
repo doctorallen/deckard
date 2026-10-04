@@ -15,6 +15,7 @@ import {
   findFencedLines,
   isHeading,
   isTaskLineOf,
+  OTHER_MARKS,
   matchHeading,
   matchTaskLine,
   readHeading,
@@ -33,7 +34,7 @@ import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
  * (steps' parent links, say) changes it, so the local cache, which keeps
  * parsed notes, is rebuilt rather than served in the old shape.
  */
-export const PARSE_FORMAT = 'markdown-links';
+export const PARSE_FORMAT = 'other-checkboxes';
 
 /** A heading as the parser found it: its 1-based line, its level, and its words. */
 interface HeadingMatch {
@@ -75,6 +76,8 @@ function getTagField(field: string): string {
  * rest of the line on one line.
  */
 const taskShape: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'gap', oneLine: true };
+/** A checkbox line with any other mark, such as `[/]` or `[-]`, which is text rather than a task. */
+const otherCheckboxShape: TaskLineShape = { indent: 'whitespace', marks: OTHER_MARKS, after: 'gap', oneLine: true };
 const listItemPattern = /^(\s*)([-*+])[ \t]+/;
 const orderedListItemPattern = /^(\s*)\d+[.)][ \t]+/;
 const explicitDatePattern = /\b(\d{4})-(\d{2})-(\d{2})\b/;
@@ -263,6 +266,9 @@ export function parseMarkdown(
   });
 
   const blockIds = findBlockIds(lines, fencedLines);
+  const otherCheckboxes = lines.filter(
+    (line, lineIndex) => !fencedLines.has(lineIndex) && isTaskLineOf(line, otherCheckboxShape),
+  ).length;
 
   return normalizeParsedTagReferences({
     filePath,
@@ -274,6 +280,7 @@ export function parseMarkdown(
     links: [...new Set([...frontmatter.links, ...extractNoteLinks(content, filePath)])],
     ...(frontmatter.aliases ? { aliases: frontmatter.aliases } : {}),
     ...(frontmatter.hub ? { hub: frontmatter.hub } : {}),
+    ...(otherCheckboxes > 0 ? { otherCheckboxes } : {}),
     createdAt: dates.createdAt,
     updatedAt: dates.updatedAt,
     ...(metadata

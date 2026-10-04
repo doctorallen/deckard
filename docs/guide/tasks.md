@@ -27,7 +27,7 @@ Deckard reads both formats of the [Obsidian Tasks](https://publish.obsidian.md/t
   - Obsidian Tasks rules: `every day`, `every 3 weeks`, `every month`, `every year`, `every weekday`, `every Monday`, `every week on Tuesday, Friday`, `every month on the 15th`, `every month on the last`, `every other week` (or day, month, year), `every other Tuesday`, `every 2 weeks on Monday, Thursday` (weeks start on Monday), `every month on the second Tuesday` or `on the last Friday`.
   - Deckard's own, which Tasks does not read: `every quarter`, `every 2 quarters`, `every weekend`.
   - `on the fifth Friday` skips months without one. Any rule can end in `when done`. Any other rule completes the task with no next occurrence, and Deckard tells you so.
-- Only `[ ]`, `[x]`, and `[X]` are tasks; `[-]` is not indexed.
+- Only `[ ]`, `[x]`, and `[X]` are tasks. A line with any other mark, such as Obsidian's `[/]` for in progress or `[-]` for cancelled, is text: it is not listed or counted. The first scan that finds such lines says how many, once, and [Stats](home-and-stats.md#stats) keeps saying it.
 
 ### Who a task is for
 

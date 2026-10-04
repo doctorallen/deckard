@@ -13,7 +13,7 @@ import { AttentionSection } from './attention';
 import { type DrawnStats, ROW_LISTS, type RowList, type StatsState } from './model';
 import { movePairFocus, settlePairFocus, TagPairsSection } from './tagPairs';
 import { TagUseSection } from './tagUse';
-import { ParkedLine, StatsHeader, StatsMetrics } from './totals';
+import { OtherCheckboxesLine, ParkedLine, StatsHeader, StatsMetrics } from './totals';
 import { ViewsSection } from './views';
 
 /** Sends the host one of the messages Stats may send. */
@@ -30,6 +30,7 @@ function StatsPage({ state }: { readonly state: DrawnStats }) {
       <AttentionSection state={state} />
       <StatsMetrics snapshot={snapshot} />
       <ParkedLine parked={snapshot.parked} />
+      <OtherCheckboxesLine count={snapshot.otherCheckboxes} />
       <ViewsSection state={state} />
       <TagUseSection usage={snapshot.tagUsage} showUsedOnce={state.showUsedOnce} />
       <TagPairsSection data={snapshot.tagPairs} asTable={state.pairsAsTable} />

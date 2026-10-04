@@ -1,4 +1,5 @@
 import { isParkedFile } from '../../domain/index/parked';
+import { countOtherCheckboxes } from '../../domain/index/otherCheckboxes';
 import { isPeriodicNoteFile, stripTags } from '../../domain/markdown/parser';
 import { findMissingLinkTargets, getBacklinkIndex, noteTitle } from '../../domain/index/backlinks';
 import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
@@ -47,6 +48,7 @@ export function createDeckardStatsSnapshot(
       (count, file) => count + file.links.length,
       0,
     ),
+    ...(countOtherCheckboxes(index) > 0 ? { otherCheckboxes: countOtherCheckboxes(index) } : {}),
     tagViews: createAccessItems(preferences.tagAccessCounts, (tagKey) => {
       const tag = index.tags.get(tagKey);
       return tag

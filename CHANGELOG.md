@@ -4,6 +4,13 @@
 
 ### Added
 
+- **Checkbox lines that are not tasks are counted.** Only `- [ ]` and
+  `- [x]` lines are tasks, so an Obsidian vault's `- [/]` and `- [-]` lines
+  were left out of every task count with nothing saying so. The first scan
+  that finds such lines says how many, once per workspace, and Stats keeps
+  a line for them. Stats' **Wiki links** total is now **Links**, since it
+  counts Markdown links too.
+
 - **Markdown links count.** A relative `[text](../adr/0042.md)` link, the
   kind GitHub and MkDocs render, now links its note everywhere a `[[link]]`
   does: Linked from, the editor's link counts, the Notes Graph, Related

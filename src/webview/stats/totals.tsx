@@ -102,7 +102,7 @@ export function StatsMetrics({ snapshot }: { readonly snapshot: DeckardStatsSnap
       <Metric label="Open tasks" value={snapshot.activeTaskCount} query="is:open" hint="Open a search for every open task" trend={trendOf(snapshot, 'openTasks', 'open tasks')} />
       <ActionMetric label="Tags" value={snapshot.tagCount} action="open-tag-list" hint="Choose a tag to open" attributes={{ 'data-namespaced': 'false' }} />
       <ActionMetric label="Namespaced tags" value={snapshot.entityCount} action="open-tag-list" hint="Choose a namespaced tag to open" attributes={{ 'data-namespaced': 'true' }} />
-      <ActionMetric label="Wiki links" value={snapshot.wikiLinkCount} action="open-graph" hint="Open the Notes Graph showing only the links you wrote" />
+      <ActionMetric label="Links" value={snapshot.wikiLinkCount} action="open-graph" hint="Open the Notes Graph showing only the links you wrote" />
       <ActionMetric label="Unlinked notes" value={snapshot.orphanNoteCount} action="jump" hint="Go to the list of notes nothing links to" attributes={{ 'data-target': 'orphans-heading' }} />
     </section>
   );
@@ -117,6 +117,22 @@ export function ParkedLine({ parked }: { readonly parked: DeckardStatsSnapshot['
   return (
     <p class="parked-line">
       <button type="button" class="text-button" data-action="open-search" data-query="is:parked" data-tip="Search everything that is parked">{words}</button>
+    </p>
+  );
+}
+
+/**
+ * The checkbox lines no total counts: a `- [/]` or `- [-]` line, as
+ * Obsidian writes in-progress and cancelled tasks, is text to Deckard. An
+ * Obsidian vault's task count came up short with nothing saying why.
+ */
+export function OtherCheckboxesLine({ count }: { readonly count: number | undefined }) {
+  if (!count) {
+    return null;
+  }
+  return (
+    <p class="parked-line">
+      {`Not counted: ${counted(count, 'checkbox line', 'checkbox lines')} marked with something other than a space or an x, such as [/] or [-]. Only - [ ] and - [x] lines are tasks.`}
     </p>
   );
 }

@@ -81,6 +81,12 @@ export interface ParsedFile {
   /** Present when the note's `describes:` front matter names tags. */
   hub?: NoteHub;
   /**
+   * How many checkbox lines hold a mark that is not a task's, such as
+   * `- [/]` or `- [-]`; absent when none do. They are text, not tasks, so
+   * Stats and a one-time notice say how many were left out.
+   */
+  otherCheckboxes?: number;
+  /**
    * When the note was created and last updated. A date the note states about
    * itself, in front matter or as a daily note's day, comes before its file's.
    */

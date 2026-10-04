@@ -209,9 +209,9 @@ suite('Stats: what needs attention, first', () => {
       assert.deepStrictEqual(page.posted.at(-1), { type: 'openTagList', namespaced: false });
       tile('Namespaced tags').click();
       assert.deepStrictEqual(page.posted.at(-1), { type: 'openTagList', namespaced: true });
-      tile('Wiki links').click();
+      tile('Links').click();
       assert.deepStrictEqual(page.posted.at(-1), { type: 'openNotesGraph', onlyWrittenLinks: true });
-      assert.strictEqual(tile('Wiki links').getAttribute('aria-label'), 'Wiki links, 1. Open the Notes Graph showing only the links you wrote');
+      assert.strictEqual(tile('Links').getAttribute('aria-label'), 'Links, 1. Open the Notes Graph showing only the links you wrote');
       const before = page.posted.length;
       tile('Unlinked notes').click();
       assert.strictEqual(page.posted.length, before, 'moving to the list posts nothing');
