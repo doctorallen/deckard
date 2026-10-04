@@ -964,6 +964,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     themePreview,
     manifest: context.extension.packageJSON.contributes,
     whatsNew: parts.whatsNew,
+    indexer,
   });
   const notesGraph = new NotesGraphPanel({
     indexer,

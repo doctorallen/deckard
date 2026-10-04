@@ -185,6 +185,31 @@ export interface OpenGoToMessage {
   type: 'openGoTo';
 }
 
+/** DECKARD in a page's eyebrow selected: the pages its menu lists, asked for. */
+export interface ListGoToMessage {
+  type: 'listGoTo';
+}
+
+/** A page chosen from the eyebrow's menu, by its id, such as `board`. */
+export interface GoToPageMessage {
+  type: 'goToPage';
+  page: string;
+}
+
+/** One page in the eyebrow's menu, with its hint, as the Pages view shows it. */
+export interface GoToMenuPage {
+  id: string;
+  label: string;
+  description: string;
+}
+
+/** The eyebrow's menu: every page but the one it is on, and Go to…'s key. */
+export interface GoToPagesMessage {
+  type: 'goToPages';
+  pages: GoToMenuPage[];
+  key: string;
+}
+
 /** Opens the Help page. */
 export interface OpenHelpMessage {
   type: 'openHelp';

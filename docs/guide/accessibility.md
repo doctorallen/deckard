@@ -19,6 +19,7 @@ Deckard is built to be used with a keyboard, a screen reader, high contrast, and
 | Any right-click menu | <kbd>Shift</kbd>+<kbd>F10</kbd>, the context-menu key, or <kbd>Alt</kbd>+<kbd>Enter</kbd> opens it on what has focus; arrows move, <kbd>Enter</kbd> chooses, <kbd>Escape</kbd> closes |
 | Task board | One Tab stop; arrows move between cards and columns; on a card, **x** done, **t**/**m** due today or tomorrow, **d** a date, **f** who it is for, **1**–**5** priority, **[** and **]** the next column, **e** edit, **?** every key. See [Task board: Keyboard](task-board.md#keyboard) |
 | A card's **⋯** menu | Each item shows its one-key shortcut |
+| **DECKARD ▾** atop a page | <kbd>Enter</kbd> or <kbd>Space</kbd> drops the menu of pages; arrows move, <kbd>Enter</kbd> goes, <kbd>Escape</kbd> closes it and returns to DECKARD |
 | Notes Graph | Tab to the graph, arrows select a dot, <kbd>Enter</kbd> opens it, <kbd>Alt</kbd>+<kbd>Enter</kbd> beside the graph, <kbd>Escape</kbd> clears |
 | Home and Tags tabs | <kbd>Left</kbd> and <kbd>Right</kbd> switch tabs |
 | Ranked tags | <kbd>Alt</kbd>+<kbd>Up</kbd> and <kbd>Alt</kbd>+<kbd>Down</kbd> move a tag |

@@ -10,6 +10,7 @@
  * it was: the guide page it showed, and how far down it was scrolled.
  */
 import type { HelpGuideMessage, HelpHostToPage, HelpMessage } from '../../ui/protocol/help';
+import { installGoToMenu } from '../shared/goToMenu';
 
 /** What VS Code gives a webview's script. */
 interface VsCodeApi {
@@ -202,27 +203,16 @@ function followGuideLink(event: Event, link: Element): void {
   }
 }
 
-/**
- * The command a click runs, if any: one named in the guide, whose id the
- * host checks, or Go to… from DECKARD in the eyebrow, as on every page.
- */
-function clickedCommand(target: Element): string | undefined {
-  const button = target.closest('.command-link');
-  if (button) {
-    return button.getAttribute('data-command') ?? '';
-  }
-  return target.closest('[data-go-to]') ? 'deckard.goTo' : undefined;
-}
-
 /** A click on a command, the changelog, a guide link, Back, or the rail. */
 function onClick(event: MouseEvent): void {
   const target = event.target instanceof Element ? event.target : null;
   if (!target) {
     return;
   }
-  const command = clickedCommand(target);
-  if (command !== undefined && vscode) {
-    vscode.postMessage({ type: 'runCommand', command });
+  // A command named in the guide runs from it; the host checks the id.
+  const button = target.closest('.command-link');
+  if (button && vscode) {
+    vscode.postMessage({ type: 'runCommand', command: button.getAttribute('data-command') ?? '' });
   }
   if (target.closest('[data-action="open-changelog"]') && vscode) {
     event.preventDefault();
@@ -362,6 +352,11 @@ function followRail(): void {
 }
 
 document.addEventListener('click', onClick);
+// DECKARD ▾ at the top drops the menu of every other page, as on every page.
+if (vscode) {
+  const host = vscode;
+  installGoToMenu((message) => host.postMessage(message));
+}
 window.addEventListener('message', onMessage);
 window.addEventListener('scroll', saveSoon, { passive: true });
 open();

@@ -35,6 +35,12 @@
 .menu-check svg { width: 14px; height: 14px; }
 .menu-key { margin-left: auto; padding-left: var(--space-3); color: var(--muted); font: var(--text-xs) var(--font-mono); }
 button.menu-item:hover:where(:not(:disabled):not([aria-disabled="true"])) .menu-key, button.menu-item:focus-visible .menu-key { color: inherit; }
+/* DECKARD's menu at the top of a page: each page with its hint, then Go
+   to…. Placed under DECKARD by its script, fixed so a scroll cannot carry
+   it off. */
+.go-to-menu { position: fixed; min-width: 260px; max-width: calc(100vw - 16px); }
+.go-to-label { white-space: nowrap; }
+.go-to-separator { height: 1px; margin: var(--space-1) 0; background: var(--line-strong); }
 /* The one tip every page shares (data-tip), placed by the page script. A
    facet value's tip runs to several lines, so its line breaks are kept. */
 #deckard-tip { position: fixed; white-space: pre-line; }

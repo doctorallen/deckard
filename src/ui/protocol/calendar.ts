@@ -7,6 +7,8 @@ import type { Correlated, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
   DashboardTask,
+  GoToPageMessage,
+  ListGoToMessage,
   OpenGoToMessage,
   OpenHelpMessage,
   OpenTagMessage,
@@ -270,6 +272,8 @@ export interface CalendarPagePageToHost extends CalendarPageToHost {
   chooseTheme: ChooseThemeMessage;
   openHelp: OpenHelpMessage;
   openGoTo: OpenGoToMessage;
+  listGoTo: ListGoToMessage;
+  goToPage: GoToPageMessage;
 }
 
 /** What the host sends the calendar page, by type. */

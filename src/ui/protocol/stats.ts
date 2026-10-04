@@ -6,6 +6,8 @@ import type { TagMergeCandidate } from '../../domain/model/tags';
 import type { UnreadableNote } from '../../domain/model/workspaceIndex';
 import type { IndexingMessage, MessageOf, StateMessage } from './messaging';
 import type {
+  GoToPageMessage,
+  ListGoToMessage,
   MergeTagsMessage,
   OpenGoToMessage,
   OpenSearchMessage,
@@ -194,6 +196,8 @@ export interface StatsPageToHost {
   mergeTags: MergeTagsMessage;
   createMissingNotes: CreateMissingNotesMessage;
   openGoTo: OpenGoToMessage;
+  listGoTo: ListGoToMessage;
+  goToPage: GoToPageMessage;
 }
 
 /** What the host sends the Stats page, by type. */

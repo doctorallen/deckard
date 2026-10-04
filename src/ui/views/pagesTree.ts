@@ -4,6 +4,7 @@ import type { IndexReader, IndexUpdates } from '../../core/workspace/indexReader
 import { listDailyNotes, formatLocalDate } from '../../domain/notes/periodicNotes';
 import { readQueryContext } from '../commands/queryContext';
 import { createTaskGlance } from '../state/dashboardState';
+import type { GoToPagesMessage } from '../protocol/shared';
 import { DeckardPage, DeckardPageId, listDeckardPages, PageFacts } from '../state/deckardPages';
 
 /**
@@ -26,6 +27,26 @@ export function readPageFacts(indexer: Pick<IndexReader, 'getSnapshot'>, now: Da
     today: now,
     todayNoteExists: listDailyNotes(index).some((note) => note.date === today),
     findKey: process.platform === 'darwin' ? '⌥⇧⌘F' : 'Ctrl+Shift+Alt+F',
+  };
+}
+
+/** Go to…'s key, as the platform writes it. */
+const GO_TO_KEY = process.platform === 'darwin' ? '⌥⇧⌘P' : 'Ctrl+Shift+Alt+P';
+
+/**
+ * The menu DECKARD opens at the top of a page: every page but `current`,
+ * each with the hint the Pages view gives it, and Go to…'s key. Without an
+ * index to read, the pages are listed without hints.
+ */
+export function describeGoToMenu(indexer: Pick<IndexReader, 'getSnapshot'> | undefined, current?: DeckardPageId): GoToPagesMessage {
+  const facts = indexer ? readPageFacts(indexer) : undefined;
+  const pages = listDeckardPages(facts ?? { dueToday: 0, overdue: 0, notes: 0, files: 0, today: new Date(), todayNoteExists: true, findKey: '' });
+  return {
+    type: 'goToPages',
+    pages: pages
+      .filter((page) => page.id !== current)
+      .map((page) => ({ id: page.id, label: page.label, description: facts ? page.description : '' })),
+    key: GO_TO_KEY,
   };
 }
 

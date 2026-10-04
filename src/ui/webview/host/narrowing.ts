@@ -13,6 +13,7 @@ import { isObject } from '../../../shared/guards';
 import type { MessageAs, MessageOf, PageMessage } from '../../protocol/messaging';
 import type {
   ExportResultsMessage,
+  GoToPageMessage,
   OpenSearchMessage,
   OpenSourceMessage,
   OpenTagMessage,
@@ -143,6 +144,10 @@ export const narrowOpenSource: Narrower<OpenSourceMessage> = (value) =>
         ...(value.opposite === true ? { opposite: true } : {}),
       }
     : undefined;
+
+/** A page from the eyebrow's menu, by a short lowercase id; the host knows which are pages. */
+export const narrowGoToPage: Narrower<GoToPageMessage> = (value) =>
+  typeof value.page === 'string' && /^[a-z]{1,20}$/.test(value.page) ? { type: 'goToPage', page: value.page } : undefined;
 
 /** A tag to open, by any non-empty key; the host finds it in the index. */
 export const narrowOpenTag: Narrower<OpenTagMessage> = (value) =>

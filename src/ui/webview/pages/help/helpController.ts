@@ -10,6 +10,8 @@ import { HelpManifest, isRunnableFromHelp } from './helpManifest';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import type { PageChrome } from '../../components';
 import { narrowHelpMessage } from './messages';
+import type { IndexReader } from '../../../../core/workspace/indexReader';
+import { goToPage, listGoTo, openGoTo } from '../../host/sharedHandlers';
 
 /** What Help is drawn from. */
 export interface HelpControllerOptions {
@@ -21,6 +23,8 @@ export interface HelpControllerOptions {
   manifest: HelpManifest;
   /** The shipped changelog's Highlights, for What's new. */
   whatsNew?: Pick<WhatsNew, 'releases' | 'newSince'>;
+  /** What DECKARD's menu reads its hints from; without one it lists the pages bare. */
+  indexer?: Pick<IndexReader, 'getSnapshot'>;
 }
 
 /**
@@ -67,6 +71,9 @@ export class HelpController implements PageController<never, HelpPageToHost> {
       openGuide: (message, page) => this.showGuide(page, message.page, message.anchor),
       openChangelog: () =>
         vscode.commands.executeCommand('markdown.showPreview', vscode.Uri.joinPath(help.extensionUri, 'CHANGELOG.md')),
+      openGoTo: openGoTo(),
+      listGoTo: listGoTo({ indexer: help.indexer, current: 'help' }),
+      goToPage: goToPage(),
     };
   }
 

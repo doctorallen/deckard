@@ -305,7 +305,7 @@ const HELP_NAV = `  <nav aria-label="Help sections">
 
 /** The page's title and lead, above the first section. */
 const HELP_HEADER = `    <header>
-      <p class="eyebrow"><button type="button" class="eyebrow-home" data-go-to="" aria-label="Deckard: go to another page">DECKARD ▾</button> / FIELD GUIDE</p>
+      <p class="eyebrow"><button type="button" class="eyebrow-home" data-go-to="" aria-haspopup="menu" aria-expanded="false" aria-label="Deckard: go to another page">DECKARD ▾</button> / FIELD GUIDE</p>
       <h1>Help</h1>
       <p class="lead">Deckard indexes Markdown notes locally, then connects the people, projects, topics, tasks, and links you already write. Nothing leaves your machine.</p>
       <p class="read-more">This page is the quick glance; each section's <strong>Read more</strong> opens the <a href="#" data-guide-page="README">full guide</a>.</p>
@@ -320,7 +320,7 @@ function renderStartSections(logoUri: string, options: HelpOptions): string {
       <p><strong>New to Deckard?</strong> <code>Deckard: Get Started</code> opens the walkthrough: six steps, each checked off as you do it.</p>
       <p><strong>Rather see it than read it?</strong> <code>Deckard: Create a Work Sample</code> writes a week of a team lead's notes, dated from the day you make it, and opens it: standups, two 1:1s, a project, and its decisions, with what to try. <code>Deckard: Create the Story Tour</code> writes the longer tour, ten notes, one for each part of Deckard.</p>
       <div class="steps">
-        <div class="step"><span class="step-number"></span><div><h3>Open a workspace</h3><p>Deckard indexes saved <code>.md</code> files in every workspace folder. Open a note, then use the Deckard icon <img class="deckard-logo" src="${logoUri}" alt="Deckard"> in the Activity Bar: <strong>Pages</strong> lists every Deckard page, then Context shows the note’s sections, related notes, and what links to it, then Tasks and the Calendar. <code>Deckard: Go to…</code>, Cmd/Ctrl+Shift+Alt+P, or <strong>DECKARD ▾</strong> atop any page lists the same pages from anywhere.</p></div></div>
+        <div class="step"><span class="step-number"></span><div><h3>Open a workspace</h3><p>Deckard indexes saved <code>.md</code> files in every workspace folder. Open a note, then use the Deckard icon <img class="deckard-logo" src="${logoUri}" alt="Deckard"> in the Activity Bar: <strong>Pages</strong> lists every Deckard page, then Context shows the note’s sections, related notes, and what links to it, then Tasks and the Calendar. <code>Deckard: Go to…</code>, Cmd/Ctrl+Shift+Alt+P, lists the same pages from anywhere, and <strong>DECKARD ▾</strong> atop any page drops them as a menu.</p></div></div>
         <div class="step"><span class="step-number"></span><div><h3>Write a few tags</h3><p>Plain tags such as <code>#follow-up</code> are enough. Add <code>@mara-vale</code> for people, or namespaced tags such as <code>#project/neon-relay</code>, when that structure earns its keep. Typing <code>#</code> or <code>@</code> suggests the tags you already use.</p></div></div>
         <div class="step"><span class="step-number"></span><div><h3>Follow the connections</h3><p>Cmd/Ctrl-click a tag to open its search page, run <code>Deckard: Open Dashboard</code> for Home and every tag, or open the Notes Graph to see what is attached to what. Hover or Tab to any button to see what it does.</p></div></div>
       </div>

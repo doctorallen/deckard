@@ -17,6 +17,8 @@ import type {
   ChooseThemeMessage,
   DashboardTask,
   ExportResultsMessage,
+  GoToPageMessage,
+  ListGoToMessage,
   OpenGoToMessage,
   OpenHelpMessage,
   OpenSourceMessage,
@@ -385,6 +387,8 @@ export interface TaskBoardPageToHost {
   chooseTheme: ChooseThemeMessage;
   openHelp: OpenHelpMessage;
   openGoTo: OpenGoToMessage;
+  listGoTo: ListGoToMessage;
+  goToPage: GoToPageMessage;
   showColumnRest: ShowColumnRestMessage;
   saveBoardSearch: SaveBoardSearchMessage;
   useSearchForAgenda: UseSearchForAgendaMessage;

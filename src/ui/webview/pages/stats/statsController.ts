@@ -10,7 +10,7 @@ import type { DeckardStatsSnapshot, StatsPageToHost } from '../../../protocol/st
 import { createMissingNotes, reportCreatedNotes } from '../../../commands/linkHealth';
 import { resolveSourceUri } from '../../../commands/navigation';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
-import { openGoTo, openSource, openTag } from '../../host/sharedHandlers';
+import { goToPage, listGoTo, openGoTo, openSource, openTag } from '../../host/sharedHandlers';
 import { getStatsHtml } from '../../statsHtml';
 import type { PageChrome } from '../../components';
 import { narrowStatsMessage } from './messages';
@@ -50,6 +50,8 @@ export class StatsController implements PageController<DeckardStatsSnapshot, Sta
     const { indexer, navigation } = stats;
     this.handlers = {
       openGoTo: openGoTo(),
+      listGoTo: listGoTo({ indexer, current: 'stats' }),
+      goToPage: goToPage(),
       openTag: openTag({ indexer, navigation, policy: 'lenient', openTag: (tagKey) => stats.onOpenTag(tagKey) }),
       // A row listing a whole note, such as one nothing links to, opens it
       // without counting a view of one of its entries.

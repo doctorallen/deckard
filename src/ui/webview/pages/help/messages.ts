@@ -5,7 +5,7 @@
  * has it.
  */
 import type { HelpPageToHost, HelpRunCommandMessage, OpenGuideMessage } from '../../../protocol/help';
-import { Narrower, NarrowingTable, narrowWith, onlyType } from '../../host/narrowing';
+import { exactlyType, narrowGoToPage, Narrower, NarrowingTable, narrowWith, onlyType } from '../../host/narrowing';
 
 /** A command of Deckard's, by its id. */
 const narrowRunCommand: Narrower<HelpRunCommandMessage> = (value) =>
@@ -25,6 +25,9 @@ export const HELP_MESSAGES: NarrowingTable<HelpPageToHost> = {
   runCommand: narrowRunCommand,
   openChangelog: onlyType('openChangelog'),
   openGuide: narrowOpenGuide,
+  openGoTo: exactlyType('openGoTo'),
+  listGoTo: exactlyType('listGoTo'),
+  goToPage: narrowGoToPage,
 };
 
 /** A message from the Help page, narrowed by its table, or undefined. */

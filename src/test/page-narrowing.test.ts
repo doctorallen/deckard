@@ -8,6 +8,7 @@ import {
   MAX_QUERY_LENGTH,
   narrowAs,
   narrowExportResults,
+  narrowGoToPage,
   narrowOpenSearch,
   narrowOpenSource,
   narrowOpenTag,
@@ -80,6 +81,17 @@ suite('Page message narrowing', () => {
       [{ type: 'chooseTheme', extra: 1 }, { type: 'chooseTheme' }],
       [{ type: 'openHelp' }, { type: 'openHelp' }],
       [{ type: 'openHelp', topic: 'periodic' }, undefined],
+    ]);
+  });
+
+  test('a page from DECKARD\'s menu: a short lowercase id, and nothing more', () => {
+    const goTo = narrowWith<{ goToPage: ReturnType<typeof narrowGoToPage> }>({ goToPage: narrowGoToPage });
+    check(goTo, [
+      [{ type: 'goToPage', page: 'board', extra: 1 }, { type: 'goToPage', page: 'board' }],
+      [{ type: 'goToPage', page: 'Board' }, undefined],
+      [{ type: 'goToPage', page: '../board' }, undefined],
+      [{ type: 'goToPage', page: '' }, undefined],
+      [{ type: 'goToPage' }, undefined],
     ]);
   });
 

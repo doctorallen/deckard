@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { listDeckardPages, PageFacts } from '../ui/state/deckardPages';
+import { DECKARD_PAGE_COMMANDS, isDeckardPageId, listDeckardPages, PageFacts } from '../ui/state/deckardPages';
 
 const ROOT = path.join(__dirname, '..', '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')) as {
@@ -44,6 +44,14 @@ suite('Deckard pages: the Pages view and Go to…', () => {
   test('a quiet day says what each page is instead', () => {
     const pages = listDeckardPages({ ...FACTS, dueToday: 0, overdue: 0, todayNoteExists: true });
     assert.deepStrictEqual(pages.slice(0, 4).map((page) => page.description), ['Dashboard', 'Tasks as columns', 'October 2026', 'Sun, Oct 4']);
+  });
+
+  test('a page id from a page\'s menu is one of the pages, and nothing else', () => {
+    assert.deepStrictEqual(listDeckardPages(FACTS).map((page) => [page.id, page.command]), Object.entries(DECKARD_PAGE_COMMANDS));
+    assert.ok(isDeckardPageId('board'));
+    for (const value of ['constructor', 'toString', 'Board', '', undefined, 3]) {
+      assert.ok(!isDeckardPageId(value), String(value));
+    }
   });
 
   test('each page opens a contributed command and has a glyph for light and dark', () => {

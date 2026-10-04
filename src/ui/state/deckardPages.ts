@@ -34,6 +34,23 @@ export interface PageFacts {
   findKey: string;
 }
 
+/** The command that opens each page. */
+export const DECKARD_PAGE_COMMANDS: Readonly<Record<DeckardPageId, string>> = {
+  home: 'deckard.showDashboard',
+  board: 'deckard.showTaskBoard',
+  calendar: 'deckard.showCalendar',
+  today: 'deckard.createDailyNote',
+  graph: 'deckard.showNotesGraph',
+  find: 'deckard.searchWorkspace',
+  stats: 'deckard.showStats',
+  help: 'deckard.showHelp',
+};
+
+/** Whether `value` names one of the pages, as a page's menu sends it. */
+export function isDeckardPageId(value: unknown): value is DeckardPageId {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(DECKARD_PAGE_COMMANDS, value);
+}
+
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -49,56 +66,56 @@ export function listDeckardPages(facts: PageFacts): DeckardPage[] {
     {
       id: 'home',
       label: 'Home',
-      command: 'deckard.showDashboard',
+      command: DECKARD_PAGE_COMMANDS.home,
       description: facts.dueToday > 0 ? `${count(facts.dueToday, 'task', 'tasks')} due today` : 'Dashboard',
       detail: 'What is due today, what slipped, and the widgets you arrange',
     },
     {
       id: 'board',
       label: 'Task Board',
-      command: 'deckard.showTaskBoard',
+      command: DECKARD_PAGE_COMMANDS.board,
       description: facts.overdue > 0 ? `${count(facts.overdue, 'task', 'tasks')} overdue` : 'Tasks as columns',
       detail: 'Open tasks as columns by status, priority, due date, person, or tag',
     },
     {
       id: 'calendar',
       label: 'Calendar',
-      command: 'deckard.showCalendar',
+      command: DECKARD_PAGE_COMMANDS.calendar,
       description: `${MONTHS[facts.today.getMonth()]} ${facts.today.getFullYear()}`,
       detail: 'Dated tasks and daily notes by day; drag a task to another day',
     },
     {
       id: 'today',
       label: "Today's note",
-      command: 'deckard.createDailyNote',
+      command: DECKARD_PAGE_COMMANDS.today,
       description: facts.todayNoteExists ? day : `${day} · not written yet`,
       detail: "Opens today's daily note, writing it from your template first if needed",
     },
     {
       id: 'graph',
       label: 'Notes Graph',
-      command: 'deckard.showNotesGraph',
+      command: DECKARD_PAGE_COMMANDS.graph,
       description: count(facts.notes, 'note', 'notes'),
       detail: 'Every note, task, and tag connection as a map',
     },
     {
       id: 'find',
       label: 'Find in Notes…',
-      command: 'deckard.searchWorkspace',
+      command: DECKARD_PAGE_COMMANDS.find,
       description: facts.findKey,
       detail: 'Notes, tasks, tags, and saved searches as you type',
     },
     {
       id: 'stats',
       label: 'Stats',
-      command: 'deckard.showStats',
+      command: DECKARD_PAGE_COMMANDS.stats,
       description: count(facts.files, 'file', 'files'),
       detail: 'What needs attention, the totals, and what you open most',
     },
     {
       id: 'help',
       label: 'Help',
-      command: 'deckard.showHelp',
+      command: DECKARD_PAGE_COMMANDS.help,
       description: 'Get Started and the guide',
       detail: 'The quick glance, with the full guide a click away',
     },

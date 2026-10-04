@@ -19,6 +19,8 @@ import type { NavigationService, SourcePolicy, TagPolicy } from '../../../servic
 import type { MessageHandler } from './pageController';
 import type {
   ChooseThemeMessage,
+  GoToPageMessage,
+  ListGoToMessage,
   OpenGoToMessage,
   OpenHelpMessage,
   OpenSourceMessage,
@@ -33,6 +35,8 @@ import { openNoteAt } from '../../commands/noteOpening';
 import { renameIndexedTag, TagWrites } from '../../commands/renameTag';
 import { TaskWrites, toggleTask as writeTaskToggle } from '../../commands/taskActions';
 import { setZenMode as writeZenMode } from '../zenMode';
+import { DECKARD_PAGE_COMMANDS, DeckardPageId, isDeckardPageId } from '../../state/deckardPages';
+import { describeGoToMenu } from '../../views/pagesTree';
 
 /** The gear's Choose Theme…, which runs the command. */
 export function chooseTheme(): MessageHandler<ChooseThemeMessage> {
@@ -44,7 +48,26 @@ export function setZenMode(): MessageHandler<SetZenModeMessage> {
   return (message) => writeZenMode(message.enabled);
 }
 
-/** The DECKARD eyebrow: Go to…, which runs the command. */
+/**
+ * DECKARD at the top of a page, asking for its menu: every page but the one
+ * it is on, with the Pages view's hints, sent back to the page.
+ */
+export function listGoTo(options: {
+  /** What the hints are read from; Help, drawn without one in tests, lists the pages bare. */
+  indexer?: Pick<IndexReader, 'getSnapshot'>;
+  /** The page asking, left out of its own menu. */
+  current?: DeckardPageId;
+}): MessageHandler<ListGoToMessage> {
+  return (_message, page) => page.post(describeGoToMenu(options.indexer, options.current));
+}
+
+/** A page chosen from DECKARD's menu, opened by its command; an id that names no page does nothing. */
+export function goToPage(): MessageHandler<GoToPageMessage> {
+  return (message) =>
+    isDeckardPageId(message.page) ? vscode.commands.executeCommand(DECKARD_PAGE_COMMANDS[message.page]) : undefined;
+}
+
+/** The menu's Go to…, or the key: the quick pick of every page. */
 export function openGoTo(): MessageHandler<OpenGoToMessage> {
   return () => vscode.commands.executeCommand('deckard.goTo');
 }

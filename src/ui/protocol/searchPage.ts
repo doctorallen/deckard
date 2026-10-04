@@ -19,6 +19,8 @@ import type {
   ChooseThemeMessage,
   DashboardTask,
   ExportResultsMessage,
+  GoToPageMessage,
+  ListGoToMessage,
   MergeTagsMessage,
   OpenGoToMessage,
   OpenHelpMessage,
@@ -306,6 +308,8 @@ export interface SearchPagePageToHost {
   unpinNote: MessageAs<PinNoteMessage, 'unpinNote'>;
   openHelp: OpenHelpMessage;
   openGoTo: OpenGoToMessage;
+  listGoTo: ListGoToMessage;
+  goToPage: GoToPageMessage;
   openSource: OpenSourceMessage;
   toggleTask: ToggleTaskMessage;
   setRenderMode: SetRenderModeMessage;
