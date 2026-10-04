@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createQueryContext } from '../domain/query/queryContext';
-import { buildCalendarFor, resolveCalendarFile } from '../ui/commands/taskCalendarFile';
+import { buildCalendarFor, fileLink, resolveCalendarFile } from '../ui/commands/taskCalendarFile';
 
 suite('The calendar file', () => {
   const file = parseMarkdown(
@@ -38,5 +38,20 @@ suite('The calendar file', () => {
     assert.strictEqual(resolveCalendarFile('   '), undefined);
     const absolute = process.platform === 'win32' ? 'C:\\cal\\tasks.ics' : '/tmp/cal/tasks.ics';
     assert.strictEqual(resolveCalendarFile(absolute)?.fsPath, vscode.Uri.file(absolute).fsPath);
+  });
+});
+
+suite('The calendar file’s safety', () => {
+  test('writes only an .ics file, and never climbs out of the workspace folder', () => {
+    assert.strictEqual(resolveCalendarFile('notes/tasks.md'), undefined, 'not a calendar');
+    assert.strictEqual(resolveCalendarFile('../../.zshrc'), undefined);
+    assert.strictEqual(resolveCalendarFile('../outside.ics'), undefined, 'out of the folder');
+    const home = resolveCalendarFile('~/cal.ics');
+    assert.ok(home && !home.fsPath.includes('~'), 'the home folder, not a folder named ~');
+  });
+
+  test('links to a task’s line with every part of its path escaped', () => {
+    const link = fileLink(vscode.Uri.file('/work/notes/C# tips?.md'), 3);
+    assert.strictEqual(link, `${vscode.env.uriScheme}://file/work/notes/C%23%20tips%3F.md:3`);
   });
 });

@@ -5,6 +5,7 @@
  * writing goes on, and a template's questions are its tab stops.
  */
 import { fillTemplate } from '../notes/templates';
+import { findFrontmatterEnd } from './frontmatter';
 
 /** A `/` alone at a line's start, after any indentation, and the word typed after it. */
 const SLASH_AT_LINE_START = /^([ \t]*)\/([\p{L}\p{N}-]*)$/u;
@@ -58,7 +59,8 @@ export function listSlashChoices({ today }: SlashMenuContext): SlashChoice[] {
     { label: 'Bulleted list', detail: '- ', keywords: ['bullet'], snippet: '- $0' },
     { label: 'Numbered list', detail: '1. ', keywords: ['ordered'], snippet: '1. $0' },
     { label: 'Quote', detail: '> ', keywords: ['blockquote'], snippet: '> $0' },
-    { label: 'Divider', detail: '---', keywords: ['rule', 'line'], snippet: '---\n$0' },
+    // *** rather than ---, which under a line of text makes it a heading.
+    { label: 'Divider', detail: '***', keywords: ['rule', 'line', '---'], snippet: '***\n$0' },
     { label: 'Link to a note', detail: '[[…]]', keywords: ['wiki'], snippet: '[[$0]]', suggestAfter: true },
     { label: 'Embed a note', detail: '![[…]]', keywords: ['transclude', 'include'], snippet: '![[$0]]', suggestAfter: true },
     { label: 'Today’s note', detail: `[[${today}]]`, keywords: ['daily', 'journal'], snippet: `[[${today}]]$0` },
@@ -90,11 +92,13 @@ export function escapeSnippetText(text: string): string {
 }
 
 /**
- * A template as a snippet: its variables filled, its text taken as written,
- * and each `{ask:Question}` a tab stop that starts out reading the question,
- * the same question the same stop wherever it is asked again.
+ * A template as a snippet: its front matter left out, since a note keeps
+ * one only at its top; its variables filled; its text taken as written;
+ * and each `{ask:Question}` a tab stop that starts out reading the
+ * question, the same question the same stop wherever it is asked again.
  */
-export function templateToSnippet(template: string, variables: Readonly<Record<string, string>>): string {
+export function templateToSnippet(written: string, variables: Readonly<Record<string, string>>): string {
+  const template = withoutFrontmatter(written);
   const stops = new Map<string, number>();
   const asked = /\{ask:([^{}]*)\}/g;
   let snippet = '';
@@ -113,4 +117,35 @@ export function templateToSnippet(template: string, variables: Readonly<Record<s
   }
   snippet += escapeSnippetText(fillTemplate(template.slice(from), variables));
   return `${snippet}$0`;
+}
+
+/** A template's text without the front matter it opens with. */
+function withoutFrontmatter(template: string): string {
+  const lines = template.split(/\r?\n/);
+  const end = findFrontmatterEnd(lines);
+  return end === undefined ? template : lines.slice(end + 1).join('\n').replace(/^\n+/, '');
+}
+
+/** A list item's marker at the start of a line: `-`, `*`, `+`, or a number with `.` or `)`. */
+const LIST_ITEM = /^\s*([-*+]|\d+[.)])\s/;
+
+/**
+ * Whether a line is where the menu writes nothing: inside the note's front
+ * matter, or indented as code, four spaces or a tab with no list item above
+ * to be nested in.
+ */
+export function isOutsideProse(lines: readonly string[], line: number): boolean {
+  const end = findFrontmatterEnd(lines);
+  if (end !== undefined && line <= end) {
+    return true;
+  }
+  if (!/^( {4,}|\t)/.test(lines[line] ?? '')) {
+    return false;
+  }
+  for (let above = line - 1; above >= 0; above -= 1) {
+    if (lines[above].trim()) {
+      return !LIST_ITEM.test(lines[above]) && !/^( {2,}|\t)\S/.test(lines[above]);
+    }
+  }
+  return true;
 }

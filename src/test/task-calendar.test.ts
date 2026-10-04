@@ -41,6 +41,7 @@ suite('Tasks as a calendar file', () => {
 
   test('escapes text and folds long lines at 75 octets without splitting a character', () => {
     assert.strictEqual(escapeText('a\\b;c,d\ne'), 'a\\\\b\\;c\\,d\\ne');
+    assert.strictEqual(escapeText('A\rB\r\nC'), 'A\\nB\\nC', 'a lone carriage return is a line break too');
     const long = `SUMMARY:${'é'.repeat(60)}`;
     const folded = foldLine(long);
     const pieces = folded.split('\r\n');

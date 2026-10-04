@@ -1,3 +1,4 @@
+import * as os from 'os';
 import * as path from 'path';
 
 import * as vscode from 'vscode';
@@ -13,6 +14,8 @@ import { Failure, openSettingAction, reportFailure } from './notify';
 
 /** What the calendar reads from the indexer: its snapshots, and where each note is. */
 export interface CalendarIndexSource {
+  /** Settles once the first scan has read the notes; nothing is written before it. */
+  readonly ready?: Promise<void>;
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
   getSnapshot(): WorkspaceIndex;
   getUri(filePath: string): vscode.Uri | undefined;
@@ -60,11 +63,21 @@ export function buildCalendarFor(
         scheduledAt: task.scheduledAt,
         completed: task.completed,
         updatedAt: index.files.get(task.filePath)?.updatedAt ?? task.updatedAt,
-        ...(uri ? { url: `${vscode.env.uriScheme}://file${encodeURI(uri.path)}:${task.lineNumber}` } : {}),
+        ...(uri ? { url: fileLink(uri, task.lineNumber) } : {}),
       };
     });
   const name = vscode.workspace.name ? `Deckard: ${vscode.workspace.name}` : 'Deckard tasks';
   return { kind: 'calendar', text: buildTaskCalendar(tasks, name), count: tasks.length };
+}
+
+/**
+ * The link that opens a note at a line in VS Code, each part of its path
+ * escaped, `#` and `?` among them, and a UNC path's server kept.
+ */
+export function fileLink(uri: vscode.Uri, line: number): string {
+  const path = uri.path.split('/').map((part) => (/^[A-Za-z]:$/.test(part) ? part : encodeURIComponent(part))).join('/');
+  const server = uri.authority ? `//${encodeURIComponent(uri.authority)}` : '';
+  return `${vscode.env.uriScheme}://file${server}${path}:${line}`;
 }
 
 /** The search `deckard.calendar.exportQuery` names, or every open task. */
@@ -75,18 +88,38 @@ function readCalendarQuery(): string {
 
 /**
  * The file `deckard.calendar.exportFile` names: an absolute path as it is,
- * a relative one in the first workspace folder; none when it names nothing.
+ * `~` read as the home folder, a relative one in the first workspace
+ * folder. None when it names nothing, names no `.ics` file, or climbs out
+ * of the folder it is relative to, so a setting in a workspace's own
+ * settings can only write a calendar, and only inside the workspace.
  */
 export function resolveCalendarFile(setting: string | undefined): vscode.Uri | undefined {
   const written = typeof setting === 'string' ? setting.trim() : '';
-  if (!written) {
+  if (!written || !/\.ics$/i.test(written)) {
     return undefined;
+  }
+  if (written === '~' || written.startsWith('~/') || written.startsWith('~\\')) {
+    return vscode.Uri.file(path.join(os.homedir(), written.slice(1)));
   }
   if (path.isAbsolute(written)) {
     return vscode.Uri.file(written);
   }
   const folder = vscode.workspace.workspaceFolders?.[0];
-  return folder ? vscode.Uri.joinPath(folder.uri, ...written.split(/[\\/]+/)) : undefined;
+  const parts = written.split(/[\\/]+/).filter(Boolean);
+  if (!folder || parts.includes('..')) {
+    return undefined;
+  }
+  return vscode.Uri.joinPath(folder.uri, ...parts);
+}
+
+/** Whether a file is missing, or is a calendar, which only may be written over. */
+async function isCalendarOrMissing(file: vscode.Uri): Promise<boolean> {
+  try {
+    const head = Buffer.from(await vscode.workspace.fs.readFile(file)).toString('utf8', 0, 64);
+    return head.replace(/^\uFEFF/, '').trimStart().startsWith('BEGIN:VCALENDAR');
+  } catch {
+    return true;
+  }
 }
 
 /**
@@ -100,23 +133,39 @@ export class TaskCalendarFile implements vscode.Disposable {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private lastWritten: { file: string; text: string } | undefined;
   private lastProblem: string | undefined;
+  /** Whether the first scan has read the notes. */
+  private ready = false;
 
   /** Takes the index it lists tasks from; nothing happens until `start`. */
   public constructor(private readonly indexer: CalendarIndexSource) {}
 
-  /** Writes the file after each index update and setting change, and once now. Returns itself. */
+  /**
+   * Writes the file after each index update and setting change, and once
+   * the first scan has read the notes: written before it, the calendar
+   * would be empty, and an app reading it then would drop every event.
+   * Returns itself.
+   */
   public start(): this {
     this.disposables.push(
-      this.indexer.onDidUpdate(() => this.schedule()),
+      this.indexer.onDidUpdate(() => {
+        if (this.ready) {
+          this.schedule();
+        }
+      }),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (!event.affectsConfiguration('deckard.calendar.exportFile') && !event.affectsConfiguration('deckard.calendar.exportQuery')) {
           return;
         }
         this.lastProblem = undefined;
-        this.schedule(0);
+        if (this.ready) {
+          this.schedule(0);
+        }
       }),
     );
-    this.schedule(0);
+    void Promise.resolve(this.indexer.ready).then(() => {
+      this.ready = true;
+      this.schedule(0);
+    });
     return this;
   }
 
@@ -141,8 +190,16 @@ export class TaskCalendarFile implements vscode.Disposable {
 
   /** Writes the calendar when it differs from what was last written there. */
   public async write(): Promise<void> {
-    const file = resolveCalendarFile(vscode.workspace.getConfiguration('deckard').get<string>('calendar.exportFile', ''));
+    const setting = vscode.workspace.getConfiguration('deckard').get<string>('calendar.exportFile', '');
+    const file = resolveCalendarFile(setting);
     if (!file) {
+      if (typeof setting === 'string' && setting.trim()) {
+        this.report({
+          outcome: 'Deckard did not write the calendar file, because its path names no .ics file, or climbs out of the workspace folder.',
+          fix: 'Choose a path that ends in .ics, inside the workspace or absolute.',
+          action: openSettingAction('calendar.exportFile'),
+        });
+      }
       return;
     }
     const built = buildCalendarFor(this.indexer, this.indexer.getSnapshot(), readCalendarQuery(), readQueryContext());
@@ -155,6 +212,14 @@ export class TaskCalendarFile implements vscode.Disposable {
       return;
     }
     if (this.lastWritten?.file === file.toString() && this.lastWritten.text === built.text) {
+      return;
+    }
+    if (!(await isCalendarOrMissing(file))) {
+      this.report({
+        outcome: `Deckard did not write the calendar file, because ${path.basename(file.fsPath)} is already there and is not a calendar.`,
+        fix: 'Choose another file, or remove that one.',
+        action: openSettingAction('calendar.exportFile'),
+      });
       return;
     }
     try {
@@ -217,6 +282,24 @@ export async function exportTaskCalendarCommand(indexer: CalendarIndexSource): P
   if (choice === reveal) {
     await vscode.commands.executeCommand('revealFileInOS', target);
   } else if (choice === keep) {
-    await vscode.workspace.getConfiguration('deckard').update('calendar.exportFile', target.fsPath, vscode.ConfigurationTarget.Workspace);
+    await keepUpToDate(target);
   }
+}
+
+/**
+ * Keep It Up to Date: names the exported file in deckard.calendar.exportFile.
+ * Inside the workspace it is named relatively, so it holds on another
+ * machine; with no folder open there is no workspace to keep it in.
+ */
+async function keepUpToDate(target: vscode.Uri): Promise<void> {
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  const relative = folder ? path.relative(folder.uri.fsPath, target.fsPath) : '';
+  const inside = Boolean(folder) && relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+  await vscode.workspace
+    .getConfiguration('deckard')
+    .update(
+      'calendar.exportFile',
+      inside ? relative.split(path.sep).join('/') : target.fsPath,
+      folder ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global,
+    );
 }

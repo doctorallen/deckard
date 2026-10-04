@@ -50,9 +50,13 @@ export function createTaskToggleHref(base: string, request: TaskToggleRequest): 
   return `${base}${TOGGLE_TASK_PATH}?${query}`;
 }
 
+/** A task id as the parser makes them, `task-b1msng-tjudor`: nothing a query could misread. */
+const TASK_ID = /^[\w:.-]+$/;
+
 /**
- * Reads a link the handler was opened with, by its path and its query
- * string as VS Code hands them over, against this session's token.
+ * Reads a link the handler was opened with, by its path and its query as
+ * VS Code hands them over, decoded (`vscode.Uri.query`), against this
+ * session's token.
  */
 export function readTaskToggleLink(path: string, query: string, token: string): TaskToggleLink {
   if (path !== TOGGLE_TASK_PATH) {
@@ -62,7 +66,7 @@ export function readTaskToggleLink(path: string, query: string, token: string): 
   const taskId = params.get('task');
   const done = params.get('done');
   const given = params.get('token');
-  if (!taskId || (done !== '0' && done !== '1') || !given) {
+  if (!taskId || !TASK_ID.test(taskId) || (done !== '0' && done !== '1') || !given) {
     return { kind: 'other' };
   }
   if (given !== token) {

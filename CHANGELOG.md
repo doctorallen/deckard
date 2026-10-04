@@ -26,9 +26,9 @@
   templates, whose `{ask:…}` questions become tab stops.
 
 - **Your tasks in your calendar app.** `Deckard: Export Tasks as
-  Calendar…` writes your dated tasks to a calendar file, and
-  `deckard.calendar.exportFile` keeps one up to date for Apple Calendar,
-  Outlook, or Google Calendar to subscribe to. `deckard.calendar.exportQuery`
+  Calendar…` writes your dated tasks to a calendar file to import into any
+  calendar app, and `deckard.calendar.exportFile` keeps one up to date for
+  Apple Calendar to subscribe to. `deckard.calendar.exportQuery`
   chooses which tasks it holds.
 
 - **Copy a note for somewhere Deckard is not.** `Deckard: Copy as Plain

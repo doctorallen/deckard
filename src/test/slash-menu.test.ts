@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { escapeSnippetText, findSlashQuery, listSlashChoices, templateToSnippet } from '../domain/markdown/slashMenu';
+import { escapeSnippetText, findSlashQuery, isOutsideProse, listSlashChoices, templateToSnippet } from '../domain/markdown/slashMenu';
 
 suite('The / menu', () => {
   test('opens only for a / alone at a line’s start', () => {
@@ -33,5 +33,13 @@ suite('The / menu', () => {
       '# Check-in\nDate: 2026-10-03\nWith ${1:Who came?} about ${2:Topic}.\nThanks ${1:Who came?}. Cost: \\$5 {unknown\\} \\\\o/$0',
     );
     assert.strictEqual(escapeSnippetText('a$b}c\\d'), 'a\\$b\\}c\\\\d');
+  });
+
+  test('leaves a template’s front matter out, and stays out of front matter and indented code', () => {
+    assert.strictEqual(templateToSnippet('---\ntags: [meeting]\n---\n# {title}', { title: 'T' }), '# T$0');
+    const note = ['---', 'tags: x', '', '---', '# Note', '- item', '    /', '', 'text', '    /', '\t/'];
+    assert.deepStrictEqual([1, 2, 6, 9].map((line) => isOutsideProse(note, line)), [true, true, false, true]);
+    assert.strictEqual(isOutsideProse(note, 8), false);
+    assert.strictEqual(listSlashChoices({ today: '2026-10-03' }).find((choice) => choice.label === 'Divider')?.snippet, '***\n$0');
   });
 });

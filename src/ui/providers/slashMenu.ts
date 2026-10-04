@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import type { NoteFiles } from '../../core/workspace/indexReader';
 import { findFencedLines } from '../../domain/markdown/lineShapes';
-import { findSlashQuery, listSlashChoices, SlashChoice, templateToSnippet } from '../../domain/markdown/slashMenu';
+import { findSlashQuery, isOutsideProse, listSlashChoices, SlashChoice, templateToSnippet } from '../../domain/markdown/slashMenu';
 import { getTemplateVariables } from '../../domain/notes/templates';
 import { formatLocalDate } from '../../domain/notes/periodicNotes';
 import { getFileName } from '../../shared/paths';
@@ -66,7 +66,11 @@ export class SlashMenuProvider implements vscode.Disposable {
       return [];
     }
     const query = findSlashQuery(document.lineAt(position.line).text.slice(0, position.character));
-    if (!query || findFencedLines(document.getText().split(/\r?\n/)).has(position.line)) {
+    if (!query) {
+      return [];
+    }
+    const lines = document.getText().split(/\r?\n/);
+    if (findFencedLines(lines).has(position.line) || isOutsideProse(lines, position.line)) {
       return [];
     }
     const range = new vscode.Range(position.line, query.start, position.line, position.character);

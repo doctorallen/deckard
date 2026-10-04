@@ -141,8 +141,10 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
    */
   public async handleUri(uri: vscode.Uri): Promise<void> {
     const actions = this.actions;
-    const query = uri.toString().split('?')[1]?.split('#')[0] ?? '';
-    const link = readTaskToggleLink(uri.path, query, this.token);
+    // VS Code hands the query over decoded, and writes it out again with
+    // every = and & escaped, so it is read as given rather than from
+    // toString().
+    const link = readTaskToggleLink(uri.path, uri.query, this.token);
     if (!actions || link.kind === 'other') {
       return;
     }

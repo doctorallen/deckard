@@ -18,13 +18,15 @@ suite('Query block checkboxes in the preview', () => {
     const token = createSessionToken();
     assert.match(token, /^[0-9a-f]{32}$/);
     assert.notStrictEqual(createSessionToken(), token, 'each session has its own');
-    const href = createTaskToggleHref(BASE, { taskId: 'task a&b', completed: true, token });
-    assert.strictEqual(href, `${BASE}/toggle-task?task=task%20a%26b&done=1&token=${token}`);
-    const query = href.split('?')[1];
+    const href = createTaskToggleHref(BASE, { taskId: 'task-b1msng-tjudor', completed: true, token });
+    assert.strictEqual(href, `${BASE}/toggle-task?task=task-b1msng-tjudor&done=1&token=${token}`);
+    // VS Code hands the handler the query decoded.
+    const query = decodeURIComponent(href.split('?')[1]);
     assert.deepStrictEqual(readTaskToggleLink('/toggle-task', query, token), {
       kind: 'toggle',
-      request: { taskId: 'task a&b', completed: true, token },
+      request: { taskId: 'task-b1msng-tjudor', completed: true, token },
     });
+    assert.deepStrictEqual(readTaskToggleLink('/toggle-task', `task=a b&done=1&token=${token}`, token), { kind: 'other' }, 'no id the parser makes holds a space');
   });
 
   test('a link from another session, or not a checkbox’s, asks for nothing', () => {
