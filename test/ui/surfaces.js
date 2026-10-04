@@ -539,6 +539,7 @@ function createRelatedNotesSurfaces(index, files) {
  * @returns {object[]} The Stats and search page surfaces.
  */
 function createSummarySurfaces(index, preferences) {
+  const refreshedAt = Date.now() - 5 * 60 * 1000;
   return [
     // Zen folds each card's file and line away and reveals it on hover, so a
     // hovered result is the one row that grows. The search page is where that
@@ -555,9 +556,10 @@ function createSummarySurfaces(index, preferences) {
           ...preferences.reader.value,
           tagAccessCounts: { '#project/atlas': 4, '#topic/replicants': 2 },
         }, [{ filePath: 'notes/unreadable-note-with-a-long-name.md', reason: 'EACCES: permission denied' }], NOW),
-        // Five minutes before the page draws, which it says as "5 minutes
-        // ago" however long the run takes to reach it.
-        updatedAt: Date.now() - 5 * 60 * 1000,
+        // Five minutes before the run, which the page says as "5 minutes
+        // ago". Read once, so the snapshot the shell carries and the one
+        // posted to it name the same second.
+        updatedAt: refreshedAt,
       }),
       scrollers: ['html'],
       clippers: [],

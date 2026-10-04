@@ -4,7 +4,16 @@
  */
 import type { InlineToken } from '../../domain/model/inline';
 import type { IndexingMessage, MessageOf, StateMessage } from './messaging';
-import type { GoToPageMessage, ListGoToMessage, OpenGoToMessage, OpenTagMessage, ToggleTaskMessage } from './shared';
+import type {
+  ChooseThemeMessage,
+  GoToPageMessage,
+  ListGoToMessage,
+  OpenGoToMessage,
+  OpenHelpMessage,
+  OpenTagMessage,
+  SetZenModeMessage,
+  ToggleTaskMessage,
+} from './shared';
 
 /** A task's box in a note: the task it ticks, and whether it is done. */
 export interface NoteTaskBox {
@@ -194,6 +203,9 @@ export interface NotePagePageToHost {
   openGoTo: OpenGoToMessage;
   listGoTo: ListGoToMessage;
   goToPage: GoToPageMessage;
+  setZenMode: SetZenModeMessage;
+  chooseTheme: ChooseThemeMessage;
+  openHelp: OpenHelpMessage;
 }
 
 /** What the host sends the note page, keyed by message type. */

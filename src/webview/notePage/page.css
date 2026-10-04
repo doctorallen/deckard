@@ -4,14 +4,13 @@
  */
 @import "../shared/base.css";
 
-main { max-width: 860px; }
-.note-toolbar { display: flex; align-items: center; gap: var(--space-1); margin-bottom: var(--space-3); }
-.note-toolbar .icon-button { min-width: var(--control-height); font-size: var(--text-lg); line-height: 1; }
-.note-toolbar button:last-child { margin-left: auto; }
-
-/* The header: what the note is called, where it sits, and its properties. */
-.note-header { display: grid; align-items: start; justify-content: stretch; gap: var(--space-2); }
-.note-header h1 { font-size: 26px; text-transform: none; }
+/* The header, as every page draws it: what the note is called, where it
+   sits, and its properties at the left, its toolbar at the right. */
+/* A note's header runs tall, with its progress and properties, so its
+   toolbar sits at the top, beside the title, as the Task Board's does. */
+header { align-items: flex-start; }
+.note-lead { display: grid; align-content: start; gap: var(--space-2); min-width: 0; }
+header > .toolbar { flex: 0 0 auto; flex-wrap: nowrap; }
 .note-breadcrumbs { display: grid; gap: 2px; }
 .note-breadcrumb { margin: 0; color: var(--muted); font-size: var(--text-sm); }
 .note-crumb { min-height: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; }

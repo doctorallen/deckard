@@ -13,6 +13,11 @@
   at its foot. The six icons that crowded the Context view's title bar are
   gone.
 
+- **The note page looks like the other pages.** Its header is laid out as
+  theirs: DECKARD ▾ and the title at the left, Back, Forward, Open in
+  Editor, Help, and a gear with Theme and Zen at the right. It takes the
+  same width and title style as every other page.
+
 - **Images on the note page.** The note page draws a note's images,
   `![alt](img/flow.png)` and `![[flow.png]]`, at the page's width, and
   shows one at full size when selected. Each is read from beside the note

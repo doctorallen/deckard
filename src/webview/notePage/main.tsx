@@ -7,12 +7,14 @@
  */
 import type { NoteBreadcrumb, NotePageMessage, NotePageSnapshot, NoteProperty } from '../../ui/protocol/notePage';
 import type { StateMessage } from '../../ui/protocol/messaging';
+import { HelpButton, IconButton } from '../shared/buttons';
 import { Eyebrow } from '../shared/eyebrow';
 import { ProgressBar } from '../shared/progressBar';
 import { ProgressWords } from '../shared/progressWords';
 import { type ActionHandler, listenForActions, onHostMessage, readEmbeddedState, startPage } from '../shared/page';
 import { announce } from '../shared/status';
 import { TagButton } from '../shared/tagButton';
+import { installViewOptions, themeOption, ViewOptions, zenOption } from '../shared/viewOptions';
 import { keepState, post } from '../shared/vscode';
 import { Blocks } from './body';
 
@@ -26,13 +28,20 @@ interface NotePageState {
   readonly snapshot: NotePageSnapshot | undefined;
 }
 
-/** Back, Forward, and Open in Editor, above the note. */
+/**
+ * Back, Forward, Open in Editor, Help, and the gear, at the right of the
+ * header, where every page keeps its own.
+ */
 function Toolbar({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
   return (
-    <div class="note-toolbar" role="toolbar" aria-label="Note">
-      <button type="button" class="icon-button" data-action="history-back" disabled={!snapshot.history.back} aria-label="Back" data-tip="Back to the note before">‹</button>
-      <button type="button" class="icon-button" data-action="history-forward" disabled={!snapshot.history.forward} aria-label="Forward" data-tip="Forward to the next note">›</button>
+    <div class="toolbar" role="group" aria-label="Note">
+      <span class="history-buttons" role="group" aria-label="Note history">
+        <IconButton action="history-back" label="Back to the note before" icon="‹" disabledReason={snapshot.history.back ? '' : 'No note before this one'} />
+        <IconButton action="history-forward" label="Forward to the next note" icon="›" disabledReason={snapshot.history.forward ? '' : 'No note after this one'} />
+      </span>
       <button type="button" data-action="open-in-editor" disabled={snapshot.missing} data-tip="Open this note in the editor · Cmd/Ctrl-click: beside">Open in Editor</button>
+      <HelpButton anchor="links" />
+      <ViewOptions groups={[themeOption(), zenOption()]} />
     </div>
   );
 }
@@ -151,27 +160,31 @@ function LinkedFrom({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
   );
 }
 
-/** The whole page: the toolbar, the header, the note, and what links to it. */
+/** The whole page: the header with its toolbar, the note, and what links to it. */
 function NotePage({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
   if (snapshot.missing) {
     return (
       <>
-        <Toolbar snapshot={snapshot} />
-        <header><Eyebrow trail="NOTE" /><h1>{snapshot.title}</h1></header>
+        <header>
+          <div class="note-lead"><Eyebrow trail="NOTE" /><h1>{snapshot.title}</h1></div>
+          <Toolbar snapshot={snapshot} />
+        </header>
         <p class="note-missing">Deckard has no note at {snapshot.filePath} now. It may have been moved, renamed, or deleted.</p>
       </>
     );
   }
   return (
     <>
-      <Toolbar snapshot={snapshot} />
-      <header class="note-header">
-        <Eyebrow trail={snapshot.folder ? `NOTE / ${snapshot.folder.toUpperCase()}` : 'NOTE'} />
-        <h1>{snapshot.title}</h1>
-        <Breadcrumbs crumbs={snapshot.breadcrumbs} />
-        {snapshot.hub ? <HubLine hub={snapshot.hub} /> : null}
-        {snapshot.taskProgress ? <TaskLine progress={snapshot.taskProgress} /> : null}
-        <Properties properties={snapshot.properties} />
+      <header>
+        <div class="note-lead">
+          <Eyebrow trail={snapshot.folder ? `NOTE / ${snapshot.folder.toUpperCase()}` : 'NOTE'} />
+          <h1>{snapshot.title}</h1>
+          <Breadcrumbs crumbs={snapshot.breadcrumbs} />
+          {snapshot.hub ? <HubLine hub={snapshot.hub} /> : null}
+          {snapshot.taskProgress ? <TaskLine progress={snapshot.taskProgress} /> : null}
+          <Properties properties={snapshot.properties} />
+        </div>
+        <Toolbar snapshot={snapshot} />
       </header>
       <article class="note-body" aria-label={snapshot.title}>
         {snapshot.blocks.length
@@ -252,6 +265,7 @@ function modifiers(event: MouseEvent | KeyboardEvent): { opposite?: true; beside
 const ACTIONS: Readonly<Record<string, ActionHandler>> = {
   'history-back': () => send({ type: 'navigateNoteHistory', direction: 'back' }),
   'history-forward': () => send({ type: 'navigateNoteHistory', direction: 'forward' }),
+  'open-help': () => send({ type: 'openHelp' }),
   'open-in-editor': (_element, event) => {
     const line = lineInView();
     send({ type: 'openInEditor', ...(line ? { line } : {}), ...(event.metaKey || event.ctrlKey ? { beside: true } : {}) });
@@ -281,6 +295,8 @@ const ACTIONS: Readonly<Record<string, ActionHandler>> = {
 };
 
 const app = document.getElementById('app') as HTMLElement;
+// The gear's theme and Zen rows, ahead of the page's own listeners.
+installViewOptions();
 listenForActions(app, ACTIONS);
 
 // A box completes or reopens its task, as on every page, with Undo in the message.

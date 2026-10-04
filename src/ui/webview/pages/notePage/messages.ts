@@ -17,8 +17,10 @@ import {
   narrowGoToPage,
   NarrowingTable,
   narrowOpenTag,
+  narrowSetZenMode,
   narrowToggleTask,
   narrowWith,
+  onlyType,
   UncheckedMessage,
 } from '../../host/narrowing';
 
@@ -92,6 +94,9 @@ export const NOTE_PAGE_MESSAGES: NarrowingTable<NotePagePageToHost> = {
   openGoTo: exactlyType('openGoTo'),
   listGoTo: exactlyType('listGoTo'),
   goToPage: narrowGoToPage,
+  setZenMode: narrowSetZenMode,
+  chooseTheme: onlyType('chooseTheme'),
+  openHelp: exactlyType('openHelp'),
   navigateNoteHistory: narrowNavigate,
   openSearch: narrowOpenSearch,
 };

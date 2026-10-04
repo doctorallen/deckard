@@ -15,7 +15,7 @@ import { readSnapshotImages } from './noteImages';
 import type { PageChrome } from '../../components';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { PanelSurface } from '../../host/surface';
-import { goToPage, listGoTo, openGoTo, openTag, toggleTask } from '../../host/sharedHandlers';
+import { chooseTheme, goToPage, listGoTo, openGoTo, openHelp, openTag, setZenMode, toggleTask } from '../../host/sharedHandlers';
 import { getNotePageHtml } from '../../notePageHtml';
 import type { ActiveNotePage, NotePageSource } from '../../activeNotePage';
 import { narrowNotePageMessage } from './messages';
@@ -75,6 +75,9 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
       openGoTo: openGoTo(),
       listGoTo: listGoTo({ indexer }),
       goToPage: goToPage(),
+      setZenMode: setZenMode(),
+      chooseTheme: chooseTheme(),
+      openHelp: openHelp('links'),
       openNote: (message, page) => this.open(page, { filePath: message.filePath, line: message.line }, message),
       openWikiLink: (message, page) => this.openWikiLink(page, message, message),
       openInEditor: (message) => this.openInEditor(message.line, message.beside === true),
