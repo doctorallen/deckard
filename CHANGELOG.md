@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Highlights
+
+- Read any note as a page in your theme, its links, tasks, query blocks, and embeds working, from the unicorn in its title bar.
+- A Hubs view files notes under the projects and topics they are about, and every project shows how far along its tasks are.
+- Notes as tables, a / menu for what to write, Copy as Plain Markdown, and your dated tasks as a calendar file.
+
 ### Added
 
 - **See how far along a project is.** A tag's page shows a bar under its
