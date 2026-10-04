@@ -208,7 +208,7 @@ function clickCanvas(page: GraphPage, click: CanvasClick): void {
     // graph; a plain click selects the node and surfaces direct graph
     // connections in the sidebar.
     if (event.metaKey || event.ctrlKey || event.altKey) {
-      openNode(page, node, event.altKey);
+      openNode(page, node, event.altKey, event.shiftKey);
     } else {
       selectNode(page, node);
     }
@@ -245,7 +245,7 @@ function onKey(page: GraphPage, event: KeyboardEvent): void {
   if (event.key === 'Enter' || event.key === ' ') {
     if (state.selectedIndex >= 0) {
       event.preventDefault();
-      openNode(page, state.selectedIndex, event.altKey);
+      openNode(page, state.selectedIndex, event.altKey, event.shiftKey);
     }
     return;
   }

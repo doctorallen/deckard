@@ -15,6 +15,8 @@
 .task-meta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: var(--space-1); }
 .due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
 .due-date.overdue { color: var(--danger); }
+/* Due today is a warning, each theme's own, between later's green and overdue's red. */
+.due-date.today { color: var(--due-today); }
 /* A task past needsNewDateAfterDays reads "was due …" in muted text: red is
    for what can still be saved today. */
 .due-date.stale { color: var(--muted); font-weight: 400; }

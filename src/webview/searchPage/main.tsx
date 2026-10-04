@@ -20,7 +20,7 @@ import { taskTitleOf } from '../shared/taskRow';
 import { installViewOptions } from '../shared/viewOptions';
 import { vscodeApi } from '../shared/vscode';
 import { PageHeader } from './header';
-import { HubNote, TagNotes } from './hub';
+import { HubNote, tagRefineLines, TagNotes, TagProgress } from './hub';
 import { type ResultKind, resultCounts, Results } from './results';
 
 /** What the page draws from: the host's last snapshot, once there is one. */
@@ -63,8 +63,13 @@ if (savedPageState && (savedPageState.tab === 'notes' || savedPageState.tab === 
 let openedCards = new Set<string>();
 let openedFor: string | undefined;
 
-/** Set once the reader opens or closes the hub, which then outlasts refreshes. */
+/**
+ * Set once the reader opens or closes the hub, which then outlasts
+ * refreshes: on the tag's plain page, and apart from that while a search
+ * narrows the tag, where the hub starts folded so the results sit near the top.
+ */
 let hubOpen: boolean | undefined;
+let filteredHubOpen: boolean | undefined;
 
 /** Where the window was scrolled when a draw began, put back after it. */
 let scrolledTo = { x: 0, y: 0 };
@@ -96,13 +101,32 @@ let previewHandle: ReturnType<typeof setTimeout> | undefined;
 /** The words the host narrows by, or will once the words waiting are sent. */
 let sentPreview = '';
 
-/** In the tabs layout, the tab with results, until the reader picks one. */
+/** The search the tab was last settled for, so a redraw of the same search leaves the tab alone. */
+let settledFor: string | undefined;
+
+/**
+ * In the tabs layout, the tab with results: until the reader picks one,
+ * Notes unless only Tasks has any; and after, on each new search, the
+ * other tab when the one shown found nothing and the other found
+ * something, so Show overdue from the Notes tab lands on the tasks. A
+ * redraw of the same search, such as a task ticked, keeps the tab.
+ */
 function settleTab(snapshot: SearchPageState): void {
-  if (tabChosen || snapshot.layout === 'split') {
+  if (snapshot.layout === 'split') {
     return;
   }
   const counts = resultCounts(snapshot);
-  activeTab = counts.notes === 0 && counts.tasks > 0 ? 'tasks' : 'notes';
+  const searched = (snapshot.query && snapshot.query.text) || '';
+  const newSearch = searched !== settledFor;
+  settledFor = searched;
+  if (!tabChosen) {
+    activeTab = counts.notes === 0 && counts.tasks > 0 ? 'tasks' : 'notes';
+    return;
+  }
+  const other: ResultKind = activeTab === 'notes' ? 'tasks' : 'notes';
+  if (newSearch && counts[activeTab] === 0 && counts[other] > 0) {
+    activeTab = other;
+  }
 }
 
 /** The whole page: its header, the search box and Refine, the hub, the tag's notes, and the results. */
@@ -115,8 +139,9 @@ function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
     <>
       <PageHeader snapshot={snapshot} />
       {editor.bar()}
-      {editor.facets()}
-      <HubNote snapshot={snapshot} hubOpen={hubOpen} />
+      {editor.facets(tagRefineLines(snapshot))}
+      <HubNote snapshot={snapshot} hubOpen={snapshot.tagPage?.filtered ? (filteredHubOpen ?? false) : hubOpen} />
+      <TagProgress snapshot={snapshot} />
       <TagNotes snapshot={snapshot} />
       {invalid ? <p class="stale-results">The search above has not run. These are the results of the last one that did.</p> : null}
       {/* A search that found nothing, and a closer spelling that finds something, so the dead end has a way out of it. */}
@@ -207,7 +232,11 @@ const editor = createQueryEditor({
 document.addEventListener('toggle', (event) => {
   const target = event.target as HTMLDetailsElement | null;
   if (target && target.classList && target.classList.contains('hub')) {
-    hubOpen = target.open;
+    if (latest?.tagPage?.filtered) {
+      filteredHubOpen = target.open;
+    } else {
+      hubOpen = target.open;
+    }
   }
 }, true);
 
@@ -385,6 +414,13 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   'unpark-tag': (target) => {
     if (target.dataset.tagKey) {
       send({ type: 'unparkTag', tagKey: target.dataset.tagKey });
+    }
+  },
+  // A part of the progress searches its tasks; the part on goes back to the tag.
+  'search-progress': (target, snapshot) => {
+    const part = snapshot.tagPage && snapshot.tagPage.progress ? snapshot.tagPage.progress.parts[Number(target.dataset.part)] : undefined;
+    if (part && part.query) {
+      send({ type: 'setOverviewQuery', query: part.active && snapshot.tag ? snapshot.tag.key : part.query });
     }
   },
   'show-mentions': (_target, snapshot) => {

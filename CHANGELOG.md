@@ -2,6 +2,101 @@
 
 ## Unreleased
 
+## 2.1.0 - 2026-10-04
+
+### Highlights
+
+- Read any note as a page in your theme, its links, tasks, query blocks, and embeds working, from the unicorn in its title bar.
+- A Hubs view files notes under the projects and topics they are about, and every project shows how far along its tasks are.
+- Notes as tables, a / menu for what to write, Copy as Plain Markdown, and your dated tasks as a calendar file.
+
+### Added
+
+- **See how far along a project is.** A tag's page shows a bar under its
+  hub and says how many of its tasks are done, how many are overdue, and
+  when the next is due, each a link that searches just those tasks. The
+  hub note says the same on its first line in the editor, and Home's new
+  **Progress** widget lists every project's, or any namespace's, unfinished
+  first.
+
+- **Notes as a table.** A query block with `view=table` draws its notes as
+  a table as well as its tasks. `noteColumns=` picks the columns: how many
+  notes link to each, how far along its tasks are, its tags, its dates, or
+  one namespace's tags such as `#status`. Notes sort by any of them, so
+  `sort=links dir=desc` puts the most linked first.
+
+- **Tick a task in a query block's preview.** Selecting a task's box in the
+  Markdown preview completes it, or reopens a done one, with Undo, as its
+  box on any page does. VS Code asks once whether Deckard may open the link.
+
+- **A / menu at the start of a line.** Type `/` alone on a line for what to
+  write there: a task, a heading, a list, a link or an embed, today's note
+  or date, a query block, a table of notes or tasks, or one of your
+  templates, whose `{ask:…}` questions become tab stops.
+
+- **Your tasks in your calendar app.** `Deckard: Export Tasks as
+  Calendar…` writes your dated tasks to a calendar file to import into any
+  calendar app, and `deckard.calendar.exportFile` keeps one up to date for
+  Apple Calendar to subscribe to. `deckard.calendar.exportQuery`
+  chooses which tasks it holds.
+
+- **Copy a note for somewhere Deckard is not.** `Deckard: Copy as Plain
+  Markdown` copies the note, or the selection, with each embed written out
+  as the text it names, each query block as its results, and each
+  `[[link]]` as its words, ready for a chat, an email, or a pull request.
+
+- **A tree of your projects and the notes about them.** The new **Hubs**
+  view in the Deckard sidebar lists your projects, people, and other topics
+  that have a hub note, each with the notes about it filed underneath, like
+  pages under pages in Notion. A note names its place
+  outright with `up: "[[Atlas]]"`. A note's first line says where it sits,
+  such as *Projects › Atlas › Vendor review*.
+
+- **Read a note as a page.** `Deckard: Open Note as Page`, the unicorn
+  button in a note's title bar, draws the note on a Deckard page in your
+  theme: its tags and `[[links]]` open what they name, with Back and
+  Forward, its tasks tick, its query blocks and embeds draw live, its front
+  matter is a row of properties, a bar says how far along its tasks are, and
+  **Linked from** lists what links to it. The unicorn opens the page in
+  front of the note's editor, as Open Preview does, and Related Notes
+  follows the note the page shows. **Open in Editor**, or a double-click,
+  goes to the line. Set `deckard.openNotesIn` to `page` to open every note
+  there from Deckard's pages, Find, and the Hubs view; **Shift**-click on a
+  page, or Shift+Enter in Find, opens a note the other way, and the Hubs
+  view's right-click menu offers the other way.
+
+- **A task's steps at a glance in the editor.** A lens above a task with
+  steps draws a bar of how many are done and names the next one; select it
+  to go there.
+
+- **The sample tour shows all of it.** `Deckard: Create a Sample Workspace`
+  now includes a project with a sub-project and notes filed under both, a
+  table of every project, and steps for each feature above. It also gives
+  Capture's shortcut as Cmd/Ctrl+Shift+Alt+N, which it still gave as C.
+
+### Changed
+
+- **A search page shows the tab with results.** A new search that finds
+  nothing on the tab shown, Notes or Tasks, and something on the other,
+  shows the other, so a link to a tag's overdue tasks lands on them. A
+  redraw of the same search keeps the tab you chose.
+- **A tag page's untagged mentions and other spellings** are said at the
+  top of Refine, where they are not lost among the lines under the hub.
+- **A tag's page stays its page while you narrow it.** A search that adds
+  terms to one tag, such as **1 overdue** or a Refine choice, keeps the hub,
+  folded, and the bar, still counting all of the tag's tasks. The part of
+  the words searched is outlined, and selecting it again goes back to the
+  tag. A search of two tags is still a plain search.
+- **A task due today is drawn as a warning,** in each theme's yellow or
+  orange, between a later date's green and an overdue one's red, in task
+  rows, board cards, and the preview's query blocks. In LCARS, overdue is a
+  red rather than the favorites' lavender, so it reads as the most urgent.
+- **LCARS reads in VS Code's font,** not Arial Narrow.
+- **A note page's progress words are links,** as on a tag's page: "1
+  overdue", "next due today", and the rest each open a search page of their
+  own for just those tasks. A hub's link to its tag's page sits on a line of
+  its own, and a hub note followed from the page opens its tag's page.
+
 ## 2.0.0 - 2026-10-03
 
 ### Highlights

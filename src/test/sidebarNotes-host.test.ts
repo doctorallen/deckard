@@ -9,6 +9,7 @@ import { NavigationService } from '../services/navigationService';
 import type { CalendarMessage } from '../ui/protocol/calendar';
 import type { SidebarNotesSnapshot } from '../ui/protocol/sidebarNotes';
 import { ActiveCalendar } from '../ui/webview/activeCalendar';
+import { ActiveNotePage } from '../ui/webview/activeNotePage';
 import { ActiveHome } from '../ui/webview/activeHome';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { WebviewHost } from '../ui/webview/host/webviewHost';
@@ -354,6 +355,7 @@ function openController() {
   const activeSearch = new ActiveSearch();
   const activeHome = new ActiveHome();
   const activeCalendar = new ActiveCalendar();
+  const activeNotePage = new ActiveNotePage();
   const openedTags: string[] = [];
   const themePreview = new ThemePreview();
   const controller = new SidebarNotesController({
@@ -362,6 +364,7 @@ function openController() {
     activeSearch,
     activeHome,
     activeCalendar,
+    activeNotePage,
     onOpenTag: (tagKey) => void openedTags.push(tagKey),
     extensionVersion: 'test',
     history: { write: async () => ({ applied: false, notes: [] }) } as never,
@@ -389,6 +392,7 @@ function openController() {
     activeSearch,
     activeHome,
     activeCalendar,
+    activeNotePage,
     home,
     calendar,
     asked,
@@ -404,6 +408,7 @@ function openController() {
       activeSearch.dispose();
       activeHome.dispose();
       activeCalendar.dispose();
+      activeNotePage.dispose();
       updates.dispose();
     },
   };
@@ -686,6 +691,30 @@ suite('Related Notes controller', () => {
         ['resetWidgets'],
         ['day', { type: 'openDay', date: '2026-09-24' }],
       ]);
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('follows the note the note page shows while it is in front, as it follows the editor', async () => {
+    await closeEditors();
+    const page = openController();
+    try {
+      page.host.attach(page.surface);
+      const source = { location: { filePath: '/notes/atlas.md' } as { filePath: string; line?: number } };
+      page.activeNotePage.setActive(source);
+      const shown = page.states().at(-1);
+      assert.strictEqual(shown?.state, 'ready');
+      assert.strictEqual(shown?.activeFileName, 'atlas.md');
+      assert.ok(shown?.notes.some((note) => note.filePath === '/notes/standup.md'), 'Standup shares Atlas’s tag');
+      assert.strictEqual(shown?.links?.linkedFromNoteCount, 2, 'Standup and Budget link to Atlas');
+
+      source.location = { filePath: '/notes/garden.md', line: 2 };
+      page.activeNotePage.notifyChanged(source);
+      assert.strictEqual(page.states().at(-1)?.activeFileName, 'garden.md', 'a new note on the page ranks for it');
+
+      page.activeNotePage.release(source);
+      assert.strictEqual(page.states().at(-1)?.state, 'noMarkdown', 'with the page gone and no note in the editor, it shows no note');
     } finally {
       page.dispose();
     }

@@ -44,6 +44,9 @@
   --favorite-red: var(--vscode-charts-red);
   --favorite: var(--vscode-textLink-foreground);
   --warning-orange: var(--vscode-editorWarning-foreground);
+  /* VS Code's warning text in lists, readable on its light grounds, where
+     the editor's warning squiggle color is not. */
+  --due-today: var(--vscode-list-warningForeground, var(--vscode-editorWarning-foreground));
   --slate-olive: var(--vscode-panel-border);
   --grid-line: transparent;
   --font-display: var(--vscode-font-family, system-ui, sans-serif);

@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { chooseNoteTarget } from '../../domain/notes/noteTarget';
+import { readOpenNotesIn } from './noteOpening';
 import { PreferenceServices } from '../../core/storage/preferences';
 import type {
   IndexControl,
@@ -284,6 +286,27 @@ export class QuickFind implements vscode.Disposable {
     await this.openItem(item, true);
   }
 
+  /**
+   * Shift+Enter: opens the highlighted note or task where
+   * `deckard.openNotesIn` does not, the editor or the note page, and closes
+   * Find, as Enter does.
+   */
+  public async openOther(): Promise<void> {
+    const picker = this.picker;
+    const item = picker?.activeItems[0]?.item;
+    if (!picker || !item || (item.kind !== 'note' && item.kind !== 'task') || !item.filePath || !item.line) {
+      await this.accept();
+      return;
+    }
+    const query = picker.value.trim();
+    picker.hide();
+    if (query) {
+      await this.preferences.savedSearches.recordRecentQuery(query);
+      await this.rememberChoice(query, item);
+    }
+    await this.openItem(item, false, true);
+  }
+
   /** Alt+Enter: links the highlighted note, or a task's heading, at the cursor. */
   public async insertLinkFromActive(): Promise<void> {
     const item = this.picker?.activeItems[0]?.item;
@@ -466,13 +489,20 @@ export class QuickFind implements vscode.Disposable {
    * what ranks it among the notes opened last. A row with no place to open
    * is left alone.
    */
-  private async openItem(item: QuickFindItem, beside = false): Promise<void> {
+  private async openItem(item: QuickFindItem, beside = false, opposite = false): Promise<void> {
     if (!item.filePath || !item.line) {
       return;
     }
-    await (beside
-      ? openSourceAt({ filePath: item.filePath, line: item.line, beside: true, preview: false, preserveFocus: true })
-      : openSourceAt({ filePath: item.filePath, line: item.line }));
+    // Where the reader reads notes, the editor or the note page, as
+    // deckard.openNotesIn and Shift+Enter say.
+    if (chooseNoteTarget(readOpenNotesIn(), opposite) === 'page') {
+      // Beside, the page leaves the focus with Find, which stays open.
+      await vscode.commands.executeCommand('deckard.openNotePage', item.filePath, item.line, { beside, preserveFocus: beside });
+    } else {
+      await (beside
+        ? openSourceAt({ filePath: item.filePath, line: item.line, beside: true, preview: false, preserveFocus: true })
+        : openSourceAt({ filePath: item.filePath, line: item.line }));
+    }
     if (item.kind === 'note' && item.sectionId) {
       await this.preferences.usage.recordSectionAccess(item.sectionId);
     }

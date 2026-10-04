@@ -22,6 +22,7 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.quickFind.openBeside', () =>
       quickFind.openBeside(),
     ),
+    registerCommand('deckard.quickFind.openOther', () => quickFind.openOther()),
     registerCommand('deckard.quickFind.insertLink', () =>
       quickFind.insertLinkFromActive(),
     ),

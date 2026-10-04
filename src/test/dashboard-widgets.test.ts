@@ -99,6 +99,32 @@ suite('Dashboard Home widgets', () => {
     }
   });
 
+  test('Progress lists a namespace’s tags with tasks, unfinished and overdue first, each with its bar', () => {
+    const files = [
+      parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n- [ ] Retire the ledger 📅 2026-09-10\n- [x] Book the room'),
+      parseMarkdown('notes/borealis.md', '# Borealis #project/borealis\n- [ ] Ship it 📅 2026-09-20'),
+      parseMarkdown('notes/done.md', '# Cirrus #project/cirrus\n- [x] Wrap up'),
+      parseMarkdown('notes/quiet.md', '# Delta #project/delta\nNo tasks yet.'),
+      parseMarkdown('notes/area.md', '# Home #area/home\n- [ ] Fix the gate'),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    const [progress] = widgets([{ id: 'p', kind: 'progress', width: 'half', count: 5 }], index);
+    assert.strictEqual(progress.title, 'Progress');
+    assert.deepStrictEqual(progress.tags?.map((tag) => tag.key), ['#project/atlas', '#project/borealis', '#project/cirrus']);
+    assert.deepStrictEqual(progress.tags?.[0].progress, { done: 1, total: 2 });
+    assert.strictEqual(progress.tags?.[0].detail, '1 of 2 done · 1 overdue');
+    assert.strictEqual(progress.tags?.[1].detail, '0 of 1 done · next due in 4 days');
+    assert.strictEqual(progress.tags?.[2].detail, '1 of 1 done · all done');
+    assert.deepStrictEqual(progress.namespaces, ['area', 'project']);
+
+    const [area] = widgets([{ id: 'p', kind: 'progress', width: 'half', count: 5, namespace: 'area' }], index);
+    assert.deepStrictEqual(area.tags?.map((tag) => tag.key), ['#area/home']);
+    const [kept] = normalizeDashboardWidgets([{ id: 'p', kind: 'progress', width: 'half', namespace: 'project' }]);
+    assert.strictEqual(kept.namespace, undefined, 'its default is kept as no namespace');
+    const [chosen] = normalizeDashboardWidgets([{ id: 'p', kind: 'progress', width: 'half', namespace: ' Area ' }]);
+    assert.strictEqual(chosen.namespace, 'area');
+  });
+
   test('the agenda leaves what needs a new date to a line under its list', () => {
     const files = [
       parseMarkdown(

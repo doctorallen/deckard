@@ -73,6 +73,15 @@ Select a day, the mark beside a week, or the month's name to open its note; Deck
 - Drag a due or scheduled task to another day to move its date. Repeats stay put.
 - Keys: `[` and `]` step, `t` returns to today, `m` and `w` switch the layout, `?` lists the keys.
 
+### Tasks in your calendar app
+
+Deckard can write your dated tasks to a calendar file (`.ics`) that Apple Calendar, Outlook, Google Calendar, and most other calendar apps read. Each task is an all-day event on its due date, or on its scheduled date when it has none, and its notes link back to the task's line in VS Code. Nothing leaves your machine: the file is written where you say, and your calendar app reads it from there.
+
+- **Once:** run `Deckard: Export Tasks as Calendar…`, choose where to save it, and import the file into your calendar app.
+- **Kept up to date:** set `deckard.calendar.exportFile` to a path ending in `.ics`, such as `.deckard/tasks.ics` in the first workspace folder, `~/Calendars/tasks.ics`, or an absolute path, or choose **Keep It Up to Date** after an export. Deckard rewrites it a moment after your notes change, once the first scan has read them, and only when the calendar changed. It never writes over a file that is not a calendar, and a relative path cannot climb out of the folder. Apple Calendar can subscribe to the file (**File → New Calendar Subscription…** with its `file://` address) and follow your notes; Google Calendar subscribes only to web addresses, so import the file there instead. A file inside your notes is not indexed; add it to `.gitignore` if the folder is a repository.
+- **Which tasks:** `deckard.calendar.exportQuery` is the search the file lists, every open task by default. `is:open is:mine` keeps it to yours, and `#project/atlas is:open` to one project. A done task the search finds is marked ✓.
+- Moving a task's date moves its event rather than making a new one; a repeating task is an event on its next date.
+
 ---
 
 ← [Related notes, the graph, and the outline](connections.md) · [All topics](README.md) · [Renaming, moving, and parking](organizing.md) →

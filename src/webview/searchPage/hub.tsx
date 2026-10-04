@@ -5,6 +5,8 @@
 import type { ComponentChild } from 'preact';
 
 import type { SearchPageSnapshot, SearchPageTag, SearchPageTagNotes, TagOverviewHub } from '../../ui/protocol/searchPage';
+import { ProgressBar } from '../shared/progressBar';
+import { ProgressWords } from '../shared/progressWords';
 import { NoteBody } from '../shared/searchCard';
 import { TagButton } from '../shared/tagButton';
 import { isParkedTag } from '../shared/tagMenu';
@@ -86,6 +88,27 @@ export function HubNote({ snapshot, hubOpen }: { readonly snapshot: SearchPageSn
   );
 }
 
+/**
+ * How far along the tag's tasks are: a bar and the words, where "3 of 8
+ * done", "1 overdue", "1 needs a new date", and "next due today" are each a
+ * link that searches those tasks. Only a tag that finds a task has it.
+ */
+export function TagProgress({ snapshot }: { readonly snapshot: SearchPageSnapshot }) {
+  const progress = snapshot.tag && snapshot.tagPage ? snapshot.tagPage.progress : undefined;
+  if (!progress) {
+    return null;
+  }
+  return (
+    <div class="tag-progress">
+      <span class="eyebrow">Progress</span>
+      <ProgressBar done={progress.done} total={progress.total} />
+      <span class="tag-progress-label">
+        <ProgressWords parts={progress.parts} action="search-progress" attributes={(_part, at) => ({ 'data-part': at })} />
+      </span>
+    </div>
+  );
+}
+
 /** Said when the page's tag is parked, with the way to unpark it. */
 function ParkedNote({ tag }: { readonly tag: SearchPageTag }) {
   return (
@@ -142,9 +165,29 @@ function MentionNote({ mention }: { readonly mention: NonNullable<SearchPageTagN
 }
 
 /**
- * The quiet lines under a tag's page's hub: whether the tag is parked, its
- * other spellings, what only links its hub, and where its name is written
- * without it. Only a one-tag page has them, and nothing when none applies.
+ * How else a tag page's tag is written, for the top of Refine, where it is
+ * not lost among the lines under the hub: its other spellings, each with
+ * the way to include or merge it, and where its name is written without
+ * the tag, with the way to list those entries. Undefined for a page with
+ * neither.
+ */
+export function tagRefineLines(snapshot: SearchPageSnapshot): ComponentChild | undefined {
+  const tag = snapshot.tag;
+  const page = snapshot.tagPage;
+  if (!tag || !page) {
+    return undefined;
+  }
+  const lines = [
+    ...(page.lookalikes || []).map((other) => <LookalikeNote key={`lookalike:${other.key}`} tag={tag} other={other} />),
+    page.mention && page.mention.count > 0 ? <MentionNote key="mention" mention={page.mention} /> : null,
+  ].filter(Boolean);
+  return lines.length ? <>{lines}</> : undefined;
+}
+
+/**
+ * The quiet lines under a tag's page's hub: whether the tag is parked, and
+ * what only links its hub. Only a one-tag page has them, and nothing when
+ * none applies.
  */
 export function TagNotes({ snapshot }: { readonly snapshot: SearchPageSnapshot }) {
   const tag = snapshot.tag;
@@ -154,9 +197,7 @@ export function TagNotes({ snapshot }: { readonly snapshot: SearchPageSnapshot }
   }
   const notes = [
     isParkedTag(tag.key) ? <ParkedNote key="parked" tag={tag} /> : null,
-    ...(page.lookalikes || []).map((other) => <LookalikeNote key={`lookalike:${other.key}`} tag={tag} other={other} />),
     page.hubLinkCount > 0 && page.hubTitle ? <HubLinksNote key="hub-links" count={page.hubLinkCount} title={page.hubTitle} /> : null,
-    page.mention && page.mention.count > 0 ? <MentionNote key="mention" mention={page.mention} /> : null,
   ].filter(Boolean);
   return notes.length ? <div class="tag-notes">{notes}</div> : null;
 }

@@ -4,7 +4,7 @@
  */
 import type { ComponentChild } from 'preact';
 
-import { QUICK_ADD_MAX_LENGTH } from '../../domain/dashboard/widgetCatalog';
+import { QUICK_ADD_MAX_LENGTH, widgetNamespace } from '../../domain/dashboard/widgetCatalog';
 import type { DashboardWidget, DashboardWidgetKind } from '../../ui/protocol/dashboard';
 import type { DashboardTask } from '../../ui/protocol/shared';
 import type { HomeContext } from './homeContext';
@@ -223,6 +223,12 @@ function QuietPeopleBody({ widget }: WidgetBodyProps) {
   );
 }
 
+/** Each tag of a namespace with tasks, its bar and how far along it is. */
+function ProgressBody({ widget }: WidgetBodyProps) {
+  const kind = widgetNamespace(widget);
+  return <HomeTags tags={widget.tags} empty={`No ${kind} tag has a task yet. A tag’s tasks are those that carry it, or sit under a heading or in a note that does.`} />;
+}
+
 /**
  * The notes pinned to Home, each opening at the entry it names, with × to
  * let go of it. Home lists pins and lets go of them; pinning happens where
@@ -277,6 +283,7 @@ const BODIES: Readonly<Record<DashboardWidgetKind, (props: WidgetBodyProps) => C
   unhubbedTags: UnhubbedTagsBody,
   newTags: NewTagsBody,
   quietPeople: QuietPeopleBody,
+  progress: ProgressBody,
   pinnedNotes: PinnedNotesBody,
   savedQuery: SavedQueryBody,
 };

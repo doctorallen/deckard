@@ -131,6 +131,8 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-row-label { min-width: 0; overflow-wrap: anywhere; color: var(--cyan-bright); }
 .home-row-label code { background: none; padding: 0; color: inherit; font-size: var(--text-xs); }
 .home-row-detail { flex: 0 0 auto; color: var(--muted); font: var(--text-xs) var(--font-mono); }
+/* A row with a bar, as Progress lists them: the tag, its bar, then its words, each a line of its own. */
+.home-row.has-progress { display: grid; gap: var(--space-1); }
 /* A row with its own action beside it, such as Create hub or Unpin. */
 .home-row-with-action { display: flex; align-items: stretch; gap: 4px; min-width: 0; }
 .home-row-with-action > .home-row { flex: 1 1 auto; min-width: 0; }

@@ -53,9 +53,10 @@ export class PanelAdapter<TSnapshot, TPageToHost extends MessageMap<TPageToHost>
   /**
    * The page's panel, made and attached first when it has none, but not
    * brought forward or sent anything: for a page whose showing differs
-   * from `show`'s.
+   * from `show`'s. A new panel opens where `where` says, the active group
+   * unless told.
    */
-  public open(): vscode.WebviewPanel {
+  public open(where: vscode.ViewColumn | { viewColumn: vscode.ViewColumn; preserveFocus?: boolean } = vscode.ViewColumn.Active): vscode.WebviewPanel {
     const open = this.panel;
     if (open) {
       return open;
@@ -64,7 +65,7 @@ export class PanelAdapter<TSnapshot, TPageToHost extends MessageMap<TPageToHost>
     const panel = vscode.window.createWebviewPanel(
       this.options.viewType,
       this.options.title,
-      vscode.ViewColumn.Active,
+      where,
       {
         ...(scripts === 'off' ? {} : { enableScripts: true }),
         retainContextWhenHidden,

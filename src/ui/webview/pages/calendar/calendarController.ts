@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { openNoteAt } from '../../../commands/noteOpening';
 import { sameShownDayIn } from '../../../../domain/markdown/calendar';
 import type { WorkspaceIndex } from '../../../../domain/model';
 import { NavigationService } from '../../../../services/navigationService';
@@ -15,7 +16,6 @@ import type {
 import { setTaskDateField } from '../../../commands/agendaActions';
 import { chooseTargetFolder, ensurePeriodicNote } from '../../../commands/dailyNote';
 import { readWeekStart } from '../../../commands/datePrompt';
-import { openSourceAt } from '../../../commands/navigation';
 import { readQueryContext } from '../../../commands/queryContext';
 import { openTask, TaskWrites, toggleTask } from '../../../commands/taskActions';
 import { CalendarOptions, createCalendar } from '../../../state/calendarState';
@@ -112,7 +112,7 @@ export class CalendarController {
       }
       case 'openNote':
         if (this.indexer.getSnapshot().files.has(message.filePath)) {
-          await openSourceAt({ filePath: message.filePath, line: 1 });
+          await openNoteAt(message.filePath, 1, { pin: true, opposite: message.opposite === true });
         }
         return;
       case 'searchCreated':
@@ -212,7 +212,7 @@ export class CalendarController {
       (entry) => entry.date === date,
     );
     if (note) {
-      await openSourceAt({ filePath: note.filePath, line: 1 });
+      await openNoteAt(note.filePath, 1, { pin: true });
       return;
     }
     await this.openPeriod('day', date);
@@ -241,7 +241,7 @@ export class CalendarController {
               names.has((filePath.split('/').pop() ?? '').replace(/\.md$/i, '')),
             );
     if (existing) {
-      await openSourceAt({ filePath: existing, line: 1 });
+      await openNoteAt(existing, 1, { pin: true });
       return;
     }
     const choice = await vscode.window.showInformationMessage(

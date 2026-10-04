@@ -61,6 +61,10 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.resetMcpToken': 'Makes a new token, so old setups stop working.',
   'deckard.moveTo': 'Moves this line, task, or selection under another heading, leaving a link.',
   'deckard.agenda.moveTo': 'Moves the task under another heading.',
+  'deckard.openNotePage': 'Opens the note in the editor on a page of its own, its links, tags, tasks, and query blocks working.',
+  'deckard.copyAsPlainMarkdown':
+    'Copies the note, or the selection, with its embeds, query results, and links written out for elsewhere.',
+  'deckard.exportTaskCalendar': 'Writes your dated tasks to a calendar file for a calendar app.',
   'deckard.extractHeading':
     'Moves a heading and everything under it into a note of its own, leaving a link behind.',
   'deckard.showTagOverview': 'Opens a tag’s search page.',
@@ -260,9 +264,15 @@ ${HELP_HEADER}${renderStartSections(logoUri, options)}${renderWritingSections()}
   });
 }
 
-/** The rail of section links down the side of Help, grouped as the sections are. */
+/**
+ * The rail of section links down the side of Help, grouped as the sections
+ * are. On a window too narrow for a side rail it sits above the guide,
+ * folded behind its Contents button.
+ */
 const HELP_NAV = `  <nav aria-label="Help sections">
     <span class="nav-title">Deckard Help</span>
+    <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="help-nav-links">Contents</button>
+    <div class="nav-links" id="help-nav-links">
     <a href="#quick-start">Quick start</a>
     <a href="#whats-new">What's new</a>
     <span class="nav-group">Writing</span>
@@ -289,6 +299,7 @@ const HELP_NAV = `  <nav aria-label="Help sections">
     <a class="nav-sub" href="#advanced">Settings</a>
     <a class="nav-sub" href="#assistants">AI assistants</a>
     <a class="nav-sub" href="#privacy">Privacy and safety</a>
+    </div>
   </nav>
 `;
 
@@ -394,6 +405,7 @@ function renderTaskSections(): string {
         <div class="card"><h3>Steps</h3><p>A checkbox indented under a task is one of its steps. <code>Deckard: Break into Steps…</code> — on the lightbulb, the Tasks view’s menu, and a card’s ⋯ — writes them one per line you type, after anything already under the task, in one change that Undo takes back. The task then reads <strong>2 of 5 steps · next: Draft the email</strong> on its card and row, and opens to its steps in the Tasks view. On the board and in the Tasks view a plain step rides on its task instead of being listed on its own; one with a date, priority, person, or tag keeps its own card. Finishing the last step offers to finish the task, and finishing a task with open steps offers to finish them; nothing is completed for you.</p></div>
         <div class="card"><h3>Suggested steps</h3><p>With a VS Code language model installed, <strong>Suggest steps</strong> in Break into Steps… asks it for a list you edit before anything is written. Only the task’s words are sent, and only when you choose it. <code>deckard.tasks.suggestSteps</code> turns it off.</p></div>
         <div class="card"><h3>Done from the keyboard</h3><p><code>Deckard: Toggle Task Done</code> completes the tasks under every cursor, or reopens them when all of them are done, with the ✅ date and the next occurrence of a repeating task, as one edit that one Undo takes back. A repeat rule Deckard cannot read is underlined on an open task, since completing it would start no next one, and the lightbulb offers the nearest rules it can read.</p></div>
+        <div class="card"><h3>The / menu</h3><p>Type <code>/</code> alone at the start of a line for what to write there: a task, a heading, a link or an embed, today’s note, a query block, a table of notes or tasks, or one of your templates, its questions as tab stops. <code>deckard.editor.slashMenu</code> turns it off.</p></div>
         <div class="card"><h3>Typing metadata</h3><p>Type <code>/</code> after a space inside a task to pick a due date, a priority, a repeat rule, or a dependency without remembering the markers. Suggestions use the format the task already uses, or <code>deckard.tasks.metadataFormat</code> for a task with none.</p></div>
         <div class="card"><h3>Who a task is for</h3><p>Write <code>👤 @dana</code> on a task — or <code>[assignee:: @dana]</code> in a Dataview vault — to say who it is for. A name in the words is a mention, not an assignment. Search with <code>assignee = @dana</code>, <code>is:assigned</code>, or <code>is:unassigned</code>, and set <code>deckard.me</code> so <code>is:mine</code> finds yours — a task for nobody in particular is yours too.</p></div>
         <div class="card"><h3>Capture</h3><p><code>Deckard: Capture</code>, or Cmd/Ctrl+Shift+Alt+N, adds a task to today’s note from anywhere, completing tags as you type; <code>Deckard: Capture Under a Heading</code> puts it under a heading you choose in any note, the ones used last first, above that heading’s sub-headings. With words selected, Capture and Find start from them, and a capture from a note links back to it. It stays open when you click away, and brings back what you had typed if you close it.</p></div>
@@ -493,7 +505,7 @@ function renderFindingSections(): string {
       <pre><code>&#96;&#96;&#96;deckard sort=updated limit=10
 tag = #project/atlas AND task = open
 &#96;&#96;&#96;</code></pre>
-      <p><code>sort=</code> any task column such as <code>due</code> or <code>priority</code>, <code>dir=asc|desc</code>, <code>limit=10</code>, and <code>view=table columns=due,priority,for</code> for the tasks as a table follow the language name. Results refresh when any note changes, not only the one holding the block, and the fence stays ordinary Markdown everywhere else. Like any fenced code, a query block is not indexed, so the tags inside it are not counted as uses.</p>
+      <p><code>sort=</code> any task column such as <code>due</code> or <code>priority</code>, <code>dir=asc|desc</code>, <code>limit=10</code>, and <code>view=table columns=due,priority,for</code> for the tasks as a table, with <code>noteColumns=links,tasks,#status</code> for the notes as one, follow the language name. Results refresh when any note changes, not only the one holding the block, and the fence stays ordinary Markdown everywhere else. Like any fenced code, a query block is not indexed, so the tags inside it are not counted as uses.</p>
       ${renderReadMore('query-blocks')}
     </section>
 

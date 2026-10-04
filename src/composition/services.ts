@@ -49,6 +49,7 @@ import { LinkHealth } from '../ui/commands/linkHealth';
 import { CalendarView } from '../ui/webview/calendar';
 import { CalendarPanel } from '../ui/webview/calendarPage';
 import { ActiveCalendar } from '../ui/webview/activeCalendar';
+import { ActiveNotePage } from '../ui/webview/activeNotePage';
 import { ActiveHome } from '../ui/webview/activeHome';
 import { readManifestTools } from '../core/mcp/mcpProtocol';
 import { DeckardMcpServer } from '../ui/commands/mcpServer';
@@ -66,6 +67,7 @@ import { TagService } from '../services/tagService';
 import { EditorTagDecorations } from '../ui/providers/tagDecorations';
 import { TagCompletionProvider } from '../ui/providers/tagSuggestions';
 import { TaskMetadataCompletionProvider } from '../ui/providers/taskMetadataSuggestions';
+import { SlashMenuProvider } from '../ui/providers/slashMenu';
 import { EditorLenses } from '../ui/providers/editorLenses';
 import { EditorReferences } from '../ui/providers/editorReferences';
 import { AssistantTools } from '../ui/commands/assistantTools';
@@ -76,6 +78,7 @@ import { NotesGraphPanel, readNotesGraphOptions } from '../ui/webview/notesGraph
 import { SidebarNotesView } from '../ui/webview/sidebarNotes';
 import { RelatedNotesDebugPanel } from '../ui/webview/relatedNotesDebug';
 import { StatsPanel } from '../ui/webview/stats';
+import { NotePagePanel } from '../ui/webview/notePage';
 import { TaskBoardPanel } from '../ui/webview/taskBoard';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { SearchPanels } from '../ui/webview/searchPage';
@@ -147,6 +150,7 @@ export interface Pages {
   relatedNotesDebug: RelatedNotesDebugPanel;
   calendar: CalendarPanel;
   taskBoard: TaskBoardPanel;
+  notePage: NotePagePanel;
 }
 
 /**
@@ -257,7 +261,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     whatsNew,
     tryNext,
   });
-  const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, dashboard: home.dashboard, whatsNew });
+  const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, dashboard: home.dashboard, whatsNew, writes });
   const trees = createTreesAndCapture(context, core, preferences, writes);
   const built: Built = { core, preferences, writes, search, editor, assistance, calendar, home, sidebar, trees };
   holdUntilShutdown(context, shutdown, built);
@@ -330,6 +334,7 @@ function holdUntilShutdown(context: vscode.ExtensionContext, shutdown: DisposalO
     sidebar.stats,
     sidebar.help,
     sidebar.relatedNotesDebug,
+    sidebar.notePage,
     trees.outline,
     trees.queryBlocks,
     trees.agenda,
@@ -359,6 +364,7 @@ function listPages({ search, home, sidebar, calendar }: Built): Pages {
     relatedNotesDebug: sidebar.relatedNotesDebug,
     calendar: calendar.calendarPage,
     taskBoard: home.taskBoard,
+    notePage: sidebar.notePage,
   };
 }
 
@@ -627,6 +633,7 @@ function createEditorProviders(context: vscode.ExtensionContext, core: Core, pre
   context.subscriptions.push(preferences.repository.onDidChange(() => readPinned()));
   const tagSuggestions = new TagCompletionProvider(indexer).register();
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer).register();
+  context.subscriptions.push(new SlashMenuProvider(indexer).register());
   const taskEditorActions = new TaskEditorActions();
   const taskLineContext = new TaskLineContext();
   return { tagDecorations, pins, tagSuggestions, taskMetadataSuggestions, taskEditorActions, taskLineContext };
@@ -868,14 +875,18 @@ interface SidebarParts {
   calendar: ReturnType<typeof createCalendar>;
   dashboard: DashboardPanel;
   whatsNew: WhatsNew;
+  writes: Omit<Writes, 'capture'>;
 }
 
-/** Related Notes in the sidebar, and Stats, Help, the Notes Graph, and the debug page. */
+/** Related Notes in the sidebar, and Stats, Help, the Notes Graph, the note page, and the debug page. */
 function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarParts) {
   const { indexer, history } = parts.core;
   const { repository, display, usage, tagRenames } = parts.preferences;
   const { searchPanels, activeSearch, themePreview } = parts.search;
   const { activeCalendar, activeHome } = parts.calendar;
+  // The note page in front, whose note Related Notes follows.
+  const activeNotePage = new ActiveNotePage();
+  context.subscriptions.push(activeNotePage);
   const sidebarNotes = new SidebarNotesView({
     indexer,
     preferences: { reader: repository, display, usage, tagRenames },
@@ -885,6 +896,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     extensionUri: context.extensionUri,
     activeCalendar,
     activeHome,
+    activeNotePage,
     history,
     themePreview,
   });
@@ -921,14 +933,29 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     extensionUri: context.extensionUri,
     themePreview,
   });
-  return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug };
+  const notePage = new NotePagePanel({
+    indexer,
+    writes: parts.writes.tasks,
+    extensionUri: context.extensionUri,
+    onOpenTag: async (tagKey) => {
+      await searchPanels.show(tagKey);
+    },
+    themePreview,
+    activeNotePage,
+    onOpenSearch: (query) => searchPanels.showQuery(query),
+  });
+  return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug, notePage };
 }
 
 /** The Outline, the query blocks, the Tasks view and its service, the status bar, and capture. */
 function createTreesAndCapture(context: vscode.ExtensionContext, core: Core, preferences: PreferenceParts, writes: Omit<Writes, 'capture'>) {
   const { indexer } = core;
   const outline = new OutlineTreeProvider(indexer);
-  const queryBlocks = new QueryBlocks(indexer);
+  // A query block's checkboxes link to Deckard's URI handler, which ticks them.
+  const queryBlocks = new QueryBlocks(indexer, {
+    base: `${vscode.env.uriScheme}://${context.extension.id}`,
+    writes: writes.tasks,
+  });
   // What the Tasks view lists, and what dropping or checking a task in it
   // writes, over the index and the settings.
   const agendaService = new AgendaService<AgendaGroup>({
@@ -1108,8 +1135,11 @@ function createLateContexts(context: vscode.ExtensionContext, core: Core, pages:
 
 /** Lets VS Code restore each page left open when the window closed. */
 function registerSerializers(context: vscode.ExtensionContext, pages: Pages): void {
-  const { dashboard, stats, help, notesGraph, calendar, taskBoard, search } = pages;
+  const { dashboard, stats, help, notesGraph, calendar, taskBoard, search, notePage } = pages;
   context.subscriptions.push(
+    vscode.window.registerWebviewPanelSerializer('deckard.notePage', {
+      deserializeWebviewPanel: (webviewPanel, state) => notePage.restore(webviewPanel, state),
+    }),
     vscode.window.registerWebviewPanelSerializer('deckard.dashboard', {
       deserializeWebviewPanel: (webviewPanel) =>
         dashboard.restore(webviewPanel),

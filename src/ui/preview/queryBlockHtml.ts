@@ -5,6 +5,7 @@ import { createPreviewSourceHref } from '../../domain/markdown/sourceLinks';
 import {
   getQueryBlockSnapshot,
   describeQueryBlockCounts,
+  describeNoteCell,
   parseQueryBlockInfo,
   QueryBlockItem,
   QueryBlockMessage,
@@ -19,6 +20,7 @@ import type { InlineToken } from '../../domain/model/inline';
 import { WorkspaceIndex, TaskColumnId } from '../../domain/model';
 import { describeDueDate } from '../../domain/markdown/dueWording';
 import { formatIsoDate } from '../../domain/markdown/calendar';
+import { DEFAULT_NOTE_COLUMNS, NoteColumnId, noteColumnLabel } from '../../domain/notes/noteColumns';
 
 /** markdown-it's rule for a fenced block, which the query block rule wraps. */
 type FenceRule = NonNullable<MarkdownIt['renderer']['rules']['fence']>;
@@ -35,6 +37,11 @@ export interface QueryBlockPreviewSource {
   getStatusNamespace?(): string;
   /** The settings a block is evaluated in, for a render made at `now`. */
   getQueryContext(now: number): QueryContext;
+  /**
+   * The link a task's checkbox opens, which puts the task in the state the
+   * box offers; without one, the box is drawn and does nothing.
+   */
+  getTaskHref?(item: QueryBlockItem): string | undefined;
 }
 
 /**
@@ -66,6 +73,7 @@ export function addQueryBlockRenderer(
       queryContext: source.getQueryContext(Date.now()),
       sourceLine: token.map?.[0],
       statusNamespace: source.getStatusNamespace?.(),
+      ...(source.getTaskHref ? { taskHref: (item: QueryBlockItem) => source.getTaskHref?.(item) } : {}),
     });
   };
   return md;
@@ -82,6 +90,8 @@ export interface QueryBlockRendering {
   sourceLine?: number;
   /** The namespace of status tags; `status` unless given. */
   statusNamespace?: string;
+  /** The link a task's checkbox opens; the box does nothing without one. */
+  taskHref?: (item: QueryBlockItem) => string | undefined;
 }
 
 /** Renders one block, in the rendering's context. */
@@ -117,7 +127,7 @@ export function renderQueryBlockHtml(
       snapshot.hasError ? undefined : describeQueryBlockCounts(snapshot),
     ),
     ...snapshot.messages.map(renderMessage),
-    ...(snapshot.hasError ? [] : renderResults(snapshot, options, queryContext)),
+    ...(snapshot.hasError ? [] : renderResults(snapshot, options, queryContext, rendering.taskHref)),
     '</div>',
   ].join('');
 }
@@ -152,21 +162,55 @@ function renderResults(
   snapshot: QueryBlockSnapshot,
   options: QueryBlockOptions,
   context: QueryContext,
+  taskHref?: (item: QueryBlockItem) => string | undefined,
 ): string[] {
   if (snapshot.noteCount === 0 && snapshot.taskCount === 0) {
     return ['<p class="deckard-query-message">Nothing matches this query yet.</p>'];
   }
   return [
-    ...renderGroup(
-      { kind: 'notes', label: 'Notes', items: snapshot.notes, total: snapshot.noteCount },
-      renderNote,
-    ),
     ...(options.view === 'table'
-      ? renderTaskTable(snapshot, options.columns ?? [...DEFAULT_TASK_COLUMNS], context)
+      ? renderNoteTable(snapshot, options.noteColumns ?? [...DEFAULT_NOTE_COLUMNS])
+      : renderGroup(
+          { kind: 'notes', label: 'Notes', items: snapshot.notes, total: snapshot.noteCount },
+          renderNote,
+        )),
+    ...(options.view === 'table'
+      ? renderTaskTable(snapshot, options.columns ?? [...DEFAULT_TASK_COLUMNS], context, taskHref)
       : renderGroup(
           { kind: 'tasks', label: 'Tasks', items: snapshot.tasks, total: snapshot.taskCount },
-          (item) => renderTask(item, context),
+          (item) => renderTask(item, context, taskHref),
         )),
+  ];
+}
+
+/**
+ * The notes as a table, one column per field named: the title cell links to
+ * the entry's line, the rest are what the index knows of it. An empty cell
+ * is left empty rather than saying "0" or "none", so what a note does have
+ * stands out down a column.
+ */
+function renderNoteTable(snapshot: QueryBlockSnapshot, columns: readonly NoteColumnId[]): string[] {
+  if (snapshot.notes.length === 0) {
+    return [];
+  }
+  const head = columns.map((column) => `<th scope="col">${escapeHtml(noteColumnLabel(column))}</th>`).join('');
+  const rows = snapshot.notes.map((item) => {
+    const cells = columns.map((column) =>
+      column === 'title' ? `<td>${renderLink(item)}</td>` : `<td>${escapeHtml(describeNoteCell(item, column))}</td>`,
+    );
+    return `<tr class="deckard-query-row">${cells.join('')}</tr>`;
+  });
+  return [
+    '<div class="deckard-query-group deckard-query-notes">',
+    '<div class="deckard-query-group-title">Notes</div>',
+    '<table class="deckard-query-table">',
+    `<thead><tr>${head}</tr></thead>`,
+    `<tbody>${rows.join('')}</tbody>`,
+    '</table>',
+    snapshot.noteCount > snapshot.notes.length
+      ? `<p class="deckard-query-message">Showing ${snapshot.notes.length} of ${snapshot.noteCount} notes.</p>`
+      : '',
+    '</div>',
   ];
 }
 
@@ -174,12 +218,13 @@ function renderResults(
  * The tasks as a table, one column per field named. The title cell keeps the
  * checkbox and the link to the source line; the rest are the cells the shared
  * column model makes, so a due date is overdue here the way it is on the
- * board. Notes stay a list above it: they have no columns of their own yet.
+ * board.
  */
 function renderTaskTable(
   snapshot: QueryBlockSnapshot,
   columns: readonly TaskColumnId[],
   context: QueryContext,
+  taskHref?: (item: QueryBlockItem) => string | undefined,
 ): string[] {
   if (snapshot.tasks.length === 0) {
     return [];
@@ -195,7 +240,7 @@ function renderTaskTable(
         .join(' ');
       const open = classes ? `<td class="${classes}">` : '<td>';
       if (columns[at] === 'title') {
-        return `${open}<span class="deckard-query-checkbox" role="img" aria-label="${done ? 'Done' : 'Open'}">${done ? '☑' : '☐'}</span> ${renderLink(item)}</td>`;
+        return `${open}${renderCheckbox(item, taskHref?.(item))} ${renderLink(item)}</td>`;
       }
       return `${open}${escapeHtml(cell.text)}</td>`;
     });
@@ -277,7 +322,11 @@ function renderPriority(priority: string): string {
  * The checkbox sits in its own column so a wrapped title and its details line
  * up under the title rather than under the box.
  */
-function renderTask(item: QueryBlockItem, context: QueryContext): string {
+function renderTask(
+  item: QueryBlockItem,
+  context: QueryContext,
+  taskHref?: (item: QueryBlockItem) => string | undefined,
+): string {
   const done = item.completed === true;
   const details = [
     renderTaskDue(item, context),
@@ -291,13 +340,33 @@ function renderTask(item: QueryBlockItem, context: QueryContext): string {
     .join(' · ');
   return [
     `<li class="deckard-query-item deckard-query-task${done ? ' is-done' : ''}">`,
-    `<span class="deckard-query-checkbox" role="img" aria-label="${done ? 'Done' : 'Open'}">${done ? '☑' : '☐'}</span>`,
+    renderCheckbox(item, taskHref?.(item)),
     '<div class="deckard-query-body">',
     renderLink(item),
     renderMeta(item, details),
     '</div>',
     '</li>',
   ].join('');
+}
+
+/**
+ * A task's checkbox: with a link, one that completes or reopens the task
+ * when selected, named for what it does; without one, a picture of the
+ * task's state.
+ */
+function renderCheckbox(item: QueryBlockItem, href: string | undefined): string {
+  const done = item.completed === true;
+  const mark = done ? '☑' : '☐';
+  if (!href) {
+    return `<span class="deckard-query-checkbox" role="img" aria-label="${done ? 'Done' : 'Open'}">${mark}</span>`;
+  }
+  const action = `${done ? 'Reopen' : 'Complete'} ${plainTitle(item.title)}`;
+  return `<a class="deckard-query-checkbox is-action" href="${escapeHtml(href)}" role="checkbox" aria-checked="${done}" aria-label="${escapeHtml(action)}" title="${escapeHtml(action)}">${mark}</a>`;
+}
+
+/** A title's words without its Markdown marks, for a label. */
+function plainTitle(title: string): string {
+  return title.replace(/[*_`~]+/g, '').replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -317,15 +386,18 @@ function renderTaskDue(item: QueryBlockItem, context: QueryContext): string {
     return '';
   }
   const overdue = item.dueAt < startOfDay(now) && !due.stale;
-  return `<span class="deckard-query-due${dueClass(overdue, due.stale)}">${escapeHtml(due.label)}</span>`;
+  return `<span class="deckard-query-due${dueClass(overdue, due.stale, due.days === 0)}">${escapeHtml(due.label)}</span>`;
 }
 
-/** The class a due date adds: overdue wins over stale, and neither adds none. */
-function dueClass(overdue: boolean, stale: boolean | undefined): string {
+/** The class a due date adds: overdue, stale, or due today; none for a later date. */
+function dueClass(overdue: boolean, stale: boolean | undefined, today: boolean): string {
   if (overdue) {
     return ' is-overdue';
   }
-  return stale ? ' is-stale' : '';
+  if (stale) {
+    return ' is-stale';
+  }
+  return today ? ' is-today' : '';
 }
 
 /** An item's title, linked to its line in the source so a click opens it there. */

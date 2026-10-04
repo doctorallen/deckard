@@ -31,6 +31,8 @@ export interface WidgetKind {
   readonly days?: readonly WidgetDaysChoice[];
   /** For a widget that looks back, how far it looks until the reader says. */
   readonly defaultDays?: number;
+  /** For a widget that lists one namespace's tags, the one it lists until the reader says. */
+  readonly defaultNamespace?: string;
 }
 
 /** The spans a widget that looks back over weeks offers. */
@@ -62,7 +64,8 @@ export const WIDGET_KINDS: Readonly<Record<DashboardWidgetKind, WidgetKind>> = {
   tagPairs: { label: 'Tags written together', description: 'Tags most often carried together, which may want a hub note or one name', repeatable: false, listed: true },
   unhubbedTags: { label: 'Tags without a hub', description: 'Frequently used tags with no hub note', repeatable: false, listed: true },
   newTags: { label: 'New tags', description: 'Tags first seen lately, to catch typos early', repeatable: false, listed: true, days: WEEKS, defaultDays: 14 },
-  quietPeople: { label: 'Gone quiet', description: 'People, projects, or any namespace you have not written about lately', repeatable: false, listed: true, days: MONTHS, defaultDays: 90 },
+  quietPeople: { label: 'Gone quiet', description: 'People, projects, or any namespace you have not written about lately', repeatable: false, listed: true, days: MONTHS, defaultDays: 90, defaultNamespace: 'person' },
+  progress: { label: 'Progress', description: 'How far along each project’s tasks are, or any namespace’s', repeatable: false, listed: true, defaultNamespace: 'project' },
   pinnedNotes: { label: 'Pinned notes', description: 'Notes you pin to Home', repeatable: false, listed: true },
   tryNext: { label: 'Try next', description: 'One suggestion, when your notes are ready for it', repeatable: false, listed: false },
 };
@@ -92,6 +95,14 @@ export const QUICK_ADD_MAX_LENGTH = 1000;
  */
 export function isWatchableNamespace(namespace: string): boolean {
   return namespace.length <= 64 && /^[A-Za-z][A-Za-z0-9_-]*$/.test(namespace);
+}
+
+/**
+ * The namespace a widget lists: the one the reader chose, or its kind's
+ * default. A widget kept with no namespace lists its default.
+ */
+export function widgetNamespace(widget: { readonly kind: DashboardWidgetKind; readonly namespace?: string }): string {
+  return widget.namespace || WIDGET_KINDS[widget.kind].defaultNamespace || 'person';
 }
 
 /** Whether a value, read from storage or from a choice, names a kind of widget. */

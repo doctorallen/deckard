@@ -566,12 +566,21 @@ function applyTasksQuery(candidate: WidgetCandidate, widget: DashboardWidgetConf
   return true;
 }
 
-/** The namespace Gone quiet watches when it is not `person`, and whether it lists only tags with no open task. */
-function applyQuietPeople(candidate: WidgetCandidate, widget: DashboardWidgetConfig): boolean {
+/**
+ * The namespace a widget lists when it is not its kind's default, which is
+ * kept as no namespace, so a widget that never chose one stays unchosen.
+ */
+function applyNamespace(candidate: WidgetCandidate, widget: DashboardWidgetConfig): boolean {
   const namespace = typeof candidate.namespace === 'string' ? candidate.namespace.trim() : '';
-  if (namespace && isWatchableNamespace(namespace) && namespace.toLowerCase() !== 'person') {
+  if (namespace && isWatchableNamespace(namespace) && namespace.toLowerCase() !== WIDGET_KINDS[widget.kind].defaultNamespace) {
     widget.namespace = namespace.toLowerCase();
   }
+  return true;
+}
+
+/** The namespace Gone quiet watches when it is not `person`, and whether it lists only tags with no open task. */
+function applyQuietPeople(candidate: WidgetCandidate, widget: DashboardWidgetConfig): boolean {
+  applyNamespace(candidate, widget);
   if (candidate.noOpenTasks === true) {
     widget.noOpenTasks = true;
   }
@@ -595,6 +604,7 @@ function applySavedQuery(candidate: WidgetCandidate, widget: DashboardWidgetConf
 const WIDGET_OPTION_RULES: Readonly<Partial<Record<DashboardWidgetKind, WidgetOptionRule>>> = {
   tasks: applyTasksQuery,
   quietPeople: applyQuietPeople,
+  progress: applyNamespace,
   savedQuery: applySavedQuery,
 };
 

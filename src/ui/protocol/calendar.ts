@@ -180,6 +180,8 @@ export interface CalendarCreateDayMessage {
 export interface CalendarOpenNoteMessage {
   type: 'openNote';
   filePath: string;
+  /** Shift was held: open it where `deckard.openNotesIn` does not. */
+  opposite?: boolean;
 }
 
 /** The day panel's Search all: the notes created that day. */

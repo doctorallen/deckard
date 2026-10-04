@@ -81,6 +81,7 @@
 /* Written to outweigh a theme's own .task .source, which LCARS lays down
    after this sheet and which took the color off "overdue 20 days". */
 .task .board-details .overdue { color: var(--danger); }
+.task .board-details .due-today { color: var(--due-today); }
 .task .board-details .stale { color: var(--muted); }
 /* Most of a column overdue: the worst third keep the red, the rest say
    "overdue" muted beside a small red dot, so the word still says it. */

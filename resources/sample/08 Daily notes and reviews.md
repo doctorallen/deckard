@@ -59,5 +59,13 @@ others**, which lists what the `is:waiting` search finds.
    Review** later to bring it up to date.
 6. Search for `is:daily is:open` to see every open task written in a daily
    note, and `-is:daily` for everything else.
+7. Run **Deckard: Open Calendar** for the calendar as a page. Each day lists
+   its tasks by name; drag one to another day to move its date, with
+   **Undo**.
+8. Run **Deckard: Export Tasks as Calendar…** and save the file. Import it
+   into Apple Calendar, Outlook, or Google Calendar: each dated task is an
+   all-day event, and its notes link back to the task's line. Choose **Keep
+   It Up to Date** instead, and Deckard rewrites the file whenever your notes
+   change, for a calendar app to subscribe to.
 
 Next: [[09 Capture, move, and park]]

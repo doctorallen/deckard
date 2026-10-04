@@ -49,6 +49,33 @@ Write `![[Note]]` on a line of its own and VS Code's Markdown preview draws that
 - Embeds nest up to three deep.
 - An embed inside fenced code is left as code.
 
+### Reading a note as a page
+
+`Deckard: Open Note as Page`, also the unicorn button in a note's title bar and in the editor's **Deckard** right-click menu, opens the note on a page of its own, drawn in Deckard's theme with the parts only Deckard understands working:
+
+- **Tags** open their page, and **`[[links]]`** open the note they name on the same page. **‹** and **›**, or the mouse's back and forward buttons, step through the notes it has shown.
+- **Tasks** have working boxes, with **Undo** in the message, and steps sit under their task.
+- **Query blocks** draw their results live, a list or a table, and each row opens what it lists. **Embeds** draw what they name, with a title that opens it.
+- **Front matter** is a row of properties under the title, a tag among the values a button. A note under a [hub](search-pages.md#the-hubs-view) shows where it sits.
+- **Progress.** A note with tasks shows a **Tasks** bar under its title: how many of its own tasks are done, how many are overdue, and when the next is due, steps aside. A hub note shows a bar above it too, for every task its tag finds in any note, labeled by what the tag names, such as **Project**, **Team**, or **Person**, with a button to the tag's page.
+- **Linked from** lists the notes that link here, each with the lines that do.
+- **Open in Editor** opens the note at the line in view, and a double-click on a paragraph, a task, or a block opens the editor at its line. Shift-click a link to open its note in the editor instead.
+
+A [hub note](search-pages.md#the-hubs-view) opens as its tag's search page instead, which draws the note at its top with the tag's progress, notes, and tasks under it; the editor still opens its Markdown. The page is one tab, reused for each note as VS Code's preview tab is, and it is reopened on the note it showed after a reload. It follows each save. The unicorn button opens it in the note's own editor group, in front of the note's editor, as Markdown's **Open Preview** does; **Open in Editor** switches back. While the page is in front, the Context view's Related Notes follows the note it shows, as it follows a note in the editor, and picks the entry at the line the page was opened at.
+
+**Opening every note there.** Set `deckard.openNotesIn` to `page` and a note or task opened from any Deckard page opens on the note page, scrolled to its line, which is marked for a moment: a search page's cards and tasks, Related Notes, Home, the Task Board, the calendars, Stats, the Notes Graph, Find, the Hubs view, and the breadcrumb lens. The default, `editor`, opens them in the editor as before.
+
+**The other way, one key away.** Whichever the setting says, **Shift**-click a note or a task to open it the other way, and **Shift+Enter** from the keyboard, Find included. **Cmd/Ctrl+Shift**-click opens it the other way beside the page. A tree row and a lens cannot tell which keys were held, so the Hubs view's notes, hub notes included, offer the other way on their right-click menu, **Open in Editor** or **Open as Page**. A link followed in the editor, the Tasks view, and the Outline always stay in the editor.
+
+### Copying a note for elsewhere
+
+Embeds, query blocks, and `[[links]]` mean something only to Deckard. `Deckard: Copy as Plain Markdown`, also in the editor's **Deckard** right-click menu, copies the note, or what is selected in it, written out for a chat, an email, or a pull request:
+
+- an embed becomes the text it names, three deep;
+- a query block becomes its results as they stand: a list of notes and tasks, or Markdown tables for `view=table`;
+- a `[[link]]` becomes its words, `[[Atlas#Decision]]` as *Atlas › Decision* and `[[Atlas|the plan]]` as *the plan*;
+- front matter and `^markers` are left out, and other code is left as written.
+
 ### Tags and people
 
 By default, use `@` for people and namespaced `#` tags for workspace entities:
@@ -105,7 +132,7 @@ topics:
 
 ## Editor assistance
 
-- **Title bar:** Deckard's button opens **Deckard: Note Actions…**. A daily note also has **‹** and **›** for the previous and next daily notes. Right-click the title bar to hide any of them.
+- **Title bar:** Deckard's button opens **Deckard: Note Actions…**, and the unicorn beside it opens the note as a page. A daily note also has **‹** and **›** for the previous and next daily notes. Right-click the title bar to hide any of them.
 - **Right-click in a note** for a **Deckard** submenu: the task on the line (Toggle Task Done, Edit Task, Break into Steps…, or Add Task), the heading (Rename Heading, Extract Heading), Move to…, and Pin or Unpin.
 - **Theme colors:** in any Markdown file, wiki links, an embed's `!`, task dates (`📅 2026-10-02`, `[due:: 2026-10-02]`), repeat rules, priorities, Dataview keys, and a trailing `^block-id` use your theme's colors. To change one, add a rule to `editor.tokenColorCustomizations`, for example `{ "textMateRules": [{ "scope": "constant.numeric.date.deckard", "settings": { "foreground": "#7aa2f7" } }] }`. Scopes end in `.deckard`, such as `constant.numeric.date.due.deckard`, `string.other.repeat.deckard`, and `meta.link.wiki.deckard`.
 - **Task metadata** (dates, priority, repeat rule, ids, person) and any `^block-id` are dimmed (`deckard.editor.dimTaskMetadata`). An overdue task shows its due date in the overdue color and **overdue 5 days** at the line's end; one due today says **due today**; one more than 30 days overdue (`deckard.tasks.needsNewDateAfterDays`) says **needs a new date** (`deckard.editor.taskDueHints`). Change the colors in `workbench.colorCustomizations` as `deckard.overdueForeground` and `deckard.taskHintForeground`.
@@ -113,6 +140,7 @@ topics:
 - **Word count** is in the status bar: see [Status bar and reminders](tasks.md#status-bar-and-reminders).
 - **Tags** are clickable: Cmd/Ctrl-click opens its page, and the hover has **Rename**. Heading tags are always handled; tags on other lines follow `deckard.parseInlineTags`.
 - **Tag completion:** typing `#` or `@` offers indexed tags with entry counts, ignoring fenced code except a `deckard` [query block](query-blocks.md#query-blocks).
+- **The / menu:** type `/` alone at the start of a line for what to write there: **Task**, **Heading 1** to **3**, lists, **Quote**, **Divider**, **Link to a note** and **Embed a note** (which open the note suggestions), **Today’s note**, **Today’s date**, a **Query block**, a **Notes table** or a **Tasks table**, and each template in your [templates folder](#templates). A template is written with the note's title, today's date, and the time filled in, and each `{ask:Question}` it holds is a tab stop that reads the question until you type over it. Keep typing to narrow the list: `/tab` finds the tables. `deckard.editor.slashMenu` turns it off.
 - **Task metadata completion:** typing `/` after a space in a task offers due dates, priorities, repeat rules, and dependencies. See [Typing metadata](tasks.md#typing-metadata).
 - **Link completion:** inside `[[`, notes are offered as [Find](search.md#find) ranks them. After `[[Note#`, that note's headings are offered; `[[#` offers this note's; `[[##words` searches every note's headings. A day in words, such as `[[next fri`, offers that day's note, `[[2026-09-26]]`.
 - **Reference counts** sit above a note's lines. The first line shows **Linked from N notes**. Each heading shows **N references** and **N open tasks**, and a tagged heading **N entries share a tag**, which opens [Related Notes](connections.md#related-notes). Other counts list in the references peek. `deckard.editor.referenceCounts` set to `false` hides them.
@@ -122,6 +150,9 @@ topics:
 - **Daily notes** show **‹ 2026-09-21** and **2026-09-23 ›** on their first line. Today's note also offers **Carry in N unfinished tasks**, which runs **Deckard: Roll Unfinished Tasks Forward**. See [Daily notes](daily-notes.md#daily-notes). `deckard.editor.dailyNoteActions` turns these off.
 - **Broken [embeds](#embeds)** say why above their line, such as **Embed: Atlas has no heading "Decision"** or **Embed: Nothing in Atlas is marked ^choice**. `deckard.editor.embedProblems` turns these off.
 - **Unlinked mentions:** the first line shows **Mentioned in N notes without a link** when other notes write its title or an alias as plain text. **Link N mentions** turns each into a `[[link]]`, [previewed and undoable](search-pages.md#previewing-and-undoing-a-write). Names under three characters, and names another note also uses, are skipped. A note that cannot be opened is left as it is, and the message says how many there were. `deckard.editor.unlinkedMentions` turns these off.
+- **Step progress:** a task with [steps](tasks.md#breaking-a-task-into-steps) has a lens above it with a bar of how many are done and the next one, **███░░░░░░░ 1 of 3 steps done · next: Pack the rain shells**, which goes to that step. `deckard.editor.stepProgress` turns it off.
+- **Breadcrumbs:** a note under a hub says where it sits on its first line, such as **Projects › Atlas › Vendor review**, which opens the note above it; see [the Hubs view](search-pages.md#the-hubs-view). `deckard.editor.breadcrumbs` turns them off.
+- **Hub progress:** a [hub note](search-pages.md#hub-notes)'s first line says how far along the tasks of the tag it describes are, such as **Progress: 2 of 6 done · 1 overdue · next due in 3 days**, which opens the tag's page. `deckard.editor.hubProgress` turns this off.
 - **Hovering a tag** shows its note and task counts, its [hub note](search-pages.md#hub-notes), its five most recently updated entries, **Open overview**, and **Rename**. `deckard.editor.hoverPreviews` set to `false` turns previews off.
 
 ![Reference counts above a note's lines: its backlinks, and each heading's references, open tasks, and the entries that share its tags.](../images/editor-assistance.png)

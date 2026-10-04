@@ -103,17 +103,17 @@ It shows no message of its own. The plan called for one generic message, but a c
 
 `Services` holds what a feature, the startup steps, or the exports reach, grouped where that reads naturally: `preferences` (the repository, one service per capability, the snapshots, and Move to…'s pair), `writes` (tasks, tags, parking, rollover, reviews, templates, and capture), `links`, `pages` (one host per page), `views` (the sidebar views, the two trees, and the task status bar), and `pageCommands`, the two functions page modules export that commands call, since a command may not import a page host's module. What only lives to be disposed, such as a completion provider or a context key, is owned by `context.subscriptions` alone.
 
-A feature is a `(context, services) => void | Promise<void>` in `src/ui/commands/<feature>/register.ts`, one per capability. There are nineteen, ordered by where each one's first command was registered in `activate()` before Phase 5:
+A feature is a `(context, services) => void | Promise<void>` in `src/ui/commands/<feature>/register.ts`, one per capability. There are twenty: nineteen ordered by where each one's first command was registered in `activate()` before Phase 5, and the Hubs view, added after, last:
 
 | Feature | Module | Commands |
 | --- | --- | --- |
 | Setup and diagnostics | `setup` | Show Log, Check Setup, the sample workspace, Choose Theme…, the walkthrough, Reindex Workspace |
-| The Tasks view | `tasksView` | The Tasks view's menus (`registerAgendaCommands`), its grouping, and its search, edited on the Task Board or cleared |
+| The Tasks view | `tasksView` | The Tasks view's menus (`registerAgendaCommands`), its grouping, and its search, edited on the Task Board or cleared; Export Tasks as Calendar…, and the calendar file it keeps up to date |
 | The Outline and sections | `outline` | Revealing a heading, a heading's tags, Focus Section, Unfold All Sections, the Outline's tag filter |
 | Settings toggles | `toggles` | The ten commands in `SETTING_TOGGLES`, one registration loop |
 | Preference backups | `preferences` | Tidy, export, import, and restore the preferences |
 | Pages | `pages` | Home, Stats, Help and What's new, the Notes Graph and its nodes, the Calendar page, the Task Board, Related Notes for an entry |
-| Note Actions | `notes` | Note Actions, the menu of what can be done where the cursor is |
+| Note Actions | `notes` | Note Actions, the menu of what can be done where the cursor is; Copy as Plain Markdown |
 | Daily notes | `dailyNotes` | Today's note, another day's, the day before and after, Roll Tasks Forward |
 | Reviews | `reviews` | The weekly and monthly notes, Write Review |
 | Task editing | `taskEditing` | Edit Task, Add Task, Break into Steps, Toggle Task Done, Move to… |
@@ -126,6 +126,7 @@ A feature is a `(context, services) => void | Promise<void>` in `src/ui/commands
 | Find | `find` | Find in Notes and Find's keys |
 | Tag editing | `tagEditing` | Move Tags to Frontmatter, Rename Tag, Merge Tag |
 | Undo | `undo` | Undo Last Change |
+| The Hubs view | `hubs` | The Hubs tree, and its hub's Open Tag's Page |
 
 `runFeatures` runs each feature synchronously, in its own `try`. One that throws, or whose promise rejects, is written to the log as `Deckard could not register <feature>`, and the rest still register. The plan named `Promise.allSettled`; a loop does the same for features that are all synchronous, and keeps `activate()` synchronous, so every command exists and the exports are returned by the time VS Code counts Deckard active. This is Foam's pattern; Markdown All in One and the git extension do the same.
 

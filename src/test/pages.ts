@@ -1,6 +1,8 @@
 import type { CalendarSnapshot } from '../ui/protocol/calendar';
 import type { SidebarNotesPageState } from '../ui/protocol/sidebarNotes';
 import type { DeckardStatsSnapshot } from '../ui/protocol/stats';
+import type { NotePageSnapshot } from '../ui/protocol/notePage';
+import { getNotePageHtml } from '../ui/webview/notePageHtml';
 import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getHelpHtml, HelpOptions } from '../ui/webview/helpHtml';
@@ -59,7 +61,8 @@ export type PageId =
   | 'taskBoard'
   | 'calendar'
   | 'calendarPage'
-  | 'relatedNotesDebug';
+  | 'relatedNotesDebug'
+  | 'notePage';
 
 /** One Deckard webview page, and how to render it. */
 export interface CatalogPage {
@@ -114,6 +117,12 @@ export const PAGES: readonly CatalogPage[] = [
     readsInertState: true,
   },
   { id: 'taskBoard', title: 'Task Board', render: (context) => getTaskBoardHtml(context.webview, context.extensionUri, context.chrome) },
+  {
+    id: 'notePage',
+    title: 'Note page',
+    render: (context) => getNotePageHtml(context.webview, context.extensionUri, context.chrome, context.state as NotePageSnapshot | undefined),
+    readsInertState: true,
+  },
   {
     id: 'calendar',
     title: 'Calendar',

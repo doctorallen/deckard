@@ -7,6 +7,8 @@
 
 html { scroll-behavior: smooth; }
 nav { position: sticky; top: 20px; align-self: start; border: 1px solid var(--line); background: var(--panel); padding: 12px; }
+/* The Contents button folds the map only where it sits above the guide. */
+.nav-toggle { display: none; }
 .nav-title, .step-number { font-family: var(--font-mono); }
 .nav-title { display: block; margin-bottom: 8px; color: var(--green); font-size: var(--text-xs); letter-spacing: .12em; text-transform: uppercase; }
 nav a { display: block; padding: 6px 8px; border-left: 2px solid transparent; color: var(--muted); text-decoration: none; }
@@ -69,7 +71,7 @@ td .command-link { display: inline-block; min-height: var(--control-height); }
 .whats-new-chip { margin-left: 6px; padding: 0 6px; border: 1px solid var(--line); color: var(--cyan); font: var(--text-xs) var(--font-mono); vertical-align: middle; }
 #whats-new h3 { margin-top: 16px; }
 kbd.shortcut { display: inline-block; padding: 0 4px; border: 1px solid var(--line); border-bottom-width: 2px; color: var(--muted); font: var(--text-xs) var(--font-mono); white-space: nowrap; }
-@media (max-width: 720px) { main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; } nav { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; } .nav-title { grid-column: 1 / -1; } .cards { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
+@media (max-width: 720px) { main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; } .cards { grid-template-columns: 1fr; } h1 { font-size: 24px; } }
 
 /* Help is a two-column reference: navigation beside the article. */
 main {
@@ -86,11 +88,32 @@ h3 { margin: 0 0 6px; font-size: var(--text-lg); line-height: 1.2; }
 .eyebrow { margin: 0 0 6px; }
 .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .card { cursor: default; }
+/* A Help card says nothing about where it is written, so under the pointer
+   its frame does not reach down to make room for that line (provenance.css):
+   reaching, it drew an empty strip below the card, the theme's edge with it. */
+.cards > .card { --reach: 0px; }
+.cards > .card:hover::after, .cards > .card:focus-within::after { content: none; }
+.cards > .card:hover, .cards > .card:focus-within { z-index: auto; border-bottom-left-radius: var(--corner-bl, 0); border-bottom-right-radius: var(--corner-br, 0); }
 @media (max-width: 900px) {
   main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; }
   h1 { font-size: 24px; }
   .cards { grid-template-columns: 1fr; }
+  /* Once the map sits above the guide rather than beside it, it scrolls away
+     with the page, folded behind its Contents button: kept on screen, it
+     covered what it leads to, and unfolded it pushed the guide a screen
+     down. Opened, two columns of links keep it short. */
+  nav { position: static; padding: 0; }
+  nav .nav-title { display: none; }
+  .nav-toggle { display: flex; width: 100%; align-items: center; justify-content: space-between; min-height: var(--control-height); padding: 8px 12px; border: 0; background: transparent; color: var(--text); font: var(--text-sm) var(--font-mono); letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
+  .nav-toggle::after { content: ""; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid currentColor; transition: transform 120ms ease; }
+  .nav-toggle[aria-expanded="true"]::after { transform: rotate(180deg); }
+  .nav-toggle:focus-visible { outline: 1px solid var(--focus); outline-offset: -2px; }
+  .nav-links { display: none; }
+  nav.is-open .nav-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; padding: 0 12px 12px; }
+  .nav-group { grid-column: 1 / -1; }
+  .card[id] { scroll-margin-top: 8px; }
 }
+@media (max-width: 480px) { nav.is-open .nav-links { grid-template-columns: 1fr; } }
 /* Read more: the way from a section's quick glance into the guide page. */
 .read-more { margin-top: 12px; }
 .read-more a, .guide-back { color: var(--cyan); font-family: var(--font-mono); font-size: var(--text-sm); }

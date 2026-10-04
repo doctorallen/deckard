@@ -6,7 +6,7 @@ template, and setting finished work aside.
 
 ## Capture
 
-**Deckard: Capture** (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>C</kbd>)
+**Deckard: Capture** (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>)
 adds a task to today's note without leaving the editor you are in. The words
 at the end are read as a quick add reads them: a day, a priority from `p1` to
 `p4`, and a repeat rule. **Deckard: Capture Under a Heading** adds it under a
@@ -46,7 +46,7 @@ task is on no list of things to do, and `is:parked` still finds it.
 
 ## Try it
 
-1. Press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>C</kbd> and type
+1. Press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> and type
    `Check the flood gauges tomorrow p1`. The line under the box shows the
    task it will write, due tomorrow at the highest priority. Press Enter; it
    is added to today's note, and you stay here.
@@ -61,16 +61,23 @@ task is on no list of things to do, and `is:parked` still finds it.
    takes its place here.
 5. Run **Deckard: New Note from Template**, choose **Meeting**, and give it a
    title. Deckard asks who ran it, then writes the note with today's date.
+   Or, on an empty line in any note, type `/meet` and choose **Template:
+   Meeting**: it is written right there, the date filled in and the cursor
+   on *Who ran the meeting?*, to type over. Type `/` alone to see everything
+   the menu offers, from a task or a heading to a query block.
 6. Run **Deckard: Pin Note to Home** with the cursor in the Harbor inbox.
    Find, opened with nothing typed, now lists it first, and so does Home's
    **Pinned notes** widget once you add it (**Customize → Add widget**).
-7. In the Outline view, select the target button on a heading (**Focus
+7. Select the Deckard button in this note's title bar (**Deckard: Note
+   Actions…**). It lists what can be done where the cursor is, such as
+   completing the task on its line or moving it. Press Escape.
+8. In the Outline view, select the target button on a heading (**Focus
    Section**). The rest of the note folds away. **Unfold All Sections** in the
    view's title brings it back.
-8. Search for `is:parked`. The Velvet Circuit note and its task are listed,
+9. Search for `is:parked`. The Velvet Circuit note and its task are listed,
    marked **Parked**. Open the note and run **Deckard: Unpark Note**, and its
    task appears in the Tasks view. **Deckard: Park Note** parks it again.
-9. Right-click the archive folder in the Explorer and choose **Deckard → Park
+10. Right-click the archive folder in the Explorer and choose **Deckard → Park
    Folder…** to park everything in it at once.
 
 Next: [[10 Home, Stats, and the graph]]

@@ -8,7 +8,7 @@ import { correctQueryText, getPlainTextTerms, getTextWords } from '../../domain/
 import { evaluateQuery, QueryResults } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { EntityNamespaceAliases } from '../../domain/markdown/parser';
-import { getQueryTagIntersection, quoteValue } from '../../domain/query/queryFormat';
+import { getQueryNarrowedTag, getQueryTagIntersection, quoteValue } from '../../domain/query/queryFormat';
 import { parseQuery } from '../../domain/query/queryParser';
 import { ParsedQuery } from '../../domain/query/queryTypes';
 import { noteTitle } from '../../domain/index/backlinks';
@@ -39,7 +39,9 @@ import { pinKey } from '../../core/storage/preferencesSchema';
 import { createPinForLine } from '../../domain/notes/pins';
 import { buildSearchFacets, SearchFacetValue } from '../../domain/search/facets';
 import { ResultPaging, TagOverviewCard } from '../protocol/shared';
-import { SearchPageEntity, SearchPageSnapshot } from '../protocol/searchPage';
+import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes } from '../protocol/searchPage';
+import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
+import { linkProgressParts } from './progressLinks';
 import {
   Entity,
   SearchPreview,
@@ -346,7 +348,7 @@ function drawNoteCards(
 function buildTagPageBlock(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
-  { focusTag, hubFile, viaHub, hubTitle }: SearchPageResults,
+  { focusTag, filtered, hubFile, viaHub, hubTitle, parsed }: SearchPageResults,
   context: QueryContext,
 ): Pick<SearchPageSnapshot, 'tag' | 'entity' | 'hub' | 'tagPage'> {
   if (!focusTag) {
@@ -371,10 +373,48 @@ function buildTagPageBlock(
         }
       : {}),
     tagPage: {
+      ...(filtered ? { filtered } : {}),
       lookalikes: findTagLookalikes(index, focusTag.key),
       hubLinkCount: viaHub.size,
       ...(hubTitle ? { hubTitle } : {}),
+      ...describeTagProgressLine(index, focusTag.key, context, parsed.text),
       ...describeTagMentions(index, focusTag, context),
+    },
+  };
+}
+
+/** Whether two searches are the same words, their spacing aside. */
+function sameSearch(left: string, right: string): boolean {
+  const words = (text: string): string => text.trim().replace(/\s+/g, ' ');
+  return words(left) === words(right);
+}
+
+/**
+ * How far along a tag's tasks are, for its page's progress line, always the
+ * whole tag's whatever the search narrows it to; nothing for a tag that
+ * finds no task.
+ */
+function describeTagProgressLine(
+  index: WorkspaceIndex,
+  tagKey: string,
+  context: QueryContext,
+  searched: string,
+): Pick<SearchPageTagNotes, 'progress'> {
+  const progress = computeTagProgress(index, tagKey, context.now, context.taskPolicy);
+  if (!progress) {
+    return {};
+  }
+  return {
+    progress: {
+      done: progress.done,
+      total: progress.total,
+      overdue: progress.overdue,
+      label: describeTagProgress(progress, context.now, context.taskPolicy),
+      // The tasks progress counts: neither steps nor parked ones. The part
+      // whose search is the page's is on, and the way back to the tag.
+      parts: linkProgressParts(progress, context, (terms) => `${tagKey} ${terms} -is:step -is:parked`, 'the tag’s').map((part) =>
+        part.query && sameSearch(part.query, searched) ? { ...part, active: true as const } : part,
+      ),
     },
   };
 }
@@ -440,6 +480,8 @@ export interface SearchPageResults {
   preview: string[];
   tagKeys?: string[];
   focusTag?: TagInfo;
+  /** Set when the search narrows its one tag with other terms rather than being the tag alone. */
+  filtered?: boolean;
   hubFile?: ParsedFile;
   results: QueryResults;
   /**
@@ -471,9 +513,7 @@ export function evaluateSearchPage(
     .map((word) => word.trim())
     .filter(Boolean);
   const drafted = preview.length > 0 ? parseQuery([text, ...preview].join(' ')) : parsed;
-  const tagKeys = resolveQueryTagIntersection(index, parsed, options.queryContext.entityNamespaceAliases);
-  const focusTag =
-    tagKeys?.length === 1 ? index.tags.get(tagKeys[0]) : undefined;
+  const { tagKeys, focusTag, filtered } = resolveFocusTag(index, parsed, options.queryContext.entityNamespaceAliases);
   const hubPaths = focusTag?.hubFilePaths ?? [];
   const hubFile = hubPaths.length ? index.files.get(hubPaths[0]) : undefined;
 
@@ -485,8 +525,10 @@ export function evaluateSearchPage(
         files: listFrontmatterOnlyFiles(index),
       };
   const viaHub = new Set<string>();
-  if (!hubFile || options.includeHubLinks === false || !drafted.node) {
-    return { parsed, drafted, preview, tagKeys, focusTag, hubFile, results, viaHub };
+  // What links to the hub is the tag's plain page's alone: a filter's terms
+  // would not narrow it.
+  if (!hubFile || filtered || options.includeHubLinks === false || !drafted.node) {
+    return { parsed, drafted, preview, tagKeys, focusTag, ...(filtered ? { filtered } : {}), hubFile, results, viaHub };
   }
   const hubs = new Set(hubPaths);
   const links = hubPaths
@@ -527,6 +569,26 @@ export function evaluateSearchPage(
     viaHub,
     hubTitle: noteTitle(hubFile.filePath),
   };
+}
+
+/**
+ * The tag a search is the page of: a search of one tag, or one that narrows
+ * one tag with other terms, `filtered`, so the hub and the progress stay
+ * while it narrows. With the search's tags, when it is only tags.
+ */
+function resolveFocusTag(
+  index: WorkspaceIndex,
+  parsed: ParsedQuery,
+  aliases: EntityNamespaceAliases | undefined,
+): { tagKeys?: string[]; focusTag?: TagInfo; filtered: boolean } {
+  const tagKeys = resolveQueryTagIntersection(index, parsed, aliases);
+  if (tagKeys) {
+    return { tagKeys, focusTag: tagKeys.length === 1 ? index.tags.get(tagKeys[0]) : undefined, filtered: false };
+  }
+  const narrowed = getQueryNarrowedTag(parsed.node);
+  const focusKey = narrowed ? resolveIndexedTagKey(index.tags, narrowed, aliases) : undefined;
+  const focusTag = focusKey ? index.tags.get(focusKey) : undefined;
+  return { focusTag, filtered: focusTag !== undefined };
 }
 
 /**

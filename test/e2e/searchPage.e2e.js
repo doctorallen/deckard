@@ -256,7 +256,8 @@ test('a tag\'s page says how else the tag is written, with Include in search and
   ];
   const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
   const { view, panel } = await openOverview('#project/atlas', { index });
-  const line = view.find('.tag-note');
+  // At the top of Refine, with the other ways the tag is written.
+  const line = view.find('.query-facets-lead .tag-note');
   assert.ok(line.textContent.startsWith('Also written as #proj/atlas (1 entry).'), line.textContent);
   assert.strictEqual(view.find('.tag-note-tag').getAttribute('data-tag-key'), '#proj/atlas');
   const merge = view.find('[data-action="merge-lookalike"]');

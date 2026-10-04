@@ -412,8 +412,11 @@ export function selectNode(page: GraphPage, index: number): void {
   }
 }
 
-/** Opens a tag node's page, or a note or task node at its line, beside the graph when asked. */
-export function openNode(page: GraphPage, index: number, beside: boolean): void {
+/**
+ * Opens a tag node's page, or a note or task node at its line, beside the
+ * graph when asked, and where `deckard.openNotesIn` does not when Shift was held.
+ */
+export function openNode(page: GraphPage, index: number, beside: boolean, opposite = false): void {
   const node = page.state.nodes[index];
   if (!node) {
     return;
@@ -425,9 +428,13 @@ export function openNode(page: GraphPage, index: number, beside: boolean): void 
   if (!node.filePath || !node.line) {
     return;
   }
-  send(beside
-    ? { type: 'openSource', filePath: node.filePath, line: node.line, beside: true }
-    : { type: 'openSource', filePath: node.filePath, line: node.line });
+  send({
+    type: 'openSource',
+    filePath: node.filePath,
+    line: node.line,
+    ...(beside ? { beside: true } : {}),
+    ...(opposite ? { opposite: true } : {}),
+  });
 }
 
 /**

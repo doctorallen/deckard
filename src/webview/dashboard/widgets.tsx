@@ -5,7 +5,7 @@
  */
 import type { ComponentChild } from 'preact';
 
-import { WIDGET_ENTRY_COUNTS, WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
+import { WIDGET_ENTRY_COUNTS, WIDGET_KINDS, widgetNamespace } from '../../domain/dashboard/widgetCatalog';
 import type { DashboardWidget } from '../../ui/protocol/dashboard';
 import { SettingsIcon } from '../shared/icons';
 import { describePageRange } from '../shared/pageSteps';
@@ -43,6 +43,7 @@ const OPEN_LINKS: Readonly<Partial<Record<DashboardWidget['kind'], (widget: Dash
   unhubbedTags: allTags,
   newTags: allTags,
   quietPeople: allTags,
+  progress: allTags,
   tagPairs: allTags,
   relatedNotes: (widget) =>
     (widget.sourceNote ? <OpenLink action="open-note" attributes={{ 'data-file-path': widget.sourceNote.filePath }} label="Open note" /> : null),
@@ -98,16 +99,23 @@ function listingGroups(widget: DashboardWidget, attributes: Readonly<Record<stri
   return groups;
 }
 
-/** Gone quiet's rows: the namespace it watches, and whether only those with nothing open. */
-function quietPeopleGroups(widget: DashboardWidget, attributes: Readonly<Record<string, string>>): ComponentChild[] {
-  const namespaces = widget.namespaces && widget.namespaces.length ? widget.namespaces : ['person'];
-  const watched = widget.namespace || 'person';
-  return [
+/** The namespace a widget lists, as a row of its gear. */
+function namespaceGroup(widget: DashboardWidget, attributes: Readonly<Record<string, string>>, label: string): ComponentChild {
+  const watched = widgetNamespace(widget);
+  const namespaces = widget.namespaces && widget.namespaces.length ? widget.namespaces : [watched];
+  return (
     <OptionsGroup label="Namespace" stacked>
-      <select data-action="set-widget-namespace" {...attributes} aria-label="Namespace to watch">
+      <select data-action="set-widget-namespace" {...attributes} aria-label={label}>
         {namespaces.map((name) => <option key={name} value={name} selected={name === watched}>{name}</option>)}
       </select>
-    </OptionsGroup>,
+    </OptionsGroup>
+  );
+}
+
+/** Gone quiet's rows: the namespace it watches, and whether only those with nothing open. */
+function quietPeopleGroups(widget: DashboardWidget, attributes: Readonly<Record<string, string>>): ComponentChild[] {
+  return [
+    namespaceGroup(widget, attributes, 'Namespace to watch'),
     <div class="view-options-group">
       <label class="control-label"><input type="checkbox" data-action="set-widget-no-open-tasks" {...attributes} checked={Boolean(widget.noOpenTasks)} />{' Only those with no open tasks'}</label>
     </div>,
@@ -121,6 +129,9 @@ const NO_SPELLCHECK: Readonly<Record<string, string>> = { spellCheck: 'false' };
 function kindGroups(widget: DashboardWidget, home: HomeContext, attributes: Readonly<Record<string, string>>): ComponentChild[] {
   if (widget.kind === 'quietPeople') {
     return quietPeopleGroups(widget, attributes);
+  }
+  if (widget.kind === 'progress') {
+    return [namespaceGroup(widget, attributes, 'Namespace to list')];
   }
   if (widget.kind === 'tasks') {
     const draft = home.queryDrafts[widget.id] ?? (widget.query || '');

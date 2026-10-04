@@ -34,6 +34,8 @@
   --favorite-red: #9a4530;
   --favorite: #8a5a14;
   --warning-orange: #9a4530;
+  /* Dark gold on the parchment: today's warning, apart from overdue's rust. */
+  --due-today: #7a5a00;
   --font-display: Georgia, 'Times New Roman', serif;
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
 }

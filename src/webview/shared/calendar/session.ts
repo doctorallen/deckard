@@ -350,7 +350,11 @@ export class CalendarSession<S extends CalendarState> {
         this.stepControl = element === document.activeElement ? element : undefined;
         this.sendStep(date ? { type: 'showMonth', month, date } : { type: 'showMonth', month });
       },
-      'open-note': (element) => send({ type: 'openNote', filePath: element.getAttribute('data-file-path') as string }),
+      'open-note': (element, event) => send({
+        type: 'openNote',
+        filePath: element.getAttribute('data-file-path') as string,
+        ...(event.shiftKey ? { opposite: true } : {}),
+      }),
     };
   }
 }

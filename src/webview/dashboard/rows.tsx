@@ -7,6 +7,7 @@ import type { ComponentChild, ComponentChildren } from 'preact';
 
 import type { DashboardSavedFilter, DashboardWidgetNote, DashboardWidgetTag, DashboardWidgetTagPair } from '../../ui/protocol/dashboard';
 import type { DashboardTask, TagTitleDisplayMode } from '../../ui/protocol/shared';
+import { ProgressBar } from '../shared/progressBar';
 import { TagLabel } from '../shared/tagLabel';
 import { TaskListRow } from '../shared/taskRow';
 
@@ -19,13 +20,16 @@ interface HomeRowProps {
   readonly attributes: Attributes;
   readonly label: ComponentChildren;
   readonly detail?: string;
+  /** How far along what the row names is, drawn as a bar between its label and its detail. */
+  readonly progress?: { readonly done: number; readonly total: number };
 }
 
 /** A row that opens something: a tag, a search, or a note. */
-export function HomeRow({ action, attributes, label, detail }: HomeRowProps) {
+export function HomeRow({ action, attributes, label, detail, progress }: HomeRowProps) {
   return (
-    <button type="button" class="row saved-filter-row home-row" data-action={action} data-tip-around="" {...attributes}>
+    <button type="button" class={progress ? 'row saved-filter-row home-row has-progress' : 'row saved-filter-row home-row'} data-action={action} data-tip-around="" {...attributes}>
       <span class="home-row-label">{label}</span>
+      {progress ? <ProgressBar done={progress.done} total={progress.total} /> : null}
       {detail ? <span class="home-row-detail">{detail}</span> : null}
     </button>
   );
@@ -75,7 +79,7 @@ export function HomeTags(props: {
       {tags.map((tag) => (
         <WithRowAction
           key={tag.key}
-          row={<HomeRow action="open-tag" attributes={{ 'data-tag-key': tag.key }} label={<TagLabel label={tag.label} />} detail={tag.detail} />}
+          row={<HomeRow action="open-tag" attributes={{ 'data-tag-key': tag.key }} label={<TagLabel label={tag.label} />} detail={tag.detail} progress={tag.progress} />}
           action={actionFor ? actionFor(tag) : null}
         />
       ))}

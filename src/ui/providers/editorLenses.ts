@@ -3,7 +3,16 @@ import * as vscode from 'vscode';
 import { pluralize } from '../../shared/text';
 import { measure } from '../../shared/timing';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { findDailyNoteActions, findEmbedProblems, findTaskDependencies } from '../state/editorLensState';
+import {
+  findDailyNoteActions,
+  findEmbedProblems,
+  findHubProgress,
+  findStepProgress,
+  findTaskDependencies,
+  formatProgressBar,
+} from '../state/editorLensState';
+import { readQueryContext } from '../commands/queryContext';
+import { findBreadcrumbs } from '../state/hubTree';
 import { getPeriodicNoteUri } from '../commands/dailyNote';
 import { CREATE_MISSING_NOTES_COMMAND } from '../commands/linkHealth';
 import { resolveSourceUri } from '../commands/navigation';
@@ -43,7 +52,10 @@ interface LensGroup {
     | 'dailyNoteActions'
     | 'linkProblems'
     | 'embedProblems'
-    | 'unlinkedMentions';
+    | 'unlinkedMentions'
+    | 'hubProgress'
+    | 'breadcrumbs'
+    | 'stepProgress';
   provide(context: LensContext): LazyCodeLens[];
 }
 
@@ -63,6 +75,9 @@ export class EditorLenses
     { setting: 'linkProblems', provide: provideLinkProblemLenses },
     { setting: 'embedProblems', provide: provideEmbedProblemLenses },
     { setting: 'unlinkedMentions', provide: provideUnlinkedMentionLenses },
+    { setting: 'hubProgress', provide: provideHubProgressLenses },
+    { setting: 'breadcrumbs', provide: provideBreadcrumbLenses },
+    { setting: 'stepProgress', provide: provideStepProgressLenses },
   ];
   /** Before the first scan every other note looks empty. */
   private isReady = false;
@@ -252,6 +267,72 @@ function provideDailyNoteLenses({
     );
   }
   return lenses;
+}
+
+/**
+ * Above a task with steps: a bar of how many are done, and the next one,
+ * which selecting the lens goes to. Once every step is done it says so,
+ * and does nothing.
+ */
+function provideStepProgressLenses({ document, file }: LensContext): LazyCodeLens[] {
+  return findStepProgress(file).map((progress) => {
+    const range = new vscode.Range(progress.line, 0, progress.line, 0);
+    const counts = `${progress.done} of ${pluralize(progress.total, 'step')} done`;
+    return new LazyCodeLens(range, () => {
+      const title = `${formatProgressBar(progress.done, progress.total)} ${counts}`;
+      if (progress.nextLine === undefined) {
+        return { title: `${title} · all done`, tooltip: 'Every step is done: the task can be completed', command: '' };
+      }
+      const next = new vscode.Range(progress.nextLine, 0, progress.nextLine, 0);
+      return {
+        title: `${title} · next: ${progress.next ?? ''}`,
+        tooltip: 'Go to the next open step',
+        command: 'vscode.open',
+        arguments: [document.uri, { selection: next }],
+      };
+    });
+  });
+}
+
+/**
+ * On a note's first line: where it sits under its hubs, from the namespace
+ * down, as the Hubs view files it, which opens the note above it. A note no
+ * hub holds has none.
+ */
+function provideBreadcrumbLenses({ file, index, isNotesFile }: LensContext): LazyCodeLens[] {
+  if (!isNotesFile) {
+    return [];
+  }
+  const range = new vscode.Range(0, 0, 0, 0);
+  return findBreadcrumbs(index, file.filePath).map(
+    (crumb) =>
+      new LazyCodeLens(range, () => {
+        return {
+          title: crumb.labels.join(' › '),
+          tooltip: `Open ${crumb.labels[crumb.labels.length - 2] ?? 'the note above this one'}, where your notes open: the editor or the note page`,
+          command: 'deckard.openNote',
+          arguments: [crumb.parent],
+        };
+      }),
+  );
+}
+
+/**
+ * On a hub note's first line: how far along the tasks of each tag it
+ * describes are, which opens the tag's page. A tag with no task has none.
+ */
+function provideHubProgressLenses({ file, index }: LensContext): LazyCodeLens[] {
+  const progress = findHubProgress(file, index, readQueryContext());
+  const range = new vscode.Range(0, 0, 0, 0);
+  return progress.map(
+    (entry) =>
+      new LazyCodeLens(range, () => ({
+        title: progress.length > 1 ? `${entry.tagLabel}: ${entry.text}` : `Progress: ${entry.text}`,
+        tooltip: `Open ${entry.tagLabel}'s page, with every task it finds`,
+        command: 'deckard.showTagOverview',
+        arguments: [entry.tagKey],
+      })),
+  );
 }
 
 /**

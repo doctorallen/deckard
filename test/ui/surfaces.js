@@ -21,6 +21,7 @@ const { createSidebarSnapshot } = modules.relatedNotesRanking;
 const { createDashboardSnapshot } = modules.dashboardState;
 const { createSearchPageSnapshot } = modules.searchPageState;
 const { createDeckardStatsSnapshot } = modules.statsState;
+const { createNotePageSnapshot } = modules.notePageState;
 const { createDashboardWidgets } = modules.dashboardWidgets;
 const { createNotesGraphSnapshot } = modules.graphBuild;
 const { toWire } = modules.notesGraphState;
@@ -536,6 +537,79 @@ function createSummarySurfaces(index, preferences) {
 }
 
 /**
+ * The note page's own notes, so no other surface's pixels move with it: a
+ * hub with front matter, a heading, a task with steps, a query block drawn
+ * as a table, an embed, code, a table, and two notes that link to it.
+ */
+function createNotePageIndex() {
+  const files = new Map([
+    ['projects/Atlas.md', parseMarkdown('projects/Atlas.md', [
+      '---',
+      'describes: project/atlas',
+      'status: active',
+      'owner: "@dana"',
+      '---',
+      '# Atlas',
+      '',
+      'Migration of billing onto the **new** ledger, tracked under #project/atlas with @dana. See [[Vendor review]] for the shortlist, and [the vendor site](https://example.com).',
+      '',
+      '## Decision',
+      'The pilot stays on one route until the privacy review is done, and a range ping raises an alert only above a documented confidence threshold. ^threshold',
+      '',
+      '- [ ] Send the proposal to the vendor before the review 📅 2026-09-25',
+      '  - [x] Draft the proposal',
+      '  - [ ] Get sign-off from @dana',
+      '- [x] Pick a vendor ✅ 2026-09-18',
+      '- A plain item, with `code` in it',
+      '',
+      '> A quote from the kickoff, kept for the record.',
+      '',
+      '```deckard view=table columns=due,priority',
+      '#project/atlas is:task',
+      '```',
+      '',
+      '![[Vendor review#Shortlist]]',
+      '',
+      '| Vendor | Cost |',
+      '| --- | --- |',
+      '| Praxis Loom | 12,000 |',
+      '',
+      '```js',
+      'const threshold = 0.82;',
+      '```',
+    ].join('\n'))],
+    ['notes/Vendor review.md', parseMarkdown('notes/Vendor review.md', [
+      '# Vendor review #project/atlas',
+      '',
+      '## Shortlist',
+      'Praxis Loom and Halcyon both meet the threshold in [[Atlas#Decision]].',
+      '- [ ] Call Halcyon about the audit 📅 2026-09-23 ⏫',
+    ].join('\n'))],
+    ['notes/Kickoff.md', parseMarkdown('notes/Kickoff.md', '---\nup: "[[Atlas]]"\n---\n# Kickoff\nWe start with [[Atlas]] next week.')],
+  ]);
+  return buildWorkspaceIndex(files);
+}
+
+/** The note page: a hub note with every kind of block, opened at its Decision heading. */
+function createNotePageSurfaces() {
+  const index = createNotePageIndex();
+  return [
+    {
+      page: 'notePage',
+      viewport: [900, 1400],
+      snapshot: () => createNotePageSnapshot(index, 'projects/Atlas.md', {
+        queryContext: createQueryContext(NOW),
+        history: { back: true, forward: false },
+        visit: 1,
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.note-query-title'],
+    },
+  ];
+}
+
+/**
  * The surfaces measured, each with the snapshot its page renders from and
  * the geometry it must keep. A probe runs in the page and reports; the
  * expectations here read the report. They are the same with zen on or off;
@@ -551,6 +625,7 @@ function createSurfaces() {
     ...createCalendarSurfaces(),
     ...createRelatedNotesSurfaces(index, files),
     ...createSummarySurfaces(index, preferences),
+    ...createNotePageSurfaces(),
   ];
   return [
     ...surfaces,

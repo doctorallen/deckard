@@ -87,6 +87,7 @@ export type DashboardWidgetKind =
   | 'unhubbedTags'
   | 'newTags'
   | 'quietPeople'
+  | 'progress'
   | 'pinnedNotes'
   | 'tryNext';
 
@@ -117,7 +118,10 @@ export interface DashboardWidgetConfig {
    * unchanged, or how recently a new tag was first seen.
    */
   days?: number;
-  /** The namespace Gone quiet watches: `person` by default, or `project`. */
+  /**
+   * The namespace Gone quiet watches, `person` by default, or whose tags
+   * Progress lists, `project` by default.
+   */
   namespace?: string;
   /** Whether Gone quiet lists only the tags with no open task. */
   noOpenTasks?: boolean;

@@ -182,12 +182,12 @@ export interface DayPanelHandlers {
   readonly opensTags?: boolean;
 }
 
-/** Runs a panel control's action, by its `data-action`. */
-function runPanelAction(target: Element, handlers: DayPanelHandlers): void {
+/** Runs a panel control's action, by its `data-action`; Shift opens a note the other way. */
+function runPanelAction(target: Element, handlers: DayPanelHandlers, shiftKey: boolean): void {
   const action = target.getAttribute('data-action');
   const value = (name: string): string => target.getAttribute(name) as string;
   if (action === 'open-note') {
-    handlers.send({ type: 'openNote', filePath: value('data-file-path') });
+    handlers.send({ type: 'openNote', filePath: value('data-file-path'), ...(shiftKey ? { opposite: true } : {}) });
   } else if (action === 'move-task') {
     handlers.send({ type: 'moveTask', taskId: value('data-task-id'), field: value('data-field') as 'due' | 'scheduled', date: value('data-date') });
   } else if (action === 'create-day') {
@@ -244,7 +244,7 @@ export function installDayPanel(handlers: DayPanelHandlers): void {
       }
       return;
     }
-    runPanelAction(control, handlers);
+    runPanelAction(control, handlers, event.shiftKey);
   });
   document.addEventListener('keydown', (event) => {
     const target = event.target as Element | null;
