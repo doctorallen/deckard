@@ -32,12 +32,29 @@ const { createPreferences } = modules.preferenceServices;
 // Every snapshot is built at NOW, so no surface reads the wall clock.
 const { createQueryContext } = modules.queryContext;
 
-/** Enough tasks that the busiest column must scroll, and titles that wrap. */
+/** Task i's due date: six overdue, three today, the rest a day or two apart after. */
+function fixtureDue(i) {
+  let day = 21 + Math.ceil((i - 9) / 1.2);
+  if (i <= 6) {
+    day = 14 + i;
+  } else if (i <= 9) {
+    day = 21;
+  }
+  const date = new Date(2026, 8, day);
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/**
+ * Enough tasks that the busiest column must scroll, and titles that wrap,
+ * due as a real list is: a few overdue, a few today, the rest over the
+ * coming month. NOW is 2026-09-21.
+ */
 function createIndex(withSteps = false) {
   const long = 'Chase the replicant through the neon market and file the report before the rain';
   const lines = ['# Tasks #project/atlas', ''];
   for (let i = 1; i <= 40; i += 1) {
-    lines.push(`- [ ] ${i === 1 ? long : `Overdue task ${i}`} 📅 2026-09-01 #status/doing`);
+    lines.push(`- [ ] ${i === 1 ? long : `Board task ${i}`} 📅 ${fixtureDue(i)} #status/doing`);
     // The board's cards: the long first task has steps, the next of them
     // too long for a column, so its line must ellipsize, not widen the card.
     if (i === 1 && withSteps) {
@@ -516,8 +533,9 @@ function createSummarySurfaces(index, preferences) {
           ...preferences.reader.value,
           tagAccessCounts: { '#project/atlas': 4, '#topic/replicants': 2 },
         }, [{ filePath: 'notes/unreadable-note-with-a-long-name.md', reason: 'EACCES: permission denied' }], NOW),
-        // "5 minutes ago" would change with the clock, and so the pixels.
-        updatedAt: 0,
+        // Five minutes before the page draws, which it says as "5 minutes
+        // ago" however long the run takes to reach it.
+        updatedAt: Date.now() - 5 * 60 * 1000,
       }),
       scrollers: ['html'],
       clippers: [],

@@ -33,8 +33,10 @@ export function describeAge(milliseconds: number): string {
 export function StatsHeader({ updatedAt }: { readonly updatedAt: number }) {
   return (
     <header>
-      <p class="eyebrow">DECKARD / LOCAL TELEMETRY</p>
-      <h1>Workspace Stats</h1>
+      <div>
+        <p class="eyebrow">DECKARD / STATS</p>
+        <h1>Workspace Stats</h1>
+      </div>
       <p class="updated">
         {updatedAt
           ? ['Index last refreshed: ', <span title={new Date(updatedAt).toLocaleString()}>{describeAge(Date.now() - updatedAt)}</span>, ' ']

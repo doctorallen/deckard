@@ -36,6 +36,11 @@
 
 ### Changed
 
+- **Stats reads like the other pages.** Its heading says **DECKARD /
+  STATS** rather than *Local telemetry*, a word that reads as data leaving
+  the machine, and its title sits at the left, under the heading, as every
+  other page's does.
+
 - **Renaming a note shows its link changes first.** Renaming a note in the
   Explorer rewrites the `[[links]]` that name it; when they are in more than
   one note, VS Code now asks before making them, with **Show Preview**, as
