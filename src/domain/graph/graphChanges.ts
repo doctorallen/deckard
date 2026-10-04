@@ -3,7 +3,7 @@
  * only changes words inside a line leaves the graph alone rather than
  * rebuilding it.
  */
-import { extractWikiLinks } from '../markdown/parser';
+import { extractNoteLinks } from '../markdown/parser';
 import { ParsedFile, WorkspaceIndex } from '../model';
 
 /**
@@ -51,7 +51,7 @@ export function graphSignature(file: ParsedFile): string {
       task.tags,
       task.tagLabels,
       (task.associationTagGroups ?? []).map(references),
-      extractWikiLinks(task.sourceLineText),
+      extractNoteLinks(task.sourceLineText, task.filePath),
     ]),
   ]);
   signatures.set(file, signature);

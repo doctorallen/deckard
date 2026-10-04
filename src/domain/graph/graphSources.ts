@@ -4,7 +4,7 @@
  * the Wiki links it writes and where it sits in its note's outline, and one
  * for every tag.
  */
-import { extractWikiLinks, stripTags } from '../markdown/parser';
+import { extractNoteLinks, stripTags } from '../markdown/parser';
 import { NotesGraphNode, Section, WorkspaceIndex } from '../model';
 import { getFileName } from '../../shared/paths';
 
@@ -61,7 +61,7 @@ export function createGraphSources(index: WorkspaceIndex): GraphSource[] {
         ),
         degree: 0,
       },
-      links: extractWikiLinks(task.sourceLineText),
+      links: extractNoteLinks(task.sourceLineText, task.filePath),
       parentSectionId: task.sectionId,
     });
   }

@@ -57,7 +57,7 @@ import { ActivePinContext } from '../ui/commands/pinNote';
 import { AgendaContextKeys } from '../ui/commands/agendaActions';
 import { PinService } from '../services/pinService';
 import { LinkMaintenance } from '../ui/commands/linkMaintenance';
-import { vscodeLiveNotes } from '../ui/commands/linkMaintenancePorts';
+import { readLinkStyle, vscodeLiveNotes } from '../ui/commands/linkMaintenancePorts';
 import { LinkNoteService, LinkService } from '../services/linkService';
 import { WikiLinkCompletionProvider } from '../ui/providers/linkSuggestions';
 import { WorkspaceWriteHistory, WriteHandle } from '../ui/commands/workspaceWrites';
@@ -762,7 +762,7 @@ function createLinksAndAssistance(context: vscode.ExtensionContext, core: Core, 
   const linkHealth = new LinkHealth(indexer);
   // Which links a rename carries and which mentions become links, and the
   // notes links name, each decided once for every command that asks.
-  const links = new LinkService({ index: indexer, notes: vscodeLiveNotes, findUnlinkedMentions });
+  const links = new LinkService({ index: indexer, notes: vscodeLiveNotes, findUnlinkedMentions, linkStyle: readLinkStyle });
   const linkNotes = new LinkNoteService(workspace);
   const linkMaintenance = new LinkMaintenance(indexer, links);
   return {

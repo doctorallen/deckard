@@ -2157,6 +2157,17 @@
             "description": "Show, on a note's first line, how many other notes write its title or an alias as plain text without linking to it, and an action that links them. A note no other note names shows nothing.",
             "order": 10
           },
+          "deckard.links.style": {
+            "type": "string",
+            "enum": ["wiki", "markdown"],
+            "enumDescriptions": [
+              "[[Atlas]], as Obsidian writes them.",
+              "[Atlas](projects/Atlas.md), which GitHub, MkDocs, and other Markdown renderers show as links."
+            ],
+            "default": "wiki",
+            "description": "How a link Deckard makes from a mention is written. Deckard reads both kinds either way.",
+            "order": 10
+          },
           "deckard.editor.slashMenu": {
             "type": "boolean",
             "scope": "resource",

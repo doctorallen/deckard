@@ -8,6 +8,7 @@ import {
   rewriteStillFits,
 } from '../domain/links/linkRewrites';
 import { getExtractedNoteFileName, getLinkableNoteFileName } from '../domain/markdown/noteNames';
+import { formatNoteLink, NoteLinkStyle } from '../domain/markdown/wikiLinks';
 import type { ParsedFile, Section, WorkspaceIndex } from '../domain/model';
 import type { FileSystem } from '../ports/fileSystem';
 import type { ResourceUri } from '../ports/uri';
@@ -115,6 +116,8 @@ export interface LinkServiceOptions<U> {
   index: { getSnapshot(): WorkspaceIndex };
   notes: LiveNotes<U>;
   findUnlinkedMentions(file: ParsedFile, index: WorkspaceIndex): readonly Mention[];
+  /** How a mention made a link is written; `[[links]]` when not given. */
+  linkStyle?: () => NoteLinkStyle;
 }
 
 /**
@@ -193,8 +196,9 @@ export class LinkService<U extends ResourceUri> {
   }
 
   /**
-   * The edits that turn every unlinked mention of a note into a `[[link]]`
-   * to it, keeping the name as it was written. The mentions are found again
+   * The edits that turn every unlinked mention of a note into a link to it,
+   * `[[link]]` or `[text](note.md)` as `linkStyle` says, keeping the name as
+   * it was written. The mentions are found again
    * from the index, and each is compared with what its line says now, so a
    * mention edited since the index read it is left alone. A note that
    * cannot be opened is passed over and counted, as a link rewrite passes
@@ -212,7 +216,8 @@ export class LinkService<U extends ResourceUri> {
       if (typeof note !== 'object' || !rewriteStillFits({ ...mention, from: mention.text }, note.lines)) {
         continue;
       }
-      edits.push({ ...toEdit(note.uri, mention), text: `[[${mention.text}]]` });
+      const text = formatNoteLink(mention.text, mention.filePath, file.filePath, this.options.linkStyle?.() ?? 'wiki');
+      edits.push({ ...toEdit(note.uri, mention), text });
     }
     const skipped = [...notes.values()].filter((note) => note === 'unreadable').length;
     return edits.length === 0 ? { kind: 'none', skipped } : { kind: 'planned', edits, skipped };

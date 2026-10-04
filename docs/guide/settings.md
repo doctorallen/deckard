@@ -47,6 +47,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.editor.linkProblems": true,
 	"deckard.editor.embedProblems": true,
 	"deckard.editor.unlinkedMentions": true,
+	"deckard.links.style": "wiki",
 	"deckard.editor.hubProgress": true,
 	"deckard.editor.slashMenu": true,
 	"deckard.editor.breadcrumbs": true,
@@ -129,6 +130,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.editor.linkProblems` | `true` | Counts a note's `[[Wiki links]]` that open no note on its first line, with an action to create them. |
 | `deckard.editor.embedProblems` | `true` | Says above a broken `![[embed]]` which heading or `^marker` it is missing. |
 | `deckard.editor.unlinkedMentions` | `true` | Counts, on a note's first line, notes that name it without a link, with an action to link them. |
+| `deckard.links.style` | `wiki` | How a link made from a mention is written: `[[Atlas]]`, or `markdown` for `[Atlas](projects/Atlas.md)`, which GitHub and MkDocs render. Both kinds are read either way. |
 | `deckard.editor.hubProgress` | `true` | Says, on a hub note's first line, how far along the tasks of the tag it describes are. |
 | `deckard.openNotesIn` | `editor` | Where a note or task opens from Deckard: `editor`, at its line, or `page`, on the [note page](notes-and-links.md#reading-a-note-as-a-page). Shift-click, or Shift+Enter, opens it the other way. |
 | `deckard.editor.stepProgress` | `true` | Shows, above a task with steps, a bar of how many are done and the next one. |

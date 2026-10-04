@@ -5,7 +5,7 @@
  * score, and a more specific entry outranks the broad heading it sits under.
  */
 import { isParkedFile, isParkedSection, isParkedTask } from '../index/parked';
-import { extractWikiLinks, isPeriodicNoteFile } from '../markdown/parser';
+import { extractNoteLinks, isPeriodicNoteFile } from '../markdown/parser';
 import {
   ParsedFile,
   RankedNote,
@@ -189,8 +189,9 @@ function findMatchingSections(
     const associations = context.matchAssociations(tags);
     const linkEvidence = getLinkEvidence(context.linkNames, context.active, {
       file,
-      links: extractWikiLinks(
+      links: extractNoteLinks(
         getSectionLexicalContent(section, file.sections),
+        file.filePath,
       ),
       title: section.heading,
     });
@@ -220,7 +221,7 @@ function findMatchingTasks(
     const associations = context.matchAssociations(tags);
     const linkEvidence = getLinkEvidence(context.linkNames, context.active, {
       file,
-      links: extractWikiLinks(task.sourceLineText),
+      links: extractNoteLinks(task.sourceLineText, task.filePath),
       title: task.title,
     });
     const qualifies =
@@ -254,8 +255,9 @@ function toSectionReference(
     tags,
     associations,
     rawContent: getSectionLexicalContent(section, file.sections),
-    links: extractWikiLinks(
+    links: extractNoteLinks(
       getSectionLexicalContent(section, file.sections),
+      file.filePath,
     ),
     headingPath: getHeadingPath(section, sectionsById),
     dailyDate: getDailyNoteDate(file),
@@ -278,7 +280,7 @@ function toTaskReference(
     tags,
     associations,
     rawContent: task.sourceLineText,
-    links: extractWikiLinks(task.sourceLineText),
+    links: extractNoteLinks(task.sourceLineText, task.filePath),
     headingPath: getTaskHeadingPath(task, sectionsById),
     dailyDate: getDailyNoteDate(file),
   };

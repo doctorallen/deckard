@@ -25,6 +25,8 @@ import { createWikiLink, insertWikiLink } from '../../../commands/insertLink';
 import { resolveSourceUri } from '../../../commands/navigation';
 import { describeRejectedEdit, noteName, reportFailure, reportStale } from '../../../commands/notify';
 import { linkMentions } from '../../../commands/unlinkedMentions';
+import { readLinkStyle } from '../../../commands/linkMaintenancePorts';
+import { formatNoteLink } from '../../../../domain/markdown/wikiLinks';
 import type { WorkspaceWriteHistory } from '../../../commands/workspaceWrites';
 import { createEntryScope, findTaggedEntry } from '../../../state/entryScope';
 import { collectNoteLinks, createLinksSearchQuery } from '../../../state/noteLinks';
@@ -888,7 +890,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
   }
 
   /**
-   * Makes one mention a link, as written: `atlas` becomes `[[atlas]]`. The
+   * Makes one mention a link, as written: `atlas` becomes `[[atlas]]`, or
+   * `[atlas](Atlas.md)` when `deckard.links.style` says so. The
    * mention is found again in the snapshot and in its note as it is now, so
    * a line edited since is left alone. It is one write, taken back by Undo
    * Last Change.
@@ -910,8 +913,10 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       void reportStale([uri]);
       return;
     }
+    const target = this.getSelectedFilePath();
+    const link = target ? formatNoteLink(mention.name, mention.filePath, target, readLinkStyle()) : `[[${mention.name}]]`;
     const edit = new vscode.WorkspaceEdit();
-    edit.replace(uri, range, `[[${mention.name}]]`);
+    edit.replace(uri, range, link);
     await this.sidebar.history.write(edit, {
       label: `a link to ${mention.name} in ${mention.title}`,
     });

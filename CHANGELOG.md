@@ -4,6 +4,14 @@
 
 ### Added
 
+- **Markdown links count.** A relative `[text](../adr/0042.md)` link, the
+  kind GitHub and MkDocs render, now links its note everywhere a `[[link]]`
+  does: Linked from, the editor's link counts, the Notes Graph, Related
+  Notes, Stats' notes nothing links to, and a search's `link`. A `#fragment`
+  written as a heading's slug, such as `#decision-record`, finds that
+  heading. `deckard.links.style` set to `markdown` makes Link mentions write
+  `[Atlas](projects/Atlas.md)` rather than `[[Atlas]]`.
+
 - **Esper Themes, suggested once.** Deckard's looks also come as VS Code
   color themes for the whole editor, in Esper Themes. Once the first index
   is done, a machine without it is asked once, with **Install** and **See

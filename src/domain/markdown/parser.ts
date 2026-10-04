@@ -23,7 +23,7 @@ import {
   TaskLineShape,
 } from './lineShapes';
 import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
-import { findWikiLinkSpans } from './wikiLinks';
+import { findNoteLinkSpans, findWikiLinkSpans } from './wikiLinks';
 import { formatKeyWords, readTagNamespace } from './tagKeys';
 import { MIGRATED_TASK_LINE } from './taskLineEdits';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
@@ -33,7 +33,7 @@ import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
  * (steps' parent links, say) changes it, so the local cache, which keeps
  * parsed notes, is rebuilt rather than served in the old shape.
  */
-export const PARSE_FORMAT = 'code-and-links';
+export const PARSE_FORMAT = 'markdown-links';
 
 /** A heading as the parser found it: its 1-based line, its level, and its words. */
 interface HeadingMatch {
@@ -271,7 +271,7 @@ export function parseMarkdown(
     tasks,
     ...(Object.keys(blockIds).length > 0 ? { blockIds } : {}),
     frontmatterTags: frontmatter.tags,
-    links: [...new Set([...frontmatter.links, ...extractWikiLinks(content)])],
+    links: [...new Set([...frontmatter.links, ...extractNoteLinks(content, filePath)])],
     ...(frontmatter.aliases ? { aliases: frontmatter.aliases } : {}),
     ...(frontmatter.hub ? { hub: frontmatter.hub } : {}),
     createdAt: dates.createdAt,
@@ -390,14 +390,15 @@ export function extractTags(
 }
 
 /**
- * Extracts workspace-local Wiki link targets without treating their labels as
- * paths. Resolution happens against the current workspace index. A link in
+ * Extracts the targets of a text's links to notes, without treating a
+ * `[[link]]`'s display text as a path. Given the note the text is in, a
+ * relative `[text](note.md)` link counts too, as that note's path. A link in
  * fenced code or an inline code span is an example, not a link.
  */
-export function extractWikiLinks(text: string): string[] {
+export function extractNoteLinks(text: string, sourcePath?: string): string[] {
   const links = new Set<string>();
 
-  for (const span of findWikiLinkSpans(text)) {
+  for (const span of sourcePath === undefined ? findWikiLinkSpans(text) : findNoteLinkSpans(text, sourcePath)) {
     const target = span.target.trim();
     if (target.length > 0) {
       links.add(target);
@@ -558,7 +559,7 @@ function frontmatterToTags(
   const links: string[] = [];
   values.forEach((fieldValues, key) => {
     if (key === 'links') {
-      fieldValues.forEach((value) => links.push(...extractWikiLinks(value)));
+      fieldValues.forEach((value) => links.push(...extractNoteLinks(value)));
       return;
     }
     if (key === 'aliases' || key === 'alias') {
@@ -1410,7 +1411,7 @@ function createSection(
       : undefined,
     tags: sectionTags.map((tag) => tag.key),
     tagLabels,
-    links: extractWikiLinks(rawContent),
+    links: extractNoteLinks(rawContent, filePath),
     rawContent,
     bodyContent,
     startLine: heading.lineNumber,
@@ -1679,7 +1680,7 @@ function createInlineSection(context: NoteContext, entry: InlineEntry): Section 
     tagLabels: Object.fromEntries(
       inlineTags.map((tag) => [tag.key, tag.label]),
     ),
-    links: extractWikiLinks(rawContent || sourceLine),
+    links: extractNoteLinks(rawContent || sourceLine, filePath),
     rawContent,
     bodyContent: rawContent,
     startLine: lineNumber,
