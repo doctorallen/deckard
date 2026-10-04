@@ -80,6 +80,10 @@ body.provenance-dismissed .home-row .home-row-detail, body.provenance-dismissed 
   border-radius: 0 0 var(--corner-br, 0) var(--corner-bl, 0);
   background: inherit;
   box-shadow: inherit;
+  /* Its glow, in a theme that draws one, runs down its sides and along its
+     foot, never back up over the entry: cut at its own top edge, so the
+     glow frames the line it carries rather than banding across the entry. */
+  clip-path: inset(0 -40px -40px -40px);
   pointer-events: none;
 }
 .card:hover, .card:focus-within, .note:hover, .note:focus-within,

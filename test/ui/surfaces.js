@@ -453,11 +453,12 @@ function createCalendarSurfaces() {
 }
 
 /**
- * Related Notes for a tagged note, and for a note with no tags.
+ * Related Notes for a tagged note, and for a note with no tags, and the
+ * sidebar's Customize Home.
  *
  * @param {object} index The workspace.
  * @param {Map<string, object>} files The parsed notes, by path.
- * @returns {object[]} The two Related Notes surfaces.
+ * @returns {object[]} The two Related Notes surfaces and Customize Home.
  */
 function createRelatedNotesSurfaces(index, files) {
   return [
@@ -505,6 +506,27 @@ function createRelatedNotesSurfaces(index, files) {
       scrollers: ['html'],
       clippers: [],
       hovered: ['.note'],
+    },
+    {
+      // Customize Home in the sidebar: each widget to add is a button with
+      // its description under its name, on the button's own fill.
+      name: 'sidebarNotesCustomizeHome',
+      page: 'sidebarNotes',
+      viewport: [240, 700],
+      snapshot: () => ({
+        activeTags: [],
+        notes: [],
+        tagTitleDisplayMode: 'inline',
+        state: 'customizeHome',
+        homeWidgets: [
+          { value: 'tasks', label: 'Tasks', description: 'The tasks a search finds, ranked as on the Task Board' },
+          { value: 'topTags', label: 'Frequent tags', description: 'The tags you open most, lately' },
+          { value: 'todayNote', label: 'Today', description: "Today's daily note and its open tasks" },
+        ],
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.home-widget-choice'],
     },
   ];
 }
