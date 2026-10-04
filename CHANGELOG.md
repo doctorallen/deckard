@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.2.0 - 2026-10-04
+
 ### Highlights
 
 - Every page is one click away: a Pages view in the sidebar, Go to… on Cmd/Ctrl+Shift+Alt+P, and a DECKARD ▾ menu at the top of every page.
