@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.2.0 - 2026-10-04
+
+### Highlights
+
+- Every page is one click away: a Pages view in the sidebar, Go to… on Cmd/Ctrl+Shift+Alt+P, and a DECKARD ▾ menu at the top of every page.
+- Safe in a code repository: Deckard says when it reads the whole workspace, asks before its first note, and can be paused per workspace.
+- Markdown links count as links, a work sample shows Deckard on a team lead's week, and Capture reads who a task is for.
+
 ### Added
 
 - **Display: Full, Quiet, or Zen, in place of Zen mode.** Turn Deckard's
@@ -26,25 +34,6 @@
   `#` or `@` kept, underlined under the pointer. Each is your own setting,
   the same in every workspace (`deckard.display.cardFrames`,
   `deckard.display.tags`).
-
-### Changed
-
-- **Zen mode is now Display's Zen step.** `deckard.zenMode` is read as Zen
-  until a step is set, and a reader who had it on is moved over once, with
-  one notice. What it turned off in the editor (the counts above headings,
-  the unlinked-mention lens, the due hints, the section highlight, and the
-  Sections counts) is now each its own setting, turned off where it wasn't
-  set.
-
-## 2.2.0 - 2026-10-04
-
-### Highlights
-
-- Every page is one click away: a Pages view in the sidebar, Go to… on Cmd/Ctrl+Shift+Alt+P, and a DECKARD ▾ menu at the top of every page.
-- Safe in a code repository: Deckard says when it reads the whole workspace, asks before its first note, and can be paused per workspace.
-- Markdown links count as links, a work sample shows Deckard on a team lead's week, and Capture reads who a task is for.
-
-### Added
 
 - **Pages, and Go to….** The Deckard sidebar opens with **Pages**: Home,
   the Task Board, the Calendar, today's note, the Notes Graph, Find, Stats,
@@ -142,6 +131,13 @@
   Themes**.
 
 ### Changed
+
+- **Zen mode is now Display's Zen step.** `deckard.zenMode` is read as Zen
+  until a step is set, and a reader who had it on is moved over once, with
+  one notice. What it turned off in the editor (the counts above headings,
+  the unlinked-mention lens, the due hints, the section highlight, and the
+  Sections counts) is now each its own setting, turned off where it wasn't
+  set.
 
 - **The Outline is part of the Context view.** Deckard's Outline view sat
   beside VS Code's own Outline under the same name. Its headings are now
