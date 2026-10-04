@@ -63,6 +63,8 @@ export function plainTitle(tokens: readonly InlineToken[]): string {
       case 'em':
       case 'del':
         return words(token.children);
+      case 'image':
+        return token.alt;
     }
   }).join('');
   return words(tokens).replace(/\s+/g, ' ').trim();

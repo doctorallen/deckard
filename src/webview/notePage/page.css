@@ -100,3 +100,12 @@ button.note-embed-title:hover:where(:not(:disabled):not([aria-disabled="true"]))
 .note-backlink-line { min-height: 0; padding: 2px 0; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer; }
 .note-backlink-line:hover:where(:not(:disabled):not([aria-disabled="true"])), .note-backlink-line:focus-visible { color: var(--hover-fg); }
 .note-missing, .note-empty { margin: var(--space-4) 0 0; color: var(--muted); }
+
+/* An image, read by the host from the note's folder: fitted to the column,
+   whole once selected. */
+.note-image-button { display: inline-block; max-width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.note-image-button.is-whole { max-width: none; cursor: zoom-out; }
+.note-image { display: block; max-width: 100%; height: auto; border: var(--edge) solid var(--line); }
+.note-image-button.is-whole .note-image { max-width: none; }
+.note-image-button:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
+.note-image-missing { color: var(--muted); font-style: italic; }

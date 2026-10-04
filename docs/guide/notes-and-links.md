@@ -49,7 +49,7 @@ Write `![[Note]]` on a line of its own and VS Code's Markdown preview draws that
 | `![[#Vendor review]]` | a heading of the note the embed is written in |
 
 - An embed names its note as a link does. A name two notes share reads neither; a name no note has says so.
-- `![[…]]` inside a sentence stays as typed, and `![[diagram.png]]` and other attachments are left alone.
+- `![[…]]` inside a sentence stays as typed. `![[diagram.png]]` is drawn as an image on the [note page](#reading-a-note-as-a-page); the preview leaves it and other attachments alone.
 - Embeds nest up to three deep.
 - An embed inside fenced code is left as code.
 
@@ -60,6 +60,8 @@ Write `![[Note]]` on a line of its own and VS Code's Markdown preview draws that
 - **Tags** open their page, and **`[[links]]`** open the note they name on the same page. **‹** and **›**, or the mouse's back and forward buttons, step through the notes it has shown.
 - **Tasks** have working boxes, with **Undo** in the message, and steps sit under their task.
 - **Query blocks** draw their results live, a list or a table, and each row opens what it lists. **Embeds** draw what they name, with a title that opens it.
+- **Images**, `![alt](img/flow.png)` or `![[flow.png]]`, are drawn at the page's width; select one to see it at full size. Deckard reads each from beside the note, or from the workspace folder's top, and draws nothing from the web or from outside the workspace folder; an image it cannot draw says why, such as one larger than 4 MB.
+- **Front matter** names what Deckard reads as a reader would: **About** for `describes`, **Filed under** for `up`, **Also called** for `aliases`.
 - **Front matter** is a row of properties under the title, a tag among the values a button. A note under a [hub](search-pages.md#the-hubs-view) shows where it sits.
 - **Progress.** A note with tasks shows a **Tasks** bar under its title: how many of its own tasks are done, how many are overdue, and when the next is due, steps aside. A hub note shows a bar above it too, for every task its tag finds in any note, labeled by what the tag names, such as **Project**, **Team**, or **Person**, with a button to the tag's page.
 - **Linked from** lists the notes that link here, each with the lines that do.

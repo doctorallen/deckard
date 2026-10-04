@@ -4,6 +4,13 @@
 
 ### Added
 
+- **Images on the note page.** The note page draws a note's images,
+  `![alt](img/flow.png)` and `![[flow.png]]`, at the page's width, and
+  shows one at full size when selected. Each is read from beside the note
+  or the workspace folder's top and sent to the page itself, so nothing is
+  fetched from the web or outside the workspace folder; one that cannot be
+  drawn says why.
+
 - **Editor presets.** `Deckard: Choose Editor Preset…` picks what Deckard
   draws in the editor in one choice: **Full**, as now; **Tasks**, task hints
   and problem reports without link counts, mention lenses, or breadcrumbs;

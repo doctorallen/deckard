@@ -266,6 +266,12 @@ const ACTIONS: Readonly<Record<string, ActionHandler>> = {
     ...modifiers(event),
   }),
   'open-tag': (element) => send({ type: 'openTag', tagKey: String(element.dataset.tagKey) }),
+  // An image shows fitted to the column; selecting it shows it whole, and back.
+  'toggle-image-size': (element) => {
+    const whole = element.classList.toggle('is-whole');
+    const alt = element.querySelector('img')?.getAttribute('alt') || 'Image';
+    element.setAttribute('aria-label', `${alt}, shown ${whole ? 'at full size' : 'fitted'}; select to show it ${whole ? 'fitted' : 'at full size'}`);
+  },
   'open-search': (element) => {
     if (element.dataset.query) {
       send({ type: 'openSearch', query: element.dataset.query });

@@ -64,7 +64,25 @@ function drawToken(token: InlineToken, context: BodyContext): ComponentChild {
       return <em><InlineTokens tokens={token.children} context={context} /></em>;
     case 'del':
       return <del><InlineTokens tokens={token.children} context={context} /></del>;
+    case 'image':
+      return <NoteImage token={token} />;
   }
+}
+
+/**
+ * An image the host read into a `data:` URI, drawn at the column's width;
+ * selecting it shows it at full size, and again fits it back. One the host
+ * could not read says why, with its path, where it would have been.
+ */
+function NoteImage({ token }: { readonly token: Extract<InlineToken, { kind: 'image' }> }) {
+  if (token.missing || !token.src.startsWith('data:')) {
+    return <span class="note-image-missing">{`Image not shown: ${token.alt || token.src} (${token.missing ?? 'not read'})`}</span>;
+  }
+  return (
+    <button type="button" class="note-image-button" data-action="toggle-image-size" aria-label={`${token.alt || 'Image'}, shown fitted; select to show at full size`}>
+      <img class="note-image" src={token.src} alt={token.alt} />
+    </button>
+  );
 }
 
 /** Inline Markdown, with the note's tags and links as controls. */
@@ -92,6 +110,9 @@ function wordsOf(tokens: readonly InlineToken[]): string {
     .map((token) => {
       if (token.kind === 'break') {
         return ' ';
+      }
+      if (token.kind === 'image') {
+        return token.alt;
       }
       return 'children' in token ? wordsOf(token.children) : token.text;
     })

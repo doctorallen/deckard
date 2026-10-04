@@ -29,6 +29,9 @@ function drawToken(token: InlineToken): ComponentChild {
       return <em><Inline tokens={token.children} /></em>;
     case 'del':
       return <del><Inline tokens={token.children} /></del>;
+    case 'image':
+      // Only the Note page draws images; anywhere else, the alt text.
+      return token.alt;
   }
 }
 

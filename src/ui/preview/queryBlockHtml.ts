@@ -447,6 +447,9 @@ function writeInlineToken(token: InlineToken): string {
     case 'del':
     case 'link':
       return writeInlineHtml(token.children);
+    case 'image':
+      // Only the Note page reads images; a title shows its alt text.
+      return escapeHtmlText(token.alt);
   }
 }
 

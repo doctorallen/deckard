@@ -142,6 +142,9 @@ function plainText(tokens: readonly InlineToken[]): string {
       if (token.kind === 'wikiLink') {
         return /\|([^\]]+)\]\]$/.exec(token.text)?.[1]?.trim() || token.target;
       }
+      if (token.kind === 'image') {
+        return token.alt;
+      }
       return 'children' in token ? plainText(token.children) : token.text;
     })
     .join('');
@@ -223,7 +226,7 @@ function readBlock(token: MarkdownToken, cursor: Cursor, source: Source): NoteBl
 function readInline(cursor: Cursor): InlineToken[] {
   const inline = cursor.tokens[cursor.index];
   cursor.index += 2;
-  return withoutBlockId(mapInlineTokens(inline.children ?? []));
+  return withoutBlockId(mapInlineTokens(inline.children ?? [], { images: true }));
 }
 
 /**
@@ -244,6 +247,11 @@ function withoutBlockId(tokens: InlineToken[]): InlineToken[] {
  * them ticks that note's task and a double-click opens that note there.
  */
 function readEmbed(target: string, line: number, reading: Reading): NoteBlock {
+  // `![[diagram.png]]` embeds an image, drawn as one, read by the host.
+  const image = /^([^#|]+\.(?:png|jpe?g|gif|webp|svg|avif))(?:\|([^\]]*))?$/i.exec(target.trim());
+  if (image) {
+    return { kind: 'paragraph', line, children: [{ kind: 'image', src: image[1].trim(), alt: image[2]?.trim() || image[1].trim() }] };
+  }
   const resolved = resolveEmbed(target, reading.file.content, reading.index, createSourceParser());
   if (resolved.kind === 'missing') {
     return { kind: 'embed', line, target, title: target, missing: resolved.reason };
@@ -433,7 +441,7 @@ function readTableRows(cursor: Cursor, level: number): InlineToken[][][] {
     if (token.type === 'tr_open') {
       rows.push([]);
     } else if (token.type === 'inline') {
-      rows[rows.length - 1].push(mapInlineTokens(token.children ?? []));
+      rows[rows.length - 1].push(mapInlineTokens(token.children ?? [], { images: true }));
     }
   }
   return rows;

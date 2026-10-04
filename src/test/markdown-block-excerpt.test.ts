@@ -19,6 +19,8 @@ function words(tokens: readonly InlineToken[]): string {
         case 'del':
         case 'link':
           return words(token.children);
+        case 'image':
+          return token.alt;
       }
     })
     .join('');

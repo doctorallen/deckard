@@ -83,4 +83,3 @@ async function chooseEditorPreset(): Promise<void> {
     await vscode.workspace.getConfiguration('deckard.editor').update('preset', picked.value, vscode.ConfigurationTarget.Global);
   }
 }
-

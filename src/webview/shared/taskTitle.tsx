@@ -34,6 +34,10 @@ function drawWithTags(tokens: readonly InlineToken[], tags: readonly TagReferenc
       case 'wikiLink':
         run += token.text;
         break;
+      case 'image':
+        // Only the Note page draws images; a title shows the alt text.
+        run += token.alt;
+        break;
       case 'break':
         flush();
         drawn.push(<br />);
