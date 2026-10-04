@@ -2,7 +2,7 @@ import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { buildHubTree, findBreadcrumbs, HubTreeNode, namespaceLabel, readUpTargets } from '../ui/state/hubTree';
+import { buildHubTree, findBreadcrumbs, findHubTagKey, HubTreeNode, namespaceLabel, readUpTargets } from '../ui/state/hubTree';
 import { WorkspaceIndex } from '../domain/model';
 import { computeParked } from '../domain/index/parked';
 
@@ -165,5 +165,20 @@ suite('Notes under their hubs', () => {
     const tree = buildHubTree(big, Date.now());
     assert.strictEqual(tree[0].children[0].children.length, 3000);
     assert.ok(Date.now() - started < 1500, `${Date.now() - started} ms`);
+  });
+  test('finds the tag a note is the hub of, and none for a note another hub has taken or a plain note', () => {
+    const index = indexOf({
+      'Atlas.md': '---\ndescribes: project/atlas\n---\n# Atlas',
+      'Atlas copy.md': '---\ndescribes: project/atlas\n---\n# Atlas copy',
+      'Both.md': '---\ndescribes: [project/atlas, project/relay]\n---\n# Both',
+      'Plain.md': '# Plain #project/atlas',
+    });
+    const hub = index.tags.get('#project/atlas')?.hubFilePaths?.[0];
+    assert.ok(hub);
+    assert.strictEqual(findHubTagKey(index, hub), '#project/atlas');
+    assert.strictEqual(findHubTagKey(index, 'Both.md'), hub === 'Both.md' ? '#project/atlas' : '#project/relay', 'the first tag whose hub it is');
+    const taken = ['Atlas.md', 'Atlas copy.md'].find((filePath) => filePath !== hub);
+    assert.strictEqual(findHubTagKey(index, taken!), undefined, 'another note is that tag’s hub');
+    assert.strictEqual(findHubTagKey(index, 'Plain.md'), undefined);
   });
 });

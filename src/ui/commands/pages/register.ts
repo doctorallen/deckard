@@ -4,6 +4,7 @@ import type { Services } from '../../../composition/services';
 import { isMarkdownFile } from '../../../core/workspace/scanner';
 import { registerCommand } from '../runCommand';
 import { openNoteAt } from '../noteOpening';
+import { findHubTagKey } from '../../state/hubTree';
 
 /**
  * Opening the pages: Home, Stats, Help and What's new, the Notes Graph and
@@ -60,7 +61,6 @@ export function register(context: vscode.ExtensionContext, services: Services): 
  */
 function registerNotePageCommands(services: Services): vscode.Disposable[] {
   const { indexer } = services;
-  const { notePage } = services.pages;
   return [
     // A note, opened where deckard.openNotesIn says, or the other way: for a
     // tree row or a lens, which cannot read the keys a click held.
@@ -77,7 +77,7 @@ function registerNotePageCommands(services: Services): vscode.Disposable[] {
       const beside = how.beside === true;
       if (typeof filePath === 'string' && filePath) {
         const at = typeof line === 'number' && Number.isInteger(line) && line > 0 ? line : undefined;
-        await notePage.show({ filePath, ...(at ? { line: at } : {}) }, { beside, preserveFocus: how.preserveFocus === true });
+        await showAsPage(services, { filePath, ...(at ? { line: at } : {}) }, { beside, preserveFocus: how.preserveFocus === true });
         return;
       }
       const location = readEditorNote(indexer, filePath);
@@ -87,9 +87,28 @@ function registerNotePageCommands(services: Services): vscode.Disposable[] {
       }
       // In the note's own group, in front of its editor, as Markdown's Open
       // Preview opens there.
-      await notePage.show(location, { beside, ...(location.column ? { column: location.column } : {}) });
+      await showAsPage(services, location, { beside, ...(location.column ? { column: location.column } : {}) });
     }),
   ];
+}
+
+/**
+ * Shows a note as a page: a hub note as its tag's search page, which draws
+ * the note at its top with the tag's progress, notes, and tasks under it, so
+ * a page of the note alone would say less; any other note on the note page.
+ * The editor still opens a hub note's Markdown.
+ */
+async function showAsPage(
+  services: Services,
+  location: { filePath: string; line?: number },
+  how: Parameters<Services['pages']['notePage']['show']>[1],
+): Promise<void> {
+  const hubTag = findHubTagKey(services.indexer.getSnapshot(), location.filePath);
+  if (hubTag) {
+    await services.pages.search.show(hubTag);
+    return;
+  }
+  await services.pages.notePage.show(location, how);
 }
 
 /**

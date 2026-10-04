@@ -153,6 +153,16 @@ export function readUpTargets(content: string): string[] {
   });
 }
 
+/**
+ * The tag a note is the hub of: the first its `describes:` names whose hub
+ * note it is. Undefined for a note that is no tag's hub, including one that
+ * describes a tag another note is the hub of.
+ */
+export function findHubTagKey(index: WorkspaceIndex, filePath: string): string | undefined {
+  const describes = index.files.get(filePath)?.hub?.describes ?? [];
+  return describes.find((tag) => index.tags.get(tag.key)?.hubFilePaths?.[0] === filePath)?.key;
+}
+
 /** A note's name in the tree: its first heading without tags, or its file name. */
 export function hubNoteLabel(index: WorkspaceIndex, filePath: string): string {
   const heading = index.files.get(filePath)?.sections.find((section) => !section.isInline);
