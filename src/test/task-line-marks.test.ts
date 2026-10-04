@@ -121,7 +121,7 @@ suite('Task line decorations', () => {
     return { editor, set };
   }
 
-  test('draws on a note, clears on anything else, and zen drops the hints', async () => {
+  test('draws on a note, clears on anything else, and taskDueHints off drops the hints', async () => {
     const decorations = new TaskLineDecorations((uri) => uri.path.startsWith('/notes/'), () => now);
     const configuration = vscode.workspace.getConfiguration('deckard');
     try {
@@ -134,13 +134,14 @@ suite('Task line decorations', () => {
       decorations.update(other.editor);
       assert.deepStrictEqual([...other.set.values()].map((ranges) => ranges.length), [0, 0, 0]);
 
-      await configuration.update('zenMode', true, vscode.ConfigurationTarget.Global);
+      // Zen mode's editor half is its own setting now: the due hints are taskDueHints.
+      await configuration.update('editor.taskDueHints', false, vscode.ConfigurationTarget.Global);
       const zen = fakeEditor('- [ ] Send 📅 2026-09-20 ⏫');
       decorations.update(zen.editor);
       const hints = [...zen.set.values()].map((ranges) => ranges.length).sort();
       assert.deepStrictEqual(hints, [0, 1, 1], 'the hint goes, the dimming and the color stay');
     } finally {
-      await configuration.update('zenMode', undefined, vscode.ConfigurationTarget.Global);
+      await configuration.update('editor.taskDueHints', undefined, vscode.ConfigurationTarget.Global);
       decorations.dispose();
     }
   });
