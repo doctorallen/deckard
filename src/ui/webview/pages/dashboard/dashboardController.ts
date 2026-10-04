@@ -502,7 +502,7 @@ export class DashboardController implements PageController<DashboardPageState, D
           {
             agenda: 'deckard.agenda.focus',
             stats: 'deckard.showStats',
-            sampleWorkspace: 'deckard.createSampleWorkspace',
+            sampleWorkspace: 'deckard.createWorkSample',
             checkSetup: 'deckard.checkSetup',
             walkthrough: 'deckard.openWalkthrough',
           }[message.view],

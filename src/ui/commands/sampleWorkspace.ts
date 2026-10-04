@@ -15,8 +15,25 @@ import { formatLocalDate } from '../../domain/notes/periodicNotes';
  * notes say, and opened, with the README shown once the window has reloaded.
  */
 
-/** The sample's folder, inside Deckard's global storage. */
+/** The story tour's folder, inside Deckard's global storage. */
 export const SAMPLE_FOLDER_NAME = 'deckard-sample';
+/** The work sample's folder, beside it. */
+export const WORK_SAMPLE_FOLDER_NAME = 'deckard-work-sample';
+
+/**
+ * Which sample: `work`, a week of a team lead's notes, the one Get Started
+ * offers; or `story`, the tour with a note for every part of Deckard.
+ */
+export type SampleKind = 'work' | 'story';
+
+/** Each sample's shipped folder, inside resources/, and the folder it is written to. */
+const SAMPLES: Readonly<Record<SampleKind, { source: string; folder: string; name: string }>> = {
+  work: { source: 'sample-work', folder: WORK_SAMPLE_FOLDER_NAME, name: 'work sample' },
+  story: { source: 'sample', folder: SAMPLE_FOLDER_NAME, name: 'story tour' },
+};
+
+/** Both samples' folders, which the first index does not summarize: their READMEs take that moment. */
+export const SAMPLE_FOLDER_NAMES: readonly string[] = [SAMPLE_FOLDER_NAME, WORK_SAMPLE_FOLDER_NAME];
 /** The sample to show the README of, once it opens after the reload. */
 export const SAMPLE_README_KEY = 'deckard.openSampleReadme';
 
@@ -51,9 +68,9 @@ export function getSampleStorageUri(globalStorageUri: vscode.Uri): vscode.Uri {
     : globalStorageUri;
 }
 
-/** Where the shipped sample lives, inside the installed extension. */
-export function getSampleSourceUri(extensionUri: vscode.Uri): vscode.Uri {
-  return vscode.Uri.joinPath(extensionUri, 'resources', 'sample');
+/** Where a shipped sample lives, inside the installed extension; the story tour by default. */
+export function getSampleSourceUri(extensionUri: vscode.Uri, kind: SampleKind = 'story'): vscode.Uri {
+  return vscode.Uri.joinPath(extensionUri, 'resources', SAMPLES[kind].source);
 }
 
 /** A day `offset` days from `today`, as the sample writes dates. */
@@ -100,6 +117,8 @@ export interface InstallSampleOptions {
   fs?: SampleFileAccess;
   /** Replace a sample already there rather than refuse. */
   replace?: boolean;
+  /** Which sample; the story tour by default. */
+  kind?: SampleKind;
 }
 
 /**
@@ -114,8 +133,9 @@ export async function installSample({
   today,
   fs = vscode.workspace.fs,
   replace,
+  kind = 'story',
 }: InstallSampleOptions): Promise<{ target: vscode.Uri; notes: number }> {
-  const target = vscode.Uri.joinPath(storageUri, SAMPLE_FOLDER_NAME);
+  const target = vscode.Uri.joinPath(storageUri, SAMPLES[kind].folder);
   if (await fileExists(target, fs)) {
     if (!replace) {
       throw new SampleFolderExistsError(target);
@@ -139,7 +159,7 @@ export async function installSample({
       }
     }
   };
-  await copy(getSampleSourceUri(extensionUri), target, '');
+  await copy(getSampleSourceUri(extensionUri, kind), target, '');
   return { target, notes };
 }
 
@@ -179,23 +199,24 @@ export async function showSampleReadmeOnce(context: vscode.ExtensionContext): Pr
 }
 
 /**
- * Deckard: Open Sample Workspace. Writes the sample into Deckard's storage,
- * asking first when one is there already, then opens it, asking where when
- * this window has a folder open. Cancelling any question stops there; a
- * sample that cannot be written is reported, and nothing opens.
+ * Deckard: Create a Work Sample, and Create the Story Tour. Writes the
+ * sample into Deckard's storage, asking first when one is there already,
+ * then opens it, asking where when this window has a folder open.
+ * Cancelling any question stops there; a sample that cannot be written is
+ * reported, and nothing opens.
  */
-export async function createSampleWorkspace(context: vscode.ExtensionContext): Promise<void> {
+export async function createSampleWorkspace(context: vscode.ExtensionContext, kind: SampleKind = 'work'): Promise<void> {
   const storage = getSampleStorageUri(context.globalStorageUri);
-  const target = vscode.Uri.joinPath(storage, SAMPLE_FOLDER_NAME);
+  const target = vscode.Uri.joinPath(storage, SAMPLES[kind].folder);
   const replace = await askToReplace(target);
   if (replace === undefined) {
     return;
   }
-  const installed = await installIfNeeded({ context, storage, target, replace });
+  const installed = await installIfNeeded({ context, storage, target, replace, kind });
   if (!installed) {
     return;
   }
-  const forceNewWindow = await askWhereToOpen(installed.notes);
+  const forceNewWindow = await askWhereToOpen(installed.notes, SAMPLES[kind].name);
   if (forceNewWindow === undefined) {
     return;
   }
@@ -229,6 +250,7 @@ interface InstallRequest {
   storage: vscode.Uri;
   target: vscode.Uri;
   replace: boolean;
+  kind: SampleKind;
 }
 
 /**
@@ -241,6 +263,7 @@ async function installIfNeeded({
   storage,
   target,
   replace,
+  kind,
 }: InstallRequest): Promise<{ notes: number | undefined } | undefined> {
   // Looked at again rather than reusing askToReplace's answer: when the
   // folder was not there, nothing was asked, and it is checked as it is now.
@@ -254,6 +277,7 @@ async function installIfNeeded({
       today: new Date(),
       fs: vscode.workspace.fs,
       replace,
+      kind,
     });
     return { notes };
   } catch (error) {
@@ -271,14 +295,14 @@ async function installIfNeeded({
  * once, here; a window with work in it asks where, and undefined means the
  * reader dismissed the question.
  */
-async function askWhereToOpen(notes: number | undefined): Promise<boolean | undefined> {
+async function askWhereToOpen(notes: number | undefined, name: string): Promise<boolean | undefined> {
   if ((vscode.workspace.workspaceFolders ?? []).length === 0) {
     return false;
   }
   const choice = await vscode.window.showInformationMessage(
     notes === undefined
-      ? 'Open the sample workspace in a new window, or in this one?'
-      : `Created a sample workspace of ${notes} notes. Open it in a new window, or in this one?`,
+      ? `Open the ${name} in a new window, or in this one?`
+      : `Created the ${name}, ${notes} notes. Open it in a new window, or in this one?`,
     'Open in New Window',
     'Open Here',
   );

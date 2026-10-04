@@ -27,7 +27,8 @@
 | **Deckard: Import Favorites, Pins, and Searches** | Reads one back and, after asking, replaces what this workspace remembers. |
 | **Deckard: Restore Favorites, Pins, and Searches from a Copy** | Restores one of Deckard's automatic copies, after asking. |
 | **Deckard: Check My Setup** | Writes a Markdown report of your resolved settings, what the last scan found and kept out, what the index holds, and whether `deckard.me` names anyone, with fixes. |
-| **Deckard: Create a Sample Workspace** | Writes a tour of Deckard, dated from today, into Deckard's storage and opens it. Run again, it offers a fresh copy. |
+| **Deckard: Create a Work Sample** | Writes a week of a team lead's notes, dated from today, into Deckard's storage and opens it. Run again, it offers a fresh copy. |
+| **Deckard: Create the Story Tour** | Writes the longer tour of Deckard, a note for each part, the same way. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Daily Note for Date…** | Opens the daily note for a day in plain words, such as `last friday` or `oct 3`, creating it if needed. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |

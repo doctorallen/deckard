@@ -178,7 +178,7 @@ suite('Webview contracts', () => {
                                                         assert.strictEqual(html.includes('.tag-group { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed var(--slate-border); }'), true);
     assert.strictEqual(
       html.includes(
-        '.dashboard-tabs-row { padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }',
+        '.dashboard-tabs-row { display: flex; align-items: center; gap: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }',
       ),
       true,
     );

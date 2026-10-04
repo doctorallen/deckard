@@ -15,9 +15,9 @@ Each [GitHub release](https://github.com/doctorallen/deckard/releases) also carr
 
 ## Get started
 
-**Sample workspace:** run `Deckard: Create a Sample Workspace`. It opens a tour in this window when no folder is open, and otherwise in a new window or this one, as you choose. Its README, **Start here**, leads through ten notes, one per topic, each ending with **Try it**: the commands, keys, and searches to run. The notes are dated from the day you make them. Running the command again offers a fresh copy.
+**Samples:** `Deckard: Create a Work Sample` writes a week of a team lead's notes: standups, two 1:1s, a project hub, and two decision records, with **Try it** in its README. `Deckard: Create the Story Tour` writes a longer tour, ten notes, one per part of Deckard, each ending with **Try it**: the commands, keys, and searches to run. Each opens in this window when no folder is open, and otherwise in a new window or this one, as you choose; its notes are dated from the day you make it, and running the command again offers a fresh copy.
 
-**Walkthrough:** `Deckard: Get Started`, or **Walkthrough** in Home's gear, opens six steps: write a note, tag it and mention a person, link two notes, find anything, capture a task, and see the workspace. Each is checked off as you do it. It is the place to start: the sample workspace is offered from its first step.
+**Walkthrough:** `Deckard: Get Started`, or **Walkthrough** in Home's gear, opens six steps: write a note, tag it and mention a person, link two notes, find anything, capture a task, and see the workspace. Each is checked off as you do it. It is the place to start: the work sample is offered from its first step.
 
 **In your own notes:**
 

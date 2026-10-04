@@ -116,12 +116,13 @@
           {
             "id": "deckard.walkthrough.openNote",
             "title": "Write a note",
-            "description": "Deckard reads every saved Markdown file in the workspace. Start today's note and write a line or two: a / at the start of a line offers a task, a heading, a link, a table of tasks, or one of your templates. Or take the tour, a sample workspace of notes that show what Deckard does.\n[Create today's note](command:deckard.createDailyNote)\n[Create a sample workspace](command:deckard.createSampleWorkspace)",
+            "description": "Deckard reads every saved Markdown file in the workspace. Start today's note and write a line or two: a / at the start of a line offers a task, a heading, a link, a table of tasks, or one of your templates. Or make a work sample: a week of a team lead's notes, to try everything on.\n[Create today's note](command:deckard.createDailyNote)\n[Create a work sample](command:deckard.createWorkSample)",
             "media": {
               "markdown": "resources/walkthrough/notes.md"
             },
             "completionEvents": [
               "onCommand:deckard.createDailyNote",
+              "onCommand:deckard.createWorkSample",
               "onCommand:deckard.createSampleWorkspace",
               "onContext:deckard.hasNotes"
             ]
@@ -705,7 +706,12 @@
       },
       {
         "command": "deckard.createSampleWorkspace",
-        "title": "Create a Sample Workspace",
+        "title": "Create the Story Tour",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.createWorkSample",
+        "title": "Create a Work Sample",
         "category": "Deckard"
       },
       {

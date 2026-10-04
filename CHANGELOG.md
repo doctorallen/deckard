@@ -4,6 +4,13 @@
 
 ### Added
 
+- **A work sample.** `Deckard: Create a Work Sample` writes a week of a
+  team lead's notes: standups, two 1:1s, a project hub with a live list of
+  what is open, and two decision records linked from the notes that made
+  them. Its README starts with the five things Deckard reads and gives keys
+  for every platform. Get Started and an empty Home offer it; the sci-fi
+  tour is still there as `Deckard: Create the Story Tour`.
+
 - **Say who a task is for as you write it.** Capture reads `for @dana` at
   the end, or `@dana to …` at the start, as who the task is for (`👤 @dana`);
   a person mentioned anywhere else stays a mention. A Task board card's ⋯

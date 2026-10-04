@@ -83,7 +83,7 @@ import { TaskBoardPanel } from '../ui/webview/taskBoard';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { SearchPanels } from '../ui/webview/searchPage';
 import { setZenMode, watchZenModeContext } from '../ui/webview/zenMode';
-import { getSampleStorageUri, SAMPLE_FOLDER_NAME, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
+import { getSampleStorageUri, SAMPLE_FOLDER_NAMES, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
 import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/firstIndex';
 import { suggestEsperThemesOnce } from '../ui/commands/esperThemes';
 import { initWriteTarget, isPausedHere, looksLikeCodeRepository, onDidChangePaused, readNotesFolder } from '../ui/commands/writeTarget';
@@ -437,7 +437,7 @@ function createLedgers(context: vscode.ExtensionContext) {
   const tryNext = new TryNextLedger(context.workspaceState);
   context.subscriptions.push(tryNext);
   void whatsNew.onActivate();
-  // A sample opened from Create a Sample Workspace shows its README once.
+  // A sample opened from Create a Work Sample or the Story Tour shows its README once.
   void showSampleReadmeOnce(context);
   // One log for the whole extension. Its level, set from the Output panel,
   // decides how much of Deckard's timing it keeps.
@@ -689,14 +689,15 @@ function offerExcludeHint(
   void indexer.ready.then(async () => {
     const notes = indexer.getSnapshot().files.size;
     const exclude = vscode.workspace.getConfiguration('deckard').get<Record<string, unknown>>('exclude', {});
-    const sample = vscode.Uri.joinPath(getSampleStorageUri(context.globalStorageUri), SAMPLE_FOLDER_NAME).toString();
+    const storage = getSampleStorageUri(context.globalStorageUri);
+    const samples = SAMPLE_FOLDER_NAMES.map((name) => vscode.Uri.joinPath(storage, name).toString());
     const summarized = await summarizeFirstIndex(
       context,
       indexer.getSnapshot(),
       {
         newToDeckard: newWorkspace,
         hasFolder: (vscode.workspace.workspaceFolders ?? []).length > 0,
-        isSample: (vscode.workspace.workspaceFolders ?? []).some((folder) => folder.uri.toString() === sample),
+        isSample: (vscode.workspace.workspaceFolders ?? []).some((folder) => samples.includes(folder.uri.toString())),
       },
       {
         excludeHintShownKey: EXCLUDE_HINT_SHOWN,

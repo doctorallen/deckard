@@ -318,7 +318,7 @@ function renderStartSections(logoUri: string, options: HelpOptions): string {
   return `    <section id="quick-start">
       <h2>Quick start</h2>
       <p><strong>New to Deckard?</strong> <code>Deckard: Get Started</code> opens the walkthrough: six steps, each checked off as you do it.</p>
-      <p><strong>Rather see it than read it?</strong> <code>Deckard: Create a Sample Workspace</code> writes a tour of Deckard, dated from the day you make it, and opens it. Its README leads through ten notes, one a topic, each holding what it explains and ending with what to try.</p>
+      <p><strong>Rather see it than read it?</strong> <code>Deckard: Create a Work Sample</code> writes a week of a team lead's notes, dated from the day you make it, and opens it: standups, two 1:1s, a project, and its decisions, with what to try. <code>Deckard: Create the Story Tour</code> writes the longer tour, ten notes, one for each part of Deckard.</p>
       <div class="steps">
         <div class="step"><span class="step-number"></span><div><h3>Open a workspace</h3><p>Deckard indexes saved <code>.md</code> files in every workspace folder. Open a note, then use the Deckard icon <img class="deckard-logo" src="${logoUri}" alt="Deckard"> in the Activity Bar for Context, which shows related notes and more, the Outline, Tasks, and the Calendar.</p></div></div>
         <div class="step"><span class="step-number"></span><div><h3>Write a few tags</h3><p>Plain tags such as <code>#follow-up</code> are enough. Add <code>@mara-vale</code> for people, or namespaced tags such as <code>#project/neon-relay</code>, when that structure earns its keep. Typing <code>#</code> or <code>@</code> suggests the tags you already use.</p></div></div>

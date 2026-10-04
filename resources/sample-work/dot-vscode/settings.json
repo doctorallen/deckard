@@ -1,0 +1,6 @@
+{
+  "deckard.notesFolder": "",
+  "deckard.templatesFolder": "templates",
+  "deckard.me": "@alex-rivera",
+  "deckard.dailyNoteTemplate": "# {date}\n\n"
+}

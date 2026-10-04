@@ -21,7 +21,10 @@ export function register(context: vscode.ExtensionContext, services: Services): 
       checkSetup(indexer, scanner),
     ),
     registerCommand('deckard.createSampleWorkspace', () =>
-      createSampleWorkspace(context),
+      createSampleWorkspace(context, 'story'),
+    ),
+    registerCommand('deckard.createWorkSample', () =>
+      createSampleWorkspace(context, 'work'),
     ),
     registerCommand('deckard.chooseTheme', () =>
       chooseTheme(context.extension.packageJSON.contributes, createChooseThemeDeps(themePreview)),
