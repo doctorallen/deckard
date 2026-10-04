@@ -117,7 +117,8 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget.is-editing { border-style: dashed; border-color: var(--amber-dim); }
 .home-widget.is-editing:hover { border-color: var(--amber-bright); }
 .home-widget-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-.home-widget-title { margin: 0; color: var(--amber); font-size: var(--text-xs); }
+/* A widget's name outranks the rows under it, as a heading does. */
+.home-widget-title { margin: 0; color: var(--amber); font-size: var(--text-md); font-weight: 600; }
 .home-widget-grip { margin-right: 6px; color: var(--muted); }
 .home-widget-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
 .home-open { min-height: 26px; padding: 3px 8px; text-transform: none; }

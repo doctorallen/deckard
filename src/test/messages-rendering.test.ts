@@ -193,7 +193,7 @@ suite('Webview contracts', () => {
     for (const token of ['--accent', '--danger', '--favorite', '--positive', '--focus']) {
       assert.ok(html.includes(`${token}: var(--`), `${token} is declared on :root`);
     }
-    assert.ok(html.includes('.due-date.overdue { color: var(--danger); }'), 'overdue is danger');
+    assert.ok(html.includes('.due-date.overdue { color: var(--danger); font-weight: 700; }'), 'overdue is danger');
     assert.ok(!/\.favorite-toggle \{[^}]*--favorite-red/.test(html), 'the heart is not drawn in the danger color');
     assert.ok(!/is-negated \{[^}]*--favorite-red/.test(html), 'a negated term is not an alarm');
     // Hover and chosen are two drawings, not one amber.

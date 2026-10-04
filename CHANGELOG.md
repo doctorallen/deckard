@@ -65,6 +65,14 @@
 
 ### Changed
 
+- **One look for dates and headings.** A due date still ahead is plain
+  text everywhere, as on the Task board; only due today (amber) and overdue
+  (red) take a color, so green no longer reads as done. A Home widget's
+  name is now larger than the rows under it. The Note page names front
+  matter as a reader knows it: **About** for `describes`, **Filed under**
+  for `up`, **Also called** for `aliases`, with `[[Atlas]]` shown as Atlas.
+  Stats sets its sentences in the page's font, keeping monospace for paths.
+
 - **Focus is easier to follow.** A focused row or card now pushes the next
   one down to show where it is written, rather than laying that line over
   the next title; while the keyboard has focus, the row under a resting

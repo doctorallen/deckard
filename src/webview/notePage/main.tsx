@@ -62,6 +62,24 @@ function Breadcrumbs({ crumbs }: { readonly crumbs: readonly NoteBreadcrumb[] })
   );
 }
 
+/**
+ * The front-matter keys Deckard gives a meaning, by the name a reader knows
+ * them by; any other key reads as written. A Map, since the key is the
+ * reader's text.
+ */
+const PROPERTY_NAMES: ReadonlyMap<string, string> = new Map([
+  ['describes', 'About'],
+  ['up', 'Filed under'],
+  ['aliases', 'Also called'],
+  ['alias', 'Also called'],
+  ['tags', 'Tags'],
+]);
+
+/** A value as a reader reads it: `[[Atlas]]` as Atlas. */
+function propertyText(text: string): string {
+  return text.replace(/^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/, (_whole, target: string, shown?: string) => shown ?? target);
+}
+
 /** The note's front matter, a tag among the values a button that opens it. */
 function Properties({ properties }: { readonly properties: readonly NoteProperty[] }) {
   if (!properties.length) {
@@ -71,11 +89,11 @@ function Properties({ properties }: { readonly properties: readonly NoteProperty
     <dl class="note-properties">
       {properties.map((property) => (
         <div>
-          <dt>{property.name}</dt>
+          <dt>{PROPERTY_NAMES.get(property.name.toLowerCase()) ?? property.name}</dt>
           <dd>
             {property.values.map((value, at) => [
               at > 0 ? ', ' : null,
-              value.tagKey ? <TagButton tag={{ key: value.tagKey, label: value.text }} className="inline-tag" /> : value.text,
+              value.tagKey ? <TagButton tag={{ key: value.tagKey, label: value.text }} className="inline-tag" /> : propertyText(value.text),
             ])}
           </dd>
         </div>
