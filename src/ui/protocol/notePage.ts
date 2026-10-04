@@ -98,6 +98,13 @@ export interface NoteBreadcrumb {
   notes: string[];
 }
 
+/** One part of a progress line's words, and the search that lists the tasks it counts, when it counts any. */
+export interface NoteProgressPart {
+  text: string;
+  query?: string;
+  tip?: string;
+}
+
 /** One note, as the note page draws it. */
 export interface NotePageSnapshot {
   filePath: string;
@@ -117,9 +124,11 @@ export interface NotePageSnapshot {
     done: number;
     total: number;
     label: string;
+    /** The label's parts, each that counts tasks with the search that lists them. */
+    parts: NoteProgressPart[];
   };
   /** How far along the note's own tasks are, steps aside, when it has any. */
-  taskProgress?: { done: number; total: number; label: string };
+  taskProgress?: { done: number; total: number; label: string; parts: NoteProgressPart[] };
   /** Every tag the note writes, by the words it writes them in, for the page to make buttons of. */
   tags: Array<{ key: string; label: string }>;
   blocks: NoteBlock[];
@@ -161,6 +170,12 @@ export interface OpenInEditorMessage {
   beside?: true;
 }
 
+/** Opens a search on a search page of its own, such as a progress line's overdue tasks. */
+export interface OpenSearchMessage {
+  type: 'openSearch';
+  query: string;
+}
+
 /** Steps back or forward through the notes the page has shown. */
 export interface NavigateNoteHistoryMessage {
   type: 'navigateNoteHistory';
@@ -175,6 +190,7 @@ export interface NotePagePageToHost {
   openTag: OpenTagMessage;
   toggleTask: ToggleTaskMessage;
   navigateNoteHistory: NavigateNoteHistoryMessage;
+  openSearch: OpenSearchMessage;
 }
 
 /** What the host sends the note page, keyed by message type. */

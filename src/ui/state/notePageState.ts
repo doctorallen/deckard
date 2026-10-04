@@ -30,6 +30,8 @@ import {
   toTableTask,
 } from './queryBlockState';
 import { createTaskCells, DEFAULT_TASK_COLUMNS, getTaskColumn } from './resultTable';
+import { linkProgressParts } from './progressLinks';
+import { quoteValue } from '../../domain/query/queryFormat';
 
 /**
  * One note as the note page draws it: its blocks read from its Markdown as
@@ -521,6 +523,10 @@ function describeHub(index: WorkspaceIndex, file: ParsedFile, context: QueryCont
       done: progress?.done ?? 0,
       total: progress?.total ?? 0,
       label: progress ? describeTagProgress(progress, context.now, context.taskPolicy) : 'No tasks yet',
+      // The tasks a tag's progress counts: neither steps nor parked ones.
+      parts: progress
+        ? linkProgressParts(progress, context, (terms) => `${tag.key} ${terms} -is:step -is:parked`, 'the tag’s')
+        : [{ text: 'No tasks yet' }],
     },
   };
 }
@@ -542,9 +548,19 @@ export function describeTagKind(tagKey: string): string {
 function describeNoteTasks(index: WorkspaceIndex, file: ParsedFile, context: QueryContext): Pick<NotePageSnapshot, 'taskProgress'> {
   const tasks = file.tasks.map((task) => index.tasks.get(task.id) ?? task);
   const progress = summarizeTasks(tasks, context.now, context.taskPolicy);
-  return progress
-    ? { taskProgress: { done: progress.done, total: progress.total, label: describeTagProgress(progress, context.now, context.taskPolicy) } }
-    : {};
+  if (!progress) {
+    return {};
+  }
+  // The note's own tasks, steps aside, as they were counted.
+  const counted = (terms: string): string => `path = ${quoteValue(file.filePath)} ${terms} -is:step`;
+  return {
+    taskProgress: {
+      done: progress.done,
+      total: progress.total,
+      label: describeTagProgress(progress, context.now, context.taskPolicy),
+      parts: linkProgressParts(progress, context, counted, 'this note’s'),
+    },
+  };
 }
 
 /** Every tag the note writes, each by the words it is written in, longest first so `#a/b` is found before `#a`. */

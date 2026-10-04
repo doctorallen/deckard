@@ -8,6 +8,7 @@
 import type { NoteBreadcrumb, NotePageMessage, NotePageSnapshot, NoteProperty } from '../../ui/protocol/notePage';
 import type { StateMessage } from '../../ui/protocol/messaging';
 import { ProgressBar } from '../shared/progressBar';
+import { ProgressWords } from '../shared/progressWords';
 import { type ActionHandler, listenForActions, onHostMessage, readEmbeddedState, startPage } from '../shared/page';
 import { announce } from '../shared/status';
 import { TagButton } from '../shared/tagButton';
@@ -89,7 +90,7 @@ function HubLine({ hub }: { readonly hub: NonNullable<NotePageSnapshot['hub']> }
     <div class="note-progress">
       <span class="eyebrow" data-tip={`Every task ${hub.tagLabel} finds, in any note`}>{hub.kind}</span>
       <ProgressBar done={hub.done} total={hub.total} />
-      <span class="note-progress-label">{hub.label}</span>
+      <span class="note-progress-label"><ProgressWords parts={hub.parts} action="open-search" attributes={(part) => ({ 'data-query': part.query ?? '' })} /></span>
       <button type="button" class="tag-note-action" data-action="open-tag" data-tag-key={hub.tagKey} data-tip={`Open ${hub.tagLabel}'s page`}>{`Open ${hub.tagLabel}`}</button>
     </div>
   );
@@ -101,7 +102,7 @@ function TaskLine({ progress }: { readonly progress: NonNullable<NotePageSnapsho
     <div class="note-progress">
       <span class="eyebrow" data-tip="The tasks written in this note, steps aside">Tasks</span>
       <ProgressBar done={progress.done} total={progress.total} />
-      <span class="note-progress-label">{progress.label}</span>
+      <span class="note-progress-label"><ProgressWords parts={progress.parts} action="open-search" attributes={(part) => ({ 'data-query': part.query ?? '' })} /></span>
     </div>
   );
 }
@@ -247,6 +248,11 @@ const ACTIONS: Readonly<Record<string, ActionHandler>> = {
     ...modifiers(event),
   }),
   'open-tag': (element) => send({ type: 'openTag', tagKey: String(element.dataset.tagKey) }),
+  'open-search': (element) => {
+    if (element.dataset.query) {
+      send({ type: 'openSearch', query: element.dataset.query });
+    }
+  },
 };
 
 const app = document.getElementById('app') as HTMLElement;

@@ -9,6 +9,7 @@ import type { NotePagePageToHost, NotePageSnapshot } from '../../../protocol/not
 import { openResultAt } from '../../../commands/navigation';
 import { readQueryContext } from '../../../commands/queryContext';
 import type { TaskWrites } from '../../../commands/taskActions';
+import { findHubTagKey } from '../../../state/hubTree';
 import { createNotePageSnapshot } from '../../../state/notePageState';
 import type { PageChrome } from '../../components';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
@@ -34,6 +35,8 @@ export interface NotePageControllerOptions {
   extensionUri: vscode.Uri;
   /** Where the page says it is in front, so Related Notes follows its note. */
   activeNotePage?: ActiveNotePage;
+  /** Opens a search on a search page of its own. */
+  onOpenSearch?: (query: string) => void | Promise<void>;
 }
 
 /** How many notes Back holds, so a long reading leaves a bounded trail. */
@@ -74,6 +77,7 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
       openTag: openTag({ indexer, navigation, policy: 'lenient', openTag: (tagKey) => notes.onOpenTag(tagKey) }),
       toggleTask: toggleTask({ writes: notes.writes, findTask: (taskId): Task | undefined => indexer.getSnapshot().tasks.get(taskId) }),
       navigateNoteHistory: (message, page) => this.step(page, message.direction),
+      openSearch: (message) => this.openSearch(message.query),
     };
   }
 
@@ -180,13 +184,21 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
   /**
    * Opens a note from the page: here, or with Shift held in the editor,
    * which is where the setting does not open notes when it opens them here.
+   * A hub note opens as its tag's search page, as Open Note as Page opens
+   * it, and this page stays on the note it shows.
    */
   private async open(page: PageContext, location: NoteLocation, how: { opposite?: true; beside?: true }): Promise<void> {
-    if (!this.notes.indexer.getSnapshot().files.has(location.filePath)) {
+    const index = this.notes.indexer.getSnapshot();
+    if (!index.files.has(location.filePath)) {
       return;
     }
     if (how.opposite) {
       await openResultAt(location.filePath, location.line ?? 1, { beside: how.beside === true });
+      return;
+    }
+    const hubTag = findHubTagKey(index, location.filePath);
+    if (hubTag) {
+      await this.notes.onOpenTag(hubTag);
       return;
     }
     this.navigate(location);
@@ -213,6 +225,18 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
     }
     const line = link.heading ? findLinkedSection(file, link.heading)?.startLine : link.block && findLinkedBlock(file, link.block);
     await this.open(page, { filePath, ...(line ? { line } : {}) }, how);
+  }
+
+  /**
+   * Opens a progress line's search on a search page of its own, so the note
+   * stays where it is: only a search the note shown draws now.
+   */
+  private async openSearch(query: string): Promise<void> {
+    const snapshot = this.buildSnapshot();
+    const drawn = [...(snapshot?.hub?.parts ?? []), ...(snapshot?.taskProgress?.parts ?? [])].some((part) => part.query === query);
+    if (drawn) {
+      await this.notes.onOpenSearch?.(query);
+    }
   }
 
   /** Opens the note shown in the editor, at the line asked, or its first. */

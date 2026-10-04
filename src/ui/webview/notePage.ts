@@ -20,6 +20,8 @@ export interface NotePagePanelOptions {
   themePreview: ThemePreview;
   /** Where the page says it is in front, so Related Notes follows its note. */
   activeNotePage?: ActiveNotePage;
+  /** Opens a search on a search page of its own. */
+  onOpenSearch?: (query: string) => void | Promise<void>;
 }
 
 /** Where the note page is shown: beside the editor, or in a group, the active one unless named. */
@@ -48,6 +50,7 @@ export class NotePagePanel implements vscode.Disposable {
       onOpenTag: options.onOpenTag,
       extensionUri: options.extensionUri,
       activeNotePage: options.activeNotePage,
+      onOpenSearch: options.onOpenSearch,
     });
     this.page = new PanelAdapter(
       new WebviewHost(this.controller, { indexer: options.indexer, themePreview: options.themePreview }),

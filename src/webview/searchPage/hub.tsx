@@ -6,6 +6,7 @@ import type { ComponentChild } from 'preact';
 
 import type { SearchPageSnapshot, SearchPageTag, SearchPageTagNotes, TagOverviewHub } from '../../ui/protocol/searchPage';
 import { ProgressBar } from '../shared/progressBar';
+import { ProgressWords } from '../shared/progressWords';
 import { NoteBody } from '../shared/searchCard';
 import { TagButton } from '../shared/tagButton';
 import { isParkedTag } from '../shared/tagMenu';
@@ -88,8 +89,9 @@ export function HubNote({ snapshot, hubOpen }: { readonly snapshot: SearchPageSn
 }
 
 /**
- * How far along the tag's tasks are: a bar, the words, and, when some are
- * overdue, a way to list them. Only a tag that finds a task has it.
+ * How far along the tag's tasks are: a bar and the words, where "3 of 8
+ * done", "1 overdue", "1 needs a new date", and "next due today" are each a
+ * link that searches those tasks. Only a tag that finds a task has it.
  */
 export function TagProgress({ snapshot }: { readonly snapshot: SearchPageSnapshot }) {
   const progress = snapshot.tag && snapshot.tagPage ? snapshot.tagPage.progress : undefined;
@@ -101,10 +103,7 @@ export function TagProgress({ snapshot }: { readonly snapshot: SearchPageSnapsho
       <span class="eyebrow">Progress</span>
       <ProgressBar done={progress.done} total={progress.total} />
       <span class="tag-progress-label">
-        {progress.label}
-        {progress.overdueQuery
-          ? <>{' '}<button type="button" class="tag-note-action" data-action="show-overdue" data-tip="Search the tag’s overdue tasks">Show overdue</button></>
-          : null}
+        <ProgressWords parts={progress.parts} action="search-progress" attributes={(_part, at) => ({ 'data-part': at })} />
       </span>
     </div>
   );
@@ -166,9 +165,19 @@ function MentionNote({ mention }: { readonly mention: NonNullable<SearchPageTagN
 }
 
 /**
+ * Where a tag page's name is written without the tag, with the way to list
+ * those entries, for the top of Refine, where it is not lost among the
+ * notes under the hub. Undefined for a page with none.
+ */
+export function tagMentionLine(snapshot: SearchPageSnapshot): ComponentChild | undefined {
+  const mention = snapshot.tag ? snapshot.tagPage?.mention : undefined;
+  return mention && mention.count > 0 ? <MentionNote mention={mention} /> : undefined;
+}
+
+/**
  * The quiet lines under a tag's page's hub: whether the tag is parked, its
- * other spellings, what only links its hub, and where its name is written
- * without it. Only a one-tag page has them, and nothing when none applies.
+ * other spellings, and what only links its hub. Only a one-tag page has
+ * them, and nothing when none applies.
  */
 export function TagNotes({ snapshot }: { readonly snapshot: SearchPageSnapshot }) {
   const tag = snapshot.tag;
@@ -180,7 +189,6 @@ export function TagNotes({ snapshot }: { readonly snapshot: SearchPageSnapshot }
     isParkedTag(tag.key) ? <ParkedNote key="parked" tag={tag} /> : null,
     ...(page.lookalikes || []).map((other) => <LookalikeNote key={`lookalike:${other.key}`} tag={tag} other={other} />),
     page.hubLinkCount > 0 && page.hubTitle ? <HubLinksNote key="hub-links" count={page.hubLinkCount} title={page.hubTitle} /> : null,
-    page.mention && page.mention.count > 0 ? <MentionNote key="mention" mention={page.mention} /> : null,
   ].filter(Boolean);
   return notes.length ? <div class="tag-notes">{notes}</div> : null;
 }

@@ -94,17 +94,20 @@ suite('Tag progress', () => {
     assert.strictEqual(progressRatio({ done: 0, total: 0 }), 0);
   });
 
-  test('a tag’s page carries its progress, and a way to its overdue tasks', () => {
+  test('a tag’s page carries its progress, each part a search for the tasks it counts', () => {
     const snapshot = createSearchPageSnapshot(index, normalizePreferences({}), '#project/atlas', { queryContext: createQueryContext(now) });
-    assert.deepStrictEqual(snapshot.tagPage?.progress, {
-      done: 2,
-      total: 7,
-      overdue: 1,
-      label: '2 of 7 done · 1 overdue · 1 needs a new date · next due in 3 days',
-      overdueQuery: '#project/atlas is:overdue -is:needs-date -is:step -is:parked',
-    });
-    const overdue = evaluateQuery(index, parseQuery(snapshot.tagPage?.progress?.overdueQuery ?? '').node, createQueryContext(now));
-    assert.deepStrictEqual(overdue.tasks.map((task) => task.lineNumber), [5], 'the search finds the overdue task');
+    const progress = snapshot.tagPage?.progress;
+    assert.deepStrictEqual(
+      progress && { done: progress.done, total: progress.total, overdue: progress.overdue, label: progress.label },
+      { done: 2, total: 7, overdue: 1, label: '2 of 7 done · 1 overdue · 1 needs a new date · next due in 3 days' },
+    );
+    const found = (query: string | undefined): number => evaluateQuery(index, parseQuery(query ?? '').node, createQueryContext(now)).tasks.length;
+    assert.deepStrictEqual(
+      progress?.parts.map((part) => [part.text, found(part.query)]),
+      [['2 of 7 done', 2], ['1 overdue', 1], ['1 needs a new date', 1], ['next due in 3 days', 1]],
+      'each part’s search finds as many tasks as it counts',
+    );
+    assert.ok(progress?.parts.every((part) => part.query && part.tip));
     const plain = createSearchPageSnapshot(index, normalizePreferences({}), 'is:open', { queryContext: createQueryContext(now) });
     assert.strictEqual(plain.tagPage, undefined, 'only a tag’s page has one');
   });

@@ -8,6 +8,7 @@ import type {
   NotePagePageToHost,
   OpenInEditorMessage,
   OpenNoteMessage,
+  OpenSearchMessage,
   OpenWikiLinkMessage,
 } from '../../../protocol/notePage';
 import { Narrower, NarrowingTable, narrowOpenTag, narrowToggleTask, narrowWith, UncheckedMessage } from '../../host/narrowing';
@@ -66,6 +67,12 @@ const narrowOpenInEditor: Narrower<OpenInEditorMessage> = (value) => {
 const narrowNavigate: Narrower<NavigateNoteHistoryMessage> = (value) =>
   value.direction === 'back' || value.direction === 'forward' ? { type: 'navigateNoteHistory', direction: value.direction } : undefined;
 
+/** A progress line's search: its text, as the page drew it, which the host checks against the note shown. */
+const narrowOpenSearch: Narrower<OpenSearchMessage> = (value) =>
+  typeof value.query === 'string' && value.query.length > 0 && value.query.length <= 2 * MAX_NAME_LENGTH
+    ? { type: 'openSearch', query: value.query }
+    : undefined;
+
 /** Each message the note page may send, and what it must hold. */
 export const NOTE_PAGE_MESSAGES: NarrowingTable<NotePagePageToHost> = {
   openNote: narrowOpenNote,
@@ -74,6 +81,7 @@ export const NOTE_PAGE_MESSAGES: NarrowingTable<NotePagePageToHost> = {
   openTag: narrowOpenTag,
   toggleTask: narrowToggleTask,
   navigateNoteHistory: narrowNavigate,
+  openSearch: narrowOpenSearch,
 };
 
 /** A message from the note page, narrowed by its table, or undefined. */

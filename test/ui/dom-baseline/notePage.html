@@ -49,7 +49,21 @@
           ></span
         ><span
           class="note-progress-label"
-        >1 of 3 done · next due in 2 days</span
+        ><button
+            class="progress-link"
+            data-action="open-search"
+            data-query="#project/atlas is:done -is:step -is:parked"
+            data-tip="Search the tag’s done tasks"
+            type="button"
+          >1 of 3 done</button
+          > · <button
+            class="progress-link"
+            data-action="open-search"
+            data-query="#project/atlas is:open due = 2026-09-23 -is:step -is:parked"
+            data-tip="Search the tag’s tasks due next"
+            type="button"
+          >next due in 2 days</button
+          ></span
         ><button
           class="tag-note-action"
           data-action="open-tag"
@@ -74,7 +88,21 @@
           ></span
         ><span
           class="note-progress-label"
-        >1 of 2 done · next due in 4 days</span
+        ><button
+            class="progress-link"
+            data-action="open-search"
+            data-query="path = projects/Atlas.md is:done -is:step"
+            data-tip="Search this note’s done tasks"
+            type="button"
+          >1 of 2 done</button
+          > · <button
+            class="progress-link"
+            data-action="open-search"
+            data-query="path = projects/Atlas.md is:open due = 2026-09-25 -is:step"
+            data-tip="Search this note’s tasks due next"
+            type="button"
+          >next due in 4 days</button
+          ></span
         ></div
       ><dl
         class="note-properties"

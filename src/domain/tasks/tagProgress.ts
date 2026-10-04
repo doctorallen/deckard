@@ -146,18 +146,36 @@ export function describeTagProgress(
   now: number,
   taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'>,
 ): string {
-  const parts = [`${progress.done} of ${progress.total} done`];
+  return describeTagProgressParts(progress, now, taskPolicy).map((part) => part.text).join(' · ');
+}
+
+/** What one part of a tag's progress words counts: which tasks a search for it would list. */
+export type TagProgressPartKind = 'done' | 'overdue' | 'needsDate' | 'nextDue' | 'allDone';
+
+/** One part of a tag's progress words, and what it counts. */
+export interface TagProgressPart {
+  kind: TagProgressPartKind;
+  text: string;
+}
+
+/** A tag's progress words, part by part, in the order `describeTagProgress` joins them. */
+export function describeTagProgressParts(
+  progress: TagProgress,
+  now: number,
+  taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'>,
+): TagProgressPart[] {
+  const parts: TagProgressPart[] = [{ kind: 'done', text: `${progress.done} of ${progress.total} done` }];
   if (progress.overdue > 0) {
-    parts.push(`${progress.overdue} overdue`);
+    parts.push({ kind: 'overdue', text: `${progress.overdue} overdue` });
   }
   if (progress.needsDate > 0) {
-    parts.push(`${progress.needsDate} ${progress.needsDate === 1 ? 'needs' : 'need'} a new date`);
+    parts.push({ kind: 'needsDate', text: `${progress.needsDate} ${progress.needsDate === 1 ? 'needs' : 'need'} a new date` });
   }
   if (progress.nextDue) {
     const due = describeDueDate(progress.nextDue.dueAt, now, taskPolicy, progress.nextDue.dueText);
-    parts.push(due.relative === 'due' ? `next ${due.label}` : `next ${due.relative}`);
+    parts.push({ kind: 'nextDue', text: due.relative === 'due' ? `next ${due.label}` : `next ${due.relative}` });
   } else if (progress.done === progress.total) {
-    parts.push('all done');
+    parts.push({ kind: 'allDone', text: 'all done' });
   }
-  return parts.join(' · ');
+  return parts;
 }

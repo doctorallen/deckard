@@ -20,7 +20,8 @@ function openNotePage() {
   const files = [
     parseMarkdown('notes/Atlas.md', '# Atlas\nSee [[Review]] and [[Review#Notes]].\n'),
     parseMarkdown('notes/Review.md', '# Review\n\n## Notes\nBack to [[Atlas]].\n'),
-    parseMarkdown('notes/Other.md', '# Other\n'),
+    parseMarkdown('notes/Other.md', '# Other\n- [ ] One\n- [x] Two\n'),
+    parseMarkdown('notes/Hub.md', '---\ndescribes: project/atlas\n---\n# Atlas hub\n'),
   ];
   const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
   const updates = new vscode.EventEmitter<void>();
@@ -31,8 +32,10 @@ function openNotePage() {
   } as unknown as NotePageControllerOptions['indexer'];
   const openedTags: string[] = [];
   const activeNotePage = new ActiveNotePage();
+  const searches: string[] = [];
   const controller = new NotePageController({
     activeNotePage,
+    onOpenSearch: (query) => void searches.push(query),
     indexer,
     writes: createTaskWrites(),
     navigation: new NavigationService(),
@@ -46,7 +49,7 @@ function openNotePage() {
     const states = surface.webview.posted.filter((message) => (message as { type?: string }).type === 'state');
     return (states[states.length - 1] as { data: NotePageSnapshot }).data;
   };
-  return { controller, host, surface, last, activeNotePage, send: (message: unknown) => surface.webview.send(message) };
+  return { controller, host, surface, last, activeNotePage, searches, openedTags, send: (message: unknown) => surface.webview.send(message) };
 }
 
 suite('The note page host', () => {
@@ -148,6 +151,27 @@ suite('The note page host', () => {
     page.surface.dispose();
     assert.strictEqual(page.activeNotePage.active, undefined, 'closed');
     page.activeNotePage.dispose();
+  });
+
+  test('opens a progress line’s search on a search page of its own, and only one the note draws', async () => {
+    const page = openNotePage();
+    page.controller.navigate({ filePath: 'notes/Other.md' });
+    page.host.refresh();
+    const done = page.last().taskProgress?.parts[0];
+    assert.strictEqual(done?.text, '1 of 2 done');
+    await page.send({ type: 'openSearch', query: done?.query });
+    await page.send({ type: 'openSearch', query: 'is:open' });
+    assert.deepStrictEqual(page.searches, [done?.query], 'a search the note does not draw is not run');
+    assert.strictEqual(page.last().filePath, 'notes/Other.md', 'the note stays');
+  });
+
+  test('a hub note followed from the page opens as its tag’s search page, and the page stays', async () => {
+    const page = openNotePage();
+    page.controller.navigate({ filePath: 'notes/Atlas.md' });
+    page.host.refresh();
+    await page.send({ type: 'openNote', filePath: 'notes/Hub.md' });
+    assert.deepStrictEqual(page.openedTags, ['#project/atlas']);
+    assert.strictEqual(page.last().filePath, 'notes/Atlas.md');
   });
 
   test('comes back after a reload on the note it showed', async () => {

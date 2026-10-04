@@ -536,6 +536,42 @@ suite('Search page behavior', () => {
     );
   });
 
+  test('a new search that finds nothing on the tab shown, and something on the other, shows the other', () => {
+    const { page } = open(NOTES, '#project/atlas');
+    const tasksShown = () => !page.findAll('.overview-tab-panel')[1].hasAttribute('hidden');
+    page.click('[data-action="set-result-tab"][data-tab="notes"]');
+    assert.strictEqual(tasksShown(), false, 'the reader chose Notes');
+
+    const index = buildWorkspaceIndex(new Map(Object.entries(NOTES).map(([path, content]) => [path, parseMarkdown(path, content)])));
+    const tasksOnly = createSearchPageSnapshot(index, store!.reader.value, '#project/atlas is:open', { queryContext: createQueryContext(Date.now()) });
+    page.send(tasksOnly);
+    assert.strictEqual(tasksShown(), true, 'only Tasks found something, so Tasks is shown');
+
+    page.click('[data-action="set-result-tab"][data-tab="notes"]');
+    page.send(tasksOnly);
+    assert.strictEqual(tasksShown(), false, 'a redraw of the same search keeps the tab the reader chose');
+  });
+
+  test('each part of a tag’s progress that counts tasks is a link that searches them', () => {
+    const late = new Date(Date.now() - 3 * 86_400_000);
+    const day = `${late.getFullYear()}-${String(late.getMonth() + 1).padStart(2, '0')}-${String(late.getDate()).padStart(2, '0')}`;
+    const { page } = open({ ...NOTES, 'notes/late.md': `# Late\n- [ ] Overdue one #project/atlas 📅 ${day}` }, '#project/atlas');
+    const links = page.findAll('.tag-progress [data-action="search-progress"]');
+    assert.deepStrictEqual(links.map((link) => link.textContent), ['1 of 3 done', '1 overdue']);
+    assert.strictEqual(page.text('.tag-progress-label'), '1 of 3 done · 1 overdue');
+    page.click('.tag-progress [data-action="search-progress"][data-part="1"]');
+    assert.deepStrictEqual(page.lastPosted('setOverviewQuery'), {
+      type: 'setOverviewQuery',
+      query: '#project/atlas is:overdue -is:needs-date -is:step -is:parked',
+    });
+  });
+
+  test('says at the top of Refine where the tag’s name is written without it', () => {
+    const { page } = open({ ...NOTES, 'notes/plain.md': '# Plain\nThe atlas review is late.' }, '#project/atlas');
+    assert.match(page.text('.query-facets .query-facets-lead .tag-note') ?? '', /mentions? "atlas" without the tag/);
+    assert.strictEqual(page.findAll('.tag-notes [data-action="show-mentions"]').length, 0, 'not among the lines under the hub');
+  });
+
   test('shows the note that describes a tag, and offers to write one', () => {
     const { page } = open(NOTES, '#project/atlas');
     assert.match(page.text('.hub') ?? '', /The hub note body/);

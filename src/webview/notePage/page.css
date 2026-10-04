@@ -19,8 +19,11 @@ button.note-crumb { color: var(--text); text-decoration: underline; text-decorat
 button.note-crumb:hover:where(:not(:disabled):not([aria-disabled="true"])), button.note-crumb:focus-visible { color: var(--hover-fg); text-decoration-color: currentColor; }
 .note-crumb.is-current { color: var(--text); }
 /* How far along the tasks are: a hub's project, and the note's own. The two
-   lines share columns, so their bars sit one above the other. */
-.note-progress { display: grid; grid-template-columns: 64px minmax(80px, 200px) 1fr auto; align-items: center; gap: var(--space-2) var(--space-3); }
+   lines share columns, so their bars sit one above the other, and the words
+   have the rest of the line. A hub's link to its tag's page is a line of its
+   own under its bar, so it never squeezes the words into a column. */
+.note-progress { display: grid; grid-template-columns: 64px minmax(80px, 200px) 1fr; align-items: center; gap: var(--space-1) var(--space-3); }
+.note-progress .tag-note-action { grid-column: 2 / -1; justify-self: start; }
 .note-progress-label { color: var(--muted); font-size: var(--text-sm); }
 .tag-note-action { min-height: 0; padding: 0 2px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: var(--text-sm); text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
 .note-properties { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 0; }

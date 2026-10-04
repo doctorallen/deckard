@@ -92,8 +92,12 @@ export interface QueryEditorOptions {
 export interface QueryEditor {
   /** The bar, its status line, the search's terms, and the builder; `statusControls` sits in the status line. */
   bar(statusControls?: ComponentChildren): ComponentChild;
-  /** What the results could still be narrowed by, with counts; nothing when there is nothing to say. */
-  facets(): ComponentChild;
+  /**
+   * What the results could still be narrowed by, with counts; nothing when
+   * there is nothing to say. `lead` is a line of the page's own at its top,
+   * such as a tag page's entries that write its name without it.
+   */
+  facets(lead?: ComponentChild): ComponentChild;
   /** The search as the box holds it now: the applied one with what is being typed, or a whole draft. */
   currentText(): string;
   /** The plain words of a search, which a page can match before the host answers. */
@@ -709,13 +713,14 @@ class SearchBox implements QueryEditor {
     );
   }
 
-  public facets(): ComponentChild {
+  public facets(lead?: ComponentChild): ComponentChild {
     const facets = this.query().facets || [];
     const count = this.matchCount();
     const recovery = this.matchedNothing() ? this.recovery() : null;
     if (!facets.length && !count) {
-      return null;
+      return lead ?? null;
     }
+    const top = lead ? <div class="query-facets-lead">{lead}</div> : null;
     const nothingLeft = <span class="query-facets-empty">Nothing left to narrow by.</span>;
     if (this.options.refineElsewhere && this.options.refineElsewhere()) {
       // The sidebar still says where Refine went; a search that matched
@@ -723,6 +728,7 @@ class SearchBox implements QueryEditor {
       const note = facets.length ? <span class="query-facets-empty">In the Context sidebar.</span> : (recovery || nothingLeft);
       return (
         <section class="query-facets is-elsewhere" aria-label="Refine these results">
+          {top}
           <div class="query-facets-groups"><span class="query-facets-heading">Refine</span>{note}</div>
           {count}
         </section>
@@ -730,6 +736,7 @@ class SearchBox implements QueryEditor {
     }
     return (
       <section class="query-facets" aria-label="Refine these results">
+        {top}
         <div class="query-facets-groups">
           <span class="query-facets-heading">Refine</span>
           {facets.length ? null : (recovery || nothingLeft)}

@@ -20,7 +20,7 @@ import { taskTitleOf } from '../shared/taskRow';
 import { installViewOptions } from '../shared/viewOptions';
 import { vscodeApi } from '../shared/vscode';
 import { PageHeader } from './header';
-import { HubNote, TagNotes, TagProgress } from './hub';
+import { HubNote, tagMentionLine, TagNotes, TagProgress } from './hub';
 import { type ResultKind, resultCounts, Results } from './results';
 
 /** What the page draws from: the host's last snapshot, once there is one. */
@@ -96,13 +96,32 @@ let previewHandle: ReturnType<typeof setTimeout> | undefined;
 /** The words the host narrows by, or will once the words waiting are sent. */
 let sentPreview = '';
 
-/** In the tabs layout, the tab with results, until the reader picks one. */
+/** The search the tab was last settled for, so a redraw of the same search leaves the tab alone. */
+let settledFor: string | undefined;
+
+/**
+ * In the tabs layout, the tab with results: until the reader picks one,
+ * Notes unless only Tasks has any; and after, on each new search, the
+ * other tab when the one shown found nothing and the other found
+ * something, so Show overdue from the Notes tab lands on the tasks. A
+ * redraw of the same search, such as a task ticked, keeps the tab.
+ */
 function settleTab(snapshot: SearchPageState): void {
-  if (tabChosen || snapshot.layout === 'split') {
+  if (snapshot.layout === 'split') {
     return;
   }
   const counts = resultCounts(snapshot);
-  activeTab = counts.notes === 0 && counts.tasks > 0 ? 'tasks' : 'notes';
+  const searched = (snapshot.query && snapshot.query.text) || '';
+  const newSearch = searched !== settledFor;
+  settledFor = searched;
+  if (!tabChosen) {
+    activeTab = counts.notes === 0 && counts.tasks > 0 ? 'tasks' : 'notes';
+    return;
+  }
+  const other: ResultKind = activeTab === 'notes' ? 'tasks' : 'notes';
+  if (newSearch && counts[activeTab] === 0 && counts[other] > 0) {
+    activeTab = other;
+  }
 }
 
 /** The whole page: its header, the search box and Refine, the hub, the tag's notes, and the results. */
@@ -115,7 +134,7 @@ function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
     <>
       <PageHeader snapshot={snapshot} />
       {editor.bar()}
-      {editor.facets()}
+      {editor.facets(tagMentionLine(snapshot))}
       <HubNote snapshot={snapshot} hubOpen={hubOpen} />
       <TagProgress snapshot={snapshot} />
       <TagNotes snapshot={snapshot} />
@@ -388,10 +407,10 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
       send({ type: 'unparkTag', tagKey: target.dataset.tagKey });
     }
   },
-  'show-overdue': (_target, snapshot) => {
-    const query = snapshot.tagPage && snapshot.tagPage.progress ? snapshot.tagPage.progress.overdueQuery : undefined;
-    if (query) {
-      send({ type: 'setOverviewQuery', query });
+  'search-progress': (target, snapshot) => {
+    const part = snapshot.tagPage && snapshot.tagPage.progress ? snapshot.tagPage.progress.parts[Number(target.dataset.part)] : undefined;
+    if (part && part.query) {
+      send({ type: 'setOverviewQuery', query: part.query });
     }
   },
   'show-mentions': (_target, snapshot) => {

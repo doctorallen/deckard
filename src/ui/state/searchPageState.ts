@@ -41,6 +41,7 @@ import { buildSearchFacets, SearchFacetValue } from '../../domain/search/facets'
 import { ResultPaging, TagOverviewCard } from '../protocol/shared';
 import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes } from '../protocol/searchPage';
 import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
+import { linkProgressParts } from './progressLinks';
 import {
   Entity,
   SearchPreview,
@@ -400,7 +401,8 @@ function describeTagProgressLine(
       total: progress.total,
       overdue: progress.overdue,
       label: describeTagProgress(progress, context.now, context.taskPolicy),
-      ...(progress.overdue > 0 ? { overdueQuery: `${tagKey} is:overdue -is:needs-date -is:step -is:parked` } : {}),
+      // The tasks progress counts: neither steps nor parked ones.
+      parts: linkProgressParts(progress, context, (terms) => `${tagKey} ${terms} -is:step -is:parked`, 'the tag’s'),
     },
   };
 }

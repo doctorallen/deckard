@@ -942,6 +942,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     },
     themePreview,
     activeNotePage,
+    onOpenSearch: (query) => searchPanels.showQuery(query),
   });
   return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug, notePage };
 }

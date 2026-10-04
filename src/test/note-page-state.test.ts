@@ -6,6 +6,8 @@ import { createQueryContext } from '../domain/query/queryContext';
 import { createNotePageSnapshot, describeTagKind } from '../ui/state/notePageState';
 import { NoteBlock } from '../ui/protocol/notePage';
 import { WorkspaceIndex } from '../domain/model';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
 
 function indexOf(notes: Record<string, string>): WorkspaceIndex {
   return buildWorkspaceIndex(
@@ -128,7 +130,15 @@ suite('The note page', () => {
   });
 
   test('says how far along the note’s own tasks are, steps aside, and nothing for a note with none', () => {
-    assert.deepStrictEqual(page.taskProgress, { done: 1, total: 2, label: '1 of 2 done · next due in 6 days' });
+    const { parts, ...progress } = page.taskProgress ?? { parts: [] };
+    assert.deepStrictEqual(progress, { done: 1, total: 2, label: '1 of 2 done · next due in 6 days' });
+    const found = (query: string | undefined): number => evaluateQuery(index, parseQuery(query ?? '').node, options.queryContext).tasks.length;
+    assert.deepStrictEqual(parts.map((part) => [part.text, found(part.query)]), [['1 of 2 done', 1], ['next due in 6 days', 1]], 'each part searches the note’s own tasks it counts');
+    assert.deepStrictEqual(
+      page.hub?.parts.map((part) => [part.text, found(part.query)]),
+      page.hub?.parts.map((part) => [part.text, Number(/^(\d+)/.exec(part.text)?.[1] ?? 1)]),
+      'and the hub’s, the tag’s tasks it counts',
+    );
     const plain = createNotePageSnapshot(index, 'notes/Kickoff.md', options);
     assert.strictEqual(plain.taskProgress, undefined);
   });
