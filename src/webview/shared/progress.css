@@ -8,6 +8,8 @@
 .progress-bar.is-complete .progress-bar-fill { background: var(--green); }
 /* A part of the words beside a bar, "1 overdue", as a link that searches
    those tasks: in the words' own size and case, not a button's. */
+/* The part the page's search is, which a click turns off again. */
+.progress-link.is-on { padding: 0 4px; border: 1px solid var(--cyan); background: transparent; color: var(--cyan); text-decoration: none; }
 .progress-link { display: inline; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--text); font: inherit; letter-spacing: inherit; text-transform: none; text-decoration: underline; text-decoration-color: var(--cyan); text-underline-offset: 2px; cursor: pointer; }
 @media (forced-colors: active) {
   .progress-bar { border-color: CanvasText; }

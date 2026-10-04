@@ -1811,8 +1811,10 @@ suite('Dashboard state', () => {
       '#project/atlas ledger',
       { queryContext: createQueryContext(Date.now()) },
     );
-    assert.strictEqual(worded.hub, undefined);
-    assert.strictEqual(worded.tag, undefined);
+    // A word narrows the tag's page rather than leaving it: the hub stays.
+    assert.strictEqual(worded.hub?.filePath, 'notes/atlas.md');
+    assert.strictEqual(worded.tag?.key, '#project/atlas');
+    assert.strictEqual(worded.tagPage?.filtered, true);
   });
 });
 

@@ -165,19 +165,29 @@ function MentionNote({ mention }: { readonly mention: NonNullable<SearchPageTagN
 }
 
 /**
- * Where a tag page's name is written without the tag, with the way to list
- * those entries, for the top of Refine, where it is not lost among the
- * notes under the hub. Undefined for a page with none.
+ * How else a tag page's tag is written, for the top of Refine, where it is
+ * not lost among the lines under the hub: its other spellings, each with
+ * the way to include or merge it, and where its name is written without
+ * the tag, with the way to list those entries. Undefined for a page with
+ * neither.
  */
-export function tagMentionLine(snapshot: SearchPageSnapshot): ComponentChild | undefined {
-  const mention = snapshot.tag ? snapshot.tagPage?.mention : undefined;
-  return mention && mention.count > 0 ? <MentionNote mention={mention} /> : undefined;
+export function tagRefineLines(snapshot: SearchPageSnapshot): ComponentChild | undefined {
+  const tag = snapshot.tag;
+  const page = snapshot.tagPage;
+  if (!tag || !page) {
+    return undefined;
+  }
+  const lines = [
+    ...(page.lookalikes || []).map((other) => <LookalikeNote key={`lookalike:${other.key}`} tag={tag} other={other} />),
+    page.mention && page.mention.count > 0 ? <MentionNote key="mention" mention={page.mention} /> : null,
+  ].filter(Boolean);
+  return lines.length ? <>{lines}</> : undefined;
 }
 
 /**
- * The quiet lines under a tag's page's hub: whether the tag is parked, its
- * other spellings, and what only links its hub. Only a one-tag page has
- * them, and nothing when none applies.
+ * The quiet lines under a tag's page's hub: whether the tag is parked, and
+ * what only links its hub. Only a one-tag page has them, and nothing when
+ * none applies.
  */
 export function TagNotes({ snapshot }: { readonly snapshot: SearchPageSnapshot }) {
   const tag = snapshot.tag;
@@ -187,7 +197,6 @@ export function TagNotes({ snapshot }: { readonly snapshot: SearchPageSnapshot }
   }
   const notes = [
     isParkedTag(tag.key) ? <ParkedNote key="parked" tag={tag} /> : null,
-    ...(page.lookalikes || []).map((other) => <LookalikeNote key={`lookalike:${other.key}`} tag={tag} other={other} />),
     page.hubLinkCount > 0 && page.hubTitle ? <HubLinksNote key="hub-links" count={page.hubLinkCount} title={page.hubTitle} /> : null,
   ].filter(Boolean);
   return notes.length ? <div class="tag-notes">{notes}</div> : null;

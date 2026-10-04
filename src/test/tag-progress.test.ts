@@ -112,6 +112,38 @@ suite('Tag progress', () => {
     assert.strictEqual(plain.tagPage, undefined, 'only a tag’s page has one');
   });
 
+  test('a search that narrows the tag stays its page: the hub, the whole tag’s progress, the part searched on', () => {
+    const hubbed = indexOf({
+      'hub.md': ['---', 'describes: project/atlas', '---', '# Atlas hub'].join('\n'),
+      'atlas.md': ['# Atlas #project/atlas', '- [x] Pick a vendor', '- [ ] Call the lawyer 📅 2026-09-30', '- [ ] Write the brief'].join('\n'),
+      'linking.md': '# Linking\nSee [[hub]].\n- [ ] Linked task 📅 2026-09-29',
+      'other.md': '# Other #project/borealis @dana\n- [ ] Elsewhere',
+    });
+    const search = (text: string) => createSearchPageSnapshot(hubbed, normalizePreferences({}), text, { queryContext: createQueryContext(now) });
+    const plainPage = search('#project/atlas').tagPage;
+    assert.ok(plainPage?.progress);
+    assert.strictEqual(plainPage.filtered, undefined);
+    assert.strictEqual(plainPage.hubLinkCount, 1, 'the plain page lists what links to the hub');
+    const overdueQuery = plainPage.progress.parts[1].query ?? '';
+
+    const filtered = search(overdueQuery);
+    const page = filtered.tagPage;
+    assert.ok(page?.progress);
+    assert.strictEqual(filtered.tag?.key, '#project/atlas', 'still the tag’s page');
+    assert.strictEqual(filtered.hub?.filePath, 'hub.md', 'with its hub');
+    assert.strictEqual(page.filtered, true);
+    assert.strictEqual(page.hubLinkCount, 0, 'what links to the hub is not filtered, so it is left out');
+    assert.strictEqual(page.progress.label, plainPage.progress.label, 'the bar counts the whole tag');
+    assert.deepStrictEqual(page.progress.parts.map((part) => [part.text, part.active === true]), [
+      ['1 of 3 done', false],
+      ['1 overdue', true],
+    ]);
+    assert.deepStrictEqual(filtered.tasks.map((task) => task.task.title), ['Call the lawyer']);
+
+    assert.strictEqual(search('#project/atlas @dana is:open').tag, undefined, 'two tags is a search, not a page');
+    assert.strictEqual(search('is:open').tag, undefined);
+  });
+
   test('a hub note’s lens says how far along each tag it describes is', () => {
     const hub = parseMarkdown('hub.md', ['---', 'describes: [project/atlas, project/none]', '---', '# Atlas'].join('\n'));
     assert.deepStrictEqual(findHubProgress(hub, index, createQueryContext(now)), [

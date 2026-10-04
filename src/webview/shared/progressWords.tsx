@@ -3,6 +3,8 @@ export interface ProgressWordsPart {
   readonly text: string;
   readonly query?: string;
   readonly tip?: string;
+  /** The page's search is this part's: drawn on, and a click goes back. */
+  readonly active?: true;
 }
 
 /**
@@ -20,7 +22,18 @@ export function ProgressWords({ parts, action, attributes }: {
       {parts.map((part, at) => [
         at > 0 ? ' · ' : null,
         part.query
-          ? <button type="button" class="progress-link" data-action={action} data-tip={part.tip} {...attributes(part, at)}>{part.text}</button>
+          ? (
+            <button
+              type="button"
+              class={part.active ? 'progress-link is-on' : 'progress-link'}
+              data-action={action}
+              data-tip={part.active ? 'Show all of the tag’s entries again' : part.tip}
+              aria-pressed={part.active ? 'true' : undefined}
+              {...attributes(part, at)}
+            >
+              {part.text}
+            </button>
+          )
           : part.text,
       ])}
     </>

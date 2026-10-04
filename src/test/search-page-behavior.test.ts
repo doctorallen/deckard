@@ -566,6 +566,25 @@ suite('Search page behavior', () => {
     });
   });
 
+  test('a search that narrows the tag keeps its page: the hub folded, the part searched on, and the way back', () => {
+    const late = new Date(Date.now() - 3 * 86_400_000);
+    const day = `${late.getFullYear()}-${String(late.getMonth() + 1).padStart(2, '0')}-${String(late.getDate()).padStart(2, '0')}`;
+    const notes = { ...NOTES, 'notes/late.md': `# Late\n- [ ] Overdue one #project/atlas 📅 ${day}` };
+    const plain = open(notes, '#project/atlas');
+    assert.strictEqual((plain.page.find('details.hub') as HTMLDetailsElement).open, true, 'the plain page opens its hub');
+    const overdue = plain.snapshot.tagPage?.progress?.parts[1].query ?? '';
+    plain.page.dispose();
+
+    const { page } = open(notes, overdue);
+    assert.ok(page.find('details.hub'), 'the hub stays');
+    assert.strictEqual((page.find('details.hub') as HTMLDetailsElement).open, false, 'folded, so the tasks sit near the top');
+    const on = page.find('.tag-progress [aria-pressed="true"]');
+    assert.strictEqual(on.textContent, '1 overdue');
+    assert.match(page.text('.tag-progress-label') ?? '', /^1 of 3 done · 1 overdue/, 'the bar counts the whole tag');
+    page.click('.tag-progress [aria-pressed="true"]');
+    assert.deepStrictEqual(page.lastPosted('setOverviewQuery'), { type: 'setOverviewQuery', query: '#project/atlas' }, 'the part on goes back to the tag');
+  });
+
   test('says at the top of Refine where the tag’s name is written without it', () => {
     const { page } = open({ ...NOTES, 'notes/plain.md': '# Plain\nThe atlas review is late.' }, '#project/atlas');
     assert.match(page.text('.query-facets .query-facets-lead .tag-note') ?? '', /mentions? "atlas" without the tag/);

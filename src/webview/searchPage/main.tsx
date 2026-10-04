@@ -20,7 +20,7 @@ import { taskTitleOf } from '../shared/taskRow';
 import { installViewOptions } from '../shared/viewOptions';
 import { vscodeApi } from '../shared/vscode';
 import { PageHeader } from './header';
-import { HubNote, tagMentionLine, TagNotes, TagProgress } from './hub';
+import { HubNote, tagRefineLines, TagNotes, TagProgress } from './hub';
 import { type ResultKind, resultCounts, Results } from './results';
 
 /** What the page draws from: the host's last snapshot, once there is one. */
@@ -63,8 +63,13 @@ if (savedPageState && (savedPageState.tab === 'notes' || savedPageState.tab === 
 let openedCards = new Set<string>();
 let openedFor: string | undefined;
 
-/** Set once the reader opens or closes the hub, which then outlasts refreshes. */
+/**
+ * Set once the reader opens or closes the hub, which then outlasts
+ * refreshes: on the tag's plain page, and apart from that while a search
+ * narrows the tag, where the hub starts folded so the results sit near the top.
+ */
 let hubOpen: boolean | undefined;
+let filteredHubOpen: boolean | undefined;
 
 /** Where the window was scrolled when a draw began, put back after it. */
 let scrolledTo = { x: 0, y: 0 };
@@ -134,8 +139,8 @@ function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
     <>
       <PageHeader snapshot={snapshot} />
       {editor.bar()}
-      {editor.facets(tagMentionLine(snapshot))}
-      <HubNote snapshot={snapshot} hubOpen={hubOpen} />
+      {editor.facets(tagRefineLines(snapshot))}
+      <HubNote snapshot={snapshot} hubOpen={snapshot.tagPage?.filtered ? (filteredHubOpen ?? false) : hubOpen} />
       <TagProgress snapshot={snapshot} />
       <TagNotes snapshot={snapshot} />
       {invalid ? <p class="stale-results">The search above has not run. These are the results of the last one that did.</p> : null}
@@ -227,7 +232,11 @@ const editor = createQueryEditor({
 document.addEventListener('toggle', (event) => {
   const target = event.target as HTMLDetailsElement | null;
   if (target && target.classList && target.classList.contains('hub')) {
-    hubOpen = target.open;
+    if (latest?.tagPage?.filtered) {
+      filteredHubOpen = target.open;
+    } else {
+      hubOpen = target.open;
+    }
   }
 }, true);
 
@@ -407,10 +416,11 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
       send({ type: 'unparkTag', tagKey: target.dataset.tagKey });
     }
   },
+  // A part of the progress searches its tasks; the part on goes back to the tag.
   'search-progress': (target, snapshot) => {
     const part = snapshot.tagPage && snapshot.tagPage.progress ? snapshot.tagPage.progress.parts[Number(target.dataset.part)] : undefined;
     if (part && part.query) {
-      send({ type: 'setOverviewQuery', query: part.query });
+      send({ type: 'setOverviewQuery', query: part.active && snapshot.tag ? snapshot.tag.key : part.query });
     }
   },
   'show-mentions': (_target, snapshot) => {

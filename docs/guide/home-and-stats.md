@@ -96,7 +96,7 @@ Run `Deckard: Open Stats` to see what needs attention, then totals, then what yo
 
 Stats lists pairs of tags that look like one idea spelled twice, clearest first, from the rarer spelling to the one your notes already use. **Merge** runs the usual [merge](search-pages.md#merging-tags), with its preview and [Undo](search-pages.md#previewing-and-undoing-a-write).
 
-A tag's own page shows the same under its hub, such as *Also written as #proj/atlas (6 entries).*, for up to three spellings, with **Include in search** (searches both) and **Merge** (reopens on the kept tag if this one is merged away).
+A tag's own page shows the same at the top of **Refine**, such as *Also written as #proj/atlas (6 entries).*, for up to three spellings, with **Include in search** (searches both) and **Merge** (reopens on the kept tag if this one is merged away).
 
 | A pair reads | Because |
 | --- | --- |

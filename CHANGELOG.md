@@ -72,8 +72,13 @@
   nothing on the tab shown, Notes or Tasks, and something on the other,
   shows the other, so a link to a tag's overdue tasks lands on them. A
   redraw of the same search keeps the tab you chose.
-- **A tag page's untagged mentions** are said at the top of Refine, where
-  they are not lost among the lines under the hub.
+- **A tag page's untagged mentions and other spellings** are said at the
+  top of Refine, where they are not lost among the lines under the hub.
+- **A tag's page stays its page while you narrow it.** A search that adds
+  terms to one tag, such as **1 overdue** or a Refine choice, keeps the hub,
+  folded, and the bar, still counting all of the tag's tasks. The part of
+  the words searched is outlined, and selecting it again goes back to the
+  tag. A search of two tags is still a plain search.
 - **A task due today is drawn as a warning,** in each theme's yellow or
   orange, between a later date's green and an overdue one's red, in task
   rows, board cards, and the preview's query blocks. In LCARS, overdue is a
