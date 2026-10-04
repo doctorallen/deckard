@@ -24,6 +24,7 @@ import { createUndoNotice } from '../shared/undoToast';
 import {
   displayOptions,
   installViewOptions,
+  pageWidthOption,
   themeOption,
   ViewOptionChoices,
   ViewOptions,
@@ -165,6 +166,7 @@ function BoardViewOptions({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
         ...(isTable ? [{ label: 'Columns', content: <ColumnPicker snapshot={snapshot} />, stacked: true }] : []),
         { label: 'Status columns', content: <StatusSettings snapshot={snapshot} drafts={drafts} />, stacked: true },
         themeOption(),
+        pageWidthOption(),
         zenOption(),
         ...displayOptions(),
       ]}

@@ -1867,6 +1867,21 @@
             "description": "How pages write a task's due date. An overdue date always says Overdue, and a screen reader hears the whole date either way. Display's steps never change it. Your own choice, the same in every workspace.",
             "order": 2
           },
+          "deckard.display.pageWidth": {
+            "type": "string",
+            "enum": [
+              "column",
+              "wide"
+            ],
+            "default": "column",
+            "scope": "application",
+            "enumDescriptions": [
+              "Each page keeps to a 1000px column in the middle of its panel.",
+              "Each page uses its panel's whole width, for a wide monitor or a board of many columns."
+            ],
+            "description": "How wide Deckard's pages draw. The calendar and the sidebar already use their whole width. Your own choice, the same in every workspace.",
+            "order": 2
+          },
           "deckard.showWhatsNew": {
             "type": "boolean",
             "default": true,

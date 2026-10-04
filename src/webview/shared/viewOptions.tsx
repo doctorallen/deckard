@@ -96,6 +96,20 @@ export function zenOption(): ViewOptionGroup {
 }
 
 /**
+ * The gear's Page width row: a 1000px column, or the panel's whole width.
+ * Read from the body's marker, as the Cards and Tags rows are.
+ */
+export function pageWidthOption(): ViewOptionGroup {
+  const wide = document.body.dataset.width === 'wide';
+  return {
+    label: 'Page width',
+    content: (
+      <ViewOptionChoices action="set-display" attributes={{ 'data-display': 'pageWidth' }} choices={[['column', 'Column'], ['wide', 'Wide']]} selected={wide ? 'wide' : 'column'} label="Page width" />
+    ),
+  };
+}
+
+/**
  * The gear's Cards and Tags rows, the same on every page that has a gear:
  * raised cards or flat rows, and tags as chips or as text. What is chosen is
  * read from the body's markers, which the page shell wrote from the

@@ -13,6 +13,7 @@ import { isObject } from '../../../shared/guards';
 import type { MessageAs, MessageOf, PageMessage } from '../../protocol/messaging';
 import type {
   ExportResultsMessage,
+  GearDisplaySetting,
   GoToPageMessage,
   OpenSearchMessage,
   OpenSourceMessage,
@@ -121,10 +122,13 @@ export function isSourceLocation(value: Record<string, unknown>): boolean {
   );
 }
 
-/** The gear's Cards or Tags row: which, and a short lowercase value the host checks. */
+/** The Display settings a page's gear sets. */
+const GEAR_DISPLAY_SETTINGS: readonly GearDisplaySetting[] = ['level', 'pageWidth', 'cardFrames', 'tags'];
+
+/** One of the gear's Display rows: which, and a short lowercase value the host checks. */
 export const narrowSetDisplay: Narrower<SetDisplayMessage> = (value) =>
-  (value.setting === 'cardFrames' || value.setting === 'tags') && typeof value.value === 'string' && /^[a-z]{1,12}$/.test(value.value)
-    ? { type: 'setDisplay', setting: value.setting, value: value.value }
+  (GEAR_DISPLAY_SETTINGS as readonly unknown[]).includes(value.setting) && typeof value.value === 'string' && /^[a-z]{1,12}$/.test(value.value)
+    ? { type: 'setDisplay', setting: value.setting as GearDisplaySetting, value: value.value }
     : undefined;
 
 /**

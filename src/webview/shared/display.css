@@ -140,3 +140,9 @@ body[data-file-line] .task-row:hover::after, body[data-file-line] .task-row:focu
 body[data-file-line] .board-card:hover::after, body[data-file-line] .board-card:focus-within::after { content: none; }
 body[data-file-line] .card:focus-within, body[data-file-line] .note:focus-within,
 body[data-file-line] .task-row:focus-within, body[data-file-line] .board-card:focus-within { margin-bottom: 0; }
+
+/* ---- Page width: wide --------------------------------------------------- */
+
+/* The panel's whole width, for a wide monitor or a board of many columns,
+   in place of the 1000px column every page keeps to. */
+body[data-width=wide] main { max-width: none; }

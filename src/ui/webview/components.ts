@@ -15,7 +15,7 @@ import { DeckardTheme } from './themeNames';
  * help text hidden, compact density, flat rows rather than raised cards,
  * tags as text rather than chips, counts beside names hidden, an entry's
  * file and line always or never drawn, and due dates as only how far off
- * or only the date.
+ * or only the date, and pages as wide as their panel.
  */
 export interface DisplayChoices {
   readonly styling?: 'plain';
@@ -26,6 +26,7 @@ export interface DisplayChoices {
   readonly counts?: 'hidden';
   readonly fileAndLine?: 'always' | 'never';
   readonly dates?: 'relative' | 'date';
+  readonly width?: 'wide';
 }
 
 /** Zen's values, for a page given only the zen flag, as the test harness gives it. */
@@ -112,6 +113,7 @@ function bodyMarkers(chrome: PageChrome): string {
     display.counts === 'hidden' ? ' data-counts="hidden"' : '',
     display.fileAndLine ? ` data-file-line="${display.fileAndLine}"` : '',
     display.dates ? ` data-dates="${display.dates}"` : '',
+    display.width === 'wide' ? ' data-width="wide"' : '',
   ].join('');
 }
 

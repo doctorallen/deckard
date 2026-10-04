@@ -91,6 +91,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.display.counts` | `shown` | Whether pages draw the number beside a name: a widget's total, a group's count, a column's tasks, a tab's results. `hidden` leaves them out of sight; a screen reader still reads each, and figures that are the point, such as Home's Due today, always show. See [What pages write](themes-and-zen.md#what-pages-write). |
 | `deckard.display.fileAndLine` | `hover` | Where pages draw the file and line an entry is written in: under it while the pointer or focus is on it, `always` under every entry, or `never`. A screen reader still reads it. |
 | `deckard.display.dates` | `both` | How a due date is written: `both` ("Overdue 2 days · 2026-10-02"), `relative` ("Overdue 2 days"), or `date` ("Overdue · 2026-10-02"). An overdue date always says Overdue. |
+| `deckard.display.pageWidth` | `column` | How wide pages draw: a 1000px `column`, or `wide`, the panel's whole width. Also in a page's gear, under Theme. |
 | `deckard.display.cardFrames` | `raised` | How cards and rows are drawn on every page: `raised` cards, or `flat` rows parted by a divider. Yours alone, the same in every workspace. See [Cards and tags](themes-and-zen.md#cards-and-tags). |
 | `deckard.display.tags` | `chips` | How tags are drawn on every page: framed `chips`, or plain `text`. See [Cards and tags](themes-and-zen.md#cards-and-tags). |
 | `deckard.showWhatsNew` | `true` | After an update that adds features, Home shows one line linking to what is new. |

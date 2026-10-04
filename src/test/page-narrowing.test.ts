@@ -101,6 +101,9 @@ suite('Page message narrowing', () => {
     check(display, [
       [{ type: 'setDisplay', setting: 'cardFrames', value: 'flat', extra: 1 }, { type: 'setDisplay', setting: 'cardFrames', value: 'flat' }],
       [{ type: 'setDisplay', setting: 'tags', value: 'text' }, { type: 'setDisplay', setting: 'tags', value: 'text' }],
+      [{ type: 'setDisplay', setting: 'pageWidth', value: 'wide' }, { type: 'setDisplay', setting: 'pageWidth', value: 'wide' }],
+      [{ type: 'setDisplay', setting: 'level', value: 'quiet' }, { type: 'setDisplay', setting: 'level', value: 'quiet' }],
+      [{ type: 'setDisplay', setting: 'density', value: 'compact' }, undefined],
       [{ type: 'setDisplay', setting: 'theme', value: 'cooper' }, undefined],
       [{ type: 'setDisplay', setting: 'tags', value: 'Text' }, undefined],
       [{ type: 'setDisplay', setting: 'tags' }, undefined],

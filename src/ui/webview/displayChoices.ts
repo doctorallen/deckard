@@ -24,6 +24,7 @@ export const DISPLAY_SETTINGS = {
   counts: { key: 'display.counts', values: ['shown', 'hidden'] },
   fileAndLine: { key: 'display.fileAndLine', values: ['hover', 'always', 'never'] },
   dates: { key: 'display.dates', values: ['both', 'relative', 'date'] },
+  pageWidth: { key: 'display.pageWidth', values: ['column', 'wide'] },
 } as const;
 
 /** One of the display choices, by its setting's name. */
@@ -56,6 +57,7 @@ export function readDisplayChoices(): DisplayChoices {
     ...(deckard.get<string>(DISPLAY_SETTINGS.counts.key) === 'hidden' ? { counts: 'hidden' as const } : {}),
     ...fileAndLine(deckard.get<string>(DISPLAY_SETTINGS.fileAndLine.key)),
     ...dates(deckard.get<string>(DISPLAY_SETTINGS.dates.key)),
+    ...(deckard.get<string>(DISPLAY_SETTINGS.pageWidth.key) === 'wide' ? { width: 'wide' as const } : {}),
   };
 }
 
