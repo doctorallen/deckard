@@ -339,7 +339,7 @@ suite('Stats: twelve weeks under each total', () => {
       assert.strictEqual(tile('Notes').querySelector('.metric-change')?.textContent, '+2 in the last 7 days');
       assert.strictEqual(tile('Tasks').querySelector('.metric-change')?.textContent, '−1 in the last 7 days');
       assert.strictEqual(tile('Open tasks').querySelector('.metric-change')?.textContent, 'No change in the last 7 days');
-      assert.strictEqual(tile('Notes').getAttribute('aria-label'), 'Notes, 4, +2 in the last 7 days. Open a search for every note');
+      assert.strictEqual(tile('Notes').getAttribute('aria-label'), 'Notes, 4, +2 in the last 7 days. Open a search for every note. Each heading, and each tagged line, is a note, so a file can hold several');
       assert.strictEqual(tile('Files').querySelector('.sparkline'), null, 'Files has no line');
       const line = tile('Notes').querySelector('svg.sparkline');
       assert.strictEqual(line?.getAttribute('aria-hidden'), 'true');

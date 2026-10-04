@@ -545,7 +545,7 @@
       },
       {
         "command": "deckard.searchNotes",
-        "title": "Search Notes and Tasks",
+        "title": "Open Search Page…",
         "category": "Deckard"
       },
       {
@@ -803,6 +803,10 @@
     ],
     "menus": {
       "commandPalette": [
+        {
+          "command": "deckard.search",
+          "when": "false"
+        },
         {
           "command": "deckard.pauseHere",
           "when": "workspaceFolderCount > 0 && !deckard.paused"

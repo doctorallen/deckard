@@ -71,8 +71,8 @@ export function createParkingService(indexer: ParkingIndex, history: WorkspaceWr
   });
 }
 
-const STAYS = 'It stays searchable with is:parked.';
-const STAY = 'They stay searchable with is:parked.';
+const STAYS = 'It leaves Home, the Tasks view, the board, and Related Notes, and stays searchable with is:parked.';
+const STAY = 'They leave Home, the Tasks view, the board, and Related Notes, and stay searchable with is:parked.';
 
 /**
  * What a command was given: the Explorer's selection, or one URI. Anything

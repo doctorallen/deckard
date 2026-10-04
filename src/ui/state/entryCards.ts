@@ -221,13 +221,14 @@ export function normalizeTagTitleDisplayMode(
 /**
  * `localeCompare` with options builds a collator on every call, which made
  * sorting thousands of cards the slowest part of the Dashboard. These compare
- * in exactly the same order as `localeCompare` with and without
- * `{ sensitivity: 'base' }`.
+ * as `localeCompare` with and without `{ sensitivity: 'base' }` does, except
+ * that a run of digits is read as a number, so `entry 2` comes before
+ * `entry 10` rather than after `entry 1`.
  */
-export const baseCollator = new Intl.Collator(undefined, { sensitivity: 'base' });
+export const baseCollator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
 
 /** `localeCompare` without options, as a collator built once; see baseCollator. */
-export const defaultCollator = new Intl.Collator();
+export const defaultCollator = new Intl.Collator(undefined, { numeric: true });
 
 /** What the note order reads, whether of a key or a drawn card. */
 type SortableNote = Pick<

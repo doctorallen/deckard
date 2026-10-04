@@ -2,7 +2,7 @@
 
 ## Search pages
 
-Every search opens a **search page** in its own tab; a tag's overview is the search page for that tag. Open one by Cmd/Ctrl-clicking a tag in the editor, selecting a tag anywhere Deckard shows one, searching from Home or [Find](search.md#find), or running `Deckard: Search Notes and Tasks`, `Deckard: Open a Tag's Search Page`, or `Deckard: Open Search Page`. A search already open comes forward. Parked notes and tasks are listed last, marked **Parked**.
+Every search opens a **search page** in its own tab; a tag's overview is the search page for that tag. Open one by Cmd/Ctrl-clicking a tag in the editor, selecting a tag anywhere Deckard shows one, searching from Home or [Find](search.md#find), or running `Deckard: Open Search Page…` or `Deckard: Open a Tag's Search Page`. A search already open comes forward. Parked notes and tasks are listed last, marked **Parked**.
 
 ![Deckard Tag Overview showing matching notes, active tasks, and display controls.](../images/tag-overview.png)
 

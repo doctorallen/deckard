@@ -4,7 +4,7 @@
 
 Related notes are listed in the **Context** view in the Deckard sidebar. The same view shows a search's Refine, a graph node's connections, the calendar page's chosen day, or Home's widgets while one of those is in front.
 
-Open **Related Notes** from the Deckard Activity Bar while editing a saved Markdown note. It suggests note entries that may concern the same work, each showing its first line with shared words marked.
+Open the **Context** view from the Deckard Activity Bar while editing a saved Markdown note; its **Related notes** list suggests note entries that may concern the same work, each showing its first line with shared words marked.
 
 ![Deckard Related Notes sidebar showing ranked note entries and matching tags.](../images/related-notes.png)
 

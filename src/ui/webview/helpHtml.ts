@@ -71,7 +71,7 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.search': 'A search page, ready for a search.',
   'deckard.insertQueryBlock': 'A live query block of a saved or recent search, or one you type, at the cursor.',
   'deckard.searchWorkspace': 'Finds notes, tasks, and tags as you type.',
-  'deckard.searchNotes': 'Opens a search page on a query you write.',
+  'deckard.searchNotes': 'Opens a search page on a search you write, or on every note.',
   'deckard.linkCurrentHeading': 'Adds a person or project tag to this heading.',
   'deckard.moveTagsToFrontmatter': 'Moves a note’s inline tags into its front matter.',
   'deckard.renameTag': 'Renames a tag everywhere it is written.',

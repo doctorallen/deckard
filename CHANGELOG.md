@@ -44,6 +44,15 @@
 
 ### Changed
 
+- **Names that say what they do.** `Deckard: Search Notes and Tasks` and
+  `Deckard: Open Search Page` were one job under two names; they are now
+  `Deckard: Open Search Page…`, which takes a search or opens every note.
+  Lists of titles sort numbers as numbers, so *entry 2* comes before
+  *entry 10*. Stats' Notes total says why it is larger than Files. Parking
+  says what it does as it does it: a parked note leaves Home, the Tasks
+  view, the board, and Related Notes, and stays searchable. The guide calls
+  the sidebar's first view **Context** throughout.
+
 - **The walkthrough teaches links.** Get Started's six steps are now:
   write a note (with the / menu), tag it and mention a person, link two
   notes and see Linked from, find anything, capture a task, and see the

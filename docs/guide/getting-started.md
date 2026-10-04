@@ -24,7 +24,7 @@ Each [GitHub release](https://github.com/doctorallen/deckard/releases) also carr
 1. Open a folder or workspace in VS Code.
 2. Open any Markdown note in the workspace, or [restrict indexing to a folder](settings.md#settings).
 3. Run `Deckard: Open Dashboard` from the Command Palette.
-4. Select the Deckard icon in the Activity Bar to open **Related Notes** while editing a Markdown note.
+4. Select the Deckard icon in the Activity Bar to open the **Context** view, with what links to the note and its related notes, while editing a Markdown note.
 
 Deckard refreshes when saved notes are added, edited, or deleted. The first time, it says what it found, such as *Deckard read 412 notes: 1,204 open tasks (17 overdue) and 185 tags.* A workspace of 3,000 notes or more is also told how the "Exclude" setting leaves folders out.
 
