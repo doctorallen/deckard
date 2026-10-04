@@ -1,0 +1,76 @@
+/*
+ * Display: Deckard's own chrome, turned down a step at a time, in place of
+ * zen mode (docs/implementation/22-display.md). The page shell marks the
+ * body with what Display resolved: `data-styling="plain"` for Theme styling,
+ * `data-help="hidden"` for Help text, and `data-density="compact"` for
+ * Density. Quiet sets the first two; Zen all three, and draws a page as zen
+ * mode did, with DECKARD ▾ kept.
+ *
+ * Every rule is scoped under one of those markers, and the sheet ships
+ * whether or not any is set: only the markers are conditional. The layout
+ * contracts in `test/ui/verifyWebviews.js` match a rule by its exact selector
+ * string, so a marked selector cannot flip a contract, and
+ * `test/ui/checkContrast.js` reads every declared rule whether or not the
+ * page renders a match, so these get contrast cover in all eight themes.
+ *
+ * Position still matters and is not replaced by the specificity: LCARS'
+ * `.metric:nth-child(3n + 2)::before` ties with the plain marker's
+ * `.metric::before`, so this has to come after the theme sheet. tail.css,
+ * which the page shell links after the theme, puts it last.
+ *
+ * **This sheet declares no color, background, or border-color.** Only what it
+ * takes to hide, thin, and fold. Under that rule the contrast matrix cannot
+ * move, which is why the contrast check stays a single pass — a new signature
+ * there means a color slipped in here.
+ */
+
+/* ---- Theme styling: plain ----------------------------------------------- */
+
+/* The frame, thinned, and the grid backdrop gone. The token clears the base
+   sheet's grid. It is not enough on its own: Cooper, Synthwave, Oblivion and
+   Tomcat paint their own backdrop straight onto body with their own colors,
+   so plain has to say this outright. */
+body[data-styling=plain] { --edge: 1px; --grid-line: transparent; background-image: none; }
+/* Ornament nothing refers to: metric codes, and an eyebrow's trail. DECKARD ▾
+   stays, since it is the way to every other page; an eyebrow with no DECKARD
+   in it, such as the sidebar's, goes whole. */
+body[data-styling=plain] .eyebrow-trail,
+body[data-styling=plain] .eyebrow:not(:has(.eyebrow-home)),
+body[data-styling=plain] .metric::before { display: none; }
+body[data-styling=plain] .eyebrow { letter-spacing: .08em; }
+/* Sentence case, two sizes kept: the page title shrinks, never hidden, since
+   on a search page the h1 is the subject being searched and the page's one
+   landmark; a section or widget name stays a size above its rows. */
+body[data-styling=plain] h1 { font-size: var(--text-lg); letter-spacing: normal; text-transform: none; }
+body[data-styling=plain] h2, body[data-styling=plain] h3, body[data-styling=plain] .metric-label { letter-spacing: normal; text-transform: none; }
+body[data-styling=plain] .metric, body[data-styling=plain] .card, body[data-styling=plain] .note, body[data-styling=plain] .task,
+body[data-styling=plain] .tag-row, body[data-styling=plain] .task-row, body[data-styling=plain] .note-row, body[data-styling=plain] .entity-row,
+body[data-styling=plain] .saved-filter-row, body[data-styling=plain] .stat-row, body[data-styling=plain] .empty,
+body[data-styling=plain] .view-panel, body[data-styling=plain] .board-column { clip-path: none; box-shadow: none; }
+/* Under the pointer the frame reaches down to take in where the entry is
+   written (provenance.css); a plain frame has no corners to keep. */
+body[data-styling=plain] .card:hover, body[data-styling=plain] .card:focus-within, body[data-styling=plain] .note:hover,
+body[data-styling=plain] .note:focus-within, body[data-styling=plain] .task-row:hover,
+body[data-styling=plain] .task-row:focus-within { clip-path: none; }
+/* Rows that slide 3px under the pointer hold still. */
+body[data-styling=plain] .row:hover, body[data-styling=plain] .card:hover, body[data-styling=plain] .note:hover,
+body[data-styling=plain] .task:hover, body[data-styling=plain] .task-row:hover, body[data-styling=plain] .note-row:hover,
+body[data-styling=plain] .tag-row:hover, body[data-styling=plain] .entity-row:hover,
+body[data-styling=plain] .saved-filter-row:hover, body[data-styling=plain] .stat-row:hover { transform: none; }
+
+/* ---- Help text: hidden -------------------------------------------------- */
+
+/* Lines that teach rather than show. The query hint goes; the parse error
+   that shares its slot does not, or a failed search reads as an empty one. */
+body[data-help=hidden] .query-hint,
+body[data-help=hidden] .refine-hint,
+body[data-help=hidden] .home-hint-bar { display: none; }
+
+/* ---- Density: compact --------------------------------------------------- */
+
+/* A denser scale, not a second set of rules: the steps shrink, and every
+   card, row, column, and margin in the shared sheets follows. */
+body[data-density=compact] { --control-height: 26px; --space-1: 3px; --space-2: 6px; --space-3: 8px; --space-4: 12px; --space-5: 14px; --space-6: 24px; }
+/* The carried-down file and line follows the tighter padding. */
+body[data-density=compact] .card { --inset: 9px; }
+body[data-density=compact] .task-row { --inset: 7px; }

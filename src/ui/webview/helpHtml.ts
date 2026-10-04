@@ -306,7 +306,7 @@ const HELP_NAV = `  <nav aria-label="Help sections">
 
 /** The page's title and lead, above the first section. */
 const HELP_HEADER = `    <header>
-      <p class="eyebrow"><button type="button" class="eyebrow-home" data-go-to="" aria-haspopup="menu" aria-expanded="false" aria-label="Deckard: go to another page">DECKARD ▾</button> / FIELD GUIDE</p>
+      <p class="eyebrow"><button type="button" class="eyebrow-home" data-go-to="" aria-haspopup="menu" aria-expanded="false" aria-label="Deckard: go to another page">DECKARD ▾</button><span class="eyebrow-trail"> / FIELD GUIDE</span></p>
       <h1>Help</h1>
       <p class="lead">Deckard indexes Markdown notes locally, then connects the people, projects, topics, tasks, and links you already write. Nothing leaves your machine.</p>
       <p class="read-more">This page is the quick glance; each section's <strong>Read more</strong> opens the <a href="#" data-guide-page="README">full guide</a>.</p>

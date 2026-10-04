@@ -1720,6 +1720,74 @@
             "description": "Turn Deckard's own chrome down: hide decorative labels and backdrops, thin the borders, fold each row's file and line out of sight until it is hovered or focused, and in the editor, drop the reference counts, the unlinked-mention lens, and the section highlight. Nothing is removed from a page, and it works with any theme.",
             "order": 2
           },
+          "deckard.display.level": {
+            "type": "string",
+            "enum": [
+              "full",
+              "quiet",
+              "zen"
+            ],
+            "default": "full",
+            "scope": "application",
+            "enumDescriptions": [
+              "Deckard as it ships: each theme's decoration, display headings, and every helper line.",
+              "Each theme's decoration and the lines that teach turned off, at the usual spacing.",
+              "Also compact spacing: what Zen mode drew. Replaces deckard.zenMode."
+            ],
+            "description": "How much of Deckard's own chrome every page draws: Full, Quiet, or Zen (replaces Zen mode). The three settings below follow it while they are Auto. Your own choice, the same in every workspace.",
+            "order": 2
+          },
+          "deckard.display.themeStyling": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "styled",
+              "plain"
+            ],
+            "default": "auto",
+            "scope": "application",
+            "enumDescriptions": [
+              "Follows Display: styled at Full, plain at Quiet and Zen.",
+              "Each theme's decoration and display type: backdrops, glows, cut corners, shadows, metric codes, and headings in capitals.",
+              "The same colors and fonts, without decoration, headings in sentence case, and thinner edges. Corpo is already plain."
+            ],
+            "description": "Each theme's decoration and display type, or the theme drawn plain.",
+            "order": 2
+          },
+          "deckard.display.helpText": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "shown",
+              "hidden"
+            ],
+            "default": "auto",
+            "scope": "application",
+            "enumDescriptions": [
+              "Follows Display: shown at Full, hidden at Quiet and Zen.",
+              "Lines that teach: the search box's syntax line, Refine's hint, and Home's hint bar.",
+              "Those lines hidden. A search's error message always shows."
+            ],
+            "description": "Lines that teach rather than show: the search box's syntax line, Refine's hint, and Home's hint bar.",
+            "order": 2
+          },
+          "deckard.display.density": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "comfortable",
+              "compact"
+            ],
+            "default": "auto",
+            "scope": "application",
+            "enumDescriptions": [
+              "Follows Display: comfortable at Full and Quiet, compact at Zen.",
+              "The usual spacing, and 30px controls.",
+              "Tighter spacing, and 26px controls; never under 24px targets."
+            ],
+            "description": "How much room pages leave between things.",
+            "order": 2
+          },
           "deckard.display.cardFrames": {
             "type": "string",
             "enum": [

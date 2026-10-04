@@ -30,6 +30,22 @@ Two looks you can turn on for every page, in any theme, from **Cards** and **Tag
 
 Both are yours alone: they're the same in every workspace, and a workspace's settings never change them. In every theme the divider reaches 3:1 against the page and the tag color 4.5:1, which a test checks on each change.
 
+## Display
+
+How much of Deckard's own chrome a page draws is a scale of three steps, set with `deckard.display.level`:
+
+| Step | Theme styling | Help text | Density |
+| --- | --- | --- | --- |
+| **Full** (default) | Styled | Shown | Comfortable |
+| **Quiet** | Plain | Hidden | Comfortable |
+| **Zen** | Plain | Hidden | Compact |
+
+- **Theme styling** (`deckard.display.themeStyling`): *styled* keeps each theme's grid, corners, glow, codes, and display headings; *plain* draws thin frames and sentence-case headings, two sizes kept. DECKARD ▾ stays either way.
+- **Help text** (`deckard.display.helpText`): the lines that teach, such as the search box's line of syntax and Home's key bar. A search that fails to parse always says so.
+- **Density** (`deckard.display.density`): *comfortable* or *compact* spacing.
+
+Each of the three follows the step while it's `auto`; set one and it stays as you set it at every step. None of them changes a color, and none removes a button, filter, count, or tag. Like the looks above, they're yours alone.
+
 ## Zen mode
 
 Zen turns Deckard's chrome down, in any theme. Turn it on with **Zen** in a page's gear, the zen button in a page's title bar, `Deckard: Enter Zen Mode`, or `deckard.zenMode`.

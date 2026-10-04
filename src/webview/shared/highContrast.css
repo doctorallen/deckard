@@ -7,7 +7,7 @@
  * paint go, since a glow around thin text is exactly what that reader is
  * avoiding. Under forced colors the browser paints the colors itself; what
  * is left to do is the same tidying. Laid down after every theme so it
- * outweighs them, before zen, which stays the last layer, and marked
+ * outweighs them, before Display, which stays the last layer, and marked
  * important where a theme's hover rule is more specific.
  */
 

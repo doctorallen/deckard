@@ -992,8 +992,8 @@ test('the gear turns zen on through the host, and the page carries the marker', 
   try {
     // Off to begin with: the sheet ships either way, the marker does not.
     // The sheet is in tail.css, which every page links; the loader inlines it.
-    assert.ok(loadPage(panel.webview.html).includes('body.zen {'), 'the zen sheet ships');
-    assert.ok(!panel.webview.html.includes('<body class="zen">'), 'zen starts off');
+    assert.ok(loadPage(panel.webview.html).includes('body[data-density=compact] {'), 'the Display sheet ships');
+    assert.ok(!panel.webview.html.includes('<body class="zen"'), 'zen starts off');
 
     view.click(view.find('[data-action="set-zen-mode"][data-value="on"]'));
     await delay(20);
@@ -1012,7 +1012,7 @@ test('the gear turns zen on through the host, and the page carries the marker', 
 
     // A page drawn while the setting is on carries the marker the sheet needs.
     const { panel: second, view: secondView } = await openDashboard();
-    assert.ok(second.webview.html.includes('<body class="zen">'), 'zen marks the body');
+    assert.ok(second.webview.html.includes('<body class="zen" data-styling="plain" data-help="hidden" data-density="compact">'), 'zen marks the body as Zen draws it');
 
     // Nothing was taken off the page to achieve it.
     assert.ok(secondView.find('.eyebrow'), 'the eyebrow is still drawn');

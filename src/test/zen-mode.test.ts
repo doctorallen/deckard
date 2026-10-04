@@ -163,8 +163,8 @@ suite('Zen mode', () => {
     };
     assert.strictEqual(zenOf(off), false, 'off marks the body');
     assert.strictEqual(zenOf(on), true, 'on does not mark the body');
-    assert.ok(pageSheets(off).includes('body.zen {'), 'the sheet ships when zen is off');
-    assert.ok(pageSheets(on).includes('body.zen {'), 'the sheet ships when zen is on');
+    assert.ok(pageSheets(off).includes('body[data-density=compact] {'), 'the sheet ships when zen is off');
+    assert.ok(pageSheets(on).includes('body[data-density=compact] {'), 'the sheet ships when zen is on');
   });
 
   test('takes no control away from the Dashboard', async () => {
@@ -216,23 +216,26 @@ suite('Zen mode', () => {
   });
 
   test('folds provenance and hides ornament, and keeps what carries meaning', () => {
-    const sheet = readSheet('shared/zen.css');
+    const sheet = readSheet('shared/display.css');
 
     // Ornament goes.
-    assert.match(sheet, /body\.zen \.eyebrow,/);
-    assert.match(sheet, /body\.zen \.metric::before,/);
-    assert.match(sheet, /body\.zen \.query-hint,/);
+    assert.match(sheet, /body\[data-styling=plain\] \.eyebrow-trail,/);
+    assert.match(sheet, /body\[data-styling=plain\] \.metric::before \{/);
+    assert.match(sheet, /body\[data-help=hidden\] \.query-hint,/);
+
+    // DECKARD ▾ is the way to every other page, and stays.
+    assert.ok(!/\.eyebrow-home/.test(sheet.replace(':not(:has(.eyebrow-home))', '')), 'DECKARD ▾ is never hidden');
 
     // The parse error shares the hint's slot and must not go with it.
     assert.ok(
       !/\.query-error/.test(sheet),
-      'zen must never hide a search that failed to parse',
+      'help text must never hide a search that failed to parse',
     );
 
     // Board details carry the due date and the word "overdue".
     assert.ok(
       !/\.board-details/.test(sheet),
-      'zen must not fold the board details, which carry overdue state',
+      'Display must not fold the board details, which carry overdue state',
     );
 
   });
@@ -257,7 +260,7 @@ suite('Zen mode', () => {
   });
 
   test('declares no color, so the contrast matrix cannot move', () => {
-    const sheet = readSheet('shared/zen.css');
+    const sheet = readSheet('shared/display.css');
     const declarations = sheet.match(/[a-z-]+\s*:[^;}]+/g) ?? [];
     const colored = declarations.filter((declaration) =>
       /^\s*(color|background|background-color|border-color)\s*:/.test(

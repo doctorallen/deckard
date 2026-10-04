@@ -33,12 +33,12 @@ suite('Spacing scale', () => {
     }
   });
 
-  test('zen re-declares the steps and restates no spacing rule', () => {
-    const zen = readSheet('shared/zen.css');
-    assert.match(zen, /body\.zen \{ --space-1: 3px; --space-2: 6px; --space-3: 8px;/);
+  test('compact density re-declares the steps and restates no spacing rule', () => {
+    const zen = readSheet('shared/display.css');
+    assert.match(zen, /body\[data-density=compact\] \{ --control-height: 26px; --space-1: 3px; --space-2: 6px; --space-3: 8px;/);
     assert.ok(
-      !/body\.zen \.(card|task|task-row|metric|board-column) \{[^}]*padding:/.test(zen),
-      'zen tightens the steps, not the cards',
+      !/body\[data-density=compact\] \.(card|task|task-row|metric|board-column) \{[^}]*padding:/.test(zen),
+      'compact tightens the steps, not the cards',
     );
   });
 });

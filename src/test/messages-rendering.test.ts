@@ -868,7 +868,7 @@ suite('Webview contracts', () => {
     const linked = linkedSheets(page);
     assert.ok(linked.indexOf('tail.css') > linked.indexOf(`themes/${getDeckardTheme()}.css`), 'after the theme');
     const tail = readSheet('shared/tail.css');
-    assert.ok(tail.indexOf('@import "./highContrast.css";') < tail.indexOf('@import "./zen.css";'), 'before zen');
+    assert.ok(tail.indexOf('@import "./highContrast.css";') < tail.indexOf('@import "./display.css";'), 'before Display');
     for (const theme of deckardThemes) {
       assert.ok(!themeSheet(theme).includes('vscode-high-contrast {'), `${theme}: no theme second-guesses it`);
     }

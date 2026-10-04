@@ -31,7 +31,7 @@ function normalizeCss(css) {
   return esbuild.transformSync(css, { loader: 'css', minifyWhitespace: true }).code.trim();
 }
 /** The zen sheet as written, which every page's tail ends with. */
-const zenSheet = normalizeCss(readFileSync(path.join(__dirname, '..', '..', 'src', 'webview', 'shared', 'zen.css'), 'utf8'));
+const displaySheet = normalizeCss(readFileSync(path.join(__dirname, '..', '..', 'src', 'webview', 'shared', 'display.css'), 'utf8'));
 /**
  * Layout each page must still have after the cascade.
  *
@@ -207,14 +207,15 @@ function styleProblems(name, styles) {
     }
   }
 
-  // Zen is the last layer. Its rules only beat a theme's because they come
-  // after them — LCARS' .metric:nth-child(3n + 2)::before ties with
-  // body.zen .metric::before on specificity, so position is what decides it.
+  // Display is the last layer. Its rules only beat a theme's because they
+  // come after them — LCARS' .metric:nth-child(3n + 2)::before ties with
+  // body[data-styling="plain"] .metric::before on specificity, so position
+  // is what decides it.
   const cascade = normalizeCss(styles);
-  if (!cascade.includes(zenSheet)) {
-    problems.push('the zen sheet is missing or altered from src/webview/shared/zen.css');
-  } else if (!cascade.endsWith(zenSheet)) {
-    problems.push('the zen sheet is not the last layer of the page\'s sheets');
+  if (!cascade.includes(displaySheet)) {
+    problems.push('the Display sheet is missing or altered from src/webview/shared/display.css');
+  } else if (!cascade.endsWith(displaySheet)) {
+    problems.push('the Display sheet is not the last layer of the page\'s sheets');
   }
   return problems;
 }

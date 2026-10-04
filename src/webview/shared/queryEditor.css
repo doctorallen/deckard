@@ -5,7 +5,7 @@
 
 .query-workspace { position: relative; margin-top: 16px; border: var(--edge) solid var(--line); background: var(--panel-deep); }
 /* A search still out after a second: a thin bar along the box's foot. It is
-   information, not ornament, so zen keeps it. */
+   information, not ornament, so Display keeps it. */
 .query-workspace.is-searching::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent); background-size: 40% 100%; background-repeat: no-repeat; animation: searching 1.1s linear infinite; }
 @keyframes searching { from { background-position: -40% 0; } to { background-position: 140% 0; } }
 @media (prefers-reduced-motion: reduce) { .query-workspace.is-searching::after { animation: none; background: var(--accent); opacity: .5; } }
@@ -79,7 +79,7 @@
 .query-hint { color: var(--muted); font: var(--text-xs) var(--font-mono); }
 /* The line of syntax stays put. Shown only while the box was in use, it
    came and went as focus moved to the grouping and back, and read as a
-   line that had gone missing. Zen still takes it away. */
+   line that had gone missing. Hidden help text still takes it away. */
 .query-builder { border-top: var(--edge) solid var(--line); padding: 10px; }
 .query-builder-group { border: var(--edge) solid var(--line-strong); background: var(--panel-deep); padding: 10px; }
 .query-builder-group.is-negated { border-style: dashed; }

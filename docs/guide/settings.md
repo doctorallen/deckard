@@ -84,6 +84,10 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.parked.tags` | `["parked"]` | Tags that park a note (in front matter), a heading and everything under it, or a task. Sub-tags park too, so `project/old` parks `#project/old/phase-1`. |
 | `deckard.theme` | `corpo` | The style for Deckard's pages: `corpo`, which follows your VS Code theme, or `replicant`, `oblivion`, `lcars`, `synthwave`, `tomcat`, `fellowship`, and `cooper`. |
 | `deckard.zenMode` | `false` | Turns Deckard's chrome down in every page. No control, count, or tag is removed. See [Zen mode](themes-and-zen.md#zen-mode). |
+| `deckard.display.level` | `full` | How much of Deckard's own chrome every page draws: `full`, `quiet` (each theme's decoration and the helper lines off), or `zen` (also compact spacing). The three settings below follow it while they are `auto`. Yours alone, the same in every workspace. See [Display](themes-and-zen.md#display). |
+| `deckard.display.themeStyling` | `auto` | `styled` keeps each theme's grid, corners, glow, codes, and display headings; `plain` draws thin frames and sentence-case headings. `auto` follows the step: plain from Quiet. |
+| `deckard.display.helpText` | `auto` | `shown` or `hidden`: the lines that teach, such as the search hint and Home's key bar. A search that fails to parse always says so. `auto` follows the step: hidden from Quiet. |
+| `deckard.display.density` | `auto` | `comfortable` or `compact` spacing on every page. `auto` follows the step: compact at Zen. |
 | `deckard.display.cardFrames` | `raised` | How cards and rows are drawn on every page: `raised` cards, or `flat` rows parted by a divider. Yours alone, the same in every workspace. See [Cards and tags](themes-and-zen.md#cards-and-tags). |
 | `deckard.display.tags` | `chips` | How tags are drawn on every page: framed `chips`, or plain `text`. See [Cards and tags](themes-and-zen.md#cards-and-tags). |
 | `deckard.showWhatsNew` | `true` | After an update that adds features, Home shows one line linking to what is new. |

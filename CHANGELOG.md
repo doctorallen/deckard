@@ -12,6 +12,12 @@
 
 ### Added
 
+- **Display: Full, Quiet, or Zen.** `deckard.display.level` turns Deckard's
+  own chrome down a step at a time. Quiet takes off each theme's decoration
+  and the lines that teach at the usual spacing; Zen also tightens it, and
+  draws pages as Zen mode did with DECKARD ▾ kept. Theme styling, Help text,
+  and Density follow the step while they're Auto, and each can be set on its
+  own.
 - **Flat cards and tags as text.** Two looks for every page, in any theme,
   from **Cards** and **Tags** in a page's gear: rows parted by a divider in
   place of raised cards, lifting onto the card surface under the pointer

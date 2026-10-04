@@ -147,7 +147,7 @@ suite('Component primitives', () => {
       const tail = readSheet('shared/tail.css');
       const layer = tail.indexOf('@import "./cardTag.css";');
       assert.ok(layer > tail.indexOf('@import "./highContrast.css";'), 'after high contrast, and so after the theme');
-      assert.ok(layer < tail.indexOf('@import "./zen.css";'), 'before zen');
+      assert.ok(layer < tail.indexOf('@import "./display.css";'), 'before Display');
       const cardTag = readSheet('shared/cardTag.css');
       assert.ok(cardTag.includes('body .board-card button.tag-open:not(:hover):not(:focus-visible)'));
       assert.doesNotMatch(cardTag, /white-space/, 'one-line geometry stays with the tag sheet');

@@ -10,14 +10,21 @@
 import { DeckardTheme } from './themeNames';
 
 /**
- * How a reader chose to have cards and tags drawn, each named only when it
- * isn't the default: flat rows rather than raised cards, and tags as text
- * rather than chips (`deckard.display.cardFrames`, `deckard.display.tags`).
+ * How a page is drawn, as Display resolves it (ui/state/displayLevel.ts),
+ * each value named only when it isn't the default: plain theme styling,
+ * help text hidden, compact density, flat rows rather than raised cards,
+ * and tags as text rather than chips.
  */
 export interface DisplayChoices {
+  readonly styling?: 'plain';
+  readonly help?: 'hidden';
+  readonly density?: 'compact';
   readonly cards?: 'flat';
   readonly tags?: 'text';
 }
+
+/** Zen's values, for a page given only the zen flag, as the test harness gives it. */
+const ZEN_DISPLAY: DisplayChoices = { styling: 'plain', help: 'hidden', density: 'compact' };
 
 /**
  * The look a page is written in: the theme its host read, preview and all,
@@ -79,12 +86,25 @@ export interface PageTail {
 export function getPageTailCss(chrome: PageChrome): PageTail {
   return {
     sheets: [deckardThemeCss[chrome.theme], 'tail.css'],
-    bodyAttribute: [
-      chrome.zen ? ' class="zen"' : '',
-      chrome.display?.cards === 'flat' ? ' data-cards="flat"' : '',
-      chrome.display?.tags === 'text' ? ' data-tags="text"' : '',
-    ].join(''),
+    bodyAttribute: bodyMarkers(chrome),
   };
+}
+
+/**
+ * The body's markers: the zen class at the Zen step, and one data attribute
+ * for each display value that isn't the default. A host always gives the
+ * values it resolved; given none, zen stands for Zen's values.
+ */
+function bodyMarkers(chrome: PageChrome): string {
+  const display = chrome.display ?? (chrome.zen ? ZEN_DISPLAY : {});
+  return [
+    chrome.zen ? ' class="zen"' : '',
+    display.styling === 'plain' ? ' data-styling="plain"' : '',
+    display.help === 'hidden' ? ' data-help="hidden"' : '',
+    display.density === 'compact' ? ' data-density="compact"' : '',
+    display.cards === 'flat' ? ' data-cards="flat"' : '',
+    display.tags === 'text' ? ' data-tags="text"' : '',
+  ].join('');
 }
 
 /**

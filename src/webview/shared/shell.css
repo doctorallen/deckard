@@ -33,4 +33,7 @@ header {
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
+  /* A row that slides under the pointer holds still too. */
+  .row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover, .note-row:hover,
+  .tag-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { transform: none !important; }
 }

@@ -11,7 +11,8 @@
  * fold.
  *
  * It comes after the theme, whose `.source` would otherwise restyle it, and
- * before zen, which only takes the corners off the frame around it.
+ * before Display, whose plain styling only takes the corners off the frame
+ * around it.
  */
 
 /* Escape puts the carried-down line away until the pointer or focus moves. */

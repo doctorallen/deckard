@@ -2,8 +2,7 @@ import * as vscode from 'vscode';
 
 import { getDeckardTheme } from '../themes';
 import type { ThemePreview } from '../themePreview';
-import { affectsDisplayChoices, readDisplayChoices } from '../displayChoices';
-import { isZenModeEnabled } from '../zenMode';
+import { affectsDisplayChoices, readDisplayChoices, readDisplayLevel } from '../displayChoices';
 import type { PageChrome } from '../components';
 
 /**
@@ -13,8 +12,7 @@ import type { PageChrome } from '../components';
  * each time it writes a page, so the page builders read no settings.
  */
 export function readPageChrome(themePreview?: { readonly current: PageChrome['theme'] | undefined }): PageChrome {
-  const display = readDisplayChoices();
-  return { theme: getDeckardTheme(themePreview), zen: isZenModeEnabled(), ...(display.cards || display.tags ? { display } : {}) };
+  return { theme: getDeckardTheme(themePreview), zen: readDisplayLevel() === 'zen', display: readDisplayChoices() };
 }
 
 /** Whether a settings change alters how a page is drawn rather than what it says. */
