@@ -186,20 +186,20 @@
                   class="active"
                   data-action="set-display"
                   data-display="pageWidth"
-                  data-value="column"
+                  data-value="limited"
                   type="button"
-                >Column</button
+                >Limited</button
                 ><button
                   aria-pressed="false"
                   data-action="set-display"
                   data-display="pageWidth"
-                  data-value="wide"
+                  data-value="full"
                   type="button"
-                >Wide</button
+                >Full</button
                 ></div
               ></div
             ><div
-              class="is-stacked view-options-group"
+              class="view-options-group"
             ><span
               >Display</span
               ><div
@@ -231,62 +231,15 @@
                     type="button"
                   >Zen</button
                   ></div
+                ><p
+                  class="view-options-changed"
                 ><button
-                  class="view-options-link"
-                  data-action="display-command"
-                  data-command="customize"
-                  type="button"
-                >Customize…</button
-                ></div
-              ></div
-            ><div
-              class="view-options-group"
-            ><span
-              >Cards</span
-              ><div
-                aria-label="Cards"
-                class="segmented view-options-choices"
-                role="group"
-              ><button
-                  aria-pressed="true"
-                  class="active"
-                  data-action="set-display"
-                  data-display="cardFrames"
-                  data-value="raised"
-                  type="button"
-                >Raised</button
-                ><button
-                  aria-pressed="false"
-                  data-action="set-display"
-                  data-display="cardFrames"
-                  data-value="flat"
-                  type="button"
-                >Flat</button
-                ></div
-              ></div
-            ><div
-              class="view-options-group"
-            ><span
-              >Tags</span
-              ><div
-                aria-label="Tags"
-                class="segmented view-options-choices"
-                role="group"
-              ><button
-                  aria-pressed="true"
-                  class="active"
-                  data-action="set-display"
-                  data-display="tags"
-                  data-value="chips"
-                  type="button"
-                >Chips</button
-                ><button
-                  aria-pressed="false"
-                  data-action="set-display"
-                  data-display="tags"
-                  data-value="text"
-                  type="button"
-                >Text</button
+                    class="view-options-link"
+                    data-action="display-command"
+                    data-command="customize"
+                    type="button"
+                  >Customize…</button
+                  ></p
                 ></div
               ></div
             ></div
@@ -473,12 +426,12 @@
                 ><div
                   class="task-meta"
                 ><span
-                    class="due-date stale"
+                    class="due-date overdue"
                   ><span
-                      class="due-relative due-stateless due-text"
-                    ><span
+                      class="due-relative due-text"
+                    >Overdue<span
                         class="due-distance"
-                      >1 day late</span
+                      > 1 day</span
                       ><span
                         class="due-on"
                       ><span
@@ -539,12 +492,12 @@
                 ><div
                   class="task-meta"
                 ><span
-                    class="due-date stale"
+                    class="due-date overdue"
                   ><span
-                      class="due-relative due-stateless due-text"
-                    ><span
+                      class="due-relative due-text"
+                    >Overdue<span
                         class="due-distance"
-                      >2 days late</span
+                      > 2 days</span
                       ><span
                         class="due-on"
                       ><span
@@ -605,12 +558,12 @@
                 ><div
                   class="task-meta"
                 ><span
-                    class="due-date stale"
+                    class="due-date overdue"
                   ><span
-                      class="due-relative due-stateless due-text"
-                    ><span
+                      class="due-relative due-text"
+                    >Overdue<span
                         class="due-distance"
-                      >3 days late</span
+                      > 3 days</span
                       ><span
                         class="due-on"
                       ><span
@@ -671,12 +624,12 @@
                 ><div
                   class="task-meta"
                 ><span
-                    class="due-date stale"
+                    class="due-date overdue"
                   ><span
-                      class="due-relative due-stateless due-text"
-                    ><span
+                      class="due-relative due-text"
+                    >Overdue<span
                         class="due-distance"
-                      >4 days late</span
+                      > 4 days</span
                       ><span
                         class="due-on"
                       ><span
@@ -737,12 +690,12 @@
                 ><div
                   class="task-meta"
                 ><span
-                    class="due-date stale"
+                    class="due-date overdue"
                   ><span
-                      class="due-relative due-stateless due-text"
-                    ><span
+                      class="due-relative due-text"
+                    >Overdue<span
                         class="due-distance"
-                      >5 days late</span
+                      > 5 days</span
                       ><span
                         class="due-on"
                       ><span

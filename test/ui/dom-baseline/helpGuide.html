@@ -2063,9 +2063,9 @@
           >Full</strong
           > is Deckard as it ships. <strong
           >Quiet</strong
-          > takes off each theme’s decoration and the lines that teach, such as the search box’s line of syntax, at the usual spacing. <strong
+          > takes off each theme’s decoration and the lines that teach, such as the search box’s line of syntax, and draws tags as text, at the usual spacing. <strong
           >Zen</strong
-          > also tightens the spacing. Every button, filter, count, and tag stays where it was, and DECKARD ▾ stays at every step.</p
+          > also tightens the spacing, draws cards flat, and leaves out counts and each entry’s file and line. Every button, filter, count, and tag stays where it was, and DECKARD ▾ stays at every step.</p
         > <p
         >Pick a step from <strong
           >Display</strong
@@ -2076,9 +2076,11 @@
           >Deckard: Choose Display…</button
           >, which shows each step on the open pages as you move through them, or with <code
           >deckard.display.level</code
-          >. The Zen button in the title bar of any Deckard page goes to Zen and back to the step you were on. Theme styling, Help text, and Density each follow the step until you set one yourself; <strong
+          >. The Zen button in the title bar of any Deckard page goes to Zen and back to the step you were on. Every Display setting (Theme styling, Help text, Tags, Density, Cards, Counts, File &amp; line, and Dates) follows the step until you set it yourself; <strong
           >Customize…</strong
-          > in the gear opens them in Settings, beside Counts, File &amp; line, Dates, and Page width. Display works with whichever theme you use: it decides how much frame is drawn, a theme decides its colors. <button
+          > in the gear opens them in Settings. <strong
+          >Page width</strong
+          >, Limited or Full, has its own row in the gear. Display works with whichever theme you use: it decides how much frame is drawn, a theme decides its colors. <button
             class="command-link"
             data-command="deckard.chooseTheme"
             type="button"
@@ -3301,7 +3303,7 @@
                   >"full"</code
                   ></td
                 ><td
-                >How much of Deckard's own chrome every page draws: Full, Quiet, or Zen (replaces Zen mode). The three settings below follow it while they are Auto. Your own choice, the same in every workspace.</td
+                >How much every Deckard page draws: Full, Quiet, or Zen (replaces Zen mode). Every Display setting but the page width follows it while it is Auto. Your own choice, the same in every workspace.</td
                 ></tr
               ><tr
               ><td
@@ -3346,10 +3348,10 @@
                   ></td
                 ><td
                 ><code
-                  >"raised"</code
+                  >"auto"</code
                   ></td
                 ><td
-                >How cards and rows are drawn on every Deckard page: raised cards, or flat rows parted by a divider. Your own choice, the same in every workspace.</td
+                >How cards and rows are drawn on every Deckard page. Your own choice, the same in every workspace.</td
                 ></tr
               ><tr
               ><td
@@ -3358,10 +3360,10 @@
                   ></td
                 ><td
                 ><code
-                  >"chips"</code
+                  >"auto"</code
                   ></td
                 ><td
-                >How tags are drawn on every Deckard page: framed chips, or plain text. Either way a tag opens its page. Your own choice, the same in every workspace.</td
+                >How tags are drawn where they are listed on their own, such as a note card's tags and Refine; a tag inside a title is always text. Either way a tag opens its page. Your own choice, the same in every workspace.</td
                 ></tr
               ><tr
               ><td
@@ -3370,10 +3372,10 @@
                   ></td
                 ><td
                 ><code
-                  >"shown"</code
+                  >"auto"</code
                   ></td
                 ><td
-                >Whether pages draw the counts beside names. Display's steps never change it. Your own choice, the same in every workspace.</td
+                >Whether pages draw the counts beside names. Your own choice, the same in every workspace.</td
                 ></tr
               ><tr
               ><td
@@ -3382,10 +3384,10 @@
                   ></td
                 ><td
                 ><code
-                  >"hover"</code
+                  >"auto"</code
                   ></td
                 ><td
-                >Where pages draw the file and line an entry is written in. Display's steps never change it. Your own choice, the same in every workspace.</td
+                >Where pages draw the file and line an entry is written in. Your own choice, the same in every workspace.</td
                 ></tr
               ><tr
               ><td
@@ -3394,10 +3396,10 @@
                   ></td
                 ><td
                 ><code
-                  >"both"</code
+                  >"auto"</code
                   ></td
                 ><td
-                >How pages write a task's due date. An overdue date always says Overdue, and a screen reader hears the whole date either way. Display's steps never change it. Your own choice, the same in every workspace.</td
+                >How pages write a task's due date. An overdue date always says Overdue, and a screen reader hears the whole date either way. Your own choice, the same in every workspace.</td
                 ></tr
               ><tr
               ><td
@@ -3406,10 +3408,10 @@
                   ></td
                 ><td
                 ><code
-                  >"column"</code
+                  >"limited"</code
                   ></td
                 ><td
-                >How wide Deckard's pages draw. The calendar and the sidebar already use their whole width. Your own choice, the same in every workspace.</td
+                >How wide Deckard's pages draw: Home, search and tag pages, the note page, Stats, and Help. The Task Board and the Calendar always use their full width. Your own choice, the same in every workspace.</td
                 ></tr
               ><tr
               ><td
