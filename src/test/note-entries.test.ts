@@ -4,6 +4,9 @@ import { parseMarkdown, type NoteBoundaries } from '../domain/markdown/parser';
 import { entryIdOf, entryText, fileEntryId, groupEntryParts, isEntrySection } from '../domain/markdown/noteEntries';
 import type { ParsedFile } from '../domain/model';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
+import { createPreferences } from './preferenceServices';
 
 /**
  * Which note each heading, tagged line, and task belongs to: a heading with
@@ -102,6 +105,19 @@ suite('Note entries: what each heading belongs to', () => {
     assert.deepStrictEqual(tag?.filePaths, ['notes/atlas.md']);
     assert.deepStrictEqual(tag?.sectionIds, [file.sections.find((section) => section.heading.startsWith('Risks'))?.id]);
     assert.strictEqual(tag?.count, 2, 'the note and its Risks; the task belongs to the note');
+  });
+
+  test('a search card is the whole note, and a word under an untagged heading opens there and names it', () => {
+    const file = parse(ADR);
+    const index = buildWorkspaceIndex(new Map([[file.filePath, file]]));
+    const store = createPreferences({ get: (_key: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never);
+    const byTag = createSearchPageSnapshot(index, store.reader.value, '#project/checkout-v2', { queryContext: createQueryContext(Date.now()) });
+    assert.deepStrictEqual(byTag.sections.map((card) => card.heading.replace(/ #.*/, '')), ['ADR-001 Card form', 'Decision'], 'the ADR and its tagged Decision; no Context or Consequences card');
+    const byWord = createSearchPageSnapshot(index, store.reader.value, 'provider', { queryContext: createQueryContext(Date.now()) });
+    const card = byWord.sections.find((entry) => entry.heading.startsWith('ADR-001'));
+    assert.ok(card, 'a word under Consequences finds the ADR');
+    assert.strictEqual(card?.snippet?.heading, 'Consequences');
+    assert.strictEqual(card?.snippet?.line, 12, 'the snippet opens where Consequences is written, past the Decision');
   });
 });
 

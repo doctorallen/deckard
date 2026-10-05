@@ -83,3 +83,22 @@ export function countNotes(index: WorkspaceIndex): number {
   noteCounts.set(index, count);
   return count;
 }
+
+/**
+ * Where each line of an entry's text is written in its note, for an entry
+ * that owns untagged headings: its text skips the headings with tags of
+ * their own, so line N of it is not line N after the heading. Each line is
+ * paired with the heading of the part it is in. Undefined for an entry that
+ * owns nothing, whose text is contiguous.
+ */
+export function getEntryLineMap(
+  index: WorkspaceIndex,
+  section: Section,
+): { line: number; part: Section }[] | undefined {
+  const file = index.files.get(section.filePath);
+  const parts = file?.sections.filter((part) => entryIdOf(part) === section.id).sort((left, right) => left.startLine - right.startLine);
+  if (!parts || parts.length < 2) {
+    return undefined;
+  }
+  return parts.flatMap((part) => part.bodyContent.split(/\r?\n/).map((_text, offset) => ({ line: part.startLine + offset, part })));
+}

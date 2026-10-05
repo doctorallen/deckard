@@ -90,7 +90,13 @@ export interface TagOverviewCard {
    * word sits below the three lines a card shows. `line` is its first line
    * in the note.
    */
-  snippet?: { rawContent: string; bodyTokens: BlockToken[]; line: number };
+  snippet?: {
+    rawContent: string;
+    bodyTokens: BlockToken[];
+    line: number;
+    /** The untagged heading of the note the words are under, tags stripped, when not the note's own. */
+    heading?: string;
+  };
   /** Whether the body runs past three lines, so a card offers Show all. */
   long?: boolean;
 }

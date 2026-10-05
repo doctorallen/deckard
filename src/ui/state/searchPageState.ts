@@ -21,6 +21,7 @@ import {
   compareTagOverviewCards,
   createDashboardTask,
   createFileOverviewCard,
+  getFileEntryTitle,
   createTagOverviewCard,
   createTagOverviewHub,
   getFrontmatterBody,
@@ -43,7 +44,8 @@ import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes } from '../pro
 import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
 import { linkProgressParts } from './progressLinks';
 import { isEntrySection } from '../../domain/markdown/noteEntries';
-import { getEntryTextOf, isFileEntry } from '../../domain/index/noteEntryIndex';
+import { getEntryLineMap, getEntryTextOf, isFileEntry } from '../../domain/index/noteEntryIndex';
+import { stripTags } from '../../domain/markdown/parser';
 import {
   Entity,
   SearchPreview,
@@ -311,8 +313,10 @@ function drawNoteCards(
   const pinnedKeys = new Set(
     (preferences.pinnedNotes ?? []).map((pin) => pinKey(pin)),
   );
-  const cardFor = (section: Section): TagOverviewCard =>
-    createTagOverviewCard(section, {
+  // Cards are copied as they are marked, so their line maps are kept by id.
+  const cardLines = new Map<string, CardLines>();
+  const cardFor = (section: Section): TagOverviewCard => {
+    const card = createTagOverviewCard(section, {
       sectionAccessCounts: preferences.sectionAccessCounts,
       tagTitleDisplayMode,
       pinned:
@@ -327,6 +331,14 @@ function drawNoteCards(
       sections: index.sections,
       content: getEntryTextOf(index, section),
     });
+    const lineMap = getEntryLineMap(index, section);
+    if (lineMap) {
+      // The card's body drops the heading line, and a blank one after it.
+      const dropped = lineMap.length - card.rawContent.split(/\r?\n/).length;
+      cardLines.set(card.id, { map: lineMap.slice(Math.max(0, dropped)), entryId: section.id });
+    }
+    return card;
+  };
   const snippetWords = [...new Set([...getTextWords(page.drafted.node), ...page.preview])]
     .map((word) => word.toLowerCase())
     .filter((word) => word.length >= 2);
@@ -340,6 +352,7 @@ function drawNoteCards(
       ),
       preferences.searchPreview,
       snippetWords,
+      key.section ? cardLines.get(key.section.id) : undefined,
     ),
   );
 }
@@ -706,22 +719,38 @@ function withPreview(
   card: TagOverviewCard,
   preview: SearchPreview,
   words: readonly string[],
+  cardLines?: CardLines,
 ): TagOverviewCard {
   const lines = card.rawContent.split(/\r?\n/);
   const start = preview === 'lines' && words.length > 0 ? findSnippetStart(lines, words) : undefined;
-  const snippet =
-    start === undefined
-      ? undefined
-      : {
-          rawContent: lines.slice(start).join('\n'),
-          bodyTokens: buildBlockExcerpt(lines.slice(start).join('\n')),
-          line: card.startLine + 1 + start,
-        };
+  const snippet = start === undefined ? undefined : createSnippet(card, lines, start, cardLines);
   const long =
     lines.length > PREVIEW_LINES ||
     card.rawContent.length > PREVIEW_CHARACTERS ||
     snippet !== undefined;
   return { ...card, ...(snippet ? { snippet } : {}), ...(long ? { long } : {}) };
+}
+
+/**
+ * A card's body from the line holding a searched word. A note's text skips
+ * its headings with tags of their own, so its lines are mapped back to where
+ * each is written, and to the untagged heading it is under.
+ */
+function createSnippet(
+  card: TagOverviewCard,
+  lines: readonly string[],
+  start: number,
+  cardLines: CardLines | undefined,
+): NonNullable<TagOverviewCard['snippet']> {
+  const mapped = cardLines?.map[start];
+  const ownedHeading = mapped && mapped.part.id !== cardLines?.entryId ? stripTags(mapped.part.heading).trim() : undefined;
+  const rawContent = lines.slice(start).join('\n');
+  return {
+    rawContent,
+    bodyTokens: buildBlockExcerpt(rawContent),
+    line: mapped?.line ?? card.startLine + 1 + start,
+    ...(ownedHeading ? { heading: ownedHeading } : {}),
+  };
 }
 
 /**
@@ -804,13 +833,19 @@ function createSectionKey(
 function createFileKey(file: ParsedFile): NoteKey {
   return {
     file,
-    heading: getFileName(file.filePath) ?? file.filePath,
+    heading: getFileEntryTitle(file),
     filePath: file.filePath,
     startLine: 1,
     createdAt: file.createdAt,
     updatedAt: file.updatedAt,
     accessCount: 0,
   };
+}
+
+/** Where each line of a card's body is written, for a note read through its untagged headings. */
+interface CardLines {
+  map: { line: number; part: Section }[];
+  entryId: string;
 }
 
 /** What a search's plain words are matched against, once per entry. */

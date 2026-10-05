@@ -162,3 +162,17 @@ Context, and Consequences, B's holding Decision and Rationale.
   `index-equivalence` (with `fixtures/legacyWorkspaceIndex.ts` and
   `indexCorpus.ts`), `tagged-entries`, `people-recency`,
   `sample-workspace`.
+
+## Taken on the way (logged for review)
+
+- **A note tagged in its front matter is titled by its own `#` heading**
+  when it is a note as a whole and its first heading is a `#` it owns, as
+  the end-to-end suite caught: titled by its file name, `atlas.md` replaced
+  `Atlas`. Otherwise the file name, as before.
+- **A snippet's line is mapped back to the note.** An entry's text skips its
+  headings with tags of their own, so a card's snippet maps each line to
+  where it is written, and names the untagged heading it is under
+  ("… in Consequences").
+- **The Context view keeps "the smallest tagged entry"** as it was; it does
+  not yet treat a front-matter note as one entry.
+

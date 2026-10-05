@@ -4,6 +4,15 @@
 
 Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people, and `[[Wiki links]]`. Tag matching is case-insensitive.
 
+<a id="what-is-a-note"></a>**What is a note.** Tags decide where a note starts and ends:
+
+- A heading with tags of its own is a note, with every untagged heading under it, down to the next heading with tags of its own, which is a note of its own and also carries the tags above it. In `# ADR-001 #decision` with untagged `## Context` and `## Consequences` under it, the ADR is one note; a `## Decision #decision/accepted` among them would be a second.
+- A note tagged in its front matter is one note, apart from any heading in it with tags of its own.
+- Where no tag reaches, such as a daily note with no tags, each heading is a note, so a search lands on the right section.
+- A task is always an entry of its own, and it carries the tags of the headings above it.
+
+A search lists notes: a word written under `## Context` finds the ADR, and the ADR's card shows its whole text. Home's and Stats' **Notes**, a tag's count, Related Notes, and the Notes Graph count notes the same way.
+
 **Note boundaries.** `deckard.noteBoundaries` sets where one note ends and the next begins:
 
 | Setting | A tagged line is | A search for a tag written in prose returns |
@@ -12,7 +21,7 @@ Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people
 | `heading` | part of the heading above it | the heading holding the line |
 | `marked` | part of the heading above it, unless it carries a `^marker` | the heading, or the marked line itself |
 
-- Under `heading`, a prose tag stays on its line; it is not added to the heading. A tag on a heading is inherited by everything nested under it.
+- Under `heading`, a prose tag stays on its line; it is not added to the heading, and it counts for the note that holds the heading. A tag on a heading is inherited by everything nested under it.
 - A tagged line with no heading above it stays a note under every setting.
 - Consecutive tagged prose lines are grouped; under `marked`, one marker marks the group.
 - A task is its own entry under every setting.

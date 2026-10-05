@@ -1007,7 +1007,7 @@ test('the gear\'s Display row moves the step through the host, and the page carr
 
     // A page drawn while the setting is on carries the marker the sheet needs.
     const { panel: second, view: secondView } = await openDashboard();
-    assert.ok(second.webview.html.includes('<body class="zen" data-level="zen" data-styling="plain" data-help="hidden" data-density="compact">'), 'zen marks the body as Zen draws it');
+    assert.ok(second.webview.html.includes('<body class="zen" data-level="zen" data-styling="plain" data-help="hidden" data-density="compact" data-cards="flat" data-tags="text" data-counts="hidden" data-file-line="never" data-dates="relative">'), 'zen marks the body as Zen draws it');
 
     // Nothing was taken off the page to achieve it.
     assert.ok(secondView.find('.eyebrow'), 'the eyebrow is still drawn');

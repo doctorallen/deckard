@@ -17,6 +17,8 @@ import { TagOverviewHub } from '../protocol/searchPage';
 import { ParsedFile, Section, Task, TagTitleDisplayMode, TagOverviewSortMode, TaskSortMode } from '../../domain/model';
 import { DashboardTask, TagOverviewCard } from '../protocol/shared';
 import { DashboardNote } from '../protocol/dashboard';
+import { stripTags } from '../../domain/markdown/parser';
+import { fileEntryId } from '../../domain/markdown/noteEntries';
 
 /**
  * The cards and task rows every page draws an entry as, and the orders they
@@ -173,10 +175,34 @@ export function createTagOverviewCard(
   };
 }
 
-/** A front-matter-only note, or a note above its first heading, as a card titled by its file name. */
+/**
+ * The heading a note tagged in its front matter is titled by when it is a
+ * note as a whole (noteEntries.ts): its first heading, when that is a `#`
+ * heading the note owns, as a note's title is. Undefined otherwise.
+ */
+function findFileEntryTitle(file: ParsedFile): Section | undefined {
+  const lead = file.sections.find((section) => !section.isInline);
+  return lead && lead.headingLevel === 1 && lead.entryId === fileEntryId(file.filePath) ? lead : undefined;
+}
+
+/** A note's title as a list shows it: its own `#` heading when it is a note as a whole, else its file name. */
+export function getFileEntryTitle(file: ParsedFile): string {
+  const lead = findFileEntryTitle(file);
+  const title = lead ? stripTags(lead.heading).trim() : '';
+  return title || (getFileName(file.filePath) ?? file.filePath);
+}
+
+/**
+ * A front-matter note, or a note above its first heading, as a card: titled
+ * by its own `#` heading when it is a note as a whole, else by its file name.
+ */
 export function createFileOverviewCard(file: ParsedFile): TagOverviewCard {
-  const heading = getFileName(file.filePath) ?? file.filePath;
-  const rawContent = getFilePreamble(file);
+  const heading = getFileEntryTitle(file);
+  const lead = findFileEntryTitle(file);
+  // The title is the card's heading, so its line is not repeated in the body.
+  const rawContent = lead
+    ? getFrontmatterBody(file.content.split(/\r?\n/).filter((_line, at) => at !== lead.startLine - 1).join('\n')).replace(/^\n+/, '')
+    : getFilePreamble(file);
   return {
     id: `frontmatter:${file.filePath}`,
     filePath: file.filePath,
