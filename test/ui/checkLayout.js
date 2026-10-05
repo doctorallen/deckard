@@ -20,6 +20,7 @@
 //   LAYOUT_KEEP=/tmp/pages LAYOUT_DRY=1                  write the pages to open by hand
 //   LAYOUT_TIMING=1 LAYOUT_ONLY=stats                    time each surface's first render instead
 //   UI_CONCURRENCY=<n>                                   how many Chromes lay pages out at once
+//   UI_SHARD=<k>/<n>                                     every n-th pass, from the k-th (passes.js)
 //
 // The pages are laid out by several Chromes at once, half the logical cores'
 // worth and at most four unless UI_CONCURRENCY says otherwise
@@ -46,10 +47,11 @@ if (!existsSync(compiled)) {
   console.error('Run "npm run compile-tests" first: out/ is missing.');
   process.exit(1);
 }
-const { renderPagesForTheme, themes, vscodePaletteCss } = require('./pages.js');
+const { renderPagesForTheme, vscodePaletteCss } = require('./pages.js');
 const { readPageNonce } = require('../harness/loadPage.js');
 const { captureScript } = require('../harness/domSnapshot.js');
 const { createSurfaces, surfaceHtml } = require('./surfaces.js');
+const { announceShard, isPicked, passes } = require('./passes.js');
 
 const chrome = findChrome();
 if (!chrome) {
@@ -512,26 +514,6 @@ function timeSurfaces(dir) {
   }
 }
 
-/** Every pass the check makes, as [theme, zen] pairs: each theme, without zen and then with it. */
-function passes() {
-  return themes.map((entry) => entry.id ?? entry).flatMap((theme) => [[theme, false], [theme, true]]);
-}
-
-/**
- * Whether a check's `*_ONLY` variable picks a surface in a pass, or names
- * nothing. LAYOUT_ONLY=oblivion:sidebarNotes runs one surface while looking
- * at it, LAYOUT_ONLY=oblivion+zen:sidebarNotes picks the zen pass of it, and
- * LAYOUT_ONLY=oblivion every surface in a pass.
- *
- * @param {string | undefined} only The variable's value.
- * @param {string} label The pass, as `<theme>` or `<theme>+zen`.
- * @param {string} name The surface's name, or its page's.
- * @returns {boolean} Whether to draw the surface.
- */
-function isPicked(only, label, name) {
-  return !only || only === `${label}:${name}` || only === name || only === label;
-}
-
 /** What one run of the probe found wrong, as sentences. */
 function describeRun(run) {
   return [...describeOverflow(run), ...describeMarks(run), ...describeClipping(run)];
@@ -666,6 +648,7 @@ async function run() {
   if (keep && !existsSync(keep)) {
     mkdirSync(keep, { recursive: true });
   }
+  announceShard('layout check');
   let failed = 0;
   try {
     failed = await checkSurfaces(dir);

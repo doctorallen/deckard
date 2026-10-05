@@ -17,6 +17,7 @@
 //   npm run test:layout
 //   CONTRAST_ONLY=fellowship:taskBoardByTag   one surface, a theme, or a page
 //   UI_CONCURRENCY=<n>                        how many Chromes draw at once
+//   UI_SHARD=<k>/<n>                          every n-th pass, from the k-th (passes.js)
 //
 // The pages are drawn by several Chromes at once, half the logical cores'
 // worth and at most four unless UI_CONCURRENCY says otherwise (chromePool.js),
@@ -28,7 +29,8 @@ const { mkdtempSync, writeFileSync, rmSync } = require('node:fs');
 
 const { renderPagesForTheme } = require('./pages.js');
 const { surfaceHtml } = require('./surfaces.js');
-const { chrome, createSurfaces, buildPage, measureAsync, passes } = require('./checkLayout.js');
+const { chrome, createSurfaces, buildPage, measureAsync } = require('./checkLayout.js');
+const { announceShard, passes } = require('./passes.js');
 const { runInOrder } = require('./chromePool.js');
 const { pickSurfaces } = require('../harness/surfacePicks.js');
 
@@ -305,6 +307,7 @@ async function checkSurfaces(dir) {
 
 /** The check: every surface drawn and measured, exiting 1 when any fails. */
 async function run() {
+  announceShard('rendered contrast check');
   const dir = mkdtempSync(path.join(os.tmpdir(), 'deckard-contrast-'));
   let failed = 0;
   try {

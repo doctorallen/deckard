@@ -19,7 +19,18 @@
 //                                     baseline rather than record one
 //   VISUAL_ONLY=cooper+zen:taskBoard  one surface
 //   VISUAL_KEEP=<dir>                 leave the screenshots and diffs there
+//   VISUAL_CHANGED=<dir>              copy there only what a failure needs:
+//                                     each surface drawn with no baseline or
+//                                     differing from it, under its baseline's
+//                                     name (baseline/), and each diff (diff/)
 //   UI_CONCURRENCY=<n>                how many Chromes draw at once
+//   UI_SHARD=<k>/<n>                  every n-th pass, from the k-th (passes.js)
+//
+// Before any Chrome starts, the baselines' names are checked against every
+// surface in every pass, whatever the shard: a baseline nothing draws fails
+// at once, and a surface with none is named at once, rather than when its
+// turn to be drawn comes some minutes in. The shard that draws it still
+// records it, so a run's artifact holds the image to commit.
 //
 // The screenshots are taken by several Chromes at once, half the logical cores'
 // worth and at most four unless UI_CONCURRENCY says otherwise
@@ -37,7 +48,8 @@ const pixelmatch = pixelmatchModule.default ?? pixelmatchModule;
 
 const { renderPagesForTheme } = require('./pages.js');
 const { surfaceHtml } = require('./surfaces.js');
-const { chrome, createSurfaces, buildPage, isPicked, passes } = require('./checkLayout.js');
+const { chrome, createSurfaces, buildPage } = require('./checkLayout.js');
+const { allPasses, announceShard, isPicked, passes, passLabel } = require('./passes.js');
 const { runChromeAsync, runInOrder } = require('./chromePool.js');
 
 /** How different one pixel may be before it counts, 0 to 1. */
@@ -106,7 +118,30 @@ const dir = keep || mkdtempSync(path.join(os.tmpdir(), 'deckard-visual-'));
 if (keep) {
   mkdirSync(keep, { recursive: true });
 }
+const changed = process.env.VISUAL_CHANGED;
 mkdirSync(BASELINES, { recursive: true });
+
+/**
+ * Copies what a failed comparison or a recording needs looked at into
+ * VISUAL_CHANGED, when it is set: the image drawn, under its baseline's name,
+ * and the diff when there is one.
+ *
+ * @param {string} name The baseline's name, without `.png`.
+ * @param {string} shot The image drawn.
+ * @param {string} [diffFile] The diff written for it.
+ */
+function keepChanged(name, shot, diffFile) {
+  if (!changed) {
+    return;
+  }
+  mkdirSync(path.join(changed, 'baseline'), { recursive: true });
+  writeFileSync(path.join(changed, 'baseline', `${name}.png`), readFileSync(shot));
+  if (!diffFile) {
+    return;
+  }
+  mkdirSync(path.join(changed, 'diff'), { recursive: true });
+  writeFileSync(path.join(changed, 'diff', `${name}.diff.png`), readFileSync(diffFile));
+}
 
 /**
  * Takes a screenshot of a page at a surface's size and resolves with it as
@@ -140,10 +175,11 @@ async function screenshot(file, viewport, out, log) {
  * compared, and as failed when more of it differs than its share allows,
  * and says which to `log`.
  */
-function compareShot({ label, surfaceName, name }, drawn, baseline, { tally, log }) {
+function compareShot({ label, surfaceName, name, shot }, drawn, baseline, { tally, log }) {
   const expected = PNG.sync.read(readFileSync(baseline));
   if (expected.width !== drawn.width || expected.height !== drawn.height) {
     tally.failed += 1;
+    keepChanged(name, shot);
     log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} size changed: ${expected.width}x${expected.height} -> ${drawn.width}x${drawn.height}`);
     return;
   }
@@ -155,6 +191,7 @@ function compareShot({ label, surfaceName, name }, drawn, baseline, { tally, log
     tally.failed += 1;
     const diffFile = path.join(dir, `${name}.diff.png`);
     writeFileSync(diffFile, PNG.sync.write(diff));
+    keepChanged(name, shot, diffFile);
     log(`  FAIL ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${(share * 100).toFixed(2)}% of pixels differ (${differing}); diff at ${diffFile}`);
   } else {
     log(`  ok   ${label.padEnd(14)} ${surfaceName.padEnd(15)} ${differing === 0 ? 'identical' : `${(share * 100).toFixed(3)}% differ, within the sliver`}`);
@@ -182,45 +219,79 @@ async function drawSurface(surface, { label, theme, zen, rendered }, tally, log)
   }
   if (updating || !existsSync(baseline)) {
     writeFileSync(baseline, readFileSync(shot));
+    if (!updating) {
+      keepChanged(name, shot);
+    }
     tally.recorded += 1;
     log(`  ${updating ? 'updated' : 'recorded'} ${label.padEnd(12)} ${surfaceName}`);
     return;
   }
-  compareShot({ label, surfaceName, name }, drawn, baseline, { tally, log });
+  compareShot({ label, surfaceName, name, shot }, drawn, baseline, { tally, log });
 }
 
 /**
- * A baseline nothing draws any more is a surface that was removed or
- * renamed; say so, rather than keep a picture of something that is gone.
- * Updating removes it; otherwise it fails.
+ * The name of every baseline the whole matrix draws: each surface in each of
+ * the sixteen passes, whatever the shard.
+ *
+ * @returns {Set<string>} The file names, as `<pass>-<surface>.png`.
  */
-function checkStaleBaselines(seen, tally) {
-  for (const stale of readdirSync(BASELINES).filter((name) => name.endsWith('.png') && !seen.has(name))) {
+function expectedBaselines() {
+  const surfaces = createSurfaces();
+  const names = new Set();
+  for (const [theme, zen] of allPasses()) {
+    for (const surface of surfaces) {
+      names.add(`${passLabel(theme, zen)}-${surface.name || surface.page}.png`);
+    }
+  }
+  return names;
+}
+
+/**
+ * Says, before anything is drawn, which baselines the whole matrix lacks and
+ * which nothing draws any more. A stale baseline is a surface removed or
+ * renamed: updating removes it, and otherwise it fails. A missing one is
+ * named here and recorded when its surface is drawn, which fails a --ci run
+ * in the shard that draws it.
+ *
+ * @param {{ failed: number }} tally The run's count, which a stale baseline adds to.
+ */
+function checkBaselineNames(tally) {
+  const expected = expectedBaselines();
+  const present = new Set(readdirSync(BASELINES).filter((name) => name.endsWith('.png')));
+  const stale = [...present].filter((name) => !expected.has(name));
+  const missing = [...expected].filter((name) => !present.has(name));
+  for (const name of stale) {
     if (updating) {
-      rmSync(path.join(BASELINES, stale));
-      console.log(`  removed ${stale}: nothing draws it now`);
+      rmSync(path.join(BASELINES, name));
+      console.log(`  removed ${name}: nothing draws it now`);
     } else {
       tally.failed += 1;
-      console.log(`  FAIL ${stale}: a baseline nothing draws now; run with --update to drop it`);
+      console.log(`  FAIL ${name}: a baseline nothing draws now; run with --update to drop it`);
     }
+  }
+  if (missing.length && !updating) {
+    console.log(`  ${missing.length} surface(s) have no baseline under test/ui/visual-baseline/${process.platform}; each is recorded when drawn${ci ? ', and fails this --ci run' : ''}:`);
+    missing.forEach((name) => console.log(`         ${name}`));
+  }
+  if (stale.length || missing.length) {
+    console.log('');
   }
 }
 
 /**
- * Every surface VISUAL_ONLY picks in every theme, with zen off and on, in
- * the order they are reported, each named in `seen` as it is taken. A
- * pass's pages are rendered only when its first surface is taken.
+ * Every surface VISUAL_ONLY picks in every pass this shard makes, in the
+ * order they are reported. A pass's pages are rendered only when its first
+ * surface is taken.
  */
-function* visualJobs(seen) {
+function* visualJobs() {
   for (const [theme, zen] of passes()) {
-    const label = zen ? `${theme}+zen` : theme;
+    const label = passLabel(theme, zen);
     const picked = createSurfaces().filter((entry) => isPicked(process.env.VISUAL_ONLY, label, entry.name || entry.page));
     if (picked.length === 0) {
       continue;
     }
     const rendered = new Map(renderPagesForTheme(theme, { zen }));
     for (const surface of picked) {
-      seen.add(`${label}-${surface.name || surface.page}.png`);
       yield { surface, label, theme, zen, rendered };
     }
   }
@@ -230,12 +301,12 @@ function* visualJobs(seen) {
 async function run() {
   /** What the run has counted so far, kept as it goes so a crash leaves the screenshots of a failure. */
   const tally = { failed: 0, recorded: 0, compared: 0 };
-  const seen = new Set();
+  announceShard('visual check');
   try {
-    await runInOrder(visualJobs(seen), ({ surface, ...pass }, log) => drawSurface(surface, pass, tally, log));
     if (!process.env.VISUAL_ONLY) {
-      checkStaleBaselines(seen, tally);
+      checkBaselineNames(tally);
     }
+    await runInOrder(visualJobs(), ({ surface, ...pass }, log) => drawSurface(surface, pass, tally, log));
   } finally {
     if (!keep && tally.failed === 0) {
       rmSync(dir, { recursive: true, force: true });
