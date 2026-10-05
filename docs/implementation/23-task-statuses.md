@@ -91,8 +91,8 @@ From a map of the code at dev 162a7c7c (file:line references are there):
 ## The model
 
 A **status** has a symbol, a name, a type, and, optionally, the
-`#status/…` tag it stands for. There is no next symbol: checking a box
-always marks it done (decision 5).
+`#status/…` tag it stands for, and a `next` symbol, used only when
+`deckard.tasks.checkboxClick` is `workflow` (decision 5).
 
 ```jsonc
 "deckard.tasks.statuses": [
@@ -154,19 +154,27 @@ always marks it done (decision 5).
 4. **Unknown symbols are tasks** (Obsidian's rule), said once: "N tasks use
    a status Deckard doesn't know, such as `[?]`; they count as to do. Name
    them in `deckard.tasks.statuses`." The Stats line becomes that count.
-5. **Checking a box marks the task done**, from any open status, and
-   unchecking a done or cancelled one reopens it as `[ ]`, removing a status
-   tag; in a page, the preview, the Tasks view, and `Deckard: Toggle Task
-   Done`. Statuses are never stepped through (David, 2026-10-04): every
-   other status is set from the board, **Set Task Status…** (a quick pick of
-   every status, in the task editor and a card's menu), or the completions
-   after `- [`. Obsidian's next symbols are not imported.
+5. **What a click on a box does is a setting**, `deckard.tasks.checkboxClick`:
+   - **`done`** (the default; David, 2026-10-04): checking a box marks the
+     task done from any open status, and unchecking a done or cancelled one
+     reopens it as `[ ]`, removing a status tag. Statuses are never stepped
+     through: every other status is set from the board, **Set Task
+     Status…** (a quick pick of every status, in the task editor and a
+     card's menu), or the completions after `- [`.
+   - **`workflow`**: a click moves a task to its status's `next` symbol, as
+     Obsidian does, so a vault can step Todo → In progress → Done. A
+     status's `next` is only read in this mode; an import keeps a vault's
+     next symbols for it.
+
+   It applies in a page, the preview, and the Tasks view.
+   `Deckard: Toggle Task Done` goes to done and back in either mode.
 6. **Dates follow the type.** ✅ on a change to `done`, removed on a change
    from it (`deckard.tasks.addDoneDate`, as now); ❌ on a change to
    `cancelled`, removed from it (`deckard.tasks.addCancelledDate`, default
    on, as in Tasks).
-7. **Recurrence on done only.** A 🔁 task makes its next occurrence, as
-   `[ ]`, when it changes to `done`; cancelling one makes
+7. **Recurrence on done only.** A 🔁 task makes its next occurrence when it
+   changes to `done`, as `[ ]`; in the workflow, as Obsidian does, with the
+   first `todo` status, else the first `inProgress`, else ` `; cancelling one makes
    none, and the board's Cancel offers "Cancel this one, keep it repeating"
    as a second action that writes the next occurrence too.
 8. **Moving tags to characters is a command, never automatic.**
@@ -237,8 +245,11 @@ always marks it done (decision 5).
    since VS Code's Settings editor offers only "Edit in settings.json" for
    it: rows for symbol, name, type, and tag; the core rows locked; **Add
    characters found in notes** (Tasks' Add All Unknown Status Types);
-   presets; Import; and checks as you type (a symbol given twice, a missing
-   name, a status with neither a symbol nor a tag). Drawn at
+   presets; Import; the checkbox click setting, whose workflow shows a
+   Next column and a diagram of the cycles; and checks as you type (a
+   symbol given twice, a missing name, a status with neither a symbol nor a
+   tag, and in the workflow a next symbol no row has and Done not followed
+   by to do or in progress, the check Tasks' Review report makes). Drawn at
    https://claude.ai/artifact/KD8GsdJu9zhzuSrXzQeRfx.
 7. **Everywhere else, tests, and docs.** The calendar export writes
    `STATUS:CANCELLED` / `COMPLETED`; the assistant tools show and filter by
