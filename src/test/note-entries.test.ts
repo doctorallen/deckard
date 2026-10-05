@@ -3,6 +3,7 @@ import * as assert from 'assert';
 import { parseMarkdown, type NoteBoundaries } from '../domain/markdown/parser';
 import { entryIdOf, entryText, fileEntryId, groupEntryParts, isEntrySection } from '../domain/markdown/noteEntries';
 import type { ParsedFile } from '../domain/model';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
 
 /**
  * Which note each heading, tagged line, and task belongs to: a heading with
@@ -85,4 +86,22 @@ suite('Note entries: what each heading belongs to', () => {
     assert.strictEqual(notes && entryIdOf(notes), byHeading.sections[0].id, 'under heading, its heading belongs to the plan');
     assert.ok(notes?.bodyTags?.some((tag) => tag.key === '#person/dana'), 'the tag stays on the line');
   });
+
+  test('the index counts a note once: a tag lists the entry that owns it, and a task inside it adds nothing', () => {
+    const file = parse(ADR);
+    const index = buildWorkspaceIndex(new Map([[file.filePath, file]]));
+    const tag = index.tags.get('#project/checkout-v2');
+    assert.deepStrictEqual(tag?.sectionIds, [file.sections[0].id]);
+    assert.strictEqual(tag?.count, 1, 'the task under Consequences belongs to the ADR');
+  });
+
+  test('a note tagged in its front matter is a member as a file, beside its headings with tags of their own', () => {
+    const file = parse(['---', 'tags: [project/atlas]', '---', 'Intro.', '## Plan', '- [ ] Draft it', '## Risks #risk', 'Vendor.'].join('\n'), 'line', 'notes/atlas.md');
+    const index = buildWorkspaceIndex(new Map([[file.filePath, file]]));
+    const tag = index.tags.get('#project/atlas');
+    assert.deepStrictEqual(tag?.filePaths, ['notes/atlas.md']);
+    assert.deepStrictEqual(tag?.sectionIds, [file.sections.find((section) => section.heading.startsWith('Risks'))?.id]);
+    assert.strictEqual(tag?.count, 2, 'the note and its Risks; the task belongs to the note');
+  });
 });
+

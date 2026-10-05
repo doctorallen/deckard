@@ -11,6 +11,7 @@ import {
   WorkspaceIndex,
 } from '../model';
 import { AssociationSink, collectAssociationEvidence, EvidenceSource } from './associationEvidence';
+import { fileEntryId, groupEntryParts, isEntrySection } from '../markdown/noteEntries';
 
 /**
  * The workspace index as a fold over each note's own contribution.
@@ -157,12 +158,15 @@ function collectTagOps(
     entityKeys.push(op.key);
   };
 
-  file.sections.forEach((section) => {
-    // A tag written on one of the section's own body lines finds the
-    // section too: the tag stayed on its line, and the section is what
-    // holds the line.
+  // A note is an entry: a heading with tags of its own reads through the
+  // untagged headings under it (noteEntries.ts), so only entries are
+  // members, and the body tags of what an entry owns count for it.
+  const parts = groupEntryParts(file.sections);
+  file.sections.filter(isEntrySection).forEach((section) => {
+    // A tag written on one of the entry's body lines finds the entry too:
+    // the tag stayed on its line, and the entry is what holds the line.
     const bodyTagLabels = new Map(
-      (section.bodyTags ?? []).map((tag) => [tag.key, tag.label]),
+      (parts.get(section.id) ?? [section]).flatMap((part) => part.bodyTags ?? []).map((tag) => [tag.key, tag.label]),
     );
     const keys = [...new Set([...section.tags, ...bodyTagLabels.keys()])];
     keys.forEach((key) => {
@@ -190,14 +194,7 @@ function collectTagOps(
       });
     });
   });
-  const contentTagKeys = new Set([
-    ...file.sections.flatMap((section) => section.tags),
-    ...file.tasks.flatMap((task) => task.tags),
-  ]);
-  file.frontmatterTags.forEach((reference) => {
-    if (contentTagKeys.has(reference.key)) {
-      return;
-    }
+  listFileEntryTags(file, parts).forEach((reference) => {
     addOp({
       key: reference.key,
       label: reference.label,
@@ -208,6 +205,33 @@ function collectTagOps(
     });
   });
   return { ops, opsByKey, tagKeys, entityKeys };
+}
+
+/**
+ * The tags a note is a member by as a whole. A note tagged in its front
+ * matter is an entry of its own when it owns anything past its headings with
+ * tags of their own: its preamble, or an untagged heading, whose body tags
+ * count for it too. Otherwise, as before, it is one only for a front-matter
+ * tag no section or task carries.
+ */
+function listFileEntryTags(file: ParsedFile, parts: ReadonlyMap<string, Section[]>): { key: string; label: string }[] {
+  const fileEntry = fileEntryId(file.filePath);
+  const isFileEntry = file.frontmatterTags.length > 0 && (file.sections.length === 0 || parts.has(fileEntry));
+  const contentTagKeys = new Set(isFileEntry ? [] : [
+    ...file.sections.flatMap((section) => section.tags),
+    ...file.tasks.flatMap((task) => task.tags),
+  ]);
+  const seen = new Set<string>();
+  return [
+    ...file.frontmatterTags,
+    ...(parts.get(fileEntry) ?? []).flatMap((part) => part.bodyTags ?? []).map((tag) => ({ key: tag.key, label: tag.label })),
+  ].filter((reference) => {
+    if (contentTagKeys.has(reference.key) || seen.has(reference.key)) {
+      return false;
+    }
+    seen.add(reference.key);
+    return true;
+  });
 }
 
 /**
@@ -1009,9 +1033,9 @@ function finishEntity(entity: Entity, tasks: ReadonlyMap<string, Task>): void {
 
 /**
  * How many entries a tag or an entity has: each of its sections, each of
- * its files, and each of its tasks that is not inside one of its sections.
- * A task inside a tagged section is already represented by that section;
- * it counts separately only when its tag would otherwise have no entry.
+ * its files, and each of its tasks that is not inside one of them. A task
+ * inside a tagged entry is already represented by it; it counts separately
+ * only when its tag would otherwise have no entry.
  */
 function countEntries(
   record: {
@@ -1021,12 +1045,15 @@ function countEntries(
   },
   tasks: ReadonlyMap<string, Task>,
 ): number {
-  const taggedSections = new Set(record.sectionIds);
+  // A task inside a tagged entry, its heading's or the note's, is already
+  // represented by it.
+  const taggedEntries = new Set([...record.sectionIds, ...record.filePaths.map(fileEntryId)]);
   const standaloneTasks = record.taskIds.filter((taskId) => {
     const task = tasks.get(taskId);
-    return !task?.sectionId || !taggedSections.has(task.sectionId);
+    const owner = task?.entryId ?? task?.sectionId;
+    return !owner || !taggedEntries.has(owner);
   });
-  return taggedSections.size + standaloneTasks.length + record.filePaths.length;
+  return record.sectionIds.length + standaloneTasks.length + record.filePaths.length;
 }
 
 /** Adds one mention of a tag to its record, and to its entity's. */
