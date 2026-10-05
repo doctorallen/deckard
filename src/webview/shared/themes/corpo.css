@@ -49,6 +49,9 @@
   /* VS Code's warning text in lists, readable on its light grounds, where
      the editor's warning squiggle color is not. */
   --due-today: var(--vscode-list-warningForeground, var(--vscode-editorWarning-foreground));
+  /* Overdue, written as text on a raised row as well as the page: VS Code's
+     list error color, where its chart red is under 4.5:1 on its hover gray. */
+  --danger: var(--vscode-list-errorForeground, var(--vscode-charts-red));
   --slate-olive: var(--vscode-panel-border);
   --grid-line: transparent;
   --font-display: var(--vscode-font-family, system-ui, sans-serif);

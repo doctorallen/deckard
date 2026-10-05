@@ -1,10 +1,8 @@
 # Writing notes: tags, people, and links
 
-## Markdown format
+## What is a note
 
-Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people, and `[[Wiki links]]`. Tag matching is case-insensitive.
-
-<a id="what-is-a-note"></a>**What is a note.** Tags decide where a note starts and ends:
+Tags decide where a note starts and ends:
 
 - A heading with tags of its own is a note, with every untagged heading under it, down to the next heading with tags of its own, which is a note of its own and also carries the tags above it. In `# ADR-001 #decision` with untagged `## Context` and `## Consequences` under it, the ADR is one note; a `## Decision #decision/accepted` among them would be a second.
 - A note tagged in its front matter is one note, apart from any heading in it with tags of its own.
@@ -12,6 +10,10 @@ Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people
 - A task is always an entry of its own, and it carries the tags of the headings above it.
 
 A search lists notes: a word written under `## Context` finds the ADR, and the ADR's card shows its whole text. Home's and Stats' **Notes**, a tag's count, Related Notes, and the Notes Graph count notes the same way.
+
+## Markdown format
+
+Deckard recognizes ATX headings, unordered checklist items, `#` tags, `@` people, and `[[Wiki links]]`. Tag matching is case-insensitive.
 
 **Note boundaries.** `deckard.noteBoundaries` sets where one note ends and the next begins:
 

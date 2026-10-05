@@ -628,10 +628,10 @@ suite('Refining a search', () => {
     );
     const results = evaluateQuery(index, parseQuery('tag = #project/atlas').node, createQueryContext(Date.now()));
 
-    // The nested Details section and its tasks inherit the heading's tag.
-    assert.strictEqual(results.sections.length + results.files.length, 2);
+    // The untagged Details belongs to Plan, one note; its tasks inherit the tag.
+    assert.strictEqual(results.sections.length + results.files.length, 1);
     assert.strictEqual(results.tasks.length, 3);
-    assert.strictEqual(atlas?.detail, '2 notes · 3 tasks');
+    assert.strictEqual(atlas?.detail, '1 note · 3 tasks');
   });
 
   test('a week, a month, or a weekday completes with the days it means', () => {

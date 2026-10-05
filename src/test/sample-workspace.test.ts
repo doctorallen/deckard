@@ -261,10 +261,13 @@ suite('Sample workspace', () => {
     for (const left of ['Run the passive-ping comparison', 'Hear back from Praxis Loom', 'Try a second vendor', 'Rerun the falloff test']) {
       assert.ok(!available.some((title) => title.startsWith(left)), `${left} cannot be started now`);
     }
-    assert.ok(found('created = last-month').sections.some((section) => section.filePath === 'projects/Argent Protocol.md'));
+    // Its front matter names people, so the hub is one note, found as a whole.
+    const lastMonth = found('created = last-month');
+    assert.ok([...lastMonth.sections, ...lastMonth.files].some((entry) => entry.filePath === 'projects/Argent Protocol.md'));
 
     const parked = found('is:parked');
-    assert.deepStrictEqual([...new Set(parked.sections.map((section) => section.filePath))], ['archive/Velvet Circuit.md']);
+    // Parked in its front matter, the archived note is one note, found as a whole.
+    assert.deepStrictEqual([...new Set([...parked.sections, ...parked.files].map((entry) => entry.filePath))], ['archive/Velvet Circuit.md']);
     assert.strictEqual(parked.tasks.length, 1);
     assert.strictEqual(new Set(found('is:daily').sections.map((section) => section.filePath)).size, 6, 'six daily notes');
     const linking = (query: string) => found(query).sections.map((section) => section.filePath).sort();
