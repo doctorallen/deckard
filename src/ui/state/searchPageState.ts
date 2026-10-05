@@ -42,6 +42,8 @@ import { ResultPaging, TagOverviewCard } from '../protocol/shared';
 import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes } from '../protocol/searchPage';
 import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
 import { linkProgressParts } from './progressLinks';
+import { isEntrySection } from '../../domain/markdown/noteEntries';
+import { getEntryTextOf, isFileEntry } from '../../domain/index/noteEntryIndex';
 import {
   Entity,
   SearchPreview,
@@ -62,11 +64,13 @@ import {
  * to refine by, and a corrected search when nothing was found.
  */
 
-/** Files known only by their front matter tags, which list as one note each. */
+/**
+ * Notes tagged in their front matter that are entries of their own: one with
+ * no headings, or one that owns an untagged heading, as a whole note does
+ * (noteEntries.ts). Each lists as one note.
+ */
 export function listFrontmatterOnlyFiles(index: WorkspaceIndex): ParsedFile[] {
-  return [...index.files.values()].filter(
-    (file) => file.sections.length === 0 && file.frontmatterTags.length > 0,
-  );
+  return [...index.files.values()].filter(isFileEntry);
 }
 
 /** Options for a search page's projection. */
@@ -268,9 +272,9 @@ function rankNoteKeys(
   const plainTerms = getPlainTextTerms(drafted.node);
   const keys = plainTerms
     ? [
-        ...[...index.sections.values()].map(sectionKey),
+        ...[...index.sections.values()].filter(isEntrySection).map(sectionKey),
         ...listFrontmatterOnlyFiles(index).map(createFileKey),
-      ].filter((key) => matchesNoteWords(key, plainTerms))
+      ].filter((key) => matchesNoteWords(index, key, plainTerms))
     : [
         ...results.sections
           .filter((section) => section.filePath !== hubFile?.filePath)
@@ -321,6 +325,7 @@ function drawNoteCards(
           ),
         ),
       sections: index.sections,
+      content: getEntryTextOf(index, section),
     });
   const snippetWords = [...new Set([...getTextWords(page.drafted.node), ...page.preview])]
     .map((word) => word.toLowerCase())
@@ -520,7 +525,7 @@ export function evaluateSearchPage(
   const results: QueryResults = drafted.node
     ? evaluateQuery(index, drafted.node, options.queryContext)
     : {
-        sections: [...index.sections.values()],
+        sections: [...index.sections.values()].filter(isEntrySection),
         tasks: [...index.tasks.values()],
         files: listFrontmatterOnlyFiles(index),
       };
@@ -815,14 +820,14 @@ const noteWordText = new WeakMap<Section | ParsedFile, string>();
  * Whether a note has every word in its title, file name, body, or tags, the
  * same places the page matches words while they are typed.
  */
-function matchesNoteWords(key: NoteKey, words: readonly string[]): boolean {
+function matchesNoteWords(index: WorkspaceIndex, key: NoteKey, words: readonly string[]): boolean {
   const owner = (key.section ?? key.file) as Section | ParsedFile;
   let body = noteWordText.get(owner);
   if (body === undefined) {
     body = (
       key.section
         ? [
-            getSectionBody(key.section.rawContent),
+            getSectionBody(getEntryTextOf(index, key.section)),
             ...key.section.tags.map((tag) => key.section?.tagLabels[tag] ?? `#${tag}`),
           ]
         : [
@@ -925,11 +930,11 @@ function findsSomething(
     return results.sections.length > 0 || results.files.length > 0;
   }
   return (
-    [...index.sections.values()].some((section) =>
-      matchesNoteWords(sectionKey(section), plainTerms),
+    [...index.sections.values()].filter(isEntrySection).some((section) =>
+      matchesNoteWords(index, sectionKey(section), plainTerms),
     ) ||
     listFrontmatterOnlyFiles(index).some((file) =>
-      matchesNoteWords(createFileKey(file), plainTerms),
+      matchesNoteWords(index, createFileKey(file), plainTerms),
     )
   );
 }

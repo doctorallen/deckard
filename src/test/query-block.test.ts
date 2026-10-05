@@ -493,11 +493,11 @@ suite('Deckard query blocks', () => {
     );
   });
 
-  test('a sub-heading carries the tags of the headings above it in a notes table', () => {
+  test('an untagged sub-heading is part of its tagged heading\'s row in a notes table', () => {
     const files = [parseMarkdown('notes/atlas.md', '# Atlas #project/atlas #status/doing\n## Tasks\n- [ ] a\n- [x] b\n## Notes\nWords.')];
     const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
     const snapshot = createQueryBlockSnapshot(index, 'tag = #project/* AND is:note', parseQueryBlockInfo('deckard view=table noteColumns=#status,tasks')!, { queryContext: createQueryContext(Date.now()) });
-    assert.deepStrictEqual(snapshot.notes.map((note) => [note.title, describeNoteCell(note, '#status')]), [['Atlas', 'doing'], ['Notes', 'doing'], ['Tasks', 'doing']]);
+    assert.deepStrictEqual(snapshot.notes.map((note) => [note.title, describeNoteCell(note, '#status')]), [['Atlas', 'doing']]);
   });
 });
 

@@ -139,11 +139,14 @@ export function createTagOverviewCard(
     tagTitleDisplayMode,
     pinned = false,
     sections,
+    content,
   }: {
     sectionAccessCounts: Record<string, number>;
     tagTitleDisplayMode: TagTitleDisplayMode;
     pinned?: boolean;
     sections?: ReadonlyMap<string, Section>;
+    /** The entry's text, read through the untagged headings it owns; its own text when not given. */
+    content?: string;
   },
 ): TagOverviewCard {
   return {
@@ -161,8 +164,8 @@ export function createTagOverviewCard(
       key,
       label: section.tagLabels[key] ?? `#${key}`,
     })),
-    rawContent: getSectionBody(section.rawContent),
-    bodyTokens: tokenizeSectionBody(section),
+    rawContent: getSectionBody(content ?? section.rawContent),
+    bodyTokens: tokenizeSectionBody(section, content),
     startLine: section.startLine,
     createdAt: section.createdAt,
     updatedAt: section.updatedAt,
@@ -293,16 +296,22 @@ function compareDatesDescending(
  * reparsed note brings new entries, and the old ones are let go with them.
  */
 const sectionBodyTokens = new WeakMap<Section, BlockToken[]>();
+/** An entry's text as block tokens, read once; see sectionBodyTokens. */
+const entryBodyTokens = new WeakMap<Section, BlockToken[]>();
 
 /** Each task's title as inline tokens, read once; see sectionBodyTokens. */
 const taskTitleTokens = new WeakMap<Task, InlineToken[]>();
 
-/** A section's body as block tokens, read once per section. */
-function tokenizeSectionBody(section: Section): BlockToken[] {
-  let tokens = sectionBodyTokens.get(section);
+/**
+ * A section's body as block tokens, read once per section: its entry's text
+ * when given, which is the same for a section as long as its note is.
+ */
+function tokenizeSectionBody(section: Section, content?: string): BlockToken[] {
+  const cache = content === undefined ? sectionBodyTokens : entryBodyTokens;
+  let tokens = cache.get(section);
   if (tokens === undefined) {
-    tokens = buildBlockExcerpt(getSectionBody(section.rawContent));
-    sectionBodyTokens.set(section, tokens);
+    tokens = buildBlockExcerpt(getSectionBody(content ?? section.rawContent));
+    cache.set(section, tokens);
   }
   return tokens;
 }

@@ -1503,8 +1503,9 @@ suite('Dashboard state', () => {
         detail: value.detail,
       })),
       [
-        { clause: '#co-occurring', count: 3, detail: 'In 3 of 3 results. Written together 1 time' },
-        { clause: '#child', count: 1, detail: 'In 1 of 3 results. Heading context 1 time' },
+        // Un tagged details belongs to Relay map, so the results are Relay map and Signal route.
+        { clause: '#co-occurring', count: 2, detail: 'In 2 of 2 results. Written together 1 time' },
+        { clause: '#child', count: 1, detail: 'In 1 of 2 results. Heading context 1 time' },
       ],
     );
     assert.strictEqual(related.values[0].strength, 1, 'the strongest is full');

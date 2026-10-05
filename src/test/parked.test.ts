@@ -14,6 +14,7 @@ import { indexWithParking, parkedRules } from './parkedFixture';
 import { createQueryContext } from '../domain/query/queryContext';
 import { WorkspaceIndex } from '../domain/model';
 import { createQuerySuggestions } from '../ui/state/querySuggestions';
+import { isEntrySection } from '../domain/markdown/noteEntries';
 
 /** A task title without its tags. */
 function bare(title: string): string {
@@ -130,9 +131,11 @@ suite('Parked notes', () => {
       'c.md': '# C\n- [ ] Five #parked\n',
     });
     const found = evaluateQuery(index, parseQuery('tag = #parked OR tag = #parked/*').node, createQueryContext(Date.now()));
+    // Parking reaches every heading under a parked one; a search lists notes,
+    // so the parked notes are the parked headings that are notes of their own.
     assert.deepStrictEqual(
       found.sections.map((section) => section.id).sort(),
-      [...index.parked!.sections].sort(),
+      [...index.parked!.sections].filter((id) => { const section = index.sections.get(id); return section !== undefined && isEntrySection(section); }).sort(),
     );
     assert.deepStrictEqual(found.tasks.map((task) => task.id).sort(), [...index.parked!.tasks].sort());
   });
