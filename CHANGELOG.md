@@ -2,18 +2,7 @@
 
 ## Unreleased
 
-### Changed
-
-- **A note is a tagged heading and the untagged headings under it.** A
-  search, a tag's page, Related Notes, the Notes Graph, and every count of
-  notes used to treat each heading as a note of its own, so an untagged
-  `## Context` under a tagged `# ADR` came back as a card of its own with no
-  tag, beside the ADR's card holding the same text. Now the ADR is one note,
-  down to the next heading with tags of its own, and a note tagged in its
-  front matter is one note. Note counts drop for notes written with
-  headings; a heading with tags of its own is still a note of its own.
-
-## 2.2.0 - 2026-10-04
+## 2.2.0 - 2026-10-05
 
 ### Highlights
 
@@ -133,6 +122,15 @@
   Themes**.
 
 ### Changed
+
+- **A note is a tagged heading and the untagged headings under it.** A
+  search, a tag's page, Related Notes, the Notes Graph, and every count of
+  notes used to treat each heading as a note of its own, so an untagged
+  `## Context` under a tagged `# ADR` came back as a card of its own with no
+  tag, beside the ADR's card holding the same text. Now the ADR is one note,
+  down to the next heading with tags of its own, and a note tagged in its
+  front matter is one note. Note counts drop for notes written with
+  headings; a heading with tags of its own is still a note of its own.
 
 - **Zen mode is now Display's Zen step.** `deckard.zenMode` is read as Zen
   until a step is set, and a reader who had it on is moved over once, with
