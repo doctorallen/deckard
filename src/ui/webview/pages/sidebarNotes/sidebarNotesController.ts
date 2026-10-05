@@ -28,7 +28,8 @@ import { createWikiLink, insertWikiLink } from '../../../commands/insertLink';
 import { resolveSourceUri } from '../../../commands/navigation';
 import { describeRejectedEdit, noteName, reportFailure, reportStale } from '../../../commands/notify';
 import { linkMentions } from '../../../commands/unlinkedMentions';
-import type { OutlineNode } from '../../../state/outlineState';
+import { buildOutline, type OutlineNode } from '../../../state/outlineState';
+import { getBacklinkIndex } from '../../../../domain/index/backlinks';
 import { buildSidebarSections, findActiveLine } from '../../../state/sidebarSections';
 import { readLinkStyle } from '../../../commands/linkMaintenancePorts';
 import { formatNoteLink } from '../../../../domain/markdown/wikiLinks';
@@ -149,6 +150,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
   private current: { state: SidebarNotesPageState; day: string } | undefined;
   /** The heading the Sections list marked as the cursor's, to redraw it only when the cursor leaves it. */
   private sectionsActiveLine: number | undefined;
+  /** The note page's note, while the Sections list shows its headings rather than the editor's. */
+  private sectionsPageFile: string | undefined;
 
   /** Reads from `sidebar.indexer` and `sidebar.preferences`, and checks clicks through `sidebar.navigation`. */
   public constructor(private readonly sidebar: SidebarNotesControllerOptions) {
@@ -502,8 +505,13 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       unparkTag: parkTag(),
       insertLink: (message: SidebarNotesPageToHost['insertLink']) => this.insertLink(message),
       linkMention: (message: LinkMentionMessage) => this.linkMention(message),
-      revealSection: (message: SectionLineMessage) => this.sidebar.sections?.revealLine(message.line),
+      revealSection: (message: SectionLineMessage) => this.revealSection(message.line),
       focusSection: async (message: SectionLineMessage) => {
+        // A page has no folding to focus with: it scrolls to the heading.
+        if (this.sectionsPageFile) {
+          await this.revealSection(message.line);
+          return;
+        }
         await this.sidebar.sections?.revealLine(message.line);
         await vscode.commands.executeCommand('deckard.focusSection');
       },
@@ -666,7 +674,11 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
   private createSections(): SidebarSections | undefined {
     const source = this.sidebar.sections;
     const editor = vscode.window.activeTextEditor;
-    if (!source || !editor) {
+    this.sectionsPageFile = undefined;
+    if (!editor) {
+      return this.createNotePageSections();
+    }
+    if (!source) {
       return undefined;
     }
     const { roots, documentUri, filter, tags } = source.readSections();
@@ -684,6 +696,48 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     });
     this.sectionsActiveLine = sections.activeLine;
     return sections;
+  }
+
+  /**
+   * The note page's note's headings, while it is in front with no text
+   * editor: read from the index, as the page draws the note, with the line
+   * the page was asked for standing in for the cursor. A heading chosen
+   * scrolls the page to it (revealSection).
+   */
+  private createNotePageSections(): SidebarSections | undefined {
+    const page = this.getNotePageFile();
+    if (!page) {
+      return undefined;
+    }
+    const settings = vscode.workspace.getConfiguration('deckard');
+    const roots = buildOutline(page.file, {
+      personMarker: settings.get<string>('personMarker'),
+      inheritedTags: settings.get<boolean>('outline.inheritedTags', false),
+      backlinks: getBacklinkIndex(this.sidebar.indexer.getSnapshot()),
+      filePath: page.filePath,
+    });
+    if (roots.length === 0) {
+      return undefined;
+    }
+    this.sectionsPageFile = page.filePath;
+    const sections = buildSidebarSections({
+      roots,
+      tags: [],
+      ...(settings.get<boolean>('outline.followCursor', true) && page.line ? { cursorLine: page.line } : {}),
+      showTags: settings.get<boolean>('outline.showTags', true),
+      showCounts: settings.get<boolean>('outline.showCounts', true),
+    });
+    this.sectionsActiveLine = sections.activeLine;
+    return sections;
+  }
+
+  /** Goes to a heading the Sections list offers: on the note page when it lists the page's, else in the editor. */
+  private async revealSection(line: number): Promise<void> {
+    if (this.sectionsPageFile) {
+      await vscode.commands.executeCommand('deckard.openNotePage', this.sectionsPageFile, line);
+      return;
+    }
+    await this.sidebar.sections?.revealLine(line);
   }
 
   /** Whether the cursor, now on a zero-based line, sits in a different heading than the list marks. */
