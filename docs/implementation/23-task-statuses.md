@@ -220,6 +220,39 @@ A **status** has a symbol, a name, a type, and, optionally, the
    `Deckard: Import Statuses from Obsidian Tasks` reads its core and custom
    statuses into `deckard.tasks.statuses` (workspace scope, since they are
    the vault's), once offered from the first scan's notice.
+10. **`nonTask` statuses are not tasks**, where Obsidian keeps them as tasks
+    that match `done`. In Deckard they would count as done, sit in the Done
+    column, and fill Done this week with a pro and con list. They stay list
+    lines in the note, as unknown characters are today, and Stats counts
+    them as checkbox notes. The type exists so an imported vault's statuses
+    say which characters to leave alone.
+11. **Searching by status uses its name**, as Obsidian's `status.name` does,
+    and `is:` takes a type, as `status.type is` does. `status:blocked` finds
+    every Blocked task, whether its line has `[=]` or `#status/blocked`;
+    `status:in-progress` or `status:"in progress"` (a hyphen or quotes for a
+    space) finds `[/]` and `#status/doing`; `status:unknown` finds the
+    characters no status names; matching ignores case, and `-status:` and
+    `NOT` exclude. `is:open`, `is:in-progress`, `is:done`, `is:cancelled`,
+    `is:closed`, and `is:available` go by type; `is:blocked` by the Blocked
+    status and ⛔. Then four rules (recommended, David, 2026-10-04):
+    - **Reserved values.** `status:open`, `status:done`, and `status:any`
+      keep today's meaning, as an alias of `task:`. The status editor warns
+      when a status is named Open or Any; a status named Done means what
+      `status:done` already does.
+    - **By character.** `status:[=]` finds a status by its character, which
+      is never ambiguous and reaches an unknown character too
+      (`status:[b]`).
+    - **Renaming a status carries searches with it.** Saved searches, Home's
+      widget queries, and query blocks that say `status:<old name>` are
+      offered the new name, as a tag rename carries them today
+      (`TagRenames.replaceTagKey` and `replaceTagInQuery` in
+      `core/storage/preferencesTagRenames.ts`); query blocks are written in
+      notes, so they go through the same previewed workspace edit.
+    - **The builder and Refine know statuses.** The builder gets a Status
+      field with a menu of the workspace's statuses (Builder parity:
+      anything `status:` can say, the builder can build). Refine shows each
+      status found as a chip with its count, beside its tags and due dates,
+      so most searches by status never type `status:`.
 
 ## Phases, one commit each
 
@@ -231,10 +264,12 @@ A **status** has a symbol, a name, a type, and, optionally, the
    The index cache's schema version goes up. Tests: every default symbol,
    an unknown, `[>]`, a fenced line, the tag fallback, and a fixture vault
    whose task count matches what Obsidian Tasks reports.
-2. **What the types mean.** `completed` from the type; `is:` gains
-   in-progress, cancelled, closed; `is:waiting` and `is:available` read the
-   `onHold` type; `status:` matches a status name as well as open, done, and
-   any; a `cancelled` date field and `has:cancelled`. Home, Stats, the
+2. **What the types mean, and searching.** `completed` from the type; `is:`
+   gains in-progress, cancelled, closed; `is:waiting` and `is:available`
+   read the `onHold` type; `is:blocked` adds the Blocked status to ⛔;
+   `status:` matches a status name, a bracketed character, and still open,
+   done, and any (decision 11); a `cancelled` date field and
+   `has:cancelled`. The builder's Status field and Refine's status chips. Home, Stats, the
    calendar, the agenda, the Sections counts, tag progress, steps, and the
    board's totals follow decision 3; the Stats line and notice follow 4.
    One status reader replaces the two near-copies, and the query block reads
@@ -265,7 +300,9 @@ A **status** has a symbol, a name, a type, and, optionally, the
    since VS Code's Settings editor offers only "Edit in settings.json" for
    it: rows for symbol, name, type, and tag; the core rows locked; **Add
    characters found in notes** (Tasks' Add All Unknown Status Types);
-   presets; Import; the checkbox click setting, whose workflow shows a
+   presets; Import; a warning on a status named Open or Any; renaming a
+   status offers to carry the searches that name it (decision 11); the
+   checkbox click setting, whose workflow shows a
    Next column and a diagram of the cycles; and checks as you type (a
    symbol given twice, a missing name, a status with neither a symbol nor a
    tag, and in the workflow a next symbol no row has and Done not followed
