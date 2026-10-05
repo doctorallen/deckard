@@ -14,7 +14,9 @@ name: CI
 # in two shards of the sixteen theme-and-zen passes, and the extension's own
 # tests on Windows and macOS. `validate` waits for all of them and passes
 # only when every one did. Nothing is sampled: every surface is drawn in
-# every theme, with zen off and on.
+# every theme, with zen off and on. The Nightly workflow runs the same set
+# on dev the slow way, one suite after another, and in the oldest VS Code
+# `engines` allows.
 on:
   pull_request:
   workflow_call:
