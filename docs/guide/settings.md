@@ -93,7 +93,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.display.counts` | `auto` | `shown` or `hidden`: the number beside a name, such as a widget's total or a column's tasks. A screen reader still reads each, and figures that are the point, such as Home's Due today, always show. `auto`: hidden at Zen. |
 | `deckard.display.fileAndLine` | `auto` | Where pages draw the file and line an entry is written in: on `hover` and focus, `always`, or `never`. A screen reader still reads it. `auto`: never at Zen. |
 | `deckard.display.dates` | `auto` | How a due date is written: `both` ("Overdue 2 days · 2026-10-02"), `relative` ("Overdue 2 days"), or `date` ("Overdue · 2026-10-02"). An overdue date always says Overdue. `auto`: relative at Zen. |
-| `deckard.display.pageWidth` | `limited` | How wide pages draw: `limited` to a column at most 1000px wide, or `full`, the panel's full width. In a page's gear, under Theme; the steps never change it. |
+| `deckard.display.pageWidth` | `limited` | How wide pages draw: `limited` to a column at most 1000px wide, or `full`, the panel's full width. In a page's gear, under Theme; the steps never change it. The Task Board and the Calendar always use their full width. |
 | `deckard.showWhatsNew` | `true` | After an update that adds features, Home shows one line linking to what is new. |
 | `deckard.dashboard.openOnStartup` | `false` | Opens the Dashboard when VS Code starts in a workspace where Deckard has indexed notes. |
 | `deckard.tagOverview.hubNoteExpanded` | `true` | Shows a tag's [hub note](search-pages.md#hub-notes) open at the top of its overview. |

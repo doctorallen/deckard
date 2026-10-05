@@ -1900,7 +1900,7 @@
               "Each page keeps to a column at most 1000px wide, in the middle of its panel.",
               "Each page uses its panel's full width, for a wide monitor or a board of many columns."
             ],
-            "description": "How wide Deckard's pages draw. The calendar and the sidebar already use their whole width. Your own choice, the same in every workspace.",
+            "description": "How wide Deckard's pages draw: Home, search and tag pages, the note page, Stats, and Help. The Task Board and the Calendar always use their full width. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.showWhatsNew": {

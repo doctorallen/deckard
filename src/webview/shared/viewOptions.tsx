@@ -122,7 +122,8 @@ export function displayLevelOption(): ViewOptionGroup {
 
 /**
  * The gear's Page width row: limited to a 1000px column, or the panel's full
- * width. Read from the body's marker, as the Display row is.
+ * width. Read from the body's marker, as the Display row is. The Task Board
+ * and the Calendar always use the full width, so their gears leave it out.
  */
 export function pageWidthOption(): ViewOptionGroup {
   const full = document.body.dataset.width === 'full';

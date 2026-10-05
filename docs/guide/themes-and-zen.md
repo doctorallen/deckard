@@ -47,7 +47,7 @@ How much a page draws is a scale of three steps. Pick one with **Display** in a 
 
 Each setting follows the step while it's *Auto*; set one and it stays as you set it at every step. The gear then says so, such as *2 changed · Reset · Customize…*: **Reset** puts the step's own values back, and **Customize…** opens Settings on Display, where each one you changed shows as Modified with its own Reset. None of them changes a color, and none removes a button or filter; whatever is out of sight stays in the page for a screen reader, which hears every count, file, and date in full. In every theme the flat cards' divider reaches 3:1 against the page and the tag color 4.5:1, which a test checks on each change.
 
-**Page width** (`deckard.display.pageWidth`), its own row in the gear under Theme, keeps pages *Limited* to a column at most 1000px wide, or makes them *Full*, the panel's full width, for a wide monitor or a board of many columns. The steps never change it.
+**Page width** (`deckard.display.pageWidth`), its own row in the gear under Theme, keeps pages *Limited* to a column at most 1000px wide, or makes them *Full*, the panel's full width, for a wide monitor. The steps never change it. The Task Board and the Calendar always use the panel's full width, so their gears have no Page width row.
 
 Every Display setting is yours alone: it's the same in every workspace, and a workspace's settings never change how your pages look.
 
