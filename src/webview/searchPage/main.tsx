@@ -129,7 +129,7 @@ function settleTab(snapshot: SearchPageState): void {
   }
 }
 
-/** The whole page: its header, the search box and Refine, the hub, the tag's notes, and the results. */
+/** The whole page: its header, the search box and Refine, the tag's progress, the hub, the tag's notes, and the results. */
 function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
   settleTab(snapshot);
   // A search that does not parse leaves the previous results on the page.
@@ -140,8 +140,9 @@ function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
       <PageHeader snapshot={snapshot} />
       {editor.bar()}
       {editor.facets(tagRefineLines(snapshot))}
-      <HubNote snapshot={snapshot} hubOpen={snapshot.tagPage?.filtered ? (filteredHubOpen ?? false) : hubOpen} />
+      {/* How far along the tag's tasks are, with Refine, which narrows the same tasks, rather than under the hub. */}
       <TagProgress snapshot={snapshot} />
+      <HubNote snapshot={snapshot} hubOpen={snapshot.tagPage?.filtered ? (filteredHubOpen ?? false) : hubOpen} />
       <TagNotes snapshot={snapshot} />
       {invalid ? <p class="stale-results">The search above has not run. These are the results of the last one that did.</p> : null}
       {/* A search that found nothing, and a closer spelling that finds something, so the dead end has a way out of it. */}

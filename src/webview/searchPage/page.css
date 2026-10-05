@@ -69,7 +69,13 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 /* How far along a tag's tasks are, under its hub. */
 .tag-progress { display: grid; grid-template-columns: auto minmax(80px, 200px) 1fr; align-items: center; gap: var(--space-2) var(--space-3); margin: var(--space-3) 0 0; }
 .tag-progress-label { color: var(--muted); font-size: var(--text-sm); }
-@media (max-width: 700px) { .tag-progress { grid-template-columns: auto 1fr; } .tag-progress-label { grid-column: 1 / -1; } }
+/* Each part keeps its column, so a hidden label (plain styling hides the
+   eyebrow) leaves the bar and the words their room rather than sliding
+   them into its narrow column. */
+.tag-progress > .eyebrow { grid-column: 1; }
+.tag-progress > .progress-bar { grid-column: 2; }
+.tag-progress > .tag-progress-label { grid-column: 3; }
+@media (max-width: 700px) { .tag-progress { grid-template-columns: auto 1fr; } .tag-progress > .tag-progress-label { grid-column: 1 / -1; } }
 /* A tag's page's quiet lines under its hub, and what they mark on cards. */
 .tag-notes { display: grid; gap: 4px; margin: 12px 0 0; }
 .tag-note { margin: 0; color: var(--muted); font-size: var(--text-sm); }
