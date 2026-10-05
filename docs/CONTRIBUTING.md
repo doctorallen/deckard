@@ -129,15 +129,17 @@ than three.
 ## Release workflow
 
 Open pull requests from `dev` into `main` or the current `master` branch.
-When a same-repository pull request is opened, reopened, or pushed to, GitHub
-Actions chooses the version increment from Conventional Commit messages,
-cuts `## Unreleased` in `CHANGELOG.md` into that version's dated section
-(`scripts/changelog.js cut`), and commits the `package.json`,
-`package-lock.json`, and `CHANGELOG.md` update back to `dev`. Entries written
-under `## Unreleased` after that are folded into the same section on the next
-push. With nothing written, the section is made from the `feat:` and `fix:`
-commit subjects; a feature release is refused until its Highlights are
-written.
+When the pull request is ready to release, give it the `release` label, or
+run the Prepare Release workflow by hand on `dev` (**Run workflow** in the
+Actions tab). GitHub Actions then chooses the version increment from
+Conventional Commit messages, cuts `## Unreleased` in `CHANGELOG.md` into that
+version's dated section (`scripts/changelog.js cut`), and commits the
+`package.json`, `package-lock.json`, and `CHANGELOG.md` update back to `dev`.
+A push to the pull request cuts nothing, so it starts one CI run, not two.
+Entries written under `## Unreleased` after the cut are folded into the same
+section when the label is given again or the workflow is run again. With
+nothing written, the section is made from the `feat:` and `fix:` commit
+subjects; a feature release is refused until its Highlights are written.
 Breaking changes (`feat!:`/`fix!:` or `BREAKING CHANGE:`) produce a major
 release, `feat:` produces a minor release, and `fix:` produces a patch
 release. Other commit types do not increment the version. If the pull request
