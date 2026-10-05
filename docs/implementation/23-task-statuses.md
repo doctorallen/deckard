@@ -26,18 +26,29 @@ Each status has a **symbol** (the character), a **name**, a **next symbol**
 | `CANCELLED` | Abandoned | done |
 | `NON_TASK` | A list item with a box, not a task | done |
 
-- The defaults are ` ` Todo → `x`, `x` Done → ` `, `/` In Progress → `x`,
-  and `-` Cancelled → ` `. A vault adds its own, often from a theme's set
-  (Minimal, ITS), in the plugin's `data.json`.
+- The core statuses are ` ` Todo → `x` and `x` Done → ` `: they can't be
+  deleted or given another symbol, though their name, next symbol, and type
+  can change. The default custom statuses are `/` In Progress → `x` and `-`
+  Cancelled → ` `. `X` is not a core status. A vault adds its own, often
+  from a theme's set (Minimal, ITS, and others each have a button), in the
+  plugin's `data.json`. A status with an earlier one's symbol is ignored.
 - A symbol it doesn't know is a `TODO` named Unknown, whose next symbol is
-  `x`.
+  `x`; **Add All Unknown Status Types** adds a row for each one found.
+- Clicking a checkbox moves a task to its status's next symbol.
+- `NON_TASK` is for checkbox lines that aren't tasks, such as a Pro and Con
+  list, a star, a quote. Tasks still treats them as tasks: `done` matches
+  them, and grouping by status files them under Done.
+- **Review and check your Statuses** writes a report with a diagram of the
+  transitions, and warns when `DONE` isn't followed by `TODO` or
+  `IN_PROGRESS`.
 - A done date ✅ is written when a task's type changes **to** `DONE`, and
   removed when it changes from it; a cancelled date ❌ when it changes to
   `CANCELLED` (Tasks 5.5, on by default).
 - A recurring task makes its next occurrence only on a change to `DONE`. The
   new one takes the first `TODO` status, else the first `IN_PROGRESS`, else
   ` `. A `NON_TASK` never recurs and never gets a done date.
-- Search: `done`, `not done`, `status.name`, `status.type is`.
+- Search: `done` (DONE, CANCELLED, NON_TASK), `not done` (TODO, IN_PROGRESS,
+  ON_HOLD), `status.name`, `status.type is`; sort and group by either.
 
 ## Where Deckard is today
 
@@ -105,6 +116,10 @@ the `#status/…` tag it stands for:
 - **Types decide everything else**: `todo`, `inProgress`, `onHold` are
   open; `done` is done; `cancelled` is closed but not done; `nonTask` is not
   a task at all, read as text, as `[/]` is today.
+- **` ` and `x` are core**, as in Obsidian: always there, their symbols
+  fixed. `X` stays Done, as Deckard has always read it; an import keeps it
+  unless the vault defines `X`.
+- **A symbol given twice**: the first status is read, as in Obsidian.
 - `deckard.board.statuses` becomes the order of the board's columns, by
   status name; its old values (`todo`, `doing`, `waiting`) are read as the
   statuses whose tag they are. `deckard.tasks.onHoldStatuses` is replaced
@@ -135,18 +150,26 @@ the `#status/…` tag it stands for:
 4. **Unknown symbols are tasks** (Obsidian's rule), said once: "N tasks use
    a status Deckard doesn't know, such as `[?]`; they count as to do. Name
    them in `deckard.tasks.statuses`." The Stats line becomes that count.
-5. **Clicking a box goes to done and back.** A checkbox in a page, the
-   preview, or the Tasks view, and `Deckard: Toggle Task Done`, complete any
-   open status and reopen a done one to the first `todo` status, as now.
-   **Next status** (`Deckard: Next Task Status`, the status's `next`) and
-   **Set Status…** (a quick pick of every status) are new commands, in the
-   task editor and a card's menu.
+5. **Clicking a box follows the status's next symbol**, as in Obsidian, in
+   a page, the preview, and the Tasks view. With the defaults that is done
+   and back, as now; a vault that sends Todo to In progress gets that.
+   `Deckard: Toggle Task Done` still completes any open status and reopens a
+   done one to the first `todo`. **Next status** (`Deckard: Next Task
+   Status`) and **Set Status…** (a quick pick of every status) are new
+   commands, in the task editor and a card's menu.
+10. **`nonTask` statuses are not tasks**, where Obsidian keeps them as tasks
+    that match `done`. In Deckard they would count as done, sit in the Done
+    column, and fill Done this week with a pro and con list. They stay list
+    lines in the note, as unknown characters are today, and Stats counts
+    them as checkbox notes. The type exists so an imported vault's statuses
+    say which characters to leave alone.
 6. **Dates follow the type.** ✅ on a change to `done`, removed on a change
    from it (`deckard.tasks.addDoneDate`, as now); ❌ on a change to
    `cancelled`, removed from it (`deckard.tasks.addCancelledDate`, default
    on, as in Tasks).
 7. **Recurrence on done only.** A 🔁 task makes its next occurrence when it
-   changes to `done`, with the first `todo` status; cancelling one makes
+   changes to `done`, with the first `todo` status, else the first
+   `inProgress`, else ` `, as in Obsidian; cancelling one makes
    none, and the board's Cancel offers "Cancel this one, keep it repeating"
    as a second action that writes the next occurrence too.
 8. **Moving tags to characters is a command, never automatic.**
@@ -195,10 +218,18 @@ the `#status/…` tag it stands for:
    checkbox shows in progress as mixed (`aria-checked="mixed"`) and
    cancelled as closed with its name; the note page and preview query blocks
    draw the same. The grammar colors a status character.
-6. **Moving over.** Move Status Tags into Checkboxes… and Import Statuses
-   from Obsidian Tasks (decisions 8 and 9); the first scan's notice offers
-   the import where `data.json` is found, and the move where a workspace has
-   `#status/…` tags whose statuses have symbols.
+6. **Moving over, and editing statuses.** Move Status Tags into
+   Checkboxes… and Import Statuses from Obsidian Tasks (decisions 8 and 9);
+   the first scan's notice offers the import where `data.json` is found,
+   and the move where a workspace has `#status/…` tags whose statuses have
+   symbols. `Deckard: Edit Task Statuses…` opens a page to edit the list,
+   since VS Code's Settings editor offers only "Edit in settings.json" for
+   it: rows for symbol, name, type, next, and tag; the core rows locked;
+   **Add characters found in notes** (Tasks' Add All Unknown Status Types);
+   presets; Import; and the checks Tasks' Review report makes (a next symbol
+   no row has, a symbol given twice, Done not followed by to do or in
+   progress), shown as you type beside each status's cycle. Drawn at
+   https://claude.ai/artifact/KD8GsdJu9zhzuSrXzQeRfx.
 7. **Everywhere else, tests, and docs.** The calendar export writes
    `STATUS:CANCELLED` / `COMPLETED`; the assistant tools show and filter by
    status; the samples use `[/]` and `[-]`; the guide's Tasks, Task board,
