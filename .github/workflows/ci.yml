@@ -236,9 +236,10 @@ jobs:
   # what Linux cannot show: paths with drive letters and backslashes, and
   # line endings (.gitattributes keeps every checkout's at LF). Lint and the
   # type check read the same files on every system and run in `checks`; the
-  # pages are drawn and compared on Linux alone.
+  # pages are drawn and compared on Linux alone. No display name: master's
+  # ruleset requires the checks `extension-host (windows-latest)` and
+  # `extension-host (macos-latest)`, the names GitHub gives this job.
   extension-host:
-    name: Unit and host suites on ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
