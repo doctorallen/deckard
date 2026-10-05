@@ -180,6 +180,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       setTagOverviewSort: (message) => preferences.display.setTagOverviewSortMode(message.mode),
       setTagOverviewLayout: (message) => preferences.display.setTagOverviewLayout(message.layout),
       setSearchPreview: (message) => preferences.display.setSearchPreview(message.preview),
+      setSearchHierarchy: (message) => preferences.display.setSearchHierarchy(message.hierarchy),
       setSearchColumns: (message) => preferences.display.setDashboardColumns(message.section, message.columns),
       openHelp: openHelp('search'),
       openGoTo: openGoTo(),

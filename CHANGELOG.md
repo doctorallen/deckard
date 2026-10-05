@@ -4,11 +4,13 @@
 
 ### Added
 
-- **Hierarchy on search pages.** A third layout in the gear groups the
-  results under each tag Refine offers, with how many notes and tasks each
-  holds and a bar for how many of its tasks are done. A note or task is
-  shown where it is most specific, under its own tags before the ones it
-  inherits, so a tagged heading is never listed beside the note it is in.
+- **Hierarchy on search pages.** **Hierarchy** in the gear groups the
+  results under each tag Refine offers, in tabs or side by side, with how
+  many notes and tasks each holds and a bar for how many of its tasks are
+  done. A note or task is shown where it is most specific, under its own
+  tags before the ones it inherits, so a tagged heading is never listed
+  beside the note it is in, and a grouped card leaves out the task lines
+  listed under it.
 
 ### Changed
 

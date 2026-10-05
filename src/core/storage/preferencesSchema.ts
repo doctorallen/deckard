@@ -143,7 +143,7 @@ const TAG_SORT_MODES: readonly TagSortMode[] = ['alphabetical', 'count', 'access
 const TASK_SORT_MODES: readonly TaskSortMode[] = ['rank', 'created', 'updated'];
 const COLUMN_COUNTS: readonly DashboardColumnCount[] = [1, 2, 3, 4];
 const TAG_OVERVIEW_SORT_MODES: readonly TagOverviewSortMode[] = ['alphabetical', 'created', 'updated', 'access'];
-const TAG_OVERVIEW_LAYOUTS: readonly TagOverviewLayout[] = ['tabs', 'split', 'hierarchy'];
+const TAG_OVERVIEW_LAYOUTS: readonly TagOverviewLayout[] = ['tabs', 'split'];
 const SEARCH_PREVIEWS: readonly SearchPreview[] = ['none', 'lines', 'full'];
 const RELATED_NOTES_SORT_MODES: readonly RelatedNotesSortMode[] = ['newest', 'oldest', 'tags', 'access'];
 const TASK_LAYOUTS: readonly TaskLayout[] = ['list', 'board', 'table'];
@@ -326,6 +326,7 @@ function normalizeSearchPages(
   | 'tagOverviewLayout'
   | 'searchPageSize'
   | 'searchPreview'
+  | 'searchHierarchy'
   | 'relatedNotesSortMode'
   | 'hideDailyNotes'
   | 'relatedNotesPreviewLines'
@@ -342,6 +343,7 @@ function normalizeSearchPages(
     tagOverviewLayout: oneOf(source.tagOverviewLayout, TAG_OVERVIEW_LAYOUTS, 'tabs'),
     searchPageSize: oneOf<SearchPageSize>(source.searchPageSize, SEARCH_PAGE_SIZES, DEFAULT_SEARCH_PAGE_SIZE),
     searchPreview: oneOf(source.searchPreview, SEARCH_PREVIEWS, 'lines'),
+    ...(source.searchHierarchy === 'tags' ? { searchHierarchy: 'tags' as const } : {}),
     relatedNotesSortMode: oneOf(source.relatedNotesSortMode, RELATED_NOTES_SORT_MODES, 'tags'),
     ...(source.hideDailyNotes === true ? { hideDailyNotes: true as const } : {}),
     ...(previewLines === 0 || previewLines === 2 ? { relatedNotesPreviewLines: previewLines } : {}),

@@ -32,7 +32,7 @@ export type TagOverviewSortMode =
   | 'access';
 
 /** Whether a search page shows its notes and tasks as tabs or side by side. */
-export type TagOverviewLayout = 'tabs' | 'split' | 'hierarchy';
+export type TagOverviewLayout = 'tabs' | 'split';
 
 /**
  * The page sizes a search page offers.
@@ -133,6 +133,9 @@ export type RenderMode = 'markdown' | 'html';
 /** How much of each result a search page shows: none, three lines, or all. */
 export type SearchPreview = 'none' | 'lines' | 'full';
 
+/** Whether a search page lists its results as they come, or grouped under the tags Refine offers. */
+export type SearchHierarchy = 'off' | 'tags';
+
 /** Everything Deckard keeps between sessions, in the shape it is stored in. */
 export interface PersistedPreferences {
   version: 1;
@@ -159,6 +162,8 @@ export interface PersistedPreferences {
   searchPageSize: SearchPageSize;
   /** How much of each result a search page shows. */
   searchPreview: SearchPreview;
+  /** A search page groups its results under Refine's tags, in either layout; stored only when on. */
+  searchHierarchy?: 'tags';
   relatedNotesSortMode: RelatedNotesSortMode;
   /** Related Notes and Linked from leave out daily, weekly, and monthly notes. */
   hideDailyNotes?: true;

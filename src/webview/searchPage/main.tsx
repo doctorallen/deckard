@@ -392,6 +392,7 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   'set-mode': (target) => send({ type: 'setRenderMode', mode: target.dataset.mode as never }),
   'set-layout': (target) => send({ type: 'setTagOverviewLayout', layout: target.dataset.layout as never }),
   'set-preview': (target) => send({ type: 'setSearchPreview', preview: target.dataset.value as never }),
+  'set-hierarchy': (target) => send({ type: 'setSearchHierarchy', hierarchy: target.dataset.value as never }),
   'toggle-card-body': (target) => toggleCardBody(target),
   'edit-results': (target) => send({ type: 'editResults', kind: target.dataset.kind === 'tasks' ? 'tasks' : 'notes' }),
   'export-results': (target) => send({ type: 'exportResults', kind: target.dataset.kind === 'tasks' ? 'tasks' : 'notes' }),

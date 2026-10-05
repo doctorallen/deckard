@@ -1,7 +1,7 @@
 /**
- * What a search found: its notes as cards and its tasks as rows, each kind
- * a page at a time, in two tabs or side by side; or grouped under Refine's
- * tags.
+ * What a search found: its notes as cards and its tasks as rows, in two tabs
+ * or side by side, each kind a page at a time, or, with the hierarchy on,
+ * grouped under the tags Refine offers.
  */
 import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { DashboardTask } from '../../ui/protocol/shared';
@@ -14,6 +14,11 @@ import { TaskListRow } from '../shared/taskRow';
 
 /** A kind of result. */
 export type ResultKind = 'notes' | 'tasks';
+
+/** Whether the results are drawn in groups: the hierarchy is on, and there is something to group. */
+function isGrouped(snapshot: SearchPageSnapshot): boolean {
+  return snapshot.hierarchy === 'tags' && Boolean(snapshot.groups && snapshot.groups.length);
+}
 
 /** What the results are drawn from besides the snapshot: the tab shown, and the cards opened with Show all. */
 export interface ResultsView {
@@ -141,6 +146,14 @@ function emptyNotesMessage(snapshot: SearchPageSnapshot): string {
 function NotesPane({ view }: { readonly view: ResultsView }) {
   const { snapshot, openedCards } = view;
   const display: CardDisplay = { renderMode: snapshot.renderMode, preview: snapshot.preview, titleDisplay: snapshot.tagTitleDisplayMode };
+  if (isGrouped(snapshot) && snapshot.sections.length) {
+    return (
+      <section class="overview-pane" aria-labelledby="notes-heading">
+        <PaneHeader kind="notes" view={view} />
+        <ResultGroups key="notes-groups" snapshot={snapshot} openedCards={openedCards} part="notes" />
+      </section>
+    );
+  }
   return (
     <section class="overview-pane" aria-labelledby="notes-heading">
       <PaneHeader kind="notes" view={view} />
@@ -166,6 +179,14 @@ function SearchTask({ item, snapshot }: { readonly item: DashboardTask; readonly
 /** The tasks pane: its heading and actions, the rows, and its pages. */
 function TasksPane({ view }: { readonly view: ResultsView }) {
   const { snapshot } = view;
+  if (isGrouped(snapshot) && snapshot.tasks.length) {
+    return (
+      <section class="overview-pane" aria-labelledby="tasks-heading">
+        <PaneHeader kind="tasks" view={view} />
+        <ResultGroups key="tasks-groups" snapshot={snapshot} openedCards={view.openedCards} part="tasks" />
+      </section>
+    );
+  }
   return (
     <section class="overview-pane" aria-labelledby="tasks-heading">
       <PaneHeader kind="tasks" view={view} />
@@ -178,13 +199,30 @@ function TasksPane({ view }: { readonly view: ResultsView }) {
 }
 
 /**
- * The results: grouped under Refine's tags, side by side, or as Notes and
- * Tasks tabs over their panes, each tab counting what its pane holds, so a
- * tab never promises more rows than the pane behind it.
+ * Side by side with the hierarchy on: the two headings over their columns,
+ * then each group a row, its notes beside its tasks.
+ */
+function SplitGroups({ view }: { readonly view: ResultsView }) {
+  return (
+    <div key="split-groups" class="overview-split-groups">
+      <div class="overview-split">
+        <section class="overview-pane" aria-labelledby="notes-heading"><PaneHeader kind="notes" view={view} /></section>
+        <section class="overview-pane" aria-labelledby="tasks-heading"><PaneHeader kind="tasks" view={view} /></section>
+      </div>
+      <ResultGroups snapshot={view.snapshot} openedCards={view.openedCards} part="both" />
+    </div>
+  );
+}
+
+/**
+ * The results: side by side, or as Notes and Tasks tabs over their panes,
+ * each tab counting what its pane holds, so a tab never promises more rows
+ * than the pane behind it; either grouped under Refine's tags when the
+ * hierarchy is on.
  */
 export function Results({ view }: { readonly view: ResultsView }) {
-  if (view.snapshot.layout === 'hierarchy') {
-    return <ResultGroups key="hierarchy" snapshot={view.snapshot} openedCards={view.openedCards} />;
+  if (view.snapshot.layout === 'split' && isGrouped(view.snapshot)) {
+    return <SplitGroups view={view} />;
   }
   if (view.snapshot.layout === 'split') {
     return <div key="split" class="overview-split"><NotesPane view={view} /><TasksPane view={view} /></div>;

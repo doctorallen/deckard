@@ -18,6 +18,7 @@ import type {
   SetSearchColumnsMessage,
   SetSearchPreviewMessage,
   SetTagOverviewLayoutMessage,
+  SetSearchHierarchyMessage,
   SetTagOverviewSortMessage,
 } from '../../../protocol/searchPage';
 import type { MergeTagsMessage } from '../../../protocol/shared';
@@ -115,6 +116,12 @@ const narrowEditResults: Narrower<EditResultsMessage> = (value) =>
 const narrowSetRenderMode: Narrower<SetRenderModeMessage> = (value) =>
   value.mode === 'markdown' || value.mode === 'html' ? { type: 'setRenderMode', mode: value.mode } : undefined;
 
+/** The results grouped under Refine's tags, or not. */
+const narrowSetSearchHierarchy: Narrower<SetSearchHierarchyMessage> = (value) =>
+  value.hierarchy === 'off' || value.hierarchy === 'tags'
+    ? { type: 'setSearchHierarchy', hierarchy: value.hierarchy }
+    : undefined;
+
 /** How much of each result to show. */
 const narrowSetSearchPreview: Narrower<SetSearchPreviewMessage> = (value) =>
   value.preview === 'none' || value.preview === 'lines' || value.preview === 'full'
@@ -127,9 +134,9 @@ const narrowSetTagOverviewSort: Narrower<SetTagOverviewSortMessage> = (value) =>
     ? { type: 'setTagOverviewSort', mode: value.mode }
     : undefined;
 
-/** Notes and tasks as tabs, side by side, or grouped under Refine's tags. */
+/** Notes and tasks as tabs or side by side. */
 const narrowSetTagOverviewLayout: Narrower<SetTagOverviewLayoutMessage> = (value) =>
-  value.layout === 'tabs' || value.layout === 'split' || value.layout === 'hierarchy'
+  value.layout === 'tabs' || value.layout === 'split'
     ? { type: 'setTagOverviewLayout', layout: value.layout }
     : undefined;
 
@@ -183,6 +190,7 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   toggleTask: narrowToggleTask,
   setRenderMode: narrowSetRenderMode,
   setSearchPreview: narrowSetSearchPreview,
+  setSearchHierarchy: narrowSetSearchHierarchy,
   setTagOverviewSort: narrowSetTagOverviewSort,
   setTagOverviewLayout: narrowSetTagOverviewLayout,
   setSearchColumns: narrowSetSearchColumns,

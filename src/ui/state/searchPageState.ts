@@ -47,6 +47,7 @@ import { linkProgressParts } from './progressLinks';
 import { isEntrySection } from '../../domain/markdown/noteEntries';
 import { getEntryLineMap, getEntryTextOf, getFileEntryLines, isFileEntry } from '../../domain/index/noteEntryIndex';
 import { stripTags } from '../../domain/markdown/parser';
+import { isTaskItemLine } from '../../domain/markdown/listNesting';
 import {
   Entity,
   SearchPreview,
@@ -180,8 +181,8 @@ export function createSearchPageSnapshot(
       markVia(createDashboardTask(task, index.sections, options.queryContext), task.id),
       isParkedTask(index, task.id),
     );
-  const groups = preferences.tagOverviewLayout === 'hierarchy'
-    ? drawResultGroups(index, { facets, ranked, tasks, drawTask, drawNotes: (keys) => drawNoteCards(index, preferences, { keys, page, tagTitleDisplayMode, markVia }) })
+  const groups = preferences.searchHierarchy === 'tags'
+    ? drawResultGroups(index, { facets, ranked, tasks, drawTask, drawNotes: (keys) => drawNoteCards(index, preferences, { keys, page, tagTitleDisplayMode, markVia, withoutTasks: true }) })
     : undefined;
 
   return {
@@ -210,6 +211,7 @@ export function createSearchPageSnapshot(
     preview: preferences.searchPreview,
     sortMode: preferences.tagOverviewSortMode,
     layout: preferences.tagOverviewLayout,
+    hierarchy: preferences.searchHierarchy ?? 'off',
     noteColumns: preferences.dashboardNoteColumns,
     taskColumns: preferences.dashboardTaskColumns,
     tagTitleDisplayMode,
@@ -341,11 +343,13 @@ function rankNoteKeys(
 function drawNoteCards(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
-  { keys, page, tagTitleDisplayMode, markVia }: {
+  { keys, page, tagTitleDisplayMode, markVia, withoutTasks }: {
     keys: readonly NoteKey[];
     page: SearchPageResults;
     tagTitleDisplayMode: TagTitleDisplayMode;
     markVia: <T extends object>(item: T, id: string) => T;
+    /** Leave the task lines out of each card, when the tasks are listed beside it. */
+    withoutTasks?: boolean;
   },
 ): TagOverviewCard[] {
   // Which entries are pinned, so a card's menu offers pinning or unpinning
@@ -391,7 +395,8 @@ function drawNoteCards(
     return card;
   };
   return keys.map((key) => {
-    const card = key.section ? cardFor(key.section) : fileCardFor(key.file as ParsedFile);
+    const drawn = key.section ? cardFor(key.section) : fileCardFor(key.file as ParsedFile);
+    const card = withoutTasks ? dropTaskLines(drawn, cardLines) : drawn;
     return withPreview(
       markParked(markVia(card, key.section ? key.section.id : card.filePath), isParkedKey(index, key)),
       preferences.searchPreview,
@@ -399,6 +404,31 @@ function drawNoteCards(
       cardLines.get(card.id),
     );
   });
+}
+
+/**
+ * A card without its task lines, for the hierarchy, which lists the tasks
+ * under the card with their progress, so the card would only repeat them.
+ * Its line map follows, so a snippet still opens where its words are.
+ */
+function dropTaskLines(card: TagOverviewCard, cardLines: Map<string, CardLines>): TagOverviewCard {
+  const texts = card.rawContent.split(/\r?\n/);
+  const kept = cardLines.get(card.id);
+  const map = kept?.map ?? texts.map((_text, at) => ({ line: card.startLine + 1 + at }));
+  const lines = texts
+    .map((text, at) => ({ text, place: map[at] ?? { line: card.startLine + 1 + at } }))
+    .filter(({ text }) => !isTaskItemLine(text))
+    // A run of blank lines a list leaves behind reads as one.
+    .filter(({ text }, at, all) => text.trim() !== '' || (at > 0 && all[at - 1].text.trim() !== ''));
+  while (lines.length && !lines[lines.length - 1].text.trim()) {
+    lines.pop();
+  }
+  while (lines.length && !lines[0].text.trim()) {
+    lines.shift();
+  }
+  cardLines.set(card.id, { map: lines.map(({ place }) => place), entryId: kept?.entryId ?? '' });
+  const rawContent = lines.map(({ text }) => text).join('\n');
+  return { ...card, rawContent, bodyTokens: buildBlockExcerpt(rawContent) };
 }
 
 /**

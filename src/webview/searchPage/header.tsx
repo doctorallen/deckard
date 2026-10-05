@@ -8,7 +8,7 @@ import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { TagReference } from '../../ui/protocol/shared';
 import { HelpButton, IconButton } from '../shared/buttons';
 import { Eyebrow } from '../shared/eyebrow';
-import { LayoutHierarchyIcon, LayoutSplitIcon, LayoutTabsIcon, RenderedIcon, SortIcon, SourceIcon } from '../shared/strokeIcons';
+import { LayoutSplitIcon, LayoutTabsIcon, RenderedIcon, SortIcon, SourceIcon } from '../shared/strokeIcons';
 import { TagLabel } from '../shared/tagLabel';
 import { displayLevelOption, pageWidthOption, themeOption, ViewOptionChoices, ViewOptions } from '../shared/viewOptions';
 
@@ -64,7 +64,7 @@ function SortControl({ mode }: { readonly mode: SearchPageSnapshot['sortMode'] }
   );
 }
 
-/** One of a set of icon toggles, such as Tabs, Side by side, and Hierarchy. */
+/** One of a pair of icon toggles, such as Tabs and Side by side. */
 interface ToggleChoice {
   readonly value: string;
   readonly label: string;
@@ -72,7 +72,7 @@ interface ToggleChoice {
   readonly icon: ComponentChildren;
 }
 
-/** A set of icon toggles in the gear, the one in use pressed. */
+/** A pair of icon toggles in the gear, the one in use pressed. */
 function IconToggles({ action, attribute, current, label, extraClass, choices }: {
   readonly action: string;
   /** The data attribute each toggle carries its value in. */
@@ -126,8 +126,18 @@ function SearchViewOptions({ snapshot }: { readonly snapshot: SearchPageSnapshot
             <IconToggles action="set-layout" attribute="data-layout" current={snapshot.layout} label="Content layout" extraClass="layout-toggle-group" choices={[
               { value: 'tabs', label: 'Tabs layout', tip: 'Tabs: switch between Notes and Tasks', icon: <LayoutTabsIcon /> },
               { value: 'split', label: 'Side-by-side layout', tip: 'Side by side: Notes 60%, Tasks 40%', icon: <LayoutSplitIcon /> },
-              { value: 'hierarchy', label: 'Hierarchy layout', tip: "Hierarchy: notes and tasks under each tag Refine offers, with each tag's progress", icon: <LayoutHierarchyIcon /> },
             ]} />
+          ),
+        },
+        {
+          label: 'Hierarchy',
+          content: (
+            <ViewOptionChoices
+              action="set-hierarchy"
+              choices={[['off', 'Off', 'No hierarchy'], ['tags', 'By tag', "Group by Refine's tags"]]}
+              selected={snapshot.hierarchy || 'off'}
+              label="Group the results by tag"
+            />
           ),
         },
         {

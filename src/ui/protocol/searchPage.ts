@@ -9,6 +9,7 @@ import type {
   RenderMode,
   SearchPageSize,
   SearchPreview,
+  SearchHierarchy,
   TagOverviewLayout,
   TagOverviewSortMode,
 } from '../../domain/model/preferences';
@@ -98,7 +99,9 @@ export interface SearchPageSnapshot {
   layout: TagOverviewLayout;
   /** The page sizes the reader can choose between. */
   pageSizes: readonly SearchPageSize[];
-  /** In the Hierarchy layout, the results grouped under the tags Refine offers. */
+  /** Whether the results are grouped under the tags Refine offers. */
+  hierarchy: SearchHierarchy;
+  /** With the hierarchy on, the results grouped under the tags Refine offers. */
   groups?: SearchResultGroup[];
   noteColumns: DashboardColumnCount;
   taskColumns: DashboardColumnCount;
@@ -121,8 +124,8 @@ export interface SearchPageSnapshot {
 }
 
 /**
- * The results that carry one of the tags Refine offers, as the Hierarchy
- * layout groups them, or those that carry none of them. A result carrying two
+ * The results that carry one of the tags Refine offers, as the hierarchy
+ * groups them, or those that carry none of them. A result carrying two
  * of the tags is in both groups.
  */
 export interface SearchResultGroup {
@@ -313,6 +316,12 @@ export interface SetTagOverviewLayoutMessage {
   layout: TagOverviewLayout;
 }
 
+/** Turns a search page's hierarchy on or off. */
+export interface SetSearchHierarchyMessage {
+  type: 'setSearchHierarchy';
+  hierarchy: SearchHierarchy;
+}
+
 /** Chooses how much of each result a search page shows. */
 export interface SetSearchPreviewMessage {
   type: 'setSearchPreview';
@@ -345,6 +354,7 @@ export interface SearchPagePageToHost {
   toggleTask: ToggleTaskMessage;
   setRenderMode: SetRenderModeMessage;
   setSearchPreview: SetSearchPreviewMessage;
+  setSearchHierarchy: SetSearchHierarchyMessage;
   openTag: OpenTagMessage;
   renameTag: RenameTagMessage;
   parkTag: MessageAs<ParkTagMessage, 'parkTag'>;

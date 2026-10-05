@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createQueryContext } from '../domain/query/queryContext';
-import type { TagOverviewLayout } from '../domain/model';
+import type { SearchHierarchy, TagOverviewLayout } from '../domain/model';
 import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 import type { SearchPageSnapshot } from '../ui/protocol/searchPage';
 import { createPreferences } from './preferenceServices';
@@ -11,9 +11,9 @@ import { openWebviewPage, type WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 
 /**
- * The search page's Hierarchy layout: the results under each tag Refine
- * offers, each shown where it is most specific, and no card repeating the
- * text of a heading that is a note of its own.
+ * The search page's hierarchy, in either layout: the results under each tag
+ * Refine offers, each shown where it is most specific, and no card repeating
+ * the text of a heading that is a note of its own, or its tasks.
  */
 suite('Search page: Hierarchy', () => {
   let page: WebviewPage | undefined;
@@ -23,10 +23,14 @@ suite('Search page: Hierarchy', () => {
     page = undefined;
   });
 
-  const snapshotOf = (notes: Record<string, string>, query: string, layout: TagOverviewLayout = 'hierarchy'): SearchPageSnapshot => {
+  const snapshotOf = (
+    notes: Record<string, string>,
+    query: string,
+    { layout = 'tabs', hierarchy = 'tags' }: { layout?: TagOverviewLayout; hierarchy?: SearchHierarchy } = {},
+  ): SearchPageSnapshot => {
     const index = buildWorkspaceIndex(new Map(Object.entries(notes).map(([path, content]) => [path, parseMarkdown(path, content)])));
     const store = createPreferences({ get: (_key: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never);
-    return createSearchPageSnapshot(index, { ...store.reader.value, tagOverviewLayout: layout }, query, { queryContext: createQueryContext(Date.now()) });
+    return createSearchPageSnapshot(index, { ...store.reader.value, tagOverviewLayout: layout, ...(hierarchy === 'tags' ? { searchHierarchy: 'tags' as const } : {}) }, query, { queryContext: createQueryContext(Date.now()) });
   };
 
   const PLAN: Record<string, string> = {
@@ -76,16 +80,49 @@ suite('Search page: Hierarchy', () => {
     assert.deepStrictEqual([group?.taskCount, group?.doneCount, group?.noteCount], [2, 1, 1]);
   });
 
-  test('draws each group with its tag, counts, and progress, and its tag narrows the search', () => {
+  /** The group for a tag inside a part of the page. */
+  const groupIn = (container: string, tag: string): Element =>
+    (page as WebviewPage).findAll(`${container} .result-group`).find((group) => group.querySelector('.result-group-tag')?.textContent === tag) as Element;
+
+  test('in tabs, the Notes tab groups the notes and the Tasks tab the tasks, with their progress', () => {
     page = openWebviewPage(renderPage('searchPage'), snapshotOf(PLAN, '#project/atlas'));
-    const decision = page.findAll('.result-group').find((group) => group.querySelector('.result-group-tag')?.textContent?.includes('decision/accepted')) as Element;
-    assert.ok(decision, 'a group for the decision tag');
+    assert.ok(page.findAll('[role="tab"]').length >= 2, 'the Notes and Tasks tabs stay');
+    const notes = groupIn('#result-panel-notes', '#decision/accepted');
+    const tasks = groupIn('#result-panel-tasks', '#decision/accepted');
+    assert.ok(notes && tasks, 'the decision group in both tabs');
+    assert.strictEqual(notes.querySelector('.result-group-count')?.textContent, '1 note');
+    assert.strictEqual(notes.querySelector('.progress-bar'), null, 'the notes tab draws no bar');
+    assert.strictEqual(notes.querySelectorAll('.task-row').length, 0);
+    assert.strictEqual(tasks.querySelector('.result-group-count')?.textContent, '2 tasks');
+    assert.strictEqual(tasks.querySelector('.result-group-progress-label')?.textContent, '1 of 2 done');
+    assert.strictEqual(tasks.querySelectorAll('.card').length, 0);
+    (tasks.querySelector('.result-group-tag') as HTMLElement).click();
+    assert.deepStrictEqual(page.lastPosted('setOverviewQuery'), { type: 'setOverviewQuery', query: '#project/atlas AND #decision/accepted', remember: false });
+  });
+
+  test('side by side, each group is a row of its notes beside its tasks', () => {
+    page = openWebviewPage(renderPage('searchPage'), snapshotOf(PLAN, '#project/atlas', { layout: 'split' }));
+    const decision = groupIn('.overview-split-groups', '#decision/accepted');
     assert.strictEqual(decision.querySelector('.result-group-count')?.textContent, '1 note · 2 tasks');
     assert.strictEqual(decision.querySelector('.result-group-progress-label')?.textContent, '1 of 2 done');
-    assert.ok(decision.querySelector('.progress-bar'), 'with a bar');
-    assert.strictEqual(page.findAll('.result-tabs, [role="tablist"]').length, 0, 'no Notes and Tasks tabs');
-    (decision.querySelector('.result-group-tag') as HTMLElement).click();
-    assert.deepStrictEqual(page.lastPosted('setOverviewQuery'), { type: 'setOverviewQuery', query: '#project/atlas AND #decision/accepted', remember: false });
+    const [notes, tasks] = Array.from(decision.querySelectorAll('.result-group-column'));
+    assert.strictEqual(notes.querySelectorAll('.card').length, 1);
+    assert.strictEqual(tasks.querySelectorAll('.task-row').length, 2);
+    assert.strictEqual(page.findAll('[role="tab"]').length, 0, 'no tabs side by side');
+  });
+
+  test('a grouped card leaves out its task lines, which are listed under it', () => {
+    const decision = snapshotOf(PLAN, '#project/atlas').groups?.find((group) => group.tag?.clause === '#decision/accepted')?.notes[0];
+    assert.ok(decision?.rawContent.includes('We chose the hosted fields.'));
+    assert.ok(!decision?.rawContent.includes('Sign the contract'), decision?.rawContent);
+    const ungrouped = snapshotOf(PLAN, '#project/atlas', { hierarchy: 'off' }).sections.find((card) => card.heading.startsWith('Decision'));
+    assert.ok(ungrouped?.rawContent.includes('Sign the contract'), 'without the hierarchy a card is as written');
+  });
+
+  test('the gear turns the hierarchy on and off, apart from the layout', () => {
+    page = openWebviewPage(renderPage('searchPage'), snapshotOf(PLAN, '#project/atlas', { hierarchy: 'off' }));
+    page.click('[data-action="set-hierarchy"][data-value="tags"]');
+    assert.deepStrictEqual(page.lastPosted('setSearchHierarchy'), { type: 'setSearchHierarchy', hierarchy: 'tags' });
   });
 
   test('a group with more than it draws offers the rest as a narrower search', () => {
@@ -109,8 +146,8 @@ suite('Search page: Hierarchy', () => {
     assert.strictEqual(page.text('.result-group-heading'), 'Results');
   });
 
-  test('only the Hierarchy layout sends groups', () => {
-    assert.strictEqual(snapshotOf(PLAN, '#project/atlas', 'tabs').groups, undefined);
+  test('with the hierarchy off, no groups are sent', () => {
+    assert.strictEqual(snapshotOf(PLAN, '#project/atlas', { hierarchy: 'off' }).groups, undefined);
   });
 });
 
