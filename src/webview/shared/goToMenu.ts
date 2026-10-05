@@ -11,6 +11,7 @@
  * else, the webview included, closes it.
  */
 import { walkMenu } from './menuKeys';
+import { createPageIcon } from './pageIcons';
 
 /** One page in the menu, as the host sends it. */
 interface GoToMenuPage {
@@ -88,12 +89,12 @@ function show(anchor: HTMLElement, list: GoToPagesMessage): void {
   drawn.setAttribute('role', 'menu');
   drawn.setAttribute('aria-label', 'Go to a page');
   for (const page of list.pages) {
-    drawn.append(createItem(page.label, page.description, page.id));
+    drawn.append(createItem(page.label, page.description, page.id, page.id === 'find'));
   }
   const rule = document.createElement('div');
   rule.className = 'go-to-separator';
   rule.setAttribute('role', 'separator');
-  drawn.append(rule, createItem('Go to…', list.key));
+  drawn.append(rule, createItem('Go to…', list.key, undefined, true));
   drawn.addEventListener('keydown', (event) => {
     if (walkMenu(drawn, event, '.go-to-item')) {
       return;
@@ -123,8 +124,12 @@ function show(anchor: HTMLElement, list: GoToPagesMessage): void {
   drawn.querySelector<HTMLElement>('.go-to-item')?.focus();
 }
 
-/** One row: a page by its id, or, with none, Go to… itself. */
-function createItem(label: string, hint: string, page?: string): HTMLButtonElement {
+/**
+ * One row: a page's glyph and name, by its id, or, with none, Go to…
+ * itself; then its hint, a key to press drawn as a key (`shortcut`), or
+ * what the page holds now.
+ */
+function createItem(label: string, hint: string, page?: string, shortcut = false): HTMLButtonElement {
   const item = document.createElement('button');
   item.type = 'button';
   item.className = 'menu-item go-to-item';
@@ -136,10 +141,10 @@ function createItem(label: string, hint: string, page?: string): HTMLButtonEleme
   const name = document.createElement('span');
   name.className = 'go-to-label';
   name.textContent = label;
-  item.append(name);
+  item.append(createPageIcon(page), name);
   if (hint) {
-    const detail = document.createElement('span');
-    detail.className = 'menu-key';
+    const detail = document.createElement(shortcut ? 'kbd' : 'span');
+    detail.className = shortcut ? 'menu-key is-shortcut' : 'menu-key';
     detail.textContent = hint;
     item.append(detail);
   }

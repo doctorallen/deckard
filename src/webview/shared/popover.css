@@ -40,6 +40,11 @@ button.menu-item:hover:where(:not(:disabled):not([aria-disabled="true"])) .menu-
    it off. */
 .go-to-menu { position: fixed; min-width: 260px; max-width: calc(100vw - 16px); }
 .go-to-label { white-space: nowrap; }
+/* Each page's glyph, in the row's ink, as the Pages view shows it. */
+.go-to-icon { flex: 0 0 16px; width: 16px; height: 16px; }
+/* A key to press, such as Find's, reads as text, a size up from the counts
+   and hints beside the other pages, where its small symbols were lost. */
+.menu-key.is-shortcut { color: var(--text); font-size: var(--text-sm); letter-spacing: .04em; }
 .go-to-separator { height: 1px; margin: var(--space-1) 0; background: var(--line-strong); }
 /* The one tip every page shares (data-tip), placed by the page script. A
    facet value's tip runs to several lines, so its line breaks are kept. */
