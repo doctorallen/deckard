@@ -55,3 +55,31 @@ export function isFileEntry(file: ParsedFile): boolean {
   const id = fileEntryId(file.filePath);
   return file.frontmatterTags.length > 0 && (file.sections.length === 0 || file.sections.some((section) => section.entryId === id));
 }
+
+/** Each index's note count, counted once. */
+const noteCounts = new WeakMap<WorkspaceIndex, number>();
+
+/**
+ * How many notes the workspace holds, as search counts them: every section
+ * that is a note of its own, and every note tagged in its front matter that
+ * is an entry as a whole (noteEntries.ts). `is:note` finds this many.
+ */
+export function countNotes(index: WorkspaceIndex): number {
+  const cached = noteCounts.get(index);
+  if (cached !== undefined) {
+    return cached;
+  }
+  let count = 0;
+  index.sections.forEach((section) => {
+    if (entryIdOf(section) === section.id) {
+      count += 1;
+    }
+  });
+  index.files.forEach((file) => {
+    if (isFileEntry(file)) {
+      count += 1;
+    }
+  });
+  noteCounts.set(index, count);
+  return count;
+}

@@ -100,7 +100,7 @@ export function StatsMetrics({ snapshot }: { readonly snapshot: DeckardStatsSnap
   return (
     <section class="metrics stats-section" aria-label="Index statistics">
       <Metric label="Files" value={snapshot.fileCount} />
-      <Metric label="Notes" value={snapshot.sectionCount} query="is:note" hint="Open a search for every note. Each heading, and each tagged line, is a note, so a file can hold several" trend={trendOf(snapshot, 'notes', 'notes')} />
+      <Metric label="Notes" value={snapshot.sectionCount} query="is:note" hint="Open a search for every note. A heading with tags of its own is a note, with the untagged headings under it, and so is each tagged line, so a file can hold several" trend={trendOf(snapshot, 'notes', 'notes')} />
       <Metric label="Tasks" value={snapshot.taskCount} query="is:task" hint="Open a search for every task" trend={trendOf(snapshot, 'tasks', 'tasks')} />
       <Metric label="Open tasks" value={snapshot.activeTaskCount} query="is:open" hint="Open a search for every open task" trend={trendOf(snapshot, 'openTasks', 'open tasks')} />
       <ActionMetric label="Tags" value={snapshot.tagCount} action="open-tag-list" hint="Choose a tag to open" attributes={{ 'data-namespaced': 'false' }} />

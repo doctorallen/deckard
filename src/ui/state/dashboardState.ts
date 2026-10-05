@@ -6,7 +6,6 @@ import { startOfWeek } from '../../domain/markdown/dates';
 import { withoutParked } from '../../domain/index/parked';
 import { baseCollator } from './entryCards';
 import { resolveQueryTags } from './querySuggestions';
-import { listFrontmatterOnlyFiles } from './searchPageState';
 import {
   Entity,
   PersistedPreferences,
@@ -17,6 +16,7 @@ import {
   WorkspaceIndex,
 } from '../../domain/model';
 import { DashboardSavedFilter, DashboardSnapshot, TaskGlance } from '../protocol/dashboard';
+import { countNotes } from '../../domain/index/noteEntryIndex';
 
 /** What the dashboard model is projected from. */
 export interface DashboardSnapshotOptions {
@@ -74,7 +74,7 @@ export function createDashboardSnapshot({
       isFavorite: entity.isFavorite,
     })),
     totalSectionCount: index.sections.size,
-    totalNoteCount: index.sections.size + listFrontmatterOnlyFiles(index).length,
+    totalNoteCount: countNotes(index),
     totalTaskCount: index.tasks.size,
     tagColumns: preferences.dashboardTagColumns,
     tagTitleDisplayMode,

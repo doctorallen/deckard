@@ -6,6 +6,7 @@ import { readQueryContext } from '../commands/queryContext';
 import { createTaskGlance } from '../state/dashboardState';
 import type { GoToPagesMessage } from '../protocol/shared';
 import { DeckardPage, DeckardPageId, listDeckardPages, PageFacts } from '../state/deckardPages';
+import { countNotes } from '../../domain/index/noteEntryIndex';
 
 /**
  * The Pages view: every Deckard page as a labeled row with its glyph and a
@@ -22,7 +23,7 @@ export function readPageFacts(indexer: Pick<IndexReader, 'getSnapshot'>, now: Da
   return {
     dueToday: glance.today,
     overdue: glance.overdue,
-    notes: index.sections.size,
+    notes: countNotes(index),
     files: index.files.size,
     today: now,
     todayNoteExists: listDailyNotes(index).some((note) => note.date === today),

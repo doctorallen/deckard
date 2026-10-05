@@ -1,12 +1,16 @@
 /**
  * The nodes of the notes graph, before any edge joins them: one for every
- * section, task, and note that has no sections but tags or links, each with
+ * note (a section that is a note of its own, or a note tagged in its front
+ * matter as a whole), every task, and every note that has no sections but
+ * tags or links, each with
  * the Wiki links it writes and where it sits in its note's outline, and one
  * for every tag.
  */
 import { extractNoteLinks, stripTags } from '../markdown/parser';
-import { NotesGraphNode, Section, WorkspaceIndex } from '../model';
+import { NotesGraphNode, ParsedFile, Section, WorkspaceIndex } from '../model';
 import { getFileName } from '../../shared/paths';
+import { entryIdOf, fileEntryId, isEntrySection } from '../markdown/noteEntries';
+import { getEntryParts, isFileEntry } from '../index/noteEntryIndex';
 
 /** A node that stands for something written, with what it links to. */
 export interface GraphSource {
@@ -24,7 +28,19 @@ export interface GraphSource {
 export function createGraphSources(index: WorkspaceIndex): GraphSource[] {
   const sources: GraphSource[] = [];
 
+  // One node per note (noteEntries.ts): an untagged heading under a tagged
+  // one is part of its node, its links with it, and a note tagged in its
+  // front matter that owns untagged headings is one node, the file's.
+  const parts = getEntryParts(index);
+  const ownerOf = (sectionId: string | undefined): string | undefined => {
+    const section = sectionId ? index.sections.get(sectionId) : undefined;
+    return section ? entryIdOf(section) : undefined;
+  };
   for (const section of index.sections.values()) {
+    if (!isEntrySection(section)) {
+      continue;
+    }
+    const owned = parts.get(section.id) ?? [section];
     sources.push({
       node: {
         id: `section:${section.id}`,
@@ -40,9 +56,9 @@ export function createGraphSources(index: WorkspaceIndex): GraphSource[] {
         ),
         degree: 0,
       },
-      links: section.links,
+      links: [...new Set(owned.flatMap((part) => part.links))],
       sectionId: section.id,
-      parentSectionId: section.parentSectionId,
+      parentSectionId: ownerOf(section.parentSectionId),
     });
   }
 
@@ -62,32 +78,49 @@ export function createGraphSources(index: WorkspaceIndex): GraphSource[] {
         degree: 0,
       },
       links: extractNoteLinks(task.sourceLineText, task.filePath),
-      parentSectionId: task.sectionId,
+      parentSectionId: task.entryId ?? task.sectionId,
     });
   }
 
   for (const file of index.files.values()) {
-    if (
-      file.sections.length > 0 ||
-      (file.frontmatterTags.length === 0 && file.links.length === 0)
-    ) {
-      continue;
+    const source = createFileSource(file, parts);
+    if (source) {
+      sources.push(source);
     }
-    sources.push({
-      node: {
-        id: `file:${file.filePath}`,
-        kind: 'note',
-        title: getFileName(file.filePath).replace(/\.md$/i, ''),
-        filePath: file.filePath,
-        line: 1,
-        tagKeys: uniqueSorted(file.frontmatterTags.map((tag) => tag.key)),
-        degree: 0,
-      },
-      links: file.links,
-    });
   }
 
   return sources;
+}
+
+/**
+ * A note as a node of its own: one with no headings that carries
+ * front-matter tags or links, or one tagged in its front matter that owns
+ * untagged headings, as a whole note does (noteEntries.ts).
+ */
+function createFileSource(file: ParsedFile, parts: ReadonlyMap<string, Section[]>): GraphSource | undefined {
+  const wholeNote = file.sections.length > 0 && isFileEntry(file);
+  if (
+    (file.sections.length > 0 && !wholeNote) ||
+    (file.frontmatterTags.length === 0 && file.links.length === 0)
+  ) {
+    return undefined;
+  }
+  return {
+    node: {
+      id: `file:${file.filePath}`,
+      kind: 'note',
+      title: getFileName(file.filePath).replace(/\.md$/i, ''),
+      filePath: file.filePath,
+      line: 1,
+      tagKeys: uniqueSorted(file.frontmatterTags.map((tag) => tag.key)),
+      degree: 0,
+    },
+    links: wholeNote
+      ? [...new Set((parts.get(fileEntryId(file.filePath)) ?? []).flatMap((part) => part.links))]
+      : file.links,
+    // The untagged headings and tasks the note owns hang from it.
+    sectionId: fileEntryId(file.filePath),
+  };
 }
 
 /** A node for every indexed tag, keyed by the tag. */

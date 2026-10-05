@@ -9,6 +9,8 @@ import { sectionIncludesTag, taskIncludesTag } from './tagMatching';
 import { findTagMergeCandidates } from '../../domain/ranking/tagHygiene';
 import { StatsAccessItem, DeckardStatsSnapshot, StatsTrend, StatsTagUsage, StatsTagPairs } from '../protocol/stats';
 import { PersistedPreferences, TagInfo, WorkspaceIndex, TagMergeCandidate, UnreadableNote } from '../../domain/model';
+import { countNotes, isFileEntry } from '../../domain/index/noteEntryIndex';
+import { isEntrySection } from '../../domain/markdown/noteEntries';
 
 /**
  * The Stats page: what the workspace holds, how it has grown week by week,
@@ -39,7 +41,7 @@ export function createDeckardStatsSnapshot(
       open: { type: 'openSource', filePath: note.filePath, line: 1 },
     })),
     fileCount: index.files.size,
-    sectionCount: index.sections.size,
+    sectionCount: countNotes(index),
     taskCount: index.tasks.size,
     activeTaskCount: [...index.tasks.values()].filter((task) => !task.completed)
       .length,
@@ -132,8 +134,17 @@ export function createStatsTrends(
   const notes = new Array<number>(TREND_POINTS + 1).fill(0);
   const tasks = new Array<number>(TREND_POINTS + 1).fill(0);
   const open = new Array<number>(TREND_POINTS + 1).fill(0);
+  // Notes as search counts them: a section that is a note of its own, and a
+  // note tagged in its front matter that is an entry as a whole.
   index.sections.forEach((section) => {
-    notes[firstPoint(section.createdAt)] += 1;
+    if (isEntrySection(section)) {
+      notes[firstPoint(section.createdAt)] += 1;
+    }
+  });
+  index.files.forEach((file) => {
+    if (isFileEntry(file)) {
+      notes[firstPoint(file.createdAt)] += 1;
+    }
   });
   index.tasks.forEach((task) => {
     const start = firstPoint(task.createdAt);
@@ -163,7 +174,7 @@ export function createStatsTrends(
     return { points, change: points[last] - points[last - 1] };
   };
   return {
-    notes: levels(notes, index.sections.size),
+    notes: levels(notes, countNotes(index)),
     tasks: levels(tasks, index.tasks.size),
     openTasks: levels(open, [...index.tasks.values()].filter((task) => !task.completed).length),
   };
