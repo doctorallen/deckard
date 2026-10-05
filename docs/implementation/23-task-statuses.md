@@ -98,6 +98,7 @@ A **status** has a symbol, a name, a type, and, optionally, the
 "deckard.tasks.statuses": [
   { "symbol": " ", "name": "Todo",        "type": "todo", "tag": "todo" },
   { "symbol": "/", "name": "In progress", "type": "inProgress", "tag": "doing" },
+  { "symbol": "?", "name": "Study",       "type": "todo", "icon": "question" },
   { "symbol": "x", "name": "Done",        "type": "done" },
   { "symbol": "X", "name": "Done",        "type": "done" },
   { "symbol": "-", "name": "Cancelled",   "type": "cancelled" },
@@ -112,6 +113,18 @@ A **status** has a symbol, a name, a type, and, optionally, the
   tag on a ` ` box, as now.
 - **A symbol no status names is a task**, a `todo` called Unknown, as in
   Obsidian. That is the point: the vault's counts match.
+- **Study** (`[?]`, David, 2026-10-04) is one of Deckard's defaults: a to
+  do with the question icon, for something to read up on. It is a status,
+  not a type: it counts as open, has its own board column, and is found
+  with `status:study`. Obsidian themes use `[?]` for Question, so a vault
+  reads the same; an import keeps the vault's own name.
+- **Glyphs and colors are by type**, one look each (empty, half filled in
+  the accent, dashed, checked, struck through; an unknown character in
+  violet), so each can be checked for contrast in every theme. A status of
+  an open type may add an **`icon`**: `question`, `alert`, `star`, `flag`,
+  or `clock`, drawn in one `--status-icon` token per theme, checked at 3:1
+  like `--divider`. Done and cancelled tasks show their type's box whatever
+  their icon; a screen reader hears the status's name.
 - **Done stands for no tag.** A `#status/done` tag on an open box leaves it
   open, in the Done column, as today; the move asks whether to check them
   off.
