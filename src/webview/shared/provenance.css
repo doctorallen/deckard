@@ -145,3 +145,48 @@ body:has(:focus-visible) :is(.card, .note, .task-row, .home-row, .tag-row, .boar
    zoom. The pointer's hover still lays the line over the next entry, so a
    list does not jump under a moving mouse. */
 :is(.card, .note, .task-row, .home-row, .tag-row, .board-card):focus-within { margin-bottom: calc(var(--reach) + var(--space-2)); }
+
+/* Display's File & line preference (data-file-line on the body): always,
+   under every entry, or never, folded under the pointer and focus too. It
+   is here rather than in display.css because always draws the line in the
+   muted ink the carried-down line uses, and display.css declares no color. */
+/* File & line: always, under every entry, in the entry's own flow. */
+body[data-file-line=always] .task-row .task-source, body[data-file-line=always] .board-card .task-source,
+body[data-file-line=always] .card .source, body[data-file-line=always] .note .source,
+body[data-file-line=always]:has(:focus-visible) .task-row:hover:not(:focus-within) .task-source,
+body[data-file-line=always]:has(:focus-visible) .board-card:hover:not(:focus-within) .task-source,
+body[data-file-line=always]:has(:focus-visible) .card:hover:not(:focus-within) .source,
+body[data-file-line=always]:has(:focus-visible) .note:hover:not(:focus-within) .source,
+body[data-file-line=always] .task-row:focus-within .task-source, body[data-file-line=always] .board-card:focus-within .task-source,
+body[data-file-line=always] .card:focus-within .source, body[data-file-line=always] .note:focus-within .source {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  /* Drawn as the carried-down line draws it under the pointer. */
+  font: var(--text-xs)/16px var(--font-mono);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--source-ink);
+}
+/* File & line: never, kept folded under the pointer and focus too. */
+body[data-file-line=never] .task-row:hover .task-source, body[data-file-line=never] .task-row:focus-within .task-source,
+body[data-file-line=never] .board-card:hover .task-source, body[data-file-line=never] .board-card:focus-within .task-source,
+body[data-file-line=never] .card:hover .source, body[data-file-line=never] .card:focus-within .source,
+body[data-file-line=never] .note:hover .source, body[data-file-line=never] .note:focus-within .source {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+/* Either way there is nothing to carry down: no frame reaches below the
+   entry, and focus pushes nothing down to make room. A home row's readout
+   and a tag row's count are not file and line, and still fold as before. */
+body[data-file-line] .card:hover::after, body[data-file-line] .card:focus-within::after,
+body[data-file-line] .note:hover::after, body[data-file-line] .note:focus-within::after,
+body[data-file-line] .task-row:hover::after, body[data-file-line] .task-row:focus-within::after,
+body[data-file-line] .board-card:hover::after, body[data-file-line] .board-card:focus-within::after { content: none; }
+body[data-file-line] .card:focus-within, body[data-file-line] .note:focus-within,
+body[data-file-line] .task-row:focus-within, body[data-file-line] .board-card:focus-within { margin-bottom: 0; }

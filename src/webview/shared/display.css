@@ -107,40 +107,6 @@ body[data-dates=date] .due-stateless .due-sep {
   white-space: nowrap;
 }
 
-/* File & line: always, under every entry, in the entry's own flow. */
-body[data-file-line=always] .task-row .task-source, body[data-file-line=always] .board-card .task-source,
-body[data-file-line=always] .card .source, body[data-file-line=always] .note .source,
-body[data-file-line=always]:has(:focus-visible) .task-row:hover:not(:focus-within) .task-source,
-body[data-file-line=always]:has(:focus-visible) .board-card:hover:not(:focus-within) .task-source,
-body[data-file-line=always]:has(:focus-visible) .card:hover:not(:focus-within) .source,
-body[data-file-line=always]:has(:focus-visible) .note:hover:not(:focus-within) .source {
-  position: static;
-  width: auto;
-  height: auto;
-  overflow: visible;
-  clip-path: none;
-}
-/* File & line: never, kept folded under the pointer and focus too. */
-body[data-file-line=never] .task-row:hover .task-source, body[data-file-line=never] .task-row:focus-within .task-source,
-body[data-file-line=never] .board-card:hover .task-source, body[data-file-line=never] .board-card:focus-within .task-source,
-body[data-file-line=never] .card:hover .source, body[data-file-line=never] .card:focus-within .source,
-body[data-file-line=never] .note:hover .source, body[data-file-line=never] .note:focus-within .source {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-/* Either way there is nothing to carry down: no frame reaches below the
-   entry, and focus pushes nothing down to make room. A home row's readout
-   and a tag row's count are not file and line, and still fold as before. */
-body[data-file-line] .card:hover::after, body[data-file-line] .card:focus-within::after,
-body[data-file-line] .note:hover::after, body[data-file-line] .note:focus-within::after,
-body[data-file-line] .task-row:hover::after, body[data-file-line] .task-row:focus-within::after,
-body[data-file-line] .board-card:hover::after, body[data-file-line] .board-card:focus-within::after { content: none; }
-body[data-file-line] .card:focus-within, body[data-file-line] .note:focus-within,
-body[data-file-line] .task-row:focus-within, body[data-file-line] .board-card:focus-within { margin-bottom: 0; }
-
 /* ---- Page width: wide --------------------------------------------------- */
 
 /* The panel's whole width, for a wide monitor or a board of many columns,
