@@ -15,8 +15,9 @@ const { listUnitSuites } = require('./importGraph.js');
 const ROOT = path.join(__dirname, '..', '..');
 const suites = listUnitSuites();
 // The same interface and time limit as the extension-host run, so a suite
-// behaves alike under either runner.
-const mocha = new Mocha({ ui: 'tdd', timeout: 20000, color: true });
+// behaves alike under either runner. On CI a `.only` left in a suite fails
+// the run rather than quietly skipping every other test (forbidOnly).
+const mocha = new Mocha({ ui: 'tdd', timeout: 20000, color: true, forbidOnly: Boolean(process.env.CI) });
 suites.forEach((file) => mocha.addFile(path.join(ROOT, file)));
 console.log(`${suites.length} suites that never reach vscode, under plain mocha`);
 mocha.run((failures) => {

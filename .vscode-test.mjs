@@ -46,6 +46,9 @@ const shared = {
 		// has genuinely hung, without failing one that was only waiting for a
 		// busy machine.
 		timeout: 20000,
+		// On CI a `.only` left in a suite fails the run, rather than quietly
+		// running that one test and passing.
+		forbidOnly: Boolean(process.env.CI),
 	},
 };
 
