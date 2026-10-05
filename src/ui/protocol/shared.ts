@@ -35,11 +35,6 @@ export interface DashboardTask {
   dueLabel?: string;
   /** Whether the due date has passed; set with `dueLabel`. */
   overdue?: boolean;
-  /**
-   * An overdue date as a row under an Overdue heading says it, where the
-   * word would only repeat the heading: `20 days late · 2026-09-01`.
-   */
-  dueLate?: string;
   /** Whether it passed so long ago the task needs a new date; drawn muted. */
   stale?: boolean;
   /** Whether it is due today, drawn in the theme's warning color, between the green of later and the red of overdue. */

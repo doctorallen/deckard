@@ -20,17 +20,19 @@ interface HomeRowProps {
   readonly attributes: Attributes;
   readonly label: ComponentChildren;
   readonly detail?: string;
+  /** What the readout is: where a note is written, which File & line governs, or a count, which Counts does. */
+  readonly detailKind: 'file' | 'count';
   /** How far along what the row names is, drawn as a bar between its label and its detail. */
   readonly progress?: { readonly done: number; readonly total: number };
 }
 
 /** A row that opens something: a tag, a search, or a note. */
-export function HomeRow({ action, attributes, label, detail, progress }: HomeRowProps) {
+export function HomeRow({ action, attributes, label, detail, detailKind, progress }: HomeRowProps) {
   return (
     <button type="button" class={progress ? 'row saved-filter-row home-row has-progress' : 'row saved-filter-row home-row'} data-action={action} data-tip-around="" {...attributes}>
       <span class="home-row-label">{label}</span>
       {progress ? <ProgressBar done={progress.done} total={progress.total} /> : null}
-      {detail ? <span class="home-row-detail">{detail}</span> : null}
+      {detail ? <span class={`home-row-detail is-${detailKind}`}>{detail}</span> : null}
     </button>
   );
 }
@@ -79,7 +81,7 @@ export function HomeTags(props: {
       {tags.map((tag) => (
         <WithRowAction
           key={tag.key}
-          row={<HomeRow action="open-tag" attributes={{ 'data-tag-key': tag.key }} label={<TagLabel label={tag.label} />} detail={tag.detail} progress={tag.progress} />}
+          row={<HomeRow action="open-tag" attributes={{ 'data-tag-key': tag.key }} label={<TagLabel label={tag.label} />} detail={tag.detail} detailKind="count" progress={tag.progress} />}
           action={actionFor ? actionFor(tag) : null}
         />
       ))}
@@ -102,7 +104,7 @@ export function HomeNotes(props: {
       {notes.map((note, position) => (
         <WithRowAction
           key={`${position}:${note.filePath}:${note.line}`}
-          row={<HomeRow action="open-source" attributes={{ 'data-file-path': note.filePath, 'data-line': note.line }} label={note.title} detail={note.detail} />}
+          row={<HomeRow action="open-source" attributes={{ 'data-file-path': note.filePath, 'data-line': note.line }} label={note.title} detail={note.detail} detailKind="file" />}
           action={actionFor ? actionFor(note) : null}
         />
       ))}
@@ -137,7 +139,7 @@ export function TagPairs({ pairs }: { readonly pairs: readonly DashboardWidgetTa
             <span class="home-row-label">
               <span class="home-tag-pair"><TagLabel label={pair.tags[0].label} /><span class="home-tag-pair-join">+</span><TagLabel label={pair.tags[1].label} /></span>
             </span>
-            <span class="home-row-detail">{`${pair.count}× · ${Math.round(pair.overlap * 100)}%`}</span>
+            <span class="home-row-detail is-count">{`${pair.count}× · ${Math.round(pair.overlap * 100)}%`}</span>
           </button>
         );
       })}

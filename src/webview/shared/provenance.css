@@ -158,7 +158,10 @@ body[data-file-line=always]:has(:focus-visible) .board-card:hover:not(:focus-wit
 body[data-file-line=always]:has(:focus-visible) .card:hover:not(:focus-within) .source,
 body[data-file-line=always]:has(:focus-visible) .note:hover:not(:focus-within) .source,
 body[data-file-line=always] .task-row:focus-within .task-source, body[data-file-line=always] .board-card:focus-within .task-source,
-body[data-file-line=always] .card:focus-within .source, body[data-file-line=always] .note:focus-within .source {
+body[data-file-line=always] .card:focus-within .source, body[data-file-line=always] .note:focus-within .source,
+body[data-file-line=always] .home-row .home-row-detail.is-file,
+body[data-file-line=always]:has(:focus-visible) .home-row:hover:not(:focus-within) .home-row-detail.is-file,
+body[data-file-line=always] .home-row:focus-within .home-row-detail.is-file {
   position: static;
   width: auto;
   height: auto;
@@ -174,7 +177,8 @@ body[data-file-line=always] .card:focus-within .source, body[data-file-line=alwa
 body[data-file-line=never] .task-row:hover .task-source, body[data-file-line=never] .task-row:focus-within .task-source,
 body[data-file-line=never] .board-card:hover .task-source, body[data-file-line=never] .board-card:focus-within .task-source,
 body[data-file-line=never] .card:hover .source, body[data-file-line=never] .card:focus-within .source,
-body[data-file-line=never] .note:hover .source, body[data-file-line=never] .note:focus-within .source {
+body[data-file-line=never] .note:hover .source, body[data-file-line=never] .note:focus-within .source,
+body[data-file-line=never] .home-row:hover .home-row-detail.is-file, body[data-file-line=never] .home-row:focus-within .home-row-detail.is-file {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -183,10 +187,13 @@ body[data-file-line=never] .note:hover .source, body[data-file-line=never] .note
 }
 /* Either way there is nothing to carry down: no frame reaches below the
    entry, and focus pushes nothing down to make room. A home row's readout
-   and a tag row's count are not file and line, and still fold as before. */
+   is file and line when it names a note's file (is-file); when it is a
+   count (is-count), as a tag row's is, Counts decides it (display.css). */
 body[data-file-line] .card:hover::after, body[data-file-line] .card:focus-within::after,
 body[data-file-line] .note:hover::after, body[data-file-line] .note:focus-within::after,
 body[data-file-line] .task-row:hover::after, body[data-file-line] .task-row:focus-within::after,
-body[data-file-line] .board-card:hover::after, body[data-file-line] .board-card:focus-within::after { content: none; }
+body[data-file-line] .board-card:hover::after, body[data-file-line] .board-card:focus-within::after,
+body[data-file-line] .home-row:has(.is-file):hover::after, body[data-file-line] .home-row:has(.is-file):focus-within::after { content: none; }
 body[data-file-line] .card:focus-within, body[data-file-line] .note:focus-within,
-body[data-file-line] .task-row:focus-within, body[data-file-line] .board-card:focus-within { margin-bottom: 0; }
+body[data-file-line] .task-row:focus-within, body[data-file-line] .board-card:focus-within,
+body[data-file-line] .home-row:has(.is-file):focus-within { margin-bottom: 0; }

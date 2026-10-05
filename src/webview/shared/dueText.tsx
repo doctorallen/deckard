@@ -13,7 +13,7 @@ export function DueText({ label, dateClass }: { readonly label: string; readonly
     return label;
   }
   const relative = Boolean(parts.distance) || /today/i.test(parts.state);
-  const classes = ['due-text', relative ? 'due-relative' : '', parts.state ? '' : 'due-stateless'].filter(Boolean).join(' ');
+  const classes = relative ? 'due-text due-relative' : 'due-text';
   return (
     <span class={classes}>
       {parts.state}

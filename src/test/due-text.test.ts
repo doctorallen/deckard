@@ -33,7 +33,6 @@ suite('Due dates in their parts, for Display\'s Dates preference', () => {
     assert.deepStrictEqual(splitDueLabel('Due tomorrow · 2026-10-05'), { state: 'Due', distance: ' tomorrow', date: '2026-10-05' });
     assert.deepStrictEqual(splitDueLabel('Due today · 2026-10-04'), { state: 'Due today', distance: '', date: '2026-10-04' });
     assert.deepStrictEqual(splitDueLabel('Overdue · 2026-08-01'), { state: 'Overdue', distance: '', date: '2026-08-01' });
-    assert.deepStrictEqual(splitDueLabel('20 days late · 2026-09-14'), { state: '', distance: '20 days late', date: '2026-09-14' });
     assert.deepStrictEqual(splitDueLabel('Due 2026-12-25'), { state: 'Due 2026-12-25', distance: '', date: '' });
     assert.deepStrictEqual(splitDueLabel('Was due 2026-06-01'), { state: 'Was due 2026-06-01', distance: '', date: '' });
   });

@@ -120,7 +120,6 @@ export function createDashboardTask(
       ? {
           dueLabel: due.label.charAt(0).toUpperCase() + due.label.slice(1),
           overdue: due.overdue,
-          ...(due.overdue ? { dueLate: describeLate(-due.days, due.label) } : {}),
           ...(due.stale ? { stale: true } : {}),
           ...(due.days === 0 ? { dueToday: true } : {}),
         }
@@ -349,8 +348,3 @@ export function getFrontmatterBody(content: string): string {
   return endLine === undefined ? content : lines.slice(endLine + 1).join('\n').replace(/^\n/, '');
 }
 
-/** `20 days late · 2026-09-01`, from how many days late a task is and its label's date. */
-function describeLate(days: number, label: string): string {
-  const date = label.includes(' · ') ? label.slice(label.lastIndexOf(' · ') + 3) : label.replace(/^overdue\s*/i, '');
-  return `${days} ${days === 1 ? 'day' : 'days'} late · ${date}`;
-}

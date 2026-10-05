@@ -7,18 +7,17 @@
  * hears the whole date whichever is drawn.
  */
 export interface DueParts {
-  /** `Overdue`, `Due`, `Due today`, `Was due`; empty for "20 days late". */
+  /** `Overdue`, `Due`, `Due today`, `Was due`. */
   readonly state: string;
-  /** ` 15 days`, ` in 3 days`, ` tomorrow`, or `20 days late`; empty when the wording gives none. */
+  /** ` 15 days`, ` in 3 days`, or ` tomorrow`; empty when the wording gives none. */
   readonly distance: string;
   /** The date, or empty when the wording gives none. */
   readonly date: string;
 }
 
 /**
- * A due label's parts. The host's wordings (domain/markdown/dueWording.ts and
- * the agenda's "20 days late") are the only input; any other text is all
- * state, so it is drawn as it is.
+ * A due label's parts. The host's wordings (domain/markdown/dueWording.ts)
+ * are the only input; any other text is all state, so it is drawn as it is.
  */
 export function splitDueLabel(label: string): DueParts {
   const at = label.lastIndexOf(' · ');
@@ -34,9 +33,6 @@ export function splitDueLabel(label: string): DueParts {
   const due = /^(due)( tomorrow| in .+)$/i.exec(head);
   if (due) {
     return { state: due[1], distance: due[2], date };
-  }
-  if (/ late$/.test(head)) {
-    return { state: '', distance: head, date };
   }
   return { state: head, distance: '', date };
 }
