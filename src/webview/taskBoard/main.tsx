@@ -23,7 +23,6 @@ import { taskTitleOf } from '../shared/taskRow';
 import { createUndoNotice } from '../shared/undoToast';
 import {
   displayLevelOption,
-  displayOptions,
   installViewOptions,
   pageWidthOption,
   themeOption,
@@ -168,7 +167,6 @@ function BoardViewOptions({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
         themeOption(),
         pageWidthOption(),
         displayLevelOption(),
-        ...displayOptions(),
       ]}
     />
   );

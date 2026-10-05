@@ -107,7 +107,7 @@ async function moveFromZenMode(saved: ZenMemory): Promise<void> {
   await noted.update(MOVED_FROM_ZEN_KEY, true);
   void vscode.window
     .showInformationMessage(
-      'Zen mode is now Display: Zen. Your pages look the same. The editor settings Zen turned off are now turned off one by one, so you can turn any back on.',
+      'Zen mode is now Display: Zen, which also draws cards flat and leaves out counts and file and line; Customize… sets any of them back. The editor settings Zen turned off are now turned off one by one, so you can turn any back on.',
       'Display Settings',
       'Editor Settings',
     )

@@ -1741,11 +1741,11 @@
             "default": "full",
             "scope": "application",
             "enumDescriptions": [
-              "Deckard as it ships: each theme's decoration, display headings, and every helper line.",
-              "Each theme's decoration and the lines that teach turned off, at the usual spacing.",
-              "Also compact spacing: what Zen mode drew. Replaces deckard.zenMode."
+              "Deckard as it ships: each theme's decoration, display headings, every helper line, raised cards, tag chips, counts, and dates written both ways.",
+              "Each theme's decoration and the lines that teach turned off, and tags drawn as text, at the usual spacing.",
+              "Also compact spacing, flat cards, no counts beside names, no file and line under entries, and dates as how far off. Replaces deckard.zenMode."
             ],
-            "description": "How much of Deckard's own chrome every page draws: Full, Quiet, or Zen (replaces Zen mode). The three settings below follow it while they are Auto. Your own choice, the same in every workspace.",
+            "description": "How much every Deckard page draws: Full, Quiet, or Zen (replaces Zen mode). Every Display setting but the page width follows it while it is Auto. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.display.themeStyling": {
@@ -1802,93 +1802,103 @@
           "deckard.display.cardFrames": {
             "type": "string",
             "enum": [
+              "auto",
               "raised",
               "flat"
             ],
-            "default": "raised",
+            "default": "auto",
             "scope": "application",
             "enumDescriptions": [
-              "Each card or row stands on a surface a step above the panel it sits in, inside its border.",
-              "Rows with only a divider between them; a row lifts onto the card surface under the pointer or keyboard focus."
+              "Follows Display: raised at Full and Quiet, flat at Zen.",
+              "Each card is a raised panel inside its border.",
+              "Rows parted by a divider, lifting onto the card surface under the pointer and keyboard focus."
             ],
-            "description": "How cards and rows are drawn on every Deckard page: raised cards, or flat rows parted by a divider. Your own choice, the same in every workspace.",
+            "description": "How cards and rows are drawn on every Deckard page. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.display.tags": {
             "type": "string",
             "enum": [
+              "auto",
               "chips",
               "text"
             ],
-            "default": "chips",
+            "default": "auto",
             "scope": "application",
             "enumDescriptions": [
-              "Each tag is a small framed button.",
+              "Follows Display: chips at Full, text at Quiet and Zen.",
+              "Each tag in a tag list is a small framed button.",
               "Each tag is plain text in the theme's tag color, its # or @ kept, underlined under the pointer, with a focus ring from the keyboard."
             ],
-            "description": "How tags are drawn on every Deckard page: framed chips, or plain text. Either way a tag opens its page. Your own choice, the same in every workspace.",
+            "description": "How tags are drawn where they are listed on their own, such as a note card's tags and Refine; a tag inside a title is always text. Either way a tag opens its page. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.display.counts": {
             "type": "string",
             "enum": [
+              "auto",
               "shown",
               "hidden"
             ],
-            "default": "shown",
+            "default": "auto",
             "scope": "application",
             "enumDescriptions": [
+              "Follows Display: shown at Full and Quiet, hidden at Zen.",
               "The number beside each name: a widget's total, a group's count, a column's tasks, a tab's results.",
               "Those numbers left out of sight. A screen reader still reads each one, and figures that are the point, such as Home's Due today, always show."
             ],
-            "description": "Whether pages draw the counts beside names. Display's steps never change it. Your own choice, the same in every workspace.",
+            "description": "Whether pages draw the counts beside names. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.display.fileAndLine": {
             "type": "string",
             "enum": [
+              "auto",
               "hover",
               "always",
               "never"
             ],
-            "default": "hover",
+            "default": "auto",
             "scope": "application",
             "enumDescriptions": [
+              "Follows Display: on hover at Full and Quiet, never at Zen.",
               "Under an entry while the pointer is on it or it has focus.",
               "Under every entry.",
               "Not drawn. A screen reader still reads it."
             ],
-            "description": "Where pages draw the file and line an entry is written in. Display's steps never change it. Your own choice, the same in every workspace.",
+            "description": "Where pages draw the file and line an entry is written in. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.display.dates": {
             "type": "string",
             "enum": [
+              "auto",
               "both",
               "relative",
               "date"
             ],
-            "default": "both",
+            "default": "auto",
             "scope": "application",
             "enumDescriptions": [
+              "Follows Display: both at Full and Quiet, how far off at Zen.",
               "How far off and the date: \"Overdue 2 days · 2026-10-02\".",
               "Only how far off: \"Overdue 2 days\". A date over a month away still shows.",
               "The date with its state: \"Overdue · 2026-10-02\"."
             ],
-            "description": "How pages write a task's due date. An overdue date always says Overdue, and a screen reader hears the whole date either way. Display's steps never change it. Your own choice, the same in every workspace.",
+            "description": "How pages write a task's due date. An overdue date always says Overdue, and a screen reader hears the whole date either way. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.display.pageWidth": {
             "type": "string",
             "enum": [
-              "column",
-              "wide"
+              "limited",
+              "full"
             ],
-            "default": "column",
+            "default": "limited",
             "scope": "application",
             "enumDescriptions": [
-              "Each page keeps to a 1000px column in the middle of its panel.",
-              "Each page uses its panel's whole width, for a wide monitor or a board of many columns."
+              "Each page keeps to a column at most 1000px wide, in the middle of its panel.",
+              "Each page uses its panel's full width, for a wide monitor or a board of many columns."
             ],
             "description": "How wide Deckard's pages draw. The calendar and the sidebar already use their whole width. Your own choice, the same in every workspace.",
             "order": 2

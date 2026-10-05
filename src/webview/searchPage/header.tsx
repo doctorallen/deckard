@@ -10,7 +10,7 @@ import { HelpButton, IconButton } from '../shared/buttons';
 import { Eyebrow } from '../shared/eyebrow';
 import { LayoutSplitIcon, LayoutTabsIcon, RenderedIcon, SortIcon, SourceIcon } from '../shared/strokeIcons';
 import { TagLabel } from '../shared/tagLabel';
-import { displayLevelOption, displayOptions, pageWidthOption, themeOption, ViewOptionChoices, ViewOptions } from '../shared/viewOptions';
+import { displayLevelOption, pageWidthOption, themeOption, ViewOptionChoices, ViewOptions } from '../shared/viewOptions';
 
 /** A built-in or user-made namespace and its name in one readable title form: "Project: Atlas". */
 export function formatEntityTitle(kind: string, name: string): string {
@@ -144,7 +144,6 @@ function SearchViewOptions({ snapshot }: { readonly snapshot: SearchPageSnapshot
         themeOption(),
         pageWidthOption(),
         displayLevelOption(),
-        ...displayOptions(),
       ]}
     />
   );

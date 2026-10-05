@@ -18,12 +18,12 @@ export const DISPLAY_SETTINGS = {
   themeStyling: { key: 'display.themeStyling', values: ['auto', 'styled', 'plain'] },
   helpText: { key: 'display.helpText', values: ['auto', 'shown', 'hidden'] },
   density: { key: 'display.density', values: ['auto', 'comfortable', 'compact'] },
-  cardFrames: { key: 'display.cardFrames', values: ['raised', 'flat'] },
-  tags: { key: 'display.tags', values: ['chips', 'text'] },
-  counts: { key: 'display.counts', values: ['shown', 'hidden'] },
-  fileAndLine: { key: 'display.fileAndLine', values: ['hover', 'always', 'never'] },
-  dates: { key: 'display.dates', values: ['both', 'relative', 'date'] },
-  pageWidth: { key: 'display.pageWidth', values: ['column', 'wide'] },
+  cardFrames: { key: 'display.cardFrames', values: ['auto', 'raised', 'flat'] },
+  tags: { key: 'display.tags', values: ['auto', 'chips', 'text'] },
+  counts: { key: 'display.counts', values: ['auto', 'shown', 'hidden'] },
+  fileAndLine: { key: 'display.fileAndLine', values: ['auto', 'hover', 'always', 'never'] },
+  dates: { key: 'display.dates', values: ['auto', 'both', 'relative', 'date'] },
+  pageWidth: { key: 'display.pageWidth', values: ['limited', 'full'] },
 } as const;
 
 /** One of the display choices, by its setting's name. */
@@ -42,11 +42,11 @@ export function readDisplayLevel(): DisplayLevel {
 /** The scale settings as the reader set them, `auto` or a value of their own. */
 export function readScaleSettings(): Record<ScaleSetting, unknown> {
   const deckard = vscode.workspace.getConfiguration('deckard');
-  return {
-    themeStyling: deckard.get(DISPLAY_SETTINGS.themeStyling.key),
-    helpText: deckard.get(DISPLAY_SETTINGS.helpText.key),
-    density: deckard.get(DISPLAY_SETTINGS.density.key),
-  };
+  const set = {} as Record<ScaleSetting, unknown>;
+  for (const key of Object.keys(SCALE_SETTINGS) as ScaleSetting[]) {
+    set[key] = deckard.get(DISPLAY_SETTINGS[key].key);
+  }
+  return set;
 }
 
 /**
@@ -66,23 +66,13 @@ export function readDisplayChoices(previewed?: DisplayLevel): DisplayChoices {
     ...(scale.themeStyling === 'plain' ? { styling: 'plain' as const } : {}),
     ...(scale.helpText === 'hidden' ? { help: 'hidden' as const } : {}),
     ...(scale.density === 'compact' ? { density: 'compact' as const } : {}),
-    ...(deckard.get<string>(DISPLAY_SETTINGS.cardFrames.key) === 'flat' ? { cards: 'flat' as const } : {}),
-    ...(deckard.get<string>(DISPLAY_SETTINGS.tags.key) === 'text' ? { tags: 'text' as const } : {}),
-    ...(deckard.get<string>(DISPLAY_SETTINGS.counts.key) === 'hidden' ? { counts: 'hidden' as const } : {}),
-    ...fileAndLine(deckard.get<string>(DISPLAY_SETTINGS.fileAndLine.key)),
-    ...dates(deckard.get<string>(DISPLAY_SETTINGS.dates.key)),
-    ...(deckard.get<string>(DISPLAY_SETTINGS.pageWidth.key) === 'wide' ? { width: 'wide' as const } : {}),
+    ...(scale.cardFrames === 'flat' ? { cards: 'flat' as const } : {}),
+    ...(scale.tags === 'text' ? { tags: 'text' as const } : {}),
+    ...(scale.counts === 'hidden' ? { counts: 'hidden' as const } : {}),
+    ...(scale.fileAndLine === 'hover' ? {} : { fileAndLine: scale.fileAndLine }),
+    ...(scale.dates === 'both' ? {} : { dates: scale.dates }),
+    ...(deckard.get<string>(DISPLAY_SETTINGS.pageWidth.key) === 'full' ? { width: 'full' as const } : {}),
   };
-}
-
-/** File & line, when it isn't on hover. */
-function fileAndLine(value: string | undefined): Pick<DisplayChoices, 'fileAndLine'> {
-  return value === 'always' || value === 'never' ? { fileAndLine: value } : {};
-}
-
-/** Dates, when they aren't written both ways. */
-function dates(value: string | undefined): Pick<DisplayChoices, 'dates'> {
-  return value === 'relative' || value === 'date' ? { dates: value } : {};
 }
 
 /** Whether a settings change alters how pages are drawn. */

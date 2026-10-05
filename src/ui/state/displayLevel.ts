@@ -1,10 +1,12 @@
 /**
- * Display: how much of Deckard's chrome a page draws, as a scale of three
- * steps over three settings, each of which a reader can also set on their
- * own. A setting left at `auto` follows the step; any other value is the
- * reader's and wins whatever the step. Full is Deckard as it ships; Quiet
- * takes off each theme's decoration and the lines that teach, at today's
- * spacing; Zen also tightens the spacing, and draws pages as Zen mode did.
+ * Display: how much a page draws, as a scale of three steps over every
+ * Display setting but the page width, each of which a reader can also set
+ * on their own. A setting left at `auto` follows the step; any other value
+ * is the reader's and wins whatever the step. Full is Deckard as it ships;
+ * Quiet takes off each theme's decoration and the lines that teach, and
+ * draws tags as text, at today's spacing; Zen also tightens the spacing,
+ * draws cards flat, and leaves out counts, file and line, and the date
+ * beside how far off a task is due.
  */
 
 /** The scale's steps, in order. */
@@ -17,6 +19,11 @@ export const SCALE_SETTINGS = {
   themeStyling: ['auto', 'styled', 'plain'],
   helpText: ['auto', 'shown', 'hidden'],
   density: ['auto', 'comfortable', 'compact'],
+  cardFrames: ['auto', 'raised', 'flat'],
+  tags: ['auto', 'chips', 'text'],
+  counts: ['auto', 'shown', 'hidden'],
+  fileAndLine: ['auto', 'hover', 'always', 'never'],
+  dates: ['auto', 'both', 'relative', 'date'],
 } as const;
 /** One of the settings the scale moves, by its name under `deckard.display.`. */
 export type ScaleSetting = keyof typeof SCALE_SETTINGS;
@@ -26,13 +33,27 @@ export interface ScaleValues {
   themeStyling: 'styled' | 'plain';
   helpText: 'shown' | 'hidden';
   density: 'comfortable' | 'compact';
+  cardFrames: 'raised' | 'flat';
+  tags: 'chips' | 'text';
+  counts: 'shown' | 'hidden';
+  fileAndLine: 'hover' | 'always' | 'never';
+  dates: 'both' | 'relative' | 'date';
 }
 
 /** Each step's values for the settings it moves. */
 export const STEP_VALUES: Readonly<Record<DisplayLevel, ScaleValues>> = {
-  full: { themeStyling: 'styled', helpText: 'shown', density: 'comfortable' },
-  quiet: { themeStyling: 'plain', helpText: 'hidden', density: 'comfortable' },
-  zen: { themeStyling: 'plain', helpText: 'hidden', density: 'compact' },
+  full: {
+    themeStyling: 'styled', helpText: 'shown', density: 'comfortable',
+    cardFrames: 'raised', tags: 'chips', counts: 'shown', fileAndLine: 'hover', dates: 'both',
+  },
+  quiet: {
+    themeStyling: 'plain', helpText: 'hidden', density: 'comfortable',
+    cardFrames: 'raised', tags: 'text', counts: 'shown', fileAndLine: 'hover', dates: 'both',
+  },
+  zen: {
+    themeStyling: 'plain', helpText: 'hidden', density: 'compact',
+    cardFrames: 'flat', tags: 'text', counts: 'hidden', fileAndLine: 'never', dates: 'relative',
+  },
 };
 
 /** Whether a value names a step. */
@@ -62,7 +83,16 @@ export function resolveScaleValues(level: DisplayLevel, set: Partial<Record<Scal
     const allowed: readonly string[] = SCALE_SETTINGS[key];
     return typeof value === 'string' && value !== 'auto' && allowed.includes(value) ? (value as ScaleValues[K]) : step[key];
   };
-  return { themeStyling: pick('themeStyling'), helpText: pick('helpText'), density: pick('density') };
+  return {
+    themeStyling: pick('themeStyling'),
+    helpText: pick('helpText'),
+    density: pick('density'),
+    cardFrames: pick('cardFrames'),
+    tags: pick('tags'),
+    counts: pick('counts'),
+    fileAndLine: pick('fileAndLine'),
+    dates: pick('dates'),
+  };
 }
 
 /** The scale settings set to something other than `auto`, which the gear counts as changed. */
@@ -151,7 +181,7 @@ export function planZenMove(
  * help text hidden, compact density, flat rows rather than raised cards,
  * tags as text rather than chips, counts beside names hidden, an entry's
  * file and line always or never drawn, and due dates as only how far off
- * or only the date, and pages as wide as their panel.
+ * or only the date, and pages as wide as their panel (`full`).
  */
 export interface DisplayChoices {
   /** The step, when it isn't Full, for the gear's Display row. */
@@ -166,5 +196,5 @@ export interface DisplayChoices {
   readonly counts?: 'hidden';
   readonly fileAndLine?: 'always' | 'never';
   readonly dates?: 'relative' | 'date';
-  readonly width?: 'wide';
+  readonly width?: 'full';
 }

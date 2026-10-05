@@ -124,7 +124,7 @@ export function isSourceLocation(value: Record<string, unknown>): boolean {
 }
 
 /** The Display settings a page's gear sets. */
-const GEAR_DISPLAY_SETTINGS: readonly GearDisplaySetting[] = ['level', 'pageWidth', 'cardFrames', 'tags'];
+const GEAR_DISPLAY_SETTINGS: readonly GearDisplaySetting[] = ['level', 'pageWidth'];
 
 /** One of the gear's Display rows: which, and a short lowercase value the host checks. */
 export const narrowSetDisplay: Narrower<SetDisplayMessage> = (value) =>

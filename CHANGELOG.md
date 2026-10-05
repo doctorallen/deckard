@@ -12,29 +12,20 @@
 
 ### Added
 
-- **Display: Full, Quiet, or Zen, in place of Zen mode.** Turn Deckard's
-  own chrome down a step at a time from **Display** in a page's gear or
+- **Display: Full, Quiet, or Zen, in place of Zen mode.** Turn down how
+  much Deckard draws a step at a time from **Display** in a page's gear or
   `Deckard: Choose Display…`, which previews each step on the open pages.
-  Quiet takes off each theme's decoration and the lines that teach at the
-  usual spacing; Zen also tightens it, and draws pages as Zen mode did with
-  DECKARD ▾ kept. Theme styling, Help text, and Density follow the step while
-  they're Auto; the gear says how many you changed and puts the step's
-  values back. The title bar's Zen button goes to Zen and back to the step
-  you were on.
-- **Counts, File & line, and Dates.** Three preferences for what a page
-  writes: the counts beside names shown or hidden, an entry's file and line
-  on hover, always, or never, and a due date both ways, only how far off, or
-  only the date. A screen reader still hears every part.
-- **Page width.** Keep pages to a column, or use the panel's whole width,
-  from its own row in the gear.
-- **Flat cards and tags as text.** Two looks for every page, in any theme,
-  from **Cards** and **Tags** in a page's gear: rows parted by a divider in
-  place of raised cards, lifting onto the card surface under the pointer
-  or keyboard focus; and tags as plain text in the theme's tag color, the
-  `#` or `@` kept, underlined under the pointer. Each is your own setting,
-  the same in every workspace (`deckard.display.cardFrames`,
-  `deckard.display.tags`).
-
+  Quiet takes off each theme's decoration and the lines that teach, and
+  draws tags as text, at the usual spacing; Zen also tightens it, draws
+  cards flat, and leaves out counts, each entry's file and line, and the
+  date beside how far off a task is due. Every Display setting (Theme
+  styling, Help text, Tags, Density, Cards, Counts, File & line, and Dates)
+  follows the step while it's Auto and can be set on its own from
+  **Customize…**; the gear says how many you changed, with Reset. Whatever
+  is out of sight is still read aloud. The title bar's Zen button goes to
+  Zen and back to the step you were on.
+- **Page width.** Keep pages limited to a column, or use the panel's full
+  width, from its own row in the gear.
 - **Pages, and Go to….** The Deckard sidebar opens with **Pages**: Home,
   the Task Board, the Calendar, today's note, the Notes Graph, Find, Stats,
   and Help, each a labeled row with a glyph of its own and a word on what is

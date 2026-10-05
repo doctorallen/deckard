@@ -19,7 +19,7 @@ import {
   tabStopDate,
 } from '../shared/calendar/model';
 import { Eyebrow } from '../shared/eyebrow';
-import { displayLevelOption, displayOptions, pageWidthOption, themeOption, ViewOptionChoices, ViewOptions } from '../shared/viewOptions';
+import { displayLevelOption, pageWidthOption, themeOption, ViewOptionChoices, ViewOptions } from '../shared/viewOptions';
 
 /** The page's layout: a month of weeks, or the chosen day's week. */
 export type CalendarLayout = 'month' | 'week';
@@ -70,7 +70,6 @@ function PageViewOptions({ state }: { readonly state: DrawnCalendarPage }) {
         themeOption(),
         pageWidthOption(),
         displayLevelOption(),
-        ...displayOptions(),
       ]}
     />
   );

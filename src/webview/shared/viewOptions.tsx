@@ -1,7 +1,7 @@
 /**
  * The gear: a page's view options, in a disclosure that opens a menu of
- * rows, each a label over its choices. The theme, page width, Display,
- * cards, and tags rows are the same on every page that has a gear.
+ * rows, each a label over its choices. The theme, page width, and Display
+ * rows are the same on every page that has a gear.
  */
 import type { ComponentChildren } from 'preact';
 
@@ -85,9 +85,10 @@ const STEP_NAMES = { full: 'Full', quiet: 'Quiet', zen: 'Zen' } as const;
 
 /**
  * The gear's Display row, the same on every page that has a gear: the three
- * steps as pressed buttons, then, when the reader has set any of the
- * settings the step moves, how many and a way to put the step's own values
- * back, and Customize…, which opens Settings on Display. Read from the
+ * steps as pressed buttons beside the label, and under them one line: how
+ * many settings the reader set apart from the step, with Reset, which puts
+ * the step's own values back, and Customize…, which opens Settings on
+ * Display, where every setting the step moves can be set. Read from the
  * body's markers, which the page shell wrote from the settings.
  */
 export function displayLevelOption(): ViewOptionGroup {
@@ -97,7 +98,6 @@ export function displayLevelOption(): ViewOptionGroup {
   const name = STEP_NAMES[level];
   return {
     label: 'Display',
-    stacked: true,
     content: (
       <div class="view-options-display">
         <ViewOptionChoices
@@ -107,55 +107,31 @@ export function displayLevelOption(): ViewOptionGroup {
           selected={level}
           label="Display"
         />
-        {changed > 0 ? (
-          <p class="view-options-changed">
-            {`${name} · ${changed} changed · `}
-            <button type="button" class="view-options-link" data-action="display-command" data-command="useStepValues">{`Use ${name}'s values`}</button>
-          </p>
-        ) : null}
-        <button type="button" class="view-options-link" data-action="display-command" data-command="customize">Customize…</button>
+        <p class="view-options-changed">
+          {changed > 0 ? `${changed} changed · ` : null}
+          {changed > 0 ? (
+            <button type="button" class="view-options-link" data-action="display-command" data-command="useStepValues" aria-label={`Reset to ${name}'s values`}>Reset</button>
+          ) : null}
+          {changed > 0 ? ' · ' : null}
+          <button type="button" class="view-options-link" data-action="display-command" data-command="customize">Customize…</button>
+        </p>
       </div>
     ),
   };
 }
 
 /**
- * The gear's Page width row: a 1000px column, or the panel's whole width.
- * Read from the body's marker, as the Cards and Tags rows are.
+ * The gear's Page width row: limited to a 1000px column, or the panel's full
+ * width. Read from the body's marker, as the Display row is.
  */
 export function pageWidthOption(): ViewOptionGroup {
-  const wide = document.body.dataset.width === 'wide';
+  const full = document.body.dataset.width === 'full';
   return {
     label: 'Page width',
     content: (
-      <ViewOptionChoices action="set-display" attributes={{ 'data-display': 'pageWidth' }} choices={[['column', 'Column'], ['wide', 'Wide']]} selected={wide ? 'wide' : 'column'} label="Page width" />
+      <ViewOptionChoices action="set-display" attributes={{ 'data-display': 'pageWidth' }} choices={[['limited', 'Limited'], ['full', 'Full']]} selected={full ? 'full' : 'limited'} label="Page width" />
     ),
   };
-}
-
-/**
- * The gear's Cards and Tags rows, the same on every page that has a gear:
- * raised cards or flat rows, and tags as chips or as text. What is chosen is
- * read from the body's markers, which the page shell wrote from the
- * settings, so no page carries it through its state builder.
- */
-export function displayOptions(): ViewOptionGroup[] {
-  const flat = document.body.dataset.cards === 'flat';
-  const text = document.body.dataset.tags === 'text';
-  return [
-    {
-      label: 'Cards',
-      content: (
-        <ViewOptionChoices action="set-display" attributes={{ 'data-display': 'cardFrames' }} choices={[['raised', 'Raised'], ['flat', 'Flat']]} selected={flat ? 'flat' : 'raised'} label="Cards" />
-      ),
-    },
-    {
-      label: 'Tags',
-      content: (
-        <ViewOptionChoices action="set-display" attributes={{ 'data-display': 'tags' }} choices={[['chips', 'Chips'], ['text', 'Text']]} selected={text ? 'text' : 'chips'} label="Tags" />
-      ),
-    },
-  ];
 }
 
 /**

@@ -5,7 +5,7 @@
 import type { TaskGlance } from '../../ui/protocol/dashboard';
 import { Eyebrow } from '../shared/eyebrow';
 import { Metric } from '../shared/metric';
-import { displayLevelOption, displayOptions, pageWidthOption, themeOption, ViewOptionChoices, ViewOptions } from '../shared/viewOptions';
+import { displayLevelOption, pageWidthOption, themeOption, ViewOptionChoices, ViewOptions } from '../shared/viewOptions';
 import { TabSearchMarkIcon } from './icons';
 import type { DashboardDraw } from './model';
 import type { TagFilter } from './tagNames';
@@ -60,7 +60,6 @@ function DashboardOptions({ snapshot, view }: DashboardDraw) {
         themeOption(),
         pageWidthOption(),
         displayLevelOption(),
-        ...displayOptions(),
       ]}
     />
   );

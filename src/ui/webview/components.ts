@@ -14,7 +14,10 @@ export type { DisplayChoices };
 
 
 /** Zen's values, for a page given only the zen flag, as the test harness gives it. */
-const ZEN_DISPLAY: DisplayChoices = { level: 'zen', styling: 'plain', help: 'hidden', density: 'compact' };
+const ZEN_DISPLAY: DisplayChoices = {
+  level: 'zen', styling: 'plain', help: 'hidden', density: 'compact',
+  cards: 'flat', tags: 'text', counts: 'hidden', fileAndLine: 'never', dates: 'relative',
+};
 
 /**
  * The look a page is written in: the theme its host read, preview and all,
@@ -99,7 +102,7 @@ function bodyMarkers(chrome: PageChrome): string {
     display.counts === 'hidden' ? ' data-counts="hidden"' : '',
     display.fileAndLine ? ` data-file-line="${display.fileAndLine}"` : '',
     display.dates ? ` data-dates="${display.dates}"` : '',
-    display.width === 'wide' ? ' data-width="wide"' : '',
+    display.width === 'full' ? ' data-width="full"' : '',
   ].join('');
 }
 

@@ -100,14 +100,13 @@ suite('Page message narrowing', () => {
   test('the gear\'s Display rows: which setting, and a short lowercase value', () => {
     const display = narrowWith<{ setDisplay: ReturnType<typeof narrowSetDisplay> }>({ setDisplay: narrowSetDisplay });
     check(display, [
-      [{ type: 'setDisplay', setting: 'cardFrames', value: 'flat', extra: 1 }, { type: 'setDisplay', setting: 'cardFrames', value: 'flat' }],
-      [{ type: 'setDisplay', setting: 'tags', value: 'text' }, { type: 'setDisplay', setting: 'tags', value: 'text' }],
-      [{ type: 'setDisplay', setting: 'pageWidth', value: 'wide' }, { type: 'setDisplay', setting: 'pageWidth', value: 'wide' }],
+      [{ type: 'setDisplay', setting: 'pageWidth', value: 'full', extra: 1 }, { type: 'setDisplay', setting: 'pageWidth', value: 'full' }],
+      [{ type: 'setDisplay', setting: 'cardFrames', value: 'flat' }, undefined],
       [{ type: 'setDisplay', setting: 'level', value: 'quiet' }, { type: 'setDisplay', setting: 'level', value: 'quiet' }],
       [{ type: 'setDisplay', setting: 'density', value: 'compact' }, undefined],
       [{ type: 'setDisplay', setting: 'theme', value: 'cooper' }, undefined],
-      [{ type: 'setDisplay', setting: 'tags', value: 'Text' }, undefined],
-      [{ type: 'setDisplay', setting: 'tags' }, undefined],
+      [{ type: 'setDisplay', setting: 'level', value: 'Zen' }, undefined],
+      [{ type: 'setDisplay', setting: 'level' }, undefined],
     ]);
   });
 

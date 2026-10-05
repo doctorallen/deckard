@@ -226,8 +226,8 @@ export interface ChooseThemeMessage {
   type: 'chooseTheme';
 }
 
-/** One of the Display settings a page's gear sets: the step, the page width, and the two looks. */
-export type GearDisplaySetting = 'level' | 'pageWidth' | 'cardFrames' | 'tags';
+/** One of the Display settings a page's gear sets: the step and the page width. */
+export type GearDisplaySetting = 'level' | 'pageWidth';
 
 /**
  * The gear's Display row asking the host for one of its two links: put the

@@ -7,7 +7,7 @@ suite('Display choices on the page body', () => {
     assert.strictEqual(getPageTailCss({ theme: 'cooper', zen: false }).bodyAttribute, '');
     assert.strictEqual(
       getPageTailCss({ theme: 'cooper', zen: true }).bodyAttribute,
-      ' class="zen" data-level="zen" data-styling="plain" data-help="hidden" data-density="compact"',
+      ' class="zen" data-level="zen" data-styling="plain" data-help="hidden" data-density="compact" data-cards="flat" data-tags="text" data-counts="hidden" data-file-line="never" data-dates="relative"',
       'zen with no choices given draws as Zen does',
     );
     assert.strictEqual(
@@ -20,7 +20,7 @@ suite('Display choices on the page body', () => {
       ' data-counts="hidden" data-file-line="never" data-dates="date"',
       'the preferences',
     );
-    assert.strictEqual(getPageTailCss({ theme: 'cooper', zen: false, display: { width: 'wide' } }).bodyAttribute, ' data-width="wide"', 'page width');
+    assert.strictEqual(getPageTailCss({ theme: 'cooper', zen: false, display: { width: 'full' } }).bodyAttribute, ' data-width="full"', 'page width');
     assert.strictEqual(
       getPageTailCss({ theme: 'cooper', zen: false, display: { level: 'quiet', changed: 2, styling: 'plain' } }).bodyAttribute,
       ' data-level="quiet" data-changed="2" data-styling="plain"',

@@ -21,11 +21,14 @@ suite('Display: the scale', () => {
   });
 
   test('each step turns its settings down further than the one before', () => {
-    const plainCount = (level: (typeof DISPLAY_LEVELS)[number]): number => {
-      const values = STEP_VALUES[level];
-      return [values.themeStyling === 'plain', values.helpText === 'hidden', values.density === 'compact'].filter(Boolean).length;
-    };
-    assert.deepStrictEqual(DISPLAY_LEVELS.map(plainCount), [0, 2, 3]);
+    const turnedDown = (level: (typeof DISPLAY_LEVELS)[number]): (keyof typeof STEP_VALUES.full)[] =>
+      (Object.keys(STEP_VALUES.full) as (keyof typeof STEP_VALUES.full)[]).filter((key) => STEP_VALUES[level][key] !== STEP_VALUES.full[key]);
+    assert.deepStrictEqual(turnedDown('full'), []);
+    assert.deepStrictEqual(turnedDown('quiet'), ['themeStyling', 'helpText', 'tags']);
+    assert.deepStrictEqual(turnedDown('zen'), ['themeStyling', 'helpText', 'density', 'cardFrames', 'tags', 'counts', 'fileAndLine', 'dates']);
+    for (const key of turnedDown('quiet')) {
+      assert.strictEqual(STEP_VALUES.zen[key], STEP_VALUES.quiet[key], `Zen keeps what Quiet turned down: ${key}`);
+    }
   });
 
   test('a setting left at auto follows the step; one set wins at every step', () => {
@@ -38,10 +41,10 @@ suite('Display: the scale', () => {
       assert.strictEqual(resolveScaleValues(level, { density: 'compact' }).density, 'compact');
       assert.strictEqual(resolveScaleValues(level, { helpText: 'shown' }).helpText, 'shown');
     }
-    assert.deepStrictEqual(resolveScaleValues('zen', { themeStyling: 'styled' }), {
+    assert.deepStrictEqual(resolveScaleValues('zen', { themeStyling: 'styled', counts: 'shown' }), {
+      ...STEP_VALUES.zen,
       themeStyling: 'styled',
-      helpText: 'hidden',
-      density: 'compact',
+      counts: 'shown',
     });
   });
 

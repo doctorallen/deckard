@@ -126,7 +126,7 @@ suite('The shared page core draws what the template script drew', () => {
 
     let drawn = row();
     assert.deepStrictEqual(pressed(drawn), ['Full:true', 'Quiet:false', 'Zen:false']);
-    assert.strictEqual(drawn.querySelector('.view-options-changed'), null, 'nothing changed, nothing to undo');
+    assert.strictEqual(drawn.querySelector('.view-options-changed')?.textContent, 'Customize…', 'nothing changed, nothing to undo');
     assert.ok(drawn.querySelector('[data-command="customize"]'), 'Customize… is always there');
 
     body.dataset.level = 'quiet';
@@ -134,7 +134,8 @@ suite('The shared page core draws what the template script drew', () => {
     try {
       drawn = row();
       assert.deepStrictEqual(pressed(drawn), ['Full:false', 'Quiet:true', 'Zen:false']);
-      assert.strictEqual(drawn.querySelector('.view-options-changed')?.textContent, "Quiet · 2 changed · Use Quiet's values");
+      assert.strictEqual(drawn.querySelector('.view-options-changed')?.textContent, '2 changed · Reset · Customize…');
+      assert.strictEqual(drawn.querySelector('[data-command="useStepValues"]')?.getAttribute('aria-label'), "Reset to Quiet's values");
       assert.ok(drawn.querySelector('[data-command="useStepValues"]'));
     } finally {
       delete body.dataset.level;

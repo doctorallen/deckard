@@ -107,8 +107,8 @@ body[data-dates=date] .due-stateless .due-sep {
   white-space: nowrap;
 }
 
-/* ---- Page width: wide --------------------------------------------------- */
+/* ---- Page width: full --------------------------------------------------- */
 
 /* The panel's whole width, for a wide monitor or a board of many columns,
-   in place of the 1000px column every page keeps to. */
-body[data-width=wide] main { max-width: none; }
+   in place of the 1000px a page is limited to. */
+body[data-width=full] main { max-width: none; }

@@ -14,8 +14,8 @@ import { customizeDisplay, readDisplayLevel, readScaleSettings, setDisplayChoice
 /** The steps' names and what each draws. */
 const STEPS: Readonly<Record<DisplayLevel, { label: string; detail: string }>> = {
   full: { label: 'Full', detail: 'Every theme as it is drawn' },
-  quiet: { label: 'Quiet', detail: "Each theme's decoration and the lines that teach off" },
-  zen: { label: 'Zen', detail: 'Also compact: what Zen mode drew' },
+  quiet: { label: 'Quiet', detail: "Each theme's decoration and the lines that teach off; tags as text" },
+  zen: { label: 'Zen', detail: 'Also compact and flat, without counts, file and line, or dates beside how far off' },
 };
 
 /** A picker row: a step, or one of the links under them. */
