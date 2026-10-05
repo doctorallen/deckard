@@ -35,8 +35,15 @@ function createScopeWorkspaces() {
 
 const scopeWorkspaces = createScopeWorkspaces();
 
-/** What every run shares: the extension alone, and how long a test may wait. */
+/**
+ * What every run shares: the VS Code it runs in, the extension alone, and
+ * how long a test may wait. VSCODE_VERSION names the VS Code, such as
+ * 1.140.0; unset, it is today's stable. CI pins one, so the download it
+ * caches (.vscode-test/vscode-*) is the one it runs, and the nightly run
+ * adds the oldest the manifest's `engines` allows.
+ */
 const shared = {
+	version: process.env.VSCODE_VERSION || 'stable',
 	launchArgs: ['--disable-extensions'],
 	mocha: {
 		// The suite itself runs in about four seconds, but a test that waits on

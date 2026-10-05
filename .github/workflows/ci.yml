@@ -30,6 +30,11 @@ concurrency:
   cancel-in-progress: ${{ github.workflow == 'CI' }}
 
 env:
+  # The VS Code the host suites run in, pinned so the cached download is the
+  # one used and a new release cannot change a run's result by itself. Raise
+  # it as VS Code ships; the nightly run also tests the oldest `engines`
+  # allows.
+  VSCODE_VERSION: 1.140.0
   # The Chrome the Linux visual baselines were drawn in: Chrome for Testing
   # at the version of the Google Chrome in the ubuntu-24.04 image
   # (20260927.320) that drew them. The runner's own Chrome moves with each
@@ -100,6 +105,15 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # The VS Code download, kept by system and version: one fewer
+      # download, and one fewer way for a run to fail (a download timed out
+      # in 37241955541).
+      - name: Restore VS Code ${{ env.VSCODE_VERSION }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .vscode-test/vscode-*
+          key: vscode-${{ runner.os }}-${{ env.VSCODE_VERSION }}
 
       - name: Build the suites and the extension
         run: npm run compile-tests && node esbuild.js
@@ -218,8 +232,11 @@ jobs:
 
   # The extension's own tests on the other two systems VS Code runs on, for
   # what Linux cannot show: paths with drive letters and backslashes, and
-  # line endings. The pages are drawn and compared on Linux alone.
+  # line endings (.gitattributes keeps every checkout's at LF). Lint and the
+  # type check read the same files on every system and run in `checks`; the
+  # pages are drawn and compared on Linux alone.
   extension-host:
+    name: Unit and host suites on ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -240,8 +257,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run automated tests
-        run: npm test
+      - name: Restore VS Code ${{ env.VSCODE_VERSION }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .vscode-test/vscode-*
+          key: vscode-${{ runner.os }}-${{ env.VSCODE_VERSION }}
+
+      - name: Build the suites and the extension
+        run: npm run compile-tests && node esbuild.js
+
+      - name: Run the unit suites
+        run: node test/harness/runUnitSuites.js
+
+      - name: Run the extension-host suites
+        run: npx vscode-test
 
   # The check master's ruleset requires, by this name. A job whose needs
   # failed is skipped, and a skipped required check counts as passing, so
