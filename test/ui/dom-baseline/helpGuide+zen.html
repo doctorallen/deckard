@@ -1,5 +1,14 @@
 <body
   class="zen"
+  data-cards="flat"
+  data-counts="hidden"
+  data-dates="relative"
+  data-density="compact"
+  data-file-line="never"
+  data-help="hidden"
+  data-level="zen"
+  data-styling="plain"
+  data-tags="text"
 > <main
   > <nav
       aria-label="Help sections"
@@ -96,7 +105,7 @@
         > <a
           class="nav-sub"
           href="#zen"
-        >Zen mode</a
+        >Display</a
         > <a
           class="nav-sub"
           href="#commands"
@@ -120,7 +129,18 @@
     > <header
       > <p
           class="eyebrow"
-        >DECKARD / FIELD GUIDE</p
+        ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label="Deckard: go to another page"
+            class="eyebrow-home"
+            data-go-to=""
+            type="button"
+          >DECKARD ▾</button
+          ><span
+            class="eyebrow-trail"
+          > / FIELD GUIDE</span
+          ></p
         > <h1
         >Help</h1
         > <p
@@ -154,10 +174,15 @@
           >Rather see it than read it?</strong
           > <button
             class="command-link"
+            data-command="deckard.createWorkSample"
+            type="button"
+          >Deckard: Create a Work Sample</button
+          > writes a week of a team lead's notes, dated from the day you make it, and opens it: standups, two 1:1s, a project, and its decisions, with what to try. <button
+            class="command-link"
             data-command="deckard.createSampleWorkspace"
             type="button"
-          >Deckard: Create a Sample Workspace</button
-          > writes a tour of Deckard, dated from the day you make it, and opens it. Its README leads through ten notes, one a topic, each holding what it explains and ending with what to try.</p
+          >Deckard: Create the Story Tour</button
+          > writes the longer tour, ten notes, one for each part of Deckard.</p
         > <div
           class="steps"
         > <div
@@ -175,7 +200,19 @@
                   alt="Deckard"
                   class="deckard-logo"
                   src="vscode-webview://deckard/resources/deckard.svg"
-                > in the Activity Bar for Context, which shows related notes and more, the Outline, Tasks, and the Calendar.</p
+                > in the Activity Bar: <strong
+                >Pages</strong
+                > lists every Deckard page, then Context shows the note’s sections, related notes, and what links to it, then Tasks and the Calendar. <button
+                  class="command-link"
+                  data-command="deckard.goTo"
+                  type="button"
+                >Deckard: Go to…</button
+                > <kbd
+                  class="shortcut"
+                >Cmd+Shift+Alt+P</kbd
+                >, Cmd/Ctrl+Shift+Alt+P, lists the same pages from anywhere, and <strong
+                >DECKARD ▾</strong
+                > atop any page drops them as a menu.</p
               ></div
             ></div
           > <div
@@ -1744,18 +1781,15 @@
           > <div
             class="card"
           ><h3
-            >Outline</h3
+            >Sections</h3
             ><p
-            >A tree of the current note’s headings with the tags on each, and <strong
+            >The Context view lists the note’s headings above its related notes, with the tags on each and <strong
               >2/5 · ↩3</strong
-              > for the tasks under a heading that are done and the links that name it. It can follow the cursor, and a heading’s context menu opens or renames its tags. <code
-              >Deckard: Focus Section</code
-              > folds the rest of the note away from one heading, and <button
-                class="command-link"
-                data-command="deckard.outline.filterByTag"
-                type="button"
-              >Deckard: Filter Outline by Tag…</button
-              > keeps only the headings that carry a tag.</p
+              > for the tasks under a heading that are done and the links that name it. It marks the heading the cursor is in. Select one to open it; <strong
+              >Focus</strong
+              > folds the rest of the note away; <strong
+              >Show</strong
+              > narrows the list to one tag’s headings.</p
             ></div
           > <div
             class="card"
@@ -1799,7 +1833,7 @@
         ><a
             data-guide-page="connections"
             href="#"
-          >Read more: Related notes, the graph, and the outline →</a
+          >Read more: Related notes, sections, and the graph →</a
           ></p
         > </section
       > <section
@@ -2011,7 +2045,9 @@
                 data-command="deckard.showCalendar"
                 type="button"
               >Deckard: Open Calendar</button
-              >, or the button in the Calendar view’s title bar, opens the calendar across the editor: each day lists its tasks by name, the chosen day’s panel sits beside the month, or in the Context sidebar while it is open, and <strong
+              >, <strong
+              >Calendar</strong
+              > in the Pages view, or the button in the Calendar view’s title bar, opens the calendar across the editor: each day lists its tasks by name, the chosen day’s panel sits beside the month, or in the Context sidebar while it is open, and <strong
               >Week</strong
               > shows one week in full. Drag a task to another day to move its date there. <code
               >deckard.calendar.showWeekends</code
@@ -2029,27 +2065,39 @@
       > <section
         id="zen"
       > <h2
-        >Zen mode</h2
+        >Display</h2
         > <p
         ><strong
-          >Zen mode turns Deckard’s own chrome down without taking anything away.</strong
-          > The decorative labels and the grid backdrop go, the borders and headings thin out, and each row’s file name and line fold away until you hover or focus the row. Every button, filter, count, and tag stays exactly where it was, and the folded text is still read aloud, still found by find-in-page, and comes back the moment you tab to the row.</p
+          >Display turns Deckard’s own chrome down a step at a time without taking anything away.</strong
+          > <strong
+          >Full</strong
+          > is Deckard as it ships. <strong
+          >Quiet</strong
+          > takes off each theme’s decoration and the lines that teach, such as the search box’s line of syntax, and draws tags as text, at the usual spacing. <strong
+          >Zen</strong
+          > also tightens the spacing, draws cards flat, and leaves out counts and each entry’s file and line. Every button, filter, count, and tag stays where it was, and DECKARD ▾ stays at every step.</p
         > <p
-        >Turn it on from the gear on the Dashboard, a search page, or the Task board, from the zen button in the title bar of any Deckard page, from <button
+        >Pick a step from <strong
+          >Display</strong
+          > in the gear on any page that has one, from <button
             class="command-link"
-            data-command="deckard.enableZenMode"
+            data-command="deckard.chooseDisplay"
             type="button"
-          >Deckard: Enter Zen Mode</button
-          > in the Command Palette, or by setting <code
-          >deckard.zenMode</code
-          >. It is one setting for every Deckard view, and it works with whichever theme you use — zen decides how much frame is drawn, a theme decides its colors. <button
+          >Deckard: Choose Display…</button
+          >, which shows each step on the open pages as you move through them, or with <code
+          >deckard.display.level</code
+          >. The Zen button in the title bar of any Deckard page goes to Zen and back to the step you were on. Every Display setting (Theme styling, Help text, Tags, Density, Cards, Counts, File &amp; line, and Dates) follows the step until you set it yourself; <strong
+          >Customize…</strong
+          > in the gear opens them in Settings. <strong
+          >Page width</strong
+          >, Limited or Full, has its own row in the gear. Display works with whichever theme you use: it decides how much frame is drawn, a theme decides its colors. <button
             class="command-link"
             data-command="deckard.chooseTheme"
             type="button"
           >Deckard: Choose Theme…</button
           >, or <strong
           >Theme</strong
-          > above Zen in the same gear, shows each of the eight themes on the open pages as you move through them, and keeps the one you choose.</p
+          > at the top of the same gear, shows each of the eight themes on the open pages as you move through them.</p
         > <p
         ><strong
           >Two things deliberately stay put.</strong
@@ -2062,10 +2110,10 @@
         > <p
           class="read-more"
         ><a
-            data-guide-anchor="zen-mode"
+            data-guide-anchor="display"
             data-guide-page="themes-and-zen"
             href="#"
-          >Read more: Themes and Zen mode →</a
+          >Read more: Themes and Display →</a
           ></p
         > </section
       > <section
@@ -2100,6 +2148,20 @@
                   ></td
                 ><td
                 >What is overdue, due today, and open, Home, and every tag.</td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.goTo"
+                    type="button"
+                  >Go to…</button
+                  > <kbd
+                    class="shortcut"
+                  >Cmd+Shift+Alt+P</kbd
+                  ></td
+                ><td
+                ></td
                 ></tr
               ><tr
               ><td
@@ -2215,6 +2277,61 @@
                   ></td
                 ><td
                 >Reads every note again.</td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.createHubNoteForTag"
+                    type="button"
+                  >Create Hub Note for Tag…</button
+                  ></td
+                ><td
+                ></td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.pauseHere"
+                    type="button"
+                  >Pause in This Workspace</button
+                  ></td
+                ><td
+                ></td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.resumeHere"
+                    type="button"
+                  >Resume in This Workspace</button
+                  ></td
+                ><td
+                ></td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.chooseScope"
+                    type="button"
+                  >Choose What Deckard Reads…</button
+                  ></td
+                ><td
+                ></td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.chooseEditorPreset"
+                    type="button"
+                  >Choose Editor Preset…</button
+                  ></td
+                ><td
+                ></td
                 ></tr
               ><tr
               ><td
@@ -2578,11 +2695,8 @@
                 ></tr
               ><tr
               ><td
-                ><button
-                    class="command-link"
-                    data-command="deckard.search"
-                    type="button"
-                  >Open Search Page</button
+                ><code
+                  >Open Search Page</code
                   ></td
                 ><td
                 >A search page, ready for a search.</td
@@ -2659,10 +2773,10 @@
                     class="command-link"
                     data-command="deckard.searchNotes"
                     type="button"
-                  >Search Notes and Tasks</button
+                  >Open Search Page…</button
                   ></td
                 ><td
-                >Opens a search page on a query you write.</td
+                >Opens a search page on a search you write, or on every note.</td
                 ></tr
               ><tr
               ><td
@@ -2731,14 +2845,6 @@
                 ></tr
               ><tr
               ><td
-                ><code
-                  >Reveal Outline Heading</code
-                  ></td
-                ><td
-                ></td
-                ></tr
-              ><tr
-              ><td
                 ><button
                     class="command-link"
                     data-command="deckard.agenda.editQuery"
@@ -2772,28 +2878,6 @@
                 ></tr
               ><tr
               ><td
-                ><button
-                    class="command-link"
-                    data-command="deckard.outline.enableFollowCursor"
-                    type="button"
-                  >Follow Cursor in Outline</button
-                  ></td
-                ><td
-                >Selects the heading the cursor is in.</td
-                ></tr
-              ><tr
-              ><td
-                ><button
-                    class="command-link"
-                    data-command="deckard.outline.disableFollowCursor"
-                    type="button"
-                  >Stop Following Cursor in Outline</button
-                  ></td
-                ><td
-                >Leaves the Outline where you put it.</td
-                ></tr
-              ><tr
-              ><td
                 ><code
                   >Focus Section</code
                   ></td
@@ -2815,12 +2899,34 @@
               ><td
                 ><button
                     class="command-link"
-                    data-command="deckard.outline.filterByTag"
+                    data-command="deckard.outline.enableFollowCursor"
                     type="button"
-                  >Filter Outline by Tag…</button
+                  >Mark the Cursor's Section in Sections</button
                   ></td
                 ><td
-                >Shows only the Outline headings that carry a tag, or a tag under it.</td
+                >Marks the heading the cursor is in, in the Context view’s Sections.</td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.outline.disableFollowCursor"
+                    type="button"
+                  >Stop Marking the Cursor's Section</button
+                  ></td
+                ><td
+                >Stops marking the cursor’s heading in Sections.</td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.outline.filterByTag"
+                    type="button"
+                  >Filter Sections by Tag…</button
+                  ></td
+                ><td
+                >Shows only the headings in Sections that carry a tag, or a tag under it.</td
                 ></tr
               ><tr
               ><td
@@ -2828,10 +2934,10 @@
                     class="command-link"
                     data-command="deckard.outline.clearTagFilter"
                     type="button"
-                  >Clear Outline Tag Filter</button
+                  >Clear the Sections Filter</button
                   ></td
                 ><td
-                >Shows every heading in the Outline again.</td
+                >Shows every heading in Sections again.</td
                 ></tr
               ><tr
               ><td
@@ -2848,9 +2954,20 @@
               ><td
                 ><button
                     class="command-link"
+                    data-command="deckard.chooseDisplay"
+                    type="button"
+                  >Choose Display…</button
+                  ></td
+                ><td
+                ></td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
                     data-command="deckard.enableZenMode"
                     type="button"
-                  >Enter Zen Mode</button
+                  >Enter Zen</button
                   ></td
                 ><td
                 ></td
@@ -2861,7 +2978,18 @@
                     class="command-link"
                     data-command="deckard.disableZenMode"
                     type="button"
-                  >Leave Zen Mode</button
+                  >Leave Zen</button
+                  ></td
+                ><td
+                ></td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.toggleZen"
+                    type="button"
+                  >Toggle Zen</button
                   ></td
                 ><td
                 ></td
@@ -2938,7 +3066,18 @@
                     class="command-link"
                     data-command="deckard.createSampleWorkspace"
                     type="button"
-                  >Create a Sample Workspace</button
+                  >Create the Story Tour</button
+                  ></td
+                ><td
+                ></td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.createWorkSample"
+                    type="button"
+                  >Create a Work Sample</button
                   ></td
                 ><td
                 ></td
@@ -3162,7 +3301,127 @@
                   >false</code
                   ></td
                 ><td
-                >Turn Deckard's own chrome down: hide decorative labels and backdrops, thin the borders, fold each row's file and line out of sight until it is hovered or focused, and in the editor, drop the reference counts, the unlinked-mention lens, and the section highlight. Nothing is removed from a page, and it works with any theme.</td
+                >Replaced by Display: on reads as deckard.display.level Zen until a step is set.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.display.level</code
+                  ></td
+                ><td
+                ><code
+                  >"full"</code
+                  ></td
+                ><td
+                >How much every Deckard page draws: Full, Quiet, or Zen (replaces Zen mode). Every Display setting but the page width follows it while it is Auto. Your own choice, the same in every workspace.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.display.themeStyling</code
+                  ></td
+                ><td
+                ><code
+                  >"auto"</code
+                  ></td
+                ><td
+                >Each theme's decoration and display type, or the theme drawn plain.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.display.helpText</code
+                  ></td
+                ><td
+                ><code
+                  >"auto"</code
+                  ></td
+                ><td
+                >Lines that teach rather than show: the search box's syntax line, Refine's hint, and Home's hint bar.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.display.density</code
+                  ></td
+                ><td
+                ><code
+                  >"auto"</code
+                  ></td
+                ><td
+                >How much room pages leave between things.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.display.cardFrames</code
+                  ></td
+                ><td
+                ><code
+                  >"auto"</code
+                  ></td
+                ><td
+                >How cards and rows are drawn on every Deckard page. Your own choice, the same in every workspace.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.display.tags</code
+                  ></td
+                ><td
+                ><code
+                  >"auto"</code
+                  ></td
+                ><td
+                >How tags are drawn where they are listed on their own, such as a note card's tags and Refine; a tag inside a title is always text. Either way a tag opens its page. Your own choice, the same in every workspace.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.display.counts</code
+                  ></td
+                ><td
+                ><code
+                  >"auto"</code
+                  ></td
+                ><td
+                >Whether pages draw the counts beside names. Your own choice, the same in every workspace.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.display.fileAndLine</code
+                  ></td
+                ><td
+                ><code
+                  >"auto"</code
+                  ></td
+                ><td
+                >Where pages draw the file and line an entry is written in. Your own choice, the same in every workspace.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.display.dates</code
+                  ></td
+                ><td
+                ><code
+                  >"auto"</code
+                  ></td
+                ><td
+                >How pages write a task's due date. An overdue date always says Overdue, and a screen reader hears the whole date either way. Your own choice, the same in every workspace.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.display.pageWidth</code
+                  ></td
+                ><td
+                ><code
+                  >"limited"</code
+                  ></td
+                ><td
+                >How wide Deckard's pages draw: Home, search and tag pages, the note page, Stats, and Help. The Task Board and the Calendar always use their full width. Your own choice, the same in every workspace.</td
                 ></tr
               ><tr
               ><td
@@ -3198,7 +3457,7 @@
                   >"# {date}\n\n"</code
                   ></td
                 ><td
-                >Template used when creating a daily note.</td
+                >Template used when creating a daily note: the text itself, or the name of a Markdown file in the templates folder, such as Daily.md.</td
                 ></tr
               ><tr
               ><td
@@ -3210,7 +3469,7 @@
                   >"# {week}\n\n"</code
                   ></td
                 ><td
-                >Template used when creating a weekly note. {week} becomes the days it covers, such as 2026-09-13 to 2026-09-19, {date} its first day, and {month} that day's month, such as September 2026.</td
+                >Template used when creating a weekly note, as text or as the name of a file in the templates folder. {week} becomes the days it covers, such as 2026-09-13 to 2026-09-19, {date} its first day, and {month} that day's month, such as September 2026.</td
                 ></tr
               ><tr
               ><td
@@ -3222,7 +3481,7 @@
                   >"# {month}\n\n"</code
                   ></td
                 ><td
-                >Template used when creating a monthly note. {month} becomes the month, such as September 2026, {date} its first day, and {week} the days that month covers.</td
+                >Template used when creating a monthly note, as text or as the name of a file in the templates folder. {month} becomes the month, such as September 2026, {date} its first day, and {week} the days that month covers.</td
                 ></tr
               ><tr
               ><td
@@ -3295,6 +3554,30 @@
                   ></td
                 ><td
                 >Show every date a repeating task falls on in the weeks the Calendar draws, not only its next one, marked ↻. They are projected from the task's rule and never written. A when done rule is shown on its next date only, since the dates after it depend on when it is done.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.periodicNotes.folder</code
+                  ></td
+                ><td
+                ><code
+                  >Empty</code
+                  ></td
+                ><td
+                >The folder, inside the notes folder, that new daily, weekly, and monthly notes are written to, such as journal/{yyyy} for one folder a year ({mm} is the month). Empty writes them at the top of the notes folder. Notes already written elsewhere are still found and read.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.weeklyNote.naming</code
+                  ></td
+                ><td
+                ><code
+                  >"range"</code
+                  ></td
+                ><td
+                >How a new weekly note is named. A week's note under either name is found and read.</td
                 ></tr
               ><tr
               ><td
@@ -3545,6 +3828,18 @@
               ><tr
               ><td
                 ><code
+                  >deckard.editor.preset</code
+                  ></td
+                ><td
+                ><code
+                  >"full"</code
+                  ></td
+                ><td
+                >What Deckard draws in the editor, as one choice. A deckard.editor.* setting you change yourself wins over it.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
                   >deckard.editor.referenceCounts</code
                   ></td
                 ><td
@@ -3677,6 +3972,18 @@
               ><tr
               ><td
                 ><code
+                  >deckard.links.style</code
+                  ></td
+                ><td
+                ><code
+                  >"wiki"</code
+                  ></td
+                ><td
+                >How a link Deckard makes from a mention is written. Deckard reads both kinds either way.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
                   >deckard.editor.slashMenu</code
                   ></td
                 ><td
@@ -3744,7 +4051,7 @@
                   >true</code
                   ></td
                 ><td
-                >Say after an open task's line when it is overdue, due today, or needs a new date, such as "overdue 5 days". Zen mode hides these.</td
+                >Say after an open task's line when it is overdue, due today, or needs a new date, such as "overdue 5 days".</td
                 ></tr
               ><tr
               ><td
@@ -4035,7 +4342,7 @@
               ><th
                   colspan="3"
                   scope="rowgroup"
-                >Outline</th
+                >Sections</th
                 ></tr
               ><tr
               ><td
@@ -4047,7 +4354,7 @@
                   >true</code
                   ></td
                 ><td
-                >Show each heading's tags beside it in the Deckard Outline.</td
+                >Show each heading's tags beside it in the Context view's Sections.</td
                 ></tr
               ><tr
               ><td
@@ -4059,7 +4366,7 @@
                   >true</code
                   ></td
                 ><td
-                >Select the Deckard Outline heading that contains the editor cursor.</td
+                >Mark the heading the cursor is in, in the Context view's Sections.</td
                 ></tr
               ><tr
               ><td
@@ -4083,7 +4390,7 @@
                   >true</code
                   ></td
                 ><td
-                >Show beside each heading in the Deckard Outline how many of the tasks under it are done, such as 2/5, and how many links name it, such as ↩3.</td
+                >Show beside each heading in the Context view's Sections how many of the tasks under it are done, such as 2/5, and how many links name it, such as ↩3.</td
                 ></tr
               ></tbody
             ><tbody
@@ -4238,6 +4545,22 @@
             type="button"
           >Deckard: Import Favorites, Pins, and Searches</button
           > reads one back; each says what it holds and asks before replacing anything.</p
+        > <p
+        ><strong
+          >For an approval at work, or a screen reader.</strong
+          > <a
+            data-guide-page="security"
+            href="#"
+          >For your security reviewer</a
+          > says what Deckard sends, stores, and runs; <a
+            data-guide-page="what-deckard-writes"
+            href="#"
+          >What Deckard writes</a
+          > lists every change it makes to your files and the setting for each; <a
+            data-guide-page="accessibility"
+            href="#"
+          >Accessibility and keyboard</a
+          > covers screen readers, keys, high contrast, zoom, and motion.</p
         > <p
           class="read-more"
         ><a

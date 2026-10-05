@@ -24,6 +24,9 @@ export type {
 import type {
   ChooseThemeMessage,
   DashboardTask,
+  GoToPageMessage,
+  ListGoToMessage,
+  OpenGoToMessage,
   OpenSearchMessage,
   OpenSourceMessage,
   OpenTagMessage,
@@ -32,6 +35,8 @@ import type {
   PinNoteMessage,
   RenameTagMessage,
   ResultPaging,
+  DisplayCommandMessage,
+  SetDisplayMessage,
   SetZenModeMessage,
   TagOverviewCard,
   TagTitleDisplayMode,
@@ -371,7 +376,12 @@ export interface RecordRecentQueryMessage {
  */
 export interface DashboardPageToHost {
   setZenMode: SetZenModeMessage;
+  setDisplay: SetDisplayMessage;
+  displayCommand: DisplayCommandMessage;
   chooseTheme: ChooseThemeMessage;
+  openGoTo: OpenGoToMessage;
+  listGoTo: ListGoToMessage;
+  goToPage: GoToPageMessage;
   openSource: OpenSourceMessage;
   toggleTask: ToggleTaskMessage;
   toggleFavorite: ToggleFavoriteMessage;
@@ -451,8 +461,9 @@ export interface DashboardHostToPage {
 export interface TaskGlance {
   overdue: number;
   today: number;
-  open: number;
+  /** Tasks finished since the week began, parked ones aside. */
+  doneThisWeek: number;
   overdueQuery: string;
   todayQuery: string;
-  openQuery: string;
+  doneQuery: string;
 }

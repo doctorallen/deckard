@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { readEditorToggle } from './editorToggles';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import type { NoteFiles } from '../../core/workspace/indexReader';
 import { findFencedLines } from '../../domain/markdown/lineShapes';
@@ -59,7 +60,7 @@ export class SlashMenuProvider implements vscode.Disposable {
     position: vscode.Position,
   ): Promise<vscode.CompletionItem[]> {
     if (
-      !vscode.workspace.getConfiguration('deckard.editor', document.uri).get<boolean>('slashMenu', true) ||
+      !readEditorToggle('slashMenu', document.uri) ||
       !isMarkdownFile(document.uri) ||
       !(this.indexer.isNotesFile?.(document.uri) ?? true)
     ) {
@@ -76,7 +77,13 @@ export class SlashMenuProvider implements vscode.Disposable {
     const range = new vscode.Range(position.line, query.start, position.line, position.character);
     const now = this.now();
     const choices = [
-      ...listSlashChoices({ today: formatLocalDate(now) }),
+      ...listSlashChoices({
+        today: formatLocalDate(now),
+        time: {
+          local: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+          utc: now.toISOString().slice(11, 16),
+        },
+      }),
       ...(await this.listTemplateChoices(document, now)),
     ];
     return choices.map((choice, index) => toCompletionItem(choice, range, index));

@@ -92,7 +92,7 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 80);
+    assert.strictEqual(Object.keys(settings).length, 94);
     assert.strictEqual(settings['deckard.calendar.dayPanel'].default, false);
     assert.strictEqual(settings['deckard.calendar.showRepeats'].default, true);
     assert.deepStrictEqual(settings['deckard.parked.tags'].default, ['parked']);
@@ -121,6 +121,7 @@ suite('Extension Test Suite', () => {
       commands.map((command: { command: string }) => command.command),
       [
         'deckard.showDashboard',
+        'deckard.goTo',
         'deckard.showNotesGraph',
         'deckard.showNotesGraphAroundNote',
         'deckard.showTaskBoard',
@@ -132,6 +133,11 @@ suite('Extension Test Suite', () => {
         'deckard.openWhatsNew',
         'deckard.showLog',
         'deckard.reindexWorkspace',
+        'deckard.createHubNoteForTag',
+        'deckard.pauseHere',
+        'deckard.resumeHere',
+        'deckard.chooseScope',
+        'deckard.chooseEditorPreset',
         'deckard.createDailyNote',
         'deckard.pinNote',
         'deckard.unpinNote',
@@ -185,22 +191,21 @@ suite('Extension Test Suite', () => {
         'deckard.renameHeading',
         'deckard.undoLastChange',
         'deckard.showEntryRelatedNotesDebug',
-        'deckard.outline.revealSection',
-        'deckard.outline.openTagOverview',
-        'deckard.outline.renameTag',
         'deckard.hubs.openHubNote',
         'deckard.agenda.editQuery',
         'deckard.clearAgendaQuery',
         'deckard.agenda.setGrouping',
-        'deckard.outline.enableFollowCursor',
-        'deckard.outline.disableFollowCursor',
         'deckard.focusSection',
         'deckard.unfoldAllSections',
+        'deckard.outline.enableFollowCursor',
+        'deckard.outline.disableFollowCursor',
         'deckard.outline.filterByTag',
         'deckard.outline.clearTagFilter',
         'deckard.chooseTheme',
+        'deckard.chooseDisplay',
         'deckard.enableZenMode',
         'deckard.disableZenMode',
+        'deckard.toggleZen',
         'deckard.tidyPreferences',
         'deckard.exportTaskCalendar',
         'deckard.exportPreferences',
@@ -208,6 +213,7 @@ suite('Extension Test Suite', () => {
         'deckard.restorePreferences',
         'deckard.checkSetup',
         'deckard.createSampleWorkspace',
+        'deckard.createWorkSample',
         'deckard.agenda.editTask',
         'deckard.agenda.breakIntoSteps',
         'deckard.agenda.dueToday',
@@ -320,7 +326,7 @@ suite('Extension Test Suite', () => {
     );
   });
 
-  test('walks a new reader through six steps it can check off', async () => {
+  test('walks a new reader through six steps it can check off, links before tasks', async () => {
     const extension = vscode.extensions.all.find(
       (candidate) => candidate.packageJSON.name === 'deckard-notes',
     );
@@ -335,7 +341,7 @@ suite('Extension Test Suite', () => {
     }> = contributes.walkthroughs[0].steps;
     assert.deepStrictEqual(
       steps.map((step) => step.id.replace('deckard.walkthrough.', '')),
-      ['openNote', 'addTags', 'captureTask', 'openHome', 'search', 'makeItYours'],
+      ['openNote', 'addTags', 'linkNotes', 'search', 'captureTask', 'openHome'],
     );
     const commands = new Set<string>(contributes.commands.map((command: { command: string }) => command.command));
     const views = new Set<string>(
@@ -346,10 +352,17 @@ suite('Extension Test Suite', () => {
     const compiled = ['extension.js', path.join('composition', 'services.js')]
       .map((file) => readFileSync(path.join(root, 'out', file), 'utf8'))
       .join('\n');
+    const registered = new Set(await vscode.commands.getCommands(true));
     let total = 0;
     for (const step of steps) {
       for (const match of step.description.matchAll(/\(command:([\w.]+)/g)) {
-        assert.ok(commands.has(match[1]) || views.has(match[1]), `${step.id} links ${match[1]}`);
+        const id = match[1];
+        // Deckard's own links name a contributed command or view; another,
+        // such as extension.open for Esper Themes, is one VS Code registers.
+        const known = id.startsWith('deckard.')
+          ? commands.has(id) || views.has(id)
+          : registered.has(id);
+        assert.ok(known, `${step.id} links ${id}`);
       }
       for (const event of step.completionEvents ?? []) {
         const key = /^onContext:(.+)$/.exec(event)?.[1];

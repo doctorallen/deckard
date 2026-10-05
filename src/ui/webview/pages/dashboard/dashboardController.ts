@@ -28,10 +28,15 @@ import { getDashboardHtml } from '../../dashboardHtml';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import {
   chooseTheme,
+  goToPage,
+  listGoTo,
+  openGoTo,
   openSource,
   openTag,
   parkTag,
   renameTag,
+  displayCommand,
+  setDisplay,
   setZenMode,
   toggleTask,
 } from '../../host/sharedHandlers';
@@ -349,12 +354,17 @@ export class DashboardController implements PageController<DashboardPageState, D
 
   /** The gear, a row's line, a task's box, and a tag's menu, as other pages answer them. */
   private sharedHandlers(): Handlers<
-    'setZenMode' | 'chooseTheme' | 'openSource' | 'toggleTask' | 'openTag' | 'renameTag' | 'parkTag' | 'unparkTag'
+    'setZenMode' | 'setDisplay' | 'displayCommand' | 'chooseTheme' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'toggleTask' | 'openTag' | 'renameTag' | 'parkTag' | 'unparkTag'
   > {
     const { indexer, navigationService, preferences, navigation, writes } = this.home;
     return {
       setZenMode: setZenMode(),
+      setDisplay: setDisplay(),
+      displayCommand: displayCommand(),
       chooseTheme: chooseTheme(),
+      openGoTo: openGoTo(),
+      listGoTo: listGoTo({ indexer, current: 'home' }),
+      goToPage: goToPage(),
       // Only open a line that still identifies an indexed note or task.
       openSource: openSource({ indexer, navigation: navigationService, policy: 'entries', usage: preferences.usage }),
       toggleTask: toggleTask({ writes, findTask: (taskId) => indexer.getSnapshot().tasks.get(taskId) }),
@@ -502,7 +512,7 @@ export class DashboardController implements PageController<DashboardPageState, D
           {
             agenda: 'deckard.agenda.focus',
             stats: 'deckard.showStats',
-            sampleWorkspace: 'deckard.createSampleWorkspace',
+            sampleWorkspace: 'deckard.createWorkSample',
             checkSetup: 'deckard.checkSetup',
             walkthrough: 'deckard.openWalkthrough',
           }[message.view],

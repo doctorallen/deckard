@@ -21,7 +21,7 @@ Everything Deckard does, one topic to a page. The [README](../../README.md) is t
 - [Search](search.md): Find in Notes, the search box, Refine, and the query language.
 - [Search pages and tag overviews](search-pages.md): a tag's page, hub notes, taking results out, editing them all at once, merging tags, and undoing a write.
 - [Query blocks](query-blocks.md): a live list of a search's results inside a note.
-- [Related notes, the graph, and the outline](connections.md): what makes a note related, the Notes Graph, and the Outline.
+- [Related notes, sections, and the graph](connections.md): what makes a note related, a note's sections in the Context view, and the Notes Graph.
 
 ## Seeing the whole
 
@@ -34,4 +34,7 @@ Everything Deckard does, one topic to a page. The [README](../../README.md) is t
 - [Commands](commands.md)
 - [Settings](settings.md)
 - [Privacy, source safety, and troubleshooting](privacy-and-troubleshooting.md)
+- [For your security reviewer](security.md): what Deckard sends, stores, and runs, for approving it at work.
+- [What Deckard writes](what-deckard-writes.md): every change it makes to your files, and the setting that controls it.
+- [Accessibility and keyboard](accessibility.md): screen readers, keys, high contrast, zoom, and motion.
 - [Changelog](../../CHANGELOG.md)

@@ -16,6 +16,7 @@ import type {
   EditTaskMessage,
   MoveTaskMessage,
   MoveTaskToMessage,
+  PickTaskAssigneeMessage,
   PickTaskDateMessage,
   ReorderTasksMessage,
   SaveBoardSearchMessage,
@@ -37,10 +38,13 @@ import {
   isStringArray,
   MAX_QUERY_LENGTH,
   Narrower,
-  NarrowingTable,
   narrowExportResults,
+  narrowGoToPage,
+  NarrowingTable,
   narrowOpenSource,
   narrowOpenTag,
+  narrowDisplayCommand,
+  narrowSetDisplay,
   narrowSetZenMode,
   narrowToggleTask,
   narrowWith,
@@ -58,7 +62,7 @@ function isTaskSortMode(value: unknown): value is TaskSortMode {
 }
 
 /** The messages that name a task and nothing else. */
-type TaskOnlyMessage = PickTaskDateMessage | MoveTaskToMessage | EditTaskMessage | BreakIntoStepsMessage;
+type TaskOnlyMessage = PickTaskDateMessage | PickTaskAssigneeMessage | MoveTaskToMessage | EditTaskMessage | BreakIntoStepsMessage;
 
 /**
  * A card's or row's action on one task: its id, and nothing else. One check
@@ -181,6 +185,8 @@ const narrowSetBoardStatusNamespace: Narrower<SetBoardStatusNamespaceMessage> = 
 export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   exportResults: narrowExportResults,
   setZenMode: narrowSetZenMode,
+  setDisplay: narrowSetDisplay,
+  displayCommand: narrowDisplayCommand,
   chooseTheme: onlyType('chooseTheme'),
   ready: onlyType('ready'),
   saveBoardSearch: narrowSaveBoardSearch,
@@ -192,6 +198,7 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   toggleTask: narrowToggleTask,
   moveTask: narrowMoveTask,
   pickTaskDate: taskOnly('pickTaskDate'),
+  pickTaskAssignee: taskOnly('pickTaskAssignee'),
   moveTaskTo: taskOnly('moveTaskTo'),
   editTask: taskOnly('editTask'),
   breakIntoSteps: taskOnly('breakIntoSteps'),
@@ -199,6 +206,9 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   setBoardGroup: narrowSetBoardGroup,
   showColumnRest: narrowShowColumnRest,
   openHelp: exactlyType('openHelp'),
+  openGoTo: exactlyType('openGoTo'),
+  listGoTo: exactlyType('listGoTo'),
+  goToPage: narrowGoToPage,
   setBoardQuery: narrowSetBoardQuery,
   setTaskLayout: narrowSetTaskLayout,
   setTableSort: narrowSetTableSort,

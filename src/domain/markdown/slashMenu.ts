@@ -44,13 +44,15 @@ export interface SlashChoice {
 /** What the fixed choices are written with: today's date as YYYY-MM-DD. */
 export interface SlashMenuContext {
   today: string;
+  /** The time now, `09:05`, on this machine's clock and in UTC, for a log; the menu leaves both out without them. */
+  time?: { local: string; utc: string };
 }
 
 /**
  * The choices every note has, in the order the menu lists them. The query
  * blocks start from a search worth keeping, which the first tab stop holds.
  */
-export function listSlashChoices({ today }: SlashMenuContext): SlashChoice[] {
+export function listSlashChoices({ today, time }: SlashMenuContext): SlashChoice[] {
   return [
     { label: 'Task', detail: '- [ ] ', keywords: ['todo', 'checkbox'], snippet: '- [ ] $0' },
     { label: 'Heading 1', detail: '# ', keywords: ['title', 'h1'], snippet: '# $0' },
@@ -65,6 +67,13 @@ export function listSlashChoices({ today }: SlashMenuContext): SlashChoice[] {
     { label: 'Embed a note', detail: '![[…]]', keywords: ['transclude', 'include'], snippet: '![[$0]]', suggestAfter: true },
     { label: 'Today’s note', detail: `[[${today}]]`, keywords: ['daily', 'journal'], snippet: `[[${today}]]$0` },
     { label: 'Today’s date', detail: today, keywords: ['now'], snippet: `${today}$0` },
+    ...(time
+      ? [
+        { label: 'Time', detail: time.local, keywords: ['now', 'clock', 'log'], snippet: `${time.local}$0` },
+        // An incident timeline is kept in UTC, whatever the clock where Deckard runs.
+        { label: 'Time (UTC)', detail: `${time.utc} UTC`, keywords: ['now', 'clock', 'log', 'utc', 'incident'], snippet: `${time.utc} UTC$0` },
+      ]
+      : []),
     {
       label: 'Query block',
       detail: 'A live list of what a search finds',

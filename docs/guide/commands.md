@@ -3,6 +3,7 @@
 | Command | Description |
 | --- | --- |
 | **Deckard: Open Dashboard** | Opens workspace totals, Home, and tags. |
+| **Deckard: Go to…** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> elsewhere, or **Go to…** at the foot of the menu **DECKARD ▾** drops at the top of any page. Lists every page, as the Pages view does, and opens the one you choose; see [Finding your way](getting-started.md#finding-your-way). |
 | **Deckard: Open Notes Graph** | Opens a map of every note, task, and tag connection. |
 | **Deckard: Open Notes Graph Around This Note** | Opens the Notes Graph one hop out from the note in the editor, without changing its default scope. |
 | **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, due date, person, or any tag namespace. |
@@ -13,6 +14,10 @@
 | **Deckard: What's New** | Opens Help at **What's new**. |
 | **Deckard: Open Log** | Opens Deckard's log, including timings. |
 | **Deckard: Reindex Workspace** | Reads and parses every note again. |
+| **Deckard: Choose What Deckard Reads…** | Chooses a notes folder, leaves folders out, or pauses Deckard in this workspace; see [A code repository with no notes folder](getting-started.md#get-started). |
+| **Deckard: Pause in This Workspace** | Stops Deckard reading and writing in this workspace until **Deckard: Resume in This Workspace**. |
+| **Deckard: Choose Editor Preset…** | Chooses what Deckard draws in the editor: **Full**, **Tasks**, or **Writing**; see `deckard.editor.preset`. |
+| **Deckard: Create Hub Note for Tag…** | Lists the tags no hub note describes yet, most used first, and creates a [hub note](search-pages.md#hub-notes) for the one chosen. |
 | **Deckard: Create Daily Note** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> elsewhere. Creates or opens today's note. |
 | **Deckard: Pin Note to Home** | Pins the note the cursor is in to Home's Pinned notes. **Deckard: Unpin Note from Home** removes it. |
 | **Deckard: Park Note** | [Parks](organizing.md#parking-notes) the note in the editor, or notes chosen in the Explorer, by adding `parked` to its front-matter tags. **Deckard: Unpark Note** reverses it. |
@@ -24,7 +29,8 @@
 | **Deckard: Import Favorites, Pins, and Searches** | Reads one back and, after asking, replaces what this workspace remembers. |
 | **Deckard: Restore Favorites, Pins, and Searches from a Copy** | Restores one of Deckard's automatic copies, after asking. |
 | **Deckard: Check My Setup** | Writes a Markdown report of your resolved settings, what the last scan found and kept out, what the index holds, and whether `deckard.me` names anyone, with fixes. |
-| **Deckard: Create a Sample Workspace** | Writes a tour of Deckard, dated from today, into Deckard's storage and opens it. Run again, it offers a fresh copy. |
+| **Deckard: Create a Work Sample** | Writes a week of a team lead's notes, dated from today, into Deckard's storage and opens it. Run again, it offers a fresh copy. |
+| **Deckard: Create the Story Tour** | Writes the longer tour of Deckard, a note for each part, the same way. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Daily Note for Date…** | Opens the daily note for a day in plain words, such as `last friday` or `oct 3`, creating it if needed. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
@@ -47,22 +53,20 @@
 | **Deckard: Copy as Plain Markdown** | Copies the note, or the selection, with its embeds, query results, and links written out; see [Copying a note for elsewhere](notes-and-links.md#copying-a-note-for-elsewhere). |
 | **Deckard: Extract Heading** | Moves a heading section into a newly named note and leaves a `[[link]]` to it. |
 | **Deckard: Open a Tag's Search Page…** | Opens a tag's search page, asking which tag when none is supplied. |
-| **Deckard: Open Search Page** | Opens a search page listing every note, ready for a search. |
 | **Deckard: Insert Query Block…** | Writes a live [query block](query-blocks.md#query-blocks) at the cursor. |
 | **Deckard: Find in Notes** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> elsewhere. Searches notes, tasks, tags, and saved searches as you type; see [Find](search.md#find). |
-| **Deckard: Search Notes and Tasks** | Opens a search page on a Deckard query, such as `(tag = #project/atlas AND task = open) OR text ~ "vendor"`. |
+| **Deckard: Open Search Page…** | Opens a search page on a search, such as `#project/atlas AND is:open`; with nothing typed, a page of every note. |
 | **Deckard: Link Current Heading to Entity** | Adds a person, project, topic, organization, or meeting tag to the current heading. |
 | **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |
 | **Deckard: Rename Tag** | Searches indexed tags and replaces the selected tag in its source notes. |
 | **Deckard: Merge Tag…** | Merges one tag into an existing one, after a preview. |
 | **Deckard: Rename Heading** | Renames the heading the cursor is in and rewrites every `[[Note#Heading]]` link that named it. |
 | **Deckard: Undo Last Change** | Reverts Deckard's last workspace-wide write, such as a tag rename or merge. |
-| **Deckard: Follow Cursor in Outline** | Selects the Outline heading containing the editor cursor. The Outline title has the same control. |
-| **Deckard: Stop Following Cursor in Outline** | Leaves the Outline selection where you put it. |
-| **Deckard: Focus Section** | Folds the rest of the note away from the current section or Outline heading. |
+| **Deckard: Mark the Cursor's Section in Sections** | Marks the heading the cursor is in, in the Context view's Sections. **Deckard: Stop Marking the Cursor's Section** turns it off. |
+| **Deckard: Focus Section** | Folds the rest of the note away from the current section, or the heading whose **Focus** was selected in Sections. |
 | **Deckard: Unfold All Sections** | Unfolds the note again after Focus Section. |
-| **Deckard: Filter Outline by Tag…** | Shows only Outline headings carrying a tag, or a tag under it. |
-| **Deckard: Clear Outline Tag Filter** | Shows every heading in the Outline again. |
+| **Deckard: Filter Sections by Tag…** | Shows only the headings in Sections that carry a tag, or a tag under it. |
+| **Deckard: Clear the Sections Filter** | Shows every heading in Sections again. |
 
 ---
 

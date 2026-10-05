@@ -11,10 +11,22 @@ import { readQueryContext } from '../../../commands/queryContext';
 import type { TaskWrites } from '../../../commands/taskActions';
 import { findHubTagKey } from '../../../state/hubTree';
 import { createNotePageSnapshot } from '../../../state/notePageState';
+import { readSnapshotImages } from './noteImages';
 import type { PageChrome } from '../../components';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { PanelSurface } from '../../host/surface';
-import { openTag, toggleTask } from '../../host/sharedHandlers';
+import {
+  chooseTheme,
+  goToPage,
+  listGoTo,
+  openGoTo,
+  openHelp,
+  openTag,
+  displayCommand,
+  setDisplay,
+  setZenMode,
+  toggleTask,
+} from '../../host/sharedHandlers';
 import { getNotePageHtml } from '../../notePageHtml';
 import type { ActiveNotePage, NotePageSource } from '../../activeNotePage';
 import { narrowNotePageMessage } from './messages';
@@ -71,6 +83,14 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
   public constructor(private readonly notes: NotePageControllerOptions) {
     const { indexer, navigation } = notes;
     this.handlers = {
+      openGoTo: openGoTo(),
+      listGoTo: listGoTo({ indexer }),
+      goToPage: goToPage(),
+      setZenMode: setZenMode(),
+      setDisplay: setDisplay(),
+      displayCommand: displayCommand(),
+      chooseTheme: chooseTheme(),
+      openHelp: openHelp('links'),
       openNote: (message, page) => this.open(page, { filePath: message.filePath, line: message.line }, message),
       openWikiLink: (message, page) => this.openWikiLink(page, message, message),
       openInEditor: (message) => this.openInEditor(message.line, message.beside === true),
@@ -113,13 +133,31 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
     if (!this.current) {
       return undefined;
     }
-    return createNotePageSnapshot(this.notes.indexer.getSnapshot(), this.current.filePath, {
+    const snapshot = createNotePageSnapshot(this.notes.indexer.getSnapshot(), this.current.filePath, {
       queryContext: readQueryContext(),
       statusNamespace: readStatusNamespace(vscode.workspace.getConfiguration('deckard')),
       ...(this.current.line === undefined ? {} : { focusLine: this.current.line }),
       history: { back: this.back.length > 0, forward: this.forward.length > 0 },
       visit: this.visit,
     });
+    return this.withImages(snapshot, this.current.filePath);
+  }
+
+  /**
+   * The snapshot with its images read from the note's folder, for a note on
+   * this machine's disk; elsewhere, the page says each was not read.
+   */
+  private withImages(snapshot: NotePageSnapshot, filePath: string): NotePageSnapshot {
+    const uri = this.notes.indexer.getUri(filePath);
+    const root = uri ? vscode.workspace.getWorkspaceFolder(uri) : undefined;
+    if (!uri || uri.scheme !== 'file' || !root || root.uri.scheme !== 'file') {
+      return snapshot;
+    }
+    const fsPathOf = (path: string): string | undefined => {
+      const found = this.notes.indexer.getUri(path);
+      return found?.scheme === 'file' ? found.fsPath : undefined;
+    };
+    return readSnapshotImages(snapshot, { noteFsPath: uri.fsPath, rootFsPath: root.uri.fsPath }, fsPathOf);
   }
 
   /** The tab says which note it shows, and Related Notes hears of a new one. */

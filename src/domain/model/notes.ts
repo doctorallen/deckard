@@ -27,6 +27,13 @@ export interface Section {
   associationTagGroups?: TagReference[][];
   /** Structural heading parent, including untagged intermediate headings. */
   parentSectionId?: string;
+  /**
+   * The entry this section belongs to, when it is not a note of its own: the
+   * nearest heading above it with tags of its own, or its note's
+   * front-matter entry (`file:<path>`). Unset for a section that is its own
+   * entry (domain/markdown/noteEntries.ts).
+   */
+  entryId?: string;
   tags: string[];
   tagLabels: Record<string, string>;
   links: string[];
@@ -80,6 +87,12 @@ export interface ParsedFile {
   blockIds?: Record<string, number>;
   /** Present when the note's `describes:` front matter names tags. */
   hub?: NoteHub;
+  /**
+   * How many checkbox lines hold a mark that is not a task's, such as
+   * `- [/]` or `- [-]`; absent when none do. They are text, not tasks, so
+   * Stats and a one-time notice say how many were left out.
+   */
+  otherCheckboxes?: number;
   /**
    * When the note was created and last updated. A date the note states about
    * itself, in front matter or as a daily note's day, comes before its file's.

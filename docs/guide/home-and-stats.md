@@ -8,11 +8,11 @@ Run `Deckard: Open Dashboard` to open the **Home** and **Tags** tabs. Left/Right
 
 ### Home
 
-Three figures sit above Home: **Overdue** and **Due today**, as the [Tasks view](tasks.md#tasks-view) counts them, and **Open**, every open task. Each opens a search for what it counts, scoped by `deckard.agenda.query` when that is set. Workspace totals are on [Stats](#stats).
+Three figures sit above Home: **Due today** and **Overdue**, as the [Tasks view](tasks.md#tasks-view) counts them, and **Done this week**, every task finished since the week began. Each opens a search for what it counts; the first two are scoped by `deckard.agenda.query` when that is set. Open tasks and the other workspace totals are on [Stats](#stats).
 
 **What's new:** after an update that adds features, Home shows *Updated to Deckard 1.23.* once, with **What's new** and **Dismiss**. `deckard.showWhatsNew` turns the line off.
 
-**Widgets.** A new Home starts with Try next, the search box, the Tasks view, open tasks, favorite tags, and saved searches.
+**Widgets.** A new Home starts with Try next, the search box, the Tasks view, recently opened notes, favorite tags, and saved searches. In the Tasks view widget, the **Overdue** heading is red, and each row under it says so as a task row does anywhere, such as *Overdue 20 days · 2026-09-01*, in red. **Customize Home**, beside the Home and Tags tabs, adds, removes, resizes, and reorders widgets.
 
 | Widget | Shows | Leads to |
 |---|---|---|
@@ -52,7 +52,7 @@ Each offers **Undo**. If the heading is gone, the pin stays on its note and says
 
 **Paging**, in a widget's gear, shows all entries a page at a time, 3, 5, 10, or 20 to a page. The Agenda widget and a saved search's results are not paged.
 
-**Customize:** choose **Customize** in the View options gear, or on the line shown above the widgets until Home is arranged or the line dismissed. Then:
+**Customize:** choose **Customize Home** beside the Home and Tags tabs, or **Customize** in the View options gear. Then:
 
 - Drag a widget, or right-click to move it first or last. Switch it between half and full width.
 - Open its gear for entry count, paging, its search or saved search, or days to look back.
@@ -84,7 +84,7 @@ Run `Deckard: Open Stats` to see what needs attention, then totals, then what yo
 - **Tags that look alike:** see [below](#tags-that-look-alike).
 - **Notes nothing links to:** excludes daily, weekly, and monthly notes and parked notes. Shows ten, with **Show 40 more**.
 
-**Totals:** every total but Files opens what it counts. **Notes**, **Tasks**, and **Open tasks** open `is:note`, `is:task`, and `is:open`; **Tags** and **Namespaced tags** offer their tags; **Wiki links** opens the [Notes Graph](connections.md#notes-graph) with **Only links I wrote** on; **Unlinked notes** moves to the list of notes nothing links to. Notes, Tasks, and Open tasks also show a twelve-week line and a change such as **+9 in the last 7 days**. A task stops being open on its ✅ date, or its note's last change without one. When anything is parked, a line such as **Parked: 312 notes, 41 open tasks** opens the `is:parked` search.
+**Totals:** every total but Files opens what it counts. **Notes** counts what Deckard's search calls a note: a heading with tags of its own, with the untagged headings under it; a note tagged in its front matter, as a whole; each heading where no tag reaches; and each tagged line outside a heading (see [What is a note](notes-and-links.md#what-is-a-note) and `deckard.noteBoundaries`), so it is usually more than **Files**. **Notes**, **Tasks**, and **Open tasks** open `is:note`, `is:task`, and `is:open`; **Tags** and **Namespaced tags** offer their tags; **Links**, `[[links]]` and `[text](note.md)` links alike, opens the [Notes Graph](connections.md#notes-graph) with **Only links I wrote** on; **Unlinked notes** moves to the list of notes nothing links to. Notes, Tasks, and Open tasks also show a twelve-week line and a change such as **+9 in the last 7 days**. A task stops being open on its ✅ date, or its note's last change without one. When anything is parked, a line such as **Parked: 312 notes, 41 open tasks** opens the `is:parked` search. When checkbox lines hold a mark other than a space or an x, such as `[/]` or `[-]`, a line says how many no total counts.
 
 **Most viewed** lists the tags, namespaced entities, and note entries you open most, counted locally in VS Code preferences.
 
@@ -112,4 +112,4 @@ Spelling pairs are compared only inside one namespace, so `#project/relay` and `
 
 ---
 
-← [Query blocks](query-blocks.md) · [All topics](README.md) · [Related notes, the graph, and the outline](connections.md) →
+← [Query blocks](query-blocks.md) · [All topics](README.md) · [Related notes, sections, and the graph](connections.md) →

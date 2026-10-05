@@ -90,7 +90,7 @@ suite('Webview saved state', () => {
   });
 
   suite('the Task Board (row 21)', () => {
-    const open = (savedState: unknown, query = 'is:open'): WebviewPage => {
+    const open = (savedState: unknown, query = 'is:open', clock = false): WebviewPage => {
       store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
       const board = createTaskBoard({
         index: index(),
@@ -99,7 +99,7 @@ suite('Webview saved state', () => {
         options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' },
         tagTitleDisplayMode: 'inline',
       });
-      page = openWebviewPage(renderPage('taskBoard'), board, { savedState });
+      page = openWebviewPage(renderPage('taskBoard'), board, { savedState, clock });
       return page;
     };
 
@@ -120,10 +120,12 @@ suite('Webview saved state', () => {
       }
     });
 
-    test('keeps where it was scrolled, with its search', async () => {
-      const board = open(undefined);
+    test('keeps where it was scrolled, with its search', () => {
+      // On a clock moved by hand: the search page's test above waits the
+      // same scroll timer (shared/scroll.ts) out on the real one.
+      const board = open(undefined, 'is:open', true);
       board.window.dispatchEvent(new board.window.Event('scroll'));
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      board.clock!.advance(250);
       assert.deepStrictEqual(board.savedState(), { query: 'is:open', scrollY: 0 });
     });
   });
@@ -175,13 +177,12 @@ suite('Webview saved state', () => {
       assert.strictEqual(mode(page), 'home');
     });
 
-    test('Home is still being arranged, and its hint stays put away', () => {
+    test('Home is still being arranged', () => {
       page = openWebviewPage(renderPage('dashboard'), snapshot('home', false), {
         savedState: { ...SAVED, dashboardMode: 'home' },
       });
       assert.strictEqual(mode(page), 'home');
       assert.ok(page.findAll('.home-widget.is-editing').length > 0, 'arranging');
-      assert.strictEqual(page.findAll('[data-action="dismiss-home-hint"]').length, 0, 'no hint');
     });
 
     test('a value it does not know reads as the default', () => {
@@ -189,7 +190,6 @@ suite('Webview saved state', () => {
         savedState: { dashboardMode: 'tags', tagColumns: 7, tagNamespaceFilter: 5, editingHome: 0, homeHintDismissed: '' },
       });
       assert.strictEqual(mode(page), 'home');
-      assert.ok(page.find('[data-action="dismiss-home-hint"]'), 'the hint shows');
       assert.strictEqual(page.findAll('.home-widget.is-editing').length, 0, 'not arranging');
       keep(page);
       assert.deepStrictEqual(page.savedState(), {
@@ -466,14 +466,14 @@ suite('Webview saved state', () => {
       const view = open({ scrollY: 40 });
       assert.deepStrictEqual(view.savedState(), {
         scrollY: 40, noteLimit: 50, noteListKey: LIST, showEveryActiveTag: false, contextOpen: false,
-        linksOpen: { linked: true, mentions: false }, openLinkSections: [], expandedRefine: [], shownGroups: [],
+        linksOpen: { linked: true, mentions: false, sections: true }, showAllSections: false, openLinkSections: [], expandedRefine: [], shownGroups: [],
       });
       view.click('[data-action="show-more-notes"]');
       view.click('[data-action="show-every-active-tag"]');
       view.click('[data-action="toggle-link-section"]');
       assert.deepStrictEqual(view.savedState(), {
         scrollY: 40, noteLimit: 100, noteListKey: LIST, showEveryActiveTag: true, contextOpen: false,
-        linksOpen: { linked: true, mentions: false }, openLinkSections: ['notes/standup.md:2'], expandedRefine: [], shownGroups: [],
+        linksOpen: { linked: true, mentions: false, sections: true }, showAllSections: false, openLinkSections: ['notes/standup.md:2'], expandedRefine: [], shownGroups: [],
       });
       // A fold says it opened with a toggle event, queued as a task; the
       // page keeps the fold when the event comes, so the test waits for

@@ -19,9 +19,9 @@ export interface DashboardView {
   /** Whether Home is being arranged. */
   editingHome: boolean;
   /**
-   * Whether the reader has put away the line saying Home can be arranged.
-   * The line also goes on its own once Home has been arranged, which the
-   * host says with each state; this remembers a reader who closed it first.
+   * Whether the reader put away the line that said Home could be arranged.
+   * That line gave way to Customize Home beside the tabs; the field is kept
+   * so a view saved before reads back unchanged.
    */
   homeHintDismissed: boolean;
   /** The widget whose options are open, which stays open across a draw. */

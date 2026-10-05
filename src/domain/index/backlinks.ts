@@ -1,7 +1,7 @@
 import { stripTags } from '../markdown/parser';
 import { ParsedFile, Section, WorkspaceIndex } from '../model';
 import { ATTACHMENT } from '../markdown/noteNames';
-import { findWikiLinkSpans } from '../markdown/wikiLinks';
+import { findNoteLinkSpans, headingSlug } from '../markdown/wikiLinks';
 
 /**
  * Wiki links between notes, found once per index so the editor can count and
@@ -29,6 +29,11 @@ export interface WikiLinkOccurrence {
   heading?: string;
   /** The `^id` after `#`, without its caret. */
   block?: string;
+  /**
+   * A `[text](note.md)` link. Its `note` is a path, which may be a file
+   * outside the notes, so one that opens no note is not a missing note.
+   */
+  markdown?: true;
 }
 
 /**
@@ -119,6 +124,12 @@ export function createNoteTitleMap(
   };
   index.files.forEach((file, filePath) => {
     add(noteTitle(filePath), filePath);
+    // Its path too, without `.md`, which a `[text](note.md)` link resolves
+    // to, and which names one note where titles repeat, as READMEs do.
+    const path = filePath.replace(/\.md$/i, '');
+    if (path.includes('/')) {
+      add(path, filePath);
+    }
     file.aliases?.forEach((alias) => add(alias, filePath));
   });
   titleMaps.set(index, titles);
@@ -167,14 +178,24 @@ export function normalizeHeading(text: string): string {
   return stripTags(text).replace(/\s+/g, ' ').trim().toLocaleLowerCase();
 }
 
+/**
+ * Whether a link's `#fragment` names a heading: as written, or as the slug a
+ * `[text](note.md#decision-record)` link writes for `## Decision record`.
+ */
+export function fragmentNamesHeading(fragment: string, heading: string): boolean {
+  return (
+    normalizeHeading(fragment) === normalizeHeading(heading) ||
+    fragment.trim().toLocaleLowerCase() === headingSlug(stripTags(heading))
+  );
+}
+
 /** The heading section a link's `#Heading` names in a note. */
 export function findLinkedSection(
   file: ParsedFile,
   heading: string,
 ): Section | undefined {
-  const wanted = normalizeHeading(heading);
   return file.sections.find(
-    (section) => !section.isInline && normalizeHeading(section.heading) === wanted,
+    (section) => !section.isInline && fragmentNamesHeading(heading, section.heading),
   );
 }
 
@@ -227,11 +248,10 @@ export class BacklinkIndex {
 
   /** Links to one heading of a note, including `[[#Heading]]` inside it. */
   public toHeading(filePath: string, heading: string): WikiLinkOccurrence[] {
-    const wanted = normalizeHeading(heading);
     return (this.byTarget.get(filePath) ?? []).filter(
       (occurrence) =>
         occurrence.heading !== undefined &&
-        normalizeHeading(occurrence.heading) === wanted,
+        fragmentNamesHeading(occurrence.heading, heading),
     );
   }
 }
@@ -252,15 +272,16 @@ export function getBacklinkIndex(index: WorkspaceIndex): BacklinkIndex {
 }
 
 /**
- * Finds every Wiki link in the workspace's saved notes, front matter
- * included, and code excluded: fenced code and inline code spans, as
- * `findWikiLinkSpans` reads them.
+ * Finds every link to a note in the workspace's saved notes, `[[links]]` and
+ * relative `[text](note.md)` links, front matter included, and code
+ * excluded: fenced code and inline code spans, as `findNoteLinkSpans` reads
+ * them.
  */
 export function buildBacklinkIndex(index: WorkspaceIndex): BacklinkIndex {
   const titles = createNoteTitleMap(index);
   const occurrences: WikiLinkOccurrence[] = [];
   index.files.forEach((file, sourcePath) => {
-    findWikiLinkSpans(file.content).forEach((span) => {
+    findNoteLinkSpans(file.content, sourcePath).forEach((span) => {
       const target = parseWikiTarget(span.target);
       occurrences.push({
         sourcePath,
@@ -271,6 +292,7 @@ export function buildBacklinkIndex(index: WorkspaceIndex): BacklinkIndex {
         targetPath: resolveWikiTarget(titles, target.note, sourcePath),
         heading: target.heading,
         block: target.block,
+        ...(span.kind === 'markdown' ? { markdown: true as const } : {}),
       });
     });
   });
@@ -301,6 +323,7 @@ export function findMissingLinkTargets(index: WorkspaceIndex): MissingLinkTarget
   getBacklinkIndex(index).occurrences.forEach((occurrence) => {
     if (
       !occurrence.note ||
+      occurrence.markdown ||
       ATTACHMENT.test(occurrence.note) ||
       findWikiTargetPaths(titles, occurrence.note, occurrence.sourcePath).length > 0
     ) {

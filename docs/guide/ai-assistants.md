@@ -39,4 +39,4 @@ claude mcp add --transport http deckard http://127.0.0.1:39217/mcp --header "Aut
 
 ---
 
-← [Themes and Zen mode](themes-and-zen.md) · [All topics](README.md) · [Commands](commands.md) →
+← [Themes and Display](themes-and-zen.md) · [All topics](README.md) · [Commands](commands.md) →

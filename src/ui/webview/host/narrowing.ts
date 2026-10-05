@@ -12,13 +12,17 @@
 import { isObject } from '../../../shared/guards';
 import type { MessageAs, MessageOf, PageMessage } from '../../protocol/messaging';
 import type {
+  DisplayCommandMessage,
   ExportResultsMessage,
+  GearDisplaySetting,
+  GoToPageMessage,
   OpenSearchMessage,
   OpenSourceMessage,
   OpenTagMessage,
   ParkTagMessage,
   PinNoteMessage,
   RenameTagMessage,
+  SetDisplayMessage,
   SetZenModeMessage,
   ToggleTaskMessage,
 } from '../../protocol/shared';
@@ -119,6 +123,19 @@ export function isSourceLocation(value: Record<string, unknown>): boolean {
   );
 }
 
+/** The Display settings a page's gear sets. */
+const GEAR_DISPLAY_SETTINGS: readonly GearDisplaySetting[] = ['level', 'pageWidth'];
+
+/** One of the gear's Display rows: which, and a short lowercase value the host checks. */
+export const narrowSetDisplay: Narrower<SetDisplayMessage> = (value) =>
+  (GEAR_DISPLAY_SETTINGS as readonly unknown[]).includes(value.setting) && typeof value.value === 'string' && /^[a-z]{1,12}$/.test(value.value)
+    ? { type: 'setDisplay', setting: value.setting as GearDisplaySetting, value: value.value }
+    : undefined;
+
+/** One of the gear's Display links: the step's values, or Customize…. */
+export const narrowDisplayCommand: Narrower<DisplayCommandMessage> = (value) =>
+  value.command === 'useStepValues' || value.command === 'customize' ? { type: 'displayCommand', command: value.command } : undefined;
+
 /**
  * The gear's zen row: on or off.
  */
@@ -143,6 +160,10 @@ export const narrowOpenSource: Narrower<OpenSourceMessage> = (value) =>
         ...(value.opposite === true ? { opposite: true } : {}),
       }
     : undefined;
+
+/** A page from the eyebrow's menu, by a short lowercase id; the host knows which are pages. */
+export const narrowGoToPage: Narrower<GoToPageMessage> = (value) =>
+  typeof value.page === 'string' && /^[a-z]{1,20}$/.test(value.page) ? { type: 'goToPage', page: value.page } : undefined;
 
 /** A tag to open, by any non-empty key; the host finds it in the index. */
 export const narrowOpenTag: Narrower<OpenTagMessage> = (value) =>

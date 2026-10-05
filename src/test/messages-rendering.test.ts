@@ -178,7 +178,7 @@ suite('Webview contracts', () => {
                                                         assert.strictEqual(html.includes('.tag-group { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed var(--slate-border); }'), true);
     assert.strictEqual(
       html.includes(
-        '.dashboard-tabs-row { padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }',
+        '.dashboard-tabs-row { display: flex; align-items: center; gap: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }',
       ),
       true,
     );
@@ -193,7 +193,7 @@ suite('Webview contracts', () => {
     for (const token of ['--accent', '--danger', '--favorite', '--positive', '--focus']) {
       assert.ok(html.includes(`${token}: var(--`), `${token} is declared on :root`);
     }
-    assert.ok(html.includes('.due-date.overdue { color: var(--danger); }'), 'overdue is danger');
+    assert.ok(html.includes('.due-date.overdue { color: var(--danger); font-weight: 700; }'), 'overdue is danger');
     assert.ok(!/\.favorite-toggle \{[^}]*--favorite-red/.test(html), 'the heart is not drawn in the danger color');
     assert.ok(!/is-negated \{[^}]*--favorite-red/.test(html), 'a negated term is not an alarm');
     // Hover and chosen are two drawings, not one amber.
@@ -868,7 +868,7 @@ suite('Webview contracts', () => {
     const linked = linkedSheets(page);
     assert.ok(linked.indexOf('tail.css') > linked.indexOf(`themes/${getDeckardTheme()}.css`), 'after the theme');
     const tail = readSheet('shared/tail.css');
-    assert.ok(tail.indexOf('@import "./highContrast.css";') < tail.indexOf('@import "./zen.css";'), 'before zen');
+    assert.ok(tail.indexOf('@import "./highContrast.css";') < tail.indexOf('@import "./display.css";'), 'before Display');
     for (const theme of deckardThemes) {
       assert.ok(!themeSheet(theme).includes('vscode-high-contrast {'), `${theme}: no theme second-guesses it`);
     }

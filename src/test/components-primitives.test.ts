@@ -9,7 +9,7 @@ import { createSidebarSnapshot } from '../ui/state/relatedNotesRanking';
 import { ENABLED } from '../ui/webview/selectors';
 import { PAGES, renderablePages, renderPage } from './pages';
 import { linkedSheets, pageSheets, readSheet, themeSheet } from './sheets';
-import { openWebviewPage, WebviewPage } from './webviewPage';
+import { openWebviewPage, WebviewPage, WebviewPageOptions } from './webviewPage';
 import { readGoldens } from '../../test/harness/domGoldens';
 import { createNotePageSnapshot } from '../ui/state/notePageState';
 import { createQueryContext } from '../domain/query/queryContext';
@@ -52,16 +52,15 @@ suite('Component primitives', () => {
     return page;
   };
 
-  const openSearch = (query = '#project/atlas', extra: Record<string, unknown> = {}): WebviewPage => {
+  const openSearch = (query = '#project/atlas', extra: Record<string, unknown> = {}, options: WebviewPageOptions = {}): WebviewPage => {
     const index = buildWorkspaceIndex(new Map([
       ['notes/one.md', parseMarkdown('notes/one.md', '# One #project/atlas #topic/replicants\nThe lift is stuck.\n- [ ] Chase it #project/atlas\n')],
     ]));
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     const snapshot = createSearchPageSnapshot(index, store.reader.value, query, { queryContext: createQueryContext(Date.now()) });
-    page = openWebviewPage(renderPage('searchPage'), { ...snapshot, ...extra });
+    page = openWebviewPage(renderPage('searchPage'), { ...snapshot, ...extra }, options);
     return page;
   };
-  const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
   const keyFocus = (target: WebviewPage, selector: string): HTMLElement => {
     const element = target.find(selector) as HTMLElement;
     target.document.dispatchEvent(new target.window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
@@ -147,7 +146,7 @@ suite('Component primitives', () => {
       const tail = readSheet('shared/tail.css');
       const layer = tail.indexOf('@import "./cardTag.css";');
       assert.ok(layer > tail.indexOf('@import "./highContrast.css";'), 'after high contrast, and so after the theme');
-      assert.ok(layer < tail.indexOf('@import "./zen.css";'), 'before zen');
+      assert.ok(layer < tail.indexOf('@import "./display.css";'), 'before Display');
       const cardTag = readSheet('shared/cardTag.css');
       assert.ok(cardTag.includes('body .board-card button.tag-open:not(:hover):not(:focus-visible)'));
       assert.doesNotMatch(cardTag, /white-space/, 'one-line geometry stays with the tag sheet');
@@ -258,13 +257,15 @@ suite('Component primitives', () => {
     });
 
     test('a search still out after a second shows a bar, and its answer clears it', async () => {
+      // The searching bar's one test on the real clock; the others move a
+      // clock by hand (query-builder-webview.test.ts).
       const search = openSearch();
       const input = search.find('[data-action="query-input"]') as HTMLInputElement;
       input.value = 'lift';
       input.dispatchEvent(new search.window.Event('input', { bubbles: true }));
       search.click('[data-action="apply-query"]');
       assert.ok(search.lastPosted('setOverviewQuery'), 'the search went out');
-      await wait(1100);
+      await new Promise((resolve) => setTimeout(resolve, 1100));
       assert.ok(search.find('.query-workspace').classList.contains('is-searching'));
       assert.strictEqual(search.find('#app').getAttribute('aria-busy'), 'true');
       const index = buildWorkspaceIndex(new Map([['notes/one.md', parseMarkdown('notes/one.md', '# One #project/atlas\nThe lift is stuck.\n')]]));
@@ -468,19 +469,33 @@ suite('Component primitives', () => {
       assert.ok(read >= 22 && seen > 20, `every surface's drawn DOM is read (${read} surfaces, ${seen} cards)`);
     });
 
-    test('the pointer waits 400 ms, and touch shows nothing', async () => {
+    test('the pointer waits 400 ms, and a press puts the tip away', async () => {
+      // The tip's pause on the real clock; the test below moves one by hand.
       const search = openSearch();
       const apply = search.find('[data-action="apply-query"]');
       apply.dispatchEvent(new search.window.MouseEvent('pointerover', { bubbles: true }));
       assert.ok(!tip(search) || tip(search)?.hidden, 'not at once');
-      await wait(450);
+      await new Promise((resolve) => setTimeout(resolve, 450));
       assert.strictEqual(tip(search)?.hidden, false, 'after the pause');
       apply.dispatchEvent(new search.window.MouseEvent('pointerdown', { bubbles: true }));
       assert.strictEqual(tip(search)?.hidden, true, 'a press puts it away');
+    });
+
+    test('the pause is 400 ms to the millisecond, and touch shows nothing', () => {
+      const search = openSearch(undefined, {}, { clock: true });
+      const apply = search.find('[data-action="apply-query"]');
+      apply.dispatchEvent(new search.window.MouseEvent('pointerover', { bubbles: true }));
+      search.clock!.advance(399);
+      assert.ok(!tip(search) || tip(search)?.hidden, 'not before the pause is up');
+      search.clock!.advance(1);
+      assert.strictEqual(tip(search)?.hidden, false, 'once it is');
+      apply.dispatchEvent(new search.window.MouseEvent('pointerdown', { bubbles: true }));
+      // Past the 300 ms a hidden tip stays warm, so the next waits again.
+      search.clock!.advance(1000);
       const touch = new search.window.MouseEvent('pointerover', { bubbles: true });
       Object.defineProperty(touch, 'pointerType', { value: 'touch' });
       search.find('[data-action="toggle-builder"]').dispatchEvent(touch);
-      await wait(450);
+      search.clock!.advance(450);
       assert.strictEqual(tip(search)?.hidden, true, 'touch never shows a tip');
     });
   });

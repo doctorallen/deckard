@@ -209,9 +209,9 @@ suite('Stats: what needs attention, first', () => {
       assert.deepStrictEqual(page.posted.at(-1), { type: 'openTagList', namespaced: false });
       tile('Namespaced tags').click();
       assert.deepStrictEqual(page.posted.at(-1), { type: 'openTagList', namespaced: true });
-      tile('Wiki links').click();
+      tile('Links').click();
       assert.deepStrictEqual(page.posted.at(-1), { type: 'openNotesGraph', onlyWrittenLinks: true });
-      assert.strictEqual(tile('Wiki links').getAttribute('aria-label'), 'Wiki links, 1. Open the Notes Graph showing only the links you wrote');
+      assert.strictEqual(tile('Links').getAttribute('aria-label'), 'Links, 1. Open the Notes Graph showing only the links you wrote');
       const before = page.posted.length;
       tile('Unlinked notes').click();
       assert.strictEqual(page.posted.length, before, 'moving to the list posts nothing');
@@ -339,7 +339,7 @@ suite('Stats: twelve weeks under each total', () => {
       assert.strictEqual(tile('Notes').querySelector('.metric-change')?.textContent, '+2 in the last 7 days');
       assert.strictEqual(tile('Tasks').querySelector('.metric-change')?.textContent, '−1 in the last 7 days');
       assert.strictEqual(tile('Open tasks').querySelector('.metric-change')?.textContent, 'No change in the last 7 days');
-      assert.strictEqual(tile('Notes').getAttribute('aria-label'), 'Notes, 4, +2 in the last 7 days. Open a search for every note');
+      assert.strictEqual(tile('Notes').getAttribute('aria-label'), 'Notes, 4, +2 in the last 7 days. Open a search for every note. A heading with tags of its own is a note, with the untagged headings under it, and so is each tagged line, so a file can hold several');
       assert.strictEqual(tile('Files').querySelector('.sparkline'), null, 'Files has no line');
       const line = tile('Notes').querySelector('svg.sparkline');
       assert.strictEqual(line?.getAttribute('aria-hidden'), 'true');

@@ -392,16 +392,18 @@ suite('Calendar', () => {
     }
   });
 
-  test('the page keeps its layout and where it was scrolled, and draws with them when VS Code loads it again', async () => {
+  test('the page keeps its layout and where it was scrolled, and draws with them when VS Code loads it again', () => {
     const now = new Date(2026, 8, 13, 10);
     const snapshot = createCalendar(index, '2026-09', createQueryContext(now.getTime()), { dayPanel: true, layout: 'page' });
-    const page = openWebviewPage(renderPage('calendarPage'), snapshot);
+    // On a clock moved by hand: webview-saved-state.test.ts waits the same
+    // scroll timer (shared/scroll.ts) out on the real one.
+    const page = openWebviewPage(renderPage('calendarPage'), snapshot, { clock: true });
     try {
       assert.strictEqual(page.savedState(), undefined, 'nothing is kept until the reader chooses');
       page.click('.calendar-page-actions [data-action="set-calendar-layout"][data-value="week"]');
       assert.deepStrictEqual(page.savedState(), { layout: 'week' });
       page.window.dispatchEvent(new page.window.Event('scroll'));
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      page.clock!.advance(250);
       assert.deepStrictEqual(page.savedState(), { layout: 'week', scrollY: 0 });
     } finally {
       page.dispose();
@@ -416,25 +418,27 @@ suite('Calendar', () => {
     }
   });
 
-  test('a day chosen just before a step never takes the calendar back to the month it left', async () => {
+  test('a day chosen just before a step never takes the calendar back to the month it left', () => {
     const now = new Date(2026, 8, 13, 10).getTime();
     const steps = (page: ReturnType<typeof openWebviewPage>) =>
       page.posted.filter((message) => message.type === 'selectDay' || message.type === 'showMonth');
-    const pause = () => new Promise((resolve) => setTimeout(resolve, 200));
-    const page = openWebviewPage(renderPage('calendarPage'), createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true, layout: 'page' }));
+    // On clocks moved by hand, past the 120 ms a chosen day waits to be
+    // sent: calendar-day.test.ts waits it out on the real one.
+    const pause = (page: ReturnType<typeof openWebviewPage>) => page.clock!.advance(200);
+    const page = openWebviewPage(renderPage('calendarPage'), createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true, layout: 'page' }), { clock: true });
     try {
       page.click('.day-cell[data-drop-date="2026-09-15"]');
       page.document.body.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: ']', bubbles: true, cancelable: true }));
-      await pause();
+      pause(page);
       assert.deepStrictEqual(steps(page), [{ type: 'showMonth', month: '2026-10', date: '2026-10-15' }], 'the step names its day, so the one waiting is let go');
     } finally {
       page.dispose();
     }
-    const sidebar = openWebviewPage(renderPage('calendar'), createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true }));
+    const sidebar = openWebviewPage(renderPage('calendar'), createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true }), { clock: true });
     try {
       sidebar.click('.calendar-grid .day[data-date="2026-09-15"]');
       sidebar.click('[data-action="show-month"][data-month="2026-10"]');
-      await pause();
+      pause(sidebar);
       assert.deepStrictEqual(
         steps(sidebar),
         [{ type: 'selectDay', date: '2026-09-15' }, { type: 'showMonth', month: '2026-10' }],

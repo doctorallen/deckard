@@ -3,7 +3,6 @@
 // docs/** is not in the VSIX and resources/** is, so the walkthrough takes
 // small copies: each box-downscaled to WIDTH, flattened onto its own
 // background, and written without alpha, which keeps each under 150 KB.
-// themes.png is a 2×2 of four Dashboard themes.
 import { readFileSync, writeFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
@@ -74,11 +73,3 @@ write('home-light.png', downscale(read('dashboard-corpo-light.png'), WIDTH));
 write('tasks.png', downscale(read('agenda.png'), WIDTH, 16));
 write('search.png', downscale(read('notes-search.png'), WIDTH));
 
-const tiles = ['corpo', 'replicant', 'lcars', 'cooper'].map((theme) =>
-  downscale(read(`dashboard-${theme}.png`), WIDTH / 2),
-);
-const montage = new PNG({ width: WIDTH, height: tiles[0].height * 2 });
-tiles.forEach((tile, i) => {
-  PNG.bitblt(tile, montage, 0, 0, tile.width, tile.height, (i % 2) * tile.width, Math.floor(i / 2) * tile.height);
-});
-write('themes.png', montage);

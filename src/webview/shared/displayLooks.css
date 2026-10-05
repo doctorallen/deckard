@@ -1,0 +1,102 @@
+/*
+ * Flat cards and tags as text: two looks a reader turns on for every page
+ * (`deckard.display.cardFrames: flat`, `deckard.display.tags: text`), hung
+ * on the body's `data-cards` and `data-tags`, which the page shell writes.
+ *
+ * After provenance, whose carried-down line takes the row's own surface and
+ * edge, and before high contrast, which keeps its own borders and colors.
+ * Neither look may draw text on a color the themes don't already check:
+ * a flat row's divider is `--divider`, held to 3:1 against every surface in
+ * every theme by display-tokens.test.ts, and text tags are `--tag-text`,
+ * held to 4.5:1 there. Selectors are written out rather than grouped with
+ * :is(), so the contrast check reads each against the surfaces it lands on.
+ */
+
+/* Flat cards: rows parted by a divider rather than framed. A row keeps its
+   padding, so nothing shifts when the look changes. */
+body[data-cards="flat"] .row,
+body[data-cards="flat"] .card,
+body[data-cards="flat"] .task,
+body[data-cards="flat"] .note,
+body[data-cards="flat"] .task-row,
+body[data-cards="flat"] .tag-row,
+body[data-cards="flat"] .entity-row,
+body[data-cards="flat"] .saved-filter-row {
+  --frame: 0px;
+  --frame-left: 0px;
+  --frame-right: 0px;
+  --corner-bl: 0;
+  --corner-br: 0;
+  border: 0;
+  border-bottom: 1px solid var(--divider);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
+}
+/* Under the pointer or keyboard focus a row lifts onto the card surface, its
+   text in its own colors. Hover lays its carried-down file and line over
+   the top of the next row on that surface, as a card does; focus pushes the
+   next row down (provenance.css). */
+body[data-cards="flat"] .row:hover,
+body[data-cards="flat"] .card:hover,
+body[data-cards="flat"] .task:hover,
+body[data-cards="flat"] .note:hover,
+body[data-cards="flat"] .task-row:hover,
+body[data-cards="flat"] .tag-row:hover,
+body[data-cards="flat"] .entity-row:hover,
+body[data-cards="flat"] .saved-filter-row:hover,
+body[data-cards="flat"] .row:focus-within,
+body[data-cards="flat"] .card:focus-within,
+body[data-cards="flat"] .task:focus-within,
+body[data-cards="flat"] .note:focus-within,
+body[data-cards="flat"] .task-row:focus-within,
+body[data-cards="flat"] .tag-row:focus-within,
+body[data-cards="flat"] .entity-row:focus-within,
+body[data-cards="flat"] .saved-filter-row:focus-within {
+  border-bottom-color: var(--divider);
+  background: var(--panel-raised);
+  box-shadow: none;
+  clip-path: none;
+}
+
+/* Tags as text: the theme's tag color, the # or @ kept, a 24px target, and
+   an underline under the pointer; the focus ring is every control's. Tags on
+   cards are already text (cardTag.css), so this reaches the chips elsewhere:
+   a note's prose and properties, and the sidebar's lists. */
+body[data-tags="text"] button.tag-open,
+body[data-tags="text"] button.inline-tag {
+  min-height: 24px;
+  padding: 0 3px;
+  border-color: transparent;
+  border-radius: var(--control-radius);
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
+  color: var(--tag-text);
+  font-family: var(--font-mono);
+}
+body[data-tags="text"] button.tag-open .tag-namespace,
+body[data-tags="text"] button.inline-tag .tag-namespace { color: var(--tag-namespace); }
+body[data-tags="text"] button.tag-open:hover:where(:not(:disabled):not([aria-disabled="true"])),
+body[data-tags="text"] button.inline-tag:hover:where(:not(:disabled):not([aria-disabled="true"])),
+body[data-tags="text"] button.tag-open:focus-visible,
+body[data-tags="text"] button.inline-tag:focus-visible {
+  border-color: transparent;
+  background: transparent;
+  color: var(--tag-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+/* A chosen tag, such as an active filter, keeps no fill as text: a bar under
+   it in its own color says it is chosen. */
+body[data-tags="text"] button.tag-open.active,
+body[data-tags="text"] button.inline-tag.active {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--tag-text);
+  color: var(--tag-text);
+}
+body[data-tags="text"] button.tag-open.active .tag-namespace,
+body[data-tags="text"] button.inline-tag.active .tag-namespace { color: var(--tag-namespace); }
+body[data-tags="text"] .tag-list { gap: 8px; }

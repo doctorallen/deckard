@@ -94,7 +94,7 @@ Fields:
 
 | Field | Matches | Example |
 | --- | --- | --- |
-| `tag` | A tag, including tags inherited from a parent heading and front-matter tags. `*` and `?` are wildcards. | `tag = #project/atlas`, `tag = #risk/*` |
+| `tag` | A tag, including tags inherited from a tagged heading above and front-matter tags, and the tags written in a note's untagged headings. `*` and `?` are wildcards. | `tag = #project/atlas`, `tag = #risk/*` |
 | `link` | Entries that link to a note, by its name or any `aliases:` name. `[[Atlas#Decision]]` narrows to a heading, `[[Atlas#^q3]]` to a marked line; text after `\|` is ignored. Only `=` and `!=`; brackets are optional after `link`. | `[[Atlas]]`, `link = [[Atlas#Decision]]`, `-[[Atlas]]` |
 | `text` | Words in a note body, task line, or front-matter-only file. `:` and `~` match a substring; `=` and `!=` a whole word. | `text ~ elevator`, `text = plan` |
 | `task` | `open`, `done`, or `any`. Returns only tasks. | `task = open` |

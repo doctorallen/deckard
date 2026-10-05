@@ -36,6 +36,7 @@ export function getSidebarNotesHtml(
     nonce: createNonce(),
     theme: chrome.theme,
     zen: chrome.zen,
+    display: chrome.display,
     bundle: true,
     state: snapshot,
     body: `

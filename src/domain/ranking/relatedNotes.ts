@@ -5,7 +5,7 @@
  * score, and a more specific entry outranks the broad heading it sits under.
  */
 import { isParkedFile, isParkedSection, isParkedTask } from '../index/parked';
-import { extractWikiLinks, isPeriodicNoteFile } from '../markdown/parser';
+import { extractNoteLinks, isPeriodicNoteFile } from '../markdown/parser';
 import {
   ParsedFile,
   RankedNote,
@@ -35,6 +35,7 @@ import { compareRelatedNotes } from './relatedNotesOrder';
 import { scoreReference } from './relatedNotesScore';
 import { createAssociationMatcher, TagAssociationMatches } from './tagAssociations';
 import { createLexicalModel, getSectionLexicalContent } from './wordSimilarity';
+import { entryIdOf, isEntrySection } from '../markdown/noteEntries';
 
 /** The note ranked against, and how its tags and titles count. */
 export interface RelatedNotesSubject {
@@ -182,6 +183,11 @@ function findMatchingSections(
   file: ParsedFile,
 ): Array<EntryMatch<Section>> {
   return file.sections.flatMap((section) => {
+    // An untagged heading under a tagged one is part of that note, read with
+    // it (entryLexicalContent), never a row of its own.
+    if (!isEntrySection(section) && !entryIdOf(section).startsWith('file:')) {
+      return [];
+    }
     if (!context.keepParked && isParkedSection(context.index, section.id)) {
       return [];
     }
@@ -189,8 +195,9 @@ function findMatchingSections(
     const associations = context.matchAssociations(tags);
     const linkEvidence = getLinkEvidence(context.linkNames, context.active, {
       file,
-      links: extractWikiLinks(
-        getSectionLexicalContent(section, file.sections),
+      links: extractNoteLinks(
+        entryLexicalContent(section, file.sections),
+        file.filePath,
       ),
       title: section.heading,
     });
@@ -204,6 +211,22 @@ function findMatchingSections(
       linkEvidence.fileWeight > 0;
     return qualifies ? [{ entry: section, tags, associations }] : [];
   });
+}
+
+/**
+ * A note's own text and its untagged headings' (noteEntries.ts), each
+ * heading's read as Related Notes reads it; a section that owns nothing
+ * reads as itself.
+ */
+function entryLexicalContent(section: Section, fileSections: Section[]): string {
+  const owned = fileSections.filter((part) => part !== section && entryIdOf(part) === section.id);
+  if (owned.length === 0) {
+    return getSectionLexicalContent(section, fileSections);
+  }
+  return [section, ...owned]
+    .sort((left, right) => left.startLine - right.startLine)
+    .map((part) => getSectionLexicalContent(part, fileSections))
+    .join('\n');
 }
 
 /** A task that qualifies as a section does, and is not under one that did. */
@@ -220,7 +243,7 @@ function findMatchingTasks(
     const associations = context.matchAssociations(tags);
     const linkEvidence = getLinkEvidence(context.linkNames, context.active, {
       file,
-      links: extractWikiLinks(task.sourceLineText),
+      links: extractNoteLinks(task.sourceLineText, task.filePath),
       title: task.title,
     });
     const qualifies =
@@ -228,7 +251,7 @@ function findMatchingTasks(
         associations.associated.length > 0 ||
         linkEvidence.entryWeight > 0 ||
         linkEvidence.fileWeight > 0) &&
-      (!task.sectionId || !matchingSectionIds.has(task.sectionId));
+      (!task.sectionId || !matchingSectionIds.has(task.entryId ?? task.sectionId));
     return qualifies ? [{ entry: task, tags, associations }] : [];
   });
 }
@@ -253,9 +276,10 @@ function toSectionReference(
     updatedAt: file.updatedAt ?? section.updatedAt,
     tags,
     associations,
-    rawContent: getSectionLexicalContent(section, file.sections),
-    links: extractWikiLinks(
-      getSectionLexicalContent(section, file.sections),
+    rawContent: entryLexicalContent(section, file.sections),
+    links: extractNoteLinks(
+      entryLexicalContent(section, file.sections),
+      file.filePath,
     ),
     headingPath: getHeadingPath(section, sectionsById),
     dailyDate: getDailyNoteDate(file),
@@ -278,7 +302,7 @@ function toTaskReference(
     tags,
     associations,
     rawContent: task.sourceLineText,
-    links: extractWikiLinks(task.sourceLineText),
+    links: extractNoteLinks(task.sourceLineText, task.filePath),
     headingPath: getTaskHeadingPath(task, sectionsById),
     dailyDate: getDailyNoteDate(file),
   };

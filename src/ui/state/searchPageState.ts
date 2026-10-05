@@ -21,6 +21,7 @@ import {
   compareTagOverviewCards,
   createDashboardTask,
   createFileOverviewCard,
+  getFileEntryTitle,
   createTagOverviewCard,
   createTagOverviewHub,
   getFrontmatterBody,
@@ -42,6 +43,9 @@ import { ResultPaging, TagOverviewCard } from '../protocol/shared';
 import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes } from '../protocol/searchPage';
 import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
 import { linkProgressParts } from './progressLinks';
+import { isEntrySection } from '../../domain/markdown/noteEntries';
+import { getEntryLineMap, getEntryTextOf, isFileEntry } from '../../domain/index/noteEntryIndex';
+import { stripTags } from '../../domain/markdown/parser';
 import {
   Entity,
   SearchPreview,
@@ -62,11 +66,13 @@ import {
  * to refine by, and a corrected search when nothing was found.
  */
 
-/** Files known only by their front matter tags, which list as one note each. */
+/**
+ * Notes tagged in their front matter that are entries of their own: one with
+ * no headings, or one that owns an untagged heading, as a whole note does
+ * (noteEntries.ts). Each lists as one note.
+ */
 export function listFrontmatterOnlyFiles(index: WorkspaceIndex): ParsedFile[] {
-  return [...index.files.values()].filter(
-    (file) => file.sections.length === 0 && file.frontmatterTags.length > 0,
-  );
+  return [...index.files.values()].filter(isFileEntry);
 }
 
 /** Options for a search page's projection. */
@@ -268,9 +274,9 @@ function rankNoteKeys(
   const plainTerms = getPlainTextTerms(drafted.node);
   const keys = plainTerms
     ? [
-        ...[...index.sections.values()].map(sectionKey),
+        ...[...index.sections.values()].filter(isEntrySection).map(sectionKey),
         ...listFrontmatterOnlyFiles(index).map(createFileKey),
-      ].filter((key) => matchesNoteWords(key, plainTerms))
+      ].filter((key) => matchesNoteWords(index, key, plainTerms))
     : [
         ...results.sections
           .filter((section) => section.filePath !== hubFile?.filePath)
@@ -307,8 +313,10 @@ function drawNoteCards(
   const pinnedKeys = new Set(
     (preferences.pinnedNotes ?? []).map((pin) => pinKey(pin)),
   );
-  const cardFor = (section: Section): TagOverviewCard =>
-    createTagOverviewCard(section, {
+  // Cards are copied as they are marked, so their line maps are kept by id.
+  const cardLines = new Map<string, CardLines>();
+  const cardFor = (section: Section): TagOverviewCard => {
+    const card = createTagOverviewCard(section, {
       sectionAccessCounts: preferences.sectionAccessCounts,
       tagTitleDisplayMode,
       pinned:
@@ -321,7 +329,16 @@ function drawNoteCards(
           ),
         ),
       sections: index.sections,
+      content: getEntryTextOf(index, section),
     });
+    const lineMap = getEntryLineMap(index, section);
+    if (lineMap) {
+      // The card's body drops the heading line, and a blank one after it.
+      const dropped = lineMap.length - card.rawContent.split(/\r?\n/).length;
+      cardLines.set(card.id, { map: lineMap.slice(Math.max(0, dropped)), entryId: section.id });
+    }
+    return card;
+  };
   const snippetWords = [...new Set([...getTextWords(page.drafted.node), ...page.preview])]
     .map((word) => word.toLowerCase())
     .filter((word) => word.length >= 2);
@@ -335,6 +352,7 @@ function drawNoteCards(
       ),
       preferences.searchPreview,
       snippetWords,
+      key.section ? cardLines.get(key.section.id) : undefined,
     ),
   );
 }
@@ -520,7 +538,7 @@ export function evaluateSearchPage(
   const results: QueryResults = drafted.node
     ? evaluateQuery(index, drafted.node, options.queryContext)
     : {
-        sections: [...index.sections.values()],
+        sections: [...index.sections.values()].filter(isEntrySection),
         tasks: [...index.tasks.values()],
         files: listFrontmatterOnlyFiles(index),
       };
@@ -701,22 +719,38 @@ function withPreview(
   card: TagOverviewCard,
   preview: SearchPreview,
   words: readonly string[],
+  cardLines?: CardLines,
 ): TagOverviewCard {
   const lines = card.rawContent.split(/\r?\n/);
   const start = preview === 'lines' && words.length > 0 ? findSnippetStart(lines, words) : undefined;
-  const snippet =
-    start === undefined
-      ? undefined
-      : {
-          rawContent: lines.slice(start).join('\n'),
-          bodyTokens: buildBlockExcerpt(lines.slice(start).join('\n')),
-          line: card.startLine + 1 + start,
-        };
+  const snippet = start === undefined ? undefined : createSnippet(card, lines, start, cardLines);
   const long =
     lines.length > PREVIEW_LINES ||
     card.rawContent.length > PREVIEW_CHARACTERS ||
     snippet !== undefined;
   return { ...card, ...(snippet ? { snippet } : {}), ...(long ? { long } : {}) };
+}
+
+/**
+ * A card's body from the line holding a searched word. A note's text skips
+ * its headings with tags of their own, so its lines are mapped back to where
+ * each is written, and to the untagged heading it is under.
+ */
+function createSnippet(
+  card: TagOverviewCard,
+  lines: readonly string[],
+  start: number,
+  cardLines: CardLines | undefined,
+): NonNullable<TagOverviewCard['snippet']> {
+  const mapped = cardLines?.map[start];
+  const ownedHeading = mapped && mapped.part.id !== cardLines?.entryId ? stripTags(mapped.part.heading).trim() : undefined;
+  const rawContent = lines.slice(start).join('\n');
+  return {
+    rawContent,
+    bodyTokens: buildBlockExcerpt(rawContent),
+    line: mapped?.line ?? card.startLine + 1 + start,
+    ...(ownedHeading ? { heading: ownedHeading } : {}),
+  };
 }
 
 /**
@@ -799,13 +833,19 @@ function createSectionKey(
 function createFileKey(file: ParsedFile): NoteKey {
   return {
     file,
-    heading: getFileName(file.filePath) ?? file.filePath,
+    heading: getFileEntryTitle(file),
     filePath: file.filePath,
     startLine: 1,
     createdAt: file.createdAt,
     updatedAt: file.updatedAt,
     accessCount: 0,
   };
+}
+
+/** Where each line of a card's body is written, for a note read through its untagged headings. */
+interface CardLines {
+  map: { line: number; part: Section }[];
+  entryId: string;
 }
 
 /** What a search's plain words are matched against, once per entry. */
@@ -815,14 +855,14 @@ const noteWordText = new WeakMap<Section | ParsedFile, string>();
  * Whether a note has every word in its title, file name, body, or tags, the
  * same places the page matches words while they are typed.
  */
-function matchesNoteWords(key: NoteKey, words: readonly string[]): boolean {
+function matchesNoteWords(index: WorkspaceIndex, key: NoteKey, words: readonly string[]): boolean {
   const owner = (key.section ?? key.file) as Section | ParsedFile;
   let body = noteWordText.get(owner);
   if (body === undefined) {
     body = (
       key.section
         ? [
-            getSectionBody(key.section.rawContent),
+            getSectionBody(getEntryTextOf(index, key.section)),
             ...key.section.tags.map((tag) => key.section?.tagLabels[tag] ?? `#${tag}`),
           ]
         : [
@@ -925,11 +965,11 @@ function findsSomething(
     return results.sections.length > 0 || results.files.length > 0;
   }
   return (
-    [...index.sections.values()].some((section) =>
-      matchesNoteWords(sectionKey(section), plainTerms),
+    [...index.sections.values()].filter(isEntrySection).some((section) =>
+      matchesNoteWords(index, sectionKey(section), plainTerms),
     ) ||
     listFrontmatterOnlyFiles(index).some((file) =>
-      matchesNoteWords(createFileKey(file), plainTerms),
+      matchesNoteWords(index, createFileKey(file), plainTerms),
     )
   );
 }

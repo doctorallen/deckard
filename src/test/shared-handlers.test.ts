@@ -8,7 +8,18 @@ import type { Task } from '../domain/model/tasks';
 import { NavigationService } from '../services/navigationService';
 import type { TaskWrites } from '../ui/commands/taskActions';
 import type { PageContext } from '../ui/webview/host/pageController';
-import { chooseTheme, openHelp, openSource, openTag, parkTag, ready, toggleTask } from '../ui/webview/host/sharedHandlers';
+import {
+  chooseTheme,
+  goToPage,
+  listGoTo,
+  openGoTo,
+  openHelp,
+  openSource,
+  openTag,
+  parkTag,
+  ready,
+  toggleTask,
+} from '../ui/webview/host/sharedHandlers';
 
 /** A page context that counts the refreshes asked of it. */
 function createPage(): PageContext & { refreshes: number } {
@@ -102,12 +113,34 @@ suite('Shared page message handlers', () => {
     assert.deepStrictEqual(opened, ['lenient #project/relay', 'lenient #project/relay', 'exact #project/relay']);
   });
 
-  test('run the gear\'s and the tag menu\'s commands, and Help at a section when one is named', async () => {
+  test('DECKARD\'s menu lists every page but the one asking, and opens only a page it knows', async () => {
+    const posted: unknown[] = [];
+    const page = { ...createPage(), post: (message: unknown) => { posted.push(message); } };
+    const index = buildWorkspaceIndex(new Map([['a.md', parseMarkdown('a.md', '# A\n- [ ] Ship it')]]));
+    await listGoTo({ indexer: { getSnapshot: () => index }, current: 'board' })({ type: 'listGoTo' }, page);
+    await listGoTo({ current: 'help' })({ type: 'listGoTo' }, page);
+    const [withHints, bare] = posted as { type: string; pages: { id: string; description: string }[]; key: string }[];
+    assert.strictEqual(withHints.type, 'goToPages');
+    assert.deepStrictEqual(withHints.pages.map((entry) => entry.id), ['home', 'calendar', 'today', 'graph', 'find', 'stats', 'help']);
+    assert.strictEqual(withHints.pages.find((entry) => entry.id === 'graph')?.description, '1 note');
+    assert.match(withHints.key, /P$/);
+    assert.ok(!bare.pages.some((entry) => entry.id === 'help'));
+    assert.ok(bare.pages.every((entry) => entry.description === ''), 'with no index, no hints');
+    const ran = await recordCommands(async () => {
+      await goToPage()({ type: 'goToPage', page: 'board' }, page);
+      await goToPage()({ type: 'goToPage', page: 'constructor' }, page);
+      await goToPage()({ type: 'goToPage', page: 'nowhere' }, page);
+    });
+    assert.deepStrictEqual(ran, [['deckard.showTaskBoard']]);
+  });
+
+  test('run the gear\'s and the tag menu\'s commands, and Help at a section when one is named, and Go to… from the eyebrow', async () => {
     const page = createPage();
     const ran = await recordCommands(async () => {
       await chooseTheme()({ type: 'chooseTheme' }, page);
       await openHelp()({ type: 'openHelp' }, page);
       await openHelp('periodic')({ type: 'openHelp' }, page);
+      await openGoTo()({ type: 'openGoTo' }, page);
       await parkTag()({ type: 'parkTag', tagKey: '#project/relay' }, page);
       await parkTag()({ type: 'unparkTag', tagKey: '#project/relay' }, page);
     });
@@ -115,6 +148,7 @@ suite('Shared page message handlers', () => {
       ['deckard.chooseTheme'],
       ['deckard.showHelp'],
       ['deckard.showHelp', 'periodic'],
+      ['deckard.goTo'],
       ['deckard.parkTag', '#project/relay'],
       ['deckard.unparkTag', '#project/relay'],
     ]);

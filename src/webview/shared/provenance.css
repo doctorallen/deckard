@@ -11,7 +11,8 @@
  * fold.
  *
  * It comes after the theme, whose `.source` would otherwise restyle it, and
- * before zen, which only takes the corners off the frame around it.
+ * before Display, whose plain styling only takes the corners off the frame
+ * around it.
  */
 
 /* Escape puts the carried-down line away until the pointer or focus moves. */
@@ -80,6 +81,10 @@ body.provenance-dismissed .home-row .home-row-detail, body.provenance-dismissed 
   border-radius: 0 0 var(--corner-br, 0) var(--corner-bl, 0);
   background: inherit;
   box-shadow: inherit;
+  /* Its glow, in a theme that draws one, runs down its sides and along its
+     foot, never back up over the entry: cut at its own top edge, so the
+     glow frames the line it carries rather than banding across the entry. */
+  clip-path: inset(0 -40px -40px -40px);
   pointer-events: none;
 }
 .card:hover, .card:focus-within, .note:hover, .note:focus-within,
@@ -123,3 +128,72 @@ body.provenance-dismissed .home-row .home-row-detail, body.provenance-dismissed 
 .card:hover .source ~ .source, .card:focus-within .source ~ .source,
 .task-row:hover .task-source ~ .task-source, .task-row:focus-within .task-source ~ .task-source,
 .board-card:hover .task-source ~ .task-source, .board-card:focus-within .task-source ~ .task-source { top: calc(100% + 20px); }
+
+/* Focus and the pointer each mark one entry. While the keyboard has focus
+   somewhere, an entry under a resting pointer no longer carries its line
+   down, so only the focused entry looks active. */
+body:has(:focus-visible) :is(.card, .note, .task-row, .home-row, .tag-row, .board-card):hover:not(:focus-within)::after { content: none; }
+body:has(:focus-visible) :is(.card, .note, .task-row, .home-row, .tag-row, .board-card):hover:not(:focus-within) :is(.source, .task-source, .home-row-detail, .tag-count) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+/* A focused entry makes room for its carried-down line, pushing the next
+   entry down rather than covering its title, for a keyboard reader at any
+   zoom. The pointer's hover still lays the line over the next entry, so a
+   list does not jump under a moving mouse. */
+:is(.card, .note, .task-row, .home-row, .tag-row, .board-card):focus-within { margin-bottom: calc(var(--reach) + var(--space-2)); }
+
+/* Display's File & line preference (data-file-line on the body): always,
+   under every entry, or never, folded under the pointer and focus too. It
+   is here rather than in display.css because always draws the line in the
+   muted ink the carried-down line uses, and display.css declares no color. */
+/* File & line: always, under every entry, in the entry's own flow. */
+body[data-file-line=always] .task-row .task-source, body[data-file-line=always] .board-card .task-source,
+body[data-file-line=always] .card .source, body[data-file-line=always] .note .source,
+body[data-file-line=always]:has(:focus-visible) .task-row:hover:not(:focus-within) .task-source,
+body[data-file-line=always]:has(:focus-visible) .board-card:hover:not(:focus-within) .task-source,
+body[data-file-line=always]:has(:focus-visible) .card:hover:not(:focus-within) .source,
+body[data-file-line=always]:has(:focus-visible) .note:hover:not(:focus-within) .source,
+body[data-file-line=always] .task-row:focus-within .task-source, body[data-file-line=always] .board-card:focus-within .task-source,
+body[data-file-line=always] .card:focus-within .source, body[data-file-line=always] .note:focus-within .source,
+body[data-file-line=always] .home-row .home-row-detail.is-file,
+body[data-file-line=always]:has(:focus-visible) .home-row:hover:not(:focus-within) .home-row-detail.is-file,
+body[data-file-line=always] .home-row:focus-within .home-row-detail.is-file {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  /* Drawn as the carried-down line draws it under the pointer. */
+  font: var(--text-xs)/16px var(--font-mono);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--source-ink);
+}
+/* File & line: never, kept folded under the pointer and focus too. */
+body[data-file-line=never] .task-row:hover .task-source, body[data-file-line=never] .task-row:focus-within .task-source,
+body[data-file-line=never] .board-card:hover .task-source, body[data-file-line=never] .board-card:focus-within .task-source,
+body[data-file-line=never] .card:hover .source, body[data-file-line=never] .card:focus-within .source,
+body[data-file-line=never] .note:hover .source, body[data-file-line=never] .note:focus-within .source,
+body[data-file-line=never] .home-row:hover .home-row-detail.is-file, body[data-file-line=never] .home-row:focus-within .home-row-detail.is-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+/* Either way there is nothing to carry down: no frame reaches below the
+   entry, and focus pushes nothing down to make room. A home row's readout
+   is file and line when it names a note's file (is-file); when it is a
+   count (is-count), as a tag row's is, Counts decides it (display.css). */
+body[data-file-line] .card:hover::after, body[data-file-line] .card:focus-within::after,
+body[data-file-line] .note:hover::after, body[data-file-line] .note:focus-within::after,
+body[data-file-line] .task-row:hover::after, body[data-file-line] .task-row:focus-within::after,
+body[data-file-line] .board-card:hover::after, body[data-file-line] .board-card:focus-within::after,
+body[data-file-line] .home-row:has(.is-file):hover::after, body[data-file-line] .home-row:has(.is-file):focus-within::after { content: none; }
+body[data-file-line] .card:focus-within, body[data-file-line] .note:focus-within,
+body[data-file-line] .task-row:focus-within, body[data-file-line] .board-card:focus-within,
+body[data-file-line] .home-row:has(.is-file):focus-within { margin-bottom: 0; }

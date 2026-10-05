@@ -3,49 +3,16 @@ import * as vscode from 'vscode';
 import type { Services } from '../../../composition/services';
 import { OutlineTreeProvider, pickOutlineTag } from '../../views/outlineTree';
 import { asOutlineNode } from '../commandArguments';
-import { renameIndexedTag } from '../renameTag';
 import { registerCommand } from '../runCommand';
 
 /**
- * The Outline and its sections: revealing a heading, a heading's tags, Focus
- * Section and Unfold All Sections, and the Outline's tag filter.
+ * A note's sections, which the Context view lists: Focus Section and Unfold
+ * All Sections, and the Sections list's tag filter.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
-  const { indexer, sectionFocus } = services;
+  const { sectionFocus } = services;
   const { outline } = services.views;
-  const searchPanels = services.pages.search;
   context.subscriptions.push(
-    registerCommand(
-      'deckard.outline.revealSection',
-      (node?: unknown) => {
-        const outlineNode = asOutlineNode(node);
-        return outlineNode ? outline.revealSection(outlineNode) : undefined;
-      },
-    ),
-    registerCommand(
-      'deckard.outline.openTagOverview',
-      async (node?: unknown) => {
-        const tagKey = await pickOutlineTag(
-          asOutlineNode(node),
-          'Choose a tag from this heading',
-        );
-        if (tagKey) {
-          await searchPanels.show(tagKey);
-        }
-      },
-    ),
-    registerCommand(
-      'deckard.outline.renameTag',
-      async (node?: unknown) => {
-        const tagKey = await pickOutlineTag(
-          asOutlineNode(node),
-          'Choose a tag to rename',
-        );
-        if (tagKey) {
-          await renameIndexedTag(indexer, tagKey, services.writes.tags);
-        }
-      },
-    ),
     registerCommand('deckard.focusSection', async (node?: unknown) => {
       const outlineNode = asOutlineNode(node);
       if (outlineNode) {
@@ -66,14 +33,13 @@ export function register(context: vscode.ExtensionContext, services: Services): 
 }
 
 /**
- * Filters the Outline to the headings that carry one tag: a heading's own
- * tag when run from one in the tree, else any tag in the note, chosen from a
- * list.
+ * Narrows the Sections list to the headings that carry one tag, chosen
+ * from the tags the note's headings carry.
  */
 async function filterOutlineByTag(outline: OutlineTreeProvider, node?: unknown): Promise<void> {
   const outlineNode = asOutlineNode(node);
   if (outlineNode) {
-    const key = await pickOutlineTag(outlineNode, 'Choose a tag to filter the Outline by');
+    const key = await pickOutlineTag(outlineNode, 'Choose a tag to show only its sections');
     const tag = outlineNode.tags.find((candidate) => candidate.key === key);
     if (tag) {
       outline.setTagFilter(tag);
@@ -87,7 +53,7 @@ async function filterOutlineByTag(outline: OutlineTreeProvider, node?: unknown):
   }
   const chosen = await vscode.window.showQuickPick(
     tags.map((tag) => ({ label: tag.label, tag })),
-    { placeHolder: 'Show only the headings that carry a tag' },
+    { placeHolder: 'Show only the sections that carry a tag' },
   );
   if (chosen) {
     outline.setTagFilter(chosen.tag);

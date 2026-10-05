@@ -33,6 +33,7 @@ import {
   WorkspaceIndex,
 } from '../../domain/model';
 import { DashboardTryNext, DashboardWidget } from '../protocol/dashboard';
+import { countNotes } from '../../domain/index/noteEntryIndex';
 
 const DAY = 24 * 60 * 60 * 1000;
 /** How many entries a tag needs before Home suggests it a hub note. */
@@ -338,14 +339,11 @@ function buildRecentNotesWidget({ index, preferences, widget, take }: WidgetBuil
 
 /** The workspace in six numbers: notes, files, open tasks, tasks, tags, and namespaced tags. */
 function buildStatsWidget({ index, widget }: WidgetBuild): DashboardWidget {
-  const frontmatterNotes = [...index.files.values()].filter(
-    (file) => file.sections.length === 0 && file.frontmatterTags.length > 0,
-  ).length;
   const tasks = [...index.tasks.values()];
   return {
     ...widget,
     stats: [
-      { label: 'Notes', value: index.sections.size + frontmatterNotes },
+      { label: 'Notes', value: countNotes(index) },
       { label: 'Files', value: index.files.size },
       { label: 'Open tasks', value: tasks.filter((task) => !task.completed).length },
       { label: 'Tasks', value: tasks.length },

@@ -1,26 +1,42 @@
 name: Prepare Release
 
+# Cuts a release on the pull request from dev: the version, from the
+# Conventional Commits since the base, and the changelog's section for it,
+# committed back to dev. It runs when the pull request is given the
+# `release` label, or by hand on dev (Run workflow in the Actions tab), and
+# not on every push: each cut commit starts a full CI run, which waited for
+# approval, so cutting on every push ran CI twice for one change. Label the
+# pull request again, or run it again, to fold in what was pushed since.
 on:
   pull_request:
     branches:
       - main
       - master
     types:
-      - opened
-      - reopened
-      - synchronize
+      - labeled
+  workflow_dispatch:
+    inputs:
+      base:
+        description: The release branch the pull request from dev merges into
+        type: choice
+        default: master
+        options:
+          - master
+          - main
 
 permissions:
   contents: write
   pull-requests: read
 
 concurrency:
-  group: prepare-release-${{ github.event.pull_request.number }}
+  group: prepare-release-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   bump-version:
-    if: github.event.pull_request.head.ref == 'dev' && github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref_name == 'dev') ||
+      (github.event.label.name == 'release' && github.event.pull_request.head.ref == 'dev' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -41,9 +57,23 @@ jobs:
       - name: Check out pull request branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token || github.token }}
+
+      # The pull request's base, or, run by hand, the tip of the release
+      # branch chosen.
+      - name: Find what the release is cut against
+        id: base
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_BRANCH: ${{ inputs.base }}
+        run: |
+          if [ -n "$PR_BASE_SHA" ]; then
+            echo "sha=$PR_BASE_SHA" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=$(git rev-parse "origin/$BASE_BRANCH")" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -53,7 +83,7 @@ jobs:
       - name: Determine release version
         id: version
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ steps.base.outputs.sha }}
         run: |
           base_version="$(git show "$BASE_SHA:package.json" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
           current_version="$(node -p "require('./package.json').version")"
@@ -121,7 +151,7 @@ jobs:
       - name: Cut the changelog
         if: steps.version.outputs.release == 'true'
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ steps.base.outputs.sha }}
           VERSION: ${{ steps.version.outputs.value }}
           BASE_VERSION: ${{ steps.version.outputs.base_version }}
         run: |
@@ -132,7 +162,7 @@ jobs:
         if: steps.version.outputs.release == 'true'
         env:
           VERSION: ${{ steps.version.outputs.value }}
-          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}
         run: |
           if [ -z "$(git status --porcelain -- package.json package-lock.json CHANGELOG.md)" ]; then
             echo "The version and the changelog are already cut."

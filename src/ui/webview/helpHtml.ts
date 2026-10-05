@@ -71,7 +71,7 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.search': 'A search page, ready for a search.',
   'deckard.insertQueryBlock': 'A live query block of a saved or recent search, or one you type, at the cursor.',
   'deckard.searchWorkspace': 'Finds notes, tasks, and tags as you type.',
-  'deckard.searchNotes': 'Opens a search page on a query you write.',
+  'deckard.searchNotes': 'Opens a search page on a search you write, or on every note.',
   'deckard.linkCurrentHeading': 'Adds a person or project tag to this heading.',
   'deckard.moveTagsToFrontmatter': 'Moves a note’s inline tags into its front matter.',
   'deckard.renameTag': 'Renames a tag everywhere it is written.',
@@ -83,12 +83,12 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
     'Opens the Task Board on what the Tasks view lists, to change it and keep it with Save to Tasks view.',
   'deckard.clearAgendaQuery': 'Lets the Tasks view list every open task again.',
   'deckard.agenda.setGrouping': 'What the Tasks view’s groups are.',
-  'deckard.outline.enableFollowCursor': 'Selects the heading the cursor is in.',
-  'deckard.outline.disableFollowCursor': 'Leaves the Outline where you put it.',
+  'deckard.outline.enableFollowCursor': 'Marks the heading the cursor is in, in the Context view’s Sections.',
+  'deckard.outline.disableFollowCursor': 'Stops marking the cursor’s heading in Sections.',
   'deckard.focusSection': 'Folds the rest of the note away from the section the cursor is in.',
   'deckard.unfoldAllSections': 'Unfolds the note again after Focus Section.',
-  'deckard.outline.filterByTag': 'Shows only the Outline headings that carry a tag, or a tag under it.',
-  'deckard.outline.clearTagFilter': 'Shows every heading in the Outline again.',
+  'deckard.outline.filterByTag': 'Shows only the headings in Sections that carry a tag, or a tag under it.',
+  'deckard.outline.clearTagFilter': 'Shows every heading in Sections again.',
   'deckard.chooseTheme': 'Previews each theme on the open pages as you move through the list.',
 };
 
@@ -250,6 +250,7 @@ function buildHelpHtml({ webview, extensionUri, manifest, platform, options }: H
     nonce,
     theme: options.chrome.theme,
     zen: options.chrome.zen,
+    display: options.chrome.display,
     csp: { images: [new URL(GUIDE_IMAGE_BASE).origin] },
     bodyAttributes: options.anchor ? ` data-anchor="${escapeHtml(options.anchor)}"` : '',
     // src/webview/help/main.ts: the rail, the guide view, and the way back.
@@ -294,7 +295,7 @@ const HELP_NAV = `  <nav aria-label="Help sections">
     <a class="nav-sub" href="#tidy">Renaming and tidying</a>
     <a class="nav-sub" href="#periodic">Days, weeks, months</a>
     <span class="nav-group">Reference</span>
-    <a class="nav-sub" href="#zen">Zen mode</a>
+    <a class="nav-sub" href="#zen">Display</a>
     <a class="nav-sub" href="#commands">Commands</a>
     <a class="nav-sub" href="#advanced">Settings</a>
     <a class="nav-sub" href="#assistants">AI assistants</a>
@@ -305,7 +306,7 @@ const HELP_NAV = `  <nav aria-label="Help sections">
 
 /** The page's title and lead, above the first section. */
 const HELP_HEADER = `    <header>
-      <p class="eyebrow">DECKARD / FIELD GUIDE</p>
+      <p class="eyebrow"><button type="button" class="eyebrow-home" data-go-to="" aria-haspopup="menu" aria-expanded="false" aria-label="Deckard: go to another page">DECKARD ▾</button><span class="eyebrow-trail"> / FIELD GUIDE</span></p>
       <h1>Help</h1>
       <p class="lead">Deckard indexes Markdown notes locally, then connects the people, projects, topics, tasks, and links you already write. Nothing leaves your machine.</p>
       <p class="read-more">This page is the quick glance; each section's <strong>Read more</strong> opens the <a href="#" data-guide-page="README">full guide</a>.</p>
@@ -318,9 +319,9 @@ function renderStartSections(logoUri: string, options: HelpOptions): string {
   return `    <section id="quick-start">
       <h2>Quick start</h2>
       <p><strong>New to Deckard?</strong> <code>Deckard: Get Started</code> opens the walkthrough: six steps, each checked off as you do it.</p>
-      <p><strong>Rather see it than read it?</strong> <code>Deckard: Create a Sample Workspace</code> writes a tour of Deckard, dated from the day you make it, and opens it. Its README leads through ten notes, one a topic, each holding what it explains and ending with what to try.</p>
+      <p><strong>Rather see it than read it?</strong> <code>Deckard: Create a Work Sample</code> writes a week of a team lead's notes, dated from the day you make it, and opens it: standups, two 1:1s, a project, and its decisions, with what to try. <code>Deckard: Create the Story Tour</code> writes the longer tour, ten notes, one for each part of Deckard.</p>
       <div class="steps">
-        <div class="step"><span class="step-number"></span><div><h3>Open a workspace</h3><p>Deckard indexes saved <code>.md</code> files in every workspace folder. Open a note, then use the Deckard icon <img class="deckard-logo" src="${logoUri}" alt="Deckard"> in the Activity Bar for Context, which shows related notes and more, the Outline, Tasks, and the Calendar.</p></div></div>
+        <div class="step"><span class="step-number"></span><div><h3>Open a workspace</h3><p>Deckard indexes saved <code>.md</code> files in every workspace folder. Open a note, then use the Deckard icon <img class="deckard-logo" src="${logoUri}" alt="Deckard"> in the Activity Bar: <strong>Pages</strong> lists every Deckard page, then Context shows the note’s sections, related notes, and what links to it, then Tasks and the Calendar. <code>Deckard: Go to…</code>, Cmd/Ctrl+Shift+Alt+P, lists the same pages from anywhere, and <strong>DECKARD ▾</strong> atop any page drops them as a menu.</p></div></div>
         <div class="step"><span class="step-number"></span><div><h3>Write a few tags</h3><p>Plain tags such as <code>#follow-up</code> are enough. Add <code>@mara-vale</code> for people, or namespaced tags such as <code>#project/neon-relay</code>, when that structure earns its keep. Typing <code>#</code> or <code>@</code> suggests the tags you already use.</p></div></div>
         <div class="step"><span class="step-number"></span><div><h3>Follow the connections</h3><p>Cmd/Ctrl-click a tag to open its search page, run <code>Deckard: Open Dashboard</code> for Home and every tag, or open the Notes Graph to see what is attached to what. Hover or Tab to any button to see what it does.</p></div></div>
       </div>
@@ -513,7 +514,7 @@ tag = #project/atlas AND task = open
       <h2>Related notes and the graph</h2>
       <div class="cards">
         <div class="card"><h3>Related Notes</h3><p>The sidebar ranks the notes most related to the entry your cursor is in: shared tags first, then associated tags, then links and shared wording. Each result explains its own score, and can be linked into the note you are writing. Under them, <strong>Linked from</strong> lists the notes that link here, newest first, each line unfolding onto its section, and <strong>Open as search</strong> opens them all as a search. Each result previews the first line of what it says, with the words it shares with your note marked; the gear sets <strong>Preview</strong> to none, one, or two lines, and <strong>Daily notes</strong> to Hide, which leaves daily, weekly, and monthly notes out of both lists. Parked notes are not suggested unless the note you are in is parked. A note with no tags lists entries with similar wording instead, marked weak, and the tags they use, each with <strong>Add</strong>, which writes it where the cursor is, with Undo.</p></div>
-        <div class="card"><h3>Outline</h3><p>A tree of the current note’s headings with the tags on each, and <strong>2/5 · ↩3</strong> for the tasks under a heading that are done and the links that name it. It can follow the cursor, and a heading’s context menu opens or renames its tags. <code>Deckard: Focus Section</code> folds the rest of the note away from one heading, and <code>Deckard: Filter Outline by Tag…</code> keeps only the headings that carry a tag.</p></div>
+        <div class="card"><h3>Sections</h3><p>The Context view lists the note’s headings above its related notes, with the tags on each and <strong>2/5 · ↩3</strong> for the tasks under a heading that are done and the links that name it. It marks the heading the cursor is in. Select one to open it; <strong>Focus</strong> folds the rest of the note away; <strong>Show</strong> narrows the list to one tag’s headings.</p></div>
         <div class="card"><h3>Notes Graph</h3><p>Every note, task, and tag as a map. <strong>Focus → Around this note</strong> draws one note’s neighborhood instead, one to three hops out, following the editor as you move between notes. Reset graph can be undone for a few seconds. Parked notes are hidden until <strong>Show parked</strong> is on. Solid lines are wiki links you wrote; dashed are headings; dotted are shared tags. <strong>Only links I wrote</strong> hides the rest. Zoomed out, each group is named after the tags that set it apart; click a name, or choose it from <strong>Group</strong>, to pick it out.</p></div>
         <div class="card"><h3>Stats</h3><p>What needs attention first: any note Deckard could not read, with why, the links that open no note, the tags that look like one idea spelled twice, and the notes nothing links to (parked notes aside). Then the index totals, each opening what it counts, with how notes, tasks, and open tasks moved over twelve weeks, how much is parked, the tags and notes you open most, how often tags are used, with the tags used once to merge, and which tags are written together.</p></div>
         <div class="card"><h3>Check My Setup</h3><p>When something is not there and you are not sure why, <code>Deckard: Check My Setup</code> writes up what your settings resolve to here: where notes are read from and whether that folder exists, what the last scan found and kept out, which notes could not be read, and whether <code>deckard.me</code> names anyone — each with what to do.</p></div>
@@ -553,7 +554,7 @@ function renderKeepingSections(): string {
         <div class="card"><h3>Carrying tasks forward</h3><p>Set <code>deckard.dailyNote.rollover</code> to <code>move</code> or <code>migrate</code> and a new daily note takes the unfinished tasks of the last week's daily notes with it, oldest first, under a <strong>Carried over</strong> heading. Migrate marks each line left behind <code>[&gt;]</code> with a link to today. A task’s steps come with it, nested under it; a step whose task stays behind comes on its own, at the top level. <code>Deckard: Roll Unfinished Tasks Forward</code> does it on request, with <strong>Undo</strong> beside what it says.</p></div>
         <div class="card"><h3>Reviews</h3><p>A weekly or monthly note opens with a review written into it: what was completed, what slipped, what is coming up next, the notes written and changed, and the tags first seen, with sections of your own from <code>deckard.periodicNote.reviewSections</code>. It is ordinary Markdown, named by the days it covers, and rewritten in place when you run it again.</p></div>
         <div class="card"><h3>Calendar</h3><p>A month in the sidebar, in weeks from the day <code>deckard.calendar.weekStart</code> names, Sunday unless you change it. A dot marks a day with a note; a number counts what is due, orange once the day has passed and gray after 30 days, and an outlined number what is scheduled. Turn on the day panel from the view’s … menu to see the chosen day’s note, tasks, and new notes below the month, each task with a Tomorrow button; a click then chooses a day, and a double-click or Enter opens it. The week beside a row opens that week’s note. A repeating task shows on each later date its rule lands on, marked ↻; <code>deckard.calendar.showRepeats</code> turns that off.</p></div>
-        <div class="card"><h3>The calendar page</h3><p><code>Deckard: Open Calendar</code>, or the button in the Calendar view’s title bar, opens the calendar across the editor: each day lists its tasks by name, the chosen day’s panel sits beside the month, or in the Context sidebar while it is open, and <strong>Week</strong> shows one week in full. Drag a task to another day to move its date there. <code>deckard.calendar.showWeekends</code> leaves the weekends out, here and in the sidebar.</p></div>
+        <div class="card"><h3>The calendar page</h3><p><code>Deckard: Open Calendar</code>, <strong>Calendar</strong> in the Pages view, or the button in the Calendar view’s title bar, opens the calendar across the editor: each day lists its tasks by name, the chosen day’s panel sits beside the month, or in the Context sidebar while it is open, and <strong>Week</strong> shows one week in full. Drag a task to another day to move its date there. <code>deckard.calendar.showWeekends</code> leaves the weekends out, here and in the sidebar.</p></div>
       </div>
       ${renderReadMore('periodic')}
     </section>
@@ -561,12 +562,12 @@ function renderKeepingSections(): string {
 `;
 }
 
-/** The Reference group of the rail: zen mode, the commands and settings tables built from the manifest, assistants, and privacy. */
+/** The Reference group of the rail: Display, the commands and settings tables built from the manifest, assistants, and privacy. */
 function renderReferenceSections(manifest: HelpManifest, platform: NodeJS.Platform): string {
   return `    <section id="zen">
-      <h2>Zen mode</h2>
-      <p><strong>Zen mode turns Deckard’s own chrome down without taking anything away.</strong> The decorative labels and the grid backdrop go, the borders and headings thin out, and each row’s file name and line fold away until you hover or focus the row. Every button, filter, count, and tag stays exactly where it was, and the folded text is still read aloud, still found by find-in-page, and comes back the moment you tab to the row.</p>
-      <p>Turn it on from the gear on the Dashboard, a search page, or the Task board, from the zen button in the title bar of any Deckard page, from <code>Deckard: Enter Zen Mode</code> in the Command Palette, or by setting <code>deckard.zenMode</code>. It is one setting for every Deckard view, and it works with whichever theme you use — zen decides how much frame is drawn, a theme decides its colors. <code>Deckard: Choose Theme…</code>, or <strong>Theme</strong> above Zen in the same gear, shows each of the eight themes on the open pages as you move through them, and keeps the one you choose.</p>
+      <h2>Display</h2>
+      <p><strong>Display turns Deckard’s own chrome down a step at a time without taking anything away.</strong> <strong>Full</strong> is Deckard as it ships. <strong>Quiet</strong> takes off each theme’s decoration and the lines that teach, such as the search box’s line of syntax, and draws tags as text, at the usual spacing. <strong>Zen</strong> also tightens the spacing, draws cards flat, and leaves out counts and each entry’s file and line. Every button, filter, count, and tag stays where it was, and DECKARD ▾ stays at every step.</p>
+      <p>Pick a step from <strong>Display</strong> in the gear on any page that has one, from <code>Deckard: Choose Display…</code>, which shows each step on the open pages as you move through them, or with <code>deckard.display.level</code>. The Zen button in the title bar of any Deckard page goes to Zen and back to the step you were on. Every Display setting (Theme styling, Help text, Tags, Density, Cards, Counts, File &amp; line, and Dates) follows the step until you set it yourself; <strong>Customize…</strong> in the gear opens them in Settings. <strong>Page width</strong>, Limited or Full, has its own row in the gear. Display works with whichever theme you use: it decides how much frame is drawn, a theme decides its colors. <code>Deckard: Choose Theme…</code>, or <strong>Theme</strong> at the top of the same gear, shows each of the eight themes on the open pages as you move through them.</p>
       <p><strong>Two things deliberately stay put.</strong> A task’s due date, priority, and the word <em>overdue</em> are the point of the row rather than chrome, so they never fold; and a search that cannot be parsed still says so. The one thing you give up is the line of query syntax under the search box — the <a href="#query">query language</a> above has all of it.</p>
       ${renderReadMore('zen')}
     </section>
@@ -602,6 +603,7 @@ function renderReferenceSections(manifest: HelpManifest, platform: NodeJS.Platfo
       <p><strong>What names your notes is kept with the workspace.</strong> Favorite tags and people, pinned notes, saved searches, Home’s widgets, view counts, and your task order belong to the folder they describe, so opening another project cannot disturb them. How Deckard looks — sort modes, column counts, layouts, page sizes — is kept for the machine and is the same everywhere. Upgrading from 1.18 or earlier hands what was stored machine-wide to the first workspace you open.</p>
       <p><strong>Deckard never deletes a favorite, a pin, or a saved search on its own.</strong> If what one pointed at is gone, it stays until you run <code>Deckard: Tidy Favorites, Pins, and Saved Searches</code>, which lists what points nowhere and asks first. Only what Deckard derived for itself — view counts and access order — is cleaned up automatically.</p>
       <p><strong>It is copied, too.</strong> A moment after each change Deckard writes a copy of what this workspace remembers into the workspace’s storage and keeps the last twenty. <code>Deckard: Restore Favorites, Pins, and Searches from a Copy</code> offers them newest first. <code>Deckard: Export Favorites, Pins, and Searches</code> writes the same thing to a JSON file of your choosing, and <code>Deckard: Import Favorites, Pins, and Searches</code> reads one back; each says what it holds and asks before replacing anything.</p>
+      <p><strong>For an approval at work, or a screen reader.</strong> <a href="#" data-guide-page="security">For your security reviewer</a> says what Deckard sends, stores, and runs; <a href="#" data-guide-page="what-deckard-writes">What Deckard writes</a> lists every change it makes to your files and the setting for each; <a href="#" data-guide-page="accessibility">Accessibility and keyboard</a> covers screen readers, keys, high contrast, zoom, and motion.</p>
       ${renderReadMore('privacy')}
     </section>
 `;

@@ -593,8 +593,10 @@ suite('Tag overview query builder', () => {
     assert.strictEqual(view.suggestionsFor('query'), '', 'the list closes');
   });
 
-  test('holds back a search longer than the host takes, says why, and keeps what was typed', async () => {
-    const view = mountTagOverview();
+  test('holds back a search longer than the host takes, says why, and keeps what was typed', () => {
+    // On a clock moved by hand: components-primitives.test.ts waits the
+    // searching bar's second out on the real one.
+    const view = mountTagOverview({ clock: true });
     view.send(createState(''));
     const bar = { dataset: { action: 'query-input', suggestKey: 'query' } };
 
@@ -610,7 +612,7 @@ suite('Tag overview query builder', () => {
     assert.strictEqual((view.find('[data-suggest-key="query"]') as HTMLInputElement).value, tooLong, 'what was typed stays');
     // A search that was never sent never comes back, so nothing says it is
     // still searching.
-    await new Promise((resolve) => setTimeout(resolve, 1100));
+    view.advance(1100);
     assert.ok(!view.find('.query-workspace').classList.contains('is-searching'));
     // An index update while the text is still there leaves it there.
     view.send(createState(''));
@@ -684,6 +686,8 @@ interface MountedView {
   countGroups: () => number;
   type: (input: ElementDescriptor, value: string) => Element;
   suggestionsFor: (key: string) => string;
+  /** With `clock: true`, moves the page's clock on (manualClock.ts). */
+  advance: (milliseconds: number) => void;
 }
 
 /**
@@ -709,8 +713,8 @@ function datasetSelector(dataset: Record<string, string>): string {
  * Without it, as for most tests, the host stays silent, so a test sees only
  * what the page does on its own and what it posts.
  */
-function mountTagOverview(options: { answerQueries?: boolean } = {}): MountedView {
-  const page = openWebviewPage(renderPage('searchPage'));
+function mountTagOverview(options: { answerQueries?: boolean; clock?: boolean } = {}): MountedView {
+  const page = openWebviewPage(renderPage('searchPage'), undefined, { clock: options.clock });
   const { window, document } = page;
   const app = page.find('#app');
   let shown: { query: { text: string } } | undefined;
@@ -786,6 +790,12 @@ function mountTagOverview(options: { answerQueries?: boolean } = {}): MountedVie
     },
     suggestionsFor: (key) =>
       document.querySelector(`[data-suggestions="${key}"]`)?.innerHTML ?? '',
+    advance: (milliseconds) => {
+      if (!page.clock) {
+        throw new Error('mountTagOverview({ clock: true }) moves a clock by hand; this view has none');
+      }
+      page.clock.advance(milliseconds);
+    },
   };
 }
 

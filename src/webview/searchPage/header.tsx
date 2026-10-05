@@ -7,9 +7,10 @@ import type { ComponentChildren } from 'preact';
 import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { TagReference } from '../../ui/protocol/shared';
 import { HelpButton, IconButton } from '../shared/buttons';
+import { Eyebrow } from '../shared/eyebrow';
 import { LayoutSplitIcon, LayoutTabsIcon, RenderedIcon, SortIcon, SourceIcon } from '../shared/strokeIcons';
 import { TagLabel } from '../shared/tagLabel';
-import { themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
+import { displayLevelOption, pageWidthOption, themeOption, ViewOptionChoices, ViewOptions } from '../shared/viewOptions';
 
 /** A built-in or user-made namespace and its name in one readable title form: "Project: Atlas". */
 export function formatEntityTitle(kind: string, name: string): string {
@@ -141,7 +142,8 @@ function SearchViewOptions({ snapshot }: { readonly snapshot: SearchPageSnapshot
         { label: 'Note columns', content: <ColumnChoices section="notes" selected={snapshot.noteColumns} /> },
         { label: 'Task columns', content: <ColumnChoices section="tasks" selected={snapshot.taskColumns} /> },
         themeOption(),
-        zenOption(),
+        pageWidthOption(),
+        displayLevelOption(),
       ]}
     />
   );
@@ -166,7 +168,7 @@ export function PageHeader({ snapshot }: { readonly snapshot: SearchPageSnapshot
   return (
     <header>
       <div>
-        <div class="overview-eyebrow"><p class="eyebrow">DECKARD / SEARCH PAGE</p></div>
+        <div class="overview-eyebrow"><Eyebrow trail="SEARCH PAGE" /></div>
         {snapshot.savedViewName
           ? <div class="saved-view-name" aria-label={`Saved search: ${snapshot.savedViewName}`}><span class="saved-view-name-label">Saved search:</span>{` ${snapshot.savedViewName}`}</div>
           : null}

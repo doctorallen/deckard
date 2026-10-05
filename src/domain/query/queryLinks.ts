@@ -1,4 +1,5 @@
 import { ParsedFile, WorkspaceIndex } from '../model';
+import { entryIdOf, fileEntryId } from '../markdown/noteEntries';
 import {
   createNoteTitleMap,
   getBacklinkIndex,
@@ -112,7 +113,7 @@ export function getQueryLinkState(index: WorkspaceIndex): LinkState {
 /**
  * The entries that own a one-based line of a note, as a tag written there
  * would: the task on it; failing that, each tagged line that covers it;
- * failing that, the heading whose own lines hold it.
+ * failing that, the entry that owns the heading whose own lines hold it.
  */
 function findLineOwners(file: ParsedFile, line: number): string[] {
   const task = file.tasks.find((candidate) => candidate.lineNumber === line);
@@ -128,7 +129,13 @@ function findLineOwners(file: ParsedFile, line: number): string[] {
   const heading = file.sections.find(
     (section) => !section.isInline && section.startLine <= line && section.bodyEndLine >= line,
   );
-  return heading ? [`section:${heading.id}`] : [];
+  if (!heading) {
+    return [];
+  }
+  // An untagged heading is part of the note that owns it: the tagged heading
+  // above it, or the note itself, whose unit is keyed `file:<path>`.
+  const owner = entryIdOf(heading);
+  return [owner === fileEntryId(file.filePath) ? owner : `section:${owner}`];
 }
 
 /** Reads a `link` condition's value against the index's note names. */

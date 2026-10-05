@@ -25,7 +25,9 @@ export interface SidebarChoices {
   /** Whether the entry being ranked from, and its tags, are unfolded. */
   contextOpen: boolean;
   /** Which of the Links groups are open. */
-  linksOpen: { linked: boolean; mentions: boolean };
+  linksOpen: { linked: boolean; mentions: boolean; sections: boolean };
+  /** Whether every heading of a long note shows in Sections, past its first dozen. */
+  showAllSections: boolean;
   /** The link rows unfolded onto their section, by `filePath:line`. */
   openLinkSections: Set<string>;
   /** The Refine facets opened past their first five, by id. */
@@ -88,7 +90,8 @@ export function readChoices(kept: Readonly<Record<string, unknown>>): SidebarCho
     noteListKey: typeof kept.noteListKey === 'string' ? kept.noteListKey : '',
     showEveryActiveTag: kept.showEveryActiveTag === true,
     contextOpen: kept.contextOpen === true,
-    linksOpen: { linked: keptFlag(links.linked, true), mentions: keptFlag(links.mentions, false) },
+    linksOpen: { linked: keptFlag(links.linked, true), mentions: keptFlag(links.mentions, false), sections: keptFlag(links.sections, true) },
+    showAllSections: kept.showAllSections === true,
     openLinkSections: new Set(keptStrings(kept.openLinkSections)),
     expandedRefine: new Set(keptStrings(kept.expandedRefine)),
     shownGroups: keptStrings(kept.shownGroups),
@@ -103,6 +106,7 @@ export function choicesToKeep(choices: SidebarChoices): Record<string, unknown> 
     showEveryActiveTag: choices.showEveryActiveTag,
     contextOpen: choices.contextOpen,
     linksOpen: { ...choices.linksOpen },
+    showAllSections: choices.showAllSections,
     openLinkSections: [...choices.openLinkSections],
     expandedRefine: [...choices.expandedRefine],
     shownGroups: [...choices.shownGroups],

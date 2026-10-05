@@ -49,12 +49,16 @@ export function NoteBody({ rawContent, blocks, renderMode }: {
     : <pre key={`markdown:${rawContent}`} class="markdown">{asParsedPreText(rawContent)}</pre>;
 }
 
-/** Says a card's body starts further down its entry, where the searched words are. */
-function SnippetLead() {
+/**
+ * Says a card's body starts further down its entry, where the searched
+ * words are, and under which of the note's untagged headings, when one.
+ */
+function SnippetLead({ heading }: { readonly heading?: string }) {
   return (
     <div key="lead" class="card-snippet-lead">
       <span aria-hidden="true">…</span>
-      <span class="visually-hidden">From further down the entry:</span>
+      {heading ? <span class="card-snippet-heading">{` in ${heading}`}</span> : null}
+      <span class="visually-hidden">{heading ? ':' : 'From further down the entry:'}</span>
     </div>
   );
 }
@@ -91,7 +95,7 @@ function CardBody({ card, position, display, opened }: SearchCardProps) {
   return (
     <>
       <div key="body" class={clamped ? 'card-body is-clamped' : 'card-body'} id={id}>
-        {snippet ? <SnippetLead /> : null}
+        {snippet ? <SnippetLead heading={snippet.heading} /> : null}
         {body}
       </div>
       {preview === 'lines' && card.long

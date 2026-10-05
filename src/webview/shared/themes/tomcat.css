@@ -27,6 +27,7 @@
   --warning-orange: #e24b26;
   --font-display: var(--vscode-editor-font-family, ui-monospace, monospace);
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
+  --divider: var(--line-strong);
 }
 body { background-image: repeating-linear-gradient(0deg, rgba(118, 255, 99, .025) 0, rgba(118, 255, 99, .025) 1px, transparent 1px, transparent 4px); }
 main { border-color: var(--line); box-shadow: 0 0 22px rgba(41, 165, 47, .08); }

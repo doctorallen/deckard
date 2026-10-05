@@ -378,13 +378,13 @@ suite('Deckard query language', () => {
     );
   });
 
-  test('inherits a tag from a parent heading', () => {
+  test('an untagged heading belongs to the tagged heading above it, never a result of its own', () => {
     const index = createIndex();
     const results = evaluateQuery(index, parseQuery('tag:#project/atlas').node, createQueryContext(Date.now()));
-    assert.ok(
-      results.sections.some((section) => section.id === 'atlas-child'),
-      'a nested section should answer for its parent heading tag',
-    );
+    assert.ok(!results.sections.some((section) => section.id === 'atlas-child'), 'Check-in is part of Atlas');
+    assert.ok(results.sections.some((section) => section.id === 'atlas-parent'));
+    const byText = evaluateQuery(index, parseQuery('text ~ "check-in"').node, createQueryContext(Date.now()));
+    assert.deepStrictEqual(byText.sections.map((section) => section.id), ['atlas-parent'], 'its words find the note it belongs to');
   });
 
   test('matches a namespace with a wildcard', () => {
@@ -593,7 +593,8 @@ suite('Deckard search page state', () => {
     assert.deepStrictEqual(evaluateQuery(index, parseQuery('no:due').node, createQueryContext(Date.now())).sections, []);
     const notes = evaluateQuery(index, parseQuery('is:note').node, createQueryContext(Date.now()));
     assert.strictEqual(notes.tasks.length, 0);
-    assert.strictEqual(notes.sections.length, 5);
+    // Five headings, four notes: Check-in belongs to Atlas.
+    assert.strictEqual(notes.sections.length, 4);
   });
 
   test('reads a week, a month, a weekday, or a day in words as a date', () => {
@@ -851,12 +852,12 @@ suite('Deckard search page state', () => {
     const sectionCount = (text: string) =>
       evaluateQuery(index, parseQuery(text).node, createQueryContext(Date.now())).sections.length;
 
-    assert.strictEqual(sectionCount('in:notes'), 5);
+    assert.strictEqual(sectionCount('in:notes'), 4);
     // A folder is matched whole, so a name that only starts the same way
     // does not count.
     assert.strictEqual(sectionCount('in:note'), 0);
     assert.strictEqual(sectionCount('-in:notes'), 0);
-    assert.strictEqual(sectionCount('in:no*'), 5);
+    assert.strictEqual(sectionCount('in:no*'), 4);
   });
 });
 
@@ -932,6 +933,8 @@ function createIndex(): WorkspaceIndex {
       heading: 'Check-in',
       tags: [],
       parentSectionId: 'atlas-parent',
+      // An untagged heading under a tagged one is part of its note.
+      entryId: 'atlas-parent',
       rawContent: 'Notes from the check-in.',
     }),
     createSection({
@@ -1017,11 +1020,12 @@ function createSection(values: Partial<Section> & { id: string }): Section {
     tagLabels: {},
     links: [],
     rawContent: '',
-    bodyContent: '',
     startLine: 1,
     endLine: 2,
     bodyEndLine: 2,
     ...values,
+    // A section with no headings under it reads the same either way.
+    bodyContent: values.bodyContent ?? values.rawContent ?? '',
   };
 }
 

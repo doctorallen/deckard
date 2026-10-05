@@ -10,6 +10,7 @@ import {
 import { resolveSourceUri } from './navigation';
 import { findUnlinkedMentions } from '../../domain/search/mentions';
 import type { WorkspaceIndex } from '../../domain/model';
+import type { NoteLinkStyle } from '../../domain/markdown/wikiLinks';
 
 /**
  * What the link services read and write through, in VS Code: the notes as
@@ -23,6 +24,13 @@ import type { WorkspaceIndex } from '../../domain/model';
  * folders, and a note read through its document, so an open note's unsaved
  * text is what is read.
  */
+/** `deckard.links.style`: how a link Deckard makes is written. */
+export function readLinkStyle(): NoteLinkStyle {
+  return vscode.workspace.getConfiguration('deckard').get<NoteLinkStyle>('links.style', 'wiki') === 'markdown'
+    ? 'markdown'
+    : 'wiki';
+}
+
 export const vscodeLiveNotes: LiveNotes<vscode.Uri> = {
   uriOf: (filePath) => resolveSourceUri(filePath),
   read: async (uri) => (await vscode.workspace.openTextDocument(uri)).getText(),
@@ -44,17 +52,24 @@ export const vscodeLinkNotes = new LinkNoteService(vscodeNoteFiles);
 export function createLinkService(
   index: { getSnapshot(): WorkspaceIndex },
 ): LinkService<vscode.Uri> {
-  return new LinkService({ index, notes: vscodeLiveNotes, findUnlinkedMentions });
+  return new LinkService({ index, notes: vscodeLiveNotes, findUnlinkedMentions, linkStyle: readLinkStyle });
 }
 
-/** One workspace edit that makes every edit, in order. */
-export function toWorkspaceEdit(edits: readonly NoteEdit<vscode.Uri>[]): vscode.WorkspaceEdit {
+/**
+ * One workspace edit that makes every edit, in order, each carrying
+ * `metadata` when given, such as a request to show it before it lands.
+ */
+export function toWorkspaceEdit(
+  edits: readonly NoteEdit<vscode.Uri>[],
+  metadata?: vscode.WorkspaceEditEntryMetadata,
+): vscode.WorkspaceEdit {
   const edit = new vscode.WorkspaceEdit();
   edits.forEach((each) =>
     edit.replace(
       each.uri,
       new vscode.Range(each.line, each.startColumn, each.line, each.endColumn),
       each.text,
+      metadata,
     ),
   );
   return edit;

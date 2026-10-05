@@ -13,6 +13,8 @@
   --panel: var(--vscode-editorWidget-background, var(--vscode-editor-background));
   --panel-bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
   --panel-raised: var(--vscode-list-hoverBackground, var(--vscode-editorWidget-background));
+  /* VS Code has no divider color that reaches 3:1, so the text color is mixed into the panel. */
+  --divider: color-mix(in srgb, var(--vscode-foreground) 70%, var(--vscode-editorWidget-background, var(--vscode-editor-background)));
   /* VS Code's own hover pair: its focus blue on its hover gray is about 3:1,
      which is a border color, not a text one. */
   --hover-bg: var(--vscode-list-hoverBackground, var(--vscode-editorWidget-background));
@@ -47,6 +49,9 @@
   /* VS Code's warning text in lists, readable on its light grounds, where
      the editor's warning squiggle color is not. */
   --due-today: var(--vscode-list-warningForeground, var(--vscode-editorWarning-foreground));
+  /* Overdue, written as text on a raised row as well as the page: VS Code's
+     list error color, where its chart red is under 4.5:1 on its hover gray. */
+  --danger: var(--vscode-list-errorForeground, var(--vscode-charts-red));
   --slate-olive: var(--vscode-panel-border);
   --grid-line: transparent;
   --font-display: var(--vscode-font-family, system-ui, sans-serif);

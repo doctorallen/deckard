@@ -6,7 +6,7 @@
 
 **A local-first second brain for the Markdown notes already in your VS Code workspace.** Write `#tags`, `@people`, `[[links]]`, and `- [ ] tasks` the way you always have; Deckard connects them into one index and gives you a Dashboard, a Task board, search pages, a notes graph, and a sidebar of related notes — without changing how your notes are written or sending them anywhere.
 
-**[Read the guide](https://deckard.esperinnovations.com)** · [Getting started](https://deckard.esperinnovations.com/getting-started.html) · [Changelog](CHANGELOG.md)
+**[Read the guide](https://deckard.esperinnovations.com)** · [Getting started](https://deckard.esperinnovations.com/getting-started.html) · [Install from the Marketplace](https://marketplace.visualstudio.com/items?itemName=esperinnovations.deckard-notes) · [Changelog](CHANGELOG.md)
 
 <p align="center">
 	<img src="docs/images/dashboard.png" alt="Deckard's Dashboard: overdue, due today, and open tasks, and a Home of widgets." width="820">
@@ -14,12 +14,12 @@
 
 ## Why Deckard
 
-- **Your notes stay yours.** Plain Markdown is the source of truth. Deckard writes to a note only when you ask it to, shows a change that reaches several notes before making it, and can take the last one back.
+- **Your notes stay yours.** Plain Markdown is the source of truth. Deckard writes to a note only when you ask it to, shows a change that reaches several notes before making it, and can take the last one back. [What Deckard writes](docs/guide/what-deckard-writes.md) lists every change, and [For your security reviewer](docs/guide/security.md) says what it sends and stores: nothing leaves your machine unless you use an AI feature.
 - **Everything is connected.** A tag, a person, or a project gathers every note section and task that mentions it, wherever it was written.
 - **Tasks where you wrote them.** Checklist items become a Tasks view, a Kanban board, and a status bar count; completing one ticks the box in its note.
 - **Fast on big workspaces.** The first scan says what it read, later starts check only what changed, and editing never waits on indexing.
 - **Designed to be used, not just to work.** Deckard's pages are laid out to be read at a glance and to feel at home in VS Code: the default look takes its colors and fonts from your VS Code theme, a Task board card moves by drag, menu, or key, dates can be typed in plain words, and a Zen mode turns the chrome down when you want to write.
-- **Accessible by default.** Every text pair in every theme meets WCAG AA contrast, and every theme gives way to a high contrast editor theme. Every right-click menu opens from the keyboard, the Task board and Notes Graph work from it too, and focus stays put through a redraw. A screen reader hears what changed, and pages hold still when your system asks for reduced motion.
+- **Accessible by default.** Every text pair in every theme meets WCAG AA contrast, and every theme gives way to a high contrast editor theme. Every right-click menu opens from the keyboard, the Task board and Notes Graph work from it too, and focus stays put through a redraw. A screen reader hears what changed, and pages hold still when your system asks for reduced motion. See [Accessibility and keyboard](docs/guide/accessibility.md).
 
 ## Features
 
@@ -70,9 +70,9 @@ Pick one with `Deckard: Choose Theme…` or **Theme** in any page's gear; moving
 
 ## Quick start
 
-1. Install the VSIX from the [latest release](https://github.com/doctorallen/deckard/releases/latest) with `Extensions: Install from VSIX...`. Deckard needs VS Code 1.134.0 or newer.
-2. Run **`Deckard: Create a Sample Workspace`** for a ten-note tour you read and do — or open a folder of your own Markdown notes.
-3. Run **`Deckard: Open Dashboard`**, and select the Deckard icon in the Activity Bar for Context (related notes and more), the Tasks view, the Outline, and the calendar.
+1. Install [Deckard from the Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=esperinnovations.deckard-notes): search for **Deckard** in the Extensions view, or run `code --install-extension esperinnovations.deckard-notes`. Deckard needs VS Code 1.134.0 or newer.
+2. Run **`Deckard: Get Started`** for a walkthrough of six steps you check off as you go, in your own notes or in a sample workspace it offers to make.
+3. Run **`Deckard: Open Dashboard`**, and select the Deckard icon in the Activity Bar for Context (the note's sections, related notes, and what links to it), the Tasks view, and the calendar.
 4. Press the **?** on any Deckard page, or run `Deckard: Open Help`, for the quick glance; each section's **Read more** opens the full [guide](docs/guide/README.md).
 
 A note is written the way you already write:

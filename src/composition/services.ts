@@ -57,7 +57,7 @@ import { ActivePinContext } from '../ui/commands/pinNote';
 import { AgendaContextKeys } from '../ui/commands/agendaActions';
 import { PinService } from '../services/pinService';
 import { LinkMaintenance } from '../ui/commands/linkMaintenance';
-import { vscodeLiveNotes } from '../ui/commands/linkMaintenancePorts';
+import { readLinkStyle, vscodeLiveNotes } from '../ui/commands/linkMaintenancePorts';
 import { LinkNoteService, LinkService } from '../services/linkService';
 import { WikiLinkCompletionProvider } from '../ui/providers/linkSuggestions';
 import { WorkspaceWriteHistory, WriteHandle } from '../ui/commands/workspaceWrites';
@@ -82,9 +82,13 @@ import { NotePagePanel } from '../ui/webview/notePage';
 import { TaskBoardPanel } from '../ui/webview/taskBoard';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { SearchPanels } from '../ui/webview/searchPage';
-import { setZenMode, watchZenModeContext } from '../ui/webview/zenMode';
-import { getSampleStorageUri, SAMPLE_FOLDER_NAME, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
+import { setZenMode, startZenMode, toggleZenMode } from '../ui/webview/zenMode';
+import { getSampleStorageUri, SAMPLE_FOLDER_NAMES, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
 import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/firstIndex';
+import { suggestEsperThemesOnce } from '../ui/commands/esperThemes';
+import { initWriteTarget, isPausedHere, looksLikeCodeRepository, onDidChangePaused, readNotesFolder } from '../ui/commands/writeTarget';
+import { ScopeStatusBar } from '../ui/views/scopeStatusBar';
+import { countOtherCheckboxes, noticeOtherCheckboxesOnce } from '../ui/commands/otherCheckboxes';
 import { openSettingAction, settingLabel } from '../ui/commands/notify';
 import { PreferenceSnapshots } from '../core/storage/preferenceSnapshots';
 import { OutlineTreeProvider, syncOutlineFollowCursorContext } from '../ui/views/outlineTree';
@@ -162,8 +166,10 @@ export interface Pages {
 export interface PageCommands {
   /** What Show Notes Graph keeps of the options it was run with. */
   readNotesGraphOptions: typeof readNotesGraphOptions;
-  /** Turns zen on or off, where the setting is set. */
+  /** Goes to Zen, or back to the step the reader was on. */
   setZenMode: typeof setZenMode;
+  /** Into Zen, or back out of it. */
+  toggleZenMode: typeof toggleZenMode;
 }
 
 /** The sidebar views and the status bar that the commands reach. */
@@ -217,6 +223,8 @@ interface Core {
   workspace: ReturnType<typeof createVscodeWorkspace>;
   scanner: WorkspaceScanner<vscode.Uri>;
   indexer: IndexRoles<vscode.Uri>;
+  /** The editor's note's headings, as typed: the Context view's Sections, and what Focus Section reads. */
+  outline: OutlineTreeProvider;
 }
 
 /**
@@ -247,6 +255,17 @@ export function createServices(context: vscode.ExtensionContext): Services {
   const search = createSearch(context, core, preferences, writes);
   const editor = createEditorProviders(context, core, preferences);
   offerExcludeHint(context, core.indexer, newWorkspace);
+  // Once per machine, and once per workspace, after the first index has had
+  // its say; never in a test run, where a message arriving mid-test would
+  // land in what a test records.
+  if (context.extensionMode !== vscode.ExtensionMode.Test) {
+    void core.indexer.ready
+      .then(() => suggestEsperThemesOnce(context.globalState))
+      .catch((error: unknown) => reportError('Could not suggest Esper Themes', error));
+    void core.indexer.ready
+      .then(() => noticeOtherCheckboxesOnce(context.workspaceState, countOtherCheckboxes(core.indexer.getSnapshot())))
+      .catch((error: unknown) => reportError('Could not count the checkbox lines that are not tasks', error));
+  }
   syncWalkthroughContext(context, core.indexer);
   createEditorContexts(context, core, preferences);
   const assistance = createLinksAndAssistance(context, core, preferences);
@@ -282,7 +301,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     links: { service: assistance.links, notes: assistance.linkNotes },
     themePreview: search.themePreview,
     pages,
-    pageCommands: { readNotesGraphOptions, setZenMode },
+    pageCommands: { readNotesGraphOptions, setZenMode, toggleZenMode },
     views: {
       sidebarNotes: sidebar.sidebarNotes,
       calendar: calendar.calendar,
@@ -422,7 +441,7 @@ function createLedgers(context: vscode.ExtensionContext) {
   const tryNext = new TryNextLedger(context.workspaceState);
   context.subscriptions.push(tryNext);
   void whatsNew.onActivate();
-  // A sample opened from Create a Sample Workspace shows its README once.
+  // A sample opened from Create a Work Sample or the Story Tour shows its README once.
   void showSampleReadmeOnce(context);
   // One log for the whole extension. Its level, set from the Output panel,
   // decides how much of Deckard's timing it keeps.
@@ -444,8 +463,11 @@ function createCore(context: vscode.ExtensionContext): Core {
   // takes back, and the notes it has just saved, which the index reads back
   // at once. Every command that writes is handed this one.
   const history = new WorkspaceWriteHistory();
+  // Whether Deckard is paused in this workspace, and where it may write,
+  // kept in VS Code's storage for the workspace; read before the scanner is.
+  initWriteTarget(context.workspaceState);
   // The index reads the workspace through ports; this is VS Code's.
-  const workspace = createVscodeWorkspace();
+  const workspace = createVscodeWorkspace({ isPaused: isPausedHere });
   const scanner = new WorkspaceScanner(workspace);
   const indexer = createWorkspaceIndex({
     scanner,
@@ -458,7 +480,19 @@ function createCore(context: vscode.ExtensionContext): Core {
     progress: createVscodeProgress(),
     ownWrites: history.ownWrites,
   });
-  return { history, workspace, scanner, indexer };
+  // Pausing or resuming reads the workspace again: nothing, or the notes.
+  context.subscriptions.push(
+    onDidChangePaused(() => {
+      void indexer.refresh().catch((error: unknown) => reportError('Could not read the workspace again', error));
+    }),
+  );
+  const scope = new ScopeStatusBar(context.workspaceState);
+  context.subscriptions.push(scope);
+  void scope.refresh();
+  // The editor's note's headings, as typed: drawn as the Context view's
+  // Sections list, and read by Focus Section and the Sections filter.
+  const outline = new OutlineTreeProvider(indexer);
+  return { history, workspace, scanner, indexer, outline };
 }
 
 /** The preference repository, a service per capability over it, and its snapshots. */
@@ -639,6 +673,16 @@ function createEditorProviders(context: vscode.ExtensionContext, core: Core, pre
   return { tagDecorations, pins, tagSuggestions, taskMetadataSuggestions, taskEditorActions, taskLineContext };
 }
 
+/** Whether a workspace folder with no notes folder set looks like a code repository. */
+async function readsWholeRepository(): Promise<boolean> {
+  for (const folder of vscode.workspace.workspaceFolders ?? []) {
+    if (!readNotesFolder(folder) && (await looksLikeCodeRepository(folder))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * A workspace's first index says what it read, once; a very large one is
  * worth one word about leaving folders out, said once, and only when nothing
@@ -652,16 +696,21 @@ function offerExcludeHint(
   void indexer.ready.then(async () => {
     const notes = indexer.getSnapshot().files.size;
     const exclude = vscode.workspace.getConfiguration('deckard').get<Record<string, unknown>>('exclude', {});
-    const sample = vscode.Uri.joinPath(getSampleStorageUri(context.globalStorageUri), SAMPLE_FOLDER_NAME).toString();
+    const storage = getSampleStorageUri(context.globalStorageUri);
+    const samples = SAMPLE_FOLDER_NAMES.map((name) => vscode.Uri.joinPath(storage, name).toString());
     const summarized = await summarizeFirstIndex(
       context,
       indexer.getSnapshot(),
       {
         newToDeckard: newWorkspace,
         hasFolder: (vscode.workspace.workspaceFolders ?? []).length > 0,
-        isSample: (vscode.workspace.workspaceFolders ?? []).some((folder) => folder.uri.toString() === sample),
+        isSample: (vscode.workspace.workspaceFolders ?? []).some((folder) => samples.includes(folder.uri.toString())),
       },
-      { excludeHintShownKey: EXCLUDE_HINT_SHOWN, excludeIsEmpty: Object.keys(exclude ?? {}).length === 0 },
+      {
+        excludeHintShownKey: EXCLUDE_HINT_SHOWN,
+        excludeIsEmpty: Object.keys(exclude ?? {}).length === 0,
+        wholeRepository: await readsWholeRepository(),
+      },
     );
     if (
       summarized ||
@@ -689,13 +738,14 @@ function offerExcludeHint(
  */
 function syncWalkthroughContext(context: vscode.ExtensionContext, indexer: IndexRoles<vscode.Uri>): void {
   const sync = (index: {
-    files: Map<string, unknown>;
+    files: Map<string, { links: readonly string[] }>;
     tags: Map<string, unknown>;
     tasks: Map<string, unknown>;
   }): void => {
     void vscode.commands.executeCommand('setContext', 'deckard.hasNotes', index.files.size > 0);
     void vscode.commands.executeCommand('setContext', 'deckard.hasTags', index.tags.size > 0);
     void vscode.commands.executeCommand('setContext', 'deckard.hasTasks', index.tasks.size > 0);
+    void vscode.commands.executeCommand('setContext', 'deckard.hasLinks', [...index.files.values()].some((file) => file.links.length > 0));
   };
   context.subscriptions.push(indexer.onDidUpdate(sync));
 }
@@ -754,7 +804,7 @@ function createLinksAndAssistance(context: vscode.ExtensionContext, core: Core, 
   const linkHealth = new LinkHealth(indexer);
   // Which links a rename carries and which mentions become links, and the
   // notes links name, each decided once for every command that asks.
-  const links = new LinkService({ index: indexer, notes: vscodeLiveNotes, findUnlinkedMentions });
+  const links = new LinkService({ index: indexer, notes: vscodeLiveNotes, findUnlinkedMentions, linkStyle: readLinkStyle });
   const linkNotes = new LinkNoteService(workspace);
   const linkMaintenance = new LinkMaintenance(indexer, links);
   return {
@@ -899,6 +949,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     activeNotePage,
     history,
     themePreview,
+    sections: parts.core.outline,
   });
   parts.dashboard.activeHome = activeHome;
   const stats = new StatsPanel({
@@ -915,6 +966,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     themePreview,
     manifest: context.extension.packageJSON.contributes,
     whatsNew: parts.whatsNew,
+    indexer,
   });
   const notesGraph = new NotesGraphPanel({
     indexer,
@@ -949,8 +1001,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
 
 /** The Outline, the query blocks, the Tasks view and its service, the status bar, and capture. */
 function createTreesAndCapture(context: vscode.ExtensionContext, core: Core, preferences: PreferenceParts, writes: Omit<Writes, 'capture'>) {
-  const { indexer } = core;
-  const outline = new OutlineTreeProvider(indexer);
+  const { indexer, outline } = core;
   // A query block's checkboxes link to Deckard's URI handler, which ticks them.
   const queryBlocks = new QueryBlocks(indexer, {
     base: `${vscode.env.uriScheme}://${context.extension.id}`,
@@ -1076,9 +1127,10 @@ function tidyPreferencesOnUpdate(
   );
 }
 
-/** Registers the two sidebar webviews and creates the Outline and Tasks trees. */
+/** Registers the two sidebar webviews and creates the Tasks tree. */
 function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'taskStatusBar'>): void {
-  const { sidebarNotes, calendar, outline, agenda } = views;
+  // The Outline is no view of its own: the Context view draws it as Sections.
+  const { sidebarNotes, calendar, agenda } = views;
   context.subscriptions.push(
     // Neither Related Notes nor the Calendar is kept running while hidden
     // (Q1 of docs/implementation/20-webviews.md); their controllers say so too.
@@ -1089,12 +1141,6 @@ function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'tas
       webviewOptions: { retainContextWhenHidden: false },
     }),
   );
-  const outlineView = vscode.window.createTreeView('deckard.outline', {
-    treeDataProvider: outline,
-    showCollapseAll: true,
-  });
-  outline.attach(outlineView);
-  context.subscriptions.push(outlineView);
   const agendaView = vscode.window.createTreeView('deckard.agenda', {
     treeDataProvider: agenda,
     manageCheckboxStateManually: true,
@@ -1117,7 +1163,7 @@ function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'tas
  */
 function createLateContexts(context: vscode.ExtensionContext, core: Core, pages: Pages): SectionFocus {
   void syncOutlineFollowCursorContext();
-  context.subscriptions.push(watchZenModeContext());
+  context.subscriptions.push(startZenMode(context.globalState, context.workspaceState));
   // Which note a section is focused in, which leaving it clears.
   const sectionFocus = new SectionFocus();
   context.subscriptions.push(sectionFocus);

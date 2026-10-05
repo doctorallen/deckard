@@ -684,11 +684,6 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, event: MouseEvent) 
   'retire-try-next': (target) => send({ type: 'retireTryNext', key: target.getAttribute('data-key') as string }),
   'open-whats-new': () => send({ type: 'openWhatsNew' }),
   'dismiss-whats-new': () => send({ type: 'dismissWhatsNew' }),
-  'dismiss-home-hint': () => {
-    view.homeHintDismissed = true;
-    saveView();
-    redraw();
-  },
   'reset-widgets': () => send({ type: 'resetDashboardWidgets' }),
   'remove-widget': (target) => removeWidget(target.dataset.widgetId),
   'undo-remove-widget': () => undoRemoveWidget(),

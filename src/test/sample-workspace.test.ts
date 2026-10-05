@@ -15,11 +15,11 @@ import {
   getSampleStorageUri,
   installSample,
   isSampleNote,
-  resolveSampleTokens,
   SAMPLE_FOLDER_NAME,
-  sampleFileName,
+  WORK_SAMPLE_FOLDER_NAME,
   takeSampleReadme,
 } from '../ui/commands/sampleWorkspace';
+import { resolveSampleTokens, sampleFileName } from '../domain/notes/sampleNotes';
 import { buildHubTree, findBreadcrumbs } from '../ui/state/hubTree';
 import { computeTagProgress, describeTagProgress } from '../domain/tasks/tagProgress';
 import { createAgenda } from '../ui/state/agendaState';
@@ -84,6 +84,35 @@ suite('Sample workspace', () => {
 
   /** The numbered notes of the tour, from the installed files. */
   const tourNotes = (files: Map<string, string>) => [...files].filter(([name]) => /^\d\d .*\.md$/.test(name));
+
+  test('the work sample is a team lead\'s week: every link opens a note, and today has work due', async () => {
+    const { target, notes } = await installSample({ extensionUri, storageUri: storage, today, kind: 'work' });
+    assert.strictEqual(path.basename(target.fsPath), WORK_SAMPLE_FOLDER_NAME);
+    const files = await installed(target);
+    for (const [name, text] of files) {
+      assert.ok(!text.includes('{{'), `${name} has no token left`);
+    }
+    const parsed = new Map<string, ParsedFile>(
+      [...files]
+        .filter(([name]) => name.endsWith('.md') && !name.startsWith('templates/'))
+        .map(([name, text]) => [name, parseMarkdown(name, text)] as const),
+    );
+    assert.strictEqual(notes, parsed.size - 1, 'every note but the README');
+    const index = buildWorkspaceIndex(parsed);
+    assert.deepStrictEqual(findMissingLinkTargets(index), [], 'no link names a missing note');
+    assert.ok(files.has('2026-10-07.md') && files.has('2026-10-06.md'), 'standups dated to the days before it was made');
+    const context = createQueryContext(new Date(2026, 9, 7, 12).getTime());
+    const due = (query: string) => evaluateQuery(index, parseQuery(query).node!, context).tasks.length;
+    assert.ok(due('is:today') >= 2, 'work due today');
+    assert.ok(due('is:overdue') >= 1, 'something slipped');
+    assert.ok(due('assignee = @theo-park') >= 1, 'a task handed to someone');
+    assert.ok([...parsed.values()].some((file) => file.hub?.describes.some((tag) => tag.key === '#project/checkout-v2')), 'a project hub');
+    assert.match(files.get('README.md') ?? '', /Cmd.*macOS|macOS.*Cmd/s, 'keys for macOS beside Windows and Linux');
+    assert.deepStrictEqual(
+      ['templates/Meeting.md', 'templates/One-on-one.md', 'templates/Decision record.md'].filter((name) => !files.has(name)),
+      [],
+    );
+  });
 
   test('reads its dates from the day it is made', () => {
     assert.strictEqual(resolveSampleTokens('{{date}} {{date-9}} {{date+3}}', today), '2026-10-07 2026-09-28 2026-10-10');
@@ -232,15 +261,19 @@ suite('Sample workspace', () => {
     for (const left of ['Run the passive-ping comparison', 'Hear back from Praxis Loom', 'Try a second vendor', 'Rerun the falloff test']) {
       assert.ok(!available.some((title) => title.startsWith(left)), `${left} cannot be started now`);
     }
-    assert.ok(found('created = last-month').sections.some((section) => section.filePath === 'projects/Argent Protocol.md'));
+    // Its front matter names people, so the hub is one note, found as a whole.
+    const lastMonth = found('created = last-month');
+    assert.ok([...lastMonth.sections, ...lastMonth.files].some((entry) => entry.filePath === 'projects/Argent Protocol.md'));
 
     const parked = found('is:parked');
-    assert.deepStrictEqual([...new Set(parked.sections.map((section) => section.filePath))], ['archive/Velvet Circuit.md']);
+    // Parked in its front matter, the archived note is one note, found as a whole.
+    assert.deepStrictEqual([...new Set([...parked.sections, ...parked.files].map((entry) => entry.filePath))], ['archive/Velvet Circuit.md']);
     assert.strictEqual(parked.tasks.length, 1);
     assert.strictEqual(new Set(found('is:daily').sections.map((section) => section.filePath)).size, 6, 'six daily notes');
     const linking = (query: string) => found(query).sections.map((section) => section.filePath).sort();
     assert.deepStrictEqual(linking('[[Relay]]'), linking('[[Ghostline Relay]]'), 'the alias finds the same entries');
-    assert.strictEqual(linking('[[Ghostline Relay]]').length, 3);
+    // Three notes link it as [[Ghostline Relay]], and the README as a Markdown link.
+    assert.strictEqual(linking('[[Ghostline Relay]]').length, 4);
     assert.deepStrictEqual(
       [...new Set(linking('[[Ghostline Relay#^threshold]]'))],
       ['07 Links.md', `${formatDay(now, 0)}.md`],

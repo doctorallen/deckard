@@ -6,6 +6,7 @@ import {
 } from '../../domain/markdown/taskDraft';
 import { AddTaskInput, ChangeTaskInput } from '../state/assistantWriteInput';
 import { ensureDailyNote } from './dailyNote';
+import { confirmNotesWrite } from './writeTarget';
 import { resolveSourceUri } from './navigation';
 import { completeDraft, writeEditedTask } from './taskEditor';
 import { readTaskMetadataFormat } from './taskActions';
@@ -121,9 +122,9 @@ type TargetNote = { uri: vscode.Uri } | { refusal: WriteAnswer };
  * missing; undefined when no folder is open. Rejects when the note cannot
  * be made, such as in a folder that cannot be written to.
  */
-function ensureTodaysNote(): Promise<vscode.Uri | undefined> {
+async function ensureTodaysNote(): Promise<vscode.Uri | undefined> {
   const folder = vscode.workspace.workspaceFolders?.[0];
-  return folder ? ensureDailyNote(folder) : Promise.resolve(undefined);
+  return folder && (await confirmNotesWrite(folder)) ? ensureDailyNote(folder) : undefined;
 }
 
 /**

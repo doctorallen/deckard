@@ -32,12 +32,29 @@ const { createPreferences } = modules.preferenceServices;
 // Every snapshot is built at NOW, so no surface reads the wall clock.
 const { createQueryContext } = modules.queryContext;
 
-/** Enough tasks that the busiest column must scroll, and titles that wrap. */
+/** Task i's due date: six overdue, three today, the rest a day or two apart after. */
+function fixtureDue(i) {
+  let day = 21 + Math.ceil((i - 9) / 1.2);
+  if (i <= 6) {
+    day = 14 + i;
+  } else if (i <= 9) {
+    day = 21;
+  }
+  const date = new Date(2026, 8, day);
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/**
+ * Enough tasks that the busiest column must scroll, and titles that wrap,
+ * due as a real list is: a few overdue, a few today, the rest over the
+ * coming month. NOW is 2026-09-21.
+ */
 function createIndex(withSteps = false) {
   const long = 'Chase the replicant through the neon market and file the report before the rain';
   const lines = ['# Tasks #project/atlas', ''];
   for (let i = 1; i <= 40; i += 1) {
-    lines.push(`- [ ] ${i === 1 ? long : `Overdue task ${i}`} 📅 2026-09-01 #status/doing`);
+    lines.push(`- [ ] ${i === 1 ? long : `Board task ${i}`} 📅 ${fixtureDue(i)} #status/doing`);
     // The board's cards: the long first task has steps, the next of them
     // too long for a column, so its line must ellipsize, not widen the card.
     if (i === 1 && withSteps) {
@@ -107,6 +124,13 @@ function createCalendarPageIndex() {
 
 const NOW = new Date(2026, 8, 21, 12).getTime();
 
+/** Flat cards and tags as text: the looks a reader turns on, drawn on a few surfaces. */
+const LOOKS = { cards: 'flat', tags: 'text' };
+
+/** Display's preferences, each away from its default: what a page writes, drawn on Home and the board. */
+const WRITTEN_HOME = { counts: 'hidden', fileAndLine: 'never', dates: 'date' };
+const WRITTEN_BOARD = { counts: 'hidden', fileAndLine: 'always', dates: 'relative' };
+
 /**
  * The Dashboard as the host sends it: Home with its widgets, or the Tags
  * mode, at one moment.
@@ -153,6 +177,10 @@ function createDashboardSurfaces(index, preferences) {
   });
   return [
     dashboard('dashboardHome', 'home', { hovered: ['.home-widget .row', '.home-widget'] }),
+    // Flat cards and tags as text, the two looks a reader turns on.
+    { ...dashboard('dashboardHomeLooks', 'home', { hovered: ['.home-widget .row', '.home-widget'] }), display: LOOKS },
+    // Counts hidden, file and line never, dates as the date with its state.
+    { ...dashboard('dashboardHomeWritten', 'home', { hovered: ['.home-widget .row', '.home-widget'] }), display: WRITTEN_HOME },
     dashboard('dashboardTags', 'browse', { hovered: ['.tag-row', '.row'] }),
     dashboard('dashboardArranging', 'home', {
       drive: [['click', '[data-action="customize-home"]']],
@@ -324,6 +352,23 @@ function createBoardSurfaces(boardIndex, preferences) {
       hovered: ['.board-card'],
     },
     {
+      // Counts hidden, file and line under every card, dates as how far off.
+      name: 'taskBoardWritten',
+      page: 'taskBoard',
+      display: WRITTEN_BOARD,
+      viewport: [900, 700],
+      snapshot: () => createTaskBoard({
+        index: boardIndex,
+        preferences: preferences.reader.value,
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
+        tagTitleDisplayMode: 'inline',
+      }),
+      scrollers: ['html', '.board-cards'],
+      clippers: ['.board-column'],
+      hovered: ['.board-card'],
+    },
+    {
       // Editing what the Tasks view lists: the strip above the search box,
       // and Save to Tasks view filled beside Save as search, a bar one
       // button longer that must still wrap rather than push the page
@@ -436,11 +481,12 @@ function createCalendarSurfaces() {
 }
 
 /**
- * Related Notes for a tagged note, and for a note with no tags.
+ * Related Notes for a tagged note, and for a note with no tags, and the
+ * sidebar's Customize Home.
  *
  * @param {object} index The workspace.
  * @param {Map<string, object>} files The parsed notes, by path.
- * @returns {object[]} The two Related Notes surfaces.
+ * @returns {object[]} The two Related Notes surfaces and Customize Home.
  */
 function createRelatedNotesSurfaces(index, files) {
   return [
@@ -489,6 +535,27 @@ function createRelatedNotesSurfaces(index, files) {
       clippers: [],
       hovered: ['.note'],
     },
+    {
+      // Customize Home in the sidebar: each widget to add is a button with
+      // its description under its name, on the button's own fill.
+      name: 'sidebarNotesCustomizeHome',
+      page: 'sidebarNotes',
+      viewport: [240, 700],
+      snapshot: () => ({
+        activeTags: [],
+        notes: [],
+        tagTitleDisplayMode: 'inline',
+        state: 'customizeHome',
+        homeWidgets: [
+          { value: 'tasks', label: 'Tasks', description: 'The tasks a search finds, ranked as on the Task Board' },
+          { value: 'topTags', label: 'Frequent tags', description: 'The tags you open most, lately' },
+          { value: 'todayNote', label: 'Today', description: "Today's daily note and its open tasks" },
+        ],
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.home-widget-choice'],
+    },
   ];
 }
 
@@ -516,8 +583,9 @@ function createSummarySurfaces(index, preferences) {
           ...preferences.reader.value,
           tagAccessCounts: { '#project/atlas': 4, '#topic/replicants': 2 },
         }, [{ filePath: 'notes/unreadable-note-with-a-long-name.md', reason: 'EACCES: permission denied' }], NOW),
-        // "5 minutes ago" would change with the clock, and so the pixels.
-        updatedAt: 0,
+        // Five minutes before the snapshot was built, at NOW, which the
+        // page says as "5 minutes ago" without reading the wall clock.
+        updatedAt: NOW - 5 * 60 * 1000,
       }),
       scrollers: ['html'],
       clippers: [],
@@ -533,19 +601,32 @@ function createSummarySurfaces(index, preferences) {
       clippers: [],
       hovered: ['.card'],
     },
+    {
+      name: 'searchPageLooks',
+      page: 'searchPage',
+      display: LOOKS,
+      viewport: [900, 900],
+      snapshot: () => createSearchPageSnapshot(index, preferences.reader.value, '#project/atlas', {
+        queryContext: createQueryContext(NOW),
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.card'],
+    },
   ];
 }
 
 /**
  * The note page's own notes, so no other surface's pixels move with it: a
- * hub with front matter, a heading, a task with steps, a query block drawn
- * as a table, an embed, code, a table, and two notes that link to it.
+ * project note with front matter, a heading, a task with steps, a query
+ * block drawn as a table, an embed, code, a table, and two notes that link
+ * to it. It is not a hub: a hub note opens as its tag's search page, so the
+ * note page never shows one.
  */
 function createNotePageIndex() {
   const files = new Map([
     ['projects/Atlas.md', parseMarkdown('projects/Atlas.md', [
       '---',
-      'describes: project/atlas',
       'status: active',
       'owner: "@dana"',
       '---',
@@ -590,12 +671,26 @@ function createNotePageIndex() {
   return buildWorkspaceIndex(files);
 }
 
-/** The note page: a hub note with every kind of block, opened at its Decision heading. */
+/** The note page: a note with every kind of block, opened at its Decision heading. */
 function createNotePageSurfaces() {
   const index = createNotePageIndex();
   return [
     {
       page: 'notePage',
+      viewport: [900, 1400],
+      snapshot: () => createNotePageSnapshot(index, 'projects/Atlas.md', {
+        queryContext: createQueryContext(NOW),
+        history: { back: true, forward: false },
+        visit: 1,
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.note-query-title'],
+    },
+    {
+      name: 'notePageLooks',
+      page: 'notePage',
+      display: LOOKS,
       viewport: [900, 1400],
       snapshot: () => createNotePageSnapshot(index, 'projects/Atlas.md', {
         queryContext: createQueryContext(NOW),
@@ -639,15 +734,20 @@ function createSurfaces() {
  * The page a surface draws, as its host renders it: the page every surface
  * of it shares, or one rendered with the surface's own page options.
  *
- * @param {{ page: string, pageOptions?: () => object }} surface Which page it draws, and any options of its own.
+ * @param {{ page: string, pageOptions?: () => object, display?: object }} surface Which page it draws, any options of its own, and any display choices it is drawn with.
  * @param {Map<string, string>} rendered Every page in this theme and zen state, by name.
  * @param {{ theme: string, zen: boolean }} chrome The theme and zen state the page is drawn in.
  * @returns {string} The page's HTML.
  */
 function surfaceHtml(surface, rendered, chrome) {
-  return surface.pageOptions
-    ? renderPage(surface.page, { ...chrome, pageOptions: surface.pageOptions() })
-    : rendered.get(surface.page);
+  if (surface.pageOptions || surface.display) {
+    return renderPage(surface.page, {
+      ...chrome,
+      ...(surface.display ? { display: surface.display } : {}),
+      ...(surface.pageOptions ? { pageOptions: surface.pageOptions() } : {}),
+    });
+  }
+  return rendered.get(surface.page);
 }
 
 module.exports = { createSurfaces, surfaceHtml, NOW };

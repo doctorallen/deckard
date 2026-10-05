@@ -57,5 +57,18 @@ export interface WikiLinkToken {
   embed: boolean;
 }
 
+/**
+ * An image, read only where a page draws one: the Note page. `src` is the
+ * path as written, relative to the note, or a `data:` URI once the host has
+ * read the file; a page draws nothing from anywhere else. `missing` says
+ * why the host could not read it.
+ */
+export interface ImageToken {
+  kind: 'image';
+  src: string;
+  alt: string;
+  missing?: string;
+}
+
 /** One piece of inline Markdown. */
-export type InlineToken = TextToken | CodeToken | BreakToken | EmphasisToken | LinkToken | WikiLinkToken;
+export type InlineToken = TextToken | CodeToken | BreakToken | EmphasisToken | LinkToken | WikiLinkToken | ImageToken;

@@ -4,6 +4,7 @@
  * the extension's manifest, so it is sent no snapshot.
  */
 import type { MessageOf } from './messaging';
+import type { GoToPageMessage, ListGoToMessage, OpenGoToMessage } from './shared';
 
 /**
  * A command Help names, run from its button. Only the shape is the page's
@@ -31,6 +32,9 @@ export interface HelpPageToHost {
   runCommand: HelpRunCommandMessage;
   openChangelog: OpenChangelogMessage;
   openGuide: OpenGuideMessage;
+  openGoTo: OpenGoToMessage;
+  listGoTo: ListGoToMessage;
+  goToPage: GoToPageMessage;
 }
 
 /** Help, already open, asked to show a section, such as `whats-new`. */

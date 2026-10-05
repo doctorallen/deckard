@@ -15,6 +15,7 @@ import {
   findFencedLines,
   isHeading,
   isTaskLineOf,
+  OTHER_MARKS,
   matchHeading,
   matchTaskLine,
   readHeading,
@@ -23,17 +24,18 @@ import {
   TaskLineShape,
 } from './lineShapes';
 import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
-import { findWikiLinkSpans } from './wikiLinks';
+import { findNoteLinkSpans, findWikiLinkSpans } from './wikiLinks';
 import { formatKeyWords, readTagNamespace } from './tagKeys';
 import { MIGRATED_TASK_LINE } from './taskLineEdits';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
+import { assignNoteEntries } from './noteEntries';
 
 /**
  * What the parser produces, named. A change to what a parsed note holds
  * (steps' parent links, say) changes it, so the local cache, which keeps
  * parsed notes, is rebuilt rather than served in the old shape.
  */
-export const PARSE_FORMAT = 'code-and-links';
+export const PARSE_FORMAT = 'note-entries';
 
 /** A heading as the parser found it: its 1-based line, its level, and its words. */
 interface HeadingMatch {
@@ -75,6 +77,8 @@ function getTagField(field: string): string {
  * rest of the line on one line.
  */
 const taskShape: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'gap', oneLine: true };
+/** A checkbox line with any other mark, such as `[/]` or `[-]`, which is text rather than a task. */
+const otherCheckboxShape: TaskLineShape = { indent: 'whitespace', marks: OTHER_MARKS, after: 'gap', oneLine: true };
 const listItemPattern = /^(\s*)([-*+])[ \t]+/;
 const orderedListItemPattern = /^(\s*)\d+[.)][ \t]+/;
 const explicitDatePattern = /\b(\d{4})-(\d{2})-(\d{2})\b/;
@@ -261,8 +265,12 @@ export function parseMarkdown(
     dateAnchor,
     assigneeFromPersonTag: options.assigneeFromPersonTag ?? false,
   });
+  assignNoteEntries(filePath, sections, tasks, frontmatter.tags.length > 0);
 
   const blockIds = findBlockIds(lines, fencedLines);
+  const otherCheckboxes = lines.filter(
+    (line, lineIndex) => !fencedLines.has(lineIndex) && isTaskLineOf(line, otherCheckboxShape),
+  ).length;
 
   return normalizeParsedTagReferences({
     filePath,
@@ -271,9 +279,10 @@ export function parseMarkdown(
     tasks,
     ...(Object.keys(blockIds).length > 0 ? { blockIds } : {}),
     frontmatterTags: frontmatter.tags,
-    links: [...new Set([...frontmatter.links, ...extractWikiLinks(content)])],
+    links: [...new Set([...frontmatter.links, ...extractNoteLinks(content, filePath)])],
     ...(frontmatter.aliases ? { aliases: frontmatter.aliases } : {}),
     ...(frontmatter.hub ? { hub: frontmatter.hub } : {}),
+    ...(otherCheckboxes > 0 ? { otherCheckboxes } : {}),
     createdAt: dates.createdAt,
     updatedAt: dates.updatedAt,
     ...(metadata
@@ -390,14 +399,15 @@ export function extractTags(
 }
 
 /**
- * Extracts workspace-local Wiki link targets without treating their labels as
- * paths. Resolution happens against the current workspace index. A link in
+ * Extracts the targets of a text's links to notes, without treating a
+ * `[[link]]`'s display text as a path. Given the note the text is in, a
+ * relative `[text](note.md)` link counts too, as that note's path. A link in
  * fenced code or an inline code span is an example, not a link.
  */
-export function extractWikiLinks(text: string): string[] {
+export function extractNoteLinks(text: string, sourcePath?: string): string[] {
   const links = new Set<string>();
 
-  for (const span of findWikiLinkSpans(text)) {
+  for (const span of sourcePath === undefined ? findWikiLinkSpans(text) : findNoteLinkSpans(text, sourcePath)) {
     const target = span.target.trim();
     if (target.length > 0) {
       links.add(target);
@@ -558,7 +568,7 @@ function frontmatterToTags(
   const links: string[] = [];
   values.forEach((fieldValues, key) => {
     if (key === 'links') {
-      fieldValues.forEach((value) => links.push(...extractWikiLinks(value)));
+      fieldValues.forEach((value) => links.push(...extractNoteLinks(value)));
       return;
     }
     if (key === 'aliases' || key === 'alias') {
@@ -1096,6 +1106,7 @@ function findTagMatches(
     return [];
   }
   const skipped = findCodeAndLinkRanges(text);
+  const citations = text.includes('[') ? findCitationRanges(text) : [];
   return markers.flatMap((markerIndex) => {
     const rawName = readTagNameAt(text, markerIndex);
     if (rawName === undefined) {
@@ -1103,6 +1114,10 @@ function findTagMatches(
     }
     const marker = text[markerIndex];
     if (isNumericHashTag(marker, rawName) || isInRanges(skipped, markerIndex)) {
+      return [];
+    }
+    // `[@smith2020; @lee2019]` cites; it names no one.
+    if ((marker === '@' || marker === activePersonMarker) && isInRanges(citations, markerIndex)) {
       return [];
     }
 
@@ -1115,6 +1130,24 @@ function findTagMatches(
       },
     ];
   });
+}
+
+/**
+ * A bracketed Pandoc citation: `[@smith2020]`, `[see @lee2019, p. 3]`, or
+ * `[@a; @b]`, but not a `[[link]]`, a `[text](link)`, a checkbox, or a
+ * Dataview field such as `[assignee:: @dana]`.
+ */
+const CITATION_GROUP = /(?<!\[)\[(?!\[)([^\]\n]*@[^\]\n]*)\](?!\(|\])/g;
+
+/** Where each bracketed citation sits in `text`, brackets included. */
+function findCitationRanges(text: string): Array<{ start: number; end: number }> {
+  const ranges: Array<{ start: number; end: number }> = [];
+  for (const match of text.matchAll(CITATION_GROUP)) {
+    if (!match[1].includes('::')) {
+      ranges.push({ start: match.index, end: match.index + match[0].length });
+    }
+  }
+  return ranges;
 }
 
 /** The UTF-16 codes of `#` and `@`. */
@@ -1301,8 +1334,12 @@ function compileTagPattern(personMarker: string): RegExp {
   const escapedMarker = personMarker.replace(/[\\\]^]/g, '\\$&');
   // The name ends on a letter, digit, or `_`, and the next character is none
   // of those, so `#tag-` is `#tag` and `#café` is not cut short at the `é`.
+  // A person marker inside an open `[`, as in a Pandoc citation such as
+  // `[@smith2020; @lee2019]`, is a citation key, not a person; a Dataview
+  // field such as `[assignee:: @dana]` is still read, by its `::`.
+  const citation = `(?!(?<=\\[(?:(?!::)[^\\]\\n])*)[@${escapedMarker}])`;
   return new RegExp(
-    `(^|[^${TAG_WORD_CHARACTERS}#])([#@${escapedMarker}])(${TAG_NAME_SOURCE})(?<=[${TAG_WORD_CHARACTERS}])(?![${TAG_WORD_CHARACTERS}])`,
+    `(^|[^${TAG_WORD_CHARACTERS}#])${citation}([#@${escapedMarker}])(${TAG_NAME_SOURCE})(?<=[${TAG_WORD_CHARACTERS}])(?![${TAG_WORD_CHARACTERS}])`,
     'gu',
   );
 }
@@ -1410,7 +1447,7 @@ function createSection(
       : undefined,
     tags: sectionTags.map((tag) => tag.key),
     tagLabels,
-    links: extractWikiLinks(rawContent),
+    links: extractNoteLinks(rawContent, filePath),
     rawContent,
     bodyContent,
     startLine: heading.lineNumber,
@@ -1679,7 +1716,7 @@ function createInlineSection(context: NoteContext, entry: InlineEntry): Section 
     tagLabels: Object.fromEntries(
       inlineTags.map((tag) => [tag.key, tag.label]),
     ),
-    links: extractWikiLinks(rawContent || sourceLine),
+    links: extractNoteLinks(rawContent || sourceLine, filePath),
     rawContent,
     bodyContent: rawContent,
     startLine: lineNumber,

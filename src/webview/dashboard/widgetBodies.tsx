@@ -83,7 +83,7 @@ function AgendaBody({ widget, home }: WidgetBodyProps) {
     <>
       {groups.length
         ? groups.map((group) => [
-          <h3 key={`${group.id}-heading`} class="home-widget-group">{`${group.label} `}<span class="tag-count">{group.count}</span></h3>,
+          <h3 key={`${group.id}-heading`} class={`home-widget-group${group.id === 'overdue' ? ' overdue' : ''}`}>{`${group.label} `}<span class="tag-count">{group.count}</span></h3>,
           <Tasks key={`${group.id}-tasks`} tasks={group.tasks} empty="" home={home} />,
         ])
         : <EmptyLine text="Nothing is overdue or due soon." />}

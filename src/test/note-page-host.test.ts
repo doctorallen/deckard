@@ -28,6 +28,8 @@ function openNotePage() {
   const indexer = {
     ready: Promise.resolve(),
     getSnapshot: () => index,
+    // Not on disk, so the page reads no image; noteImages' own suite reads them.
+    getUri: () => undefined,
     onDidUpdate: (listener: () => void) => updates.event(listener),
   } as unknown as NotePageControllerOptions['indexer'];
   const openedTags: string[] = [];

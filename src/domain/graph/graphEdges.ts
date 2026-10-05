@@ -4,6 +4,7 @@
  * whose weight sums each kind once.
  */
 import { stripTags } from '../markdown/parser';
+import { headingSlug } from '../markdown/wikiLinks';
 import { NotesGraphEdge, NotesGraphEdgeType, NotesGraphNode, WorkspaceIndex } from '../model';
 import { GraphSource } from './graphSources';
 
@@ -225,9 +226,11 @@ function resolveLinkTarget(
   }
   if (headingPart) {
     const normalizedHeading = normalizeHeading(headingPart);
+    const slug = headingPart.trim().toLowerCase();
     const headingMatch = uniqueCandidates.find(
       (candidate) =>
-        normalizeHeading(candidate.node.title) === normalizedHeading,
+        normalizeHeading(candidate.node.title) === normalizedHeading ||
+        headingSlug(stripTags(candidate.node.title)) === slug,
     );
     if (headingMatch) {
       return headingMatch;

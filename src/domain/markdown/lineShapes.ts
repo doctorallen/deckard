@@ -21,7 +21,13 @@ export type TaskLineIndent = 'whitespace' | 'spaces-and-tabs' | 'none';
  * The marks a checkbox may hold, as the characters allowed between its
  * brackets: ` ` open, `x` or `X` done, `>` migrated to another day.
  */
-export type TaskLineMarks = ' ' | 'xX' | ' xX' | ' xX>' | '>';
+export type TaskLineMarks = ' ' | 'xX' | ' xX' | ' xX>' | '>' | typeof OTHER_MARKS;
+
+/**
+ * Any mark but a task's or a migrated task's, such as Obsidian's `/` for in
+ * progress or `-` for cancelled: a line the index reads as text.
+ */
+export const OTHER_MARKS = '^ xX>\\]';
 
 /**
  * What must follow a checkbox's `]`:

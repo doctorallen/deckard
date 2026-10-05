@@ -382,7 +382,7 @@ class BoardMoves {
   }
 
   /** Asks the host for something about a card's task, with the id the task has once its last edit is answered. */
-  private ask(card: HTMLElement, type: 'pickTaskDate' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps'): void {
+  private ask(card: HTMLElement, type: 'pickTaskDate' | 'pickTaskAssignee' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps'): void {
     whenAnswered(card, (drawn) => this.post({ type, taskId: String(drawn.dataset.taskId) }));
   }
 
@@ -435,7 +435,7 @@ class BoardMoves {
 
   /** The single keys that edit a focused card; true when the key was one. */
   private editKey(key: string, card: HTMLElement, column: HTMLElement, columns: HTMLElement[]): boolean {
-    const asks: Readonly<Record<string, 'pickTaskDate' | 'editTask' | 'breakIntoSteps'>> = { d: 'pickTaskDate', e: 'editTask', s: 'breakIntoSteps' };
+    const asks: Readonly<Record<string, 'pickTaskDate' | 'pickTaskAssignee' | 'editTask' | 'breakIntoSteps'>> = { d: 'pickTaskDate', f: 'pickTaskAssignee', e: 'editTask', s: 'breakIntoSteps' };
     if (key === 'x') {
       this.completeCard(card, !card.classList.contains('completed'));
     } else if (key === 't' || key === 'm') {
@@ -466,7 +466,7 @@ class BoardMoves {
 
   /** A choice in a card's menu: a date, Move to…, steps, or a move, said as the menu said it. */
   private chooseFor(card: HTMLElement, groups: readonly ActionMenuGroup[], value: string): void {
-    const asks: Readonly<Record<string, 'pickTaskDate' | 'moveTaskTo' | 'breakIntoSteps'>> = { 'pick-date': 'pickTaskDate', 'move-to': 'moveTaskTo', 'break-steps': 'breakIntoSteps' };
+    const asks: Readonly<Record<string, 'pickTaskDate' | 'pickTaskAssignee' | 'moveTaskTo' | 'breakIntoSteps'>> = { 'pick-date': 'pickTaskDate', 'pick-assignee': 'pickTaskAssignee', 'move-to': 'moveTaskTo', 'break-steps': 'breakIntoSteps' };
     if (Object.prototype.hasOwnProperty.call(asks, value)) {
       this.ask(card, asks[value]);
       return;

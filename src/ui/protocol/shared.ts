@@ -90,7 +90,13 @@ export interface TagOverviewCard {
    * word sits below the three lines a card shows. `line` is its first line
    * in the note.
    */
-  snippet?: { rawContent: string; bodyTokens: BlockToken[]; line: number };
+  snippet?: {
+    rawContent: string;
+    bodyTokens: BlockToken[];
+    line: number;
+    /** The untagged heading of the note the words are under, tags stripped, when not the note's own. */
+    heading?: string;
+  };
   /** Whether the body runs past three lines, so a card offers Show all. */
   long?: boolean;
 }
@@ -175,6 +181,36 @@ export interface OpenTaskBoardMessage {
   query?: string;
 }
 
+/** The DECKARD eyebrow selected: Go to…, Deckard's pages in one list. */
+export interface OpenGoToMessage {
+  type: 'openGoTo';
+}
+
+/** DECKARD in a page's eyebrow selected: the pages its menu lists, asked for. */
+export interface ListGoToMessage {
+  type: 'listGoTo';
+}
+
+/** A page chosen from the eyebrow's menu, by its id, such as `board`. */
+export interface GoToPageMessage {
+  type: 'goToPage';
+  page: string;
+}
+
+/** One page in the eyebrow's menu, with its hint, as the Pages view shows it. */
+export interface GoToMenuPage {
+  id: string;
+  label: string;
+  description: string;
+}
+
+/** The eyebrow's menu: every page but the one it is on, and Go to…'s key. */
+export interface GoToPagesMessage {
+  type: 'goToPages';
+  pages: GoToMenuPage[];
+  key: string;
+}
+
 /** Opens the Help page. */
 export interface OpenHelpMessage {
   type: 'openHelp';
@@ -189,6 +225,26 @@ export interface ExportResultsMessage {
 /** Opens Choose Theme…, from a page's gear. */
 export interface ChooseThemeMessage {
   type: 'chooseTheme';
+}
+
+/** One of the Display settings a page's gear sets: the step and the page width. */
+export type GearDisplaySetting = 'level' | 'pageWidth';
+
+/**
+ * The gear's Display row asking the host for one of its two links: put the
+ * step's own values back on the settings it moves, or open Settings filtered
+ * to Display.
+ */
+export interface DisplayCommandMessage {
+  type: 'displayCommand';
+  command: 'useStepValues' | 'customize';
+}
+
+/** The gear's Cards or Tags row: how cards or tags are drawn on every page. */
+export interface SetDisplayMessage {
+  type: 'setDisplay';
+  setting: GearDisplaySetting;
+  value: string;
 }
 
 /** The gear's zen row, on every page that has a gear. */

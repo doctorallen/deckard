@@ -8,12 +8,15 @@ import {
   MAX_QUERY_LENGTH,
   narrowAs,
   narrowExportResults,
+  narrowGoToPage,
   narrowOpenSearch,
   narrowOpenSource,
   narrowOpenTag,
   narrowParkTag,
   narrowPinNote,
   narrowRenameTag,
+  narrowDisplayCommand,
+  narrowSetDisplay,
   narrowSetZenMode,
   narrowToggleTask,
   narrowWith,
@@ -80,6 +83,40 @@ suite('Page message narrowing', () => {
       [{ type: 'chooseTheme', extra: 1 }, { type: 'chooseTheme' }],
       [{ type: 'openHelp' }, { type: 'openHelp' }],
       [{ type: 'openHelp', topic: 'periodic' }, undefined],
+    ]);
+  });
+
+  test('a page from DECKARD\'s menu: a short lowercase id, and nothing more', () => {
+    const goTo = narrowWith<{ goToPage: ReturnType<typeof narrowGoToPage> }>({ goToPage: narrowGoToPage });
+    check(goTo, [
+      [{ type: 'goToPage', page: 'board', extra: 1 }, { type: 'goToPage', page: 'board' }],
+      [{ type: 'goToPage', page: 'Board' }, undefined],
+      [{ type: 'goToPage', page: '../board' }, undefined],
+      [{ type: 'goToPage', page: '' }, undefined],
+      [{ type: 'goToPage' }, undefined],
+    ]);
+  });
+
+  test('the gear\'s Display rows: which setting, and a short lowercase value', () => {
+    const display = narrowWith<{ setDisplay: ReturnType<typeof narrowSetDisplay> }>({ setDisplay: narrowSetDisplay });
+    check(display, [
+      [{ type: 'setDisplay', setting: 'pageWidth', value: 'full', extra: 1 }, { type: 'setDisplay', setting: 'pageWidth', value: 'full' }],
+      [{ type: 'setDisplay', setting: 'cardFrames', value: 'flat' }, undefined],
+      [{ type: 'setDisplay', setting: 'level', value: 'quiet' }, { type: 'setDisplay', setting: 'level', value: 'quiet' }],
+      [{ type: 'setDisplay', setting: 'density', value: 'compact' }, undefined],
+      [{ type: 'setDisplay', setting: 'theme', value: 'cooper' }, undefined],
+      [{ type: 'setDisplay', setting: 'level', value: 'Zen' }, undefined],
+      [{ type: 'setDisplay', setting: 'level' }, undefined],
+    ]);
+  });
+
+  test('the gear\'s Display links: the step\'s values, or Customize…', () => {
+    const command = narrowWith<{ displayCommand: ReturnType<typeof narrowDisplayCommand> }>({ displayCommand: narrowDisplayCommand });
+    check(command, [
+      [{ type: 'displayCommand', command: 'useStepValues', extra: 1 }, { type: 'displayCommand', command: 'useStepValues' }],
+      [{ type: 'displayCommand', command: 'customize' }, { type: 'displayCommand', command: 'customize' }],
+      [{ type: 'displayCommand', command: 'reset' }, undefined],
+      [{ type: 'displayCommand' }, undefined],
     ]);
   });
 

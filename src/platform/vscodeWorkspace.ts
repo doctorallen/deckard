@@ -11,16 +11,18 @@ import type { FolderPattern, WorkspaceFiles } from '../ports/workspace';
  */
 export type VscodeWorkspace = WorkspaceFiles<vscode.Uri> &
   Configuration<vscode.Uri> &
-  FileSystem<vscode.Uri>;
+  FileSystem<vscode.Uri> & { isPaused(): boolean };
 
 /**
- * The live VS Code workspace behind the ports. Each call goes straight to
+ * The live VS Code workspace behind the ports, and whether Deckard is
+ * paused in it, as `options` says. Each call goes straight to
  * the VS Code API it names, with the arguments it was given, and
  * `workspaceFolders` is read each time it is asked for, so a folder added
  * or removed is seen at once.
  */
-export function createVscodeWorkspace(): VscodeWorkspace {
+export function createVscodeWorkspace(options: { isPaused?: () => boolean } = {}): VscodeWorkspace {
   return {
+    isPaused: () => options.isPaused?.() ?? false,
     get workspaceFolders() {
       return vscode.workspace.workspaceFolders;
     },

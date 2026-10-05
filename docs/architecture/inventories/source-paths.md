@@ -286,7 +286,7 @@ A move under `src/` leaves these alone. They break when a harness file moves.
 | --- | --- | --- | --- |
 | `test/e2e/support.js` | 26 | `./vscodeStub.js` | Breaks if the stub moves |
 | `test/perf/indexSpeed.js` | 28 | `test/e2e/vscodeStub.js` | Breaks if the stub moves |
-| `test/e2e/run.js` | 19-29, 45, 50 | the nine suite file names, passed to mocha beside `support.js` as its `--require` | Breaks if a suite or `support.js` is renamed |
+| `test/e2e/run.js` | 23, 39 | every `*.e2e.js` in its folder, read when the run starts, passed to mocha beside `support.js` as its `--require` | Breaks if `support.js` is renamed; a suite renamed still runs |
 | `test/e2e/*.e2e.js` | `calendar` 9, `calendarPage` 9, `dashboardHome` 9, `navigation` 17, `searchPage` 6, `sidebarNotes` 7, `stats` 8, `taskBoard` 8 | `./support.js` | Breaks if the support file moves |
 | `test/e2e/*.e2e.js`, `test/ui/pages.js`, `surfaces.js`, `checkDom.js`, `test/perf/indexSpeed.js` | `calendar` 10, `calendarPage` 10, `dashboardHome` 11, `editorDecorations` 8, `navigation` 57, `searchPage` 7, `sidebarNotes` 8, `stats` 9, `taskBoard` 9; `pages` 44, `surfaces` 17, `checkDom` 37; `indexSpeed` 36 | `../harness/modules.js` | Breaks if the catalog moves |
 | `test/e2e/support.js`, `dashboardHome.e2e.js`, `test/ui/pages.js`, `checkLayout.js`, `checkDom.js`, `verifyWebviews.js`, `test/harness/domRecorder.js` | 19, 10, 45, 40, 40, 19, 19 | `../harness/loadPage.js` (`./loadPage.js` from `domRecorder.js`) | Breaks if the page loader moves |
@@ -453,7 +453,7 @@ It builds the extension, launches a real VS Code on a temporary workspace, runs 
 | `.vscodeignore` | 22-24, 29 | excludes `docs/**`, `test/**`, `scripts/**`, then keeps `docs/guide/**` | Unaffected by a source move |
 | `.vscodeignore` | (none) | nothing names `dist/`, so the VSIX ships everything in `dist/` except maps | A new `dist/` file ships without a change here |
 | `.gitignore` | 1, 2 | `out`, `dist` | Unaffected |
-| `.github/workflows/ci.yml` | 40, 43, 46, 49, 52, 55 | `npm test`, `test:ui`, `test:e2e`, `test:layout`, `test:visual`, `package:vsix`; no paths | Follows `package.json` |
+| `.github/workflows/ci.yml`, `nightly.yml` | the `Run` steps | `compile-tests`, `node esbuild.js`, `build:webview`, `package:vsix`, and the runners by path: `test/harness/runUnitSuites.js`, `test/ui/verifyWebviews.js`, `checkContrast.js`, `test/e2e/run.js`, and `test/ui/<check>.js` for each Chrome check | Breaks if a runner under `test/` moves or is renamed |
 | `.github/workflows/release.yml`, `prepare-release.yml` | `release.yml` 59, 63, 68, 131; `prepare-release.yml` 115 | `npm test`, `package:vsix`, and `node scripts/changelog.js` | Breaks only if `scripts/changelog.js` moves |
 | `.github/workflows/docs.yml` | 20-25, 48-53, 65-67 | triggers on and copies `docs/guide/**`, `docs/images/**`, `docs/site/**`, and `resources/lockup.png`; rewrites `../` links to GitHub | Unaffected by a source move; the plan adds `docs/architecture/**` here |
 

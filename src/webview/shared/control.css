@@ -115,7 +115,7 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
   width: var(--control-height);
   min-height: var(--control-height);
   place-items: center;
-  padding: 5px;
+  padding: 0;
 }
 .toolbar-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
 .settings-icon, .help-icon { fill: currentColor; stroke: none; }
@@ -151,7 +151,9 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 /* The gear is a summary rather than a button, so it is given a control's
    ground here and joins the button selectors every theme restyles. The Help
    button beside it is already a button, and is left to those same rules. */
-.view-options summary { display: grid; width: var(--control-height); min-height: var(--control-height); place-items: center; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 5px; cursor: pointer; list-style: none; }
+/* Square, with its icon centered by the grid rather than by padding, which
+   at compact density (26px) left the 16px icon too little room. */
+.view-options summary { display: grid; width: var(--control-height); min-height: var(--control-height); place-items: center; border: var(--edge) solid var(--line); background: var(--panel-deep); color: var(--text); padding: 0; cursor: pointer; list-style: none; }
 .view-options summary::-webkit-details-marker { display: none; }
 .view-options summary:hover { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
 .view-options summary:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
@@ -167,3 +169,12 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .view-options-choices button:first-child { border-radius: var(--control-radius) 0 0 var(--control-radius); }
 .view-options-choices button:last-child { border-radius: 0 var(--control-radius) var(--control-radius) 0; }
 .view-options-choices button.active { position: relative; z-index: var(--z-raised); }
+/* The Display row: its steps, then what the reader changed and Customize…. */
+.view-options-display { display: grid; justify-items: end; gap: 2px; }
+/* The Display row's label sits beside its buttons, not halfway down the two
+   lines its buttons and Customize… make. */
+.view-options-group:has(> .view-options-display) { align-items: start; }
+.view-options-group:has(> .view-options-display) > span { display: inline-flex; min-height: 28px; align-items: center; }
+.view-options-changed { margin: 0; text-align: right; }
+.view-options-link { min-height: 24px; padding: 0 2px; border: 0; background: none; color: var(--text); font: inherit; text-decoration: underline; cursor: pointer; }
+.view-options-link:hover, .view-options-link:focus-visible { background: none; color: var(--amber); }

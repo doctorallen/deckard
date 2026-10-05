@@ -21,6 +21,7 @@ import { readQueryContext } from '../../../commands/queryContext';
 import { offerSavedSearchOnHome } from '../../../commands/savedSearchHome';
 import { settingTarget, writeSetting } from '../../../commands/settings';
 import { openTask, quoteTaskTitle, TaskWrites, toggleTask as writeTaskToggle } from '../../../commands/taskActions';
+import { listPeopleRecency } from '../../../state/peopleRecency';
 import {
   captureIntoColumn,
   moveTaskToColumn,
@@ -34,7 +35,19 @@ import { formatQueryBlock, QueryBlockWriteOptions } from '../../../state/queryBl
 import { createTaskBoard } from '../../../state/taskBoardState';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
-import { chooseTheme, openHelp, openSource, openTag, ready, setZenMode } from '../../host/sharedHandlers';
+import {
+  chooseTheme,
+  goToPage,
+  listGoTo,
+  openGoTo,
+  openHelp,
+  openSource,
+  openTag,
+  ready,
+  displayCommand,
+  setDisplay,
+  setZenMode,
+} from '../../host/sharedHandlers';
 import { getTaskBoardHtml } from '../../taskBoardHtml';
 import type { PageChrome } from '../../components';
 import { narrowTaskBoardMessage } from './messages';
@@ -345,14 +358,19 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   }
 
   /** The gear's theme, zen, and help, the page asking for its state, and a card's line and tags. */
-  private pageHandlers(): Pick<Handlers, 'setZenMode' | 'chooseTheme' | 'ready' | 'openHelp' | 'openSource' | 'openTag'> {
+  private pageHandlers(): Pick<Handlers, 'setZenMode' | 'setDisplay' | 'displayCommand' | 'chooseTheme' | 'ready' | 'openHelp' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'openTag'> {
     const { indexer, navigation } = this.board;
     return {
       setZenMode: setZenMode(),
+      setDisplay: setDisplay(),
+      displayCommand: displayCommand(),
       chooseTheme: chooseTheme(),
       ready: ready(),
       // Help opens at its Tasks view and Task board section, not its top.
       openHelp: openHelp('task-views'),
+      openGoTo: openGoTo(),
+      listGoTo: listGoTo({ indexer, current: 'board' }),
+      goToPage: goToPage(),
       // Only a task's own line opens: the board lists nothing else.
       openSource: openSource({ indexer, navigation, policy: 'tasks' }),
       openTag: openTag({ indexer, navigation, policy: 'exact', openTag: (tagKey) => this.board.openTag(tagKey) }),
@@ -429,7 +447,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   /** What a card or row does to its task, and a column's + Add task. */
   private taskHandlers(): Pick<
     Handlers,
-    'toggleTask' | 'moveTask' | 'pickTaskDate' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps' | 'addTaskToColumn'
+    'toggleTask' | 'moveTask' | 'pickTaskDate' | 'pickTaskAssignee' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps' | 'addTaskToColumn'
   > {
     const { indexer, preferences, writes } = this.board;
     return {
@@ -455,6 +473,27 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         const date = await askForDueDate(quoteTaskTitle(task));
         if (date !== null) {
           await setTasksDue(writes, [task], date);
+        }
+      },
+      pickTaskAssignee: async (message) => {
+        const index = indexer.getSnapshot();
+        const task = index.tasks.get(message.taskId);
+        if (!task) {
+          return;
+        }
+        const picked = await vscode.window.showQuickPick(
+          [
+            { label: 'Nobody', description: task.assignee ? '' : 'now', key: '' },
+            ...listPeopleRecency(index).map(({ tag }) => ({
+              label: tag.label,
+              description: task.assignee === tag.key ? 'now' : '',
+              key: tag.key,
+            })),
+          ],
+          { title: `Who is ${quoteTaskTitle(task)} for?`, placeHolder: 'People you write about, the most recent first' },
+        );
+        if (picked) {
+          await moveTaskToColumn(writes, task, `assignee:${picked.key}`, { index });
         }
       },
       moveTaskTo: async (message) => {

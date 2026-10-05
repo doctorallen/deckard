@@ -13,10 +13,12 @@
    the text by its edge, and stretched items put its word a step above the
    date beside it. */
 .task-meta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; color: var(--muted); font: var(--text-xs) var(--font-mono); margin-top: var(--space-1); }
-.due-date { color: var(--toxic-green); font-weight: 700; letter-spacing: .03em; }
-.due-date.overdue { color: var(--danger); }
-/* Due today is a warning, each theme's own, between later's green and overdue's red. */
-.due-date.today { color: var(--due-today); }
+/* A date still ahead is plain text, as on the Task board: green read as
+   done. Only due today and overdue take a color, and the weight with it. */
+.due-date { color: var(--text); font-weight: 400; letter-spacing: .03em; }
+.due-date.overdue { color: var(--danger); font-weight: 700; }
+/* Due today is a warning, each theme's own, short of overdue's red. */
+.due-date.today { color: var(--due-today); font-weight: 700; }
 /* A task past needsNewDateAfterDays reads "was due …" in muted text: red is
    for what can still be saved today. */
 .due-date.stale { color: var(--muted); font-weight: 400; }

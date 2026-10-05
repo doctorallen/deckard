@@ -11,7 +11,20 @@ import type {
   OpenSearchMessage,
   OpenWikiLinkMessage,
 } from '../../../protocol/notePage';
-import { Narrower, NarrowingTable, narrowOpenTag, narrowToggleTask, narrowWith, UncheckedMessage } from '../../host/narrowing';
+import {
+  exactlyType,
+  Narrower,
+  narrowGoToPage,
+  NarrowingTable,
+  narrowOpenTag,
+  narrowDisplayCommand,
+  narrowSetDisplay,
+  narrowSetZenMode,
+  narrowToggleTask,
+  narrowWith,
+  onlyType,
+  UncheckedMessage,
+} from '../../host/narrowing';
 
 /** The longest note path or link target the page sends. */
 const MAX_NAME_LENGTH = 1000;
@@ -80,6 +93,14 @@ export const NOTE_PAGE_MESSAGES: NarrowingTable<NotePagePageToHost> = {
   openInEditor: narrowOpenInEditor,
   openTag: narrowOpenTag,
   toggleTask: narrowToggleTask,
+  openGoTo: exactlyType('openGoTo'),
+  listGoTo: exactlyType('listGoTo'),
+  goToPage: narrowGoToPage,
+  setZenMode: narrowSetZenMode,
+  setDisplay: narrowSetDisplay,
+  displayCommand: narrowDisplayCommand,
+  chooseTheme: onlyType('chooseTheme'),
+  openHelp: exactlyType('openHelp'),
   navigateNoteHistory: narrowNavigate,
   openSearch: narrowOpenSearch,
 };

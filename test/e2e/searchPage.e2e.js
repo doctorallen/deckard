@@ -176,10 +176,49 @@ test('Help opens at Search', async () => {
   );
 });
 
+test('DECKARD at the top drops a menu of every page, with its hint, and Go to… at its foot', async () => {
+  const { view } = await openOverview();
+  const eyebrow = view.find('[data-go-to]');
+  assert.strictEqual(eyebrow.getAttribute('aria-haspopup'), 'menu');
+  view.click(eyebrow);
+  await settle();
+  assert.deepStrictEqual(view.posted.filter((message) => message.type === 'listGoTo'), [{ type: 'listGoTo' }]);
+  const menu = view.find('.go-to-menu');
+  assert.ok(menu, 'the menu is drawn');
+  assert.strictEqual(menu.getAttribute('role'), 'menu');
+  assert.deepStrictEqual(
+    view.findAll('.go-to-item .go-to-label').map((label) => label.textContent),
+    ['Home', 'Task Board', 'Calendar', "Today's note", 'Notes Graph', 'Find in Notes…', 'Stats', 'Help', 'Go to…'],
+  );
+  assert.strictEqual(view.find('[data-go-to-page="graph"] .menu-key').textContent, '5 notes');
+  assert.strictEqual(eyebrow.getAttribute('aria-expanded'), 'true');
+  assert.strictEqual(view.document.activeElement, view.find('.go-to-item'), 'focus is on its first row');
+
+  vscode._test.executedCommands.length = 0;
+  view.click(view.find('[data-go-to-page="board"]'));
+  await settle();
+  assert.ok(!view.find('.go-to-menu'), 'choosing closes it');
+  assert.strictEqual(eyebrow.getAttribute('aria-expanded'), 'false');
+  view.click(eyebrow);
+  await settle();
+  view.click(view.findAll('.go-to-item').pop());
+  await settle();
+  assert.deepStrictEqual(
+    vscode._test.executedCommands.map((entry) => entry.command).filter((command) => command === 'deckard.showTaskBoard' || command === 'deckard.goTo'),
+    ['deckard.showTaskBoard', 'deckard.goTo'],
+  );
+
+  view.click(eyebrow);
+  await settle();
+  view.keydown(view.find('.go-to-menu'), 'Escape');
+  assert.ok(!view.find('.go-to-menu'), 'Escape closes it');
+  assert.strictEqual(view.document.activeElement, eyebrow, 'and gives focus back to DECKARD');
+});
+
 test('a tag\'s page shows the tag, its entity, and its hub note', async () => {
   const { view, panel } = await openOverview();
   assert.strictEqual(title(view), 'Project: Atlas');
-  assert.strictEqual(view.find('.eyebrow').textContent, 'DECKARD / SEARCH PAGE');
+  assert.strictEqual(view.find('.eyebrow').textContent, 'DECKARD ▾ / SEARCH PAGE');
   assert.ok(view.find('.hub'), 'the hub note leads the page');
   assert.strictEqual(panel.title, 'Project: Atlas');
   assert.strictEqual(box(view), '#project/atlas');
@@ -301,7 +340,7 @@ test('anything more than the one tag is a search, shown by its box alone', async
   await settle();
 
   assert.strictEqual(title(view), 'Search');
-  assert.strictEqual(view.find('.eyebrow').textContent, 'DECKARD / SEARCH PAGE');
+  assert.strictEqual(view.find('.eyebrow').textContent, 'DECKARD ▾ / SEARCH PAGE');
   assert.strictEqual(view.find('.hub'), null, 'the hub belongs to the tag alone');
   assert.strictEqual(box(view), '#project/atlas AND @ren-kade', 'a new term joins with AND');
   assert.deepStrictEqual(chips(view), ['#project/atlas', '@ren-kade']);

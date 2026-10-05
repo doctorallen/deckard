@@ -11,8 +11,10 @@
 // Chrome writes the page back with --dump-dom once scripts have run, and the
 // page's own probe writes its measurements into a <pre> for that dump to
 // carry, so no debugger protocol is needed. CHROME_PATH names the browser;
-// otherwise the usual names are tried, and the check is skipped with a
-// message when none is found rather than failing a machine without one.
+// otherwise the usual names are tried. When none is found the check is
+// skipped with a message on a machine without one, but fails on CI (CI is
+// set), where a check that drew nothing must not pass; the visual, rendered
+// contrast, and DOM checks load this file, so the same holds for them.
 //
 //   npm run test:layout
 //   LAYOUT_ONLY=oblivion:taskBoard npm run test:layout   one surface, or a theme, or a page
@@ -20,6 +22,7 @@
 //   LAYOUT_KEEP=/tmp/pages LAYOUT_DRY=1                  write the pages to open by hand
 //   LAYOUT_TIMING=1 LAYOUT_ONLY=stats                    time each surface's first render instead
 //   UI_CONCURRENCY=<n>                                   how many Chromes lay pages out at once
+//   UI_SHARD=<k>/<n>                                     every n-th pass, from the k-th (passes.js)
 //
 // The pages are laid out by several Chromes at once, half the logical cores'
 // worth and at most four unless UI_CONCURRENCY says otherwise
@@ -46,13 +49,18 @@ if (!existsSync(compiled)) {
   console.error('Run "npm run compile-tests" first: out/ is missing.');
   process.exit(1);
 }
-const { renderPagesForTheme, themes, vscodePaletteCss } = require('./pages.js');
+const { renderPagesForTheme, vscodePaletteCss } = require('./pages.js');
 const { readPageNonce } = require('../harness/loadPage.js');
 const { captureScript } = require('../harness/domSnapshot.js');
 const { createSurfaces, surfaceHtml } = require('./surfaces.js');
+const { announceShard, isPicked, passes } = require('./passes.js');
 
 const chrome = findChrome();
 if (!chrome) {
+  if (process.env.CI) {
+    console.error(`no Chrome found${process.env.CHROME_PATH ? ` at CHROME_PATH (${process.env.CHROME_PATH})` : ' (set CHROME_PATH)'}: on CI a check that draws nothing fails`);
+    process.exit(1);
+  }
   console.log('layout check skipped: no Chrome found (set CHROME_PATH)');
   process.exit(0);
 }
@@ -447,13 +455,20 @@ async function measureAsync(file, viewport, options = {}, log = console.log) {
   return readProbe(result);
 }
 
-/** The Chrome to lay pages out in: CHROME_PATH, or the first of the usual names found, or undefined. */
+/**
+ * The Chrome to lay pages out in: CHROME_PATH, or the first of the usual
+ * names found, or undefined. A CHROME_PATH that names nothing finds nothing,
+ * rather than falling back to another Chrome: CI pins the Chrome its Linux
+ * baselines were drawn in, and a page drawn in any other must not pass.
+ */
 function findChrome() {
+  if (process.env.CHROME_PATH) {
+    return existsSync(process.env.CHROME_PATH) ? process.env.CHROME_PATH : undefined;
+  }
   const candidates = [
-    process.env.CHROME_PATH,
     'google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser',
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  ].filter(Boolean);
+  ];
   for (const candidate of candidates) {
     if (candidate.includes('/')) {
       if (existsSync(candidate)) {
@@ -510,26 +525,6 @@ function timeSurfaces(dir) {
     const median = medianFirstRender(surfaceHtml(surface, rendered, { theme: 'replicant', zen: false }), surface, { file: path.join(dir, `timing-${surfaceName}.html`), runs });
     console.log(`  ${surfaceName.padEnd(24)} ${median.toFixed(1)} ms, median of ${runs} first renders`);
   }
-}
-
-/** Every pass the check makes, as [theme, zen] pairs: each theme, without zen and then with it. */
-function passes() {
-  return themes.map((entry) => entry.id ?? entry).flatMap((theme) => [[theme, false], [theme, true]]);
-}
-
-/**
- * Whether a check's `*_ONLY` variable picks a surface in a pass, or names
- * nothing. LAYOUT_ONLY=oblivion:sidebarNotes runs one surface while looking
- * at it, LAYOUT_ONLY=oblivion+zen:sidebarNotes picks the zen pass of it, and
- * LAYOUT_ONLY=oblivion every surface in a pass.
- *
- * @param {string | undefined} only The variable's value.
- * @param {string} label The pass, as `<theme>` or `<theme>+zen`.
- * @param {string} name The surface's name, or its page's.
- * @returns {boolean} Whether to draw the surface.
- */
-function isPicked(only, label, name) {
-  return !only || only === `${label}:${name}` || only === name || only === label;
 }
 
 /** What one run of the probe found wrong, as sentences. */
@@ -666,6 +661,7 @@ async function run() {
   if (keep && !existsSync(keep)) {
     mkdirSync(keep, { recursive: true });
   }
+  announceShard('layout check');
   let failed = 0;
   try {
     failed = await checkSurfaces(dir);

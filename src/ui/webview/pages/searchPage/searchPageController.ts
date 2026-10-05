@@ -29,7 +29,20 @@ import { formatQueryBlock } from '../../../state/queryBlockState';
 import { SearchHistory, SearchHistoryEntry } from '../../../state/searchHistory';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
-import { chooseTheme, openHelp, openTag, parkTag, renameTag, setZenMode, toggleTask } from '../../host/sharedHandlers';
+import {
+  chooseTheme,
+  goToPage,
+  listGoTo,
+  openGoTo,
+  openHelp,
+  openTag,
+  parkTag,
+  renameTag,
+  displayCommand,
+  setDisplay,
+  setZenMode,
+  toggleTask,
+} from '../../host/sharedHandlers';
 import { getSearchPageHtml } from '../../searchPageHtml';
 import type { PageChrome } from '../../components';
 import { narrowSearchPageMessage } from './messages';
@@ -145,6 +158,8 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     const { indexer, navigation, preferences } = search;
     this.handlers = {
       setZenMode: setZenMode(),
+      setDisplay: setDisplay(),
+      displayCommand: displayCommand(),
       chooseTheme: chooseTheme(),
       setOverviewQuery: (message, page) => this.applyQuery(page, message.query, message.remember !== false),
       clearOverviewQuery: (_message, page) => this.applyQuery(page, this.originQuery, false),
@@ -167,6 +182,9 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       setSearchPreview: (message) => preferences.display.setSearchPreview(message.preview),
       setSearchColumns: (message) => preferences.display.setDashboardColumns(message.section, message.columns),
       openHelp: openHelp('search'),
+      openGoTo: openGoTo(),
+      listGoTo: listGoTo({ indexer }),
+      goToPage: goToPage(),
       saveTagOverviewFilter: (message, page) => this.saveSearch(page, message.query),
       mergeTags: (message) => this.mergeTags(message.sourceKey, message.targetKey),
       excludeHubLinks: () => excludeHubLinks(),

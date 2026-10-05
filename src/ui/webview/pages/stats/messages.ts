@@ -14,6 +14,7 @@ import type {
 import {
   exactlyType,
   Narrower,
+  narrowGoToPage,
   NarrowingTable,
   narrowOpenSearch,
   narrowOpenSource,
@@ -90,6 +91,9 @@ export const STATS_MESSAGES: NarrowingTable<StatsPageToHost> = {
   openSearch: narrowOpenSearch,
   mergeTags: narrowMergeTags,
   reindexWorkspace: exactlyType('reindexWorkspace'),
+  openGoTo: exactlyType('openGoTo'),
+  listGoTo: exactlyType('listGoTo'),
+  goToPage: narrowGoToPage,
   openTagList: narrowOpenTagList,
   mergeTagInto: narrowMergeTagInto,
   openNotesGraph: narrowOpenNotesGraph,

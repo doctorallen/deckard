@@ -288,6 +288,19 @@ function reportHeadingCapture(result: HeadingCaptureResult<vscode.Uri>, chosen: 
   announce(result, line);
 }
 
+/**
+ * Where a note is, as a reader checks it: its path in its workspace
+ * folder, and the folder's name, so a note written into the wrong
+ * repository shows as such: `notes/2026-10-07.md in deckard-work`.
+ */
+export function describeWhere(uri: vscode.Uri): string {
+  const folder = vscode.workspace.getWorkspaceFolder(uri);
+  if (!folder) {
+    return uri.path.split('/').pop() ?? uri.path;
+  }
+  return `${vscode.workspace.asRelativePath(uri, false)} in ${folder.name}`;
+}
+
 /** Says where the task went, with a way to open it there. */
 function announce(result: CaptureResult<vscode.Uri>, line: string): void {
   const { uri } = result;
@@ -298,9 +311,8 @@ function announce(result: CaptureResult<vscode.Uri>, line: string): void {
     });
     return;
   }
-  const name = uri.path.split('/').pop() ?? uri.path;
   void vscode.window
-    .showInformationMessage(`Added it to ${name}.`, 'Open')
+    .showInformationMessage(`Added it to ${describeWhere(uri)}.`, 'Open')
     .then((choice) => {
       if (choice !== 'Open') {
         return;

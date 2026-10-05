@@ -3,7 +3,16 @@
  * gear's and help's.
  */
 import type { CalendarPagePageToHost } from '../../../protocol/calendar';
-import { Narrower, NarrowingTable, narrowSetZenMode, narrowWith, onlyType } from '../../host/narrowing';
+import {
+  Narrower,
+  narrowGoToPage,
+  NarrowingTable,
+  narrowDisplayCommand,
+  narrowSetDisplay,
+  narrowSetZenMode,
+  narrowWith,
+  onlyType,
+} from '../../host/narrowing';
 import { CALENDAR_MESSAGES } from '../calendar/messages';
 
 /** A gear row that turns a calendar setting on or off: the choice and nothing else. */
@@ -18,8 +27,13 @@ export const CALENDAR_PAGE_MESSAGES: NarrowingTable<CalendarPagePageToHost> = {
   setShowRepeats: narrowShow('setShowRepeats'),
   setShowWeekends: narrowShow('setShowWeekends'),
   setZenMode: narrowSetZenMode,
+  setDisplay: narrowSetDisplay,
+  displayCommand: narrowDisplayCommand,
   chooseTheme: onlyType('chooseTheme'),
   openHelp: onlyType('openHelp'),
+  openGoTo: onlyType('openGoTo'),
+  listGoTo: onlyType('listGoTo'),
+  goToPage: narrowGoToPage,
 };
 
 /** A message from the calendar page, narrowed by its table, or undefined. */

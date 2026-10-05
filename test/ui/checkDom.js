@@ -28,6 +28,10 @@
 //   npm run test:dom -- --update   record what is drawn now as the goldens
 //   DOM_ONLY=taskBoard+zen         one surface, or every surface of a page
 //   DOM_KEEP=<dir>                 leave the pages and what each drew there
+//
+// The goldens' names are checked against the surfaces before any Chrome
+// starts, so a golden nothing draws fails, and a surface without one is
+// named, in the first second rather than at the end.
 const path = require('node:path');
 const os = require('node:os');
 const { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } = require('node:fs');
@@ -159,7 +163,7 @@ function readsInertState(surface) {
 function checkEmbedded(entry, posted, options) {
   const { surface, name } = entry;
   const pageOptions = { ...(surface.pageOptions ? surface.pageOptions() : {}), state: surface.snapshot() };
-  const html = renderPage(surface.page, { ...options.chrome, pageOptions });
+  const html = renderPage(surface.page, { ...options.chrome, ...(surface.display ? { display: surface.display } : {}), pageOptions });
   let embedded;
   try {
     embedded = drawSurface({ ...surface, snapshot: undefined }, html, path.join(options.dir, `${name}.embedded.html`));
@@ -190,15 +194,18 @@ function surfacesFor(zen) {
 }
 
 /**
- * Fails, or with --update removes, a golden no surface draws any more.
+ * Says, before anything is drawn, which goldens the surfaces lack and which
+ * nothing draws any more. A stale golden fails, or with --update is removed;
+ * a missing one is named here and fails when its surface is compared.
  *
- * @param {Set<string>} seen The goldens this run drew.
  * @param {boolean} updating Whether to remove rather than fail.
  * @returns {number} How many failed.
  */
-function checkStale(seen, updating) {
+function checkGoldenNames(updating) {
+  const expected = new Set([false, true].flatMap((zen) => surfacesFor(zen).map(({ name }) => `${name}.html`)));
+  const present = readdirSync(GOLDENS).filter((file) => file.endsWith('.html'));
   let failed = 0;
-  for (const stale of readdirSync(GOLDENS).filter((file) => file.endsWith('.html') && !seen.has(file))) {
+  for (const stale of present.filter((file) => !expected.has(file))) {
     if (updating) {
       rmSync(path.join(GOLDENS, stale));
       console.log(`  removed ${stale}: nothing draws it now`);
@@ -207,6 +214,10 @@ function checkStale(seen, updating) {
       console.log(`  FAIL ${stale}: a golden nothing draws now; run with --update to drop it`);
     }
   }
+  const missing = [...expected].filter((file) => !present.includes(file));
+  if (missing.length && !updating) {
+    console.log(`  ${missing.length} surface(s) have no golden; record them with "npm run test:dom -- --update": ${missing.join(', ')}`);
+  }
   return failed;
 }
 
@@ -214,16 +225,15 @@ function checkStale(seen, updating) {
  * Draws and compares every surface of one zen state.
  *
  * @param {boolean} zen Whether zen mode is on.
- * @param {{ updating: boolean, keep?: string, dir: string, seen: Set<string> }} options
- *   Whether to record, where to leave what was drawn, where to write the
- *   pages, and the goldens drawn so far, which this adds to.
+ * @param {{ updating: boolean, keep?: string, dir: string }} options
+ *   Whether to record, where to leave what was drawn, and where to write the
+ *   pages.
  * @returns {number} How many surfaces failed.
  */
 function checkZenState(zen, options) {
   const rendered = new Map(renderPagesForTheme(THEME, { zen }));
   let failed = 0;
   for (const { surface, name } of surfacesFor(zen)) {
-    options.seen.add(`${name}.html`);
     let drawn;
     try {
       drawn = drawSurface(surface, surfaceHtml(surface, rendered, { theme: THEME, zen }), path.join(options.dir, `${name}.html`));
@@ -247,13 +257,11 @@ function run() {
   const dir = keep || mkdtempSync(path.join(os.tmpdir(), 'deckard-dom-'));
   mkdirSync(dir, { recursive: true });
   mkdirSync(GOLDENS, { recursive: true });
-  const seen = new Set();
-  let failed = 0;
+  let failed = process.env.DOM_ONLY ? 0 : checkGoldenNames(updating);
   try {
     for (const zen of [false, true]) {
-      failed += checkZenState(zen, { updating, keep, dir, seen });
+      failed += checkZenState(zen, { updating, keep, dir });
     }
-    failed += process.env.DOM_ONLY ? 0 : checkStale(seen, updating);
   } finally {
     if (!keep) {
       rmSync(dir, { recursive: true, force: true });

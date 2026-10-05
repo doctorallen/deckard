@@ -20,14 +20,17 @@ export const GUIDE_PAGES: Readonly<Record<string, string>> = {
   'search-pages': 'Search pages and tag overviews',
   'query-blocks': 'Query blocks',
   'home-and-stats': 'Home and Stats',
-  connections: 'Related notes, the graph, and the outline',
+  connections: 'Related notes, sections, and the graph',
   'daily-notes': 'Daily notes, reviews, and the calendar',
   organizing: 'Renaming, moving, and parking',
-  'themes-and-zen': 'Themes and Zen mode',
+  'themes-and-zen': 'Themes and Display',
   'ai-assistants': 'AI assistants',
   commands: 'Commands',
   settings: 'Settings',
   'privacy-and-troubleshooting': 'Privacy, source safety, and troubleshooting',
+  security: 'For your security reviewer',
+  'what-deckard-writes': 'What Deckard writes',
+  accessibility: 'Accessibility and keyboard',
 };
 
 /** The guide page, and the heading on it, each Help section's Read more opens. */
@@ -47,7 +50,7 @@ export const HELP_READ_MORE: Readonly<Record<string, { page: string; anchor?: st
   home: { page: 'home-and-stats' },
   tidy: { page: 'organizing' },
   periodic: { page: 'daily-notes' },
-  zen: { page: 'themes-and-zen', anchor: 'zen-mode' },
+  zen: { page: 'themes-and-zen', anchor: 'display' },
   commands: { page: 'commands' },
   advanced: { page: 'settings' },
   assistants: { page: 'ai-assistants' },

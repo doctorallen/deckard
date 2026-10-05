@@ -54,7 +54,7 @@ const EMPHASIS: Readonly<Partial<Record<string, EmphasisToken['kind']>>> = {
  * into the list the link would have gone into, so a link to a note is its
  * words alone.
  */
-export function mapInlineTokens(tokens: readonly MarkdownToken[]): InlineToken[] {
+export function mapInlineTokens(tokens: readonly MarkdownToken[], options: { images?: boolean } = {}): InlineToken[] {
   const root: InlineToken[] = [];
   const parents: InlineToken[][] = [];
   let current = root;
@@ -64,7 +64,7 @@ export function mapInlineTokens(tokens: readonly MarkdownToken[]): InlineToken[]
       continue;
     }
     if (token.nesting === 0) {
-      appendToken(current, mapLeaf(token));
+      appendToken(current, options.images && token.type === 'image' ? mapImage(token) : mapLeaf(token));
       continue;
     }
     parents.push(current);
@@ -119,6 +119,17 @@ function mapLeaf(token: MarkdownToken): InlineToken | undefined {
     default:
       return undefined;
   }
+}
+
+/**
+ * An image as the Note page draws it: its path as written and its alt text.
+ * A path with a scheme, a web address included, is read as its alt text:
+ * Deckard draws no image from the network.
+ */
+function mapImage(token: MarkdownToken): InlineToken {
+  const src = token.attrGet('src') ?? '';
+  const alt = token.content;
+  return /^[a-z][a-z0-9+.-]*:/i.test(src) || !src ? { kind: 'text', text: alt } : { kind: 'image', src, alt };
 }
 
 /** Adds a token, joining text to the text before it and dropping empty text. */

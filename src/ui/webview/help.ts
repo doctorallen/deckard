@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import type { HelpMessage, HelpPageToHost, HelpRevealMessage } from '../protocol/help';
+import type { IndexReader } from '../../core/workspace/indexReader';
 import type { WhatsNew } from '../commands/whatsNew';
 import type { HelpManifest } from './pages/help/helpManifest';
 import type { MessageHandler } from './host/pageController';
@@ -22,6 +23,8 @@ export interface HelpPanelOptions {
   manifest?: HelpManifest;
   /** The shipped changelog's Highlights, for What's new. */
   whatsNew?: Pick<WhatsNew, 'releases' | 'newSince'>;
+  /** What DECKARD's menu at the top of Help reads its hints from. */
+  indexer?: Pick<IndexReader, 'getSnapshot'>;
 }
 
 /**
@@ -35,8 +38,8 @@ export class HelpPanel implements vscode.Disposable {
   private readonly page: PanelAdapter<never, HelpPageToHost>;
 
   /** Builds the page; nothing is shown until `show` or `restore`. */
-  public constructor({ extensionUri, themePreview, manifest = {}, whatsNew }: HelpPanelOptions) {
-    this.controller = new HelpController({ extensionUri, manifest, whatsNew });
+  public constructor({ extensionUri, themePreview, manifest = {}, whatsNew, indexer }: HelpPanelOptions) {
+    this.controller = new HelpController({ extensionUri, manifest, whatsNew, indexer });
     this.page = new PanelAdapter(
       new WebviewHost<never, HelpPageToHost>(this.controller, { themePreview }),
       { viewType: 'deckard.help', title: 'Deckard Help', extensionUri, icon: ['resources', 'deckard.svg'] },

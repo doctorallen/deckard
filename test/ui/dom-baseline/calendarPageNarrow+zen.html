@@ -1,5 +1,14 @@
 <body
   class="zen"
+  data-cards="flat"
+  data-counts="hidden"
+  data-dates="relative"
+  data-density="compact"
+  data-file-line="never"
+  data-help="hidden"
+  data-level="zen"
+  data-styling="plain"
+  data-tags="text"
 > <main
     id="app"
   ><header
@@ -7,7 +16,18 @@
     ><div
       ><p
           class="eyebrow"
-        >DECKARD / CALENDAR</p
+        ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label="Deckard: go to another page"
+            class="eyebrow-home"
+            data-go-to=""
+            type="button"
+          >DECKARD ▾</button
+          ><span
+            class="eyebrow-trail"
+          > / CALENDAR</span
+          ></p
         ><h1
         ><button
             aria-label="September 2026"
@@ -179,24 +199,45 @@
             ><div
               class="view-options-group"
             ><span
-              >Zen</span
+              >Display</span
               ><div
-                aria-label="Zen mode"
-                class="segmented view-options-choices"
-                role="group"
-              ><button
-                  aria-pressed="false"
-                  data-action="set-zen-mode"
-                  data-value="off"
-                  type="button"
-                >Off</button
+                class="view-options-display"
+              ><div
+                  aria-label="Display"
+                  class="segmented view-options-choices"
+                  role="group"
                 ><button
-                  aria-pressed="true"
-                  class="active"
-                  data-action="set-zen-mode"
-                  data-value="on"
-                  type="button"
-                >On</button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="full"
+                    type="button"
+                  >Full</button
+                  ><button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="quiet"
+                    type="button"
+                  >Quiet</button
+                  ><button
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="zen"
+                    type="button"
+                  >Zen</button
+                  ></div
+                ><p
+                  class="view-options-changed"
+                ><button
+                    class="view-options-link"
+                    data-action="display-command"
+                    data-command="customize"
+                    type="button"
+                  >Customize…</button
+                  ></p
                 ></div
               ></div
             ></div
@@ -1378,7 +1419,10 @@
           aria-label="Due"
           class="day-group"
         ><h3
-          >Due (8)</h3
+          >Due<span
+              class="display-count"
+            > (8)</span
+            ></h3
           ><div
             class="task-list"
           ><div
@@ -1404,7 +1448,18 @@
                   class="task-meta"
                 ><span
                     class="due-date today"
-                  >Due today · 2026-09-21</span
+                  ><span
+                      class="due-relative due-text"
+                    >Due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
                   ><span
                     class="task-source"
                   >2026-09-21 / line 2</span
@@ -1446,7 +1501,18 @@
                   class="task-meta"
                 ><span
                     class="due-date today"
-                  >Due today · 2026-09-21</span
+                  ><span
+                      class="due-relative due-text"
+                    >Due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
                   ><span
                     class="task-source"
                   >2026-09-21 / line 3</span
@@ -1488,7 +1554,18 @@
                   class="task-meta"
                 ><span
                     class="due-date today"
-                  >Due today · 2026-09-21</span
+                  ><span
+                      class="due-relative due-text"
+                    >Due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
                   ><span
                     class="task-source"
                   >2026-09-21 / line 4</span
@@ -1530,7 +1607,18 @@
                   class="task-meta"
                 ><span
                     class="due-date today"
-                  >Due today · 2026-09-21</span
+                  ><span
+                      class="due-relative due-text"
+                    >Due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
                   ><span
                     class="task-source"
                   >2026-09-21 / line 5</span
@@ -1572,7 +1660,18 @@
                   class="task-meta"
                 ><span
                     class="due-date today"
-                  >Due today · 2026-09-21</span
+                  ><span
+                      class="due-relative due-text"
+                    >Due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
                   ><span
                     class="task-source"
                   >2026-09-21 / line 6</span
@@ -1603,7 +1702,10 @@
           aria-label="Scheduled"
           class="day-group"
         ><h3
-          >Scheduled (1)</h3
+          >Scheduled<span
+              class="display-count"
+            > (1)</span
+            ></h3
           ><div
             class="task-list"
           ><div
@@ -1653,7 +1755,10 @@
         ><details
           class="day-group"
         ><summary
-          >Done (1)</summary
+          >Done<span
+              class="display-count"
+            > (1)</span
+            ></summary
           ><div
             class="task-list"
           ><div

@@ -5,7 +5,7 @@ import {
   extractTagSpans,
   extractTags,
   formatEntityTitle,
-  extractWikiLinks,
+  extractNoteLinks,
   getEntityNamespaceAliases,
   getEntityKind,
   getEntityNamespace,
@@ -113,7 +113,7 @@ suite('Markdown parser', () => {
       '@alex-smith',
     ]);
     assert.deepStrictEqual(parsed.links, ['Planning Notes']);
-    assert.deepStrictEqual(extractWikiLinks('[[Atlas]] and [[People|Team]]'), [
+    assert.deepStrictEqual(extractNoteLinks('[[Atlas]] and [[People|Team]]'), [
       'Atlas',
       'People',
     ]);

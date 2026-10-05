@@ -32,18 +32,66 @@ export interface NotePageShowing {
   column?: vscode.ViewColumn;
 }
 
+/** One note page: its controller, and the panel it is kept in. */
+interface OpenNotePage {
+  readonly controller: NotePageController;
+  readonly page: PanelAdapter<NotePageSnapshot, NotePagePageToHost>;
+}
+
 /**
- * One note, read in a Deckard page: `NotePageController`, run by a
- * `WebviewHost` in one panel, reused for each note as VS Code's preview tab
- * is; this is the name the extension and its serializer know it by.
+ * Notes, read in Deckard pages: each in a panel of its own, run by a
+ * `NotePageController` and a `WebviewHost`, as a note opens in an editor
+ * tab of its own. Opening a note that already has a page brings that page
+ * forward instead of opening a second; this is the name the extension and
+ * its serializer know the pages by.
  */
 export class NotePagePanel implements vscode.Disposable {
-  private readonly controller: NotePageController;
-  private readonly page: PanelAdapter<NotePageSnapshot, NotePagePageToHost>;
+  private readonly pages = new Set<OpenNotePage>();
 
-  /** Builds the page; nothing is shown until `show` or `restore`. */
-  public constructor(options: NotePagePanelOptions) {
-    this.controller = new NotePageController({
+  /** Builds nothing yet: each page is made when a note is shown or a panel restored. */
+  public constructor(private readonly options: NotePagePanelOptions) {}
+
+  /**
+   * Shows a note on a page, scrolled to `line` when given: the page already
+   * showing it, brought forward, else a new one, in `column`, the active
+   * group unless told, as an editor tab opens; or beside the editor when
+   * asked, with `preserveFocus` without taking the focus from where it was
+   * asked, as Find, which stays open, asks. A page open in another group
+   * moves to the one asked for.
+   */
+  public async show(location: NoteLocation, how: NotePageShowing = {}): Promise<void> {
+    const open = this.find(location.filePath) ?? this.create();
+    open.controller.navigate(location);
+    const column = how.beside ? vscode.ViewColumn.Beside : (how.column ?? vscode.ViewColumn.Active);
+    const preserveFocus = how.beside === true && how.preserveFocus === true;
+    const panel = open.page.open({ viewColumn: column, preserveFocus });
+    this.watch(open, panel);
+    panel.reveal(column, preserveFocus);
+    await open.page.host.whenPublished();
+    open.page.host.refresh();
+  }
+
+  /** Takes back a note page VS Code kept across a reload, with the note it showed, as a page of its own. */
+  public async restore(panel: vscode.WebviewPanel, state?: unknown): Promise<void> {
+    const open = this.create();
+    await open.page.restore(panel, state);
+    this.watch(open, panel);
+  }
+
+  /** Closes every page, and stops every listener. */
+  public dispose(): void {
+    [...this.pages].forEach((open) => this.close(open));
+  }
+
+  /** The open page showing a note, if one is. */
+  private find(filePath: string): OpenNotePage | undefined {
+    return [...this.pages].find((open) => open.page.panel && open.controller.location?.filePath === filePath);
+  }
+
+  /** A new page, not yet in a panel. */
+  private create(): OpenNotePage {
+    const { options } = this;
+    const controller = new NotePageController({
       indexer: options.indexer,
       writes: options.writes,
       navigation: new NavigationService(),
@@ -52,42 +100,31 @@ export class NotePagePanel implements vscode.Disposable {
       activeNotePage: options.activeNotePage,
       onOpenSearch: options.onOpenSearch,
     });
-    this.page = new PanelAdapter(
-      new WebviewHost(this.controller, { indexer: options.indexer, themePreview: options.themePreview }),
+    const page = new PanelAdapter(
+      new WebviewHost(controller, { indexer: options.indexer, themePreview: options.themePreview }),
       { viewType: 'deckard.notePage', title: 'Note', extensionUri: options.extensionUri, icon: ['resources', 'deckard.svg'] },
     );
+    const open = { controller, page };
+    this.pages.add(open);
+    return open;
   }
 
-  /**
-   * Shows a note on the page, scrolled to `line` when given, opening the
-   * page, or bringing it forward: in `column`, the active group unless
-   * told, as Markdown's Open Preview takes the place of the editor in its
-   * group; or beside the editor when asked, with `preserveFocus` without
-   * taking the focus from where it was asked, as Find, which stays open,
-   * asks. A page open in another group moves to the one asked for.
-   */
-  public async show(location: NoteLocation, how: NotePageShowing = {}): Promise<void> {
-    this.controller.navigate(location);
-    const column = how.beside ? vscode.ViewColumn.Beside : (how.column ?? vscode.ViewColumn.Active);
-    const preserveFocus = how.beside === true && how.preserveFocus === true;
-    const panel = this.page.open({ viewColumn: column, preserveFocus });
-    panel.reveal(column, preserveFocus);
-    await this.page.host.whenPublished();
-    this.page.host.refresh();
+  /** Lets a page go when its panel closes, so a closed tab leaves nothing listening. */
+  private watch(open: OpenNotePage, panel: vscode.WebviewPanel): void {
+    if (watched.has(panel)) {
+      return;
+    }
+    watched.add(panel);
+    panel.onDidDispose(() => this.close(open));
   }
 
-  /** The note shown, if the page is open. */
-  public get location(): NoteLocation | undefined {
-    return this.page.panel ? this.controller.location : undefined;
-  }
-
-  /** Takes back the note page VS Code kept across a reload, with the note it showed. */
-  public restore(panel: vscode.WebviewPanel, state?: unknown): Promise<void> {
-    return this.page.restore(panel, state);
-  }
-
-  /** Closes the page, if it is open, and stops every listener. */
-  public dispose(): void {
-    this.page.dispose();
+  /** Stops a page's listeners and forgets it. */
+  private close(open: OpenNotePage): void {
+    if (this.pages.delete(open)) {
+      open.page.dispose();
+    }
   }
 }
+
+/** Panels whose closing is already watched. */
+const watched = new WeakSet<vscode.WebviewPanel>();

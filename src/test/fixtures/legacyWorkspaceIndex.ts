@@ -6,6 +6,7 @@
  * reference.
  */
 import { getEntityKind } from '../../domain/markdown/parser';
+import { fileEntryId, groupEntryParts, isEntrySection } from '../../domain/markdown/noteEntries';
 import {
   Entity,
   ParsedFile,
@@ -82,13 +83,15 @@ export function buildLegacyWorkspaceIndex(
 
 /** Adds a note's sections, and the tags and entities each one carries. */
 function collectSections(file: ParsedFile, { sections, tags, entities }: LegacyCollections): void {
-  file.sections.forEach((section) => {
-    sections.set(section.id, section);
-    // A tag written on one of the section's own body lines finds the
-    // section too: the tag stayed on its line, and the section is what
-    // holds the line.
+  file.sections.forEach((section) => sections.set(section.id, section));
+  // A note is an entry (noteEntries.ts): only entries are a tag's members,
+  // and the body tags of every heading an entry owns count for it.
+  const parts = groupEntryParts(file.sections);
+  file.sections.filter(isEntrySection).forEach((section) => {
+    // A tag written on one of the entry's body lines finds the entry too:
+    // the tag stayed on its line, and the entry is what holds the line.
     const bodyTagLabels = new Map(
-      (section.bodyTags ?? []).map((tag) => [tag.key, tag.label]),
+      (parts.get(section.id) ?? [section]).flatMap((part) => part.bodyTags ?? []).map((tag) => [tag.key, tag.label]),
     );
     const tagKeys = [
       ...new Set([...section.tags, ...bodyTagLabels.keys()]),
@@ -128,14 +131,24 @@ function collectTasks(file: ParsedFile, { tasks, tags, entities }: LegacyCollect
  * one of its sections or tasks already carries.
  */
 function collectFrontmatterTags(file: ParsedFile, { tags, entities }: LegacyCollections): void {
-  const contentTagKeys = new Set([
+  // A note tagged in its front matter that owns its preamble or an untagged
+  // heading is an entry of its own, with those headings' body tags.
+  const parts = groupEntryParts(file.sections);
+  const fileEntry = fileEntryId(file.filePath);
+  const isFileEntry = file.frontmatterTags.length > 0 && (file.sections.length === 0 || parts.has(fileEntry));
+  const contentTagKeys = new Set(isFileEntry ? [] : [
     ...file.sections.flatMap((section) => section.tags),
     ...file.tasks.flatMap((task) => task.tags),
   ]);
-  file.frontmatterTags.forEach((tagReference) => {
-    if (contentTagKeys.has(tagReference.key)) {
+  const seen = new Set<string>();
+  [
+    ...file.frontmatterTags,
+    ...(parts.get(fileEntry) ?? []).flatMap((part) => part.bodyTags ?? []).map((tag) => ({ key: tag.key, label: tag.label })),
+  ].forEach((tagReference) => {
+    if (contentTagKeys.has(tagReference.key) || seen.has(tagReference.key)) {
       return;
     }
+    seen.add(tagReference.key);
     const tag = getOrCreateTag(tags, tagReference.key, tagReference.label);
     if (!tag.filePaths.includes(file.filePath)) {
       tag.filePaths.push(file.filePath);
@@ -156,26 +169,28 @@ function countTags(tags: Map<string, TagInfo>, tasks: Map<string, Task>): void {
   tags.forEach((tag) => {
     // A task inside a tagged section is already represented by that section;
     // count it separately only when its tag would otherwise have no entry.
-    const taggedSections = new Set(tag.sectionIds);
+    const taggedEntries = new Set([...tag.sectionIds, ...tag.filePaths.map(fileEntryId)]);
     const standaloneTasks = tag.taskIds.filter((taskId) => {
       const task = tasks.get(taskId);
-      return !task?.sectionId || !taggedSections.has(task.sectionId);
+      const owner = task?.entryId ?? task?.sectionId;
+      return !owner || !taggedEntries.has(owner);
     });
     tag.count =
-      taggedSections.size + standaloneTasks.length + tag.filePaths.length;
+      tag.sectionIds.length + standaloneTasks.length + tag.filePaths.length;
   });
 }
 
 /** Counts each entity's references as countTags counts a tag's. */
 function countEntities(entities: Map<string, Entity>, tasks: Map<string, Task>): void {
   entities.forEach((entity) => {
-    const entitySections = new Set(entity.sectionIds);
+    const entityEntries = new Set([...entity.sectionIds, ...entity.filePaths.map(fileEntryId)]);
     const standaloneTasks = entity.taskIds.filter((taskId) => {
       const task = tasks.get(taskId);
-      return !task?.sectionId || !entitySections.has(task.sectionId);
+      const owner = task?.entryId ?? task?.sectionId;
+      return !owner || !entityEntries.has(owner);
     });
     entity.count =
-      entitySections.size + standaloneTasks.length + entity.filePaths.length;
+      entity.sectionIds.length + standaloneTasks.length + entity.filePaths.length;
   });
 }
 

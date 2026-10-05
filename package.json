@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "2.1.0",
+  "version": "2.2.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -115,21 +115,22 @@
         "steps": [
           {
             "id": "deckard.walkthrough.openNote",
-            "title": "Open or create a note",
-            "description": "Deckard indexes every saved Markdown file in the workspace. Start today's note, then write a line or two — or take the tour: a sample workspace of notes that show what Deckard does and say what to try.\n[Create today's note](command:deckard.createDailyNote)\n[Create a sample workspace](command:deckard.createSampleWorkspace)",
+            "title": "Write a note",
+            "description": "Deckard reads every saved Markdown file in the workspace. Start today's note and write a line or two: a / at the start of a line offers a task, a heading, a link, a table of tasks, or one of your templates. Or make a work sample: a week of a team lead's notes, to try everything on.\n[Create today's note](command:deckard.createDailyNote)\n[Create a work sample](command:deckard.createWorkSample)",
             "media": {
               "markdown": "resources/walkthrough/notes.md"
             },
             "completionEvents": [
               "onCommand:deckard.createDailyNote",
+              "onCommand:deckard.createWorkSample",
               "onCommand:deckard.createSampleWorkspace",
               "onContext:deckard.hasNotes"
             ]
           },
           {
             "id": "deckard.walkthrough.addTags",
-            "title": "Tag what the note is about",
-            "description": "Write a tag such as #project/atlas on a heading or a task, or @dana for a person. Tags are what Deckard connects notes by.\n[Open Help](command:deckard.showHelp)",
+            "title": "Tag it, and mention a person",
+            "description": "Write a tag such as #project/atlas on a heading or a task to say what it is about, and @dana to say who. Cmd-click (Ctrl-click on Windows and Linux) a tag or a person to see every note and task that carries it.\n[Open Help](command:deckard.showHelp)",
             "media": {
               "markdown": "resources/walkthrough/tags.md"
             },
@@ -138,9 +139,33 @@
             ]
           },
           {
+            "id": "deckard.walkthrough.linkNotes",
+            "title": "Link two notes",
+            "description": "Write [[ and the start of another note's name to link it. That note then lists this one under Linked from, in the Context view and on its page, so a decision finds its meeting and a person finds every 1:1.\n[Open the Context view](command:deckard.relatedNotes.focus)",
+            "media": {
+              "markdown": "resources/walkthrough/links.md"
+            },
+            "completionEvents": [
+              "onContext:deckard.hasLinks"
+            ]
+          },
+          {
+            "id": "deckard.walkthrough.search",
+            "title": "Find anything",
+            "description": "Find (Ctrl+Shift+Alt+F; Cmd+Shift+Alt+F on macOS) searches as you type. A search page holds the whole result, and Refine narrows it. Write words, #tags, is:open, or updated >= 7d, joined with AND, OR, and NOT.\n[Find a note](command:deckard.searchWorkspace)",
+            "media": {
+              "image": "resources/walkthrough/search.png",
+              "altText": "A search page with its results and Refine beside them."
+            },
+            "completionEvents": [
+              "onCommand:deckard.searchWorkspace",
+              "onCommand:deckard.search"
+            ]
+          },
+          {
             "id": "deckard.walkthrough.captureTask",
             "title": "Capture a task",
-            "description": "Write a task from anywhere without leaving what you are doing. Capture adds it to today's note and reads a date or a priority from its last words, such as \"call Rhea friday\".\n[Capture a task](command:deckard.capture)\n[Open the Tasks view](command:deckard.agenda.focus)",
+            "description": "Write a task from anywhere without leaving what you are doing: Capture (Ctrl+Shift+Alt+N; Cmd+Shift+Alt+N on macOS) adds it to today's note and reads a date or a priority from its last words, such as \"call Rhea friday\".\n[Capture a task](command:deckard.capture)\n[Open the Tasks view](command:deckard.agenda.focus)",
             "media": {
               "image": "resources/walkthrough/tasks.png",
               "altText": "The Tasks view listing overdue, today's, and upcoming tasks beside a daily note."
@@ -153,7 +178,7 @@
           {
             "id": "deckard.walkthrough.openHome",
             "title": "See the workspace",
-            "description": "Home collects today's note, your tasks, what is due, and the searches you keep. Customize in its gear adds, resizes, and reorders the widgets.\n[Open the Dashboard](command:deckard.showDashboard)",
+            "description": "Home collects what is due today, what slipped, your tasks, and the notes you opened lately. Customize Home, beside its tabs, adds, resizes, and reorders the widgets.\n[Open the Dashboard](command:deckard.showDashboard)",
             "media": {
               "image": {
                 "dark": "resources/walkthrough/home-dark.png",
@@ -166,33 +191,6 @@
             "completionEvents": [
               "onCommand:deckard.showDashboard"
             ]
-          },
-          {
-            "id": "deckard.walkthrough.search",
-            "title": "Find anything",
-            "description": "Find searches as you type. A search page holds the whole result, and Refine narrows it. Write words, #tags, is:open, or updated >= 7d, joined with AND, OR, and NOT.\n[Find a note](command:deckard.searchWorkspace)",
-            "media": {
-              "image": "resources/walkthrough/search.png",
-              "altText": "A search page with its results and Refine beside them."
-            },
-            "completionEvents": [
-              "onCommand:deckard.searchWorkspace",
-              "onCommand:deckard.search"
-            ]
-          },
-          {
-            "id": "deckard.walkthrough.makeItYours",
-            "title": "Make it yours",
-            "description": "Deckard's pages come in eight looks. Choose Theme previews each as you move through them. Zen draws less frame around any of them.\n[Choose a theme](command:deckard.chooseTheme)\n[Enter zen mode](command:deckard.enableZenMode)",
-            "media": {
-              "image": "resources/walkthrough/themes.png",
-              "altText": "The Dashboard in four of Deckard's eight themes: Corpo, Replicant, LCARS, and Cooper."
-            },
-            "completionEvents": [
-              "onCommand:deckard.chooseTheme",
-              "onSettingChanged:deckard.theme",
-              "onSettingChanged:deckard.zenMode"
-            ]
           }
         ],
         "featuredFor": [
@@ -204,10 +202,6 @@
       {
         "view": "deckard.hubs",
         "contents": "Hub notes and the notes about their tags appear here, as pages under the pages they belong to.\n\nA hub note describes a tag with describes: in its front matter, such as describes: project/atlas. A note is filed under it when its front matter or first heading carries the tag, or when it says up: \"[[Atlas]]\".\n[Read about hub notes](https://deckard.esperinnovations.com/search-pages.html#hub-notes)"
-      },
-      {
-        "view": "deckard.outline",
-        "contents": "Open a Markdown note to see its headings here.\n[Create today's note](command:deckard.createDailyNote)\n[Open Help](command:deckard.showHelp)"
       },
       {
         "view": "deckard.agenda",
@@ -226,6 +220,11 @@
         "title": "Open Dashboard",
         "category": "Deckard",
         "icon": "$(home)"
+      },
+      {
+        "command": "deckard.goTo",
+        "title": "Go to…",
+        "category": "Deckard"
       },
       {
         "command": "deckard.showNotesGraph",
@@ -288,6 +287,31 @@
       {
         "command": "deckard.reindexWorkspace",
         "title": "Reindex Workspace",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.createHubNoteForTag",
+        "title": "Create Hub Note for Tag…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.pauseHere",
+        "title": "Pause in This Workspace",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.resumeHere",
+        "title": "Resume in This Workspace",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.chooseScope",
+        "title": "Choose What Deckard Reads…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.chooseEditorPreset",
+        "title": "Choose Editor Preset…",
         "category": "Deckard"
       },
       {
@@ -528,7 +552,7 @@
       },
       {
         "command": "deckard.searchNotes",
-        "title": "Search Notes and Tasks",
+        "title": "Open Search Page…",
         "category": "Deckard"
       },
       {
@@ -567,19 +591,6 @@
         "category": "Deckard"
       },
       {
-        "command": "deckard.outline.revealSection",
-        "title": "Reveal Outline Heading",
-        "category": "Deckard"
-      },
-      {
-        "command": "deckard.outline.openTagOverview",
-        "title": "Open a Tag's Search Page…"
-      },
-      {
-        "command": "deckard.outline.renameTag",
-        "title": "Rename Tag…"
-      },
-      {
         "command": "deckard.hubs.openHubNote",
         "title": "Open Hub Note",
         "icon": "$(go-to-file)"
@@ -603,18 +614,6 @@
         "icon": "$(group-by-ref-type)"
       },
       {
-        "command": "deckard.outline.enableFollowCursor",
-        "title": "Follow Cursor in Outline",
-        "category": "Deckard",
-        "icon": "$(eye-closed)"
-      },
-      {
-        "command": "deckard.outline.disableFollowCursor",
-        "title": "Stop Following Cursor in Outline",
-        "category": "Deckard",
-        "icon": "$(eye)"
-      },
-      {
         "command": "deckard.focusSection",
         "title": "Focus Section",
         "category": "Deckard",
@@ -627,14 +626,24 @@
         "icon": "$(unfold)"
       },
       {
+        "command": "deckard.outline.enableFollowCursor",
+        "title": "Mark the Cursor's Section in Sections",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.outline.disableFollowCursor",
+        "title": "Stop Marking the Cursor's Section",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.outline.filterByTag",
-        "title": "Filter Outline by Tag…",
+        "title": "Filter Sections by Tag…",
         "category": "Deckard",
         "icon": "$(filter)"
       },
       {
         "command": "deckard.outline.clearTagFilter",
-        "title": "Clear Outline Tag Filter",
+        "title": "Clear the Sections Filter",
         "category": "Deckard",
         "icon": "$(filter-filled)"
       },
@@ -645,16 +654,26 @@
         "icon": "$(symbol-color)"
       },
       {
+        "command": "deckard.chooseDisplay",
+        "title": "Choose Display…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.enableZenMode",
-        "title": "Enter Zen Mode",
+        "title": "Enter Zen",
         "category": "Deckard",
         "icon": "$(screen-normal)"
       },
       {
         "command": "deckard.disableZenMode",
-        "title": "Leave Zen Mode",
+        "title": "Leave Zen",
         "category": "Deckard",
         "icon": "$(screen-full)"
+      },
+      {
+        "command": "deckard.toggleZen",
+        "title": "Toggle Zen",
+        "category": "Deckard"
       },
       {
         "command": "deckard.tidyPreferences",
@@ -688,7 +707,12 @@
       },
       {
         "command": "deckard.createSampleWorkspace",
-        "title": "Create a Sample Workspace",
+        "title": "Create the Story Tour",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.createWorkSample",
+        "title": "Create a Work Sample",
         "category": "Deckard"
       },
       {
@@ -787,6 +811,30 @@
     "menus": {
       "commandPalette": [
         {
+          "command": "deckard.outline.enableFollowCursor",
+          "when": "!deckard.outlineFollowCursor"
+        },
+        {
+          "command": "deckard.outline.disableFollowCursor",
+          "when": "deckard.outlineFollowCursor"
+        },
+        {
+          "command": "deckard.search",
+          "when": "false"
+        },
+        {
+          "command": "deckard.pauseHere",
+          "when": "workspaceFolderCount > 0 && !deckard.paused"
+        },
+        {
+          "command": "deckard.resumeHere",
+          "when": "deckard.paused"
+        },
+        {
+          "command": "deckard.chooseScope",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
           "command": "deckard.clearAgendaQuery",
           "when": "deckard.agendaQuerySet"
         },
@@ -801,18 +849,6 @@
         {
           "command": "deckard.showNotesGraphAroundNote",
           "when": "editorLangId == markdown && deckard.isNote"
-        },
-        {
-          "command": "deckard.outline.revealSection",
-          "when": "false"
-        },
-        {
-          "command": "deckard.outline.openTagOverview",
-          "when": "false"
-        },
-        {
-          "command": "deckard.outline.renameTag",
-          "when": "false"
         },
         {
           "command": "deckard.hubs.openHubNote",
@@ -877,14 +913,6 @@
         {
           "command": "deckard.unpinNote",
           "when": "editorLangId == markdown && deckard.activeNotePinned"
-        },
-        {
-          "command": "deckard.outline.enableFollowCursor",
-          "when": "!deckard.outlineFollowCursor"
-        },
-        {
-          "command": "deckard.outline.disableFollowCursor",
-          "when": "deckard.outlineFollowCursor"
         },
         {
           "command": "deckard.focusSection",
@@ -1234,61 +1262,6 @@
           "group": "navigation@2"
         },
         {
-          "command": "deckard.outline.enableFollowCursor",
-          "when": "view == deckard.outline && !deckard.outlineFollowCursor",
-          "group": "navigation@1"
-        },
-        {
-          "command": "deckard.outline.disableFollowCursor",
-          "when": "view == deckard.outline && deckard.outlineFollowCursor",
-          "group": "navigation@1"
-        },
-        {
-          "command": "deckard.unfoldAllSections",
-          "when": "view == deckard.outline && deckard.sectionFocused",
-          "group": "navigation@0"
-        },
-        {
-          "command": "deckard.outline.filterByTag",
-          "when": "view == deckard.outline && !deckard.outlineFiltered",
-          "group": "navigation@2"
-        },
-        {
-          "command": "deckard.outline.clearTagFilter",
-          "when": "view == deckard.outline && deckard.outlineFiltered",
-          "group": "navigation@2"
-        },
-        {
-          "command": "deckard.showDashboard",
-          "when": "view == deckard.relatedNotes",
-          "group": "navigation@1"
-        },
-        {
-          "command": "deckard.showTaskBoard",
-          "when": "view == deckard.relatedNotes",
-          "group": "navigation@2"
-        },
-        {
-          "command": "deckard.showCalendar",
-          "when": "view == deckard.relatedNotes",
-          "group": "navigation@3"
-        },
-        {
-          "command": "deckard.createDailyNote",
-          "when": "view == deckard.relatedNotes",
-          "group": "navigation@4"
-        },
-        {
-          "command": "deckard.showNotesGraph",
-          "when": "view == deckard.relatedNotes",
-          "group": "navigation@5"
-        },
-        {
-          "command": "deckard.showHelp",
-          "when": "view == deckard.relatedNotes",
-          "group": "navigation@6"
-        },
-        {
           "command": "deckard.calendar.openInEditor",
           "when": "view == deckard.calendar",
           "group": "navigation@1"
@@ -1344,36 +1317,6 @@
           "command": "deckard.hubs.openAsPage",
           "when": "view == deckard.hubs && (viewItem == hubNote || viewItem == hubChild) && config.deckard.openNotesIn != page",
           "group": "deckard@2"
-        },
-        {
-          "command": "deckard.outline.openTagOverview",
-          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
-          "group": "deckard@1"
-        },
-        {
-          "command": "deckard.outline.renameTag",
-          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
-          "group": "deckard@2"
-        },
-        {
-          "command": "deckard.outline.filterByTag",
-          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
-          "group": "deckard@3"
-        },
-        {
-          "command": "deckard.parkTag",
-          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
-          "group": "deckard@4"
-        },
-        {
-          "command": "deckard.focusSection",
-          "when": "view == deckard.outline",
-          "group": "inline"
-        },
-        {
-          "command": "deckard.focusSection",
-          "when": "view == deckard.outline",
-          "group": "1_focus@1"
         },
         {
           "command": "deckard.agenda.editTask",
@@ -1440,6 +1383,11 @@
       ]
     },
     "keybindings": [
+      {
+        "command": "deckard.goTo",
+        "key": "ctrl+shift+alt+p",
+        "mac": "cmd+shift+alt+p"
+      },
       {
         "command": "deckard.searchWorkspace",
         "key": "ctrl+shift+alt+f",
@@ -1513,17 +1461,17 @@
     "views": {
       "deckard": [
         {
+          "id": "deckard.pages",
+          "name": "Pages",
+          "icon": "resources/pages/home-dark.svg",
+          "contextualTitle": "Deckard Pages"
+        },
+        {
           "id": "deckard.relatedNotes",
           "name": "Context",
           "icon": "resources/views/related-notes.svg",
           "type": "webview",
           "contextualTitle": "Deckard Context"
-        },
-        {
-          "id": "deckard.outline",
-          "name": "Outline",
-          "icon": "resources/views/outline.svg",
-          "contextualTitle": "Deckard Outline"
         },
         {
           "id": "deckard.agenda",
@@ -1779,7 +1727,180 @@
           "deckard.zenMode": {
             "type": "boolean",
             "default": false,
-            "description": "Turn Deckard's own chrome down: hide decorative labels and backdrops, thin the borders, fold each row's file and line out of sight until it is hovered or focused, and in the editor, drop the reference counts, the unlinked-mention lens, and the section highlight. Nothing is removed from a page, and it works with any theme.",
+            "description": "Replaced by Display: on reads as `deckard.display.level` Zen until a step is set.",
+            "markdownDeprecationMessage": "Zen mode is now **Display: Zen**. Set `#deckard.display.level#` instead; the editor settings Zen turned off are now each their own setting.",
+            "order": 2
+          },
+          "deckard.display.level": {
+            "type": "string",
+            "enum": [
+              "full",
+              "quiet",
+              "zen"
+            ],
+            "default": "full",
+            "scope": "application",
+            "enumDescriptions": [
+              "Deckard as it ships: each theme's decoration, display headings, every helper line, raised cards, tag chips, counts, and dates written both ways.",
+              "Each theme's decoration and the lines that teach turned off, and tags drawn as text, at the usual spacing.",
+              "Also compact spacing, flat cards, no counts beside names, no file and line under entries, and dates as how far off. Replaces deckard.zenMode."
+            ],
+            "description": "How much every Deckard page draws: Full, Quiet, or Zen (replaces Zen mode). Every Display setting but the page width follows it while it is Auto. Your own choice, the same in every workspace.",
+            "order": 2
+          },
+          "deckard.display.themeStyling": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "styled",
+              "plain"
+            ],
+            "default": "auto",
+            "scope": "application",
+            "enumDescriptions": [
+              "Follows Display: styled at Full, plain at Quiet and Zen.",
+              "Each theme's decoration and display type: backdrops, glows, cut corners, shadows, metric codes, and headings in capitals.",
+              "The same colors and fonts, without decoration, headings in sentence case, and thinner edges. Corpo is already plain."
+            ],
+            "description": "Each theme's decoration and display type, or the theme drawn plain.",
+            "order": 2
+          },
+          "deckard.display.helpText": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "shown",
+              "hidden"
+            ],
+            "default": "auto",
+            "scope": "application",
+            "enumDescriptions": [
+              "Follows Display: shown at Full, hidden at Quiet and Zen.",
+              "Lines that teach: the search box's syntax line, Refine's hint, and Home's hint bar.",
+              "Those lines hidden. A search's error message always shows."
+            ],
+            "description": "Lines that teach rather than show: the search box's syntax line, Refine's hint, and Home's hint bar.",
+            "order": 2
+          },
+          "deckard.display.density": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "comfortable",
+              "compact"
+            ],
+            "default": "auto",
+            "scope": "application",
+            "enumDescriptions": [
+              "Follows Display: comfortable at Full and Quiet, compact at Zen.",
+              "The usual spacing, and 30px controls.",
+              "Tighter spacing, and 26px controls; never under 24px targets."
+            ],
+            "description": "How much room pages leave between things.",
+            "order": 2
+          },
+          "deckard.display.cardFrames": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "raised",
+              "flat"
+            ],
+            "default": "auto",
+            "scope": "application",
+            "enumDescriptions": [
+              "Follows Display: raised at Full and Quiet, flat at Zen.",
+              "Each card is a raised panel inside its border.",
+              "Rows parted by a divider, lifting onto the card surface under the pointer and keyboard focus."
+            ],
+            "description": "How cards and rows are drawn on every Deckard page. Your own choice, the same in every workspace.",
+            "order": 2
+          },
+          "deckard.display.tags": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "chips",
+              "text"
+            ],
+            "default": "auto",
+            "scope": "application",
+            "enumDescriptions": [
+              "Follows Display: chips at Full, text at Quiet and Zen.",
+              "Each tag in a tag list is a small framed button.",
+              "Each tag is plain text in the theme's tag color, its # or @ kept, underlined under the pointer, with a focus ring from the keyboard."
+            ],
+            "description": "How tags are drawn where they are listed on their own, such as a note card's tags and Refine; a tag inside a title is always text. Either way a tag opens its page. Your own choice, the same in every workspace.",
+            "order": 2
+          },
+          "deckard.display.counts": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "shown",
+              "hidden"
+            ],
+            "default": "auto",
+            "scope": "application",
+            "enumDescriptions": [
+              "Follows Display: shown at Full and Quiet, hidden at Zen.",
+              "The number beside each name: a widget's total, a group's count, a column's tasks, a tab's results.",
+              "Those numbers left out of sight. A screen reader still reads each one, and figures that are the point, such as Home's Due today, always show."
+            ],
+            "description": "Whether pages draw the counts beside names. Your own choice, the same in every workspace.",
+            "order": 2
+          },
+          "deckard.display.fileAndLine": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "hover",
+              "always",
+              "never"
+            ],
+            "default": "auto",
+            "scope": "application",
+            "enumDescriptions": [
+              "Follows Display: on hover at Full and Quiet, never at Zen.",
+              "Under an entry while the pointer is on it or it has focus.",
+              "Under every entry.",
+              "Not drawn. A screen reader still reads it."
+            ],
+            "description": "Where pages draw the file and line an entry is written in. Your own choice, the same in every workspace.",
+            "order": 2
+          },
+          "deckard.display.dates": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "both",
+              "relative",
+              "date"
+            ],
+            "default": "auto",
+            "scope": "application",
+            "enumDescriptions": [
+              "Follows Display: both at Full and Quiet, how far off at Zen.",
+              "How far off and the date: \"Overdue 2 days · 2026-10-02\".",
+              "Only how far off: \"Overdue 2 days\". A date over a month away still shows.",
+              "The date with its state: \"Overdue · 2026-10-02\"."
+            ],
+            "description": "How pages write a task's due date. An overdue date always says Overdue, and a screen reader hears the whole date either way. Your own choice, the same in every workspace.",
+            "order": 2
+          },
+          "deckard.display.pageWidth": {
+            "type": "string",
+            "enum": [
+              "limited",
+              "full"
+            ],
+            "default": "limited",
+            "scope": "application",
+            "enumDescriptions": [
+              "Each page keeps to a column at most 1000px wide, in the middle of its panel.",
+              "Each page uses its panel's full width, for a wide monitor or a board of many columns."
+            ],
+            "description": "How wide Deckard's pages draw: Home, search and tag pages, the note page, Stats, and Help. The Task Board and the Calendar always use their full width. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.showWhatsNew": {
@@ -1797,19 +1918,19 @@
           "deckard.dailyNoteTemplate": {
             "type": "string",
             "default": "# {date}\n\n",
-            "description": "Template used when creating a daily note.",
+            "description": "Template used when creating a daily note: the text itself, or the name of a Markdown file in the templates folder, such as Daily.md.",
             "order": 4
           },
           "deckard.weeklyNoteTemplate": {
             "type": "string",
             "default": "# {week}\n\n",
-            "description": "Template used when creating a weekly note. {week} becomes the days it covers, such as 2026-09-13 to 2026-09-19, {date} its first day, and {month} that day's month, such as September 2026.",
+            "description": "Template used when creating a weekly note, as text or as the name of a file in the templates folder. {week} becomes the days it covers, such as 2026-09-13 to 2026-09-19, {date} its first day, and {month} that day's month, such as September 2026.",
             "order": 5
           },
           "deckard.monthlyNoteTemplate": {
             "type": "string",
             "default": "# {month}\n\n",
-            "description": "Template used when creating a monthly note. {month} becomes the month, such as September 2026, {date} its first day, and {week} the days that month covers.",
+            "description": "Template used when creating a monthly note, as text or as the name of a file in the templates folder. {month} becomes the month, such as September 2026, {date} its first day, and {week} the days that month covers.",
             "order": 6
           },
           "deckard.calendar.weekStart": {
@@ -1863,6 +1984,27 @@
             "scope": "window",
             "markdownDescription": "Show every date a repeating task falls on in the weeks the Calendar draws, not only its next one, marked ↻. They are projected from the task's rule and never written. A `when done` rule is shown on its next date only, since the dates after it depend on when it is done.",
             "order": 7
+          },
+          "deckard.periodicNotes.folder": {
+            "type": "string",
+            "scope": "resource",
+            "default": "",
+            "description": "The folder, inside the notes folder, that new daily, weekly, and monthly notes are written to, such as journal/{yyyy} for one folder a year ({mm} is the month). Empty writes them at the top of the notes folder. Notes already written elsewhere are still found and read.",
+            "order": 10
+          },
+          "deckard.weeklyNote.naming": {
+            "type": "string",
+            "enum": [
+              "range",
+              "iso"
+            ],
+            "enumDescriptions": [
+              "week-2026-09-13-2026-09-19: the week's first and last days.",
+              "2026-W38: the ISO week, as many journaling tools name it."
+            ],
+            "default": "range",
+            "description": "How a new weekly note is named. A week's note under either name is found and read.",
+            "order": 10
           },
           "deckard.periodicNote.review": {
             "type": "boolean",
@@ -2065,6 +2207,22 @@
             "markdownDescription": "Highlight the tagged section or task the cursor is in, in Markdown notes. Its colors are `deckard.sectionHighlightBackground` and `deckard.sectionHighlightBorder`.",
             "order": 0
           },
+          "deckard.editor.preset": {
+            "type": "string",
+            "enum": [
+              "full",
+              "tasks",
+              "writing"
+            ],
+            "enumDescriptions": [
+              "Everything Deckard draws in the editor: counts, hints, previews, and lenses.",
+              "What helps with tasks, and what reports a problem; no link counts, mention lenses, or breadcrumbs.",
+              "A quiet page for writing: the / menu, hover previews, and problem reports only."
+            ],
+            "default": "full",
+            "description": "What Deckard draws in the editor, as one choice. A deckard.editor.* setting you change yourself wins over it.",
+            "order": 0
+          },
           "deckard.editor.referenceCounts": {
             "type": "boolean",
             "scope": "resource",
@@ -2157,6 +2315,20 @@
             "description": "Show, on a note's first line, how many other notes write its title or an alias as plain text without linking to it, and an action that links them. A note no other note names shows nothing.",
             "order": 10
           },
+          "deckard.links.style": {
+            "type": "string",
+            "enum": [
+              "wiki",
+              "markdown"
+            ],
+            "enumDescriptions": [
+              "[[Atlas]], as Obsidian writes them.",
+              "[Atlas](projects/Atlas.md), which GitHub, MkDocs, and other Markdown renderers show as links."
+            ],
+            "default": "wiki",
+            "description": "How a link Deckard makes from a mention is written. Deckard reads both kinds either way.",
+            "order": 10
+          },
           "deckard.editor.slashMenu": {
             "type": "boolean",
             "scope": "resource",
@@ -2196,7 +2368,7 @@
             "type": "boolean",
             "default": true,
             "scope": "resource",
-            "description": "Say after an open task's line when it is overdue, due today, or needs a new date, such as \"overdue 5 days\". Zen mode hides these.",
+            "description": "Say after an open task's line when it is overdue, due today, or needs a new date, such as \"overdue 5 days\".",
             "order": 12
           },
           "deckard.editor.repeatDiagnostics": {
@@ -2418,18 +2590,18 @@
         "order": 4
       },
       {
-        "title": "Outline",
+        "title": "Sections",
         "properties": {
           "deckard.outline.showTags": {
             "type": "boolean",
             "default": true,
-            "description": "Show each heading's tags beside it in the Deckard Outline.",
+            "description": "Show each heading's tags beside it in the Context view's Sections.",
             "order": 0
           },
           "deckard.outline.followCursor": {
             "type": "boolean",
             "default": true,
-            "description": "Select the Deckard Outline heading that contains the editor cursor.",
+            "description": "Mark the heading the cursor is in, in the Context view's Sections.",
             "order": 1
           },
           "deckard.outline.inheritedTags": {
@@ -2442,7 +2614,7 @@
           "deckard.outline.showCounts": {
             "type": "boolean",
             "default": true,
-            "description": "Show beside each heading in the Deckard Outline how many of the tasks under it are done, such as 2/5, and how many links name it, such as ↩3.",
+            "description": "Show beside each heading in the Context view's Sections how many of the tasks under it are done, such as 2/5, and how many links name it, such as ↩3.",
             "order": 3
           }
         },
@@ -2488,9 +2660,9 @@
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "watch:tsc:webview": "tsc --noEmit --watch --project src/webview/tsconfig.json",
-    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "package": "npm run check-types && npm run lint:unless-linted && node esbuild.js --production",
     "package:vsix": "vsce package --no-dependencies",
-    "compile-tests": "tsc -p . --outDir out",
+    "compile-tests": "tsc -p . --outDir out --incremental --tsBuildInfoFile out/.tsbuildinfo",
     "build:webview": "node esbuild.js --webview",
     "watch-tests": "tsc -p . -w --outDir out",
     "capture:dashboard": "node scripts/capture-dashboard-screenshot.mjs",
@@ -2501,6 +2673,7 @@
     "pretest": "npm run compile-tests && node esbuild.js && npm run lint && node test/harness/runUnitSuites.js",
     "check-types": "tsc --noEmit && tsc --noEmit --project src/webview/tsconfig.json",
     "lint": "eslint . --max-warnings 0 && npm run lint:deps",
+    "lint:unless-linted": "node -e \"process.exit(process.env.DECKARD_LINTED === '1' ? 0 : 1)\" || npm run lint",
     "lint:baseline": "node scripts/lint-baseline.mjs",
     "lint:deps": "depcruise src --config .dependency-cruiser.cjs --ignore-known",
     "lint:deps:baseline": "depcruise src --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json",

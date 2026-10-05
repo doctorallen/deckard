@@ -69,7 +69,7 @@ function TaskGroup(props: TaskGroupProps) {
   const more = items.length - shown.length;
   return (
     <section class="day-group" aria-label={props.label}>
-      <h3>{`${props.label} (${items.length})`}</h3>
+      <h3>{props.label}<span class="display-count">{` (${items.length})`}</span></h3>
       <div class="task-list">
         {shown.map((item) => <DayTask item={item} field={props.field} move={props.move} />)}
       </div>
@@ -85,7 +85,7 @@ function DoneGroup({ done }: { readonly done: readonly DashboardTask[] | undefin
   }
   return (
     <details class="day-group">
-      <summary>{`Done (${done.length})`}</summary>
+      <summary>Done<span class="display-count">{` (${done.length})`}</span></summary>
       <div class="task-list">{done.map((item) => <DayTask item={item} />)}</div>
     </details>
   );

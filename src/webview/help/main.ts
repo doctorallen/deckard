@@ -10,6 +10,7 @@
  * it was: the guide page it showed, and how far down it was scrolled.
  */
 import type { HelpGuideMessage, HelpHostToPage, HelpMessage } from '../../ui/protocol/help';
+import { installGoToMenu } from '../shared/goToMenu';
 
 /** What VS Code gives a webview's script. */
 interface VsCodeApi {
@@ -351,6 +352,11 @@ function followRail(): void {
 }
 
 document.addEventListener('click', onClick);
+// DECKARD ▾ at the top drops the menu of every other page, as on every page.
+if (vscode) {
+  const host = vscode;
+  installGoToMenu((message) => host.postMessage(message));
+}
 window.addEventListener('message', onMessage);
 window.addEventListener('scroll', saveSoon, { passive: true });
 open();

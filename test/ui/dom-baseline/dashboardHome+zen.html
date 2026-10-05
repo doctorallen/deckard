@@ -1,12 +1,32 @@
 <body
   class="zen"
+  data-cards="flat"
+  data-counts="hidden"
+  data-dates="relative"
+  data-density="compact"
+  data-file-line="never"
+  data-help="hidden"
+  data-level="zen"
+  data-styling="plain"
+  data-tags="text"
 > <main
     id="app"
   ><header
     ><div
       ><p
           class="eyebrow"
-        >DECKARD / WORKSPACE INDEX</p
+        ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label="Deckard: go to another page"
+            class="eyebrow-home"
+            data-go-to=""
+            type="button"
+          >DECKARD ▾</button
+          ><span
+            class="eyebrow-trail"
+          > / WORKSPACE INDEX</span
+          ></p
         ><h1
         >Dashboard: Home</h1
         ></div
@@ -17,25 +37,10 @@
           class="metrics"
           role="group"
         ><button
-            aria-label="Overdue, 40. Search the overdue tasks"
+            aria-label="Due today, 3. Search what is due today"
             class="metric metric-open"
             data-action="open-search"
-            data-code="TSK.OVR // 01"
-            data-query="is:overdue -is:needs-date"
-            data-tip="Search the overdue tasks"
-            type="button"
-          ><span
-              class="metric-label"
-            >Overdue</span
-            ><strong
-              class="metric-value"
-            >40</strong
-            ></button
-          ><button
-            aria-label="Due today, 0. Search what is due today"
-            class="metric metric-open"
-            data-action="open-search"
-            data-code="TSK.DUE // 02"
+            data-code="TSK.DUE // 01"
             data-query="is:today"
             data-tip="Search what is due today"
             type="button"
@@ -44,22 +49,37 @@
             >Due today</span
             ><strong
               class="metric-value"
-            >0</strong
+            >3</strong
             ></button
           ><button
-            aria-label="Open, 53. Search every open task"
+            aria-label="Overdue, 6. Search the overdue tasks"
             class="metric metric-open"
             data-action="open-search"
-            data-code="TSK.OPN // 03"
-            data-query="is:open"
-            data-tip="Search every open task"
+            data-code="TSK.OVR // 02"
+            data-query="is:overdue -is:needs-date"
+            data-tip="Search the overdue tasks"
             type="button"
           ><span
               class="metric-label"
-            >Open</span
+            >Overdue</span
             ><strong
               class="metric-value"
-            >53</strong
+            >6</strong
+            ></button
+          ><button
+            aria-label="Done this week, 0. Search the tasks finished this week"
+            class="metric metric-open"
+            data-action="open-search"
+            data-code="TSK.DON // 03"
+            data-query="done >= this-week"
+            data-tip="Search the tasks finished this week"
+            type="button"
+          ><span
+              class="metric-label"
+            >Done this week</span
+            ><strong
+              class="metric-value"
+            >0</strong
             ></button
           ></div
         ><details
@@ -163,24 +183,70 @@
             ><div
               class="view-options-group"
             ><span
-              >Zen</span
+              >Page width</span
               ><div
-                aria-label="Zen mode"
+                aria-label="Page width"
                 class="segmented view-options-choices"
                 role="group"
               ><button
-                  aria-pressed="false"
-                  data-action="set-zen-mode"
-                  data-value="off"
-                  type="button"
-                >Off</button
-                ><button
                   aria-pressed="true"
                   class="active"
-                  data-action="set-zen-mode"
-                  data-value="on"
+                  data-action="set-display"
+                  data-display="pageWidth"
+                  data-value="limited"
                   type="button"
-                >On</button
+                >Limited</button
+                ><button
+                  aria-pressed="false"
+                  data-action="set-display"
+                  data-display="pageWidth"
+                  data-value="full"
+                  type="button"
+                >Full</button
+                ></div
+              ></div
+            ><div
+              class="view-options-group"
+            ><span
+              >Display</span
+              ><div
+                class="view-options-display"
+              ><div
+                  aria-label="Display"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="full"
+                    type="button"
+                  >Full</button
+                  ><button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="quiet"
+                    type="button"
+                  >Quiet</button
+                  ><button
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="zen"
+                    type="button"
+                  >Zen</button
+                  ></div
+                ><p
+                  class="view-options-changed"
+                ><button
+                    class="view-options-link"
+                    data-action="display-command"
+                    data-command="customize"
+                    type="button"
+                  >Customize…</button
+                  ></p
                 ></div
               ></div
             ></div
@@ -212,6 +278,11 @@
           tabindex="-1"
         >Tags</button
         ></div
+      ><button
+        class="dashboard-customize text-button"
+        data-action="customize-home"
+        type="button"
+      >Customize Home</button
       ></div
     ><section
       aria-labelledby="home-tab"
@@ -219,23 +290,6 @@
       id="home-panel"
       role="tabpanel"
     ><div
-        class="home-hint-bar"
-      ><span
-        >Home is yours to arrange.</span
-        ><span
-          class="home-hint-actions"
-        ><button
-            data-action="customize-home"
-            type="button"
-          >Customize</button
-          ><button
-            data-action="dismiss-home-hint"
-            data-tip="Stop saying so"
-            type="button"
-          >Dismiss</button
-          ></span
-        ></div
-      ><div
         class="home-grid"
       ><article
           aria-label="Search"
@@ -331,32 +385,32 @@
               ></div
             ></div
           ><h3
-            class="home-widget-group"
+            class="home-widget-group overdue"
           >Overdue <span
               class="tag-count"
-            >40</span
+            >6</span
             ></h3
           ><div
             class="task-list"
           ><div
               class="row task-row"
               data-file-path="notes/tasks.md"
-              data-line="3"
-              data-task-id="task-sdpvw2-16k9oi3"
+              data-line="8"
+              data-task-id="task-50xidk-1keui07"
               data-tip-around=""
               draggable="false"
               tabindex="0"
             ><input
-                aria-label="Toggle Chase the replicant through the neon market and file the report before the rain #status/doing"
+                aria-label="Toggle Board task 6 #status/doing"
                 data-action="toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
-                data-task-id="task-sdpvw2-16k9oi3"
+                data-task-id="task-50xidk-1keui07"
                 type="checkbox"
               ><div
               ><div
                   class="task-title"
-                >Chase the replicant through the neon market and file the report before the rain <button
+                >Board task 6 <button
                     aria-label="Open #status/doing overview"
                     class="inline-tag tag-open"
                     data-action="open-tag"
@@ -380,10 +434,24 @@
                   class="task-meta"
                 ><span
                     class="due-date overdue"
-                  >Overdue 20 days · 2026-09-01</span
+                  ><span
+                      class="due-relative due-text"
+                    >Overdue<span
+                        class="due-distance"
+                      > 1 day</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-20</span
+                        ></span
+                      ></span
+                    ></span
                   ><span
                     class="task-source"
-                  >tasks / line 3</span
+                  >tasks / line 8</span
                   ><span
                     class="heading-path task-source"
                   >Tasks</span
@@ -393,22 +461,22 @@
             ><div
               class="row task-row"
               data-file-path="notes/tasks.md"
-              data-line="4"
-              data-task-id="task-2kf75r-d865ae"
+              data-line="7"
+              data-task-id="task-176jya-1i7w1z9"
               data-tip-around=""
               draggable="false"
               tabindex="0"
             ><input
-                aria-label="Toggle Overdue task 2 #status/doing"
+                aria-label="Toggle Board task 5 #status/doing"
                 data-action="toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
-                data-task-id="task-2kf75r-d865ae"
+                data-task-id="task-176jya-1i7w1z9"
                 type="checkbox"
               ><div
               ><div
                   class="task-title"
-                >Overdue task 2 <button
+                >Board task 5 <button
                     aria-label="Open #status/doing overview"
                     class="inline-tag tag-open"
                     data-action="open-tag"
@@ -432,62 +500,24 @@
                   class="task-meta"
                 ><span
                     class="due-date overdue"
-                  >Overdue 20 days · 2026-09-01</span
                   ><span
-                    class="task-source"
-                  >tasks / line 4</span
-                  ><span
-                    class="heading-path task-source"
-                  >Tasks</span
-                  ></div
-                ></div
-              ></div
-            ><div
-              class="row task-row"
-              data-file-path="notes/tasks.md"
-              data-line="5"
-              data-task-id="task-81udcv-gcb2d4"
-              data-tip-around=""
-              draggable="false"
-              tabindex="0"
-            ><input
-                aria-label="Toggle Overdue task 3 #status/doing"
-                data-action="toggle-task"
-                data-dom-checked="false"
-                data-dom-value="on"
-                data-task-id="task-81udcv-gcb2d4"
-                type="checkbox"
-              ><div
-              ><div
-                  class="task-title"
-                >Overdue task 3 <button
-                    aria-label="Open #status/doing overview"
-                    class="inline-tag tag-open"
-                    data-action="open-tag"
-                    data-tag-key="#status/doing"
-                    data-tip-overflow="#status/doing"
-                  ><span
-                      class="tag-label"
-                    ><span
-                        class="tag-namespace"
+                      class="due-relative due-text"
+                    >Overdue<span
+                        class="due-distance"
+                      > 2 days</span
                       ><span
-                          class="tag-namespace-text"
-                        >#status</span
-                        >/</span
+                        class="due-on"
                       ><span
-                        class="tag-value"
-                      >doing</span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-19</span
+                        ></span
                       ></span
-                    ></button
-                  ></div
-                ><div
-                  class="task-meta"
-                ><span
-                    class="due-date overdue"
-                  >Overdue 20 days · 2026-09-01</span
+                    ></span
                   ><span
                     class="task-source"
-                  >tasks / line 5</span
+                  >tasks / line 7</span
                   ><span
                     class="heading-path task-source"
                   >Tasks</span
@@ -498,21 +528,21 @@
               class="row task-row"
               data-file-path="notes/tasks.md"
               data-line="6"
-              data-task-id="task-dj9jjz-51speu"
+              data-task-id="task-xs7na9-bk3gw8"
               data-tip-around=""
               draggable="false"
               tabindex="0"
             ><input
-                aria-label="Toggle Overdue task 4 #status/doing"
+                aria-label="Toggle Board task 4 #status/doing"
                 data-action="toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
-                data-task-id="task-dj9jjz-51speu"
+                data-task-id="task-xs7na9-bk3gw8"
                 type="checkbox"
               ><div
               ><div
                   class="task-title"
-                >Overdue task 4 <button
+                >Board task 4 <button
                     aria-label="Open #status/doing overview"
                     class="inline-tag tag-open"
                     data-action="open-tag"
@@ -536,7 +566,21 @@
                   class="task-meta"
                 ><span
                     class="due-date overdue"
-                  >Overdue 20 days · 2026-09-01</span
+                  ><span
+                      class="due-relative due-text"
+                    >Overdue<span
+                        class="due-distance"
+                      > 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-18</span
+                        ></span
+                      ></span
+                    ></span
                   ><span
                     class="task-source"
                   >tasks / line 6</span
@@ -549,22 +593,22 @@
             ><div
               class="row task-row"
               data-file-path="notes/tasks.md"
-              data-line="7"
-              data-task-id="task-j0opr3-1mt0rp0"
+              data-line="5"
+              data-task-id="task-4nvbcw-w5bdbn"
               data-tip-around=""
               draggable="false"
               tabindex="0"
             ><input
-                aria-label="Toggle Overdue task 5 #status/doing"
+                aria-label="Toggle Board task 3 #status/doing"
                 data-action="toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
-                data-task-id="task-j0opr3-1mt0rp0"
+                data-task-id="task-4nvbcw-w5bdbn"
                 type="checkbox"
               ><div
               ><div
                   class="task-title"
-                >Overdue task 5 <button
+                >Board task 3 <button
                     aria-label="Open #status/doing overview"
                     class="inline-tag tag-open"
                     data-action="open-tag"
@@ -588,10 +632,627 @@
                   class="task-meta"
                 ><span
                     class="due-date overdue"
-                  >Overdue 20 days · 2026-09-01</span
+                  ><span
+                      class="due-relative due-text"
+                    >Overdue<span
+                        class="due-distance"
+                      > 4 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-17</span
+                        ></span
+                      ></span
+                    ></span
                   ><span
                     class="task-source"
-                  >tasks / line 7</span
+                  >tasks / line 5</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="4"
+              data-task-id="task-rx5rz3-ngkthq"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Board task 2 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-rx5rz3-ngkthq"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Board task 2 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date overdue"
+                  ><span
+                      class="due-relative due-text"
+                    >Overdue<span
+                        class="due-distance"
+                      > 5 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-16</span
+                        ></span
+                      ></span
+                    ></span
+                  ><span
+                    class="task-source"
+                  >tasks / line 4</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ></div
+          ><h3
+            class="home-widget-group"
+          >Today <span
+              class="tag-count"
+            >3</span
+            ></h3
+          ><div
+            class="task-list"
+          ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="9"
+              data-task-id="task-xf5g9l-66o67a"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Board task 7 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-xf5g9l-66o67a"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Board task 7 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date today"
+                  ><span
+                      class="due-relative due-text"
+                    >Due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
+                  ><span
+                    class="task-source"
+                  >tasks / line 9</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="10"
+              data-task-id="task-hlyjxm-133ak55"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Board task 8 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-hlyjxm-133ak55"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Board task 8 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date today"
+                  ><span
+                      class="due-relative due-text"
+                    >Due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
+                  ><span
+                    class="task-source"
+                  >tasks / line 10</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="11"
+              data-task-id="task-v4hg5m-1w8gcqf"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Board task 9 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-v4hg5m-1w8gcqf"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Board task 9 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date today"
+                  ><span
+                      class="due-relative due-text"
+                    >Due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
+                  ><span
+                    class="task-source"
+                  >tasks / line 11</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ></div
+          ><h3
+            class="home-widget-group"
+          >Upcoming <span
+              class="tag-count"
+            >8</span
+            ></h3
+          ><div
+            class="task-list"
+          ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="12"
+              data-task-id="task-sou4ba-1wy7tbr"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Board task 10 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-sou4ba-1wy7tbr"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Board task 10 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date"
+                  ><span
+                      class="due-relative due-text"
+                    >Due<span
+                        class="due-distance"
+                      > tomorrow</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-22</span
+                        ></span
+                      ></span
+                    ></span
+                  ><span
+                    class="task-source"
+                  >tasks / line 12</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="13"
+              data-task-id="task-a8e99-1u0eons"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Board task 11 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-a8e99-1u0eons"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Board task 11 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date"
+                  ><span
+                      class="due-relative due-text"
+                    >Due<span
+                        class="due-distance"
+                      > in 2 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-23</span
+                        ></span
+                      ></span
+                    ></span
+                  ><span
+                    class="task-source"
+                  >tasks / line 13</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="14"
+              data-task-id="task-t9awts-twddo1"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Board task 12 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-t9awts-twddo1"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Board task 12 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date"
+                  ><span
+                      class="due-relative due-text"
+                    >Due<span
+                        class="due-distance"
+                      > in 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-24</span
+                        ></span
+                      ></span
+                    ></span
+                  ><span
+                    class="task-source"
+                  >tasks / line 14</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="15"
+              data-task-id="task-csqmkt-sr6qq2"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Board task 13 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-csqmkt-sr6qq2"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Board task 13 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date"
+                  ><span
+                      class="due-relative due-text"
+                    >Due<span
+                        class="due-distance"
+                      > in 4 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-25</span
+                        ></span
+                      ></span
+                    ></span
+                  ><span
+                    class="task-source"
+                  >tasks / line 15</span
+                  ><span
+                    class="heading-path task-source"
+                  >Tasks</span
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="row task-row"
+              data-file-path="notes/tasks.md"
+              data-line="16"
+              data-task-id="task-g6bvzq-1o8r4ff"
+              data-tip-around=""
+              draggable="false"
+              tabindex="0"
+            ><input
+                aria-label="Toggle Board task 14 #status/doing"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-g6bvzq-1o8r4ff"
+                type="checkbox"
+              ><div
+              ><div
+                  class="task-title"
+                >Board task 14 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-meta"
+                ><span
+                    class="due-date"
+                  ><span
+                      class="due-relative due-text"
+                    >Due<span
+                        class="due-distance"
+                      > in 5 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-26</span
+                        ></span
+                      ></span
+                    ></span
+                  ><span
+                    class="task-source"
+                  >tasks / line 16</span
                   ><span
                     class="heading-path task-source"
                   >Tasks</span
@@ -603,37 +1264,70 @@
             class="home-widget-group"
           >Later <span
               class="tag-count"
-            >12</span
+            >35</span
             ></h3
           ><div
             class="task-list"
           ><div
               class="row task-row"
               data-file-path="notes/tasks.md"
-              data-line="43"
-              data-task-id="task-xvcxey-1ixc4vp"
+              data-line="20"
+              data-task-id="task-mc6afq-m34h2n"
               data-tip-around=""
               draggable="false"
               tabindex="0"
             ><input
-                aria-label="Toggle Later task 1"
+                aria-label="Toggle Board task 18 #status/doing"
                 data-action="toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
-                data-task-id="task-xvcxey-1ixc4vp"
+                data-task-id="task-mc6afq-m34h2n"
                 type="checkbox"
               ><div
               ><div
                   class="task-title"
-                >Later task 1</div
+                >Board task 18 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
                 ><div
                   class="task-meta"
                 ><span
                     class="due-date"
-                  >Due 2026-12-01</span
+                  ><span
+                      class="due-relative due-text"
+                    >Due<span
+                        class="due-distance"
+                      > in 8 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-29</span
+                        ></span
+                      ></span
+                    ></span
                   ><span
                     class="task-source"
-                  >tasks / line 43</span
+                  >tasks / line 20</span
                   ><span
                     class="heading-path task-source"
                   >Tasks</span
@@ -643,30 +1337,63 @@
             ><div
               class="row task-row"
               data-file-path="notes/tasks.md"
-              data-line="44"
-              data-task-id="task-gfuy46-f3pwfr"
+              data-line="21"
+              data-task-id="task-6n1s1a-1m5gutp"
               data-tip-around=""
               draggable="false"
               tabindex="0"
             ><input
-                aria-label="Toggle Later task 2"
+                aria-label="Toggle Board task 19 #status/doing"
                 data-action="toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
-                data-task-id="task-gfuy46-f3pwfr"
+                data-task-id="task-6n1s1a-1m5gutp"
                 type="checkbox"
               ><div
               ><div
                   class="task-title"
-                >Later task 2</div
+                >Board task 19 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
                 ><div
                   class="task-meta"
                 ><span
                     class="due-date"
-                  >Due 2026-12-01</span
+                  ><span
+                      class="due-relative due-text"
+                    >Due<span
+                        class="due-distance"
+                      > in 9 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-09-30</span
+                        ></span
+                      ></span
+                    ></span
                   ><span
                     class="task-source"
-                  >tasks / line 44</span
+                  >tasks / line 21</span
                   ><span
                     class="heading-path task-source"
                   >Tasks</span
@@ -676,30 +1403,63 @@
             ><div
               class="row task-row"
               data-file-path="notes/tasks.md"
-              data-line="45"
-              data-task-id="task-4a18bu-sunpjx"
+              data-line="22"
+              data-task-id="task-9wz49f-lla8uu"
               data-tip-around=""
               draggable="false"
               tabindex="0"
             ><input
-                aria-label="Toggle Later task 3"
+                aria-label="Toggle Board task 20 #status/doing"
                 data-action="toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
-                data-task-id="task-4a18bu-sunpjx"
+                data-task-id="task-9wz49f-lla8uu"
                 type="checkbox"
               ><div
               ><div
                   class="task-title"
-                >Later task 3</div
+                >Board task 20 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
                 ><div
                   class="task-meta"
                 ><span
                     class="due-date"
-                  >Due 2026-12-01</span
+                  ><span
+                      class="due-relative due-text"
+                    >Due<span
+                        class="due-distance"
+                      > in 10 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-10-01</span
+                        ></span
+                      ></span
+                    ></span
                   ><span
                     class="task-source"
-                  >tasks / line 45</span
+                  >tasks / line 22</span
                   ><span
                     class="heading-path task-source"
                   >Tasks</span
@@ -709,30 +1469,63 @@
             ><div
               class="row task-row"
               data-file-path="notes/tasks.md"
-              data-line="46"
-              data-task-id="task-ozxeru-l84eaj"
+              data-line="23"
+              data-task-id="task-dyhket-s0puae"
               data-tip-around=""
               draggable="false"
               tabindex="0"
             ><input
-                aria-label="Toggle Later task 4"
+                aria-label="Toggle Board task 21 #status/doing"
                 data-action="toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
-                data-task-id="task-ozxeru-l84eaj"
+                data-task-id="task-dyhket-s0puae"
                 type="checkbox"
               ><div
               ><div
                   class="task-title"
-                >Later task 4</div
+                >Board task 21 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
                 ><div
                   class="task-meta"
                 ><span
                     class="due-date"
-                  >Due 2026-12-01</span
+                  ><span
+                      class="due-relative due-text"
+                    >Due<span
+                        class="due-distance"
+                      > in 10 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-10-01</span
+                        ></span
+                      ></span
+                    ></span
                   ><span
                     class="task-source"
-                  >tasks / line 46</span
+                  >tasks / line 23</span
                   ><span
                     class="heading-path task-source"
                   >Tasks</span
@@ -742,30 +1535,63 @@
             ><div
               class="row task-row"
               data-file-path="notes/tasks.md"
-              data-line="47"
-              data-task-id="task-pbagra-zx0q19"
+              data-line="24"
+              data-task-id="task-s3jyzs-11c1y5v"
               data-tip-around=""
               draggable="false"
               tabindex="0"
             ><input
-                aria-label="Toggle Later task 5"
+                aria-label="Toggle Board task 22 #status/doing"
                 data-action="toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
-                data-task-id="task-pbagra-zx0q19"
+                data-task-id="task-s3jyzs-11c1y5v"
                 type="checkbox"
               ><div
               ><div
                   class="task-title"
-                >Later task 5</div
+                >Board task 22 <button
+                    aria-label="Open #status/doing overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#status/doing"
+                    data-tip-overflow="#status/doing"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#status</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >doing</span
+                      ></span
+                    ></button
+                  ></div
                 ><div
                   class="task-meta"
                 ><span
                     class="due-date"
-                  >Due 2026-12-01</span
+                  ><span
+                      class="due-relative due-text"
+                    >Due<span
+                        class="due-distance"
+                      > in 11 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                        >2026-10-02</span
+                        ></span
+                      ></span
+                    ></span
                   ><span
                     class="task-source"
-                  >tasks / line 47</span
+                  >tasks / line 24</span
                   ><span
                     class="heading-path task-source"
                   >Tasks</span
@@ -827,290 +1653,24 @@
             ></div
           ></article
         ><article
-          aria-label="Tasks"
+          aria-label="Recently opened"
           class="home-widget view-panel"
-          data-widget-id="tasks"
+          data-widget-id="recentNotes"
         ><div
             class="home-widget-header"
           ><h2
               class="home-widget-title"
-            >Tasks <span
+            >Recently opened <span
                 class="tag-count"
-              >5 of 53</span
+              >0</span
               ></h2
             ><div
               class="home-widget-actions"
-            ><button
-                class="home-open"
-                data-action="open-task-board"
-                data-query="is:open"
-                type="button"
-              >Task Board →</button
-              ></div
             ></div
-          ><div
-            class="task-list"
-          ><div
-              class="row task-row"
-              data-file-path="notes/tasks.md"
-              data-line="3"
-              data-task-id="task-sdpvw2-16k9oi3"
-              data-tip-around=""
-              draggable="false"
-              tabindex="0"
-            ><input
-                aria-label="Toggle Chase the replicant through the neon market and file the report before the rain #status/doing"
-                data-action="toggle-task"
-                data-dom-checked="false"
-                data-dom-value="on"
-                data-task-id="task-sdpvw2-16k9oi3"
-                type="checkbox"
-              ><div
-              ><div
-                  class="task-title"
-                >Chase the replicant through the neon market and file the report before the rain <button
-                    aria-label="Open #status/doing overview"
-                    class="inline-tag tag-open"
-                    data-action="open-tag"
-                    data-tag-key="#status/doing"
-                    data-tip-overflow="#status/doing"
-                  ><span
-                      class="tag-label"
-                    ><span
-                        class="tag-namespace"
-                      ><span
-                          class="tag-namespace-text"
-                        >#status</span
-                        >/</span
-                      ><span
-                        class="tag-value"
-                      >doing</span
-                      ></span
-                    ></button
-                  ></div
-                ><div
-                  class="task-meta"
-                ><span
-                    class="due-date overdue"
-                  >Overdue 20 days · 2026-09-01</span
-                  ><span
-                    class="task-source"
-                  >tasks / line 3</span
-                  ><span
-                    class="heading-path task-source"
-                  >Tasks</span
-                  ></div
-                ></div
-              ></div
-            ><div
-              class="row task-row"
-              data-file-path="notes/tasks.md"
-              data-line="4"
-              data-task-id="task-2kf75r-d865ae"
-              data-tip-around=""
-              draggable="false"
-              tabindex="0"
-            ><input
-                aria-label="Toggle Overdue task 2 #status/doing"
-                data-action="toggle-task"
-                data-dom-checked="false"
-                data-dom-value="on"
-                data-task-id="task-2kf75r-d865ae"
-                type="checkbox"
-              ><div
-              ><div
-                  class="task-title"
-                >Overdue task 2 <button
-                    aria-label="Open #status/doing overview"
-                    class="inline-tag tag-open"
-                    data-action="open-tag"
-                    data-tag-key="#status/doing"
-                    data-tip-overflow="#status/doing"
-                  ><span
-                      class="tag-label"
-                    ><span
-                        class="tag-namespace"
-                      ><span
-                          class="tag-namespace-text"
-                        >#status</span
-                        >/</span
-                      ><span
-                        class="tag-value"
-                      >doing</span
-                      ></span
-                    ></button
-                  ></div
-                ><div
-                  class="task-meta"
-                ><span
-                    class="due-date overdue"
-                  >Overdue 20 days · 2026-09-01</span
-                  ><span
-                    class="task-source"
-                  >tasks / line 4</span
-                  ><span
-                    class="heading-path task-source"
-                  >Tasks</span
-                  ></div
-                ></div
-              ></div
-            ><div
-              class="row task-row"
-              data-file-path="notes/tasks.md"
-              data-line="5"
-              data-task-id="task-81udcv-gcb2d4"
-              data-tip-around=""
-              draggable="false"
-              tabindex="0"
-            ><input
-                aria-label="Toggle Overdue task 3 #status/doing"
-                data-action="toggle-task"
-                data-dom-checked="false"
-                data-dom-value="on"
-                data-task-id="task-81udcv-gcb2d4"
-                type="checkbox"
-              ><div
-              ><div
-                  class="task-title"
-                >Overdue task 3 <button
-                    aria-label="Open #status/doing overview"
-                    class="inline-tag tag-open"
-                    data-action="open-tag"
-                    data-tag-key="#status/doing"
-                    data-tip-overflow="#status/doing"
-                  ><span
-                      class="tag-label"
-                    ><span
-                        class="tag-namespace"
-                      ><span
-                          class="tag-namespace-text"
-                        >#status</span
-                        >/</span
-                      ><span
-                        class="tag-value"
-                      >doing</span
-                      ></span
-                    ></button
-                  ></div
-                ><div
-                  class="task-meta"
-                ><span
-                    class="due-date overdue"
-                  >Overdue 20 days · 2026-09-01</span
-                  ><span
-                    class="task-source"
-                  >tasks / line 5</span
-                  ><span
-                    class="heading-path task-source"
-                  >Tasks</span
-                  ></div
-                ></div
-              ></div
-            ><div
-              class="row task-row"
-              data-file-path="notes/tasks.md"
-              data-line="6"
-              data-task-id="task-dj9jjz-51speu"
-              data-tip-around=""
-              draggable="false"
-              tabindex="0"
-            ><input
-                aria-label="Toggle Overdue task 4 #status/doing"
-                data-action="toggle-task"
-                data-dom-checked="false"
-                data-dom-value="on"
-                data-task-id="task-dj9jjz-51speu"
-                type="checkbox"
-              ><div
-              ><div
-                  class="task-title"
-                >Overdue task 4 <button
-                    aria-label="Open #status/doing overview"
-                    class="inline-tag tag-open"
-                    data-action="open-tag"
-                    data-tag-key="#status/doing"
-                    data-tip-overflow="#status/doing"
-                  ><span
-                      class="tag-label"
-                    ><span
-                        class="tag-namespace"
-                      ><span
-                          class="tag-namespace-text"
-                        >#status</span
-                        >/</span
-                      ><span
-                        class="tag-value"
-                      >doing</span
-                      ></span
-                    ></button
-                  ></div
-                ><div
-                  class="task-meta"
-                ><span
-                    class="due-date overdue"
-                  >Overdue 20 days · 2026-09-01</span
-                  ><span
-                    class="task-source"
-                  >tasks / line 6</span
-                  ><span
-                    class="heading-path task-source"
-                  >Tasks</span
-                  ></div
-                ></div
-              ></div
-            ><div
-              class="row task-row"
-              data-file-path="notes/tasks.md"
-              data-line="7"
-              data-task-id="task-j0opr3-1mt0rp0"
-              data-tip-around=""
-              draggable="false"
-              tabindex="0"
-            ><input
-                aria-label="Toggle Overdue task 5 #status/doing"
-                data-action="toggle-task"
-                data-dom-checked="false"
-                data-dom-value="on"
-                data-task-id="task-j0opr3-1mt0rp0"
-                type="checkbox"
-              ><div
-              ><div
-                  class="task-title"
-                >Overdue task 5 <button
-                    aria-label="Open #status/doing overview"
-                    class="inline-tag tag-open"
-                    data-action="open-tag"
-                    data-tag-key="#status/doing"
-                    data-tip-overflow="#status/doing"
-                  ><span
-                      class="tag-label"
-                    ><span
-                        class="tag-namespace"
-                      ><span
-                          class="tag-namespace-text"
-                        >#status</span
-                        >/</span
-                      ><span
-                        class="tag-value"
-                      >doing</span
-                      ></span
-                    ></button
-                  ></div
-                ><div
-                  class="task-meta"
-                ><span
-                    class="due-date overdue"
-                  >Overdue 20 days · 2026-09-01</span
-                  ><span
-                    class="task-source"
-                  >tasks / line 7</span
-                  ><span
-                    class="heading-path task-source"
-                  >Tasks</span
-                  ></div
-                ></div
-              ></div
             ></div
+          ><p
+            class="home-widget-empty"
+          >The notes you open from Deckard show up here.</p
           ></article
         ><article
           aria-label="Favorite tags"

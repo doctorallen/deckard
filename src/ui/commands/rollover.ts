@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { confirmNotesWrite } from './writeTarget';
 import { fileExists } from './fs';
 
 import { pluralize } from '../../shared/text';
@@ -372,7 +373,8 @@ export async function createDailyNoteWithRollover(
   rollover: VscodeRolloverService = createRolloverService(history, indexer),
 ): Promise<vscode.Uri | undefined> {
   const folder = workspaceFolder ?? (await chooseWorkspaceFolder());
-  if (!folder) {
+  // A folder handed in has not been asked about yet; one chosen has.
+  if (!folder || (workspaceFolder && !(await confirmNotesWrite(workspaceFolder)))) {
     return undefined;
   }
   const mode = getRolloverMode(folder.uri);

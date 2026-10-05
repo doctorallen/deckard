@@ -2,7 +2,7 @@
 
 ## Search pages
 
-Every search opens a **search page** in its own tab; a tag's overview is the search page for that tag. Open one by Cmd/Ctrl-clicking a tag in the editor, selecting a tag anywhere Deckard shows one, searching from Home or [Find](search.md#find), or running `Deckard: Search Notes and Tasks`, `Deckard: Open a Tag's Search Page`, or `Deckard: Open Search Page`. A search already open comes forward. Parked notes and tasks are listed last, marked **Parked**.
+Every search opens a **search page** in its own tab; a tag's overview is the search page for that tag. Open one by Cmd/Ctrl-clicking a tag in the editor, selecting a tag anywhere Deckard shows one, searching from Home or [Find](search.md#find), or running `Deckard: Open Search Page…` or `Deckard: Open a Tag's Search Page`. A search already open comes forward. Parked notes and tasks are listed last, marked **Parked**.
 
 ![Deckard Tag Overview showing matching notes, active tasks, and display controls.](../images/tag-overview.png)
 
@@ -59,7 +59,7 @@ Migration of billing onto the new ledger.
 
 - The `#project/atlas` overview shows the note first, with its other front-matter fields as properties. Tag values such as `@dana` open their own overviews. The hub's entries are not listed again below.
 - Write the tag without `#`, or quote it; YAML reads an unquoted `#` as a comment. Quote people: `describes: "@dana"`. A list such as `describes: [project/atlas, proj/atlas]` describes several tags.
-- An overview without a hub offers **Create hub note** under its title. It writes one to the notes folder, never overwriting a note, starting from a template named after the tag's namespace (such as `project.md`) if there is one; see [Templates](notes-and-links.md#templates).
+- An overview without a hub offers a **Create hub note** button under its title, and `Deckard: Create Hub Note for Tag…` does the same from the palette. It writes one to the notes folder, never overwriting a note, starting from a template named after the tag's namespace (such as `project.md`) if there is one; see [Templates](notes-and-links.md#templates).
 - When several notes describe a tag, the first by path leads and the others are listed beneath it.
 - Hovering the tag in the editor names its hub, renaming the tag updates `describes:`, and filtered and query views leave the hub out.
 - Select the hub's title row to collapse or expand it until the overview closes. `deckard.tagOverview.hubNoteExpanded` sets whether hubs start open (default: open).

@@ -24,6 +24,8 @@ import { compareByOperator, QueryConditionNode, QueryNode } from './queryTypes';
 import { isWildcard, normalizeFolder } from './queryValues';
 import { escapeRegExp } from '../../shared/text';
 import { TASK_PRIORITY_RANKS } from '../markdown/taskFields';
+import { entryText, fileEntryId, isEntrySection } from '../markdown/noteEntries';
+import { getEntryParts, getFilePreambleText } from '../index/noteEntryIndex';
 
 /** What a search finds, by kind, each list in index order. */
 export interface QueryResults {
@@ -72,10 +74,13 @@ export function evaluateQuery(
   const links = context.links;
   const withLinks = (unit: QueryUnit, key: string): QueryUnit =>
     links ? { ...unit, links: links.byUnit.get(key) } : unit;
-  const sections = [...index.sections.values()].filter((section) =>
+  // A note is an entry: an untagged heading under a tagged one is part of
+  // it, never a result of its own (noteEntries.ts).
+  const parts = getEntryParts(index);
+  const sections = [...index.sections.values()].filter(isEntrySection).filter((section) =>
     matchesNode(
       node,
-      withLinks(createSectionUnit(index, membership, section), `section:${section.id}`),
+      withLinks(createSectionUnit(index, membership, section, parts.get(section.id)), `section:${section.id}`),
       context,
     ),
   );
@@ -97,7 +102,7 @@ export function evaluateQuery(
     .filter((file) =>
       matchesNode(
         node,
-        withLinks(createFileUnit(index, membership, file), `file:${file.filePath}`),
+        withLinks(createFileUnit(index, membership, file, parts.get(fileEntryId(file.filePath))), `file:${file.filePath}`),
         context,
       ),
     );
@@ -188,15 +193,18 @@ export function countTagMatches(
     });
   };
   const membership = buildTagMembership(index);
-  index.sections.forEach((section) =>
-    add(createSectionUnit(index, membership, section).tagKeys, 'notes'),
-  );
+  const parts = getEntryParts(index);
+  index.sections.forEach((section) => {
+    if (isEntrySection(section)) {
+      add(createSectionUnit(index, membership, section, parts.get(section.id)).tagKeys, 'notes');
+    }
+  });
   index.tasks.forEach((task) =>
     add(createTaskUnit(index, membership, task, COUNTED_STATUS_NAMESPACE).tagKeys, 'tasks'),
   );
   index.files.forEach((file) => {
     if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
-      add(createFileUnit(index, membership, file).tagKeys, 'notes');
+      add(createFileUnit(index, membership, file, parts.get(fileEntryId(file.filePath))).tagKeys, 'notes');
     }
   });
   tagMatchCounts.set(index, counts);
@@ -264,15 +272,18 @@ export function countTagPairMatches(
     }
   };
   const membership = buildTagMembership(index);
-  index.sections.forEach((section) =>
-    add(createSectionUnit(index, membership, section).tagKeys, 'notes'),
-  );
+  const parts = getEntryParts(index);
+  index.sections.forEach((section) => {
+    if (isEntrySection(section)) {
+      add(createSectionUnit(index, membership, section, parts.get(section.id)).tagKeys, 'notes');
+    }
+  });
   index.tasks.forEach((task) =>
     add(createTaskUnit(index, membership, task, COUNTED_STATUS_NAMESPACE).tagKeys, 'tasks'),
   );
   index.files.forEach((file) => {
     if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
-      add(createFileUnit(index, membership, file).tagKeys, 'notes');
+      add(createFileUnit(index, membership, file, parts.get(fileEntryId(file.filePath))).tagKeys, 'notes');
     }
   });
   const pairs = [...counts.values()];
@@ -478,24 +489,26 @@ function collectInheritedTagKeys(
 }
 
 /**
- * A section as a condition tests it: the tags it holds, those on its own
- * lines, and those of every heading above it, with its heading and text.
+ * An entry as a condition tests it: the tags it holds, those on the lines
+ * of every heading it owns, and those of every heading above it, with its
+ * text read through the untagged headings it owns.
  */
 function createSectionUnit(
   index: WorkspaceIndex,
   membership: TagMembership,
   section: Section,
+  parts: readonly Section[] | undefined,
 ): QueryUnit {
   const tagKeys = new Set(membership.sections.get(section.id) ?? []);
   section.tags.forEach((tagKey) => tagKeys.add(tagKey));
-  // A tag written on one of the section's own lines answers for the section,
-  // because the section is what contains that line.
-  section.bodyTags?.forEach((tag) => tagKeys.add(tag.key));
+  // A tag written on one of the entry's lines answers for the entry,
+  // because the entry is what contains that line.
+  (parts ?? [section]).forEach((part) => part.bodyTags?.forEach((tag) => tagKeys.add(tag.key)));
   collectInheritedTagKeys(index, section, tagKeys);
   return {
     kind: 'section',
     tagKeys,
-    text: `${section.heading}\n${section.rawContent}`.toLowerCase(),
+    text: `${section.heading}\n${entryText(parts, section)}`.toLowerCase(),
     filePath: section.filePath,
     createdAt: section.createdAt,
     updatedAt: section.updatedAt,
@@ -566,13 +579,17 @@ function createFileUnit(
   index: WorkspaceIndex,
   membership: TagMembership,
   file: ParsedFile,
+  parts: readonly Section[] | undefined,
 ): QueryUnit {
   const tagKeys = new Set(membership.files.get(file.filePath) ?? []);
   file.frontmatterTags.forEach((tag) => tagKeys.add(tag.key));
+  parts?.forEach((part) => part.bodyTags?.forEach((tag) => tagKeys.add(tag.key)));
   return {
     kind: 'file',
     tagKeys,
-    text: file.content.toLowerCase(),
+    // A note with headings of its own reads as what it owns: its text above
+    // them, and the untagged headings no tagged heading owns.
+    text: (parts && parts.length > 0 ? `${getFilePreambleText(file)}\n${parts.map((part) => part.bodyContent).join('\n')}` : file.content).toLowerCase(),
     filePath: file.filePath,
     createdAt: file.createdAt,
     updatedAt: file.updatedAt,

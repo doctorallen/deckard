@@ -59,7 +59,7 @@ const { deckardThemes } = modules.themeNames;
  * each one rather than restyled after the fact.
  */
 function renderPagesForTheme(theme, options) {
-  const chrome = { theme, zen: Boolean(options && options.zen) };
+  const chrome = { theme, zen: Boolean(options && options.zen), ...(options && options.display ? { display: options.display } : {}) };
   return pages.map(([name, render]) => [name, render(chrome)]);
 }
 
@@ -72,7 +72,7 @@ function renderPage(name, options = {}) {
   if (!pages.some(([pageName]) => pageName === name)) {
     throw new Error(`No such page: ${name}`);
   }
-  const chrome = { theme: options.theme || DEFAULT_THEME, zen: Boolean(options.zen) };
+  const chrome = { theme: options.theme || DEFAULT_THEME, zen: Boolean(options.zen), ...(options.display ? { display: options.display } : {}) };
   return loadPage(modules.pageCatalog.renderPage(name, { ...pageOptions, ...options.pageOptions, chrome }));
 }
 
@@ -117,6 +117,7 @@ const vscodePalettes = {
     '--vscode-editorWidget-foreground': '#cccccc',
     '--vscode-editorWarning-foreground': '#cca700',
     '--vscode-list-warningForeground': '#cca700',
+    '--vscode-list-errorForeground': '#f88070',
     '--vscode-widget-shadow': '#0000005c',
     '--vscode-editor-font-family': 'monospace',
     '--vscode-font-family': 'sans-serif',
@@ -154,6 +155,7 @@ const vscodePalettes = {
     '--vscode-editorWidget-foreground': '#3b3b3b',
     '--vscode-editorWarning-foreground': '#bf8803',
     '--vscode-list-warningForeground': '#855f00',
+    '--vscode-list-errorForeground': '#b01011',
     '--vscode-widget-shadow': '#00000029',
     '--vscode-editor-font-family': 'monospace',
     '--vscode-font-family': 'sans-serif',

@@ -7,6 +7,7 @@ import type { ComponentChild } from 'preact';
 import type { TaskBoardCard, TaskBoardColumn, TaskBoardSettings, TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
 import type { ActionMenuGroup, ActionMenuItem } from '../shared/actionMenu';
 import { IconButton } from '../shared/buttons';
+import { DueText } from '../shared/dueText';
 import { EllipsisIcon } from '../shared/strokeIcons';
 import { formatSourceLocation, HeadingPathSteps, plainTitle, PriorityBadge, trimHeadingPath } from '../shared/taskRow';
 import { TaskTitle } from '../shared/taskTitle';
@@ -58,6 +59,7 @@ export function taskCardMoves(card: MovableTask, columnId: string, columns: read
     { label: 'Priority', items: priorityOptions },
     { label: 'Due', items: dueOptions },
     { label: 'This board', items: others },
+    { label: 'For', items: [{ value: 'pick-assignee', label: 'For someone…', key: 'f' }] },
     { label: 'Steps', items: [{ value: 'break-steps', label: card.steps ? 'Add steps…' : 'Break into steps…', key: 's' }] },
     { label: 'Done', items: card.completed ? [] : [{ value: 'done', label: 'Complete it', key: 'x' }] },
     { label: 'Note', items: [{ value: 'move-to', label: 'Move to…' }] },
@@ -118,7 +120,9 @@ function CardDetails({ card }: { readonly card: TaskBoardCard }) {
         if (priority) {
           return <PriorityBadge key={`priority-${index}`} priority={priority[1]} />;
         }
-        return <span key={`detail-${index}`} class={detailClass(card, detail)}>{withDates(detail)}</span>;
+        // A due date is drawn in its parts, for Display's Dates preference.
+        const drawn = /^(due|overdue)\b/i.test(detail) && detail.includes(' · ') ? <DueText label={detail} dateClass="board-date" /> : withDates(detail);
+        return <span key={`detail-${index}`} class={detailClass(card, detail)}>{drawn}</span>;
       })}
     </p>
   );
@@ -148,14 +152,17 @@ function BoardCard({ card, columnId, columns }: CardProps) {
   // keys move between cards, and a card's checkbox and menu are keys of
   // their own, so neither is a Tab stop either.
   const tabStop = boardCardKey(columnId, card.taskId) === board.tabStop;
+  // A list item in its column's list, so a screen reader says how many a
+  // column holds and where in it the card is: "3 of 13".
   return (
     <article
+      role="listitem"
       class={card.completed ? 'task board-card completed' : 'task board-card'}
       draggable={true}
       data-tip-around=""
       tabIndex={tabStop ? 0 : -1}
       aria-label={cardName}
-      aria-keyshortcuts="x t m d e s 1 2 3 4 5 [ ]"
+      aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
       data-task-id={card.taskId}
       data-card-column={columnId}
       data-file-path={card.filePath}
@@ -228,11 +235,7 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
       {column.droppable && column.id !== 'done'
         ? <button key="add" type="button" class="board-add" data-action="board-add-task" data-column-id={column.id} data-tip={`Capture a task straight into ${column.label}`}>+ Add task</button>
         : null}
-      <div key="cards" class="board-cards">
-        {cards.length
-          ? cards.map((card) => <BoardCard key={boardCardKey(column.id, card.taskId)} card={card} columnId={column.id} columns={columns} />)
-          : <p class="board-empty">{column.droppable ? 'Drop a task here' : 'No tasks'}</p>}
-      </div>
+      <ColumnCards key="cards" column={column} cards={cards} columns={columns} />
       {column.hiddenCount ? <p key="more" class="board-more"><button data-action="show-column-rest" data-column-id={column.id}>{`Show ${column.hiddenCount} more`}</button></p> : null}
       {/* One that does not take a drop says so while a card is dragged, and where to go instead. */}
       {column.droppable ? null : <p key="refuses" class="board-refuses">{refusal}</p>}
@@ -275,10 +278,25 @@ export function TaskBoard({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
   return (
     <>
       {snapshot.statusHint ? <StatusHint key="hint" hint={snapshot.statusHint} namespace={(snapshot.settings && snapshot.settings.statusNamespace) || 'status'} /> : null}
-      <div key={`board-${board.generation}`} class="board task-board" aria-label="Task board">
+      <div key={`board-${board.generation}`} class="board task-board" role="group" aria-label="Task board">
         {snapshot.columns.map((column) => <BoardColumn key={column.id} column={column} cards={column.cards} columns={snapshot.columns} />)}
       </div>
     </>
+  );
+}
+
+/**
+ * A column's cards, as a list a screen reader counts, or what to do with
+ * an empty column: drag, or a card's menu, for a reader who cannot drag.
+ */
+function ColumnCards({ column, cards, columns }: { readonly column: TaskBoardColumn; readonly cards: readonly TaskBoardCard[]; readonly columns: readonly TaskBoardColumn[] }) {
+  if (!cards.length) {
+    return <div class="board-cards"><p class="board-empty">{column.droppable ? 'No tasks. Drag a card here, or move one with its ⋯ menu.' : 'No tasks'}</p></div>;
+  }
+  return (
+    <div class="board-cards" role="list" aria-label={column.label}>
+      {cards.map((card) => <BoardCard key={boardCardKey(column.id, card.taskId)} card={card} columnId={column.id} columns={columns} />)}
+    </div>
   );
 }
 

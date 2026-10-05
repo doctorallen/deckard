@@ -2,23 +2,27 @@ import * as vscode from 'vscode';
 
 import { getDeckardTheme } from '../themes';
 import type { ThemePreview } from '../themePreview';
-import { isZenModeEnabled } from '../zenMode';
+import { affectsDisplayChoices, readDisplayChoices, readDisplayLevel } from '../../commands/displaySettings';
 import type { PageChrome } from '../components';
+import type { DisplayLevel } from '../../state/displayLevel';
 
 /**
  * The look a page is written in, read now: the theme `themePreview` is
- * showing, else the configured one, and the zen setting. A host reads it
+ * showing, else the configured one, the zen setting, and how cards and tags
+ * are drawn. A host reads it
  * each time it writes a page, so the page builders read no settings.
  */
-export function readPageChrome(themePreview?: { readonly current: PageChrome['theme'] | undefined }): PageChrome {
-  return { theme: getDeckardTheme(themePreview), zen: isZenModeEnabled() };
+export function readPageChrome(themePreview?: { readonly current: PageChrome['theme'] | undefined; readonly level?: DisplayLevel }): PageChrome {
+  const level = themePreview?.level ?? readDisplayLevel();
+  return { theme: getDeckardTheme(themePreview), zen: level === 'zen', display: readDisplayChoices(themePreview?.level) };
 }
 
 /** Whether a settings change alters how a page is drawn rather than what it says. */
 export function affectsPageChrome(event: vscode.ConfigurationChangeEvent): boolean {
   return (
     event.affectsConfiguration('deckard.theme') ||
-    event.affectsConfiguration('deckard.zenMode')
+    event.affectsConfiguration('deckard.zenMode') ||
+    affectsDisplayChoices(event)
   );
 }
 

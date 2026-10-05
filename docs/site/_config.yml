@@ -43,6 +43,9 @@ nav:
       - { title: Commands, url: /commands.html }
       - { title: Settings, url: /settings.html }
       - { title: Privacy and troubleshooting, url: /privacy-and-troubleshooting.html }
+      - { title: For your security reviewer, url: /security.html }
+      - { title: What Deckard writes, url: /what-deckard-writes.html }
+      - { title: Accessibility and keyboard, url: /accessibility.html }
   - title: How Deckard is built
     pages:
       - { title: Overview, url: /architecture/ }

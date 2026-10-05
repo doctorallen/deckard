@@ -3,6 +3,7 @@
  * and how much is parked.
  */
 import type { DeckardStatsSnapshot, StatsTrend } from '../../ui/protocol/stats';
+import { Eyebrow } from '../shared/eyebrow';
 import { Metric, type MetricTrend } from '../shared/metric';
 import { counted } from './model';
 
@@ -30,14 +31,16 @@ export function describeAge(milliseconds: number): string {
  * 7:58:24 PM" asked a reader to subtract it from now. Reindex reads every
  * note again.
  */
-export function StatsHeader({ updatedAt }: { readonly updatedAt: number }) {
+export function StatsHeader({ updatedAt, builtAt }: { readonly updatedAt: number; readonly builtAt: number }) {
   return (
     <header>
-      <p class="eyebrow">DECKARD / LOCAL TELEMETRY</p>
-      <h1>Workspace Stats</h1>
+      <div>
+        <Eyebrow trail="STATS" />
+        <h1>Workspace Stats</h1>
+      </div>
       <p class="updated">
         {updatedAt
-          ? ['Index last refreshed: ', <span title={new Date(updatedAt).toLocaleString()}>{describeAge(Date.now() - updatedAt)}</span>, ' ']
+          ? ['Index last refreshed: ', <span title={new Date(updatedAt).toLocaleString()}>{describeAge(builtAt - updatedAt)}</span>, ' ']
           : 'Index last refreshed: Not indexed yet '}
         <button type="button" class="reindex" data-action="reindex" data-tip="Read every note again">Reindex</button>
       </p>
@@ -97,12 +100,12 @@ export function StatsMetrics({ snapshot }: { readonly snapshot: DeckardStatsSnap
   return (
     <section class="metrics stats-section" aria-label="Index statistics">
       <Metric label="Files" value={snapshot.fileCount} />
-      <Metric label="Notes" value={snapshot.sectionCount} query="is:note" hint="Open a search for every note" trend={trendOf(snapshot, 'notes', 'notes')} />
+      <Metric label="Notes" value={snapshot.sectionCount} query="is:note" hint="Open a search for every note. A heading with tags of its own is a note, with the untagged headings under it, and so is each tagged line, so a file can hold several" trend={trendOf(snapshot, 'notes', 'notes')} />
       <Metric label="Tasks" value={snapshot.taskCount} query="is:task" hint="Open a search for every task" trend={trendOf(snapshot, 'tasks', 'tasks')} />
       <Metric label="Open tasks" value={snapshot.activeTaskCount} query="is:open" hint="Open a search for every open task" trend={trendOf(snapshot, 'openTasks', 'open tasks')} />
       <ActionMetric label="Tags" value={snapshot.tagCount} action="open-tag-list" hint="Choose a tag to open" attributes={{ 'data-namespaced': 'false' }} />
       <ActionMetric label="Namespaced tags" value={snapshot.entityCount} action="open-tag-list" hint="Choose a namespaced tag to open" attributes={{ 'data-namespaced': 'true' }} />
-      <ActionMetric label="Wiki links" value={snapshot.wikiLinkCount} action="open-graph" hint="Open the Notes Graph showing only the links you wrote" />
+      <ActionMetric label="Links" value={snapshot.wikiLinkCount} action="open-graph" hint="Open the Notes Graph showing only the links you wrote" />
       <ActionMetric label="Unlinked notes" value={snapshot.orphanNoteCount} action="jump" hint="Go to the list of notes nothing links to" attributes={{ 'data-target': 'orphans-heading' }} />
     </section>
   );
@@ -117,6 +120,22 @@ export function ParkedLine({ parked }: { readonly parked: DeckardStatsSnapshot['
   return (
     <p class="parked-line">
       <button type="button" class="text-button" data-action="open-search" data-query="is:parked" data-tip="Search everything that is parked">{words}</button>
+    </p>
+  );
+}
+
+/**
+ * The checkbox lines no total counts: a `- [/]` or `- [-]` line, as
+ * Obsidian writes in-progress and cancelled tasks, is text to Deckard. An
+ * Obsidian vault's task count came up short with nothing saying why.
+ */
+export function OtherCheckboxesLine({ count }: { readonly count: number | undefined }) {
+  if (!count) {
+    return null;
+  }
+  return (
+    <p class="parked-line">
+      {`Not counted: ${counted(count, 'checkbox line', 'checkbox lines')} marked with something other than a space or an x, such as [/] or [-]. Only - [ ] and - [x] lines are tasks.`}
     </p>
   );
 }

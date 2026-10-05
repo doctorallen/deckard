@@ -7,8 +7,13 @@ import type { Correlated, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
   DashboardTask,
+  GoToPageMessage,
+  ListGoToMessage,
+  OpenGoToMessage,
   OpenHelpMessage,
   OpenTagMessage,
+  DisplayCommandMessage,
+  SetDisplayMessage,
   SetZenModeMessage,
   SidebarReadyMessage,
   ToggleTaskMessage,
@@ -266,8 +271,13 @@ export interface CalendarPagePageToHost extends CalendarPageToHost {
   setShowRepeats: CalendarSetShowRepeatsMessage;
   setShowWeekends: CalendarSetShowWeekendsMessage;
   setZenMode: SetZenModeMessage;
+  setDisplay: SetDisplayMessage;
+  displayCommand: DisplayCommandMessage;
   chooseTheme: ChooseThemeMessage;
   openHelp: OpenHelpMessage;
+  openGoTo: OpenGoToMessage;
+  listGoTo: ListGoToMessage;
+  goToPage: GoToPageMessage;
 }
 
 /** What the host sends the calendar page, by type. */

@@ -6,7 +6,10 @@ import type { TagMergeCandidate } from '../../domain/model/tags';
 import type { UnreadableNote } from '../../domain/model/workspaceIndex';
 import type { IndexingMessage, MessageOf, StateMessage } from './messaging';
 import type {
+  GoToPageMessage,
+  ListGoToMessage,
   MergeTagsMessage,
+  OpenGoToMessage,
   OpenSearchMessage,
   OpenSourceMessage,
   OpenTagMessage,
@@ -42,6 +45,11 @@ export interface StatsUnreadableItem extends UnreadableNote {
 export interface DeckardStatsSnapshot {
   updatedAt: number;
   /**
+   * When the snapshot was built, which "5 minutes ago" is measured from:
+   * the page is drawn from it at once and says nothing that ticks.
+   */
+  builtAt: number;
+  /**
    * Notes the last scan or update could not read, so they are not indexed.
    * A search that misses one of these looks like a bad search; this is
    * where it is said instead.
@@ -63,6 +71,8 @@ export interface DeckardStatsSnapshot {
   orphanNoteCount: number;
   /** How many notes hold something parked, and how many open tasks are; absent when nothing is. */
   parked?: { notes: number; openTasks: number };
+  /** Checkbox lines with a mark that is not a task's, such as `[/]`, which no total counts; absent when there are none. */
+  otherCheckboxes?: number;
   /** Tags that look like two spellings of one idea: the clearest first. */
   lookalikeTags: TagMergeCandidate[];
   /** How many such pairs there are, listed or not. */
@@ -190,6 +200,9 @@ export interface StatsPageToHost {
   reindexWorkspace: ReindexWorkspaceMessage;
   mergeTags: MergeTagsMessage;
   createMissingNotes: CreateMissingNotesMessage;
+  openGoTo: OpenGoToMessage;
+  listGoTo: ListGoToMessage;
+  goToPage: GoToPageMessage;
 }
 
 /** What the host sends the Stats page, by type. */

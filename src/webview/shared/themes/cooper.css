@@ -30,6 +30,7 @@
   --warning-orange: #e27d3c;
   --font-display: 'Helvetica Neue', Helvetica, Arial, var(--vscode-font-family, sans-serif);
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
+  --divider: var(--line-strong);
 }
 /* The gold glow is drawn once over the whole panel; on a page shorter than
    its panel, such as the sidebar, it would otherwise tile in bands. */

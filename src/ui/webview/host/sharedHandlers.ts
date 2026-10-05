@@ -19,11 +19,16 @@ import type { NavigationService, SourcePolicy, TagPolicy } from '../../../servic
 import type { MessageHandler } from './pageController';
 import type {
   ChooseThemeMessage,
+  DisplayCommandMessage,
+  GoToPageMessage,
+  ListGoToMessage,
+  OpenGoToMessage,
   OpenHelpMessage,
   OpenSourceMessage,
   OpenTagMessage,
   ParkTagMessage,
   RenameTagMessage,
+  SetDisplayMessage,
   SetZenModeMessage,
   SidebarReadyMessage,
   ToggleTaskMessage,
@@ -31,16 +36,53 @@ import type {
 import { openNoteAt } from '../../commands/noteOpening';
 import { renameIndexedTag, TagWrites } from '../../commands/renameTag';
 import { TaskWrites, toggleTask as writeTaskToggle } from '../../commands/taskActions';
+import { customizeDisplay, setDisplayChoice, useStepValues } from '../../commands/displaySettings';
 import { setZenMode as writeZenMode } from '../zenMode';
+import { DECKARD_PAGE_COMMANDS, DeckardPageId, isDeckardPageId } from '../../state/deckardPages';
+import { describeGoToMenu } from '../../views/pagesTree';
 
 /** The gear's Choose Theme…, which runs the command. */
 export function chooseTheme(): MessageHandler<ChooseThemeMessage> {
   return () => vscode.commands.executeCommand('deckard.chooseTheme');
 }
 
+/** The gear's Cards and Tags rows, written to the user's settings. */
+export function setDisplay(): MessageHandler<SetDisplayMessage> {
+  return (message) => setDisplayChoice(message.setting, message.value);
+}
+
+/** The gear's Display links: the step's own values back, or Settings filtered to Display. */
+export function displayCommand(): MessageHandler<DisplayCommandMessage> {
+  return (message) => (message.command === 'useStepValues' ? useStepValues() : customizeDisplay());
+}
+
 /** The gear's zen row, written where the setting is set. */
 export function setZenMode(): MessageHandler<SetZenModeMessage> {
   return (message) => writeZenMode(message.enabled);
+}
+
+/**
+ * DECKARD at the top of a page, asking for its menu: every page but the one
+ * it is on, with the Pages view's hints, sent back to the page.
+ */
+export function listGoTo(options: {
+  /** What the hints are read from; Help, drawn without one in tests, lists the pages bare. */
+  indexer?: Pick<IndexReader, 'getSnapshot'>;
+  /** The page asking, left out of its own menu. */
+  current?: DeckardPageId;
+}): MessageHandler<ListGoToMessage> {
+  return (_message, page) => page.post(describeGoToMenu(options.indexer, options.current));
+}
+
+/** A page chosen from DECKARD's menu, opened by its command; an id that names no page does nothing. */
+export function goToPage(): MessageHandler<GoToPageMessage> {
+  return (message) =>
+    isDeckardPageId(message.page) ? vscode.commands.executeCommand(DECKARD_PAGE_COMMANDS[message.page]) : undefined;
+}
+
+/** The menu's Go to…, or the key: the quick pick of every page. */
+export function openGoTo(): MessageHandler<OpenGoToMessage> {
+  return () => vscode.commands.executeCommand('deckard.goTo');
 }
 
 /**

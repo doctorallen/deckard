@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 import { PreferenceServices } from '../../core/storage/preferences';
 import { ParsedFile, Section, WorkspaceIndex } from '../../domain/model';
+import { entryIdOf } from '../../domain/markdown/noteEntries';
 
 /** What NoteVisits reads from the index: the notes it may count and the headings in them. */
 export interface NoteVisitSource {
@@ -124,9 +125,12 @@ export class NoteVisits implements vscode.Disposable {
 }
 
 /**
- * The heading a visit counts for: the innermost one the cursor is in, or,
- * above every heading (as a note opened fresh is, on its front matter), the
- * note's first. A note without headings has none.
+ * The note a visit counts for: the one that owns the innermost heading the
+ * cursor is in, or, above every heading (as a note opened fresh is, on its
+ * front matter), the one that owns the note's first. An untagged heading
+ * counts for the tagged heading it belongs to (noteEntries.ts), so Recently
+ * opened lists notes; one that belongs to its whole note counts for itself.
+ * A note without headings has none.
  */
 export function sectionForVisit(
   file: Pick<ParsedFile, 'sections'>,
@@ -138,5 +142,7 @@ export function sectionForVisit(
   const within = headings
     .filter((section) => section.startLine <= line && section.endLine >= line)
     .sort((left, right) => right.startLine - left.startLine)[0];
-  return within ?? headings[0];
+  const visited = within ?? headings[0];
+  const owner = visited && entryIdOf(visited) !== visited.id ? file.sections.find((section) => section.id === entryIdOf(visited)) : undefined;
+  return owner ?? visited;
 }

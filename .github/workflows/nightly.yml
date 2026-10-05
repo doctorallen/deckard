@@ -1,0 +1,215 @@
+name: Nightly
+
+# Every suite CI runs, on dev, once a night, the slow way: the unit suites
+# one after another in one process (UNIT_SERIAL=1), and each Chrome check
+# over all sixteen theme-and-zen passes in one job. A pull request's run
+# splits the work to finish in minutes; this one catches what splitting can
+# hide, a suite that leans on what another file left behind or on the order
+# files run in, and what only shows on a later date, since it runs every day
+# whether or not anything was pushed. It also runs the host suites in the
+# oldest VS Code the manifest's `engines` allows, where CI runs a recent one.
+#
+# A scheduled workflow runs from the default branch's copy of this file, so
+# it starts once this reaches master; Run workflow in the Actions tab runs
+# it on any branch.
+on:
+  schedule:
+    # 07:17 UTC: the small hours in New York, off the hour most schedules
+    # start on.
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The same pins as ci.yml; see there.
+  VSCODE_VERSION: 1.140.0
+  CHROME_VERSION: 154.0.8037.57
+  # The oldest VS Code package.json's `engines` allows.
+  VSCODE_OLDEST: 1.134.0
+  # A scheduled run has no branch of its own to test, so it tests dev; one
+  # run by hand tests the branch it was run on.
+  TEST_REF: ${{ github.event_name == 'schedule' && 'dev' || github.ref }}
+
+jobs:
+  serial:
+    name: Every suite, one after another, on Linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TEST_REF }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Restore VS Code ${{ env.VSCODE_VERSION }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .vscode-test/vscode-*
+          key: vscode-${{ runner.os }}-${{ env.VSCODE_VERSION }}
+
+      - name: Set up Chrome ${{ env.CHROME_VERSION }}
+        id: chrome
+        uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
+        with:
+          chrome-version: ${{ env.CHROME_VERSION }}
+
+      - name: Check the shipped packages for advisories
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Check types
+        run: npm run check-types
+
+      - name: Lint, and check the import rules
+        run: npm run lint
+
+      - name: Build the suites and the extension
+        run: npm run compile-tests && node esbuild.js
+
+      - name: Run the unit suites one after another
+        env:
+          UNIT_SERIAL: '1'
+        run: node test/harness/runUnitSuites.js
+
+      - name: Run the extension-host suites
+        run: xvfb-run --auto-servernum npx vscode-test
+
+      - name: Check webview pages
+        run: node test/ui/verifyWebviews.js && node test/ui/checkContrast.js
+
+      - name: Run end-to-end webview tests
+        run: node test/e2e/run.js
+
+      - name: Lay the webviews out in Chrome, every pass
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: node test/ui/checkLayout.js
+
+      - name: Measure contrast as drawn, every pass
+        if: success() || failure()
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: node test/ui/checkRenderedContrast.js
+
+      - name: Compare the webviews to how they looked, every pass
+        if: success() || failure()
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          VISUAL_CHANGED: ${{ runner.temp }}/visual-changed
+        run: node test/ui/checkVisual.js --ci
+
+      - name: Compare each surface's DOM with its golden
+        if: success() || failure()
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          DOM_KEEP: ${{ runner.temp }}/dom
+        run: node test/ui/checkDom.js
+
+      - name: Keep what a failed comparison drew
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nightly-drawn-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/visual-changed
+            ${{ runner.temp }}/dom/*.dom.html
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # Packaged as a release packages it, lint included.
+      - name: Build VSIX
+        if: success() || failure()
+        run: npm run package:vsix
+
+  other-systems:
+    name: Unit suites one after another, and host suites, on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TEST_REF }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Restore VS Code ${{ env.VSCODE_VERSION }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .vscode-test/vscode-*
+          key: vscode-${{ runner.os }}-${{ env.VSCODE_VERSION }}
+
+      - name: Build the suites and the extension
+        run: npm run compile-tests && node esbuild.js
+
+      - name: Run the unit suites one after another
+        env:
+          UNIT_SERIAL: '1'
+        run: node test/harness/runUnitSuites.js
+
+      - name: Run the extension-host suites
+        run: npx vscode-test
+
+  # An API used that VS Code added after the oldest version `engines`
+  # allows fails here, where CI's recent VS Code would never show it.
+  oldest-vscode:
+    # A job's name cannot read env, so the version is written here too.
+    name: Host suites in VS Code 1.134.0
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TEST_REF }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Restore VS Code ${{ env.VSCODE_OLDEST }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .vscode-test/vscode-*
+          key: vscode-${{ runner.os }}-${{ env.VSCODE_OLDEST }}
+
+      - name: Build the suites and the extension
+        run: npm run compile-tests && node esbuild.js
+
+      - name: Run the extension-host suites
+        env:
+          VSCODE_VERSION: ${{ env.VSCODE_OLDEST }}
+        run: xvfb-run --auto-servernum npx vscode-test

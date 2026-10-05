@@ -10,23 +10,17 @@
 // suit itself (what opening a document does, what a message box answers), and
 // one suite's changes must not reach the next.
 //
+// Every *.e2e.js file in this folder is a suite, found when the run starts,
+// so a new one runs without being listed anywhere. On CI a `.only` left in a
+// suite fails the run (--forbid-only).
+//
 //   npm run test:e2e
 //   node test/e2e/run.js stats.e2e.js      one suite
 const path = require('node:path');
-const { existsSync } = require('node:fs');
+const { existsSync, readdirSync } = require('node:fs');
 const { spawnSync } = require('node:child_process');
 
-const suites = [
-  'searchPage.e2e.js',
-  'dashboardHome.e2e.js',
-  'taskBoard.e2e.js',
-  'stats.e2e.js',
-  'sidebarNotes.e2e.js',
-  'editorDecorations.e2e.js',
-  'calendar.e2e.js',
-  'calendarPage.e2e.js',
-  'navigation.e2e.js',
-];
+const suites = readdirSync(__dirname).filter((name) => name.endsWith('.e2e.js')).sort();
 
 const compiled = path.join(__dirname, '..', '..', 'out');
 if (!existsSync(compiled)) {
@@ -47,6 +41,7 @@ for (const name of chosen) {
     // would; the run ends when its tests do.
     '--exit',
     '--timeout', '20000',
+    ...(process.env.CI ? ['--forbid-only'] : []),
     path.join(__dirname, name),
   ], { stdio: 'inherit' });
   failed = failed || result.status !== 0;

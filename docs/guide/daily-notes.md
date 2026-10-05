@@ -8,7 +8,10 @@ Run `Deckard: Create Daily Note`, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt
 - `Deckard: Open Daily Note for Date…` lists yesterday, today, tomorrow, and your seven newest daily notes, or takes a day [in plain words](tasks.md#dates-in-plain-words), such as `last friday` or `2026-10-02`; a missing note is created from the template. [Find](search.md#find) does the same when you type only a day.
 - `Deckard: Open Weekly Note` and `Deckard: Open Monthly Note` create or open `week-2026-09-13-2026-09-19.md` and `month-september-2026.md`. A week runs Sunday to Saturday, or from the day `deckard.calendar.weekStart` names.
 - Templates are `deckard.weeklyNoteTemplate` and `deckard.monthlyNoteTemplate`. `{week}` becomes *2026-09-13 to 2026-09-19*, `{month}` becomes *September 2026*, and `{date}` the period's first day.
-- Older names, `2026-W38.md` and `2026-09.md`, are still read and opened for their period.
+- Older names, `2026-W38.md` and `2026-09.md`, are still read and opened for their period. `deckard.weeklyNote.naming` set to `iso` names new weekly notes `2026-W38.md`.
+- **Where they go.** New daily, weekly, and monthly notes are written at the top of the notes folder, or in `deckard.periodicNotes.folder` inside it, such as `journal/{yyyy}` for a folder a year (`{mm}` is the month). A note already written elsewhere is still found for its day.
+- **Templates as files.** Each template setting holds the text itself, or the name of a Markdown file in the templates folder, such as `Daily.md`, which Deckard reads when it makes the note.
+- **Whose clock.** Days and times are those of the machine Deckard runs on: over Remote-SSH or in a Codespace, the remote's time zone, so a remote set to UTC starts a new day at UTC midnight. The / menu's **Time (UTC)** writes the time in UTC for a log such as an incident timeline, beside **Time** for the machine's own.
 
 ### Writing a review
 
@@ -67,7 +70,7 @@ Select a day, the mark beside a week, or the month's name to open its note; Deck
 
 **Weekends.** Turn off `deckard.calendar.showWeekends`, or choose **Hide Weekends** from the `…` menu, to show five working days, in the sidebar and on the calendar page. **Include Weekends** brings them back.
 
-**The calendar page.** `Deckard: Open Calendar`, or the calendar button in the Context or Calendar view title bar, opens the calendar as a page. Each day lists its tasks by name: due, then scheduled (⏳), then repeats (↻, dashed), with **+3 more**. Click a day to choose it; its panel sits beside or under the month, or in the Context sidebar while that is open.
+**The calendar page.** `Deckard: Open Calendar`, **Calendar** in the Pages view, or the button in the Calendar view's title bar, opens the calendar as a page. Each day lists its tasks by name: due, then scheduled (⏳), then repeats (↻, dashed), with **+3 more**. Click a day to choose it; its panel sits beside or under the month, or in the Context sidebar while that is open.
 
 - **Month** and **Week** switch layouts.
 - Drag a due or scheduled task to another day to move its date. Repeats stay put.
@@ -84,4 +87,4 @@ Deckard can write your dated tasks to a calendar file (`.ics`) that Apple Calend
 
 ---
 
-← [Related notes, the graph, and the outline](connections.md) · [All topics](README.md) · [Renaming, moving, and parking](organizing.md) →
+← [Related notes, sections, and the graph](connections.md) · [All topics](README.md) · [Renaming, moving, and parking](organizing.md) →

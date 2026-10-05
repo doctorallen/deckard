@@ -11,7 +11,7 @@ import type { TaskWrites } from '../../../commands/taskActions';
 import type { ActiveCalendar, CalendarDaySource } from '../../activeCalendar';
 import { getCalendarHtml } from '../../calendarHtml';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
-import { chooseTheme, openHelp, setZenMode } from '../../host/sharedHandlers';
+import { chooseTheme, displayCommand, goToPage, listGoTo, openGoTo, openHelp, setDisplay, setZenMode } from '../../host/sharedHandlers';
 import type { PageChrome } from '../../components';
 import {
   CalendarController,
@@ -105,8 +105,13 @@ export class CalendarPageController implements PageController<CalendarSnapshot, 
         }
       },
       setZenMode: setZenMode(),
+      setDisplay: setDisplay(),
+      displayCommand: displayCommand(),
       chooseTheme: chooseTheme(),
       openHelp: openHelp('periodic'),
+      openGoTo: openGoTo(),
+      listGoTo: listGoTo({ indexer: calendarPage.indexer, current: 'calendar' }),
+      goToPage: goToPage(),
     };
   }
 

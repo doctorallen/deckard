@@ -40,6 +40,7 @@ export function getRelatedNotesDebugHtml(
     nonce: createNonce(),
     theme: chrome.theme,
     zen: chrome.zen,
+    display: chrome.display,
     // The page runs no script, so its policy names none.
     csp: { scripts: false },
     body: `<main><p class="lead">Deckard / Related Notes diagnostic</p><h1>${escapeHtml(diagnostic.title)}</h1>

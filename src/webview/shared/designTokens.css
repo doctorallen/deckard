@@ -13,7 +13,15 @@
   --bg-dark: #050608;
   --panel: #0D1017;
   --panel-bg: #0D1017;
-  --panel-raised: #121620;
+  --panel-raised: #141924;
+  /* A flat row's divider, 3:1 or better against every surface a row sits on. */
+  --divider: #607088;
+  /* Tags drawn as text, 4.5:1 or better against every surface. */
+  --tag-text: var(--cyan);
+  /* A text tag's #namespace/, told from its name by color, 4.5:1 or better. */
+  --tag-namespace: var(--muted);
+  /* An entry's file and line, drawn under every entry (Display's File & line: always). */
+  --source-ink: var(--muted);
   --panel-deep: #050608;
   --text: #D9E0E4;
   --muted: #7D8792;
@@ -54,7 +62,7 @@
   --text-lg: calc(var(--text-md) + 1px);
   /* The spacing scale. Every padding, gap, and margin in the shared sheet
      is one of these six steps, so a 6px gap never sits beside an 8px one,
-     and density is a matter of re-declaring the steps: zen does exactly
+     and density is a matter of re-declaring the steps: compact does exactly
      that, and restates no rule. */
   --space-1: 4px;
   --space-2: 8px;
@@ -84,7 +92,7 @@
   --positive: var(--green);
   --focus: var(--cyan);
   /* A focus ring is drawn at least 2px in every theme, zen included, rather
-     than at the edge width, which is a hairline in Corpo and zen. */
+     than at the edge width, which is a hairline in Corpo and plain styling. */
   --focus-width: 2px;
   /* The stacking order, low to high. Every popover, menu, tip, sheet, and
      drag ghost takes one of these, so a new one cannot land between two

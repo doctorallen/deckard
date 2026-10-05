@@ -7,6 +7,7 @@ import type { ComponentChildren } from 'preact';
 
 import type { InlineToken } from '../../ui/protocol/inline';
 import type { DashboardTask, TagTitleDisplayMode } from '../../ui/protocol/shared';
+import { DueText } from './dueText';
 import { TaskTitle } from './taskTitle';
 
 /** A priority's arrow: how far it is from the middle. */
@@ -63,6 +64,8 @@ export function plainTitle(tokens: readonly InlineToken[]): string {
       case 'em':
       case 'del':
         return words(token.children);
+      case 'image':
+        return token.alt;
     }
   }).join('');
   return words(tokens).replace(/\s+/g, ' ').trim();
@@ -166,7 +169,7 @@ function TaskFacts({ item }: { readonly item: DashboardTask }) {
     } else if (item.dueToday) {
       tone = 'today';
     }
-    due = <span key="due" class={`due-date ${tone}`}>{item.dueLabel}</span>;
+    due = <span key="due" class={`due-date ${tone}`}><DueText label={item.dueLabel} /></span>;
   } else if (task.dueText) {
     due = <span key="due-text" class="due-date">{`Due ${task.dueText}`}</span>;
   }

@@ -34,6 +34,7 @@ export function getCalendarHtml(
     nonce: createNonce(),
     theme: options.chrome.theme,
     zen: options.chrome.zen,
+    display: options.chrome.display,
     bundle: true,
     state: options.state,
     body: `

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { readEditorToggle } from './editorToggles';
 import { KeyedDebouncer } from '../../shared/debounce';
 import { measure } from '../../shared/timing';
 import { findTaskLineMarks } from '../state/taskLineMarks';
@@ -11,7 +12,6 @@ const DELAY_MS = 150;
 /** The settings a change to which redraws every visible note's marks. */
 const REDRAW_SETTINGS = [
   'deckard.editor',
-  'deckard.zenMode',
   'deckard.tasks.needsNewDateAfterDays',
   'deckard.notesFolder',
   'deckard.exclude',
@@ -19,14 +19,9 @@ const REDRAW_SETTINGS = [
 
 /** Reads the three settings the marks answer to, for one note. */
 function readOptions(uri: vscode.Uri): { dim: boolean; hints: boolean } {
-  const configuration = vscode.workspace.getConfiguration('deckard', uri);
   return {
-    dim: configuration.get<boolean>('editor.dimTaskMetadata', true),
-    // Zen quiets the editor: the hints go, the dimming stays, since dimming
-    // is itself a way of quieting.
-    hints:
-      configuration.get<boolean>('editor.taskDueHints', true) &&
-      !configuration.get<boolean>('zenMode', false),
+    dim: readEditorToggle('dimTaskMetadata', uri),
+    hints: readEditorToggle('taskDueHints', uri),
   };
 }
 

@@ -10,6 +10,7 @@ import type { SavedToTasksViewMessage, TaskBoardMessage, TaskBoardSnapshot, Togg
 import { checkNewStatusColumn, checkStatusNamespace } from '../../domain/tasks/taskColumns';
 import { type ActionMenuGroup, closeActionMenu, openActionMenu } from '../shared/actionMenu';
 import { HelpButton } from '../shared/buttons';
+import { Eyebrow } from '../shared/eyebrow';
 import { installKeySheet, type KeySection } from '../shared/keySheet';
 import { installMenuKeys } from '../shared/menuKeys';
 import { openSourceMessage } from '../shared/openSource';
@@ -20,7 +21,13 @@ import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { announce } from '../shared/status';
 import { taskTitleOf } from '../shared/taskRow';
 import { createUndoNotice } from '../shared/undoToast';
-import { installViewOptions, themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
+import {
+  displayLevelOption,
+  installViewOptions,
+  themeOption,
+  ViewOptionChoices,
+  ViewOptions,
+} from '../shared/viewOptions';
 import { keptState, vscodeApi } from '../shared/vscode';
 import { GroupSwitch, TaskBoard, taskCardMoves } from './board';
 import { type BoardScroll, editRow, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll, sendHeldEdits, settleRefusedEdit } from './boardMoves';
@@ -157,7 +164,7 @@ function BoardViewOptions({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
         ...(isTable ? [{ label: 'Columns', content: <ColumnPicker snapshot={snapshot} />, stacked: true }] : []),
         { label: 'Status columns', content: <StatusSettings snapshot={snapshot} drafts={drafts} />, stacked: true },
         themeOption(),
-        zenOption(),
+        displayLevelOption(),
       ]}
     />
   );
@@ -194,7 +201,7 @@ function BoardPage({ state }: { readonly state: DrawnBoard }) {
   return (
     <>
       <header>
-        <div><p class="eyebrow">DECKARD / TASK BOARD</p><h1>Task Board</h1></div>
+        <div><Eyebrow trail="TASK BOARD" /><h1>Task Board</h1></div>
         <div class="board-header-actions">
           <span class="board-total">{`${shown}${shown === 1 ? ' task' : ' tasks'}`}</span>
           <HelpButton anchor="task-views" />
@@ -331,8 +338,8 @@ function openRowMenu(opener: HTMLElement): boolean {
     return false;
   }
   openActionMenu(opener, groups, (value) => {
-    if (value === 'pick-date' || value === 'move-to' || value === 'break-steps') {
-      const types = { 'pick-date': 'pickTaskDate', 'move-to': 'moveTaskTo', 'break-steps': 'breakIntoSteps' } as const;
+    if (value === 'pick-date' || value === 'pick-assignee' || value === 'move-to' || value === 'break-steps') {
+      const types = { 'pick-date': 'pickTaskDate', 'pick-assignee': 'pickTaskAssignee', 'move-to': 'moveTaskTo', 'break-steps': 'breakIntoSteps' } as const;
       editRow(row, (drawn) => ({ type: types[value], taskId: String(drawn.dataset.taskId) }), post);
       return;
     }
@@ -671,6 +678,7 @@ const BOARD_KEYS: KeySection = {
     ['x', 'Complete it, or reopen it'],
     ['t, m', 'Due today, due tomorrow'],
     ['d', 'Due on a date you type'],
+    ['f', 'For someone: who it is for'],
     ['1 to 5, 0', 'Priority, highest to lowest; 0 clears it'],
     ['[ ]', 'Move it to the column on the left or right'],
     ['e', 'Edit the whole task'],

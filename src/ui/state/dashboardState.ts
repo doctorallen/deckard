@@ -2,9 +2,10 @@ import { EntityNamespaceAliases, getEntityNamespace } from '../../domain/markdow
 import { QueryContext } from '../../domain/query/queryContext';
 import { parseQuery } from '../../domain/query/queryParser';
 import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
+import { startOfWeek } from '../../domain/markdown/dates';
+import { withoutParked } from '../../domain/index/parked';
 import { baseCollator } from './entryCards';
 import { resolveQueryTags } from './querySuggestions';
-import { listFrontmatterOnlyFiles } from './searchPageState';
 import {
   Entity,
   PersistedPreferences,
@@ -15,6 +16,7 @@ import {
   WorkspaceIndex,
 } from '../../domain/model';
 import { DashboardSavedFilter, DashboardSnapshot, TaskGlance } from '../protocol/dashboard';
+import { countNotes } from '../../domain/index/noteEntryIndex';
 
 /** What the dashboard model is projected from. */
 export interface DashboardSnapshotOptions {
@@ -72,7 +74,7 @@ export function createDashboardSnapshot({
       isFavorite: entity.isFavorite,
     })),
     totalSectionCount: index.sections.size,
-    totalNoteCount: index.sections.size + listFrontmatterOnlyFiles(index).length,
+    totalNoteCount: countNotes(index),
     totalTaskCount: index.tasks.size,
     tagColumns: preferences.dashboardTagColumns,
     tagTitleDisplayMode,
@@ -85,11 +87,20 @@ export function createDashboardSnapshot({
   };
 }
 
+/** How many tasks, parked ones aside, were finished on or after `since`. */
+function countDoneSince(index: WorkspaceIndex, since: number): number {
+  return withoutParked([...index.tasks.values()], index).filter(
+    (task) => task.completed && task.doneAt !== undefined && task.doneAt >= since,
+  ).length;
+}
+
 /**
- * Home's tiles, counted as the Tasks view and the status bar count: Overdue
- * and Today are its groups, and Open every open task the agenda's search
- * lists. Each search is scoped by that search too, so the tile's number and
- * the page it opens say the same thing. Today is the context's.
+ * Home's tiles, counted as the Tasks view and the status bar count: Due
+ * today and Overdue are its groups, scoped by its search, so the tile's
+ * number and the page it opens say the same thing. Done this week is every
+ * task finished since the week began, parked ones aside, whatever the
+ * Tasks view lists: its search usually lists open tasks alone. Today and
+ * the week's first day are the context's.
  */
 export function createTaskGlance(
   index: WorkspaceIndex,
@@ -106,10 +117,10 @@ export function createTaskGlance(
   return {
     overdue: count('overdue'),
     today: count('today'),
-    open: selected.tasks.filter((task) => !task.completed).length,
+    doneThisWeek: countDoneSince(index, startOfWeek(context.now, context.weekStart)),
     overdueQuery: scoped('is:overdue -is:needs-date'),
     todayQuery: scoped('is:today'),
-    openQuery: scoped('is:open'),
+    doneQuery: 'done >= this-week',
   };
 }
 

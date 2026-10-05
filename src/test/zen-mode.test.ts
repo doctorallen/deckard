@@ -7,7 +7,7 @@ import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
-import { isZenModeEnabled, zenModeTarget } from '../ui/webview/zenMode';
+import { isZenModeEnabled } from '../ui/webview/zenMode';
 import { openWebviewPage, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { readPageChrome } from '../ui/webview/host/pageChrome';
@@ -42,15 +42,6 @@ class MemoryMemento implements vscode.Memento {
  * reach is the same with zen on as with it off.
  */
 suite('Zen mode', () => {
-  test('is written where the setting in force comes from', () => {
-    assert.strictEqual(zenModeTarget({}), vscode.ConfigurationTarget.Global);
-    assert.strictEqual(
-      zenModeTarget({ workspaceValue: true }),
-      vscode.ConfigurationTarget.Workspace,
-      'a workspace that sets it outranks the user settings the switch wrote to',
-    );
-  });
-
   const pages: WebviewPage[] = [];
   let store: TestPreferences | undefined;
 
@@ -163,8 +154,8 @@ suite('Zen mode', () => {
     };
     assert.strictEqual(zenOf(off), false, 'off marks the body');
     assert.strictEqual(zenOf(on), true, 'on does not mark the body');
-    assert.ok(pageSheets(off).includes('body.zen {'), 'the sheet ships when zen is off');
-    assert.ok(pageSheets(on).includes('body.zen {'), 'the sheet ships when zen is on');
+    assert.ok(pageSheets(off).includes('body[data-density=compact] {'), 'the sheet ships when zen is off');
+    assert.ok(pageSheets(on).includes('body[data-density=compact] {'), 'the sheet ships when zen is on');
   });
 
   test('takes no control away from the Dashboard', async () => {
@@ -184,19 +175,19 @@ suite('Zen mode', () => {
     assert.deepStrictEqual(after, before);
   });
 
-  test('offers the gear a zen row that says which way it is set', async () => {
-    const off = dashboard().find('[data-action="set-zen-mode"][data-value="on"]');
-    assert.strictEqual(off?.getAttribute('aria-pressed'), 'false');
+  test('offers the gear a Display row that says which step is in force', async () => {
+    const zenStep = '[data-action="set-display"][data-display="level"][data-value="zen"]';
+    assert.strictEqual(dashboard().find(zenStep)?.getAttribute('aria-pressed'), 'false');
 
     await setZen(true);
-    const on = dashboard().find('[data-action="set-zen-mode"][data-value="on"]');
-    assert.strictEqual(on?.getAttribute('aria-pressed'), 'true');
+    assert.strictEqual(dashboard().find(zenStep)?.getAttribute('aria-pressed'), 'true', 'Zen mode reads as the Zen step');
   });
 
-  test('every gear offers the theme above zen, and asks the host to choose one', () => {
+  test('every gear offers the theme, then the page width, then Display, and asks the host to choose a theme', () => {
     for (const page of [dashboard(), searchPage()]) {
       const labels = page.findAll('.view-options-group').map((group) => group.children[0].textContent);
-      assert.ok(labels.indexOf('Theme') >= 0 && labels.indexOf('Theme') === labels.indexOf('Zen') - 1, labels.join());
+      const theme = labels.indexOf('Theme');
+      assert.ok(theme >= 0 && labels[theme + 1] === 'Page width' && labels[theme + 2] === 'Display', labels.join());
       const button = page.find('[data-action="choose-theme"]');
       assert.strictEqual(button.textContent, 'Corpo…');
       assert.strictEqual(button.getAttribute('aria-label'), 'Theme: Corpo. Choose another');
@@ -207,32 +198,34 @@ suite('Zen mode', () => {
 
   test('posts the reader\'s choice to the host', async () => {
     const page = dashboard();
-    page.click('[data-action="set-zen-mode"][data-value="on"]');
+    page.click('[data-action="set-display"][data-display="level"][data-value="quiet"]');
+    assert.deepStrictEqual(page.lastPosted('setDisplay'), { type: 'setDisplay', setting: 'level', value: 'quiet' });
 
-    assert.deepStrictEqual(page.lastPosted('setZenMode'), {
-      type: 'setZenMode',
-      enabled: true,
-    });
+    page.click('[data-action="display-command"][data-command="customize"]');
+    assert.deepStrictEqual(page.lastPosted('displayCommand'), { type: 'displayCommand', command: 'customize' });
   });
 
   test('folds provenance and hides ornament, and keeps what carries meaning', () => {
-    const sheet = readSheet('shared/zen.css');
+    const sheet = readSheet('shared/display.css');
 
     // Ornament goes.
-    assert.match(sheet, /body\.zen \.eyebrow,/);
-    assert.match(sheet, /body\.zen \.metric::before,/);
-    assert.match(sheet, /body\.zen \.query-hint,/);
+    assert.match(sheet, /body\[data-styling=plain\] \.eyebrow-trail,/);
+    assert.match(sheet, /body\[data-styling=plain\] \.metric::before \{/);
+    assert.match(sheet, /body\[data-help=hidden\] \.query-hint,/);
+
+    // DECKARD ▾ is the way to every other page, and stays.
+    assert.ok(!/\.eyebrow-home/.test(sheet.replace(':not(:has(.eyebrow-home))', '')), 'DECKARD ▾ is never hidden');
 
     // The parse error shares the hint's slot and must not go with it.
     assert.ok(
       !/\.query-error/.test(sheet),
-      'zen must never hide a search that failed to parse',
+      'help text must never hide a search that failed to parse',
     );
 
     // Board details carry the due date and the word "overdue".
     assert.ok(
       !/\.board-details/.test(sheet),
-      'zen must not fold the board details, which carry overdue state',
+      'Display must not fold the board details, which carry overdue state',
     );
 
   });
@@ -257,7 +250,7 @@ suite('Zen mode', () => {
   });
 
   test('declares no color, so the contrast matrix cannot move', () => {
-    const sheet = readSheet('shared/zen.css');
+    const sheet = readSheet('shared/display.css');
     const declarations = sheet.match(/[a-z-]+\s*:[^;}]+/g) ?? [];
     const colored = declarations.filter((declaration) =>
       /^\s*(color|background|background-color|border-color)\s*:/.test(

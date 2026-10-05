@@ -1,6 +1,6 @@
 # Task board
 
-Run `Deckard: Open Task Board`, or select the board icon in the title bar of the Context view or the Tasks view. Drag a card to another column, or choose one from its **⋯** menu, to change the task in its note. The menu's **Move to…** moves the task and its steps under another heading. A card with steps shows **2 of 5 steps · next: Draft the email**. The **View options** gear switches views and edits status columns. Parked tasks are left off unless the search says `is:parked`.
+Run `Deckard: Open Task Board`, or select **Task Board** in the Pages view or the board icon in the Tasks view's title bar. Drag a card to another column, or choose one from its **⋯** menu, to change the task in its note. The menu's **Move to…** moves the task and its steps under another heading. A card with steps shows **2 of 5 steps · next: Draft the email**. The **View options** gear switches views and edits status columns. Parked tasks are left off unless the search says `is:parked`.
 
 ![Deckard Task Board showing tasks in status columns that end with Done.](../images/task-board.png)
 
@@ -49,7 +49,7 @@ The search icon in the [Tasks view](tasks.md#tasks-view)'s title opens the board
 
 The board is one Tab stop. Arrow keys move between cards and columns. On a focused card:
 
-- **x** completes it; **t** and **m** make it due today or tomorrow; **d** asks for a date in plain words.
+- **x** completes it; **t** and **m** make it due today or tomorrow; **d** asks for a date in plain words; **f** asks who it is for.
 - **1** to **5** set priority; **0** clears it.
 - **[** and **]** move it to the adjacent column.
 - **e** opens the task editor; **s** [breaks it into steps](tasks.md#breaking-a-task-into-steps); **Enter** opens its line, and **Cmd+Enter** (Ctrl+Enter on Windows and Linux) opens it beside the board.

@@ -7,16 +7,27 @@
  * redraws a page in another look is in host/pageChrome.ts.
  */
 
+import type { DisplayChoices } from '../state/displayLevel';
 import { DeckardTheme } from './themeNames';
+
+export type { DisplayChoices };
+
+
+/** Zen's values, for a page given only the zen flag, as the test harness gives it. */
+const ZEN_DISPLAY: DisplayChoices = {
+  level: 'zen', styling: 'plain', help: 'hidden', density: 'compact',
+  cards: 'flat', tags: 'text', counts: 'hidden', fileAndLine: 'never', dates: 'relative',
+};
 
 /**
  * The look a page is written in: the theme its host read, preview and all,
- * and whether zen mode is on. The host reads both as it writes the page;
- * a page builder is given them.
+ * whether zen mode is on, and how cards and tags are drawn. The host reads
+ * them as it writes the page; a page builder is given them.
  */
 export interface PageChrome {
   theme: DeckardTheme;
   zen: boolean;
+  display?: DisplayChoices;
 }
 
 /**
@@ -50,7 +61,11 @@ export interface PageTail {
    * holds control edges, provenance, high contrast, card tags, and zen.
    */
   readonly sheets: readonly string[];
-  /** The marker the zen sheet hangs on, ` class="zen"`, or nothing. */
+  /**
+   * The markers the tail's sheets hang on: ` class="zen"`, and
+   * ` data-cards="flat"` and ` data-tags="text"` for those choices, or
+   * nothing.
+   */
   readonly bodyAttribute: string;
 }
 
@@ -64,8 +79,31 @@ export interface PageTail {
 export function getPageTailCss(chrome: PageChrome): PageTail {
   return {
     sheets: [deckardThemeCss[chrome.theme], 'tail.css'],
-    bodyAttribute: chrome.zen ? ' class="zen"' : '',
+    bodyAttribute: bodyMarkers(chrome),
   };
+}
+
+/**
+ * The body's markers: the zen class at the Zen step, and one data attribute
+ * for each display value that isn't the default. A host always gives the
+ * values it resolved; given none, zen stands for Zen's values.
+ */
+function bodyMarkers(chrome: PageChrome): string {
+  const display = chrome.display ?? (chrome.zen ? ZEN_DISPLAY : {});
+  return [
+    chrome.zen ? ' class="zen"' : '',
+    display.level ? ` data-level="${display.level}"` : '',
+    display.changed ? ` data-changed="${display.changed}"` : '',
+    display.styling === 'plain' ? ' data-styling="plain"' : '',
+    display.help === 'hidden' ? ' data-help="hidden"' : '',
+    display.density === 'compact' ? ' data-density="compact"' : '',
+    display.cards === 'flat' ? ' data-cards="flat"' : '',
+    display.tags === 'text' ? ' data-tags="text"' : '',
+    display.counts === 'hidden' ? ' data-counts="hidden"' : '',
+    display.fileAndLine ? ` data-file-line="${display.fileAndLine}"` : '',
+    display.dates ? ` data-dates="${display.dates}"` : '',
+    display.width === 'full' ? ' data-width="full"' : '',
+  ].join('');
 }
 
 /**

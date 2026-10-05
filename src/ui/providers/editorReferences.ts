@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { readEditorToggle } from './editorToggles';
 import { extractTagSpans } from '../../domain/markdown/parser';
 import { escapeMarkdown, pluralize } from '../../shared/text';
 import { measure } from '../../shared/timing';
@@ -367,20 +368,13 @@ export class EditorReferences
 const markdownFiles: vscode.DocumentSelector = { pattern: '**/*.md' };
 
 /**
- * Whether the counts or the hovers are on for a document's folder. The
- * counts are also off in zen.
+ * Whether the counts or the hovers are on for a document's folder.
  */
 function readSetting(
   document: vscode.TextDocument,
   name: 'referenceCounts' | 'hoverPreviews',
 ): boolean {
-  const configuration = vscode.workspace.getConfiguration('deckard', document.uri);
-  // Zen quiets the editor as it quiets the pages: the counts above each
-  // heading go, and the previews a reader asks for by hovering stay.
-  if (name === 'referenceCounts' && configuration.get<boolean>('zenMode', false)) {
-    return false;
-  }
-  return configuration.get<boolean>(`editor.${name}`, true);
+  return readEditorToggle(name, document.uri);
 }
 
 /** A count that lists links or tasks in VS Code's references peek. */

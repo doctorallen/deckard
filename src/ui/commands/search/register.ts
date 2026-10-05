@@ -50,14 +50,16 @@ async function showQuerySearch(
   const query =
     getCommandTagArgument(requestedQuery) ??
     (await vscode.window.showInputBox({
-      title: 'Search Deckard notes',
+      title: 'Deckard: Open Search Page',
       prompt:
-        'Write a query, such as (tag = #project/atlas AND tag = #urgent) OR text ~ "vendor"',
-      placeHolder: 'tag = #project/atlas AND task = open',
+        'A search, such as #project/atlas AND is:open, or nothing for a page of every note',
+      placeHolder: '#project/atlas AND is:open',
     }));
 
-  if (query?.trim()) {
-    await searchPanels.showQuery(query);
+  // Nothing typed opens the page with every note, as Open Search Page did
+  // before the two became one command; dismissing it opens nothing.
+  if (query !== undefined) {
+    await searchPanels.showQuery(query.trim());
   }
 }
 

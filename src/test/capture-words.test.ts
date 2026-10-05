@@ -15,6 +15,18 @@ suite('Capture reads its last words', () => {
     assert.strictEqual(read('Send the draft next monday').due, '2026-09-28');
   });
 
+  test('who a task is for: for @someone at the end, or @someone to … at the start; a bare mention stays a mention', () => {
+    assert.strictEqual(read('Send the deck for @dana friday').line, '- [ ] Send the deck 📅 2026-10-02 👤 @dana');
+    assert.strictEqual(read('@dana to send the deck tomorrow').line, '- [ ] send the deck 📅 2026-09-26 👤 @dana');
+    assert.strictEqual(read('Ask @dana about the deck').line, '- [ ] Ask @dana about the deck');
+    assert.strictEqual(read('Plan for @dana').assignee, '@dana');
+    assert.strictEqual(read('for @dana').assignee, undefined, 'a task keeps a name');
+    assert.strictEqual(
+      readCaptureText('- [ ] Review the runbook for @person/kenji', 'dataview', now).line,
+      '- [ ] Review the runbook [assignee:: @person/kenji]',
+    );
+  });
+
   test('a short day, or a distance, needs a lead word', () => {
     assert.strictEqual(read('The cat sat').line, '- [ ] The cat sat', 'a sentence stays a sentence');
     assert.strictEqual(read('Pay rent due fri').line, '- [ ] Pay rent 📅 2026-10-02');

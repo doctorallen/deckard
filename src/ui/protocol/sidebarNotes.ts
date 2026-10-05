@@ -95,6 +95,18 @@ export interface OpenLinksSearchMessage {
   type: 'openLinksSearch';
 }
 
+/** A Sections row: open its heading in the editor, or fold the rest of the note away from it. */
+export interface SectionLineMessage {
+  type: 'revealSection' | 'focusSection';
+  line: number;
+}
+
+/** The Sections list's filter: one of its tags, or `''` for every heading. */
+export interface FilterSectionsMessage {
+  type: 'filterSections';
+  tagKey: string;
+}
+
 /** Related Notes' Link all: every mention of the note, as one write. */
 export interface LinkAllMentionsMessage {
   type: 'linkAllMentions';
@@ -114,12 +126,42 @@ export interface NoteLinks {
   mentionCount: number;
 }
 
+/** One heading of the note, as the Context view's Sections list draws it. */
+export interface SidebarSection {
+  /** One-based line of the heading, and the last line it owns. */
+  line: number;
+  endLine: number;
+  label: string;
+  /** How deep under other headings it is, from 0. */
+  depth: number;
+  tags: TagReference[];
+  /** The tasks under it, sub-headings included, when it has any. */
+  tasks?: { done: number; total: number };
+  /** How many links in other notes name it, when any do. */
+  links?: number;
+}
+
+/** The note's headings, as the Sections list draws them. */
+export interface SidebarSections {
+  rows: SidebarSection[];
+  /** The heading the cursor is in, when the list follows the cursor. */
+  activeLine?: number;
+  /** The tag the list is narrowed to. */
+  filter?: TagReference;
+  /** Every tag the note's headings carry, to narrow by. */
+  tags: TagReference[];
+  /** Whether the done-of-total and link counts show. */
+  showCounts: boolean;
+}
+
 /** What the Related Notes sidebar draws, and which of its states it is in. */
 export interface SidebarNotesSnapshot {
   /** How far the first scan has got, while the state is loading. */
   progress?: { completed: number; total: number };
   /** What links to the note being read, and what names it without a link. */
   links?: NoteLinks;
+  /** The note's headings, for the editor's note; absent for a page in front. */
+  sections?: SidebarSections;
   activeFileName?: string;
   activeEntryTitle?: string;
   activeTags: SidebarTag[];
@@ -271,6 +313,9 @@ export interface SidebarNotesPageToHost {
   hoverNotesGraphNode: HoverNotesGraphNodeMessage;
   openTag: OpenTagMessage;
   linkMention: LinkMentionMessage;
+  revealSection: MessageAs<SectionLineMessage, 'revealSection'>;
+  focusSection: MessageAs<SectionLineMessage, 'focusSection'>;
+  filterSections: FilterSectionsMessage;
   linkAllMentions: LinkAllMentionsMessage;
   openLinksSearch: OpenLinksSearchMessage;
   addSuggestedTag: AddSuggestedTagMessage;

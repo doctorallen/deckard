@@ -1,11 +1,12 @@
 /*
  * What every page puts after its own rules and its theme, which the page
  * shell links in that order (getPageTailCss in components.ts names the
- * sheets). Kept in one place so "zen comes after the theme" is a fact in the
- * code rather than a convention ten pages have to remember.
+ * sheets). Kept in one place so "Display comes after the theme" is a fact
+ * in the code rather than a convention ten pages have to remember.
  */
 @import "./controlEdge.css";
 @import "./provenance.css";
+@import "./displayLooks.css";
 @import "./highContrast.css";
 @import "./cardTag.css";
-@import "./zen.css";
+@import "./display.css";

@@ -21,7 +21,9 @@ import { type ComponentChild, render } from 'preact';
 
 import { readPlace, restorePlace } from './place';
 import { followIndexing, watchBusy } from './status';
+import { installGoToMenu } from './goToMenu';
 import { installTip } from './tip';
+import { post } from './vscode';
 
 /** A page's state, and the one way to change it. */
 export interface PageStore<S> {
@@ -160,7 +162,9 @@ function installSharedBehavior(): void {
   guardDisabledControls();
   dismissProvenanceOnEscape();
   installTip();
+  installGoToMenu(post);
 }
+
 
 /**
  * A control that holds its place with `aria-disabled` stays focusable, so

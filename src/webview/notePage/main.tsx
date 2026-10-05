@@ -7,11 +7,14 @@
  */
 import type { NoteBreadcrumb, NotePageMessage, NotePageSnapshot, NoteProperty } from '../../ui/protocol/notePage';
 import type { StateMessage } from '../../ui/protocol/messaging';
+import { HelpButton, IconButton } from '../shared/buttons';
+import { Eyebrow } from '../shared/eyebrow';
 import { ProgressBar } from '../shared/progressBar';
 import { ProgressWords } from '../shared/progressWords';
 import { type ActionHandler, listenForActions, onHostMessage, readEmbeddedState, startPage } from '../shared/page';
 import { announce } from '../shared/status';
 import { TagButton } from '../shared/tagButton';
+import { displayLevelOption, installViewOptions, pageWidthOption, themeOption, ViewOptions } from '../shared/viewOptions';
 import { keepState, post } from '../shared/vscode';
 import { Blocks } from './body';
 
@@ -25,13 +28,20 @@ interface NotePageState {
   readonly snapshot: NotePageSnapshot | undefined;
 }
 
-/** Back, Forward, and Open in Editor, above the note. */
+/**
+ * Back, Forward, Open in Editor, Help, and the gear, at the right of the
+ * header, where every page keeps its own.
+ */
 function Toolbar({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
   return (
-    <div class="note-toolbar" role="toolbar" aria-label="Note">
-      <button type="button" class="icon-button" data-action="history-back" disabled={!snapshot.history.back} aria-label="Back" data-tip="Back to the note before">‹</button>
-      <button type="button" class="icon-button" data-action="history-forward" disabled={!snapshot.history.forward} aria-label="Forward" data-tip="Forward to the next note">›</button>
+    <div class="toolbar" role="group" aria-label="Note">
+      <span class="history-buttons" role="group" aria-label="Note history">
+        <IconButton action="history-back" label="Back to the note before" icon="‹" disabledReason={snapshot.history.back ? '' : 'No note before this one'} />
+        <IconButton action="history-forward" label="Forward to the next note" icon="›" disabledReason={snapshot.history.forward ? '' : 'No note after this one'} />
+      </span>
       <button type="button" data-action="open-in-editor" disabled={snapshot.missing} data-tip="Open this note in the editor · Cmd/Ctrl-click: beside">Open in Editor</button>
+      <HelpButton anchor="links" />
+      <ViewOptions groups={[themeOption(), pageWidthOption(), displayLevelOption()]} />
     </div>
   );
 }
@@ -62,6 +72,24 @@ function Breadcrumbs({ crumbs }: { readonly crumbs: readonly NoteBreadcrumb[] })
   );
 }
 
+/**
+ * The front-matter keys Deckard gives a meaning, by the name a reader knows
+ * them by; any other key reads as written. A Map, since the key is the
+ * reader's text.
+ */
+const PROPERTY_NAMES: ReadonlyMap<string, string> = new Map([
+  ['describes', 'About'],
+  ['up', 'Filed under'],
+  ['aliases', 'Also called'],
+  ['alias', 'Also called'],
+  ['tags', 'Tags'],
+]);
+
+/** A value as a reader reads it: `[[Atlas]]` as Atlas. */
+function propertyText(text: string): string {
+  return text.replace(/^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/, (_whole, target: string, shown?: string) => shown ?? target);
+}
+
 /** The note's front matter, a tag among the values a button that opens it. */
 function Properties({ properties }: { readonly properties: readonly NoteProperty[] }) {
   if (!properties.length) {
@@ -71,11 +99,11 @@ function Properties({ properties }: { readonly properties: readonly NoteProperty
     <dl class="note-properties">
       {properties.map((property) => (
         <div>
-          <dt>{property.name}</dt>
+          <dt>{PROPERTY_NAMES.get(property.name.toLowerCase()) ?? property.name}</dt>
           <dd>
             {property.values.map((value, at) => [
               at > 0 ? ', ' : null,
-              value.tagKey ? <TagButton tag={{ key: value.tagKey, label: value.text }} className="inline-tag" /> : value.text,
+              value.tagKey ? <TagButton tag={{ key: value.tagKey, label: value.text }} className="inline-tag" /> : propertyText(value.text),
             ])}
           </dd>
         </div>
@@ -132,27 +160,31 @@ function LinkedFrom({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
   );
 }
 
-/** The whole page: the toolbar, the header, the note, and what links to it. */
+/** The whole page: the header with its toolbar, the note, and what links to it. */
 function NotePage({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
   if (snapshot.missing) {
     return (
       <>
-        <Toolbar snapshot={snapshot} />
-        <header><p class="eyebrow">DECKARD / NOTE</p><h1>{snapshot.title}</h1></header>
+        <header>
+          <div class="note-lead"><Eyebrow trail="NOTE" /><h1>{snapshot.title}</h1></div>
+          <Toolbar snapshot={snapshot} />
+        </header>
         <p class="note-missing">Deckard has no note at {snapshot.filePath} now. It may have been moved, renamed, or deleted.</p>
       </>
     );
   }
   return (
     <>
-      <Toolbar snapshot={snapshot} />
-      <header class="note-header">
-        <p class="eyebrow">{snapshot.folder ? `DECKARD / NOTE / ${snapshot.folder.toUpperCase()}` : 'DECKARD / NOTE'}</p>
-        <h1>{snapshot.title}</h1>
-        <Breadcrumbs crumbs={snapshot.breadcrumbs} />
-        {snapshot.hub ? <HubLine hub={snapshot.hub} /> : null}
-        {snapshot.taskProgress ? <TaskLine progress={snapshot.taskProgress} /> : null}
-        <Properties properties={snapshot.properties} />
+      <header>
+        <div class="note-lead">
+          <Eyebrow trail={snapshot.folder ? `NOTE / ${snapshot.folder.toUpperCase()}` : 'NOTE'} />
+          <h1>{snapshot.title}</h1>
+          <Breadcrumbs crumbs={snapshot.breadcrumbs} />
+          {snapshot.hub ? <HubLine hub={snapshot.hub} /> : null}
+          {snapshot.taskProgress ? <TaskLine progress={snapshot.taskProgress} /> : null}
+          <Properties properties={snapshot.properties} />
+        </div>
+        <Toolbar snapshot={snapshot} />
       </header>
       <article class="note-body" aria-label={snapshot.title}>
         {snapshot.blocks.length
@@ -233,6 +265,7 @@ function modifiers(event: MouseEvent | KeyboardEvent): { opposite?: true; beside
 const ACTIONS: Readonly<Record<string, ActionHandler>> = {
   'history-back': () => send({ type: 'navigateNoteHistory', direction: 'back' }),
   'history-forward': () => send({ type: 'navigateNoteHistory', direction: 'forward' }),
+  'open-help': () => send({ type: 'openHelp' }),
   'open-in-editor': (_element, event) => {
     const line = lineInView();
     send({ type: 'openInEditor', ...(line ? { line } : {}), ...(event.metaKey || event.ctrlKey ? { beside: true } : {}) });
@@ -248,6 +281,12 @@ const ACTIONS: Readonly<Record<string, ActionHandler>> = {
     ...modifiers(event),
   }),
   'open-tag': (element) => send({ type: 'openTag', tagKey: String(element.dataset.tagKey) }),
+  // An image shows fitted to the column; selecting it shows it whole, and back.
+  'toggle-image-size': (element) => {
+    const whole = element.classList.toggle('is-whole');
+    const alt = element.querySelector('img')?.getAttribute('alt') || 'Image';
+    element.setAttribute('aria-label', `${alt}, shown ${whole ? 'at full size' : 'fitted'}; select to show it ${whole ? 'fitted' : 'at full size'}`);
+  },
   'open-search': (element) => {
     if (element.dataset.query) {
       send({ type: 'openSearch', query: element.dataset.query });
@@ -256,6 +295,8 @@ const ACTIONS: Readonly<Record<string, ActionHandler>> = {
 };
 
 const app = document.getElementById('app') as HTMLElement;
+// The gear's theme and Zen rows, ahead of the page's own listeners.
+installViewOptions();
 listenForActions(app, ACTIONS);
 
 // A box completes or reopens its task, as on every page, with Undo in the message.

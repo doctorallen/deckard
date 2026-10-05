@@ -2,6 +2,231 @@
 
 ## Unreleased
 
+## 2.2.0 - 2026-10-05
+
+### Highlights
+
+- Every page is one click away: a Pages view in the sidebar, Go to… on Cmd/Ctrl+Shift+Alt+P, and a DECKARD ▾ menu at the top of every page.
+- Safe in a code repository: Deckard says when it reads the whole workspace, asks before its first note, and can be paused per workspace.
+- Markdown links count as links, a work sample shows Deckard on a team lead's week, and Capture reads who a task is for.
+
+### Added
+
+- **Display: Full, Quiet, or Zen, in place of Zen mode.** Turn down how
+  much Deckard draws a step at a time from **Display** in a page's gear or
+  `Deckard: Choose Display…`, which previews each step on the open pages.
+  Quiet takes off each theme's decoration and the lines that teach, and
+  draws tags as text, at the usual spacing; Zen also tightens it, draws
+  cards flat, and leaves out counts, each entry's file and line, and the
+  date beside how far off a task is due. Every Display setting (Theme
+  styling, Help text, Tags, Density, Cards, Counts, File & line, and Dates)
+  follows the step while it's Auto and can be set on its own from
+  **Customize…**; the gear says how many you changed, with Reset. Whatever
+  is out of sight is still read aloud. The title bar's Zen button goes to
+  Zen and back to the step you were on.
+- **Page width.** Keep pages limited to a column, or use the panel's full
+  width, from its own row in the gear.
+- **Pages, and Go to….** The Deckard sidebar opens with **Pages**: Home,
+  the Task Board, the Calendar, today's note, the Notes Graph, Find, Stats,
+  and Help, each a labeled row with a glyph of its own and a word on what is
+  there now, such as *3 tasks due today*. `Deckard: Go to…`
+  (Cmd/Ctrl+Shift+Alt+P) lists the same pages from anywhere, and
+  **DECKARD ▾** at the top of every page drops them as a menu, with Go to…
+  at its foot. The six icons that crowded the Context view's title bar are
+  gone.
+
+- **The note page looks like the other pages.** Its header is laid out as
+  theirs: DECKARD ▾ and the title at the left, Back, Forward, Open in
+  Editor, Help, and a gear with Theme and Zen at the right. It takes the
+  same width and title style as every other page.
+
+- **Images on the note page.** The note page draws a note's images,
+  `![alt](img/flow.png)` and `![[flow.png]]`, at the page's width, and
+  shows one at full size when selected. Each is read from beside the note
+  or the workspace folder's top and sent to the page itself, so nothing is
+  fetched from the web or outside the workspace folder; one that cannot be
+  drawn says why.
+
+- **Editor presets.** `Deckard: Choose Editor Preset…` picks what Deckard
+  draws in the editor in one choice: **Full**, as now; **Tasks**, task hints
+  and problem reports without link counts, mention lenses, or breadcrumbs;
+  or **Writing**, a quiet page with the / menu, hover previews, and problem
+  reports. Any `deckard.editor.*` switch you set yourself still wins.
+
+- **Daily notes where you keep them.** `deckard.periodicNotes.folder` puts
+  new daily, weekly, and monthly notes in a folder inside the notes folder,
+  such as `journal/{yyyy}`; notes already elsewhere are still found.
+  `deckard.weeklyNote.naming` set to `iso` names weekly notes `2026-W38`.
+  A template setting may name a file in the templates folder, such as
+  `Daily.md`, rather than hold the text. The / menu offers **Time** and
+  **Time (UTC)** for a log, and the guide says whose clock a day follows on
+  a remote host.
+
+- **A work sample.** `Deckard: Create a Work Sample` writes a week of a
+  team lead's notes: standups, two 1:1s, a project hub with a live list of
+  what is open, and two decision records linked from the notes that made
+  them. Its README starts with the five things Deckard reads and gives keys
+  for every platform. Get Started and an empty Home offer it; the sci-fi
+  tour is still there as `Deckard: Create the Story Tour`.
+
+- **Say who a task is for as you write it.** Capture reads `for @dana` at
+  the end, or `@dana to …` at the start, as who the task is for (`👤 @dana`);
+  a person mentioned anywhere else stays a mention. A Task board card's ⋯
+  menu has **For someone…**, also the **f** key, in any grouping. The first
+  search in a window that uses `is:mine` or `is:waiting` while `deckard.me`
+  is empty says so, rather than quietly finding the tasks for nobody.
+
+- **Three pages for approving and using Deckard.** The guide gains *For
+  your security reviewer* (what Deckard sends, stores, and runs, and over
+  Remote-SSH), *What Deckard writes* (every change it makes to your files,
+  what starts it, and its setting), and *Accessibility and keyboard*
+  (screen readers, keys, high contrast, zoom, and motion). Help and the
+  README link to them.
+
+- **Starter templates.** New Note from Template, with no templates yet,
+  offers **Create Starter Templates**: a meeting, a 1:1, and a decision
+  record, written into the templates folder. `Deckard: Create Hub Note for
+  Tag…` lists the tags no hub note describes yet and makes one; a tag's
+  page offers the same as a button, where it was drawn as caption text. An
+  empty Task board column says how to fill it without dragging: *No tasks.
+  Drag a card here, or move one with its ⋯ menu.*
+
+- **Safe in a code repository.** With no notes folder set, Deckard reads
+  every Markdown file and writes today's note at the workspace's top. In a
+  folder that looks like a code repository, the status bar now says
+  **Deckard: whole workspace**, with a notes folder, folders left out, or a
+  pause a click away; the first note Deckard would make there asks once
+  where to write; and the first scan's summary offers **Not a Notes
+  Workspace**. `Deckard: Pause in This Workspace` stops Deckard reading and
+  writing there until it is resumed. Capture's message names the folder and
+  workspace: *Added it to notes/2026-10-07.md in deckard-work.*
+
+- **Checkbox lines that are not tasks are counted.** Only `- [ ]` and
+  `- [x]` lines are tasks, so an Obsidian vault's `- [/]` and `- [-]` lines
+  were left out of every task count with nothing saying so. The first scan
+  that finds such lines says how many, once per workspace, and Stats keeps
+  a line for them. Stats' **Wiki links** total is now **Links**, since it
+  counts Markdown links too.
+
+- **Markdown links count.** A relative `[text](../adr/0042.md)` link, the
+  kind GitHub and MkDocs render, now links its note everywhere a `[[link]]`
+  does: Linked from, the editor's link counts, the Notes Graph, Related
+  Notes, Stats' notes nothing links to, and a search's `link`. A `#fragment`
+  written as a heading's slug, such as `#decision-record`, finds that
+  heading. `deckard.links.style` set to `markdown` makes Link mentions write
+  `[Atlas](projects/Atlas.md)` rather than `[[Atlas]]`.
+
+- **Esper Themes, suggested once.** Deckard's looks also come as VS Code
+  color themes for the whole editor, in Esper Themes. Once the first index
+  is done, a machine without it is asked once, with **Install** and **See
+  Themes**.
+
+### Changed
+
+- **A note is a tagged heading and the untagged headings under it.** A
+  search, a tag's page, Related Notes, the Notes Graph, and every count of
+  notes used to treat each heading as a note of its own, so an untagged
+  `## Context` under a tagged `# ADR` came back as a card of its own with no
+  tag, beside the ADR's card holding the same text. Now the ADR is one note,
+  down to the next heading with tags of its own, and a note tagged in its
+  front matter is one note. Note counts drop for notes written with
+  headings; a heading with tags of its own is still a note of its own.
+
+- **Zen mode is now Display's Zen step.** `deckard.zenMode` is read as Zen
+  until a step is set, and a reader who had it on is moved over once, with
+  one notice. What it turned off in the editor (the counts above headings,
+  the unlinked-mention lens, the due hints, the section highlight, and the
+  Sections counts) is now each its own setting, turned off where it wasn't
+  set.
+
+- **The Outline is part of the Context view.** Deckard's Outline view sat
+  beside VS Code's own Outline under the same name. Its headings are now
+  **Sections** in the Context view, above the related notes: each opens
+  where it is, shows its own tags and `2/5 · ↩3`, and has **Focus**; the
+  heading the cursor is in is marked, **Show** narrows the list to one
+  tag's headings, and a long note shows its first twelve with **Show all**.
+  The `deckard.outline.*` settings work as before. The Outline's view and
+  its title-bar controls are gone; `Deckard: Filter Sections by Tag…` and
+  the cursor-marking commands keep their places in the palette.
+
+- **One look for dates and headings.** A due date still ahead is plain
+  text everywhere, as on the Task board; only due today (amber) and overdue
+  (red) take a color, so green no longer reads as done. A Home widget's
+  name is now larger than the rows under it. The Note page names front
+  matter as a reader knows it: **About** for `describes`, **Filed under**
+  for `up`, **Also called** for `aliases`, with `[[Atlas]]` shown as Atlas.
+  Stats sets its sentences in the page's font, keeping monospace for paths.
+
+- **Focus is easier to follow.** A focused row or card now pushes the next
+  one down to show where it is written, rather than laying that line over
+  the next title; while the keyboard has focus, the row under a resting
+  pointer no longer opens too, so one entry looks active, not two. The Task
+  board's columns are lists to a screen reader, which says how many cards
+  each holds and where each card is, such as *3 of 13*.
+
+- **Names that say what they do.** `Deckard: Search Notes and Tasks` and
+  `Deckard: Open Search Page` were one job under two names; they are now
+  `Deckard: Open Search Page…`, which takes a search or opens every note.
+  Lists of titles sort numbers as numbers, so *entry 2* comes before
+  *entry 10*. Stats' Notes total says why it is larger than Files. Parking
+  says what it does as it does it: a parked note leaves Home, the Tasks
+  view, the board, and Related Notes, and stays searchable. The guide calls
+  the sidebar's first view **Context** throughout.
+
+- **The walkthrough teaches links.** Get Started's six steps are now:
+  write a note (with the / menu), tag it and mention a person, link two
+  notes and see Linked from, find anything, capture a task, and see the
+  workspace. Links were the one thing the README promised that the
+  walkthrough never showed; choosing a theme left it for the palette, Help,
+  and every page's gear. Its steps give Windows and Linux keys beside
+  macOS's.
+
+- **A first Home lists each task once.** A new Home started with the Tasks
+  view and an open tasks widget side by side, which listed the same tasks
+  twice; it now starts with the Tasks view beside recently opened notes.
+  The figures above Home read **Due today**, **Overdue**, and **Done this
+  week**, the day's work first. **Customize Home** stays beside the tabs, in place of a
+  line that went away once dismissed.
+
+- **Stats reads like the other pages.** Its heading says **DECKARD /
+  STATS** rather than *Local telemetry*, a word that reads as data leaving
+  the machine, and its title sits at the left, under the heading, as every
+  other page's does.
+
+- **Renaming a note shows its link changes first.** Renaming a note in the
+  Explorer rewrites the `[[links]]` that name it; when they are in more than
+  one note, VS Code now asks before making them, with **Show Preview**, as
+  every other Deckard write that reaches several notes does.
+  `deckard.previewWorkspaceWrites` decides, as it does for those.
+
+- **Install from the Marketplace.** Deckard is on the Visual Studio
+  Marketplace as `esperinnovations.deckard-notes`, so the Extensions view
+  finds it and VS Code keeps it up to date. Each GitHub release still
+  carries the VSIX.
+
+### Fixed
+
+- **Home's cards stand out from their widget.** In every theme a task,
+  saved search, or tag row in a Home widget sits on the raised surface, a
+  step above the widget, as well as inside its border. LCARS's widget
+  descriptions in Customize Home take the button's ink rather than a gray
+  that vanished into it, and a card's file and line, carried down below it,
+  no longer bands Synthwave's glow across the card.
+
+- **Citations are not people.** A Pandoc citation such as
+  `[@smith2020; @lee2019]` made each key a person, and Stats offered to
+  merge keys that looked alike. A person marker inside a bracketed citation
+  is now left alone; `[assignee:: @dana]` and `[@sam](…)` still name their
+  person. The parse format changes, so the cache is rebuilt.
+
+- **The guide says what Deckard does.** It said fenced code is left out of
+  the index, though its words are searchable; that note dates come only
+  from file times, though front matter comes first; and that completing a
+  task writes ✅, though a Dataview-format line gets `[completion:: …]`. It
+  now says so, says where the local cache lives and that deleting it is
+  safe, lists every setting (a test keeps it so), and the README's Quick
+  start begins with Get Started.
+
 ## 2.1.0 - 2026-10-04
 
 ### Highlights

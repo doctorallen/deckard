@@ -26,7 +26,11 @@ export function getNotePageHtml(
     nonce: createNonce(),
     theme: chrome.theme,
     zen: chrome.zen,
+    display: chrome.display,
     bundle: true,
+    // A note's images arrive as data: URIs the host read from the note's
+    // folder; nothing is fetched from the network.
+    csp: { images: ['data:'] },
     state: snapshot,
     body: `
 ${snapshot === undefined ? loadingHtml('Loading the note…') : '<main id="app"></main>'}

@@ -108,7 +108,8 @@ export const PAGES: readonly CatalogPage[] = [
   {
     id: 'help',
     title: 'Help',
-    render: (context) => getHelpHtml(context.webview, context.extensionUri, context.help?.manifest, { ...context.help?.options, chrome: context.chrome }),
+    // The shortcuts are drawn for one platform, so the DOM goldens match on every OS.
+    render: (context) => getHelpHtml(context.webview, context.extensionUri, context.help?.manifest, { platform: 'darwin', ...context.help?.options, chrome: context.chrome }),
   },
   {
     id: 'stats',

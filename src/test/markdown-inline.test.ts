@@ -29,6 +29,8 @@ function describeToken(token: InlineToken): string {
     case 'em':
     case 'del':
       return `${token.kind}(${describe(token.children)})`;
+    case 'image':
+      return `image(${token.src} ${JSON.stringify(token.alt)})`;
   }
 }
 

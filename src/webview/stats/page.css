@@ -56,6 +56,8 @@ button.tag-use-band:hover:where(:not(:disabled):not([aria-disabled="true"])), bu
 .stat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 12px; }
 .label { overflow-wrap: anywhere; }
 .detail { margin-top: 3px; color: var(--muted); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
+/* A sentence is read as prose; monospace is for paths and counts. */
+p.detail { font-family: var(--font-display); }
 .count { color: var(--green); font-size: 16px; }
 /* A pair that looks alike: both tags on one line, with what to do about it. */
 .pair { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }

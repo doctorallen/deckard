@@ -17,6 +17,8 @@ import { TagOverviewHub } from '../protocol/searchPage';
 import { ParsedFile, Section, Task, TagTitleDisplayMode, TagOverviewSortMode, TaskSortMode } from '../../domain/model';
 import { DashboardTask, TagOverviewCard } from '../protocol/shared';
 import { DashboardNote } from '../protocol/dashboard';
+import { stripTags } from '../../domain/markdown/parser';
+import { fileEntryId } from '../../domain/markdown/noteEntries';
 
 /**
  * The cards and task rows every page draws an entry as, and the orders they
@@ -139,11 +141,14 @@ export function createTagOverviewCard(
     tagTitleDisplayMode,
     pinned = false,
     sections,
+    content,
   }: {
     sectionAccessCounts: Record<string, number>;
     tagTitleDisplayMode: TagTitleDisplayMode;
     pinned?: boolean;
     sections?: ReadonlyMap<string, Section>;
+    /** The entry's text, read through the untagged headings it owns; its own text when not given. */
+    content?: string;
   },
 ): TagOverviewCard {
   return {
@@ -161,8 +166,8 @@ export function createTagOverviewCard(
       key,
       label: section.tagLabels[key] ?? `#${key}`,
     })),
-    rawContent: getSectionBody(section.rawContent),
-    bodyTokens: tokenizeSectionBody(section),
+    rawContent: getSectionBody(content ?? section.rawContent),
+    bodyTokens: tokenizeSectionBody(section, content),
     startLine: section.startLine,
     createdAt: section.createdAt,
     updatedAt: section.updatedAt,
@@ -170,10 +175,34 @@ export function createTagOverviewCard(
   };
 }
 
-/** A front-matter-only note, or a note above its first heading, as a card titled by its file name. */
+/**
+ * The heading a note tagged in its front matter is titled by when it is a
+ * note as a whole (noteEntries.ts): its first heading, when that is a `#`
+ * heading the note owns, as a note's title is. Undefined otherwise.
+ */
+function findFileEntryTitle(file: ParsedFile): Section | undefined {
+  const lead = file.sections.find((section) => !section.isInline);
+  return lead && lead.headingLevel === 1 && lead.entryId === fileEntryId(file.filePath) ? lead : undefined;
+}
+
+/** A note's title as a list shows it: its own `#` heading when it is a note as a whole, else its file name. */
+export function getFileEntryTitle(file: ParsedFile): string {
+  const lead = findFileEntryTitle(file);
+  const title = lead ? stripTags(lead.heading).trim() : '';
+  return title || (getFileName(file.filePath) ?? file.filePath);
+}
+
+/**
+ * A front-matter note, or a note above its first heading, as a card: titled
+ * by its own `#` heading when it is a note as a whole, else by its file name.
+ */
 export function createFileOverviewCard(file: ParsedFile): TagOverviewCard {
-  const heading = getFileName(file.filePath) ?? file.filePath;
-  const rawContent = getFilePreamble(file);
+  const heading = getFileEntryTitle(file);
+  const lead = findFileEntryTitle(file);
+  // The title is the card's heading, so its line is not repeated in the body.
+  const rawContent = lead
+    ? getFrontmatterBody(file.content.split(/\r?\n/).filter((_line, at) => at !== lead.startLine - 1).join('\n')).replace(/^\n+/, '')
+    : getFilePreamble(file);
   return {
     id: `frontmatter:${file.filePath}`,
     filePath: file.filePath,
@@ -220,13 +249,14 @@ export function normalizeTagTitleDisplayMode(
 /**
  * `localeCompare` with options builds a collator on every call, which made
  * sorting thousands of cards the slowest part of the Dashboard. These compare
- * in exactly the same order as `localeCompare` with and without
- * `{ sensitivity: 'base' }`.
+ * as `localeCompare` with and without `{ sensitivity: 'base' }` does, except
+ * that a run of digits is read as a number, so `entry 2` comes before
+ * `entry 10` rather than after `entry 1`.
  */
-export const baseCollator = new Intl.Collator(undefined, { sensitivity: 'base' });
+export const baseCollator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
 
 /** `localeCompare` without options, as a collator built once; see baseCollator. */
-export const defaultCollator = new Intl.Collator();
+export const defaultCollator = new Intl.Collator(undefined, { numeric: true });
 
 /** What the note order reads, whether of a key or a drawn card. */
 type SortableNote = Pick<
@@ -292,16 +322,22 @@ function compareDatesDescending(
  * reparsed note brings new entries, and the old ones are let go with them.
  */
 const sectionBodyTokens = new WeakMap<Section, BlockToken[]>();
+/** An entry's text as block tokens, read once; see sectionBodyTokens. */
+const entryBodyTokens = new WeakMap<Section, BlockToken[]>();
 
 /** Each task's title as inline tokens, read once; see sectionBodyTokens. */
 const taskTitleTokens = new WeakMap<Task, InlineToken[]>();
 
-/** A section's body as block tokens, read once per section. */
-function tokenizeSectionBody(section: Section): BlockToken[] {
-  let tokens = sectionBodyTokens.get(section);
+/**
+ * A section's body as block tokens, read once per section: its entry's text
+ * when given, which is the same for a section as long as its note is.
+ */
+function tokenizeSectionBody(section: Section, content?: string): BlockToken[] {
+  const cache = content === undefined ? sectionBodyTokens : entryBodyTokens;
+  let tokens = cache.get(section);
   if (tokens === undefined) {
-    tokens = buildBlockExcerpt(getSectionBody(section.rawContent));
-    sectionBodyTokens.set(section, tokens);
+    tokens = buildBlockExcerpt(getSectionBody(content ?? section.rawContent));
+    cache.set(section, tokens);
   }
   return tokens;
 }
@@ -346,3 +382,4 @@ export function getFrontmatterBody(content: string): string {
   const endLine = findFrontmatterEnd(lines);
   return endLine === undefined ? content : lines.slice(endLine + 1).join('\n').replace(/^\n/, '');
 }
+

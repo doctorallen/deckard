@@ -19,7 +19,10 @@ import type {
   ChooseThemeMessage,
   DashboardTask,
   ExportResultsMessage,
+  GoToPageMessage,
+  ListGoToMessage,
   MergeTagsMessage,
+  OpenGoToMessage,
   OpenHelpMessage,
   OpenSourceMessage,
   OpenTagMessage,
@@ -27,6 +30,8 @@ import type {
   PinNoteMessage,
   RenameTagMessage,
   ResultPaging,
+  DisplayCommandMessage,
+  SetDisplayMessage,
   SetZenModeMessage,
   TagOverviewCard,
   TagTitleDisplayMode,
@@ -300,10 +305,15 @@ export interface SetRenderModeMessage {
 export interface SearchPagePageToHost {
   exportResults: ExportResultsMessage;
   setZenMode: SetZenModeMessage;
+  setDisplay: SetDisplayMessage;
+  displayCommand: DisplayCommandMessage;
   chooseTheme: ChooseThemeMessage;
   pinNote: MessageAs<PinNoteMessage, 'pinNote'>;
   unpinNote: MessageAs<PinNoteMessage, 'unpinNote'>;
   openHelp: OpenHelpMessage;
+  openGoTo: OpenGoToMessage;
+  listGoTo: ListGoToMessage;
+  goToPage: GoToPageMessage;
   openSource: OpenSourceMessage;
   toggleTask: ToggleTaskMessage;
   setRenderMode: SetRenderModeMessage;
