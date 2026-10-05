@@ -98,12 +98,12 @@ A **status** has a symbol, a name, a type, and, optionally, the
 "deckard.tasks.statuses": [
   { "symbol": " ", "name": "Todo",        "type": "todo", "tag": "todo" },
   { "symbol": "/", "name": "In progress", "type": "inProgress", "tag": "doing" },
-  { "symbol": "?", "name": "Study",       "type": "todo", "icon": "question" },
   { "symbol": "x", "name": "Done",        "type": "done" },
   { "symbol": "X", "name": "Done",        "type": "done" },
   { "symbol": "-", "name": "Cancelled",   "type": "cancelled" },
   { "name": "Waiting", "type": "onHold", "tag": "waiting" },
-  { "name": "Someday", "type": "onHold", "tag": "someday" }
+  { "name": "Someday", "type": "onHold", "tag": "someday" },
+  { "symbol": "?", "name": "Blocked", "type": "onHold", "tag": "blocked", "icon": "question" }
 ]
 ```
 
@@ -113,11 +113,15 @@ A **status** has a symbol, a name, a type, and, optionally, the
   tag on a ` ` box, as now.
 - **A symbol no status names is a task**, a `todo` called Unknown, as in
   Obsidian. That is the point: the vault's counts match.
-- **Study** (`[?]`, David, 2026-10-04) is one of Deckard's defaults: a to
-  do with the question icon, for something to read up on. It is a status,
-  not a type: it counts as open, has its own board column, and is found
-  with `status:study`. Obsidian themes use `[?]` for Question, so a vault
-  reads the same; an import keeps the vault's own name.
+- **Blocked** (`[?]`, David, 2026-10-04) is one of Deckard's defaults: a
+  task that can't be completed until something else happens. It is a
+  status of the on-hold type, not a type of its own, since it behaves as
+  Waiting and Someday do: open, still due and overdue, left out of
+  `is:available`. What sets it apart is its name, its question-mark icon,
+  its column, and `is:blocked`, which finds it as well as tasks waiting on
+  another task (⛔), so one search finds everything stuck. It stands for
+  a `#status/blocked` tag too. Obsidian themes use `[?]` for Question; an
+  import keeps the vault's own name and type.
 - **Glyphs and colors are by type**, one look each (empty, half filled in
   the accent, dashed, checked, struck through; an unknown character in
   violet), so each can be checked for contrast in every theme. A status of
