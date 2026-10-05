@@ -10,6 +10,7 @@ import { JSDOM } from 'jsdom';
 
 import { createDomRecorder } from '../../test/harness/domRecorder';
 import { loadPage } from '../../test/harness/loadPage';
+import { installManualClock, ManualClock } from './manualClock';
 
 /** A page running in jsdom, driven as a reader would drive it and read back as its host would. */
 export interface WebviewPage {
@@ -42,6 +43,11 @@ export interface WebviewPage {
    * round. Returns how many frames ran.
    */
   flushFrames(count?: number): number;
+  /**
+   * With `clock: true`, the page's timers and Date.now, which move only when
+   * the test advances them (manualClock.ts).
+   */
+  readonly clock: ManualClock | undefined;
   /** Closes the page's window. */
   dispose(): void;
 }
@@ -77,6 +83,12 @@ export interface WebviewPageOptions {
    * the same frames on every run.
    */
   clockStep?: number;
+  /**
+   * Gives the page a clock the test moves by hand, `page.clock`, in place
+   * of its window's timers and Date.now, so a page that waits 400 ms is
+   * tested without waiting them.
+   */
+  clock?: boolean;
 }
 
 /** A message a page posted to its host, as JSON carried it. */
@@ -100,6 +112,7 @@ interface PageHost {
   canvasCalls: CanvasCall[];
   frames: FrameRequestCallback[];
   kept: unknown;
+  clock?: ManualClock;
 }
 
 /**
@@ -155,6 +168,9 @@ function installHost(window: Window & typeof globalThis, host: PageHost, options
   });
   if (options.clockStep !== undefined) {
     installSteppedClock(window, options.clockStep);
+  }
+  if (options.clock) {
+    host.clock = installManualClock(window);
   }
   // A webview always has a 2D context, and jsdom has none, so a page that
   // paints in a frame of its own would throw there; every page gets one.
@@ -217,6 +233,7 @@ function createPage(dom: JSDOM, host: PageHost, html: string): WebviewPage {
       return host.kept;
     },
     canvasCalls: host.canvasCalls,
+    clock: host.clock,
     flushFrames(count = 1): number {
       let ran = 0;
       for (let round = 0; round < count && host.frames.length > 0; round += 1) {

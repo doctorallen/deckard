@@ -90,7 +90,7 @@ suite('Webview saved state', () => {
   });
 
   suite('the Task Board (row 21)', () => {
-    const open = (savedState: unknown, query = 'is:open'): WebviewPage => {
+    const open = (savedState: unknown, query = 'is:open', clock = false): WebviewPage => {
       store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
       const board = createTaskBoard({
         index: index(),
@@ -99,7 +99,7 @@ suite('Webview saved state', () => {
         options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' },
         tagTitleDisplayMode: 'inline',
       });
-      page = openWebviewPage(renderPage('taskBoard'), board, { savedState });
+      page = openWebviewPage(renderPage('taskBoard'), board, { savedState, clock });
       return page;
     };
 
@@ -120,10 +120,12 @@ suite('Webview saved state', () => {
       }
     });
 
-    test('keeps where it was scrolled, with its search', async () => {
-      const board = open(undefined);
+    test('keeps where it was scrolled, with its search', () => {
+      // On a clock moved by hand: the search page's test above waits the
+      // same scroll timer (shared/scroll.ts) out on the real one.
+      const board = open(undefined, 'is:open', true);
       board.window.dispatchEvent(new board.window.Event('scroll'));
-      await new Promise((resolve) => setTimeout(resolve, 250));
+      board.clock!.advance(250);
       assert.deepStrictEqual(board.savedState(), { query: 'is:open', scrollY: 0 });
     });
   });

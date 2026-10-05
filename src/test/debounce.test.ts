@@ -1,10 +1,26 @@
 import * as assert from 'assert';
 
 import { Debouncer, KeyedDebouncer } from '../shared/debounce';
+import { installManualClock, ManualClock } from './manualClock';
 
-/** Waits `milliseconds` of real time, since the debouncers use real timers. */
+/** Waits `milliseconds` of real time. */
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+/**
+ * Runs a test on a clock moved by hand, over Node's own timers, which the
+ * debouncers use. The first test of each suite waits on the real clock.
+ */
+function onManualClock(body: (clock: ManualClock) => void): () => void {
+  return () => {
+    const clock = installManualClock(globalThis as never);
+    try {
+      body(clock);
+    } finally {
+      clock.restore();
+    }
+  };
 }
 
 const DELAY = 100;
@@ -22,19 +38,19 @@ suite('Debouncer', () => {
     assert.strictEqual(debouncer.pending, false);
   });
 
-  test('a newer call replaces the waiting run and restarts the wait', async () => {
+  test('a newer call replaces the waiting run and restarts the wait', onManualClock((clock) => {
     const debouncer = new Debouncer(DELAY);
     const runs: string[] = [];
     debouncer.schedule(() => runs.push('first'));
-    await wait(DELAY * 0.6);
+    clock.advance(DELAY * 0.6);
     debouncer.schedule(() => runs.push('second'));
-    await wait(DELAY * 0.6);
+    clock.advance(DELAY - 1);
     assert.deepStrictEqual(runs, [], 'the second call restarted the wait');
-    await wait(DELAY * 1.5);
+    clock.advance(1);
     assert.deepStrictEqual(runs, ['second']);
-  });
+  }));
 
-  test('is no longer pending while its run runs, so the run may schedule again', async () => {
+  test('is no longer pending while its run runs, so the run may schedule again', onManualClock((clock) => {
     const debouncer = new Debouncer(DELAY);
     const seen: boolean[] = [];
     let again = true;
@@ -47,11 +63,11 @@ suite('Debouncer', () => {
       debouncer.schedule(run);
     };
     debouncer.schedule(run);
-    await wait(DELAY * 4);
+    clock.advance(DELAY * 4);
     assert.deepStrictEqual(seen, [false, false]);
-  });
+  }));
 
-  test('cancel and dispose drop the waiting run; a later call still runs', async () => {
+  test('cancel and dispose drop the waiting run; a later call still runs', onManualClock((clock) => {
     const debouncer = new Debouncer(DELAY);
     const runs: string[] = [];
     debouncer.schedule(() => runs.push('cancelled'));
@@ -60,12 +76,12 @@ suite('Debouncer', () => {
     debouncer.schedule(() => runs.push('disposed'));
     debouncer.dispose();
     assert.strictEqual(debouncer.pending, false);
-    await wait(DELAY * 2);
+    clock.advance(DELAY * 2);
     assert.strictEqual(runs.length, 0);
     debouncer.schedule(() => runs.push('after'));
-    await wait(DELAY * 2);
+    clock.advance(DELAY * 2);
     assert.deepStrictEqual(runs, ['after']);
-  });
+  }));
 });
 
 suite('KeyedDebouncer', () => {
@@ -82,30 +98,32 @@ suite('KeyedDebouncer', () => {
     assert.strictEqual(debouncer.isPending('a'), false);
   });
 
-  test('a call for another key neither restarts nor drops a waiting run', async () => {
+  test('a call for another key neither restarts nor drops a waiting run', onManualClock((clock) => {
     const debouncer = new KeyedDebouncer(DELAY);
     const runs: string[] = [];
     debouncer.schedule('a', () => runs.push('a'));
-    await wait(DELAY * 0.6);
+    clock.advance(DELAY * 0.6);
     debouncer.schedule('b', () => runs.push('b'));
-    await wait(DELAY * 0.6);
+    clock.advance(DELAY * 0.4);
     assert.deepStrictEqual(runs, ['a']);
-    await wait(DELAY);
+    clock.advance(DELAY * 0.6 - 1);
+    assert.deepStrictEqual(runs, ['a']);
+    clock.advance(1);
     assert.deepStrictEqual(runs, ['a', 'b']);
-  });
+  }));
 
-  test('forgets the key before its run, so the run may schedule its key again', async () => {
+  test('forgets the key before its run, so the run may schedule its key again', onManualClock((clock) => {
     const debouncer = new KeyedDebouncer(DELAY);
     const seen: boolean[] = [];
     debouncer.schedule('a', () => {
       seen.push(debouncer.isPending('a'));
       debouncer.schedule('a', () => seen.push(debouncer.isPending('a')));
     });
-    await wait(DELAY * 4);
+    clock.advance(DELAY * 4);
     assert.deepStrictEqual(seen, [false, false]);
-  });
+  }));
 
-  test('cancel drops one key; dispose drops every key; later calls still run', async () => {
+  test('cancel drops one key; dispose drops every key; later calls still run', onManualClock((clock) => {
     const debouncer = new KeyedDebouncer(DELAY);
     const runs: string[] = [];
     debouncer.schedule('a', () => runs.push('a'));
@@ -113,15 +131,15 @@ suite('KeyedDebouncer', () => {
     debouncer.cancel('a');
     debouncer.cancel('missing');
     assert.strictEqual(debouncer.isPending('a'), false);
-    await wait(DELAY * 2);
+    clock.advance(DELAY * 2);
     assert.deepStrictEqual(runs, ['b']);
     debouncer.schedule('a', () => runs.push('a again'));
     debouncer.schedule('c', () => runs.push('c'));
     debouncer.dispose();
-    await wait(DELAY * 2);
+    clock.advance(DELAY * 2);
     assert.deepStrictEqual(runs, ['b']);
     debouncer.schedule('a', () => runs.push('after'));
-    await wait(DELAY * 2);
+    clock.advance(DELAY * 2);
     assert.deepStrictEqual(runs, ['b', 'after']);
-  });
+  }));
 });
