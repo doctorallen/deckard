@@ -11,8 +11,10 @@
 // Chrome writes the page back with --dump-dom once scripts have run, and the
 // page's own probe writes its measurements into a <pre> for that dump to
 // carry, so no debugger protocol is needed. CHROME_PATH names the browser;
-// otherwise the usual names are tried, and the check is skipped with a
-// message when none is found rather than failing a machine without one.
+// otherwise the usual names are tried. When none is found the check is
+// skipped with a message on a machine without one, but fails on CI (CI is
+// set), where a check that drew nothing must not pass; the visual, rendered
+// contrast, and DOM checks load this file, so the same holds for them.
 //
 //   npm run test:layout
 //   LAYOUT_ONLY=oblivion:taskBoard npm run test:layout   one surface, or a theme, or a page
@@ -55,6 +57,10 @@ const { announceShard, isPicked, passes } = require('./passes.js');
 
 const chrome = findChrome();
 if (!chrome) {
+  if (process.env.CI) {
+    console.error(`no Chrome found${process.env.CHROME_PATH ? ` at CHROME_PATH (${process.env.CHROME_PATH})` : ' (set CHROME_PATH)'}: on CI a check that draws nothing fails`);
+    process.exit(1);
+  }
   console.log('layout check skipped: no Chrome found (set CHROME_PATH)');
   process.exit(0);
 }
@@ -449,13 +455,20 @@ async function measureAsync(file, viewport, options = {}, log = console.log) {
   return readProbe(result);
 }
 
-/** The Chrome to lay pages out in: CHROME_PATH, or the first of the usual names found, or undefined. */
+/**
+ * The Chrome to lay pages out in: CHROME_PATH, or the first of the usual
+ * names found, or undefined. A CHROME_PATH that names nothing finds nothing,
+ * rather than falling back to another Chrome: CI pins the Chrome its Linux
+ * baselines were drawn in, and a page drawn in any other must not pass.
+ */
 function findChrome() {
+  if (process.env.CHROME_PATH) {
+    return existsSync(process.env.CHROME_PATH) ? process.env.CHROME_PATH : undefined;
+  }
   const candidates = [
-    process.env.CHROME_PATH,
     'google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser',
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  ].filter(Boolean);
+  ];
   for (const candidate of candidates) {
     if (candidate.includes('/')) {
       if (existsSync(candidate)) {

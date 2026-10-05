@@ -34,9 +34,11 @@ const { announceShard, passes } = require('./passes.js');
 const { runInOrder } = require('./chromePool.js');
 const { pickSurfaces } = require('../harness/surfacePicks.js');
 
+// checkLayout.js has already failed a CI run without Chrome, or skipped a
+// machine without one, before this is reached; this is the second guard.
 if (!chrome) {
   console.log('rendered contrast check skipped: no Chrome found (set CHROME_PATH)');
-  process.exit(0);
+  process.exit(process.env.CI ? 1 : 0);
 }
 
 /**
