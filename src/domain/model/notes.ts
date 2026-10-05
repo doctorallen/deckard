@@ -27,6 +27,13 @@ export interface Section {
   associationTagGroups?: TagReference[][];
   /** Structural heading parent, including untagged intermediate headings. */
   parentSectionId?: string;
+  /**
+   * The entry this section belongs to, when it is not a note of its own: the
+   * nearest heading above it with tags of its own, or its note's
+   * front-matter entry (`file:<path>`). Unset for a section that is its own
+   * entry (domain/markdown/noteEntries.ts).
+   */
+  entryId?: string;
   tags: string[];
   tagLabels: Record<string, string>;
   links: string[];

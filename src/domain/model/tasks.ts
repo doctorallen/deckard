@@ -12,6 +12,8 @@ export interface Task {
   id: string;
   filePath: string;
   sectionId?: string;
+  /** The entry the task's heading belongs to, when that is not the heading itself (noteEntries.ts). */
+  entryId?: string;
   title: string;
   completed: boolean;
   tags: string[];

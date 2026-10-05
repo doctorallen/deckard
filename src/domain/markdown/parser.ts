@@ -28,13 +28,14 @@ import { findNoteLinkSpans, findWikiLinkSpans } from './wikiLinks';
 import { formatKeyWords, readTagNamespace } from './tagKeys';
 import { MIGRATED_TASK_LINE } from './taskLineEdits';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
+import { assignNoteEntries } from './noteEntries';
 
 /**
  * What the parser produces, named. A change to what a parsed note holds
  * (steps' parent links, say) changes it, so the local cache, which keeps
  * parsed notes, is rebuilt rather than served in the old shape.
  */
-export const PARSE_FORMAT = 'citations';
+export const PARSE_FORMAT = 'note-entries';
 
 /** A heading as the parser found it: its 1-based line, its level, and its words. */
 interface HeadingMatch {
@@ -264,6 +265,7 @@ export function parseMarkdown(
     dateAnchor,
     assigneeFromPersonTag: options.assigneeFromPersonTag ?? false,
   });
+  assignNoteEntries(filePath, sections, tasks, frontmatter.tags.length > 0);
 
   const blockIds = findBlockIds(lines, fencedLines);
   const otherCheckboxes = lines.filter(
