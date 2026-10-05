@@ -103,7 +103,7 @@ A **status** has a symbol, a name, a type, and, optionally, the
   { "symbol": "-", "name": "Cancelled",   "type": "cancelled" },
   { "name": "Waiting", "type": "onHold", "tag": "waiting" },
   { "name": "Someday", "type": "onHold", "tag": "someday" },
-  { "symbol": "?", "name": "Blocked", "type": "onHold", "tag": "blocked", "icon": "question" }
+  { "symbol": "=", "name": "Blocked", "type": "onHold", "tag": "blocked", "icon": "blocked" }
 ]
 ```
 
@@ -113,20 +113,23 @@ A **status** has a symbol, a name, a type, and, optionally, the
   tag on a ` ` box, as now.
 - **A symbol no status names is a task**, a `todo` called Unknown, as in
   Obsidian. That is the point: the vault's counts match.
-- **Blocked** (`[?]`, David, 2026-10-04) is one of Deckard's defaults: a
+- **Blocked** (`[=]`, David, 2026-10-04) is one of Deckard's defaults: a
   task that can't be completed until something else happens. It is a
   status of the on-hold type, not a type of its own, since it behaves as
   Waiting and Someday do: open, still due and overdue, left out of
-  `is:available`. What sets it apart is its name, its question-mark icon,
-  its column, and `is:blocked`, which finds it as well as tasks waiting on
-  another task (⛔), so one search finds everything stuck. It stands for
-  a `#status/blocked` tag too. Obsidian themes use `[?]` for Question; an
-  import keeps the vault's own name and type.
+  `is:available`. What sets it apart is its name, its ⊘ icon, its column,
+  and `is:blocked`, which finds it as well as tasks waiting on another task
+  (⛔), as Tasks' own `is blocked` does, so one search finds everything
+  stuck. It stands for a `#status/blocked` tag too. Obsidian has no Blocked
+  status or type, and none of the common theme sets (Minimal, ITS,
+  AnuPpuccin, Things) uses `=`, so it clashes with no vault; `[?]`, which
+  all four use for Question, is left as an unknown to do, as Obsidian
+  reads it.
 - **Glyphs and colors are by type**, one look each (empty, half filled in
   the accent, dashed, checked, struck through; an unknown character in
   violet), so each can be checked for contrast in every theme. A status of
-  an open type may add an **`icon`**: `question`, `alert`, `star`, `flag`,
-  or `clock`, drawn in one `--status-icon` token per theme, checked at 3:1
+  an open type may add an **`icon`**: `blocked`, `question`, `alert`,
+  `star`, `flag`, or `clock`, drawn in one `--status-icon` token per theme, checked at 3:1
   like `--divider`. Done and cancelled tasks show their type's box whatever
   their icon; a screen reader hears the status's name.
 - **Done stands for no tag.** A `#status/done` tag on an open box leaves it
