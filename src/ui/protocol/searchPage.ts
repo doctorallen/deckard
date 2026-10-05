@@ -98,6 +98,8 @@ export interface SearchPageSnapshot {
   layout: TagOverviewLayout;
   /** The page sizes the reader can choose between. */
   pageSizes: readonly SearchPageSize[];
+  /** In the Hierarchy layout, the results grouped under the tags Refine offers. */
+  groups?: SearchResultGroup[];
   noteColumns: DashboardColumnCount;
   taskColumns: DashboardColumnCount;
   tagTitleDisplayMode: TagTitleDisplayMode;
@@ -116,6 +118,31 @@ export interface SearchPageSnapshot {
    * results, before they are committed to the search itself.
    */
   draftWords?: string[];
+}
+
+/**
+ * The results that carry one of the tags Refine offers, as the Hierarchy
+ * layout groups them, or those that carry none of them. A result carrying two
+ * of the tags is in both groups.
+ */
+export interface SearchResultGroup {
+  /** The tag, as Refine offers it; none for the results that carry none of Refine's tags. */
+  tag?: {
+    label: string;
+    /** What Refine adds to the search to narrow it to the tag. */
+    clause: string;
+    facetId: 'related' | 'tags';
+  };
+  /** The group's first notes, up to its limit. */
+  notes: TagOverviewCard[];
+  /** How many notes are in the group, drawn or not. */
+  noteCount: number;
+  /** The group's first tasks, up to its limit. */
+  tasks: DashboardTask[];
+  /** How many tasks are in the group, drawn or not. */
+  taskCount: number;
+  /** How many of all the group's tasks are done. */
+  doneCount: number;
 }
 
 /** The quiet lines under a tag's page's hub. */

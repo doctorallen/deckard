@@ -76,6 +76,15 @@ export function LayoutTabsIcon() {
   );
 }
 
+/** A line with two indented under it: results grouped under tags. */
+export function LayoutHierarchyIcon() {
+  return (
+    <StrokeIcon>
+      <path d="M2 3.5h7M4 3.5V12M4 8h2.5M4 12h2.5M9 8h5M9 12h5" />
+    </StrokeIcon>
+  );
+}
+
 /** A frame split in two: results shown side by side. */
 export function LayoutSplitIcon() {
   return (

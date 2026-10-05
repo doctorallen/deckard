@@ -22,9 +22,9 @@ import {
   createDashboardTask,
   createFileOverviewCard,
   getFileEntryTitle,
+  getFileCardLines,
   createTagOverviewCard,
   createTagOverviewHub,
-  getFrontmatterBody,
   getSectionBody,
   sortTasks,
 } from './entryCards';
@@ -39,12 +39,13 @@ import { findTagLookalikes } from '../../domain/ranking/tagHygiene';
 import { pinKey } from '../../core/storage/preferencesSchema';
 import { createPinForLine } from '../../domain/notes/pins';
 import { buildSearchFacets, SearchFacetValue } from '../../domain/search/facets';
-import { ResultPaging, TagOverviewCard } from '../protocol/shared';
-import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes } from '../protocol/searchPage';
+import { DashboardTask, ResultPaging, TagOverviewCard } from '../protocol/shared';
+import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes, SearchResultGroup } from '../protocol/searchPage';
+import { findTagFacet, GROUP_ITEM_LIMIT, groupResults } from './searchGroups';
 import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
 import { linkProgressParts } from './progressLinks';
 import { isEntrySection } from '../../domain/markdown/noteEntries';
-import { getEntryLineMap, getEntryTextOf, isFileEntry } from '../../domain/index/noteEntryIndex';
+import { getEntryLineMap, getEntryTextOf, getFileEntryLines, isFileEntry } from '../../domain/index/noteEntryIndex';
 import { stripTags } from '../../domain/markdown/parser';
 import {
   Entity,
@@ -57,6 +58,7 @@ import {
   Task,
   TagTitleDisplayMode,
   TagAssociation,
+  QueryFacet,
   WorkspaceIndex,
 } from '../../domain/model';
 
@@ -165,10 +167,6 @@ export function createSearchPageSnapshot(
     (task) => isParkedTask(index, task.id),
   );
   const taskPaging = createPaging(tasks.length, pageSize, options.taskPage);
-  const related =
-    tagKeys && (options.enableHeadingTagRelationships ?? true)
-      ? createRelatedFacetValues(index, tagKeys, results)
-      : undefined;
   // Only a search that found nothing is worth correcting: results answer the
   // search as it was typed, and offering a different one beside them would
   // argue with what the reader can already see.
@@ -176,6 +174,15 @@ export function createSearchPageSnapshot(
     ranked.length === 0 && tasks.length === 0
       ? suggestWorkingSearch(index, { text, parsed, sectionKey, options })
       : undefined;
+  const facets = buildPageFacets(index, page, text, options);
+  const drawTask = (task: Task) =>
+    markParked(
+      markVia(createDashboardTask(task, index.sections, options.queryContext), task.id),
+      isParkedTask(index, task.id),
+    );
+  const groups = preferences.tagOverviewLayout === 'hierarchy'
+    ? drawResultGroups(index, { facets, ranked, tasks, drawTask, drawNotes: (keys) => drawNoteCards(index, preferences, { keys, page, tagTitleDisplayMode, markVia }) })
+    : undefined;
 
   return {
     ...buildTagPageBlock(index, preferences, page, options.queryContext),
@@ -185,12 +192,7 @@ export function createSearchPageSnapshot(
       matchCounts: { notes: ranked.length, tasks: tasks.length },
       isAdvanced: true,
       recentQueries: preferences.recentQueries ?? [],
-      facets: parsed.node
-        ? buildSearchFacets(index, results, text, {
-            related,
-            now: options.queryContext.now,
-          })
-        : [],
+      facets,
       queryContext: options.queryContext,
     }),
     ...(suggestion ? { suggestion } : {}),
@@ -199,15 +201,11 @@ export function createSearchPageSnapshot(
     savedViewName: findSavedViewName(preferences.savedFilters, tagKeys, parsed),
     sections,
     notePaging,
-    tasks: takePage(tasks, taskPaging).map((task) =>
-      markParked(
-        markVia(createDashboardTask(task, index.sections, options.queryContext), task.id),
-        isParkedTask(index, task.id),
-      ),
-    ),
+    tasks: takePage(tasks, taskPaging).map(drawTask),
     taskPaging,
     taskCounts: countTasks(tasks),
     pageSizes: SEARCH_PAGE_SIZES,
+    ...(groups ? { groups } : {}),
     renderMode: preferences.renderMode,
     preview: preferences.searchPreview,
     sortMode: preferences.tagOverviewSortMode,
@@ -237,6 +235,48 @@ function suggestWorkingSearch(
   return corrected !== undefined && findsSomething(index, corrected, sectionKey, options.queryContext)
     ? corrected
     : undefined;
+}
+
+/**
+ * What Refine offers: under Tags, the tags associated with a search of tags,
+ * else those its results carry; and the other facets of what it found.
+ */
+function buildPageFacets(index: WorkspaceIndex, page: SearchPageResults, text: string, options: SearchPageOptions): QueryFacet[] {
+  const { parsed, tagKeys, results } = page;
+  if (!parsed.node) {
+    return [];
+  }
+  const related =
+    tagKeys && (options.enableHeadingTagRelationships ?? true)
+      ? createRelatedFacetValues(index, tagKeys, results)
+      : undefined;
+  return buildSearchFacets(index, results, text, { related, now: options.queryContext.now });
+}
+
+/**
+ * The Hierarchy layout's groups, each drawing its first notes and tasks and
+ * counting all of them, the done tasks among them for its bar.
+ */
+function drawResultGroups(
+  index: WorkspaceIndex,
+  { facets, ranked, tasks, drawNotes, drawTask }: {
+    facets: readonly QueryFacet[];
+    ranked: readonly NoteKey[];
+    tasks: readonly Task[];
+    drawNotes: (keys: readonly NoteKey[]) => TagOverviewCard[];
+    drawTask: (task: Task) => DashboardTask;
+  },
+): SearchResultGroup[] {
+  return groupResults(index, findTagFacet(facets), ranked, tasks).map((group) => ({
+    ...(group.value && group.facetId
+      ? { tag: { label: group.value.label, clause: group.value.clause, facetId: group.facetId } }
+      : {}),
+    notes: drawNotes(group.notes.slice(0, GROUP_ITEM_LIMIT)),
+    noteCount: group.notes.length,
+    tasks: group.tasks.slice(0, GROUP_ITEM_LIMIT).map(drawTask),
+    taskCount: group.tasks.length,
+    doneCount: group.tasks.filter((task) => task.completed).length,
+  }));
 }
 
 /** How many of the tasks there are in all, open, and completed. */
@@ -342,19 +382,23 @@ function drawNoteCards(
   const snippetWords = [...new Set([...getTextWords(page.drafted.node), ...page.preview])]
     .map((word) => word.toLowerCase())
     .filter((word) => word.length >= 2);
-  return keys.map((key) =>
-    withPreview(
-      markParked(
-        key.section
-          ? markVia(cardFor(key.section), key.section.id)
-          : markVia(createFileOverviewCard(key.file as ParsedFile), (key.file as ParsedFile).filePath),
-        isParkedKey(index, key),
-      ),
+  // A front-matter note draws its own lines, never a heading that is a note
+  // of its own, and maps each to where it is written, as an entry's card does.
+  const fileCardFor = (file: ParsedFile): TagOverviewCard => {
+    const { lines, titleId } = getFileCardLines(file, getFileEntryLines(index, file));
+    const card = createFileOverviewCard(file, lines);
+    cardLines.set(card.id, { map: lines, entryId: titleId ?? '' });
+    return card;
+  };
+  return keys.map((key) => {
+    const card = key.section ? cardFor(key.section) : fileCardFor(key.file as ParsedFile);
+    return withPreview(
+      markParked(markVia(card, key.section ? key.section.id : card.filePath), isParkedKey(index, key)),
       preferences.searchPreview,
       snippetWords,
-      key.section ? cardLines.get(key.section.id) : undefined,
-    ),
-  );
+      cardLines.get(card.id),
+    );
+  });
 }
 
 /**
@@ -743,7 +787,7 @@ function createSnippet(
   cardLines: CardLines | undefined,
 ): NonNullable<TagOverviewCard['snippet']> {
   const mapped = cardLines?.map[start];
-  const ownedHeading = mapped && mapped.part.id !== cardLines?.entryId ? stripTags(mapped.part.heading).trim() : undefined;
+  const ownedHeading = mapped?.part && mapped.part.id !== cardLines?.entryId ? stripTags(mapped.part.heading).trim() : undefined;
   const rawContent = lines.slice(start).join('\n');
   return {
     rawContent,
@@ -844,7 +888,8 @@ function createFileKey(file: ParsedFile): NoteKey {
 
 /** Where each line of a card's body is written, for a note read through its untagged headings. */
 interface CardLines {
-  map: { line: number; part: Section }[];
+  /** Each line's place in its note, and the heading it is under, when one is. */
+  map: ReadonlyArray<{ line: number; part?: Section }>;
   entryId: string;
 }
 
@@ -866,7 +911,8 @@ function matchesNoteWords(index: WorkspaceIndex, key: NoteKey, words: readonly s
             ...key.section.tags.map((tag) => key.section?.tagLabels[tag] ?? `#${tag}`),
           ]
         : [
-            getFrontmatterBody((key.file as ParsedFile).content),
+            // Its own lines: a word under a heading that is a note of its own finds that note.
+            getFileEntryLines(index, key.file as ParsedFile).map((line) => line.text).join('\n'),
             ...(key.file as ParsedFile).frontmatterTags.map((tag) => tag.label),
           ]
     )

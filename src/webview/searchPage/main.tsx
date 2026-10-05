@@ -112,7 +112,7 @@ let settledFor: string | undefined;
  * redraw of the same search, such as a task ticked, keeps the tab.
  */
 function settleTab(snapshot: SearchPageState): void {
-  if (snapshot.layout === 'split') {
+  if (snapshot.layout !== 'tabs') {
     return;
   }
   const counts = resultCounts(snapshot);
@@ -222,9 +222,9 @@ const editor = createQueryEditor({
   placeholder: () => 'Search notes and tasks: words, #tags, is:open, has:due, in:folder, updated >= 7d…',
   label: 'Search notes and tasks',
   refineElsewhere: () => Boolean(latest && latest.refineInSidebar),
-  // The Notes and Tasks tabs carry the counts; the strip repeats them only
-  // in the split layout, where there are no tabs.
-  countElsewhere: () => Boolean(latest && latest.layout !== 'split'),
+  // The Notes and Tasks tabs carry the counts; the strip repeats them in
+  // the other layouts, where there are no tabs.
+  countElsewhere: () => Boolean(latest && latest.layout === 'tabs'),
   actions: (hasText) => (
     <button data-action="save-filter" data-query-needs-text="" data-tip="Keep this search, named, on Home" data-tip-disabled="Type a search to save it" aria-disabled={hasText ? undefined : 'true'}>Save</button>
   ),

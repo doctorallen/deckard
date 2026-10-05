@@ -127,9 +127,9 @@ const narrowSetTagOverviewSort: Narrower<SetTagOverviewSortMessage> = (value) =>
     ? { type: 'setTagOverviewSort', mode: value.mode }
     : undefined;
 
-/** Notes and tasks as tabs or side by side. */
+/** Notes and tasks as tabs, side by side, or grouped under Refine's tags. */
 const narrowSetTagOverviewLayout: Narrower<SetTagOverviewLayoutMessage> = (value) =>
-  value.layout === 'tabs' || value.layout === 'split'
+  value.layout === 'tabs' || value.layout === 'split' || value.layout === 'hierarchy'
     ? { type: 'setTagOverviewLayout', layout: value.layout }
     : undefined;
 

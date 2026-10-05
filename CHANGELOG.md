@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Added
+
+- **Hierarchy on search pages.** A third layout in the gear groups the
+  results under each tag Refine offers, with how many notes and tasks each
+  holds and a bar for how many of its tasks are done. A note or task is
+  shown where it is most specific, under its own tags before the ones it
+  inherits, so a tagged heading is never listed beside the note it is in.
+
+### Changed
+
+- **A card never repeats another note's text.** A heading's card, and the
+  card of a note tagged in its front matter, leave out the headings under
+  them that are notes of their own, each of which has its own card; a word
+  written under one finds it alone.
+
 ## 2.2.0 - 2026-10-05
 
 ### Highlights

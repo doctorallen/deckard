@@ -32,7 +32,7 @@ export type TagOverviewSortMode =
   | 'access';
 
 /** Whether a search page shows its notes and tasks as tabs or side by side. */
-export type TagOverviewLayout = 'tabs' | 'split';
+export type TagOverviewLayout = 'tabs' | 'split' | 'hierarchy';
 
 /**
  * The page sizes a search page offers.

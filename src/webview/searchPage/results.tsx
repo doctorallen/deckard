@@ -1,9 +1,11 @@
 /**
  * What a search found: its notes as cards and its tasks as rows, each kind
- * a page at a time, in two tabs or side by side.
+ * a page at a time, in two tabs or side by side; or grouped under Refine's
+ * tags.
  */
 import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { DashboardTask } from '../../ui/protocol/shared';
+import { ResultGroups } from './groups';
 import { type Paging, describePageRange, PageSteps } from '../shared/pageSteps';
 import { resultPanelAttributes, ResultTabs } from '../shared/resultTabs';
 import { type CardDisplay, SearchCard } from '../shared/searchCard';
@@ -176,11 +178,14 @@ function TasksPane({ view }: { readonly view: ResultsView }) {
 }
 
 /**
- * The results: side by side, or as Notes and Tasks tabs over their panes,
- * each tab counting what its pane holds, so a tab never promises more rows
- * than the pane behind it.
+ * The results: grouped under Refine's tags, side by side, or as Notes and
+ * Tasks tabs over their panes, each tab counting what its pane holds, so a
+ * tab never promises more rows than the pane behind it.
  */
 export function Results({ view }: { readonly view: ResultsView }) {
+  if (view.snapshot.layout === 'hierarchy') {
+    return <ResultGroups key="hierarchy" snapshot={view.snapshot} openedCards={view.openedCards} />;
+  }
   if (view.snapshot.layout === 'split') {
     return <div key="split" class="overview-split"><NotesPane view={view} /><TasksPane view={view} /></div>;
   }
