@@ -15,12 +15,11 @@ import {
   getSampleStorageUri,
   installSample,
   isSampleNote,
-  resolveSampleTokens,
   SAMPLE_FOLDER_NAME,
-  sampleFileName,
   WORK_SAMPLE_FOLDER_NAME,
   takeSampleReadme,
 } from '../ui/commands/sampleWorkspace';
+import { resolveSampleTokens, sampleFileName } from '../domain/notes/sampleNotes';
 import { buildHubTree, findBreadcrumbs } from '../ui/state/hubTree';
 import { computeTagProgress, describeTagProgress } from '../domain/tasks/tagProgress';
 import { createAgenda } from '../ui/state/agendaState';

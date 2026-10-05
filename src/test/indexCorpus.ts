@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { resolveSampleTokens, sampleFileName } from '../ui/commands/sampleWorkspace';
+import { resolveSampleTokens, sampleFileName } from '../domain/notes/sampleNotes';
 import { ParsedFile } from '../domain/model';
 
 /** The repository's root, which the sample workspace and the development notes are read from. */
