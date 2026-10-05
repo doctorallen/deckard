@@ -6,6 +6,15 @@ name: CI
 # whole workflow on it, through workflow_call, before it publishes
 # anything. A branch that wants CI opens a pull request, a draft if it is
 # not ready; workflow_dispatch runs it on any branch by hand.
+#
+# The work is split between jobs that run at once, so a run takes as long
+# as its slowest job, about 6 to 8 minutes, rather than the 18 to 27 one
+# job took: `checks` (types, lint, import rules), `core` (unit, host, page,
+# and end-to-end suites, and the VSIX), the Chrome checks in `browser`, each
+# in two shards of the sixteen theme-and-zen passes, and the extension's own
+# tests on Windows and macOS. `validate` waits for all of them and passes
+# only when every one did. Nothing is sampled: every surface is drawn in
+# every theme, with zen off and on.
 on:
   pull_request:
   workflow_call:
@@ -21,11 +30,12 @@ concurrency:
   cancel-in-progress: ${{ github.workflow == 'CI' }}
 
 jobs:
-  validate:
+  # What needs no runtime: the types of both projects, lint, and the import
+  # rules, so a type error shows in about a minute.
+  checks:
+    name: Types, lint, and import rules
     runs-on: ubuntu-latest
-    # Phase 6 step 1 added ten surfaces, about 160 more screenshots and as
-    # many more layouts, to the 15 minutes the job used to need.
-    timeout-minutes: 40
+    timeout-minutes: 10
 
     steps:
       - name: Check out source
@@ -46,43 +56,11 @@ jobs:
       - name: Check the shipped packages for advisories
         run: npm audit --omit=dev --audit-level=high
 
-      - name: Run automated tests
-        run: xvfb-run --auto-servernum npm test
+      - name: Check types
+        run: npm run check-types
 
-      - name: Check webview pages
-        run: npm run test:ui
-
-      - name: Run end-to-end webview tests
-        run: npm run test:e2e
-
-      # The layout and visual checks draw several pages at once, one Chrome
-      # each: half the runner's four cores' worth, so two (UI_CONCURRENCY,
-      # test/ui/chromePool.js). Each Chrome takes more than a core, so two
-      # keep all four busy without pushing a page's draw toward the end of
-      # its virtual time.
-      - name: Lay the webviews out in Chrome
-        run: npm run test:layout
-
-      # --ci fails when a surface has no baseline to compare with, rather
-      # than recording one and passing, so the pixel guard cannot go quiet.
-      - name: Compare the webviews to how they looked
-        env:
-          VISUAL_KEEP: ${{ runner.temp }}/visual
-        run: npm run test:visual -- --ci
-
-      # What was drawn, the diffs, and any baseline recorded because none was
-      # there, for a failed comparison to be looked at or a new Linux
-      # baseline to be committed.
-      - name: Keep the screenshots of a failed comparison
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: visual-${{ github.sha }}
-          path: |
-            ${{ runner.temp }}/visual
-            test/ui/visual-baseline/linux
-          if-no-files-found: ignore
-          retention-days: 7
+      - name: Lint, and check the import rules
+        run: npm run lint
 
       # The layers at a glance, from the rules lint enforces.
       - name: Summarize the import graph
@@ -95,7 +73,46 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # Everything that runs from one build: compiled once, then each suite in
+  # turn, then the VSIX.
+  core:
+    name: Unit, host, page, and end-to-end suites, and the VSIX
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the suites and the extension
+        run: npm run compile-tests && node esbuild.js
+
+      - name: Run the unit suites
+        run: node test/harness/runUnitSuites.js
+
+      - name: Run the extension-host suites
+        run: xvfb-run --auto-servernum npx vscode-test
+
+      - name: Check webview pages
+        run: node test/ui/verifyWebviews.js && node test/ui/checkContrast.js
+
+      - name: Run end-to-end webview tests
+        run: node test/e2e/run.js
+
+      # The checks job has linted this tree, and validate requires it, so
+      # the build the VSIX is packaged from skips its own lint.
       - name: Build VSIX
+        env:
+          DECKARD_LINTED: '1'
         run: npm run package:vsix
 
       # The production build the VSIX was packaged from wrote what each
@@ -109,6 +126,73 @@ jobs:
           name: deckard-vsix-${{ github.sha }}
           path: '*.vsix'
           if-no-files-found: error
+          retention-days: 7
+
+  # The checks that draw the pages in Chrome. Layout, rendered contrast, and
+  # visual each take half of the sixteen theme-and-zen passes per job
+  # (UI_SHARD, test/ui/passes.js); the DOM check draws Replicant alone, with
+  # and without zen, in one. Each job draws two pages at once
+  # (UI_CONCURRENCY, test/ui/chromePool.js): half the runner's four cores,
+  # since each Chrome takes more than a core, and more would push a page's
+  # draw toward the end of its virtual time.
+  browser:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: 'Chrome: layout, 1 of 2', check: checkLayout, shard: '1/2', artifact: layout-1 }
+          - { name: 'Chrome: layout, 2 of 2', check: checkLayout, shard: '2/2', artifact: layout-2 }
+          - { name: 'Chrome: rendered contrast, 1 of 2', check: checkRenderedContrast, shard: '1/2', artifact: contrast-1 }
+          - { name: 'Chrome: rendered contrast, 2 of 2', check: checkRenderedContrast, shard: '2/2', artifact: contrast-2 }
+          # --ci fails when a surface has no baseline to compare with, rather
+          # than recording one and passing, so the pixel guard cannot go
+          # quiet.
+          - { name: 'Chrome: visual, 1 of 2', check: checkVisual, shard: '1/2', args: '--ci', artifact: visual-1 }
+          - { name: 'Chrome: visual, 2 of 2', check: checkVisual, shard: '2/2', args: '--ci', artifact: visual-2 }
+          # The goldens were recorded on macOS; a Linux difference fails
+          # here, and the DOM each surface drew is uploaded to look at.
+          - { name: 'Chrome: DOM', check: checkDom, shard: '', artifact: dom }
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the suites and the pages
+        run: npm run compile-tests && npm run build:webview
+
+      # With CI set, a check that finds no Chrome fails rather than skipping.
+      - name: Run ${{ matrix.check }}
+        env:
+          UI_SHARD: ${{ matrix.shard }}
+          VISUAL_CHANGED: ${{ runner.temp }}/visual-changed
+          DOM_KEEP: ${{ runner.temp }}/dom
+        run: node test/ui/${{ matrix.check }}.js ${{ matrix.args }}
+
+      # Only what a failure needs: each surface drawn with no baseline or
+      # differing from it, under its baseline's name, ready to commit as a
+      # Linux baseline once looked at, and its diff; or, for the DOM check,
+      # the DOM each surface drew.
+      - name: Keep what a failed comparison drew
+        if: failure() && (matrix.check == 'checkVisual' || matrix.check == 'checkDom')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact }}-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/visual-changed
+            ${{ runner.temp }}/dom/*.dom.html
+          if-no-files-found: ignore
           retention-days: 7
 
   # The extension's own tests on the other two systems VS Code runs on, for
@@ -137,3 +221,21 @@ jobs:
 
       - name: Run automated tests
         run: npm test
+
+  # The check master's ruleset requires, by this name. A job whose needs
+  # failed is skipped, and a skipped required check counts as passing, so
+  # this one always runs, and fails unless every job it needs succeeded.
+  validate:
+    name: validate
+    if: always()
+    needs: [checks, core, browser, extension-host]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Every job passed
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success")' > /dev/null
