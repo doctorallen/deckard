@@ -25,7 +25,7 @@ A note, heading, or task is **parked** when it is in a parked folder or a search
 
 - **Park Note** writes `tags: [parked]` into front matter; **Unpark Note** removes it. Both are in the palette, the editor tab's menu, and the **Deckard** menus in the editor, Explorer, and search cards, with Undo. A value YAML would misread, such as `#atlas`, is written in quotes. A tags line that ends in a comment (`tags: [a] # mine`) is left alone, since writing it again would lose the comment; Deckard says so.
 - **Park Folder…** adds a folder to `deckard.parked.folders`, from the palette or a folder's **Deckard** menu in the Explorer.
-- **Park Tag…** adds a tag to `deckard.parked.tags`, from the palette or a tag's menu, Sections' included. It parks everything a search for the tag finds, and its sub-tags: `project/old` parks `#project/old/phase-1`. A parked tag's page says **Parked** with **Unpark**.
+- **Park Tag…** adds a tag to `deckard.parked.tags`, from the palette, a tag's menu, or the Outline. It parks everything a search for the tag finds, and its sub-tags: `project/old` parks `#project/old/phase-1`. A parked tag's page says **Parked** with **Unpark**.
 
 | Left out | Kept, listed last and marked **Parked** |
 | --- | --- |

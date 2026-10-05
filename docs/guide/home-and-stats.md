@@ -112,4 +112,4 @@ Spelling pairs are compared only inside one namespace, so `#project/relay` and `
 
 ---
 
-← [Query blocks](query-blocks.md) · [All topics](README.md) · [Related notes, sections, and the graph](connections.md) →
+← [Query blocks](query-blocks.md) · [All topics](README.md) · [Related notes, the graph, and the outline](connections.md) →

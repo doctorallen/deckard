@@ -142,7 +142,7 @@ suite('Naming', () => {
       'a title is a name; what it does goes in Help',
     );
     const tagPage = titles.filter((title) => /Tag's Search Page/.test(title));
-    assert.ok(tagPage.length >= 1, 'the palette offers it');
+    assert.ok(tagPage.length >= 2, 'the palette and the context menu both offer it');
     assert.ok(
       tagPage.every((title) => title.endsWith('…') && title === tagPage[0]),
       'under one title, ending with the ellipsis of a command that asks',

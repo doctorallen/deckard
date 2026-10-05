@@ -12,6 +12,10 @@
 
 ### Changed
 
+- **The Outline is its own view again.** The Context view's Sections list
+  of 2.2.0 goes back to Deckard's Outline view in the sidebar, with its
+  title-bar controls: Follow Cursor, Filter by Tag, and Unfold All.
+
 - **A card never repeats another note's text.** A heading's card, and the
   card of a note tagged in its front matter, leave out the headings under
   them that are notes of their own, each of which has its own card; a word

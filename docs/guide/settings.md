@@ -116,10 +116,10 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.templatesFolder` | `templates` | The folder of [note templates](notes-and-links.md#templates), relative to the workspace folder. Not indexed. Empty turns templates off. |
 | `deckard.noteBoundaries` | `line` | Where one note ends and the next begins; see [Markdown format](notes-and-links.md#markdown-format). `line`, `heading`, or `marked`. |
 | `deckard.parseInlineTags` | `true` | Deprecated: use `deckard.noteBoundaries`. `false` is read as `heading`. |
-| `deckard.outline.showTags` | `true` | Shows each heading's own tags beside it in the Context view's Sections. |
-| `deckard.outline.followCursor` | `true` | Marks the heading the cursor is in, in Sections. |
+| `deckard.outline.showTags` | `true` | Shows each heading's own tags beside it in the Outline. |
+| `deckard.outline.followCursor` | `true` | Selects the Outline heading containing the editor cursor. The eye control in the Outline title switches it. |
 | `deckard.outline.inheritedTags` | `false` | Also shows the front-matter tags every heading inherits. |
-| `deckard.outline.showCounts` | `true` | Shows each heading's done tasks in Sections, such as `2/5`, and links naming it, such as `↩3`. |
+| `deckard.outline.showCounts` | `true` | Shows each Outline heading's done tasks, such as `2/5`, and links naming it, such as `↩3`. |
 | `deckard.agenda.groupBy` | `due` | What the [Tasks view's](tasks.md#tasks-view) groups are: `due`, `priority`, `status`, `assignee`, or `tag`. The group control in its title sets it too. |
 | `deckard.agenda.groupNamespace` | `project` | The tag namespace the Tasks view groups by when `deckard.agenda.groupBy` is `tag`, such as `context` for `#context/phone`. Inherited tags count. |
 | `deckard.agenda.upcomingDays` | `7` | How many days ahead the Tasks view's **Upcoming** group reaches; a dated task past that is in **Later**. |

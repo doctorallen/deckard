@@ -18,6 +18,7 @@ import {
 } from '../state/outlineState';
 import { getBacklinkIndex } from '../../domain/index/backlinks';
 import { revealLine } from '../commands/navigation';
+import type { ActiveNotePage } from '../webview/activeNotePage';
 import { reportFailure } from '../commands/notify';
 
 /** Context key backing the follow-cursor toggle in the view title. */
@@ -69,12 +70,16 @@ export class OutlineTreeProvider
    * cleared or the window reloads.
    */
   private tagFilter: { key: string; label: string } | undefined;
+  /** The note page, whose note the Outline lists while it is in front. */
+  private notePage: ActiveNotePage | undefined;
+  /** The note page's note, while the Outline lists it rather than an editor's. */
+  private notePageFile: string | undefined;
 
   /**
    * Starts listening at once to the active editor, its text, its saves and
    * cursor, the index, and the Outline's settings.
    */
-  public constructor(private readonly indexer: IndexReader & IndexUpdates) {
+  public constructor(private readonly indexer: IndexReader<vscode.Uri> & IndexUpdates) {
     this.disposables.push(this.changeEmitter);
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor(() => this.rebuildNow()),
@@ -173,31 +178,6 @@ export class OutlineTreeProvider
     this.rebuildNow();
   }
 
-  /**
-   * What the Context view's Sections list draws: the headings shown, the
-   * filter narrowing them, and every tag the note's headings carry.
-   */
-  public readSections(): { roots: readonly OutlineNode[]; documentUri?: vscode.Uri; filter?: { key: string; label: string }; tags: { key: string; label: string }[] } {
-    return { roots: this.roots, documentUri: this.documentUri, filter: this.tagFilter, tags: this.listTags() };
-  }
-
-  /** Opens the heading on a line of the note the sections are read from. */
-  public async revealLine(line: number): Promise<void> {
-    const find = (nodes: readonly OutlineNode[]): OutlineNode | undefined => {
-      for (const node of nodes) {
-        const found = node.line === line ? node : find(node.children);
-        if (found) {
-          return found;
-        }
-      }
-      return undefined;
-    };
-    const node = find(this.allRoots);
-    if (node) {
-      await this.revealSection(node);
-    }
-  }
-
   /** The headings under a heading, or the top-level headings shown. */
   public getChildren(node?: OutlineNode): OutlineNode[] {
     return node ? node.children : this.roots;
@@ -217,6 +197,11 @@ export class OutlineTreeProvider
    * file outside the configured notes folder still opens from the outline.
    */
   public async revealSection(node: OutlineNode): Promise<void> {
+    if (this.notePageFile) {
+      // The page has no cursor to move: opening it at the heading scrolls it there.
+      await vscode.commands.executeCommand('deckard.openNotePage', this.notePageFile, node.line);
+      return;
+    }
     if (!this.documentUri) {
       return;
     }
@@ -232,6 +217,16 @@ export class OutlineTreeProvider
     } catch (error) {
       void reportFailure({ outcome: 'Deckard could not open that heading.', error });
     }
+  }
+
+  /**
+   * Lists the note page's note while the page is in front with no text
+   * editor, as the Context view follows it: read from the index, as the page
+   * draws it, with the line the page was asked for standing in for the cursor.
+   */
+  public followNotePage(source: ActiveNotePage): void {
+    this.notePage = source;
+    this.disposables.push(source.onDidChange(() => this.rebuildNow()));
   }
 
   /**
@@ -276,7 +271,11 @@ export class OutlineTreeProvider
    */
   private rebuild(): void {
     this.rebuildPending = false;
+    this.notePageFile = undefined;
     const document = vscode.window.activeTextEditor?.document;
+    if (!document && this.rebuildFromNotePage()) {
+      return;
+    }
     if (!document || !isMarkdownFile(document.uri)) {
       this.publish([], undefined, noDocumentMessage);
       return;
@@ -302,6 +301,41 @@ export class OutlineTreeProvider
       void this.followCursor();
     } catch {
       this.publish([], undefined, unreadableMessage);
+    }
+  }
+
+  /** Lists the note page's note, when it is in front and indexed; false when it is not. */
+  private rebuildFromNotePage(): boolean {
+    const location = this.notePage?.active?.location;
+    const file = location ? this.indexer.getSnapshot().files.get(location.filePath) : undefined;
+    if (!location || !file) {
+      return false;
+    }
+    const uri = this.indexer.getUri(location.filePath) ?? vscode.Uri.file(location.filePath);
+    const roots = buildOutline(file, {
+      personMarker: vscode.workspace.getConfiguration('deckard').get<string>('personMarker'),
+      inheritedTags: this.areInheritedTagsShown(uri),
+      backlinks: getBacklinkIndex(this.indexer.getSnapshot()),
+      filePath: location.filePath,
+    });
+    this.allRoots = roots;
+    this.notePageFile = location.filePath;
+    const shown = this.tagFilter ? filterOutline(roots, this.tagFilter.key) : roots;
+    this.publish(shown, uri, describeOutlineMessage(roots, shown, this.tagFilter));
+    void this.revealPageLine(location.line);
+    return true;
+  }
+
+  /** Selects the heading the note page was opened at, as following the cursor does in an editor. */
+  private async revealPageLine(line: number | undefined): Promise<void> {
+    const node = line ? findOutlineNodeAt(this.roots, line) : undefined;
+    if (!node || !this.view?.visible || !isOutlineFollowCursorEnabled()) {
+      return;
+    }
+    try {
+      await this.view.reveal(node, { select: true, focus: false, expand: true });
+    } catch {
+      // The tree changed while revealing; the next rebuild resynchronizes it.
     }
   }
 

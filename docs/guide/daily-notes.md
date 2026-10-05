@@ -87,4 +87,4 @@ Deckard can write your dated tasks to a calendar file (`.ics`) that Apple Calend
 
 ---
 
-← [Related notes, sections, and the graph](connections.md) · [All topics](README.md) · [Renaming, moving, and parking](organizing.md) →
+← [Related notes, the graph, and the outline](connections.md) · [All topics](README.md) · [Renaming, moving, and parking](organizing.md) →

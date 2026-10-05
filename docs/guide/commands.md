@@ -62,11 +62,12 @@
 | **Deckard: Merge Tag…** | Merges one tag into an existing one, after a preview. |
 | **Deckard: Rename Heading** | Renames the heading the cursor is in and rewrites every `[[Note#Heading]]` link that named it. |
 | **Deckard: Undo Last Change** | Reverts Deckard's last workspace-wide write, such as a tag rename or merge. |
-| **Deckard: Mark the Cursor's Section in Sections** | Marks the heading the cursor is in, in the Context view's Sections. **Deckard: Stop Marking the Cursor's Section** turns it off. |
-| **Deckard: Focus Section** | Folds the rest of the note away from the current section, or the heading whose **Focus** was selected in Sections. |
+| **Deckard: Follow Cursor in Outline** | Selects the Outline heading containing the editor cursor. The Outline title has the same control. |
+| **Deckard: Stop Following Cursor in Outline** | Leaves the Outline selection where you put it. |
+| **Deckard: Focus Section** | Folds the rest of the note away from the current section or Outline heading. |
 | **Deckard: Unfold All Sections** | Unfolds the note again after Focus Section. |
-| **Deckard: Filter Sections by Tag…** | Shows only the headings in Sections that carry a tag, or a tag under it. |
-| **Deckard: Clear the Sections Filter** | Shows every heading in Sections again. |
+| **Deckard: Filter Outline by Tag…** | Shows only Outline headings carrying a tag, or a tag under it. |
+| **Deckard: Clear Outline Tag Filter** | Shows every heading in the Outline again. |
 
 ---
 

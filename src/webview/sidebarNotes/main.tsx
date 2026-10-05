@@ -23,7 +23,6 @@ import { keepState, keptState, post, vscodeApi } from '../shared/vscode';
 import { type CardDisplay, CustomizeHome, GraphConnections, NoTags, RankedNoteCards, Similar } from './cards';
 import { Context, RelatedNotesControls } from './context';
 import { Links } from './links';
-import { Sections } from './sections';
 import { choicesToKeep, isPageInFront, NOTE_PAGE_SIZE, noteListKey, previewLines, readChoices, type SidebarChoices, type SidebarStore } from './model';
 import { Refine } from './refine';
 
@@ -118,7 +117,6 @@ function SidebarPage({ snapshot }: { readonly snapshot: SidebarNotesSnapshot }) 
   return (
     <>
       <Context snapshot={snapshot} open={choices.contextOpen} showEveryActiveTag={choices.showEveryActiveTag} />
-      {isPageInFront(snapshot) ? null : <Sections sections={snapshot.sections} view={{ open: choices.linksOpen.sections, showAll: choices.showAllSections }} />}
       <SectionHeading snapshot={snapshot} />
       <Content snapshot={snapshot} />
       {isPageInFront(snapshot) ? null : <Links links={snapshot.links} view={{ open: choices.linksOpen, openSections: choices.openLinkSections }} />}
@@ -257,7 +255,7 @@ document.addEventListener('toggle', (event) => {
     choices.contextOpen = target.open;
   }
   const group = target && target.dataset ? target.dataset.linksGroup : undefined;
-  if (group === 'linked' || group === 'mentions' || group === 'sections') {
+  if (group === 'linked' || group === 'mentions') {
     choices.linksOpen[group] = target ? target.open : false;
   }
   keepChoices();
@@ -287,13 +285,6 @@ const LINK_ACTIONS: ReadonlyArray<readonly [string, (element: HTMLElement, event
   ['set-preview-lines', (choice) => send({ type: 'setRelatedNotesPreviewLines', lines: Number(choice.dataset.value) as 0 | 1 | 2 })],
   ['open-links-search', () => send({ type: 'openLinksSearch' })],
   ['link-all-mentions', () => send({ type: 'linkAllMentions' })],
-  ['reveal-section', (row) => send({ type: 'revealSection', line: Number(row.dataset.line) })],
-  ['focus-section', (row) => send({ type: 'focusSection', line: Number(row.dataset.line) })],
-  ['show-all-sections', () => {
-    choices.showAllSections = true;
-    keepChoices();
-    redraw({});
-  }],
 ];
 
 // Links, the gear's rows, and a suggested tag's Add, each checked in the
@@ -513,9 +504,6 @@ document.addEventListener('keydown', (event) => {
 });
 document.addEventListener('change', (event) => {
   const target = event.target as HTMLSelectElement;
-  if (target.dataset && target.dataset.action === 'filter-sections') {
-    send({ type: 'filterSections', tagKey: target.value });
-  }
   if (target.dataset && target.dataset.action === 'set-related-notes-sort') {
     send({ type: 'setRelatedNotesSort', mode: target.value as NonNullable<SidebarNotesSnapshot['relatedNotesSortMode']> });
   }

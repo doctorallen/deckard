@@ -60,7 +60,7 @@ Zen is Display's last step, one click away from any page: the Zen button in a pa
 
 ### Moving from Zen mode
 
-`deckard.zenMode` is replaced by Display. If you had it on, it becomes the Zen step, which goes further than Zen mode did: cards are flat, and counts and each entry's file and line are left out. **Customize…** sets any of them back. What Zen mode also turned off in the editor is now five settings of its own, turned off for you where you hadn't set them, so you can turn any back on: `deckard.editor.referenceCounts` (the counts above headings), `deckard.editor.unlinkedMentions` (the mention lens), `deckard.editor.taskDueHints` (the overdue and due-today hints), `deckard.highlightNoteSections` (the band behind the section being edited), and `deckard.outline.showCounts` (the task counts in the Sections view). One notice says so, once.
+`deckard.zenMode` is replaced by Display. If you had it on, it becomes the Zen step, which goes further than Zen mode did: cards are flat, and counts and each entry's file and line are left out. **Customize…** sets any of them back. What Zen mode also turned off in the editor is now five settings of its own, turned off for you where you hadn't set them, so you can turn any back on: `deckard.editor.referenceCounts` (the counts above headings), `deckard.editor.unlinkedMentions` (the mention lens), `deckard.editor.taskDueHints` (the overdue and due-today hints), `deckard.highlightNoteSections` (the band behind the section being edited), and `deckard.outline.showCounts` (the task counts in the Outline). One notice says so, once.
 
 ---
 
