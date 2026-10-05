@@ -103,6 +103,18 @@ that one sees a backdrop, a glow, or a control that moved. When the change in
 looks is meant, record it with `npm run test:visual -- --update` and commit
 the baselines it rewrites.
 
+CI runs every suite on each pull request, split between jobs that run at
+once ([Continuous integration](architecture/testing.md#continuous-integration)):
+types, lint, and the import rules in one; the unit, host, page, and
+end-to-end suites and the VSIX in another; each Chrome check in two shards
+of the theme-and-zen passes; the DOM check; and the unit and host suites on
+Windows and macOS. Its `validate` check passes only when every job did. The
+Linux visual baselines come from CI, drawn in the Chrome version `ci.yml`
+pins: a failed visual shard uploads each image that differs or had no
+baseline, under its baseline's name, ready to commit once looked at. A
+nightly run tests `dev` again with every suite one after another, and in
+the oldest VS Code `engines` allows.
+
 ## Running the development host
 
 The **Run Extension** launch configuration uses repository-local
