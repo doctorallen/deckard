@@ -5,13 +5,13 @@ import { parseMarkdown, readPerson, TAG_WORD_CHARACTERS } from '../markdown/pars
 import { Task, TaskPriority } from '../model';
 import { QueryContext } from '../query/queryContext';
 import { needsNewDate } from './taskPolicy';
-import { readStatusTag } from './taskStatuses';
-import { setTaskStatusTag } from './statusWrites';
+import { isOpenTask, readStatusColumnKey, statusForColumnKey, UNKNOWN_STATUS_NAME } from './taskStatuses';
+import { setTaskStatus, setTaskStatusTag, type StatusWriteMode } from './statusWrites';
 
 export { setTaskStatusTag } from './statusWrites';
 import { isStatusColumnName } from './taskColumns';
 import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskFields';
-import { appendToTaskText, setTaskAssignee, setTaskDate, setTaskLineCompletion, setTaskPriority } from '../markdown/taskLineEdits';
+import { appendToTaskText, setTaskAssignee, setTaskDate, setTaskLineCompletion, setTaskLineMark, setTaskPriority } from '../markdown/taskLineEdits';
 
 /**
  * What dropping a task on a board column means for its line.
@@ -38,6 +38,10 @@ export interface TaskMoveOptions {
   statusNamespace: string;
   /** Format for metadata written on a task that has none yet. */
   format: TaskMetadataFormat;
+  /** How a status with both a character and a tag is written (`deckard.tasks.writeStatusAs`); `match` by default. */
+  writeAs?: StatusWriteMode;
+  /** `deckard.tasks.addCancelledDate`: whether a drop on Cancelled writes ❌; true by default. */
+  addCancelledDate?: boolean;
 }
 
 /**
@@ -94,6 +98,9 @@ export function resolveTaskMove(
   if (columnId === 'done') {
     return task.completed ? { kind: 'unchanged' } : { kind: 'complete' };
   }
+  if (columnId === 'cancelled') {
+    return moveToCancelled(task, options);
+  }
 
   const separator = columnId.indexOf(':');
   const kind = separator < 0 ? columnId : columnId.slice(0, separator);
@@ -111,27 +118,65 @@ export function resolveTaskMove(
     : refuseMove('That column no longer exists on the board. Refresh the board and try again.');
 }
 
-/** A status column: the status tag on the line, or none. */
+/**
+ * A status column: the status its key stands for, written as any status
+ * is; No status, a plain `[ ]` with no status tag; or a tag no status
+ * stands for, written as that tag in an empty box, as the board always has.
+ */
 function moveToStatus({ task, value, options, reopen }: MoveRequest): TaskMove {
   if (value && !isValidStatusName(value)) {
     return refuseMove(`"${value}" cannot be written as a status tag.`);
   }
-  if (
-    !task.completed &&
-    (readStatusTag(task, options.statusNamespace) ?? '') === value
-  ) {
+  const statuses = options.queryContext.taskPolicy.statuses;
+  if (isOpenTask(task) && (readStatusColumnKey(task, statuses, options.statusNamespace) ?? '') === value && task.status.name !== UNKNOWN_STATUS_NAME) {
     return { kind: 'unchanged' };
+  }
+  const status = value ? statusForColumnKey(statuses, value) : statuses.find((candidate) => candidate.symbol === ' ');
+  if (status) {
+    return {
+      kind: 'edit',
+      label: value ? status.name : 'No status',
+      edit: (line) => setTaskStatus(line, task.checkboxColumn, {
+        to: status,
+        namespace: options.statusNamespace,
+        // No status is a plain box, whatever the line wrote before.
+        writeAs: value ? options.writeAs ?? 'match' : 'checkbox',
+        preferredFormat: options.format,
+      }),
+    };
   }
   return {
     kind: 'edit',
-    label: value ? formatStatusLabel(value) : 'No status',
+    label: formatStatusLabel(value),
     edit: (line) =>
       setTaskStatusTag(
-        reopen(line),
+        setTaskLineMark(reopen(line), task.checkboxColumn, { symbol: ' ', closed: undefined }),
         task.checkboxColumn,
         options.statusNamespace,
-        value || undefined,
+        value,
       ),
+  };
+}
+
+/** The Cancelled column: the first cancelled status, with its ❌ date. */
+function moveToCancelled(task: Task, options: TaskMoveOptions): TaskMove {
+  if (task.status.type === 'cancelled') {
+    return { kind: 'unchanged' };
+  }
+  const status = options.queryContext.taskPolicy.statuses.find((candidate) => candidate.type === 'cancelled' && candidate.symbol !== undefined);
+  if (!status) {
+    return refuseMove('No status in the "Tasks: Statuses" setting is of the cancelled type.');
+  }
+  return {
+    kind: 'edit',
+    label: status.name,
+    edit: (line) => setTaskStatus(line, task.checkboxColumn, {
+      to: status,
+      namespace: options.statusNamespace,
+      writeAs: 'checkbox',
+      ...(options.addCancelledDate === false ? {} : { cancelledDate: formatIsoDate(options.queryContext.now) }),
+      preferredFormat: options.format,
+    }),
   };
 }
 

@@ -199,7 +199,9 @@ export interface TaskBoardSettings {
    * then any other status an open task carries. The gear lists these, so a
    * column that is on the board is in the list that orders it.
    */
-  columns?: { status: string; openTasks: number }[];
+  columns?: { status: string; openTasks: number; label?: string }[];
+  /** Whether the board draws a Cancelled column after Done. */
+  showCancelled?: boolean;
 }
 
 /**
@@ -288,6 +290,12 @@ export interface SetBoardQueryMessage {
 export interface SetBoardStatusesMessage {
   type: 'setBoardStatuses';
   statuses: string[];
+}
+
+/** Shows or hides the Cancelled column. */
+export interface SetBoardShowCancelledMessage {
+  type: 'setBoardShowCancelled';
+  show: boolean;
 }
 
 /** Chooses the namespace whose tags are the board's statuses. */
@@ -415,6 +423,7 @@ export interface TaskBoardPageToHost {
   reorderTasks: ReorderTasksMessage;
   setBoardStatuses: SetBoardStatusesMessage;
   setBoardStatusNamespace: SetBoardStatusNamespaceMessage;
+  setBoardShowCancelled: SetBoardShowCancelledMessage;
 }
 
 /**

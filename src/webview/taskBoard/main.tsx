@@ -583,6 +583,9 @@ document.addEventListener('change', (event) => {
   if (target.dataset.action === 'toggle-table-column') {
     toggleColumn(String(target.dataset.value), target.checked);
   }
+  if (target.dataset.action === 'show-cancelled') {
+    post({ type: 'setBoardShowCancelled', show: target.checked });
+  }
 });
 
 document.addEventListener('input', (event) => {

@@ -301,3 +301,44 @@ export function nameTaskStatus(
   }
   return statusForTag(statuses, tag)?.name ?? nameTag(tag);
 }
+
+/** A status's name as a search or a column writes it: lower case, a hyphen for a space. */
+export function slugStatusName(name: string): string {
+  return normalizeStatusName(name).replace(/ /g, '-');
+}
+
+/**
+ * The key a board's status column goes by, which `deckard.board.statuses`
+ * and `deckard.board.limits` name: a status's tag, as the columns always
+ * have, or its name as a slug when it has no tag.
+ */
+export function statusColumnKey(status: TaskStatusDefinition): string {
+  return status.tag ?? slugStatusName(status.name);
+}
+
+/** The open status a column key stands for: by its tag, or by its name as a slug. */
+export function statusForColumnKey(statuses: readonly TaskStatusDefinition[], key: string): TaskStatusDefinition | undefined {
+  const wanted = key.toLowerCase();
+  return (
+    statusForTag(statuses, wanted) ??
+    statuses.find((status) => isOpenType(status.type) && status.symbol !== undefined && slugStatusName(status.name) === wanted)
+  );
+}
+
+/**
+ * The status column a task sits in, by key: its box's status's, or, in an
+ * empty box, its status tag's, whether a status stands for the tag or not.
+ * Undefined for a plain `[ ]` with no tag, and for a character no status
+ * names: both are No status.
+ */
+export function readStatusColumnKey(
+  task: Pick<Task, 'status' | 'associationTagGroups'>,
+  statuses: readonly TaskStatusDefinition[],
+  namespace: string,
+): string | undefined {
+  if (task.status.symbol === ' ') {
+    return readStatusTag(task, namespace);
+  }
+  const status = statuses.find((candidate) => candidate.symbol === task.status.symbol);
+  return status ? statusColumnKey(status) : undefined;
+}

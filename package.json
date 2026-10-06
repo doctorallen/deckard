@@ -2741,6 +2741,12 @@
             "description": "Status columns on the task board, in order. A status found on a task but not listed here gets a column after them.",
             "order": 11
           },
+          "deckard.board.showCancelled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Draw a Cancelled column after Done on the Task board, for the tasks that were closed without being done.",
+            "order": 12
+          },
           "deckard.board.statusNamespace": {
             "type": "string",
             "default": "status",

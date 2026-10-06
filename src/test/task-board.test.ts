@@ -130,7 +130,7 @@ suite('Task board', () => {
     });
     assert.deepStrictEqual(
       layout.columns.map((column) => column.label),
-      ['No status', 'Todo', 'Doing', 'Review', 'Done'],
+      ['No status', 'Todo', 'In progress', 'Review', 'Done'],
     );
   });
 
@@ -297,10 +297,11 @@ suite('Task board', () => {
       statusNamespace: 'status',
       // Every column the board draws, the unlisted review with them.
       columns: [
-        { status: 'todo', openTasks: 1 },
-        { status: 'doing', openTasks: 1 },
-        { status: 'review', openTasks: 1 },
+        { status: 'todo', openTasks: 1, label: 'Todo' },
+        { status: 'doing', openTasks: 1, label: 'In progress' },
+        { status: 'review', openTasks: 1, label: 'Review' },
       ],
+      showCancelled: false,
     });
     assert.strictEqual(board(createIndex(), 'status', '', options).tasks, undefined);
   });
@@ -441,8 +442,9 @@ suite('Task board', () => {
     assert.strictEqual(apply('call', 'due:2026-09-13'), 'unchanged');
     const label = resolveTaskMove(task('call'), 'due:2026-09-17', options);
     assert.strictEqual(label.kind === 'edit' ? label.label : label.kind, 'Due Thu 2026-09-17');
-    // Moving a finished task out of Done reopens it in the same edit.
-    assert.strictEqual(apply('ship', 'status:doing'), '- [ ] Ship it #status/doing');
+    // Moving a finished task out of Done reopens it in the same edit, as
+    // its status's character, since its line writes no status tag.
+    assert.strictEqual(apply('ship', 'status:doing'), '- [/] Ship it');
   });
 });
 

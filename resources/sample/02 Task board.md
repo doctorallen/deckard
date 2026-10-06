@@ -7,10 +7,12 @@ person, a dependency, and a context, so each grouping has something in it.
 
 ## How the tasks below are written
 
-A status is a tag in the status namespace written on the task line:
-status/todo, status/doing, status/waiting, or any other you make up. The
-board gives each a column. This sample's settings put a limit of 2 on Doing,
-so that column reads **3 / 2** with an outline.
+A status is the character in a task's box, as `[/]` for in progress, `[-]`
+for cancelled, and `[=]` for blocked, or a tag in the status namespace
+written on the task line: status/todo, status/doing, status/waiting, or any
+other you make up. The board gives each a column, In progress for both `[/]`
+and status/doing. This sample's settings put a limit of 2 on In progress, so
+that column reads **3 / 2** with an outline.
 
 Who a task is for goes in its 👤 field. Naming a person in the words only
 mentions them; the field says whose task it is. This sample's settings say

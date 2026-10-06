@@ -13,6 +13,7 @@ import {
   TaskMove,
 } from '../domain/tasks/boardMoves';
 import { DEFAULT_TASK_POLICY } from '../domain/tasks/taskPolicy';
+import { formatIsoDate } from '../domain/markdown/calendar';
 import { readStatusTag } from '../domain/tasks/taskStatuses';
 import { Task } from '../domain/model';
 
@@ -122,12 +123,16 @@ suite('Task rules', () => {
     assert.deepStrictEqual(asked, ['project/atlas']);
   });
 
-  test('moving a finished task out of Done reopens it in the same edit', () => {
+  test('moving a finished task out of Done reopens it in the same edit, as its status\'s character', () => {
     const line = '- [x] Ship it ✅ 2026-09-20';
-    assert.strictEqual(
-      apply(resolveTaskMove(task(line), 'status:doing', options, noTags), line),
-      '- [ ] Ship it #status/doing',
-    );
+    assert.strictEqual(apply(resolveTaskMove(task(line), 'status:doing', options, noTags), line), '- [/] Ship it');
+    // A line already written with a status tag keeps writing one.
+    const tagged = '- [x] Ship it #status/todo ✅ 2026-09-20';
+    assert.strictEqual(apply(resolveTaskMove(task(tagged), 'status:doing', options, noTags), tagged), '- [ ] Ship it #status/doing');
+    assert.strictEqual(apply(resolveTaskMove(task('- [/] Ship it'), 'status:', options, noTags), '- [/] Ship it'), '- [ ] Ship it');
+    assert.strictEqual(apply(resolveTaskMove(task('- [/] Ship it'), 'status:blocked', options, noTags), '- [/] Ship it'), '- [=] Ship it');
+    assert.strictEqual(apply(resolveTaskMove(task('- [/] Ship it'), 'status:review', options, noTags), '- [/] Ship it'), '- [ ] Ship it #status/review');
+    assert.strictEqual(apply(resolveTaskMove(task('- [/] Ship it'), 'cancelled', options, noTags), '- [/] Ship it'), `- [-] Ship it ❌ ${formatIsoDate(now)}`);
   });
 
   test('writes status and namespace tags where they are, and nowhere in code', () => {
@@ -188,7 +193,7 @@ suite('Task rules', () => {
     const intoDoing = (task: Task) => resolveTaskMove(task, 'status:doing', options, noTags);
     assert.deepStrictEqual(resolveColumnCapture('- [ ] Call Ren', intoDoing), {
       kind: 'capture',
-      line: '- [ ] Call Ren #status/doing',
+      line: '- [/] Call Ren',
     });
     assert.deepStrictEqual(resolveColumnCapture('Just words', intoDoing), { kind: 'capture', line: 'Just words' });
     assert.deepStrictEqual(resolveColumnCapture('- [ ] Call Ren', (task) => resolveTaskMove(task, 'due:later', options, noTags)), {

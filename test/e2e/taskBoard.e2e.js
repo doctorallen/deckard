@@ -689,7 +689,8 @@ test('the gear edits the status columns without opening settings', async () => {
     view.findAll('.board-column').map((column) => column.dataset.columnId);
   assert.deepStrictEqual(
     view.findAll('.board-status-name').map((name) => name.textContent),
-    ['todo', 'doing', 'waiting'],
+    // Each column by its status's name; the setting keeps the tags.
+    ['Todo', 'In progress', 'Waiting'],
   );
 
   view.type(view.find('[data-action="status-draft"]'), 'Review');

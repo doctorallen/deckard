@@ -22,6 +22,8 @@ import { buildSearchFacets } from '../domain/search/facets';
 import { nextStatus, readLineStatus, setTaskStatus, type StatusWriteMode } from '../domain/tasks/statusWrites';
 import { toggleTaskLines } from '../domain/tasks/toggleLines';
 import { isClosedTaskLine } from '../domain/markdown/taskSteps';
+import { layoutTaskBoard, type TaskBoardOptions } from '../ui/state/taskBoardState';
+import { createAgenda } from '../ui/state/agendaState';
 
 /** Each task's character, name, type, and whether it is done, as the parser read it. */
 function read(content: string, taskStatuses?: readonly TaskStatusDefinition[]): string[] {
@@ -341,5 +343,62 @@ suite('Task statuses: writing one', () => {
     };
     walk(root);
     assert.deepStrictEqual(found, [], 'a task line is recognized by STATUS_MARKS or STATUS_CHARACTER, so a new status is a task everywhere');
+  });
+});
+
+suite('Task statuses: the board and the Tasks view', () => {
+  const index = indexOf([
+    '# Work',
+    '- [ ] plain',
+    '- [/] started',
+    '- [ ] tagged #status/doing',
+    '- [=] stuck',
+    '- [?] puzzled',
+    '- [ ] reviewing #status/review',
+    '- [x] finished',
+    '- [-] dropped',
+  ]);
+  const options: TaskBoardOptions = {
+    queryContext: createQueryContext(new Date(2026, 9, 5).getTime()),
+    statusNamespace: 'status',
+    statuses: ['todo', 'in-progress'],
+    format: 'emoji',
+  };
+  const titleOf = (taskId: string): string => (index.tasks.get(taskId)?.title ?? '').split(' ')[0];
+  const columns = (layoutOptions: TaskBoardOptions) =>
+    layoutTaskBoard({ index, tasks: [...index.tasks.values()], requestedGroupBy: 'status', options: layoutOptions }).columns.map((column) => [
+      column.label,
+      column.cards.map((card) => `${titleOf(card.taskId)}${card.details.length && card.details[0].startsWith('Unknown') ? ` (${card.details[0]})` : ''}`),
+    ]);
+
+  test('columns go by status: a name or a tag in the settings orders them, and a character or a tag places a card', () => {
+    assert.deepStrictEqual(columns(options), [
+      ['No status', ['plain', 'puzzled (Unknown [?])']],
+      ['Todo', []],
+      ['In progress', ['started', 'tagged']],
+      ['Blocked', ['stuck']],
+      ['Review', ['reviewing']],
+      ['Done', ['finished']],
+    ]);
+  });
+
+  test('a Cancelled column follows Done when the gear shows it', () => {
+    assert.deepStrictEqual(columns({ ...options, showCancelled: true }).slice(-2), [
+      ['Done', ['finished']],
+      ['Cancelled', ['dropped']],
+    ]);
+  });
+
+  test('the Tasks view groups by the same columns, by name', () => {
+    const groups = createAgenda(index, createQueryContext(new Date(2026, 9, 5).getTime()), { upcomingDays: 7, groupBy: 'status', statusNamespace: 'status' });
+    assert.deepStrictEqual(
+      groups.map((group) => [group.id, group.label, group.entries.map((entry) => entry.task.title.split(' ')[0])]),
+      [
+        ['doing', 'In progress', ['started', 'tagged']],
+        ['blocked', 'Blocked', ['stuck']],
+        ['review', 'Review', ['reviewing']],
+        ['none', 'No status', ['plain', 'puzzled']],
+      ],
+    );
   });
 });

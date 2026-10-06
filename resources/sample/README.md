@@ -76,7 +76,7 @@ Windows and Linux.
 so your own settings cannot hide its notes or change what it says:
 
 - `deckard.me` says you are Juno Hale, for `is:mine` and the Person columns.
-- `deckard.board.limits` puts a limit of 2 on the board's Doing column.
+- `deckard.board.limits` puts a limit of 2 on the board's In progress column.
 - `deckard.dailyNote.rollover` is `migrate`, so carrying tasks forward
   leaves a `[>]` line behind.
 - `deckard.periodicNote.reviewSections` adds a **Waiting on others** section

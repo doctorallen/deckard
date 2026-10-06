@@ -156,7 +156,7 @@ suite('Agenda service', () => {
     );
     assert.deepStrictEqual(result, { kind: 'moved', moved: 2, refused: [] });
     assert.strictEqual(steps.length, 1, 'a task already in the group is not written');
-    assert.strictEqual(steps[0].kind === 'edit' ? steps[0].edit(late.sourceLineText) : '', '- [ ] Late 📅 2026-09-20 #status/doing');
+    assert.strictEqual(steps[0].kind === 'edit' ? steps[0].edit(late.sourceLineText) : '', '- [/] Late 📅 2026-09-20');
     assert.deepStrictEqual(reads, ['index', 'index'], 'the index is read for each task as it comes');
 
     const done = await service.moveToGroup([late], { groupId: 'donetoday', groupBy: 'due' }, { from: new Map(), index: () => index }, async (step) => {

@@ -5,7 +5,7 @@ import { SHORT_WEEKDAY_NAMES, addDays, formatIsoDate, startOfDay } from '../../d
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import { QueryContext } from '../../domain/query/queryContext';
-import { isOpenTask, nameTaskStatus } from '../../domain/tasks/taskStatuses';
+import { isOpenTask, readStatusColumnKey, statusForColumnKey } from '../../domain/tasks/taskStatuses';
 import type { TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { Placement, placeTask } from '../../domain/tasks/agendaPlacement';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
@@ -453,15 +453,19 @@ function groupByPriority(
 
 /**
  * Each task's status, its checkbox's or its line's status tag's, busiest
- * status first; a plain `[ ]` with no tag is No status.
+ * status first, by the key the board's column for it has, so a drop on a
+ * group writes what a drop on that column does; a plain `[ ]` with no tag,
+ * and a character no status names, are No status.
  */
 function groupByStatus(
   entries: readonly AgendaEntry[],
   reading: { statuses: TaskPolicy['statuses']; namespace: string },
   order: (left: AgendaEntry, right: AgendaEntry) => number,
 ): AgendaGroup[] {
-  const statusOf = (entry: AgendaEntry): string => nameTaskStatus(entry.task, reading.statuses, reading.namespace) ?? '';
-  return collect(entries, statusOf, (status) => status || 'No status', order);
+  const statusOf = (entry: AgendaEntry): string => readStatusColumnKey(entry.task, reading.statuses, reading.namespace) ?? '';
+  const labelOf = (key: string): string =>
+    key ? statusForColumnKey(reading.statuses, key)?.name ?? capitalize(key.replace(/[-_]+/g, ' ')) : 'No status';
+  return collect(entries, statusOf, labelOf, order);
 }
 
 /**
