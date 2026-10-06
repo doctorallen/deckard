@@ -65,9 +65,13 @@ button.danger { border-width: calc(var(--edge) + 1px); border-color: var(--text)
 .undo-notice { display: inline-flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3); border: var(--edge) solid var(--amber); border-radius: var(--control-radius); background: var(--panel-raised); color: var(--text); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); }
 input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 /* The status node every page announces through. Off-screen, never hidden
-   with display:none, which would stop it being announced at all. */
+   with display:none, which would stop it being announced at all. Pinned to
+   the corner of what holds it: left where it was written, at the end of a
+   line too long for a narrow column, it widened what scrolled around it. */
 .visually-hidden {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   margin: -1px;

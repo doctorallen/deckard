@@ -103,6 +103,8 @@ body[data-counts=hidden] .tag-row:focus-within .tag-count,
 body[data-dates=relative] .due-relative .due-on,
 body[data-dates=date] .due-distance {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   overflow: hidden;
