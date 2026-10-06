@@ -2,6 +2,8 @@
  * The board: the searched tasks as columns of cards, each card with its
  * checkbox and the menu that edits it, and the switch that groups them.
  */
+import { speakProgressText } from '../../domain/tasks/progressCount';
+import { ProgressText } from '../shared/progressText';
 import type { ComponentChild } from 'preact';
 
 import type { TaskBoardCard, TaskBoardColumn, TaskBoardSettings, TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
@@ -147,7 +149,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
   // full otherwise: its title, its column, and when it is due.
   const columnLabel = columns.find((column) => column.id === columnId)?.label;
   const dueDetail = (card.details || []).find((detail) => /^(due|overdue|was due)/i.test(detail));
-  const cardName = [title, columnLabel, dueDetail, card.steps ? card.steps.label : ''].filter(Boolean).join(', ');
+  const cardName = [title, columnLabel, dueDetail, card.steps ? speakProgressText(card.steps.label) : ''].filter(Boolean).join(', ');
   // The board is one Tab stop: the card last focused, or the first. Arrow
   // keys move between cards, and a card's checkbox and menu are keys of
   // their own, so neither is a Tab stop either.
@@ -175,7 +177,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
         {card.steps
           ? (
             <p key="steps" class="source board-steps">
-              <span class="board-steps-label">{card.steps.label}</span>
+              <span class="board-steps-label"><ProgressText text={card.steps.label} /></span>
               {card.steps.next ? <span class="board-steps-next">{` · next: ${card.steps.next}`}</span> : null}
             </p>
           )

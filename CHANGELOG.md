@@ -14,6 +14,14 @@
 
 ### Changed
 
+- **Progress reads 3/8 done (38%).** Every figure of how far along tasks
+  are, beside a progress bar or not, is written one way: on a tag's page,
+  the note page, Home's Progress widget, a hierarchy's groups, Hubs, query
+  block tables, a review's summary, a hub note's first line, and a task's
+  steps (*Steps 2/5 done (40%)*). The Outline's row keeps to *2/5 (40%)*. A
+  screen reader is given each as *3 of 8 done, 38%*, since "3/8" can be read
+  as a fraction or a date.
+
 - **The Outline is its own view again.** The Context view's Sections list
   of 2.2.0 goes back to Deckard's Outline view in the sidebar, with its
   title-bar controls: Follow Cursor, Filter by Tag, and Unfold All.

@@ -4,8 +4,10 @@
  * with how far along each group's tasks are; side by side, each group is one
  * row, its notes beside its tasks, so the two line up.
  */
+import { formatProgressCount } from '../../domain/tasks/progressCount';
 import type { SearchPageSnapshot, SearchResultGroup } from '../../ui/protocol/searchPage';
 import { ProgressBar } from '../shared/progressBar';
+import { ProgressText } from '../shared/progressText';
 import { type CardDisplay, SearchCard } from '../shared/searchCard';
 import { TagLabel } from '../shared/tagLabel';
 import { TaskListRow } from '../shared/taskRow';
@@ -58,7 +60,7 @@ function GroupHeading({ group, headingId, alone }: { readonly group: SearchResul
   );
 }
 
-/** How far along the group's tasks are: a bar and "3 of 8 done". */
+/** How far along the group's tasks are: a bar and "3/8 done (38%)". */
 function GroupProgress({ group }: { readonly group: SearchResultGroup }) {
   if (!group.taskCount) {
     return null;
@@ -66,7 +68,7 @@ function GroupProgress({ group }: { readonly group: SearchResultGroup }) {
   return (
     <span class="result-group-progress">
       <ProgressBar done={group.doneCount} total={group.taskCount} />
-      <span class="result-group-progress-label">{`${group.doneCount} of ${group.taskCount} done`}</span>
+      <span class="result-group-progress-label"><ProgressText text={formatProgressCount(group.doneCount, group.taskCount)} /></span>
     </span>
   );
 }

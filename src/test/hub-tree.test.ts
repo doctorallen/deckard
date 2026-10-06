@@ -41,7 +41,7 @@ suite('Notes under their hubs', () => {
       '  Dana Reyes',
       '    One-on-one',
       'Projects',
-      '  Atlas: 1 of 2 done',
+      '  Atlas: 1/2 done (50%)',
       '    Kickoff',
       '    Ledger migration',
       '      Cutover plan',
@@ -119,7 +119,7 @@ suite('Notes under their hubs', () => {
     ]);
     const parkedIndex = buildWorkspaceIndex(files);
     parkedIndex.parked = computeParked(parkedIndex, { isParkedPath: () => false, hasFolders: false, tags: ['#parked'] });
-    assert.deepStrictEqual(outline(buildHubTree(parkedIndex, Date.now())), ['Projects', '  H: 0 of 1 done']);
+    assert.deepStrictEqual(outline(buildHubTree(parkedIndex, Date.now())), ['Projects', '  H: 0/1 done (0%)']);
   });
 
   test('gives every group an id no namespace can take, and does not pluralize what is plural', () => {

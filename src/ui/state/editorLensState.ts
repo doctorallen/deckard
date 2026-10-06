@@ -228,7 +228,7 @@ function append<T>(map: Map<string, T[]>, key: string, value: T): void {
 export interface HubProgress {
   tagKey: string;
   tagLabel: string;
-  /** "2 of 6 done · 1 overdue · next due in 3 days". */
+  /** "2/6 done (33%) · 1 overdue · next due in 3 days". */
   text: string;
 }
 

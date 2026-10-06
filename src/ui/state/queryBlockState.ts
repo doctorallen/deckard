@@ -1,3 +1,4 @@
+import { formatProgressCount } from '../../domain/tasks/progressCount';
 import { getFileName } from '../../shared/paths';
 import { formatIsoDate } from '../../domain/markdown/calendar';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
@@ -792,7 +793,7 @@ export function describeNoteCell(item: QueryBlockItem, column: NoteColumnId): st
     case 'links':
       return item.linkCount ? String(item.linkCount) : '';
     case 'tasks':
-      return item.taskTotal ? `${item.taskDone ?? 0} of ${item.taskTotal} done` : '';
+      return item.taskTotal ? formatProgressCount(item.taskDone ?? 0, item.taskTotal) : '';
     case 'tags':
       return (item.noteTags ?? []).map((tag) => tag.label).join(' ');
     default: {

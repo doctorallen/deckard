@@ -20,6 +20,7 @@ import { getBacklinkIndex } from '../../domain/index/backlinks';
 import { revealLine } from '../commands/navigation';
 import type { ActiveNotePage } from '../webview/activeNotePage';
 import { reportFailure } from '../commands/notify';
+import { speakRow } from './spokenRow';
 
 /** Context key backing the follow-cursor toggle in the view title. */
 export const outlineFollowCursorContextKey = 'deckard.outlineFollowCursor';
@@ -150,6 +151,10 @@ export class OutlineTreeProvider
       formatOutlineDescription(node, { tags: this.areTagsShown(), counts: this.areCountsShown() }) ||
       undefined;
     item.tooltip = createTooltip(node, tags);
+    const spoken = speakRow(node.label, item.description);
+    if (spoken) {
+      item.accessibilityInformation = spoken;
+    }
     item.contextValue =
       node.tags.length > 0 ? 'deckardOutlineTagged' : 'deckardOutlineHeading';
     item.command = {

@@ -4,6 +4,7 @@ import { onIndexUpdateInTurn, VIEW_PRIORITY, ViewUpdateSource } from '../../core
 import { measure } from '../../shared/timing';
 import { buildHubTree, HubTreeNode } from '../state/hubTree';
 import { WorkspaceIndex } from '../../domain/model';
+import { speakRow } from './spokenRow';
 
 /** What the tree reads from the indexer: its snapshots, when they change, and where each note is. */
 export interface HubTreeIndexSource extends ViewUpdateSource {
@@ -68,6 +69,10 @@ export class HubTreeProvider implements vscode.TreeDataProvider<HubTreeNode>, vs
     const item = new vscode.TreeItem(node.label, state);
     item.id = node.id;
     item.description = node.description;
+    const spoken = speakRow(node.label, node.description);
+    if (spoken) {
+      item.accessibilityInformation = spoken;
+    }
     if (node.kind === 'namespace') {
       item.contextValue = 'hubNamespace';
       return item;

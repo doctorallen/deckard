@@ -1,3 +1,4 @@
+import { formatProgressCount } from '../../domain/tasks/progressCount';
 import { isParkedTask } from '../../domain/index/parked';
 import { stripTags } from '../../domain/markdown/parser';
 import { SHORT_WEEKDAY_NAMES, formatIsoDate } from '../../domain/markdown/calendar';
@@ -345,7 +346,7 @@ function formatTally(summary: ReviewSummary): string {
   return [
     `**Done:** ${summary.completed.length}${
       summary.dueInPeriod > 0
-        ? ` (${summary.doneOnTime} of ${summary.dueInPeriod} that were due)`
+        ? ` (${formatProgressCount(summary.doneOnTime, summary.dueInPeriod)} of those due)`
         : ''
     }`,
     `**Still open:** ${summary.slipped.length}`,

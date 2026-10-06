@@ -60,14 +60,14 @@ hub note, each with the notes about it filed underneath:
 People
   Sable Ortiz
 Projects
-  Argent Protocol            1 of 3 done
-  Ghostline Relay            3 of 23 done
+  Argent Protocol            1/3 done (33%)
+  Ghostline Relay            3/23 done (13%)
     Receiver firmware
       Firmware bench log
     Relay route survey
 Teams
-  Harbor                     0 of 2 done
-  Wardens                    3 of 21 done
+  Harbor                     0/2 done (0%)
+  Wardens                    3/21 done (14%)
 ```
 
 A note is filed under a hub when its front matter or its first heading
@@ -111,7 +111,7 @@ figure its page and its first line in the editor give.
    first line reads *Projects › Ghostline Relay › Receiver firmware ›
    Firmware bench log*, and selecting that opens Receiver firmware.
 10. Open the Ghostline Relay note. Its first line says how far along the
-    relay's tasks are: *Progress: 3 of 23 done · 2 overdue · 1 needs a new
+    relay's tasks are: *Progress: 3/23 done (13%) · 2 overdue · 1 needs a new
     date · next due today*. Selecting it opens the tag's page, where the same
     bar sits under the hub with **Show overdue**.
 11. Select **Wardens** in the Hubs view: a hub opens its tag's search page.

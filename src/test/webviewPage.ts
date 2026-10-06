@@ -361,3 +361,16 @@ function installRecordingCanvas(window: Window & typeof globalThis, calls: Canva
     },
   });
 }
+
+/**
+ * An element's text as it is shown: without what is there only for a screen
+ * reader (`.visually-hidden`), such as a progress figure's spoken form.
+ */
+export function shownText(element: Element | null | undefined): string {
+  if (!element) {
+    return '';
+  }
+  const copy = element.cloneNode(true) as Element;
+  copy.querySelectorAll('.visually-hidden').forEach((hidden) => hidden.remove());
+  return copy.textContent ?? '';
+}

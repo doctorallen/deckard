@@ -21,6 +21,7 @@ import { WorkspaceIndex, TaskColumnId } from '../../domain/model';
 import { describeDueDate } from '../../domain/markdown/dueWording';
 import { formatIsoDate } from '../../domain/markdown/calendar';
 import { DEFAULT_NOTE_COLUMNS, NoteColumnId, noteColumnLabel } from '../../domain/notes/noteColumns';
+import { speakProgressText } from '../../domain/tasks/progressCount';
 
 /** markdown-it's rule for a fenced block, which the query block rule wraps. */
 type FenceRule = NonNullable<MarkdownIt['renderer']['rules']['fence']>;
@@ -196,7 +197,7 @@ function renderNoteTable(snapshot: QueryBlockSnapshot, columns: readonly NoteCol
   const head = columns.map((column) => `<th scope="col">${escapeHtml(noteColumnLabel(column))}</th>`).join('');
   const rows = snapshot.notes.map((item) => {
     const cells = columns.map((column) =>
-      column === 'title' ? `<td>${renderLink(item)}</td>` : `<td>${escapeHtml(describeNoteCell(item, column))}</td>`,
+      column === 'title' ? `<td>${renderLink(item)}</td>` : renderTextCell(describeNoteCell(item, column)),
     );
     return `<tr class="deckard-query-row">${cells.join('')}</tr>`;
   });
@@ -484,4 +485,10 @@ function startOfDay(timestamp: number): number {
   const date = new Date(timestamp);
   date.setHours(0, 0, 0, 0);
   return date.getTime();
+}
+
+/** A table cell of text; one holding a progress figure says it to a screen reader as it is spoken. */
+function renderTextCell(text: string): string {
+  const spoken = speakProgressText(text);
+  return spoken === text ? `<td>${escapeHtml(text)}</td>` : `<td aria-label="${escapeHtml(spoken)}">${escapeHtml(text)}</td>`;
 }

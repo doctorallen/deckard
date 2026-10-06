@@ -97,16 +97,16 @@ suite('Task steps', () => {
     test('says how far along and what is next', () => {
       assert.strictEqual(
         describeSteps({ ids: [], total: 5, done: 2, next: 'Draft the email #project/atlas' }),
-        '2 of 5 steps · next: Draft the email',
+        'Steps 2/5 done (40%) · next: Draft the email',
       );
       assert.strictEqual(
         describeSteps({ ids: [], total: 1, done: 0, next: 'Draft the email' }),
-        '0 of 1 step · next: Draft the email',
+        'Steps 0/1 done (0%) · next: Draft the email',
       );
-      assert.strictEqual(describeSteps({ ids: [], total: 5, done: 5 }), 'All 5 steps done');
-      assert.strictEqual(describeSteps({ ids: [], total: 1, done: 1 }), '1 of 1 step done');
+      assert.strictEqual(describeSteps({ ids: [], total: 5, done: 5 }), 'Steps 5/5 done (100%)');
+      assert.strictEqual(describeSteps({ ids: [], total: 1, done: 1 }), 'Steps 1/1 done (100%)');
       assert.deepStrictEqual(describeStepParts({ ids: [], total: 3, done: 1, next: 'Pay' }), {
-        label: '1 of 3 steps',
+        label: 'Steps 1/3 done (33%)',
         next: 'Pay',
       });
     });

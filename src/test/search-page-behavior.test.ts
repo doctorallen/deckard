@@ -6,7 +6,7 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences, TestPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { renderedIcon, sourceIcon } from '../ui/webview/icons';
-import { openWebviewPage, WebviewPage } from './webviewPage';
+import { openWebviewPage, shownText, WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 import { createSearchPageSnapshot } from '../ui/state/searchPageState';
@@ -557,8 +557,9 @@ suite('Search page behavior', () => {
     const day = `${late.getFullYear()}-${String(late.getMonth() + 1).padStart(2, '0')}-${String(late.getDate()).padStart(2, '0')}`;
     const { page } = open({ ...NOTES, 'notes/late.md': `# Late\n- [ ] Overdue one #project/atlas 📅 ${day}` }, '#project/atlas');
     const links = page.findAll('.tag-progress [data-action="search-progress"]');
-    assert.deepStrictEqual(links.map((link) => link.textContent), ['1 of 3 done', '1 overdue']);
-    assert.strictEqual(page.text('.tag-progress-label'), '1 of 3 done · 1 overdue');
+    assert.deepStrictEqual(links.map((link) => shownText(link)), ['1/3 done (33%)', '1 overdue']);
+    assert.strictEqual(shownText(page.find('.tag-progress-label')), '1/3 done (33%) · 1 overdue');
+    assert.strictEqual(links[0].textContent, '1/3 done (33%)1 of 3 done, 33%', 'a screen reader is given the figure as it is spoken');
     page.click('.tag-progress [data-action="search-progress"][data-part="1"]');
     assert.deepStrictEqual(page.lastPosted('setOverviewQuery'), {
       type: 'setOverviewQuery',
@@ -580,7 +581,7 @@ suite('Search page behavior', () => {
     assert.strictEqual((page.find('details.hub') as HTMLDetailsElement).open, false, 'folded, so the tasks sit near the top');
     const on = page.find('.tag-progress [aria-pressed="true"]');
     assert.strictEqual(on.textContent, '1 overdue');
-    assert.match(page.text('.tag-progress-label') ?? '', /^1 of 3 done · 1 overdue/, 'the bar counts the whole tag');
+    assert.ok(shownText(page.find('.tag-progress-label')).startsWith('1/3 done (33%) · 1 overdue'), 'the bar counts the whole tag');
     page.click('.tag-progress [aria-pressed="true"]');
     assert.deepStrictEqual(page.lastPosted('setOverviewQuery'), { type: 'setOverviewQuery', query: '#project/atlas' }, 'the part on goes back to the tag');
   });

@@ -128,7 +128,7 @@ suite('Deckard query blocks', () => {
     assert.deepStrictEqual(snapshot.notes.map((note) => note.title), ['Atlas', 'Borealis'], 'most linked first');
     const [atlas, borealis] = snapshot.notes;
     assert.strictEqual(describeNoteCell(atlas, 'links'), '2', 'two notes link to it, however often');
-    assert.strictEqual(describeNoteCell(atlas, 'tasks'), '1 of 2 done', 'a step is part of its task');
+    assert.strictEqual(describeNoteCell(atlas, 'tasks'), '1/2 done (50%)', 'a step is part of its task');
     assert.strictEqual(describeNoteCell(atlas, '#status'), 'doing');
     assert.strictEqual(describeNoteCell(borealis, 'links'), '', 'nothing to show is an empty cell');
     assert.strictEqual(describeNoteCell(borealis, 'tasks'), '');
@@ -136,7 +136,7 @@ suite('Deckard query blocks', () => {
 
     const html = renderQueryBlockHtml('tag = #project/*', options, index, { queryContext: createQueryContext(Date.now()) });
     assert.ok(html.includes('<th scope="col">Entry</th><th scope="col">Linked from</th><th scope="col">Tasks</th><th scope="col">Status</th>'));
-    assert.ok(html.includes('<td>1 of 2 done</td><td>doing</td>'));
+    assert.ok(html.includes('<td aria-label="1 of 2 done, 50%">1/2 done (50%)</td><td>doing</td>'));
     const ascending = createQueryBlockSnapshot(index, 'tag = #project/*', parseQueryBlockInfo('deckard view=table sort=#status')!, { queryContext: createQueryContext(Date.now()) });
     assert.deepStrictEqual(ascending.notes.map((note) => note.title), ['Atlas', 'Borealis'], 'doing before done');
     for (const dir of ['asc', 'desc']) {

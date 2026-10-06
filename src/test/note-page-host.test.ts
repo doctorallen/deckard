@@ -160,7 +160,7 @@ suite('The note page host', () => {
     page.controller.navigate({ filePath: 'notes/Other.md' });
     page.host.refresh();
     const done = page.last().taskProgress?.parts[0];
-    assert.strictEqual(done?.text, '1 of 2 done');
+    assert.strictEqual(done?.text, '1/2 done (50%)');
     await page.send({ type: 'openSearch', query: done?.query });
     await page.send({ type: 'openSearch', query: 'is:open' });
     assert.deepStrictEqual(page.searches, [done?.query], 'a search the note does not draw is not run');

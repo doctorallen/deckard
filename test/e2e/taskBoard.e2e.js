@@ -354,8 +354,9 @@ test('a card says how far along its steps are, and a plain step rides on it', as
   assert.ok(!ids.includes('email'), 'a plain step has no card of its own');
   assert.ok(ids.includes('caterer'), 'a dated step keeps its card');
   const plan = view.find('.board-card[data-task-id="plan"]');
-  assert.strictEqual(plan.querySelector('.board-steps').textContent, '1 of 3 steps · next: Draft the email');
-  assert.ok(plan.getAttribute('aria-label').includes('1 of 3 steps'));
+  assert.strictEqual(plan.querySelector('.board-steps-label [aria-hidden="true"]').textContent, 'Steps 1/3 done (33%)');
+  assert.strictEqual(plan.querySelector('.board-steps-next').textContent, ' · next: Draft the email');
+  assert.ok(plan.getAttribute('aria-label').includes('Steps 1 of 3 done, 33%'), 'the card is named with the figure as it is spoken');
   view.click(plan.querySelector('[data-action="board-menu"]'));
   assert.ok(view.find('#action-menu [data-menu-value="break-steps"]').textContent.includes('Add steps…'));
 });

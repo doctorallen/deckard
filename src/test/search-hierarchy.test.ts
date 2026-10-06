@@ -94,7 +94,8 @@ suite('Search page: Hierarchy', () => {
     assert.strictEqual(notes.querySelector('.progress-bar'), null, 'the notes tab draws no bar');
     assert.strictEqual(notes.querySelectorAll('.task-row').length, 0);
     assert.strictEqual(tasks.querySelector('.result-group-count')?.textContent, '2 tasks');
-    assert.strictEqual(tasks.querySelector('.result-group-progress-label')?.textContent, '1 of 2 done');
+    assert.strictEqual(tasks.querySelector('.result-group-progress-label [aria-hidden="true"]')?.textContent, '1/2 done (50%)');
+    assert.strictEqual(tasks.querySelector('.result-group-progress-label .visually-hidden')?.textContent, '1 of 2 done, 50%', 'as a screen reader is given it');
     assert.strictEqual(tasks.querySelectorAll('.card').length, 0);
     (tasks.querySelector('.result-group-tag') as HTMLElement).click();
     assert.deepStrictEqual(page.lastPosted('setOverviewQuery'), { type: 'setOverviewQuery', query: '#project/atlas AND #decision/accepted', remember: false });
@@ -104,7 +105,7 @@ suite('Search page: Hierarchy', () => {
     page = openWebviewPage(renderPage('searchPage'), snapshotOf(PLAN, '#project/atlas', { layout: 'split' }));
     const decision = groupIn('.overview-split-groups', '#decision/accepted');
     assert.strictEqual(decision.querySelector('.result-group-count')?.textContent, '1 note · 2 tasks');
-    assert.strictEqual(decision.querySelector('.result-group-progress-label')?.textContent, '1 of 2 done');
+    assert.strictEqual(decision.querySelector('.result-group-progress-label [aria-hidden="true"]')?.textContent, '1/2 done (50%)');
     const [notes, tasks] = Array.from(decision.querySelectorAll('.result-group-column'));
     assert.strictEqual(notes.querySelectorAll('.card').length, 1);
     assert.strictEqual(tasks.querySelectorAll('.task-row').length, 2);

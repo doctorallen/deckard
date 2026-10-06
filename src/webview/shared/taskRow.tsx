@@ -3,6 +3,7 @@
  * the Task Board's list, a search's tasks, Home's task widgets, and the
  * calendar's day draw it; and the parts a board card draws the same way.
  */
+import { ProgressText } from './progressText';
 import type { ComponentChildren } from 'preact';
 
 import type { InlineToken } from '../../ui/protocol/inline';
@@ -181,7 +182,7 @@ function TaskFacts({ item }: { readonly item: DashboardTask }) {
       {task.scheduledAt === undefined ? null : <span key="scheduled" class="task-detail">{`Scheduled ${formatTaskDate(task.scheduledAt)}`}</span>}
       <PriorityBadge key="priority" priority={task.priority} />
       {task.recurrence ? <span key="repeats" class="task-detail">{`Repeats ${task.recurrence}`}</span> : null}
-      {item.stepsLabel ? <span key="steps" class="task-detail task-steps">{item.stepsLabel}</span> : null}
+      {item.stepsLabel ? <span key="steps" class="task-detail task-steps"><ProgressText text={item.stepsLabel} /></span> : null}
     </>
   );
 }

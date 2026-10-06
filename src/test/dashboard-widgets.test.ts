@@ -112,9 +112,9 @@ suite('Dashboard Home widgets', () => {
     assert.strictEqual(progress.title, 'Progress');
     assert.deepStrictEqual(progress.tags?.map((tag) => tag.key), ['#project/atlas', '#project/borealis', '#project/cirrus']);
     assert.deepStrictEqual(progress.tags?.[0].progress, { done: 1, total: 2 });
-    assert.strictEqual(progress.tags?.[0].detail, '1 of 2 done · 1 overdue');
-    assert.strictEqual(progress.tags?.[1].detail, '0 of 1 done · next due in 4 days');
-    assert.strictEqual(progress.tags?.[2].detail, '1 of 1 done · all done');
+    assert.strictEqual(progress.tags?.[0].detail, '1/2 done (50%) · 1 overdue');
+    assert.strictEqual(progress.tags?.[1].detail, '0/1 done (0%) · next due in 4 days');
+    assert.strictEqual(progress.tags?.[2].detail, '1/1 done (100%) · all done');
     assert.deepStrictEqual(progress.namespaces, ['area', 'project']);
 
     const [area] = widgets([{ id: 'p', kind: 'progress', width: 'half', count: 5, namespace: 'area' }], index);

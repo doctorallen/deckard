@@ -8,7 +8,7 @@ import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createAgenda } from '../ui/state/agendaState';
 import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
 import { AgendaNode, AgendaTreeProvider } from '../ui/views/agendaTree';
-import { openWebviewPage } from './webviewPage';
+import { openWebviewPage, shownText } from './webviewPage';
 import { renderPage } from './pages';
 import { createQueryContext } from '../domain/query/queryContext';
 import { createAgendaTreeServices } from './taskWrites';
@@ -66,8 +66,8 @@ suite('Steps in the views', () => {
     ]);
     const plan = groups.flatMap((group) => group.entries).find((entry) => entry.title === 'Plan the offsite');
     assert.ok(plan);
-    assert.strictEqual(plan.stepsLabel, '1 of 4 steps · next: Draft the email');
-    assert.ok(plan.details.includes('1 of 4 steps · next: Draft the email'));
+    assert.strictEqual(plan.stepsLabel, 'Steps 1/4 done (25%) · next: Draft the email');
+    assert.ok(plan.details.includes('Steps 1/4 done (25%) · next: Draft the email'));
     assert.deepStrictEqual(plan.steps?.map((step) => step.title), [
       'Book the venue',
       'Draft the email #project/atlas',
@@ -87,7 +87,7 @@ suite('Steps in the views', () => {
       'Plan the offsite',
     ]);
     const plan = cards.find((card) => card.title === 'Plan the offsite');
-    assert.deepStrictEqual(plan?.steps, { label: '1 of 4 steps', next: 'Draft the email' });
+    assert.deepStrictEqual(plan?.steps, { label: 'Steps 1/4 done (25%)', next: 'Draft the email' });
     const list = createTaskBoard({ index, preferences: preferencesWith({ taskBoardLayout: 'list' }), search: { query: 'is:open' }, options });
     assert.strictEqual(list.tasks?.length, 4);
     assert.strictEqual(list.taskCounts.all, 4);
@@ -101,7 +101,7 @@ suite('Steps in the views', () => {
     assert.ok(plan);
     assert.strictEqual(
       createDashboardTask(plan, index.sections, createQueryContext(Date.now())).stepsLabel,
-      '1 of 4 steps · next: Draft the email',
+      'Steps 1/4 done (25%) · next: Draft the email',
     );
     assert.strictEqual(plan.steps?.ids.map((id) => titleOf(index, id)).length, 4);
   });
@@ -114,8 +114,8 @@ suite('Steps in the views', () => {
       const rows = page.findAll('.task-row');
       assert.strictEqual(rows.length, 5, 'every open task and step the search found');
       assert.deepStrictEqual(
-        page.findAll('.task-row .task-steps').map((span) => span.textContent),
-        ['1 of 4 steps · next: Draft the email'],
+        page.findAll('.task-row .task-steps').map((span) => shownText(span)),
+        ['Steps 1/4 done (25%) · next: Draft the email'],
       );
     } finally {
       page.dispose();
@@ -143,7 +143,7 @@ suite('Steps in the views', () => {
       assert.ok(plan);
       const item = provider.getTreeItem(plan);
       assert.strictEqual(item.collapsibleState, vscode.TreeItemCollapsibleState.Collapsed);
-      assert.match(String(item.description), /1 of 4 steps · next: Draft the email/);
+      assert.ok(String(item.description).includes('Steps 1/4 done (25%) · next: Draft the email'), String(item.description));
       const steps = await provider.getChildren(plan);
       assert.deepStrictEqual(
         steps.map((step) => provider.getTreeItem(step).label),

@@ -181,7 +181,7 @@ export interface SearchPageTagProgress {
   done: number;
   total: number;
   overdue: number;
-  /** "3 of 8 done · 1 overdue · next due in 3 days". */
+  /** "3/8 done (38%) · 1 overdue · next due in 3 days". */
   label: string;
   /** The label's parts, in order, each with the search that lists the tasks it counts, when it counts any. */
   parts: Array<{ text: string; query?: string; tip?: string; active?: true }>;

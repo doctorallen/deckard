@@ -59,7 +59,7 @@ function createDays(): Array<[string, CalendarDayDetail]> {
     relative: undefined,
     notePath: undefined,
     due: [
-      { ...first, parked: true, stepsLabel: '1 of 2 steps · next: one', headingPath: ['Atlas', 'Actions', 'Deeper'] },
+      { ...first, parked: true, stepsLabel: 'Steps 1/2 done (50%) · next: one', headingPath: ['Atlas', 'Actions', 'Deeper'] },
       { ...first, dueLabel: undefined, overdue: undefined, headingPath: ['Atlas'] },
       { ...first, stale: true, overdue: false },
       { ...first, overdue: true },

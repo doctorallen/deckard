@@ -3,6 +3,7 @@
  * and which open one is due next. A project's page, its hub note, and Home's
  * Progress widget read it, so all three count a project alike.
  */
+import { formatProgressCount } from './progressCount';
 import { readTaskTagKeys } from '../query/queryEvaluator';
 import { describeDueDate } from '../markdown/dueWording';
 import { startOfDay } from '../markdown/calendar';
@@ -137,7 +138,7 @@ export function progressRatio(progress: Pick<TagProgress, 'done' | 'total'>): nu
 
 /**
  * A tag's progress in words, as a hub note's lens, a tag's page, and Home
- * say it: "3 of 8 done · 1 overdue · 1 needs a new date · next due in 3
+ * say it: "3/8 done (38%) · 1 overdue · 1 needs a new date · next due in 3
  * days". Each part after the first is there only when it has something to
  * say.
  */
@@ -164,7 +165,7 @@ export function describeTagProgressParts(
   now: number,
   taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'>,
 ): TagProgressPart[] {
-  const parts: TagProgressPart[] = [{ kind: 'done', text: `${progress.done} of ${progress.total} done` }];
+  const parts: TagProgressPart[] = [{ kind: 'done', text: formatProgressCount(progress.done, progress.total) }];
   if (progress.overdue > 0) {
     parts.push({ kind: 'overdue', text: `${progress.overdue} overdue` });
   }

@@ -103,8 +103,8 @@ how many are done and names the next one.
    task**.
 5. At the end of that line, type a space and `/`. Pick **high priority** from
    the list. Typing `/every` narrows it to repeat rules.
-6. Above *Pack the field kit*, the lens reads **███░░░░░░░ 1 of 3 steps
-   done · next: Pack the rain shells**; select it to go to that step. Put
+6. Above *Pack the field kit*, the lens reads **███░░░░░░░ Steps 1/3 done
+   (33%) · next: Pack the rain shells**; select it to go to that step. Put
    the cursor on *Pack the field kit* and run **Deckard: Break into
    Steps…** (it is on the lightbulb too). Add a step, press Enter, and choose
    **Write**. Then tick the last open step: Deckard offers **Complete Task**.

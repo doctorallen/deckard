@@ -1,3 +1,4 @@
+import { formatProgressCount } from '../tasks/progressCount';
 import { Task, TaskSteps } from '../model';
 import {
   findListParents,
@@ -23,22 +24,20 @@ export interface StepsDescription {
   next?: string;
 }
 
-/** `2 of 5 steps` and the next open step, for a card that styles them apart. */
+/** `Steps 2/5 (40%)` and the next open step, for a card that styles them apart. */
 export function describeStepParts(steps: TaskSteps): StepsDescription {
-  const noun = steps.total === 1 ? 'step' : 'steps';
+  const label = `Steps ${formatProgressCount(steps.done, steps.total)}`;
   if (steps.done >= steps.total) {
-    return {
-      label: steps.total === 1 ? '1 of 1 step done' : `All ${steps.total} steps done`,
-    };
+    return { label };
   }
   const next = steps.next === undefined ? undefined : stripTrailingTagWords(steps.next);
   return {
-    label: `${steps.done} of ${steps.total} ${noun}`,
+    label,
     ...(next ? { next } : {}),
   };
 }
 
-/** `2 of 5 steps · next: Draft the email`, in one line. */
+/** `Steps 2/5 (40%) · next: Draft the email`, in one line. */
 export function describeSteps(steps: TaskSteps): string {
   const { label, next } = describeStepParts(steps);
   return next ? `${label} · next: ${next}` : label;

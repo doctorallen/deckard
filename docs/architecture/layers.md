@@ -55,7 +55,7 @@ src/
 
 ### D1: the domain modules a page may import
 
-A page computes some things for itself, from rules the host also applies or that only the page needs at the speed of a keystroke. Those rules stay in `domain`, and a page imports them by name: decision D1 of [the webviews plan](../implementation/20-webviews.md). The list is `PAGE_DOMAIN_MODULES` in [`.dependency-cruiser.cjs`](../../.dependency-cruiser.cjs), which `pages-import-protocol-and-shared` reads, and the same five files are in `src/webview/tsconfig.json`, so each is type-checked against the browser's types before a page imports it. As Phase 6 left it:
+A page computes some things for itself, from rules the host also applies or that only the page needs at the speed of a keystroke. Those rules stay in `domain`, and a page imports them by name: decision D1 of [the webviews plan](../implementation/20-webviews.md). The list is `PAGE_DOMAIN_MODULES` in [`.dependency-cruiser.cjs`](../../.dependency-cruiser.cjs), which `pages-import-protocol-and-shared` reads, and the same six files are in `src/webview/tsconfig.json`, so each is type-checked against the browser's types before a page imports it. As Phase 6 left it:
 
 | Module | What a page computes with it | Imported by |
 | --- | --- | --- |
@@ -63,6 +63,7 @@ A page computes some things for itself, from rules the host also applies or that
 | `domain/markdown/calendar.ts` | The date steps both calendars take: `stepDate`, `sameShownDayIn`, `isWeekend`, `chooseFocusDay`, and `stepCalendar` | The calendars' shared parts (`shared/calendar/`) and the calendar page |
 | `domain/markdown/tagKeys.ts` | A namespace's words for its filter: `formatKeyWords`. The namespace itself comes from the host, read by the parser's `getEntityNamespace` (which reads a key through `readTagNamespace`, here too) | The Dashboard's Tags tab |
 | `domain/tasks/taskColumns.ts` | Whether a status column or a board namespace the reader typed can be taken: `checkNewStatusColumn` and `checkStatusNamespace` | The Task Board's settings |
+| `domain/tasks/progressCount.ts` | How far along tasks are, shown and spoken: `formatProgressCount`, `speakProgressText`, `progressPercent` | Every progress figure and bar |
 | `domain/dashboard/widgetCatalog.ts` | Which Home widgets there are, and what each can do: `WIDGET_KINDS` and `isWidgetKind`; and the limits the host keeps, so the page offers no more: `HOME_WIDGET_LIMIT`, `WIDGET_ENTRY_COUNTS`, `QUICK_ADD_MAX_LENGTH`, and `isWatchableNamespace` | The Dashboard |
 
 Each imports nothing but types from `domain/model`, and `domain-is-pure` keeps it free of `vscode` and I/O, so what a page bundles from it is the rule and nothing more. A module joins the list in the change whose page first needs it, in both places.

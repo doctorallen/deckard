@@ -350,14 +350,14 @@ suite('Sample workspace', () => {
       'People',
       '  Sable Ortiz',
       'Projects',
-      '  Argent Protocol: 1 of 3 done',
-      '  Ghostline Relay: 3 of 23 done',
+      '  Argent Protocol: 1/3 done (33%)',
+      '  Ghostline Relay: 3/23 done (13%)',
       '    Receiver firmware',
       '      Firmware bench log',
       '    Relay route survey',
       'Teams',
-      '  Harbor: 0 of 2 done',
-      '  Wardens: 3 of 21 done',
+      '  Harbor: 0/2 done (0%)',
+      '  Wardens: 3/21 done (14%)',
     ]);
     assert.deepStrictEqual(findBreadcrumbs(index, 'projects/Firmware bench log.md').map((crumb) => crumb.labels.join(' › ')), [
       'Projects › Ghostline Relay › Receiver firmware › Firmware bench log',
@@ -366,7 +366,7 @@ suite('Sample workspace', () => {
     assert.ok(relay);
     assert.strictEqual(
       describeTagProgress(relay, Date.now(), createQueryContext(Date.now()).taskPolicy),
-      '3 of 23 done · 2 overdue · 1 needs a new date · next due today',
+      '3/23 done (13%) · 2 overdue · 1 needs a new date · next due today',
       'the progress the Tags note quotes',
     );
     // A tag is written only where the tour means one: every tag is
