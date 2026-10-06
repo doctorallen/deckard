@@ -1,0 +1,72 @@
+/*
+ * A note drawn as a document: its blocks, read as prose, with tasks, query
+ * blocks, embeds, and images, wherever a page draws a whole note: the note
+ * page, and a tag's hub note on its search page (noteBlocks.tsx).
+ */
+
+/* The note itself, read as prose. */
+.note-body { margin-top: var(--space-4); line-height: 1.6; overflow-wrap: anywhere; }
+.note-body > :first-child { margin-top: 0; }
+.note-body p { margin: 0 0 var(--space-3); }
+.note-heading { margin: var(--space-5) 0 var(--space-2); }
+.note-body ul, .note-body ol { margin: 0 0 var(--space-3); padding-left: var(--space-5); }
+.note-body ul.has-tasks { padding-left: var(--space-2); list-style: none; }
+.note-body li > p { margin: 0; }
+.note-body blockquote { margin: 0 0 var(--space-3); padding: var(--space-1) var(--space-3); border-left: 3px solid var(--line-strong); color: var(--muted); }
+.note-body hr { margin: var(--space-4) 0; border: 0; border-top: 1px solid var(--line-strong); }
+.note-code { margin: 0 0 var(--space-3); padding: var(--space-3); overflow-x: auto; border: 1px solid var(--line); background: var(--panel); font-size: var(--text-sm); line-height: 1.45; white-space: pre; }
+.note-body :not(pre) > code { padding: 1px 4px; border: 1px solid var(--line); background: var(--panel-raised); font-size: .9em; }
+.note-body a { color: var(--cyan-bright); }
+.note-link { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--cyan-bright); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
+.note-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .note-link:focus-visible { color: var(--hover-fg); }
+.note-body .inline-tag { vertical-align: baseline; }
+.note-table-scroll { margin: 0 0 var(--space-3); overflow-x: auto; }
+.note-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); line-height: 1.4; }
+.note-table th, .note-table td { padding: 6px 10px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+.note-table th { background: var(--panel); color: var(--muted); font: var(--text-xs) var(--font-mono); text-transform: uppercase; letter-spacing: .06em; }
+.note-table tr.is-done .note-query-title { text-decoration: line-through; }
+
+/* A task: its box, then its words, struck through once done. */
+.note-task { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: var(--space-2); margin: 2px 0; }
+.note-task-box { width: 16px; height: 16px; margin: 4px 0 0; accent-color: var(--accent); cursor: pointer; }
+.note-task.is-done > .note-task-body > .note-task-title { color: var(--muted); text-decoration: line-through; }
+.note-task-body > ul, .note-task-body > ol { margin-top: 2px; margin-bottom: 0; }
+
+/* A query block: its search, its counts, and its results, live. */
+.note-query { margin: 0 0 var(--space-4); padding: var(--space-3); border: 1px solid var(--line); border-left: 3px solid var(--cyan); background: var(--panel); }
+.note-query-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); padding: 0 0 var(--space-2); border-bottom: 1px solid var(--line); }
+.note-query-text { color: var(--text); font-size: var(--text-sm); }
+.note-query-counts { margin-left: auto; color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.note-query-list { margin: var(--space-2) 0 0; padding: 0; list-style: none; }
+.note-query-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2); padding: 4px 0; }
+.note-query-row:not(:has(.note-task-box)) { grid-template-columns: minmax(0, 1fr); }
+.note-query-body { display: grid; }
+.note-query-title { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.note-query-title:hover:where(:not(:disabled):not([aria-disabled="true"])), .note-query-title:focus-visible { color: var(--hover-fg); text-decoration: underline; }
+.note-query-row.is-done .note-query-title { color: var(--muted); text-decoration: line-through; }
+.note-query-detail, .note-query-more { color: var(--muted); font-size: var(--text-xs); }
+.note-query-more { margin: var(--space-2) 0 0; }
+.note-query-error { margin: var(--space-2) 0 0; color: var(--danger); font-size: var(--text-sm); }
+.note-query .note-table-scroll { margin: var(--space-2) 0 0; }
+.note-query td .note-task-box { margin: 2px var(--space-2) 0 0; vertical-align: top; }
+
+/* An embed: what it names, under a title that opens it. */
+.note-embed { margin: 0 0 var(--space-4); padding: var(--space-2) var(--space-3) var(--space-1); border-left: 3px solid var(--line-strong); background: var(--panel); }
+.note-embed-header { margin-bottom: var(--space-2); }
+.note-embed-title { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--muted); font: var(--text-xs) var(--font-mono); text-transform: uppercase; letter-spacing: .08em; }
+button.note-embed-title { cursor: pointer; }
+button.note-embed-title:hover:where(:not(:disabled):not([aria-disabled="true"])), button.note-embed-title:focus-visible { color: var(--hover-fg); }
+.note-embed-missing { margin: 0 0 var(--space-2); color: var(--muted); font-size: var(--text-sm); font-style: italic; }
+
+/* The line a note was opened at, marked for a moment. */
+.note-body [data-line] { scroll-margin: var(--space-6); }
+.note-body .is-focused { outline: 1px solid var(--accent); outline-offset: 4px; transition: outline-color 1.2s ease; }
+
+/* An image, read by the host from the note's folder: fitted to the column,
+   whole once selected. */
+.note-image-button { display: inline-block; max-width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.note-image-button.is-whole { max-width: none; cursor: zoom-out; }
+.note-image { display: block; max-width: 100%; height: auto; border: var(--edge) solid var(--line); }
+.note-image-button.is-whole .note-image { max-width: none; }
+.note-image-button:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
+.note-image-missing { color: var(--muted); font-style: italic; }

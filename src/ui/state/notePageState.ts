@@ -110,6 +110,27 @@ export function createNotePageSnapshot(
   };
 }
 
+/**
+ * A note's body as the note page draws it, its front matter left out and its
+ * title heading kept, for a page that shows a note inside it, such as a
+ * tag's hub note; and its tags, which the blocks draw as buttons.
+ */
+export function readNoteBody(
+  index: WorkspaceIndex,
+  filePath: string,
+  options: Pick<NotePageOptions, 'queryContext' | 'statusNamespace'>,
+): { blocks: NoteBlock[]; tags: Array<{ key: string; label: string }> } | undefined {
+  const file = index.files.get(filePath);
+  if (!file) {
+    return undefined;
+  }
+  const reading: Reading = { index, file, options: { ...options, history: { back: false, forward: false }, visit: 0 }, depth: 0 };
+  const lines = file.content.split(/\r?\n/);
+  const frontmatterEnd = findFrontmatterEnd(lines);
+  const bodyStart = frontmatterEnd === undefined ? 0 : frontmatterEnd + 1;
+  return { blocks: readNoteBlocks(lines.slice(bodyStart).join('\n'), bodyStart, reading), tags: collectTags(file) };
+}
+
 /** What reading a note's blocks needs: the index, the note it is in, and how deep in embeds it is. */
 interface Reading {
   index: WorkspaceIndex;

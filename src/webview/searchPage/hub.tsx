@@ -10,6 +10,7 @@ import { ProgressWords } from '../shared/progressWords';
 import { NoteBody } from '../shared/searchCard';
 import { TagButton } from '../shared/tagButton';
 import { isParkedTag } from '../shared/tagMenu';
+import { Blocks } from '../shared/noteBlocks';
 
 /**
  * A property's values joined by commas, a tag as the control that opens
@@ -66,6 +67,18 @@ function OtherHubNotes({ filePaths }: { readonly filePaths: readonly string[] })
 }
 
 /**
+ * The hub note's body: rendered, as the note page draws it, its query blocks
+ * run, its links followed, and its tasks ticked where it is written; as
+ * source, as written.
+ */
+function HubBody({ hub, renderMode }: { readonly hub: NonNullable<SearchPageSnapshot['hub']>; readonly renderMode: SearchPageSnapshot['renderMode'] }) {
+  if (renderMode === 'html' && hub.blocks && hub.blocks.length) {
+    return <div class="note-body hub-body"><Blocks blocks={hub.blocks} context={{ tags: hub.tags ?? [], filePath: hub.filePath }} /></div>;
+  }
+  return hub.rawContent.trim() ? <NoteBody rawContent={hub.rawContent} blocks={hub.bodyTokens} renderMode={renderMode} /> : null;
+}
+
+/**
  * The note that describes the page's tag, open or closed as the reader
  * left it, or as `deckard.tagOverview.hubNoteExpanded` says until they do.
  */
@@ -82,7 +95,7 @@ export function HubNote({ snapshot, hubOpen }: { readonly snapshot: SearchPageSn
         <button data-action="open-source" data-file-path={hub.filePath} data-line="1" data-tip={hub.filePath}>{`Open ${hub.fileName}`}</button>
       </summary>
       {hub.properties.length ? <HubProperties hub={hub} /> : null}
-      {hub.rawContent.trim() ? <NoteBody rawContent={hub.rawContent} blocks={hub.bodyTokens} renderMode={snapshot.renderMode} /> : null}
+      <HubBody hub={hub} renderMode={snapshot.renderMode} />
       {hub.otherFilePaths.length ? <OtherHubNotes filePaths={hub.otherFilePaths} /> : null}
     </details>
   );

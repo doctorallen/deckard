@@ -26,6 +26,10 @@
 
 ### Changed
 
+- **A tag's hub note is drawn as the note page draws it.** Its ```deckard
+  query blocks show what they find, its `[[links]]` open, and its tasks can
+  be ticked, where it showed them as written.
+
 - **Progress reads 3/8 done (38%).** Every figure of how far along tasks
   are, beside a progress bar or not, is written one way: on a tag's page,
   the note page, Home's Progress widget, a hierarchy's groups, Hubs, query

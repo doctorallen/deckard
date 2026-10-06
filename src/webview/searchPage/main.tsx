@@ -9,7 +9,7 @@ import type { StateMessage } from '../../ui/protocol/messaging';
 import type { SearchPageMessage, SearchPageState } from '../../ui/protocol/searchPage';
 import { installMenuKeys } from '../shared/menuKeys';
 import { markWords, type Unmark } from '../shared/markWords';
-import { openSourceMessage } from '../shared/openSource';
+import { openingOf, openSourceMessage } from '../shared/openSource';
 import { onHostMessage, startPage } from '../shared/page';
 import { createQueryEditor } from '../shared/queryEditor';
 import { installResultTabKeys } from '../shared/resultTabs';
@@ -443,6 +443,23 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   },
   'merge-lookalike': (target) => send({ type: 'mergeTags', sourceKey: String(target.dataset.sourceKey), targetKey: String(target.dataset.targetKey) }),
   'open-source': (target, _snapshot, event) => send(openSourceMessage(target, event)),
+  // The hub note's blocks, drawn as the note page draws them.
+  'open-note': (target, _snapshot, event) => send(openSourceMessage(target, event)),
+  'open-link': (target, _snapshot, event) => {
+    const how = openingOf(event);
+    send({
+      type: 'openWikiLink',
+      target: String(target.dataset.target),
+      ...(target.dataset.from ? { from: target.dataset.from } : {}),
+      ...(how.opposite ? { opposite: true } : {}),
+      ...(how.beside ? { beside: true } : {}),
+    });
+  },
+  'toggle-image-size': (target) => {
+    const whole = target.classList.toggle('is-whole');
+    const alt = target.querySelector('img')?.getAttribute('alt') || 'Image';
+    target.setAttribute('aria-label', `${alt}, shown ${whole ? 'at full size' : 'fitted'}; select to show it ${whole ? 'fitted' : 'at full size'}`);
+  },
   'open-tag': (target) => send({ type: 'openTag', tagKey: String(target.dataset.tagKey) }),
 };
 

@@ -35,9 +35,11 @@ import type {
   SetDisplayMessage,
   SetZenModeMessage,
   TagOverviewCard,
+  TagReference,
   TagTitleDisplayMode,
   ToggleTaskMessage,
 } from './shared';
+import type { NoteBlock, OpenWikiLinkMessage } from './notePage';
 
 /** The tag a search page is about, as the page draws it. */
 export interface SearchPageTag {
@@ -215,6 +217,14 @@ export interface TagOverviewHub {
   otherFilePaths: string[];
   /** Whether the hub starts open, from `deckard.tagOverview.hubNoteExpanded`. */
   expanded?: boolean;
+  /**
+   * The body as the note page draws it: query blocks with their results,
+   * `[[links]]` that open, tasks with working boxes, and embeds. Drawn in
+   * place of `bodyTokens` when the page shows notes rendered.
+   */
+  blocks?: NoteBlock[];
+  /** The note's tags, which its blocks draw as buttons. */
+  tags?: TagReference[];
 }
 
 /** A tag's page asks for a hub note that describes the tag. */
@@ -366,6 +376,8 @@ export interface SearchPagePageToHost {
   listGoTo: ListGoToMessage;
   goToPage: GoToPageMessage;
   openSource: OpenSourceMessage;
+  /** A `[[link]]` in the hub note, followed as the note page follows one. */
+  openWikiLink: OpenWikiLinkMessage;
   toggleTask: ToggleTaskMessage;
   setRenderMode: SetRenderModeMessage;
   setSearchPreview: SetSearchPreviewMessage;

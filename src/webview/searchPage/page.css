@@ -3,6 +3,7 @@
  * Its own rules follow the base sheet; the page shell links its theme and the tail after it.
  */
 @import "../shared/base.css";
+@import "../shared/noteBlocks.css";
 @import "../shared/queryEditor.css";
 
 /* The gear sits in the header's top-right corner. The margin keeps a short

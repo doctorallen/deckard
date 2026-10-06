@@ -65,6 +65,7 @@ import {
 } from '../../domain/model';
 import { collectTagParts } from '../../domain/tasks/tagParts';
 import { formatProgressCount } from '../../domain/tasks/progressCount';
+import { readNoteBody } from './notePageState';
 
 /**
  * A search page: what one search finds, sorted, paged, and drawn as cards
@@ -504,10 +505,11 @@ function buildTagPageBlock(
     ...(entity ? { entity: slimEntity(entity) } : {}),
     ...(hubFile
       ? {
-          hub: createTagOverviewHub(
-            hubFile,
-            focusTag.hubFilePaths?.slice(1) ?? [],
-          ),
+          hub: {
+            ...createTagOverviewHub(hubFile, focusTag.hubFilePaths?.slice(1) ?? []),
+            // Drawn as the note page draws it, its query blocks run.
+            ...readNoteBody(index, hubFile.filePath, { queryContext: context }),
+          },
         }
       : {}),
     tagPage: {

@@ -10,7 +10,7 @@ import type { ComponentChild } from 'preact';
 import type { InlineToken } from '../../ui/protocol/inline';
 import type { NoteBlock, NoteEmbedBlock, NoteListItem, NoteQueryResult, NoteQueryRow, NoteTaskBox } from '../../ui/protocol/notePage';
 import type { TagReference } from '../../ui/protocol/shared';
-import { withTagButtons } from '../shared/tagButton';
+import { withTagButtons } from './tagButton';
 
 /** What drawing a note's blocks reads besides the blocks: its tags, and the note an embed's blocks are from. */
 export interface BodyContext {

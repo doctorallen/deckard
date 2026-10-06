@@ -341,3 +341,24 @@ export function findMissingLinkTargets(index: WorkspaceIndex): MissingLinkTarget
     (left, right) => right.count - left.count || left.name.localeCompare(right.name),
   );
 }
+
+/**
+ * Where a `[[link]]` goes: the note it names, read from the note it is
+ * written in, so `[[#Heading]]` is that note's heading, and the line of the
+ * heading or block it names. Undefined when no note, or more than one, has
+ * the name.
+ */
+export function findWikiLinkPlace(
+  index: WorkspaceIndex,
+  target: string,
+  writtenIn: string | undefined,
+): { filePath: string; line?: number } | undefined {
+  const link = parseWikiTarget(target);
+  const filePath = link.note ? resolveWikiTarget(createNoteTitleMap(index), link.note, writtenIn ?? '') : writtenIn;
+  const file = filePath ? index.files.get(filePath) : undefined;
+  if (!filePath || !file) {
+    return undefined;
+  }
+  const line = link.heading ? findLinkedSection(file, link.heading)?.startLine : link.block && findLinkedBlock(file, link.block);
+  return { filePath, ...(line ? { line } : {}) };
+}

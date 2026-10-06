@@ -49,6 +49,7 @@ import { narrowSearchPageMessage } from './messages';
 import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 import { createSearchPageSnapshot, evaluateSearchPage, resolveQueryTagIntersection } from '../../../state/searchPageState';
 import { createQueryViewState } from '../../../state/querySuggestions';
+import { findWikiLinkPlace, parseWikiTarget } from '../../../../domain/index/backlinks';
 
 /**
  * The preference services a search page reads and writes: the blob it
@@ -216,6 +217,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       editResults: (message) => editResults(search.writes.history, message.kind, this.currentResults()),
       exportResults: (message) => this.exportResults(message.kind),
       openSource: (message) => this.openSource(message.filePath, message.line, message),
+      openWikiLink: (message) => this.openWikiLink(message.target, message.from, message),
     };
   }
 
@@ -584,6 +586,20 @@ export class SearchPageController implements PageController<SearchPageState, Sea
    * Opens a line the page shows: its hub, a card, or a task. A card's visit
    * is counted, unless it is a note's front matter.
    */
+  /**
+   * Follows a `[[link]]` in the hub note to the note it names, read from the
+   * note it is written in, as the note page follows one.
+   */
+  private async openWikiLink(target: string, from: string | undefined, how: NoteOpening): Promise<void> {
+    const writtenIn = from ?? this.currentSnapshot().hub?.filePath;
+    const place = findWikiLinkPlace(this.search.indexer.getSnapshot(), target, writtenIn);
+    if (!place) {
+      void vscode.window.showInformationMessage(`No note is named "${parseWikiTarget(target).note}" yet, or more than one is.`);
+      return;
+    }
+    await this.openSource(place.filePath, place.line ?? 1, how);
+  }
+
   private async openSource(
     filePath: string,
     line: number,
