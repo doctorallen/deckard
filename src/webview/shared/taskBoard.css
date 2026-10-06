@@ -132,10 +132,12 @@
    it, so the reader sees which one they ticked. */
 .board-card.is-completing { opacity: .5; transition: opacity 800ms ease; }
 .board-card.is-completing .task-title { text-decoration: line-through; }
-/* A card off screen is not laid out or painted until it is scrolled to. A
-   hovered or focused card is left out: content-visibility implies paint
-   containment, which would clip the file-and-line it carries down over the
-   card below. */
-.task-board .board-card:not(:hover):not(:focus-within):not(.dragging) { content-visibility: auto; contain-intrinsic-size: auto 72px; }
+/* Every card is drawn: a column shows its first 100 (Done its 20), which
+   lays out quickly enough. Cards off screen once skipped layout and paint
+   (content-visibility) except the one under the pointer, whose file and line
+   the containment would clip; turning it off under the pointer repainted the
+   card there, and at Windows' fractional scaling its checkbox was drawn a
+   pixel larger or smaller, and after a search the board's hover misplaced
+   until it was drawn again. */
 /* Moved on the page, not yet written: drawn back until the next state. */
 .board-card.is-pending { opacity: .7; }
