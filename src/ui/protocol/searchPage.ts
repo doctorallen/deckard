@@ -176,6 +176,12 @@ export interface SearchPageTagNotes {
   hubTitle?: string;
   /** How far along the tag's tasks are, when it finds any. */
   progress?: SearchPageTagProgress;
+  /**
+   * The tag's parts, when it is written on headings with tagged headings
+   * under them: each part's name and how far along its tasks are, "#phase/design
+   * 2/3 done (67%)", with the search that narrows the page to it.
+   */
+  parts?: Array<{ text: string; query: string; tip: string; active?: true }>;
   /** Entries that write the tag's name as a plain word, without the tag. */
   mention?: {
     word: string;

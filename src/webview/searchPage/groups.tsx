@@ -47,7 +47,11 @@ function looseName(snapshot: SearchPageSnapshot, alone: boolean): string {
   if (alone) {
     return 'Results';
   }
-  return snapshot.hierarchy === 'headings' ? 'Under no tagged heading' : 'Under none of these tags';
+  if (snapshot.hierarchy !== 'headings') {
+    return 'Under none of these tags';
+  }
+  // On a tag's page, what is under the tag's own heading and no part of it.
+  return snapshot.tag ? 'Not in any part' : 'Under no tagged heading';
 }
 
 /**

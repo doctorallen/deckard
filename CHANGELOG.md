@@ -14,6 +14,11 @@
   tagged headings instead: each project (an H1's tag) holds its own parts
   (its H2s' tags), and a project's bar counts its parts' tasks.
 
+- **A project's parts on its page.** A tag written on headings with
+  tagged headings under them lists those parts under its progress, each
+  with its own figure, such as *#phase/design 2/3 done (67%)*, and a link
+  that narrows the project's page to it.
+
 ### Changed
 
 - **Progress reads 3/8 done (38%).** Every figure of how far along tasks

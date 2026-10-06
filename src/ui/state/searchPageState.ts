@@ -63,6 +63,8 @@ import {
   QueryFacet,
   WorkspaceIndex,
 } from '../../domain/model';
+import { collectTagParts } from '../../domain/tasks/tagParts';
+import { formatProgressCount } from '../../domain/tasks/progressCount';
 
 /**
  * A search page: what one search finds, sorted, paged, and drawn as cards
@@ -514,6 +516,7 @@ function buildTagPageBlock(
       hubLinkCount: viaHub.size,
       ...(hubTitle ? { hubTitle } : {}),
       ...describeTagProgressLine(index, focusTag.key, context, parsed.text),
+      ...describeTagParts(index, focusTag.key, context, parsed.text),
       ...describeTagMentions(index, focusTag, context),
     },
   };
@@ -552,6 +555,35 @@ function describeTagProgressLine(
         part.query && sameSearch(part.query, searched) ? { ...part, active: true as const } : part,
       ),
     },
+  };
+}
+
+/**
+ * A tag's parts, for its page's Parts line: the tags on the headings nested
+ * under its own, each with its progress and the search that narrows the page
+ * to it, that part on while the page is narrowed to it. Nothing for a tag
+ * with no tagged heading under it.
+ */
+function describeTagParts(
+  index: WorkspaceIndex,
+  tagKey: string,
+  context: QueryContext,
+  searched: string,
+): Pick<SearchPageTagNotes, 'parts'> {
+  const parts = collectTagParts(index, tagKey, context.now, context.taskPolicy);
+  if (!parts.length) {
+    return {};
+  }
+  return {
+    parts: parts.map((part) => {
+      const query = `${tagKey} AND ${part.key}`;
+      return {
+        text: `${part.label} ${formatProgressCount(part.progress.done, part.progress.total)}`,
+        query,
+        tip: `Narrow the page to ${part.label}`,
+        ...(sameSearch(query, searched) ? { active: true as const } : {}),
+      };
+    }),
   };
 }
 
@@ -707,6 +739,11 @@ export function evaluateSearchPage(
   };
 }
 
+/** Whether one tag is a part of another: written on a heading under one that carries it (tagParts.ts). */
+function isPartOf(index: WorkspaceIndex, project: string, part: string): boolean {
+  return collectTagParts(index, project, Date.now()).some((found) => found.key === part);
+}
+
 /**
  * The tag a search is the page of: a search of one tag, or one that narrows
  * one tag with other terms, `filtered`, so the hub and the progress stay
@@ -719,6 +756,11 @@ function resolveFocusTag(
 ): { tagKeys?: string[]; focusTag?: TagInfo; filtered: boolean } {
   const tagKeys = resolveQueryTagIntersection(index, parsed, aliases);
   if (tagKeys) {
+    // A project narrowed to one of its parts, from its page's Parts line,
+    // stays the project's page, narrowed.
+    if (tagKeys.length === 2 && isPartOf(index, tagKeys[0], tagKeys[1])) {
+      return { tagKeys, focusTag: index.tags.get(tagKeys[0]), filtered: true };
+    }
     return { tagKeys, focusTag: tagKeys.length === 1 ? index.tags.get(tagKeys[0]) : undefined, filtered: false };
   }
   const narrowed = getQueryNarrowedTag(parsed.node);

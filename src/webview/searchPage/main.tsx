@@ -425,6 +425,12 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
       send({ type: 'setOverviewQuery', query: part.active && snapshot.tag ? snapshot.tag.key : part.query });
     }
   },
+  'search-part': (target, snapshot) => {
+    const part = snapshot.tagPage && snapshot.tagPage.parts ? snapshot.tagPage.parts[Number(target.dataset.part)] : undefined;
+    if (part) {
+      send({ type: 'setOverviewQuery', query: part.active && snapshot.tag ? snapshot.tag.key : part.query });
+    }
+  },
   'show-mentions': (_target, snapshot) => {
     if (snapshot.tagPage && snapshot.tagPage.mention) {
       send({ type: 'setOverviewQuery', query: snapshot.tagPage.mention.query });
