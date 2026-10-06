@@ -1,0 +1,844 @@
+<body
+> <main
+    id="app"
+  ><header
+    ><div
+      ><p
+          class="eyebrow"
+        ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label="Deckard: go to another page"
+            class="eyebrow-home"
+            data-go-to=""
+            type="button"
+          >DECKARD ▾</button
+          ><span
+            class="eyebrow-trail"
+          > / TASKS</span
+          ></p
+        ><h1
+        >Task Statuses</h1
+        ></div
+      ><p
+        class="status-note"
+      >What each checkbox character means, and the #status/… tag that stands for it. Saved to your user settings.</p
+      ></header
+    ><fieldset
+      class="status-click"
+    ><legend
+      >Checking a box</legend
+      ><label
+      ><input
+          data-action="set-checkbox-click"
+          data-dom-checked="true"
+          data-dom-value="done"
+          name="checkbox-click"
+          type="radio"
+        > Marks it done, whatever its status; unchecking reopens it</label
+      ><label
+      ><input
+          data-action="set-checkbox-click"
+          data-dom-checked="false"
+          data-dom-value="workflow"
+          name="checkbox-click"
+          type="radio"
+        > Moves it to its status's next status, as Obsidian Tasks does</label
+      ></fieldset
+    ><table
+      class="status-table"
+    ><thead
+      ><tr
+        ><th
+          >Character</th
+          ><th
+          >Name</th
+          ><th
+          >Type</th
+          ><th
+          >Tag</th
+          ><th
+          >Icon</th
+          ><th
+          ><span
+              class="visually-hidden"
+            >Remove</span
+            ></th
+          ></tr
+        ></thead
+      ><tbody
+      ><tr
+        ><td
+          ><span
+              class="status-symbol"
+              data-tip="Todo's and Done's characters are fixed, as in Obsidian"
+            >[ ]</span
+            ></td
+          ><td
+          ><input
+              aria-label="Todo: name"
+              data-dom-value="Todo"
+              data-field="name"
+              data-row="0"
+              type="text"
+            ></td
+          ><td
+          ><span
+            >To do</span
+            ></td
+          ><td
+            class="status-tag"
+          ><span
+              aria-hidden="true"
+              class="status-tag-prefix"
+            >#status/</span
+            ><input
+              aria-label="Todo: tag, after #status/"
+              data-dom-value="todo"
+              data-field="tag"
+              data-row="0"
+              type="text"
+            ></td
+          ><td
+          ><select
+              aria-label="Todo: icon"
+              data-dom-value=""
+              data-field="icon"
+              data-row="0"
+            ><option
+                data-dom-selected="true"
+                data-dom-value=""
+              >None</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="blocked"
+              >⊘ Blocked</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="question"
+              >? Question</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="alert"
+              >! Alert</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="star"
+              >★ Star</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="flag"
+              >⚑ Flag</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="clock"
+              >◷ Clock</option
+              ></select
+            ></td
+          ><td
+          ></td
+          ></tr
+        ><tr
+        ><td
+          ><input
+              aria-label="In progress: character"
+              class="status-symbol-input"
+              data-dom-value="/"
+              data-field="symbol"
+              data-row="1"
+              maxlength="2"
+              placeholder="tag only"
+              type="text"
+            ></td
+          ><td
+          ><input
+              aria-label="In progress: name"
+              data-dom-value="In progress"
+              data-field="name"
+              data-row="1"
+              type="text"
+            ></td
+          ><td
+          ><select
+              aria-label="In progress: type"
+              data-dom-value="inProgress"
+              data-field="type"
+              data-row="1"
+            ><option
+                data-dom-selected="false"
+                data-dom-value="todo"
+              >To do</option
+              ><option
+                data-dom-selected="true"
+                data-dom-value="inProgress"
+              >In progress</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="onHold"
+              >On hold</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="done"
+              >Done</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="cancelled"
+              >Cancelled</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="nonTask"
+              >Not a task</option
+              ></select
+            ></td
+          ><td
+            class="status-tag"
+          ><span
+              aria-hidden="true"
+              class="status-tag-prefix"
+            >#status/</span
+            ><input
+              aria-label="In progress: tag, after #status/"
+              data-dom-value="doing"
+              data-field="tag"
+              data-row="1"
+              type="text"
+            ></td
+          ><td
+          ><select
+              aria-label="In progress: icon"
+              data-dom-value=""
+              data-field="icon"
+              data-row="1"
+            ><option
+                data-dom-selected="true"
+                data-dom-value=""
+              >None</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="blocked"
+              >⊘ Blocked</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="question"
+              >? Question</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="alert"
+              >! Alert</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="star"
+              >★ Star</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="flag"
+              >⚑ Flag</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="clock"
+              >◷ Clock</option
+              ></select
+            ></td
+          ><td
+          ><button
+              aria-label="Remove In progress"
+              class="status-remove"
+              data-action="remove-status"
+              data-row="1"
+              data-tip="Remove"
+              type="button"
+            >×</button
+            ></td
+          ></tr
+        ><tr
+        ><td
+          ><span
+              class="status-symbol"
+              data-tip="Todo's and Done's characters are fixed, as in Obsidian"
+            >[x]</span
+            ></td
+          ><td
+          ><input
+              aria-label="Done: name"
+              data-dom-value="Done"
+              data-field="name"
+              data-row="2"
+              type="text"
+            ></td
+          ><td
+          ><span
+            >Done</span
+            ></td
+          ><td
+            class="status-tag"
+          ><span
+              aria-hidden="true"
+              class="status-tag-prefix"
+            >#status/</span
+            ><input
+              aria-label="Done: tag, after #status/"
+              data-dom-value=""
+              data-field="tag"
+              data-row="2"
+              type="text"
+            ></td
+          ><td
+          ><span
+              class="status-no-icon"
+              data-tip="A done or cancelled box shows its type, not an icon"
+            >—</span
+            ></td
+          ><td
+          ></td
+          ></tr
+        ><tr
+        ><td
+          ><input
+              aria-label="Done: character"
+              class="status-symbol-input"
+              data-dom-value="X"
+              data-field="symbol"
+              data-row="3"
+              maxlength="2"
+              placeholder="tag only"
+              type="text"
+            ></td
+          ><td
+          ><input
+              aria-label="Done: name"
+              data-dom-value="Done"
+              data-field="name"
+              data-row="3"
+              type="text"
+            ></td
+          ><td
+          ><select
+              aria-label="Done: type"
+              data-dom-value="done"
+              data-field="type"
+              data-row="3"
+            ><option
+                data-dom-selected="false"
+                data-dom-value="todo"
+              >To do</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="inProgress"
+              >In progress</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="onHold"
+              >On hold</option
+              ><option
+                data-dom-selected="true"
+                data-dom-value="done"
+              >Done</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="cancelled"
+              >Cancelled</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="nonTask"
+              >Not a task</option
+              ></select
+            ></td
+          ><td
+            class="status-tag"
+          ><span
+              aria-hidden="true"
+              class="status-tag-prefix"
+            >#status/</span
+            ><input
+              aria-label="Done: tag, after #status/"
+              data-dom-value=""
+              data-field="tag"
+              data-row="3"
+              type="text"
+            ></td
+          ><td
+          ><span
+              class="status-no-icon"
+              data-tip="A done or cancelled box shows its type, not an icon"
+            >—</span
+            ></td
+          ><td
+          ><button
+              aria-label="Remove Done"
+              class="status-remove"
+              data-action="remove-status"
+              data-row="3"
+              data-tip="Remove"
+              type="button"
+            >×</button
+            ></td
+          ></tr
+        ><tr
+        ><td
+          ><input
+              aria-label="Cancelled: character"
+              class="status-symbol-input"
+              data-dom-value="-"
+              data-field="symbol"
+              data-row="4"
+              maxlength="2"
+              placeholder="tag only"
+              type="text"
+            ></td
+          ><td
+          ><input
+              aria-label="Cancelled: name"
+              data-dom-value="Cancelled"
+              data-field="name"
+              data-row="4"
+              type="text"
+            ></td
+          ><td
+          ><select
+              aria-label="Cancelled: type"
+              data-dom-value="cancelled"
+              data-field="type"
+              data-row="4"
+            ><option
+                data-dom-selected="false"
+                data-dom-value="todo"
+              >To do</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="inProgress"
+              >In progress</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="onHold"
+              >On hold</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="done"
+              >Done</option
+              ><option
+                data-dom-selected="true"
+                data-dom-value="cancelled"
+              >Cancelled</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="nonTask"
+              >Not a task</option
+              ></select
+            ></td
+          ><td
+            class="status-tag"
+          ><span
+              aria-hidden="true"
+              class="status-tag-prefix"
+            >#status/</span
+            ><input
+              aria-label="Cancelled: tag, after #status/"
+              data-dom-value=""
+              data-field="tag"
+              data-row="4"
+              type="text"
+            ></td
+          ><td
+          ><span
+              class="status-no-icon"
+              data-tip="A done or cancelled box shows its type, not an icon"
+            >—</span
+            ></td
+          ><td
+          ><button
+              aria-label="Remove Cancelled"
+              class="status-remove"
+              data-action="remove-status"
+              data-row="4"
+              data-tip="Remove"
+              type="button"
+            >×</button
+            ></td
+          ></tr
+        ><tr
+        ><td
+          ><input
+              aria-label="Waiting: character"
+              class="status-symbol-input"
+              data-dom-value=""
+              data-field="symbol"
+              data-row="5"
+              maxlength="2"
+              placeholder="tag only"
+              type="text"
+            ></td
+          ><td
+          ><input
+              aria-label="Waiting: name"
+              data-dom-value="Waiting"
+              data-field="name"
+              data-row="5"
+              type="text"
+            ></td
+          ><td
+          ><select
+              aria-label="Waiting: type"
+              data-dom-value="onHold"
+              data-field="type"
+              data-row="5"
+            ><option
+                data-dom-selected="false"
+                data-dom-value="todo"
+              >To do</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="inProgress"
+              >In progress</option
+              ><option
+                data-dom-selected="true"
+                data-dom-value="onHold"
+              >On hold</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="done"
+              >Done</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="cancelled"
+              >Cancelled</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="nonTask"
+              >Not a task</option
+              ></select
+            ></td
+          ><td
+            class="status-tag"
+          ><span
+              aria-hidden="true"
+              class="status-tag-prefix"
+            >#status/</span
+            ><input
+              aria-label="Waiting: tag, after #status/"
+              data-dom-value="waiting"
+              data-field="tag"
+              data-row="5"
+              type="text"
+            ></td
+          ><td
+          ><select
+              aria-label="Waiting: icon"
+              data-dom-value=""
+              data-field="icon"
+              data-row="5"
+            ><option
+                data-dom-selected="true"
+                data-dom-value=""
+              >None</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="blocked"
+              >⊘ Blocked</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="question"
+              >? Question</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="alert"
+              >! Alert</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="star"
+              >★ Star</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="flag"
+              >⚑ Flag</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="clock"
+              >◷ Clock</option
+              ></select
+            ></td
+          ><td
+          ><button
+              aria-label="Remove Waiting"
+              class="status-remove"
+              data-action="remove-status"
+              data-row="5"
+              data-tip="Remove"
+              type="button"
+            >×</button
+            ></td
+          ></tr
+        ><tr
+        ><td
+          ><input
+              aria-label="Someday: character"
+              class="status-symbol-input"
+              data-dom-value=""
+              data-field="symbol"
+              data-row="6"
+              maxlength="2"
+              placeholder="tag only"
+              type="text"
+            ></td
+          ><td
+          ><input
+              aria-label="Someday: name"
+              data-dom-value="Someday"
+              data-field="name"
+              data-row="6"
+              type="text"
+            ></td
+          ><td
+          ><select
+              aria-label="Someday: type"
+              data-dom-value="onHold"
+              data-field="type"
+              data-row="6"
+            ><option
+                data-dom-selected="false"
+                data-dom-value="todo"
+              >To do</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="inProgress"
+              >In progress</option
+              ><option
+                data-dom-selected="true"
+                data-dom-value="onHold"
+              >On hold</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="done"
+              >Done</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="cancelled"
+              >Cancelled</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="nonTask"
+              >Not a task</option
+              ></select
+            ></td
+          ><td
+            class="status-tag"
+          ><span
+              aria-hidden="true"
+              class="status-tag-prefix"
+            >#status/</span
+            ><input
+              aria-label="Someday: tag, after #status/"
+              data-dom-value="someday"
+              data-field="tag"
+              data-row="6"
+              type="text"
+            ></td
+          ><td
+          ><select
+              aria-label="Someday: icon"
+              data-dom-value=""
+              data-field="icon"
+              data-row="6"
+            ><option
+                data-dom-selected="true"
+                data-dom-value=""
+              >None</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="blocked"
+              >⊘ Blocked</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="question"
+              >? Question</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="alert"
+              >! Alert</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="star"
+              >★ Star</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="flag"
+              >⚑ Flag</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="clock"
+              >◷ Clock</option
+              ></select
+            ></td
+          ><td
+          ><button
+              aria-label="Remove Someday"
+              class="status-remove"
+              data-action="remove-status"
+              data-row="6"
+              data-tip="Remove"
+              type="button"
+            >×</button
+            ></td
+          ></tr
+        ><tr
+        ><td
+          ><input
+              aria-label="Blocked: character"
+              class="status-symbol-input"
+              data-dom-value="="
+              data-field="symbol"
+              data-row="7"
+              maxlength="2"
+              placeholder="tag only"
+              type="text"
+            ></td
+          ><td
+          ><input
+              aria-label="Blocked: name"
+              data-dom-value="Blocked"
+              data-field="name"
+              data-row="7"
+              type="text"
+            ></td
+          ><td
+          ><select
+              aria-label="Blocked: type"
+              data-dom-value="onHold"
+              data-field="type"
+              data-row="7"
+            ><option
+                data-dom-selected="false"
+                data-dom-value="todo"
+              >To do</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="inProgress"
+              >In progress</option
+              ><option
+                data-dom-selected="true"
+                data-dom-value="onHold"
+              >On hold</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="done"
+              >Done</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="cancelled"
+              >Cancelled</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="nonTask"
+              >Not a task</option
+              ></select
+            ></td
+          ><td
+            class="status-tag"
+          ><span
+              aria-hidden="true"
+              class="status-tag-prefix"
+            >#status/</span
+            ><input
+              aria-label="Blocked: tag, after #status/"
+              data-dom-value="blocked"
+              data-field="tag"
+              data-row="7"
+              type="text"
+            ></td
+          ><td
+          ><select
+              aria-label="Blocked: icon"
+              data-dom-value="blocked"
+              data-field="icon"
+              data-row="7"
+            ><option
+                data-dom-selected="false"
+                data-dom-value=""
+              >None</option
+              ><option
+                data-dom-selected="true"
+                data-dom-value="blocked"
+              >⊘ Blocked</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="question"
+              >? Question</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="alert"
+              >! Alert</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="star"
+              >★ Star</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="flag"
+              >⚑ Flag</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="clock"
+              >◷ Clock</option
+              ></select
+            ></td
+          ><td
+          ><button
+              aria-label="Remove Blocked"
+              class="status-remove"
+              data-action="remove-status"
+              data-row="7"
+              data-tip="Remove"
+              type="button"
+            >×</button
+            ></td
+          ></tr
+        ></tbody
+      ></table
+    ><div
+      class="status-actions"
+    ><button
+        data-action="add-status"
+        type="button"
+      >Add a status</button
+      ><button
+        data-action="add-found"
+        data-tip="[?] 3"
+        type="button"
+      >Add characters found in notes (1)</button
+      ><button
+        data-action="preset"
+        data-preset="deckard"
+        type="button"
+      >Deckard's own</button
+      ><button
+        data-action="preset"
+        data-preset="obsidian"
+        type="button"
+      >Obsidian's core</button
+      ><button
+        data-action="import"
+        type="button"
+      >Import from Obsidian Tasks</button
+      ><span
+        class="status-actions-gap"
+      ></span
+      ><button
+        data-action="revert"
+        disabled=""
+        type="button"
+      >Revert</button
+      ><button
+        class="is-primary"
+        data-action="save"
+        disabled=""
+        type="button"
+      >Save</button
+      ></div
+    ></main
+  > <div
+    aria-live="polite"
+    class="visually-hidden"
+    id="live-status"
+    role="status"
+  ></div
+  > </body
+>

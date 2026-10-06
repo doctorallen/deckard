@@ -130,9 +130,9 @@
                     >⠿</span
                     ><span
                       class="board-status-name"
-                    >todo</span
+                    >Todo</span
                     ><button
-                      aria-label="Remove todo"
+                      aria-label="Remove Todo"
                       data-action="remove-status"
                       data-status="todo"
                       data-tip="Remove column"
@@ -150,7 +150,7 @@
                     >⠿</span
                     ><span
                       class="board-status-name"
-                    >doing</span
+                    >In progress</span
                     ><span
                       class="board-status-count"
                       data-tip="Open tasks with this status; a column while any have it"
@@ -197,6 +197,16 @@
                     type="submit"
                   >Save</button
                   ></form
+                ><label
+                  class="board-settings-row"
+                ><input
+                    data-action="show-cancelled"
+                    data-dom-checked="false"
+                    data-dom-value="on"
+                    type="checkbox"
+                  ><span
+                  >Show a Cancelled column after Done</span
+                  ></label
                 ></div
               ></div
             ><div
@@ -405,7 +415,7 @@
             role="list"
           ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Chase the replicant through the neon market and file the report before the rain, Atlas, overdue 6 days · 2026-09-15, 1 of 2 steps"
+              aria-label="Chase the replicant through the neon market and file the report before the rain, Atlas, overdue 6 days · 2026-09-15, Steps 1 of 2 done, 50%"
               class="board-card task"
               data-card-column="tag:project/atlas"
               data-file-path="notes/tasks.md"
@@ -416,10 +426,11 @@
               role="listitem"
               tabindex="0"
             ><input
-                aria-label="Complete Chase the replicant through the neon market and file the report before the rain"
+                aria-label="Complete Chase the replicant through the neon market and file the report before the rain, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -431,6 +442,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                     class="overdue"
                   ><span
                       class="due-relative due-text"
@@ -453,7 +466,13 @@
                   class="board-steps source"
                 ><span
                     class="board-steps-label"
-                  >1 of 2 steps</span
+                  ><span
+                      aria-hidden="true"
+                    >Steps 1/2 done (50%)</span
+                    ><span
+                      class="visually-hidden"
+                    >Steps 1 of 2 done, 50%</span
+                    ></span
                   ><span
                     class="board-steps-next"
                   > · next: Draft the report for the precinct before the rain comes back</span
@@ -521,10 +540,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 2"
+                aria-label="Complete Board task 2, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -536,6 +556,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                     class="overdue"
                   ><span
                       class="due-relative due-text"
@@ -617,10 +639,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 3"
+                aria-label="Complete Board task 3, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -632,6 +655,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                     class="overdue"
                   ><span
                       class="due-relative due-text"
@@ -713,10 +738,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 4"
+                aria-label="Complete Board task 4, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -728,6 +754,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                     class="overdue"
                   ><span
                       class="due-relative due-text"
@@ -809,10 +837,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 5"
+                aria-label="Complete Board task 5, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -824,6 +853,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                     class="overdue"
                   ><span
                       class="due-relative due-text"
@@ -905,10 +936,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 6"
+                aria-label="Complete Board task 6, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -920,6 +952,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                     class="overdue"
                   ><span
                       class="due-relative due-text"
@@ -1001,10 +1035,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 7"
+                aria-label="Complete Board task 7, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1016,6 +1051,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                     class="due-today"
                   ><span
                       class="due-relative due-text"
@@ -1094,10 +1131,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 8"
+                aria-label="Complete Board task 8, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1109,6 +1147,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                     class="due-today"
                   ><span
                       class="due-relative due-text"
@@ -1187,10 +1227,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 9"
+                aria-label="Complete Board task 9, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1202,6 +1243,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                     class="due-today"
                   ><span
                       class="due-relative due-text"
@@ -1280,10 +1323,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 10"
+                aria-label="Complete Board task 10, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1295,6 +1339,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -1375,10 +1421,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 11"
+                aria-label="Complete Board task 11, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1390,6 +1437,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -1470,10 +1519,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 12"
+                aria-label="Complete Board task 12, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1485,6 +1535,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -1565,10 +1617,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 13"
+                aria-label="Complete Board task 13, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1580,6 +1633,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -1660,10 +1715,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 14"
+                aria-label="Complete Board task 14, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1675,6 +1731,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -1755,10 +1813,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 15"
+                aria-label="Complete Board task 15, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1770,6 +1829,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -1850,10 +1911,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 16"
+                aria-label="Complete Board task 16, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1865,6 +1927,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -1945,10 +2009,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 17"
+                aria-label="Complete Board task 17, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1960,6 +2025,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -2040,10 +2107,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 18"
+                aria-label="Complete Board task 18, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2055,6 +2123,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -2135,10 +2205,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 19"
+                aria-label="Complete Board task 19, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2150,6 +2221,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -2230,10 +2303,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 20"
+                aria-label="Complete Board task 20, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2245,6 +2319,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -2325,10 +2401,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 21"
+                aria-label="Complete Board task 21, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2340,6 +2417,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -2420,10 +2499,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 22"
+                aria-label="Complete Board task 22, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2435,6 +2515,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -2515,10 +2597,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 23"
+                aria-label="Complete Board task 23, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2530,6 +2613,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -2610,10 +2695,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 24"
+                aria-label="Complete Board task 24, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2625,6 +2711,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -2705,10 +2793,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 25"
+                aria-label="Complete Board task 25, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2720,6 +2809,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -2800,10 +2891,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 26"
+                aria-label="Complete Board task 26, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2815,6 +2907,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -2895,10 +2989,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 27"
+                aria-label="Complete Board task 27, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2910,6 +3005,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -2990,10 +3087,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 28"
+                aria-label="Complete Board task 28, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3005,6 +3103,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -3085,10 +3185,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 29"
+                aria-label="Complete Board task 29, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3100,6 +3201,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -3180,10 +3283,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 30"
+                aria-label="Complete Board task 30, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3195,6 +3299,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -3275,10 +3381,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 31"
+                aria-label="Complete Board task 31, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3290,6 +3397,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -3370,10 +3479,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 32"
+                aria-label="Complete Board task 32, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3385,6 +3495,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -3465,10 +3577,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 33"
+                aria-label="Complete Board task 33, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3480,6 +3593,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -3560,10 +3675,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 34"
+                aria-label="Complete Board task 34, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3575,6 +3691,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -3655,10 +3773,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 35"
+                aria-label="Complete Board task 35, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3670,6 +3789,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -3750,10 +3871,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 36"
+                aria-label="Complete Board task 36, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3765,6 +3887,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -3845,10 +3969,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 37"
+                aria-label="Complete Board task 37, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3860,6 +3985,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -3940,10 +4067,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 38"
+                aria-label="Complete Board task 38, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3955,6 +4083,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -4035,10 +4165,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 39"
+                aria-label="Complete Board task 39, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -4050,6 +4181,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span
@@ -4130,10 +4263,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 40"
+                aria-label="Complete Board task 40, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -4145,6 +4279,8 @@
                 ><p
                   class="board-details source"
                 ><span
+                  >In progress</span
+                  ><span
                   ><span
                       class="due-relative due-text"
                     >due<span

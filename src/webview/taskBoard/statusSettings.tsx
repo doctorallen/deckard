@@ -33,7 +33,7 @@ function StatusRow({ status, openTasks, label }: { readonly status: string; read
       <span class="board-status-name">{label || status}</span>
       {/* A status open tasks carry is a column whether it is listed or not, so there is nothing to remove: it would come straight back. */}
       {openTasks === 0
-        ? <button key="remove" type="button" data-action="remove-status" data-status={status} aria-label={`Remove ${status}`} data-tip="Remove column">×</button>
+        ? <button key="remove" type="button" data-action="remove-status" data-status={status} aria-label={`Remove ${label || status}`} data-tip="Remove column">×</button>
         : <span key="count" class="board-status-count" data-tip="Open tasks with this status; a column while any have it">{openTasks}</span>}
     </li>
   );

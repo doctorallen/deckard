@@ -133,9 +133,9 @@
                     >⠿</span
                     ><span
                       class="board-status-name"
-                    >todo</span
+                    >Todo</span
                     ><button
-                      aria-label="Remove todo"
+                      aria-label="Remove Todo"
                       data-action="remove-status"
                       data-status="todo"
                       data-tip="Remove column"
@@ -153,7 +153,7 @@
                     >⠿</span
                     ><span
                       class="board-status-name"
-                    >doing</span
+                    >In progress</span
                     ><span
                       class="board-status-count"
                       data-tip="Open tasks with this status; a column while any have it"
@@ -200,6 +200,16 @@
                     type="submit"
                   >Save</button
                   ></form
+                ><label
+                  class="board-settings-row"
+                ><input
+                    data-action="show-cancelled"
+                    data-dom-checked="false"
+                    data-dom-value="on"
+                    type="checkbox"
+                  ><span
+                  >Show a Cancelled column after Done</span
+                  ></label
                 ></div
               ></div
             ><div
@@ -1511,7 +1521,7 @@
             ></div
           ></section
         ><section
-          aria-label="Doing, 40 tasks, 6 overdue"
+          aria-label="In progress, 40 tasks, 6 overdue"
           class="board-column"
           data-column-id="status:doing"
           data-droppable="true"
@@ -1519,7 +1529,7 @@
         ><h2
             class="board-column-title"
           ><span
-            >Doing</span
+            >In progress</span
             ><span
               class="board-count"
             >40 · 6 overdue</span
@@ -1528,16 +1538,16 @@
             class="board-add"
             data-action="board-add-task"
             data-column-id="status:doing"
-            data-tip="Capture a task straight into Doing"
+            data-tip="Capture a task straight into In progress"
             type="button"
           >+ Add task</button
           ><div
-            aria-label="Doing"
+            aria-label="In progress"
             class="board-cards"
             role="list"
           ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Chase the replicant through the neon market and file the report before the rain, Doing, overdue 6 days · 2026-09-15, 1 of 2 steps"
+              aria-label="Chase the replicant through the neon market and file the report before the rain, In progress, overdue 6 days · 2026-09-15, Steps 1 of 2 done, 50%"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -1548,10 +1558,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Chase the replicant through the neon market and file the report before the rain"
+                aria-label="Complete Chase the replicant through the neon market and file the report before the rain, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1585,7 +1596,13 @@
                   class="board-steps source"
                 ><span
                     class="board-steps-label"
-                  >1 of 2 steps</span
+                  ><span
+                      aria-hidden="true"
+                    >Steps 1/2 done (50%)</span
+                    ><span
+                      class="visually-hidden"
+                    >Steps 1 of 2 done, 50%</span
+                    ></span
                   ><span
                     class="board-steps-next"
                   > · next: Draft the report for the precinct before the rain comes back</span
@@ -1642,7 +1659,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 2, Doing, overdue 5 days · 2026-09-16"
+              aria-label="Board task 2, In progress, overdue 5 days · 2026-09-16"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -1653,10 +1670,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 2"
+                aria-label="Complete Board task 2, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1738,7 +1756,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 3, Doing, overdue 4 days · 2026-09-17"
+              aria-label="Board task 3, In progress, overdue 4 days · 2026-09-17"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -1749,10 +1767,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 3"
+                aria-label="Complete Board task 3, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1834,7 +1853,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 4, Doing, overdue 3 days · 2026-09-18"
+              aria-label="Board task 4, In progress, overdue 3 days · 2026-09-18"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -1845,10 +1864,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 4"
+                aria-label="Complete Board task 4, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -1930,7 +1950,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 5, Doing, overdue 2 days · 2026-09-19"
+              aria-label="Board task 5, In progress, overdue 2 days · 2026-09-19"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -1941,10 +1961,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 5"
+                aria-label="Complete Board task 5, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2026,7 +2047,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 6, Doing, overdue 1 day · 2026-09-20"
+              aria-label="Board task 6, In progress, overdue 1 day · 2026-09-20"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -2037,10 +2058,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 6"
+                aria-label="Complete Board task 6, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2122,7 +2144,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 7, Doing, due today · 2026-09-21"
+              aria-label="Board task 7, In progress, due today · 2026-09-21"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -2133,10 +2155,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 7"
+                aria-label="Complete Board task 7, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2215,7 +2238,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 8, Doing, due today · 2026-09-21"
+              aria-label="Board task 8, In progress, due today · 2026-09-21"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -2226,10 +2249,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 8"
+                aria-label="Complete Board task 8, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2308,7 +2332,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 9, Doing, due today · 2026-09-21"
+              aria-label="Board task 9, In progress, due today · 2026-09-21"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -2319,10 +2343,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 9"
+                aria-label="Complete Board task 9, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2401,7 +2426,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 10, Doing, due tomorrow · 2026-09-22"
+              aria-label="Board task 10, In progress, due tomorrow · 2026-09-22"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -2412,10 +2437,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 10"
+                aria-label="Complete Board task 10, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2496,7 +2522,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 11, Doing, due in 2 days · 2026-09-23"
+              aria-label="Board task 11, In progress, due in 2 days · 2026-09-23"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -2507,10 +2533,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 11"
+                aria-label="Complete Board task 11, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2591,7 +2618,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 12, Doing, due in 3 days · 2026-09-24"
+              aria-label="Board task 12, In progress, due in 3 days · 2026-09-24"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -2602,10 +2629,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 12"
+                aria-label="Complete Board task 12, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2686,7 +2714,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 13, Doing, due in 4 days · 2026-09-25"
+              aria-label="Board task 13, In progress, due in 4 days · 2026-09-25"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -2697,10 +2725,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 13"
+                aria-label="Complete Board task 13, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2781,7 +2810,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 14, Doing, due in 5 days · 2026-09-26"
+              aria-label="Board task 14, In progress, due in 5 days · 2026-09-26"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -2792,10 +2821,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 14"
+                aria-label="Complete Board task 14, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2876,7 +2906,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 15, Doing, due in 5 days · 2026-09-26"
+              aria-label="Board task 15, In progress, due in 5 days · 2026-09-26"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -2887,10 +2917,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 15"
+                aria-label="Complete Board task 15, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -2971,7 +3002,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 16, Doing, due in 6 days · 2026-09-27"
+              aria-label="Board task 16, In progress, due in 6 days · 2026-09-27"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -2982,10 +3013,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 16"
+                aria-label="Complete Board task 16, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3066,7 +3098,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 17, Doing, due in 7 days · 2026-09-28"
+              aria-label="Board task 17, In progress, due in 7 days · 2026-09-28"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -3077,10 +3109,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 17"
+                aria-label="Complete Board task 17, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3161,7 +3194,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 18, Doing, due in 8 days · 2026-09-29"
+              aria-label="Board task 18, In progress, due in 8 days · 2026-09-29"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -3172,10 +3205,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 18"
+                aria-label="Complete Board task 18, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3256,7 +3290,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 19, Doing, due in 9 days · 2026-09-30"
+              aria-label="Board task 19, In progress, due in 9 days · 2026-09-30"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -3267,10 +3301,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 19"
+                aria-label="Complete Board task 19, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3351,7 +3386,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 20, Doing, due in 10 days · 2026-10-01"
+              aria-label="Board task 20, In progress, due in 10 days · 2026-10-01"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -3362,10 +3397,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 20"
+                aria-label="Complete Board task 20, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3446,7 +3482,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 21, Doing, due in 10 days · 2026-10-01"
+              aria-label="Board task 21, In progress, due in 10 days · 2026-10-01"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -3457,10 +3493,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 21"
+                aria-label="Complete Board task 21, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3541,7 +3578,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 22, Doing, due in 11 days · 2026-10-02"
+              aria-label="Board task 22, In progress, due in 11 days · 2026-10-02"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -3552,10 +3589,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 22"
+                aria-label="Complete Board task 22, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3636,7 +3674,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 23, Doing, due in 12 days · 2026-10-03"
+              aria-label="Board task 23, In progress, due in 12 days · 2026-10-03"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -3647,10 +3685,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 23"
+                aria-label="Complete Board task 23, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3731,7 +3770,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 24, Doing, due in 13 days · 2026-10-04"
+              aria-label="Board task 24, In progress, due in 13 days · 2026-10-04"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -3742,10 +3781,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 24"
+                aria-label="Complete Board task 24, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3826,7 +3866,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 25, Doing, due in 14 days · 2026-10-05"
+              aria-label="Board task 25, In progress, due in 14 days · 2026-10-05"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -3837,10 +3877,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 25"
+                aria-label="Complete Board task 25, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -3921,7 +3962,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 26, Doing, due in 15 days · 2026-10-06"
+              aria-label="Board task 26, In progress, due in 15 days · 2026-10-06"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -3932,10 +3973,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 26"
+                aria-label="Complete Board task 26, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -4016,7 +4058,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 27, Doing, due in 15 days · 2026-10-06"
+              aria-label="Board task 27, In progress, due in 15 days · 2026-10-06"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -4027,10 +4069,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 27"
+                aria-label="Complete Board task 27, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -4111,7 +4154,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 28, Doing, due in 16 days · 2026-10-07"
+              aria-label="Board task 28, In progress, due in 16 days · 2026-10-07"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -4122,10 +4165,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 28"
+                aria-label="Complete Board task 28, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -4206,7 +4250,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 29, Doing, due in 17 days · 2026-10-08"
+              aria-label="Board task 29, In progress, due in 17 days · 2026-10-08"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -4217,10 +4261,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 29"
+                aria-label="Complete Board task 29, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -4301,7 +4346,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 30, Doing, due in 18 days · 2026-10-09"
+              aria-label="Board task 30, In progress, due in 18 days · 2026-10-09"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -4312,10 +4357,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 30"
+                aria-label="Complete Board task 30, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -4396,7 +4442,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 31, Doing, due in 19 days · 2026-10-10"
+              aria-label="Board task 31, In progress, due in 19 days · 2026-10-10"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -4407,10 +4453,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 31"
+                aria-label="Complete Board task 31, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -4491,7 +4538,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 32, Doing, due in 20 days · 2026-10-11"
+              aria-label="Board task 32, In progress, due in 20 days · 2026-10-11"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -4502,10 +4549,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 32"
+                aria-label="Complete Board task 32, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -4586,7 +4634,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 33, Doing, due in 20 days · 2026-10-11"
+              aria-label="Board task 33, In progress, due in 20 days · 2026-10-11"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -4597,10 +4645,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 33"
+                aria-label="Complete Board task 33, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -4681,7 +4730,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 34, Doing, due in 21 days · 2026-10-12"
+              aria-label="Board task 34, In progress, due in 21 days · 2026-10-12"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -4692,10 +4741,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 34"
+                aria-label="Complete Board task 34, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -4776,7 +4826,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 35, Doing, due in 22 days · 2026-10-13"
+              aria-label="Board task 35, In progress, due in 22 days · 2026-10-13"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -4787,10 +4837,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 35"
+                aria-label="Complete Board task 35, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -4871,7 +4922,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 36, Doing, due in 23 days · 2026-10-14"
+              aria-label="Board task 36, In progress, due in 23 days · 2026-10-14"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -4882,10 +4933,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 36"
+                aria-label="Complete Board task 36, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -4966,7 +5018,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 37, Doing, due in 24 days · 2026-10-15"
+              aria-label="Board task 37, In progress, due in 24 days · 2026-10-15"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -4977,10 +5029,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 37"
+                aria-label="Complete Board task 37, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -5061,7 +5114,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 38, Doing, due in 25 days · 2026-10-16"
+              aria-label="Board task 38, In progress, due in 25 days · 2026-10-16"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -5072,10 +5125,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 38"
+                aria-label="Complete Board task 38, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -5156,7 +5210,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 39, Doing, due in 25 days · 2026-10-16"
+              aria-label="Board task 39, In progress, due in 25 days · 2026-10-16"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -5167,10 +5221,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 39"
+                aria-label="Complete Board task 39, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
@@ -5251,7 +5306,7 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Board task 40, Doing, due in 26 days · 2026-10-17"
+              aria-label="Board task 40, In progress, due in 26 days · 2026-10-17"
               class="board-card task"
               data-card-column="status:doing"
               data-file-path="notes/tasks.md"
@@ -5262,10 +5317,11 @@
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Board task 40"
+                aria-label="Complete Board task 40, In progress"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
+                data-status="inProgress"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"

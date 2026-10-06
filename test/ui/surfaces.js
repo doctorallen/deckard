@@ -779,7 +779,7 @@ function createTaskStatusesSurfaces() {
       snapshot: () => snapshot('workflow'),
       scrollers: ['html'],
       clippers: [],
-      hovered: [],
+      hovered: ['.status-actions button'],
     },
   ];
 }

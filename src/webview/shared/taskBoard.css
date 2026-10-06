@@ -13,6 +13,10 @@
   overflow-x: auto;
 }
 .board-column {
+  /* The containing block of what it hides out of sight, such as its count
+     when Counts are hidden: a column scrolled off the board's side kept
+     them anchored to the page, which then scrolled sideways too. */
+  position: relative;
   display: grid;
   align-content: start;
   gap: var(--space-2);

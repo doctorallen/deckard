@@ -129,9 +129,14 @@ function StatusRow({ status, at, workflow, namespace, problems }: {
       </td>
       {workflow ? <td><input type="text" class="status-symbol-input" maxLength={2} value={status.next ?? ''} aria-label={`${label}: the character a click moves it to`} {...field('next')} /></td> : null}
       <td>
-        <select aria-label={`${label}: icon`} {...field('icon')} disabled={status.type === 'done' || status.type === 'cancelled' || status.type === 'nonTask'}>
-          {ICONS.map(([icon, words]) => <option value={icon} selected={(status.icon ?? '') === icon}>{words}</option>)}
-        </select>
+        {/* Only an open status adds an icon: a closed box shows its type's. */}
+        {status.type === 'done' || status.type === 'cancelled' || status.type === 'nonTask'
+          ? <span class="status-no-icon" data-tip="A done or cancelled box shows its type, not an icon">—</span>
+          : (
+            <select aria-label={`${label}: icon`} {...field('icon')}>
+              {ICONS.map(([icon, words]) => <option value={icon} selected={(status.icon ?? '') === icon}>{words}</option>)}
+            </select>
+          )}
       </td>
       <td>
         {core

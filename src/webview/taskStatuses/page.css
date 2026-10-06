@@ -28,3 +28,4 @@ header { display: grid; gap: 6px; margin-bottom: 14px; }
 .status-workflow { margin-top: 18px; }
 .status-workflow h2 { margin: 0 0 6px; }
 .status-workflow ul { margin: 0; padding-left: 18px; font-family: var(--vscode-editor-font-family, monospace); }
+.status-no-icon { color: var(--muted); }
