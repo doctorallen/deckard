@@ -115,19 +115,31 @@ function OtherResults({ kind, view }: { readonly kind: ResultKind; readonly view
   return <p class="empty-action"><button data-action="show-other-results" data-tab={other}>{`Show ${otherCount} matching ${noun}`}</button></p>;
 }
 
-/** A pane's heading, with its count in the side-by-side layout, where there are no tabs to carry it. */
+/**
+ * A pane's heading, with its count and its Bulk edit and Export, in the
+ * side-by-side layout, where there are no tabs to carry them; with tabs, the
+ * tab names the pane and the tab row holds the actions.
+ */
 function PaneHeader({ kind, view }: { readonly kind: ResultKind; readonly view: ResultsView }) {
+  if (view.snapshot.layout !== 'split') {
+    return null;
+  }
   const count = resultCounts(view.snapshot)[kind];
   const heading = kind === 'notes' ? 'Notes' : 'Tasks';
   return (
     <div class="overview-pane-header">
       <h2 id={`${kind}-heading`} class="overview-pane-heading">
         {/* One text node before the count, as the template wrote it: Chrome lays out a node's edge apart. */}
-        {view.snapshot.layout === 'split' ? [`${heading} (`, <span data-search-count={kind}>{count}</span>, ')'] : heading}
+        {[`${heading} (`, <span data-search-count={kind}>{count}</span>, ')']}
       </h2>
       <PaneActions kind={kind} count={count} />
     </div>
   );
+}
+
+/** What names a pane: its heading side by side; with tabs, its tab, which names the panel around it. */
+function paneLabel(kind: ResultKind, view: ResultsView): string | undefined {
+  return view.snapshot.layout === 'split' ? `${kind}-heading` : undefined;
 }
 
 /** What the empty notes pane says: nothing carries the tag, nothing matches, or there are no notes. */
@@ -148,14 +160,14 @@ function NotesPane({ view }: { readonly view: ResultsView }) {
   const display: CardDisplay = { renderMode: snapshot.renderMode, preview: snapshot.preview, titleDisplay: snapshot.tagTitleDisplayMode };
   if (isGrouped(snapshot) && snapshot.sections.length) {
     return (
-      <section class="overview-pane" aria-labelledby="notes-heading">
+      <section class="overview-pane" aria-labelledby={paneLabel('notes', view)}>
         <PaneHeader kind="notes" view={view} />
         <ResultGroups key="notes-groups" snapshot={snapshot} openedCards={openedCards} part="notes" />
       </section>
     );
   }
   return (
-    <section class="overview-pane" aria-labelledby="notes-heading">
+    <section class="overview-pane" aria-labelledby={paneLabel('notes', view)}>
       <PaneHeader kind="notes" view={view} />
       <div class="cards">
         {snapshot.sections.length
@@ -181,14 +193,14 @@ function TasksPane({ view }: { readonly view: ResultsView }) {
   const { snapshot } = view;
   if (isGrouped(snapshot) && snapshot.tasks.length) {
     return (
-      <section class="overview-pane" aria-labelledby="tasks-heading">
+      <section class="overview-pane" aria-labelledby={paneLabel('tasks', view)}>
         <PaneHeader kind="tasks" view={view} />
         <ResultGroups key="tasks-groups" snapshot={snapshot} openedCards={view.openedCards} part="tasks" />
       </section>
     );
   }
   return (
-    <section class="overview-pane" aria-labelledby="tasks-heading">
+    <section class="overview-pane" aria-labelledby={paneLabel('tasks', view)}>
       <PaneHeader kind="tasks" view={view} />
       {snapshot.tasks.length
         ? <div key="list" class="task-list">{snapshot.tasks.map((item, position) => <SearchTask key={`${position}:${item.task.id}`} item={item} snapshot={snapshot} />)}</div>
@@ -206,8 +218,8 @@ function SplitGroups({ view }: { readonly view: ResultsView }) {
   return (
     <div key="split-groups" class="overview-split-groups">
       <div class="overview-split">
-        <section class="overview-pane" aria-labelledby="notes-heading"><PaneHeader kind="notes" view={view} /></section>
-        <section class="overview-pane" aria-labelledby="tasks-heading"><PaneHeader kind="tasks" view={view} /></section>
+        <section class="overview-pane" aria-labelledby={paneLabel('notes', view)}><PaneHeader kind="notes" view={view} /></section>
+        <section class="overview-pane" aria-labelledby={paneLabel('tasks', view)}><PaneHeader kind="tasks" view={view} /></section>
       </div>
       <ResultGroups snapshot={view.snapshot} openedCards={view.openedCards} part="both" />
     </div>
@@ -230,7 +242,12 @@ export function Results({ view }: { readonly view: ResultsView }) {
   const counts = resultCounts(view.snapshot);
   return (
     <>
-      <ResultTabs tabs={[{ id: 'notes', label: 'Notes', count: counts.notes }, { id: 'tasks', label: 'Tasks', count: counts.tasks }]} active={view.activeTab} label="Search results" />
+      <ResultTabs
+        tabs={[{ id: 'notes', label: 'Notes', count: counts.notes }, { id: 'tasks', label: 'Tasks', count: counts.tasks }]}
+        active={view.activeTab}
+        label="Search results"
+        actions={<PaneActions kind={view.activeTab} count={counts[view.activeTab]} />}
+      />
       <div class="overview-tab-panel" {...resultPanelAttributes('notes')} hidden={view.activeTab !== 'notes'}><NotesPane view={view} /></div>
       <div class="overview-tab-panel" {...resultPanelAttributes('tasks')} hidden={view.activeTab !== 'tasks'}><TasksPane view={view} /></div>
     </>
