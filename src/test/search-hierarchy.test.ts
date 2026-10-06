@@ -147,7 +147,8 @@ suite('Search page: Hierarchy', () => {
     assert.deepStrictEqual(groupsOf(snapshot), [{ tag: undefined, notes: ['Alpha'], tasks: [] }]);
     page = openWebviewPage(renderPage('searchPage'), snapshot);
     assert.strictEqual(page.text('.result-groups-note'), 'Refine has no tags to group these results by.');
-    assert.strictEqual(page.text('.result-group-heading'), 'Results');
+    assert.strictEqual(page.findAll('.result-group-heading').length, 0, 'the one group has no header to repeat the tab');
+    assert.ok(page.findAll('.result-group .card').length > 0, 'its results are drawn');
   });
 
   test('with the hierarchy off, no groups are sent', () => {

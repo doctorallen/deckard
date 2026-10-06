@@ -178,9 +178,12 @@ function ResultGroup({ group, part, place, view }: {
   const notes = part === 'tasks' ? null : <GroupNotes group={group} place={place} view={view} />;
   const tasks = part === 'notes' ? null : <GroupTasks group={group} place={place} snapshot={view.snapshot} />;
   const children = (group.children ?? []).filter((child) => holds(child, part));
+  // The only group, when nothing could be grouped, would only repeat the tab
+  // over it: its results are drawn with no header.
+  const alone = view.looseLabel === 'Results';
   return (
-    <section class={place.depth ? 'result-group is-part' : 'result-group'} aria-labelledby={place.id}>
-      <GroupHeader group={group} part={part} place={place} looseLabel={view.looseLabel} />
+    <section class={place.depth ? 'result-group is-part' : 'result-group'} {...(alone ? {} : { 'aria-labelledby': place.id })}>
+      {alone ? null : <GroupHeader group={group} part={part} place={place} looseLabel={view.looseLabel} />}
       {part === 'both'
         ? (
           <div class="result-group-columns">
