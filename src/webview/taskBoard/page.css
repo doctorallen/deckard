@@ -41,4 +41,4 @@ main { max-width: none; border-top: var(--edge) solid var(--cyan); }
 /* A card's ⋯ menu opens right-aligned to its button, so its place depends
    on its width; at a width every row fits within, it is placed the same
    whatever font the system draws its labels in. */
-#action-menu { min-width: 220px; }
+#action-menu { min-width: 260px; }

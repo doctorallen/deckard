@@ -15,6 +15,7 @@ header { display: grid; gap: 6px; margin-bottom: 14px; }
 .status-table td { padding: 3px 6px; vertical-align: middle; }
 .status-table tr.has-error td { background: color-mix(in srgb, var(--danger) 10%, transparent); }
 .status-table input[type="text"], .status-table select { width: 100%; min-width: 0; }
+.status-table select { min-width: 15ch; text-transform: none; }
 .status-symbol, .status-symbol-input { font-family: var(--vscode-editor-font-family, monospace); }
 .status-symbol-input { max-width: 7ch; text-align: center; }
 .status-tag { display: flex; align-items: center; gap: 2px; }

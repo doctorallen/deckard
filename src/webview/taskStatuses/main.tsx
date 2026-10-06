@@ -96,10 +96,12 @@ function boxOf(symbol: string | undefined): string {
 }
 
 /** One status's row: its character, name, type, tag, next character in the workflow, icon, and a way to remove it. */
-function StatusRow({ status, at, workflow, namespace, problems }: {
+function StatusRow({ status, at, workflow, namespace, problems, rows }: {
   readonly status: StatusRowState;
   readonly at: number;
   readonly workflow: boolean;
+  /** Every row, whose characters the Next menu offers. */
+  readonly rows: readonly StatusRowState[];
   readonly namespace: string;
   readonly problems: readonly StatusProblem[];
 }) {
@@ -127,7 +129,7 @@ function StatusRow({ status, at, workflow, namespace, problems }: {
         <span class="status-tag-prefix" aria-hidden="true">{`#${namespace}/`}</span>
         <input type="text" value={status.tag ?? ''} aria-label={`${label}: tag, after #${namespace}/`} {...field('tag')} />
       </td>
-      {workflow ? <td><input type="text" class="status-symbol-input" maxLength={2} value={status.next ?? ''} aria-label={`${label}: the character a click moves it to`} {...field('next')} /></td> : null}
+      {workflow ? <td><NextMenu status={status} rows={rows} label={label} field={field('next')} /></td> : null}
       <td>
         {/* Only an open status adds an icon: a closed box shows its type's. */}
         {status.type === 'done' || status.type === 'cancelled' || status.type === 'nonTask'
@@ -144,6 +146,27 @@ function StatusRow({ status, at, workflow, namespace, problems }: {
           : <button type="button" class="status-remove" data-action="remove-status" data-row={String(at)} aria-label={`Remove ${label}`} data-tip="Remove">×</button>}
       </td>
     </tr>
+  );
+}
+
+/**
+ * The status a click moves a row to, chosen from the rows by character and
+ * name: a space in a text field could not be told from an empty one.
+ */
+function NextMenu({ status, rows, label, field }: {
+  readonly status: StatusRowState;
+  readonly rows: readonly StatusRowState[];
+  readonly label: string;
+  readonly field: Record<string, string>;
+}) {
+  const symbols = rows.filter((row) => row.symbol !== undefined);
+  const known = status.next === undefined || symbols.some((row) => row.symbol === status.next);
+  return (
+    <select class="status-next" aria-label={`${label}: the status a click moves it to`} {...field}>
+      <option value="" selected={status.next === undefined}>None</option>
+      {symbols.map((row) => <option value={row.symbol} selected={status.next === row.symbol}>{`${boxOf(row.symbol)} ${row.name || 'Unnamed'}`}</option>)}
+      {known ? null : <option value={status.next} selected={true}>{`${boxOf(status.next)} no status`}</option>}
+    </select>
   );
 }
 
@@ -219,7 +242,7 @@ function TaskStatusesPage({ state }: { readonly state: StatusesState }) {
         </thead>
         <tbody>
           {rows.map((status, at) => (
-            <StatusRow key={at} status={status} at={at} workflow={workflow} namespace={snapshot.namespace} problems={problems.filter((problem) => problem.row === at)} />
+            <StatusRow key={at} status={status} at={at} workflow={workflow} namespace={snapshot.namespace} problems={problems.filter((problem) => problem.row === at)} rows={rows} />
           ))}
         </tbody>
       </table>
