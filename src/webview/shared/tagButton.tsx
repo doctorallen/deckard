@@ -34,6 +34,14 @@ function labelPattern(tags: readonly TagReference[]): RegExp | undefined {
 }
 
 /**
+ * The tag a task is under, above its title, when the board shows parent
+ * tags: what the task is part of, which its own words may not say.
+ */
+export function ParentTag({ tag }: { readonly tag: TagReference | undefined }) {
+  return tag ? <div key="parent-tag" class="parent-tag-line"><TagButton tag={tag} className="parent-tag" /></div> : null;
+}
+
+/**
  * Text with each tag written in it drawn as the control that opens it, in
  * its place, as `inline-tag` buttons. With `appendMissing`, a tag the text
  * does not write comes after it, so every tag is still a control. Returns

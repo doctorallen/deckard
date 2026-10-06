@@ -2806,6 +2806,12 @@
             "description": "Draw a Cancelled column after Done on the Task board, for the tasks that were closed without being done.",
             "order": 12
           },
+          "deckard.board.parentTag": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show each task's nearest parent tag above its title on the Task board: the tag on the nearest tagged heading above the task, or on its note's front matter.",
+            "order": 12
+          },
           "deckard.board.statusNamespace": {
             "type": "string",
             "default": "status",

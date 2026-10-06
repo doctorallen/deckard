@@ -58,6 +58,8 @@ export interface DashboardTask {
   stepsLabel?: string;
   /** Its status, when it is neither a plain to do nor done. */
   status?: DrawnStatus;
+  /** The tag of the nearest tagged heading it is under, or its note's, where a list shows them. */
+  parentTag?: TagReference;
 }
 
 /**

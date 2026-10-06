@@ -24,6 +24,7 @@ import type {
   SetBoardGroupMessage,
   SetBoardQueryMessage,
   SetBoardStatusesMessage,
+  SetBoardParentTagMessage,
   SetBoardShowCancelledMessage,
   SetBoardStatusNamespaceMessage,
   SetTableColumnsMessage,
@@ -186,6 +187,10 @@ const narrowSetBoardStatusNamespace: Narrower<SetBoardStatusNamespaceMessage> = 
 const narrowSetBoardShowCancelled: Narrower<SetBoardShowCancelledMessage> = (value) =>
   typeof value.show === 'boolean' ? { type: 'setBoardShowCancelled', show: value.show } : undefined;
 
+/** Whether to show each card's nearest parent tag. */
+const narrowSetBoardParentTag: Narrower<SetBoardParentTagMessage> = (value) =>
+  typeof value.show === 'boolean' ? { type: 'setBoardParentTag', show: value.show } : undefined;
+
 /** Each message the Task Board may send, and what it must hold. */
 export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   exportResults: narrowExportResults,
@@ -223,6 +228,7 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   setBoardStatuses: narrowSetBoardStatuses,
   setBoardStatusNamespace: narrowSetBoardStatusNamespace,
   setBoardShowCancelled: narrowSetBoardShowCancelled,
+  setBoardParentTag: narrowSetBoardParentTag,
 };
 
 /** A message from the Task Board, narrowed by its table, or undefined. */

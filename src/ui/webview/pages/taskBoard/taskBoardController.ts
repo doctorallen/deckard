@@ -396,6 +396,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     | 'setBoardStatuses'
     | 'setBoardStatusNamespace'
     | 'setBoardShowCancelled'
+    | 'setBoardParentTag'
   > {
     const { taskLayout, reader } = this.board.preferences;
     return {
@@ -443,6 +444,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         updateTaskBoardSetting('statuses', [...new Set(message.statuses.map((status) => status.toLowerCase()))]),
       setBoardStatusNamespace: (message) => updateTaskBoardSetting('statusNamespace', message.namespace.toLowerCase()),
       setBoardShowCancelled: (message) => updateTaskBoardSetting('showCancelled', message.show),
+      setBoardParentTag: (message) => updateTaskBoardSetting('parentTag', message.show),
     };
   }
 

@@ -55,6 +55,8 @@ export interface TaskBoardCard {
   completed: boolean;
   /** Its status, when it is neither a plain to do nor done, which its box is drawn by. */
   status?: DrawnStatus;
+  /** The tag of the nearest tagged heading it is under, or its note's, when the board shows them. */
+  parentTag?: TagReference;
   filePath: string;
   line: number;
   /** When the task was created, its own ➕ date or its note's, and when its note last changed, for Card details. */
@@ -207,6 +209,8 @@ export interface TaskBoardSettings {
   columns?: { status: string; openTasks: number; label?: string }[];
   /** Whether the board draws a Cancelled column after Done. */
   showCancelled?: boolean;
+  /** Whether each card and row shows its task's nearest parent tag. */
+  parentTag?: boolean;
 }
 
 /**
@@ -295,6 +299,12 @@ export interface SetBoardQueryMessage {
 export interface SetBoardStatusesMessage {
   type: 'setBoardStatuses';
   statuses: string[];
+}
+
+/** Shows or hides each card's nearest parent tag. */
+export interface SetBoardParentTagMessage {
+  type: 'setBoardParentTag';
+  show: boolean;
 }
 
 /** Shows or hides the Cancelled column. */
@@ -429,6 +439,7 @@ export interface TaskBoardPageToHost {
   setBoardStatuses: SetBoardStatusesMessage;
   setBoardStatusNamespace: SetBoardStatusNamespaceMessage;
   setBoardShowCancelled: SetBoardShowCancelledMessage;
+  setBoardParentTag: SetBoardParentTagMessage;
 }
 
 /**

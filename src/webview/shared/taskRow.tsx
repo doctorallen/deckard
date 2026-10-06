@@ -9,6 +9,7 @@ import type { ComponentChildren } from 'preact';
 
 import type { InlineToken } from '../../ui/protocol/inline';
 import type { DashboardTask, TagTitleDisplayMode } from '../../ui/protocol/shared';
+import { ParentTag } from './tagButton';
 import { DueText } from './dueText';
 import { TaskTitle } from './taskTitle';
 import { describeDates, describeLocation, type EntryFacts, readEntryDetails } from './entryDetails';
@@ -231,6 +232,7 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, 
         ? <TaskBox taskId={task.id} completed={task.completed} status={item.status} title={plainTitle(item.titleTokens) || task.title} />
         : leading}
       <div>
+        <ParentTag tag={item.parentTag} />
         <div key={item.task.title} class="task-title">
           <TaskTitle tokens={item.titleTokens} tags={titleDisplay === 'separate' ? undefined : item.titleTags} />
         </div>

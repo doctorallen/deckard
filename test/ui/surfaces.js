@@ -337,6 +337,46 @@ function createStatusBoardSurface(preferences) {
     };
 }
 
+/**
+ * The Task Board with each card's parent tag above its title: a heading's
+ * tag, one passed down through an untagged heading, and the note's own.
+ *
+ * @param {object} preferences The preference services, whose reader holds what is stored.
+ * @returns {object} The board, by status, with parent tags shown.
+ */
+function createParentTagBoardSurface(preferences) {
+  const text = [
+    '---',
+    'tags: [area/research]',
+    '---',
+    '# Field season',
+    '- [ ] Book the flights',
+    '## Antenna array #project/atlas',
+    '- [/] Calibrate the receivers',
+    '- [ ] Hear back from legal #status/waiting',
+    '### Cabling',
+    '- [ ] Order the connectors',
+    '## Vendors #team/ops',
+    '- [=] Wait for the vendor\'s quote',
+  ].join('\n');
+  const index = buildWorkspaceIndex(new Map([['notes/field-season.md', parseMarkdown('notes/field-season.md', text)]]));
+  return {
+    name: 'taskBoardParentTags',
+    page: 'taskBoard',
+    viewport: [1400, 600],
+    snapshot: () => createTaskBoard({
+      index,
+      preferences: preferences.reader.value,
+      search: { query: '' },
+      options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'waiting', 'blocked'], statusNamespace: 'status', format: 'emoji', parentTag: true },
+      tagTitleDisplayMode: 'inline',
+    }),
+    scrollers: ['html', '.board-cards'],
+    clippers: ['.board-column'],
+    hovered: ['.board-card', '.parent-tag'],
+  };
+}
+
 /** A note with a task of every status a board draws. */
 function statusIndex() {
   const text = [
@@ -826,6 +866,7 @@ function createSurfaces() {
   const surfaces = [
     ...createBoardSurfaces(boardIndex, preferences),
     createStatusBoardSurface(preferences),
+    createParentTagBoardSurface(preferences),
     ...createCalendarSurfaces(),
     ...createRelatedNotesSurfaces(index, files),
     ...createSummarySurfaces(index, preferences),

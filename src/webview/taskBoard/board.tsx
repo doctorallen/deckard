@@ -13,6 +13,7 @@ import { IconButton } from '../shared/buttons';
 import { DueText } from '../shared/dueText';
 import { EllipsisIcon } from '../shared/strokeIcons';
 import { formatSourceLocation, HeadingPathSteps, plainTitle, PriorityBadge, TaskDetails, trimHeadingPath } from '../shared/taskRow';
+import { ParentTag } from '../shared/tagButton';
 import { TaskTitle } from '../shared/taskTitle';
 import { board, boardCardKey } from './model';
 
@@ -197,6 +198,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
     >
       <CardBox card={card} title={title} />
       <div class="task-summary">
+        <ParentTag tag={card.parentTag} />
         <div key={card.title} class="task-title"><TaskTitle tokens={card.titleTokens} tags={card.titleTags} /></div>
         <CardDetails card={card} />
         {card.steps

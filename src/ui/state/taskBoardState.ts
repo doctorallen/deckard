@@ -9,6 +9,7 @@ import {
   quoteTask,
   readNamespaceValues,
 } from './tagGrouping';
+import { findParentTag } from '../../domain/tasks/parentTag';
 import { drawTaskStatus } from './drawnStatus';
 import { describeStepParts, foldSteps } from '../../domain/markdown/taskSteps';
 import { mentionsParked, withoutParked } from '../../domain/index/parked';
@@ -54,6 +55,7 @@ import {
 } from '../protocol/taskBoard';
 import {
   PersistedPreferences,
+  TagReference,
   TagTitleDisplayMode,
   Task,
   TaskBoardGroupBy,
@@ -109,6 +111,8 @@ export interface TaskBoardOptions {
   addCancelledDate?: boolean;
   /** Whether the board draws a Cancelled column after Done (`deckard.board.showCancelled`). */
   showCancelled?: boolean;
+  /** Whether each card and row shows its task's nearest parent tag (`deckard.board.parentTag`). */
+  parentTag?: boolean;
 }
 
 /** A column before it is cut to its limit and its tasks become cards. */
@@ -198,7 +202,7 @@ export function createTaskBoard({
     tasks:
       layout === 'list'
         ? sortTasks(tasks, preferences.taskOrder, preferences.taskSortMode)
-            .map((task) => createDashboardTask(task, index.sections, options.queryContext))
+            .map((task) => ({ ...createDashboardTask(task, index.sections, options.queryContext), ...withParentTag(index, task, options, undefined) }))
         : undefined,
     table:
       layout === 'table'
@@ -220,6 +224,7 @@ export function createTaskBoard({
       statusNamespace: options.statusNamespace,
       columns: listStatusColumns(index, options),
       showCancelled: options.showCancelled === true,
+      parentTag: options.parentTag === true,
     },
   };
 }
@@ -277,6 +282,24 @@ function createTaskMenus(
       },
     ]),
   );
+}
+
+/**
+ * A task's nearest parent tag, as a field a card or a row carries, when the
+ * board shows them and the task has one its card does not already say: not
+ * a tag of the namespace the board is grouped by.
+ */
+function withParentTag(
+  index: WorkspaceIndex,
+  task: Task,
+  options: Pick<TaskBoardOptions, 'parentTag' | 'statusNamespace'>,
+  groupNamespace: string | undefined,
+): { parentTag?: TagReference } {
+  if (!options.parentTag) {
+    return {};
+  }
+  const parentTag = findParentTag(index, task, { statusNamespace: options.statusNamespace, ...(groupNamespace ? { groupNamespace } : {}) });
+  return parentTag ? { parentTag } : {};
 }
 
 /** A task as the column model reads it. */
@@ -353,10 +376,11 @@ export function layoutTaskBoard({
       column: draft?.label,
     });
     const others = draft?.alsoIn?.get(task.id);
+    const parent = withParentTag(index, task, options, groupBy === 'tag' ? namespace : undefined);
     const withTags =
       groupBy === 'tag' && namespace
-        ? { ...card, current: [...card.current, ...tagMoves(index, task, namespace)] }
-        : card;
+        ? { ...card, ...parent, current: [...card.current, ...tagMoves(index, task, namespace)] }
+        : { ...card, ...parent };
     return others && others.length > 0
       ? { ...withTags, details: [...withTags.details, `also in ${others.join(', ')}`] }
       : withTags;

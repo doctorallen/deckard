@@ -73,7 +73,7 @@
    outweigh the theme sheet, which is laid down after this one. */
 .board-cards .board-card:hover { transform: none; }
 .board-card.dragging { opacity: .45; }
-.board-card .task-title { padding-right: var(--space-6); }
+.board-card .task-title, .board-card .parent-tag-line { padding-right: var(--space-6); }
 /* The details are a row that wraps between them, with a gap where a
    separator used to be: a "·" at the end of a wrapped line dangled there
    with nothing after it. A detail wider than the column on its own, as

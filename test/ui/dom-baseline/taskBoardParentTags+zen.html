@@ -1,4 +1,14 @@
 <body
+  class="zen"
+  data-cards="flat"
+  data-counts="hidden"
+  data-dates="relative"
+  data-density="compact"
+  data-file-line="never"
+  data-help="hidden"
+  data-level="zen"
+  data-styling="plain"
+  data-tags="text"
 > <main
     id="app"
   ><header
@@ -24,7 +34,7 @@
         class="board-header-actions"
       ><span
           class="board-total"
-        >7 tasks</span
+        >5 tasks</span
         ><button
           aria-label="Open Help"
           class="help-button icon-button"
@@ -115,7 +125,7 @@
                 class="board-settings-row"
               ><input
                   data-action="show-parent-tag"
-                  data-dom-checked="false"
+                  data-dom-checked="true"
                   data-dom-value="on"
                   type="checkbox"
                 ><span
@@ -250,7 +260,7 @@
                   class="board-settings-row"
                 ><input
                     data-action="show-cancelled"
-                    data-dom-checked="true"
+                    data-dom-checked="false"
                     data-dom-value="on"
                     type="checkbox"
                   ><span
@@ -280,8 +290,7 @@
                   class="segmented view-options-choices"
                   role="group"
                 ><button
-                    aria-pressed="true"
-                    class="active"
+                    aria-pressed="false"
                     data-action="set-display"
                     data-display="level"
                     data-value="full"
@@ -295,7 +304,8 @@
                     type="button"
                   >Quiet</button
                   ><button
-                    aria-pressed="false"
+                    aria-pressed="true"
+                    class="active"
                     data-action="set-display"
                     data-display="level"
                     data-value="zen"
@@ -413,12 +423,11 @@
             type="button"
           >Person</button
           ><button
-            aria-disabled="true"
             aria-expanded="false"
             aria-haspopup="menu"
             aria-pressed="false"
             data-action="pick-board-namespace"
-            data-tip-disabled="No open task carries a namespaced tag such as #context/phone yet"
+            data-tip="Group by the tags in one namespace, such as #project/… or #context/…"
             type="button"
           >Tag…</button
           ></div
@@ -465,18 +474,18 @@
             role="list"
           ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Draft the brief, No status"
+              aria-label="Book the flights, No status"
               class="board-card task"
               data-card-column="status:"
-              data-file-path="notes/statuses.md"
-              data-line="2"
-              data-task-id="task-xsfenz-11oceoi"
+              data-file-path="notes/field-season.md"
+              data-line="5"
+              data-task-id="task-6d3zqd-968ga4"
               data-tip-around=""
               draggable="true"
               role="listitem"
               tabindex="0"
             ><input
-                aria-label="Complete Draft the brief"
+                aria-label="Complete Book the flights"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
@@ -486,21 +495,43 @@
               ><div
                 class="task-summary"
               ><div
+                  class="parent-tag-line"
+                ><button
+                    aria-label="Open #area/research overview"
+                    class="parent-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#area/research"
+                    data-tip-overflow="#area/research"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#area</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >research</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
                   class="task-title"
-                >Draft the brief</div
+                >Book the flights</div
                 ><p
                   class="board-details source"
                 ></p
                 ><span
                   class="task-source"
-                >statuses / line 2</span
+                >field-season / line 5</span
                 ><span
                   class="heading-path task-source"
-                >Statuses</span
+                >Field season</span
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Draft the brief: status, priority, or due date"
+                  aria-label="Change Book the flights: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -543,45 +574,70 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Ask about the second lens, No status"
+              aria-label="Order the connectors, No status"
               class="board-card task"
               data-card-column="status:"
-              data-file-path="notes/statuses.md"
-              data-line="6"
-              data-task-id="task-q25xmi-11vk68d"
+              data-file-path="notes/field-season.md"
+              data-line="10"
+              data-task-id="task-mq2evr-78fa3i"
               data-tip-around=""
               draggable="true"
               role="listitem"
               tabindex="-1"
             ><input
-                aria-label="Complete Ask about the second lens, a status Deckard doesn't know, [?]"
+                aria-label="Complete Order the connectors"
                 data-action="board-toggle-task"
                 data-dom-checked="false"
                 data-dom-value="on"
-                data-status="unknown"
                 data-tip="Complete this task"
                 tabindex="-1"
                 type="checkbox"
               ><div
                 class="task-summary"
               ><div
+                  class="parent-tag-line"
+                ><button
+                    aria-label="Open #project/atlas overview"
+                    class="parent-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#project/atlas"
+                    data-tip-overflow="#project/atlas"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#project</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >atlas</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
                   class="task-title"
-                >Ask about the second lens</div
+                >Order the connectors</div
                 ><p
                   class="board-details source"
-                ><span
-                  >Unknown [?]</span
-                  ></p
+                ></p
                 ><span
                   class="task-source"
-                >statuses / line 6</span
+                >field-season / line 10</span
                 ><span
                   class="heading-path task-source"
-                >Statuses</span
+                >Field season<span
+                    class="heading-path-joiner"
+                  > &gt; </span
+                  >Antenna array<span
+                    class="heading-path-joiner"
+                  > &gt; </span
+                  >Cabling</span
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
-                  aria-label="Change Ask about the second lens: status, priority, or due date"
+                  aria-label="Change Order the connectors: status, priority, or due date"
                   class="board-move icon-button"
                   data-action="board-menu"
                   data-tip="Change this task"
@@ -682,9 +738,9 @@
               aria-label="Calibrate the receivers, In progress"
               class="board-card task"
               data-card-column="status:doing"
-              data-file-path="notes/statuses.md"
-              data-line="3"
-              data-task-id="task-o90tim-1sgktl"
+              data-file-path="notes/field-season.md"
+              data-line="7"
+              data-task-id="task-mgyuzk-tp2wk9"
               data-tip-around=""
               draggable="true"
               role="listitem"
@@ -701,6 +757,28 @@
               ><div
                 class="task-summary"
               ><div
+                  class="parent-tag-line"
+                ><button
+                    aria-label="Open #project/atlas overview"
+                    class="parent-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#project/atlas"
+                    data-tip-overflow="#project/atlas"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#project</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >atlas</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
                   class="task-title"
                 >Calibrate the receivers</div
                 ><p
@@ -708,10 +786,13 @@
                 ></p
                 ><span
                   class="task-source"
-                >statuses / line 3</span
+                >field-season / line 7</span
                 ><span
                   class="heading-path task-source"
-                >Statuses</span
+                >Field season<span
+                    class="heading-path-joiner"
+                  > &gt; </span
+                  >Antenna array</span
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
@@ -788,9 +869,9 @@
               aria-label="Hear back from legal, Waiting"
               class="board-card task"
               data-card-column="status:waiting"
-              data-file-path="notes/statuses.md"
-              data-line="4"
-              data-task-id="task-onsrnq-1jf1iqn"
+              data-file-path="notes/field-season.md"
+              data-line="8"
+              data-task-id="task-gkyfw8-fpwyf"
               data-tip-around=""
               draggable="true"
               role="listitem"
@@ -807,6 +888,28 @@
               ><div
                 class="task-summary"
               ><div
+                  class="parent-tag-line"
+                ><button
+                    aria-label="Open #project/atlas overview"
+                    class="parent-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#project/atlas"
+                    data-tip-overflow="#project/atlas"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#project</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >atlas</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
                   class="task-title"
                 >Hear back from legal</div
                 ><p
@@ -814,10 +917,13 @@
                 ></p
                 ><span
                   class="task-source"
-                >statuses / line 4</span
+                >field-season / line 8</span
                 ><span
                   class="heading-path task-source"
-                >Statuses</span
+                >Field season<span
+                    class="heading-path-joiner"
+                  > &gt; </span
+                  >Antenna array</span
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
@@ -894,9 +1000,9 @@
               aria-label="Wait for the vendor's quote, Blocked"
               class="board-card task"
               data-card-column="status:blocked"
-              data-file-path="notes/statuses.md"
-              data-line="5"
-              data-task-id="task-meuplz-19lrh50"
+              data-file-path="notes/field-season.md"
+              data-line="12"
+              data-task-id="task-mtuqu7-1uh34z0"
               data-tip-around=""
               draggable="true"
               role="listitem"
@@ -920,6 +1026,28 @@
               ><div
                 class="task-summary"
               ><div
+                  class="parent-tag-line"
+                ><button
+                    aria-label="Open #team/ops overview"
+                    class="parent-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="#team/ops"
+                    data-tip-overflow="#team/ops"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#team</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >ops</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
                   class="task-title"
                 >Wait for the vendor's quote</div
                 ><p
@@ -927,10 +1055,13 @@
                 ></p
                 ><span
                   class="task-source"
-                >statuses / line 5</span
+                >field-season / line 12</span
                 ><span
                   class="heading-path task-source"
-                >Statuses</span
+                >Field season<span
+                    class="heading-path-joiner"
+                  > &gt; </span
+                  >Vendors</span
                 ><button
                   aria-expanded="false"
                   aria-haspopup="menu"
@@ -978,7 +1109,7 @@
             ></div
           ></section
         ><section
-          aria-label="Done, 1 task"
+          aria-label="Done, 0 tasks"
           class="board-column"
           data-column-id="done"
           data-droppable="true"
@@ -989,203 +1120,13 @@
             >Done</span
             ><span
               class="board-count"
-            >1</span
+            >0</span
             ></h2
           ><div
-            aria-label="Done"
             class="board-cards"
-            role="list"
-          ><article
-              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Book the room, Done"
-              class="board-card completed task"
-              data-card-column="done"
-              data-file-path="notes/statuses.md"
-              data-line="7"
-              data-task-id="task-y0r5xh-10d5lcy"
-              data-tip-around=""
-              draggable="true"
-              role="listitem"
-              tabindex="-1"
-            ><input
-                aria-label="Reopen Book the room"
-                data-action="board-toggle-task"
-                data-dom-checked="true"
-                data-dom-value="on"
-                data-tip="Reopen this task"
-                tabindex="-1"
-                type="checkbox"
-              ><div
-                class="task-summary"
-              ><div
-                  class="task-title"
-                >Book the room</div
-                ><p
-                  class="board-details source"
-                ><span
-                  >done <span
-                      class="board-date"
-                    >2026-09-24</span
-                    ></span
-                  ></p
-                ><span
-                  class="task-source"
-                >statuses / line 7</span
-                ><span
-                  class="heading-path task-source"
-                >Statuses</span
-                ><button
-                  aria-expanded="false"
-                  aria-haspopup="menu"
-                  aria-label="Change Book the room: status, priority, or due date"
-                  class="board-move icon-button"
-                  data-action="board-menu"
-                  data-tip="Change this task"
-                  tabindex="-1"
-                  type="button"
-                ><svg
-                    aria-hidden="true"
-                    class="toolbar-icon"
-                    fill="none"
-                    focusable="false"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1.5"
-                    viewBox="0 0 16 16"
-                  ><circle
-                      cx="3.5"
-                      cy="8"
-                      fill="currentColor"
-                      r="1.1"
-                      stroke="none"
-                    ></circle
-                    ><circle
-                      cx="8"
-                      cy="8"
-                      fill="currentColor"
-                      r="1.1"
-                      stroke="none"
-                    ></circle
-                    ><circle
-                      cx="12.5"
-                      cy="8"
-                      fill="currentColor"
-                      r="1.1"
-                      stroke="none"
-                    ></circle
-                    ></svg
-                  ></button
-                ></div
-              ></article
-            ></div
-          ></section
-        ><section
-          aria-label="Cancelled, 1 task"
-          class="board-column"
-          data-column-id="cancelled"
-          data-droppable="true"
-          data-hidden-count="0"
-        ><h2
-            class="board-column-title"
-          ><span
-            >Cancelled</span
-            ><span
-              class="board-count"
-            >1</span
-            ></h2
-          ><button
-            class="board-add"
-            data-action="board-add-task"
-            data-column-id="cancelled"
-            data-tip="Capture a task straight into Cancelled"
-            type="button"
-          >+ Add task</button
-          ><div
-            aria-label="Cancelled"
-            class="board-cards"
-            role="list"
-          ><article
-              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Order the banner, Cancelled"
-              class="board-card cancelled task"
-              data-card-column="cancelled"
-              data-file-path="notes/statuses.md"
-              data-line="8"
-              data-task-id="task-3hyc3o-16d74v3"
-              data-tip-around=""
-              draggable="true"
-              role="listitem"
-              tabindex="-1"
-            ><input
-                aria-label="Reopen Order the banner, Cancelled"
-                data-action="board-toggle-task"
-                data-dom-checked="true"
-                data-dom-value="on"
-                data-status="cancelled"
-                data-tip="Reopen this task"
-                tabindex="-1"
-                type="checkbox"
-              ><div
-                class="task-summary"
-              ><div
-                  class="task-title"
-                >Order the banner</div
-                ><p
-                  class="board-details source"
-                ><span
-                  >Cancelled</span
-                  ></p
-                ><span
-                  class="task-source"
-                >statuses / line 8</span
-                ><span
-                  class="heading-path task-source"
-                >Statuses</span
-                ><button
-                  aria-expanded="false"
-                  aria-haspopup="menu"
-                  aria-label="Change Order the banner: status, priority, or due date"
-                  class="board-move icon-button"
-                  data-action="board-menu"
-                  data-tip="Change this task"
-                  tabindex="-1"
-                  type="button"
-                ><svg
-                    aria-hidden="true"
-                    class="toolbar-icon"
-                    fill="none"
-                    focusable="false"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1.5"
-                    viewBox="0 0 16 16"
-                  ><circle
-                      cx="3.5"
-                      cy="8"
-                      fill="currentColor"
-                      r="1.1"
-                      stroke="none"
-                    ></circle
-                    ><circle
-                      cx="8"
-                      cy="8"
-                      fill="currentColor"
-                      r="1.1"
-                      stroke="none"
-                    ></circle
-                    ><circle
-                      cx="12.5"
-                      cy="8"
-                      fill="currentColor"
-                      r="1.1"
-                      stroke="none"
-                    ></circle
-                    ></svg
-                  ></button
-                ></div
-              ></article
+          ><p
+              class="board-empty"
+            >No tasks. Drag a card here, or move one with its ⋯ menu.</p
             ></div
           ></section
         ></div

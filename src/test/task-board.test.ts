@@ -302,6 +302,7 @@ suite('Task board', () => {
         { status: 'review', openTasks: 1, label: 'Review' },
       ],
       showCancelled: false,
+      parentTag: false,
     });
     assert.strictEqual(board(createIndex(), 'status', '', options).tasks, undefined);
   });

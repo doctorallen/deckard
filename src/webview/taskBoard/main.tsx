@@ -162,11 +162,22 @@ function BoardViewOptions({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
         { label: 'Layout', content: <ViewOptionChoices action="set-task-layout" choices={[['list', 'List'], ['board', 'Board'], ['table', 'Table']]} selected={snapshot.layout} label="Task layout" /> },
         { label: 'Tasks view', content: <AgendaToggle snapshot={snapshot} /> },
         ...(isTable ? [{ label: 'Columns', content: <ColumnPicker snapshot={snapshot} />, stacked: true }] : []),
+        ...(isTable ? [] : [{ label: 'Cards', content: <ParentTagToggle snapshot={snapshot} /> }]),
         { label: 'Status columns', content: <StatusSettings snapshot={snapshot} drafts={drafts} />, stacked: true },
         themeOption(),
         displayLevelOption(),
       ]}
     />
+  );
+}
+
+/** The gear's switch for the tag each card and row is under. */
+function ParentTagToggle({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
+  return (
+    <label class="board-settings-row">
+      <input type="checkbox" data-action="show-parent-tag" checked={snapshot.settings.parentTag === true} />
+      <span>Show the tag each task is under</span>
+    </label>
   );
 }
 
@@ -582,6 +593,9 @@ document.addEventListener('change', (event) => {
   }
   if (target.dataset.action === 'toggle-table-column') {
     toggleColumn(String(target.dataset.value), target.checked);
+  }
+  if (target.dataset.action === 'show-parent-tag') {
+    post({ type: 'setBoardParentTag', show: target.checked });
   }
   if (target.dataset.action === 'show-cancelled') {
     post({ type: 'setBoardShowCancelled', show: target.checked });

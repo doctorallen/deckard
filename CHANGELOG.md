@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- **Parent tags on the Task board.** **Show the tag each task is under**,
+  in the gear's **Cards** (`deckard.board.parentTag`), puts each task's
+  nearest parent tag above its title on cards and list rows: the tag on
+  the nearest tagged heading above it, or its note's front matter, so
+  "Draft the brief" says it is part of `#project/atlas`.
+
 ## 2.3.0 - 2026-10-06
 
 ### Highlights

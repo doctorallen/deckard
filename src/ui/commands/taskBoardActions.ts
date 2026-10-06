@@ -37,6 +37,7 @@ export function readTaskBoardOptions(queryContext: QueryContext): TaskBoardOptio
     writeAs: readStatusWriteMode(configuration.get<unknown>('tasks.writeStatusAs')),
     addCancelledDate: configuration.get<boolean>('tasks.addCancelledDate', true),
     showCancelled: configuration.get<boolean>('board.showCancelled', false) === true,
+    parentTag: configuration.get<boolean>('board.parentTag', false) === true,
   };
 }
 
@@ -46,7 +47,7 @@ export function readTaskBoardOptions(queryContext: QueryContext): TaskBoardOptio
  * already set, so a workspace that sets its own columns keeps them there.
  */
 export async function updateTaskBoardSetting(
-  key: 'statuses' | 'statusNamespace' | 'showCancelled',
+  key: 'statuses' | 'statusNamespace' | 'showCancelled' | 'parentTag',
   value: string[] | string | boolean,
 ): Promise<void> {
   const configuration = vscode.workspace.getConfiguration('deckard');
