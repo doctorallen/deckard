@@ -1,4 +1,5 @@
 import { isWatchableNamespace, widgetNamespace } from '../../domain/dashboard/widgetCatalog';
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { collectTagProgress, describeTagProgress, TagProgress } from '../../domain/tasks/tagProgress';
 import { isParkedOnlyTag, mentionsParked, withoutParked } from '../../domain/index/parked';
 import { stripTags } from '../../domain/markdown/parser';
@@ -345,7 +346,7 @@ function buildStatsWidget({ index, widget }: WidgetBuild): DashboardWidget {
     stats: [
       { label: 'Notes', value: countNotes(index) },
       { label: 'Files', value: index.files.size },
-      { label: 'Open tasks', value: tasks.filter((task) => !task.completed).length },
+      { label: 'Open tasks', value: tasks.filter(isOpenTask).length },
       { label: 'Tasks', value: tasks.length },
       { label: 'Tags', value: index.tags.size },
       { label: 'Namespaced tags', value: index.entities.size },
@@ -415,7 +416,7 @@ function buildStaleTasksWidget({ index, options, config, widget, take }: WidgetB
     .flatMap((task) => {
       const updatedAt =
         index.files.get(task.filePath)?.updatedAt ?? task.updatedAt;
-      return !task.completed && updatedAt !== undefined && updatedAt < cutoff
+      return isOpenTask(task) && updatedAt !== undefined && updatedAt < cutoff
         ? [{ task, updatedAt }]
         : [];
     })
@@ -652,7 +653,7 @@ function findTodayNote(index: WorkspaceIndex, now: number) {
   const tasks = note
     ? (index.files.get(note.filePath)?.tasks ?? [])
         .map((task) => index.tasks.get(task.id) ?? task)
-        .filter((task) => !task.completed)
+        .filter(isOpenTask)
     : [];
   return {
     tasks,

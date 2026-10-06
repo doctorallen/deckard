@@ -1,4 +1,5 @@
 import { formatProgressCount } from '../../domain/tasks/progressCount';
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { isParkedTask } from '../../domain/index/parked';
 import { stripTags } from '../../domain/markdown/parser';
 import { SHORT_WEEKDAY_NAMES, formatIsoDate } from '../../domain/markdown/calendar';
@@ -152,7 +153,7 @@ function listSlipped(index: WorkspaceIndex, range: ReviewRange): ReviewItem[] {
   return [...index.tasks.values()]
     .filter(
       (task) =>
-        !task.completed &&
+        isOpenTask(task) &&
         task.dueAt !== undefined &&
         task.dueAt < range.end &&
         !isParkedTask(index, task.id),
@@ -212,7 +213,7 @@ function listNewTags(
  */
 function listComingUp(index: WorkspaceIndex, next: ReviewRange): ReviewItem[] {
   return [...index.tasks.values()]
-    .filter((task) => !task.completed && !isParkedTask(index, task.id))
+    .filter((task) => isOpenTask(task) && !isParkedTask(index, task.id))
     .flatMap((task) => {
       const dates = (
         [

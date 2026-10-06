@@ -1,4 +1,5 @@
 import { parseMarkdown } from '../domain/markdown/parser';
+import { isOpenTask } from '../domain/tasks/taskStatuses';
 import {
   findCheckboxColumn,
   findStepFamily,
@@ -289,7 +290,7 @@ export class TaskService<U extends ResourceUri, H = unknown> {
     const task = parseMarkdown(filePath, note.getText()).tasks.find(
       (candidate) => candidate.lineNumber === line + 1,
     );
-    return task && !task.completed && task.sourceLineText === lineText ? task : undefined;
+    return task && isOpenTask(task) && task.sourceLineText === lineText ? task : undefined;
   }
 
   /**

@@ -88,7 +88,7 @@ import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/first
 import { suggestEsperThemesOnce } from '../ui/commands/esperThemes';
 import { initWriteTarget, isPausedHere, looksLikeCodeRepository, onDidChangePaused, readNotesFolder } from '../ui/commands/writeTarget';
 import { ScopeStatusBar } from '../ui/views/scopeStatusBar';
-import { countOtherCheckboxes, noticeOtherCheckboxesOnce } from '../ui/commands/otherCheckboxes';
+import { countUnknownStatuses, noticeUnknownStatusesOnce } from '../ui/commands/otherCheckboxes';
 import { openSettingAction, settingLabel } from '../ui/commands/notify';
 import { PreferenceSnapshots } from '../core/storage/preferenceSnapshots';
 import { OutlineTreeProvider, syncOutlineFollowCursorContext } from '../ui/views/outlineTree';
@@ -262,8 +262,8 @@ export function createServices(context: vscode.ExtensionContext): Services {
       .then(() => suggestEsperThemesOnce(context.globalState))
       .catch((error: unknown) => reportError('Could not suggest Esper Themes', error));
     void core.indexer.ready
-      .then(() => noticeOtherCheckboxesOnce(context.workspaceState, countOtherCheckboxes(core.indexer.getSnapshot())))
-      .catch((error: unknown) => reportError('Could not count the checkbox lines that are not tasks', error));
+      .then(() => noticeUnknownStatusesOnce(context.workspaceState, countUnknownStatuses(core.indexer.getSnapshot())))
+      .catch((error: unknown) => reportError('Could not count the tasks whose status Deckard does not know', error));
   }
   syncWalkthroughContext(context, core.indexer);
   createEditorContexts(context, core, preferences);

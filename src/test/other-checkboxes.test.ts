@@ -3,14 +3,15 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { countOtherCheckboxes } from '../domain/index/otherCheckboxes';
+import { countOtherCheckboxes, countUnknownStatuses } from '../domain/index/otherCheckboxes';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { readTaskStatuses } from '../domain/tasks/taskStatuses';
 import {
-  describeOtherCheckboxes,
-  noticeOtherCheckboxesOnce,
+  describeUnknownStatuses,
+  OPEN_SETTING_BUTTON,
+  noticeUnknownStatusesOnce,
   OPEN_STATS_BUTTON,
-  OTHER_CHECKBOXES_NOTICED,
+  UNKNOWN_STATUSES_NOTICED,
 } from '../ui/commands/otherCheckboxes';
 
 function memento(): vscode.Memento {
@@ -51,24 +52,29 @@ suite('Checkbox lines that are not tasks', () => {
     assert.strictEqual(countOtherCheckboxes(buildWorkspaceIndex(new Map([['launch.md', file]]))), 3);
   });
 
-  test('are said once per workspace, with a way to Stats', async () => {
+  test('a character no status names is a task to do, counted apart', () => {
+    const file = parseMarkdown('launch.md', VAULT);
+    assert.deepStrictEqual(countUnknownStatuses(buildWorkspaceIndex(new Map([['launch.md', file]]))), { count: 1, symbols: ['?'] });
+  });
+
+  test('tasks of an unknown status are said once per workspace, with a way to name them', async () => {
     const state = memento();
     const shown: string[][] = [];
-    const ran: string[] = [];
+    const ran: unknown[][] = [];
     const options = {
       show: async (message: string, ...buttons: string[]) => {
         shown.push([message, ...buttons]);
-        return OPEN_STATS_BUTTON;
+        return OPEN_SETTING_BUTTON;
       },
-      run: async (command: string) => void ran.push(command),
+      run: async (command: string, ...args: unknown[]) => void ran.push([command, ...args]),
     };
-    await noticeOtherCheckboxesOnce(state, 0, options);
+    await noticeUnknownStatusesOnce(state, { count: 0, symbols: [] }, options);
     assert.deepStrictEqual(shown, []);
-    await noticeOtherCheckboxesOnce(state, 3, options);
-    await noticeOtherCheckboxesOnce(state, 3, options);
-    assert.deepStrictEqual(shown, [[describeOtherCheckboxes(3), OPEN_STATS_BUTTON]]);
-    assert.deepStrictEqual(ran, ['deckard.showStats']);
-    assert.strictEqual(state.get(OTHER_CHECKBOXES_NOTICED), true);
-    assert.match(describeOtherCheckboxes(1), /^1 checkbox line .* is text to Deckard, not a task, so no task count includes it\./);
+    await noticeUnknownStatusesOnce(state, { count: 3, symbols: ['?', '!'] }, options);
+    await noticeUnknownStatusesOnce(state, { count: 3, symbols: ['?', '!'] }, options);
+    assert.deepStrictEqual(shown, [[describeUnknownStatuses(3, ['?', '!']), OPEN_SETTING_BUTTON, OPEN_STATS_BUTTON]]);
+    assert.deepStrictEqual(ran, [['workbench.action.openSettings', 'deckard.tasks.statuses']]);
+    assert.strictEqual(state.get(UNKNOWN_STATUSES_NOTICED), true);
+    assert.match(describeUnknownStatuses(1, ['?']), /^1 task uses a status Deckard doesn't know, such as \[\?\]; it counts as to do\./);
   });
 });

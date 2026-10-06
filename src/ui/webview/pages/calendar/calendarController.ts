@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { isOpenTask } from '../../../../domain/tasks/taskStatuses';
 import { openNoteAt } from '../../../commands/noteOpening';
 import { sameShownDayIn } from '../../../../domain/markdown/calendar';
 import type { WorkspaceIndex } from '../../../../domain/model';
@@ -200,7 +201,7 @@ export class CalendarController {
    */
   private async moveTask(message: CalendarMoveTaskMessage): Promise<void> {
     const task = this.indexer.getSnapshot().tasks.get(message.taskId);
-    const moved = task && !task.completed ? await setTaskDateField(this.writes, task, message.field, message.date) : false;
+    const moved = task && isOpenTask(task) ? await setTaskDateField(this.writes, task, message.field, message.date) : false;
     if (!moved) {
       this.host.refused?.(message.taskId, message.requestId);
     }

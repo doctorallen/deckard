@@ -4,7 +4,9 @@ import { countTagMatches } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { collectQueryTagKeys, quoteValue, toBuilderTree } from '../../domain/query/queryFormat';
 import { FIELD_ALIASES, parseQuery } from '../../domain/query/queryParser';
-import { ParsedQuery, QUERY_FIELD_OPERATORS, QUERY_FIELDS, QUERY_PRIORITY_VALUES } from '../../domain/query/queryTypes';
+import { ParsedQuery, QUERY_FIELD_OPERATORS, QUERY_FIELDS, QUERY_PRIORITY_VALUES, QUERY_RESERVED_STATUS_VALUES } from '../../domain/query/queryTypes';
+import { DEFAULT_TASK_POLICY, type TaskPolicy } from '../../domain/tasks/taskPolicy';
+import { normalizeStatusName, readTaskStatus, UNKNOWN_STATUS_NAME } from '../../domain/tasks/taskStatuses';
 import {
   formatMonthDay,
   formatMonthName,
@@ -133,7 +135,7 @@ export function describeTagMatches(
 export function createQuerySuggestions(
   index: WorkspaceIndex,
   recentQueries: readonly string[],
-  context: Pick<QueryContext, 'now' | 'weekStart'>,
+  context: Pick<QueryContext, 'now' | 'weekStart'> & Partial<Pick<QueryContext, 'taskPolicy'>>,
 ): QuerySuggestions {
   const fields: QuerySuggestion[] = QUERY_FIELDS.map((field) => ({
     value: field,
@@ -186,11 +188,8 @@ export function createQuerySuggestions(
         label: item.value.slice('is:'.length),
         detail: item.detail,
       })),
-      task: [
-        { value: 'open', label: 'open' },
-        { value: 'done', label: 'done' },
-        { value: 'any', label: 'any' },
-      ],
+      task: TASK_SUGGESTIONS,
+      status: suggestStatuses(index, context.taskPolicy ?? DEFAULT_TASK_POLICY),
       has: HAS_SUGGESTIONS.map((value) => ({ value, label: value })),
       file: files,
       path: paths,
@@ -199,6 +198,7 @@ export function createQuerySuggestions(
       scheduled: taskDates,
       start: taskDates,
       done: [...dates, noDate],
+      cancelled: [...dates, noDate],
       priority: priorities,
       assignee: people,
       created: dates,
@@ -357,19 +357,74 @@ function createLinkSuggestions(index: WorkspaceIndex): QuerySuggestion[] {
   return suggestions;
 }
 
+/** What `task:` completes with. */
+const TASK_SUGGESTIONS: QuerySuggestion[] = [
+  { value: 'open', label: 'open' },
+  { value: 'done', label: 'done' },
+  { value: 'any', label: 'any' },
+];
+
+/**
+ * What `status:` completes with: every status the workspace names, then the
+ * characters no status names that its tasks use, each with how many open
+ * tasks have it, and then open, done, and any.
+ */
+function suggestStatuses(index: WorkspaceIndex, policy: Pick<TaskPolicy, 'statuses' | 'statusNamespace'>): QuerySuggestion[] {
+  const counts = new Map<string, number>();
+  const unknown = new Set<string>();
+  index.tasks.forEach((task) => {
+    const status = readTaskStatus(task, policy.statuses, policy.statusNamespace);
+    const slug = normalizeStatusName(status.name).replace(/ /g, '-');
+    counts.set(slug, (counts.get(slug) ?? 0) + 1);
+    if (status.name === UNKNOWN_STATUS_NAME) {
+      unknown.add(status.symbol);
+    }
+  });
+  const named = new Map<string, QuerySuggestion>();
+  policy.statuses
+    .filter((status) => status.type !== 'nonTask')
+    .forEach((status) => {
+      const slug = normalizeStatusName(status.name).replace(/ /g, '-');
+      if (named.has(slug) || QUERY_RESERVED_STATUS_VALUES.includes(slug)) {
+        return;
+      }
+      const count = counts.get(slug) ?? 0;
+      named.set(slug, {
+        value: slug,
+        label: status.name,
+        detail: `${status.symbol === undefined ? `#${policy.statusNamespace}/${status.tag ?? ''}` : `[${status.symbol}]`}${count ? ` · ${pluralize(count, 'task')}` : ''}`,
+      });
+    });
+  const characters = [...unknown].sort().map((symbol) => ({
+    value: `[${symbol}]`,
+    label: `[${symbol}]`,
+    detail: 'A character no status names, read as to do',
+  }));
+  return [
+    ...named.values(),
+    ...characters,
+    { value: 'open', label: 'open', detail: 'Every open task' },
+    { value: 'done', label: 'done', detail: 'Every done task' },
+    { value: 'any', label: 'any', detail: 'Every task' },
+  ];
+}
+
 /** Whole `is:` conditions, with what each finds. */
 const IS_SUGGESTIONS: QuerySuggestion[] = [
-  { value: 'is:open', label: 'is:open', detail: 'Open tasks' },
+  { value: 'is:open', label: 'is:open', detail: 'Open tasks: to do, in progress, or on hold' },
+  { value: 'is:in-progress', label: 'is:in-progress', detail: 'Tasks in progress, such as [/]' },
   { value: 'is:done', label: 'is:done', detail: 'Completed tasks' },
+  { value: 'is:cancelled', label: 'is:cancelled', detail: 'Cancelled tasks, such as [-]' },
+  { value: 'is:closed', label: 'is:closed', detail: 'Done or cancelled tasks' },
   { value: 'is:overdue', label: 'is:overdue', detail: 'Open tasks past their due date' },
   { value: 'is:due', label: 'is:due', detail: 'Open tasks due within seven days, overdue included' },
   { value: 'is:today', label: 'is:today', detail: 'Open tasks due today, or scheduled for today or earlier and started' },
   { value: 'is:needs-date', label: 'is:needs-date', detail: 'Open tasks more than 30 days past their due date' },
   { value: 'is:task', label: 'is:task', detail: 'Every task' },
   { value: 'is:note', label: 'is:note', detail: 'Note sections only, no tasks' },
-  { value: 'is:blocked', label: 'is:blocked', detail: 'Open tasks waiting for a task that is still open' },
-  { value: 'is:waiting', label: 'is:waiting', detail: 'Open tasks marked #status/waiting, or for someone else' },
-  { value: 'is:available', label: 'is:available', detail: 'Open tasks you can start now: not blocked, started, not waiting or someday' },
+  { value: 'is:blocked', label: 'is:blocked', detail: 'Open tasks marked Blocked, or waiting for a task that is still open' },
+  { value: 'is:waiting', label: 'is:waiting', detail: 'Open tasks on hold, such as Waiting or Someday, or for someone else' },
+  { value: 'is:available', label: 'is:available', detail: 'Open tasks you can start now: not blocked, started, not on hold' },
   { value: 'is:blocking', label: 'is:blocking', detail: 'Open tasks an open task is waiting for' },
   { value: 'is:mine', label: 'is:mine', detail: 'Tasks for the person the "Me" setting names' },
   { value: 'is:assigned', label: 'is:assigned', detail: 'Tasks that name a person' },
@@ -386,6 +441,7 @@ const HAS_SUGGESTIONS = [
   'scheduled',
   'start',
   'done',
+  'cancelled',
   'priority',
   'id',
   'dependsOn',
@@ -432,13 +488,15 @@ export function describeQueryField(field: string): string {
     case 'text':
       return 'Words in the note, task, or file body';
     case 'is':
-      return 'is:open, is:done, is:overdue, is:due, is:today, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:waiting, is:available, is:mine, is:assigned, is:unassigned, is:daily, is:periodic, is:parked, or is:step';
+      return 'is:open, is:in-progress, is:done, is:cancelled, is:closed, is:overdue, is:due, is:today, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:waiting, is:available, is:mine, is:assigned, is:unassigned, is:daily, is:periodic, is:parked, or is:step';
     case 'has':
-      return 'has:due or no:due, and the same for scheduled, start, done, priority, id, dependsOn, and steps';
+      return 'has:due or no:due, and the same for scheduled, start, done, cancelled, priority, id, dependsOn, and steps';
     case 'in':
       return 'A folder and everything in it, as in in:notes/projects';
     case 'task':
       return 'open, done, or any';
+    case 'status':
+      return 'A status by name, as in-progress or blocked, or by its character, as [/]; or open, done, or any';
     case 'due':
       return 'A task due date (📅): 2026-09-13, today, 7d ahead, or none';
     case 'scheduled':
@@ -447,6 +505,8 @@ export function describeQueryField(field: string): string {
       return 'A task start date (🛫): 2026-09-13, today, 7d ahead, or none';
     case 'done':
       return 'A task completion date (✅): 2026-09-13, today, 7d back, or none';
+    case 'cancelled':
+      return 'A task cancelled date (❌): 2026-09-13, today, 7d back, or none';
     case 'priority':
       return 'highest, high, medium, none, low, or lowest';
     case 'assignee':

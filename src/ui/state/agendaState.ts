@@ -5,7 +5,8 @@ import { SHORT_WEEKDAY_NAMES, addDays, formatIsoDate, startOfDay } from '../../d
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import { QueryContext } from '../../domain/query/queryContext';
-import { readLineStatus } from '../../domain/tasks/taskPolicy';
+import { isOpenTask, nameTaskStatus } from '../../domain/tasks/taskStatuses';
+import type { TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { Placement, placeTask } from '../../domain/tasks/agendaPlacement';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
@@ -240,7 +241,7 @@ const ORDER_BY_GROUP = new Map<AgendaGroupId, EntryOrder>([
 type Regrouper = (
   entries: readonly AgendaEntry[],
   index: WorkspaceIndex,
-  options: AgendaOptions,
+  options: AgendaOptions & { taskPolicy: Pick<TaskPolicy, 'statuses'> },
   order: EntryOrder,
 ) => AgendaGroup[];
 
@@ -251,7 +252,7 @@ type Regrouper = (
 const REGROUPERS = new Map<AgendaGroupBy, Regrouper>([
   ['priority', (entries, _index, _options, order) => groupByPriority(entries, order)],
   ['status', (entries, _index, options, order) =>
-    groupByStatus(entries, options.statusNamespace ?? 'status', order)],
+    groupByStatus(entries, { statuses: options.taskPolicy.statuses, namespace: options.statusNamespace ?? 'status' }, order)],
   ['tag', (entries, index, options, order) =>
     groupByTag(entries, index, options.groupNamespace ?? 'project', order)],
 ]);
@@ -301,7 +302,7 @@ export function createAgenda(
   const order = byRank(compareByDate);
   const regroup = REGROUPERS.get(groupBy);
   return [
-    ...(regroup ? regroup(entries, index, options, order) : groupByAssignee(entries, index, order)),
+    ...(regroup ? regroup(entries, index, { ...options, taskPolicy: context.taskPolicy }, order) : groupByAssignee(entries, index, order)),
     ...done,
   ];
 }
@@ -312,7 +313,7 @@ export function createAgenda(
  * with a date, priority, person, or tag of its own is still listed on its own.
  */
 function withoutPlainSteps(all: readonly Task[]): Task[] {
-  const openIds = new Set(all.filter((task) => !task.completed).map((task) => task.id));
+  const openIds = new Set(all.filter(isOpenTask).map((task) => task.id));
   return all.filter(
     (task) => task.parentTaskId === undefined || !openIds.has(task.parentTaskId) || !isPlainStep(task),
   );
@@ -336,7 +337,7 @@ function rankFirst(taskOrder: readonly string[]): (fallback: EntryOrder) => Entr
 function collectOpenDependencyIds(index: WorkspaceIndex): Set<string> {
   return new Set(
     [...index.tasks.values()]
-      .filter((task) => !task.completed && task.dependencyId)
+      .filter((task) => isOpenTask(task) && task.dependencyId)
       .map((task) => task.dependencyId as string),
   );
 }
@@ -352,7 +353,7 @@ function placeOpenTasks(
     GROUP_ORDER.map((id) => [id, []]),
   );
   for (const task of listed) {
-    if (task.completed) {
+    if (!isOpenTask(task)) {
       continue;
     }
     const placement = placeTask(task, window, context.taskPolicy);
@@ -450,19 +451,17 @@ function groupByPriority(
   });
 }
 
-/** The status written on each task's own line, busiest status first. */
+/**
+ * Each task's status, its checkbox's or its line's status tag's, busiest
+ * status first; a plain `[ ]` with no tag is No status.
+ */
 function groupByStatus(
   entries: readonly AgendaEntry[],
-  namespace: string,
+  reading: { statuses: TaskPolicy['statuses']; namespace: string },
   order: (left: AgendaEntry, right: AgendaEntry) => number,
 ): AgendaGroup[] {
-  const statusOf = (entry: AgendaEntry): string => readLineStatus(entry.task, namespace);
-  return collect(
-    entries,
-    statusOf,
-    (status) => (status ? capitalize(status.replace(/[-_]+/g, ' ')) : 'No status'),
-    order,
-  );
+  const statusOf = (entry: AgendaEntry): string => nameTaskStatus(entry.task, reading.statuses, reading.namespace) ?? '';
+  return collect(entries, statusOf, (status) => status || 'No status', order);
 }
 
 /**

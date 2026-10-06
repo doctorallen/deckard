@@ -5,6 +5,7 @@ import { parseMarkdown, readPerson, TAG_WORD_CHARACTERS } from '../markdown/pars
 import { Task, TaskPriority } from '../model';
 import { QueryContext } from '../query/queryContext';
 import { needsNewDate } from './taskPolicy';
+import { readStatusTag } from './taskStatuses';
 import { isStatusColumnName } from './taskColumns';
 import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskFields';
 import { appendToTaskText, setTaskAssignee, setTaskDate, setTaskLineCompletion, setTaskPriority } from '../markdown/taskLineEdits';
@@ -114,7 +115,7 @@ function moveToStatus({ task, value, options, reopen }: MoveRequest): TaskMove {
   }
   if (
     !task.completed &&
-    (readTaskStatus(task, options.statusNamespace) ?? '') === value
+    (readStatusTag(task, options.statusNamespace) ?? '') === value
   ) {
     return { kind: 'unchanged' };
   }
@@ -319,21 +320,6 @@ export function setTaskStatusTag(
     return match.replace(/#.*$/, tag);
   });
   return head + (status && !written ? appendToTaskText(next, tag) : next);
-}
-
-/**
- * Reads the status written on a task's own line. A status inherited from a
- * heading does not count, because moving the card could not change it.
- */
-export function readTaskStatus(
-  task: Task,
-  namespace: string,
-): string | undefined {
-  const prefix = `#${namespace.toLowerCase()}/`;
-  return (task.associationTagGroups?.[0] ?? [])
-    .map((tag) => tag.key.toLowerCase())
-    .find((key) => key.startsWith(prefix))
-    ?.slice(prefix.length);
 }
 
 /** A status as a column names it: `waiting-on` is `Waiting on`. */

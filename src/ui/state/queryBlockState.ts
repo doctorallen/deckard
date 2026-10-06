@@ -1,4 +1,5 @@
 import { formatProgressCount } from '../../domain/tasks/progressCount';
+import { countTaskProgress, isCancelledTask, nameTaskStatus, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
 import { getFileName } from '../../shared/paths';
 import { formatIsoDate } from '../../domain/markdown/calendar';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
@@ -115,8 +116,10 @@ export interface QueryBlockItem {
   recurrence?: string;
   /** The person's tag as written, such as `@dana`. */
   assignee?: string;
-  /** The `#status/…` name on the line, without the namespace. */
+  /** The task's status's name, when it has one: In progress, Waiting, a status tag no status names. */
   status?: string;
+  /** Present only for a cancelled task: closed, but not done. */
+  cancelled?: boolean;
   /** Tag labels, as written on the line. */
   tags?: string[];
   dependsOn?: string[];
@@ -455,7 +458,7 @@ export function createQueryBlockSnapshot(
     ...results.files.map((file) => createFileItem(file, index, table)),
   ].sort(createNoteComparator(options.sort, options.direction));
   const tasks = results.tasks
-    .map((task) => createTaskItem(task, index, statusNamespace))
+    .map((task) => createTaskItem(task, index, { statuses: reading.queryContext.taskPolicy.statuses, namespace: statusNamespace }))
     .sort(createTaskComparator(options.sort, options.direction));
 
   return {
@@ -466,7 +469,7 @@ export function createQueryBlockSnapshot(
     tasks: tasks.slice(0, options.limit),
     noteCount: notes.length,
     taskCount: tasks.length,
-    openTaskCount: tasks.filter((task) => !task.completed).length,
+    openTaskCount: tasks.filter((task) => !task.completed && !task.cancelled).length,
   };
 }
 
@@ -586,8 +589,8 @@ function describeNoteColumns(
     .filter((task) => !task.parentTaskId);
   return {
     linkCount: sources.size,
-    taskTotal: tasks.length,
-    taskDone: tasks.filter((task) => task.completed).length,
+    taskTotal: countTaskProgress(tasks).total,
+    taskDone: countTaskProgress(tasks).done,
     noteTags: entry.tagKeys.map((key) => ({ key, label: entry.labels[key] ?? index.tags.get(key)?.label ?? key })),
   };
 }
@@ -608,20 +611,19 @@ export function namespaceValues(item: Pick<QueryBlockItem, 'noteTags'>, namespac
   });
 }
 
-/** A matched task as a row, with the status its `#<statusNamespace>/` tag names. */
+/**
+ * A matched task as a row, with its status's name: its checkbox's, or the
+ * one its own line's `#<namespace>/` tag names, as everything else reads it.
+ */
 function createTaskItem(
   task: Task,
   index: WorkspaceIndex,
-  statusNamespace: string,
+  statusReading: { statuses: readonly TaskStatusDefinition[]; namespace: string },
 ): QueryBlockItem {
   const section = task.sectionId
     ? index.sections.get(task.sectionId)
     : undefined;
-  const statusPrefix = `#${statusNamespace.toLowerCase()}/`;
-  const status = task.tags
-    .map((key) => key.toLowerCase())
-    .find((key) => key.startsWith(statusPrefix))
-    ?.slice(statusPrefix.length);
+  const status = nameTaskStatus(task, statusReading.statuses, statusReading.namespace);
   return {
     id: task.id,
     title: stripTrailingTags(task.title) || task.title.trim(),
@@ -630,6 +632,7 @@ function createTaskItem(
     fileName: getFileName(task.filePath),
     line: task.lineNumber,
     completed: task.completed,
+    ...(isCancelledTask(task) ? { cancelled: true } : {}),
     dueAt: task.dueAt,
     dueText: task.dueText,
     scheduledAt: task.scheduledAt,

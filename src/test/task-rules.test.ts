@@ -5,7 +5,6 @@ import { createQueryContext } from '../domain/query/queryContext';
 import { NO_DATE, placeTask } from '../domain/tasks/agendaPlacement';
 import {
   getDueBand,
-  readTaskStatus,
   refuseMove,
   resolveColumnCapture,
   resolveTaskMove,
@@ -14,6 +13,7 @@ import {
   TaskMove,
 } from '../domain/tasks/boardMoves';
 import { DEFAULT_TASK_POLICY } from '../domain/tasks/taskPolicy';
+import { readStatusTag } from '../domain/tasks/taskStatuses';
 import { Task } from '../domain/model';
 
 const at = (month: number, day: number): number => new Date(2026, month - 1, day).getTime();
@@ -144,12 +144,12 @@ suite('Task rules', () => {
       setTaskNamespaceTags('- [ ] Plan ^id', 3, { remove: [], add: '#project/y' }),
       '- [ ] Plan #project/y ^id',
     );
-    assert.strictEqual(readTaskStatus(task('- [ ] Plan #Status/Doing'), 'status'), 'doing');
+    assert.strictEqual(readStatusTag(task('- [ ] Plan #Status/Doing'), 'status'), 'doing');
   });
 
   test('reads and writes a status or a namespace tag in any script, as tags are', () => {
     const line = '- [ ] Plan #status/à-faire #project/café';
-    assert.strictEqual(readTaskStatus(task(line), 'status'), 'à-faire');
+    assert.strictEqual(readStatusTag(task(line), 'status'), 'à-faire');
     assert.strictEqual(
       apply(resolveTaskMove(task(line), 'status:à-faire', options, noTags), line),
       'unchanged',

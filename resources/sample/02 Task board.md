@@ -30,6 +30,7 @@ first is done.
 - [ ] Ask Leena to audit the activation log #status/todo [assignee:: #person/leena-sato]
 - [ ] Try a second vendor for the lens coating #status/someday
 - [ ] Go over the shell-camera frames with #person/ivo-chen #status/doing
+- [-] Book a second shell camera for the north exits ❌ {{date-2}}
 
 ## What each task shows
 
@@ -43,6 +44,8 @@ Reading down the relay list:
   the Dataview format.
 - *Go over the shell-camera frames* mentions Ivo but is for nobody in
   particular, so it counts as yours too.
+- *Book a second shell camera* is cancelled: `[-]` closes it without doing
+  it, and ❌ says when. It counts as neither open nor done.
 
 Contexts say where a task can be done. Group the board or the Tasks view by
 the context namespace and each context gets its own list. The last errand

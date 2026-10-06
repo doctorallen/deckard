@@ -1,5 +1,5 @@
-import { Task } from '../model';
 import { isBoardNamespace, isStatusColumnName } from './taskColumns';
+import { DEFAULT_TASK_STATUSES, type TaskStatusDefinition } from './taskStatuses';
 
 /**
  * How Deckard reads tasks, from settings.
@@ -15,8 +15,8 @@ export interface TaskPolicy {
   needsNewDateAfterDays: number;
   /** The namespace a task's status is written in: `status` for `#status/doing`. */
   statusNamespace: string;
-  /** Statuses that put a task on hold, which `is:available` leaves out. */
-  onHoldStatuses: readonly string[];
+  /** What each checkbox character and status tag means (`deckard.tasks.statuses`). */
+  statuses: readonly TaskStatusDefinition[];
 }
 
 /**
@@ -26,7 +26,7 @@ export interface TaskPolicy {
 export const DEFAULT_TASK_POLICY: Readonly<TaskPolicy> = {
   needsNewDateAfterDays: 30,
   statusNamespace: 'status',
-  onHoldStatuses: ['waiting', 'someday'],
+  statuses: DEFAULT_TASK_STATUSES,
 };
 
 /**
@@ -93,23 +93,6 @@ export function needsNewDateBefore(
 ): number | undefined {
   const days = taskPolicy.needsNewDateAfterDays;
   return days > 0 ? daysBefore(now, days) : undefined;
-}
-
-/**
- * The status written on a task's own line, in `namespace` (the policy's
- * `statusNamespace`, as the caller passes it), or ''.
- */
-export function readLineStatus(
-  task: Pick<Task, 'associationTagGroups'>,
-  namespace: string,
-): string {
-  const prefix = `#${namespace.toLowerCase()}/`;
-  return (
-    (task.associationTagGroups?.[0] ?? [])
-      .map((tag) => tag.key.toLowerCase())
-      .find((key) => key.startsWith(prefix))
-      ?.slice(prefix.length) ?? ''
-  );
 }
 
 /** Midnight a number of calendar days before the day `now` falls on. */

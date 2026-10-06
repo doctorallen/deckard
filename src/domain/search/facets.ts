@@ -7,6 +7,8 @@
  * nothing, and each value carries the clause that adds it to the query, so
  * refining by facet and writing a query are the same thing.
  */
+import { isCancelledTask, isOpenTask, normalizeStatusName, readTaskStatus } from '../tasks/taskStatuses';
+import { DEFAULT_TASK_POLICY, type TaskPolicy } from '../tasks/taskPolicy';
 import { addDays, startOfDay } from '../markdown/calendar';
 import { formatMonthName } from '../markdown/dates';
 import { countLinkTargets, resolveLinkQuery } from '../query/queryLinks';
@@ -54,6 +56,8 @@ export interface FacetOptions {
    * otherwise finds, offered as one value that asks for them.
    */
   parkedLeftOut?: number;
+  /** The statuses and status namespace each task's status is read with; Deckard's own when not given. */
+  taskPolicy?: Pick<TaskPolicy, 'statuses' | 'statusNamespace'>;
 }
 
 const TAG_VALUE_LIMIT = 10;
@@ -173,15 +177,38 @@ function relatedFacet(context: FacetContext): SearchFacet[] {
   return [related];
 }
 
-/** Open and done tasks. */
+/** Open, done, and cancelled tasks, then each open status found, busiest first. */
 function statusFacet(context: FacetContext): SearchFacet[] {
   const tasks = context.source.tasks;
   return [
     makeFacet(context, { id: 'status', label: 'Tasks' }, [
-      { label: 'Open', clause: 'is:open', count: tasks.filter((task) => !task.completed).length },
+      { label: 'Open', clause: 'is:open', count: tasks.filter(isOpenTask).length },
       { label: 'Done', clause: 'is:done', count: tasks.filter((task) => task.completed).length },
+      { label: 'Cancelled', clause: 'is:cancelled', count: tasks.filter(isCancelledTask).length },
+      ...countStatuses(tasks, context.options.taskPolicy ?? DEFAULT_TASK_POLICY),
     ]),
   ];
+}
+
+/**
+ * Each open status the tasks have, by name, with the clause that finds it:
+ * In progress, Waiting, Blocked, Unknown, and any of a workspace's own. A
+ * plain `[ ]` is not one, since Open already says it, nor is a done or a
+ * cancelled status, which Done and Cancelled say.
+ */
+function countStatuses(tasks: readonly Task[], policy: Pick<TaskPolicy, 'statuses' | 'statusNamespace'>): SearchFacetValue[] {
+  const counts = new Map<string, SearchFacetValue>();
+  for (const task of tasks) {
+    const status = readTaskStatus(task, policy.statuses, policy.statusNamespace);
+    if (!isOpenTask(task) || (status === task.status && status.symbol === ' ')) {
+      continue;
+    }
+    const slug = normalizeStatusName(status.name).replace(/ /g, '-');
+    const found = counts.get(slug) ?? { label: status.name, clause: `status:${quoteValue(slug)}`, count: 0 };
+    found.count += 1;
+    counts.set(slug, found);
+  }
+  return [...counts.values()].sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
 }
 
 /** Tasks by when they are due: overdue, this week, later, or never. */
@@ -197,7 +224,7 @@ function dueFacet(context: FacetContext): SearchFacet[] {
         label: 'Overdue',
         clause: 'is:overdue',
         count: tasks.filter(
-          (task) => !task.completed && task.dueAt !== undefined && task.dueAt < today,
+          (task) => isOpenTask(task) && task.dueAt !== undefined && task.dueAt < today,
         ).length,
       },
       {

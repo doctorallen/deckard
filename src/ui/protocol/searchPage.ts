@@ -149,6 +149,8 @@ export interface SearchResultGroup {
   taskCount: number;
   /** How many of all the group's tasks are done. */
   doneCount: number;
+  /** How many of them count toward its progress: all but the cancelled ones. */
+  progressTotal: number;
   /**
    * By heading, the levels inside this one, such as a project's parts. Its
    * counts then take them in, and its own notes and tasks are those above

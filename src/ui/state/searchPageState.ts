@@ -4,6 +4,7 @@ import {
   isParkedTask,
   parkedLast,
 } from '../../domain/index/parked';
+import { countTaskProgress, isOpenTask } from '../../domain/tasks/taskStatuses';
 import { correctQueryText, getPlainTextTerms, getTextWords } from '../../domain/query/queryEdit';
 import { evaluateQuery, QueryResults } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
@@ -261,7 +262,7 @@ function buildPageFacets(index: WorkspaceIndex, page: SearchPageResults, text: s
     tagKeys && (options.enableHeadingTagRelationships ?? true)
       ? createRelatedFacetValues(index, tagKeys, results)
       : undefined;
-  return buildSearchFacets(index, results, text, { related, now: options.queryContext.now });
+  return buildSearchFacets(index, results, text, { related, now: options.queryContext.now, taskPolicy: options.queryContext.taskPolicy });
 }
 
 /** What either hierarchy draws its groups from. */
@@ -303,6 +304,7 @@ function drawHeadingGroups(index: WorkspaceIndex, { page, ranked, tasks, drawNot
       tasks: group.tasks.slice(0, GROUP_ITEM_LIMIT).map(drawTask),
       taskCount: counted.tasks,
       doneCount: counted.done,
+      progressTotal: counted.counted,
       ...(group.children.length
         ? { children: group.children.map((child) => draw(child, inner)), ownNoteCount: group.notes.length, ownTaskCount: group.tasks.length }
         : {}),
@@ -324,15 +326,21 @@ function drawResultGroups(index: WorkspaceIndex, { facets, ranked, tasks, drawNo
     noteCount: group.notes.length,
     tasks: group.tasks.slice(0, GROUP_ITEM_LIMIT).map(drawTask),
     taskCount: group.tasks.length,
-    doneCount: group.tasks.filter((task) => task.completed).length,
+    ...withProgress(group.tasks),
   }));
+}
+
+/** How far along a group's tasks are: how many are done, of all but the cancelled ones. */
+function withProgress(tasks: readonly Task[]): Pick<SearchResultGroup, 'doneCount' | 'progressTotal'> {
+  const { done, total } = countTaskProgress(tasks);
+  return { doneCount: done, progressTotal: total };
 }
 
 /** How many of the tasks there are in all, open, and completed. */
 function countTasks(tasks: readonly Task[]): SearchPageSnapshot['taskCounts'] {
   return {
     all: tasks.length,
-    active: tasks.filter((task) => !task.completed).length,
+    active: tasks.filter(isOpenTask).length,
     completed: tasks.filter((task) => task.completed).length,
   };
 }

@@ -1,5 +1,6 @@
 import * as path from 'path';
 
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import * as vscode from 'vscode';
 
 import { noteTitle } from '../../domain/index/backlinks';
@@ -114,7 +115,7 @@ export function collectTryNextInput(
           },
         }
       : {}),
-    openTasks: [...index.tasks.values()].filter((task) => !task.completed).length,
+    openTasks: [...index.tasks.values()].filter(isOpenTask).length,
     ...(frequent
       ? {
           frequentNote: {

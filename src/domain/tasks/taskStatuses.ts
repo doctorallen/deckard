@@ -6,7 +6,7 @@
  * what it must have, and finds a character's status. It is pure: a caller
  * reads the setting and passes the value in.
  */
-import type { TaskStatus, TaskStatusType } from '../model';
+import type { Task, TaskStatus, TaskStatusType } from '../model';
 import { isStatusColumnName } from './taskColumns';
 
 /** The icons an open status may add to its box. */
@@ -195,4 +195,109 @@ export function isClosedType(type: TaskStatusType): boolean {
  */
 export function readTaskStatusSettings(settings: { get<T>(key: string): T | undefined }): TaskStatusDefinition[] {
   return readTaskStatuses(settings.get<unknown>('tasks.statuses'), settings.get<unknown>('tasks.onHoldStatuses'));
+}
+
+/**
+ * Whether a task is open: neither done nor cancelled. A task's checkbox
+ * alone decides it, since a status tag only ever names an open status.
+ */
+export function isOpenTask(task: Pick<Task, 'completed' | 'status'>): boolean {
+  return !task.completed && task.status.type !== 'cancelled';
+}
+
+/** Whether a task is cancelled: closed, but not done. */
+export function isCancelledTask(task: Pick<Task, 'status'>): boolean {
+  return task.status.type === 'cancelled';
+}
+
+/**
+ * How far along some tasks are: how many are done, out of those that count.
+ * A cancelled task counts on neither side, so cancelling one moves nothing
+ * nearer done and nothing further away.
+ */
+export function countTaskProgress(tasks: Iterable<Pick<Task, 'completed' | 'status'>>): { done: number; total: number } {
+  let done = 0;
+  let total = 0;
+  for (const task of tasks) {
+    if (isCancelledTask(task)) {
+      continue;
+    }
+    total += 1;
+    done += task.completed ? 1 : 0;
+  }
+  return { done, total };
+}
+
+/**
+ * The status written as a tag on a task's own line, in `namespace`, as it
+ * is written after the namespace (`doing` for `#status/doing`), or
+ * undefined. Only the task's own line sets a status; a heading's tag does
+ * not.
+ */
+export function readStatusTag(task: Pick<Task, 'associationTagGroups'>, namespace: string): string | undefined {
+  const prefix = `#${namespace.toLowerCase()}/`;
+  return (task.associationTagGroups?.[0] ?? [])
+    .map((tag) => tag.key.toLowerCase())
+    .find((key) => key.startsWith(prefix))
+    ?.slice(prefix.length);
+}
+
+/** Each list's open statuses by their tags, worked out once per list. */
+const byTagCache = new WeakMap<readonly TaskStatusDefinition[], ReadonlyMap<string, TaskStatusDefinition>>();
+
+/** The open status a tag stands for: a done or cancelled status stands for no tag, so a tag never closes a task. */
+export function statusForTag(statuses: readonly TaskStatusDefinition[], tag: string): TaskStatusDefinition | undefined {
+  let known = byTagCache.get(statuses);
+  if (!known) {
+    known = new Map(
+      statuses.flatMap((status) => (status.tag !== undefined && isOpenType(status.type) ? [[status.tag, status] as const] : [])),
+    );
+    byTagCache.set(statuses, known);
+  }
+  return known.get(tag.toLowerCase());
+}
+
+/**
+ * A task's status, read the one way everything reads it: its checkbox's,
+ * unless the box is a space and its line has a `#status/…` tag an open
+ * status stands for, which then is its status, so a note written with tags
+ * reads as it always has.
+ */
+export function readTaskStatus(
+  task: Pick<Task, 'status' | 'associationTagGroups'>,
+  statuses: readonly TaskStatusDefinition[],
+  namespace: string,
+): TaskStatus {
+  if (task.status.symbol !== ' ') {
+    return task.status;
+  }
+  const tag = readStatusTag(task, namespace);
+  const status = tag === undefined ? undefined : statusForTag(statuses, tag);
+  return status ? { symbol: ' ', name: status.name, type: status.type } : task.status;
+}
+
+/** A status's name as a search compares it: lower case, a hyphen or an underscore read as a space. */
+export function normalizeStatusName(name: string): string {
+  return name.toLocaleLowerCase().replace(/[-_\s]+/g, ' ').trim();
+}
+
+/**
+ * What a task's status is called where tasks are grouped by it: its
+ * status's name, or, for a `#status/…` tag no status stands for, the tag
+ * as words (`waiting-on` is Waiting on); undefined for a plain `[ ]` with
+ * no status tag, which has no status to speak of.
+ */
+export function nameTaskStatus(
+  task: Pick<Task, 'status' | 'associationTagGroups'>,
+  statuses: readonly TaskStatusDefinition[],
+  namespace: string,
+): string | undefined {
+  if (task.status.symbol !== ' ') {
+    return task.status.name;
+  }
+  const tag = readStatusTag(task, namespace);
+  if (tag === undefined) {
+    return undefined;
+  }
+  return statusForTag(statuses, tag)?.name ?? nameTag(tag);
 }

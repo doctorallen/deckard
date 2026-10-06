@@ -1,4 +1,5 @@
 import { describeSteps } from '../../domain/markdown/taskSteps';
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { QueryContext } from '../../domain/query/queryContext';
 import { getFileName } from '../../shared/paths';
 import { buildBlockExcerpt } from '../../domain/markdown/blockExcerpt';
@@ -104,7 +105,7 @@ export function createDashboardTask(
   context: Pick<QueryContext, 'now' | 'taskPolicy'>,
 ): DashboardTask {
   const due =
-    !task.completed && task.dueAt !== undefined
+    isOpenTask(task) && task.dueAt !== undefined
       ? describeDueDate(task.dueAt, context.now, context.taskPolicy, task.dueText)
       : undefined;
   return {

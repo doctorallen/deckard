@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { AgendaGroupBy, readAgendaQuery, readUpcomingDays } from '../../domain/tasks/agendaGroups';
 import { DayLoad, DueChoice, dueDateFor, RescheduleContext } from '../../domain/tasks/reschedule';
 import { QueryContext } from '../../domain/query/queryContext';
@@ -149,7 +150,7 @@ export async function setTaskDateField(
   field: 'due' | 'scheduled',
   date: string | undefined,
 ): Promise<boolean> {
-  if (task.completed) {
+  if (!isOpenTask(task)) {
     return false;
   }
   return updateTaskLine(
@@ -188,7 +189,7 @@ export async function setTasksDue(
   date: string | undefined,
   context?: RescheduleContext,
 ): Promise<void> {
-  const open = tasks.filter((task) => !task.completed);
+  const open = tasks.filter(isOpenTask);
   if (open.length === 0) {
     return;
   }
@@ -239,7 +240,7 @@ export async function setTasksDueEach(
   tasks: readonly Task[],
   context?: RescheduleContext,
 ): Promise<void> {
-  const open = tasks.filter((task) => !task.completed && choice.dates.has(task.id));
+  const open = tasks.filter((task) => isOpenTask(task) && choice.dates.has(task.id));
   if (open.length === 0) {
     return;
   }
@@ -288,7 +289,7 @@ export async function pickReschedule(
   options: { title?: string } = {},
 ): Promise<RescheduleChoice | null> {
   const now = Date.now();
-  const open = tasks.filter((task) => !task.completed);
+  const open = tasks.filter(isOpenTask);
   const day = (label: string, date: string) => ({
     label,
     description: load ? `${formatDay(date)} · ${describeLoad(load(date))}` : formatDay(date),

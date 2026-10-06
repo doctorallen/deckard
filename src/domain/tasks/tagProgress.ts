@@ -3,6 +3,7 @@
  * and which open one is due next. A project's page, its hub note, and Home's
  * Progress widget read it, so all three count a project alike.
  */
+import { isCancelledTask } from './taskStatuses';
 import { formatProgressCount } from './progressCount';
 import { readTaskTagKeys } from '../query/queryEvaluator';
 import { describeDueDate } from '../markdown/dueWording';
@@ -101,8 +102,11 @@ export function summarizeTasks(
   return entry.total ? entry : undefined;
 }
 
-/** Adds one task to a tag's progress. */
+/** Adds one task to a tag's progress; a cancelled one counts on neither side. */
 function countTask(entry: TagProgress, task: Task, today: number, stale: (dueAt: number) => boolean): void {
+  if (isCancelledTask(task)) {
+    return;
+  }
   entry.total += 1;
   if (task.completed) {
     entry.done += 1;

@@ -1,4 +1,5 @@
 import { formatProgressCount } from '../../domain/tasks/progressCount';
+import { countTaskProgress } from '../../domain/tasks/taskStatuses';
 import { stripTags } from '../../domain/markdown/parser';
 import { ParsedFile, Section, TagReference } from '../../domain/model';
 
@@ -219,7 +220,7 @@ function createNode(
 
   return {
     ...(under.length > 0
-      ? { tasks: { done: under.filter((task) => task.completed).length, total: under.length } }
+      ? { tasks: countTaskProgress(under) }
       : {}),
     ...(links > 0 ? { links } : {}),
     id: '',

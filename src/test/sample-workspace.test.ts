@@ -216,7 +216,7 @@ suite('Sample workspace', () => {
     };
     const tasks = (query: string) => found(query).tasks.map((task) => task.title);
     const claims: Array<[string, number]> = [
-      ['#project/ghostline-relay', 23],
+      ['#project/ghostline-relay', 24],
       ['#person/ren-kade', 3],
       ['#project/ghostline-relay is:open', 20],
       ['(#person/ren-kade OR #person/leena-sato) AND is:open', 5],
@@ -226,7 +226,16 @@ suite('Sample workspace', () => {
       ['is:overdue -is:needs-date', 2],
       ['is:needs-date', 1],
       ['is:today', 4],
-      ['is:waiting', 4],
+      ['is:waiting', 5],
+      ['is:in-progress', 3],
+      ['is:cancelled', 1],
+      ['is:closed', 11],
+      ['has:cancelled', 1],
+      ['cancelled = 7d', 1],
+      ['status:in-progress', 3],
+      ['status:waiting', 1],
+      ['status:[-]', 1],
+      ['-status:someday is:waiting', 4],
       ['is:blocked', 1],
       ['is:blocking', 1],
       ['is:assigned', 4],

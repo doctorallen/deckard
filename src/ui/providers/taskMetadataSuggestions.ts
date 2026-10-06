@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { isPersonTag } from '../../domain/markdown/parser';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { readTaskMetadataFormat } from '../commands/taskActions';
@@ -260,7 +261,7 @@ function collectOpenTaskIds(
 ): Array<{ id: string; title: string }> {
   const ids = new Map<string, string>();
   for (const task of index.tasks.values()) {
-    if (!task.completed && task.dependencyId && !ids.has(task.dependencyId)) {
+    if (isOpenTask(task) && task.dependencyId && !ids.has(task.dependencyId)) {
       ids.set(task.dependencyId, task.title);
     }
   }

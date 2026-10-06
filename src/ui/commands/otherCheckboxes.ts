@@ -1,50 +1,57 @@
 import * as vscode from 'vscode';
 
 import { pluralize } from '../../shared/text';
+import { settingLabel } from './notify';
 
-export { countOtherCheckboxes } from '../../domain/index/otherCheckboxes';
+export { countOtherCheckboxes, countUnknownStatuses } from '../../domain/index/otherCheckboxes';
 
 /**
- * Checkbox lines that are not tasks, said once.
+ * Tasks whose status Deckard doesn't know, said once.
  *
- * Only `- [ ]` and `- [x]` lines are tasks. A vault from Obsidian also
- * writes `- [/]` for in progress and `- [-]` for cancelled, which Deckard
- * reads as text, so its task count came up short with nothing saying why.
- * The first index that finds such lines in a workspace says how many, once;
- * Stats keeps saying it.
+ * Any character between a task's brackets is a task, as in Obsidian Tasks,
+ * so a vault's counts match; one no status in `deckard.tasks.statuses`
+ * names, such as `[?]`, is read as to do. The first index that finds such
+ * tasks in a workspace says how many, once, with a way to name them; Stats
+ * keeps saying it.
  */
 
 /** The workspace-state key that records the notice was given. */
-export const OTHER_CHECKBOXES_NOTICED = 'deckard.otherCheckboxesNoticed';
+export const UNKNOWN_STATUSES_NOTICED = 'deckard.unknownStatusesNoticed';
 export const OPEN_STATS_BUTTON = 'Open Stats';
+export const OPEN_SETTING_BUTTON = 'Open Setting';
 
 /** The notice, in one sentence. */
-export function describeOtherCheckboxes(count: number): string {
-  return `${pluralize(count, 'checkbox line', 'checkbox lines', { locale: true })} marked with something other than a space or an x, such as [/] or [-], ${count === 1 ? 'is' : 'are'} text to Deckard, not ${count === 1 ? 'a task' : 'tasks'}, so no task count includes ${count === 1 ? 'it' : 'them'}. Only - [ ] and - [x] lines are tasks.`;
+export function describeUnknownStatuses(count: number, symbols: readonly string[]): string {
+  const characters = symbols.slice(0, 3).map((symbol) => `[${symbol}]`).join(', ');
+  return `${pluralize(count, 'task uses', 'tasks use', { locale: true })} a status Deckard doesn't know, such as ${characters}; ${count === 1 ? 'it counts' : 'they count'} as to do. Name them in the "${settingLabel('tasks.statuses')}" setting.`;
 }
 
 /** How the notice asks and acts; the defaults are VS Code's. */
-export interface OtherCheckboxesOptions {
+export interface UnknownStatusesOptions {
   show?: (message: string, ...buttons: string[]) => Thenable<string | undefined>;
-  run?: (command: string) => Thenable<unknown>;
+  run?: (command: string, ...args: unknown[]) => Thenable<unknown>;
 }
 
 /**
- * Says how many checkbox lines are not tasks, the first time a workspace has
- * any. The flag is written before the message, so it is said only once.
+ * Says how many tasks use a status Deckard doesn't know, the first time a
+ * workspace has any. The flag is written before the message, so it is said
+ * only once.
  */
-export async function noticeOtherCheckboxesOnce(
+export async function noticeUnknownStatusesOnce(
   workspaceState: vscode.Memento,
-  count: number,
-  options: OtherCheckboxesOptions = {},
+  unknown: { count: number; symbols: readonly string[] },
+  options: UnknownStatusesOptions = {},
 ): Promise<void> {
-  if (count === 0 || workspaceState.get<boolean>(OTHER_CHECKBOXES_NOTICED) === true) {
+  if (unknown.count === 0 || workspaceState.get<boolean>(UNKNOWN_STATUSES_NOTICED) === true) {
     return;
   }
-  await workspaceState.update(OTHER_CHECKBOXES_NOTICED, true);
+  await workspaceState.update(UNKNOWN_STATUSES_NOTICED, true);
   const show = options.show ?? ((message, ...buttons) => vscode.window.showInformationMessage(message, ...buttons));
-  const run = options.run ?? ((command) => vscode.commands.executeCommand(command));
-  if ((await show(describeOtherCheckboxes(count), OPEN_STATS_BUTTON)) === OPEN_STATS_BUTTON) {
+  const run = options.run ?? ((command, ...args) => vscode.commands.executeCommand(command, ...args));
+  const chosen = await show(describeUnknownStatuses(unknown.count, unknown.symbols), OPEN_SETTING_BUTTON, OPEN_STATS_BUTTON);
+  if (chosen === OPEN_SETTING_BUTTON) {
+    await run('workbench.action.openSettings', 'deckard.tasks.statuses');
+  } else if (chosen === OPEN_STATS_BUTTON) {
     await run('deckard.showStats');
   }
 }

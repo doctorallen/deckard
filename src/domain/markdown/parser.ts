@@ -1876,6 +1876,10 @@ function summarizeSteps(tasks: Task[]): Task[] {
     }
     const steps = parent.steps ?? (parent.steps = { ids: [], total: 0, done: 0 });
     steps.ids.push(task.id);
+    // A cancelled step is listed, but counts on neither side of the progress.
+    if (task.status.type === 'cancelled') {
+      return;
+    }
     steps.total += 1;
     if (task.completed) {
       steps.done += 1;

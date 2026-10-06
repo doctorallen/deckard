@@ -103,6 +103,7 @@ export function StatsMetrics({ snapshot }: { readonly snapshot: DeckardStatsSnap
       <Metric label="Notes" value={snapshot.sectionCount} query="is:note" hint="Open a search for every note. A heading with tags of its own is a note, with the untagged headings under it, and so is each tagged line, so a file can hold several" trend={trendOf(snapshot, 'notes', 'notes')} />
       <Metric label="Tasks" value={snapshot.taskCount} query="is:task" hint="Open a search for every task" trend={trendOf(snapshot, 'tasks', 'tasks')} />
       <Metric label="Open tasks" value={snapshot.activeTaskCount} query="is:open" hint="Open a search for every open task" trend={trendOf(snapshot, 'openTasks', 'open tasks')} />
+      {snapshot.cancelledTaskCount ? <Metric label="Cancelled tasks" value={snapshot.cancelledTaskCount} query="is:cancelled" hint="Open a search for every cancelled task" /> : null}
       <ActionMetric label="Tags" value={snapshot.tagCount} action="open-tag-list" hint="Choose a tag to open" attributes={{ 'data-namespaced': 'false' }} />
       <ActionMetric label="Namespaced tags" value={snapshot.entityCount} action="open-tag-list" hint="Choose a namespaced tag to open" attributes={{ 'data-namespaced': 'true' }} />
       <ActionMetric label="Links" value={snapshot.wikiLinkCount} action="open-graph" hint="Open the Notes Graph showing only the links you wrote" />
@@ -125,9 +126,8 @@ export function ParkedLine({ parked }: { readonly parked: DeckardStatsSnapshot['
 }
 
 /**
- * The checkbox lines no total counts: a `- [/]` or `- [-]` line, as
- * Obsidian writes in-progress and cancelled tasks, is text to Deckard. An
- * Obsidian vault's task count came up short with nothing saying why.
+ * The checkbox lines no total counts: those of a status whose type says
+ * they are not tasks, as a pro and con list's are.
  */
 export function OtherCheckboxesLine({ count }: { readonly count: number | undefined }) {
   if (!count) {
@@ -135,7 +135,25 @@ export function OtherCheckboxesLine({ count }: { readonly count: number | undefi
   }
   return (
     <p class="parked-line">
-      {`Not counted: ${counted(count, 'checkbox line', 'checkbox lines')} marked with something other than a space or an x, such as [/] or [-]. Only - [ ] and - [x] lines are tasks.`}
+      {`Not counted: ${counted(count, 'checkbox line', 'checkbox lines')} whose status says ${count === 1 ? 'it is' : 'they are'} not ${count === 1 ? 'a task' : 'tasks'}, such as a pro and con list.`}
+    </p>
+  );
+}
+
+/**
+ * The tasks whose character no status names: they are tasks to do, as in
+ * Obsidian, so a vault's counts match, but their status has no name until
+ * deckard.tasks.statuses gives it one. Pressed, it searches for them.
+ */
+export function UnknownStatusesLine({ unknown }: { readonly unknown: DeckardStatsSnapshot['unknownStatuses'] }) {
+  if (!unknown) {
+    return null;
+  }
+  const characters = unknown.symbols.slice(0, 3).map((symbol) => `[${symbol}]`).join(', ');
+  const words = `${counted(unknown.count, 'task uses', 'tasks use')} a status Deckard doesn't know, such as ${characters}; ${unknown.count === 1 ? 'it counts' : 'they count'} as to do. Name them in the "Tasks: Statuses" setting.`;
+  return (
+    <p class="parked-line">
+      <button type="button" class="text-button" data-action="open-search" data-query="status:unknown" data-tip="Search the tasks whose status Deckard doesn't know">{words}</button>
     </p>
   );
 }

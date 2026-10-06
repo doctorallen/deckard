@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { QueryContext } from '../../domain/query/queryContext';
 import { pluralize } from '../../shared/text';
 import { createAgenda } from '../state/agendaState';
@@ -63,7 +64,7 @@ export function countFirstIndex(
   index: WorkspaceIndex,
   context: Pick<QueryContext, 'now' | 'taskPolicy'>,
 ): FirstIndexCounts {
-  const open = [...index.tasks.values()].filter((task) => !task.completed);
+  const open = [...index.tasks.values()].filter(isOpenTask);
   const overdue =
     createAgenda(index, context, { tasks: open, upcomingDays: 7 }).find((group) => group.id === 'overdue')
       ?.entries.length ?? 0;

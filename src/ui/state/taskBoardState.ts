@@ -13,12 +13,12 @@ import { describeStepParts, foldSteps } from '../../domain/markdown/taskSteps';
 import { mentionsParked, withoutParked } from '../../domain/index/parked';
 import { hasAvailableTerm, toggleAvailable } from '../../domain/query/queryEdit';
 import { needsNewDate } from '../../domain/tasks/taskPolicy';
+import { isOpenTask, readStatusTag } from '../../domain/tasks/taskStatuses';
 import { QueryContext } from '../../domain/query/queryContext';
 import { extractTags } from '../../domain/markdown/parser';
 import {
   formatStatusLabel,
   getDueBand,
-  readTaskStatus,
   refuseMove,
   resolveTaskMove as resolveColumnMove,
   setTaskNamespaceTags,
@@ -169,7 +169,7 @@ export function createTaskBoard({
             index,
             { sections: [], files: [], tasks },
             search.query,
-            { parkedLeftOut, now: options.queryContext.now },
+            { parkedLeftOut, now: options.queryContext.now, taskPolicy: options.queryContext.taskPolicy },
           )
         : [],
       queryContext: options.queryContext,
@@ -191,7 +191,7 @@ export function createTaskBoard({
       layout === 'board' ? undefined : createTaskMenus(tasks, options),
     taskCounts: {
       all: tasks.length,
-      active: tasks.filter((task) => !task.completed).length,
+      active: tasks.filter(isOpenTask).length,
       completed: tasks.filter((task) => task.completed).length,
     },
     taskSortMode: preferences.taskSortMode,
@@ -276,7 +276,7 @@ function toTableTask(task: Task, statusNamespace: string): TableTask {
     doneAt: task.doneAt,
     priority: task.priority,
     assignee: task.assignee,
-    status: readTaskStatus(task, statusNamespace),
+    status: readStatusTag(task, statusNamespace),
     tags: task.tags.map((key) => task.tagLabels[key] ?? key),
     fileName: task.filePath.split('/').pop() ?? task.filePath,
     line: task.lineNumber,
@@ -313,14 +313,14 @@ export function layoutTaskBoard({
   // A tag grouping without a namespace to group by lays out as status.
   const groupBy: TaskBoardGroupBy =
     requestedGroupBy === 'tag' && !isNamespaceName(namespace) ? 'status' : requestedGroupBy;
-  const open = tasks.filter((task) => !task.completed);
+  const open = tasks.filter(isOpenTask);
   const done = tasks.filter((task) => task.completed).sort(compareDone);
   const shown = options.shownColumns;
   const doneLimit = shown?.has('done') ? Number.MAX_SAFE_INTEGER : options.doneLimit ?? DEFAULT_DONE_LIMIT;
   const columnLimit = options.columnLimit ?? DEFAULT_COLUMN_LIMIT;
   const openDependencyIds = new Set(
     [...index.tasks.values()]
-      .filter((task) => !task.completed && task.dependencyId)
+      .filter((task) => isOpenTask(task) && task.dependencyId)
       .map((task) => task.dependencyId as string),
   );
   const toCard = (task: Task, draft?: ColumnDraft): TaskBoardCard => {
@@ -346,7 +346,7 @@ export function layoutTaskBoard({
   // same name.
   const isMarkedDone = (task: Task): boolean =>
     groupBy === 'status' &&
-    readTaskStatus(task, options.statusNamespace) === 'done';
+    readStatusTag(task, options.statusNamespace) === 'done';
   const markedDone = open.filter(isMarkedDone);
   const drafts = draftColumns({ groupBy, open, index, options, namespace, isMarkedDone });
 
@@ -746,7 +746,7 @@ function selectTasks(
   }
   const tasks = withoutParked(found, index);
   const parkedLeftOut = found.filter(
-    (task) => !task.completed && index.parked?.tasks.has(task.id),
+    (task) => isOpenTask(task) && index.parked?.tasks.has(task.id),
   ).length;
   return { tasks, parkedLeftOut };
 }
@@ -761,10 +761,10 @@ function listStatusColumns(
 ): { status: string; openTasks: number }[] {
   const counts = new Map<string, number>();
   index.tasks.forEach((task) => {
-    if (task.completed) {
+    if (!isOpenTask(task)) {
       return;
     }
-    const status = readTaskStatus(task, options.statusNamespace);
+    const status = readStatusTag(task, options.statusNamespace);
     if (status !== undefined && status !== 'done') {
       counts.set(status, (counts.get(status) ?? 0) + 1);
     }
@@ -781,7 +781,7 @@ function createStatusColumns(
   const byStatus = new Map<string, Task[]>();
   const withoutStatus: Task[] = [];
   for (const task of open) {
-    const status = readTaskStatus(task, options.statusNamespace);
+    const status = readStatusTag(task, options.statusNamespace);
     if (status === undefined) {
       withoutStatus.push(task);
       continue;
@@ -976,7 +976,7 @@ function dueDetail(task: Task, today: number, taskPolicy: QueryContext['taskPoli
 /** The move values a task already has, for its card's menu to check. */
 function currentMoves(task: Task, today: number, statusNamespace: string): string[] {
   return [
-    `status:${readTaskStatus(task, statusNamespace) ?? ''}`,
+    `status:${readStatusTag(task, statusNamespace) ?? ''}`,
     `priority:${task.priority ?? ''}`,
     ...dueMoves(task, today),
     ...(task.completed ? ['done'] : []),

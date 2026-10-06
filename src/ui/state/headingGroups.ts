@@ -12,6 +12,7 @@
  */
 import type { ParsedFile, Section, Task, TagReference, WorkspaceIndex } from '../../domain/model';
 import type { GroupedNote } from './searchGroups';
+import { countTaskProgress } from '../../domain/tasks/taskStatuses';
 
 /** How deep the groups nest: a project, its parts, and theirs. */
 export const HEADING_DEPTH = 3;
@@ -80,14 +81,19 @@ function taskPath(index: WorkspaceIndex, task: Task, searched: ReadonlySet<strin
   return sectionPath(index, section, index.files.get(task.filePath), searched);
 }
 
-/** A level's notes and tasks, its own and every level's inside it. */
-export function countGroup<N extends GroupedNote>(group: HeadingGroup<N>): { notes: number; tasks: number; done: number } {
+/**
+ * A level's notes and tasks, its own and every level's inside it, and how
+ * far along the tasks are: how many are done of those that count, all but
+ * the cancelled ones.
+ */
+export function countGroup<N extends GroupedNote>(group: HeadingGroup<N>): { notes: number; tasks: number; done: number; counted: number } {
+  const own = countTaskProgress(group.tasks);
   return group.children.reduce(
     (sum, child) => {
       const inner = countGroup(child);
-      return { notes: sum.notes + inner.notes, tasks: sum.tasks + inner.tasks, done: sum.done + inner.done };
+      return { notes: sum.notes + inner.notes, tasks: sum.tasks + inner.tasks, done: sum.done + inner.done, counted: sum.counted + inner.counted };
     },
-    { notes: group.notes.length, tasks: group.tasks.length, done: group.tasks.filter((task) => task.completed).length },
+    { notes: group.notes.length, tasks: group.tasks.length, done: own.done, counted: own.total },
   );
 }
 

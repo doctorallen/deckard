@@ -8,6 +8,7 @@ import {
   WikiLinkOccurrence,
   WikiLinkTarget,
 } from '../../domain/index/backlinks';
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
 import { ParsedFile, Section, Task, WorkspaceIndex } from '../../domain/model';
 import { BLOCK_ID_PATTERN } from '../../domain/markdown/taskFields';
@@ -101,7 +102,7 @@ export function createReferenceSummary(
   backlinks: BacklinkIndex,
 ): ReferenceSummary {
   const sections = new Map(file.sections.map((section) => [section.id, section]));
-  const openTasks = file.tasks.filter((task) => !task.completed);
+  const openTasks = file.tasks.filter(isOpenTask);
   const headings = file.sections
     .filter((section) => !section.isInline)
     .map((section) => ({
@@ -265,7 +266,7 @@ export function createTagSummary(
     ...(tag.hubFilePaths?.length ? { hubFilePath: tag.hubFilePaths[0] } : {}),
     noteCount: sections.length + tag.filePaths.length,
     taskCount: tasks.length,
-    openTaskCount: tasks.filter((task) => !task.completed).length,
+    openTaskCount: tasks.filter(isOpenTask).length,
     entries: entries.slice(0, limit).map((entry) => ({
       title: entry.title,
       fileName: entry.filePath.split('/').pop() ?? entry.filePath,

@@ -82,13 +82,13 @@ function GroupHeading({ group, place, looseLabel }: { readonly group: SearchResu
 
 /** How far along the group's tasks are, its parts' among them: a bar and "3/8 done (38%)". */
 function GroupProgress({ group }: { readonly group: SearchResultGroup }) {
-  if (!group.taskCount) {
+  if (!group.progressTotal) {
     return null;
   }
   return (
     <span class="result-group-progress">
-      <ProgressBar done={group.doneCount} total={group.taskCount} />
-      <span class="result-group-progress-label"><ProgressText text={formatProgressCount(group.doneCount, group.taskCount)} /></span>
+      <ProgressBar done={group.doneCount} total={group.progressTotal} />
+      <span class="result-group-progress-label"><ProgressText text={formatProgressCount(group.doneCount, group.progressTotal)} /></span>
     </span>
   );
 }

@@ -1,4 +1,5 @@
-import { DEFAULT_TASK_POLICY, needsNewDate, readLineStatus } from '../tasks/taskPolicy';
+import { DEFAULT_TASK_POLICY, needsNewDate, type TaskPolicy } from '../tasks/taskPolicy';
+import { isOpenTask, normalizeStatusName, readTaskStatus } from '../tasks/taskStatuses';
 import { addDays, startOfDay } from '../markdown/calendar';
 import { getFileName } from '../../shared/paths';
 import { EntityNamespaceAliases, isDailyNoteFile, isPeriodicNoteFile } from '../markdown/parser';
@@ -7,6 +8,7 @@ import {
   Section,
   Task,
   TaskPriority,
+  TaskStatus,
   WorkspaceIndex,
 } from '../model';
 import { resolveIndexedTagKey } from '../index/tagNavigation';
@@ -70,7 +72,7 @@ export function evaluateQuery(
 
   const membership = buildTagMembership(index);
   const context = createEvaluationContext(index, node, query);
-  const statusNamespace = query.taskPolicy.statusNamespace;
+  const statusPolicy = query.taskPolicy;
   const links = context.links;
   const withLinks = (unit: QueryUnit, key: string): QueryUnit =>
     links ? { ...unit, links: links.byUnit.get(key) } : unit;
@@ -87,7 +89,7 @@ export function evaluateQuery(
   const tasks = [...index.tasks.values()].filter((task) =>
     matchesNode(
       node,
-      withLinks(createTaskUnit(index, membership, task, statusNamespace), `task:${task.id}`),
+      withLinks(createTaskUnit(index, membership, task, statusPolicy), `task:${task.id}`),
       context,
     ),
   );
@@ -200,7 +202,7 @@ export function countTagMatches(
     }
   });
   index.tasks.forEach((task) =>
-    add(createTaskUnit(index, membership, task, COUNTED_STATUS_NAMESPACE).tagKeys, 'tasks'),
+    add(createTaskUnit(index, membership, task, COUNTED_STATUS_POLICY).tagKeys, 'tasks'),
   );
   index.files.forEach((file) => {
     if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
@@ -279,7 +281,7 @@ export function countTagPairMatches(
     }
   });
   index.tasks.forEach((task) =>
-    add(createTaskUnit(index, membership, task, COUNTED_STATUS_NAMESPACE).tagKeys, 'tasks'),
+    add(createTaskUnit(index, membership, task, COUNTED_STATUS_POLICY).tagKeys, 'tasks'),
   );
   index.files.forEach((file) => {
     if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
@@ -292,11 +294,11 @@ export function countTagPairMatches(
 }
 
 /**
- * The namespace a count reads a task's status in. A count reads only a
+ * The statuses a count reads a task's status with. A count reads only a
  * unit's tags, never its status, so the count of an index is the same
- * whatever the setting says, and one cache per index serves every reader.
+ * whatever the settings say, and one cache per index serves every reader.
  */
-const COUNTED_STATUS_NAMESPACE = DEFAULT_TASK_POLICY.statusNamespace;
+const COUNTED_STATUS_POLICY = DEFAULT_TASK_POLICY;
 
 /**
  * The most tags an entry may carry before its pairs are skipped. A note that
@@ -320,6 +322,7 @@ interface QueryUnit {
   scheduledAt?: number;
   startAt?: number;
   doneAt?: number;
+  cancelledAt?: number;
   priority?: TaskPriority;
   /** 🆔 this task's own name, which other tasks depend on. */
   dependencyId?: string;
@@ -331,8 +334,8 @@ interface QueryUnit {
   blocking?: boolean;
   /** The person the task is for: whoever its 👤 field names. */
   assignee?: string;
-  /** The status written on the task's line, such as `waiting`, or ''. */
-  status?: string;
+  /** The task's status: its checkbox's, or the status its line's tag names. */
+  status?: TaskStatus;
   /** The `[[links]]` on the unit's own lines, read for a `link` search. */
   links?: readonly UnitLink[];
   /** In a parked folder, or found by a search for a parked tag. */
@@ -389,7 +392,7 @@ function getDependencyState(index: WorkspaceIndex): DependencyState {
   }
   const state: DependencyState = { openIds: new Set(), neededIds: new Set() };
   index.tasks.forEach((task) => {
-    if (task.completed) {
+    if (!isOpenTask(task)) {
       return;
     }
     if (task.dependencyId) {
@@ -534,12 +537,12 @@ export function readTaskTagKeys(index: WorkspaceIndex, task: Task): Set<string> 
   return tagKeys;
 }
 
-/** A task as a condition tests it, its status read in `statusNamespace`. */
+/** A task as a condition tests it, its status read with the policy's statuses and namespace. */
 function createTaskUnit(
   index: WorkspaceIndex,
   membership: TagMembership,
   task: Task,
-  statusNamespace: string,
+  policy: Pick<TaskPolicy, 'statusNamespace' | 'statuses'>,
 ): QueryUnit {
   const tagKeys = readTaskTagKeys(index, task);
   membership.tasks.get(task.id)?.forEach((tagKey) => tagKeys.add(tagKey));
@@ -556,19 +559,20 @@ function createTaskUnit(
     scheduledAt: task.scheduledAt,
     startAt: task.startAt,
     doneAt: task.doneAt,
+    cancelledAt: task.cancelledAt,
     priority: task.priority,
     dependencyId: task.dependencyId,
     dependsOn: task.dependsOn,
     assignee: task.assignee,
-    status: readLineStatus(task, statusNamespace),
+    status: readTaskStatus(task, policy.statuses, policy.statusNamespace),
     parked: index.parked?.tasks.has(task.id) ?? false,
     step: task.parentTaskId !== undefined,
     stepCount: task.steps?.total ?? 0,
     blocked:
-      !task.completed &&
+      isOpenTask(task) &&
       (task.dependsOn?.some((id) => dependencies.openIds.has(id)) ?? false),
     blocking:
-      !task.completed &&
+      isOpenTask(task) &&
       task.dependencyId !== undefined &&
       dependencies.neededIds.has(task.dependencyId),
   };
@@ -633,6 +637,8 @@ function matchesCondition(
       return matchesText(condition, unit);
     case 'task':
       return applyNegation(condition, matchesTaskState(condition.value, unit));
+    case 'status':
+      return applyNegation(condition, matchesStatus(condition.value, unit));
     case 'is':
       if (condition.value === 'daily' || condition.value === 'periodic') {
         const periodic = getPeriodicState(context.index);
@@ -661,6 +667,7 @@ function matchesCondition(
     case 'scheduled':
     case 'start':
     case 'done':
+    case 'cancelled':
       return matchesTaskDate(condition, unit, condition.field, context.query);
     case 'priority':
       return matchesPriority(condition, unit);
@@ -751,7 +758,15 @@ function matchesText(condition: QueryConditionNode, unit: QueryUnit): boolean {
   return applyNegation(condition, unit.text.includes(needle));
 }
 
-/** Answers `task`: any task, an open one, or a done one; never a note. */
+/** Whether a task is open: neither done nor cancelled, as isOpenTask reads a task. */
+function isOpenUnit(unit: QueryUnit): boolean {
+  return unit.completed !== true && unit.status?.type !== 'cancelled';
+}
+
+/**
+ * Answers `task`: any task, an open one, or a done one; never a note. A
+ * cancelled task is neither open nor done.
+ */
 function matchesTaskState(value: string, unit: QueryUnit): boolean {
   if (unit.kind !== 'task') {
     return false;
@@ -759,7 +774,26 @@ function matchesTaskState(value: string, unit: QueryUnit): boolean {
   if (value === 'any') {
     return true;
   }
-  return value === 'done' ? unit.completed === true : unit.completed !== true;
+  return value === 'done' ? unit.completed === true : isOpenUnit(unit);
+}
+
+/**
+ * Answers `status:`: `open`, `done`, and `any` as `task:` does; `[/]` the
+ * status whose character it is, an unknown one too; and anything else a
+ * status by its name, a hyphen read as a space, so `status:in-progress`
+ * finds In progress, and `status:unknown` every character no status names.
+ */
+function matchesStatus(value: string, unit: QueryUnit): boolean {
+  if (unit.kind !== 'task' || !unit.status) {
+    return false;
+  }
+  if (value === 'open' || value === 'done' || value === 'any') {
+    return matchesTaskState(value, unit);
+  }
+  if (/^\[.\]$/u.test(value)) {
+    return unit.status.symbol === value.slice(1, -1);
+  }
+  return normalizeStatusName(unit.status.name) === normalizeStatusName(value);
 }
 
 /**
@@ -786,7 +820,7 @@ function matchesIs(
     return false;
   }
   const matches = TASK_IS_PREDICATES.get(value);
-  return matches ? matches(unit, unit.completed !== true, context) : false;
+  return matches ? matches(unit, isOpenUnit(unit), context) : false;
 }
 
 /** Whether a task, open or not as `open` says, is what one `is:` value names. */
@@ -813,14 +847,14 @@ function isForToday(unit: QueryUnit, open: boolean, { now }: QueryContext): bool
 }
 
 /**
- * Waiting on a person, as the board's Waiting column means it: an open task
- * marked waiting, or handed to someone other than me. Waiting on another
- * task is `is:blocked`.
+ * Waiting: an open task whose status puts it on hold, such as Waiting,
+ * Someday, or Blocked, or one handed to someone other than me. Waiting on
+ * another task is `is:blocked`.
  */
 function isWaiting(unit: QueryUnit, open: boolean, { identity }: QueryContext): boolean {
   return (
     open &&
-    (unit.status === 'waiting' ||
+    (unit.status?.type === 'onHold' ||
       (unit.assignee !== undefined &&
         !(identity !== undefined && matchesPerson(identity, unit.assignee))))
   );
@@ -837,8 +871,16 @@ function isAvailable(unit: QueryUnit, open: boolean, context: QueryContext): boo
     unit.parked !== true &&
     unit.blocked !== true &&
     (unit.startAt === undefined || unit.startAt < addDays(startOfDay(context.now), 1)) &&
-    !context.taskPolicy.onHoldStatuses.includes(unit.status ?? '')
+    unit.status?.type !== 'onHold'
   );
+}
+
+/**
+ * Stuck, as Obsidian Tasks' `is blocked` means it and more: an open task
+ * waiting for an open task (⛔), or one whose status is Blocked.
+ */
+function isBlocked(unit: QueryUnit, open: boolean): boolean {
+  return unit.blocked === true || (open && normalizeStatusName(unit.status?.name ?? '') === 'blocked');
 }
 
 /**
@@ -858,7 +900,10 @@ function isMine(unit: QueryUnit, _open: boolean, { identity }: QueryContext): bo
  */
 const TASK_IS_PREDICATES: ReadonlyMap<string, IsPredicate> = new Map<string, IsPredicate>([
   ['open', (_unit, open) => open],
-  ['done', (_unit, open) => !open],
+  ['in-progress', (unit) => unit.status?.type === 'inProgress'],
+  ['done', (unit) => unit.completed === true],
+  ['cancelled', (unit) => unit.status?.type === 'cancelled'],
+  ['closed', (_unit, open) => !open],
   ['task', () => true],
   ['overdue', (unit, open, { now }) => open && unit.dueAt !== undefined && unit.dueAt < startOfDay(now)],
   [
@@ -870,7 +915,7 @@ const TASK_IS_PREDICATES: ReadonlyMap<string, IsPredicate> = new Map<string, IsP
   ['today', isForToday],
   ['waiting', isWaiting],
   ['available', isAvailable],
-  ['blocked', (unit) => unit.blocked === true],
+  ['blocked', isBlocked],
   ['blocking', (unit) => unit.blocking === true],
   ['mine', isMine],
   ['assigned', (unit) => unit.assignee !== undefined],
@@ -917,6 +962,8 @@ function getTaskDate(unit: QueryUnit, field: string): number | undefined {
       return unit.startAt;
     case 'done':
       return unit.doneAt;
+    case 'cancelled':
+      return unit.cancelledAt;
     default:
       return undefined;
   }
@@ -996,7 +1043,7 @@ function matchesPathValue(
 function matchesTaskDate(
   condition: QueryConditionNode,
   unit: QueryUnit,
-  field: 'due' | 'scheduled' | 'start' | 'done',
+  field: 'due' | 'scheduled' | 'start' | 'done' | 'cancelled',
   context: QueryContext,
 ): boolean {
   if (unit.kind !== 'task') {
@@ -1006,7 +1053,7 @@ function matchesTaskDate(
   if (condition.value === 'none') {
     return applyNegation(condition, timestamp === undefined);
   }
-  return matchesDate(condition, timestamp, field === 'done' ? 'past' : 'future', context);
+  return matchesDate(condition, timestamp, field === 'done' || field === 'cancelled' ? 'past' : 'future', context);
 }
 
 /**

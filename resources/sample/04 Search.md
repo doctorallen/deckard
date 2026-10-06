@@ -48,7 +48,7 @@ tag = #risk/*
 
 - Plain words find every note section and task that has all of them. Quote
   words to find them together.
-- A tag finds everything that carries it: the relay project's tag finds 23
+- A tag finds everything that carries it: the relay project's tag finds 24
   tasks, most of them because they sit under a heading that carries it.
 - A person is a tag like any other. Ren's tag finds his three tasks and the
   hub note that names him as the relay's owner.
@@ -80,7 +80,10 @@ turn one around, as `-is:done`.
 
 ```search
 is:open
+is:in-progress
 is:done
+is:cancelled
+is:closed
 is:task
 is:note
 is:overdue
@@ -97,16 +100,18 @@ is:unassigned
 is:step
 ```
 
-- `is:open` and `is:done`: 49 open tasks and 10 done ones. `is:task` is all
-  of them; `is:note` is every note section instead.
+- `is:open` and `is:done`: 49 open tasks and 10 done ones. `is:in-progress`:
+  the 3 marked doing. `is:cancelled`: 1, the shell camera in the Task board
+  note, which is neither open nor done; `is:closed` is done or cancelled, 11.
+  `is:task` is all of them; `is:note` is every note section instead.
 - `is:overdue`: 3, the two overdue tasks in the Tasks note and the lease
   renewal, however long ago. `is:needs-date` is the lease renewal alone: the
   one more than 30 days past its due date.
 - `is:today`: 4, the Tasks view's **Today**: due today, or scheduled for
   today. `is:due` adds everything due in the next seven days, and what is
   overdue.
-- `is:waiting`: 4, the task marked waiting and the three whose 👤 names
-  someone other than you.
+- `is:waiting`: 5, the tasks on hold, marked waiting or someday, and the
+  three whose 👤 names someone other than you.
 - `is:available`: what can be started now. It leaves out the blocked
   comparison, the waiting and someday tasks, and the falloff test, which has
   not started.
@@ -131,6 +136,7 @@ has:id
 has:dependsOn
 has:steps
 has:done
+has:cancelled
 no:steps is:open
 ```
 
@@ -160,6 +166,7 @@ scheduled = today
 start > today
 done = today
 done >= "last friday"
+cancelled = 7d
 created = last-month
 updated > 7d
 created = 2026-08
@@ -173,10 +180,31 @@ created = 2026-08
   both due on the 15th of next month.
 - `due < 7d` counts seven days forward from today, overdue included: 17.
 - `scheduled = today`: 1. `start > today`: 1, the falloff test.
-- `done = today`: 2. With `done`, a weekday means the last one.
+- `done = today`: 2. With `done`, a weekday means the last one. `cancelled`
+  is the ❌ date, and looks back as `done` does: `cancelled = 7d` is the
+  shell camera, cancelled two days ago.
 - `created = last-month` finds the Argent Protocol hub, whose front matter
   says it was written on the 15th of last month. `updated > 7d` is what
   changed in the last seven days.
+
+## By status
+
+A task's status is the character in its box, or, in an empty box, a status
+tag on its line. `status:` finds one by its name, a hyphen for a space, or
+by its character in brackets.
+
+```search
+status:in-progress
+status:waiting
+status:[-]
+-status:someday is:waiting
+```
+
+- `status:in-progress`: the 3 tasks marked doing, the same as
+  `is:in-progress`. `status:waiting`: 1, Praxis Loom.
+- `status:[-]` is every task whose box holds `-`: the shell camera.
+- `-status:someday is:waiting` leaves the someday idea out of what is
+  waiting: 4.
 
 ## People and priority
 

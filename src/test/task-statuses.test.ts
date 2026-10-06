@@ -5,12 +5,20 @@ import * as path from 'path';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { isTaskLineOf, STATUS_MARKS, STATUS_OR_MIGRATED_MARKS } from '../domain/markdown/lineShapes';
 import {
+  countTaskProgress,
   DEFAULT_TASK_STATUSES,
+  nameTaskStatus,
+  readTaskStatus,
   readTaskStatuses,
   readTaskStatusSettings,
   statusForSymbol,
   type TaskStatusDefinition,
 } from '../domain/tasks/taskStatuses';
+import { buildWorkspaceIndex } from '../domain/index/indexState';
+import { createQueryContext } from '../domain/query/queryContext';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { parseQuery } from '../domain/query/queryParser';
+import { buildSearchFacets } from '../domain/search/facets';
 
 /** Each task's character, name, type, and whether it is done, as the parser read it. */
 function read(content: string, taskStatuses?: readonly TaskStatusDefinition[]): string[] {
@@ -148,5 +156,100 @@ suite('Task statuses: reading a note', () => {
     assert.strictEqual(isTaskLineOf('- [ ]word', { indent: 'whitespace', marks: STATUS_MARKS }), true);
     assert.strictEqual(isTaskLineOf('- [>] Moved', { indent: 'whitespace', marks: STATUS_MARKS }), false);
     assert.strictEqual(isTaskLineOf('- [>] Moved', { indent: 'whitespace', marks: STATUS_OR_MIGRATED_MARKS }), true);
+  });
+});
+
+/** A workspace of one note, its tasks each named by their words. */
+function indexOf(lines: readonly string[]) {
+  return buildWorkspaceIndex(new Map([['work.md', parseMarkdown('work.md', lines.join('\n'))]]));
+}
+
+suite('Task statuses: what the types mean, and searching', () => {
+  const index = indexOf([
+    '# Work',
+    '- [ ] plain',
+    '- [/] started',
+    '- [ ] tagged-doing #status/doing',
+    '- [x] finished ✅ 2026-10-01',
+    '- [-] dropped ❌ 2026-10-02',
+    '- [=] stuck',
+    '- [ ] tagged-blocked #status/blocked',
+    '- [ ] tagged-waiting #status/waiting',
+    '- [?] puzzled',
+    '- [ ] tagged-done #status/done',
+    '- [ ] review #status/review',
+  ]);
+  const now = new Date(2026, 9, 5).getTime();
+  const matches = (query: string): string[] => {
+    const parsed = parseQuery(query);
+    assert.deepStrictEqual(parsed.diagnostics.filter((diagnostic) => diagnostic.severity === 'error'), [], query);
+    return evaluateQuery(index, parsed.node, createQueryContext(now)).tasks.map((task) => task.title.split(' ')[0]).sort();
+  };
+
+  test('is: goes by type: open, in progress, done, cancelled, and closed', () => {
+    assert.deepStrictEqual(matches('is:open'), ['plain', 'puzzled', 'review', 'started', 'stuck', 'tagged-blocked', 'tagged-doing', 'tagged-done', 'tagged-waiting']);
+    assert.deepStrictEqual(matches('is:in-progress'), ['started', 'tagged-doing']);
+    assert.deepStrictEqual(matches('is:done'), ['finished']);
+    assert.deepStrictEqual(matches('is:cancelled'), ['dropped']);
+    assert.deepStrictEqual(matches('is:closed'), ['dropped', 'finished']);
+    assert.deepStrictEqual(matches('task:open'), matches('is:open'));
+  });
+
+  test('status: finds a status by name, by character, and keeps open, done, and any', () => {
+    assert.deepStrictEqual(matches('status:blocked'), ['stuck', 'tagged-blocked']);
+    assert.deepStrictEqual(matches('status:in-progress'), ['started', 'tagged-doing']);
+    assert.deepStrictEqual(matches('status:"in progress"'), ['started', 'tagged-doing']);
+    assert.deepStrictEqual(matches('status:[=]'), ['stuck']);
+    assert.deepStrictEqual(matches('status:[?]'), ['puzzled']);
+    assert.deepStrictEqual(matches('status:unknown'), ['puzzled']);
+    assert.deepStrictEqual(matches('status:cancelled'), ['dropped']);
+    assert.deepStrictEqual(matches('status:done'), ['finished']);
+    assert.deepStrictEqual(matches('status:open'), matches('is:open'));
+    assert.strictEqual(matches('status:any').length, 11);
+    assert.deepStrictEqual(matches('is:in-progress -status:[/]'), ['tagged-doing']);
+  });
+
+  test('a done tag closes nothing, and a tag no status names leaves the box\'s status', () => {
+    const [done] = [...index.tasks.values()].filter((task) => task.title.startsWith('tagged-done'));
+    assert.deepStrictEqual(readTaskStatus(done, DEFAULT_TASK_STATUSES, 'status'), { symbol: ' ', name: 'Todo', type: 'todo' });
+    const [review] = [...index.tasks.values()].filter((task) => task.title.startsWith('review'));
+    assert.strictEqual(readTaskStatus(review, DEFAULT_TASK_STATUSES, 'status').name, 'Todo');
+    assert.strictEqual(nameTaskStatus(review, DEFAULT_TASK_STATUSES, 'status'), 'Review');
+  });
+
+  test('on hold, blocked, and available read the statuses', () => {
+    assert.deepStrictEqual(matches('is:waiting'), ['stuck', 'tagged-blocked', 'tagged-waiting']);
+    assert.deepStrictEqual(matches('is:blocked'), ['stuck', 'tagged-blocked']);
+    assert.deepStrictEqual(matches('is:available'), ['plain', 'puzzled', 'review', 'started', 'tagged-doing', 'tagged-done']);
+  });
+
+  test('the cancelled date is a field of its own, looking back', () => {
+    assert.deepStrictEqual(matches('has:cancelled'), ['dropped']);
+    assert.deepStrictEqual(matches('cancelled = 2026-10-02'), ['dropped']);
+    assert.deepStrictEqual(matches('no:cancelled AND is:closed'), ['finished']);
+  });
+
+  test('cancelled tasks count on neither side of progress', () => {
+    const tasks = [...index.tasks.values()];
+    assert.deepStrictEqual(countTaskProgress(tasks), { done: 1, total: 10 });
+    const steps = parseMarkdown('steps.md', ['- [ ] Ship', '  - [x] Build', '  - [-] Rewrite', '  - [ ] Test'].join('\n')).tasks[0].steps;
+    assert.deepStrictEqual({ total: steps?.total, done: steps?.done, next: steps?.next }, { total: 2, done: 1, next: 'Test' });
+  });
+
+  test('Refine offers each open status found, and cancelled tasks, as chips', () => {
+    const tasks = [...index.tasks.values()];
+    const [facet] = buildSearchFacets(index, { sections: [], files: [], tasks }, 'is:task', { now }).filter((found) => found.id === 'status');
+    assert.deepStrictEqual(
+      facet.values.map((value) => `${value.label} ${value.count} ${value.clause}`),
+      [
+        'Open 9 is:open',
+        'Done 1 is:done',
+        'Cancelled 1 is:cancelled',
+        'Blocked 2 status:blocked',
+        'In progress 2 status:in-progress',
+        'Unknown 1 status:unknown',
+        'Waiting 1 status:waiting',
+      ],
+    );
   });
 });
