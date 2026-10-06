@@ -515,6 +515,31 @@ suite('Task Board page', () => {
     assert.deepStrictEqual(shown.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/a.md', line: 1 }, 'Enter alone opens it in place');
   });
 
+  test('a card\'s parent tag narrows the search as Refine does, and Cmd/Ctrl opens its page', () => {
+    const index = buildWorkspaceIndex(new Map([['notes/z.md', parseMarkdown('notes/z.md', '# Zeus #project/zeus\n- [ ] Alpha #project/atlas\n')]]));
+    const preferences = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
+    const board = createTaskBoard({ index, preferences: { ...preferences.reader.value, taskBoardLayout: 'board' }, search: { query: '#project/atlas' }, options: { ...options, parentTag: true }, tagTitleDisplayMode: 'inline' });
+    preferences.repository.dispose();
+    const shown = show(board);
+    const tag = () => shown.find('.board-card .parent-tag');
+    const click = (init: MouseEventInit = {}) => {
+      shown.posted.length = 0;
+      tag().dispatchEvent(new shown.window.MouseEvent('click', { bubbles: true, cancelable: true, ...init }));
+    };
+    assert.strictEqual(tag().getAttribute('data-tag-key'), '#project/zeus');
+    click();
+    assert.strictEqual(shown.lastPosted('setBoardQuery')?.query, '#project/atlas AND #project/zeus', 'a click adds it with AND');
+    click({ altKey: true });
+    assert.strictEqual(shown.lastPosted('setBoardQuery')?.query, '#project/atlas AND -#project/zeus', 'Alt leaves it out');
+    click({ shiftKey: true });
+    assert.strictEqual(shown.lastPosted('setBoardQuery')?.query, '(#project/atlas OR #project/zeus)', 'Shift allows it beside the tag searched');
+    for (const modifier of [{ metaKey: true }, { ctrlKey: true }]) {
+      click(modifier);
+      assert.deepStrictEqual(shown.lastPosted('openTag'), { type: 'openTag', tagKey: '#project/zeus' }, 'Cmd/Ctrl opens its page');
+      assert.strictEqual(shown.lastPosted('setBoardQuery'), undefined, 'and leaves the search as it is');
+    }
+  });
+
   test('focus on Undo goes back to the status columns when Undo is taken or withdrawn', () => {
     const files = { 'notes/a.md': '- [ ] Alpha #status/todo\n' };
     const withStatuses = (statuses: string[]) => {

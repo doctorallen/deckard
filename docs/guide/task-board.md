@@ -40,7 +40,7 @@ The search icon in the [Tasks view](tasks.md#tasks-view)'s title opens the board
 - A column over 100 cards shows **Show N more**.
 - **+ Add task** under a column's title captures a task into today's note with that column's status, priority, date, or person. A card's **⋯** menu offers **Due on a date…** for any day.
 - Select a card to open its line, or a tag to open its overview.
-- **Show the tag each task is under**, in the gear's **Cards**, puts the task's nearest parent tag above its title on cards and list rows (`deckard.board.parentTag`): the first tag on the nearest tagged heading above it, else its note's front-matter tag. A tag the task's own line writes, a status tag, and a tag of the namespace the board is grouped by are skipped, since the card already says them. A task under `## Launch #project/atlas` shows `#project/atlas`.
+- **Show the tag each task is under**, in the gear's **Cards**, puts the task's nearest parent tag above its title on cards and list rows (`deckard.board.parentTag`): the first tag on the nearest tagged heading above it, else its note's front-matter tag. A tag the task's own line writes, a status tag, and a tag of the namespace the board is grouped by are skipped, since the card already says them. A task under `## Launch #project/atlas` shows `#project/atlas`. Select the tag to add it to the board's search, as **Refine** does: Shift-click adds it with OR, beside a tag of the same namespace the search already has, and Alt-click leaves it out. Cmd/Ctrl-click opens the tag's page in a new tab.
 - Every move is checked against the indexed line first, so a newer edit is never overwritten.
 
 ## Table and list

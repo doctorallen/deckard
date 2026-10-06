@@ -8,7 +8,9 @@
   in the gear's **Cards** (`deckard.board.parentTag`), puts each task's
   nearest parent tag above its title on cards and list rows: the tag on
   the nearest tagged heading above it, or its note's front matter, so
-  "Draft the brief" says it is part of `#project/atlas`.
+  "Draft the brief" says it is part of `#project/atlas`. Selecting the tag
+  narrows the board's search by it, as Refine does (Shift-click for OR,
+  Alt-click to leave it out); Cmd/Ctrl-click opens the tag's page.
 
 ## 2.3.0 - 2026-10-06
 

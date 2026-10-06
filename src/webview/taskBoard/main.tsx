@@ -16,7 +16,7 @@ import { installMenuKeys } from '../shared/menuKeys';
 import { openSourceMessage } from '../shared/openSource';
 import { onHostMessage, startPage } from '../shared/page';
 import { closeRankMenu, installRankedRows, moveKeyToEdge, rankKeys } from '../shared/rankedRows';
-import { createQueryEditor } from '../shared/queryEditor';
+import { createQueryEditor, refineModeOf } from '../shared/queryEditor';
 import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { announce } from '../shared/status';
 import { taskTitleOf } from '../shared/taskRow';
@@ -496,6 +496,20 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: TaskBoard
   'undo-remove-status': (_target, snapshot) => undoRemoveStatus(snapshot),
 };
 
+/**
+ * A card's parent tag, clicked: Cmd/Ctrl opens the tag's page in a new tab,
+ * as a tag does in the editor; otherwise it narrows the board's search, as
+ * Refine's value for the tag would.
+ */
+function refineByTag(target: HTMLElement, event: MouseEvent): void {
+  const tagKey = String(target.dataset.tagKey);
+  if (event.metaKey || event.ctrlKey) {
+    post({ type: 'openTag', tagKey });
+  } else {
+    editor.refineBy(tagKey, refineModeOf(event));
+  }
+}
+
 /** The row an event happened in, in the list or the table. */
 function rowOf(target: Element | null): HTMLElement | null {
   return target ? target.closest<HTMLElement>('.task-list .task-row, .result-table .result-row') : null;
@@ -516,6 +530,10 @@ document.addEventListener('click', (event) => {
     const action = String(target.dataset.action);
     if (action === 'task-row-menu') {
       openRowMenu(target);
+      return;
+    }
+    if (action === 'refine-by-tag') {
+      refineByTag(target, event);
       return;
     }
     const snapshot = shown();
