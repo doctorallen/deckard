@@ -9,8 +9,7 @@ import type { TagOverviewCard, TagTitleDisplayMode } from '../../ui/protocol/sha
 import { BlockExcerpt } from './blockExcerpt';
 import { TagButton, TitleWithTags } from './tagButton';
 import { formatSourceLocation, HeadingPathSteps, ParkedLabel, trimHeadingPath } from './taskRow';
-import { formatIsoDate } from '../../domain/markdown/calendar';
-import { readEntryDetails } from './entryDetails';
+import { describeEntryDetails, readEntryDetails } from './entryDetails';
 
 /** How a page draws its cards: the Format, Preview, and tag rows of its gear. */
 export interface CardDisplay {
@@ -146,19 +145,14 @@ function CardTitle({ card, titleDisplay }: { readonly card: TagOverviewCard; rea
  * Nothing when none of them has anything to say.
  */
 function CardDetails({ card, fileName }: { readonly card: TagOverviewCard; readonly fileName: string }) {
-  const details = readEntryDetails();
-  const parts = [
-    details.has('fileAndLine') ? formatSourceLocation(fileName, card.startLine) : '',
-    details.has('created') && card.createdAt !== undefined ? `Created ${formatIsoDate(card.createdAt)}` : '',
-    details.has('updated') && card.updatedAt !== undefined ? `Updated ${formatIsoDate(card.updatedAt)}` : '',
-  ].filter(Boolean);
+  const line = describeEntryDetails({ location: formatSourceLocation(fileName, card.startLine), createdAt: card.createdAt, updatedAt: card.updatedAt });
   const via = card.via === 'hubLink';
-  if (!parts.length && !via) {
+  if (!line && !via) {
     return null;
   }
   return (
     <div class="source">
-      {`${parts.join(' · ')}${via && parts.length ? ' ' : ''}`}
+      {`${line}${via && line ? ' ' : ''}`}
       {via ? <span class="card-via">Links the hub note</span> : null}
     </div>
   );

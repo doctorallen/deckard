@@ -1970,11 +1970,11 @@
               },
               "created": {
                 "type": "boolean",
-                "description": "When a note was created."
+                "description": "When a note or task was created: a task's ➕ date, or its note's."
               },
               "updated": {
                 "type": "boolean",
-                "description": "When a note was last changed."
+                "description": "When a note, or a task's note, was last changed."
               }
             },
             "additionalProperties": false,
@@ -1984,7 +1984,7 @@
               "updated": false
             },
             "scope": "application",
-            "description": "Which details pages draw under an entry, when File & line says to: its file and line, and a note's created and updated dates. A task has no dates of its own, so its row shows its file and line or nothing. Your own choice, the same in every workspace.",
+            "description": "Which details pages draw under an entry, when File & line says to: its file and line, and its created and updated dates. A task's created date is its own ➕ date when it has one, else its note's; its updated date is its note's. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.display.dates": {

@@ -15,9 +15,10 @@
   (its H2s' tags), and a project's bar counts its parts' tasks.
 
 - **Card details.** `deckard.display.cardDetails` picks what an entry
-  shows under it with File & line: its file and line, and a note's created
-  and updated dates, *Created 2026-09-12 · Updated 2026-10-03*. File & line
-  still says when: on hover, always, or never.
+  shows under it with File & line: its file and line, and its created and
+  updated dates, *Created 2026-09-12 · Updated 2026-10-03*, on search cards,
+  task rows, and board cards. A task's created date is its own ➕ date when
+  it has one. File & line still says when: on hover, always, or never.
 
 - **A project's parts on its page.** A tag written on headings with
   tagged headings under them lists those parts under its progress, each
@@ -46,6 +47,11 @@
   card of a note tagged in its front matter, leave out the headings under
   them that are notes of their own, each of which has its own card; a word
   written under one finds it alone.
+
+### Fixed
+
+- **A tag's hub note opens in the editor** from its page, even where notes
+  open on the note page: its page is the tag's page, which was open already.
 
 ## 2.2.0 - 2026-10-05
 

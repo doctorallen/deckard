@@ -918,6 +918,8 @@ function createCard(
     completed: task.completed,
     filePath: task.filePath,
     line: task.lineNumber,
+    ...(task.createdAt === undefined ? {} : { createdAt: task.createdAt }),
+    ...(task.updatedAt === undefined ? {} : { updatedAt: task.updatedAt }),
     overdue: open && task.dueAt !== undefined && task.dueAt < today && !needsNewDate(task.dueAt, now, taskPolicy),
     ...(open && needsNewDate(task.dueAt, now, taskPolicy) ? { stale: true } : {}),
     details: cardDetails(task, { groupBy, today, taskPolicy, blockers }),

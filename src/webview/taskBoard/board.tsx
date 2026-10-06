@@ -11,9 +11,10 @@ import type { ActionMenuGroup, ActionMenuItem } from '../shared/actionMenu';
 import { IconButton } from '../shared/buttons';
 import { DueText } from '../shared/dueText';
 import { EllipsisIcon } from '../shared/strokeIcons';
-import { formatSourceLocation, HeadingPathSteps, plainTitle, PriorityBadge, trimHeadingPath } from '../shared/taskRow';
+import { formatSourceLocation, HeadingPathSteps, plainTitle, PriorityBadge, TaskDetails, trimHeadingPath } from '../shared/taskRow';
 import { TaskTitle } from '../shared/taskTitle';
 import { board, boardCardKey } from './model';
+import { readEntryDetails } from '../shared/entryDetails';
 
 /** What a card's menu reads of its task: what it is now, whether it is done, and whether it has steps. */
 export interface MovableTask {
@@ -137,6 +138,16 @@ interface CardProps {
   readonly columns: readonly TaskBoardColumn[];
 }
 
+/** A card's details, carried down under it: those ticked in Card details, and the headings above it with its file and line. */
+function CardPlace({ card, fileName, steps }: { readonly card: TaskBoardCard; readonly fileName: string; readonly steps: Parameters<typeof HeadingPathSteps>[0]['steps'] }) {
+  return (
+    <>
+      <TaskDetails location={formatSourceLocation(fileName, card.line)} createdAt={card.createdAt} updatedAt={card.updatedAt} />
+      {steps.length && readEntryDetails().has('fileAndLine') ? <span key="path" class="task-source heading-path"><HeadingPathSteps steps={steps} /></span> : null}
+    </>
+  );
+}
+
 /** One task card, with its checkbox and the menu that edits it. */
 function BoardCard({ card, columnId, columns }: CardProps) {
   // The title as it reads names the card and its controls, not its Markdown.
@@ -182,8 +193,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
             </p>
           )
           : null}
-        <span key="source" class="task-source">{formatSourceLocation(fileName, card.line)}</span>
-        {steps.length ? <span key="path" class="task-source heading-path"><HeadingPathSteps steps={steps} /></span> : null}
+        <CardPlace card={card} fileName={fileName} steps={steps} />
         <IconButton
           key="menu"
           action="board-menu"

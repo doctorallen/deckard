@@ -54,6 +54,9 @@ export interface TaskBoardCard {
   completed: boolean;
   filePath: string;
   line: number;
+  /** When the task was created, its own ➕ date or its note's, and when its note last changed, for Card details. */
+  createdAt?: number;
+  updatedAt?: number;
   /** Short facts under the title, such as "due 2026-09-14". */
   details: string[];
   overdue: boolean;

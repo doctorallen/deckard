@@ -10,6 +10,7 @@ import type { InlineToken } from '../../ui/protocol/inline';
 import type { DashboardTask, TagTitleDisplayMode } from '../../ui/protocol/shared';
 import { DueText } from './dueText';
 import { TaskTitle } from './taskTitle';
+import { describeEntryDetails, type EntryFacts, readEntryDetails } from './entryDetails';
 
 /** A priority's arrow: how far it is from the middle. */
 const PRIORITY_MARKS: Readonly<Record<string, string>> = { highest: '↑↑', high: '↑', medium: '', low: '↓', lowest: '↓↓' };
@@ -76,6 +77,16 @@ export function plainTitle(tokens: readonly InlineToken[]): string {
 export function formatTaskDate(timestamp: number): string {
   const date = new Date(timestamp);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * A task's details line, carried down under it as a card's is: those ticked
+ * in Card details, its file and line and its created and updated dates.
+ * Nothing when it has none of them.
+ */
+export function TaskDetails(facts: EntryFacts) {
+  const line = describeEntryDetails(facts);
+  return line ? <span key="source" class="task-source">{line}</span> : null;
 }
 
 /**
@@ -213,9 +224,9 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, 
         </div>
         <div class="task-meta">
           <TaskFacts item={item} />
-          <span class="task-source">{formatSourceLocation(item.fileName, task.lineNumber)}</span>
+          <TaskDetails location={formatSourceLocation(item.fileName, task.lineNumber)} createdAt={task.createdAt} updatedAt={task.updatedAt} />
           {afterSource ?? null}
-          {steps.length ? <span key="path" class="task-source heading-path"><HeadingPathSteps steps={steps} /></span> : null}
+          {steps.length && readEntryDetails().has('fileAndLine') ? <span key="path" class="task-source heading-path"><HeadingPathSteps steps={steps} /></span> : null}
         </div>
       </div>
       {trailing}

@@ -55,3 +55,30 @@ suite('Card details', () => {
     assert.strictEqual(shown.findAll('.card .heading-path').length, 0);
   });
 });
+
+suite('Card details on tasks', () => {
+  let page: WebviewPage | undefined;
+
+  teardown(() => {
+    page?.dispose();
+    page = undefined;
+  });
+
+  test('a task created on its own ➕ date shows that date, and its file and line, as ticked', () => {
+    const index = buildWorkspaceIndex(new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n- [ ] Chase the vendor ➕ 2026-09-12')]]));
+    const task = [...index.tasks.values()][0];
+    assert.strictEqual(formatIsoDate(task.createdAt ?? 0), '2026-09-12', 'its own ➕ date');
+    const store = createPreferences({ get: (_key: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never);
+    const snapshot = createSearchPageSnapshot(index, store.reader.value, '#project/atlas', { queryContext: createQueryContext(Date.now()) });
+    page = openWebviewPage(renderPage('searchPage', { chrome: { theme: 'cooper', zen: false, display: { details: 'fileAndLine created' } } }), snapshot);
+    assert.strictEqual(page.text('.task-row .task-source'), 'atlas / line 2 · Created 2026-09-12');
+  });
+
+  test('a task with no detail ticked that it has draws no details line', () => {
+    const index = buildWorkspaceIndex(new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n- [ ] Chase the vendor')]]));
+    const store = createPreferences({ get: (_key: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never);
+    const snapshot = createSearchPageSnapshot(index, store.reader.value, '#project/atlas', { queryContext: createQueryContext(Date.now()) });
+    page = openWebviewPage(renderPage('searchPage', { chrome: { theme: 'cooper', zen: false, display: { details: 'created' } } }), snapshot);
+    assert.strictEqual(page.findAll('.task-row .task-source').length, 0);
+  });
+});
