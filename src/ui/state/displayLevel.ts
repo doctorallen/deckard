@@ -195,6 +195,8 @@ export interface DisplayChoices {
   readonly tags?: 'text';
   readonly counts?: 'hidden';
   readonly fileAndLine?: 'always' | 'never';
+  /** The details an entry shows besides, or in place of, its file and line, when not the file and line alone: "fileAndLine created". */
+  readonly details?: string;
   readonly dates?: 'relative' | 'date';
   readonly width?: 'full';
 }

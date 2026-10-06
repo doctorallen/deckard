@@ -14,6 +14,11 @@
   tagged headings instead: each project (an H1's tag) holds its own parts
   (its H2s' tags), and a project's bar counts its parts' tasks.
 
+- **Card details.** `deckard.display.cardDetails` picks what an entry
+  shows under it with File & line: its file and line, and a note's created
+  and updated dates, *Created 2026-09-12 · Updated 2026-10-03*. File & line
+  still says when: on hover, always, or never.
+
 - **A project's parts on its page.** A tag written on headings with
   tagged headings under them lists those parts under its progress, each
   with its own figure, such as *#phase/design 2/3 done (67%)*, and a link

@@ -69,15 +69,39 @@ export function readDisplayChoices(previewed?: DisplayLevel): DisplayChoices {
     ...(scale.cardFrames === 'flat' ? { cards: 'flat' as const } : {}),
     ...(scale.tags === 'text' ? { tags: 'text' as const } : {}),
     ...(scale.counts === 'hidden' ? { counts: 'hidden' as const } : {}),
-    ...(scale.fileAndLine === 'hover' ? {} : { fileAndLine: scale.fileAndLine }),
+    ...readDetailChoices(deckard, scale.fileAndLine),
     ...(scale.dates === 'both' ? {} : { dates: scale.dates }),
     ...(deckard.get<string>(DISPLAY_SETTINGS.pageWidth.key) === 'full' ? { width: 'full' as const } : {}),
   };
 }
 
+/** The details an entry can show, in the order they are written. */
+const CARD_DETAILS = ['fileAndLine', 'created', 'updated'] as const;
+
+/**
+ * When an entry's details show and which: `deckard.display.cardDetails`
+ * ticks them, File & line says when. The file and line alone is the default
+ * and writes nothing; none ticked draws none, as never does.
+ */
+function readDetailChoices(
+  deckard: vscode.WorkspaceConfiguration,
+  fileAndLine: 'hover' | 'always' | 'never',
+): Pick<DisplayChoices, 'fileAndLine' | 'details'> {
+  const ticked = deckard.get<Record<string, unknown>>('display.cardDetails') ?? {};
+  const details = CARD_DETAILS.filter((detail) => (detail === 'fileAndLine' ? ticked[detail] !== false : ticked[detail] === true));
+  if (!details.length) {
+    return { fileAndLine: 'never' };
+  }
+  return {
+    ...(fileAndLine === 'hover' ? {} : { fileAndLine }),
+    ...(details.length === 1 && details[0] === 'fileAndLine' ? {} : { details: details.join(' ') }),
+  };
+}
+
 /** Whether a settings change alters how pages are drawn. */
 export function affectsDisplayChoices(event: vscode.ConfigurationChangeEvent): boolean {
-  return Object.values(DISPLAY_SETTINGS).some((setting) => event.affectsConfiguration(`deckard.${setting.key}`));
+  return event.affectsConfiguration('deckard.display.cardDetails')
+    || Object.values(DISPLAY_SETTINGS).some((setting) => event.affectsConfiguration(`deckard.${setting.key}`));
 }
 
 /**

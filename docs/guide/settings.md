@@ -91,7 +91,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.display.density` | `auto` | `comfortable` or `compact` spacing on every page. `auto`: compact at Zen. |
 | `deckard.display.cardFrames` | `auto` | `raised` cards, or `flat` rows parted by a divider. `auto`: flat at Zen. |
 | `deckard.display.counts` | `auto` | `shown` or `hidden`: the number beside a name, such as a widget's total or a column's tasks. A screen reader still reads each, and figures that are the point, such as Home's Due today, always show. `auto`: hidden at Zen. |
-| `deckard.display.fileAndLine` | `auto` | Where pages draw the file and line an entry is written in: on `hover` and focus, `always`, or `never`. A screen reader still reads it. `auto`: never at Zen. |
+| `deckard.display.fileAndLine` | `auto` | When pages draw an entry's details, those chosen in `deckard.display.cardDetails`: on `hover` and focus, `always`, or `never`. A screen reader still reads them. `auto`: never at Zen. |
+| `deckard.display.cardDetails` | file and line | Which details an entry shows: `fileAndLine` (where it is written, and the headings above it), and a note's `created` and `updated` dates, such as *Created 2026-09-12*. Tick them in Settings. A task has no dates, so its row shows its file and line or nothing. |
 | `deckard.display.dates` | `auto` | How a due date is written: `both` ("Overdue 2 days · 2026-10-02"), `relative` ("Overdue 2 days"), or `date` ("Overdue · 2026-10-02"). An overdue date always says Overdue. `auto`: relative at Zen. |
 | `deckard.display.pageWidth` | `limited` | How wide pages draw: `limited` to a column at most 1000px wide, or `full`, the panel's full width. In a page's gear, under Theme; the steps never change it. The Task Board and the Calendar always use their full width. |
 | `deckard.showWhatsNew` | `true` | After an update that adds features, Home shows one line linking to what is new. |
