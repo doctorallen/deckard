@@ -101,7 +101,7 @@ is:step
 ```
 
 - `is:open` and `is:done`: 49 open tasks and 10 done ones. `is:in-progress`:
-  the 3 marked doing. `is:cancelled`: 1, the shell camera in the Task board
+  the 3 in progress, two tagged doing and one written `[/]`. `is:cancelled`: 1, the shell camera in the Task board
   note, which is neither open nor done; `is:closed` is done or cancelled, 11.
   `is:task` is all of them; `is:note` is every note section instead.
 - `is:overdue`: 3, the two overdue tasks in the Tasks note and the lease
@@ -200,7 +200,7 @@ status:[-]
 -status:someday is:waiting
 ```
 
-- `status:in-progress`: the 3 tasks marked doing, the same as
+- `status:in-progress`: the same 3, written either way, the same as
   `is:in-progress`. `status:waiting`: 1, Praxis Loom.
 - `status:[-]` is every task whose box holds `-`: the shell camera.
 - `-status:someday is:waiting` leaves the someday idea out of what is

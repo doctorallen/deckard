@@ -41,11 +41,12 @@ Search pages, Home's search widget, and the Task board (tasks only) share one se
 
 - **Add condition**: type a tag, word, or value such as `open`, then choose a completion or press <kbd>Enter</kbd>; the row fills in its field and operator.
 - <kbd>Enter</kbd> opens the next row, <kbd>Backspace</kbd> in an empty row removes it, and <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>Cmd</kbd>+<kbd>Enter</kbd> on macOS) adds a group joined the other way.
+- The **Status** field lists the workspace's [task statuses](tasks.md#task-statuses).
 - Operators are `=`, `!=`, `~`, `!~`, `>`, `>=`, `<`, `<=`. `NOT tag = #a` opens as `tag != #a`; negated groups are written as `NOT (…)`.
 
 ### Refine
 
-**Refine**, under the search box, counts what the results could be narrowed by: open and done tasks, due dates (overdue, next seven days, later, none), tags, **Links to** (up to eight notes), last update, creation month, and folders. Values that keep all or none of the results are hidden.
+**Refine**, under the search box, counts what the results could be narrowed by: open, done, and cancelled tasks, each open status found (such as In progress, Blocked, Waiting, or Unknown), due dates (overdue, next seven days, later, none), tags, **Links to** (up to eight notes), last update, creation month, and folders. Values that keep all or none of the results are hidden.
 
 - Select a value to add it with **AND**.
 - <kbd>Alt</kbd>-select to add it with **AND NOT**.
@@ -68,18 +69,20 @@ Shorthands, written the way GitHub writes them:
 
 | Shorthand | Finds |
 | --- | --- |
-| `is:open`, `is:done` | Open or completed tasks. |
+| `is:open`, `is:done` | Open tasks (to do, in progress, or on hold), or done tasks. |
+| `is:in-progress` | Tasks in progress, such as `[/]` or `#status/doing` on an empty box. |
+| `is:cancelled`, `is:closed` | Cancelled tasks, such as `[-]`, and tasks done or cancelled. |
 | `is:overdue` | Open tasks past their due date. |
 | `is:today` | Open tasks due today, or scheduled for today or earlier and started: the Tasks view's **Today**. |
 | `is:needs-date` | Open tasks more than `deckard.tasks.needsNewDateAfterDays` (30) days past due: the Tasks view's **Needs a new date**. |
 | `is:due` | Open tasks due within seven days, overdue included. |
 | `is:task`, `is:note` | Every task, or note sections without tasks. |
-| `is:blocked`, `is:blocking` | Open tasks waiting for a still-open task, and the open tasks they wait for. |
-| `is:waiting` | Open tasks marked `#status/waiting`, or assigned with 👤 to someone other than you. With `deckard.me` empty, every assigned task counts. |
-| `is:available` | Open tasks that are not blocked, started (no 🛫 date, or one today or earlier), and without a status in `deckard.tasks.onHoldStatuses` (`waiting` and `someday`). |
+| `is:blocked`, `is:blocking` | Open tasks waiting for a still-open task or with the Blocked status (`[=]` or `#status/blocked`), and the open tasks they wait for. |
+| `is:waiting` | Open tasks with an on-hold status (Waiting, Someday, Blocked, or one of your own), or assigned with 👤 to someone other than you. With `deckard.me` empty, every assigned task counts. |
+| `is:available` | Open tasks that are not blocked, started (no 🛫 date, or one today or earlier), and not on hold. |
 | `is:mine` | Tasks for the person `deckard.me` names, and tasks for nobody. Without that setting, only the latter. |
 | `is:assigned`, `is:unassigned` | Tasks that name a person, and tasks that name nobody. |
-| `has:due`, `no:due` | Tasks with or without a due date. `scheduled`, `start`, `done`, `priority`, `id`, and `dependsOn` work the same way. |
+| `has:due`, `no:due` | Tasks with or without a due date. `scheduled`, `start`, `done`, `cancelled`, `priority`, `id`, and `dependsOn` work the same way. |
 | `in:notes/work` | Everything in a folder and its subfolders. `*` and `?` are wildcards. |
 | `is:daily` | Anything in a daily note (named for a day, such as `2026-09-25.md`, or with a day in its top heading), tasks included. `is:journal` is the same. |
 | `is:periodic` | Daily, weekly, and monthly notes. `is:dated` is the same. |
@@ -88,7 +91,7 @@ Shorthands, written the way GitHub writes them:
 
 Put `-` before a shorthand to negate it, as in `-is:done`. Deckard keeps a shorthand as written when it saves or formats a query.
 
-`is:blocked` and `is:blocking` read ⛔ and 🆔 markers between two open tasks: a task is blocked while a task its ⛔ names is open, and blocking while an open task names its 🆔. Completing the blocker frees both, and a ⛔ naming nothing in the workspace blocks nothing. `has:dependsOn` and `has:id` read the markers whatever state the tasks are in.
+`is:blocked` and `is:blocking` read ⛔ and 🆔 markers between two open tasks: a task is blocked while a task its ⛔ names is open, and blocking while an open task names its 🆔. Completing the blocker frees both, and a ⛔ naming nothing in the workspace blocks nothing. An open task with the Blocked status is blocked too, whatever its ⛔ markers say. `has:dependsOn` and `has:id` read the markers whatever state the tasks are in.
 
 Fields:
 
@@ -98,8 +101,9 @@ Fields:
 | `link` | Entries that link to a note, by its name or any `aliases:` name. `[[Atlas#Decision]]` narrows to a heading, `[[Atlas#^q3]]` to a marked line; text after `\|` is ignored. Only `=` and `!=`; brackets are optional after `link`. | `[[Atlas]]`, `link = [[Atlas#Decision]]`, `-[[Atlas]]` |
 | `text` | Words in a note body, task line, or front-matter-only file. `:` and `~` match a substring; `=` and `!=` a whole word. | `text ~ elevator`, `text = plan` |
 | `task` | `open`, `done`, or `any`. Returns only tasks. | `task = open` |
+| `status` | A [task status](tasks.md#task-statuses) by name, ignoring case, with a hyphen or quotes for a space; by its character in brackets; or `unknown` for a character no status names. `open`, `done`, and `any` mean what they do for `task`. `-status:` leaves a status out. Only tasks. | `status:in-progress`, `status:"in progress"`, `status:[=]`, `-status:waiting` |
 | `due`, `scheduled`, `start` | A task's 📅, ⏳, or 🛫 date: a date, `today`, `tomorrow`, a weekday such as `friday` (the next one), any other [day in plain words](tasks.md#dates-in-plain-words) quoted or with `-` for spaces, a week or month (`this-week`, `next-week`, `this-month`, `next-month`, `2026-10`), a window such as `7d` counted forward, or `none`. Only tasks. | `due < today`, `due <= friday`, `due <= "oct 3"`, `due = this-week`, `due = none` |
-| `done` | A task's ✅ date. Windows count back from today; a weekday means the last one. | `done = 7d`, `done >= "last friday"` |
+| `done`, `cancelled` | A task's ✅ or ❌ date. Windows count back from today; a weekday means the last one. | `done = 7d`, `done >= "last friday"`, `cancelled = 30d` |
 | `priority` | `highest`, `high`, `medium`, `none`, `low`, or `lowest`. No priority counts as `none`, between `medium` and `low`. | `priority >= high` |
 | `assignee` | The person a task's `👤` field names, or `none`. `@ren-kade`, `#person/ren-kade`, and `ren-kade` are the same person. Only tasks. | `assignee = @ren-kade` |
 | `kind` | An entity namespace, including `person` for `@` tags. | `kind = project` |

@@ -47,11 +47,12 @@ export const QUERY_SYNTAX_GUIDE = [
   'text ~ "vendor" matches words in note and task text.',
   'link = [[Atlas]], or a bare [[Atlas]], matches the entries that link to the note Atlas, by its name or an alias; [[Atlas#Decision]] matches links to one heading.',
   'task = open, done, or any matches tasks only.',
+  'status:in-progress, status:blocked, or any status by its name (a hyphen for a space) matches tasks of that status, whether its box writes it, as [/], or its line tags it, as #status/doing; status:[/] matches a status by its character, and status:unknown the characters no status names.',
   'due, scheduled, and start take a date such as 2026-09-20, today, tomorrow, a weekday such as friday (the next one), a phrase such as "oct 3" or end-of-month, a whole week or month such as this-week or next-month, a window such as 7d counted forward, or none.',
-  'done = 7d matches tasks completed in the last seven days.',
+  'done = 7d matches tasks completed in the last seven days, and cancelled = 7d those cancelled.',
   'priority takes highest, high, medium, none, low, or lowest, as in priority >= high.',
   'kind = project matches an entity namespace; file and path accept * and ? wildcards; created and updated take dates, a weekday such as friday (the last one), this-week, last-month, a month such as 2026-08, or windows such as 30d.',
-  'Shorthands: is:open, is:done, is:overdue, is:due (open and due within seven days), is:today (what the Tasks view lists under Today), is:needs-date (open and more than 30 days past due), is:task, is:note, is:blocked (open and waiting for an open task), is:blocking (open and an open task waits for it), is:waiting (open and marked #status/waiting or assigned to someone else), is:available (open, not blocked, started, and not on hold), is:daily (written in a daily note), is:periodic (a daily, weekly, or monthly note), is:parked (in a parked folder or under a parked tag: left out of task lists unless asked for), is:step (a task written under another task); has:due and no:due (also scheduled, start, done, priority, id, dependsOn, steps: has:steps is a task broken into steps); in:folder matches a folder and everything in it. Put - before one to negate it.',
+  'Shorthands: is:open (to do, in progress, or on hold), is:in-progress, is:done, is:cancelled, is:closed (done or cancelled), is:overdue, is:due (open and due within seven days), is:today (what the Tasks view lists under Today), is:needs-date (open and more than 30 days past due), is:task, is:note, is:blocked (open and waiting for an open task, or marked Blocked), is:blocking (open and an open task waits for it), is:waiting (open and on hold, as Waiting or Someday, or assigned to someone else), is:available (open, not blocked, started, and not on hold), is:daily (written in a daily note), is:periodic (a daily, weekly, or monthly note), is:parked (in a parked folder or under a parked tag: left out of task lists unless asked for), is:step (a task written under another task); has:due and no:due (also scheduled, start, done, cancelled, priority, id, dependsOn, steps: has:steps is a task broken into steps); in:folder matches a folder and everything in it. Put - before one to negate it.',
   'Operators are = != ~ !~ > >= < <=.',
 ].join(' ');
 
@@ -227,7 +228,18 @@ export function answerTags(
   return lines.join('\n');
 }
 
-/** A task result as a checklist line: its box, title, dates and priority, and where it is. */
+/** A task's box as the answer writes it: done, cancelled, in progress, or open. */
+function boxOf(item: QueryBlockItem): string {
+  if (item.completed) {
+    return 'x';
+  }
+  if (item.cancelled) {
+    return '-';
+  }
+  return item.statusType === 'inProgress' ? '/' : ' ';
+}
+
+/** A task result as a checklist line: its box, title, dates, priority, and status, and where it is. */
 function formatTask(item: QueryBlockItem): string {
   const details = [
     formatDue(item),
@@ -236,8 +248,9 @@ function formatTask(item: QueryBlockItem): string {
       : `scheduled ${formatIsoDate(item.scheduledAt)}`,
     item.priority ? `${item.priority} priority` : '',
     item.recurrence ? `repeats ${item.recurrence}` : '',
+    item.status ? `status ${item.status}` : '',
   ].filter(Boolean);
-  return `- [${item.completed ? 'x' : ' '}] ${item.title}${
+  return `- [${boxOf(item)}] ${item.title}${
     details.length > 0 ? ` — ${details.join(', ')}` : ''
   } — ${formatLocation(item)}`;
 }

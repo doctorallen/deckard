@@ -311,6 +311,48 @@ function createMenuSurfaces(surfaces) {
 }
 
 /**
+ * The Task Board with a task of every status, and its Cancelled column.
+ *
+ * @param {object} preferences The preference services, whose reader holds what is stored.
+ * @returns {object} The board surface, drawn at a wide width.
+ */
+function createStatusBoardSurface(preferences) {
+  return {
+      // Every status a box can draw: in progress half filled, blocked with
+      // its icon, an unknown character outlined, on hold, done, and a
+      // Cancelled column, struck through.
+      name: 'taskBoardStatuses',
+      page: 'taskBoard',
+      viewport: [1400, 700],
+      snapshot: () => createTaskBoard({
+        index: statusIndex(),
+        preferences: preferences.reader.value,
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'waiting', 'blocked'], statusNamespace: 'status', format: 'emoji', showCancelled: true },
+        tagTitleDisplayMode: 'inline',
+      }),
+      scrollers: ['html', '.board-cards'],
+      clippers: ['.board-column'],
+      hovered: ['.board-card'],
+    };
+}
+
+/** A note with a task of every status a board draws. */
+function statusIndex() {
+  const text = [
+    '# Statuses',
+    '- [ ] Draft the brief',
+    '- [/] Calibrate the receivers',
+    '- [ ] Hear back from legal #status/waiting',
+    '- [=] Wait for the vendor\'s quote',
+    '- [?] Ask about the second lens',
+    '- [x] Book the room ✅ 2026-09-24',
+    '- [-] Order the banner ❌ 2026-09-23',
+  ].join('\n');
+  return buildWorkspaceIndex(new Map([['notes/statuses.md', parseMarkdown('notes/statuses.md', text)]]));
+}
+
+/**
  * The Task Board, by status, grouped by a tag namespace, and opened from the
  * Tasks view's search icon to edit what the view lists. Only the board's
  * surfaces carry steps, so no other page's pixels move with them.
@@ -783,6 +825,7 @@ function createSurfaces() {
   const preferences = createPreferences(createGlobalState());
   const surfaces = [
     ...createBoardSurfaces(boardIndex, preferences),
+    createStatusBoardSurface(preferences),
     ...createCalendarSurfaces(),
     ...createRelatedNotesSurfaces(index, files),
     ...createSummarySurfaces(index, preferences),

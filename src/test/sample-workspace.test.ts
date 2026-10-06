@@ -255,7 +255,7 @@ suite('Sample workspace', () => {
       ['assignee = #person/ren-kade', 2],
       ['priority >= high', 2],
       ['kind = context', 4],
-      ['#status/doing', 3],
+      ['#status/doing', 2],
     ];
     for (const [query, count] of claims) {
       assert.strictEqual(found(query).tasks.length, count, query);

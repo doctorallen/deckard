@@ -14,7 +14,7 @@ Deckard reads both formats of the [Obsidian Tasks](https://publish.obsidian.md/t
 | ⏳ | Scheduled date: the day you plan to work on the task. ⌛ also works. |
 | 🛫 | Start date: the task is not actionable before this day. |
 | ✅ | Completion date. |
-| ➕ ❌ | Created and cancelled dates. Removed from titles and kept in the note. |
+| ➕ ❌ | Created and cancelled dates. Removed from titles and kept in the note. Cancelling a task writes ❌ with today's date. |
 | 🔺 ⏫ 🔼 🔽 ⏬ | Priority, from highest to lowest. |
 | 🔁 | Repeat rule, such as `every week`. |
 | 🆔 ⛔ | A task's id, and the ids of the tasks it waits for. |
@@ -27,7 +27,7 @@ Deckard reads both formats of the [Obsidian Tasks](https://publish.obsidian.md/t
   - Obsidian Tasks rules: `every day`, `every 3 weeks`, `every month`, `every year`, `every weekday`, `every Monday`, `every week on Tuesday, Friday`, `every month on the 15th`, `every month on the last`, `every other week` (or day, month, year), `every other Tuesday`, `every 2 weeks on Monday, Thursday` (weeks start on Monday), `every month on the second Tuesday` or `on the last Friday`.
   - Deckard's own, which Tasks does not read: `every quarter`, `every 2 quarters`, `every weekend`.
   - `on the fifth Friday` skips months without one. Any rule can end in `when done`. Any other rule completes the task with no next occurrence, and Deckard tells you so.
-- Only `[ ]`, `[x]`, and `[X]` are tasks. A line with any other mark, such as Obsidian's `[/]` for in progress or `[-]` for cancelled, is text: it is not listed or counted. The first scan that finds such lines says how many, once, and [Stats](home-and-stats.md#stats) keeps saying it.
+- The character in a task's box is its status: `[ ]` to do, `[/]` in progress, `[x]` done, `[-]` cancelled, and any other character a status of its own. See [Task statuses](#task-statuses).
 
 ### Who a task is for
 
@@ -63,7 +63,7 @@ The fields are `due`, `scheduled`, `start`, `created`, `completion`, `cancelled`
 | Field | What it takes |
 | --- | --- |
 | **Description** | The words, tags and people included |
-| **Status** | Open or done. Completing writes the ✅ date, or `[completion:: …]` on a Dataview-format line; reopening removes it. `deckard.tasks.addDoneDate` turns the date off |
+| **Status** | Any of your [task statuses](#task-statuses). Completing writes the ✅ date, or `[completion:: …]` on a Dataview-format line; reopening removes it. `deckard.tasks.addDoneDate` turns the date off |
 | **Due**, **Scheduled**, **Start** | A date in plain words |
 | **Priority** | Highest to lowest, or none |
 | **Repeats** | A common rule, or any rule you write |
@@ -128,6 +128,87 @@ Every date box, including `[[` day links and [Quick capture](#quick-capture), re
 - A numeric date such as `10/3` follows VS Code's display language (month first in English, day first in German or French), unless only the other order is a real day, as `25/9`. Numeric dates work only in a box, not in a search.
 - In a search, a week or month is the whole span: `due = next-week` is every day of next week.
 
+## Task statuses
+
+The character between a task's brackets is its status, as in [Obsidian Tasks](https://publish.obsidian.md/tasks/):
+
+```markdown
+- [ ] Draft the brief
+- [/] Write the proposal
+- [=] Sign the lease
+- [x] Book the venue ✅ 2026-10-02
+- [-] Print the flyers ❌ 2026-10-03
+```
+
+`deckard.tasks.statuses` lists them. Each status has a character, a name, a type, and, if you like, the `#status/…` tag it stands for and an icon. The list starts as:
+
+| Box | Name | Type | Tag |
+| --- | --- | --- | --- |
+| `[ ]` | Todo | To do | `#status/todo` |
+| `[/]` | In progress | In progress | `#status/doing` |
+| `[x]`, `[X]` | Done | Done | |
+| `[-]` | Cancelled | Cancelled | |
+| | Waiting | On hold | `#status/waiting` |
+| | Someday | On hold | `#status/someday` |
+| `[=]` | Blocked, with ⊘ beside its box | On hold | `#status/blocked` |
+
+- `[ ]` and `[x]` are always Todo and Done.
+- Any other character in a box is a task, as in Obsidian Tasks. One that no status names is a task to do called **Unknown**. The first scan that finds one says how many, once, with the setting a click away, and [Stats](home-and-stats.md#stats) keeps saying it. **Add characters found in notes**, on the page [Edit Task Statuses…](#editing-the-statuses) opens, names them.
+- A status of the **Not a task** type leaves its lines as text, for a box that marks something other than a task, such as a pro or a con.
+- `[>]` still marks a task [moved elsewhere](organizing.md#moving-lines-and-tasks), and is not a task.
+- **Status tags.** A `#status/…` tag on an empty `[ ]` box reads as the open status that stands for the tag, so `- [ ] Draft #status/doing` is in progress, as it always read. A tag never closes a task: `#status/done` on an open box leaves it open. Waiting and Someday have no character, so they are always tags. `deckard.board.statusNamespace` names the tags' namespace.
+- `deckard.tasks.onHoldStatuses` is deprecated: each tag it lists is read as an on-hold status.
+
+### What a status means
+
+- **To do, in progress, and on hold are open.** They count as open tasks, can be overdue or due today, and are listed in the [Tasks view](#tasks-view). A task on hold (Waiting, Someday, Blocked) is left out of `is:available` and the board's **Can start now**.
+- **Done** is completed, with its ✅ date.
+- **Cancelled is closed but not done.** A cancelled task is left out of open counts, overdue, due today, the Tasks view, the calendar's due and scheduled days, and rolling tasks forward. It counts on neither side of progress: a task's steps, a tag's progress, and a hierarchy's bars. Stats shows a **Cancelled tasks** total when there are any, and **Export Tasks as Calendar…** marks a cancelled task's event as cancelled.
+- Search by status with `is:in-progress`, `is:cancelled`, `is:closed`, or `status:` and a name or character; see [Query language](search.md#query-language).
+
+### Setting a status
+
+- **Checking a box** marks the task done from any status, with its ✅ date and next occurrence. Unchecking a done or cancelled task reopens it as `[ ]` and removes its status tag. With `deckard.tasks.checkboxClick` set to `workflow`, a click moves a task to its status's next status instead, as Obsidian Tasks does.
+- **Deckard: Toggle Task Done** always goes to done and back: an in-progress or cancelled task is completed too.
+- **Deckard: Set Task Status…**, in the palette, the editor's right-click menu, and a task's right-click menu in the Tasks view, picks any status. The [task editor's](#editing-a-whole-task) **Status** row lists every status, and a bulk edit's **Set a status** sets one on many tasks. The assistant's tool for changing a task takes a status by name, or as its character, such as `[/]`.
+- Typing `- [` in a note offers every status's character.
+- **Character or tag.** `deckard.tasks.writeStatusAs` chooses how a status is written:
+  - `match` (the default): a line that already has a status tag gets the tag changed; otherwise the character is written.
+  - `checkbox`: always the character, and the tag is removed.
+  - `tag`: always the tag, in an empty box.
+- A status with only a tag, such as Waiting, is always written as its tag. Done and cancelled are always their characters, with ✅ or ❌; `deckard.tasks.addCancelledDate` turns the ❌ date off.
+- **Done is a completion**, however it is set: a 🔁 task writes its next occurrence. Cancelling a 🔁 task writes none, and its message offers **Keep It Repeating**, which writes it.
+
+### How statuses look
+
+- On pages, an in-progress box is half filled, and a screen reader hears it as mixed. A cancelled box is checked and quiet, with its words struck through. An unknown character's box is outlined, and Blocked shows ⊘ beside its box. Each box's label names its status.
+- Query blocks in the Markdown preview draw ◐ for in progress and ☒ for cancelled.
+- In the editor, an in-progress box has its own color, the `deckard.inProgressForeground` theme color, and a cancelled task's words are struck through. An unknown character's box is underlined, and its hover says to name it in the **Tasks: Statuses** setting. The Markdown grammar marks a status character, so a color theme can color it.
+
+### Moving status tags into checkboxes
+
+`Deckard: Move Status Tags into Checkboxes…` writes each `#status/…` tag that a character can say as that character: `- [ ] Draft #status/doing` becomes `- [/] Draft`.
+
+- A tag the box contradicts, such as `- [x] Ship #status/doing`, is removed.
+- Open tasks tagged `#status/done` are checked off only if you say so when it asks.
+- Tags with no character stay: Waiting, Someday, and tags no status names.
+- Every change shows in groups in the [refactor preview](search-pages.md#previewing-and-undoing-a-write), and is one change Undo takes back.
+
+`Deckard: Import Statuses from Obsidian Tasks` reads `.obsidian/plugins/obsidian-tasks-plugin/data.json` and writes the vault's statuses to the workspace's `deckard.tasks.statuses`.
+
+The first scan of a workspace offers one of them, once. In an Obsidian vault with statuses of its own, when the workspace names none, it offers the import. Otherwise, where tasks have status tags a character can say, it offers the move: **Preview the Move**, or **Keep Tags**, which sets `deckard.tasks.writeStatusAs` to `tag` for the workspace.
+
+### Editing the statuses
+
+`Deckard: Edit Task Statuses…` opens a page to edit the list.
+
+- Each row has a character, a name, a type, a tag, and an icon. Todo and Done are locked.
+- **Checking a box** chooses what a click does. With a click moving a task to its next status, each row has a **Next** too, and **Where a click leads** shows each step.
+- **Add a status** adds a row, and **Add characters found in notes** adds one for each unknown character, with how many tasks use it. **Deckard's own** and **Obsidian's core** start from those lists, and **Import from Obsidian Tasks** from the vault's. **Revert** goes back to what is saved.
+- The page checks as you type: a character given twice, a missing name, a status with neither a character nor a tag, a status named Open or Any, and, with a click moving to the next status, a next character no status has, or Done not followed by to do or in progress.
+- **Save** writes to the workspace's settings when they set the list, and to your user settings otherwise.
+- Renaming a status offers to rename it in saved searches, Home widgets, and query blocks that search by it.
+
 ## Tasks view
 
 Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when they are wanted. Parked tasks are left out unless `deckard.agenda.query` says `is:parked`.
@@ -147,7 +228,7 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
 
 - **Tag namespace** groups by tags in one namespace, such as `#project/…`, busiest first, **No project** last. Inherited tags count. `deckard.agenda.groupNamespace` keeps the namespace.
 - **Priority** runs highest to lowest, **No priority** last.
-- **Status** reads `#status/…` tags on task lines, following `deckard.board.statusNamespace`, **No status** last.
+- **Status** groups by [status](#task-statuses), as the [Task board's](task-board.md#groupings) status columns do, **No status** last. Dropping a task on a group writes its status the way the board does.
 - **Person** groups by [who each task is for](#who-a-task-is-for), **Nobody named** last.
 
 **Working with tasks:**

@@ -41,7 +41,11 @@
 | **Deckard: Edit Task** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> elsewhere. Edits the task on the cursor's line; see [Editing a whole task](tasks.md#editing-a-whole-task). |
 | **Deckard: Add Task** | The same editor when the cursor is not on a task: the same shortcut writes a new one. |
 | **Deckard: Break into Steps…** | Writes steps under the task on the cursor's line; see [Breaking a task into steps](tasks.md#breaking-a-task-into-steps). |
-| **Deckard: Toggle Task Done** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>X</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>X</kbd> elsewhere. Completes the tasks under every cursor and selection, or reopens them if all are done, writing the ✅ date and a repeating task's next occurrence. |
+| **Deckard: Toggle Task Done** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>X</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>X</kbd> elsewhere. Completes the tasks under every cursor and selection, whatever their status, or reopens them if all are done, writing the ✅ date and a repeating task's next occurrence. |
+| **Deckard: Set Task Status…** | Sets any status on the task on the cursor's line; also on the editor's right-click menu and a task's menu in the Tasks view; see [Task statuses](tasks.md#task-statuses). |
+| **Deckard: Edit Task Statuses…** | Opens a page to edit `deckard.tasks.statuses`: each status's character, name, type, tag, and icon; see [Editing the statuses](tasks.md#editing-the-statuses). |
+| **Deckard: Move Status Tags into Checkboxes…** | Writes each `#status/…` tag a character can say as that character, such as `- [ ] Draft #status/doing` to `- [/] Draft`, after a preview; see [Moving status tags into checkboxes](tasks.md#moving-status-tags-into-checkboxes). |
+| **Deckard: Import Statuses from Obsidian Tasks** | Reads the vault's Obsidian Tasks statuses into the workspace's `deckard.tasks.statuses`. |
 | **Deckard: Capture** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> elsewhere. Adds a task to today's note without leaving the current editor. |
 | **Deckard: Capture Under a Heading** | Adds a task under a heading you choose in any note. |
 | **Deckard: Roll Unfinished Tasks Forward** | Carries the last daily note's unfinished tasks into today's, creating it if needed. |
