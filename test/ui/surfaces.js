@@ -304,9 +304,6 @@ function createMenuSurfaces(surfaces) {
     {
       ...of('taskBoard'),
       name: 'taskBoardCardMenu',
-      // Tall enough that the menu does not scroll: Linux draws a scrollbar
-      // beside it, which widens it and moves it, where macOS draws none.
-      viewport: [1400, 1200],
       drive: [['click', '.board-card [data-action="board-menu"]']],
       hovered: ['#action-menu .menu-item'],
     },

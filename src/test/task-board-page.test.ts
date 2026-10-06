@@ -100,7 +100,7 @@ suite('Task Board page', () => {
     const headings = page.findAll('#action-menu .menu-heading').map((heading) => heading.textContent);
     assert.deepStrictEqual(headings, ['Status', 'Priority', 'Due', 'For', 'Steps', 'Done', 'Note']);
     const labels = page.findAll('#action-menu [data-menu-value] .menu-label').map((item) => item.textContent);
-    for (const label of ['No status', 'Todo', 'Doing', 'High', 'Due tomorrow', 'No due date', 'Complete it']) {
+    for (const label of ['No status', 'Todo', 'In progress', 'High', 'Due tomorrow', 'No due date', 'Complete it']) {
       assert.ok(labels.includes(label), `offers ${label}`);
     }
     assert.strictEqual(page.document.activeElement, page.find('#action-menu [aria-checked="true"]'), 'focus is on what the task is now');

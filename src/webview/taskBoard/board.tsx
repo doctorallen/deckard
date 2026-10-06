@@ -44,7 +44,9 @@ export function taskCardMoves(card: MovableTask, columnId: string, columns: read
     ...(key ? { key } : {}),
   });
   const statuses = (settings && settings.statuses) || [];
-  const statusOptions = [option('status:', 'No status'), ...statuses.map((status) => option(`status:${status}`, statusLabel(status)))];
+  // A status is named as its column is, In progress for doing, when the host said so.
+  const named = new Map(((settings && settings.columns) || []).map((column) => [column.status, column.label]));
+  const statusOptions = [option('status:', 'No status'), ...statuses.map((status) => option(`status:${status}`, named.get(status) || statusLabel(status)))];
   const priorityOptions = ([['highest', 'Highest', '1'], ['high', 'High', '2'], ['medium', 'Medium', '3'], ['low', 'Low', '4'], ['lowest', 'Lowest', '5'], ['', 'No priority', '0']] as const)
     .map(([value, label, key]) => option(`priority:${value}`, label, key));
   const dueOptions: ActionMenuItem[] = [

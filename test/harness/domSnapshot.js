@@ -125,10 +125,43 @@ function normalizedAttribute(element, attribute, options) {
   } else if (BOOLEAN.has(name)) {
     value = '';
   }
+  // Drawn by Chrome, a popover is placed by fonts that differ by system;
+  // drawn by jsdom, which lays nothing out, its place is a fixed number.
+  if (name === 'style' && options.captured && isPopover(element)) {
+    value = withoutPlace(value);
+  }
   if ((name === 'class' || name === 'style') && !value) {
     return undefined;
   }
   return [name, options.nonce ? value.split(options.nonce).join('NONCE') : value];
+}
+
+/**
+ * Whether an element floats over the page: a menu, which a script places
+ * by the size of what it is drawn over and of itself.
+ *
+ * @param {object} element An element of the drawn page.
+ * @returns {boolean} Whether it is a popover.
+ */
+function isPopover(element) {
+  return Boolean(element.classList && element.classList.contains('popover'));
+}
+
+/**
+ * A style without where it was placed: a popover's left and top follow
+ * the system's fonts, as its width and its anchor's do, so the markup would
+ * differ between systems that draw the same menu; the layout and visual
+ * checks see where it lands.
+ *
+ * @param {string} value The style as written.
+ * @returns {string} The same declarations, left and top aside.
+ */
+function withoutPlace(value) {
+  return value
+    .split(';')
+    .map((declaration) => declaration.trim())
+    .filter((declaration) => declaration && !/^(left|top)\s*:/.test(declaration))
+    .join('; ');
 }
 
 /** Text as it is written between tags. */
