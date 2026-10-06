@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { createDateFormats, DEFAULT_DATE_FORMAT, DEFAULT_DATE_LOCALE, DEFAULT_SHORT_DATE_FORMAT, type DateFormats, usesLocaleWeeks } from '../../domain/markdown/dateFormat';
+import { readWeekStart } from './datePrompt';
 import { writeSetting } from './settings';
 import { changedScaleSettings, resolveDisplayLevel, resolveScaleValues, SCALE_SETTINGS, type DisplayChoices, type DisplayLevel, type ScaleSetting } from '../state/displayLevel';
 
@@ -72,6 +74,39 @@ export function readDisplayChoices(previewed?: DisplayLevel): DisplayChoices {
     ...readDetailChoices(deckard, scale.fileAndLine),
     ...(scale.dates === 'both' ? {} : { dates: scale.dates }),
     ...(deckard.get<string>(DISPLAY_SETTINGS.pageWidth.key) === 'full' ? { width: 'full' as const } : {}),
+    ...dateFormatChoices(readDateFormats()),
+  };
+}
+
+/** The settings that hold the reader's date formats, under `deckard.`. */
+export const DATE_FORMAT_SETTINGS = { date: 'display.dateFormat', short: 'display.shortDateFormat' } as const;
+
+/**
+ * The reader's date formats, read now: both settings, each at its default
+ * when empty or unreadable, VS Code's display language for `L` to `llll`,
+ * and `deckard.calendar.weekStart` for `w`.
+ */
+export function readDateFormats(): DateFormats {
+  const deckard = vscode.workspace.getConfiguration('deckard');
+  return createDateFormats({
+    date: deckard.get<unknown>(DATE_FORMAT_SETTINGS.date),
+    short: deckard.get<unknown>(DATE_FORMAT_SETTINGS.short),
+    locale: vscode.env.language,
+    weekStart: readWeekStart(),
+  });
+}
+
+/**
+ * The date formats as a page is told them, each only when it isn't the
+ * default: the language only when it isn't English, and the week start
+ * only when a format counts weeks by it.
+ */
+export function dateFormatChoices(formats: DateFormats): Pick<DisplayChoices, 'dateFormat' | 'shortDateFormat' | 'dateLocale' | 'weekStart'> {
+  return {
+    ...(formats.date === DEFAULT_DATE_FORMAT ? {} : { dateFormat: formats.date }),
+    ...(formats.short === DEFAULT_SHORT_DATE_FORMAT ? {} : { shortDateFormat: formats.short }),
+    ...(formats.locale === DEFAULT_DATE_LOCALE ? {} : { dateLocale: formats.locale }),
+    ...(formats.weekStart !== 0 && (usesLocaleWeeks(formats.date) || usesLocaleWeeks(formats.short)) ? { weekStart: formats.weekStart } : {}),
   };
 }
 
@@ -98,10 +133,16 @@ function readDetailChoices(
   };
 }
 
-/** Whether a settings change alters how pages are drawn. */
+/**
+ * Whether a settings change alters how pages are drawn: a Display setting,
+ * the details an entry shows, a date format, or the week start a format's
+ * `w` counts from.
+ */
 export function affectsDisplayChoices(event: vscode.ConfigurationChangeEvent): boolean {
   return event.affectsConfiguration('deckard.display.cardDetails')
-    || Object.values(DISPLAY_SETTINGS).some((setting) => event.affectsConfiguration(`deckard.${setting.key}`));
+    || Object.values(DISPLAY_SETTINGS).some((setting) => event.affectsConfiguration(`deckard.${setting.key}`))
+    || Object.values(DATE_FORMAT_SETTINGS).some((key) => event.affectsConfiguration(`deckard.${key}`))
+    || event.affectsConfiguration('deckard.calendar.weekStart');
 }
 
 /**

@@ -155,6 +155,14 @@ export function hasWeekdayToken(format: string): boolean {
   return readFormat(format).some((part) => part.token !== undefined && WEEKDAY_TOKENS.has(part.token));
 }
 
+/** Whether a format counts weeks from the reader's week start: `w`, `ww`, `wo`, or `gggg`. */
+export function usesLocaleWeeks(format: string): boolean {
+  return readFormat(format).some((part) => part.token !== undefined && LOCALE_WEEK_TOKENS.has(part.token));
+}
+
+/** The tokens that count weeks from the reader's week start. */
+const LOCALE_WEEK_TOKENS: ReadonlySet<string> = new Set(['w', 'ww', 'wo', 'gggg']);
+
 /** The tokens that write the day of the week. */
 const WEEKDAY_TOKENS: ReadonlySet<string> = new Set(['d', 'do', 'dd', 'ddd', 'dddd', 'E', 'LLLL', 'llll']);
 

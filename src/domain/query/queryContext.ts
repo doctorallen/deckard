@@ -1,3 +1,4 @@
+import { DateFormats, DEFAULT_DATE_FORMATS } from '../markdown/dateFormat';
 import { Weekday } from '../markdown/dates';
 import { EntityNamespaceAliases, getEntityNamespaceAliases } from '../markdown/parser';
 import { DEFAULT_TASK_POLICY, TaskPolicy } from '../tasks/taskPolicy';
@@ -32,6 +33,12 @@ export interface QueryContext {
    * under its canonical namespace.
    */
   entityNamespaceAliases: EntityNamespaceAliases;
+  /**
+   * How a date is written for the reader, from `deckard.display.dateFormat`
+   * and `shortDateFormat`, so a state builder words dates without reading a
+   * setting. A date written into a note or a search stays `YYYY-MM-DD`.
+   */
+  dateFormats: DateFormats;
 }
 
 /** The settings a QueryContext is built from, each one optional. */
@@ -42,14 +49,16 @@ export interface QueryContextSettings {
   taskPolicy?: Partial<TaskPolicy>;
   /** Already merged over the built-in aliases, as getEntityNamespaceAliases returns them. */
   entityNamespaceAliases?: EntityNamespaceAliases;
+  /** The reader's date formats; the defaults, counting weeks from `weekStart`, when left out. */
+  dateFormats?: DateFormats;
 }
 
 /**
  * A QueryContext for `now`, with every setting it is not given at the
  * settings' own default: nobody named, weeks from Sunday,
- * DEFAULT_TASK_POLICY, and the built-in namespace aliases. An identity of
- * only spaces, or one that is not text (a setting written by hand), names
- * nobody.
+ * DEFAULT_TASK_POLICY, the built-in namespace aliases, and dates as
+ * `YYYY-MM-DD`. An identity of only spaces, or one that is not text (a
+ * setting written by hand), names nobody.
  */
 export function createQueryContext(
   now: number,
@@ -62,5 +71,6 @@ export function createQueryContext(
     taskPolicy: { ...DEFAULT_TASK_POLICY, ...settings.taskPolicy },
     now,
     entityNamespaceAliases: settings.entityNamespaceAliases ?? getEntityNamespaceAliases(undefined),
+    dateFormats: settings.dateFormats ?? { ...DEFAULT_DATE_FORMATS, weekStart: settings.weekStart ?? 0 },
   };
 }

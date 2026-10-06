@@ -199,4 +199,12 @@ export interface DisplayChoices {
   readonly details?: string;
   readonly dates?: 'relative' | 'date';
   readonly width?: 'full';
+  /** `deckard.display.dateFormat`, when it isn't `YYYY-MM-DD`. */
+  readonly dateFormat?: string;
+  /** `deckard.display.shortDateFormat`, when it isn't `ddd, MMM D`. */
+  readonly shortDateFormat?: string;
+  /** The display language `L` to `llll` follow, when it isn't English. */
+  readonly dateLocale?: string;
+  /** The day a week starts on, when it isn't Sunday and a format counts weeks by it. */
+  readonly weekStart?: number;
 }

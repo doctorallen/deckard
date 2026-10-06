@@ -32,4 +32,16 @@ suite('Display choices on the page body', () => {
       ' class="zen" data-cards="flat" data-tags="text"',
     );
   });
+
+  test('the date formats are marked only when set, as attribute text', () => {
+    assert.strictEqual(
+      getPageTailCss({ theme: 'cooper', zen: false, display: { dateFormat: 'DD/MM/YYYY', shortDateFormat: 'D MMM', dateLocale: 'de', weekStart: 1 } }).bodyAttribute,
+      ' data-date-format="DD/MM/YYYY" data-short-date-format="D MMM" data-date-locale="de" data-week-start="1"',
+    );
+    assert.strictEqual(
+      getPageTailCss({ theme: 'cooper', zen: false, display: { dateFormat: '[Day "D"] <MMM> & \'YY' } }).bodyAttribute,
+      ' data-date-format="[Day &quot;D&quot;] &lt;MMM&gt; &amp; &#39;YY"',
+      'a format is the reader\'s own text, so it is escaped',
+    );
+  });
 });

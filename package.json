@@ -2139,6 +2139,20 @@
             "description": "How pages write a task's due date. An overdue date always says Overdue, and a screen reader hears the whole date either way. Your own choice, the same in every workspace.",
             "order": 2
           },
+          "deckard.display.dateFormat": {
+            "type": "string",
+            "default": "YYYY-MM-DD",
+            "scope": "application",
+            "markdownDescription": "How Deckard writes a date for you to read: on pages, in views, in messages, and in the task editor. Written with the tokens Obsidian's daily notes use, such as `YYYY-MM-DD`, `DD/MM/YYYY`, `D MMM YYYY`, or `ddd, MMM D, YYYY`; `L` and `LL` are your display language's own forms, and text in `[brackets]` is written as it is. Dates written into notes, file names, and searches stay `YYYY-MM-DD`. Empty, or a format with no date in it, reads as `YYYY-MM-DD`. Your own choice, the same in every workspace.",
+            "order": 2
+          },
+          "deckard.display.shortDateFormat": {
+            "type": "string",
+            "default": "ddd, MMM D",
+            "scope": "application",
+            "markdownDescription": "How Deckard writes a day of this year where there is little room: the Tasks view's day headings, the Pages view, the calendar's day title, search completions, and Linked from. A day in another year is written in `#deckard.display.dateFormat#`. The same tokens, such as `ddd, D MMM` or `D/M`. Empty, or a format with no date in it, reads as `ddd, MMM D`. Your own choice, the same in every workspace.",
+            "order": 2
+          },
           "deckard.display.pageWidth": {
             "type": "string",
             "enum": [

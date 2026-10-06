@@ -5,6 +5,7 @@ import { createQueryContext, QueryContext } from '../../domain/query/queryContex
 import { readStatusNamespace, TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { readTaskStatusSettings } from '../../domain/tasks/taskStatuses';
 import { readWeekStart } from './datePrompt';
+import { readDateFormats } from './displaySettings';
 
 /**
  * The QueryContext a view, command, or tool works in, read from settings at
@@ -26,6 +27,7 @@ export function readQueryContext(now: number = Date.now()): QueryContext {
     weekStart: readWeekStart(),
     taskPolicy: readTaskPolicy(),
     entityNamespaceAliases: getEntityNamespaceAliases(configuration.get<unknown>('entityNamespaceAliases', {})),
+    dateFormats: readDateFormats(),
   });
 }
 
