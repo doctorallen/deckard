@@ -24,6 +24,9 @@ import { toggleTaskLines } from '../domain/tasks/toggleLines';
 import { isClosedTaskLine } from '../domain/markdown/taskSteps';
 import { layoutTaskBoard, type TaskBoardOptions } from '../ui/state/taskBoardState';
 import { createAgenda } from '../ui/state/agendaState';
+import { findTaskLineMarks } from '../ui/state/taskLineMarks';
+import { drawTaskStatus } from '../ui/state/drawnStatus';
+import { DEFAULT_TASK_POLICY } from '../domain/tasks/taskPolicy';
 
 /** Each task's character, name, type, and whether it is done, as the parser read it. */
 function read(content: string, taskStatuses?: readonly TaskStatusDefinition[]): string[] {
@@ -400,5 +403,32 @@ suite('Task statuses: the board and the Tasks view', () => {
         ['none', 'No status', ['plain', 'puzzled']],
       ],
     );
+  });
+});
+
+suite('Task statuses: how a status is drawn', () => {
+  const context = createQueryContext(new Date(2026, 9, 5).getTime());
+
+  test('the editor marks an in-progress box, a cancelled task\'s words, and a character no status names', () => {
+    const marks = findTaskLineMarks(['- [/] Draft 📅 2026-10-01', '- [-] Banner', '- [?] Swag', '- [ ] Plain'], context, { dim: false, hints: true });
+    assert.deepStrictEqual(marks.inProgress, [{ line: 0, start: 2, end: 5 }]);
+    assert.deepStrictEqual(marks.cancelled, [{ line: 1, start: 6, end: 12 }]);
+    assert.deepStrictEqual(marks.unknown, [{ line: 2, start: 2, end: 5, symbol: '?' }]);
+    assert.deepStrictEqual(marks.hints.map((hint) => hint.line), [0], 'an in-progress task is open, so its date speaks up');
+  });
+
+  test('a page draws a status only when it is neither a plain to do nor done', () => {
+    const [plain, started, waiting, dropped, puzzled, done, stuck] = parseMarkdown(
+      'note.md',
+      ['- [ ] a', '- [/] b', '- [ ] c #status/waiting', '- [-] d', '- [?] e', '- [x] f', '- [=] g'].join('\n'),
+    ).tasks;
+    const draw = (task: Parameters<typeof drawTaskStatus>[0]) => drawTaskStatus(task, DEFAULT_TASK_POLICY);
+    assert.strictEqual(draw(plain), undefined);
+    assert.strictEqual(draw(done), undefined);
+    assert.deepStrictEqual(draw(started), { name: 'In progress', type: 'inProgress' });
+    assert.deepStrictEqual(draw(waiting), { name: 'Waiting', type: 'onHold' });
+    assert.deepStrictEqual(draw(dropped), { name: 'Cancelled', type: 'cancelled' });
+    assert.deepStrictEqual(draw(puzzled), { name: 'Unknown', type: 'todo', unknown: '?' });
+    assert.deepStrictEqual(draw(stuck), { name: 'Blocked', type: 'onHold', icon: 'blocked' });
   });
 });

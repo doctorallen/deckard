@@ -9,6 +9,7 @@ import {
   quoteTask,
   readNamespaceValues,
 } from './tagGrouping';
+import { drawTaskStatus } from './drawnStatus';
 import { describeStepParts, foldSteps } from '../../domain/markdown/taskSteps';
 import { mentionsParked, withoutParked } from '../../domain/index/parked';
 import { hasAvailableTerm, toggleAvailable } from '../../domain/query/queryEdit';
@@ -38,7 +39,7 @@ import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import { tokenizeInline } from '../../domain/markdown/inline';
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
-import { createDashboardTask, sortTasks } from './entryCards';
+import { createDashboardTask, sortTasks, withDrawnStatus } from './entryCards';
 import { createQueryViewState } from './querySuggestions';
 import { compareTasksByColumn, createTaskCells, DEFAULT_TASK_COLUMNS, getTaskColumn, TableTask } from './resultTable';
 import { buildSearchFacets } from '../../domain/search/facets';
@@ -255,6 +256,7 @@ export function createTaskTable(
       filePath: task.filePath,
       line: task.lineNumber,
       completed: task.completed,
+      ...withDrawnStatus(drawTaskStatus(task, { statuses: options.queryContext.taskPolicy.statuses, statusNamespace: options.statusNamespace })),
       cells: createTaskCells(table, columns, options.queryContext),
     })),
   };
@@ -974,6 +976,7 @@ function createCard(
       .map((key) => ({ key, label: task.tagLabels[key] ?? key }))
       .filter((tag) => title.includes(tag.label)),
     completed: task.completed,
+    ...withDrawnStatus(drawTaskStatus(task, { statuses: context.taskPolicy.statuses, statusNamespace })),
     filePath: task.filePath,
     line: task.lineNumber,
     ...(task.createdAt === undefined ? {} : { createdAt: task.createdAt }),

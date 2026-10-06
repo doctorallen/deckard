@@ -2,6 +2,7 @@
  * The board: the searched tasks as columns of cards, each card with its
  * checkbox and the menu that edits it, and the switch that groups them.
  */
+import { isBoxChecked, speakBoxStatus, StatusIcon, statusBoxProps } from '../shared/taskBox';
 import { speakProgressText } from '../../domain/tasks/progressCount';
 import { ProgressText } from '../shared/progressText';
 import type { ComponentChild } from 'preact';
@@ -146,6 +147,22 @@ function CardPlace({ card, fileName, steps }: { readonly card: TaskBoardCard; re
   );
 }
 
+/** A card's classes: done, cancelled, or neither. */
+function cardClass(card: TaskBoardCard): string {
+  return ['task board-card', card.completed ? 'completed' : '', card.status?.type === 'cancelled' ? 'cancelled' : ''].filter(Boolean).join(' ');
+}
+
+/** A card's box, drawn by its status, which completes or reopens it, and its status's icon. */
+function CardBox({ card, title }: { readonly card: TaskBoardCard; readonly title: string }) {
+  const verb = isBoxChecked(card.completed, card.status) ? 'Reopen' : 'Complete';
+  return (
+    <>
+      <input type="checkbox" tabIndex={-1} data-action="board-toggle-task" aria-label={`${verb} ${title}${speakBoxStatus(card.status)}`} data-tip={`${verb} this task`} {...statusBoxProps(card.completed, card.status)} />
+      <StatusIcon status={card.status} />
+    </>
+  );
+}
+
 /** One task card, with its checkbox and the menu that edits it. */
 function BoardCard({ card, columnId, columns }: CardProps) {
   // The title as it reads names the card and its controls, not its Markdown.
@@ -168,7 +185,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
   return (
     <article
       role="listitem"
-      class={card.completed ? 'task board-card completed' : 'task board-card'}
+      class={cardClass(card)}
       draggable={true}
       data-tip-around=""
       tabIndex={tabStop ? 0 : -1}
@@ -179,7 +196,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
       data-file-path={card.filePath}
       data-line={card.line}
     >
-      <input type="checkbox" tabIndex={-1} data-action="board-toggle-task" aria-label={`${card.completed ? 'Reopen ' : 'Complete '}${title}`} data-tip={`${card.completed ? 'Reopen' : 'Complete'} this task`} checked={card.completed} />
+      <CardBox card={card} title={title} />
       <div class="task-summary">
         <div key={card.title} class="task-title"><TaskTitle tokens={card.titleTokens} tags={card.titleTags} /></div>
         <CardDetails card={card} />

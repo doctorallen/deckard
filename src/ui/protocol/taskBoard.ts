@@ -29,6 +29,7 @@ import type {
   SidebarReadyMessage,
   TagTitleDisplayMode,
   ToggleTaskMessage,
+  DrawnStatus,
 } from './shared';
 
 /** Keeps the order tasks were dragged into as their rank. */
@@ -52,6 +53,8 @@ export interface TaskBoardCard {
   /** The title as inline Markdown tokens, which the page draws as elements and text, as the task list does. */
   titleTokens: InlineToken[];
   completed: boolean;
+  /** Its status, when it is neither a plain to do nor done, which its box is drawn by. */
+  status?: DrawnStatus;
   filePath: string;
   line: number;
   /** When the task was created, its own ➕ date or its note's, and when its note last changed, for Card details. */
@@ -186,6 +189,8 @@ export interface TaskTableRow {
   filePath: string;
   line: number;
   completed: boolean;
+  /** Its status, when it is neither a plain to do nor done. */
+  status?: DrawnStatus;
   /** One cell per column, in the columns' order. */
   cells: TableCell[];
 }

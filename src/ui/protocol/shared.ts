@@ -7,9 +7,24 @@ import type { BlockToken } from '../../domain/model/blocks';
 import type { InlineToken } from '../../domain/model/inline';
 import type { QueryViewState } from '../../domain/model/query';
 import type { TagReference } from '../../domain/model/tags';
-import type { Task } from '../../domain/model/tasks';
+import type { Task, TaskStatusType } from '../../domain/model/tasks';
 
 export type { TagReference, TagTitleDisplayMode } from '../../domain/model/tags';
+
+/**
+ * A task's status as its box draws it, when it is neither a plain to do nor
+ * done: its name, for a reader to hear, its type, which its box is drawn
+ * by (in progress half filled, cancelled closed and struck through), an
+ * icon an open status may add, and, for a character no status names, that
+ * character.
+ */
+export interface DrawnStatus {
+  name: string;
+  type: TaskStatusType;
+  icon?: string;
+  /** The character in the box, when no status names it. */
+  unknown?: string;
+}
 
 /**
  * A task as a list draws it: the task, its title as tokens, and where it
@@ -41,6 +56,8 @@ export interface DashboardTask {
   dueToday?: boolean;
   /** `2 of 5 steps · next: Draft the email`, for a task with steps. */
   stepsLabel?: string;
+  /** Its status, when it is neither a plain to do nor done. */
+  status?: DrawnStatus;
 }
 
 /**

@@ -1,4 +1,6 @@
 import { findLinkedBlock, findLinkedSection, getBacklinkIndex, noteTitle, parseWikiTarget } from '../../domain/index/backlinks';
+import { drawTaskStatus } from './drawnStatus';
+import { withDrawnStatus } from './entryCards';
 import { findFrontmatterEnd, splitFrontmatterValues } from '../../domain/markdown/frontmatter';
 import { mapInlineTokens, tokenizeInline } from '../../domain/markdown/inline';
 import { readFrontmatterValueTag, stripTags } from '../../domain/markdown/parser';
@@ -364,7 +366,9 @@ function runQueryBlock(query: string, options: NonNullable<ReturnType<typeof par
     filePath: item.filePath,
     line: item.line,
     detail: describeRow(item, queryContext),
-    ...(item.completed === undefined ? {} : { task: { taskId: item.id, completed: item.completed } }),
+    ...(item.completed === undefined
+      ? {}
+      : { task: { taskId: item.id, completed: item.completed, ...(item.cancelled ? { status: { name: item.status ?? 'Cancelled', type: 'cancelled' as const } } : {}) } }),
   });
   return {
     counts: describeQueryBlockCounts(snapshot),
@@ -449,7 +453,7 @@ function readListItem(item: MarkdownToken, cursor: Cursor, source: Source): Note
   const indexed = source.reading.index.tasks.get(task.id) ?? task;
   return {
     line,
-    task: { taskId: indexed.id, completed: indexed.completed },
+    task: { taskId: indexed.id, completed: indexed.completed, ...withDrawnStatus(drawTaskStatus(indexed, source.reading.options.queryContext.taskPolicy)) },
     blocks: [{ kind: 'paragraph', line, children }, ...rest],
   };
 }

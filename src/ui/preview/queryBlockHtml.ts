@@ -357,12 +357,22 @@ function renderTask(
  */
 function renderCheckbox(item: QueryBlockItem, href: string | undefined): string {
   const done = item.completed === true;
-  const mark = done ? '☑' : '☐';
-  if (!href) {
-    return `<span class="deckard-query-checkbox" role="img" aria-label="${done ? 'Done' : 'Open'}">${mark}</span>`;
+  // Closed, a cancelled task is checked too; in progress is half way.
+  const closed = done || item.cancelled === true;
+  const mixed = !closed && item.statusType === 'inProgress';
+  let mark = '☐';
+  if (closed) {
+    mark = item.cancelled ? '☒' : '☑';
+  } else if (mixed) {
+    mark = '◐';
   }
-  const action = `${done ? 'Reopen' : 'Complete'} ${plainTitle(item.title)}`;
-  return `<a class="deckard-query-checkbox is-action" href="${escapeHtml(href)}" role="checkbox" aria-checked="${done}" aria-label="${escapeHtml(action)}" title="${escapeHtml(action)}">${mark}</a>`;
+  const status = item.status ? `, ${item.status}` : '';
+  const kind = item.cancelled ? ' is-cancelled' : '';
+  if (!href) {
+    return `<span class="deckard-query-checkbox${kind}" role="img" aria-label="${escapeHtml(`${closed ? 'Done' : 'Open'}${status}`)}">${mark}</span>`;
+  }
+  const action = `${closed ? 'Reopen' : 'Complete'} ${plainTitle(item.title)}${status}`;
+  return `<a class="deckard-query-checkbox is-action${kind}" href="${escapeHtml(href)}" role="checkbox" aria-checked="${mixed ? 'mixed' : closed}" aria-label="${escapeHtml(action)}" title="${escapeHtml(action)}">${mark}</a>`;
 }
 
 /** A title's words without its Markdown marks, for a label. */

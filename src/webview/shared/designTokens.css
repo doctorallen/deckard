@@ -87,6 +87,8 @@
      danger, and only danger. A theme re-declares the palette; these follow
      it, and a theme that wants a different mapping re-declares these too. */
   --accent: var(--amber);
+  /* An open status's icon beside its box, as Blocked's ⊘. */
+  --status-icon: var(--accent);
   --danger: var(--favorite-red);
   --favorite: var(--amber-bright);
   --positive: var(--green);

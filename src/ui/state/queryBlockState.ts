@@ -1,5 +1,6 @@
 import { formatProgressCount } from '../../domain/tasks/progressCount';
-import { countTaskProgress, isCancelledTask, nameTaskStatus, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
+import { countTaskProgress, isCancelledTask, nameTaskStatus, readTaskStatus, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
+import type { TaskStatusType } from '../../domain/model';
 import { getFileName } from '../../shared/paths';
 import { formatIsoDate } from '../../domain/markdown/calendar';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
@@ -120,6 +121,8 @@ export interface QueryBlockItem {
   status?: string;
   /** Present only for a cancelled task: closed, but not done. */
   cancelled?: boolean;
+  /** The type of its status, for a task whose status has one worth drawing: in progress. */
+  statusType?: TaskStatusType;
   /** Tag labels, as written on the line. */
   tags?: string[];
   dependsOn?: string[];
@@ -623,7 +626,8 @@ function createTaskItem(
   const section = task.sectionId
     ? index.sections.get(task.sectionId)
     : undefined;
-  const status = nameTaskStatus(task, statusReading.statuses, statusReading.namespace);
+  // A done task's box says it is done; a status is named for an open or a cancelled one.
+  const status = task.completed ? undefined : nameTaskStatus(task, statusReading.statuses, statusReading.namespace);
   return {
     id: task.id,
     title: stripTrailingTags(task.title) || task.title.trim(),
@@ -633,6 +637,7 @@ function createTaskItem(
     line: task.lineNumber,
     completed: task.completed,
     ...(isCancelledTask(task) ? { cancelled: true } : {}),
+    ...(readTaskStatus(task, statusReading.statuses, statusReading.namespace).type === 'inProgress' ? { statusType: 'inProgress' as const } : {}),
     dueAt: task.dueAt,
     dueText: task.dueText,
     scheduledAt: task.scheduledAt,

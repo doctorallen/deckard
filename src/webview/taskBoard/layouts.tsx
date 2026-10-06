@@ -3,6 +3,7 @@
  * controls under its search box and in its gear, and what it draws while it
  * edits what the Tasks view lists.
  */
+import { describeBox, statusBoxProps } from '../shared/taskBox';
 import type { TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
 import { IconButton } from '../shared/buttons';
 import { Inline } from '../shared/inline';
@@ -96,8 +97,8 @@ export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot
         {table.rows.map((row) => {
           const title = row.cells[titleAt] ? row.cells[titleAt].text : '';
           return (
-            <tr key={row.taskId} class={row.completed ? 'result-row completed' : 'result-row'} tabIndex={0} data-task-id={row.taskId} data-file-path={row.filePath} data-line={row.line}>
-              <td class="result-check"><input type="checkbox" data-action="toggle-task" data-task-id={row.taskId} checked={row.completed} aria-label={`Toggle ${title}`} /></td>
+            <tr key={row.taskId} class={['result-row', row.completed ? 'completed' : '', row.status?.type === 'cancelled' ? 'cancelled' : ''].filter(Boolean).join(' ')} tabIndex={0} data-task-id={row.taskId} data-file-path={row.filePath} data-line={row.line}>
+              <td class="result-check"><input type="checkbox" data-action="toggle-task" data-task-id={row.taskId} {...statusBoxProps(row.completed, row.status)} aria-label={describeBox(title, row.status)} /></td>
               {row.cells.map((cell, at) => {
                 const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '', at === titleAt ? 'result-title' : ''].filter(Boolean).join(' ');
                 // A cell's Markdown is drawn from its tokens, as a board

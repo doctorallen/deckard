@@ -68,6 +68,7 @@ import { EditorTagDecorations } from '../ui/providers/tagDecorations';
 import { TagCompletionProvider } from '../ui/providers/tagSuggestions';
 import { TaskMetadataCompletionProvider } from '../ui/providers/taskMetadataSuggestions';
 import { SlashMenuProvider } from '../ui/providers/slashMenu';
+import { StatusSuggestionsProvider } from '../ui/providers/statusSuggestions';
 import { EditorLenses } from '../ui/providers/editorLenses';
 import { EditorReferences } from '../ui/providers/editorReferences';
 import { AssistantTools } from '../ui/commands/assistantTools';
@@ -668,6 +669,7 @@ function createEditorProviders(context: vscode.ExtensionContext, core: Core, pre
   const tagSuggestions = new TagCompletionProvider(indexer).register();
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer).register();
   context.subscriptions.push(new SlashMenuProvider(indexer).register());
+  context.subscriptions.push(new StatusSuggestionsProvider((uri) => indexer.isNotesFile(uri)).register());
   const taskEditorActions = new TaskEditorActions();
   const taskLineContext = new TaskLineContext();
   return { tagDecorations, pins, tagSuggestions, taskMetadataSuggestions, taskEditorActions, taskLineContext };

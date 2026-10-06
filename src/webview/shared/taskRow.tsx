@@ -3,6 +3,7 @@
  * the Task Board's list, a search's tasks, Home's task widgets, and the
  * calendar's day draw it; and the parts a board card draws the same way.
  */
+import { TaskBox } from './taskBox';
 import { ProgressText } from './progressText';
 import type { ComponentChildren } from 'preact';
 
@@ -217,6 +218,9 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, 
   if (task.completed) {
     rowClass += ' completed';
   }
+  if (item.status?.type === 'cancelled') {
+    rowClass += ' cancelled';
+  }
   if (draggable) {
     rowClass += ' is-draggable';
   }
@@ -224,7 +228,7 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, 
   return (
     <div data-search-entry={entry} class={rowClass} draggable={false} tabIndex={0} data-tip-around="" data-task-id={task.id} data-file-path={task.filePath} data-line={task.lineNumber}>
       {leading === undefined
-        ? <input key="toggle" type="checkbox" data-action="toggle-task" data-task-id={task.id} checked={task.completed} aria-label={`Toggle ${plainTitle(item.titleTokens) || task.title}`} />
+        ? <TaskBox taskId={task.id} completed={task.completed} status={item.status} title={plainTitle(item.titleTokens) || task.title} />
         : leading}
       <div>
         <div key={item.task.title} class="task-title">

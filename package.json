@@ -78,6 +78,16 @@
         }
       },
       {
+        "id": "deckard.inProgressForeground",
+        "description": "Color of an in-progress task's box in the editor, such as [/].",
+        "defaults": {
+          "dark": "textLink.foreground",
+          "light": "textLink.foreground",
+          "highContrast": "textLink.foreground",
+          "highContrastLight": "textLink.foreground"
+        }
+      },
+      {
         "id": "deckard.overdueForeground",
         "description": "Color of an overdue task's due date in the editor, and of the \"overdue 5 days\" hint after its line.",
         "defaults": {

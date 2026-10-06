@@ -1,4 +1,6 @@
 import { describeSteps } from '../../domain/markdown/taskSteps';
+import { drawTaskStatus } from './drawnStatus';
+import type { DrawnStatus } from '../protocol/shared';
 import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { QueryContext } from '../../domain/query/queryContext';
 import { getFileName } from '../../shared/paths';
@@ -129,6 +131,7 @@ export function createDashboardTask(
         }
       : {}),
     ...(task.steps ? { stepsLabel: describeSteps(task.steps) } : {}),
+    ...withDrawnStatus(drawTaskStatus(task, context.taskPolicy)),
   };
 }
 
@@ -410,3 +413,8 @@ export function getFrontmatterBody(content: string): string {
   return endLine === undefined ? content : lines.slice(endLine + 1).join('\n').replace(/^\n/, '');
 }
 
+
+/** A drawn status, as a field a row carries only when there is one. */
+export function withDrawnStatus(status: DrawnStatus | undefined): { status?: DrawnStatus } {
+  return status ? { status } : {};
+}

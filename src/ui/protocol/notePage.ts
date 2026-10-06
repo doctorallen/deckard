@@ -2,6 +2,7 @@
  * The note page's protocol: one note as the page draws it, its blocks each
  * with the line it starts on, and the messages the page sends.
  */
+import type { DrawnStatus } from './shared';
 import type { InlineToken } from '../../domain/model/inline';
 import type { IndexingMessage, MessageOf, StateMessage } from './messaging';
 import type {
@@ -21,6 +22,8 @@ import type {
 export interface NoteTaskBox {
   taskId: string;
   completed: boolean;
+  /** Its status, when it is neither a plain to do nor done. */
+  status?: DrawnStatus;
 }
 
 /** One item of a list, its blocks, and its box when it is a task. */

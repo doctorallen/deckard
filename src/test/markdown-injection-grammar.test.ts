@@ -174,6 +174,16 @@ suite('Markdown injection grammar', () => {
     assert.deepStrictEqual(scoped('## Plan [[Atlas]]')[1], ['Atlas', 'string.other.link.title.markdown.deckard']);
   });
 
+  test('scopes a status character, and leaves a plain box, a done one, and a migrated one alone', () => {
+    assert.deepStrictEqual(scoped('- [/] Draft the plan'), [
+      ['[', 'punctuation.definition.task-status.begin.deckard'],
+      ['/', 'keyword.other.task-status.deckard'],
+      [']', 'punctuation.definition.task-status.end.deckard'],
+    ]);
+    assert.deepStrictEqual(scoped('- [-] Order the banner')[1], ['-', 'keyword.other.task-status.deckard']);
+    assert.deepStrictEqual(scoped('- [ ] Plain\n- [x] Done\n- [>] Moved\n- [a](https://example.com)'), []);
+  });
+
   test('scopes task dates, repeat rules, priority, and a block id', () => {
     assert.deepStrictEqual(
       scoped('- [ ] Ship 📅 2026-10-02 ⏳ 2026-09-30 🔁 every week when done ⏫ ^abc'),

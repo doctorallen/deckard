@@ -255,3 +255,8 @@ a.deckard-query-checkbox.is-action:focus-visible {
   font-size: 0.9em;
   color: var(--vscode-descriptionForeground, inherit);
 }
+
+/* A cancelled task's box is closed, and quieter than a done one's. */
+.deckard-query-checkbox.is-cancelled {
+  opacity: 0.7;
+}

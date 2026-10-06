@@ -5,6 +5,7 @@
  * controls; tasks with working boxes; query blocks as their results; and
  * embeds as what they name. Nothing in a note is ever parsed as HTML.
  */
+import { isBoxChecked, speakBoxStatus, StatusIcon, statusBoxProps } from './taskBox';
 import type { ComponentChild } from 'preact';
 
 import type { InlineToken } from '../../ui/protocol/inline';
@@ -92,16 +93,19 @@ export function InlineTokens({ tokens, context }: { readonly tokens: readonly In
 
 /** A task's box, which completes or reopens it, named for what it does. */
 function TaskBox({ task, label }: { readonly task: NoteTaskBox; readonly label: string }) {
-  return (
+  const closed = isBoxChecked(task.completed, task.status);
+  const box = (
     <input
+      key="box"
       type="checkbox"
       class="note-task-box"
       data-action="toggle-task"
       data-task-id={task.taskId}
-      checked={task.completed}
-      aria-label={`${task.completed ? 'Reopen' : 'Complete'} ${label}`}
+      {...statusBoxProps(task.completed, task.status)}
+      aria-label={`${closed ? 'Reopen' : 'Complete'} ${label}${speakBoxStatus(task.status)}`}
     />
   );
+  return task.status?.icon === undefined ? box : <span class="task-box-with-icon">{box}<StatusIcon status={task.status} /></span>;
 }
 
 /** Inline tokens' words, for a label. */
@@ -128,7 +132,7 @@ function ListItem({ item, context }: { readonly item: NoteListItem; readonly con
   const [first, ...rest] = item.blocks;
   const words = first && first.kind === 'paragraph' ? wordsOf(first.children) : '';
   return (
-    <li class={item.task.completed ? 'note-task is-done' : 'note-task'} {...at(item.line, context)}>
+    <li class={['note-task', item.task.completed ? 'is-done' : '', item.task.status?.type === 'cancelled' ? 'cancelled' : ''].filter(Boolean).join(' ')} {...at(item.line, context)}>
       <TaskBox task={item.task} label={words} />
       <div class="note-task-body">
         {first && first.kind === 'paragraph' ? <span class="note-task-title"><InlineTokens tokens={first.children} context={context} /></span> : null}
