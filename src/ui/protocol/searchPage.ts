@@ -125,7 +125,8 @@ export interface SearchPageSnapshot {
 
 /**
  * The results that carry one of the tags Refine offers, as the hierarchy
- * groups them, or those that carry none of them. A result carrying two
+ * by tag groups them, or a level of the hierarchy by heading, or those under
+ * none of them. A result carrying two
  * of the tags is in both groups.
  */
 export interface SearchResultGroup {
@@ -146,6 +147,14 @@ export interface SearchResultGroup {
   taskCount: number;
   /** How many of all the group's tasks are done. */
   doneCount: number;
+  /**
+   * By heading, the levels inside this one, such as a project's parts. Its
+   * counts then take them in, and its own notes and tasks are those above
+   * them, `ownNoteCount` and `ownTaskCount` of them in all.
+   */
+  children?: SearchResultGroup[];
+  ownNoteCount?: number;
+  ownTaskCount?: number;
 }
 
 /** The quiet lines under a tag's page's hub. */

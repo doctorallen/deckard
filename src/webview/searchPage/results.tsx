@@ -17,7 +17,7 @@ export type ResultKind = 'notes' | 'tasks';
 
 /** Whether the results are drawn in groups: the hierarchy is on, and there is something to group. */
 function isGrouped(snapshot: SearchPageSnapshot): boolean {
-  return snapshot.hierarchy === 'tags' && Boolean(snapshot.groups && snapshot.groups.length);
+  return Boolean(snapshot.hierarchy && snapshot.hierarchy !== 'off' && snapshot.groups && snapshot.groups.length);
 }
 
 /** What the results are drawn from besides the snapshot: the tab shown, and the cards opened with Show all. */

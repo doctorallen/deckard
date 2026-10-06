@@ -8,7 +8,7 @@ import { correctQueryText, getPlainTextTerms, getTextWords } from '../../domain/
 import { evaluateQuery, QueryResults } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { EntityNamespaceAliases } from '../../domain/markdown/parser';
-import { getQueryNarrowedTag, getQueryTagIntersection, quoteValue } from '../../domain/query/queryFormat';
+import { collectQueryTagKeys, getQueryNarrowedTag, getQueryTagIntersection, quoteValue } from '../../domain/query/queryFormat';
 import { parseQuery } from '../../domain/query/queryParser';
 import { ParsedQuery } from '../../domain/query/queryTypes';
 import { noteTitle } from '../../domain/index/backlinks';
@@ -42,6 +42,7 @@ import { buildSearchFacets, SearchFacetValue } from '../../domain/search/facets'
 import { DashboardTask, ResultPaging, TagOverviewCard } from '../protocol/shared';
 import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes, SearchResultGroup } from '../protocol/searchPage';
 import { findTagFacet, GROUP_ITEM_LIMIT, groupResults } from './searchGroups';
+import { countGroup, groupByHeading, type HeadingGroup } from './headingGroups';
 import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
 import { linkProgressParts } from './progressLinks';
 import { isEntrySection } from '../../domain/markdown/noteEntries';
@@ -181,9 +182,14 @@ export function createSearchPageSnapshot(
       markVia(createDashboardTask(task, index.sections, options.queryContext), task.id),
       isParkedTask(index, task.id),
     );
-  const groups = preferences.searchHierarchy === 'tags'
-    ? drawResultGroups(index, { facets, ranked, tasks, drawTask, drawNotes: (keys) => drawNoteCards(index, preferences, { keys, page, tagTitleDisplayMode, markVia, withoutTasks: true }) })
-    : undefined;
+  const groups = drawHierarchy(index, preferences.searchHierarchy, {
+    facets,
+    page,
+    ranked,
+    tasks,
+    drawTask,
+    drawNotes: (keys) => drawNoteCards(index, preferences, { keys, page, tagTitleDisplayMode, markVia, withoutTasks: true }),
+  });
 
   return {
     ...buildTagPageBlock(index, preferences, page, options.queryContext),
@@ -255,20 +261,58 @@ function buildPageFacets(index: WorkspaceIndex, page: SearchPageResults, text: s
   return buildSearchFacets(index, results, text, { related, now: options.queryContext.now });
 }
 
+/** What either hierarchy draws its groups from. */
+interface HierarchySource {
+  facets: readonly QueryFacet[];
+  page: SearchPageResults;
+  ranked: readonly NoteKey[];
+  tasks: readonly Task[];
+  drawNotes: (keys: readonly NoteKey[]) => TagOverviewCard[];
+  drawTask: (task: Task) => DashboardTask;
+}
+
+/** The hierarchy the reader chose, by tag or by heading; nothing with it off. */
+function drawHierarchy(index: WorkspaceIndex, mode: PersistedPreferences['searchHierarchy'], source: HierarchySource): SearchResultGroup[] | undefined {
+  if (mode === 'tags') {
+    return drawResultGroups(index, source);
+  }
+  return mode === 'headings' ? drawHeadingGroups(index, source) : undefined;
+}
+
 /**
- * The Hierarchy layout's groups, each drawing its first notes and tasks and
+ * The hierarchy by heading: each level draws its own first notes and tasks
+ * and counts everything inside it, its parts' tasks among them for its bar.
+ * A part narrows the search to itself within its project: the tags of the
+ * levels above it with its own.
+ */
+function drawHeadingGroups(index: WorkspaceIndex, { page, ranked, tasks, drawNotes, drawTask }: HierarchySource): SearchResultGroup[] {
+  const searched = new Set(
+    collectQueryTagKeys(page.parsed.node).map((key) => resolveIndexedTagKey(index.tags, key) ?? key),
+  );
+  const draw = (group: HeadingGroup<NoteKey>, above: string | undefined): SearchResultGroup => {
+    const counted = countGroup(group);
+    const clause = group.key && above ? `(${above} AND ${group.key})` : group.key;
+    const inner = above && group.key ? `${above} AND ${group.key}` : group.key;
+    return {
+      ...(group.key ? { tag: { label: group.label, clause, facetId: 'tags' as const } } : {}),
+      notes: drawNotes(group.notes.slice(0, GROUP_ITEM_LIMIT)),
+      noteCount: counted.notes,
+      tasks: group.tasks.slice(0, GROUP_ITEM_LIMIT).map(drawTask),
+      taskCount: counted.tasks,
+      doneCount: counted.done,
+      ...(group.children.length
+        ? { children: group.children.map((child) => draw(child, inner)), ownNoteCount: group.notes.length, ownTaskCount: group.tasks.length }
+        : {}),
+    };
+  };
+  return groupByHeading(index, searched, ranked, tasks).map((group) => draw(group, undefined));
+}
+
+/**
+ * The hierarchy by tag: each group drawing its first notes and tasks and
  * counting all of them, the done tasks among them for its bar.
  */
-function drawResultGroups(
-  index: WorkspaceIndex,
-  { facets, ranked, tasks, drawNotes, drawTask }: {
-    facets: readonly QueryFacet[];
-    ranked: readonly NoteKey[];
-    tasks: readonly Task[];
-    drawNotes: (keys: readonly NoteKey[]) => TagOverviewCard[];
-    drawTask: (task: Task) => DashboardTask;
-  },
-): SearchResultGroup[] {
+function drawResultGroups(index: WorkspaceIndex, { facets, ranked, tasks, drawNotes, drawTask }: HierarchySource): SearchResultGroup[] {
   return groupResults(index, findTagFacet(facets), ranked, tasks).map((group) => ({
     ...(group.value && group.facetId
       ? { tag: { label: group.value.label, clause: group.value.clause, facetId: group.facetId } }

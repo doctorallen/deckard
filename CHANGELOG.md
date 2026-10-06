@@ -10,7 +10,9 @@
   done. A note or task is shown where it is most specific, under its own
   tags before the ones it inherits, so a tagged heading is never listed
   beside the note it is in, and a grouped card leaves out the task lines
-  listed under it.
+  listed under it. **By heading** nests them the way the notes nest their
+  tagged headings instead: each project (an H1's tag) holds its own parts
+  (its H2s' tags), and a project's bar counts its parts' tasks.
 
 ### Changed
 

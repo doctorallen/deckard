@@ -116,9 +116,9 @@ const narrowEditResults: Narrower<EditResultsMessage> = (value) =>
 const narrowSetRenderMode: Narrower<SetRenderModeMessage> = (value) =>
   value.mode === 'markdown' || value.mode === 'html' ? { type: 'setRenderMode', mode: value.mode } : undefined;
 
-/** The results grouped under Refine's tags, or not. */
+/** The results grouped by tag, by heading, or not. */
 const narrowSetSearchHierarchy: Narrower<SetSearchHierarchyMessage> = (value) =>
-  value.hierarchy === 'off' || value.hierarchy === 'tags'
+  value.hierarchy === 'off' || value.hierarchy === 'tags' || value.hierarchy === 'headings'
     ? { type: 'setSearchHierarchy', hierarchy: value.hierarchy }
     : undefined;
 

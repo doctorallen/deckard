@@ -7,7 +7,7 @@ import type { SearchHierarchy, TagOverviewLayout } from '../domain/model';
 import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 import type { SearchPageSnapshot } from '../ui/protocol/searchPage';
 import { createPreferences } from './preferenceServices';
-import { openWebviewPage, type WebviewPage } from './webviewPage';
+import { openWebviewPage, shownText, type WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 
 /**
@@ -201,5 +201,88 @@ suite('Search cards never repeat a note of their own', () => {
     const card = snapshot.sections.find((candidate) => candidate.heading === 'Beta');
     assert.strictEqual(card?.snippet?.line, 9, 'the paragraph holding the word');
     assert.strictEqual(card?.snippet?.heading, 'Detail');
+  });
+});
+
+suite('Search page: hierarchy by heading', () => {
+  let page: WebviewPage | undefined;
+
+  teardown(() => {
+    page?.dispose();
+    page = undefined;
+  });
+
+  /** Two projects for one client, each H1 a project and each H2 a part of it. */
+  const PROJECTS: Record<string, string> = {
+    'projects/checkout-v2.md': [
+      '# Checkout v2 #project/checkout-v2 #client/acme',
+      '- [x] Kickoff with finance',
+      '## Design #phase/design',
+      '- [x] Wireframes',
+      '- [x] Review with legal',
+      '- [ ] Final mockups',
+      '## Build #phase/build',
+      '- [x] Hosted fields spike',
+      '- [ ] Error mapping',
+      '- [ ] Load test',
+    ].join('\n'),
+    'projects/argent.md': [
+      '# Argent #project/argent #client/acme',
+      '- [ ] Confirm budget',
+      '## Design #phase/design',
+      '- [x] Brand review',
+      '- [ ] Icon set',
+      '## Launch #phase/launch',
+      '- [ ] Press kit',
+      '- [ ] Launch checklist',
+    ].join('\n'),
+    'notes/loose.md': '# Loose note #client/acme\nNo project here.',
+  };
+
+  const snapshotOf = (layout: TagOverviewLayout = 'tabs'): SearchPageSnapshot => {
+    const index = buildWorkspaceIndex(new Map(Object.entries(PROJECTS).map(([path, content]) => [path, parseMarkdown(path, content)])));
+    const store = createPreferences({ get: (_key: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never);
+    return createSearchPageSnapshot(index, { ...store.reader.value, tagOverviewLayout: layout, searchHierarchy: 'headings' }, '#client/acme', { queryContext: createQueryContext(Date.now()) });
+  };
+
+  /** Each level as its tag, its counts, and the levels inside it. */
+  type Level = [string, string, Level[]];
+  const levels = (groups: readonly NonNullable<SearchPageSnapshot['groups']>[number][]): Level[] =>
+    groups.map((group) => [group.tag?.label ?? '(none)', `${group.noteCount}n ${group.taskCount}t ${group.doneCount}d`, levels(group.children ?? [])]);
+
+  test('nests each project\'s parts under it, each part its own project\'s, the counts rolled up', () => {
+    assert.deepStrictEqual(levels(snapshotOf().groups ?? []), [
+      ['#project/checkout-v2', '3n 7t 4d', [['#phase/build', '1n 3t 1d', []], ['#phase/design', '1n 3t 2d', []]]],
+      ['#project/argent', '3n 5t 1d', [['#phase/design', '1n 2t 1d', []], ['#phase/launch', '1n 2t 0d', []]]],
+      ['(none)', '1n 0t 0d', []],
+    ]);
+  });
+
+  test('a project holds its own tasks above its parts, and a part narrows the search to itself in its project', () => {
+    const checkout = (snapshotOf().groups ?? [])[0];
+    assert.deepStrictEqual(checkout.tasks.map((item) => item.task.title), ['Kickoff with finance']);
+    assert.deepStrictEqual([checkout.ownNoteCount, checkout.ownTaskCount], [1, 1]);
+    assert.strictEqual(checkout.tag?.clause, '#project/checkout-v2');
+    assert.strictEqual(checkout.children?.[1].tag?.clause, '(#project/checkout-v2 AND #phase/design)');
+  });
+
+  test('draws the parts inside their project, side by side, with the project\'s bar counting them', () => {
+    page = openWebviewPage(renderPage('searchPage'), snapshotOf('split'));
+    const project = page.findAll('.overview-split-groups > .result-groups > .result-group')[0];
+    assert.strictEqual(project.querySelector('.result-group-heading')?.tagName, 'H2');
+    assert.strictEqual(shownText(project.querySelector(':scope > .result-group-columns .result-group-progress-label')), '4/7 done (57%)');
+    const parts = Array.from(project.querySelectorAll(':scope > .result-subgroups > .result-group.is-part'));
+    assert.deepStrictEqual(parts.map((part) => part.querySelector('.result-group-tag')?.textContent), ['#phase/build', '#phase/design']);
+    assert.strictEqual(parts[1].querySelector('.result-group-heading')?.tagName, 'H3', 'a part is a level below its project');
+    assert.strictEqual(shownText(parts[1].querySelector('.result-group-progress-label')), '2/3 done (67%)');
+    const ids = page.findAll('.result-group-heading').map((heading) => heading.id);
+    assert.strictEqual(new Set(ids).size, ids.length, 'every heading has an id of its own');
+  });
+
+  test('the gear offers it beside By tag', () => {
+    page = openWebviewPage(renderPage('searchPage'), snapshotOf());
+    page.click('[data-action="set-hierarchy"][data-value="headings"]');
+    assert.deepStrictEqual(page.lastPosted('setSearchHierarchy'), { type: 'setSearchHierarchy', hierarchy: 'headings' });
+    assert.ok(page.find('[data-action="set-hierarchy"][data-value="headings"]').classList.contains('active'), 'and shows it chosen');
   });
 });

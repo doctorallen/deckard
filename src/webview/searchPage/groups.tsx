@@ -36,16 +36,32 @@ function holds(group: SearchResultGroup, part: GroupPart): boolean {
   return part === 'tasks' ? group.taskCount > 0 : group.noteCount + group.taskCount > 0;
 }
 
+/** Where a group sits: its depth, which names its heading's level, and the id its heading is drawn with. */
+interface GroupPlace {
+  readonly depth: number;
+  readonly id: string;
+}
+
+/** What the results under no group are called: by tag, none of Refine's tags; by heading, no tagged heading. */
+function looseName(snapshot: SearchPageSnapshot, alone: boolean): string {
+  if (alone) {
+    return 'Results';
+  }
+  return snapshot.hierarchy === 'headings' ? 'Under no tagged heading' : 'Under none of these tags';
+}
+
 /**
  * The group's name: its tag, which narrows the search to it as Refine's
  * value does, or a plain heading for the results under none of the tags.
+ * A part's heading is a level below its project's.
  */
-function GroupHeading({ group, headingId, alone }: { readonly group: SearchResultGroup; readonly headingId: string; readonly alone: boolean }) {
+function GroupHeading({ group, place, looseLabel }: { readonly group: SearchResultGroup; readonly place: GroupPlace; readonly looseLabel: string }) {
+  const Heading = (['h2', 'h3', 'h4'] as const)[Math.min(place.depth, 2)];
   if (!group.tag) {
-    return <h2 id={headingId} class="result-group-heading">{alone ? 'Results' : 'Under none of these tags'}</h2>;
+    return <Heading id={place.id} class="result-group-heading">{looseLabel}</Heading>;
   }
   return (
-    <h2 id={headingId} class="result-group-heading">
+    <Heading id={place.id} class="result-group-heading">
       <button
         type="button"
         class="result-group-tag"
@@ -56,11 +72,11 @@ function GroupHeading({ group, headingId, alone }: { readonly group: SearchResul
       >
         <TagLabel label={group.tag.label} />
       </button>
-    </h2>
+    </Heading>
   );
 }
 
-/** How far along the group's tasks are: a bar and "3/8 done (38%)". */
+/** How far along the group's tasks are, its parts' among them: a bar and "3/8 done (38%)". */
 function GroupProgress({ group }: { readonly group: SearchResultGroup }) {
   if (!group.taskCount) {
     return null;
@@ -74,10 +90,10 @@ function GroupProgress({ group }: { readonly group: SearchResultGroup }) {
 }
 
 /** The group's name, what it holds, and, on the Tasks tab, its progress; side by side the progress heads the tasks' column. */
-function GroupHeader({ group, part, headingId, alone }: { readonly group: SearchResultGroup; readonly part: GroupPart; readonly headingId: string; readonly alone: boolean }) {
+function GroupHeader({ group, part, place, looseLabel }: { readonly group: SearchResultGroup; readonly part: GroupPart; readonly place: GroupPlace; readonly looseLabel: string }) {
   return (
     <div class="result-group-header">
-      <GroupHeading group={group} headingId={headingId} alone={alone} />
+      <GroupHeading group={group} place={place} looseLabel={looseLabel} />
       <span class="result-group-count">{describeGroup(group, part)}</span>
       {part === 'tasks' ? <GroupProgress group={group} /> : null}
     </div>
@@ -85,12 +101,12 @@ function GroupHeader({ group, part, headingId, alone }: { readonly group: Search
 }
 
 /**
- * Said when a group holds more than it draws: the tag's group narrows the
- * search to the tag, and the rest can be listed ungrouped.
+ * Said when a group holds more of its own than it draws: the tag's group
+ * narrows the search to the tag, and the rest can be listed ungrouped.
  */
 function GroupMore({ group, part }: { readonly group: SearchResultGroup; readonly part: GroupPart }) {
-  const hiddenNotes = part === 'tasks' ? 0 : group.noteCount - group.notes.length;
-  const hiddenTasks = part === 'notes' ? 0 : group.taskCount - group.tasks.length;
+  const hiddenNotes = part === 'tasks' ? 0 : (group.ownNoteCount ?? group.noteCount) - group.notes.length;
+  const hiddenTasks = part === 'notes' ? 0 : (group.ownTaskCount ?? group.taskCount) - group.tasks.length;
   if (hiddenNotes + hiddenTasks <= 0) {
     return null;
   }
@@ -111,51 +127,56 @@ function GroupMore({ group, part }: { readonly group: SearchResultGroup; readonl
   );
 }
 
-/** What the notes and tasks of every group are drawn with. */
+/** What the notes and tasks of every group are drawn with, and the next card's position, unique across the page as card ids are drawn from it. */
 interface GroupView {
   readonly snapshot: SearchPageSnapshot;
   readonly openedCards: ReadonlySet<string>;
+  readonly looseLabel: string;
+  readonly positions: { next: number };
 }
 
-/** A group's note cards, their positions unique across the page, as their ids are drawn from them. */
-function GroupNotes({ group, at, firstPosition, view }: { readonly group: SearchResultGroup; readonly at: number; readonly firstPosition: number; readonly view: GroupView }) {
+/** A group's note cards. */
+function GroupNotes({ group, place, view }: { readonly group: SearchResultGroup; readonly place: GroupPlace; readonly view: GroupView }) {
   const { snapshot, openedCards } = view;
   if (!group.notes.length) {
     return null;
   }
   const display: CardDisplay = { renderMode: snapshot.renderMode, preview: snapshot.preview, titleDisplay: snapshot.tagTitleDisplayMode };
+  const first = view.positions.next;
+  view.positions.next += group.notes.length;
   return (
     <div class="cards">
       {group.notes.map((card, offset) => (
-        <SearchCard key={`${at}:${card.id}`} card={card} position={firstPosition + offset} display={display} opened={openedCards.has(card.id)} />
+        <SearchCard key={`${place.id}:${card.id}`} card={card} position={first + offset} display={display} opened={openedCards.has(card.id)} />
       ))}
     </div>
   );
 }
 
 /** A group's task rows. */
-function GroupTasks({ group, at, snapshot }: { readonly group: SearchResultGroup; readonly at: number; readonly snapshot: SearchPageSnapshot }) {
+function GroupTasks({ group, place, snapshot }: { readonly group: SearchResultGroup; readonly place: GroupPlace; readonly snapshot: SearchPageSnapshot }) {
   if (!group.tasks.length) {
     return null;
   }
-  return <div class="task-list">{group.tasks.map((item) => <TaskListRow key={`${at}:${item.task.id}`} item={item} titleDisplay={snapshot.tagTitleDisplayMode} entry="tasks" />)}</div>;
+  return <div class="task-list">{group.tasks.map((item) => <TaskListRow key={`${place.id}:${item.task.id}`} item={item} titleDisplay={snapshot.tagTitleDisplayMode} entry="tasks" />)}</div>;
 }
 
-/** One group, showing its notes, its tasks, or both, the notes beside the tasks. */
-function ResultGroup({ group, at, part, firstPosition, view, alone }: {
+/**
+ * One group, showing its notes, its tasks, or both, the notes beside the
+ * tasks, then the parts inside it, each a group of its own.
+ */
+function ResultGroup({ group, part, place, view }: {
   readonly group: SearchResultGroup;
-  readonly at: number;
   readonly part: GroupPart;
-  readonly firstPosition: number;
+  readonly place: GroupPlace;
   readonly view: GroupView;
-  readonly alone: boolean;
 }) {
-  const headingId = `result-group-${part}-${at}`;
-  const notes = part === 'tasks' ? null : <GroupNotes group={group} at={at} firstPosition={firstPosition} view={view} />;
-  const tasks = part === 'notes' ? null : <GroupTasks group={group} at={at} snapshot={view.snapshot} />;
+  const notes = part === 'tasks' ? null : <GroupNotes group={group} place={place} view={view} />;
+  const tasks = part === 'notes' ? null : <GroupTasks group={group} place={place} snapshot={view.snapshot} />;
+  const children = (group.children ?? []).filter((child) => holds(child, part));
   return (
-    <section class="result-group" aria-labelledby={headingId}>
-      <GroupHeader group={group} part={part} headingId={headingId} alone={alone} />
+    <section class={place.depth ? 'result-group is-part' : 'result-group'} aria-labelledby={place.id}>
+      <GroupHeader group={group} part={part} place={place} looseLabel={view.looseLabel} />
       {part === 'both'
         ? (
           <div class="result-group-columns">
@@ -165,13 +186,23 @@ function ResultGroup({ group, at, part, firstPosition, view, alone }: {
         )
         : notes || tasks}
       <GroupMore group={group} part={part} />
+      {children.length
+        ? (
+          <div class="result-subgroups">
+            {children.map((child, at) => (
+              <ResultGroup key={child.tag ? child.tag.clause : ''} group={child} part={part} place={{ depth: place.depth + 1, id: `${place.id}-${at}` }} view={view} />
+            ))}
+          </div>
+        )
+        : null}
     </section>
   );
 }
 
 /**
- * Every group with something of the part shown, in Refine's order, then the
- * results under none of its tags; nothing when no group has any.
+ * Every group with something of the part shown, in Refine's order or nested
+ * by heading, then the results under none of them; nothing when no group
+ * has any.
  */
 export function ResultGroups({ snapshot, openedCards, part }: { readonly snapshot: SearchPageSnapshot; readonly openedCards: ReadonlySet<string>; readonly part: GroupPart }) {
   const all = snapshot.groups ?? [];
@@ -180,16 +211,14 @@ export function ResultGroups({ snapshot, openedCards, part }: { readonly snapsho
     return null;
   }
   const alone = all.length === 1 && !all[0].tag;
-  const view = { snapshot, openedCards };
-  let position = 0;
+  const view: GroupView = { snapshot, openedCards, looseLabel: looseName(snapshot, alone), positions: { next: 0 } };
+  const note = snapshot.hierarchy === 'headings' ? 'None of these results is under a tagged heading.' : 'Refine has no tags to group these results by.';
   return (
     <div class="result-groups">
-      {alone ? <p class="result-groups-note">Refine has no tags to group these results by.</p> : null}
+      {alone ? <p class="result-groups-note">{note}</p> : null}
       {groups.map((group) => {
         const at = all.indexOf(group);
-        const firstPosition = position;
-        position += part === 'tasks' ? 0 : group.notes.length;
-        return <ResultGroup key={group.tag ? group.tag.clause : ''} group={group} at={at} part={part} firstPosition={firstPosition} view={view} alone={alone} />;
+        return <ResultGroup key={group.tag ? group.tag.clause : ''} group={group} part={part} place={{ depth: 0, id: `result-group-${part}-${at}` }} view={view} />;
       })}
     </div>
   );

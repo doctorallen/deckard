@@ -77,9 +77,9 @@ export class DisplayService {
     await this.repository.update({ searchPageSize });
   }
 
-  /** Selects whether a search page groups its results under Refine's tags. */
+  /** Selects whether a search page groups its results by tag, by heading, or not at all. */
   public async setSearchHierarchy(searchHierarchy: SearchHierarchy): Promise<void> {
-    await this.repository.update({ searchHierarchy: searchHierarchy === 'tags' ? 'tags' : undefined });
+    await this.repository.update({ searchHierarchy: searchHierarchy === 'off' ? undefined : searchHierarchy });
   }
 
   /** Selects how much of each result a search page shows. */

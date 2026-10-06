@@ -343,7 +343,7 @@ function normalizeSearchPages(
     tagOverviewLayout: oneOf(source.tagOverviewLayout, TAG_OVERVIEW_LAYOUTS, 'tabs'),
     searchPageSize: oneOf<SearchPageSize>(source.searchPageSize, SEARCH_PAGE_SIZES, DEFAULT_SEARCH_PAGE_SIZE),
     searchPreview: oneOf(source.searchPreview, SEARCH_PREVIEWS, 'lines'),
-    ...(source.searchHierarchy === 'tags' ? { searchHierarchy: 'tags' as const } : {}),
+    ...(source.searchHierarchy === 'tags' || source.searchHierarchy === 'headings' ? { searchHierarchy: source.searchHierarchy } : {}),
     relatedNotesSortMode: oneOf(source.relatedNotesSortMode, RELATED_NOTES_SORT_MODES, 'tags'),
     ...(source.hideDailyNotes === true ? { hideDailyNotes: true as const } : {}),
     ...(previewLines === 0 || previewLines === 2 ? { relatedNotesPreviewLines: previewLines } : {}),

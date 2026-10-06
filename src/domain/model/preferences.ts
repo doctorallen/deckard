@@ -133,8 +133,11 @@ export type RenderMode = 'markdown' | 'html';
 /** How much of each result a search page shows: none, three lines, or all. */
 export type SearchPreview = 'none' | 'lines' | 'full';
 
-/** Whether a search page lists its results as they come, or grouped under the tags Refine offers. */
-export type SearchHierarchy = 'off' | 'tags';
+/**
+ * Whether a search page lists its results as they come, groups them under
+ * the tags Refine offers, or nests them the way their headings nest.
+ */
+export type SearchHierarchy = 'off' | 'tags' | 'headings';
 
 /** Everything Deckard keeps between sessions, in the shape it is stored in. */
 export interface PersistedPreferences {
@@ -162,8 +165,8 @@ export interface PersistedPreferences {
   searchPageSize: SearchPageSize;
   /** How much of each result a search page shows. */
   searchPreview: SearchPreview;
-  /** A search page groups its results under Refine's tags, in either layout; stored only when on. */
-  searchHierarchy?: 'tags';
+  /** A search page groups its results by tag or by heading, in either layout; stored only when on. */
+  searchHierarchy?: 'tags' | 'headings';
   relatedNotesSortMode: RelatedNotesSortMode;
   /** Related Notes and Linked from leave out daily, weekly, and monthly notes. */
   hideDailyNotes?: true;
