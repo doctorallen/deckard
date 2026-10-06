@@ -150,7 +150,6 @@ export class OutlineTreeProvider
       formatOutlineDescription(node, { tags: this.areTagsShown(), counts: this.areCountsShown() }) ||
       undefined;
     item.tooltip = createTooltip(node, tags);
-    item.iconPath = new vscode.ThemeIcon('symbol-string');
     item.contextValue =
       node.tags.length > 0 ? 'deckardOutlineTagged' : 'deckardOutlineHeading';
     item.command = {
