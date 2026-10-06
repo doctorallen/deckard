@@ -71,13 +71,13 @@ function GroupProgress({ group }: { readonly group: SearchResultGroup }) {
   );
 }
 
-/** The group's name, what it holds, and, where its tasks are shown, their progress. */
+/** The group's name, what it holds, and, on the Tasks tab, its progress; side by side the progress heads the tasks' column. */
 function GroupHeader({ group, part, headingId, alone }: { readonly group: SearchResultGroup; readonly part: GroupPart; readonly headingId: string; readonly alone: boolean }) {
   return (
     <div class="result-group-header">
       <GroupHeading group={group} headingId={headingId} alone={alone} />
       <span class="result-group-count">{describeGroup(group, part)}</span>
-      {part === 'notes' ? null : <GroupProgress group={group} />}
+      {part === 'tasks' ? <GroupProgress group={group} /> : null}
     </div>
   );
 }
@@ -155,7 +155,12 @@ function ResultGroup({ group, at, part, firstPosition, view, alone }: {
     <section class="result-group" aria-labelledby={headingId}>
       <GroupHeader group={group} part={part} headingId={headingId} alone={alone} />
       {part === 'both'
-        ? <div class="result-group-columns"><div class="result-group-column">{notes}</div><div class="result-group-column">{tasks}</div></div>
+        ? (
+          <div class="result-group-columns">
+            <div class="result-group-column">{notes}</div>
+            <div class="result-group-column"><GroupProgress group={group} />{tasks}</div>
+          </div>
+        )
         : notes || tasks}
       <GroupMore group={group} part={part} />
     </section>

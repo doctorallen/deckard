@@ -108,6 +108,8 @@ suite('Search page: Hierarchy', () => {
     const [notes, tasks] = Array.from(decision.querySelectorAll('.result-group-column'));
     assert.strictEqual(notes.querySelectorAll('.card').length, 1);
     assert.strictEqual(tasks.querySelectorAll('.task-row').length, 2);
+    assert.strictEqual(tasks.firstElementChild?.className, 'result-group-progress', 'the progress heads the tasks');
+    assert.strictEqual(decision.querySelector('.result-group-header .progress-bar'), null);
     assert.strictEqual(page.findAll('[role="tab"]').length, 0, 'no tabs side by side');
   });
 

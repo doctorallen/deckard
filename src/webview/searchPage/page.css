@@ -63,6 +63,9 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .overview-split-groups > .overview-split { margin-bottom: 0; }
 .result-group-columns { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
 .result-group-column { min-width: 0; }
+/* Side by side, the progress heads the tasks' column, over the rows it counts. */
+.result-group-column > .result-group-progress { display: flex; max-width: none; margin-top: var(--space-3); }
+.result-group-column > .result-group-progress + .task-list { margin-top: var(--space-2); }
 @media (max-width: 700px) { .result-group-columns { grid-template-columns: 1fr; } }
 .result-group-more { margin: var(--space-3) 0 0; color: var(--muted); font-size: var(--text-sm); }
 .result-group-tag.result-group-tag {
