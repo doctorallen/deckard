@@ -155,12 +155,9 @@ function cardClass(card: TaskBoardCard): string {
 /** A card's box, drawn by its status, which completes or reopens it, and its status's icon. */
 function CardBox({ card, title }: { readonly card: TaskBoardCard; readonly title: string }) {
   const verb = isBoxChecked(card.completed, card.status) ? 'Reopen' : 'Complete';
-  return (
-    <>
-      <input type="checkbox" tabIndex={-1} data-action="board-toggle-task" aria-label={`${verb} ${title}${speakBoxStatus(card.status)}`} data-tip={`${verb} this task`} {...statusBoxProps(card.completed, card.status)} />
-      <StatusIcon status={card.status} />
-    </>
-  );
+  const box = <input type="checkbox" tabIndex={-1} data-action="board-toggle-task" aria-label={`${verb} ${title}${speakBoxStatus(card.status)}`} data-tip={`${verb} this task`} {...statusBoxProps(card.completed, card.status)} />;
+  // The icon goes under the box, in the box's own column of the card.
+  return card.status?.icon === undefined ? box : <span class="task-box-with-icon">{box}<StatusIcon status={card.status} /></span>;
 }
 
 /** One task card, with its checkbox and the menu that edits it. */

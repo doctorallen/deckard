@@ -7,7 +7,7 @@
 input[data-action="toggle-task"][data-status="inProgress"] { accent-color: var(--accent); }
 input[data-action="toggle-task"][data-status="cancelled"] { accent-color: var(--muted); opacity: 0.75; }
 input[data-action="toggle-task"][data-status="unknown"] { outline: 1px dashed var(--muted); outline-offset: 1px; }
-.task-box-with-icon { display: inline-flex; align-items: flex-start; gap: 2px; }
+.task-box-with-icon { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
 .status-icon { color: var(--status-icon); font-size: var(--text-xs); line-height: 16px; font-weight: 600; }
 .task-row.cancelled .task-title,
 .board-card.cancelled .board-title,

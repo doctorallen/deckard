@@ -111,7 +111,7 @@ function StatusRow({ status, at, workflow, namespace, problems }: {
       <td>
         {core
           ? <span class="status-symbol" data-tip="Todo's and Done's characters are fixed, as in Obsidian">{boxOf(status.symbol)}</span>
-          : <input type="text" class="status-symbol-input" maxLength={2} value={status.symbol ?? ''} placeholder="tag only" aria-label={`${label}: character`} {...field('symbol')} />}
+          : <input type="text" class="status-symbol-input" maxLength={2} value={status.symbol ?? ''} placeholder="none" aria-label={`${label}: character`} {...field('symbol')} />}
       </td>
       <td><input type="text" value={status.name} aria-label={`${label}: name`} {...field('name')} /></td>
       <td>
