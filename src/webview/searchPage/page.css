@@ -115,7 +115,7 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .hub .markdown, .hub .rendered { margin: 12px 0 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }
 /* How far along a tag's tasks are, under its hub. */
-.tag-progress { display: grid; grid-template-columns: auto minmax(80px, 200px) 1fr; align-items: center; gap: var(--space-2) var(--space-3); margin: var(--space-3) 0 0; }
+.tag-progress { display: grid; grid-template-columns: auto minmax(120px, 200px) minmax(0, 1fr); align-items: center; gap: var(--space-2) var(--space-3); margin: var(--space-3) 0 0; }
 .tag-progress-label { color: var(--muted); font-size: var(--text-sm); }
 /* Each part keeps its column, so a hidden label (plain styling hides the
    eyebrow) leaves the bar and the words their room rather than sliding

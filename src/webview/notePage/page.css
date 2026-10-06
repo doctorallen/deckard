@@ -21,7 +21,8 @@ button.note-crumb:hover:where(:not(:disabled):not([aria-disabled="true"])), butt
    lines share columns, so their bars sit one above the other, and the words
    have the rest of the line. A hub's link to its tag's page is a line of its
    own under its bar, so it never squeezes the words into a column. */
-.note-progress { display: grid; grid-template-columns: 64px minmax(80px, 200px) 1fr; align-items: center; gap: var(--space-1) var(--space-3); }
+/* The words wrap before the bar shrinks: a 1fr column will not narrow past its longest link, so it took the bar's room. */
+.note-progress { display: grid; grid-template-columns: 64px minmax(120px, 200px) minmax(0, 1fr); align-items: center; gap: var(--space-1) var(--space-3); }
 .note-progress .tag-note-action { grid-column: 2 / -1; justify-self: start; }
 .note-progress-label { color: var(--muted); font-size: var(--text-sm); }
 .tag-note-action { min-height: 0; padding: 0 2px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: var(--text-sm); text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
