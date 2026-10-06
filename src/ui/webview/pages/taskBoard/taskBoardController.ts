@@ -20,7 +20,7 @@ import { moveTasks } from '../../../commands/moveTo';
 import { readQueryContext } from '../../../commands/queryContext';
 import { offerSavedSearchOnHome } from '../../../commands/savedSearchHome';
 import { settingTarget, writeSetting } from '../../../commands/settings';
-import { openTask, quoteTaskTitle, TaskWrites, toggleTask as writeTaskToggle } from '../../../commands/taskActions';
+import { clickTask, openTask, quoteTaskTitle, TaskWrites } from '../../../commands/taskActions';
 import { listPeopleRecency } from '../../../state/peopleRecency';
 import {
   captureIntoColumn,
@@ -455,7 +455,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         const index = indexer.getSnapshot();
         const task = index.tasks.get(message.taskId);
         this.writeIndexAt = index.updatedAt;
-        if (task && (await writeTaskToggle(writes, task, message.completed))) {
+        if (task && (await clickTask(writes, task, message.completed))) {
           return;
         }
         this.writeIndexAt = undefined;

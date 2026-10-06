@@ -6,8 +6,10 @@ import {
   matchTaskLine,
   TaskLineMatch,
   TaskLineShape,
+  STATUS_MARKS,
   STATUS_OR_MIGRATED_MARKS,
 } from './lineShapes';
+import { DEFAULT_TASK_STATUSES, isOpenType, statusForSymbol, type TaskStatusDefinition } from '../tasks/taskStatuses';
 import { findListItemEndLine, listItemIndentation } from './parser';
 import { markMigrated } from './taskLineEdits';
 
@@ -50,8 +52,8 @@ export interface MoveSelection {
   isEmpty: boolean;
 }
 
-/** An open task, which a move can leave behind marked `[>]`. */
-const OPEN_TASK: TaskLineShape = { indent: 'whitespace', marks: ' ' };
+/** A task of any status; an open one is what a move can leave behind marked `[>]`. */
+const STATUS_TASK: TaskLineShape = { indent: 'whitespace', marks: STATUS_MARKS };
 /** A task of any kind: any status, or migrated. */
 const ANY_TASK: TaskLineShape = { indent: 'whitespace', marks: STATUS_OR_MIGRATED_MARKS };
 
@@ -62,7 +64,11 @@ const ANY_TASK: TaskLineShape = { indent: 'whitespace', marks: STATUS_OR_MIGRATE
  * last item has children takes them too, so a child is never left under the
  * item above.
  */
-export function readMoveBlock(lines: readonly string[], selection: MoveSelection): MoveBlock | MoveRefusal {
+export function readMoveBlock(
+  lines: readonly string[],
+  selection: MoveSelection,
+  statuses: readonly TaskStatusDefinition[] = DEFAULT_TASK_STATUSES,
+): MoveBlock | MoveRefusal {
   const start = selection.start.line;
   let end = selection.end.line;
   if (!selection.isEmpty && end > start && selection.end.character === 0) {
@@ -89,7 +95,7 @@ export function readMoveBlock(lines: readonly string[], selection: MoveSelection
   const topLevel = rangeOf(start, end).filter(
     (line) => (lines[line] ?? '').trim() && leading(lines[line]) === base,
   );
-  const openTasks = readOpenTasks(lines, topLevel);
+  const openTasks = readOpenTasks(lines, topLevel, statuses);
   return {
     start,
     end,
@@ -163,9 +169,10 @@ function refuseBlock(lines: readonly string[], start: number, end: number): Move
 function readOpenTasks(
   lines: readonly string[],
   topLevel: readonly number[],
+  statuses: readonly TaskStatusDefinition[],
 ): MoveBlock['openTasks'] {
-  const matches = topLevel.map((line) => matchTaskLine(lines[line], OPEN_TASK));
-  if (!matches.every((match) => match !== undefined)) {
+  const matches = topLevel.map((line) => matchTaskLine(lines[line], STATUS_TASK));
+  if (!matches.every((match) => match !== undefined && isOpenType(statusForSymbol(statuses, match.mark).type))) {
     return undefined;
   }
   return topLevel.map((line, index) => ({

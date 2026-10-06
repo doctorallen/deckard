@@ -6,6 +6,9 @@ import { Task, TaskPriority } from '../model';
 import { QueryContext } from '../query/queryContext';
 import { needsNewDate } from './taskPolicy';
 import { readStatusTag } from './taskStatuses';
+import { setTaskStatusTag } from './statusWrites';
+
+export { setTaskStatusTag } from './statusWrites';
 import { isStatusColumnName } from './taskColumns';
 import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskFields';
 import { appendToTaskText, setTaskAssignee, setTaskDate, setTaskLineCompletion, setTaskPriority } from '../markdown/taskLineEdits';
@@ -288,38 +291,6 @@ export function setTaskNamespaceTags(
     text = appendToTaskText(text, change.add);
   }
   return head + text;
-}
-
-/**
- * Sets or clears a task's status tag. An existing status tag is changed where
- * it is written, and any others are removed; a new one goes at the end.
- */
-export function setTaskStatusTag(
-  line: string,
-  checkboxColumn: number,
-  namespace: string,
-  status: string | undefined,
-): string {
-  const head = line.slice(0, checkboxColumn + 2);
-  const text = line.slice(checkboxColumn + 2);
-  const tag = `#${namespace}/${status ?? ''}`;
-  const pattern = new RegExp(
-    `[ \\t]+#${escapeRegExp(namespace)}/[\\p{L}\\p{N}][${TAG_WORD_CHARACTERS}-]*(?![${TAG_WORD_CHARACTERS}/-])`,
-    'giu',
-  );
-  let written = false;
-  const skipped = findCodeAndLinkRanges(text);
-  const next = text.replace(pattern, (match, offset: number) => {
-    if (isInRanges(skipped, offset)) {
-      return match;
-    }
-    if (!status || written) {
-      return '';
-    }
-    written = true;
-    return match.replace(/#.*$/, tag);
-  });
-  return head + (status && !written ? appendToTaskText(next, tag) : next);
 }
 
 /** A status as a column names it: `waiting-on` is `Waiting on`. */

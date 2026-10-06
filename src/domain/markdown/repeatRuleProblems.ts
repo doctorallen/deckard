@@ -1,5 +1,6 @@
 import { findFrontmatterEnd } from './frontmatter';
-import { matchTaskLine, TaskLineShape, findFencedLines } from './lineShapes';
+import { matchTaskLine, STATUS_MARKS, TaskLineShape, findFencedLines } from './lineShapes';
+import { DEFAULT_TASK_STATUSES, isOpenType, statusForSymbol, type TaskStatusDefinition } from '../tasks/taskStatuses';
 import { parseRecurrence, suggestRecurrence } from './recurrence';
 import { findTaskMetadataSpans } from './taskFields';
 
@@ -9,8 +10,8 @@ import { findTaskMetadataSpans } from './taskFields';
  * what these find.
  */
 
-/** An open task line; one space or tab after its box belongs to the box. */
-const OPEN_TASK: TaskLineShape = { indent: 'whitespace', marks: ' ', after: 'optional-blank' };
+/** A task line of any status; one space or tab after its box belongs to the box. */
+const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: STATUS_MARKS, after: 'optional-blank' };
 
 /** An open task's repeat rule Deckard cannot read. */
 export interface RepeatRuleProblem {
@@ -28,13 +29,16 @@ export interface RepeatRuleProblem {
  * repeat without a word, so the rule is worth marking before then. Code and
  * front matter are left alone, and so are done tasks, which repeat no more.
  */
-export function findRepeatRuleProblems(lines: readonly string[]): RepeatRuleProblem[] {
+export function findRepeatRuleProblems(
+  lines: readonly string[],
+  statuses: readonly TaskStatusDefinition[] = DEFAULT_TASK_STATUSES,
+): RepeatRuleProblem[] {
   const fenced = findFencedLines([...lines]);
   const skip = (findFrontmatterEnd(lines) ?? -1) + 1;
   const problems: RepeatRuleProblem[] = [];
   lines.forEach((text, line) => {
-    const task = matchTaskLine(text, OPEN_TASK);
-    if (!task || line < skip || fenced.has(line)) {
+    const task = matchTaskLine(text, TASK_LINE);
+    if (!task || !isOpenType(statusForSymbol(statuses, task.mark).type) || line < skip || fenced.has(line)) {
       return;
     }
     const offset = task.head.length + task.gap.length;

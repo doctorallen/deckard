@@ -1,6 +1,8 @@
-import { matchTaskLine, TaskLineMatch, TaskLineShape } from '../markdown/lineShapes';
+import { matchTaskLine, STATUS_MARKS, TaskLineMatch, TaskLineShape } from '../markdown/lineShapes';
 import { readStepsForNextOccurrence } from '../markdown/taskSteps';
 import { setTaskLineCompletion, writeCompletion } from '../markdown/taskLineEdits';
+import { setTaskStatusTag } from './statusWrites';
+import { DEFAULT_TASK_STATUSES, isNonTaskSymbol, statusForSymbol, type TaskStatusDefinition } from './taskStatuses';
 import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskFields';
 import { formatIsoDate } from '../markdown/calendar';
 
@@ -10,8 +12,8 @@ import { formatIsoDate } from '../markdown/calendar';
  * among them writes.
  */
 
-/** The checkbox a line must open with to be toggled. */
-const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: ' xX' };
+/** The checkbox a line must open with to be toggled: any status's. */
+const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: STATUS_MARKS };
 
 /** One task line under a cursor, as it is and as it will be written. */
 export interface ToggledLine {
@@ -53,10 +55,11 @@ export function selectedLines(
 
 /**
  * Completes or reopens the task lines given, the way Toggle Line Comment
- * decides: if any of them is open, every open one is completed; otherwise
- * every one is reopened. A completion writes its done date and, for a
- * repeating task, its next occurrence on the line above, through the same
- * path as every other completion.
+ * decides: if any of them is not done, in progress or cancelled alike,
+ * every one that is not is completed; otherwise every one is reopened, as
+ * `[ ]`, its status tag taken away. A completion writes its done date and,
+ * for a repeating task, its next occurrence on the line above, through the
+ * same path as every other completion.
  */
 export function toggleTaskLines(
   lines: readonly { line: number; text: string }[],
@@ -67,24 +70,30 @@ export function toggleTaskLines(
     eol: string;
     /** The whole note, so a repeating task's next occurrence takes its steps. */
     documentLines?: readonly string[];
+    /** What each character means; Deckard's own when not given. */
+    statuses?: readonly TaskStatusDefinition[];
+    /** The namespace of the status tag a reopened task loses; none is touched when not given. */
+    statusNamespace?: string;
   },
 ): ToggleResult {
+  const statuses = options.statuses ?? DEFAULT_TASK_STATUSES;
   const tasks = lines
     .map((entry) => ({ ...entry, match: matchTaskLine(entry.text, TASK_LINE) }))
-    .filter((entry): entry is typeof entry & { match: TaskLineMatch } => entry.match !== undefined);
-  const completed = tasks.some((entry) => entry.match.mark === ' ');
+    .filter((entry): entry is typeof entry & { match: TaskLineMatch } => entry.match !== undefined && !isNonTaskSymbol(statuses, entry.match.mark));
+  const isDone = (mark: string): boolean => statusForSymbol(statuses, mark).type === 'done';
+  const completed = tasks.some((entry) => !isDone(entry.match.mark));
   const toggled: ToggledLine[] = [];
   for (const { line, text, match } of tasks) {
-    const open = match.mark === ' ';
-    if (completed !== open) {
+    if (completed === isDone(match.mark)) {
       continue;
     }
     const checkboxColumn = match.opening.length;
-    const marked = setTaskLineCompletion(text, checkboxColumn, {
+    const box = setTaskLineCompletion(text, checkboxColumn, {
       completed,
       doneDate: options.addDoneDate ? formatIsoDate(now) : undefined,
       preferredFormat: options.format,
     });
+    const marked = completed || options.statusNamespace === undefined ? box : setTaskStatusTag(box, checkboxColumn, options.statusNamespace, undefined);
     const title = parseTaskMetadata(text.slice(checkboxColumn + 2)).title;
     if (!completed) {
       toggled.push({ line, before: text, after: marked, title });

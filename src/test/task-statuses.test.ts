@@ -19,6 +19,9 @@ import { createQueryContext } from '../domain/query/queryContext';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
 import { buildSearchFacets } from '../domain/search/facets';
+import { nextStatus, readLineStatus, setTaskStatus, type StatusWriteMode } from '../domain/tasks/statusWrites';
+import { toggleTaskLines } from '../domain/tasks/toggleLines';
+import { isClosedTaskLine } from '../domain/markdown/taskSteps';
 
 /** Each task's character, name, type, and whether it is done, as the parser read it. */
 function read(content: string, taskStatuses?: readonly TaskStatusDefinition[]): string[] {
@@ -251,5 +254,92 @@ suite('Task statuses: what the types mean, and searching', () => {
         'Waiting 1 status:waiting',
       ],
     );
+  });
+});
+
+suite('Task statuses: writing one', () => {
+  const statuses = DEFAULT_TASK_STATUSES;
+  const named = (name: string) => statuses.find((status) => status.name === name) as TaskStatusDefinition;
+  const write = (line: string, name: string, writeAs: StatusWriteMode = 'match') =>
+    setTaskStatus(line, line.indexOf('[') + 1, {
+      to: named(name),
+      namespace: 'status',
+      writeAs,
+      doneDate: '2026-10-05',
+      cancelledDate: '2026-10-05',
+    });
+
+  test('match writes the character on a plain line and the tag on a tagged one', () => {
+    assert.strictEqual(write('- [ ] Draft', 'In progress'), '- [/] Draft');
+    assert.strictEqual(write('- [ ] Draft #status/todo', 'In progress'), '- [ ] Draft #status/doing');
+    assert.strictEqual(write('- [/] Draft', 'Blocked'), '- [=] Draft');
+    assert.strictEqual(write('- [/] Draft', 'Todo'), '- [ ] Draft');
+  });
+
+  test('checkbox always writes the character, taking the tag away; tag always the tag', () => {
+    assert.strictEqual(write('- [ ] Draft #status/doing', 'Blocked', 'checkbox'), '- [=] Draft');
+    assert.strictEqual(write('- [/] Draft', 'In progress', 'tag'), '- [ ] Draft #status/doing');
+  });
+
+  test('a status with no character is its tag in an empty box', () => {
+    assert.strictEqual(write('- [/] Draft', 'Waiting', 'checkbox'), '- [ ] Draft #status/waiting');
+    assert.strictEqual(write('- [ ] Draft #status/doing', 'Someday'), '- [ ] Draft #status/someday');
+  });
+
+  test('done and cancelled are their characters, with their dates, one replacing the other', () => {
+    assert.strictEqual(write('- [/] Ship #status/doing', 'Done'), '- [x] Ship #status/doing ✅ 2026-10-05');
+    assert.strictEqual(write('- [x] Ship ✅ 2026-10-01', 'Cancelled'), '- [-] Ship ❌ 2026-10-05');
+    assert.strictEqual(write('- [-] Ship ❌ 2026-10-02', 'Todo'), '- [ ] Ship');
+    assert.strictEqual(write('- [-] Ship ❌ 2026-10-02', 'Cancelled'), '- [-] Ship ❌ 2026-10-02');
+  });
+
+  test('a line reads its status as the index does, and the workflow steps by next', () => {
+    assert.deepStrictEqual(readLineStatus('- [ ] Plan #status/waiting', 2 + 1, statuses, 'status'), { symbol: ' ', name: 'Waiting', type: 'onHold' });
+    assert.strictEqual(nextStatus({ symbol: '/', name: 'In progress', type: 'inProgress' }, statuses)?.symbol, 'x');
+    assert.strictEqual(nextStatus({ symbol: 'x', name: 'Done', type: 'done' }, statuses)?.symbol, ' ');
+    assert.strictEqual(nextStatus({ symbol: ' ', name: 'Waiting', type: 'onHold' }, statuses), undefined);
+    assert.strictEqual(nextStatus({ symbol: '?', name: 'Unknown', type: 'todo' }, statuses), undefined);
+  });
+
+  test('Toggle Task Done completes any status that is not done, and reopens as [ ], its tag gone', () => {
+    const options = { addDoneDate: false, format: 'emoji' as const, eol: '\n', statusNamespace: 'status' };
+    const lines = [
+      { line: 0, text: '- [/] Draft' },
+      { line: 1, text: '- [-] Banner' },
+      { line: 2, text: '- [x] Room' },
+    ];
+    assert.deepStrictEqual(toggleTaskLines(lines, 0, options).lines.map((line) => line.after), ['- [x] Draft', '- [x] Banner']);
+    assert.deepStrictEqual(
+      toggleTaskLines([{ line: 0, text: '- [x] Draft #status/doing' }], 0, options).lines.map((line) => line.after),
+      ['- [ ] Draft'],
+    );
+  });
+
+  test('a step is closed when its status is done or cancelled', () => {
+    assert.strictEqual(isClosedTaskLine('  - [-] Rewrite'), true);
+    assert.strictEqual(isClosedTaskLine('  - [x] Build'), true);
+    assert.strictEqual(isClosedTaskLine('  - [/] Test'), false);
+  });
+
+  test('no file outside the line shapes spells out the checkbox marks', () => {
+    const root = path.join(__dirname, '..', '..', 'src');
+    const found: string[] = [];
+    const walk = (folder: string): void => {
+      for (const entry of fs.readdirSync(folder, { withFileTypes: true })) {
+        const at = path.join(folder, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name !== 'test') {
+            walk(at);
+          }
+        } else if (/\.tsx?$/.test(entry.name) && entry.name !== 'lineShapes.ts') {
+          const text = fs.readFileSync(at, 'utf8');
+          if (/\[ ?xX\]|marks: ' xX|'xX'/.test(text)) {
+            found.push(path.relative(root, at));
+          }
+        }
+      }
+    };
+    walk(root);
+    assert.deepStrictEqual(found, [], 'a task line is recognized by STATUS_MARKS or STATUS_CHARACTER, so a new status is a task everywhere');
   });
 });

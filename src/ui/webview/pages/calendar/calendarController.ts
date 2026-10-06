@@ -18,7 +18,7 @@ import { setTaskDateField } from '../../../commands/agendaActions';
 import { chooseTargetFolder, ensurePeriodicNote } from '../../../commands/dailyNote';
 import { readWeekStart } from '../../../commands/datePrompt';
 import { readQueryContext } from '../../../commands/queryContext';
-import { openTask, TaskWrites, toggleTask } from '../../../commands/taskActions';
+import { clickTask, openTask, TaskWrites } from '../../../commands/taskActions';
 import { CalendarOptions, createCalendar } from '../../../state/calendarState';
 import { getCalendarHtml } from '../../calendarHtml';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
@@ -129,7 +129,7 @@ export class CalendarController {
       case 'toggleTask': {
         const task = this.indexer.getSnapshot().tasks.get(message.taskId);
         if (task) {
-          await toggleTask(this.writes, task, message.completed);
+          await clickTask(this.writes, task, message.completed);
         }
         return;
       }

@@ -442,7 +442,7 @@ export const ASSISTANT_TOOLS: readonly AssistantTool[] = [
           kind: 'invalid',
           text: {
             languageModel:
-              'Send the task\'s "note" and "line" as deckard_query reports them, and at least one of: title, complete, due (YYYY-MM-DD or null), priority (highest, high, medium, low, lowest, or null), assignee (a person tag, or null).',
+              'Send the task\'s "note" and "line" as deckard_query reports them, and at least one of: title, complete, status (a status by name, as "In progress" or "Cancelled", or by its character, as "[/]"), due (YYYY-MM-DD or null), priority (highest, high, medium, low, lowest, or null), assignee (a person tag, or null).',
             mcp: 'Send "note" and "line" as deckard_query reports them, and at least one change.',
           },
         };

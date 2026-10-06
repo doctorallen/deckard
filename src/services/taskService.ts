@@ -4,7 +4,7 @@ import {
   findCheckboxColumn,
   findStepFamily,
   formatStepLines,
-  isCheckedTaskLine,
+  isClosedTaskLine,
   planStepInsertion,
   readStepsForNextOccurrence,
 } from '../domain/markdown/taskSteps';
@@ -23,8 +23,16 @@ import type { Clock } from '../ports/clock';
 import type { Configuration } from '../ports/configuration';
 import type { EditApplier, HistoryWriter, NoteText, TextRange } from '../ports/editApplier';
 import type { ResourceUri } from '../ports/uri';
-import { setTaskLineCompletion, writeCompletion } from '../domain/markdown/taskLineEdits';
+import { createNextOccurrence, setTaskLineCompletion, writeCompletion } from '../domain/markdown/taskLineEdits';
 import { formatIsoDate } from '../domain/markdown/calendar';
+import { readStatusNamespace } from '../domain/tasks/taskPolicy';
+import { nextStatus, readStatusWriteMode, setTaskStatus, type StatusWriteMode } from '../domain/tasks/statusWrites';
+import { readTaskStatus, readTaskStatusSettings, type TaskStatusDefinition } from '../domain/tasks/taskStatuses';
+
+/** One of the two statuses every list has, ` ` Todo or `x` Done, by its character. */
+function coreStatus(statuses: readonly TaskStatusDefinition[], symbol: ' ' | 'x'): TaskStatusDefinition {
+  return statuses.find((status) => status.symbol === symbol) ?? { symbol, name: symbol === 'x' ? 'Done' : 'Todo', type: symbol === 'x' ? 'done' : 'todo' };
+}
 
 /**
  * Every edit Deckard makes to a task: rewriting its line, from its checkbox
@@ -216,19 +224,57 @@ export class TaskService<U extends ResourceUri, H = unknown> {
    * Completes or reopens a task. Besides the checkbox, the edit keeps the
    * Obsidian Tasks metadata in step: a done date is added on completion and
    * removed on reopening, and completing a task with a repeat rule writes its
-   * next occurrence on the line above, where Tasks puts it.
+   * next occurrence on the line above, where Tasks puts it. A task reopened
+   * is `[ ]`, whatever status it had: its status tag goes too.
    */
   public toggle(task: Task, completed: boolean): Promise<LineUpdate<U, Completion>> {
+    return this.writeStatus(task, (statuses) => (completed ? coreStatus(statuses, 'x') : coreStatus(statuses, ' ')), completed ? undefined : 'checkbox');
+  }
+
+  /**
+   * Sets a task's status, as `deckard.tasks.writeStatusAs` says to write
+   * it, with the dates its type keeps: a change to done is a completion,
+   * next occurrence and all, and a change to cancelled writes ❌.
+   */
+  public setStatus(task: Task, to: TaskStatusDefinition): Promise<LineUpdate<U, Completion>> {
+    return this.writeStatus(task, () => to);
+  }
+
+  /**
+   * What a click on a task's box does when `deckard.tasks.checkboxClick` is
+   * `workflow`: moves the task to its status's next status. Undefined when
+   * its status names no next one, or the setting is `done`, so the caller
+   * completes or reopens it as a click always has.
+   */
+  public readNextStatus(task: Task, uri?: U): TaskStatusDefinition | undefined {
+    const configuration = this.options.configuration.getConfiguration('deckard', uri);
+    if (configuration.get<string>('tasks.checkboxClick', 'done') !== 'workflow') {
+      return undefined;
+    }
+    const statuses = readTaskStatusSettings(configuration);
+    return nextStatus(readTaskStatus(task, statuses, readStatusNamespace(configuration)), statuses);
+  }
+
+  /** Writes the status `pick` chooses from the note's statuses, and completes the task when it becomes done. */
+  private writeStatus(
+    task: Task,
+    pick: (statuses: readonly TaskStatusDefinition[]) => TaskStatusDefinition,
+    writeAs?: StatusWriteMode,
+  ): Promise<LineUpdate<U, Completion>> {
     return this.rewrite<Completion>(task, (line, { uri, eol, lines, lineIndex }) => {
       const now = this.options.clock.now();
       const configuration = this.options.configuration.getConfiguration('deckard', uri);
-      const addDoneDate = configuration.get<boolean>('tasks.addDoneDate', true);
-      const replacement = setTaskLineCompletion(line, task.checkboxColumn, {
-        completed,
-        doneDate: addDoneDate ? formatIsoDate(now) : undefined,
+      const statuses = readTaskStatusSettings(configuration);
+      const to = pick(statuses);
+      const replacement = setTaskStatus(line, task.checkboxColumn, {
+        to,
+        namespace: readStatusNamespace(configuration),
+        writeAs: writeAs ?? readStatusWriteMode(configuration.get<unknown>('tasks.writeStatusAs')),
+        ...(configuration.get<boolean>('tasks.addDoneDate', true) ? { doneDate: formatIsoDate(now) } : {}),
+        ...(configuration.get<boolean>('tasks.addCancelledDate', true) ? { cancelledDate: formatIsoDate(now) } : {}),
         preferredFormat: readMetadataFormat(configuration),
       });
-      if (!completed || task.completed) {
+      if (to.type !== 'done' || task.completed) {
         return { text: replacement };
       }
       const completion = writeCompletion(replacement, task.checkboxColumn, {
@@ -241,7 +287,7 @@ export class TaskService<U extends ResourceUri, H = unknown> {
         outcome: {
           next: completion.next,
           unreadRule: completion.unreadRule,
-          family: readCompletionFamily(lines, lineIndex, completion.text),
+          family: readCompletionFamily(lines, lineIndex, completion.text, statuses),
         },
       };
     });
@@ -286,11 +332,42 @@ export class TaskService<U extends ResourceUri, H = unknown> {
    * Rejects when the note cannot be read.
    */
   public async findOpenTaskAt(uri: U, filePath: string, line: number, lineText: string): Promise<Task | undefined> {
+    const task = await this.findTaskAt(uri, filePath, line);
+    return task && isOpenTask(task) && task.sourceLineText === lineText ? task : undefined;
+  }
+
+  /** The task on a zero-based line of a note as it is now, read with the note's statuses. */
+  private async findTaskAt(uri: U, filePath: string, line: number): Promise<Task | undefined> {
     const note = await this.options.notes.open(uri);
-    const task = parseMarkdown(filePath, note.getText()).tasks.find(
+    const taskStatuses = readTaskStatusSettings(this.options.configuration.getConfiguration('deckard', uri));
+    return parseMarkdown(filePath, note.getText(), undefined, { taskStatuses }).tasks.find(
       (candidate) => candidate.lineNumber === line + 1,
     );
-    return task && isOpenTask(task) && task.sourceLineText === lineText ? task : undefined;
+  }
+
+  /**
+   * Starts the next occurrence of the repeating task on a zero-based line,
+   * on the line above with its steps unchecked, as completing it would: for
+   * a task cancelled that is to keep repeating. `stale` when the line no
+   * longer reads `text`.
+   */
+  public async startNextOccurrence(uri: U, filePath: string, at: { line: number; text: string }): Promise<LineUpdate<U, Completion>> {
+    let task: Task | undefined;
+    try {
+      task = await this.findTaskAt(uri, filePath, at.line);
+    } catch (error) {
+      return { kind: 'failed', uri, error };
+    }
+    if (!task || task.sourceLineText !== at.text) {
+      return { kind: 'stale', uri };
+    }
+    const { checkboxColumn } = task;
+    return this.rewrite<Completion>(task, (line, { eol, lines, lineIndex }) => {
+      const next = createNextOccurrence(line, checkboxColumn, this.options.clock.now());
+      return next === undefined
+        ? { text: line }
+        : { text: [next, ...readStepsForNextOccurrence(lines, lineIndex), line].join(eol), outcome: { next } };
+    });
   }
 
   /**
@@ -321,11 +398,12 @@ export class TaskService<U extends ResourceUri, H = unknown> {
     if (lines[taskLine] !== lineText) {
       return { kind: 'stale', uri };
     }
-    const open = findStepFamily(lines, taskLine).steps.filter((line) => !isCheckedTaskLine(lines[line]));
+    const configuration = this.options.configuration.getConfiguration('deckard', uri);
+    const statuses = readTaskStatusSettings(configuration);
+    const open = findStepFamily(lines, taskLine).steps.filter((line) => !isClosedTaskLine(lines[line], statuses));
     if (open.length === 0) {
       return { kind: 'stale', uri };
     }
-    const configuration = this.options.configuration.getConfiguration('deckard', uri);
     const doneDate = configuration.get<boolean>('tasks.addDoneDate', true)
       ? formatIsoDate(this.options.clock.now())
       : undefined;
@@ -400,6 +478,8 @@ export class TaskService<U extends ResourceUri, H = unknown> {
       format: readMetadataFormat(configuration),
       eol: request.eol,
       documentLines: request.documentLines,
+      statuses: readTaskStatusSettings(configuration),
+      statusNamespace: readStatusNamespace(configuration),
     });
     if (result.lines.length === 0) {
       return { kind: 'none' };

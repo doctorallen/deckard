@@ -19,7 +19,7 @@ import { addQueryBlockRenderer } from './queryBlockHtml';
 import { readQueryContext } from '../commands/queryContext';
 import { WorkspaceIndex } from '../../domain/model';
 import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
-import { TaskWrites, toggleTask } from '../commands/taskActions';
+import { clickTask, TaskWrites } from '../commands/taskActions';
 import {
   createSessionToken,
   createTaskToggleHref,
@@ -165,7 +165,7 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       await refreshMarkdownPreviews();
       return;
     }
-    await toggleTask(actions.writes, task, link.request.completed);
+    await clickTask(actions.writes, task, link.request.completed);
   }
 
   /** Stops listening to the indexer and unregisters the lens provider. */

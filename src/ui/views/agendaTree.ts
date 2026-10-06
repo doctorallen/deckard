@@ -4,7 +4,7 @@ import { describeSteps } from '../../domain/markdown/taskSteps';
 import { escapeMarkdown } from '../../shared/text';
 import { AgendaService, AgendaStatus } from '../../services/agendaService';
 import { resolveSourceUri } from '../commands/navigation';
-import { TaskWrites, toggleTask, updateTaskLine } from '../commands/taskActions';
+import { clickTask, TaskWrites, toggleTask, updateTaskLine } from '../commands/taskActions';
 import { mergeOrder } from '../state/dashboardState';
 import { AgendaEntry, AgendaGroup } from '../state/agendaState';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
@@ -489,7 +489,7 @@ export class AgendaTreeProvider
         : [],
     );
     const { failed } = await this.services.agenda.setCompleted(changes, (task, complete) =>
-      toggleTask(this.services.writes, task, complete),
+      clickTask(this.services.writes, task, complete),
     );
     // A task that could not be completed gets its empty box back.
     if (failed) {

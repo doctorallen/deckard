@@ -6,7 +6,8 @@ import {
   isTaskItemLine,
   lineIndent,
 } from './listNesting';
-import { isHeadingLine, isTaskLineOf, matchTaskLine, STATUS_CHARACTER, TaskLineShape } from './lineShapes';
+import { isHeadingLine, matchTaskLine, STATUS_CHARACTER, STATUS_MARKS, TaskLineShape } from './lineShapes';
+import { DEFAULT_TASK_STATUSES, isClosedType, statusForSymbol, type TaskStatusDefinition } from '../tasks/taskStatuses';
 import { stripTags } from './parser';
 import { setTaskLineCompletion } from './taskLineEdits';
 
@@ -110,14 +111,18 @@ export function findStepFamily(lines: readonly string[], lineIndex: number): Ste
   return { ...(parent === undefined ? {} : { parent }), steps };
 }
 
-/** A checked task, `[x]` or `[X]`, indented by spaces and tabs only. */
-const CHECKED_TASK: TaskLineShape = { indent: 'spaces-and-tabs', marks: 'xX' };
+/** A task of any status, indented by spaces and tabs only. */
+const STEP_TASK: TaskLineShape = { indent: 'spaces-and-tabs', marks: STATUS_MARKS };
 /** A bullet and the `[` of a box, whatever follows it. */
 const BOX_OPENING: TaskLineShape = { indent: 'spaces-and-tabs', marks: 'unread' };
 
-/** Whether a task line is checked. */
-export function isCheckedTaskLine(line: string): boolean {
-  return isTaskLineOf(line, CHECKED_TASK);
+/**
+ * Whether a task line is closed: done, or cancelled, as its character's
+ * status says, so a cancelled step is not one still to do.
+ */
+export function isClosedTaskLine(line: string, statuses: readonly TaskStatusDefinition[] = DEFAULT_TASK_STATUSES): boolean {
+  const match = matchTaskLine(line, STEP_TASK);
+  return match !== undefined && isClosedType(statusForSymbol(statuses, match.mark).type);
 }
 
 /** The 0-based column of a task line's checkbox mark, between its brackets. */

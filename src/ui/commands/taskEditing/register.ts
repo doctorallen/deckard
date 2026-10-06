@@ -5,11 +5,12 @@ import { moveToCommand } from '../moveTo';
 import { editTaskCommand } from '../taskEditor';
 import { breakIntoStepsCommand, readTaskArgument } from '../taskSteps';
 import { toggleTaskDoneCommand } from '../toggleTaskDone';
+import { setTaskStatusCommand } from '../setTaskStatus';
 import { registerCommand } from '../runCommand';
 
 /**
  * Task editing: Edit Task and Add Task, Break into Steps, Toggle Task Done,
- * and Move to….
+ * Set Task Status…, and Move to….
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
   const { indexer } = services;
@@ -30,6 +31,10 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     ),
     registerCommand('deckard.toggleTaskDone', () =>
       toggleTaskDoneCommand({ paths: indexer, tasks: writes.tasks }),
+    ),
+    // A card's menu passes the task it was opened on; the palette, nothing.
+    registerCommand('deckard.setTaskStatus', (task?: unknown) =>
+      setTaskStatusCommand(indexer, writes, readTaskArgument(task)),
     ),
     registerCommand('deckard.moveTo', () =>
       moveToCommand(indexer, services.preferences.move, writes),

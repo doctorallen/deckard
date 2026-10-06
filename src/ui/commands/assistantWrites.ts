@@ -8,7 +8,13 @@ import { AddTaskInput, ChangeTaskInput } from '../state/assistantWriteInput';
 import { ensureDailyNote } from './dailyNote';
 import { confirmNotesWrite } from './writeTarget';
 import { resolveSourceUri } from './navigation';
-import { completeDraft, writeEditedTask } from './taskEditor';
+import { completeDraft, readDraftStatusReading, setDraftStatus, writeEditedTask, type DraftStatusReading } from './taskEditor';
+import { DEFAULT_TASK_STATUSES, normalizeStatusName, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
+
+/** Deckard's own statuses, written as the line already writes them. */
+function readDefaultStatusReading(): DraftStatusReading {
+  return { statuses: DEFAULT_TASK_STATUSES, namespace: 'status', writeAs: 'match', addCancelledDate: true };
+}
 import { readTaskMetadataFormat } from './taskActions';
 import { WorkspaceWriteHistory } from './workspaceWrites';
 import { reportError } from '../../shared/timing';
@@ -53,6 +59,31 @@ export interface ChangeTaskLineOptions {
   addDoneDate?: boolean;
   /** The steps a repeating task's next occurrence takes, unchecked; none by default. */
   steps?: readonly string[];
+  /** The statuses a `status` change is found among, and how it is written; Deckard's own by default. */
+  statusReading?: DraftStatusReading;
+}
+
+/**
+ * The status a change names: by its name, a hyphen or a space alike and
+ * case aside, or by its character in brackets. Undefined when no status is
+ * called that.
+ */
+export function findNamedStatus(statuses: readonly TaskStatusDefinition[], named: string): TaskStatusDefinition | undefined {
+  const box = /^\[(.)\]$/u.exec(named);
+  return box
+    ? statuses.find((status) => status.symbol === box[1])
+    : statuses.find((status) => status.type !== 'nonTask' && normalizeStatusName(status.name) === normalizeStatusName(named));
+}
+
+/** A draft with its words, due date, priority, and person changed as asked; `null` clears one. */
+function changeFields(draft: TaskDraft, changes: ChangeTaskLineOptions['changes']): TaskDraft {
+  return {
+    ...draft,
+    ...(changes.title === undefined ? {} : { description: changes.title }),
+    ...(changes.due === undefined ? {} : { due: changes.due ?? undefined }),
+    ...(changes.priority === undefined ? {} : { priority: changes.priority ?? undefined }),
+    ...(changes.assignee === undefined ? {} : { assignee: changes.assignee ?? undefined }),
+  };
 }
 
 /**
@@ -69,23 +100,17 @@ export function changeTaskLine({
   eol = '\n',
   addDoneDate = true,
   steps = [],
+  statusReading,
 }: ChangeTaskLineOptions): CompletionWrite {
-  const before: TaskDraft = parseTaskDraft(line, fallbackFormat);
-  let draft = before;
-  if (changes.title !== undefined) {
-    draft = { ...draft, description: changes.title };
-  }
-  if (changes.due !== undefined) {
-    draft = { ...draft, due: changes.due ?? undefined };
-  }
-  if (changes.priority !== undefined) {
-    draft = { ...draft, priority: changes.priority ?? undefined };
-  }
-  if (changes.assignee !== undefined) {
-    draft = { ...draft, assignee: changes.assignee ?? undefined };
-  }
+  const reading = statusReading ?? readDefaultStatusReading();
+  const before: TaskDraft = parseTaskDraft(line, fallbackFormat, reading.statuses);
+  let draft = changeFields(before, changes);
   if (changes.complete !== undefined && changes.complete !== draft.completed) {
     draft = completeDraft(draft, now, addDoneDate);
+  }
+  const status = changes.status === undefined ? undefined : findNamedStatus(reading.statuses, changes.status);
+  if (status) {
+    draft = setDraftStatus(draft, status, { now, addDoneDate, reading });
   }
   return writeEditedTask({ before, edited: draft, now, eol, steps });
 }
@@ -96,6 +121,7 @@ export function describeChange(changes: Omit<ChangeTaskInput, 'note' | 'line'>):
   if (changes.title !== undefined) {parts.push('retitle it');}
   if (changes.complete === true) {parts.push('complete it');}
   if (changes.complete === false) {parts.push('reopen it');}
+  if (changes.status !== undefined) {parts.push(`set its status to ${changes.status}`);}
   if (changes.due !== undefined) {parts.push(changes.due ? `make it due ${changes.due}` : 'clear its due date');}
   if (changes.priority !== undefined) {parts.push(changes.priority ? `set its priority to ${changes.priority}` : 'clear its priority');}
   if (changes.assignee !== undefined) {parts.push(changes.assignee ? `hand it to ${changes.assignee}` : 'take it from whoever it was for');}
@@ -225,7 +251,13 @@ export async function changeTask(
   }
   const { note: _note, line: _line, ...changes } = input;
   const configuration = vscode.workspace.getConfiguration('deckard', uri);
+  const statusReading = readDraftStatusReading(uri);
+  if (changes.status !== undefined && !findNamedStatus(statusReading.statuses, changes.status)) {
+    const names = statusReading.statuses.filter((status) => status.type !== 'nonTask').map((status) => status.name);
+    return { text: `No status is called "${changes.status}". The statuses are ${[...new Set(names)].join(', ')}; or name one by its character, as [/].`, isError: true };
+  }
   const completion = changeTaskLine({
+    statusReading,
     line: current.text,
     changes,
     now,

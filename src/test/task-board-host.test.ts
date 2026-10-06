@@ -56,7 +56,7 @@ function openBoard(exports: unknown = {}) {
   const toggles: unknown[] = [];
   const writes = {
     // A write that never comes back, so the board stays awaiting its index.
-    tasks: { toggle: (...args: unknown[]) => new Promise(() => void toggles.push(args)) },
+    tasks: { readNextStatus: () => undefined, toggle: (...args: unknown[]) => new Promise(() => void toggles.push(args)) },
   } as unknown as TaskBoardControllerOptions['writes'];
   const controller = new TaskBoardController({
     indexer,

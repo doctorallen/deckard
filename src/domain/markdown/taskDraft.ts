@@ -1,5 +1,6 @@
 import { TaskPriority } from '../model';
-import { isTaskLineOf, matchTaskLine, TaskLineShape } from './lineShapes';
+import { isTaskLineOf, matchTaskLine, STATUS_MARKS, TaskLineShape } from './lineShapes';
+import { DEFAULT_TASK_STATUSES, statusForSymbol, type TaskStatusDefinition } from '../tasks/taskStatuses';
 import {
   BLOCK_ID_PATTERN,
   formatTaskMetadata,
@@ -19,8 +20,11 @@ import {
  * Deckard does not offer to edit.
  */
 export interface TaskDraft {
-  /** The whitespace and list marker before the checkbox, as written. */
+  /** The whitespace and list marker before the checkbox, and the box, as written. */
   prefix: string;
+  /** The character in the box, which formatTaskDraft writes there. */
+  symbol: string;
+  /** Whether that character's status is done. */
   completed: boolean;
   /** The words of the task, with its metadata taken out. */
   description: string;
@@ -53,7 +57,7 @@ export interface TaskDraft {
  * The checkbox line a draft is read from and written back to. The one blank
  * after the box is read as part of it, so the description starts after it.
  */
-const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'optional-blank' };
+const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: STATUS_MARKS, after: 'optional-blank' };
 /** An on-completion marker, in either format, which is kept as written. */
 const ON_COMPLETION =
   /🏁️?[ \t]*(?:keep|delete)|\[[ \t]*onCompletion[ \t]*::[^\]]*\]/giu;
@@ -80,8 +84,10 @@ export function isTaskLine(line: string): boolean {
 export function parseTaskDraft(
   line: string,
   fallbackFormat: TaskMetadataFormat = 'emoji',
+  statuses: readonly TaskStatusDefinition[] = DEFAULT_TASK_STATUSES,
 ): TaskDraft {
   const match = matchTaskLine(line, TASK_LINE);
+  const symbol = match ? match.mark : ' ';
   const prefix = match ? `${match.head} ` : `${/^\s*/.exec(line)?.[0] ?? ''}- [ ] `;
   const body = match ? match.body : line.trim();
 
@@ -90,7 +96,8 @@ export function parseTaskDraft(
   const { metadata, title, format } = parseTaskMetadata(body);
   return {
     prefix,
-    completed: match ? match.mark !== ' ' : false,
+    symbol,
+    completed: statusForSymbol(statuses, symbol).type === 'done',
     description: title,
     ...metadata,
     dependsOn: metadata.dependsOn,
@@ -98,6 +105,11 @@ export function parseTaskDraft(
     ...(blockId ? { blockId } : {}),
     format: format ?? fallbackFormat,
   };
+}
+
+/** The column of a draft's box character, in its prefix and in the line it is written as. */
+export function draftCheckboxColumn(draft: Pick<TaskDraft, 'prefix'>): number {
+  return draft.prefix.lastIndexOf('[') + 1;
 }
 
 /**
@@ -124,10 +136,8 @@ export function formatTaskDraft(draft: TaskDraft): string {
     ...write('assignee', draft.assignee),
     ...draft.extras,
   ];
-  const checkbox = draft.prefix.replace(
-    /\[[ xX]\]/,
-    draft.completed ? '[x]' : '[ ]',
-  );
+  const column = draftCheckboxColumn(draft);
+  const checkbox = `${draft.prefix.slice(0, column)}${draft.symbol}${draft.prefix.slice(column + 1)}`;
   const body = [draft.description.trim(), ...tokens].filter(Boolean).join(' ');
   return `${checkbox}${body}${draft.blockId ? ` ^${draft.blockId}` : ''}`.replace(
     /[ \t]+$/,

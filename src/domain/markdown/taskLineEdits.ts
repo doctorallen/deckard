@@ -1,6 +1,6 @@
 import { TaskPriority } from '../model';
 import { addDays, DAY_MS, formatIsoDate, parseIsoDate, startOfDay } from './calendar';
-import { TaskLineShape } from './lineShapes';
+import { STATUS_CHARACTER, TaskLineShape } from './lineShapes';
 import { parseRecurrence, recurrenceReference } from './recurrence';
 import {
   ASSIGNEE_PATTERN,
@@ -35,7 +35,8 @@ export interface CompletionChange {
 
 /**
  * Sets a task line's checkbox and keeps its done date in step: added when the
- * task is completed, removed when it is reopened.
+ * task is completed, removed when it is reopened. A cancelled date goes
+ * either way, since the task is no longer cancelled.
  *
  * `checkboxColumn` is the index of the character between the brackets. An
  * existing done date is kept, and none is added when `doneDate` is omitted.
@@ -47,16 +48,47 @@ export function setTaskLineCompletion(
   checkboxColumn: number,
   { completed, doneDate, preferredFormat = 'emoji' }: CompletionChange,
 ): string {
-  const [prefix, text] = splitTaskLine(line, checkboxColumn, completed ? 'x' : ' ');
-  const withoutDone = removeDates(text, 'done');
-  if (!completed) {
-    return prefix + withoutDone;
-  }
-  if (!doneDate || withoutDone !== text) {
-    return prefix + text;
+  return setTaskLineMark(line, checkboxColumn, {
+    symbol: completed ? 'x' : ' ',
+    closed: completed ? 'done' : undefined,
+    ...(doneDate === undefined ? {} : { closedDate: doneDate }),
+    preferredFormat,
+  });
+}
+
+/** The character setTaskLineMark writes in a box, and the closing date that goes with it. */
+export interface MarkChange {
+  /** The character between the brackets. */
+  symbol: string;
+  /** Whether the status it stands for closes the task, and how: done (✅) or cancelled (❌). */
+  closed: 'done' | 'cancelled' | undefined;
+  /** The date a close adds, when the line has none yet; none is added when it is omitted. */
+  closedDate?: string;
+  /** The format of a new date on a line with no metadata yet; emoji when omitted. */
+  preferredFormat?: TaskMetadataFormat;
+}
+
+/**
+ * Sets a task line's checkbox to any status's character and keeps its ✅
+ * and ❌ dates in step with it: a done task keeps or gains its done date and
+ * loses a cancelled one, a cancelled task the other way around, and an open
+ * one has neither.
+ */
+export function setTaskLineMark(
+  line: string,
+  checkboxColumn: number,
+  { symbol, closed, closedDate, preferredFormat = 'emoji' }: MarkChange,
+): string {
+  const [prefix, text] = splitTaskLine(line, checkboxColumn, symbol);
+  const kept = (['done', 'cancelled'] as const).reduce(
+    (result, field) => (field === closed ? result : removeDates(result, field)),
+    text,
+  );
+  if (!closed || !closedDate || removeDates(kept, closed) !== kept) {
+    return prefix + kept;
   }
   const format = parseTaskMetadata(text).format ?? preferredFormat;
-  return prefix + appendToTaskText(text, formatTaskMetadata('done', doneDate, format));
+  return prefix + appendToTaskText(kept, formatTaskMetadata(closed, closedDate, format));
 }
 
 /** A field a task holds at most one of, which setTaskField replaces whole. */
@@ -335,7 +367,7 @@ export function markMigrated(line: string, checkboxColumn: number, target: strin
   const marked =
     line[checkboxColumn - 1] === '[' && line[checkboxColumn + 1] === ']'
       ? `${line.slice(0, checkboxColumn)}>${line.slice(checkboxColumn + 1)}`
-      : line.replace(/\[[ xX]\]/, '[>]');
+      : line.replace(new RegExp(String.raw`\[${STATUS_CHARACTER}\]`), '[>]');
   const trimmed = marked.replace(/[ \t]+$/, '');
   const blockId = BLOCK_ID_PATTERN.exec(trimmed);
   const head = blockId ? trimmed.slice(0, blockId.index) : trimmed;

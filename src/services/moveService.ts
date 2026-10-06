@@ -8,6 +8,7 @@ import {
   readMoveBlock,
   TextSplice,
 } from '../domain/markdown/moveLines';
+import { readTaskStatusSettings } from '../domain/tasks/taskStatuses';
 import { Section, Task } from '../domain/model';
 import { rankMoveTo } from '../domain/tasks/taskRank';
 import type { Configuration } from '../ports/configuration';
@@ -153,7 +154,7 @@ export class MoveService<U extends ResourceUri, H = unknown> {
         start: { line, character: 0 },
         end: { line, character: 0 },
         isEmpty: true,
-      });
+      }, readTaskStatusSettings(this.options.configuration.getConfiguration('deckard', uri)));
       if ('refused' in read || read.lines[0] !== task.sourceLineText) {
         return { kind: 'stale' };
       }

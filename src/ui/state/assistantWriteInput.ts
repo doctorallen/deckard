@@ -32,6 +32,8 @@ export interface ChangeTaskInput {
   line: number;
   title?: string;
   complete?: boolean;
+  /** A status by its name, or its character in brackets, as `[/]`. */
+  status?: string;
   due?: string | null;
   priority?: TaskPriority | null;
   assignee?: string | null;
@@ -85,7 +87,7 @@ export function readChangeTaskInput(value: unknown): ChangeTaskInput | undefined
 }
 
 /** The changes a call may ask for, in the order they are read. */
-const CHANGE_FIELDS = ['title', 'complete', 'due', 'priority', 'assignee'] as const;
+const CHANGE_FIELDS = ['title', 'complete', 'status', 'due', 'priority', 'assignee'] as const;
 
 /** A field a change-task call may change. */
 type ChangeField = (typeof CHANGE_FIELDS)[number];
@@ -105,6 +107,7 @@ const CHANGE_FIELD_READERS: {
       ? INVALID
       : value.trim().replace(/\s+/g, ' '),
   complete: (value) => (typeof value === 'boolean' ? value : INVALID),
+  status: (value) => (typeof value === 'string' && value.trim() && value.length <= 80 ? value.trim() : INVALID),
   due: (value) => {
     if (value === null) {
       return null;

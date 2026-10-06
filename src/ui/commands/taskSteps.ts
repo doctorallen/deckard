@@ -6,7 +6,7 @@ import { readTaskStatusOptions } from './parseSettings';
 import {
   findCheckboxColumn,
   findStepFamily,
-  isCheckedTaskLine,
+  isClosedTaskLine,
   parseSuggestedSteps,
   splitTypedSteps,
 } from '../../domain/markdown/taskSteps';
@@ -210,7 +210,7 @@ export function readWrittenSteps(lines: readonly string[], lineIndex: number): W
     const words = text.slice(column + 2).trim();
     return {
       title: parseTaskMetadata(words).title || words,
-      done: isCheckedTaskLine(text),
+      done: isClosedTaskLine(text),
     };
   });
 }

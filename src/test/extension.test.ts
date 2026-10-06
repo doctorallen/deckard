@@ -33,6 +33,7 @@ suite('Extension Test Suite', () => {
       [
         '1_task@1 deckard.toggleTaskDone',
         '1_task@2 deckard.editTask',
+        '1_task@2 deckard.setTaskStatus',
         '1_task@3 deckard.breakIntoSteps',
         '1_task@4 deckard.addTask',
         '2_heading@1 deckard.renameHeading',
@@ -92,7 +93,7 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 98);
+    assert.strictEqual(Object.keys(settings).length, 101);
     assert.strictEqual(settings['deckard.calendar.dayPanel'].default, false);
     assert.strictEqual(settings['deckard.calendar.showRepeats'].default, true);
     assert.deepStrictEqual(settings['deckard.parked.tags'].default, ['parked']);
@@ -151,6 +152,8 @@ suite('Extension Test Suite', () => {
         'deckard.breakIntoSteps',
         'deckard.addTask',
         'deckard.toggleTaskDone',
+        'deckard.setTaskStatus',
+        'deckard.agenda.setTaskStatus',
         'deckard.capture',
         'deckard.captureUnderHeading',
         'deckard.writeReview',

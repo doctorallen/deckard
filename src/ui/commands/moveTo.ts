@@ -5,6 +5,7 @@ import { MoveRefusalReason, readMoveBlock } from '../../domain/markdown/moveLine
 import { getLinkableNoteFileName } from '../../domain/markdown/noteNames';
 import { parseTaskDraft } from '../../domain/markdown/taskDraft';
 import { STATUS_CHARACTER } from '../../domain/markdown/lineShapes';
+import { readTaskStatusOptions } from './parseSettings';
 import { stripTags } from '../../domain/markdown/parser';
 import { PreferenceServices } from '../../core/storage/preferences';
 import { noteTitle } from '../../domain/index/backlinks';
@@ -65,7 +66,7 @@ export async function moveToCommand(
     return;
   }
   const lines = editor.document.getText().split(/\r?\n/);
-  const read = readMoveBlock(lines, editor.selection);
+  const read = readMoveBlock(lines, editor.selection, readTaskStatusOptions(editor.document.uri));
   if ('refused' in read) {
     if (read.refused === 'heading') {
       void vscode.window

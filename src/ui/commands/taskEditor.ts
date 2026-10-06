@@ -8,11 +8,16 @@ import {
 } from '../../domain/markdown/parser';
 import { DatePhraseOptions, nameDay, parseDatePhrase } from '../../domain/markdown/dates';
 import {
+  draftCheckboxColumn,
   formatTaskDraft,
   isTaskLine,
   parseTaskDraft,
   TaskDraft,
 } from '../../domain/markdown/taskDraft';
+import { readLineStatus, readStatusWriteMode, setTaskStatus, type StatusWriteMode } from '../../domain/tasks/statusWrites';
+import { DEFAULT_TASK_STATUSES, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
+import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
+import { readTaskStatusOptions } from './parseSettings';
 import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { askForDate } from './datePrompt';
@@ -76,8 +81,41 @@ const REPEAT_RULES: readonly string[] = [
   'every year',
 ];
 
+/** The statuses a draft's status is read and written with, and how. */
+export interface DraftStatusReading {
+  statuses: readonly TaskStatusDefinition[];
+  namespace: string;
+  writeAs: StatusWriteMode;
+  /** `deckard.tasks.addCancelledDate`; cancelling writes a ❌ date unless it is false. */
+  addCancelledDate: boolean;
+}
+
+/** Deckard's own statuses, as a draft is read when no settings are given. */
+const DEFAULT_STATUS_READING: DraftStatusReading = {
+  statuses: DEFAULT_TASK_STATUSES,
+  namespace: 'status',
+  writeAs: 'match',
+  addCancelledDate: true,
+};
+
+/** The status settings of the note at `scope`, for the editor. */
+export function readDraftStatusReading(scope?: vscode.Uri): DraftStatusReading {
+  const configuration = vscode.workspace.getConfiguration('deckard', scope);
+  return {
+    statuses: readTaskStatusOptions(scope),
+    namespace: readStatusNamespace(configuration),
+    writeAs: readStatusWriteMode(configuration.get<unknown>('tasks.writeStatusAs')),
+    addCancelledDate: configuration.get<boolean>('tasks.addCancelledDate', true),
+  };
+}
+
+/** A draft's status's name: its box's, or the one its status tag stands for. */
+function nameDraftStatus(draft: TaskDraft, reading: DraftStatusReading): string {
+  return readLineStatus(formatTaskDraft(draft), draftCheckboxColumn(draft), reading.statuses, reading.namespace).name;
+}
+
 /** The rows of the editor, as the pick shows them for a draft. */
-export function createEditorRows(draft: TaskDraft): FieldRow[] {
+export function createEditorRows(draft: TaskDraft, reading: DraftStatusReading = DEFAULT_STATUS_READING): FieldRow[] {
   const value = (text: string | undefined, empty = 'Not set'): string =>
     text && text.trim() ? text : empty;
   return [
@@ -88,7 +126,7 @@ export function createEditorRows(draft: TaskDraft): FieldRow[] {
     },
     {
       label: '$(check) Status',
-      description: draft.completed ? 'Done' : 'Open',
+      description: nameDraftStatus(draft, reading),
       field: 'status',
     },
     { label: 'Dates', kind: vscode.QuickPickItemKind.Separator },
@@ -158,13 +196,15 @@ export async function editTaskDraft(
     now?: number;
     /** `deckard.tasks.addDoneDate`: whether completing writes a ✅ date. */
     addDoneDate?: boolean;
+    /** The statuses the Status row offers, and how one is written. */
+    status?: DraftStatusReading;
   } = {
     title: 'Edit task',
   },
 ): Promise<TaskDraft | undefined> {
   let draft = initial;
   for (;;) {
-    const chosen = await pickField(draft, options.title);
+    const chosen = await pickField(draft, options.title, options.status ?? DEFAULT_STATUS_READING);
     if (!chosen) {
       return undefined;
     }
@@ -182,12 +222,13 @@ export async function editTaskDraft(
 function pickField(
   draft: TaskDraft,
   title: string,
+  reading: DraftStatusReading,
 ): Promise<FieldRow | undefined> {
   return showQuickPickUntilHidden<FieldRow, FieldRow>({
     configure: (pick) => {
       pick.title = title;
       pick.placeholder = formatTaskDraft(draft).trim();
-      pick.items = createEditorRows(draft);
+      pick.items = createEditorRows(draft, reading);
       pick.ignoreFocusOut = true;
     },
     accept: (pick) => pick.selectedItems[0],
@@ -210,10 +251,36 @@ export function completeDraft(
   return {
     ...draft,
     completed,
+    symbol: completed ? 'x' : ' ',
+    cancelled: undefined,
     ...(completed
       ? { done: draft.done ?? (addDoneDate ? formatIsoDate(now) : undefined) }
       : { done: undefined }),
   };
+}
+
+/** What setDraftStatus writes with: the moment, and whether a close writes its date. */
+export interface DraftStatusWrite {
+  now: number;
+  addDoneDate: boolean;
+  reading: DraftStatusReading;
+}
+
+/**
+ * The draft a status makes: its line written as setTaskStatus writes any
+ * status, character or tag, with the dates its type keeps, and read back.
+ */
+export function setDraftStatus(draft: TaskDraft, to: TaskStatusDefinition, { now, addDoneDate, reading }: DraftStatusWrite): TaskDraft {
+  const date = formatIsoDate(now);
+  const line = setTaskStatus(formatTaskDraft(draft), draftCheckboxColumn(draft), {
+    to,
+    namespace: reading.namespace,
+    writeAs: reading.writeAs,
+    ...(addDoneDate ? { doneDate: date } : {}),
+    ...(reading.addCancelledDate ? { cancelledDate: date } : {}),
+    preferredFormat: draft.format,
+  });
+  return parseTaskDraft(line, draft.format, reading.statuses);
 }
 
 /** A task as it was and as edited, and how its lines are written. */
@@ -237,7 +304,7 @@ export function writeEditedTask({ before, edited, now, eol, steps = [] }: Edited
   if (before.completed || !edited.completed) {
     return { text: line };
   }
-  return writeCompletion(line, line.search(/\[[xX]\]/) + 1, { now, eol, steps });
+  return writeCompletion(line, draftCheckboxColumn(edited), { now, eol, steps });
 }
 
 /** A draft, the date field to set on it, and the words written for it. */
@@ -271,12 +338,13 @@ export function setDraftDependencies(
   };
 }
 
-/** What a field's reader may need beyond the draft: the moment, the index, and a setting. */
+/** What a field's reader may need beyond the draft: the moment, the index, and the settings. */
 interface FieldContext {
   index?: TaskEditorIndex;
   now: number;
   /** `deckard.tasks.addDoneDate`; completing writes a ✅ date unless it is false. */
   addDoneDate?: boolean;
+  status?: DraftStatusReading;
 }
 
 /** Asks for one field's value and returns the draft it makes; undefined when the reader cancels. */
@@ -286,7 +354,7 @@ type FieldReader = (draft: TaskDraft, context: FieldContext) => Promise<TaskDraf
 async function readField(
   draft: TaskDraft,
   field: DraftField | undefined,
-  options: { index?: TaskEditorIndex; now?: number; addDoneDate?: boolean },
+  options: { index?: TaskEditorIndex; now?: number; addDoneDate?: boolean; status?: DraftStatusReading },
 ): Promise<TaskDraft | undefined> {
   const now = options.now ?? Date.now();
   if (field === undefined) {
@@ -401,9 +469,7 @@ async function readAssignee(
 /** The reader for each field the pick lists. */
 const FIELD_READERS: Readonly<Record<DraftField, FieldReader>> = {
   description: (draft) => readDescription(draft),
-  // Status asks nothing: choosing it flips the task between open and done.
-  status: (draft, { now, addDoneDate }) =>
-    Promise.resolve(completeDraft(draft, now, addDoneDate ?? true)),
+  status: (draft, { now, addDoneDate, status }) => readStatus(draft, { now, addDoneDate: addDoneDate ?? true, reading: status ?? DEFAULT_STATUS_READING }),
   due: (draft, { now }) => readDate(draft, 'due', now),
   scheduled: (draft, { now }) => readDate(draft, 'scheduled', now),
   start: (draft, { now }) => readDate(draft, 'start', now),
@@ -413,6 +479,46 @@ const FIELD_READERS: Readonly<Record<DraftField, FieldReader>> = {
   dependsOn: (draft) => readDependencies(draft),
   tag: (draft, { index }) => addTag(draft, index),
 };
+
+/** A status to choose, as the Status row and Set Task Status… offer it. */
+export interface StatusPick extends vscode.QuickPickItem {
+  status: TaskStatusDefinition;
+}
+
+/**
+ * Every status a task can have, in the order the settings list them: its
+ * name, how it is written, and the current one marked. A `nonTask` status
+ * is not offered, since a task given it would stop being a task.
+ */
+export function createStatusPicks(statuses: readonly TaskStatusDefinition[], current: string): StatusPick[] {
+  return statuses
+    .filter((status) => status.type !== 'nonTask')
+    .map((status) => ({
+      label: `${status.name === current ? '$(check) ' : ''}${status.name}`,
+      description: [status.symbol === undefined ? '' : `[${status.symbol}]`, status.tag === undefined ? '' : `#…/${status.tag}`].filter(Boolean).join(' · '),
+      detail: STATUS_TYPE_WORDS[status.type],
+      status,
+    }));
+}
+
+/** What each type of status means, in a few words. */
+const STATUS_TYPE_WORDS: Readonly<Record<TaskStatusDefinition['type'], string>> = {
+  todo: 'Open, to do',
+  inProgress: 'Open, in progress',
+  onHold: 'Open, on hold',
+  done: 'Done',
+  cancelled: 'Closed, not done',
+  nonTask: 'Not a task',
+};
+
+/** Asks which status the task has, every status offered. */
+async function readStatus(draft: TaskDraft, write: DraftStatusWrite): Promise<TaskDraft | undefined> {
+  const chosen = await vscode.window.showQuickPick(createStatusPicks(write.reading.statuses, nameDraftStatus(draft, write.reading)), {
+    title: 'Status',
+    placeHolder: 'Choose the task\'s status',
+  });
+  return chosen ? setDraftStatus(draft, chosen.status, write) : undefined;
+}
 
 /** Asks for a date, saying which day the words mean as they are typed. */
 async function readDate(
@@ -525,12 +631,14 @@ export async function editTaskCommand(
     'deckard',
     editor.document.uri,
   );
-  const draft = parseTaskDraft(line.text, readTaskMetadataFormat(configuration));
+  const status = readDraftStatusReading(editor.document.uri);
+  const draft = parseTaskDraft(line.text, readTaskMetadataFormat(configuration), status.statuses);
   const edited = await editTaskDraft(draft, {
     title: existing ? 'Edit task' : 'Add task',
     ...(index ? { index } : {}),
     now,
     addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
+    status,
   });
   if (!edited) {
     return undefined;

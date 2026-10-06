@@ -1,5 +1,8 @@
 import * as vscode from 'vscode';
 
+import { readStatusWriteMode, setTaskStatus, type StatusWriteMode } from '../../domain/tasks/statusWrites';
+import type { TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
+import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
 import {
   extractTags,
   getEntityNamespaceAliases,
@@ -28,6 +31,8 @@ import { CompletionWrite, setTaskDate, setTaskLineCompletion, writeCompletion } 
 /** What to do to every chosen result. */
 export type BulkEdit =
   | { kind: 'complete'; completed: boolean }
+  /** A status of any type, as the task editor sets one. */
+  | { kind: 'status'; status: TaskStatusDefinition }
   | { kind: 'due'; date: string | undefined }
   /** A due date of its own for each task, by task id, as a spread writes. */
   | { kind: 'dueEach'; dates: ReadonlyMap<string, string> }
@@ -65,6 +70,8 @@ export function describeBulkEdit(edit: BulkEdit, entries: number): string {
   switch (edit.kind) {
     case 'complete':
       return `${edit.completed ? 'completing' : 'reopening'} ${count}`;
+    case 'status':
+      return `setting the status of ${count} to ${edit.status.name}`;
     case 'due':
       return edit.date
         ? `setting the due date of ${count} to ${edit.date}`
@@ -81,6 +88,8 @@ function verbFor(edit: BulkEdit): string {
   switch (edit.kind) {
     case 'complete':
       return edit.completed ? 'Completed' : 'Reopened';
+    case 'status':
+      return `Set the status to ${edit.status.name} on`;
     case 'due':
       return edit.date ? `Set the due date to ${edit.date} on` : 'Cleared the due date on';
     case 'dueEach':
@@ -246,6 +255,9 @@ class BulkTally {
       eol,
       format: readTaskMetadataFormat(configuration),
       addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
+      addCancelledDate: configuration.get<boolean>('tasks.addCancelledDate', true),
+      statusNamespace: readStatusNamespace(configuration),
+      writeStatusAs: readStatusWriteMode(configuration.get<unknown>('tasks.writeStatusAs')),
       entityNamespaceAliases: getEntityNamespaceAliases(
         configuration.get<unknown>('entityNamespaceAliases', {}),
       ),
@@ -286,6 +298,9 @@ interface RewriteOptions {
   eol: string;
   format: 'emoji' | 'dataview';
   addDoneDate: boolean;
+  addCancelledDate: boolean;
+  statusNamespace: string;
+  writeStatusAs: StatusWriteMode;
   entityNamespaceAliases: Record<string, string>;
   personMarker: string;
 }
@@ -320,6 +335,9 @@ function rewrite(
       ? undefined
       : { text: setTaskDate(line, task.checkboxColumn, { field: 'due', date, preferredFormat: options.format }) };
   }
+  if (edit.kind === 'status') {
+    return writeStatus(task, edit.status, line, options);
+  }
   if (task.completed === edit.completed) {
     return undefined;
   }
@@ -335,6 +353,27 @@ function rewrite(
   // A repeating task is replaced by its next occurrence here too, so a bulk
   // completion leaves the same notes behind as one checkbox would.
   return writeCompletion(completed, task.checkboxColumn, { now, eol: options.eol });
+}
+
+/**
+ * A task line with a status written, as Set Task Status… writes it: a
+ * change to done starts a repeating task's next occurrence.
+ */
+function writeStatus(task: Task, status: TaskStatusDefinition, line: string, options: RewriteOptions): CompletionWrite | undefined {
+  const now = Date.now();
+  const date = formatIsoDate(now);
+  const text = setTaskStatus(line, task.checkboxColumn, {
+    to: status,
+    namespace: options.statusNamespace,
+    writeAs: options.writeStatusAs,
+    ...(options.addDoneDate ? { doneDate: date } : {}),
+    ...(options.addCancelledDate ? { cancelledDate: date } : {}),
+    preferredFormat: options.format,
+  });
+  if (text === line) {
+    return undefined;
+  }
+  return status.type === 'done' && !task.completed ? writeCompletion(text, task.checkboxColumn, { now, eol: options.eol }) : { text };
 }
 
 /** A section's heading line, which is what the index recorded for it. */
