@@ -120,20 +120,33 @@ function normalizedAttribute(element, attribute, options) {
   let value = attribute.value;
   if (name === 'class') {
     value = value.split(WHITESPACE).filter(Boolean).sort().join(' ');
-  } else if (name === 'style' && !options.captured) {
-    value = styleText(element.style);
+  } else if (name === 'style') {
+    value = readStyle(element, options.captured);
   } else if (BOOLEAN.has(name)) {
     value = '';
-  }
-  // Drawn by Chrome, a popover is placed by fonts that differ by system;
-  // drawn by jsdom, which lays nothing out, its place is a fixed number.
-  if (name === 'style' && options.captured && isPopover(element)) {
-    value = withoutPlace(value);
   }
   if ((name === 'class' || name === 'style') && !value) {
     return undefined;
   }
   return [name, options.nonce ? value.split(options.nonce).join('NONCE') : value];
+}
+
+/**
+ * An element's style as the snapshot writes it: from its declarations,
+ * or, drawn by Chrome, as the probe captured it, a popover's place left
+ * out, since Chrome places it by fonts that differ by system, where jsdom,
+ * which lays nothing out, gives it a fixed number.
+ *
+ * @param {object} element The element that carries it.
+ * @param {boolean | undefined} captured Whether Chrome drew it.
+ * @returns {string} Its style.
+ */
+function readStyle(element, captured) {
+  if (!captured) {
+    return styleText(element.style);
+  }
+  const value = element.getAttribute('style') || '';
+  return isPopover(element) ? withoutPlace(value) : value;
 }
 
 /**
