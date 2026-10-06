@@ -664,7 +664,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       html.includes(
-        '.overview-tabs-row { margin-top: 20px; padding-bottom: 8px; border-bottom: 2px solid var(--line); }',
+        '.overview-tabs-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 20px; padding-bottom: 8px; border-bottom: 2px solid var(--line); }',
       ),
       true,
     );
