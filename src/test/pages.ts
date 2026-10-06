@@ -13,6 +13,8 @@ import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { getStatsHtml } from '../ui/webview/statsHtml';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
+import { getPagesViewHtml } from '../ui/webview/pagesViewHtml';
+import type { PagesViewSnapshot } from '../ui/protocol/pagesView';
 import type { ShellUri, ShellWebview } from '../ui/webview/host/pageShell';
 import { pageExtensionUri, pageWebview } from './pageWebview';
 import type { EntryRelatedNotesDiagnostic } from '../ui/state/relatedNotesRanking';
@@ -62,7 +64,8 @@ export type PageId =
   | 'calendar'
   | 'calendarPage'
   | 'relatedNotesDebug'
-  | 'notePage';
+  | 'notePage'
+  | 'pagesView';
 
 /** One Deckard webview page, and how to render it. */
 export interface CatalogPage {
@@ -140,6 +143,12 @@ export const PAGES: readonly CatalogPage[] = [
     id: 'relatedNotesDebug',
     title: 'Related Notes debug',
     render: (context) => getRelatedNotesDebugHtml(context.webview, context.extensionUri, context.diagnostic ?? EMPTY_DIAGNOSTIC, context.chrome),
+  },
+  {
+    id: 'pagesView',
+    title: 'Pages',
+    render: (context) => getPagesViewHtml(context.webview, context.extensionUri, context.chrome, context.state as PagesViewSnapshot | undefined),
+    readsInertState: true,
   },
 ];
 

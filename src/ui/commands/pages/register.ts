@@ -5,7 +5,7 @@ import { isMarkdownFile } from '../../../core/workspace/scanner';
 import { registerCommand } from '../runCommand';
 import { openNoteAt } from '../noteOpening';
 import { findHubTagKey } from '../../state/hubTree';
-import { goToPage, PagesTreeProvider } from '../../views/pagesTree';
+import { goToPage } from '../../views/pagesTree';
 
 /**
  * Opening the pages: the Pages view and Go to…, Home, Stats, Help and
@@ -17,14 +17,9 @@ export function register(context: vscode.ExtensionContext, services: Services): 
   const { dashboard, stats, help, notesGraph, calendar: calendarPage, taskBoard } = services.pages;
   const { readNotesGraphOptions } = services.pageCommands;
   const calendar = services.views.calendar;
-  // Every page as a labeled row, first in the Deckard sidebar, and the same
-  // list as Go to…, from anywhere.
-  const pagesTree = new PagesTreeProvider(indexer, context.extensionUri);
-  context.subscriptions.push(
-    pagesTree,
-    vscode.window.createTreeView('deckard.pages', { treeDataProvider: pagesTree }),
-    registerCommand('deckard.goTo', () => goToPage(indexer, context.extensionUri)),
-  );
+  // Every page, as the Pages view lists them (registered with the other
+  // sidebar webviews), from anywhere.
+  context.subscriptions.push(registerCommand('deckard.goTo', () => goToPage(indexer, context.extensionUri)));
   context.subscriptions.push(
     registerCommand('deckard.showDashboard', () =>
       dashboard.show(),

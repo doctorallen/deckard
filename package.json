@@ -1550,6 +1550,7 @@
           "id": "deckard.pages",
           "name": "Pages",
           "icon": "resources/pages/home-dark.svg",
+          "type": "webview",
           "contextualTitle": "Deckard Pages"
         },
         {
@@ -1960,6 +1961,46 @@
             ],
             "description": "When pages draw an entry's details, the ones chosen in Card details: the file and line it is written in, and a note's created and updated dates. Your own choice, the same in every workspace.",
             "order": 2
+          },
+          "deckard.pages.style": {
+            "type": "string",
+            "enum": [
+              "list",
+              "icons"
+            ],
+            "default": "list",
+            "scope": "application",
+            "enumDescriptions": [
+              "Each page as a row with its name and what is worth knowing about it now.",
+              "Each page as its icon alone, in one row, named on hover."
+            ],
+            "description": "How the Pages view draws Deckard's pages. Your own choice, the same in every workspace."
+          },
+          "deckard.pages.shown": {
+            "type": "object",
+            "properties": {
+              "home": { "type": "boolean", "description": "Home." },
+              "board": { "type": "boolean", "description": "Task Board." },
+              "calendar": { "type": "boolean", "description": "Calendar." },
+              "today": { "type": "boolean", "description": "Today's note." },
+              "graph": { "type": "boolean", "description": "Notes Graph." },
+              "find": { "type": "boolean", "description": "Find in Notes." },
+              "stats": { "type": "boolean", "description": "Stats." },
+              "help": { "type": "boolean", "description": "Help." }
+            },
+            "additionalProperties": false,
+            "default": {
+              "home": true,
+              "board": true,
+              "calendar": true,
+              "today": true,
+              "graph": true,
+              "find": true,
+              "stats": true,
+              "help": true
+            },
+            "scope": "application",
+            "description": "Which pages the Pages view shows, in its order. Go to… still lists every page. Your own choice, the same in every workspace."
           },
           "deckard.display.cardDetails": {
             "type": "object",

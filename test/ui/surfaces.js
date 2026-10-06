@@ -31,6 +31,7 @@ const { buildWorkspaceIndex } = modules.indexState;
 const { createPreferences } = modules.preferenceServices;
 // Every snapshot is built at NOW, so no surface reads the wall clock.
 const { createQueryContext } = modules.queryContext;
+const { listDeckardPages } = modules.deckardPages;
 
 /** Task i's due date: six overdue, three today, the rest a day or two apart after. */
 function fixtureDue(i) {
@@ -705,6 +706,34 @@ function createNotePageSurfaces() {
 }
 
 /**
+ * The Pages view, at a sidebar's width: as rows with each page's hint at the
+ * right, and as one row of icons.
+ */
+function createPagesSurfaces() {
+  const facts = { dueToday: 3, overdue: 2, notes: 42, files: 30, today: new Date(NOW), todayNoteExists: false, findKey: '⌥⇧⌘F' };
+  const pages = listDeckardPages(facts).map(({ id, label, description, detail }) => ({ id, label, description, detail }));
+  return [
+    {
+      page: 'pagesView',
+      viewport: [300, 260],
+      snapshot: () => ({ style: 'list', pages }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.pages-row'],
+    },
+    {
+      name: 'pagesViewIcons',
+      page: 'pagesView',
+      viewport: [300, 120],
+      snapshot: () => ({ style: 'icons', pages }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.pages-icon'],
+    },
+  ];
+}
+
+/**
  * The surfaces measured, each with the snapshot its page renders from and
  * the geometry it must keep. A probe runs in the page and reports; the
  * expectations here read the report. They are the same with zen on or off;
@@ -721,6 +750,7 @@ function createSurfaces() {
     ...createRelatedNotesSurfaces(index, files),
     ...createSummarySurfaces(index, preferences),
     ...createNotePageSurfaces(),
+    ...createPagesSurfaces(),
   ];
   return [
     ...surfaces,

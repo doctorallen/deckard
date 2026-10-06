@@ -1,17 +1,17 @@
 import * as vscode from 'vscode';
 
-import type { IndexReader, IndexUpdates } from '../../core/workspace/indexReader';
+import type { IndexReader } from '../../core/workspace/indexReader';
 import { listDailyNotes, formatLocalDate } from '../../domain/notes/periodicNotes';
 import { readQueryContext } from '../commands/queryContext';
 import { createTaskGlance } from '../state/dashboardState';
 import type { GoToPagesMessage } from '../protocol/shared';
-import { DeckardPage, DeckardPageId, listDeckardPages, PageFacts } from '../state/deckardPages';
+import { DeckardPageId, listDeckardPages, PageFacts } from '../state/deckardPages';
 import { countNotes } from '../../domain/index/noteEntryIndex';
 
 /**
- * The Pages view: every Deckard page as a labeled row with its glyph and a
- * hint, first in the Deckard sidebar, so a page is found by reading rather
- * than by guessing at an icon. Go to… lists the same pages.
+ * What the Pages view and Go to… read about each page: its hint from the
+ * notes as they are now, its glyph, and the menu DECKARD opens on a page.
+ * The view itself is a webview (webview/pagesView.ts).
  */
 
 /** What the hints are drawn from, as the index and the settings are now. */
@@ -57,52 +57,6 @@ export function pageIcon(extensionUri: vscode.Uri, id: DeckardPageId): { light: 
     light: vscode.Uri.joinPath(extensionUri, 'resources', 'pages', `${id}-light.svg`),
     dark: vscode.Uri.joinPath(extensionUri, 'resources', 'pages', `${id}-dark.svg`),
   };
-}
-
-/** The Pages view's rows, redrawn as the index changes. */
-export class PagesTreeProvider implements vscode.TreeDataProvider<DeckardPage>, vscode.Disposable {
-  private readonly changeEmitter = new vscode.EventEmitter<void>();
-  public readonly onDidChangeTreeData = this.changeEmitter.event;
-  private readonly listeners: vscode.Disposable[];
-
-  /** Listens at once; the rows are read when VS Code asks for them. */
-  public constructor(
-    private readonly indexer: Pick<IndexReader, 'getSnapshot'> & IndexUpdates,
-    private readonly extensionUri: vscode.Uri,
-  ) {
-    this.listeners = [
-      this.changeEmitter,
-      indexer.onDidUpdate(() => this.changeEmitter.fire()),
-      // The day turning shows when the window is next in front.
-      vscode.window.onDidChangeWindowState((state) => {
-        if (state.focused) {
-          this.changeEmitter.fire();
-        }
-      }),
-    ];
-  }
-
-  /** Every page, in order. */
-  public getChildren(): DeckardPage[] {
-    return listDeckardPages(readPageFacts(this.indexer));
-  }
-
-  /** One page as a row that opens it. */
-  public getTreeItem(page: DeckardPage): vscode.TreeItem {
-    const item = new vscode.TreeItem(page.label, vscode.TreeItemCollapsibleState.None);
-    item.id = page.id;
-    item.description = page.description;
-    item.tooltip = `${page.label}: ${page.detail}`;
-    item.iconPath = pageIcon(this.extensionUri, page.id);
-    item.command = { command: page.command, title: `Open ${page.label}` };
-    item.accessibilityInformation = { label: `${page.label}, ${page.description}`, role: 'link' };
-    return item;
-  }
-
-  /** Stops listening. */
-  public dispose(): void {
-    this.listeners.forEach((listener) => listener.dispose());
-  }
 }
 
 /** Deckard: Go to…, the same pages as a quick pick, from anywhere. */

@@ -14,6 +14,11 @@
   tagged headings instead: each project (an H1's tag) holds its own parts
   (its H2s' tags), and a project's bar counts its parts' tasks.
 
+- **Pages as icons.** `deckard.pages.style` draws the Pages view as one
+  row of page icons, named on hover, for a reader who knows them, and
+  `deckard.pages.shown` picks which pages it keeps. As a list, each row's
+  hint now sits at the right.
+
 - **Card details.** `deckard.display.cardDetails` picks what an entry
   shows under it with File & line: its file and line, and its created and
   updated dates on a line of their own, *Created 2026-09-12 · Updated
