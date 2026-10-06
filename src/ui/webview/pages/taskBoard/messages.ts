@@ -24,6 +24,7 @@ import type {
   SetBoardGroupMessage,
   SetBoardQueryMessage,
   SetBoardStatusesMessage,
+  SetBoardShowCancelledMessage,
   SetBoardStatusNamespaceMessage,
   SetTableColumnsMessage,
   SetTableSortMessage,
@@ -181,6 +182,10 @@ const narrowSetBoardStatuses: Narrower<SetBoardStatusesMessage> = (value) =>
 const narrowSetBoardStatusNamespace: Narrower<SetBoardStatusNamespaceMessage> = (value) =>
   isBoardNamespace(value.namespace) ? { type: 'setBoardStatusNamespace', namespace: value.namespace } : undefined;
 
+/** Whether to draw the Cancelled column. */
+const narrowSetBoardShowCancelled: Narrower<SetBoardShowCancelledMessage> = (value) =>
+  typeof value.show === 'boolean' ? { type: 'setBoardShowCancelled', show: value.show } : undefined;
+
 /** Each message the Task Board may send, and what it must hold. */
 export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   exportResults: narrowExportResults,
@@ -217,6 +222,7 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   reorderTasks: narrowReorderTasks,
   setBoardStatuses: narrowSetBoardStatuses,
   setBoardStatusNamespace: narrowSetBoardStatusNamespace,
+  setBoardShowCancelled: narrowSetBoardShowCancelled,
 };
 
 /** A message from the Task Board, narrowed by its table, or undefined. */

@@ -35,7 +35,7 @@ import type {
 } from '../../protocol/shared';
 import { openNoteAt } from '../../commands/noteOpening';
 import { renameIndexedTag, TagWrites } from '../../commands/renameTag';
-import { TaskWrites, toggleTask as writeTaskToggle } from '../../commands/taskActions';
+import { clickTask, TaskWrites } from '../../commands/taskActions';
 import { customizeDisplay, setDisplayChoice, useStepValues } from '../../commands/displaySettings';
 import { setZenMode as writeZenMode } from '../zenMode';
 import { DECKARD_PAGE_COMMANDS, DeckardPageId, isDeckardPageId } from '../../state/deckardPages';
@@ -129,8 +129,10 @@ export function parkTag(): MessageHandler<ParkTagMessage> {
 }
 
 /**
- * A task's checkbox. The task is looked up again first, where the page
- * finds it, so a box drawn for a task that has since gone writes nothing.
+ * A task's checkbox, which completes or reopens it, or, in the workflow,
+ * moves it to its next status. The task is looked up again first, where the
+ * page finds it, so a box drawn for a task that has since gone writes
+ * nothing.
  */
 export function toggleTask(toggle: {
   writes: TaskWrites;
@@ -140,7 +142,7 @@ export function toggleTask(toggle: {
   return async (message) => {
     const task = toggle.findTask(message.taskId);
     if (task) {
-      await writeTaskToggle(toggle.writes, task, message.completed);
+      await clickTask(toggle.writes, task, message.completed);
     }
   };
 }

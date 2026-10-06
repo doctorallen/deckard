@@ -1,3 +1,4 @@
+import { formatProgressCount } from '../../domain/tasks/progressCount';
 import * as vscode from 'vscode';
 
 import { pluralize } from '../../shared/text';
@@ -265,11 +266,11 @@ function provideDailyNoteLenses({
 function provideStepProgressLenses({ document, file }: LensContext): LazyCodeLens[] {
   return findStepProgress(file).map((progress) => {
     const range = new vscode.Range(progress.line, 0, progress.line, 0);
-    const counts = `${progress.done} of ${pluralize(progress.total, 'step')} done`;
+    const counts = `Steps ${formatProgressCount(progress.done, progress.total)}`;
     return new LazyCodeLens(range, () => {
       const title = `${formatProgressBar(progress.done, progress.total)} ${counts}`;
       if (progress.nextLine === undefined) {
-        return { title: `${title} · all done`, tooltip: 'Every step is done: the task can be completed', command: '' };
+        return { title, tooltip: 'Every step is done: the task can be completed', command: '' };
       }
       const next = new vscode.Range(progress.nextLine, 0, progress.nextLine, 0);
       return {

@@ -17,7 +17,6 @@ import type {
   SetRelatedNotesPreviewLinesMessage,
   SetRelatedNotesSortMessage,
   SidebarNotesPageToHost,
-  FilterSectionsMessage,
 } from '../../../protocol/sidebarNotes';
 import { narrowCalendarMessage } from '../calendar/messages';
 import {
@@ -63,16 +62,6 @@ const narrowLinkMention: Narrower<LinkMentionMessage> = (value) =>
   value.startColumn >= 0
     ? { type: 'linkMention', filePath: value.filePath as string, line: value.line as number, startColumn: value.startColumn }
     : undefined;
-
-/** A Sections row's line, a whole number from 1, and nothing else. */
-const narrowSectionLine = <T extends 'revealSection' | 'focusSection'>(type: T): Narrower<{ type: T; line: number }> => (value) =>
-  typeof value.line === 'number' && Number.isInteger(value.line) && value.line >= 1 && Object.keys(value).length === 2
-    ? { type, line: value.line }
-    : undefined;
-
-/** The Sections filter: a tag key, or '' to clear it. */
-const narrowFilterSections: Narrower<FilterSectionsMessage> = (value) =>
-  typeof value.tagKey === 'string' && Object.keys(value).length === 2 ? { type: 'filterSections', tagKey: value.tagKey } : undefined;
 
 /** A tag offered to an untagged note, by one non-empty key and nothing else. */
 const narrowAddSuggestedTag: Narrower<AddSuggestedTagMessage> = (value) =>
@@ -135,9 +124,6 @@ export const SIDEBAR_NOTES_MESSAGES: NarrowingTable<SidebarNotesPageToHost> = {
   hoverNotesGraphNode: narrowHoverNotesGraphNode,
   openTag: narrowOpenTag,
   linkMention: narrowLinkMention,
-  revealSection: narrowSectionLine('revealSection'),
-  focusSection: narrowSectionLine('focusSection'),
-  filterSections: narrowFilterSections,
   linkAllMentions: onlyType('linkAllMentions'),
   openLinksSearch: onlyType('openLinksSearch'),
   addSuggestedTag: narrowAddSuggestedTag,

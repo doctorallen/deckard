@@ -1,3 +1,5 @@
+import { formatProgressCount } from '../../domain/tasks/progressCount';
+import { countTaskProgress } from '../../domain/tasks/taskStatuses';
 import { stripTags } from '../../domain/markdown/parser';
 import { ParsedFile, Section, TagReference } from '../../domain/model';
 
@@ -126,7 +128,8 @@ export function formatOutlineDescription(
 ): string {
   const parts: string[] = [];
   if (show.counts && node.tasks) {
-    parts.push(`${node.tasks.done}/${node.tasks.total}`);
+    // A row beside a heading has room for the count alone; its tooltip says the rest.
+    parts.push(formatProgressCount(node.tasks.done, node.tasks.total, { compact: true }));
   }
   if (show.counts && node.links) {
     parts.push(`↩${node.links}`);
@@ -172,7 +175,7 @@ export function collectOutlineTags(nodes: readonly OutlineNode[]): TagReference[
 export function describeOutlineCounts(node: OutlineNode): string[] {
   const lines: string[] = [];
   if (node.tasks) {
-    lines.push(`${node.tasks.done} of ${node.tasks.total} ${node.tasks.total === 1 ? 'task' : 'tasks'} done`);
+    lines.push(`Tasks ${formatProgressCount(node.tasks.done, node.tasks.total)}`);
   }
   if (node.links) {
     lines.push(node.links === 1 ? 'Linked once' : `Linked ${node.links} times`);
@@ -217,7 +220,7 @@ function createNode(
 
   return {
     ...(under.length > 0
-      ? { tasks: { done: under.filter((task) => task.completed).length, total: under.length } }
+      ? { tasks: countTaskProgress(under) }
       : {}),
     ...(links > 0 ? { links } : {}),
     id: '',

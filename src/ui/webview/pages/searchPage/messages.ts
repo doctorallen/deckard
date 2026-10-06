@@ -18,6 +18,7 @@ import type {
   SetSearchColumnsMessage,
   SetSearchPreviewMessage,
   SetTagOverviewLayoutMessage,
+  SetSearchHierarchyMessage,
   SetTagOverviewSortMessage,
 } from '../../../protocol/searchPage';
 import type { MergeTagsMessage } from '../../../protocol/shared';
@@ -30,6 +31,7 @@ import {
   narrowGoToPage,
   NarrowingTable,
   narrowOpenSource,
+  narrowOpenWikiLink,
   narrowOpenTag,
   narrowParkTag,
   narrowPinNote,
@@ -115,6 +117,12 @@ const narrowEditResults: Narrower<EditResultsMessage> = (value) =>
 const narrowSetRenderMode: Narrower<SetRenderModeMessage> = (value) =>
   value.mode === 'markdown' || value.mode === 'html' ? { type: 'setRenderMode', mode: value.mode } : undefined;
 
+/** The results grouped by tag, by heading, or not. */
+const narrowSetSearchHierarchy: Narrower<SetSearchHierarchyMessage> = (value) =>
+  value.hierarchy === 'off' || value.hierarchy === 'tags' || value.hierarchy === 'headings'
+    ? { type: 'setSearchHierarchy', hierarchy: value.hierarchy }
+    : undefined;
+
 /** How much of each result to show. */
 const narrowSetSearchPreview: Narrower<SetSearchPreviewMessage> = (value) =>
   value.preview === 'none' || value.preview === 'lines' || value.preview === 'full'
@@ -174,6 +182,7 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   displayCommand: narrowDisplayCommand,
   chooseTheme: onlyType('chooseTheme'),
   openSource: narrowOpenSource,
+  openWikiLink: narrowOpenWikiLink,
   previewSearch: narrowPreviewSearch,
   setResultsPerPage: narrowSetResultsPerPage,
   pinNote: narrowAs('pinNote', narrowPinNote),
@@ -183,6 +192,7 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   toggleTask: narrowToggleTask,
   setRenderMode: narrowSetRenderMode,
   setSearchPreview: narrowSetSearchPreview,
+  setSearchHierarchy: narrowSetSearchHierarchy,
   setTagOverviewSort: narrowSetTagOverviewSort,
   setTagOverviewLayout: narrowSetTagOverviewLayout,
   setSearchColumns: narrowSetSearchColumns,

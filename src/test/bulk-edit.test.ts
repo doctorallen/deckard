@@ -97,7 +97,7 @@ suite('Bulk edits', () => {
     );
     assert.deepStrictEqual(
       listBulkEdits('tasks').map((option) => option.label),
-      ['Complete', 'Reopen', 'Set a due date', 'Add a tag'],
+      ['Complete', 'Reopen', 'Set a status', 'Set a due date', 'Add a tag'],
     );
   });
 

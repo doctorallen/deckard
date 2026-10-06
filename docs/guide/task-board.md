@@ -1,21 +1,24 @@
 # Task board
 
-Run `Deckard: Open Task Board`, or select **Task Board** in the Pages view or the board icon in the Tasks view's title bar. Drag a card to another column, or choose one from its **⋯** menu, to change the task in its note. The menu's **Move to…** moves the task and its steps under another heading. A card with steps shows **2 of 5 steps · next: Draft the email**. The **View options** gear switches views and edits status columns. Parked tasks are left off unless the search says `is:parked`.
+Run `Deckard: Open Task Board`, or select **Task Board** in the Pages view or the board icon in the Tasks view's title bar. Drag a card to another column, or choose one from its **⋯** menu, to change the task in its note. The menu's **Move to…** moves the task and its steps under another heading. A card with steps shows **Steps 2/5 done (40%) · next: Draft the email**. The **View options** gear switches views and edits status columns. Parked tasks are left off unless the search says `is:parked`.
 
 ![Deckard Task Board showing tasks in status columns that end with Done.](../images/task-board.png)
 
 ## Groupings
 
-- **Status**: a column per status tag on a task line, such as `#status/doing`. `deckard.board.statuses` sets the first columns (`todo`, `doing`, `waiting` by default); other statuses follow, and tasks without one are in **No status**. Dropping replaces the status tag, or removes it in **No status**. `deckard.board.statusNamespace` uses another namespace, such as `#stage/…`. A status inherited from a heading does not count.
+- **Status**: a column per [task status](tasks.md#task-statuses), named as the status is, such as **In progress**. `[/]` and `#status/doing` share **In progress**, and `[=]` has a **Blocked** column. `deckard.board.statuses` sets the first columns (`todo`, `doing`, `waiting` by default), each by its status's tag, or by its name with hyphens for spaces when it has no tag; other statuses follow, and tasks without one are in **No status**. A character no status names stays in **No status**, and its card names it, such as **Unknown [?]**. `deckard.board.statusNamespace` uses another namespace for the tags, such as `#stage/…`. A status inherited from a heading does not count.
+- Dropping on a status column writes the status as `deckard.tasks.writeStatusAs` says: by default, a line with a status tag gets the tag changed, and a plain line gets the character, so `- [ ] Draft` dropped on **In progress** becomes `- [/] Draft`. A status with no character, such as Waiting, is written as its tag. Dropping on **No status** writes a plain `[ ]` and removes the tag.
 - **Priority**: a column per priority. Dropping writes it in the task's format, such as ⏫ or `[priority:: high]`.
 - **Due date**: **Needs a new date** (more than 30 days overdue, titled in red), Overdue, Today, Tomorrow, Within a week, Later, and No due date. Drop on **Today** or **Tomorrow** to set the date, or **No due date** to remove it; other columns take no drops.
 - **Tag…**: one namespace's tags, alphabetical, then **No context**. A task with two such tags is in both columns. Dropping replaces the tag on the line, or removes it in **No context**; an inherited tag stays. See [Contexts, areas, and projects](#contexts-areas-and-projects).
 - Every grouping ends with **Done**, showing the 20 most recently completed tasks. Drop a card there to complete it, with its done date and next occurrence; drag it out to reopen it.
+- **Show a Cancelled column after Done**, in the gear's **Status columns**, draws **Cancelled** after Done (`deckard.board.showCancelled`). Dropping a card there cancels it, with its ❌ date.
+- A card shows its status when its column doesn't, such as **In progress** on a card grouped by priority.
 
 ## Searching and filtering
 
 - Search with the same [search box](search.md#the-search-box) as search pages, such as `#project/atlas`, `priority >= high`, or plain words. **Refine** counts only tasks. The board opens on `is:open`; clear the box for every task, or search `is:done`.
-- **Can start now** narrows to `is:available`, leaving out tasks that are blocked, not started, or waiting or someday. Press it again for `is:open`.
+- **Can start now** narrows to `is:available`, leaving out tasks that are blocked, not started, or on hold (Waiting, Someday, Blocked). Press it again for `is:open`.
 - **Save** keeps the search in the box, whether or not Enter has run it, as a saved search that reopens on the board. **List in Tasks view**, in the gear, makes the [Tasks view](tasks.md#tasks-view) list it; select it again to list every open task.
 
 ## Editing what the Tasks view lists
@@ -33,7 +36,7 @@ The search icon in the [Tasks view](tasks.md#tasks-view)'s title opens the board
 
 - Due dates read by distance, such as **Overdue 15 days · 2026-09-08** or **Due tomorrow · 2026-09-24**; beyond a month only the date shows. A task more than `deckard.tasks.needsNewDateAfterDays` (30) days overdue reads **was due 2026-07-01** in muted text.
 - Column headers count cards and overdue ones: **40 · 38 overdue**.
-- `deckard.board.limits` sets work-in-progress limits by status, such as `{ "doing": 3 }`. The header reads **5 / 3**, and a column over its limit gets a dashed outline. Drops are never refused.
+- `deckard.board.limits` sets work-in-progress limits by status, keyed as `deckard.board.statuses` is, such as `{ "doing": 3 }` for **In progress**. The header reads **5 / 3**, and a column over its limit gets a dashed outline. Drops are never refused.
 - A column over 100 cards shows **Show N more**.
 - **+ Add task** under a column's title captures a task into today's note with that column's status, priority, date, or person. A card's **⋯** menu offers **Due on a date…** for any day.
 - Select a card to open its line, or a tag to open its overview.
@@ -43,7 +46,7 @@ The search icon in the [Tasks view](tasks.md#tasks-view)'s title opens the board
 
 - **Table** shows tasks as rows: title, due date, priority, person, and note by default. Add other fields in the gear's **Columns**. Select a header to sort, again to reverse; **Rank order** restores your ranking. A [query block](query-blocks.md#query-blocks) draws the same table with `view=table`.
 - **List** shows tasks as rows with **Sort: Rank/Created/Updated**. In Rank, drag a row, right-click it to move it, or press **Alt+↑** and **Alt+↓**.
-- **Status columns**, in the gear, lists the status columns in order. Drag a row to reorder, add a column, remove an empty one with **×**, or set the status namespace. These save to `deckard.board.statuses` and `deckard.board.statusNamespace`.
+- **Status columns**, in the gear, lists the status columns in order. Drag a row to reorder, add a column, remove an empty one with **×**, set the status namespace, or show a Cancelled column. These save to `deckard.board.statuses`, `deckard.board.statusNamespace`, and `deckard.board.showCancelled`.
 
 ## Keyboard
 

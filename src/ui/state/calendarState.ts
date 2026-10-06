@@ -1,4 +1,5 @@
 import { isParkedTask } from '../../domain/index/parked';
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { needsNewDateBefore } from '../../domain/tasks/taskPolicy';
 import { stripTags } from '../../domain/markdown/parser';
 import { SHORT_WEEKDAY_NAMES } from '../../domain/markdown/calendar';
@@ -109,8 +110,8 @@ function collectDayTasks(
     if (isParkedTask(index, task.id)) {
       return;
     }
-    if (task.completed) {
-      if (on(task.doneAt)) {
+    if (!isOpenTask(task)) {
+      if (task.completed && on(task.doneAt)) {
         done.push(task);
       }
       return;
@@ -185,7 +186,7 @@ export function clampToMonth(date: string, month: string): string {
 function repeatsOn(index: WorkspaceIndex, from: number, to: number, now: Date): Map<string, Task[]> {
   const byDate = new Map<string, Task[]>();
   index.tasks.forEach((task) => {
-    if (task.completed || !task.recurrence || isParkedTask(index, task.id)) {
+    if (!isOpenTask(task) || !task.recurrence || isParkedTask(index, task.id)) {
       return;
     }
     projectRepeats(task, from, to, now.getTime()).forEach((at) => {
@@ -367,14 +368,14 @@ function collectTasksByDate(index: WorkspaceIndex, page: boolean): TasksByDate {
     scheduledTitles: new Map(),
   };
   for (const task of index.tasks.values()) {
-    if (task.completed || task.dueAt === undefined || isParkedTask(index, task.id)) {
+    if (!isOpenTask(task) || task.dueAt === undefined || isParkedTask(index, task.id)) {
       continue;
     }
     const date = formatLocalDate(new Date(task.dueAt));
     countTask({ page, byDate: tasks.dueTasks, counts: tasks.dueCounts, titles: tasks.dueTitles }, date, task);
   }
   for (const task of index.tasks.values()) {
-    if (task.completed || task.scheduledAt === undefined || isParkedTask(index, task.id)) {
+    if (!isOpenTask(task) || task.scheduledAt === undefined || isParkedTask(index, task.id)) {
       continue;
     }
     const date = formatLocalDate(new Date(task.scheduledAt));

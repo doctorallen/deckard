@@ -1,0 +1,32 @@
+/*
+ * Edit Task Statuses: the rows of statuses to edit, the problems with them,
+ * and the buttons that add, fill, and save. The page shell links its theme
+ * and the tail after it.
+ */
+@import "../shared/base.css";
+
+main { max-width: 980px; padding: 16px 20px 32px; }
+header { display: grid; gap: 6px; margin-bottom: 14px; }
+.status-note { margin: 0; color: var(--muted); }
+.status-click { display: grid; gap: 4px; margin: 0 0 14px; padding: 8px 12px; border: 1px solid var(--line); }
+.status-click legend { padding: 0 4px; font-weight: 600; }
+.status-table { width: 100%; border-collapse: collapse; }
+.status-table th { padding: 4px 6px; color: var(--muted); font-weight: 600; text-align: left; }
+.status-table td { padding: 3px 6px; vertical-align: middle; }
+.status-table tr.has-error td { background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.status-table input[type="text"], .status-table select { width: 100%; min-width: 0; }
+.status-table select { min-width: 15ch; text-transform: none; }
+.status-symbol, .status-symbol-input { font-family: var(--vscode-editor-font-family, monospace); }
+.status-symbol-input { max-width: 7ch; text-align: center; }
+.status-tag { display: flex; align-items: center; gap: 2px; }
+.status-tag-prefix { color: var(--muted); white-space: nowrap; }
+.status-remove { min-width: 24px; }
+.status-problems { margin: 10px 0 0; padding-left: 18px; }
+.status-problems .is-error { color: var(--danger); }
+.status-problems .is-warning { color: var(--muted); }
+.status-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+.status-actions-gap { flex: 1; }
+.status-workflow { margin-top: 18px; }
+.status-workflow h2 { margin: 0 0 6px; }
+.status-workflow ul { margin: 0; padding-left: 18px; font-family: var(--vscode-editor-font-family, monospace); }
+.status-no-icon { color: var(--muted); }

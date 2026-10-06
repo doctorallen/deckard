@@ -3,9 +3,9 @@ import * as assert from 'assert';
 import {
   DEFAULT_TASK_POLICY,
   needsNewDate,
-  readLineStatus,
   readStatusNamespace,
 } from '../domain/tasks/taskPolicy';
+import { readStatusTag } from '../domain/tasks/taskStatuses';
 import { createAgenda } from '../ui/state/agendaState';
 import { createQueryContext } from '../domain/query/queryContext';
 import { Task, WorkspaceIndex } from '../domain/model';
@@ -61,8 +61,8 @@ suite('Task policy', () => {
       id: 'a',
       associationTagGroups: [[{ key: '#status/waiting', label: '#status/waiting' } as never]],
     });
-    assert.strictEqual(readLineStatus(task, DEFAULT_TASK_POLICY.statusNamespace), 'waiting');
-    assert.strictEqual(readLineStatus(task, 'state'), '');
+    assert.strictEqual(readStatusTag(task, DEFAULT_TASK_POLICY.statusNamespace), 'waiting');
+    assert.strictEqual(readStatusTag(task, 'state'), undefined);
   });
 
   test('reads the status namespace once, for every view: trimmed, checked, and lowercased', () => {
@@ -97,7 +97,7 @@ function createTask(values: Partial<Task> & { id: string }): Task {
     tagLabels: {},
     lineNumber: 1,
     checkboxColumn: 3,
-    checkboxValue: ' ',
+    status: { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: '- [ ] task',
     ...values,
   };

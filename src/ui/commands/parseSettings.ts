@@ -5,6 +5,7 @@ import {
   getEntityNamespaceAliases,
   getPersonMarker,
 } from '../../domain/markdown/parser';
+import { readTaskStatusSettings, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
 
 /**
  * The settings that decide how a line's tags are read, as the editor's
@@ -19,16 +20,24 @@ export interface ParseOptions {
   readonly entityNamespaceAliases: EntityNamespaceAliases;
   /** `deckard.personMarker`, or `@` when the setting is not one allowed character. */
   readonly personMarker: string;
+  /** `deckard.tasks.statuses`: what each checkbox character means. */
+  readonly taskStatuses: readonly TaskStatusDefinition[];
 }
 
-/** All three parse settings for the document at `scope`. */
+/** The parse settings for the document at `scope`. */
 export function readParseOptions(scope: vscode.Uri): ParseOptions {
   const configuration = vscode.workspace.getConfiguration('deckard', scope);
   return {
     parseInlineTags: configuration.get<boolean>('parseInlineTags', true),
     entityNamespaceAliases: getEntityNamespaceAliases(configuration.get<unknown>('entityNamespaceAliases', {})),
     personMarker: getPersonMarker(configuration.get<unknown>('personMarker', '@')),
+    taskStatuses: readTaskStatusSettings(configuration),
   };
+}
+
+/** `deckard.tasks.statuses` alone, in the scope of the document at `scope`, or the workspace's. */
+export function readTaskStatusOptions(scope?: vscode.Uri): TaskStatusDefinition[] {
+  return readTaskStatusSettings(vscode.workspace.getConfiguration('deckard', scope));
 }
 
 /**

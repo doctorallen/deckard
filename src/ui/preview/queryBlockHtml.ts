@@ -21,6 +21,7 @@ import { WorkspaceIndex, TaskColumnId } from '../../domain/model';
 import { describeDueDate } from '../../domain/markdown/dueWording';
 import { formatIsoDate } from '../../domain/markdown/calendar';
 import { DEFAULT_NOTE_COLUMNS, NoteColumnId, noteColumnLabel } from '../../domain/notes/noteColumns';
+import { speakProgressText } from '../../domain/tasks/progressCount';
 
 /** markdown-it's rule for a fenced block, which the query block rule wraps. */
 type FenceRule = NonNullable<MarkdownIt['renderer']['rules']['fence']>;
@@ -196,7 +197,7 @@ function renderNoteTable(snapshot: QueryBlockSnapshot, columns: readonly NoteCol
   const head = columns.map((column) => `<th scope="col">${escapeHtml(noteColumnLabel(column))}</th>`).join('');
   const rows = snapshot.notes.map((item) => {
     const cells = columns.map((column) =>
-      column === 'title' ? `<td>${renderLink(item)}</td>` : `<td>${escapeHtml(describeNoteCell(item, column))}</td>`,
+      column === 'title' ? `<td>${renderLink(item)}</td>` : renderTextCell(describeNoteCell(item, column)),
     );
     return `<tr class="deckard-query-row">${cells.join('')}</tr>`;
   });
@@ -356,12 +357,22 @@ function renderTask(
  */
 function renderCheckbox(item: QueryBlockItem, href: string | undefined): string {
   const done = item.completed === true;
-  const mark = done ? '☑' : '☐';
-  if (!href) {
-    return `<span class="deckard-query-checkbox" role="img" aria-label="${done ? 'Done' : 'Open'}">${mark}</span>`;
+  // Closed, a cancelled task is checked too; in progress is half way.
+  const closed = done || item.cancelled === true;
+  const mixed = !closed && item.statusType === 'inProgress';
+  let mark = '☐';
+  if (closed) {
+    mark = item.cancelled ? '☒' : '☑';
+  } else if (mixed) {
+    mark = '◐';
   }
-  const action = `${done ? 'Reopen' : 'Complete'} ${plainTitle(item.title)}`;
-  return `<a class="deckard-query-checkbox is-action" href="${escapeHtml(href)}" role="checkbox" aria-checked="${done}" aria-label="${escapeHtml(action)}" title="${escapeHtml(action)}">${mark}</a>`;
+  const status = item.status ? `, ${item.status}` : '';
+  const kind = item.cancelled ? ' is-cancelled' : '';
+  if (!href) {
+    return `<span class="deckard-query-checkbox${kind}" role="img" aria-label="${escapeHtml(`${closed ? 'Done' : 'Open'}${status}`)}">${mark}</span>`;
+  }
+  const action = `${closed ? 'Reopen' : 'Complete'} ${plainTitle(item.title)}${status}`;
+  return `<a class="deckard-query-checkbox is-action${kind}" href="${escapeHtml(href)}" role="checkbox" aria-checked="${mixed ? 'mixed' : closed}" aria-label="${escapeHtml(action)}" title="${escapeHtml(action)}">${mark}</a>`;
 }
 
 /** A title's words without its Markdown marks, for a label. */
@@ -484,4 +495,10 @@ function startOfDay(timestamp: number): number {
   const date = new Date(timestamp);
   date.setHours(0, 0, 0, 0);
   return date.getTime();
+}
+
+/** A table cell of text; one holding a progress figure says it to a screen reader as it is spoken. */
+function renderTextCell(text: string): string {
+  const spoken = speakProgressText(text);
+  return spoken === text ? `<td>${escapeHtml(text)}</td>` : `<td aria-label="${escapeHtml(spoken)}">${escapeHtml(text)}</td>`;
 }

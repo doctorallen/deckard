@@ -1,3 +1,4 @@
+import { formatProgressCount } from '../tasks/progressCount';
 import { Task, TaskSteps } from '../model';
 import {
   findListParents,
@@ -5,7 +6,8 @@ import {
   isTaskItemLine,
   lineIndent,
 } from './listNesting';
-import { isHeadingLine, isTaskLineOf, matchTaskLine, TaskLineShape } from './lineShapes';
+import { isHeadingLine, matchTaskLine, STATUS_CHARACTER, STATUS_MARKS, TaskLineShape } from './lineShapes';
+import { DEFAULT_TASK_STATUSES, isClosedType, statusForSymbol, type TaskStatusDefinition } from '../tasks/taskStatuses';
 import { stripTags } from './parser';
 import { setTaskLineCompletion } from './taskLineEdits';
 
@@ -23,22 +25,20 @@ export interface StepsDescription {
   next?: string;
 }
 
-/** `2 of 5 steps` and the next open step, for a card that styles them apart. */
+/** `Steps 2/5 (40%)` and the next open step, for a card that styles them apart. */
 export function describeStepParts(steps: TaskSteps): StepsDescription {
-  const noun = steps.total === 1 ? 'step' : 'steps';
+  const label = `Steps ${formatProgressCount(steps.done, steps.total)}`;
   if (steps.done >= steps.total) {
-    return {
-      label: steps.total === 1 ? '1 of 1 step done' : `All ${steps.total} steps done`,
-    };
+    return { label };
   }
   const next = steps.next === undefined ? undefined : stripTrailingTagWords(steps.next);
   return {
-    label: `${steps.done} of ${steps.total} ${noun}`,
+    label,
     ...(next ? { next } : {}),
   };
 }
 
-/** `2 of 5 steps · next: Draft the email`, in one line. */
+/** `Steps 2/5 (40%) · next: Draft the email`, in one line. */
 export function describeSteps(steps: TaskSteps): string {
   const { label, next } = describeStepParts(steps);
   return next ? `${label} · next: ${next}` : label;
@@ -111,14 +111,18 @@ export function findStepFamily(lines: readonly string[], lineIndex: number): Ste
   return { ...(parent === undefined ? {} : { parent }), steps };
 }
 
-/** A checked task, `[x]` or `[X]`, indented by spaces and tabs only. */
-const CHECKED_TASK: TaskLineShape = { indent: 'spaces-and-tabs', marks: 'xX' };
+/** A task of any status, indented by spaces and tabs only. */
+const STEP_TASK: TaskLineShape = { indent: 'spaces-and-tabs', marks: STATUS_MARKS };
 /** A bullet and the `[` of a box, whatever follows it. */
 const BOX_OPENING: TaskLineShape = { indent: 'spaces-and-tabs', marks: 'unread' };
 
-/** Whether a task line is checked. */
-export function isCheckedTaskLine(line: string): boolean {
-  return isTaskLineOf(line, CHECKED_TASK);
+/**
+ * Whether a task line is closed: done, or cancelled, as its character's
+ * status says, so a cancelled step is not one still to do.
+ */
+export function isClosedTaskLine(line: string, statuses: readonly TaskStatusDefinition[] = DEFAULT_TASK_STATUSES): boolean {
+  const match = matchTaskLine(line, STEP_TASK);
+  return match !== undefined && isClosedType(statusForSymbol(statuses, match.mark).type);
 }
 
 /** The 0-based column of a task line's checkbox mark, between its brackets. */
@@ -206,13 +210,16 @@ export function formatStepLines(
   return steps.map((step) => `${indent}${marker} [ ] ${step}`);
 }
 
+/** A leading bullet or number and a box, empty or holding any status's character. */
+const LEADING_MARKER = new RegExp(String.raw`^\s*(?:(?:[-*+•]|\d+[.)])\s+)?(?:\[${STATUS_CHARACTER}?\]\s*)?`);
+
 /**
  * A step as typed, tidied: a leading bullet, number, or checkbox is taken
  * off, since Deckard writes its own, and runs of whitespace collapse.
  */
 export function cleanStepText(text: string): string {
   return text
-    .replace(/^\s*(?:(?:[-*+•]|\d+[.)])\s+)?(?:\[[ xX]?\]\s*)?/, '')
+    .replace(LEADING_MARKER, '')
     .replace(/\s+/g, ' ')
     .trim();
 }

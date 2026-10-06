@@ -108,7 +108,7 @@ export function changedScaleSettings(set: Partial<Record<ScaleSetting, unknown>>
  * What Zen mode turned off outside the pages, each now its own setting under
  * `deckard.`: the counts above headings, the unlinked-mention lens, the due
  * hints after a task, the band behind the section being edited, and the
- * Sections view's counts.
+ * Outline's counts.
  */
 export const ZEN_EDITOR_SETTINGS = [
   'editor.referenceCounts',
@@ -195,6 +195,8 @@ export interface DisplayChoices {
   readonly tags?: 'text';
   readonly counts?: 'hidden';
   readonly fileAndLine?: 'always' | 'never';
+  /** The details an entry shows besides, or in place of, its file and line, when not the file and line alone: "fileAndLine created". */
+  readonly details?: string;
   readonly dates?: 'relative' | 'date';
   readonly width?: 'full';
 }

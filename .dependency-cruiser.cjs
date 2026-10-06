@@ -25,7 +25,7 @@ const IO_MODULES = '^(node:)?(fs|fs/promises|child_process|net|http|https|worker
  * `domain-is-pure` already keeps them free of `vscode` and I/O.
  */
 const PAGE_DOMAIN_MODULES =
-  '^src/domain/(graph/communities|markdown/calendar|markdown/tagKeys|tasks/taskColumns|dashboard/widgetCatalog)\\.ts$';
+  '^src/domain/(graph/communities|markdown/calendar|markdown/tagKeys|tasks/taskColumns|tasks/progressCount|tasks/statusChecks|dashboard/widgetCatalog)\\.ts$';
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {

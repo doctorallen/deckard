@@ -78,6 +78,16 @@
         }
       },
       {
+        "id": "deckard.inProgressForeground",
+        "description": "Color of an in-progress task's box in the editor, such as [/].",
+        "defaults": {
+          "dark": "textLink.foreground",
+          "light": "textLink.foreground",
+          "highContrast": "textLink.foreground",
+          "highContrastLight": "textLink.foreground"
+        }
+      },
+      {
         "id": "deckard.overdueForeground",
         "description": "Color of an overdue task's due date in the editor, and of the \"overdue 5 days\" hint after its line.",
         "defaults": {
@@ -202,6 +212,10 @@
       {
         "view": "deckard.hubs",
         "contents": "Hub notes and the notes about their tags appear here, as pages under the pages they belong to.\n\nA hub note describes a tag with describes: in its front matter, such as describes: project/atlas. A note is filed under it when its front matter or first heading carries the tag, or when it says up: \"[[Atlas]]\".\n[Read about hub notes](https://deckard.esperinnovations.com/search-pages.html#hub-notes)"
+      },
+      {
+        "view": "deckard.outline",
+        "contents": "Open a Markdown note to see its headings here.\n[Create today's note](command:deckard.createDailyNote)\n[Open Help](command:deckard.showHelp)"
       },
       {
         "view": "deckard.agenda",
@@ -385,6 +399,31 @@
       {
         "command": "deckard.toggleTaskDone",
         "title": "Toggle Task Done",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.setTaskStatus",
+        "title": "Set Task Status…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.moveStatusTagsIntoCheckboxes",
+        "title": "Move Status Tags into Checkboxes…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.importObsidianStatuses",
+        "title": "Import Statuses from Obsidian Tasks",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.editTaskStatuses",
+        "title": "Edit Task Statuses…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.agenda.setTaskStatus",
+        "title": "Set Task Status…",
         "category": "Deckard"
       },
       {
@@ -591,6 +630,19 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.outline.revealSection",
+        "title": "Reveal Outline Heading",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.outline.openTagOverview",
+        "title": "Open a Tag's Search Page…"
+      },
+      {
+        "command": "deckard.outline.renameTag",
+        "title": "Rename Tag…"
+      },
+      {
         "command": "deckard.hubs.openHubNote",
         "title": "Open Hub Note",
         "icon": "$(go-to-file)"
@@ -614,6 +666,18 @@
         "icon": "$(group-by-ref-type)"
       },
       {
+        "command": "deckard.outline.enableFollowCursor",
+        "title": "Follow Cursor in Outline",
+        "category": "Deckard",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "deckard.outline.disableFollowCursor",
+        "title": "Stop Following Cursor in Outline",
+        "category": "Deckard",
+        "icon": "$(eye)"
+      },
+      {
         "command": "deckard.focusSection",
         "title": "Focus Section",
         "category": "Deckard",
@@ -626,24 +690,14 @@
         "icon": "$(unfold)"
       },
       {
-        "command": "deckard.outline.enableFollowCursor",
-        "title": "Mark the Cursor's Section in Sections",
-        "category": "Deckard"
-      },
-      {
-        "command": "deckard.outline.disableFollowCursor",
-        "title": "Stop Marking the Cursor's Section",
-        "category": "Deckard"
-      },
-      {
         "command": "deckard.outline.filterByTag",
-        "title": "Filter Sections by Tag…",
+        "title": "Filter Outline by Tag…",
         "category": "Deckard",
         "icon": "$(filter)"
       },
       {
         "command": "deckard.outline.clearTagFilter",
-        "title": "Clear the Sections Filter",
+        "title": "Clear Outline Tag Filter",
         "category": "Deckard",
         "icon": "$(filter-filled)"
       },
@@ -811,14 +865,6 @@
     "menus": {
       "commandPalette": [
         {
-          "command": "deckard.outline.enableFollowCursor",
-          "when": "!deckard.outlineFollowCursor"
-        },
-        {
-          "command": "deckard.outline.disableFollowCursor",
-          "when": "deckard.outlineFollowCursor"
-        },
-        {
           "command": "deckard.search",
           "when": "false"
         },
@@ -849,6 +895,18 @@
         {
           "command": "deckard.showNotesGraphAroundNote",
           "when": "editorLangId == markdown && deckard.isNote"
+        },
+        {
+          "command": "deckard.outline.revealSection",
+          "when": "false"
+        },
+        {
+          "command": "deckard.outline.openTagOverview",
+          "when": "false"
+        },
+        {
+          "command": "deckard.outline.renameTag",
+          "when": "false"
         },
         {
           "command": "deckard.hubs.openHubNote",
@@ -907,12 +965,28 @@
           "when": "editorLangId == markdown && deckard.onTaskLine"
         },
         {
+          "command": "deckard.setTaskStatus",
+          "when": "editorLangId == markdown && deckard.onTaskLine"
+        },
+        {
+          "command": "deckard.agenda.setTaskStatus",
+          "when": "false"
+        },
+        {
           "command": "deckard.pinNote",
           "when": "editorLangId == markdown && !deckard.activeNotePinned"
         },
         {
           "command": "deckard.unpinNote",
           "when": "editorLangId == markdown && deckard.activeNotePinned"
+        },
+        {
+          "command": "deckard.outline.enableFollowCursor",
+          "when": "!deckard.outlineFollowCursor"
+        },
+        {
+          "command": "deckard.outline.disableFollowCursor",
+          "when": "deckard.outlineFollowCursor"
         },
         {
           "command": "deckard.focusSection",
@@ -1130,6 +1204,11 @@
           "group": "1_task@2"
         },
         {
+          "command": "deckard.setTaskStatus",
+          "when": "deckard.onTaskLine",
+          "group": "1_task@2"
+        },
+        {
           "command": "deckard.breakIntoSteps",
           "when": "deckard.onTaskLine",
           "group": "1_task@3"
@@ -1262,6 +1341,31 @@
           "group": "navigation@2"
         },
         {
+          "command": "deckard.outline.enableFollowCursor",
+          "when": "view == deckard.outline && !deckard.outlineFollowCursor",
+          "group": "navigation@1"
+        },
+        {
+          "command": "deckard.outline.disableFollowCursor",
+          "when": "view == deckard.outline && deckard.outlineFollowCursor",
+          "group": "navigation@1"
+        },
+        {
+          "command": "deckard.unfoldAllSections",
+          "when": "view == deckard.outline && deckard.sectionFocused",
+          "group": "navigation@0"
+        },
+        {
+          "command": "deckard.outline.filterByTag",
+          "when": "view == deckard.outline && !deckard.outlineFiltered",
+          "group": "navigation@2"
+        },
+        {
+          "command": "deckard.outline.clearTagFilter",
+          "when": "view == deckard.outline && deckard.outlineFiltered",
+          "group": "navigation@2"
+        },
+        {
           "command": "deckard.calendar.openInEditor",
           "when": "view == deckard.calendar",
           "group": "navigation@1"
@@ -1319,6 +1423,36 @@
           "group": "deckard@2"
         },
         {
+          "command": "deckard.outline.openTagOverview",
+          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
+          "group": "deckard@1"
+        },
+        {
+          "command": "deckard.outline.renameTag",
+          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
+          "group": "deckard@2"
+        },
+        {
+          "command": "deckard.outline.filterByTag",
+          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
+          "group": "deckard@3"
+        },
+        {
+          "command": "deckard.parkTag",
+          "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
+          "group": "deckard@4"
+        },
+        {
+          "command": "deckard.focusSection",
+          "when": "view == deckard.outline",
+          "group": "inline"
+        },
+        {
+          "command": "deckard.focusSection",
+          "when": "view == deckard.outline",
+          "group": "1_focus@1"
+        },
+        {
           "command": "deckard.agenda.editTask",
           "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
           "group": "inline@1"
@@ -1347,6 +1481,11 @@
           "command": "deckard.agenda.editTask",
           "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
           "group": "2_edit@1"
+        },
+        {
+          "command": "deckard.agenda.setTaskStatus",
+          "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
+          "group": "2_edit@2"
         },
         {
           "command": "deckard.agenda.breakIntoSteps",
@@ -1464,6 +1603,7 @@
           "id": "deckard.pages",
           "name": "Pages",
           "icon": "resources/pages/home-dark.svg",
+          "type": "webview",
           "contextualTitle": "Deckard Pages"
         },
         {
@@ -1472,6 +1612,12 @@
           "icon": "resources/views/related-notes.svg",
           "type": "webview",
           "contextualTitle": "Deckard Context"
+        },
+        {
+          "id": "deckard.outline",
+          "name": "Outline",
+          "icon": "resources/views/outline.svg",
+          "contextualTitle": "Deckard Outline"
         },
         {
           "id": "deckard.agenda",
@@ -1633,6 +1779,10 @@
             "complete": {
               "type": "boolean",
               "description": "true completes it, writing the done date; false reopens it."
+            },
+            "status": {
+              "type": "string",
+              "description": "A status to set, by its name, as \"In progress\", \"Waiting\", or \"Cancelled\", or by its character in brackets, as \"[/]\". Done completes it, as complete does."
             },
             "due": {
               "type": [
@@ -1866,7 +2016,73 @@
               "Under every entry.",
               "Not drawn. A screen reader still reads it."
             ],
-            "description": "Where pages draw the file and line an entry is written in. Your own choice, the same in every workspace.",
+            "description": "When pages draw an entry's details, the ones chosen in Card details: the file and line it is written in, and a note's created and updated dates. Your own choice, the same in every workspace.",
+            "order": 2
+          },
+          "deckard.pages.style": {
+            "type": "string",
+            "enum": [
+              "list",
+              "icons"
+            ],
+            "default": "list",
+            "scope": "application",
+            "enumDescriptions": [
+              "Each page as a row with its name and what is worth knowing about it now.",
+              "Each page as its icon alone, in one row, named on hover."
+            ],
+            "description": "How the Pages view draws Deckard's pages. Your own choice, the same in every workspace."
+          },
+          "deckard.pages.shown": {
+            "type": "object",
+            "properties": {
+              "home": { "type": "boolean", "description": "Home." },
+              "board": { "type": "boolean", "description": "Task Board." },
+              "calendar": { "type": "boolean", "description": "Calendar." },
+              "today": { "type": "boolean", "description": "Today's note." },
+              "graph": { "type": "boolean", "description": "Notes Graph." },
+              "find": { "type": "boolean", "description": "Find in Notes." },
+              "stats": { "type": "boolean", "description": "Stats." },
+              "help": { "type": "boolean", "description": "Help." }
+            },
+            "additionalProperties": false,
+            "default": {
+              "home": true,
+              "board": true,
+              "calendar": true,
+              "today": true,
+              "graph": true,
+              "find": true,
+              "stats": true,
+              "help": true
+            },
+            "scope": "application",
+            "description": "Which pages the Pages view shows, in its order. Go to… still lists every page. Your own choice, the same in every workspace."
+          },
+          "deckard.display.cardDetails": {
+            "type": "object",
+            "properties": {
+              "fileAndLine": {
+                "type": "boolean",
+                "description": "The file and line an entry is written in, and the headings above it."
+              },
+              "created": {
+                "type": "boolean",
+                "description": "When a note or task was created: a task's ➕ date, or its note's."
+              },
+              "updated": {
+                "type": "boolean",
+                "description": "When a note, or a task's note, was last changed."
+              }
+            },
+            "additionalProperties": false,
+            "default": {
+              "fileAndLine": true,
+              "created": false,
+              "updated": false
+            },
+            "scope": "application",
+            "description": "Which details pages draw under an entry, when File & line says to: its file and line, and its created and updated dates. A task's created date is its own ➕ date when it has one, else its note's; its updated date is its note's. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.display.dates": {
@@ -1994,10 +2210,7 @@
           },
           "deckard.weeklyNote.naming": {
             "type": "string",
-            "enum": [
-              "range",
-              "iso"
-            ],
+            "enum": ["range", "iso"],
             "enumDescriptions": [
               "week-2026-09-13-2026-09-19: the week's first and last days.",
               "2026-W38: the ISO week, as many journaling tools name it."
@@ -2209,11 +2422,7 @@
           },
           "deckard.editor.preset": {
             "type": "string",
-            "enum": [
-              "full",
-              "tasks",
-              "writing"
-            ],
+            "enum": ["full", "tasks", "writing"],
             "enumDescriptions": [
               "Everything Deckard draws in the editor: counts, hints, previews, and lenses.",
               "What helps with tasks, and what reports a problem; no link counts, mention lenses, or breadcrumbs.",
@@ -2317,10 +2526,7 @@
           },
           "deckard.links.style": {
             "type": "string",
-            "enum": [
-              "wiki",
-              "markdown"
-            ],
+            "enum": ["wiki", "markdown"],
             "enumDescriptions": [
               "[[Atlas]], as Obsidian writes them.",
               "[Atlas](projects/Atlas.md), which GitHub, MkDocs, and other Markdown renderers show as links."
@@ -2560,12 +2766,134 @@
             "description": "Status columns on the task board, in order. A status found on a task but not listed here gets a column after them.",
             "order": 11
           },
+          "deckard.board.showCancelled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Draw a Cancelled column after Done on the Task board, for the tasks that were closed without being done.",
+            "order": 12
+          },
           "deckard.board.statusNamespace": {
             "type": "string",
             "default": "status",
             "pattern": "^\\p{L}[\\p{L}\\p{N}\\p{M}_-]*$",
             "description": "Tag namespace that holds a task's status on the task board, so the default reads #status/doing.",
             "order": 12
+          },
+          "deckard.tasks.statuses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "symbol": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2,
+                  "description": "The character between the brackets, as [/]. Leave it out for a status written only as a tag, such as Waiting."
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "What the status is called, in search (status:in-progress), on the board, and to a screen reader."
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "inProgress",
+                    "onHold",
+                    "done",
+                    "cancelled",
+                    "nonTask"
+                  ],
+                  "enumDescriptions": [
+                    "Open, to do.",
+                    "Open, being worked on.",
+                    "Open, waiting: left out of is:available.",
+                    "Done: counts as done everywhere.",
+                    "Closed, but not done: left out of progress and of what is open.",
+                    "Not a task: the line stays text, as a pro and con list's."
+                  ]
+                },
+                "tag": {
+                  "type": "string",
+                  "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N}\\p{M}_-]*$",
+                  "description": "The #status/… tag that stands for it, written without the namespace: doing for #status/doing."
+                },
+                "next": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2,
+                  "description": "The character a click moves it to, when deckard.tasks.checkboxClick is workflow."
+                },
+                "icon": {
+                  "type": "string",
+                  "enum": [
+                    "blocked",
+                    "question",
+                    "alert",
+                    "star",
+                    "flag",
+                    "clock"
+                  ],
+                  "description": "An icon an open status adds to its box."
+                }
+              },
+              "required": [
+                "name",
+                "type"
+              ]
+            },
+            "default": [
+              { "symbol": " ", "name": "Todo", "type": "todo", "tag": "todo", "next": "x" },
+              { "symbol": "/", "name": "In progress", "type": "inProgress", "tag": "doing", "next": "x" },
+              { "symbol": "x", "name": "Done", "type": "done", "next": " " },
+              { "symbol": "X", "name": "Done", "type": "done", "next": " " },
+              { "symbol": "-", "name": "Cancelled", "type": "cancelled", "next": " " },
+              { "name": "Waiting", "type": "onHold", "tag": "waiting" },
+              { "name": "Someday", "type": "onHold", "tag": "someday" },
+              { "symbol": "=", "name": "Blocked", "type": "onHold", "tag": "blocked", "icon": "blocked", "next": " " }
+            ],
+            "markdownDescription": "What each checkbox character means, as Obsidian Tasks' statuses do: `- [/]` in progress, `- [-]` cancelled, `- [=]` blocked. Each has a `name`, a `type` (`todo`, `inProgress`, `onHold`, `done`, `cancelled`, or `nonTask`), and, optionally, the `#status/…` `tag` that stands for it. A character no status names is a task to do, called Unknown. `[ ]` and `[x]` are always Todo and Done.",
+            "order": 12
+          },
+          "deckard.tasks.checkboxClick": {
+            "type": "string",
+            "scope": "resource",
+            "enum": [
+              "done",
+              "workflow"
+            ],
+            "enumDescriptions": [
+              "Checking a box marks the task done, whatever its status; unchecking a done or cancelled task reopens it as [ ].",
+              "A click moves a task to its status's next status, as Obsidian Tasks does, so a task can step from to do to in progress to done."
+            ],
+            "default": "done",
+            "markdownDescription": "What a click on a task's box does, in a page, the Markdown preview, and the Tasks view. **Deckard: Toggle Task Done** always goes to done and back. Set other statuses with **Deckard: Set Task Status…** or the Task board.",
+            "order": 12
+          },
+          "deckard.tasks.writeStatusAs": {
+            "type": "string",
+            "scope": "resource",
+            "enum": [
+              "match",
+              "checkbox",
+              "tag"
+            ],
+            "enumDescriptions": [
+              "As the line already writes it: as its tag when the line has a status tag, as its character when it doesn't.",
+              "Always as its character, as [/], taking the status tag away.",
+              "Always as its #status/… tag, in an empty box."
+            ],
+            "default": "match",
+            "markdownDescription": "How Deckard writes a status that has both a character and a tag, as In progress has `[/]` and `#status/doing`. A status with only a tag, such as Waiting, is always its tag; done and cancelled are always their characters.",
+            "order": 12
+          },
+          "deckard.tasks.addCancelledDate": {
+            "type": "boolean",
+            "scope": "resource",
+            "default": true,
+            "description": "Add a cancelled date (❌ or [cancelled:: …]) when Deckard cancels a task. Reopening the task removes it.",
+            "order": 0
           },
           "deckard.tasks.onHoldStatuses": {
             "type": "array",
@@ -2578,6 +2906,7 @@
               "someday"
             ],
             "description": "Statuses that put a task on hold: is:available leaves out a task whose #status/… tag is one of these. Write them without the namespace, as in deckard.board.statuses.",
+            "markdownDeprecationMessage": "Give the status the `onHold` type in `#deckard.tasks.statuses#` instead. Each tag listed here is still read as an on-hold status.",
             "order": 13
           },
           "deckard.tasks.suggestSteps": {
@@ -2590,18 +2919,18 @@
         "order": 4
       },
       {
-        "title": "Sections",
+        "title": "Outline",
         "properties": {
           "deckard.outline.showTags": {
             "type": "boolean",
             "default": true,
-            "description": "Show each heading's tags beside it in the Context view's Sections.",
+            "description": "Show each heading's tags beside it in the Deckard Outline.",
             "order": 0
           },
           "deckard.outline.followCursor": {
             "type": "boolean",
             "default": true,
-            "description": "Mark the heading the cursor is in, in the Context view's Sections.",
+            "description": "Select the Deckard Outline heading that contains the editor cursor.",
             "order": 1
           },
           "deckard.outline.inheritedTags": {
@@ -2614,7 +2943,7 @@
           "deckard.outline.showCounts": {
             "type": "boolean",
             "default": true,
-            "description": "Show beside each heading in the Context view's Sections how many of the tasks under it are done, such as 2/5, and how many links name it, such as ↩3.",
+            "description": "Show beside each heading in the Deckard Outline how many of the tasks under it are done, such as 2/5, and how many links name it, such as ↩3.",
             "order": 3
           }
         },

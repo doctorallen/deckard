@@ -9,6 +9,7 @@ import type {
   RenderMode,
   SearchPageSize,
   SearchPreview,
+  SearchHierarchy,
   TagOverviewLayout,
   TagOverviewSortMode,
 } from '../../domain/model/preferences';
@@ -34,9 +35,11 @@ import type {
   SetDisplayMessage,
   SetZenModeMessage,
   TagOverviewCard,
+  TagReference,
   TagTitleDisplayMode,
   ToggleTaskMessage,
 } from './shared';
+import type { NoteBlock, OpenWikiLinkMessage } from './notePage';
 
 /** The tag a search page is about, as the page draws it. */
 export interface SearchPageTag {
@@ -98,6 +101,10 @@ export interface SearchPageSnapshot {
   layout: TagOverviewLayout;
   /** The page sizes the reader can choose between. */
   pageSizes: readonly SearchPageSize[];
+  /** Whether the results are grouped under the tags Refine offers. */
+  hierarchy: SearchHierarchy;
+  /** With the hierarchy on, the results grouped under the tags Refine offers. */
+  groups?: SearchResultGroup[];
   noteColumns: DashboardColumnCount;
   taskColumns: DashboardColumnCount;
   tagTitleDisplayMode: TagTitleDisplayMode;
@@ -116,6 +123,42 @@ export interface SearchPageSnapshot {
    * results, before they are committed to the search itself.
    */
   draftWords?: string[];
+}
+
+/**
+ * The results that carry one of the tags Refine offers, as the hierarchy
+ * by tag groups them, or a level of the hierarchy by heading, or those under
+ * none of them. A result carrying two
+ * of the tags is in both groups.
+ */
+export interface SearchResultGroup {
+  /** The tag, as Refine offers it; none for the results that carry none of Refine's tags. */
+  tag?: {
+    label: string;
+    /** What Refine adds to the search to narrow it to the tag. */
+    clause: string;
+    facetId: 'related' | 'tags';
+  };
+  /** The group's first notes, up to its limit. */
+  notes: TagOverviewCard[];
+  /** How many notes are in the group, drawn or not. */
+  noteCount: number;
+  /** The group's first tasks, up to its limit. */
+  tasks: DashboardTask[];
+  /** How many tasks are in the group, drawn or not. */
+  taskCount: number;
+  /** How many of all the group's tasks are done. */
+  doneCount: number;
+  /** How many of them count toward its progress: all but the cancelled ones. */
+  progressTotal: number;
+  /**
+   * By heading, the levels inside this one, such as a project's parts. Its
+   * counts then take them in, and its own notes and tasks are those above
+   * them, `ownNoteCount` and `ownTaskCount` of them in all.
+   */
+  children?: SearchResultGroup[];
+  ownNoteCount?: number;
+  ownTaskCount?: number;
 }
 
 /** The quiet lines under a tag's page's hub. */
@@ -137,6 +180,12 @@ export interface SearchPageTagNotes {
   hubTitle?: string;
   /** How far along the tag's tasks are, when it finds any. */
   progress?: SearchPageTagProgress;
+  /**
+   * The tag's parts, when it is written on headings with tagged headings
+   * under them: each part's name and how far along its tasks are, "#phase/design
+   * 2/3 done (67%)", with the search that narrows the page to it.
+   */
+  parts?: Array<{ text: string; query: string; tip: string; active?: true }>;
   /** Entries that write the tag's name as a plain word, without the tag. */
   mention?: {
     word: string;
@@ -151,7 +200,7 @@ export interface SearchPageTagProgress {
   done: number;
   total: number;
   overdue: number;
-  /** "3 of 8 done · 1 overdue · next due in 3 days". */
+  /** "3/8 done (38%) · 1 overdue · next due in 3 days". */
   label: string;
   /** The label's parts, in order, each with the search that lists the tasks it counts, when it counts any. */
   parts: Array<{ text: string; query?: string; tip?: string; active?: true }>;
@@ -170,6 +219,14 @@ export interface TagOverviewHub {
   otherFilePaths: string[];
   /** Whether the hub starts open, from `deckard.tagOverview.hubNoteExpanded`. */
   expanded?: boolean;
+  /**
+   * The body as the note page draws it: query blocks with their results,
+   * `[[links]]` that open, tasks with working boxes, and embeds. Drawn in
+   * place of `bodyTokens` when the page shows notes rendered.
+   */
+  blocks?: NoteBlock[];
+  /** The note's tags, which its blocks draw as buttons. */
+  tags?: TagReference[];
 }
 
 /** A tag's page asks for a hub note that describes the tag. */
@@ -286,6 +343,12 @@ export interface SetTagOverviewLayoutMessage {
   layout: TagOverviewLayout;
 }
 
+/** Turns a search page's hierarchy on or off. */
+export interface SetSearchHierarchyMessage {
+  type: 'setSearchHierarchy';
+  hierarchy: SearchHierarchy;
+}
+
 /** Chooses how much of each result a search page shows. */
 export interface SetSearchPreviewMessage {
   type: 'setSearchPreview';
@@ -315,9 +378,12 @@ export interface SearchPagePageToHost {
   listGoTo: ListGoToMessage;
   goToPage: GoToPageMessage;
   openSource: OpenSourceMessage;
+  /** A `[[link]]` in the hub note, followed as the note page follows one. */
+  openWikiLink: OpenWikiLinkMessage;
   toggleTask: ToggleTaskMessage;
   setRenderMode: SetRenderModeMessage;
   setSearchPreview: SetSearchPreviewMessage;
+  setSearchHierarchy: SetSearchHierarchyMessage;
   openTag: OpenTagMessage;
   renameTag: RenameTagMessage;
   parkTag: MessageAs<ParkTagMessage, 'parkTag'>;

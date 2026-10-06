@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import type { IndexReader, IndexScanStatus, IndexUpdates } from '../../../../core/workspace/indexReader';
-import { createNoteTitleMap, findLinkedBlock, findLinkedSection, parseWikiTarget, resolveWikiTarget } from '../../../../domain/index/backlinks';
+import { findWikiLinkPlace, parseWikiTarget } from '../../../../domain/index/backlinks';
 import type { Task } from '../../../../domain/model';
 import { readStatusNamespace } from '../../../../domain/tasks/taskPolicy';
 import type { NavigationService } from '../../../../services/navigationService';
@@ -251,18 +251,13 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
    */
   private async openWikiLink(page: PageContext, { target, from }: { target: string; from?: string }, how: { opposite?: true; beside?: true }): Promise<void> {
     const index = this.notes.indexer.getSnapshot();
-    const link = parseWikiTarget(target);
     const writtenIn = from && index.files.has(from) ? from : this.current?.filePath;
-    const filePath = link.note
-      ? resolveWikiTarget(createNoteTitleMap(index), link.note, writtenIn ?? '')
-      : writtenIn;
-    const file = filePath ? index.files.get(filePath) : undefined;
-    if (!filePath || !file) {
-      void vscode.window.showInformationMessage(`No note is named "${link.note}" yet, or more than one is.`);
+    const place = findWikiLinkPlace(index, target, writtenIn);
+    if (!place) {
+      void vscode.window.showInformationMessage(`No note is named "${parseWikiTarget(target).note}" yet, or more than one is.`);
       return;
     }
-    const line = link.heading ? findLinkedSection(file, link.heading)?.startLine : link.block && findLinkedBlock(file, link.block);
-    await this.open(page, { filePath, ...(line ? { line } : {}) }, how);
+    await this.open(page, place, how);
   }
 
   /**

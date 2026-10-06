@@ -91,7 +91,10 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.display.density` | `auto` | `comfortable` or `compact` spacing on every page. `auto`: compact at Zen. |
 | `deckard.display.cardFrames` | `auto` | `raised` cards, or `flat` rows parted by a divider. `auto`: flat at Zen. |
 | `deckard.display.counts` | `auto` | `shown` or `hidden`: the number beside a name, such as a widget's total or a column's tasks. A screen reader still reads each, and figures that are the point, such as Home's Due today, always show. `auto`: hidden at Zen. |
-| `deckard.display.fileAndLine` | `auto` | Where pages draw the file and line an entry is written in: on `hover` and focus, `always`, or `never`. A screen reader still reads it. `auto`: never at Zen. |
+| `deckard.display.fileAndLine` | `auto` | When pages draw an entry's details, those chosen in `deckard.display.cardDetails`: on `hover` and focus, `always`, or `never`. A screen reader still reads them. `auto`: never at Zen. |
+| `deckard.pages.style` | `list` | How the Pages view draws Deckard's pages: as rows with what is worth knowing about each now (`list`), or as one row of their icons, named on hover (`icons`). |
+| `deckard.pages.shown` | every page | Which pages the Pages view keeps, in its order; tick them in Settings. Go to… still lists every page. |
+| `deckard.display.cardDetails` | file and line | Which details an entry shows: `fileAndLine` (where it is written, and the headings above it), and its `created` and `updated` dates, on a line of their own under where it is written, such as *Created 2026-09-12*, on search cards, task rows, board cards, and Related Notes. Tick them in Settings. A task's created date is its own `➕` date when it has one, else its note's; its updated date is its note's. |
 | `deckard.display.dates` | `auto` | How a due date is written: `both` ("Overdue 2 days · 2026-10-02"), `relative` ("Overdue 2 days"), or `date` ("Overdue · 2026-10-02"). An overdue date always says Overdue. `auto`: relative at Zen. |
 | `deckard.display.pageWidth` | `limited` | How wide pages draw: `limited` to a column at most 1000px wide, or `full`, the panel's full width. In a page's gear, under Theme; the steps never change it. The Task Board and the Calendar always use their full width. |
 | `deckard.showWhatsNew` | `true` | After an update that adds features, Home shows one line linking to what is new. |
@@ -116,10 +119,10 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.templatesFolder` | `templates` | The folder of [note templates](notes-and-links.md#templates), relative to the workspace folder. Not indexed. Empty turns templates off. |
 | `deckard.noteBoundaries` | `line` | Where one note ends and the next begins; see [Markdown format](notes-and-links.md#markdown-format). `line`, `heading`, or `marked`. |
 | `deckard.parseInlineTags` | `true` | Deprecated: use `deckard.noteBoundaries`. `false` is read as `heading`. |
-| `deckard.outline.showTags` | `true` | Shows each heading's own tags beside it in the Context view's Sections. |
-| `deckard.outline.followCursor` | `true` | Marks the heading the cursor is in, in Sections. |
+| `deckard.outline.showTags` | `true` | Shows each heading's own tags beside it in the Outline. |
+| `deckard.outline.followCursor` | `true` | Selects the Outline heading containing the editor cursor. The eye control in the Outline title switches it. |
 | `deckard.outline.inheritedTags` | `false` | Also shows the front-matter tags every heading inherits. |
-| `deckard.outline.showCounts` | `true` | Shows each heading's done tasks in Sections, such as `2/5`, and links naming it, such as `↩3`. |
+| `deckard.outline.showCounts` | `true` | Shows each Outline heading's done tasks, such as `2/5`, and links naming it, such as `↩3`. |
 | `deckard.agenda.groupBy` | `due` | What the [Tasks view's](tasks.md#tasks-view) groups are: `due`, `priority`, `status`, `assignee`, or `tag`. The group control in its title sets it too. |
 | `deckard.agenda.groupNamespace` | `project` | The tag namespace the Tasks view groups by when `deckard.agenda.groupBy` is `tag`, such as `context` for `#context/phone`. Inherited tags count. |
 | `deckard.agenda.upcomingDays` | `7` | How many days ahead the Tasks view's **Upcoming** group reaches; a dated task past that is in **Later**. |
@@ -129,12 +132,17 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.tasks.metadataSuggestions` | `true` | Suggests dates, priorities, repeat rules, people, and dependencies after typing `/` in a task. |
 | `deckard.tasks.assigneeFromPersonTag` | `false` | Reads the first person named in a task as the person it is for; see [Who a task is for](tasks.md#who-a-task-is-for). |
 | `deckard.board.limits` | `{}` | Work-in-progress limits for board columns, by status, such as `{ "doing": 3 }`, or by column id, such as `{ "priority:high": 5 }`. An over-limit column says so. |
-| `deckard.tasks.onHoldStatuses` | `["waiting", "someday"]` | Statuses that put a task on hold, left out of `is:available`. Written without the namespace. |
+| `deckard.tasks.statuses` | Todo, In progress, Done, Cancelled, Waiting, Someday, Blocked | What each checkbox character means: `[/]` in progress, `[-]` cancelled, `[=]` blocked. Each status has a name, a type (to do, in progress, on hold, done, cancelled, or not a task), and the `#status/…` tag that stands for it. A character no status names is a task to do, called Unknown. |
+| `deckard.tasks.checkboxClick` | `done` | What a click on a task's box does: `done` marks it done whatever its status, and unchecking reopens it as `[ ]`; `workflow` moves it to its status's next status, as Obsidian Tasks does. |
+| `deckard.tasks.writeStatusAs` | `match` | How a status with both a character and a tag is written: `match` as the line already writes it, `checkbox` always as its character, `tag` always as its tag. |
+| `deckard.tasks.addCancelledDate` | `true` | Adds a cancelled date (❌) when Deckard cancels a task, and removes it when the task is reopened. |
+| `deckard.tasks.onHoldStatuses` | `["waiting", "someday"]` | Deprecated: give a status the on-hold type in `deckard.tasks.statuses`. Each tag listed is still read as an on-hold status. |
 | `deckard.tasks.suggestSteps` | `true` | Offers **Suggest steps** in Break into Steps… when a VS Code language model, such as GitHub Copilot, is installed. Only the task's words are sent, and only when you choose it. See [Suggest steps](ai-assistants.md#suggest-steps). |
 | `deckard.me` | Empty | Who you are in your notes, such as `@ren-kade`, so `is:mine` finds the tasks that name you. See [Who a task is for](tasks.md#who-a-task-is-for). |
 | `deckard.tasks.needsNewDateAfterDays` | `30` | How many days past its due date an open task stays in Overdue. After that it moves to **Needs a new date** and leaves the status bar's count. `0` keeps every overdue task in Overdue. |
 | `deckard.statusBar` | `true` | Shows how many tasks are due today in the status bar, hidden while nothing is due. See [Status bar and reminders](tasks.md#status-bar-and-reminders). |
 | `deckard.taskReminderTime` | Empty | A time of day, such as `09:00`, from which Deckard says how many tasks are due, once a day. Empty means no reminder. |
+| `deckard.board.showCancelled` | `false` | Draws a Cancelled column after Done on the Task board. The board's gear turns it on and off. |
 | `deckard.board.statusNamespace` | `status` | The tag namespace that holds a task's status on the task board, so the default reads `#status/doing`. |
 | `deckard.board.statuses` | `["todo", "doing", "waiting"]` | The task board's status columns, in order. An unlisted status found on a task gets a column after them. |
 | `deckard.editor.preset` | `full` | What Deckard draws in the editor, as one choice: `full`, everything; `tasks`, task hints and problem reports without link counts, mention lenses, or breadcrumbs; `writing`, the / menu, hover previews, and problem reports only. A `deckard.editor.*` setting you change yourself wins over it. `Deckard: Choose Editor Preset…` sets it. |

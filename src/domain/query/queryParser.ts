@@ -76,13 +76,15 @@ export const FIELD_ALIASES: Readonly<Record<string, QueryField>> = {
   body: 'text',
   task: 'task',
   tasks: 'task',
-  status: 'task',
+  status: 'status',
   due: 'due',
   deadline: 'due',
   scheduled: 'scheduled',
   start: 'start',
   starts: 'start',
   done: 'done',
+  cancelled: 'cancelled',
+  canceled: 'cancelled',
   priority: 'priority',
   assignee: 'assignee',
   assigned: 'assignee',
@@ -114,9 +116,15 @@ const IS_VALUE_ALIASES: Readonly<Record<string, string>> = {
   open: 'open',
   todo: 'open',
   active: 'open',
+  'in-progress': 'in-progress',
+  inprogress: 'in-progress',
+  started: 'in-progress',
   done: 'done',
   complete: 'done',
   completed: 'done',
+  cancelled: 'cancelled',
+  canceled: 'cancelled',
+  closed: 'closed',
   task: 'task',
   tasks: 'task',
   note: 'note',
@@ -162,6 +170,8 @@ const HAS_VALUE_ALIASES: Readonly<Record<string, string>> = {
   starts: 'start',
   done: 'done',
   completed: 'done',
+  cancelled: 'cancelled',
+  canceled: 'cancelled',
   priority: 'priority',
   id: 'id',
   dependson: 'dependsOn',
@@ -470,12 +480,29 @@ function readWord(scan: TokenScan): boolean {
   return true;
 }
 
+/**
+ * A status's character in its box, `[=]` or `[ ]`, as `status:` takes it:
+ * one word, though the character is one that would end a word or none at
+ * all. A box holding any other character reads as a word anyway.
+ */
+function readStatusBox(scan: TokenScan): boolean {
+  const { text, index } = scan;
+  const box = /^\[(.)\](?=$|[\s)])/u.exec(text.slice(index));
+  if (!box || !(WORD_BREAK.has(box[1]) || /\s/u.test(box[1])) || (text[index - 1] !== ':' && text[index - 1] !== '=')) {
+    return false;
+  }
+  scan.tokens.push({ type: 'word', value: box[0], start: index, end: index + box[0].length });
+  scan.index = index + box[0].length;
+  return true;
+}
+
 /** The token readers, in the order each position is offered to them. */
 const TOKEN_READERS: readonly TokenReader[] = [
   skipSpace,
   readParenthesis,
   readQuoted,
   readLink,
+  readStatusBox,
   readTwoCharacters,
   readOneCharacterOperator,
   readNegation,
@@ -909,6 +936,24 @@ function readTaskDateValue(value: string, operator: QueryOperator, field: QueryF
   return { value: normalized };
 }
 
+/**
+ * A `status:` value: `open`, `done`, or `any` (and their other spellings,
+ * but `todo`, which names the Todo status), as `task:` reads them; a
+ * character in brackets, `[/]`, kept as written, since `x` and `X` may be
+ * different statuses; or a status's name, lowercased, which the evaluator
+ * matches against the workspace's statuses.
+ */
+function readStatusValue(value: string): ValueReading {
+  const lowered = value.toLowerCase();
+  if (lowered !== 'todo' && Object.hasOwn(TASK_VALUE_ALIASES, lowered)) {
+    return { value: TASK_VALUE_ALIASES[lowered] };
+  }
+  if (/^\[.\]$/u.test(value)) {
+    return { value };
+  }
+  return value.trim() ? { value: lowered } : { message: 'status needs a status, such as status:in-progress, status:[/], or status:open.' };
+}
+
 /** A note's `created` or `updated` date: any date value, lowercased. */
 function readNoteDateValue(value: string, _operator: QueryOperator, field: QueryField): ValueReading {
   if (!isDateValue(value)) {
@@ -934,6 +979,7 @@ const VALUE_READERS: Partial<
     return folder ? { value: folder } : { message: 'in: needs a folder, such as in:notes/projects.' };
   },
   task: (value) => readAlias(TASK_VALUE_ALIASES, value, `task accepts ${listAlternatives(QUERY_TASK_VALUES)}`),
+  status: readStatusValue,
   ...Object.fromEntries(QUERY_TASK_DATE_FIELDS.map((field) => [field, readTaskDateValue])),
   priority: (value) =>
     readAlias(PRIORITY_VALUE_ALIASES, value, `priority accepts ${listAlternatives(QUERY_PRIORITY_VALUES)}`),

@@ -145,7 +145,7 @@ suite('Assistant tool table', () => {
     for (const junk of [undefined, { note: 'notes/atlas.md', line: 2 }, { note: '', line: 2, complete: true }, { note: 'a.md', line: 0, complete: true }]) {
       assert.deepStrictEqual(refusal(change.read(junk, runners)), {
         languageModel:
-          'Send the task\'s "note" and "line" as deckard_query reports them, and at least one of: title, complete, due (YYYY-MM-DD or null), priority (highest, high, medium, low, lowest, or null), assignee (a person tag, or null).',
+          'Send the task\'s "note" and "line" as deckard_query reports them, and at least one of: title, complete, status (a status by name, as "In progress" or "Cancelled", or by its character, as "[/]"), due (YYYY-MM-DD or null), priority (highest, high, medium, low, lowest, or null), assignee (a person tag, or null).',
         mcp: 'Send "note" and "line" as deckard_query reports them, and at least one change.',
       });
     }

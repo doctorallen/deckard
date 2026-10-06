@@ -129,7 +129,7 @@ suite('Periodic review', () => {
       review.includes('*week-2026-09-14-2026-09-20.'),
       'the note it is written in still says which it is',
     );
-    assert.ok(review.includes('**Done:** 1 (0 of 1 that were due) · **Still open:** 1 · **Coming up:** 0'), review);
+    assert.ok(review.includes('**Done:** 1 (0/1 done (0%) of those due) · **Still open:** 1 · **Coming up:** 0'), review);
     assert.ok(review.includes('- Send the proposal — [[2026-09-15]] (done 2026-09-16)'));
 
     const drawn = parseMarkdown('notes/2026-W38.md', review);

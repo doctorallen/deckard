@@ -65,22 +65,6 @@ const PIXEL_THRESHOLD = 0.1;
  * still forgives a stray edge.
  */
 const FAIL_ABOVE = 0.0001;
-/**
- * Every card on the Task Board drawn, as a reader sees it once it stops
- * moving.
- *
- * The board leaves a card off screen undrawn (`content-visibility: auto`,
- * src/webview/shared/taskBoard.css) until it comes near the viewport, and
- * Chrome decides that a frame after the card is laid out. A screenshot is
- * taken at a frame Chrome picks, so a card at the foot of a column was
- * sometimes caught as an empty frame: Synthwave's board, by status, by tag,
- * in Tasks view mode, and with a card's menu open, differed by up to 0.34%
- * from one run to the next with nothing changed. On screen such a card is
- * always drawn once the page settles, so this draws every one at once. The
- * containment `auto` brings with it stays, since it moves a faded card's
- * text by a fraction of a pixel; the selector is the board's own.
- */
-const DRAWN = '.task-board .board-card:not(:hover):not(:focus-within):not(.dragging) { content-visibility: visible !important; contain: layout style paint !important; }';
 
 /**
  * Surfaces macOS draws differently from one run to the next, and the share
@@ -206,7 +190,7 @@ async function drawSurface(surface, { label, theme, zen, rendered }, tally, log)
   const surfaceName = surface.name || surface.page;
   const name = `${label}-${surfaceName}`;
   const file = path.join(dir, `${name}.html`);
-  writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface, undefined, { css: DRAWN }));
+  writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface));
   const shot = path.join(dir, `${name}.png`);
   const baseline = path.join(BASELINES, `${name}.png`);
   let drawn;

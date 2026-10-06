@@ -49,6 +49,8 @@ import { narrowSearchPageMessage } from './messages';
 import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 import { createSearchPageSnapshot, evaluateSearchPage, resolveQueryTagIntersection } from '../../../state/searchPageState';
 import { createQueryViewState } from '../../../state/querySuggestions';
+import { findWikiLinkPlace, parseWikiTarget } from '../../../../domain/index/backlinks';
+import { openResultAt } from '../../../commands/navigation';
 
 /**
  * The preference services a search page reads and writes: the blob it
@@ -180,6 +182,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       setTagOverviewSort: (message) => preferences.display.setTagOverviewSortMode(message.mode),
       setTagOverviewLayout: (message) => preferences.display.setTagOverviewLayout(message.layout),
       setSearchPreview: (message) => preferences.display.setSearchPreview(message.preview),
+      setSearchHierarchy: (message) => preferences.display.setSearchHierarchy(message.hierarchy),
       setSearchColumns: (message) => preferences.display.setDashboardColumns(message.section, message.columns),
       openHelp: openHelp('search'),
       openGoTo: openGoTo(),
@@ -215,6 +218,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       editResults: (message) => editResults(search.writes.history, message.kind, this.currentResults()),
       exportResults: (message) => this.exportResults(message.kind),
       openSource: (message) => this.openSource(message.filePath, message.line, message),
+      openWikiLink: (message) => this.openWikiLink(message.target, message.from, message),
     };
   }
 
@@ -583,6 +587,20 @@ export class SearchPageController implements PageController<SearchPageState, Sea
    * Opens a line the page shows: its hub, a card, or a task. A card's visit
    * is counted, unless it is a note's front matter.
    */
+  /**
+   * Follows a `[[link]]` in the hub note to the note it names, read from the
+   * note it is written in, as the note page follows one.
+   */
+  private async openWikiLink(target: string, from: string | undefined, how: NoteOpening): Promise<void> {
+    const writtenIn = from ?? this.currentSnapshot().hub?.filePath;
+    const place = findWikiLinkPlace(this.search.indexer.getSnapshot(), target, writtenIn);
+    if (!place) {
+      void vscode.window.showInformationMessage(`No note is named "${parseWikiTarget(target).note}" yet, or more than one is.`);
+      return;
+    }
+    await this.openSource(place.filePath, place.line ?? 1, how);
+  }
+
   private async openSource(
     filePath: string,
     line: number,
@@ -594,7 +612,9 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       hub &&
       (filePath === hub.filePath || hub.otherFilePaths.includes(filePath))
     ) {
-      await openNoteAt(filePath, line, how);
+      // A hub note's page is this tag's page, which is open already: the
+      // hub always opens in the editor, whatever deckard.openNotesIn says.
+      await openResultAt(filePath, line, { ...(how.beside ? { beside: true } : {}), ...(how.pin ? { pin: true } : {}) });
       return;
     }
     const card = snapshot.sections.find(

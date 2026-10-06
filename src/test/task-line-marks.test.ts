@@ -128,18 +128,19 @@ suite('Task line decorations', () => {
       const note = fakeEditor('- [ ] Send 📅 2026-09-20 ⏫');
       decorations.update(note.editor);
       const counts = [...note.set.values()].map((ranges) => ranges.length).sort();
-      assert.deepStrictEqual(counts, [1, 1, 1], 'dim, overdue, and one hint');
+      // The status marks are three more types, none drawn on a plain task.
+      assert.deepStrictEqual(counts, [0, 0, 0, 1, 1, 1], 'dim, overdue, and one hint');
 
       const other = fakeEditor('- [ ] Send 📅 2026-09-20 ⏫', '/code/README.md');
       decorations.update(other.editor);
-      assert.deepStrictEqual([...other.set.values()].map((ranges) => ranges.length), [0, 0, 0]);
+      assert.deepStrictEqual([...other.set.values()].map((ranges) => ranges.length), [0, 0, 0, 0, 0, 0]);
 
       // Zen mode's editor half is its own setting now: the due hints are taskDueHints.
       await configuration.update('editor.taskDueHints', false, vscode.ConfigurationTarget.Global);
       const zen = fakeEditor('- [ ] Send 📅 2026-09-20 ⏫');
       decorations.update(zen.editor);
       const hints = [...zen.set.values()].map((ranges) => ranges.length).sort();
-      assert.deepStrictEqual(hints, [0, 1, 1], 'the hint goes, the dimming and the color stay');
+      assert.deepStrictEqual(hints, [0, 0, 0, 0, 1, 1], 'the hint goes, the dimming and the color stay');
     } finally {
       await configuration.update('editor.taskDueHints', undefined, vscode.ConfigurationTarget.Global);
       decorations.dispose();

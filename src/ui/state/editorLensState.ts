@@ -1,4 +1,5 @@
 import { findDailyNoteDate, stripTags } from '../../domain/markdown/parser';
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import {
   createNoteTitleMap,
   parseWikiTarget,
@@ -59,27 +60,26 @@ export function findTaskDependencies(
     if (task.dependencyId) {
       append(carriers, task.dependencyId, task);
     }
-    if (!task.completed) {
+    if (isOpenTask(task)) {
       new Set(task.dependsOn).forEach((id) => append(waiters, id, task));
     }
   }
 
   return own.flatMap((task) => {
     const ids = [...new Set(task.dependsOn ?? [])];
-    const waitingOn = task.completed
-      ? []
-      : ids.flatMap((id) =>
+    const open = isOpenTask(task);
+    const waitingOn = open
+      ? ids.flatMap((id) =>
           (carriers.get(id) ?? []).filter(
-            (carrier) => carrier !== task && !carrier.completed,
+            (carrier) => carrier !== task && isOpenTask(carrier),
           ),
-        );
+        )
+      : [];
     // A done task no longer waits, so a name it gives that went nowhere no
     // longer matters either.
-    const missingIds = task.completed
-      ? []
-      : ids.filter((id) => !carriers.has(id));
+    const missingIds = open ? ids.filter((id) => !carriers.has(id)) : [];
     const blocking =
-      task.completed || !task.dependencyId
+      !isOpenTask(task) || !task.dependencyId
         ? []
         : (waiters.get(task.dependencyId) ?? []).filter(
             (waiter) => waiter !== task,
@@ -228,7 +228,7 @@ function append<T>(map: Map<string, T[]>, key: string, value: T): void {
 export interface HubProgress {
   tagKey: string;
   tagLabel: string;
-  /** "2 of 6 done · 1 overdue · next due in 3 days". */
+  /** "2/6 done (33%) · 1 overdue · next due in 3 days". */
   text: string;
 }
 
@@ -281,7 +281,7 @@ export function findStepProgress(file: ParsedFile): StepProgress[] {
     if (!steps || steps.total === 0) {
       return [];
     }
-    const next = steps.ids.map((id) => byId.get(id)).find((step) => step && !step.completed);
+    const next = steps.ids.map((id) => byId.get(id)).find((step) => step && isOpenTask(step));
     return [
       {
         line: task.lineNumber - 1,

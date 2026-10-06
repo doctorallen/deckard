@@ -1,4 +1,5 @@
 import { stripTags } from '../../domain/markdown/parser';
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { readTaskTagKeys } from '../../domain/query/queryEvaluator';
 import { withoutParked } from '../../domain/index/parked';
 import { Task, WorkspaceIndex } from '../../domain/model';
@@ -122,7 +123,7 @@ export function listTaskNamespaces(
   const tasks = new Map<string, number>();
   const values = new Map<string, Map<string, number>>();
   withoutParked([...index.tasks.values()], index).forEach((task) => {
-    if (task.completed) {
+    if (!isOpenTask(task)) {
       return;
     }
     const seen = new Set<string>();

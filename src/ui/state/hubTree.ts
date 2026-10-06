@@ -1,3 +1,4 @@
+import { formatProgressCount } from '../../domain/tasks/progressCount';
 import {
   createNoteTitleMap,
   noteTitle,
@@ -277,7 +278,7 @@ export function buildHubTree(index: WorkspaceIndex, now: number): HubTreeNode[] 
       label: label(filePath),
       filePath,
       ...(tagKey ? { tagKey } : {}),
-      ...(counted ? { description: `${counted.done} of ${counted.total} done` } : {}),
+      ...(counted ? { description: formatProgressCount(counted.done, counted.total) } : {}),
       children: below.map((child) => buildNote(child, [...path, filePath])),
     };
   };

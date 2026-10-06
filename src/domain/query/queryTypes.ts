@@ -16,10 +16,12 @@ export const QUERY_FIELDS: readonly QueryField[] = [
   'text',
   'is',
   'task',
+  'status',
   'due',
   'scheduled',
   'start',
   'done',
+  'cancelled',
   'priority',
   'assignee',
   'has',
@@ -39,7 +41,10 @@ export const QUERY_SHORTHAND_FIELDS: readonly QueryField[] = ['is', 'has', 'in']
 /** Values `is:` accepts. */
 export const QUERY_IS_VALUES = [
   'open',
+  'in-progress',
   'done',
+  'cancelled',
+  'closed',
   'task',
   'note',
   'overdue',
@@ -65,6 +70,7 @@ export const QUERY_HAS_VALUES = [
   'scheduled',
   'start',
   'done',
+  'cancelled',
   'priority',
   'id',
   'dependsOn',
@@ -77,6 +83,7 @@ export const QUERY_TASK_DATE_FIELDS: readonly QueryField[] = [
   'scheduled',
   'start',
   'done',
+  'cancelled',
 ];
 
 /** Values `priority` accepts, highest first. `none` is a task without one. */
@@ -148,10 +155,12 @@ export const QUERY_FIELD_OPERATORS: Readonly<
   text: ['contains', 'notContains', 'eq', 'neq'],
   is: ['eq', 'neq'],
   task: ['eq', 'neq'],
+  status: ['eq', 'neq'],
   due: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
   scheduled: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
   start: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
   done: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+  cancelled: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
   priority: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
   assignee: ['eq', 'neq'],
   has: ['eq', 'neq'],
@@ -186,6 +195,12 @@ export const QUERY_OPERATOR_INVERSES: Readonly<
 
 /** Values `task:` accepts. */
 export const QUERY_TASK_VALUES = ['open', 'done', 'any'] as const;
+
+/**
+ * The values of `status:` that keep `task:`'s meaning rather than naming a
+ * status: open, done, and any, whatever the statuses are called.
+ */
+export const QUERY_RESERVED_STATUS_VALUES: readonly string[] = QUERY_TASK_VALUES;
 
 /** One value `task:` accepts. */
 export type QueryTaskValue = (typeof QUERY_TASK_VALUES)[number];

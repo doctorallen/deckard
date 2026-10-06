@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { readTaskStatusOptions } from '../commands/parseSettings';
 import { readEditorToggle } from './editorToggles';
 import { KeyedDebouncer } from '../../shared/debounce';
 import {
@@ -92,7 +93,7 @@ export class RepeatRuleHealth implements vscode.Disposable {
     }
     const problems = measure(
       'Repeat rule diagnostics',
-      () => findRepeatRuleProblems(document.getText().split(/\r?\n/)),
+      () => findRepeatRuleProblems(document.getText().split(/\r?\n/), readTaskStatusOptions(document.uri)),
       (found) => `${found.length} problems, ${document.lineCount} lines`,
     );
     this.diagnostics.set(

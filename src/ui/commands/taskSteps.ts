@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 
-import { isTaskLineOf, TaskLineShape } from '../../domain/markdown/lineShapes';
+import { isTaskLineOf, STATUS_MARKS, TaskLineShape } from '../../domain/markdown/lineShapes';
+import { statusForSymbol } from '../../domain/tasks/taskStatuses';
+import { readTaskStatusOptions } from './parseSettings';
 import {
   findCheckboxColumn,
   findStepFamily,
-  isCheckedTaskLine,
+  isClosedTaskLine,
   parseSuggestedSteps,
   splitTypedSteps,
 } from '../../domain/markdown/taskSteps';
@@ -25,7 +27,7 @@ import { parseTaskMetadata } from '../../domain/markdown/taskFields';
 /** The task steps are written under: what the index or the editor knows of it. */
 export type StepTarget = Pick<
   Task,
-  'filePath' | 'lineNumber' | 'sourceLineText' | 'checkboxColumn' | 'checkboxValue' | 'title'
+  'filePath' | 'lineNumber' | 'sourceLineText' | 'checkboxColumn' | 'status' | 'title'
 >;
 
 /** A model that can suggest steps, and how the list names it. */
@@ -208,7 +210,7 @@ export function readWrittenSteps(lines: readonly string[], lineIndex: number): W
     const words = text.slice(column + 2).trim();
     return {
       title: parseTaskMetadata(words).title || words,
-      done: isCheckedTaskLine(text),
+      done: isClosedTaskLine(text),
     };
   });
 }
@@ -528,7 +530,7 @@ function reportMissing(filePath: string): void {
 }
 
 /** A task with words after its box, which is what can be broken into steps. */
-const CURSOR_TASK: TaskLineShape = { indent: 'spaces-and-tabs', marks: ' xX', after: 'gap-then-words' };
+const CURSOR_TASK: TaskLineShape = { indent: 'spaces-and-tabs', marks: STATUS_MARKS, after: 'gap-then-words' };
 
 /**
  * The task on the cursor's line, read from the editor itself, so a task
@@ -554,7 +556,7 @@ function readCursorTask(indexer: IndexReader): { target: StepTarget; lines: stri
       lineNumber: lineIndex + 1,
       sourceLineText: text,
       checkboxColumn: column,
-      checkboxValue: text[column] as ' ' | 'x' | 'X',
+      status: statusForSymbol(readTaskStatusOptions(editor.document.uri), text[column]),
       title: parseTaskMetadata(words).title || words,
     },
   };

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { isPersonTag } from '../../domain/markdown/parser';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { readTaskMetadataFormat } from '../commands/taskActions';
@@ -7,7 +8,7 @@ import { whenPublished } from '../../core/workspace/publishing';
 import { WorkspaceIndex } from '../../domain/model';
 import { formatTaskMetadata, parseTaskMetadata, TaskMetadataField, TaskMetadataFormat } from '../../domain/markdown/taskFields';
 import { addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
-import { findFencedLines } from '../../domain/markdown/lineShapes';
+import { findFencedLines, STATUS_CHARACTER } from '../../domain/markdown/lineShapes';
 
 /** What the suggestions read from the indexer: the people and task ids to offer. */
 interface TaskIndexSource {
@@ -26,7 +27,7 @@ export interface TaskMetadataSuggestionSettings {
 }
 
 /** A task's checkbox, which metadata must follow. */
-const TASK_CHECKBOX = /^\s*[-*+][ \t]+\[[ xX]\](?=[ \t])/;
+const TASK_CHECKBOX = new RegExp(String.raw`^\s*[-*+][ \t]+\[${STATUS_CHARACTER}\](?=[ \t])`);
 /** A `/` that starts a word, and whatever has been typed after it. */
 const SLASH_QUERY = /(?:^|[ \t])\/([A-Za-z-]*)$/;
 
@@ -260,7 +261,7 @@ function collectOpenTaskIds(
 ): Array<{ id: string; title: string }> {
   const ids = new Map<string, string>();
   for (const task of index.tasks.values()) {
-    if (!task.completed && task.dependencyId && !ids.has(task.dependencyId)) {
+    if (isOpenTask(task) && task.dependencyId && !ids.has(task.dependencyId)) {
       ids.set(task.dependencyId, task.title);
     }
   }

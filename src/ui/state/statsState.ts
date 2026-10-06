@@ -1,5 +1,6 @@
 import { isParkedFile } from '../../domain/index/parked';
-import { countOtherCheckboxes } from '../../domain/index/otherCheckboxes';
+import { isCancelledTask, isOpenTask } from '../../domain/tasks/taskStatuses';
+import { countOtherCheckboxes, countUnknownStatuses } from '../../domain/index/otherCheckboxes';
 import { isPeriodicNoteFile, stripTags } from '../../domain/markdown/parser';
 import { findMissingLinkTargets, getBacklinkIndex, noteTitle } from '../../domain/index/backlinks';
 import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
@@ -43,7 +44,7 @@ export function createDeckardStatsSnapshot(
     fileCount: index.files.size,
     sectionCount: countNotes(index),
     taskCount: index.tasks.size,
-    activeTaskCount: [...index.tasks.values()].filter((task) => !task.completed)
+    activeTaskCount: [...index.tasks.values()].filter(isOpenTask)
       .length,
     tagCount: index.tags.size,
     entityCount: index.entities.size,
@@ -52,6 +53,8 @@ export function createDeckardStatsSnapshot(
       0,
     ),
     ...(countOtherCheckboxes(index) > 0 ? { otherCheckboxes: countOtherCheckboxes(index) } : {}),
+    ...withUnknownStatuses(countUnknownStatuses(index)),
+    ...withCancelled([...index.tasks.values()].filter(isCancelledTask).length),
     tagViews: createAccessItems(preferences.tagAccessCounts, (tagKey) => {
       const tag = index.tags.get(tagKey);
       return tag
@@ -149,11 +152,11 @@ export function createStatsTrends(
   index.tasks.forEach((task) => {
     const start = firstPoint(task.createdAt);
     tasks[start] += 1;
-    if (!task.completed) {
+    if (isOpenTask(task)) {
       open[start] += 1;
       return;
     }
-    const doneAt = task.doneAt ?? task.updatedAt ?? index.files.get(task.filePath)?.updatedAt;
+    const doneAt = (task.completed ? task.doneAt : task.cancelledAt) ?? task.updatedAt ?? index.files.get(task.filePath)?.updatedAt;
     if (doneAt === undefined) {
       // Done, and no date says when: it is counted open in no past week.
       return;
@@ -176,7 +179,7 @@ export function createStatsTrends(
   return {
     notes: levels(notes, countNotes(index)),
     tasks: levels(tasks, index.tasks.size),
-    openTasks: levels(open, [...index.tasks.values()].filter((task) => !task.completed).length),
+    openTasks: levels(open, [...index.tasks.values()].filter(isOpenTask).length),
   };
 }
 
@@ -188,7 +191,8 @@ function countParked(index: WorkspaceIndex): Pick<DeckardStatsSnapshot, 'parked'
   }
   let openTasks = 0;
   parked.tasks.forEach((id) => {
-    if (index.tasks.get(id)?.completed === false) {
+    const task = index.tasks.get(id);
+    if (task && isOpenTask(task)) {
       openTasks += 1;
     }
   });
@@ -379,4 +383,14 @@ function createAccessItems(
         }),
     )
     .slice(0, 10);
+}
+
+/** The tasks whose character no status names, when there are any. */
+function withUnknownStatuses(unknown: { count: number; symbols: string[] }): Pick<DeckardStatsSnapshot, 'unknownStatuses'> {
+  return unknown.count > 0 ? { unknownStatuses: unknown } : {};
+}
+
+/** How many tasks are cancelled, when any are. */
+function withCancelled(count: number): Pick<DeckardStatsSnapshot, 'cancelledTaskCount'> {
+  return count > 0 ? { cancelledTaskCount: count } : {};
 }

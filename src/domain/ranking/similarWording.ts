@@ -212,6 +212,7 @@ function toSimilarEntry(
     headingPath: section ? getHeadingPath(section, sectionsById) : getTaskHeadingPath(task as Task, sectionsById),
     dailyDate: getDailyNoteDate(file),
     titleTags: getTitleTags(entry.tags, entry.tagLabels, section ? getInlineSource(section) : rawTitle),
+    createdAt: entry.createdAt ?? file.createdAt,
     updatedAt: file.updatedAt ?? entry.updatedAt,
     matchedTags: [],
     matchCount: 0,

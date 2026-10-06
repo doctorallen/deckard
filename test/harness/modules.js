@@ -42,6 +42,7 @@ const MODULES = {
   noteLinks: 'ui/state/noteLinks.js',
   notesGraphState: 'ui/state/notesGraphState.js',
   relatedNotesRanking: 'ui/state/relatedNotesRanking.js',
+  deckardPages: 'ui/state/deckardPages.js',
   taskBoardState: 'ui/state/taskBoardState.js',
   // ui/commands and ui/providers
   tagDecorations: 'ui/providers/tagDecorations.js',

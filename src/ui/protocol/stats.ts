@@ -71,8 +71,12 @@ export interface DeckardStatsSnapshot {
   orphanNoteCount: number;
   /** How many notes hold something parked, and how many open tasks are; absent when nothing is. */
   parked?: { notes: number; openTasks: number };
-  /** Checkbox lines with a mark that is not a task's, such as `[/]`, which no total counts; absent when there are none. */
+  /** Checkbox lines that are text, a `nonTask` status's, which no total counts; absent when there are none. */
   otherCheckboxes?: number;
+  /** Tasks whose character no status names, read as to do, and those characters; absent when there are none. */
+  unknownStatuses?: { count: number; symbols: string[] };
+  /** How many tasks are cancelled; absent when none are. */
+  cancelledTaskCount?: number;
   /** Tags that look like two spellings of one idea: the clearest first. */
   lookalikeTags: TagMergeCandidate[];
   /** How many such pairs there are, listed or not. */

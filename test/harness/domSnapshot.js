@@ -120,8 +120,8 @@ function normalizedAttribute(element, attribute, options) {
   let value = attribute.value;
   if (name === 'class') {
     value = value.split(WHITESPACE).filter(Boolean).sort().join(' ');
-  } else if (name === 'style' && !options.captured) {
-    value = styleText(element.style);
+  } else if (name === 'style') {
+    value = readStyle(element, options.captured);
   } else if (BOOLEAN.has(name)) {
     value = '';
   }
@@ -129,6 +129,52 @@ function normalizedAttribute(element, attribute, options) {
     return undefined;
   }
   return [name, options.nonce ? value.split(options.nonce).join('NONCE') : value];
+}
+
+/**
+ * An element's style as the snapshot writes it: from its declarations,
+ * or, drawn by Chrome, as the probe captured it, a popover's place left
+ * out, since Chrome places it by fonts that differ by system, where jsdom,
+ * which lays nothing out, gives it a fixed number.
+ *
+ * @param {object} element The element that carries it.
+ * @param {boolean | undefined} captured Whether Chrome drew it.
+ * @returns {string} Its style.
+ */
+function readStyle(element, captured) {
+  if (!captured) {
+    return styleText(element.style);
+  }
+  const value = element.getAttribute('style') || '';
+  return isPopover(element) ? withoutPlace(value) : value;
+}
+
+/**
+ * Whether an element floats over the page: a menu, which a script places
+ * by the size of what it is drawn over and of itself.
+ *
+ * @param {object} element An element of the drawn page.
+ * @returns {boolean} Whether it is a popover.
+ */
+function isPopover(element) {
+  return Boolean(element.classList && element.classList.contains('popover'));
+}
+
+/**
+ * A style without where it was placed: a popover's left and top follow
+ * the system's fonts, as its width and its anchor's do, so the markup would
+ * differ between systems that draw the same menu; the layout and visual
+ * checks see where it lands.
+ *
+ * @param {string} value The style as written.
+ * @returns {string} The same declarations, left and top aside.
+ */
+function withoutPlace(value) {
+  return value
+    .split(';')
+    .map((declaration) => declaration.trim())
+    .filter((declaration) => declaration && !/^(left|top)\s*:/.test(declaration))
+    .join('; ');
 }
 
 /** Text as it is written between tags. */

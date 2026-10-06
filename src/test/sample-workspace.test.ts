@@ -216,7 +216,7 @@ suite('Sample workspace', () => {
     };
     const tasks = (query: string) => found(query).tasks.map((task) => task.title);
     const claims: Array<[string, number]> = [
-      ['#project/ghostline-relay', 23],
+      ['#project/ghostline-relay', 24],
       ['#person/ren-kade', 3],
       ['#project/ghostline-relay is:open', 20],
       ['(#person/ren-kade OR #person/leena-sato) AND is:open', 5],
@@ -226,7 +226,16 @@ suite('Sample workspace', () => {
       ['is:overdue -is:needs-date', 2],
       ['is:needs-date', 1],
       ['is:today', 4],
-      ['is:waiting', 4],
+      ['is:waiting', 5],
+      ['is:in-progress', 3],
+      ['is:cancelled', 1],
+      ['is:closed', 11],
+      ['has:cancelled', 1],
+      ['cancelled = 7d', 1],
+      ['status:in-progress', 3],
+      ['status:waiting', 1],
+      ['status:[-]', 1],
+      ['-status:someday is:waiting', 4],
       ['is:blocked', 1],
       ['is:blocking', 1],
       ['is:assigned', 4],
@@ -246,7 +255,7 @@ suite('Sample workspace', () => {
       ['assignee = #person/ren-kade', 2],
       ['priority >= high', 2],
       ['kind = context', 4],
-      ['#status/doing', 3],
+      ['#status/doing', 2],
     ];
     for (const [query, count] of claims) {
       assert.strictEqual(found(query).tasks.length, count, query);
@@ -350,14 +359,14 @@ suite('Sample workspace', () => {
       'People',
       '  Sable Ortiz',
       'Projects',
-      '  Argent Protocol: 1 of 3 done',
-      '  Ghostline Relay: 3 of 23 done',
+      '  Argent Protocol: 1/3 done (33%)',
+      '  Ghostline Relay: 3/23 done (13%)',
       '    Receiver firmware',
       '      Firmware bench log',
       '    Relay route survey',
       'Teams',
-      '  Harbor: 0 of 2 done',
-      '  Wardens: 3 of 21 done',
+      '  Harbor: 0/2 done (0%)',
+      '  Wardens: 3/21 done (14%)',
     ]);
     assert.deepStrictEqual(findBreadcrumbs(index, 'projects/Firmware bench log.md').map((crumb) => crumb.labels.join(' › ')), [
       'Projects › Ghostline Relay › Receiver firmware › Firmware bench log',
@@ -366,7 +375,7 @@ suite('Sample workspace', () => {
     assert.ok(relay);
     assert.strictEqual(
       describeTagProgress(relay, Date.now(), createQueryContext(Date.now()).taskPolicy),
-      '3 of 23 done · 2 overdue · 1 needs a new date · next due today',
+      '3/23 done (13%) · 2 overdue · 1 needs a new date · next due today',
       'the progress the Tags note quotes',
     );
     // A tag is written only where the tour means one: every tag is

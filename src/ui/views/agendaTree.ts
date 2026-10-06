@@ -4,12 +4,13 @@ import { describeSteps } from '../../domain/markdown/taskSteps';
 import { escapeMarkdown } from '../../shared/text';
 import { AgendaService, AgendaStatus } from '../../services/agendaService';
 import { resolveSourceUri } from '../commands/navigation';
-import { TaskWrites, toggleTask, updateTaskLine } from '../commands/taskActions';
+import { clickTask, TaskWrites, toggleTask, updateTaskLine } from '../commands/taskActions';
 import { mergeOrder } from '../state/dashboardState';
 import { AgendaEntry, AgendaGroup } from '../state/agendaState';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
 import { stripTrailingTags } from '../../domain/ranking/entryLabels';
 import { Task, WorkspaceIndex } from '../../domain/model';
+import { speakRow } from './spokenRow';
 
 /** What the Tasks view reads from the indexer, and when it redraws. */
 interface AgendaIndexSource {
@@ -488,7 +489,7 @@ export class AgendaTreeProvider
         : [],
     );
     const { failed } = await this.services.agenda.setCompleted(changes, (task, complete) =>
-      toggleTask(this.services.writes, task, complete),
+      clickTask(this.services.writes, task, complete),
     );
     // A task that could not be completed gets its empty box back.
     if (failed) {
@@ -615,6 +616,10 @@ function createTaskItem(
   // VS Code refuses two items with one id.
   item.id = groupId ? `agenda:task:${groupId}:${entry.task.id}` : `agenda:task:${entry.task.id}`;
   item.description = entry.details.join(' · ');
+  const spokenEntry = speakRow(String(item.label ?? ''), item.description);
+  if (spokenEntry) {
+    item.accessibilityInformation = spokenEntry;
+  }
   item.tooltip = createTaskTooltip(entry);
   const done = entry.task.completed;
   item.checkboxState = {
@@ -664,6 +669,10 @@ function createStepItem(node: {
     tooltip: done ? 'Reopen this step' : 'Complete this step',
   };
   item.description = task.steps ? describeSteps(task.steps) : undefined;
+  const spokenStep = speakRow(String(item.label ?? ''), item.description);
+  if (spokenStep) {
+    item.accessibilityInformation = spokenStep;
+  }
   item.contextValue = done ? 'deckardAgendaDoneTask' : 'deckardAgendaTask';
   if (node.uri) {
     const position = new vscode.Position(Math.max(task.lineNumber - 1, 0), 0);

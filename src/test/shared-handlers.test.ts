@@ -165,6 +165,8 @@ suite('Shared page message handlers', () => {
     const toggled: Array<[string, boolean]> = [];
     const writes = {
       tasks: {
+        // A click completes or reopens unless the workflow names a next status.
+        readNextStatus: () => undefined,
         toggle: async (target: Task, completed: boolean) => {
           toggled.push([target.id, completed]);
           return { kind: 'unchanged' };

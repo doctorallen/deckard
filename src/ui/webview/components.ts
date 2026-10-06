@@ -100,9 +100,17 @@ function bodyMarkers(chrome: PageChrome): string {
     display.cards === 'flat' ? ' data-cards="flat"' : '',
     display.tags === 'text' ? ' data-tags="text"' : '',
     display.counts === 'hidden' ? ' data-counts="hidden"' : '',
-    display.fileAndLine ? ` data-file-line="${display.fileAndLine}"` : '',
-    display.dates ? ` data-dates="${display.dates}"` : '',
+    detailMarkers(display),
     display.width === 'full' ? ' data-width="full"' : '',
+  ].join('');
+}
+
+/** The markers for an entry's details: when they show, which, and how its dates read. */
+function detailMarkers(display: DisplayChoices): string {
+  return [
+    display.fileAndLine ? ` data-file-line="${display.fileAndLine}"` : '',
+    display.details ? ` data-details="${display.details}"` : '',
+    display.dates ? ` data-dates="${display.dates}"` : '',
   ].join('');
 }
 

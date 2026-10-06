@@ -31,6 +31,7 @@ const { buildWorkspaceIndex } = modules.indexState;
 const { createPreferences } = modules.preferenceServices;
 // Every snapshot is built at NOW, so no surface reads the wall clock.
 const { createQueryContext } = modules.queryContext;
+const { listDeckardPages } = modules.deckardPages;
 
 /** Task i's due date: six overdue, three today, the rest a day or two apart after. */
 function fixtureDue(i) {
@@ -307,6 +308,48 @@ function createMenuSurfaces(surfaces) {
       hovered: ['#action-menu .menu-item'],
     },
   ];
+}
+
+/**
+ * The Task Board with a task of every status, and its Cancelled column.
+ *
+ * @param {object} preferences The preference services, whose reader holds what is stored.
+ * @returns {object} The board surface, drawn at a wide width.
+ */
+function createStatusBoardSurface(preferences) {
+  return {
+      // Every status a box can draw: in progress half filled, blocked with
+      // its icon, an unknown character outlined, on hold, done, and a
+      // Cancelled column, struck through.
+      name: 'taskBoardStatuses',
+      page: 'taskBoard',
+      viewport: [1400, 700],
+      snapshot: () => createTaskBoard({
+        index: statusIndex(),
+        preferences: preferences.reader.value,
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'waiting', 'blocked'], statusNamespace: 'status', format: 'emoji', showCancelled: true },
+        tagTitleDisplayMode: 'inline',
+      }),
+      scrollers: ['html', '.board-cards'],
+      clippers: ['.board-column'],
+      hovered: ['.board-card'],
+    };
+}
+
+/** A note with a task of every status a board draws. */
+function statusIndex() {
+  const text = [
+    '# Statuses',
+    '- [ ] Draft the brief',
+    '- [/] Calibrate the receivers',
+    '- [ ] Hear back from legal #status/waiting',
+    '- [=] Wait for the vendor\'s quote',
+    '- [?] Ask about the second lens',
+    '- [x] Book the room ✅ 2026-09-24',
+    '- [-] Order the banner ❌ 2026-09-23',
+  ].join('\n');
+  return buildWorkspaceIndex(new Map([['notes/statuses.md', parseMarkdown('notes/statuses.md', text)]]));
 }
 
 /**
@@ -705,6 +748,71 @@ function createNotePageSurfaces() {
 }
 
 /**
+ * Edit Task Statuses, as the settings have them and with characters found
+ * in the notes, and in the workflow, where each row has its next status.
+ */
+function createTaskStatusesSurfaces() {
+  const statuses = [
+    { symbol: ' ', name: 'Todo', type: 'todo', tag: 'todo', next: 'x' },
+    { symbol: '/', name: 'In progress', type: 'inProgress', tag: 'doing', next: 'x' },
+    { symbol: 'x', name: 'Done', type: 'done', next: ' ' },
+    { symbol: 'X', name: 'Done', type: 'done', next: ' ' },
+    { symbol: '-', name: 'Cancelled', type: 'cancelled', next: ' ' },
+    { name: 'Waiting', type: 'onHold', tag: 'waiting' },
+    { name: 'Someday', type: 'onHold', tag: 'someday' },
+    { symbol: '=', name: 'Blocked', type: 'onHold', tag: 'blocked', icon: 'blocked', next: ' ' },
+  ];
+  const snapshot = (checkboxClick) => ({ statuses, checkboxClick, namespace: 'status', found: [{ symbol: '?', count: 3 }], canImport: true, target: 'user' });
+  return [
+    {
+      page: 'taskStatuses',
+      viewport: [900, 640],
+      snapshot: () => snapshot('done'),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.status-actions button'],
+    },
+    {
+      name: 'taskStatusesWorkflow',
+      page: 'taskStatuses',
+      viewport: [900, 760],
+      snapshot: () => snapshot('workflow'),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.status-actions button'],
+    },
+  ];
+}
+
+/**
+ * The Pages view, at a sidebar's width: as rows with each page's hint at the
+ * right, and as one row of icons.
+ */
+function createPagesSurfaces() {
+  const facts = { dueToday: 3, overdue: 2, notes: 42, files: 30, today: new Date(NOW), todayNoteExists: false, findKey: '⌥⇧⌘F' };
+  const pages = listDeckardPages(facts).map(({ id, label, description, detail }) => ({ id, label, description, detail }));
+  return [
+    {
+      page: 'pagesView',
+      viewport: [300, 260],
+      snapshot: () => ({ style: 'list', pages }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.pages-row'],
+    },
+    {
+      name: 'pagesViewIcons',
+      page: 'pagesView',
+      viewport: [300, 120],
+      snapshot: () => ({ style: 'icons', pages }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.pages-icon'],
+    },
+  ];
+}
+
+/**
  * The surfaces measured, each with the snapshot its page renders from and
  * the geometry it must keep. A probe runs in the page and reports; the
  * expectations here read the report. They are the same with zen on or off;
@@ -717,10 +825,13 @@ function createSurfaces() {
   const preferences = createPreferences(createGlobalState());
   const surfaces = [
     ...createBoardSurfaces(boardIndex, preferences),
+    createStatusBoardSurface(preferences),
     ...createCalendarSurfaces(),
     ...createRelatedNotesSurfaces(index, files),
     ...createSummarySurfaces(index, preferences),
     ...createNotePageSurfaces(),
+    ...createPagesSurfaces(),
+    ...createTaskStatusesSurfaces(),
   ];
   return [
     ...surfaces,

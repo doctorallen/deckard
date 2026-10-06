@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { AgendaGroupBy, readAgendaQuery, readUpcomingDays } from '../../domain/tasks/agendaGroups';
 import { DayLoad, DueChoice, dueDateFor, RescheduleContext } from '../../domain/tasks/reschedule';
 import { QueryContext } from '../../domain/query/queryContext';
@@ -14,6 +15,7 @@ import { applyBulkEdit, reportBulkEditResult } from './bulkEdit';
 import { askForDate } from './datePrompt';
 import { moveTasks } from './moveTo';
 import { breakIntoStepsCommand } from './taskSteps';
+import { setTaskStatusCommand } from './setTaskStatus';
 import {
   openTask,
   quoteTaskTitle,
@@ -149,7 +151,7 @@ export async function setTaskDateField(
   field: 'due' | 'scheduled',
   date: string | undefined,
 ): Promise<boolean> {
-  if (task.completed) {
+  if (!isOpenTask(task)) {
     return false;
   }
   return updateTaskLine(
@@ -188,7 +190,7 @@ export async function setTasksDue(
   date: string | undefined,
   context?: RescheduleContext,
 ): Promise<void> {
-  const open = tasks.filter((task) => !task.completed);
+  const open = tasks.filter(isOpenTask);
   if (open.length === 0) {
     return;
   }
@@ -239,7 +241,7 @@ export async function setTasksDueEach(
   tasks: readonly Task[],
   context?: RescheduleContext,
 ): Promise<void> {
-  const open = tasks.filter((task) => !task.completed && choice.dates.has(task.id));
+  const open = tasks.filter((task) => isOpenTask(task) && choice.dates.has(task.id));
   if (open.length === 0) {
     return;
   }
@@ -288,7 +290,7 @@ export async function pickReschedule(
   options: { title?: string } = {},
 ): Promise<RescheduleChoice | null> {
   const now = Date.now();
-  const open = tasks.filter((task) => !task.completed);
+  const open = tasks.filter(isOpenTask);
   const day = (label: string, date: string) => ({
     label,
     description: load ? `${formatDay(date)} · ${describeLoad(load(date))}` : formatDay(date),
@@ -556,7 +558,7 @@ export function registerAgendaCommands(services: AgendaCommandServices): vscode.
   ];
 }
 
-/** Edit Task and Break into Steps, on a task in the Tasks view. */
+/** Edit Task, Set Task Status…, and Break into Steps, on a task in the Tasks view. */
 function registerTaskMenus({ view, writes, indexer }: AgendaCommandServices): vscode.Disposable[] {
   return [
     registerCommand(
@@ -565,6 +567,15 @@ function registerTaskMenus({ view, writes, indexer }: AgendaCommandServices): vs
         const [task] = view.tasksFor(node);
         if (task && (await openTask(task))) {
           await vscode.commands.executeCommand('deckard.editTask');
+        }
+      },
+    ),
+    registerCommand(
+      'deckard.agenda.setTaskStatus',
+      async (node?: AgendaNode) => {
+        const [task] = view.tasksFor(node);
+        if (task) {
+          await setTaskStatusCommand(indexer, writes, task);
         }
       },
     ),

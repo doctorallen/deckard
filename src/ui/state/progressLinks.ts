@@ -11,7 +11,7 @@ export interface ProgressPartLink {
 
 /**
  * A progress line's words, part by part, each that counts tasks with the
- * search that lists just those: "3 of 8 done" the done ones, "1 overdue",
+ * search that lists just those: "3/8 done (38%)" the done ones, "1 overdue",
  * "1 needs a new date", and "next due today" the ones due that day.
  * `counted` turns a part's terms into the whole search, scoped as the
  * progress was counted, by a tag or by a note; `whose` names that scope in

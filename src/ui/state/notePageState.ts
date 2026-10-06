@@ -1,7 +1,10 @@
 import { findLinkedBlock, findLinkedSection, getBacklinkIndex, noteTitle, parseWikiTarget } from '../../domain/index/backlinks';
+import { drawTaskStatus } from './drawnStatus';
+import { withDrawnStatus } from './entryCards';
 import { findFrontmatterEnd, splitFrontmatterValues } from '../../domain/markdown/frontmatter';
 import { mapInlineTokens, tokenizeInline } from '../../domain/markdown/inline';
 import { readFrontmatterValueTag, stripTags } from '../../domain/markdown/parser';
+import { STATUS_CHARACTER } from '../../domain/markdown/lineShapes';
 import { formatKeyWords, readTagNamespace } from '../../domain/markdown/tagKeys';
 import { MarkdownToken, NoteEmbedMeta, parseBlockMarkdown } from '../../domain/markdown/markdownTokens';
 import { describeDueDate } from '../../domain/markdown/dueWording';
@@ -108,6 +111,27 @@ export function createNotePageSnapshot(
     backlinks,
     backlinkCount: count,
   };
+}
+
+/**
+ * A note's body as the note page draws it, its front matter left out and its
+ * title heading kept, for a page that shows a note inside it, such as a
+ * tag's hub note; and its tags, which the blocks draw as buttons.
+ */
+export function readNoteBody(
+  index: WorkspaceIndex,
+  filePath: string,
+  options: Pick<NotePageOptions, 'queryContext' | 'statusNamespace'>,
+): { blocks: NoteBlock[]; tags: Array<{ key: string; label: string }> } | undefined {
+  const file = index.files.get(filePath);
+  if (!file) {
+    return undefined;
+  }
+  const reading: Reading = { index, file, options: { ...options, history: { back: false, forward: false }, visit: 0 }, depth: 0 };
+  const lines = file.content.split(/\r?\n/);
+  const frontmatterEnd = findFrontmatterEnd(lines);
+  const bodyStart = frontmatterEnd === undefined ? 0 : frontmatterEnd + 1;
+  return { blocks: readNoteBlocks(lines.slice(bodyStart).join('\n'), bodyStart, reading), tags: collectTags(file) };
 }
 
 /** What reading a note's blocks needs: the index, the note it is in, and how deep in embeds it is. */
@@ -342,7 +366,9 @@ function runQueryBlock(query: string, options: NonNullable<ReturnType<typeof par
     filePath: item.filePath,
     line: item.line,
     detail: describeRow(item, queryContext),
-    ...(item.completed === undefined ? {} : { task: { taskId: item.id, completed: item.completed } }),
+    ...(item.completed === undefined
+      ? {}
+      : { task: { taskId: item.id, completed: item.completed, ...(item.cancelled ? { status: { name: item.status ?? 'Cancelled', type: 'cancelled' as const } } : {}) } }),
   });
   return {
     counts: describeQueryBlockCounts(snapshot),
@@ -400,8 +426,11 @@ function readList(open: MarkdownToken, cursor: Cursor, source: Source, line: num
   };
 }
 
-/** The box a task's item opens with: `[ ]`, `[x]`, or `[X]` and a space. */
-const TASK_BOX = /^\[([ xX])\][ \t]+/;
+/** The box a task's item opens with: any status's character, and a space. */
+const TASK_BOX = new RegExp(String.raw`^\[(${STATUS_CHARACTER})\][ \t]+`);
+
+/** A list item's bullet and its box, if it has one, which a backlink's line is shown without. */
+const BULLET_AND_BOX = new RegExp(String.raw`^[-*+]\s+(\[${STATUS_CHARACTER}\]\s+)?`);
 
 /**
  * One item. When its first paragraph opens with a box and the index has a
@@ -424,7 +453,7 @@ function readListItem(item: MarkdownToken, cursor: Cursor, source: Source): Note
   const indexed = source.reading.index.tasks.get(task.id) ?? task;
   return {
     line,
-    task: { taskId: indexed.id, completed: indexed.completed },
+    task: { taskId: indexed.id, completed: indexed.completed, ...withDrawnStatus(drawTaskStatus(indexed, source.reading.options.queryContext.taskPolicy)) },
     blocks: [{ kind: 'paragraph', line, children }, ...rest],
   };
 }
@@ -605,7 +634,7 @@ function collectBacklinks(index: WorkspaceIndex, filePath: string): { backlinks:
         title: hubNoteLabel(index, source),
         lines: unique.slice(0, BACKLINK_LINE_LIMIT).map((lineIndex) => ({
           line: lineIndex + 1,
-          text: (lines[lineIndex] ?? '').trim().replace(/^[-*+]\s+(\[[ xX]\]\s+)?/, '').slice(0, 200),
+          text: (lines[lineIndex] ?? '').trim().replace(BULLET_AND_BOX, '').slice(0, 200),
         })),
         count: unique.length,
       };

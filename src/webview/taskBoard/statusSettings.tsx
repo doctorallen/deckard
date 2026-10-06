@@ -26,14 +26,14 @@ export function statusColumnNames(snapshot: TaskBoardSnapshot): string[] {
 }
 
 /** One status column, dragged into order; one no open task carries can be removed. */
-function StatusRow({ status, openTasks }: { readonly status: string; readonly openTasks: number }) {
+function StatusRow({ status, openTasks, label }: { readonly status: string; readonly openTasks: number; readonly label?: string }) {
   return (
     <li class="board-status is-draggable" tabIndex={0} data-status={status} data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last">
       <span class="board-status-grip" aria-hidden="true">⠿</span>
-      <span class="board-status-name">{status}</span>
+      <span class="board-status-name">{label || status}</span>
       {/* A status open tasks carry is a column whether it is listed or not, so there is nothing to remove: it would come straight back. */}
       {openTasks === 0
-        ? <button key="remove" type="button" data-action="remove-status" data-status={status} aria-label={`Remove ${status}`} data-tip="Remove column">×</button>
+        ? <button key="remove" type="button" data-action="remove-status" data-status={status} aria-label={`Remove ${label || status}`} data-tip="Remove column">×</button>
         : <span key="count" class="board-status-count" data-tip="Open tasks with this status; a column while any have it">{openTasks}</span>}
     </li>
   );
@@ -41,7 +41,7 @@ function StatusRow({ status, openTasks }: { readonly status: string; readonly op
 
 /** The status columns, a field to add one, and the status tag. */
 export function StatusSettings({ snapshot, drafts }: { readonly snapshot: TaskBoardSnapshot; readonly drafts: SettingsDrafts }) {
-  const columns = snapshot.settings.columns || snapshot.settings.statuses.map((status) => ({ status, openTasks: 0 }));
+  const columns: { status: string; openTasks: number; label?: string }[] = snapshot.settings.columns || snapshot.settings.statuses.map((status) => ({ status, openTasks: 0 }));
   const namespace = drafts.namespace === undefined ? snapshot.settings.statusNamespace : drafts.namespace;
   return (
     <div class="board-settings">
@@ -49,7 +49,7 @@ export function StatusSettings({ snapshot, drafts }: { readonly snapshot: TaskBo
       {columns.length
         ? (
           <ul key={`statuses-${board.generation}`} class="board-status-list" aria-label="Status columns">
-            {columns.map((column) => <StatusRow key={column.status} status={column.status} openTasks={column.openTasks} />)}
+            {columns.map((column) => <StatusRow key={column.status} status={column.status} openTasks={column.openTasks} label={column.label} />)}
           </ul>
         )
         : <p key="none" class="board-settings-note">No task has a status yet, so the board has only No status and Done.</p>}
@@ -65,6 +65,10 @@ export function StatusSettings({ snapshot, drafts }: { readonly snapshot: TaskBo
         <span class="board-settings-prefix">/doing</span>
         <button type="submit">Save</button>
       </form>
+      <label class="board-settings-row">
+        <input type="checkbox" data-action="show-cancelled" checked={snapshot.settings.showCancelled === true} />
+        <span>Show a Cancelled column after Done</span>
+      </label>
       {drafts.error ? <p key="error" class="board-settings-error" role="alert">{drafts.error}</p> : null}
     </div>
   );

@@ -17,7 +17,7 @@ function createIndex() {
   const task = (id, title, lineNumber, { tags = [], completed = false } = {}) => ({
     id, filePath: 'notes/tasks.md', title, completed, tags,
     tagLabels: Object.fromEntries(tags.map((tag) => [tag, tag])),
-    lineNumber, checkboxColumn: 3, checkboxValue: completed ? 'x' : ' ',
+    lineNumber, checkboxColumn: 3, status: completed ? { symbol: 'x', name: 'Done', type: 'done' } : { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: `- [${completed ? 'x' : ' '}] ${title} ${tags.join(' ')}`.trim(),
   });
   const tasks = [
@@ -332,12 +332,12 @@ function createIndexWithSteps() {
   const index = createIndex();
   const step = (id, title, lineNumber, { completed, ...extra }) => ({
     id, filePath: 'notes/tasks.md', title, completed, tags: [], tagLabels: {},
-    associationTagGroups: [[]], lineNumber, checkboxColumn: 5, checkboxValue: completed ? 'x' : ' ',
+    associationTagGroups: [[]], lineNumber, checkboxColumn: 5, status: completed ? { symbol: 'x', name: 'Done', type: 'done' } : { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: `  - [${completed ? 'x' : ' '}] ${title}`, parentTaskId: 'plan', ...extra,
   });
   index.tasks.set('plan', {
     id: 'plan', filePath: 'notes/tasks.md', title: 'Plan the offsite', completed: false, tags: [], tagLabels: {},
-    associationTagGroups: [[]], lineNumber: 10, checkboxColumn: 3, checkboxValue: ' ',
+    associationTagGroups: [[]], lineNumber: 10, checkboxColumn: 3, status: { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: '- [ ] Plan the offsite',
     steps: { ids: ['venue', 'email', 'caterer'], total: 3, done: 1, next: 'Draft the email' },
   });
@@ -354,8 +354,9 @@ test('a card says how far along its steps are, and a plain step rides on it', as
   assert.ok(!ids.includes('email'), 'a plain step has no card of its own');
   assert.ok(ids.includes('caterer'), 'a dated step keeps its card');
   const plan = view.find('.board-card[data-task-id="plan"]');
-  assert.strictEqual(plan.querySelector('.board-steps').textContent, '1 of 3 steps · next: Draft the email');
-  assert.ok(plan.getAttribute('aria-label').includes('1 of 3 steps'));
+  assert.strictEqual(plan.querySelector('.board-steps-label [aria-hidden="true"]').textContent, 'Steps 1/3 done (33%)');
+  assert.strictEqual(plan.querySelector('.board-steps-next').textContent, ' · next: Draft the email');
+  assert.ok(plan.getAttribute('aria-label').includes('Steps 1 of 3 done, 33%'), 'the card is named with the figure as it is spoken');
   view.click(plan.querySelector('[data-action="board-menu"]'));
   assert.ok(view.find('#action-menu [data-menu-value="break-steps"]').textContent.includes('Add steps…'));
 });
@@ -688,7 +689,8 @@ test('the gear edits the status columns without opening settings', async () => {
     view.findAll('.board-column').map((column) => column.dataset.columnId);
   assert.deepStrictEqual(
     view.findAll('.board-status-name').map((name) => name.textContent),
-    ['todo', 'doing', 'waiting'],
+    // Each column by its status's name; the setting keeps the tags.
+    ['Todo', 'In progress', 'Waiting'],
   );
 
   view.type(view.find('[data-action="status-draft"]'), 'Review');

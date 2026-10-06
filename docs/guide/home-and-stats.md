@@ -35,7 +35,7 @@ Three figures sit above Home: **Due today** and **Overdue**, as the [Tasks view]
 | **Tags without a hub** | Tags used at least three times with no [hub note](search-pages.md#hub-notes), each with **Create hub** | The Tags tab |
 | **New tags** | Tags first seen in the last 7, 14, 30, or 90 days, newest first, each with **Rename** | The Tags tab |
 | **Gone quiet** | People, or another namespace, not written about for 30, 60, 90, or 180 days, with what is still open. **Only those with no open tasks** adds **Add next action**, which captures a task with the tag to today's note | The Tags tab |
-| **Progress** | Each project tag with tasks, or another namespace's, with a bar and how far along it is: *2 of 6 done · 1 overdue · next due in 3 days*. Unfinished first, overdue ones first among them, then by the next due date | The Tags tab |
+| **Progress** | Each project tag with tasks, or another namespace's, with a bar and how far along it is: *2/6 done (33%) · 1 overdue · next due in 3 days*. Unfinished first, overdue ones first among them, then by the next due date | The Tags tab |
 | **Pinned notes** | The notes you pinned, each with **×** to unpin | The note, at the heading you pinned |
 
 **Pinning** pins the entry (a heading and what is under it), not the file:
@@ -84,7 +84,7 @@ Run `Deckard: Open Stats` to see what needs attention, then totals, then what yo
 - **Tags that look alike:** see [below](#tags-that-look-alike).
 - **Notes nothing links to:** excludes daily, weekly, and monthly notes and parked notes. Shows ten, with **Show 40 more**.
 
-**Totals:** every total but Files opens what it counts. **Notes** counts what Deckard's search calls a note: a heading with tags of its own, with the untagged headings under it; a note tagged in its front matter, as a whole; each heading where no tag reaches; and each tagged line outside a heading (see [What is a note](notes-and-links.md#what-is-a-note) and `deckard.noteBoundaries`), so it is usually more than **Files**. **Notes**, **Tasks**, and **Open tasks** open `is:note`, `is:task`, and `is:open`; **Tags** and **Namespaced tags** offer their tags; **Links**, `[[links]]` and `[text](note.md)` links alike, opens the [Notes Graph](connections.md#notes-graph) with **Only links I wrote** on; **Unlinked notes** moves to the list of notes nothing links to. Notes, Tasks, and Open tasks also show a twelve-week line and a change such as **+9 in the last 7 days**. A task stops being open on its ✅ date, or its note's last change without one. When anything is parked, a line such as **Parked: 312 notes, 41 open tasks** opens the `is:parked` search. When checkbox lines hold a mark other than a space or an x, such as `[/]` or `[-]`, a line says how many no total counts.
+**Totals:** every total but Files opens what it counts. **Notes** counts what Deckard's search calls a note: a heading with tags of its own, with the untagged headings under it; a note tagged in its front matter, as a whole; each heading where no tag reaches; and each tagged line outside a heading (see [What is a note](notes-and-links.md#what-is-a-note) and `deckard.noteBoundaries`), so it is usually more than **Files**. **Notes**, **Tasks**, and **Open tasks** open `is:note`, `is:task`, and `is:open`; **Tags** and **Namespaced tags** offer their tags; **Links**, `[[links]]` and `[text](note.md)` links alike, opens the [Notes Graph](connections.md#notes-graph) with **Only links I wrote** on; **Unlinked notes** moves to the list of notes nothing links to. Notes, Tasks, and Open tasks also show a twelve-week line and a change such as **+9 in the last 7 days**. A task stops being open on its ✅ or ❌ date, or its note's last change without one. When anything is parked, a line such as **Parked: 312 notes, 41 open tasks** opens the `is:parked` search. When any task is cancelled, a **Cancelled tasks** tile opens `is:cancelled`. When tasks use a character no status names, such as `[?]`, a line says how many and opens `status:unknown`; name the character in `deckard.tasks.statuses` (see [Task statuses](tasks.md#task-statuses)). Checkbox lines whose status is not a task, such as a pro and con list's, are counted on a line of their own.
 
 **Most viewed** lists the tags, namespaced entities, and note entries you open most, counted locally in VS Code preferences.
 
@@ -112,4 +112,4 @@ Spelling pairs are compared only inside one namespace, so `#project/relay` and `
 
 ---
 
-← [Query blocks](query-blocks.md) · [All topics](README.md) · [Related notes, sections, and the graph](connections.md) →
+← [Query blocks](query-blocks.md) · [All topics](README.md) · [Related notes, the graph, and the outline](connections.md) →

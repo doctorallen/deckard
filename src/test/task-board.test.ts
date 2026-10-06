@@ -79,7 +79,7 @@ suite('Task board', () => {
       createTask(`t${number}`, `- [ ] Task ${number} #status/doing`, {}),
     );
     const done = Array.from({ length: 30 }, (_, number) =>
-      createTask(`d${number}`, `- [x] Done ${number}`, { completed: true, checkboxValue: 'x', doneAt: at(9, 1) + number }),
+      createTask(`d${number}`, `- [x] Done ${number}`, { completed: true, status: { symbol: 'x', name: 'Done', type: 'done' }, doneAt: at(9, 1) + number }),
     );
     const index: WorkspaceIndex = {
       files: new Map(), sections: new Map(), tags: new Map(), entities: new Map(), updatedAt: Date.now(),
@@ -130,7 +130,7 @@ suite('Task board', () => {
     });
     assert.deepStrictEqual(
       layout.columns.map((column) => column.label),
-      ['No status', 'Todo', 'Doing', 'Review', 'Done'],
+      ['No status', 'Todo', 'In progress', 'Review', 'Done'],
     );
   });
 
@@ -297,10 +297,11 @@ suite('Task board', () => {
       statusNamespace: 'status',
       // Every column the board draws, the unlisted review with them.
       columns: [
-        { status: 'todo', openTasks: 1 },
-        { status: 'doing', openTasks: 1 },
-        { status: 'review', openTasks: 1 },
+        { status: 'todo', openTasks: 1, label: 'Todo' },
+        { status: 'doing', openTasks: 1, label: 'In progress' },
+        { status: 'review', openTasks: 1, label: 'Review' },
       ],
+      showCancelled: false,
     });
     assert.strictEqual(board(createIndex(), 'status', '', options).tasks, undefined);
   });
@@ -441,8 +442,9 @@ suite('Task board', () => {
     assert.strictEqual(apply('call', 'due:2026-09-13'), 'unchanged');
     const label = resolveTaskMove(task('call'), 'due:2026-09-17', options);
     assert.strictEqual(label.kind === 'edit' ? label.label : label.kind, 'Due Thu 2026-09-17');
-    // Moving a finished task out of Done reopens it in the same edit.
-    assert.strictEqual(apply('ship', 'status:doing'), '- [ ] Ship it #status/doing');
+    // Moving a finished task out of Done reopens it in the same edit, as
+    // its status's character, since its line writes no status tag.
+    assert.strictEqual(apply('ship', 'status:doing'), '- [/] Ship it');
   });
 });
 
@@ -464,12 +466,12 @@ function createIndex(): WorkspaceIndex {
     createTask('draft', '- [ ] Draft notes #status/todo 🔽', { priority: 'low' }),
     createTask('ship', '- [x] Ship it ✅ 2026-09-12', {
       completed: true,
-      checkboxValue: 'x',
+      status: { symbol: 'x', name: 'Done', type: 'done' },
       doneAt: at(9, 12),
     }),
     createTask('file', '- [x] File it ✅ 2026-09-10', {
       completed: true,
-      checkboxValue: 'x',
+      status: { symbol: 'x', name: 'Done', type: 'done' },
       doneAt: at(9, 10),
     }),
   ];
@@ -497,7 +499,7 @@ function createTask(id: string, sourceLineText: string, values: Partial<Task>): 
     associationTagGroups: [tags],
     lineNumber: 1,
     checkboxColumn: 3,
-    checkboxValue: ' ',
+    status: { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText,
     ...values,
   };

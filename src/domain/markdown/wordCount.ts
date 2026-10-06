@@ -1,5 +1,5 @@
 import { findFrontmatterEnd } from './frontmatter';
-import { findFencedLines, matchTaskLine, TaskLineShape } from './lineShapes';
+import { findFencedLines, matchTaskLine, STATUS_MARKS, TaskLineShape } from './lineShapes';
 import { findTaskMetadataSpans } from './taskFields';
 
 /**
@@ -10,8 +10,8 @@ import { findTaskMetadataSpans } from './taskFields';
 /** Words a minute an adult reads silently, on average. */
 export const READING_WORDS_PER_MINUTE = 238;
 
-/** A task line whose checkbox and metadata are masked: any mark but `[>]`. */
-const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: ' xX' };
+/** A task line whose checkbox and metadata are masked: any status's character, not `[>]`. */
+const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: STATUS_MARKS };
 /** A list item's marker, after which an indented line continues the item rather than starting code. */
 const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])[ \t]/;
 /** A `^block-id` at the end of a line, which Markdown hides from a reader. */

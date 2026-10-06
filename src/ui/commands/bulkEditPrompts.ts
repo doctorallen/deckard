@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import { createStatusPicks } from './taskEditor';
+import { readTaskStatusOptions } from './parseSettings';
 import {
   extractTags,
   getEntityNamespaceAliases,
@@ -28,7 +30,7 @@ import { Section, Task } from '../../domain/model';
 /** The edits a list of results can take. */
 export function listBulkEdits(
   kind: 'notes' | 'tasks',
-): Array<{ label: string; description: string; edit: BulkEdit | 'due' | 'tag' }> {
+): Array<{ label: string; description: string; edit: BulkEdit | 'due' | 'tag' | 'status' }> {
   const tag = {
     label: 'Add a tag',
     description: 'Write one tag at the end of each line',
@@ -47,6 +49,11 @@ export function listBulkEdits(
       label: 'Reopen',
       description: 'Uncheck each completed task',
       edit: { kind: 'complete', completed: false } as BulkEdit,
+    },
+    {
+      label: 'Set a status',
+      description: 'In progress, Waiting, Cancelled, or any other, on each task',
+      edit: 'status' as const,
     },
     {
       label: 'Set a due date',
@@ -144,9 +151,16 @@ export async function editResults(
 
 /** Fills in an edit that still needs a value: a date, or a tag. */
 async function readEdit(
-  chosen: BulkEdit | 'due' | 'tag',
+  chosen: BulkEdit | 'due' | 'tag' | 'status',
   uri?: vscode.Uri,
 ): Promise<BulkEdit | undefined> {
+  if (chosen === 'status') {
+    const picked = await vscode.window.showQuickPick(createStatusPicks(readTaskStatusOptions(uri), ''), {
+      title: 'Set a status',
+      placeHolder: 'Choose the status every chosen task gets',
+    });
+    return picked ? { kind: 'status', status: picked.status } : undefined;
+  }
   if (chosen === 'due') {
     const read = await askForDate({ title: 'Due date' });
     return read ? { kind: 'due', date: read.date } : undefined;

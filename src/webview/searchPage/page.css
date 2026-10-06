@@ -3,6 +3,7 @@
  * Its own rules follow the base sheet; the page shell links its theme and the tail after it.
  */
 @import "../shared/base.css";
+@import "../shared/noteBlocks.css";
 @import "../shared/queryEditor.css";
 
 /* The gear sits in the header's top-right corner. The margin keeps a short
@@ -46,6 +47,54 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .overview-pane-heading { margin: 0; color: var(--text); font-size: var(--text-lg); font-weight: 650; }
 .edit-results { flex: 0 0 auto; min-height: 24px; padding: 2px 10px; font-size: var(--text-xs); }
 .overview-pane .cards, .overview-pane .task-list { margin-top: 12px; }
+/* Hierarchy: a group per tag Refine offers, each under a rule, its name, what
+   it holds, and how far along its tasks are on one line. */
+.result-groups { margin-top: var(--space-5); }
+.result-groups-note { margin: 0 0 var(--space-3); color: var(--muted); font-size: var(--text-sm); }
+.result-group { min-width: 0; padding-top: var(--space-4); border-top: 1px solid var(--line); }
+.result-group + .result-group { margin-top: var(--space-5); }
+.result-group-header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.result-group-heading { margin: 0; color: var(--text); font-size: var(--text-lg); font-weight: 650; overflow-wrap: anywhere; }
+.result-group-count { color: var(--muted); font-size: var(--text-sm); }
+.result-group-progress { display: inline-flex; flex: 1 1 200px; align-items: center; gap: var(--space-2); max-width: 320px; }
+.result-group-progress .progress-bar { flex: 1 1 auto; width: auto; min-width: 60px; }
+.result-group-progress-label { flex: 0 0 auto; color: var(--muted); font-size: var(--text-sm); }
+.result-group .cards, .result-group .task-list { margin-top: var(--space-3); }
+/* By heading, a project's parts sit inside it, set in under a rule. */
+.result-subgroups { display: grid; gap: var(--space-4); margin: var(--space-4) 0 0 var(--space-3); padding-left: var(--space-4); border-left: 2px solid var(--line); }
+.result-group.is-part { padding-top: 0; border-top: 0; }
+.result-group.is-part + .result-group.is-part { margin-top: 0; }
+.result-group.is-part .result-group-heading { font-size: var(--text-md); }
+/* Side by side, a group's notes and tasks share its row, in the panes' columns. */
+.overview-split-groups > .overview-split { margin-bottom: 0; }
+.result-group-columns { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+.result-group-column { min-width: 0; }
+/* Side by side, the progress heads the tasks' column, over the rows it counts. */
+.result-group-column > .result-group-progress { display: flex; max-width: none; margin-top: var(--space-3); }
+.result-group-column > .result-group-progress + .task-list { margin-top: var(--space-2); }
+@media (max-width: 700px) { .result-group-columns { grid-template-columns: 1fr; } }
+.result-group-more { margin: var(--space-3) 0 0; color: var(--muted); font-size: var(--text-sm); }
+.result-group-tag.result-group-tag {
+  min-height: 24px;
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  clip-path: none;
+}
+.result-group-tag.result-group-tag:hover, .result-group-tag.result-group-tag:focus-visible {
+  border-color: var(--cyan);
+  background: transparent;
+  color: var(--cyan);
+  transform: none;
+  box-shadow: none;
+}
 .card-header { display: block; }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 .hub { margin-top: 20px; padding: 14px; border: var(--edge) solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
@@ -67,7 +116,7 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .hub .markdown, .hub .rendered { margin: 12px 0 0; }
 .hub-note { margin: 10px 0 0; color: var(--muted); }
 /* How far along a tag's tasks are, under its hub. */
-.tag-progress { display: grid; grid-template-columns: auto minmax(80px, 200px) 1fr; align-items: center; gap: var(--space-2) var(--space-3); margin: var(--space-3) 0 0; }
+.tag-progress { display: grid; grid-template-columns: auto minmax(120px, 200px) minmax(0, 1fr); align-items: center; gap: var(--space-2) var(--space-3); margin: var(--space-3) 0 0; }
 .tag-progress-label { color: var(--muted); font-size: var(--text-sm); }
 /* Each part keeps its column, so a hidden label (plain styling hides the
    eyebrow) leaves the bar and the words their room rather than sliding
@@ -76,6 +125,9 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .tag-progress > .progress-bar { grid-column: 2; }
 .tag-progress > .tag-progress-label { grid-column: 3; }
 @media (max-width: 700px) { .tag-progress { grid-template-columns: auto 1fr; } .tag-progress > .tag-progress-label { grid-column: 1 / -1; } }
+/* A project's parts, under its progress: each part's name and how far along it is, a link that narrows the page to it. */
+.tag-parts { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-3); margin: var(--space-2) 0 0; }
+.tag-parts-list { color: var(--muted); font-size: var(--text-sm); }
 /* A tag's page's quiet lines under its hub, and what they mark on cards. */
 .tag-notes { display: grid; gap: 4px; margin: 12px 0 0; }
 .tag-note { margin: 0; color: var(--muted); font-size: var(--text-sm); }

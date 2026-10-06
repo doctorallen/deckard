@@ -1,4 +1,5 @@
 import { Task } from '../model';
+import { isOpenTask } from './taskStatuses';
 import { addDays, formatIsoDate, startOfDay } from '../markdown/calendar';
 
 /**
@@ -49,7 +50,7 @@ export function countLoad(tasks: Iterable<Task>, date: string): DayLoad {
   let due = 0;
   let scheduled = 0;
   for (const task of tasks) {
-    if (task.completed) {
+    if (!isOpenTask(task)) {
       continue;
     }
     if (task.dueAt !== undefined && formatIsoDate(task.dueAt) === date) {

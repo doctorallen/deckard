@@ -1,4 +1,5 @@
 import type MarkdownIt from 'markdown-it';
+import { isCancelledTask } from '../../domain/tasks/taskStatuses';
 import * as vscode from 'vscode';
 
 import { QueryContext } from '../../domain/query/queryContext';
@@ -19,7 +20,7 @@ import { addQueryBlockRenderer } from './queryBlockHtml';
 import { readQueryContext } from '../commands/queryContext';
 import { WorkspaceIndex } from '../../domain/model';
 import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
-import { TaskWrites, toggleTask } from '../commands/taskActions';
+import { clickTask, TaskWrites } from '../commands/taskActions';
 import {
   createSessionToken,
   createTaskToggleHref,
@@ -101,10 +102,11 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       getQueryContext: (now: number) => readQueryContext(now),
       ...(this.actions
         ? {
-            getTaskHref: (item: { id: string; completed?: boolean }) =>
+            getTaskHref: (item: { id: string; completed?: boolean; cancelled?: boolean }) =>
               createTaskToggleHref(this.actions?.base ?? '', {
                 taskId: item.id,
-                completed: item.completed !== true,
+                // A cancelled task's box is closed, so it reopens.
+                completed: item.completed !== true && item.cancelled !== true,
                 token: this.token,
               }),
           }
@@ -156,7 +158,7 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       return;
     }
     const task = this.index?.tasks.get(link.request.taskId);
-    if (!task || task.completed === link.request.completed) {
+    if (!task || (task.completed || isCancelledTask(task)) === link.request.completed) {
       if (!task) {
         void vscode.window.showInformationMessage(
           'That task has changed since the preview was drawn, so nothing was written. The preview is drawn again now.',
@@ -165,7 +167,7 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       await refreshMarkdownPreviews();
       return;
     }
-    await toggleTask(actions.writes, task, link.request.completed);
+    await clickTask(actions.writes, task, link.request.completed);
   }
 
   /** Stops listening to the indexer and unregisters the lens provider. */

@@ -1,4 +1,5 @@
 import { isParkedTask } from '../index/parked';
+import { isOpenTask } from '../tasks/taskStatuses';
 import { addDays } from '../markdown/calendar';
 import { Task, WorkspaceIndex } from '../model';
 import { formatLocalDate, listDailyNotes, parseLocalDate } from './periodicNotes';
@@ -57,7 +58,7 @@ export function planRollover(
   const open = [...index.tasks.values()]
     // A parked task stays where it is.
     .filter(
-      (task) => !task.completed && byPath.has(task.filePath) && !isParkedTask(index, task.id),
+      (task) => isOpenTask(task) && byPath.has(task.filePath) && !isParkedTask(index, task.id),
     )
     .sort(
       (left, right) =>

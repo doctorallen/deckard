@@ -22,6 +22,7 @@ import {
 } from './notify';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
 import { Task } from '../../domain/model';
+import type { TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
 import { parseTaskMetadata, TaskMetadataFormat } from '../../domain/markdown/taskFields';
 
 /**
@@ -236,6 +237,67 @@ export async function toggleTask(
     );
   };
   return presentLineUpdate(writes, task, result, description);
+}
+
+/**
+ * Sets a task's status: In progress, Waiting, Cancelled, or any other. A
+ * change to done is a completion, said as one; any other says the status it
+ * set. Cancelling a repeating task makes no next occurrence, so the message
+ * offers to keep it repeating.
+ */
+export async function setTaskStatusTo(
+  writes: TaskWrites,
+  task: Task,
+  to: TaskStatusDefinition,
+): Promise<boolean> {
+  if (to.type === 'done') {
+    return toggleTask(writes, task, true);
+  }
+  const result = await writes.tasks.setStatus(task, to);
+  const description = (): string | CompletionMessage => {
+    const said = `Set ${quoteTaskTitle(task)} to ${to.name}.`;
+    if (to.type !== 'cancelled' || !task.recurrence || result.kind !== 'updated') {
+      return said;
+    }
+    const { uri, lineNumber, replacement } = result.written;
+    return {
+      text: `${said} It repeats ${task.recurrence}, and cancelling it starts no next one.`,
+      severity: 'info',
+      action: { label: 'Keep It Repeating', run: () => keepRepeating(writes, uri, task.filePath, { line: lineNumber - 1, text: replacement }) },
+    };
+  };
+  return presentLineUpdate(writes, task, result, description);
+}
+
+/**
+ * Writes the next occurrence of a repeating task that was cancelled, as
+ * completing it would have, when its line still reads as it did.
+ */
+async function keepRepeating(writes: TaskWrites, uri: vscode.Uri, filePath: string, at: { line: number; text: string }): Promise<void> {
+  const result = await writes.tasks.startNextOccurrence(uri, filePath, at);
+  if (result.kind === 'stale') {
+    void reportStale([uri]);
+    return;
+  }
+  const next = result.kind === 'updated' ? result.outcome?.next : undefined;
+  presentLineUpdate(writes, { filePath }, result, `Started the next ${quoteTitle(readTaskTitle(at.text))}${next === undefined ? '' : describeNextOccurrence(next)}.`);
+}
+
+/** A task line's words, its metadata left out. */
+function readTaskTitle(line: string): string {
+  const words = line.replace(/^\s*[-*+]\s+\[.\]\s*/u, '');
+  return parseTaskMetadata(words).title || words;
+}
+
+/**
+ * What a click on a task's box does, in a page, the preview, or the Tasks
+ * view: with `deckard.tasks.checkboxClick` at `workflow`, the task moves to
+ * its status's next status; otherwise, and when its status names none, it
+ * is completed or reopened as `completed` says.
+ */
+export async function clickTask(writes: TaskWrites, task: Task, completed: boolean): Promise<boolean> {
+  const next = writes.tasks.readNextStatus(task);
+  return next ? setTaskStatusTo(writes, task, next) : toggleTask(writes, task, completed);
 }
 
 /** What the note says about a completed task's steps, and where the note is. */

@@ -2,6 +2,9 @@
  * The board: the searched tasks as columns of cards, each card with its
  * checkbox and the menu that edits it, and the switch that groups them.
  */
+import { isBoxChecked, speakBoxStatus, StatusIcon, statusBoxProps } from '../shared/taskBox';
+import { speakProgressText } from '../../domain/tasks/progressCount';
+import { ProgressText } from '../shared/progressText';
 import type { ComponentChild } from 'preact';
 
 import type { TaskBoardCard, TaskBoardColumn, TaskBoardSettings, TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
@@ -9,7 +12,7 @@ import type { ActionMenuGroup, ActionMenuItem } from '../shared/actionMenu';
 import { IconButton } from '../shared/buttons';
 import { DueText } from '../shared/dueText';
 import { EllipsisIcon } from '../shared/strokeIcons';
-import { formatSourceLocation, HeadingPathSteps, plainTitle, PriorityBadge, trimHeadingPath } from '../shared/taskRow';
+import { formatSourceLocation, HeadingPathSteps, plainTitle, PriorityBadge, TaskDetails, trimHeadingPath } from '../shared/taskRow';
 import { TaskTitle } from '../shared/taskTitle';
 import { board, boardCardKey } from './model';
 
@@ -41,7 +44,9 @@ export function taskCardMoves(card: MovableTask, columnId: string, columns: read
     ...(key ? { key } : {}),
   });
   const statuses = (settings && settings.statuses) || [];
-  const statusOptions = [option('status:', 'No status'), ...statuses.map((status) => option(`status:${status}`, statusLabel(status)))];
+  // A status is named as its column is, In progress for doing, when the host said so.
+  const named = new Map(((settings && settings.columns) || []).map((column) => [column.status, column.label]));
+  const statusOptions = [option('status:', 'No status'), ...statuses.map((status) => option(`status:${status}`, named.get(status) || statusLabel(status)))];
   const priorityOptions = ([['highest', 'Highest', '1'], ['high', 'High', '2'], ['medium', 'Medium', '3'], ['low', 'Low', '4'], ['lowest', 'Lowest', '5'], ['', 'No priority', '0']] as const)
     .map(([value, label, key]) => option(`priority:${value}`, label, key));
   const dueOptions: ActionMenuItem[] = [
@@ -135,6 +140,28 @@ interface CardProps {
   readonly columns: readonly TaskBoardColumn[];
 }
 
+/** A card's details, carried down under it: those ticked in Card details, and the headings above it with its file and line. */
+function CardPlace({ card, fileName, steps }: { readonly card: TaskBoardCard; readonly fileName: string; readonly steps: Parameters<typeof HeadingPathSteps>[0]['steps'] }) {
+  return (
+    <>
+      <TaskDetails facts={{ location: formatSourceLocation(fileName, card.line), createdAt: card.createdAt, updatedAt: card.updatedAt }} steps={steps} />
+    </>
+  );
+}
+
+/** A card's classes: done, cancelled, or neither. */
+function cardClass(card: TaskBoardCard): string {
+  return ['task board-card', card.completed ? 'completed' : '', card.status?.type === 'cancelled' ? 'cancelled' : ''].filter(Boolean).join(' ');
+}
+
+/** A card's box, drawn by its status, which completes or reopens it, and its status's icon. */
+function CardBox({ card, title }: { readonly card: TaskBoardCard; readonly title: string }) {
+  const verb = isBoxChecked(card.completed, card.status) ? 'Reopen' : 'Complete';
+  const box = <input type="checkbox" tabIndex={-1} data-action="board-toggle-task" aria-label={`${verb} ${title}${speakBoxStatus(card.status)}`} data-tip={`${verb} this task`} {...statusBoxProps(card.completed, card.status)} />;
+  // The icon goes under the box, in the box's own column of the card.
+  return card.status?.icon === undefined ? box : <span class="task-box-with-icon">{box}<StatusIcon status={card.status} /></span>;
+}
+
 /** One task card, with its checkbox and the menu that edits it. */
 function BoardCard({ card, columnId, columns }: CardProps) {
   // The title as it reads names the card and its controls, not its Markdown.
@@ -147,7 +174,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
   // full otherwise: its title, its column, and when it is due.
   const columnLabel = columns.find((column) => column.id === columnId)?.label;
   const dueDetail = (card.details || []).find((detail) => /^(due|overdue|was due)/i.test(detail));
-  const cardName = [title, columnLabel, dueDetail, card.steps ? card.steps.label : ''].filter(Boolean).join(', ');
+  const cardName = [title, columnLabel, dueDetail, card.steps ? speakProgressText(card.steps.label) : ''].filter(Boolean).join(', ');
   // The board is one Tab stop: the card last focused, or the first. Arrow
   // keys move between cards, and a card's checkbox and menu are keys of
   // their own, so neither is a Tab stop either.
@@ -157,7 +184,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
   return (
     <article
       role="listitem"
-      class={card.completed ? 'task board-card completed' : 'task board-card'}
+      class={cardClass(card)}
       draggable={true}
       data-tip-around=""
       tabIndex={tabStop ? 0 : -1}
@@ -168,20 +195,19 @@ function BoardCard({ card, columnId, columns }: CardProps) {
       data-file-path={card.filePath}
       data-line={card.line}
     >
-      <input type="checkbox" tabIndex={-1} data-action="board-toggle-task" aria-label={`${card.completed ? 'Reopen ' : 'Complete '}${title}`} data-tip={`${card.completed ? 'Reopen' : 'Complete'} this task`} checked={card.completed} />
+      <CardBox card={card} title={title} />
       <div class="task-summary">
         <div key={card.title} class="task-title"><TaskTitle tokens={card.titleTokens} tags={card.titleTags} /></div>
         <CardDetails card={card} />
         {card.steps
           ? (
             <p key="steps" class="source board-steps">
-              <span class="board-steps-label">{card.steps.label}</span>
+              <span class="board-steps-label"><ProgressText text={card.steps.label} /></span>
               {card.steps.next ? <span class="board-steps-next">{` · next: ${card.steps.next}`}</span> : null}
             </p>
           )
           : null}
-        <span key="source" class="task-source">{formatSourceLocation(fileName, card.line)}</span>
-        {steps.length ? <span key="path" class="task-source heading-path"><HeadingPathSteps steps={steps} /></span> : null}
+        <CardPlace card={card} fileName={fileName} steps={steps} />
         <IconButton
           key="menu"
           action="board-menu"

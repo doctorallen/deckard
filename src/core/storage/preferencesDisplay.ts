@@ -5,6 +5,7 @@ import type {
   RenderMode,
   SearchPageSize,
   SearchPreview,
+  SearchHierarchy,
   TagOverviewLayout,
   TagOverviewSortMode,
   TagSortMode,
@@ -74,6 +75,11 @@ export class DisplayService {
     searchPageSize: SearchPageSize,
   ): Promise<void> {
     await this.repository.update({ searchPageSize });
+  }
+
+  /** Selects whether a search page groups its results by tag, by heading, or not at all. */
+  public async setSearchHierarchy(searchHierarchy: SearchHierarchy): Promise<void> {
+    await this.repository.update({ searchHierarchy: searchHierarchy === 'off' ? undefined : searchHierarchy });
   }
 
   /** Selects how much of each result a search page shows. */

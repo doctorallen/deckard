@@ -193,11 +193,11 @@ suite('Outline tree', () => {
     assert.strictEqual(notesHeading.tasks, undefined);
     assert.strictEqual(
       formatOutlineDescription(plan, { tags: true, counts: true }),
-      '2/5 · ↩3 · #project/atlas',
+      '2/5 (40%) · ↩3 · #project/atlas',
     );
     assert.strictEqual(formatOutlineDescription(plan, { tags: true, counts: false }), '#project/atlas');
     assert.strictEqual(formatOutlineDescription(notesHeading, { tags: true, counts: true }), '');
-    assert.deepStrictEqual(describeOutlineCounts(plan), ['2 of 5 tasks done', 'Linked 3 times']);
+    assert.deepStrictEqual(describeOutlineCounts(plan), ['Tasks 2/5 done (40%)', 'Linked 3 times']);
   });
   test('filters to the headings that carry a tag, keeping their ancestors', () => {
     const content = [

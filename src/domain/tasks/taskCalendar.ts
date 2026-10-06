@@ -19,6 +19,8 @@ export interface CalendarTask {
   dueAt?: number;
   scheduledAt?: number;
   completed: boolean;
+  /** Cancelled: closed without being done, which a calendar draws as a cancelled event. */
+  cancelled?: boolean;
   /** When the task's note was last written; the event's stamp. */
   updatedAt?: number;
   /** A link that opens the task's line, put in the event's notes. */
@@ -79,6 +81,9 @@ function buildEvent(task: CalendarTask, day: number, key: string): string[] {
     `DTEND;VALUE=DATE:${end}`,
     `SUMMARY:${escapeText(task.completed ? `✓ ${task.title}` : task.title)}`,
     `DESCRIPTION:${escapeText(notes)}`,
+    // An event is tentative, confirmed, or cancelled; it has no done, which
+    // the summary's ✓ says.
+    ...(task.cancelled ? ['STATUS:CANCELLED'] : []),
     ...(task.url ? [`URL:${task.url}`] : []),
     'TRANSP:TRANSPARENT',
     'END:VEVENT',

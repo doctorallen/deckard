@@ -4,6 +4,7 @@
  * tab naming the panel it shows, which is what the tab role promises a
  * screen reader.
  */
+import type { ComponentChildren } from 'preact';
 
 /** One tab: what it shows, its name, and how many results are behind it. */
 export interface ResultTab {
@@ -31,7 +32,13 @@ export function resultPanelAttributes(id: string): { id: string; role: 'tabpanel
  * The tabs, each a `set-result-tab` button carrying its count in a
  * `data-search-count` span; the one `active` is selected and the tab stop.
  */
-export function ResultTabs({ tabs, active, label }: { readonly tabs: readonly ResultTab[]; readonly active: string; readonly label: string }) {
+export function ResultTabs({ tabs, active, label, actions }: {
+  readonly tabs: readonly ResultTab[];
+  readonly active: string;
+  readonly label: string;
+  /** What acts on the tab shown, such as Bulk edit and Export, at the row's end. */
+  readonly actions?: ComponentChildren;
+}) {
   return (
     <div class="overview-tabs-row">
       <div class="segmented overview-tabs" role="tablist" aria-label={label}>
@@ -53,6 +60,7 @@ export function ResultTabs({ tabs, active, label }: { readonly tabs: readonly Re
           );
         })}
       </div>
+      {actions}
     </div>
   );
 }

@@ -16,7 +16,7 @@ import { announce } from '../shared/status';
 import { TagButton } from '../shared/tagButton';
 import { displayLevelOption, installViewOptions, pageWidthOption, themeOption, ViewOptions } from '../shared/viewOptions';
 import { keepState, post } from '../shared/vscode';
-import { Blocks } from './body';
+import { Blocks } from '../shared/noteBlocks';
 
 /** Sends the host one of the messages the note page may send. */
 function send(message: NotePageMessage): void {

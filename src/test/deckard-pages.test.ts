@@ -66,6 +66,7 @@ suite('Deckard pages: the Pages view and Go to…', () => {
 
   test('Pages is first in the sidebar, Go to… has its key, and Context\'s title bar carries no page icons', () => {
     assert.strictEqual(manifest.contributes.views.deckard[0].id, 'deckard.pages');
+    assert.strictEqual((manifest.contributes.views.deckard[0] as { type?: string }).type, 'webview', 'a webview, so it can draw a row of icons');
     assert.deepStrictEqual(
       manifest.contributes.keybindings.find((binding) => binding.command === 'deckard.goTo'),
       { command: 'deckard.goTo', key: 'ctrl+shift+alt+p', mac: 'cmd+shift+alt+p' },

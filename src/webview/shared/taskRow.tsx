@@ -3,12 +3,15 @@
  * the Task Board's list, a search's tasks, Home's task widgets, and the
  * calendar's day draw it; and the parts a board card draws the same way.
  */
+import { TaskBox } from './taskBox';
+import { ProgressText } from './progressText';
 import type { ComponentChildren } from 'preact';
 
 import type { InlineToken } from '../../ui/protocol/inline';
 import type { DashboardTask, TagTitleDisplayMode } from '../../ui/protocol/shared';
 import { DueText } from './dueText';
 import { TaskTitle } from './taskTitle';
+import { describeDates, describeLocation, type EntryFacts, readEntryDetails } from './entryDetails';
 
 /** A priority's arrow: how far it is from the middle. */
 const PRIORITY_MARKS: Readonly<Record<string, string>> = { highest: '↑↑', high: '↑', medium: '', low: '↓', lowest: '↓↓' };
@@ -75,6 +78,24 @@ export function plainTitle(tokens: readonly InlineToken[]): string {
 export function formatTaskDate(timestamp: number): string {
   const date = new Date(timestamp);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * A task's details, carried down under it as a card's are: where it is
+ * written, then the headings above it, then its dates, each on its own line,
+ * as Card details ticks them. Nothing for what is not ticked.
+ */
+export function TaskDetails({ facts, steps, after }: { readonly facts: EntryFacts; readonly steps: Parameters<typeof HeadingPathSteps>[0]['steps']; readonly after?: ComponentChildren }) {
+  const location = describeLocation(facts);
+  const dates = describeDates(facts);
+  return (
+    <>
+      {location ? <span key="source" class="task-source">{location}</span> : null}
+      {after ?? null}
+      {steps.length && readEntryDetails().has('fileAndLine') ? <span key="path" class="task-source heading-path"><HeadingPathSteps steps={steps} /></span> : null}
+      {dates ? <span key="dates" class="task-source entry-dates">{dates}</span> : null}
+    </>
+  );
 }
 
 /**
@@ -181,7 +202,7 @@ function TaskFacts({ item }: { readonly item: DashboardTask }) {
       {task.scheduledAt === undefined ? null : <span key="scheduled" class="task-detail">{`Scheduled ${formatTaskDate(task.scheduledAt)}`}</span>}
       <PriorityBadge key="priority" priority={task.priority} />
       {task.recurrence ? <span key="repeats" class="task-detail">{`Repeats ${task.recurrence}`}</span> : null}
-      {item.stepsLabel ? <span key="steps" class="task-detail task-steps">{item.stepsLabel}</span> : null}
+      {item.stepsLabel ? <span key="steps" class="task-detail task-steps"><ProgressText text={item.stepsLabel} /></span> : null}
     </>
   );
 }
@@ -197,6 +218,9 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, 
   if (task.completed) {
     rowClass += ' completed';
   }
+  if (item.status?.type === 'cancelled') {
+    rowClass += ' cancelled';
+  }
   if (draggable) {
     rowClass += ' is-draggable';
   }
@@ -204,7 +228,7 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, 
   return (
     <div data-search-entry={entry} class={rowClass} draggable={false} tabIndex={0} data-tip-around="" data-task-id={task.id} data-file-path={task.filePath} data-line={task.lineNumber}>
       {leading === undefined
-        ? <input key="toggle" type="checkbox" data-action="toggle-task" data-task-id={task.id} checked={task.completed} aria-label={`Toggle ${plainTitle(item.titleTokens) || task.title}`} />
+        ? <TaskBox taskId={task.id} completed={task.completed} status={item.status} title={plainTitle(item.titleTokens) || task.title} />
         : leading}
       <div>
         <div key={item.task.title} class="task-title">
@@ -212,9 +236,7 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, 
         </div>
         <div class="task-meta">
           <TaskFacts item={item} />
-          <span class="task-source">{formatSourceLocation(item.fileName, task.lineNumber)}</span>
-          {afterSource ?? null}
-          {steps.length ? <span key="path" class="task-source heading-path"><HeadingPathSteps steps={steps} /></span> : null}
+          <TaskDetails facts={{ location: formatSourceLocation(item.fileName, task.lineNumber), createdAt: task.createdAt, updatedAt: task.updatedAt }} steps={steps} after={afterSource} />
         </div>
       </div>
       {trailing}

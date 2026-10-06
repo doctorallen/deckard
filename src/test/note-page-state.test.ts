@@ -126,14 +126,14 @@ suite('The note page', () => {
     assert.strictEqual(page.hub?.tagKey, '#project/atlas');
     assert.strictEqual(page.hub?.kind, 'Project');
     assert.deepStrictEqual(['#team/harbor', '@dana', '#person/sable-ortiz', '#follow-up', '#area/home-office'].map(describeTagKind), ['Team', 'Person', 'Person', 'Tag', 'Area']);
-    assert.match(page.hub?.label ?? '', /done/);
+    assert.match(page.hub?.label ?? '', /^\d+\/\d+ done \(\d+%\)/);
   });
 
   test('says how far along the note’s own tasks are, steps aside, and nothing for a note with none', () => {
     const { parts, ...progress } = page.taskProgress ?? { parts: [] };
-    assert.deepStrictEqual(progress, { done: 1, total: 2, label: '1 of 2 done · next due in 6 days' });
+    assert.deepStrictEqual(progress, { done: 1, total: 2, label: '1/2 done (50%) · next due in 6 days' });
     const found = (query: string | undefined): number => evaluateQuery(index, parseQuery(query ?? '').node, options.queryContext).tasks.length;
-    assert.deepStrictEqual(parts.map((part) => [part.text, found(part.query)]), [['1 of 2 done', 1], ['next due in 6 days', 1]], 'each part searches the note’s own tasks it counts');
+    assert.deepStrictEqual(parts.map((part) => [part.text, found(part.query)]), [['1/2 done (50%)', 1], ['next due in 6 days', 1]], 'each part searches the note’s own tasks it counts');
     assert.deepStrictEqual(
       page.hub?.parts.map((part) => [part.text, found(part.query)]),
       page.hub?.parts.map((part) => [part.text, Number(/^(\d+)/.exec(part.text)?.[1] ?? 1)]),

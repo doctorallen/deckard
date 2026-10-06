@@ -507,6 +507,11 @@ export interface WorkspaceWriteOptions {
    * back, and names the note, once any of them has changed since.
    */
   together?: boolean;
+  /**
+   * The group each change is shown under in the preview, by its note and
+   * the line it starts on; the write's own label for any it does not name.
+   */
+  groupOf?: (uri: vscode.Uri, line: number) => { label: string; description?: string } | undefined;
 }
 
 /** The same edit, with every change waiting for the reader to accept it. */
@@ -516,13 +521,14 @@ function withConfirmation(
 ): vscode.WorkspaceEdit {
   const confirmed = new vscode.WorkspaceEdit();
   entries.forEach(([uri, edits]) => {
-    edits.forEach((edit) =>
+    edits.forEach((edit) => {
+      const group = options.groupOf?.(uri, edit.range.start.line);
       confirmed.replace(uri, edit.range, edit.newText, {
         needsConfirmation: true,
-        label: options.label,
-        ...(options.description ? { description: options.description } : {}),
-      }),
-    );
+        label: group?.label ?? options.label,
+        ...(group?.description ?? options.description ? { description: group?.description ?? options.description } : {}),
+      });
+    });
   });
   return confirmed;
 }

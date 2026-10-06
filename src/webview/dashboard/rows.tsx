@@ -3,6 +3,7 @@
  * tags written together, and tasks, each a control that opens what it
  * names, some with a button of their own beside them.
  */
+import { ProgressText } from '../shared/progressText';
 import type { ComponentChild, ComponentChildren } from 'preact';
 
 import type { DashboardSavedFilter, DashboardWidgetNote, DashboardWidgetTag, DashboardWidgetTagPair } from '../../ui/protocol/dashboard';
@@ -32,7 +33,7 @@ export function HomeRow({ action, attributes, label, detail, detailKind, progres
     <button type="button" class={progress ? 'row saved-filter-row home-row has-progress' : 'row saved-filter-row home-row'} data-action={action} data-tip-around="" {...attributes}>
       <span class="home-row-label">{label}</span>
       {progress ? <ProgressBar done={progress.done} total={progress.total} /> : null}
-      {detail ? <span class={`home-row-detail is-${detailKind}`}>{detail}</span> : null}
+      {detail ? <span class={`home-row-detail is-${detailKind}`}><ProgressText text={detail} /></span> : null}
     </button>
   );
 }

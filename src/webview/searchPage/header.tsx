@@ -130,6 +130,17 @@ function SearchViewOptions({ snapshot }: { readonly snapshot: SearchPageSnapshot
           ),
         },
         {
+          label: 'Hierarchy',
+          content: (
+            <ViewOptionChoices
+              action="set-hierarchy"
+              choices={[['off', 'Off', 'No hierarchy'], ['tags', 'By tag', "Group by Refine's tags"], ['headings', 'By heading', 'Nest by tagged headings']]}
+              selected={snapshot.hierarchy || 'off'}
+              label="Group the results by tag"
+            />
+          ),
+        },
+        {
           label: 'Format',
           content: (
             <IconToggles action="set-mode" attribute="data-mode" current={snapshot.renderMode} label="Content format" choices={[

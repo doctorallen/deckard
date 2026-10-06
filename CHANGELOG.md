@@ -2,6 +2,111 @@
 
 ## Unreleased
 
+### Added
+
+- **Hierarchy on search pages.** **Hierarchy** in the gear groups the
+  results under each tag Refine offers, in tabs or side by side, with how
+  many notes and tasks each holds and a bar for how many of its tasks are
+  done. A note or task is shown where it is most specific, under its own
+  tags before the ones it inherits, so a tagged heading is never listed
+  beside the note it is in, and a grouped card leaves out the task lines
+  listed under it. **By heading** nests them the way the notes nest their
+  tagged headings instead: each project (an H1's tag) holds its own parts
+  (its H2s' tags), and a project's bar counts its parts' tasks.
+
+- **Pages as icons.** `deckard.pages.style` draws the Pages view as one
+  row of page icons, named on hover, for a reader who knows them, and
+  `deckard.pages.shown` picks which pages it keeps. As a list, each row's
+  hint now sits at the right.
+
+- **Card details.** `deckard.display.cardDetails` picks what an entry
+  shows under it with File & line: its file and line, and its created and
+  updated dates on a line of their own, *Created 2026-09-12 · Updated
+  2026-10-03*, on search cards,
+  task rows, and board cards. A task's created date is its own ➕ date when
+  it has one. File & line still says when: on hover, always, or never.
+
+- **A project's parts on its page.** A tag written on headings with
+  tagged headings under them lists those parts under its progress, each
+  with its own figure, such as *#phase/design 2/3 done (67%)*, and a link
+  that narrows the project's page to it.
+
+- **Task statuses in the checkbox.** The character in a task's box is its
+  status, as in Obsidian Tasks: `[/]` in progress, `[-]` cancelled (with a
+  ❌ date), and `[=]` Blocked, beside `[ ]` and `[x]`.
+  `deckard.tasks.statuses` names them, with the `#status/…` tag each stands
+  for, so `- [ ] Draft #status/doing` still reads as in progress. A
+  cancelled task is closed but not done: it leaves open counts, overdue,
+  and the Tasks view, and counts on neither side of progress. Pages, the
+  preview, and the editor draw each status, and typing `- [` offers every
+  character.
+
+- **Search by status.** `status:in-progress`, `status:"in progress"`,
+  `status:[=]`, and `status:unknown`, with `is:in-progress`,
+  `is:cancelled`, `is:closed`, a `cancelled` date field, and
+  `has:cancelled`. The builder has a Status field, and Refine a chip for
+  cancelled tasks and each open status found.
+
+- **Setting and editing statuses.** `Deckard: Set Task
+  Status…`, in the palette, the editor's menu, and the Tasks view, sets
+  any status; the task editor, bulk edits, and the assistant set one too.
+  `Deckard: Edit Task Statuses…` edits the list on a page, with presets,
+  checks as you type, and the choice of what checking a box does
+  (`deckard.tasks.checkboxClick`).
+
+- **Moving to statuses.** `Deckard: Move Status Tags into Checkboxes…`
+  writes `#status/doing` as `[/]` and the like, after a preview, as one
+  change Undo takes back. `Deckard: Import Statuses from Obsidian Tasks`
+  reads a vault's statuses into the workspace's settings. The first scan
+  offers one of them, once.
+
+- **A Cancelled column on the Task board.** **Show a Cancelled column
+  after Done**, in the gear, draws one; dropping a card there cancels it.
+
+### Changed
+
+- **A tag's hub note is drawn as the note page draws it.** Its ```deckard
+  query blocks show what they find, its `[[links]]` open, and its tasks can
+  be ticked, where it showed them as written.
+
+- **Progress reads 3/8 done (38%).** Every figure of how far along tasks
+  are, beside a progress bar or not, is written one way: on a tag's page,
+  the note page, Home's Progress widget, a hierarchy's groups, Hubs, query
+  block tables, a review's summary, a hub note's first line, and a task's
+  steps (*Steps 2/5 done (40%)*). The Outline's row keeps to *2/5 (40%)*. A
+  screen reader is given each as *3 of 8 done, 38%*, since "3/8" can be read
+  as a fraction or a date.
+
+- **The Outline is its own view again.** The Context view's Sections list
+  of 2.2.0 goes back to Deckard's Outline view in the sidebar, with its
+  title-bar controls: Follow Cursor, Filter by Tag, and Unfold All.
+
+- **A card never repeats another note's text.** A heading's card, and the
+  card of a note tagged in its front matter, leave out the headings under
+  them that are notes of their own, each of which has its own card; a word
+  written under one finds it alone.
+
+- **`[/]`, `[-]`, and any other character in a box make a task.** Lines
+  that were text are now tasks, so task counts change. A character no
+  status names is a task to do called Unknown, and the notice about
+  checkbox lines that are text now says how many tasks use a status
+  Deckard doesn't know.
+
+- **The board's Doing column is In progress.** Status columns are named
+  for their statuses; `deckard.board.statuses` and `deckard.board.limits`
+  still say `doing`. A plain line dropped on a status column gets the
+  status's character, such as `[/]`, where it got a tag; a line with a
+  status tag still gets the tag (`deckard.tasks.writeStatusAs`).
+
+- **`is:waiting` finds every task on hold**: Someday and Blocked as well
+  as Waiting. `deckard.tasks.onHoldStatuses` is deprecated; each tag it
+  lists is still read as on hold.
+
+### Fixed
+
+- **A tag's hub note opens in the editor** from its page, even where notes
+  open on the note page: its page is the tag's page, which was open already.
+
 ## 2.2.0 - 2026-10-05
 
 ### Highlights

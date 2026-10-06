@@ -4,6 +4,8 @@ import { fileExists } from './fs';
 import { MoveRefusalReason, readMoveBlock } from '../../domain/markdown/moveLines';
 import { getLinkableNoteFileName } from '../../domain/markdown/noteNames';
 import { parseTaskDraft } from '../../domain/markdown/taskDraft';
+import { STATUS_CHARACTER } from '../../domain/markdown/lineShapes';
+import { readTaskStatusOptions } from './parseSettings';
 import { stripTags } from '../../domain/markdown/parser';
 import { PreferenceServices } from '../../core/storage/preferences';
 import { noteTitle } from '../../domain/index/backlinks';
@@ -64,7 +66,7 @@ export async function moveToCommand(
     return;
   }
   const lines = editor.document.getText().split(/\r?\n/);
-  const read = readMoveBlock(lines, editor.selection);
+  const read = readMoveBlock(lines, editor.selection, readTaskStatusOptions(editor.document.uri));
   if ('refused' in read) {
     if (read.refused === 'heading') {
       void vscode.window
@@ -379,6 +381,9 @@ function describeTask(line: string): string {
   return title.length > 60 ? `${title.slice(0, 57)}…` : title;
 }
 
+/** The start of a task line of any status, on which Move to… is offered with nothing selected. */
+const TASK_START = new RegExp(String.raw`^\s*[-*+][ \t]+\[${STATUS_CHARACTER}\]`);
+
 /**
  * The lightbulb's Move to…: on a task line, or on a selection, in a note in
  * the notes folder. Not on every line of prose, which would put a lightbulb
@@ -400,7 +405,7 @@ export class MoveToActions implements vscode.CodeActionProvider {
       return [];
     }
     const line = document.lineAt(range.start.line).text;
-    if (range.isEmpty && !/^\s*[-*+][ \t]+\[[ xX]\]/.test(line)) {
+    if (range.isEmpty && !TASK_START.test(line)) {
       return [];
     }
     const action = new vscode.CodeAction('Move to…', vscode.CodeActionKind.RefactorMove);

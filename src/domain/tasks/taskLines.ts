@@ -1,5 +1,6 @@
-import { findCheckboxColumn, findStepFamily, isCheckedTaskLine } from '../markdown/taskSteps';
+import { findCheckboxColumn, findStepFamily, isClosedTaskLine } from '../markdown/taskSteps';
 import { Task } from '../model';
+import type { TaskStatusDefinition } from './taskStatuses';
 import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskFields';
 
 /**
@@ -22,7 +23,7 @@ export interface NoteLines {
  */
 export function readIndexedTaskLine(
   note: NoteLines,
-  task: Pick<Task, 'lineNumber' | 'sourceLineText' | 'checkboxColumn' | 'checkboxValue'>,
+  task: Pick<Task, 'lineNumber' | 'sourceLineText' | 'checkboxColumn' | 'status'>,
 ): string | undefined {
   if (
     task.lineNumber < 1 ||
@@ -33,7 +34,7 @@ export function readIndexedTaskLine(
   }
   const line = note.lineAt(task.lineNumber - 1);
   if (
-    line[task.checkboxColumn] !== task.checkboxValue ||
+    line[task.checkboxColumn] !== task.status.symbol ||
     line[task.checkboxColumn - 1] !== '[' ||
     line[task.checkboxColumn + 1] !== ']'
   ) {
@@ -69,13 +70,15 @@ export function readCompletionFamily(
   lines: readonly string[],
   lineIndex: number,
   written: string,
+  statuses?: readonly TaskStatusDefinition[],
 ): CompletionFamily {
   const family = findStepFamily(lines, lineIndex);
-  const openSteps = family.steps.filter((line) => !isCheckedTaskLine(lines[line])).length;
+  const closed = (line: number): boolean => isClosedTaskLine(lines[line], statuses);
+  const openSteps = family.steps.filter((line) => !closed(line)).length;
   let lastStepOf: CompletionFamily['lastStepOf'];
-  if (family.parent !== undefined && !isCheckedTaskLine(lines[family.parent])) {
+  if (family.parent !== undefined && !closed(family.parent)) {
     const stillOpen = findStepFamily(lines, family.parent).steps.filter(
-      (line) => line !== lineIndex && !isCheckedTaskLine(lines[line]),
+      (line) => line !== lineIndex && !closed(line),
     );
     if (stillOpen.length === 0) {
       const text = lines[family.parent];

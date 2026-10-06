@@ -68,6 +68,7 @@ import { EditorTagDecorations } from '../ui/providers/tagDecorations';
 import { TagCompletionProvider } from '../ui/providers/tagSuggestions';
 import { TaskMetadataCompletionProvider } from '../ui/providers/taskMetadataSuggestions';
 import { SlashMenuProvider } from '../ui/providers/slashMenu';
+import { StatusSuggestionsProvider } from '../ui/providers/statusSuggestions';
 import { EditorLenses } from '../ui/providers/editorLenses';
 import { EditorReferences } from '../ui/providers/editorReferences';
 import { AssistantTools } from '../ui/commands/assistantTools';
@@ -78,6 +79,7 @@ import { NotesGraphPanel, readNotesGraphOptions } from '../ui/webview/notesGraph
 import { SidebarNotesView } from '../ui/webview/sidebarNotes';
 import { RelatedNotesDebugPanel } from '../ui/webview/relatedNotesDebug';
 import { StatsPanel } from '../ui/webview/stats';
+import { TaskStatusesPanel } from '../ui/webview/taskStatuses';
 import { NotePagePanel } from '../ui/webview/notePage';
 import { TaskBoardPanel } from '../ui/webview/taskBoard';
 import { ActiveSearch } from '../ui/webview/activeSearch';
@@ -88,7 +90,8 @@ import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/first
 import { suggestEsperThemesOnce } from '../ui/commands/esperThemes';
 import { initWriteTarget, isPausedHere, looksLikeCodeRepository, onDidChangePaused, readNotesFolder } from '../ui/commands/writeTarget';
 import { ScopeStatusBar } from '../ui/views/scopeStatusBar';
-import { countOtherCheckboxes, noticeOtherCheckboxesOnce } from '../ui/commands/otherCheckboxes';
+import { countUnknownStatuses, noticeUnknownStatusesOnce } from '../ui/commands/otherCheckboxes';
+import { offerStatusMigrationOnce } from '../ui/commands/statusMove';
 import { openSettingAction, settingLabel } from '../ui/commands/notify';
 import { PreferenceSnapshots } from '../core/storage/preferenceSnapshots';
 import { OutlineTreeProvider, syncOutlineFollowCursorContext } from '../ui/views/outlineTree';
@@ -101,6 +104,7 @@ import { resolveTaskMove } from '../ui/state/taskBoardState';
 import { AgendaService } from '../services/agendaService';
 import { isWhatsNewShown, WhatsNew } from '../ui/commands/whatsNew';
 import { ThemePreview } from '../ui/webview/themePreview';
+import { PagesView } from '../ui/webview/pagesView';
 import { TryNextLedger } from '../ui/commands/tryNext';
 import { settingTarget, writeSetting } from '../ui/commands/settings';
 import { DisposalOrder } from './disposalOrder';
@@ -155,6 +159,7 @@ export interface Pages {
   calendar: CalendarPanel;
   taskBoard: TaskBoardPanel;
   notePage: NotePagePanel;
+  taskStatuses: TaskStatusesPanel;
 }
 
 /**
@@ -223,8 +228,6 @@ interface Core {
   workspace: ReturnType<typeof createVscodeWorkspace>;
   scanner: WorkspaceScanner<vscode.Uri>;
   indexer: IndexRoles<vscode.Uri>;
-  /** The editor's note's headings, as typed: the Context view's Sections, and what Focus Section reads. */
-  outline: OutlineTreeProvider;
 }
 
 /**
@@ -263,8 +266,11 @@ export function createServices(context: vscode.ExtensionContext): Services {
       .then(() => suggestEsperThemesOnce(context.globalState))
       .catch((error: unknown) => reportError('Could not suggest Esper Themes', error));
     void core.indexer.ready
-      .then(() => noticeOtherCheckboxesOnce(context.workspaceState, countOtherCheckboxes(core.indexer.getSnapshot())))
-      .catch((error: unknown) => reportError('Could not count the checkbox lines that are not tasks', error));
+      .then(() => noticeUnknownStatusesOnce(context.workspaceState, countUnknownStatuses(core.indexer.getSnapshot())))
+      .catch((error: unknown) => reportError('Could not count the tasks whose status Deckard does not know', error));
+    void core.indexer.ready
+      .then(() => offerStatusMigrationOnce(context.workspaceState, core.indexer))
+      .catch((error: unknown) => reportError('Could not offer to move status tags into checkboxes', error));
   }
   syncWalkthroughContext(context, core.indexer);
   createEditorContexts(context, core, preferences);
@@ -282,11 +288,15 @@ export function createServices(context: vscode.ExtensionContext): Services {
   });
   const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, dashboard: home.dashboard, whatsNew, writes });
   const trees = createTreesAndCapture(context, core, preferences, writes);
+  // With the note page in front, the Outline lists its note's headings.
+  trees.outline.followNotePage(sidebar.activeNotePage);
   const built: Built = { core, preferences, writes, search, editor, assistance, calendar, home, sidebar, trees };
   holdUntilShutdown(context, shutdown, built);
   warnOfUnreadableNotes(context, core.indexer);
   tidyPreferencesOnUpdate(context, core.indexer, preferences);
-  registerViews(context, { sidebarNotes: sidebar.sidebarNotes, calendar: calendar.calendar, outline: trees.outline, agenda: trees.agenda });
+  const pagesView = new PagesView({ indexer: core.indexer, themePreview: search.themePreview, extensionUri: context.extensionUri });
+  context.subscriptions.push(pagesView);
+  registerViews(context, { sidebarNotes: sidebar.sidebarNotes, calendar: calendar.calendar, outline: trees.outline, agenda: trees.agenda, pages: pagesView });
   const pages = listPages(built);
   const sectionFocus = createLateContexts(context, core, pages);
   return {
@@ -351,6 +361,7 @@ function holdUntilShutdown(context: vscode.ExtensionContext, shutdown: DisposalO
     assistance.entitySuggestions,
     home.dashboard,
     sidebar.stats,
+    sidebar.taskStatuses,
     sidebar.help,
     sidebar.relatedNotesDebug,
     sidebar.notePage,
@@ -384,6 +395,7 @@ function listPages({ search, home, sidebar, calendar }: Built): Pages {
     calendar: calendar.calendarPage,
     taskBoard: home.taskBoard,
     notePage: sidebar.notePage,
+    taskStatuses: sidebar.taskStatuses,
   };
 }
 
@@ -489,10 +501,7 @@ function createCore(context: vscode.ExtensionContext): Core {
   const scope = new ScopeStatusBar(context.workspaceState);
   context.subscriptions.push(scope);
   void scope.refresh();
-  // The editor's note's headings, as typed: drawn as the Context view's
-  // Sections list, and read by Focus Section and the Sections filter.
-  const outline = new OutlineTreeProvider(indexer);
-  return { history, workspace, scanner, indexer, outline };
+  return { history, workspace, scanner, indexer };
 }
 
 /** The preference repository, a service per capability over it, and its snapshots. */
@@ -668,6 +677,7 @@ function createEditorProviders(context: vscode.ExtensionContext, core: Core, pre
   const tagSuggestions = new TagCompletionProvider(indexer).register();
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer).register();
   context.subscriptions.push(new SlashMenuProvider(indexer).register());
+  context.subscriptions.push(new StatusSuggestionsProvider((uri) => indexer.isNotesFile(uri)).register());
   const taskEditorActions = new TaskEditorActions();
   const taskLineContext = new TaskLineContext();
   return { tagDecorations, pins, tagSuggestions, taskMetadataSuggestions, taskEditorActions, taskLineContext };
@@ -949,7 +959,6 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     activeNotePage,
     history,
     themePreview,
-    sections: parts.core.outline,
   });
   parts.dashboard.activeHome = activeHome;
   const stats = new StatsPanel({
@@ -996,12 +1005,14 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     activeNotePage,
     onOpenSearch: (query) => searchPanels.showQuery(query),
   });
-  return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug, notePage };
+  const taskStatuses = new TaskStatusesPanel({ indexer, preferences: repository, history, extensionUri: context.extensionUri, themePreview });
+  return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug, notePage, activeNotePage, taskStatuses };
 }
 
 /** The Outline, the query blocks, the Tasks view and its service, the status bar, and capture. */
 function createTreesAndCapture(context: vscode.ExtensionContext, core: Core, preferences: PreferenceParts, writes: Omit<Writes, 'capture'>) {
-  const { indexer, outline } = core;
+  const { indexer } = core;
+  const outline = new OutlineTreeProvider(indexer);
   // A query block's checkboxes link to Deckard's URI handler, which ticks them.
   const queryBlocks = new QueryBlocks(indexer, {
     base: `${vscode.env.uriScheme}://${context.extension.id}`,
@@ -1127,11 +1138,14 @@ function tidyPreferencesOnUpdate(
   );
 }
 
-/** Registers the two sidebar webviews and creates the Tasks tree. */
-function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'taskStatusBar'>): void {
-  // The Outline is no view of its own: the Context view draws it as Sections.
-  const { sidebarNotes, calendar, agenda } = views;
+/** Registers the two sidebar webviews and creates the Outline and Tasks trees. */
+function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'taskStatusBar'> & { pages: PagesView }): void {
+  const { sidebarNotes, calendar, outline, agenda, pages } = views;
   context.subscriptions.push(
+    // Every Deckard page, first in the sidebar, as labeled rows or a row of icons.
+    vscode.window.registerWebviewViewProvider('deckard.pages', pages, {
+      webviewOptions: { retainContextWhenHidden: false },
+    }),
     // Neither Related Notes nor the Calendar is kept running while hidden
     // (Q1 of docs/implementation/20-webviews.md); their controllers say so too.
     vscode.window.registerWebviewViewProvider('deckard.relatedNotes', sidebarNotes, {
@@ -1141,6 +1155,12 @@ function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'tas
       webviewOptions: { retainContextWhenHidden: false },
     }),
   );
+  const outlineView = vscode.window.createTreeView('deckard.outline', {
+    treeDataProvider: outline,
+    showCollapseAll: true,
+  });
+  outline.attach(outlineView);
+  context.subscriptions.push(outlineView);
   const agendaView = vscode.window.createTreeView('deckard.agenda', {
     treeDataProvider: agenda,
     manageCheckboxStateManually: true,

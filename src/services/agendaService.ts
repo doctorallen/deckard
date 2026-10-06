@@ -1,4 +1,5 @@
 import { Task, WorkspaceIndex } from '../domain/model';
+import { readStatusWriteMode, type StatusWriteMode } from '../domain/tasks/statusWrites';
 import { QueryContext } from '../domain/query/queryContext';
 import {
   AgendaGroupBy,
@@ -50,6 +51,8 @@ export interface BoardMoveOptions {
   statuses: readonly string[];
   statusNamespace: string;
   format: TaskMetadataFormat;
+  writeAs?: StatusWriteMode;
+  addCancelledDate?: boolean;
 }
 
 /**
@@ -344,6 +347,8 @@ export class AgendaService<G extends AgendaGroupLike> {
       statuses: readBoardStatuses(configuration),
       statusNamespace: readStatusNamespace(configuration),
       format: readMetadataFormat(configuration),
+      writeAs: readStatusWriteMode(configuration.get<unknown>('tasks.writeStatusAs')),
+      addCancelledDate: configuration.get<boolean>('tasks.addCancelledDate', true),
     };
   }
 

@@ -29,6 +29,7 @@ import type {
   SidebarReadyMessage,
   TagTitleDisplayMode,
   ToggleTaskMessage,
+  DrawnStatus,
 } from './shared';
 
 /** Keeps the order tasks were dragged into as their rank. */
@@ -52,8 +53,13 @@ export interface TaskBoardCard {
   /** The title as inline Markdown tokens, which the page draws as elements and text, as the task list does. */
   titleTokens: InlineToken[];
   completed: boolean;
+  /** Its status, when it is neither a plain to do nor done, which its box is drawn by. */
+  status?: DrawnStatus;
   filePath: string;
   line: number;
+  /** When the task was created, its own ➕ date or its note's, and when its note last changed, for Card details. */
+  createdAt?: number;
+  updatedAt?: number;
   /** Short facts under the title, such as "due 2026-09-14". */
   details: string[];
   overdue: boolean;
@@ -183,6 +189,8 @@ export interface TaskTableRow {
   filePath: string;
   line: number;
   completed: boolean;
+  /** Its status, when it is neither a plain to do nor done. */
+  status?: DrawnStatus;
   /** One cell per column, in the columns' order. */
   cells: TableCell[];
 }
@@ -196,7 +204,9 @@ export interface TaskBoardSettings {
    * then any other status an open task carries. The gear lists these, so a
    * column that is on the board is in the list that orders it.
    */
-  columns?: { status: string; openTasks: number }[];
+  columns?: { status: string; openTasks: number; label?: string }[];
+  /** Whether the board draws a Cancelled column after Done. */
+  showCancelled?: boolean;
 }
 
 /**
@@ -285,6 +295,12 @@ export interface SetBoardQueryMessage {
 export interface SetBoardStatusesMessage {
   type: 'setBoardStatuses';
   statuses: string[];
+}
+
+/** Shows or hides the Cancelled column. */
+export interface SetBoardShowCancelledMessage {
+  type: 'setBoardShowCancelled';
+  show: boolean;
 }
 
 /** Chooses the namespace whose tags are the board's statuses. */
@@ -412,6 +428,7 @@ export interface TaskBoardPageToHost {
   reorderTasks: ReorderTasksMessage;
   setBoardStatuses: SetBoardStatusesMessage;
   setBoardStatusNamespace: SetBoardStatusNamespaceMessage;
+  setBoardShowCancelled: SetBoardShowCancelledMessage;
 }
 
 /**

@@ -1,9 +1,11 @@
 import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
-import { matchTaskLine, TaskLineShape, findFencedLines } from '../../domain/markdown/lineShapes';
+import { matchTaskLine, STATUS_MARKS, TaskLineShape, findFencedLines } from '../../domain/markdown/lineShapes';
 import { QueryContext } from '../../domain/query/queryContext';
 import { parseIsoDate } from '../../domain/markdown/calendar';
 import { findTaskMetadataSpans } from '../../domain/markdown/taskFields';
 import { describeDueDate } from '../../domain/markdown/dueWording';
+import { isOpenType, statusForSymbol, UNKNOWN_STATUS_NAME } from '../../domain/tasks/taskStatuses';
+import type { TaskStatus } from '../../domain/model';
 
 /** A stretch of one line, zero-based. */
 export interface LineSpan {
@@ -26,10 +28,16 @@ export interface TaskLineMarks {
   /** The due date of an open task that is overdue, drawn in its own color. */
   overdue: LineSpan[];
   hints: TaskLineHint[];
+  /** The box of an in-progress task, drawn in its own color. */
+  inProgress: LineSpan[];
+  /** A cancelled task's words, struck through. */
+  cancelled: LineSpan[];
+  /** A box whose character no status names, underlined, with the character. */
+  unknown: Array<LineSpan & { symbol: string }>;
 }
 
-/** An open or done task line; one space or tab after its box belongs to the box. */
-const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'optional-blank' };
+/** A task line of any status; one space or tab after its box belongs to the box. */
+const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: STATUS_MARKS, after: 'optional-blank' };
 /** A block id at the end of any line. */
 const BLOCK_ID = /[ \t]+(\^[A-Za-z0-9-]+)[ \t]*$/;
 
@@ -51,7 +59,7 @@ export function findTaskLineMarks(
   context: Pick<QueryContext, 'now' | 'taskPolicy'>,
   options: { dim: boolean; hints: boolean },
 ): TaskLineMarks {
-  const marks: TaskLineMarks = { dim: [], overdue: [], hints: [] };
+  const marks: TaskLineMarks = { dim: [], overdue: [], hints: [], inProgress: [], cancelled: [], unknown: [] };
   const fenced = findFencedLines([...lines]);
   const skip = frontMatterLines(lines);
   lines.forEach((text, line) => {
@@ -98,7 +106,9 @@ function markTaskLine(
   options: { dim: boolean; hints: boolean },
 ): void {
   const offset = task.head.length + task.gap.length;
-  const open = task.mark === ' ';
+  const status = statusForSymbol(context.taskPolicy.statuses, task.mark);
+  const open = isOpenType(status.type);
+  markStatus(marks, { text, line, task }, status);
   const spans = findTaskMetadataSpans(text.slice(offset));
   const due = spans.find((span) => span.field === 'due');
   const dueAt = open && due ? parseIsoDate(due.value) : undefined;
@@ -117,6 +127,18 @@ function markTaskLine(
   const hint = hintFor(described);
   if (hint) {
     marks.hints.push({ line, ...hint });
+  }
+}
+
+/** Marks a task's box or words by its status: in progress, cancelled, or a character no status names. */
+function markStatus(marks: TaskLineMarks, { text, line, task }: TaskLineAt, status: TaskStatus): void {
+  const box = { line, start: task.opening.length - 1, end: task.opening.length + 2 };
+  if (status.name === UNKNOWN_STATUS_NAME) {
+    marks.unknown.push({ ...box, symbol: status.symbol });
+  } else if (status.type === 'inProgress') {
+    marks.inProgress.push(box);
+  } else if (status.type === 'cancelled') {
+    marks.cancelled.push({ line, start: task.head.length + task.gap.length, end: text.trimEnd().length });
   }
 }
 

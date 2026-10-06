@@ -56,10 +56,12 @@ const FACETS: QueryFacet[] = [
   },
 ];
 
-/** The host's view of a search, as a page is sent it. */
+/** Fields added since the template was recorded, which its builder never listed. */
+const FIELDS_SINCE_TEMPLATE = new Set(['status', 'cancelled']);
+
+/** The host's view of a search, as a page is sent it, with the fields the template's builder knew. */
 function viewOf(text: string, extra: Partial<QueryViewState> = {}, typed?: string): QueryViewState {
-  return {
-    ...createQueryViewState({
+  const view = createQueryViewState({
       index: INDEX,
       parsed: parseQuery(text),
       matchCounts: { notes: 2, tasks: 3 },
@@ -68,7 +70,10 @@ function viewOf(text: string, extra: Partial<QueryViewState> = {}, typed?: strin
       facets: FACETS,
       pending: typed,
       queryContext: QUERY_CONTEXT,
-    }),
+    });
+  return {
+    ...view,
+    suggestions: { ...view.suggestions, fields: view.suggestions.fields.filter((field) => !FIELDS_SINCE_TEMPLATE.has(field.value)) },
     ...extra,
   };
 }
@@ -233,7 +238,12 @@ suite('The shared search box draws and does what the template script did', () =>
     send(viewOf('is:open'));
     click('[data-action="facet"][data-clause="#project/atlas"]');
     click('[data-action="facet"][data-clause="#project/atlas"]', { altKey: true });
-    send(viewOf('is:open AND status = s0', { facets: FACETS.map((facet) => (facet.id === 'status' ? { ...facet, applied: ['status = s0'] } : facet)) }));
+    // When the template was recorded, status was another name for task, so
+    // `status = s0` was a search Deckard could not read. It reads now, as a
+    // status's name, so the search is sent as it was then: task's error,
+    // under the words as written.
+    const applied = viewOf('is:open AND task = s0', { facets: FACETS.map((facet) => (facet.id === 'status' ? { ...facet, applied: ['status = s0'] } : facet)) });
+    send(JSON.parse(JSON.stringify(applied).replace(/task = s0/g, 'status = s0')) as QueryViewState);
     click('[data-action="facet"][data-clause="status = s1"]', { shiftKey: true });
     assertSame('three refinements');
   });

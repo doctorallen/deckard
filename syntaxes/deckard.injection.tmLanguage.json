@@ -10,6 +10,9 @@
       "include": "#wiki-link"
     },
     {
+      "include": "#task-status"
+    },
+    {
       "include": "#task-dates"
     },
     {
@@ -57,6 +60,21 @@
         },
         "5": {
           "name": "punctuation.definition.link.end.deckard"
+        }
+      }
+    },
+    "task-status": {
+      "comment": "A task's status character other than a space or an x, as [/] or [-], which deckard.tasks.statuses names: drawn as a keyword so it stands apart from the words.",
+      "match": "(?<=[-*+] )(\\[)([^ xX>\\]\\s])(\\])(?=[ \\t])",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.task-status.begin.deckard"
+        },
+        "2": {
+          "name": "keyword.other.task-status.deckard"
+        },
+        "3": {
+          "name": "punctuation.definition.task-status.end.deckard"
         }
       }
     },

@@ -4,11 +4,12 @@ import {
   isParkedTask,
   parkedLast,
 } from '../../domain/index/parked';
+import { countTaskProgress, isOpenTask } from '../../domain/tasks/taskStatuses';
 import { correctQueryText, getPlainTextTerms, getTextWords } from '../../domain/query/queryEdit';
 import { evaluateQuery, QueryResults } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { EntityNamespaceAliases } from '../../domain/markdown/parser';
-import { getQueryNarrowedTag, getQueryTagIntersection, quoteValue } from '../../domain/query/queryFormat';
+import { collectQueryTagKeys, getQueryNarrowedTag, getQueryTagIntersection, quoteValue } from '../../domain/query/queryFormat';
 import { parseQuery } from '../../domain/query/queryParser';
 import { ParsedQuery } from '../../domain/query/queryTypes';
 import { noteTitle } from '../../domain/index/backlinks';
@@ -22,9 +23,9 @@ import {
   createDashboardTask,
   createFileOverviewCard,
   getFileEntryTitle,
+  getFileCardLines,
   createTagOverviewCard,
   createTagOverviewHub,
-  getFrontmatterBody,
   getSectionBody,
   sortTasks,
 } from './entryCards';
@@ -39,13 +40,16 @@ import { findTagLookalikes } from '../../domain/ranking/tagHygiene';
 import { pinKey } from '../../core/storage/preferencesSchema';
 import { createPinForLine } from '../../domain/notes/pins';
 import { buildSearchFacets, SearchFacetValue } from '../../domain/search/facets';
-import { ResultPaging, TagOverviewCard } from '../protocol/shared';
-import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes } from '../protocol/searchPage';
+import { DashboardTask, ResultPaging, TagOverviewCard } from '../protocol/shared';
+import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes, SearchResultGroup } from '../protocol/searchPage';
+import { findTagFacet, GROUP_ITEM_LIMIT, groupResults } from './searchGroups';
+import { countGroup, groupByHeading, type HeadingGroup } from './headingGroups';
 import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
 import { linkProgressParts } from './progressLinks';
 import { isEntrySection } from '../../domain/markdown/noteEntries';
-import { getEntryLineMap, getEntryTextOf, isFileEntry } from '../../domain/index/noteEntryIndex';
+import { getEntryLineMap, getEntryTextOf, getFileEntryLines, isFileEntry } from '../../domain/index/noteEntryIndex';
 import { stripTags } from '../../domain/markdown/parser';
+import { isTaskItemLine } from '../../domain/markdown/listNesting';
 import {
   Entity,
   SearchPreview,
@@ -57,8 +61,12 @@ import {
   Task,
   TagTitleDisplayMode,
   TagAssociation,
+  QueryFacet,
   WorkspaceIndex,
 } from '../../domain/model';
+import { collectTagParts } from '../../domain/tasks/tagParts';
+import { formatProgressCount } from '../../domain/tasks/progressCount';
+import { readNoteBody } from './notePageState';
 
 /**
  * A search page: what one search finds, sorted, paged, and drawn as cards
@@ -165,10 +173,6 @@ export function createSearchPageSnapshot(
     (task) => isParkedTask(index, task.id),
   );
   const taskPaging = createPaging(tasks.length, pageSize, options.taskPage);
-  const related =
-    tagKeys && (options.enableHeadingTagRelationships ?? true)
-      ? createRelatedFacetValues(index, tagKeys, results)
-      : undefined;
   // Only a search that found nothing is worth correcting: results answer the
   // search as it was typed, and offering a different one beside them would
   // argue with what the reader can already see.
@@ -176,6 +180,20 @@ export function createSearchPageSnapshot(
     ranked.length === 0 && tasks.length === 0
       ? suggestWorkingSearch(index, { text, parsed, sectionKey, options })
       : undefined;
+  const facets = buildPageFacets(index, page, text, options);
+  const drawTask = (task: Task) =>
+    markParked(
+      markVia(createDashboardTask(task, index.sections, options.queryContext), task.id),
+      isParkedTask(index, task.id),
+    );
+  const groups = drawHierarchy(index, preferences.searchHierarchy, {
+    facets,
+    page,
+    ranked,
+    tasks,
+    drawTask,
+    drawNotes: (keys) => drawNoteCards(index, preferences, { keys, page, tagTitleDisplayMode, markVia, withoutTasks: true }),
+  });
 
   return {
     ...buildTagPageBlock(index, preferences, page, options.queryContext),
@@ -185,12 +203,7 @@ export function createSearchPageSnapshot(
       matchCounts: { notes: ranked.length, tasks: tasks.length },
       isAdvanced: true,
       recentQueries: preferences.recentQueries ?? [],
-      facets: parsed.node
-        ? buildSearchFacets(index, results, text, {
-            related,
-            now: options.queryContext.now,
-          })
-        : [],
+      facets,
       queryContext: options.queryContext,
     }),
     ...(suggestion ? { suggestion } : {}),
@@ -199,19 +212,16 @@ export function createSearchPageSnapshot(
     savedViewName: findSavedViewName(preferences.savedFilters, tagKeys, parsed),
     sections,
     notePaging,
-    tasks: takePage(tasks, taskPaging).map((task) =>
-      markParked(
-        markVia(createDashboardTask(task, index.sections, options.queryContext), task.id),
-        isParkedTask(index, task.id),
-      ),
-    ),
+    tasks: takePage(tasks, taskPaging).map(drawTask),
     taskPaging,
     taskCounts: countTasks(tasks),
     pageSizes: SEARCH_PAGE_SIZES,
+    ...(groups ? { groups } : {}),
     renderMode: preferences.renderMode,
     preview: preferences.searchPreview,
     sortMode: preferences.tagOverviewSortMode,
     layout: preferences.tagOverviewLayout,
+    hierarchy: preferences.searchHierarchy ?? 'off',
     noteColumns: preferences.dashboardNoteColumns,
     taskColumns: preferences.dashboardTaskColumns,
     tagTitleDisplayMode,
@@ -239,11 +249,98 @@ function suggestWorkingSearch(
     : undefined;
 }
 
+/**
+ * What Refine offers: under Tags, the tags associated with a search of tags,
+ * else those its results carry; and the other facets of what it found.
+ */
+function buildPageFacets(index: WorkspaceIndex, page: SearchPageResults, text: string, options: SearchPageOptions): QueryFacet[] {
+  const { parsed, tagKeys, results } = page;
+  if (!parsed.node) {
+    return [];
+  }
+  const related =
+    tagKeys && (options.enableHeadingTagRelationships ?? true)
+      ? createRelatedFacetValues(index, tagKeys, results)
+      : undefined;
+  return buildSearchFacets(index, results, text, { related, now: options.queryContext.now, taskPolicy: options.queryContext.taskPolicy });
+}
+
+/** What either hierarchy draws its groups from. */
+interface HierarchySource {
+  facets: readonly QueryFacet[];
+  page: SearchPageResults;
+  ranked: readonly NoteKey[];
+  tasks: readonly Task[];
+  drawNotes: (keys: readonly NoteKey[]) => TagOverviewCard[];
+  drawTask: (task: Task) => DashboardTask;
+}
+
+/** The hierarchy the reader chose, by tag or by heading; nothing with it off. */
+function drawHierarchy(index: WorkspaceIndex, mode: PersistedPreferences['searchHierarchy'], source: HierarchySource): SearchResultGroup[] | undefined {
+  if (mode === 'tags') {
+    return drawResultGroups(index, source);
+  }
+  return mode === 'headings' ? drawHeadingGroups(index, source) : undefined;
+}
+
+/**
+ * The hierarchy by heading: each level draws its own first notes and tasks
+ * and counts everything inside it, its parts' tasks among them for its bar.
+ * A part narrows the search to itself within its project: the tags of the
+ * levels above it with its own.
+ */
+function drawHeadingGroups(index: WorkspaceIndex, { page, ranked, tasks, drawNotes, drawTask }: HierarchySource): SearchResultGroup[] {
+  const searched = new Set(
+    collectQueryTagKeys(page.parsed.node).map((key) => resolveIndexedTagKey(index.tags, key) ?? key),
+  );
+  const draw = (group: HeadingGroup<NoteKey>, above: string | undefined): SearchResultGroup => {
+    const counted = countGroup(group);
+    const clause = group.key && above ? `(${above} AND ${group.key})` : group.key;
+    const inner = above && group.key ? `${above} AND ${group.key}` : group.key;
+    return {
+      ...(group.key ? { tag: { label: group.label, clause, facetId: 'tags' as const } } : {}),
+      notes: drawNotes(group.notes.slice(0, GROUP_ITEM_LIMIT)),
+      noteCount: counted.notes,
+      tasks: group.tasks.slice(0, GROUP_ITEM_LIMIT).map(drawTask),
+      taskCount: counted.tasks,
+      doneCount: counted.done,
+      progressTotal: counted.counted,
+      ...(group.children.length
+        ? { children: group.children.map((child) => draw(child, inner)), ownNoteCount: group.notes.length, ownTaskCount: group.tasks.length }
+        : {}),
+    };
+  };
+  return groupByHeading(index, searched, ranked, tasks).map((group) => draw(group, undefined));
+}
+
+/**
+ * The hierarchy by tag: each group drawing its first notes and tasks and
+ * counting all of them, the done tasks among them for its bar.
+ */
+function drawResultGroups(index: WorkspaceIndex, { facets, ranked, tasks, drawNotes, drawTask }: HierarchySource): SearchResultGroup[] {
+  return groupResults(index, findTagFacet(facets), ranked, tasks).map((group) => ({
+    ...(group.value && group.facetId
+      ? { tag: { label: group.value.label, clause: group.value.clause, facetId: group.facetId } }
+      : {}),
+    notes: drawNotes(group.notes.slice(0, GROUP_ITEM_LIMIT)),
+    noteCount: group.notes.length,
+    tasks: group.tasks.slice(0, GROUP_ITEM_LIMIT).map(drawTask),
+    taskCount: group.tasks.length,
+    ...withProgress(group.tasks),
+  }));
+}
+
+/** How far along a group's tasks are: how many are done, of all but the cancelled ones. */
+function withProgress(tasks: readonly Task[]): Pick<SearchResultGroup, 'doneCount' | 'progressTotal'> {
+  const { done, total } = countTaskProgress(tasks);
+  return { doneCount: done, progressTotal: total };
+}
+
 /** How many of the tasks there are in all, open, and completed. */
 function countTasks(tasks: readonly Task[]): SearchPageSnapshot['taskCounts'] {
   return {
     all: tasks.length,
-    active: tasks.filter((task) => !task.completed).length,
+    active: tasks.filter(isOpenTask).length,
     completed: tasks.filter((task) => task.completed).length,
   };
 }
@@ -301,11 +398,13 @@ function rankNoteKeys(
 function drawNoteCards(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
-  { keys, page, tagTitleDisplayMode, markVia }: {
+  { keys, page, tagTitleDisplayMode, markVia, withoutTasks }: {
     keys: readonly NoteKey[];
     page: SearchPageResults;
     tagTitleDisplayMode: TagTitleDisplayMode;
     markVia: <T extends object>(item: T, id: string) => T;
+    /** Leave the task lines out of each card, when the tasks are listed beside it. */
+    withoutTasks?: boolean;
   },
 ): TagOverviewCard[] {
   // Which entries are pinned, so a card's menu offers pinning or unpinning
@@ -342,19 +441,49 @@ function drawNoteCards(
   const snippetWords = [...new Set([...getTextWords(page.drafted.node), ...page.preview])]
     .map((word) => word.toLowerCase())
     .filter((word) => word.length >= 2);
-  return keys.map((key) =>
-    withPreview(
-      markParked(
-        key.section
-          ? markVia(cardFor(key.section), key.section.id)
-          : markVia(createFileOverviewCard(key.file as ParsedFile), (key.file as ParsedFile).filePath),
-        isParkedKey(index, key),
-      ),
+  // A front-matter note draws its own lines, never a heading that is a note
+  // of its own, and maps each to where it is written, as an entry's card does.
+  const fileCardFor = (file: ParsedFile): TagOverviewCard => {
+    const { lines, titleId } = getFileCardLines(file, getFileEntryLines(index, file));
+    const card = createFileOverviewCard(file, lines);
+    cardLines.set(card.id, { map: lines, entryId: titleId ?? '' });
+    return card;
+  };
+  return keys.map((key) => {
+    const drawn = key.section ? cardFor(key.section) : fileCardFor(key.file as ParsedFile);
+    const card = withoutTasks ? dropTaskLines(drawn, cardLines) : drawn;
+    return withPreview(
+      markParked(markVia(card, key.section ? key.section.id : card.filePath), isParkedKey(index, key)),
       preferences.searchPreview,
       snippetWords,
-      key.section ? cardLines.get(key.section.id) : undefined,
-    ),
-  );
+      cardLines.get(card.id),
+    );
+  });
+}
+
+/**
+ * A card without its task lines, for the hierarchy, which lists the tasks
+ * under the card with their progress, so the card would only repeat them.
+ * Its line map follows, so a snippet still opens where its words are.
+ */
+function dropTaskLines(card: TagOverviewCard, cardLines: Map<string, CardLines>): TagOverviewCard {
+  const texts = card.rawContent.split(/\r?\n/);
+  const kept = cardLines.get(card.id);
+  const map = kept?.map ?? texts.map((_text, at) => ({ line: card.startLine + 1 + at }));
+  const lines = texts
+    .map((text, at) => ({ text, place: map[at] ?? { line: card.startLine + 1 + at } }))
+    .filter(({ text }) => !isTaskItemLine(text))
+    // A run of blank lines a list leaves behind reads as one.
+    .filter(({ text }, at, all) => text.trim() !== '' || (at > 0 && all[at - 1].text.trim() !== ''));
+  while (lines.length && !lines[lines.length - 1].text.trim()) {
+    lines.pop();
+  }
+  while (lines.length && !lines[0].text.trim()) {
+    lines.shift();
+  }
+  cardLines.set(card.id, { map: lines.map(({ place }) => place), entryId: kept?.entryId ?? '' });
+  const rawContent = lines.map(({ text }) => text).join('\n');
+  return { ...card, rawContent, bodyTokens: buildBlockExcerpt(rawContent) };
 }
 
 /**
@@ -384,10 +513,11 @@ function buildTagPageBlock(
     ...(entity ? { entity: slimEntity(entity) } : {}),
     ...(hubFile
       ? {
-          hub: createTagOverviewHub(
-            hubFile,
-            focusTag.hubFilePaths?.slice(1) ?? [],
-          ),
+          hub: {
+            ...createTagOverviewHub(hubFile, focusTag.hubFilePaths?.slice(1) ?? []),
+            // Drawn as the note page draws it, its query blocks run.
+            ...readNoteBody(index, hubFile.filePath, { queryContext: context }),
+          },
         }
       : {}),
     tagPage: {
@@ -396,6 +526,7 @@ function buildTagPageBlock(
       hubLinkCount: viaHub.size,
       ...(hubTitle ? { hubTitle } : {}),
       ...describeTagProgressLine(index, focusTag.key, context, parsed.text),
+      ...describeTagParts(index, focusTag.key, context, parsed.text),
       ...describeTagMentions(index, focusTag, context),
     },
   };
@@ -434,6 +565,35 @@ function describeTagProgressLine(
         part.query && sameSearch(part.query, searched) ? { ...part, active: true as const } : part,
       ),
     },
+  };
+}
+
+/**
+ * A tag's parts, for its page's Parts line: the tags on the headings nested
+ * under its own, each with its progress and the search that narrows the page
+ * to it, that part on while the page is narrowed to it. Nothing for a tag
+ * with no tagged heading under it.
+ */
+function describeTagParts(
+  index: WorkspaceIndex,
+  tagKey: string,
+  context: QueryContext,
+  searched: string,
+): Pick<SearchPageTagNotes, 'parts'> {
+  const parts = collectTagParts(index, tagKey, context.now, context.taskPolicy);
+  if (!parts.length) {
+    return {};
+  }
+  return {
+    parts: parts.map((part) => {
+      const query = `${tagKey} AND ${part.key}`;
+      return {
+        text: `${part.label} ${formatProgressCount(part.progress.done, part.progress.total)}`,
+        query,
+        tip: `Narrow the page to ${part.label}`,
+        ...(sameSearch(query, searched) ? { active: true as const } : {}),
+      };
+    }),
   };
 }
 
@@ -589,6 +749,11 @@ export function evaluateSearchPage(
   };
 }
 
+/** Whether one tag is a part of another: written on a heading under one that carries it (tagParts.ts). */
+function isPartOf(index: WorkspaceIndex, project: string, part: string): boolean {
+  return collectTagParts(index, project, Date.now()).some((found) => found.key === part);
+}
+
 /**
  * The tag a search is the page of: a search of one tag, or one that narrows
  * one tag with other terms, `filtered`, so the hub and the progress stay
@@ -601,6 +766,11 @@ function resolveFocusTag(
 ): { tagKeys?: string[]; focusTag?: TagInfo; filtered: boolean } {
   const tagKeys = resolveQueryTagIntersection(index, parsed, aliases);
   if (tagKeys) {
+    // A project narrowed to one of its parts, from its page's Parts line,
+    // stays the project's page, narrowed.
+    if (tagKeys.length === 2 && isPartOf(index, tagKeys[0], tagKeys[1])) {
+      return { tagKeys, focusTag: index.tags.get(tagKeys[0]), filtered: true };
+    }
     return { tagKeys, focusTag: tagKeys.length === 1 ? index.tags.get(tagKeys[0]) : undefined, filtered: false };
   }
   const narrowed = getQueryNarrowedTag(parsed.node);
@@ -743,7 +913,7 @@ function createSnippet(
   cardLines: CardLines | undefined,
 ): NonNullable<TagOverviewCard['snippet']> {
   const mapped = cardLines?.map[start];
-  const ownedHeading = mapped && mapped.part.id !== cardLines?.entryId ? stripTags(mapped.part.heading).trim() : undefined;
+  const ownedHeading = mapped?.part && mapped.part.id !== cardLines?.entryId ? stripTags(mapped.part.heading).trim() : undefined;
   const rawContent = lines.slice(start).join('\n');
   return {
     rawContent,
@@ -844,7 +1014,8 @@ function createFileKey(file: ParsedFile): NoteKey {
 
 /** Where each line of a card's body is written, for a note read through its untagged headings. */
 interface CardLines {
-  map: { line: number; part: Section }[];
+  /** Each line's place in its note, and the heading it is under, when one is. */
+  map: ReadonlyArray<{ line: number; part?: Section }>;
   entryId: string;
 }
 
@@ -866,7 +1037,8 @@ function matchesNoteWords(index: WorkspaceIndex, key: NoteKey, words: readonly s
             ...key.section.tags.map((tag) => key.section?.tagLabels[tag] ?? `#${tag}`),
           ]
         : [
-            getFrontmatterBody((key.file as ParsedFile).content),
+            // Its own lines: a word under a heading that is a note of its own finds that note.
+            getFileEntryLines(index, key.file as ParsedFile).map((line) => line.text).join('\n'),
             ...(key.file as ParsedFile).frontmatterTags.map((tag) => tag.label),
           ]
     )

@@ -79,7 +79,7 @@ suite('Task Board page', () => {
     const column = page.find('.board-column[data-column-id="status:doing"]');
     assert.strictEqual(column.querySelector('.board-count')?.textContent, '6 / 3 · 5 overdue');
     assert.ok(column.classList.contains('over-limit'));
-    assert.strictEqual(column.getAttribute('aria-label'), 'Doing, 6 tasks, limit 3, 5 overdue');
+    assert.strictEqual(column.getAttribute('aria-label'), 'In progress, 6 tasks, limit 3, 5 overdue');
     const quiet = page.findAll('.board-details .overdue.quiet');
     assert.strictEqual(quiet.length, 3, 'the worst third, two of five, keep the red');
     assert.ok(quiet.every((span) => /^overdue/.test(span.textContent ?? '')), 'still says overdue in words');
@@ -100,7 +100,7 @@ suite('Task Board page', () => {
     const headings = page.findAll('#action-menu .menu-heading').map((heading) => heading.textContent);
     assert.deepStrictEqual(headings, ['Status', 'Priority', 'Due', 'For', 'Steps', 'Done', 'Note']);
     const labels = page.findAll('#action-menu [data-menu-value] .menu-label').map((item) => item.textContent);
-    for (const label of ['No status', 'Todo', 'Doing', 'High', 'Due tomorrow', 'No due date', 'Complete it']) {
+    for (const label of ['No status', 'Todo', 'In progress', 'High', 'Due tomorrow', 'No due date', 'Complete it']) {
       assert.ok(labels.includes(label), `offers ${label}`);
     }
     assert.strictEqual(page.document.activeElement, page.find('#action-menu [aria-checked="true"]'), 'focus is on what the task is now');

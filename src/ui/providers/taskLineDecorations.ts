@@ -6,6 +6,11 @@ import { measure } from '../../shared/timing';
 import { findTaskLineMarks } from '../state/taskLineMarks';
 import { readQueryContext } from '../commands/queryContext';
 
+/** What the hover over a box no status names says. */
+export function describeUnknownBox(symbol: string): string {
+  return `Deckard doesn't know the status [${symbol}], so the task counts as to do. Name it in the "Tasks: Statuses" setting.`;
+}
+
 /** How long typing must pause before a changed note is redrawn. */
 const DELAY_MS = 150;
 
@@ -13,6 +18,7 @@ const DELAY_MS = 150;
 const REDRAW_SETTINGS = [
   'deckard.editor',
   'deckard.tasks.needsNewDateAfterDays',
+  'deckard.tasks.statuses',
   'deckard.notesFolder',
   'deckard.exclude',
 ];
@@ -43,8 +49,21 @@ export class TaskLineDecorations implements vscode.Disposable {
   });
   /** Each hint carries its own text and color. */
   private readonly hintType = vscode.window.createTextEditorDecorationType({});
+  private readonly inProgressType = vscode.window.createTextEditorDecorationType({
+    color: new vscode.ThemeColor('deckard.inProgressForeground'),
+    fontWeight: 'bold',
+  });
+  private readonly cancelledType = vscode.window.createTextEditorDecorationType({ textDecoration: 'line-through', opacity: '0.6' });
+  private readonly unknownType = vscode.window.createTextEditorDecorationType({ textDecoration: 'underline dotted' });
   /** The decoration types, then every listener `register` adds. */
-  private readonly disposables: vscode.Disposable[] = [this.dimType, this.overdueType, this.hintType];
+  private readonly disposables: vscode.Disposable[] = [
+    this.dimType,
+    this.overdueType,
+    this.hintType,
+    this.inProgressType,
+    this.cancelledType,
+    this.unknownType,
+  ];
 
   /**
    * Takes the notes test and the clock "today" is read from; nothing is
@@ -103,9 +122,9 @@ export class TaskLineDecorations implements vscode.Disposable {
   public update(editor: vscode.TextEditor): void {
     const document = editor.document;
     if (!this.isNotesFile(document.uri)) {
-      editor.setDecorations(this.dimType, []);
-      editor.setDecorations(this.overdueType, []);
-      editor.setDecorations(this.hintType, []);
+      [this.dimType, this.overdueType, this.hintType, this.inProgressType, this.cancelledType, this.unknownType].forEach((type) =>
+        editor.setDecorations(type, []),
+      );
       return;
     }
     const marks = measure(
@@ -122,6 +141,15 @@ export class TaskLineDecorations implements vscode.Disposable {
       new vscode.Range(span.line, span.start, span.line, span.end);
     editor.setDecorations(this.dimType, marks.dim.map(range));
     editor.setDecorations(this.overdueType, marks.overdue.map(range));
+    editor.setDecorations(this.inProgressType, marks.inProgress.map(range));
+    editor.setDecorations(this.cancelledType, marks.cancelled.map(range));
+    editor.setDecorations(
+      this.unknownType,
+      marks.unknown.map((box): vscode.DecorationOptions => ({
+        range: range(box),
+        hoverMessage: describeUnknownBox(box.symbol),
+      })),
+    );
     editor.setDecorations(
       this.hintType,
       marks.hints.map((hint): vscode.DecorationOptions => {

@@ -9,7 +9,7 @@ import type { StateMessage } from '../../ui/protocol/messaging';
 import type { SearchPageMessage, SearchPageState } from '../../ui/protocol/searchPage';
 import { installMenuKeys } from '../shared/menuKeys';
 import { markWords, type Unmark } from '../shared/markWords';
-import { openSourceMessage } from '../shared/openSource';
+import { openingOf, openSourceMessage } from '../shared/openSource';
 import { onHostMessage, startPage } from '../shared/page';
 import { createQueryEditor } from '../shared/queryEditor';
 import { installResultTabKeys } from '../shared/resultTabs';
@@ -112,7 +112,7 @@ let settledFor: string | undefined;
  * redraw of the same search, such as a task ticked, keeps the tab.
  */
 function settleTab(snapshot: SearchPageState): void {
-  if (snapshot.layout === 'split') {
+  if (snapshot.layout !== 'tabs') {
     return;
   }
   const counts = resultCounts(snapshot);
@@ -222,9 +222,9 @@ const editor = createQueryEditor({
   placeholder: () => 'Search notes and tasks: words, #tags, is:open, has:due, in:folder, updated >= 7d…',
   label: 'Search notes and tasks',
   refineElsewhere: () => Boolean(latest && latest.refineInSidebar),
-  // The Notes and Tasks tabs carry the counts; the strip repeats them only
-  // in the split layout, where there are no tabs.
-  countElsewhere: () => Boolean(latest && latest.layout !== 'split'),
+  // The Notes and Tasks tabs carry the counts; the strip repeats them in
+  // the other layouts, where there are no tabs.
+  countElsewhere: () => Boolean(latest && latest.layout === 'tabs'),
   actions: (hasText) => (
     <button data-action="save-filter" data-query-needs-text="" data-tip="Keep this search, named, on Home" data-tip-disabled="Type a search to save it" aria-disabled={hasText ? undefined : 'true'}>Save</button>
   ),
@@ -392,6 +392,7 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   'set-mode': (target) => send({ type: 'setRenderMode', mode: target.dataset.mode as never }),
   'set-layout': (target) => send({ type: 'setTagOverviewLayout', layout: target.dataset.layout as never }),
   'set-preview': (target) => send({ type: 'setSearchPreview', preview: target.dataset.value as never }),
+  'set-hierarchy': (target) => send({ type: 'setSearchHierarchy', hierarchy: target.dataset.value as never }),
   'toggle-card-body': (target) => toggleCardBody(target),
   'edit-results': (target) => send({ type: 'editResults', kind: target.dataset.kind === 'tasks' ? 'tasks' : 'notes' }),
   'export-results': (target) => send({ type: 'exportResults', kind: target.dataset.kind === 'tasks' ? 'tasks' : 'notes' }),
@@ -424,6 +425,12 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
       send({ type: 'setOverviewQuery', query: part.active && snapshot.tag ? snapshot.tag.key : part.query });
     }
   },
+  'search-part': (target, snapshot) => {
+    const part = snapshot.tagPage && snapshot.tagPage.parts ? snapshot.tagPage.parts[Number(target.dataset.part)] : undefined;
+    if (part) {
+      send({ type: 'setOverviewQuery', query: part.active && snapshot.tag ? snapshot.tag.key : part.query });
+    }
+  },
   'show-mentions': (_target, snapshot) => {
     if (snapshot.tagPage && snapshot.tagPage.mention) {
       send({ type: 'setOverviewQuery', query: snapshot.tagPage.mention.query });
@@ -436,6 +443,23 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   },
   'merge-lookalike': (target) => send({ type: 'mergeTags', sourceKey: String(target.dataset.sourceKey), targetKey: String(target.dataset.targetKey) }),
   'open-source': (target, _snapshot, event) => send(openSourceMessage(target, event)),
+  // The hub note's blocks, drawn as the note page draws them.
+  'open-note': (target, _snapshot, event) => send(openSourceMessage(target, event)),
+  'open-link': (target, _snapshot, event) => {
+    const how = openingOf(event);
+    send({
+      type: 'openWikiLink',
+      target: String(target.dataset.target),
+      ...(target.dataset.from ? { from: target.dataset.from } : {}),
+      ...(how.opposite ? { opposite: true } : {}),
+      ...(how.beside ? { beside: true } : {}),
+    });
+  },
+  'toggle-image-size': (target) => {
+    const whole = target.classList.toggle('is-whole');
+    const alt = target.querySelector('img')?.getAttribute('alt') || 'Image';
+    target.setAttribute('aria-label', `${alt}, shown ${whole ? 'at full size' : 'fitted'}; select to show it ${whole ? 'fitted' : 'at full size'}`);
+  },
   'open-tag': (target) => send({ type: 'openTag', tagKey: String(target.dataset.tagKey) }),
 };
 

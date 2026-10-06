@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import { formatProgressCount, speakProgressCount, speakProgressText } from '../domain/tasks/progressCount';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
@@ -67,16 +68,16 @@ suite('Tag progress', () => {
     const policy = DEFAULT_TASK_POLICY;
     const atlas = computeTagProgress(index, '#project/atlas', now);
     assert.ok(atlas);
-    assert.strictEqual(describeTagProgress(atlas, now, policy), '2 of 7 done · 1 overdue · 1 needs a new date · next due in 3 days');
+    assert.strictEqual(describeTagProgress(atlas, now, policy), '2/7 done (29%) · 1 overdue · 1 needs a new date · next due in 3 days');
     const borealis = computeTagProgress(index, '#project/borealis', now);
     assert.ok(borealis);
-    assert.strictEqual(describeTagProgress(borealis, now, policy), '1 of 1 done · all done');
+    assert.strictEqual(describeTagProgress(borealis, now, policy), '1/1 done (100%) · all done');
     assert.strictEqual(
       describeTagProgress({ total: 2, done: 0, overdue: 0, needsDate: 0, nextDue: { taskId: 't', title: 'x', dueAt: new Date(2026, 11, 25).getTime(), filePath: 'a.md', lineNumber: 1 } }, now, policy),
-      '0 of 2 done · next due 2026-12-25',
+      '0/2 done (0%) · next due 2026-12-25',
     );
-    assert.strictEqual(describeTagProgress({ total: 3, done: 1, overdue: 0, needsDate: 0 }, now, policy), '1 of 3 done');
-    assert.strictEqual(describeTagProgress({ total: 4, done: 0, overdue: 2, needsDate: 2 }, now, policy), '0 of 4 done · 2 overdue · 2 need a new date');
+    assert.strictEqual(describeTagProgress({ total: 3, done: 1, overdue: 0, needsDate: 0 }, now, policy), '1/3 done (33%)');
+    assert.strictEqual(describeTagProgress({ total: 4, done: 0, overdue: 2, needsDate: 2 }, now, policy), '0/4 done (0%) · 2 overdue · 2 need a new date');
   });
 
   test('sums up one note’s own tasks, steps aside, and nothing for none', () => {
@@ -99,12 +100,12 @@ suite('Tag progress', () => {
     const progress = snapshot.tagPage?.progress;
     assert.deepStrictEqual(
       progress && { done: progress.done, total: progress.total, overdue: progress.overdue, label: progress.label },
-      { done: 2, total: 7, overdue: 1, label: '2 of 7 done · 1 overdue · 1 needs a new date · next due in 3 days' },
+      { done: 2, total: 7, overdue: 1, label: '2/7 done (29%) · 1 overdue · 1 needs a new date · next due in 3 days' },
     );
     const found = (query: string | undefined): number => evaluateQuery(index, parseQuery(query ?? '').node, createQueryContext(now)).tasks.length;
     assert.deepStrictEqual(
       progress?.parts.map((part) => [part.text, found(part.query)]),
-      [['2 of 7 done', 2], ['1 overdue', 1], ['1 needs a new date', 1], ['next due in 3 days', 1]],
+      [['2/7 done (29%)', 2], ['1 overdue', 1], ['1 needs a new date', 1], ['next due in 3 days', 1]],
       'each part’s search finds as many tasks as it counts',
     );
     assert.ok(progress?.parts.every((part) => part.query && part.tip));
@@ -135,7 +136,7 @@ suite('Tag progress', () => {
     assert.strictEqual(page.hubLinkCount, 0, 'what links to the hub is not filtered, so it is left out');
     assert.strictEqual(page.progress.label, plainPage.progress.label, 'the bar counts the whole tag');
     assert.deepStrictEqual(page.progress.parts.map((part) => [part.text, part.active === true]), [
-      ['1 of 3 done', false],
+      ['1/3 done (33%)', false],
       ['1 overdue', true],
     ]);
     assert.deepStrictEqual(filtered.tasks.map((task) => task.task.title), ['Call the lawyer']);
@@ -147,8 +148,25 @@ suite('Tag progress', () => {
   test('a hub note’s lens says how far along each tag it describes is', () => {
     const hub = parseMarkdown('hub.md', ['---', 'describes: [project/atlas, project/none]', '---', '# Atlas'].join('\n'));
     assert.deepStrictEqual(findHubProgress(hub, index, createQueryContext(now)), [
-      { tagKey: '#project/atlas', tagLabel: '#project/atlas', text: '2 of 7 done · 1 overdue · 1 needs a new date · next due in 3 days' },
+      { tagKey: '#project/atlas', tagLabel: '#project/atlas', text: '2/7 done (29%) · 1 overdue · 1 needs a new date · next due in 3 days' },
     ]);
     assert.deepStrictEqual(findHubProgress(parseMarkdown('plain.md', '# Plain'), index, createQueryContext(now)), []);
+  });
+});
+
+suite('Progress count', () => {
+  test('shows done of total and the share, never 100% short of all of them', () => {
+    assert.strictEqual(formatProgressCount(3, 8), '3/8 done (38%)');
+    assert.strictEqual(formatProgressCount(0, 4), '0/4 done (0%)');
+    assert.strictEqual(formatProgressCount(5, 5), '5/5 done (100%)');
+    assert.strictEqual(formatProgressCount(199, 200), '199/200 done (99%)', 'not a finished-looking 100%');
+    assert.strictEqual(formatProgressCount(2, 5, { compact: true }), '2/5 (40%)');
+  });
+
+  test('says every figure in a text as it is spoken, and leaves other text alone', () => {
+    assert.strictEqual(speakProgressCount(3, 8), '3 of 8 done, 38%');
+    assert.strictEqual(speakProgressText('Steps 1/3 done (33%) · next: Pack'), 'Steps 1 of 3 done, 33% · next: Pack');
+    assert.strictEqual(speakProgressText('2/5 (40%) · ↩3'), '2 of 5 done, 40% · ↩3');
+    assert.strictEqual(speakProgressText('Due 2026/10/09'), 'Due 2026/10/09');
   });
 });

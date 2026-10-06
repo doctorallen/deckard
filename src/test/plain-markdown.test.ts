@@ -44,7 +44,7 @@ suite('Copy as Plain Markdown', () => {
     const list = toPlainMarkdown('Open:\n```deckard\n#project/atlas is:task\n```\nEnd', context);
     assert.strictEqual(list, 'Open:\n\n- [ ] Send the proposal (due 2026-10-09)\n- [x] Pick a vendor\n\nEnd\n');
     const table = toPlainMarkdown('```deckard view=table columns=due noteColumns=tasks\n#project/atlas\n```', context);
-    assert.ok(table.includes('| Entry | Tasks |\n| --- | --- |\n| Atlas | 1 of 2 done |'), table);
+    assert.ok(table.includes('| Entry | Tasks |\n| --- | --- |\n| Atlas | 1/2 done (50%) |'), table);
     assert.ok(table.includes('| Task | Due |\n| --- | --- |\n| ☐ Send the proposal |'), table);
     assert.strictEqual(toPlainMarkdown('```deckard\n(broken\n```', context), '`(broken`\n');
     assert.strictEqual(toPlainMarkdown('```js\n[[Atlas]] ![[x]]\n```', context), '```js\n[[Atlas]] ![[x]]\n```\n', 'other code is left as written');

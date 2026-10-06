@@ -15,6 +15,7 @@ import {
   parseMarkdown,
   PARSE_FORMAT,
 } from '../../domain/markdown/parser';
+import { readTaskStatusSettings } from '../../domain/tasks/taskStatuses';
 import { findWorkspaceFolderByKey, readFolderSetting, workspaceFolderKey } from '../../shared/paths';
 import { decodeUtf8Text } from '../../shared/text';
 import { reportError } from '../../shared/timing';
@@ -289,6 +290,7 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
           options.personMarker ?? '',
           JSON.stringify(options.entityNamespaceAliases ?? {}),
           options.assigneeFromPersonTag === true ? 'person-assigns' : 'field-assigns',
+          JSON.stringify(options.taskStatuses ?? []),
         ].join('\u0000');
       },
     );
@@ -470,6 +472,7 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
           'tasks.assigneeFromPersonTag',
           false,
         ) === true,
+      taskStatuses: readTaskStatusSettings(this.getConfiguration(workspaceFolder)),
     };
   }
 

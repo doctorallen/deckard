@@ -83,6 +83,9 @@ export const SETTING_ROWS: readonly SettingRow[] = [
       'deckard.noteBoundaries',
       'deckard.personMarker',
       'deckard.tasks.assigneeFromPersonTag',
+      // What each checkbox character means, the on-hold tags read as statuses too.
+      'deckard.tasks.statuses',
+      'deckard.tasks.onHoldStatuses',
     ],
     rescan: true,
   },

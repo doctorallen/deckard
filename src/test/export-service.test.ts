@@ -11,7 +11,7 @@ suite('ExportService', () => {
   });
   const task = (over: Partial<Task> = {}): Task => ({
     id: 't', filePath: 'notes/Atlas.md', sectionId: 'sec', title: 'Ship it', completed: false,
-    tags: [], tagLabels: {}, lineNumber: 6, checkboxColumn: 3, checkboxValue: ' ',
+    tags: [], tagLabels: {}, lineNumber: 6, checkboxColumn: 3, status: { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: '- [ ] Ship it', ...over,
   });
   const found: SearchResults = { tasks: [task()], sections: [section(), section({ id: 'b', heading: 'Budget' })] };

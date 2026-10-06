@@ -14,6 +14,8 @@ import { TitleWithTags } from '../shared/tagButton';
 import { TagLabel } from '../shared/tagLabel';
 import { formatSourceLocation, HeadingPathSteps, trimHeadingPath } from '../shared/taskRow';
 import { explainRelevance, RelevanceScore } from './weights';
+import { describeLocation, readEntryDetails } from '../shared/entryDetails';
+import { EntryDates } from '../shared/entryDates';
 
 /** What a card shows besides its entry: how many lines of excerpt, and how titles draw their tags. */
 export interface CardDisplay {
@@ -98,6 +100,12 @@ function InsertLink({ title }: { readonly title: string }) {
   );
 }
 
+/** A result's location line, carried down under it as a search card's is, when Card details ticks it. */
+function RankedNoteDetails({ note, fileName }: { readonly note: RankedNote; readonly fileName: string }) {
+  const line = describeLocation({ location: formatSourceLocation(fileName, note.sourceLine) });
+  return line ? <div class="source">{line}</div> : null;
+}
+
 /** One ranked result: its title, score, where it is, excerpt, and why. */
 export function RankedNoteCard({ note, display }: { readonly note: RankedNote; readonly display: CardDisplay }) {
   const title = note.title || note.fileName || note.filePath;
@@ -110,9 +118,10 @@ export function RankedNoteCard({ note, display }: { readonly note: RankedNote; r
       attributes={cardAttributes(note)}
       title={display.titleDisplay === 'inline' ? <TitleWithTags title={title} tags={note.titleTags || []} /> : title}
       trailing={<div class="note-actions"><InsertLink title={title} /><RelevanceScore note={note} reasons={reasons} /></div>}
-      source={<div class="source">{formatSourceLocation(fileName, note.sourceLine)}</div>}
+      source={<RankedNoteDetails note={note} fileName={fileName} />}
       body={[
-        steps.length ? <div class="source heading-path"><HeadingPathSteps steps={steps} /></div> : null,
+        steps.length && readEntryDetails().has('fileAndLine') ? <div class="source heading-path"><HeadingPathSteps steps={steps} /></div> : null,
+        <EntryDates facts={{ location: '', createdAt: note.createdAt, updatedAt: note.updatedAt }} className="source" />,
         note.excerpt && display.previewLines > 0 ? <p class="note-excerpt">{note.excerpt}</p> : null,
         reasons.length ? <div class="relevance-reason">{reasons[0]}</div> : null,
         <div class="tag-list" aria-label="Matching tags">

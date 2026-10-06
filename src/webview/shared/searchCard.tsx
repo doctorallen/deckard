@@ -9,6 +9,8 @@ import type { TagOverviewCard, TagTitleDisplayMode } from '../../ui/protocol/sha
 import { BlockExcerpt } from './blockExcerpt';
 import { TagButton, TitleWithTags } from './tagButton';
 import { formatSourceLocation, HeadingPathSteps, ParkedLabel, trimHeadingPath } from './taskRow';
+import { describeLocation, readEntryDetails } from './entryDetails';
+import { EntryDates } from './entryDates';
 
 /** How a page draws its cards: the Format, Preview, and tag rows of its gear. */
 export interface CardDisplay {
@@ -138,6 +140,25 @@ function CardTitle({ card, titleDisplay }: { readonly card: TagOverviewCard; rea
 }
 
 /**
+ * The line under a card's title, carried down under the pointer: where it
+ * is written, when Card details ticks it, and that the card is listed
+ * because it links the hub. Nothing when neither has anything to say.
+ */
+function CardDetails({ card, fileName }: { readonly card: TagOverviewCard; readonly fileName: string }) {
+  const line = describeLocation({ location: formatSourceLocation(fileName, card.startLine) });
+  const via = card.via === 'hubLink';
+  if (!line && !via) {
+    return null;
+  }
+  return (
+    <div class="source">
+      {`${line}${via && line ? ' ' : ''}`}
+      {via ? <span class="card-via">Links the hub note</span> : null}
+    </div>
+  );
+}
+
+/**
  * One note a search found: its title and tags, its file and line with the
  * headings above it, as the Related Notes sidebar shows them, and its body.
  * It carries what opening it, pinning it, and parking it need.
@@ -159,11 +180,9 @@ export function SearchCard({ card, position, display, opened }: SearchCardProps)
     >
       <div class="card-header">
         <CardTitle card={card} titleDisplay={display.titleDisplay} />
-        <div class="source">
-          {`${formatSourceLocation(fileName, card.startLine)}${card.via === 'hubLink' ? ' ' : ''}`}
-          {card.via === 'hubLink' ? <span class="card-via">Links the hub note</span> : null}
-        </div>
-        {steps.length ? <div key="path" class="source heading-path"><HeadingPathSteps steps={steps} /></div> : null}
+        <CardDetails card={card} fileName={fileName} />
+        {steps.length && readEntryDetails().has('fileAndLine') ? <div key="path" class="source heading-path"><HeadingPathSteps steps={steps} /></div> : null}
+        <EntryDates facts={{ location: '', createdAt: card.createdAt, updatedAt: card.updatedAt }} className="source" />
       </div>
       <CardBody card={card} position={position} display={display} opened={opened} />
     </article>

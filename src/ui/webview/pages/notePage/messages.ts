@@ -9,37 +9,27 @@ import type {
   OpenInEditorMessage,
   OpenNoteMessage,
   OpenSearchMessage,
-  OpenWikiLinkMessage,
 } from '../../../protocol/notePage';
 import {
   exactlyType,
+  MAX_NAME_LENGTH,
   Narrower,
   narrowGoToPage,
   NarrowingTable,
   narrowOpenTag,
+  narrowOpenWikiLink,
   narrowDisplayCommand,
   narrowSetDisplay,
   narrowSetZenMode,
   narrowToggleTask,
   narrowWith,
   onlyType,
-  UncheckedMessage,
+  readModifiers,
 } from '../../host/narrowing';
-
-/** The longest note path or link target the page sends. */
-const MAX_NAME_LENGTH = 1000;
 
 /** Whether a value is a line to open: a whole number from 1. */
 function isLine(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;
-}
-
-/** The two modifiers a click may carry, each only when on. */
-function readModifiers(value: UncheckedMessage): { opposite?: true; beside?: true } | undefined {
-  if ((value.opposite !== undefined && typeof value.opposite !== 'boolean') || (value.beside !== undefined && typeof value.beside !== 'boolean')) {
-    return undefined;
-  }
-  return { ...(value.opposite === true ? { opposite: true } : {}), ...(value.beside === true ? { beside: true } : {}) };
 }
 
 /** A note to open: its path, a line when given, and the modifiers. */
@@ -52,20 +42,6 @@ const narrowOpenNote: Narrower<OpenNoteMessage> = (value) => {
     return undefined;
   }
   return { type: 'openNote', filePath: value.filePath, ...(isLine(value.line) ? { line: value.line } : {}), ...modifiers };
-};
-
-/** Whether a value is a note path or a link target the page could send. */
-function isName(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0 && value.length <= MAX_NAME_LENGTH;
-}
-
-/** A `[[link]]` to follow: what it names, as written, and the note it is written in when that is an embedded one. */
-const narrowOpenWikiLink: Narrower<OpenWikiLinkMessage> = (value) => {
-  const modifiers = readModifiers(value);
-  if (!modifiers || !isName(value.target) || (value.from !== undefined && !isName(value.from))) {
-    return undefined;
-  }
-  return { type: 'openWikiLink', target: value.target, ...(isName(value.from) ? { from: value.from } : {}), ...modifiers };
 };
 
 /** Open in Editor: at a line when given, beside when asked. */

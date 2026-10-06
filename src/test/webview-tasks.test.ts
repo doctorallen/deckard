@@ -42,7 +42,7 @@ function task(title: string, extra: Partial<Task> = {}): Task {
     tagLabels: {},
     lineNumber: 7,
     checkboxColumn: 3,
-    checkboxValue: ' ',
+    status: { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: `- [ ] ${title}`,
     ...extra,
   };
@@ -147,7 +147,7 @@ suite('The shared task parts draw what the template script drew', () => {
     const dated = new Date(2026, 8, 22, 12).getTime();
     const items: Array<[string, DashboardTask]> = [
       ['plain', listed('Send the proposal')],
-      ['done', listed('Send the proposal', { completed: true, checkboxValue: 'x' })],
+      ['done', listed('Send the proposal', { completed: true, status: { symbol: 'x', name: 'Done', type: 'done' } })],
       ['due and overdue', listed('Pay rent', {}, { dueLabel: 'Overdue 3 days · 2026-09-18', overdue: true })],
       ['due and stale', listed('Pay rent', {}, { dueLabel: 'Was due 2026-06-01', stale: true })],
       ['due, on time', listed('Pay rent', {}, { dueLabel: 'Due tomorrow · 2026-09-22' })],

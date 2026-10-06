@@ -38,7 +38,7 @@ suite('Task editor', () => {
       rows('- [ ] Chase the contractor ⏫ 🔁 every week 📅 2026-09-25 ⛔ b2'),
       [
         'Description: Chase the contractor',
-        'Status: Open',
+        'Status: Todo',
         'Due: Friday 2026-09-25',
         'Scheduled: Not set',
         'Start: Not set',
@@ -55,7 +55,7 @@ suite('Task editor', () => {
   test('reads an empty task as one waiting to be written', () => {
     assert.deepStrictEqual(rows('- [ ] ').slice(0, 2), [
       'Description: Empty',
-      'Status: Open',
+      'Status: Todo',
     ]);
   });
 
@@ -266,7 +266,10 @@ suite('Task editor', () => {
     const errors: string[] = [];
     const window = vscode.window as unknown as Record<string, unknown>;
     const activeEditor = Object.getOwnPropertyDescriptor(vscode.window, 'activeTextEditor');
-    const { createQuickPick, showErrorMessage } = window;
+    const { createQuickPick, showErrorMessage, showQuickPick } = window;
+    // The Status row asks which status; the first turn takes Done.
+    window.showQuickPick = async (items: Thenable<Array<{ status?: { name: string } }>> | Array<{ status?: { name: string } }>) =>
+      (await items).find((item) => item.status?.name === 'Done');
     Object.defineProperty(vscode.window, 'activeTextEditor', {
       configurable: true,
       get: () => editor,
@@ -307,6 +310,7 @@ suite('Task editor', () => {
       }
       window.createQuickPick = createQuickPick;
       window.showErrorMessage = showErrorMessage;
+      window.showQuickPick = showQuickPick;
     }
 
     assert.deepStrictEqual(written, []);

@@ -1,4 +1,5 @@
 import { isPersonTag } from '../../domain/markdown/parser';
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import {
   isParkedFile,
   isParkedOnlyTag,
@@ -37,7 +38,7 @@ export interface PersonRecency {
 export function listPeopleRecency(index: WorkspaceIndex): PersonRecency[] {
   const openTasksByTag = new Map<string, number>();
   index.tasks.forEach((task) => {
-    if (task.completed || isParkedTask(index, task.id)) {
+    if (!isOpenTask(task) || isParkedTask(index, task.id)) {
       return;
     }
     task.tags.filter(isPersonTag).forEach((key) => {
@@ -136,7 +137,7 @@ export function listQuietTags(
   const namespace = options.namespace?.trim() || 'person';
   const openTasksByTag = new Map<string, number>();
   index.tasks.forEach((task) => {
-    if (task.completed || isParkedTask(index, task.id)) {
+    if (!isOpenTask(task) || isParkedTask(index, task.id)) {
       return;
     }
     const keys = new Set(task.tags);

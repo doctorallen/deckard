@@ -26,7 +26,7 @@ Run `Deckard: Create Daily Note`, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt
 | **Notes changed** | Notes written earlier and changed in it |
 | **New tags** | Tags Deckard first saw in the period |
 
-- A summary line sits under the heading: **Done:** 12 (8 of 11 that were due) · **Still open:** 5 · **Coming up:** 9 · …
+- A summary line sits under the heading: **Done:** 12 (8/11 done (73%) of those due) · **Still open:** 5 · **Coming up:** 9 · …
 - `deckard.periodicNote.reviewSections` adds your own sections, each a title and a search: `[{ "title": "Waiting on others", "query": "is:waiting" }]`. Each lists up to 20 results. A search that does not parse says so in its section.
 - It is plain Markdown with `[[links]]`, headed *Review of 2026-09-13 to 2026-09-19*, between `<!-- deckard:review -->` and `<!-- deckard:review:end -->`. Running it again rewrites only that part. Deckard offers **Open** and **Undo**.
 - It adds no tags: titles are written without tags, and new tags are listed in a fenced block.
@@ -87,4 +87,4 @@ Deckard can write your dated tasks to a calendar file (`.ics`) that Apple Calend
 
 ---
 
-← [Related notes, sections, and the graph](connections.md) · [All topics](README.md) · [Renaming, moving, and parking](organizing.md) →
+← [Related notes, the graph, and the outline](connections.md) · [All topics](README.md) · [Renaming, moving, and parking](organizing.md) →

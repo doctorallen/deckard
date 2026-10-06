@@ -202,7 +202,7 @@
                   src="vscode-webview://deckard/resources/deckard.svg"
                 > in the Activity Bar: <strong
                 >Pages</strong
-                > lists every Deckard page, then Context shows the note’s sections, related notes, and what links to it, then Tasks and the Calendar. <button
+                > lists every Deckard page, then Context shows related notes and what links to it, then the Outline of the note’s headings, Tasks, and the Calendar. <button
                   class="command-link"
                   data-command="deckard.goTo"
                   type="button"
@@ -771,7 +771,7 @@
             >A checkbox indented under a task is one of its steps. <code
               >Deckard: Break into Steps…</code
               > — on the lightbulb, the Tasks view’s menu, and a card’s ⋯ — writes them one per line you type, after anything already under the task, in one change that Undo takes back. The task then reads <strong
-              >2 of 5 steps · next: Draft the email</strong
+              >Steps 2/5 done (40%) · next: Draft the email</strong
               > on its card and row, and opens to its steps in the Tasks view. On the board and in the Tasks view a plain step rides on its task instead of being listed on its own; one with a date, priority, person, or tag keeps its own card. Finishing the last step offers to finish the task, and finishing a task with open steps offers to finish them; nothing is completed for you.</p
             ></div
           > <div
@@ -784,6 +784,43 @@
               > in Break into Steps… asks it for a list you edit before anything is written. Only the task’s words are sent, and only when you choose it. <code
               >deckard.tasks.suggestSteps</code
               > turns it off.</p
+            ></div
+          > <div
+            class="card"
+          ><h3
+            >Task statuses</h3
+            ><p
+            >The character in a task’s box is its status: <code
+              >[ ]</code
+              > to do, <code
+              >[/]</code
+              > in progress, <code
+              >[x]</code
+              > done, <code
+              >[-]</code
+              > cancelled, <code
+              >[=]</code
+              > blocked, and any other character a task to do until <code
+              >deckard.tasks.statuses</code
+              > names it. A <code
+              >#status/doing</code
+              > tag on an empty box still reads as In progress. Cancelled tasks are closed but not done: they leave the open counts, and count on neither side of progress. <code
+              >Deckard: Set Task Status…</code
+              > sets any status; typing <code
+              >- [</code
+              > offers every character; <button
+                class="command-link"
+                data-command="deckard.editTaskStatuses"
+                type="button"
+              >Deckard: Edit Task Statuses…</button
+              > edits the list, and <button
+                class="command-link"
+                data-command="deckard.moveStatusTagsIntoCheckboxes"
+                type="button"
+              >Deckard: Move Status Tags into Checkboxes…</button
+              > writes tags as characters. Checking a box marks a task done whatever its status (<code
+              >deckard.tasks.checkboxClick</code
+              > can step through each status’s next one instead).</p
             ></div
           > <div
             class="card"
@@ -875,9 +912,9 @@
               >is:blocking</code
               > search and the Tasks view says beneath the task. <code
               >is:waiting</code
-              > is for people, not dependencies: a task marked <code
-              >#status/waiting</code
-              >, or for someone else.</p
+              > is for what is on hold, not dependencies: a task marked Waiting, Someday, or Blocked, or for someone else. <code
+              >is:blocked</code
+              > finds a task marked Blocked too.</p
             ></div
           > </div
         > <p
@@ -1294,7 +1331,23 @@
                   >is:done</code
                   ></td
                 ><td
-                >Open or completed tasks.</td
+                >Open tasks, to do, in progress, or on hold; or completed ones.</td
+                ></tr
+              > <tr
+              ><td
+                ><code
+                  >is:in-progress</code
+                  >, <code
+                  >is:cancelled</code
+                  >, <code
+                  >is:closed</code
+                  ></td
+                ><td
+                >Tasks in progress, as <code
+                  >[/]</code
+                  >; cancelled, as <code
+                  >[-]</code
+                  >; and done or cancelled.</td
                 ></tr
               > <tr
               ><td
@@ -1342,7 +1395,9 @@
                   >is:blocking</code
                   ></td
                 ><td
-                >Waiting for an open task, and the tasks they wait for.</td
+                >Waiting for an open task or marked Blocked, as <code
+                  >[=]</code
+                  >, and the tasks they wait for.</td
                 ></tr
               > <tr
               ><td
@@ -1352,9 +1407,7 @@
                   >is:available</code
                   ></td
                 ><td
-                >Waiting on someone (<code
-                  >#status/waiting</code
-                  >, or for someone else), and what can be started now: not blocked, started, not waiting or someday.</td
+                >On hold (Waiting, Someday, Blocked) or for someone else, and what can be started now: not blocked, started, not on hold.</td
                 ></tr
               > <tr
               ><td
@@ -1390,6 +1443,8 @@
                   >start</code
                   >, <code
                   >done</code
+                  >, <code
+                  >cancelled</code
                   >, <code
                   >priority</code
                   >, <code
@@ -1530,6 +1585,32 @@
               > <tr
               ><td
                 ><code
+                  >status</code
+                  ></td
+                ><td
+                >A status by its name, a hyphen for a space, whether the box writes it or a <code
+                  >#status/…</code
+                  > tag does; by its character, as <code
+                  >[/]</code
+                  >; <code
+                  >unknown</code
+                  > for a character no status names; or <code
+                  >open</code
+                  >, <code
+                  >done</code
+                  >, <code
+                  >any</code
+                  >, as <code
+                  >task</code
+                  >.</td
+                ><td
+                ><code
+                  >status:in-progress</code
+                  ></td
+                ></tr
+              > <tr
+              ><td
+                ><code
                   >due</code
                   >, <code
                   >scheduled</code
@@ -1565,9 +1646,11 @@
               ><td
                 ><code
                   >done</code
+                  >, <code
+                  >cancelled</code
                   ></td
                 ><td
-                >A task’s ✅ date, with windows counted back from today.</td
+                >A task’s ✅ or ❌ date, with windows counted back from today.</td
                 ><td
                 ><code
                   >done = 7d</code
@@ -1781,15 +1864,18 @@
           > <div
             class="card"
           ><h3
-            >Sections</h3
+            >Outline</h3
             ><p
-            >The Context view lists the note’s headings above its related notes, with the tags on each and <strong
-              >2/5 · ↩3</strong
-              > for the tasks under a heading that are done and the links that name it. It marks the heading the cursor is in. Select one to open it; <strong
-              >Focus</strong
-              > folds the rest of the note away; <strong
-              >Show</strong
-              > narrows the list to one tag’s headings.</p
+            >A tree of the current note’s headings with the tags on each, and <strong
+              >2/5 (40%) · ↩3</strong
+              > for the tasks under a heading that are done and the links that name it. It can follow the cursor, and a heading’s context menu opens or renames its tags. <code
+              >Deckard: Focus Section</code
+              > folds the rest of the note away from one heading, and <button
+                class="command-link"
+                data-command="deckard.outline.filterByTag"
+                type="button"
+              >Deckard: Filter Outline by Tag…</button
+              > keeps only the headings that carry a tag.</p
             ></div
           > <div
             class="card"
@@ -1833,7 +1919,7 @@
         ><a
             data-guide-page="connections"
             href="#"
-          >Read more: Related notes, sections, and the graph →</a
+          >Read more: Related notes, the graph, and the outline →</a
           ></p
         > </section
       > <section
@@ -2469,6 +2555,55 @@
                 ></tr
               ><tr
               ><td
+                ><code
+                  >Set Task Status…</code
+                  ></td
+                ><td
+                >Sets the status of the task on the cursor’s line: in progress, waiting, cancelled, or any other.</td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.moveStatusTagsIntoCheckboxes"
+                    type="button"
+                  >Move Status Tags into Checkboxes…</button
+                  ></td
+                ><td
+                >Writes each #status/… tag a character can say as that character, as - [/], shown first in the preview.</td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.importObsidianStatuses"
+                    type="button"
+                  >Import Statuses from Obsidian Tasks</button
+                  ></td
+                ><td
+                >Reads a vault’s statuses from Obsidian Tasks into this workspace’s settings.</td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.editTaskStatuses"
+                    type="button"
+                  >Edit Task Statuses…</button
+                  ></td
+                ><td
+                >Opens a page to edit what each checkbox character means.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >Set Task Status…</code
+                  ></td
+                ><td
+                ></td
+                ></tr
+              ><tr
+              ><td
                 ><button
                     class="command-link"
                     data-command="deckard.capture"
@@ -2845,6 +2980,14 @@
                 ></tr
               ><tr
               ><td
+                ><code
+                  >Reveal Outline Heading</code
+                  ></td
+                ><td
+                ></td
+                ></tr
+              ><tr
+              ><td
                 ><button
                     class="command-link"
                     data-command="deckard.agenda.editQuery"
@@ -2878,6 +3021,28 @@
                 ></tr
               ><tr
               ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.outline.enableFollowCursor"
+                    type="button"
+                  >Follow Cursor in Outline</button
+                  ></td
+                ><td
+                >Selects the heading the cursor is in.</td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.outline.disableFollowCursor"
+                    type="button"
+                  >Stop Following Cursor in Outline</button
+                  ></td
+                ><td
+                >Leaves the Outline where you put it.</td
+                ></tr
+              ><tr
+              ><td
                 ><code
                   >Focus Section</code
                   ></td
@@ -2899,34 +3064,12 @@
               ><td
                 ><button
                     class="command-link"
-                    data-command="deckard.outline.enableFollowCursor"
-                    type="button"
-                  >Mark the Cursor's Section in Sections</button
-                  ></td
-                ><td
-                >Marks the heading the cursor is in, in the Context view’s Sections.</td
-                ></tr
-              ><tr
-              ><td
-                ><button
-                    class="command-link"
-                    data-command="deckard.outline.disableFollowCursor"
-                    type="button"
-                  >Stop Marking the Cursor's Section</button
-                  ></td
-                ><td
-                >Stops marking the cursor’s heading in Sections.</td
-                ></tr
-              ><tr
-              ><td
-                ><button
-                    class="command-link"
                     data-command="deckard.outline.filterByTag"
                     type="button"
-                  >Filter Sections by Tag…</button
+                  >Filter Outline by Tag…</button
                   ></td
                 ><td
-                >Shows only the headings in Sections that carry a tag, or a tag under it.</td
+                >Shows only the Outline headings that carry a tag, or a tag under it.</td
                 ></tr
               ><tr
               ><td
@@ -2934,10 +3077,10 @@
                     class="command-link"
                     data-command="deckard.outline.clearTagFilter"
                     type="button"
-                  >Clear the Sections Filter</button
+                  >Clear Outline Tag Filter</button
                   ></td
                 ><td
-                >Shows every heading in Sections again.</td
+                >Shows every heading in the Outline again.</td
                 ></tr
               ><tr
               ><td
@@ -3397,7 +3540,43 @@
                   >"auto"</code
                   ></td
                 ><td
-                >Where pages draw the file and line an entry is written in. Your own choice, the same in every workspace.</td
+                >When pages draw an entry's details, the ones chosen in Card details: the file and line it is written in, and a note's created and updated dates. Your own choice, the same in every workspace.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.pages.style</code
+                  ></td
+                ><td
+                ><code
+                  >"list"</code
+                  ></td
+                ><td
+                >How the Pages view draws Deckard's pages. Your own choice, the same in every workspace.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.pages.shown</code
+                  ></td
+                ><td
+                ><code
+                  >{"home":true,"board":true,"calendar":true,"today":true,"graph":true,"find":true,"stats":true,"help":true}</code
+                  ></td
+                ><td
+                >Which pages the Pages view shows, in its order. Go to… still lists every page. Your own choice, the same in every workspace.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.display.cardDetails</code
+                  ></td
+                ><td
+                ><code
+                  >{"fileAndLine":true,"created":false,"updated":false}</code
+                  ></td
+                ><td
+                >Which details pages draw under an entry, when File &amp; line says to: its file and line, and its created and updated dates. A task's created date is its own ➕ date when it has one, else its note's; its updated date is its note's. Your own choice, the same in every workspace.</td
                 ></tr
               ><tr
               ><td
@@ -4302,6 +4481,18 @@
               ><tr
               ><td
                 ><code
+                  >deckard.board.showCancelled</code
+                  ></td
+                ><td
+                ><code
+                  >false</code
+                  ></td
+                ><td
+                >Draw a Cancelled column after Done on the Task board, for the tasks that were closed without being done.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
                   >deckard.board.statusNamespace</code
                   ></td
                 ><td
@@ -4310,6 +4501,54 @@
                   ></td
                 ><td
                 >Tag namespace that holds a task's status on the task board, so the default reads #status/doing.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.tasks.statuses</code
+                  ></td
+                ><td
+                ><code
+                  >[{"symbol":" ","name":"Todo","type":"todo","tag":"todo","next":"x"},{"symbol":"/","name":"In progress","type":"inProgress","tag":"doing","next":"x"},{"symbol":"x","name":"Done","type":"done","next":" "},{"symbol":"X","name":"Done","type":"done","next":" "},{"symbol":"-","name":"Cancelled","type":"cancelled","next":" "},{"name":"Waiting","type":"onHold","tag":"waiting"},{"name":"Someday","type":"onHold","tag":"someday"},{"symbol":"=","name":"Blocked","type":"onHold","tag":"blocked","icon":"blocked","next":" "}]</code
+                  ></td
+                ><td
+                >What each checkbox character means, as Obsidian Tasks' statuses do: - [/] in progress, - [-] cancelled, - [=] blocked. Each has a name, a type (todo, inProgress, onHold, done, cancelled, or nonTask), and, optionally, the #status/… tag that stands for it. A character no status names is a task to do, called Unknown. [ ] and [x] are always Todo and Done.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.tasks.checkboxClick</code
+                  ></td
+                ><td
+                ><code
+                  >"done"</code
+                  ></td
+                ><td
+                >What a click on a task's box does, in a page, the Markdown preview, and the Tasks view. **Deckard: Toggle Task Done** always goes to done and back. Set other statuses with **Deckard: Set Task Status…** or the Task board.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.tasks.writeStatusAs</code
+                  ></td
+                ><td
+                ><code
+                  >"match"</code
+                  ></td
+                ><td
+                >How Deckard writes a status that has both a character and a tag, as In progress has [/] and #status/doing. A status with only a tag, such as Waiting, is always its tag; done and cancelled are always their characters.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.tasks.addCancelledDate</code
+                  ></td
+                ><td
+                ><code
+                  >true</code
+                  ></td
+                ><td
+                >Add a cancelled date (❌ or [cancelled:: …]) when Deckard cancels a task. Reopening the task removes it.</td
                 ></tr
               ><tr
               ><td
@@ -4342,7 +4581,7 @@
               ><th
                   colspan="3"
                   scope="rowgroup"
-                >Sections</th
+                >Outline</th
                 ></tr
               ><tr
               ><td
@@ -4354,7 +4593,7 @@
                   >true</code
                   ></td
                 ><td
-                >Show each heading's tags beside it in the Context view's Sections.</td
+                >Show each heading's tags beside it in the Deckard Outline.</td
                 ></tr
               ><tr
               ><td
@@ -4366,7 +4605,7 @@
                   >true</code
                   ></td
                 ><td
-                >Mark the heading the cursor is in, in the Context view's Sections.</td
+                >Select the Deckard Outline heading that contains the editor cursor.</td
                 ></tr
               ><tr
               ><td
@@ -4390,7 +4629,7 @@
                   >true</code
                   ></td
                 ><td
-                >Show beside each heading in the Context view's Sections how many of the tasks under it are done, such as 2/5, and how many links name it, such as ↩3.</td
+                >Show beside each heading in the Deckard Outline how many of the tasks under it are done, such as 2/5, and how many links name it, such as ↩3.</td
                 ></tr
               ></tbody
             ><tbody

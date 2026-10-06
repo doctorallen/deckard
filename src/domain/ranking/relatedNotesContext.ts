@@ -53,6 +53,8 @@ export interface EntryReference {
   title: string;
   sourceLine: number;
   titleTags: TagReference[];
+  /** When the entry was created: a task's ➕ date or its note's. */
+  createdAt?: number;
   updatedAt?: number;
   tags: TagReference[];
   /** What its tags' associations with the active tags say. */

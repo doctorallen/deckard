@@ -28,7 +28,7 @@ Each [GitHub release](https://github.com/doctorallen/deckard/releases) also carr
 
 ### Finding your way
 
-Every page Deckard opens is a row in the sidebar's **Pages** view, each with its own glyph and a word on what is there now: *3 tasks due today* beside Home, *2 tasks overdue* beside the Task Board, whether today's note is written yet. The same list is **Go to…**: `Deckard: Go to…`, <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> elsewhere. On any page, **DECKARD ▾** at the top drops the other pages as a menu, with **Go to…** at its foot; arrows move through it and <kbd>Escape</kbd> closes it.
+Every page Deckard opens is a row in the sidebar's **Pages** view, each with its own glyph and a word on what is there now: *3 tasks due today* beside Home, *2 tasks overdue* beside the Task Board, whether today's note is written yet. Once you know the glyphs, `deckard.pages.style` set to `icons` draws Pages as one row of them, named on hover, and `deckard.pages.shown` picks which pages it keeps. The same list is **Go to…**: `Deckard: Go to…`, <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> elsewhere. On any page, **DECKARD ▾** at the top drops the other pages as a menu, with **Go to…** at its foot; arrows move through it and <kbd>Escape</kbd> closes it.
 
 Deckard refreshes when saved notes are added, edited, or deleted. The first time, it says what it found, such as *Deckard read 412 notes: 1,204 open tasks (17 overdue) and 185 tags.* A workspace of 3,000 notes or more is also told how the "Exclude" setting leaves folders out.
 

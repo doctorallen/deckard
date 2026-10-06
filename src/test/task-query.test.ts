@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 
+import { readTaskStatuses } from '../domain/tasks/taskStatuses';
 import { createQueryContext, QueryContextSettings } from '../domain/query/queryContext';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
@@ -88,7 +89,8 @@ suite('Task metadata queries', () => {
         ...results.sections.map((section) => section.id),
       ].sort();
     };
-    assert.deepStrictEqual(matches('is:waiting'), ['for-dana', 'marked-waiting']);
+    // On hold, Waiting and Someday alike, or for someone else.
+    assert.deepStrictEqual(matches('is:waiting'), ['for-dana', 'marked-waiting', 'someday']);
     assert.notDeepStrictEqual(matches('is:waiting'), matches('is:blocked'), 'no longer a second is:blocked');
     assert.deepStrictEqual(matches('is:blocked'), ['blocked']);
     assert.deepStrictEqual(matches('is:available'), [
@@ -97,11 +99,11 @@ suite('Task metadata queries', () => {
     assert.deepStrictEqual(matches('is:actionable'), matches('is:available'));
     assert.deepStrictEqual(
       matches('is:waiting', { identity: '@dana' }),
-      ['marked-waiting'],
+      ['marked-waiting', 'someday'],
       'what is for me is not waiting on anyone',
     );
     assert.ok(
-      matches('is:available', { identity: '@dana', taskPolicy: { onHoldStatuses: ['waiting'] } }).includes('someday'),
+      matches('is:available', { identity: '@dana', taskPolicy: { statuses: readTaskStatuses([{ name: 'Waiting', type: 'onHold', tag: 'waiting' }]) } }).includes('someday'),
       'the statuses on hold come from the setting',
     );
   });
@@ -282,7 +284,7 @@ function createTask(values: Partial<Task> & { id: string }): Task {
     tagLabels: {},
     lineNumber: 1,
     checkboxColumn: 3,
-    checkboxValue: ' ',
+    status: { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: '- [ ] task',
     ...values,
   };

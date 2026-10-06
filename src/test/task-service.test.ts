@@ -6,6 +6,7 @@ import { TaskService } from '../services/taskService';
 import type { ResourceUri } from '../ports/uri';
 import { FakeHistory, FakeNotes } from './fakeNotes';
 import { FakeSettings } from './fakeWorkspace';
+import { DEFAULT_TASK_STATUSES, type TaskStatusDefinition } from '../domain/tasks/taskStatuses';
 
 /** Mid-morning on Friday 2026-09-25. */
 const now = new Date(2026, 8, 25, 10, 0, 0).getTime();
@@ -146,6 +147,49 @@ suite('Task service', () => {
     const plain = setup({ 'plan.md': open }, { 'deckard.tasks.addDoneDate': false });
     await plain.service.toggle(tasksOf('plan.md', open)[0], true);
     assert.strictEqual(plain.fake.text('plan.md'), '- [x] Send proposal\n');
+  });
+
+  test('sets any status, with the dates its type keeps, and reopens as [ ] without the status tag', async () => {
+    const statuses = DEFAULT_TASK_STATUSES;
+    const named = (name: string) => statuses.find((status) => status.name === name) as TaskStatusDefinition;
+    const text = '- [ ] Draft the plan\n- [ ] Order the banner #status/doing\n- [x] Book the room #status/doing ✅ 2026-09-20\n';
+    const { fake, service } = setup({ 'plan.md': text });
+    const [draft, banner, room] = tasksOf('plan.md', text);
+    assert.strictEqual((await service.setStatus(draft, named('In progress'))).kind, 'updated');
+    assert.strictEqual((await service.setStatus(banner, named('Cancelled'))).kind, 'updated');
+    assert.strictEqual((await service.toggle(room, false)).kind, 'updated');
+    assert.strictEqual(
+      fake.text('plan.md'),
+      '- [/] Draft the plan\n- [-] Order the banner #status/doing ❌ 2026-09-25\n- [ ] Book the room\n',
+    );
+    const tagged = setup({ 'plan.md': '- [ ] Draft the plan\n' }, { 'deckard.tasks.writeStatusAs': 'tag', 'deckard.tasks.addCancelledDate': false });
+    await tagged.service.setStatus(tasksOf('plan.md', '- [ ] Draft the plan\n')[0], named('In progress'));
+    assert.strictEqual(tagged.fake.text('plan.md'), '- [ ] Draft the plan #status/doing\n');
+  });
+
+  test('a change to done is a completion, next occurrence and all; a cancelled repeat can keep repeating', async () => {
+    const text = '- [/] Water plants 🔁 every week 📅 2026-09-25\n';
+    const { fake, service } = setup({ 'plan.md': text });
+    const done = DEFAULT_TASK_STATUSES.find((status) => status.symbol === 'x') as TaskStatusDefinition;
+    const result = await service.setStatus(tasksOf('plan.md', text)[0], done);
+    assert.strictEqual(result.kind === 'updated' ? result.outcome?.next : undefined, '- [ ] Water plants 🔁 every week 📅 2026-10-02');
+    assert.strictEqual((fake.text('plan.md') ?? '').split('\n')[1], '- [x] Water plants 🔁 every week 📅 2026-09-25 ✅ 2026-09-25');
+
+    const cancelled = '- [-] Water plants 🔁 every week 📅 2026-09-25 ❌ 2026-09-25\n';
+    const keep = setup({ 'plan.md': cancelled });
+    const next = await keep.service.startNextOccurrence(keep.fake.uri('plan.md'), 'plan.md', { line: 0, text: cancelled.trimEnd() });
+    assert.strictEqual(next.kind, 'updated');
+    assert.strictEqual(keep.fake.text('plan.md'), `- [ ] Water plants 🔁 every week 📅 2026-10-02\n${cancelled}`);
+    assert.strictEqual((await keep.service.startNextOccurrence(keep.fake.uri('plan.md'), 'plan.md', { line: 0, text: 'something else' })).kind, 'stale');
+  });
+
+  test('a click steps through the workflow only when the setting asks', async () => {
+    const text = '- [/] Draft the plan\n- [ ] Wait for legal #status/waiting\n';
+    const [draft, waiting] = tasksOf('plan.md', text);
+    assert.strictEqual(setup({ 'plan.md': text }).service.readNextStatus(draft), undefined);
+    const workflow = setup({ 'plan.md': text }, { 'deckard.tasks.checkboxClick': 'workflow' });
+    assert.strictEqual(workflow.service.readNextStatus(draft)?.name, 'Done');
+    assert.strictEqual(workflow.service.readNextStatus(waiting), undefined, 'Waiting names no next status');
   });
 
   test('puts a line back, and leaves a line changed since alone', async () => {

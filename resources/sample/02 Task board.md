@@ -7,10 +7,12 @@ person, a dependency, and a context, so each grouping has something in it.
 
 ## How the tasks below are written
 
-A status is a tag in the status namespace written on the task line:
-status/todo, status/doing, status/waiting, or any other you make up. The
-board gives each a column. This sample's settings put a limit of 2 on Doing,
-so that column reads **3 / 2** with an outline.
+A status is the character in a task's box, as `[/]` for in progress, `[-]`
+for cancelled, and `[=]` for blocked, or a tag in the status namespace
+written on the task line: status/todo, status/doing, status/waiting, or any
+other you make up. The board gives each a column, In progress for both `[/]`
+and status/doing. This sample's settings put a limit of 2 on In progress, so
+that column reads **3 / 2** with an outline.
 
 Who a task is for goes in its 👤 field. Naming a person in the words only
 mentions them; the field says whose task it is. This sample's settings say
@@ -29,7 +31,8 @@ first is done.
 - [ ] Review the receiver contract with counsel #status/todo 👤 #person/juno-hale
 - [ ] Ask Leena to audit the activation log #status/todo [assignee:: #person/leena-sato]
 - [ ] Try a second vendor for the lens coating #status/someday
-- [ ] Go over the shell-camera frames with #person/ivo-chen #status/doing
+- [/] Go over the shell-camera frames with #person/ivo-chen
+- [-] Book a second shell camera for the north exits ❌ {{date-2}}
 
 ## What each task shows
 
@@ -42,7 +45,11 @@ Reading down the relay list:
 - *Review the receiver contract* is yours. *Ask Leena* is Leena's, written in
   the Dataview format.
 - *Go over the shell-camera frames* mentions Ivo but is for nobody in
-  particular, so it counts as yours too.
+  particular, so it counts as yours too. Its `[/]` says it is in progress,
+  as the calibration's status/doing tag does: the board puts both under In
+  progress.
+- *Book a second shell camera* is cancelled: `[-]` closes it without doing
+  it, and ❌ says when. It counts as neither open nor done.
 
 Contexts say where a task can be done. Group the board or the Tasks view by
 the context namespace and each context gets its own list. The last errand
@@ -58,9 +65,10 @@ below has two contexts, so it is in both lists.
 ## Try it
 
 1. Run **Deckard: Open Task Board**. It opens grouped by **Status**, on
-   `is:open`. Drag *Try a second vendor* from **someday** to **todo**, then
-   look at the line above: its status tag was rewritten.
-2. Look at **doing**: its header reads **3 / 2**, the limit this sample sets.
+   `is:open`. Drag *Try a second vendor* from **Someday** to **Todo**, then
+   look at the line above: its status tag was rewritten, since its line
+   writes its status as a tag.
+2. Look at **In progress**: its header reads **3 / 2**, the limit this sample sets.
 3. Choose **Person** in the grouping switch. Ren has two cards, Leena one,
    Juno one, and everything else is under **Nobody named**. Drop a card on
    another person to hand it over.

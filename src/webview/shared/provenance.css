@@ -46,6 +46,13 @@ body.provenance-dismissed .home-row .home-row-detail, body.provenance-dismissed 
 .board-card { --frame: var(--edge); --inset: var(--space-3); }
 .card, .note, .task-row, .home-row, .tag-row, .board-card { --reach: 24px; }
 .note:has(.source ~ .source), .card:has(.source ~ .source), .task-row:has(.task-source ~ .task-source), .board-card:has(.task-source ~ .task-source) { --reach: 42px; }
+/* Three lines: where it is written, the headings above it, and its dates. */
+.note:has(.source ~ .source ~ .source), .card:has(.source ~ .source ~ .source), .task-row:has(.task-source ~ .task-source ~ .task-source), .board-card:has(.task-source ~ .task-source ~ .task-source) { --reach: 60px; }
+/* An entry that carries its line down holds still under the pointer, as a
+   board card does: a theme's 3px slide moved the extension off the entry
+   below it, which showed past its edge, and at Windows' fractional scaling
+   drew its sides blurred or a pixel wide. */
+.card:hover, .note:hover, .task-row:hover, .home-row:hover, .tag-row:hover { transform: none; }
 /* The entry under the pointer is lifted above the ones after it, which its
    extension lies over. The sidebar lifts its own notes higher still. */
 .card:hover, .card:focus-within, .task-row:hover, .task-row:focus-within,
@@ -128,6 +135,10 @@ body.provenance-dismissed .home-row .home-row-detail, body.provenance-dismissed 
 .card:hover .source ~ .source, .card:focus-within .source ~ .source,
 .task-row:hover .task-source ~ .task-source, .task-row:focus-within .task-source ~ .task-source,
 .board-card:hover .task-source ~ .task-source, .board-card:focus-within .task-source ~ .task-source { top: calc(100% + 20px); }
+.note:hover .source ~ .source ~ .source, .note:focus-within .source ~ .source ~ .source,
+.card:hover .source ~ .source ~ .source, .card:focus-within .source ~ .source ~ .source,
+.task-row:hover .task-source ~ .task-source ~ .task-source, .task-row:focus-within .task-source ~ .task-source ~ .task-source,
+.board-card:hover .task-source ~ .task-source ~ .task-source, .board-card:focus-within .task-source ~ .task-source ~ .task-source { top: calc(100% + 38px); }
 
 /* Focus and the pointer each mark one entry. While the keyboard has focus
    somewhere, an entry under a resting pointer no longer carries its line
@@ -185,6 +196,23 @@ body[data-file-line=never] .home-row:hover .home-row-detail.is-file, body[data-f
   overflow: hidden;
   clip-path: inset(50%);
 }
+/* Card details without the file and line: a Home row's file, which has
+   nothing else to show, keeps it folded, as never does; search cards, task
+   rows, board cards, and Related Notes draw only the details ticked
+   (entryDetails.ts). */
+body[data-details]:not([data-details~=fileAndLine]) .home-row .home-row-detail.is-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+body[data-details]:not([data-details~=fileAndLine]) .home-row:has(.is-file):hover::after,
+body[data-details]:not([data-details~=fileAndLine]) .home-row:has(.is-file):focus-within::after,
+.card:not(:has(.source)):hover::after, .card:not(:has(.source)):focus-within::after,
+.note:not(:has(.source)):hover::after, .note:not(:has(.source)):focus-within::after,
+.task-row:not(:has(.task-source)):hover::after, .task-row:not(:has(.task-source)):focus-within::after,
+.board-card:not(:has(.task-source)):hover::after, .board-card:not(:has(.task-source)):focus-within::after { content: none; }
 /* Either way there is nothing to carry down: no frame reaches below the
    entry, and focus pushes nothing down to make room. A home row's readout
    is file and line when it names a note's file (is-file); when it is a

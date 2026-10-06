@@ -10,6 +10,7 @@ import { ProgressWords } from '../shared/progressWords';
 import { NoteBody } from '../shared/searchCard';
 import { TagButton } from '../shared/tagButton';
 import { isParkedTag } from '../shared/tagMenu';
+import { Blocks } from '../shared/noteBlocks';
 
 /**
  * A property's values joined by commas, a tag as the control that opens
@@ -66,6 +67,18 @@ function OtherHubNotes({ filePaths }: { readonly filePaths: readonly string[] })
 }
 
 /**
+ * The hub note's body: rendered, as the note page draws it, its query blocks
+ * run, its links followed, and its tasks ticked where it is written; as
+ * source, as written.
+ */
+function HubBody({ hub, renderMode }: { readonly hub: NonNullable<SearchPageSnapshot['hub']>; readonly renderMode: SearchPageSnapshot['renderMode'] }) {
+  if (renderMode === 'html' && hub.blocks && hub.blocks.length) {
+    return <div class="note-body hub-body"><Blocks blocks={hub.blocks} context={{ tags: hub.tags ?? [], filePath: hub.filePath }} /></div>;
+  }
+  return hub.rawContent.trim() ? <NoteBody rawContent={hub.rawContent} blocks={hub.bodyTokens} renderMode={renderMode} /> : null;
+}
+
+/**
  * The note that describes the page's tag, open or closed as the reader
  * left it, or as `deckard.tagOverview.hubNoteExpanded` says until they do.
  */
@@ -82,30 +95,45 @@ export function HubNote({ snapshot, hubOpen }: { readonly snapshot: SearchPageSn
         <button data-action="open-source" data-file-path={hub.filePath} data-line="1" data-tip={hub.filePath}>{`Open ${hub.fileName}`}</button>
       </summary>
       {hub.properties.length ? <HubProperties hub={hub} /> : null}
-      {hub.rawContent.trim() ? <NoteBody rawContent={hub.rawContent} blocks={hub.bodyTokens} renderMode={snapshot.renderMode} /> : null}
+      <HubBody hub={hub} renderMode={snapshot.renderMode} />
       {hub.otherFilePaths.length ? <OtherHubNotes filePaths={hub.otherFilePaths} /> : null}
     </details>
   );
 }
 
 /**
- * How far along the tag's tasks are: a bar and the words, where "3 of 8
- * done", "1 overdue", "1 needs a new date", and "next due today" are each a
+ * How far along the tag's tasks are: a bar and the words, where "3/8 done
+ * (38%)", "1 overdue", "1 needs a new date", and "next due today" are each a
  * link that searches those tasks. Only a tag that finds a task has it.
+ * Under it, a project's Parts: the tags on the headings under its own, each
+ * with its progress, a link that narrows the page to that part.
  */
 export function TagProgress({ snapshot }: { readonly snapshot: SearchPageSnapshot }) {
   const progress = snapshot.tag && snapshot.tagPage ? snapshot.tagPage.progress : undefined;
   if (!progress) {
     return null;
   }
+  const parts = snapshot.tagPage && snapshot.tagPage.parts;
   return (
-    <div class="tag-progress">
-      <span class="eyebrow">Progress</span>
-      <ProgressBar done={progress.done} total={progress.total} />
-      <span class="tag-progress-label">
-        <ProgressWords parts={progress.parts} action="search-progress" attributes={(_part, at) => ({ 'data-part': at })} />
-      </span>
-    </div>
+    <>
+      <div class="tag-progress">
+        <span class="eyebrow">Progress</span>
+        <ProgressBar done={progress.done} total={progress.total} />
+        <span class="tag-progress-label">
+          <ProgressWords parts={progress.parts} action="search-progress" attributes={(_part, at) => ({ 'data-part': at })} />
+        </span>
+      </div>
+      {parts && parts.length
+        ? (
+          <div class="tag-parts">
+            <span class="eyebrow" data-tip="The tags on the headings under this one, each with how far along its tasks are">Parts</span>
+            <span class="tag-parts-list">
+              <ProgressWords parts={parts} action="search-part" attributes={(_part, at) => ({ 'data-part': at })} />
+            </span>
+          </div>
+        )
+        : null}
+    </>
   );
 }
 

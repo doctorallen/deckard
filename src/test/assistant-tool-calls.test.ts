@@ -106,7 +106,7 @@ suite('Assistant tool calls', () => {
     const change = await readText(
       tools.changeTaskTool.invoke({ input: { note: 'notes/atlas.md', line: 2 }, toolInvocationToken: undefined }, token),
     );
-    assert.match(change, /at least one of: title, complete, due/);
+    assert.match(change, /at least one of: title, complete, status /);
   });
 
   test('asks again in a new session', async () => {

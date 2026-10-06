@@ -249,8 +249,9 @@ suite('Agenda', () => {
       'a group is marked the way its tasks are, and the unmarked one is last',
     );
     assert.deepStrictEqual(grouped('status'), [
-      // The busiest group first, and the tasks carrying no status last.
-      ['Doing', ['due-today']],
+      // The busiest group first, and the tasks carrying no status last. A
+      // #status/doing tag is the In progress status, by its name.
+      ['In progress', ['due-today']],
       ['No status', ['overdue', 'upcoming', 'undated']],
     ]);
     assert.deepStrictEqual(grouped('assignee'), [
@@ -412,7 +413,7 @@ function createTask(values: Partial<Task> & { id: string }): Task {
     tagLabels: {},
     lineNumber: 1,
     checkboxColumn: 3,
-    checkboxValue: ' ',
+    status: { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: '- [ ] task',
     ...values,
   };

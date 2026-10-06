@@ -1,4 +1,5 @@
 import * as os from 'os';
+import { isCancelledTask } from '../../domain/tasks/taskStatuses';
 import * as path from 'path';
 
 import * as vscode from 'vscode';
@@ -62,6 +63,7 @@ export function buildCalendarFor(
         dueAt: task.dueAt,
         scheduledAt: task.scheduledAt,
         completed: task.completed,
+        ...(isCancelledTask(task) ? { cancelled: true } : {}),
         updatedAt: index.files.get(task.filePath)?.updatedAt ?? task.updatedAt,
         ...(uri ? { url: fileLink(uri, task.lineNumber) } : {}),
       };

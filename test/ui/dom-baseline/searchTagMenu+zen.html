@@ -264,6 +264,38 @@
             ><div
               class="view-options-group"
             ><span
+              >Hierarchy</span
+              ><div
+                aria-label="Group the results by tag"
+                class="segmented view-options-choices"
+                role="group"
+              ><button
+                  aria-label="No hierarchy"
+                  aria-pressed="true"
+                  class="active"
+                  data-action="set-hierarchy"
+                  data-value="off"
+                  type="button"
+                >Off</button
+                ><button
+                  aria-label="Group by Refine's tags"
+                  aria-pressed="false"
+                  data-action="set-hierarchy"
+                  data-value="tags"
+                  type="button"
+                >By tag</button
+                ><button
+                  aria-label="Nest by tagged headings"
+                  aria-pressed="false"
+                  data-action="set-hierarchy"
+                  data-value="headings"
+                  type="button"
+                >By heading</button
+                ></div
+              ></div
+            ><div
+              class="view-options-group"
+            ><span
               >Format</span
               ><div
                 aria-label="Content format"
@@ -755,6 +787,18 @@
                 class="query-facet-count"
               >1</span
               ></button
+            ><button
+              aria-label="Tasks: In progress, 40. Enter adds AND status:in-progress, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+              class="query-facet-value"
+              data-action="facet"
+              data-clause="status:in-progress"
+              data-facet-id="status"
+              data-tip="Click — AND status:in-progress: keep only results that match it&#10;Alt-click — AND NOT status:in-progress: leave those results out&#10;Shift-click — OR status:in-progress: widen the last value chosen here, so either matches"
+              data-tip-overflow="In progress"
+            >In progress<span
+                class="query-facet-count"
+              >40</span
+              ></button
             ></span
           ></div
         ><div
@@ -843,7 +887,13 @@
           data-part="0"
           data-tip="Search the tag’s done tasks"
           type="button"
-        >1 of 54 done</button
+        ><span
+            aria-hidden="true"
+          >1/54 done (2%)</span
+          ><span
+            class="visually-hidden"
+          >1 of 54 done, 2%</span
+          ></button
         > · <button
           class="progress-link"
           data-action="search-progress"
@@ -898,6 +948,25 @@
             >)</span
           ></button
         ></div
+      ><div
+        class="overview-pane-actions"
+      ><button
+          aria-label="Bulk edit these notes"
+          class="edit-results"
+          data-action="edit-results"
+          data-kind="notes"
+          data-tip="Bulk edit these notes: complete them, date them, or tag them"
+          type="button"
+        >Bulk edit</button
+        ><button
+          aria-label="Export these notes"
+          class="edit-results"
+          data-action="export-results"
+          data-kind="notes"
+          data-tip="Export these notes as a Markdown table, a list, or CSV: copy, or save to a file"
+          type="button"
+        >Export notes</button
+        ></div
       ></div
     ><div
       aria-labelledby="result-tab-notes"
@@ -905,35 +974,8 @@
       id="result-panel-notes"
       role="tabpanel"
     ><section
-        aria-labelledby="notes-heading"
         class="overview-pane"
       ><div
-          class="overview-pane-header"
-        ><h2
-            class="overview-pane-heading"
-            id="notes-heading"
-          >Notes</h2
-          ><div
-            class="overview-pane-actions"
-          ><button
-              aria-label="Bulk edit these notes"
-              class="edit-results"
-              data-action="edit-results"
-              data-kind="notes"
-              data-tip="Bulk edit these notes: complete them, date them, or tag them"
-              type="button"
-            >Bulk edit</button
-            ><button
-              aria-label="Export these notes"
-              class="edit-results"
-              data-action="export-results"
-              data-kind="notes"
-              data-tip="Export these notes as a Markdown table, a list, or CSV: copy, or save to a file"
-              type="button"
-            >Export notes</button
-            ></div
-          ></div
-        ><div
           class="cards"
           style="grid-template-columns: repeat(1, minmax(0px, 1fr))"
         ><article
@@ -995,7 +1037,7 @@
             data-parked="false"
             data-pinned="false"
             data-search-entry="notes"
-            data-search-text="atlas #project/atlas @dana atlas.md a note with a title long enough to wrap in a narrow sidebar, about #topic/replicants and @ren-kade.&#10;## meeting #meeting/standup&#10;notes from the standup with @dana. #project/atlas @dana"
+            data-search-text="atlas #project/atlas @dana atlas.md a note with a title long enough to wrap in a narrow sidebar, about #topic/replicants and @ren-kade. #project/atlas @dana"
             data-tip-around=""
             tabindex="0"
           ><div
@@ -1046,10 +1088,6 @@
                 class="rendered"
               ><p
                 >A note with a title long enough to wrap in a narrow sidebar, about #topic/replicants and @ren-kade.</p
-                > <h2
-                >Meeting #meeting/standup</h2
-                > <p
-                >Notes from the standup with @dana.</p
                 > </div
               ></div
             ></article
@@ -2606,35 +2644,8 @@
       id="result-panel-tasks"
       role="tabpanel"
     ><section
-        aria-labelledby="tasks-heading"
         class="overview-pane"
       ><div
-          class="overview-pane-header"
-        ><h2
-            class="overview-pane-heading"
-            id="tasks-heading"
-          >Tasks</h2
-          ><div
-            class="overview-pane-actions"
-          ><button
-              aria-label="Bulk edit these tasks"
-              class="edit-results"
-              data-action="edit-results"
-              data-kind="tasks"
-              data-tip="Bulk edit these tasks: complete them, date them, or tag them"
-              type="button"
-            >Bulk edit</button
-            ><button
-              aria-label="Export these tasks"
-              class="edit-results"
-              data-action="export-results"
-              data-kind="tasks"
-              data-tip="Export these tasks as a Markdown table, a list, or CSV: copy, or save to a file"
-              type="button"
-            >Export tasks</button
-            ></div
-          ></div
-        ><div
           class="task-list"
           style="grid-template-columns: repeat(1, minmax(0px, 1fr))"
         ><div
@@ -2647,10 +2658,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Chase the replicant through the neon market and file the report before the rain #status/doing"
+              aria-label="Toggle Chase the replicant through the neon market and file the report before the rain #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-84k6vj-elap6m"
               type="checkbox"
             ><div
@@ -2714,10 +2726,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 2 #status/doing"
+              aria-label="Toggle Board task 2 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-rx5rz3-ngkthq"
               type="checkbox"
             ><div
@@ -2781,10 +2794,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 3 #status/doing"
+              aria-label="Toggle Board task 3 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-4nvbcw-w5bdbn"
               type="checkbox"
             ><div
@@ -2848,10 +2862,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 4 #status/doing"
+              aria-label="Toggle Board task 4 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-xs7na9-bk3gw8"
               type="checkbox"
             ><div
@@ -2915,10 +2930,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 5 #status/doing"
+              aria-label="Toggle Board task 5 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-176jya-1i7w1z9"
               type="checkbox"
             ><div
@@ -2982,10 +2998,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 6 #status/doing"
+              aria-label="Toggle Board task 6 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-50xidk-1keui07"
               type="checkbox"
             ><div
@@ -3049,10 +3066,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 7 #status/doing"
+              aria-label="Toggle Board task 7 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-xf5g9l-66o67a"
               type="checkbox"
             ><div
@@ -3113,10 +3131,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 8 #status/doing"
+              aria-label="Toggle Board task 8 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-hlyjxm-133ak55"
               type="checkbox"
             ><div
@@ -3177,10 +3196,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 9 #status/doing"
+              aria-label="Toggle Board task 9 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-v4hg5m-1w8gcqf"
               type="checkbox"
             ><div
@@ -3241,10 +3261,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 10 #status/doing"
+              aria-label="Toggle Board task 10 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-sou4ba-1wy7tbr"
               type="checkbox"
             ><div
@@ -3308,10 +3329,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 11 #status/doing"
+              aria-label="Toggle Board task 11 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-a8e99-1u0eons"
               type="checkbox"
             ><div
@@ -3375,10 +3397,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 12 #status/doing"
+              aria-label="Toggle Board task 12 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-t9awts-twddo1"
               type="checkbox"
             ><div
@@ -3442,10 +3465,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 13 #status/doing"
+              aria-label="Toggle Board task 13 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-csqmkt-sr6qq2"
               type="checkbox"
             ><div
@@ -3509,10 +3533,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 14 #status/doing"
+              aria-label="Toggle Board task 14 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-g6bvzq-1o8r4ff"
               type="checkbox"
             ><div
@@ -3576,10 +3601,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 15 #status/doing"
+              aria-label="Toggle Board task 15 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-k7uc54-1aswdrv"
               type="checkbox"
             ><div
@@ -3643,10 +3669,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 16 #status/doing"
+              aria-label="Toggle Board task 16 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-lu779h-q1e2v4"
               type="checkbox"
             ><div
@@ -3710,10 +3737,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 17 #status/doing"
+              aria-label="Toggle Board task 17 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-74vbb2-1dshgq5"
               type="checkbox"
             ><div
@@ -3777,10 +3805,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 18 #status/doing"
+              aria-label="Toggle Board task 18 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-mc6afq-m34h2n"
               type="checkbox"
             ><div
@@ -3844,10 +3873,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 19 #status/doing"
+              aria-label="Toggle Board task 19 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-6n1s1a-1m5gutp"
               type="checkbox"
             ><div
@@ -3911,10 +3941,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 20 #status/doing"
+              aria-label="Toggle Board task 20 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-9wz49f-lla8uu"
               type="checkbox"
             ><div
@@ -3978,10 +4009,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 21 #status/doing"
+              aria-label="Toggle Board task 21 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-dyhket-s0puae"
               type="checkbox"
             ><div
@@ -4045,10 +4077,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 22 #status/doing"
+              aria-label="Toggle Board task 22 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-s3jyzs-11c1y5v"
               type="checkbox"
             ><div
@@ -4112,10 +4145,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 23 #status/doing"
+              aria-label="Toggle Board task 23 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-vijkr-80bqac"
               type="checkbox"
             ><div
@@ -4179,10 +4213,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 24 #status/doing"
+              aria-label="Toggle Board task 24 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-tul25a-ap5jbl"
               type="checkbox"
             ><div
@@ -4246,10 +4281,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 25 #status/doing"
+              aria-label="Toggle Board task 25 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-c7gh9b-1sikfaq"
               type="checkbox"
             ><div
@@ -4313,10 +4349,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 26 #status/doing"
+              aria-label="Toggle Board task 26 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-grm1b8-dezlhr"
               type="checkbox"
             ><div
@@ -4380,10 +4417,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 27 #status/doing"
+              aria-label="Toggle Board task 27 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-kt4hgm-1rkbj67"
               type="checkbox"
             ><div
@@ -4447,10 +4485,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 28 #status/doing"
+              aria-label="Toggle Board task 28 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-z0oldu-1cdfwff"
               type="checkbox"
             ><div
@@ -4514,10 +4553,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 29 #status/doing"
+              aria-label="Toggle Board task 29 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-61m2tb-1bmwv4q"
               type="checkbox"
             ><div
@@ -4581,10 +4621,11 @@
             draggable="false"
             tabindex="0"
           ><input
-              aria-label="Toggle Board task 30 #status/doing"
+              aria-label="Toggle Board task 30 #status/doing, In progress"
               data-action="toggle-task"
               data-dom-checked="false"
               data-dom-value="on"
+              data-status="inProgress"
               data-task-id="task-kh8plz-1pkj0n6"
               type="checkbox"
             ><div
@@ -4740,7 +4781,6 @@
     class="popover tag-context-menu"
     id="tag-context-menu"
     role="menu"
-    style="left: 8px; top: 8px"
   ><button
       class="menu-item"
       data-context-action="rename-tag"

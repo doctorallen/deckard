@@ -1,4 +1,7 @@
 import { describeSteps } from '../../domain/markdown/taskSteps';
+import { drawTaskStatus } from './drawnStatus';
+import type { DrawnStatus } from '../protocol/shared';
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { QueryContext } from '../../domain/query/queryContext';
 import { getFileName } from '../../shared/paths';
 import { buildBlockExcerpt } from '../../domain/markdown/blockExcerpt';
@@ -19,6 +22,7 @@ import { DashboardTask, TagOverviewCard } from '../protocol/shared';
 import { DashboardNote } from '../protocol/dashboard';
 import { stripTags } from '../../domain/markdown/parser';
 import { fileEntryId } from '../../domain/markdown/noteEntries';
+import type { EntryLine } from '../../domain/index/noteEntryIndex';
 
 /**
  * The cards and task rows every page draws an entry as, and the orders they
@@ -103,7 +107,7 @@ export function createDashboardTask(
   context: Pick<QueryContext, 'now' | 'taskPolicy'>,
 ): DashboardTask {
   const due =
-    !task.completed && task.dueAt !== undefined
+    isOpenTask(task) && task.dueAt !== undefined
       ? describeDueDate(task.dueAt, context.now, context.taskPolicy, task.dueText)
       : undefined;
   return {
@@ -127,6 +131,7 @@ export function createDashboardTask(
         }
       : {}),
     ...(task.steps ? { stepsLabel: describeSteps(task.steps) } : {}),
+    ...withDrawnStatus(drawTaskStatus(task, context.taskPolicy)),
   };
 }
 
@@ -185,6 +190,26 @@ function findFileEntryTitle(file: ParsedFile): Section | undefined {
   return lead && lead.headingLevel === 1 && lead.entryId === fileEntryId(file.filePath) ? lead : undefined;
 }
 
+/**
+ * The lines a front-matter note's card draws, from its entry's lines
+ * (`getFileEntryLines`): without its title, which is the card's heading, and
+ * without blank lines at either end. The heading a card's lines are under is
+ * named beside a match, unless it is the title.
+ */
+export function getFileCardLines(file: ParsedFile, lines: readonly EntryLine[]): { lines: EntryLine[]; titleId?: string } {
+  const lead = findFileEntryTitle(file);
+  const kept = lines.filter((line) => !(lead && line.line === lead.startLine));
+  let first = 0;
+  let last = kept.length;
+  while (first < last && !kept[first].text.trim()) {
+    first += 1;
+  }
+  while (last > first && !kept[last - 1].text.trim()) {
+    last -= 1;
+  }
+  return { lines: kept.slice(first, last), ...(lead ? { titleId: lead.id } : {}) };
+}
+
 /** A note's title as a list shows it: its own `#` heading when it is a note as a whole, else its file name. */
 export function getFileEntryTitle(file: ParsedFile): string {
   const lead = findFileEntryTitle(file);
@@ -196,13 +221,18 @@ export function getFileEntryTitle(file: ParsedFile): string {
  * A front-matter note, or a note above its first heading, as a card: titled
  * by its own `#` heading when it is a note as a whole, else by its file name.
  */
-export function createFileOverviewCard(file: ParsedFile): TagOverviewCard {
+export function createFileOverviewCard(file: ParsedFile, lines?: readonly EntryLine[]): TagOverviewCard {
   const heading = getFileEntryTitle(file);
   const lead = findFileEntryTitle(file);
-  // The title is the card's heading, so its line is not repeated in the body.
-  const rawContent = lead
-    ? getFrontmatterBody(file.content.split(/\r?\n/).filter((_line, at) => at !== lead.startLine - 1).join('\n')).replace(/^\n+/, '')
-    : getFilePreamble(file);
+  let rawContent: string;
+  if (lines) {
+    rawContent = lines.map((line) => line.text).join('\n');
+  } else {
+    // The title is the card's heading, so its line is not repeated in the body.
+    rawContent = lead
+      ? getFrontmatterBody(file.content.split(/\r?\n/).filter((_line, at) => at !== lead.startLine - 1).join('\n')).replace(/^\n+/, '')
+      : getFilePreamble(file);
+  }
   return {
     id: `frontmatter:${file.filePath}`,
     filePath: file.filePath,
@@ -383,3 +413,8 @@ export function getFrontmatterBody(content: string): string {
   return endLine === undefined ? content : lines.slice(endLine + 1).join('\n').replace(/^\n/, '');
 }
 
+
+/** A drawn status, as a field a row carries only when there is one. */
+export function withDrawnStatus(status: DrawnStatus | undefined): { status?: DrawnStatus } {
+  return status ? { status } : {};
+}

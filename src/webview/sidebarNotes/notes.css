@@ -27,26 +27,6 @@
 .link-one, .link-all { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
 .link-all { margin-top: var(--space-2); }
 .links-more { margin: var(--space-1) 0 0; color: var(--muted); font-size: var(--text-xs); }
-/* Sections: the note's headings, above its related notes. A heading sits
-   in from its parent; the one the cursor is in carries the accent edge. */
-.note-sections { margin-top: var(--space-3); }
-.sections-filter { display: flex; align-items: center; gap: var(--space-1); margin: var(--space-2) 0 0; color: var(--muted); font-size: var(--text-xs); }
-.sections-filter select { min-width: 0; font-size: var(--text-xs); }
-.sections-list { display: grid; gap: 1px; margin: var(--space-2) 0 0; padding: 0; list-style: none; }
-.section-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--space-1); min-height: 24px; padding: 1px var(--space-1) 1px calc(var(--space-1) + var(--section-indent, 0px)); border-left: 2px solid transparent; }
-.section-row.depth-1 { --section-indent: 12px; }
-.section-row.depth-2 { --section-indent: 24px; }
-.section-row.depth-3 { --section-indent: 36px; }
-.section-row.depth-4 { --section-indent: 48px; }
-.section-row.depth-5 { --section-indent: 60px; }
-.section-row.is-active { border-left-color: var(--accent); background: var(--panel); }
-.section-open.section-open { min-height: 0; margin: 0; padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
-.section-open:hover, .section-open:focus-visible { text-decoration: underline; }
-.section-row.is-active .section-open { font-weight: 600; }
-.section-tag { font-size: var(--text-xs); }
-.section-counts { color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.section-focus { margin-left: auto; min-height: 20px; padding: 0 var(--space-1); font-size: var(--text-xs); opacity: 0; }
-.section-row:hover .section-focus, .section-row:focus-within .section-focus, .section-row.is-active .section-focus { opacity: 1; }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-bottom: 8px; border-bottom: 2px solid var(--line-strong); }
 .sidebar-header .eyebrow { flex: 0 0 auto; }
 /* The selected entry is context for the list, not the subject of the pane:
