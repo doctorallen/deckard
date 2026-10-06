@@ -82,3 +82,44 @@ suite('Card details on tasks', () => {
     assert.strictEqual(page.findAll('.task-row .task-source').length, 0);
   });
 });
+
+suite('Card details in Related Notes', () => {
+  let page: WebviewPage | undefined;
+
+  teardown(() => {
+    page?.dispose();
+    page = undefined;
+  });
+
+  const CREATED = new Date(2026, 8, 12, 9).getTime();
+
+  test('a result shows the details ticked: its file and line and its created date', () => {
+    const snapshot = {
+      activeFileName: 'today.md',
+      activeTags: [],
+      tagTitleDisplayMode: 'inline',
+      state: 'ready',
+      notes: [{
+        sectionId: 'section-1',
+        filePath: 'notes/atlas.md',
+        title: 'Check-in',
+        fileName: 'atlas.md',
+        sourceLine: 12,
+        headingPath: ['Atlas', 'Check-in'],
+        titleTags: [],
+        matchedTags: [],
+        matchCount: 1,
+        totalTagCount: 1,
+        overlap: 1,
+        relevanceScore: 84,
+        createdAt: CREATED,
+      }],
+    };
+    page = openWebviewPage(renderPage('sidebarNotes', { chrome: { theme: 'cooper', zen: false, display: { details: 'fileAndLine created' } } }), snapshot);
+    assert.strictEqual(page.text('.note .source'), `atlas / line 12 · Created ${formatIsoDate(CREATED)}`);
+    page.dispose();
+    page = openWebviewPage(renderPage('sidebarNotes', { chrome: { theme: 'cooper', zen: false, display: { details: 'created' } } }), snapshot);
+    assert.strictEqual(page.text('.note .source'), `Created ${formatIsoDate(CREATED)}`, 'without its file and line, or the headings above it');
+    assert.strictEqual(page.findAll('.note .heading-path').length, 0);
+  });
+});

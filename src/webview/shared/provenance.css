@@ -190,11 +190,10 @@ body[data-file-line=never] .home-row:hover .home-row-detail.is-file, body[data-f
   overflow: hidden;
   clip-path: inset(50%);
 }
-/* Card details without the file and line: a Home row's file, or a note in
-   the sidebar, which have nothing else to show, keep it folded, as never
-   does; a search card, a task row, and a board card draw only the details
-   ticked (entryDetails.ts). */
-body[data-details]:not([data-details~=fileAndLine]) .note .source,
+/* Card details without the file and line: a Home row's file, which has
+   nothing else to show, keeps it folded, as never does; search cards, task
+   rows, board cards, and Related Notes draw only the details ticked
+   (entryDetails.ts). */
 body[data-details]:not([data-details~=fileAndLine]) .home-row .home-row-detail.is-file {
   position: absolute;
   width: 1px;
@@ -202,11 +201,10 @@ body[data-details]:not([data-details~=fileAndLine]) .home-row .home-row-detail.i
   overflow: hidden;
   clip-path: inset(50%);
 }
-body[data-details]:not([data-details~=fileAndLine]) .note:hover::after,
-body[data-details]:not([data-details~=fileAndLine]) .note:focus-within::after,
 body[data-details]:not([data-details~=fileAndLine]) .home-row:has(.is-file):hover::after,
 body[data-details]:not([data-details~=fileAndLine]) .home-row:has(.is-file):focus-within::after,
 .card:not(:has(.source)):hover::after, .card:not(:has(.source)):focus-within::after,
+.note:not(:has(.source)):hover::after, .note:not(:has(.source)):focus-within::after,
 .task-row:not(:has(.task-source)):hover::after, .task-row:not(:has(.task-source)):focus-within::after,
 .board-card:not(:has(.task-source)):hover::after, .board-card:not(:has(.task-source)):focus-within::after { content: none; }
 /* Either way there is nothing to carry down: no frame reaches below the

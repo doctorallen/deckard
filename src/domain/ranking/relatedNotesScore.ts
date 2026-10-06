@@ -57,6 +57,7 @@ export function scoreReference(
     headingPath: reference.headingPath,
     dailyDate: reference.dailyDate,
     titleTags: reference.titleTags,
+    createdAt: reference.createdAt,
     updatedAt: reference.updatedAt,
     matchedTags,
     matchCount: matchedTags.reduce(

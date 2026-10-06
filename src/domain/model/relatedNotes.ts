@@ -26,6 +26,8 @@ export interface RankedNote {
   /** Date inferred from a daily-note filename or date heading, when present. */
   dailyDate?: string;
   titleTags: TagReference[];
+  /** When the entry was created, for Card details: a task's ➕ date or its note's. */
+  createdAt?: number;
   updatedAt?: number;
   matchedTags: TagReference[];
   matchCount: number;
