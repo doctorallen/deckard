@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "2.2.0",
+  "version": "2.3.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -2036,14 +2036,38 @@
           "deckard.pages.shown": {
             "type": "object",
             "properties": {
-              "home": { "type": "boolean", "description": "Home." },
-              "board": { "type": "boolean", "description": "Task Board." },
-              "calendar": { "type": "boolean", "description": "Calendar." },
-              "today": { "type": "boolean", "description": "Today's note." },
-              "graph": { "type": "boolean", "description": "Notes Graph." },
-              "find": { "type": "boolean", "description": "Find in Notes." },
-              "stats": { "type": "boolean", "description": "Stats." },
-              "help": { "type": "boolean", "description": "Help." }
+              "home": {
+                "type": "boolean",
+                "description": "Home."
+              },
+              "board": {
+                "type": "boolean",
+                "description": "Task Board."
+              },
+              "calendar": {
+                "type": "boolean",
+                "description": "Calendar."
+              },
+              "today": {
+                "type": "boolean",
+                "description": "Today's note."
+              },
+              "graph": {
+                "type": "boolean",
+                "description": "Notes Graph."
+              },
+              "find": {
+                "type": "boolean",
+                "description": "Find in Notes."
+              },
+              "stats": {
+                "type": "boolean",
+                "description": "Stats."
+              },
+              "help": {
+                "type": "boolean",
+                "description": "Help."
+              }
             },
             "additionalProperties": false,
             "default": {
@@ -2210,7 +2234,10 @@
           },
           "deckard.weeklyNote.naming": {
             "type": "string",
-            "enum": ["range", "iso"],
+            "enum": [
+              "range",
+              "iso"
+            ],
             "enumDescriptions": [
               "week-2026-09-13-2026-09-19: the week's first and last days.",
               "2026-W38: the ISO week, as many journaling tools name it."
@@ -2422,7 +2449,11 @@
           },
           "deckard.editor.preset": {
             "type": "string",
-            "enum": ["full", "tasks", "writing"],
+            "enum": [
+              "full",
+              "tasks",
+              "writing"
+            ],
             "enumDescriptions": [
               "Everything Deckard draws in the editor: counts, hints, previews, and lenses.",
               "What helps with tasks, and what reports a problem; no link counts, mention lenses, or breadcrumbs.",
@@ -2526,7 +2557,10 @@
           },
           "deckard.links.style": {
             "type": "string",
-            "enum": ["wiki", "markdown"],
+            "enum": [
+              "wiki",
+              "markdown"
+            ],
             "enumDescriptions": [
               "[[Atlas]], as Obsidian writes them.",
               "[Atlas](projects/Atlas.md), which GitHub, MkDocs, and other Markdown renderers show as links."
@@ -2844,14 +2878,56 @@
               ]
             },
             "default": [
-              { "symbol": " ", "name": "Todo", "type": "todo", "tag": "todo", "next": "x" },
-              { "symbol": "/", "name": "In progress", "type": "inProgress", "tag": "doing", "next": "x" },
-              { "symbol": "x", "name": "Done", "type": "done", "next": " " },
-              { "symbol": "X", "name": "Done", "type": "done", "next": " " },
-              { "symbol": "-", "name": "Cancelled", "type": "cancelled", "next": " " },
-              { "name": "Waiting", "type": "onHold", "tag": "waiting" },
-              { "name": "Someday", "type": "onHold", "tag": "someday" },
-              { "symbol": "=", "name": "Blocked", "type": "onHold", "tag": "blocked", "icon": "blocked", "next": " " }
+              {
+                "symbol": " ",
+                "name": "Todo",
+                "type": "todo",
+                "tag": "todo",
+                "next": "x"
+              },
+              {
+                "symbol": "/",
+                "name": "In progress",
+                "type": "inProgress",
+                "tag": "doing",
+                "next": "x"
+              },
+              {
+                "symbol": "x",
+                "name": "Done",
+                "type": "done",
+                "next": " "
+              },
+              {
+                "symbol": "X",
+                "name": "Done",
+                "type": "done",
+                "next": " "
+              },
+              {
+                "symbol": "-",
+                "name": "Cancelled",
+                "type": "cancelled",
+                "next": " "
+              },
+              {
+                "name": "Waiting",
+                "type": "onHold",
+                "tag": "waiting"
+              },
+              {
+                "name": "Someday",
+                "type": "onHold",
+                "tag": "someday"
+              },
+              {
+                "symbol": "=",
+                "name": "Blocked",
+                "type": "onHold",
+                "tag": "blocked",
+                "icon": "blocked",
+                "next": " "
+              }
             ],
             "markdownDescription": "What each checkbox character means, as Obsidian Tasks' statuses do: `- [/]` in progress, `- [-]` cancelled, `- [=]` blocked. Each has a `name`, a `type` (`todo`, `inProgress`, `onHold`, `done`, `cancelled`, or `nonTask`), and, optionally, the `#status/…` `tag` that stands for it. A character no status names is a task to do, called Unknown. `[ ]` and `[x]` are always Todo and Done.",
             "order": 12
