@@ -6,6 +6,7 @@ import {
   matchTaskLine,
   TaskLineMatch,
   TaskLineShape,
+  STATUS_OR_MIGRATED_MARKS,
 } from './lineShapes';
 import { findListItemEndLine, listItemIndentation } from './parser';
 import { markMigrated } from './taskLineEdits';
@@ -51,8 +52,8 @@ export interface MoveSelection {
 
 /** An open task, which a move can leave behind marked `[>]`. */
 const OPEN_TASK: TaskLineShape = { indent: 'whitespace', marks: ' ' };
-/** A task of any kind: open, done, or migrated. */
-const ANY_TASK: TaskLineShape = { indent: 'whitespace', marks: ' xX>' };
+/** A task of any kind: any status, or migrated. */
+const ANY_TASK: TaskLineShape = { indent: 'whitespace', marks: STATUS_OR_MIGRATED_MARKS };
 
 /**
  * The block a move takes: the selected lines, or with nothing selected the

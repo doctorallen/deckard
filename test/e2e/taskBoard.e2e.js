@@ -17,7 +17,7 @@ function createIndex() {
   const task = (id, title, lineNumber, { tags = [], completed = false } = {}) => ({
     id, filePath: 'notes/tasks.md', title, completed, tags,
     tagLabels: Object.fromEntries(tags.map((tag) => [tag, tag])),
-    lineNumber, checkboxColumn: 3, checkboxValue: completed ? 'x' : ' ',
+    lineNumber, checkboxColumn: 3, status: completed ? { symbol: 'x', name: 'Done', type: 'done' } : { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: `- [${completed ? 'x' : ' '}] ${title} ${tags.join(' ')}`.trim(),
   });
   const tasks = [
@@ -332,12 +332,12 @@ function createIndexWithSteps() {
   const index = createIndex();
   const step = (id, title, lineNumber, { completed, ...extra }) => ({
     id, filePath: 'notes/tasks.md', title, completed, tags: [], tagLabels: {},
-    associationTagGroups: [[]], lineNumber, checkboxColumn: 5, checkboxValue: completed ? 'x' : ' ',
+    associationTagGroups: [[]], lineNumber, checkboxColumn: 5, status: completed ? { symbol: 'x', name: 'Done', type: 'done' } : { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: `  - [${completed ? 'x' : ' '}] ${title}`, parentTaskId: 'plan', ...extra,
   });
   index.tasks.set('plan', {
     id: 'plan', filePath: 'notes/tasks.md', title: 'Plan the offsite', completed: false, tags: [], tagLabels: {},
-    associationTagGroups: [[]], lineNumber: 10, checkboxColumn: 3, checkboxValue: ' ',
+    associationTagGroups: [[]], lineNumber: 10, checkboxColumn: 3, status: { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: '- [ ] Plan the offsite',
     steps: { ids: ['venue', 'email', 'caterer'], total: 3, done: 1, next: 'Draft the email' },
   });

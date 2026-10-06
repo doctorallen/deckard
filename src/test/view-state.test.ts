@@ -1865,7 +1865,7 @@ function createTask(
     tagLabels: Object.fromEntries(tags.map((tag) => [tag, `#${tag}`])),
     lineNumber,
     checkboxColumn: 3,
-    checkboxValue: completed ? 'x' : ' ',
+    status: completed ? { symbol: 'x', name: 'Done', type: 'done' } : { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: `- [${completed ? 'x' : ' '}] ${title}`,
     createdAt,
     updatedAt,

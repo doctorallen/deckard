@@ -15,7 +15,7 @@ suite('Exporting results', () => {
     id: 't', filePath: 'notes/2026-09-20.md', sectionId: 'sec', title: 'Ship it, "carefully"', completed: false,
     tags: ['#project/atlas'], tagLabels: { '#project/atlas': '#project/atlas' },
     dueText: '2026-09-21', priority: 'high', assignee: '@ren', lineNumber: 9,
-    checkboxColumn: 3, checkboxValue: ' ', sourceLineText: '- [ ] Ship it', ...over,
+    checkboxColumn: 3, status: { symbol: ' ', name: 'Todo', type: 'todo' }, sourceLineText: '- [ ] Ship it', ...over,
   });
   const index = { sections: new Map([['sec', section({ heading: 'Plan' })]]) };
 

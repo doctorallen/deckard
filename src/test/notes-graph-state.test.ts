@@ -382,7 +382,7 @@ suite('Notes graph messages', () => {
       'section dates': (file) => { file.sections[0].updatedAt = 9; },
       'section end': (file) => { file.sections[0].endLine += 3; file.sections[0].bodyEndLine += 3; },
       'body tag line': (file) => { file.sections.forEach((section) => (section.bodyTags ?? []).forEach((tag) => { tag.line += 1; })); },
-      'task status': (file) => { file.tasks[0].completed = true; file.tasks[0].checkboxValue = 'x'; file.tasks[0].sourceLineText = file.tasks[0].sourceLineText.replace('[ ]', '[x]'); },
+      'task status': (file) => { file.tasks[0].completed = true; file.tasks[0].status = { symbol: 'x', name: 'Done', type: 'done' }; file.tasks[0].sourceLineText = file.tasks[0].sourceLineText.replace('[ ]', '[x]'); },
       'task due and priority': (file) => { file.tasks[0].dueAt = 10; file.tasks[0].dueText = '2026-11-01'; file.tasks[0].priority = 'high'; },
       'block ids': (file) => { file.blockIds = { q3: 6 }; },
       'hub': (file) => { file.hub = { describes: [{ key: '#project/atlas', label: '#project/atlas' }], properties: [] }; },

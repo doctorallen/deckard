@@ -7,6 +7,22 @@ import type { TagReference } from './tags';
 /** Task priorities of the Obsidian Tasks format, 🔺 ⏫ 🔼 🔽 ⏬. */
 export type TaskPriority = 'highest' | 'high' | 'medium' | 'low' | 'lowest';
 
+/**
+ * What a status means, whatever it is called: `todo`, `inProgress`, and
+ * `onHold` are open; `done` is done; `cancelled` is closed but not done;
+ * `nonTask` marks a checkbox line that is not a task at all.
+ */
+export type TaskStatusType = 'todo' | 'inProgress' | 'onHold' | 'done' | 'cancelled' | 'nonTask';
+
+/** A task's status as its checkbox says it: the character, its status's name, and its type. */
+export interface TaskStatus {
+  /** The character between the brackets: ` `, `x`, `/`, or any other. */
+  symbol: string;
+  /** Its status's name, or Unknown for a character no status names. */
+  name: string;
+  type: TaskStatusType;
+}
+
 /** A checkbox line in a note, with its tags, dates, and the fields written on it. */
 export interface Task {
   id: string;
@@ -15,6 +31,7 @@ export interface Task {
   /** The entry the task's heading belongs to, when that is not the heading itself (noteEntries.ts). */
   entryId?: string;
   title: string;
+  /** Whether its status is of the done type. */
   completed: boolean;
   tags: string[];
   tagLabels: Record<string, string>;
@@ -28,6 +45,8 @@ export interface Task {
   startAt?: number;
   /** ✅ date the task was completed. */
   doneAt?: number;
+  /** ❌ date the task was cancelled. */
+  cancelledAt?: number;
   priority?: TaskPriority;
   /** 🔁 repeat rule as written, such as "every week". */
   recurrence?: string;
@@ -42,7 +61,8 @@ export interface Task {
   dependsOn?: string[];
   lineNumber: number;
   checkboxColumn: number;
-  checkboxValue: ' ' | 'x' | 'X';
+  /** Its checkbox's status; a `#status/…` tag on a ` ` box is read on top of this (taskStatuses.ts). */
+  status: TaskStatus;
   sourceLineText: string;
   createdAt?: number;
   updatedAt?: number;

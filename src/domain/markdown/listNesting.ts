@@ -1,4 +1,4 @@
-import { findFencedLines, isHeadingLine, isTaskLineOf, TaskLineShape } from './lineShapes';
+import { findFencedLines, isHeadingLine, isTaskLineOf, STATUS_MARKS, TaskLineShape } from './lineShapes';
 
 /**
  * Which list item each list item is written under, read from indentation
@@ -12,7 +12,7 @@ import { findFencedLines, isHeadingLine, isTaskLineOf, TaskLineShape } from './l
 
 const LIST_ITEM = /^([ \t]*)(?:[-*+]|\d+[.)])[ \t]+/;
 /** A step's checkbox: indented by spaces and tabs only, with a gap after it. */
-const TASK_ITEM: TaskLineShape = { indent: 'spaces-and-tabs', marks: ' xX', after: 'gap' };
+const TASK_ITEM: TaskLineShape = { indent: 'spaces-and-tabs', marks: STATUS_MARKS, after: 'gap' };
 
 /** How far a line's whitespace reaches, with a tab counted to the next multiple of 4. */
 export function measureIndent(whitespace: string): number {

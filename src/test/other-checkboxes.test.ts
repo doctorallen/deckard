@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { countOtherCheckboxes } from '../domain/index/otherCheckboxes';
 import { parseMarkdown } from '../domain/markdown/parser';
+import { readTaskStatuses } from '../domain/tasks/taskStatuses';
 import {
   describeOtherCheckboxes,
   noticeOtherCheckboxesOnce,
@@ -36,9 +37,16 @@ const VAULT = [
 
 suite('Checkbox lines that are not tasks', () => {
   test('are counted apart from tasks, leaving out migrated lines and code', () => {
-    const file = parseMarkdown('launch.md', VAULT);
+    // `[/]`, `[-]`, and `[?]` are tasks now; a status of the nonTask type is text.
+    const taskStatuses = readTaskStatuses([
+      { symbol: '/', name: 'Pro', type: 'nonTask' },
+      { symbol: '-', name: 'Con', type: 'nonTask' },
+      { symbol: '?', name: 'Question', type: 'nonTask' },
+    ]);
+    const file = parseMarkdown('launch.md', VAULT, undefined, { taskStatuses });
     assert.strictEqual(file.tasks.length, 2);
     assert.strictEqual(file.otherCheckboxes, 3);
+    assert.strictEqual(parseMarkdown('launch.md', VAULT).otherCheckboxes, undefined);
     assert.strictEqual(parseMarkdown('plain.md', '- [ ] Only a task\n').otherCheckboxes, undefined);
     assert.strictEqual(countOtherCheckboxes(buildWorkspaceIndex(new Map([['launch.md', file]]))), 3);
   });

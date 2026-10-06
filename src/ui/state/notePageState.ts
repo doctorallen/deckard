@@ -2,6 +2,7 @@ import { findLinkedBlock, findLinkedSection, getBacklinkIndex, noteTitle, parseW
 import { findFrontmatterEnd, splitFrontmatterValues } from '../../domain/markdown/frontmatter';
 import { mapInlineTokens, tokenizeInline } from '../../domain/markdown/inline';
 import { readFrontmatterValueTag, stripTags } from '../../domain/markdown/parser';
+import { STATUS_CHARACTER } from '../../domain/markdown/lineShapes';
 import { formatKeyWords, readTagNamespace } from '../../domain/markdown/tagKeys';
 import { MarkdownToken, NoteEmbedMeta, parseBlockMarkdown } from '../../domain/markdown/markdownTokens';
 import { describeDueDate } from '../../domain/markdown/dueWording';
@@ -421,8 +422,11 @@ function readList(open: MarkdownToken, cursor: Cursor, source: Source, line: num
   };
 }
 
-/** The box a task's item opens with: `[ ]`, `[x]`, or `[X]` and a space. */
-const TASK_BOX = /^\[([ xX])\][ \t]+/;
+/** The box a task's item opens with: any status's character, and a space. */
+const TASK_BOX = new RegExp(String.raw`^\[(${STATUS_CHARACTER})\][ \t]+`);
+
+/** A list item's bullet and its box, if it has one, which a backlink's line is shown without. */
+const BULLET_AND_BOX = new RegExp(String.raw`^[-*+]\s+(\[${STATUS_CHARACTER}\]\s+)?`);
 
 /**
  * One item. When its first paragraph opens with a box and the index has a
@@ -626,7 +630,7 @@ function collectBacklinks(index: WorkspaceIndex, filePath: string): { backlinks:
         title: hubNoteLabel(index, source),
         lines: unique.slice(0, BACKLINK_LINE_LIMIT).map((lineIndex) => ({
           line: lineIndex + 1,
-          text: (lines[lineIndex] ?? '').trim().replace(/^[-*+]\s+(\[[ xX]\]\s+)?/, '').slice(0, 200),
+          text: (lines[lineIndex] ?? '').trim().replace(BULLET_AND_BOX, '').slice(0, 200),
         })),
         count: unique.length,
       };

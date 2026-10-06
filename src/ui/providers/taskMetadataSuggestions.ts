@@ -7,7 +7,7 @@ import { whenPublished } from '../../core/workspace/publishing';
 import { WorkspaceIndex } from '../../domain/model';
 import { formatTaskMetadata, parseTaskMetadata, TaskMetadataField, TaskMetadataFormat } from '../../domain/markdown/taskFields';
 import { addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
-import { findFencedLines } from '../../domain/markdown/lineShapes';
+import { findFencedLines, STATUS_CHARACTER } from '../../domain/markdown/lineShapes';
 
 /** What the suggestions read from the indexer: the people and task ids to offer. */
 interface TaskIndexSource {
@@ -26,7 +26,7 @@ export interface TaskMetadataSuggestionSettings {
 }
 
 /** A task's checkbox, which metadata must follow. */
-const TASK_CHECKBOX = /^\s*[-*+][ \t]+\[[ xX]\](?=[ \t])/;
+const TASK_CHECKBOX = new RegExp(String.raw`^\s*[-*+][ \t]+\[${STATUS_CHARACTER}\](?=[ \t])`);
 /** A `/` that starts a word, and whatever has been typed after it. */
 const SLASH_QUERY = /(?:^|[ \t])\/([A-Za-z-]*)$/;
 

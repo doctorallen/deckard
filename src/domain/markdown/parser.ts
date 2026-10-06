@@ -15,10 +15,10 @@ import {
   findFencedLines,
   isHeading,
   isTaskLineOf,
-  OTHER_MARKS,
   matchHeading,
   matchTaskLine,
   readHeading,
+  STATUS_MARKS,
   stripClosingHeadingHashes,
   TaskLineMatch,
   TaskLineShape,
@@ -29,13 +29,14 @@ import { formatKeyWords, readTagNamespace } from './tagKeys';
 import { MIGRATED_TASK_LINE } from './taskLineEdits';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
 import { assignNoteEntries } from './noteEntries';
+import { DEFAULT_TASK_STATUSES, isNonTaskSymbol, statusForSymbol, type TaskStatusDefinition } from '../tasks/taskStatuses';
 
 /**
  * What the parser produces, named. A change to what a parsed note holds
  * (steps' parent links, say) changes it, so the local cache, which keeps
  * parsed notes, is rebuilt rather than served in the old shape.
  */
-export const PARSE_FORMAT = 'task-created';
+export const PARSE_FORMAT = 'task-statuses';
 
 /** A heading as the parser found it: its 1-based line, its level, and its words. */
 interface HeadingMatch {
@@ -73,12 +74,11 @@ function getTagField(field: string): string {
 }
 
 /**
- * A task the index reads: any mark but `[>]`, a gap after the box, and the
- * rest of the line on one line.
+ * A task the index reads: any status's character, a gap after the box, and
+ * the rest of the line on one line. A character whose status is `nonTask`
+ * makes the line text again (isTaskLine).
  */
-const taskShape: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'gap', oneLine: true };
-/** A checkbox line with any other mark, such as `[/]` or `[-]`, which is text rather than a task. */
-const otherCheckboxShape: TaskLineShape = { indent: 'whitespace', marks: OTHER_MARKS, after: 'gap', oneLine: true };
+const taskShape: TaskLineShape = { indent: 'whitespace', marks: STATUS_MARKS, after: 'gap', oneLine: true };
 const listItemPattern = /^(\s*)([-*+])[ \t]+/;
 const orderedListItemPattern = /^(\s*)\d+[.)][ \t]+/;
 const explicitDatePattern = /\b(\d{4})-(\d{2})-(\d{2})\b/;
@@ -103,6 +103,8 @@ export interface MarkdownParseOptions {
    * `deckard.tasks.assigneeFromPersonTag`.
    */
   assigneeFromPersonTag?: boolean;
+  /** What each checkbox character means; see `deckard.tasks.statuses` and taskStatuses.ts. */
+  taskStatuses?: readonly TaskStatusDefinition[];
 }
 
 /** Namespace aliases, lowercased, each to the namespace it stands for: `proj` to `project`. */
@@ -126,6 +128,16 @@ interface NoteContext {
   dates: Pick<ParsedFile, 'createdAt' | 'updatedAt'>;
   frontmatterTags: TagReference[];
   personMarker: string;
+  taskStatuses: readonly TaskStatusDefinition[];
+}
+
+/**
+ * The line as a task, taken apart, when it is one: a checkbox line of any
+ * status but a `nonTask` one, which is text.
+ */
+function matchTask(context: Pick<NoteContext, 'taskStatuses'>, line: string): TaskLineMatch | undefined {
+  const match = matchTaskLine(line, taskShape);
+  return match && !isNonTaskSymbol(context.taskStatuses, match.mark) ? match : undefined;
 }
 
 /**
@@ -251,6 +263,7 @@ export function parseMarkdown(
     dates,
     frontmatterTags: frontmatter.tags,
     personMarker,
+    taskStatuses: options.taskStatuses ?? DEFAULT_TASK_STATUSES,
   };
   // Outside `line`, a tagged line is not a note: its tags stay on the line
   // and the heading holding it is what a search returns. The old
@@ -268,9 +281,11 @@ export function parseMarkdown(
   assignNoteEntries(filePath, sections, tasks, frontmatter.tags.length > 0);
 
   const blockIds = findBlockIds(lines, fencedLines);
-  const otherCheckboxes = lines.filter(
-    (line, lineIndex) => !fencedLines.has(lineIndex) && isTaskLineOf(line, otherCheckboxShape),
-  ).length;
+  // A `nonTask` status's lines: checkbox lines that are text.
+  const otherCheckboxes = lines.filter((line, lineIndex) => {
+    const match = fencedLines.has(lineIndex) ? undefined : matchTaskLine(line, taskShape);
+    return match !== undefined && isNonTaskSymbol(context.taskStatuses, match.mark);
+  }).length;
 
   return normalizeParsedTagReferences({
     filePath,
@@ -1586,7 +1601,7 @@ function readTaggedEntry(
   if (
     context.fencedLines.has(lineIndex) ||
     isHeading(line) ||
-    isTaskLineOf(line, taskShape) ||
+    matchTask(context, line) ||
     // A task migrated to another day is neither a task nor a note.
     isTaskLineOf(line, MIGRATED_TASK_LINE)
   ) {
@@ -1655,7 +1670,7 @@ function readTaggedParagraph(
     if (
       fencedLines.has(next) ||
       isHeading(continuation) ||
-      isTaskLineOf(continuation, taskShape) ||
+      matchTask(context, continuation) ||
       getListItemMatch(continuation) ||
       extractTags(continuation, undefined, personMarker).length === 0
     ) {
@@ -1745,7 +1760,7 @@ function findTasks(
     if (fencedLines.has(lineIndex)) {
       return [];
     }
-    const match = matchTaskLine(line, taskShape);
+    const match = matchTask(context, line);
     if (!match) {
       return [];
     }
@@ -1801,7 +1816,7 @@ function readTask(
   );
   const tagLabels = mergeTagLabels(inheritedLabels, inlineTags);
   const checkboxColumn = match.opening.length;
-  const checkboxValue = match.mark as ' ' | 'x' | 'X';
+  const status = statusForSymbol(context.taskStatuses, match.mark);
   // Obsidian Tasks markers become fields and leave the title, so a ✅ date
   // is never read as a due date and titles read the way Tasks shows them.
   const { metadata: fields, title } = parseTaskMetadata(match.body);
@@ -1815,7 +1830,7 @@ function readTask(
     filePath,
     sectionId: section?.id,
     title: title || match.body,
-    completed: checkboxValue !== ' ',
+    completed: status.type === 'done',
     tags,
     tagLabels,
     associationTagGroups: [inlineTags],
@@ -1830,6 +1845,7 @@ function readTask(
       scheduledAt: parseIsoDate(fields.scheduled),
       startAt: parseIsoDate(fields.start),
       doneAt: parseIsoDate(fields.done),
+      cancelledAt: parseIsoDate(fields.cancelled),
       priority: fields.priority,
       recurrence: fields.recurrence,
       dependencyId: fields.id,
@@ -1837,7 +1853,7 @@ function readTask(
     }),
     lineNumber,
     checkboxColumn,
-    checkboxValue,
+    status,
     sourceLineText: line,
     // Its own ➕ date when it has one, else its note's.
     createdAt: parseIsoDate(fields.created) ?? dates.createdAt,

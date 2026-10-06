@@ -2716,6 +2716,83 @@
             "description": "Tag namespace that holds a task's status on the task board, so the default reads #status/doing.",
             "order": 12
           },
+          "deckard.tasks.statuses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "symbol": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2,
+                  "description": "The character between the brackets, as [/]. Leave it out for a status written only as a tag, such as Waiting."
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "What the status is called, in search (status:in-progress), on the board, and to a screen reader."
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "todo",
+                    "inProgress",
+                    "onHold",
+                    "done",
+                    "cancelled",
+                    "nonTask"
+                  ],
+                  "enumDescriptions": [
+                    "Open, to do.",
+                    "Open, being worked on.",
+                    "Open, waiting: left out of is:available.",
+                    "Done: counts as done everywhere.",
+                    "Closed, but not done: left out of progress and of what is open.",
+                    "Not a task: the line stays text, as a pro and con list's."
+                  ]
+                },
+                "tag": {
+                  "type": "string",
+                  "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N}\\p{M}_-]*$",
+                  "description": "The #status/… tag that stands for it, written without the namespace: doing for #status/doing."
+                },
+                "next": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2,
+                  "description": "The character a click moves it to, when deckard.tasks.checkboxClick is workflow."
+                },
+                "icon": {
+                  "type": "string",
+                  "enum": [
+                    "blocked",
+                    "question",
+                    "alert",
+                    "star",
+                    "flag",
+                    "clock"
+                  ],
+                  "description": "An icon an open status adds to its box."
+                }
+              },
+              "required": [
+                "name",
+                "type"
+              ]
+            },
+            "default": [
+              { "symbol": " ", "name": "Todo", "type": "todo", "tag": "todo", "next": "x" },
+              { "symbol": "/", "name": "In progress", "type": "inProgress", "tag": "doing", "next": "x" },
+              { "symbol": "x", "name": "Done", "type": "done", "next": " " },
+              { "symbol": "X", "name": "Done", "type": "done", "next": " " },
+              { "symbol": "-", "name": "Cancelled", "type": "cancelled", "next": " " },
+              { "name": "Waiting", "type": "onHold", "tag": "waiting" },
+              { "name": "Someday", "type": "onHold", "tag": "someday" },
+              { "symbol": "=", "name": "Blocked", "type": "onHold", "tag": "blocked", "icon": "blocked", "next": " " }
+            ],
+            "markdownDescription": "What each checkbox character means, as Obsidian Tasks' statuses do: `- [/]` in progress, `- [-]` cancelled, `- [=]` blocked. Each has a `name`, a `type` (`todo`, `inProgress`, `onHold`, `done`, `cancelled`, or `nonTask`), and, optionally, the `#status/…` `tag` that stands for it. A character no status names is a task to do, called Unknown. `[ ]` and `[x]` are always Todo and Done.",
+            "order": 12
+          },
           "deckard.tasks.onHoldStatuses": {
             "type": "array",
             "items": {
@@ -2727,6 +2804,7 @@
               "someday"
             ],
             "description": "Statuses that put a task on hold: is:available leaves out a task whose #status/… tag is one of these. Write them without the namespace, as in deckard.board.statuses.",
+            "markdownDeprecationMessage": "Give the status the `onHold` type in `#deckard.tasks.statuses#` instead. Each tag listed here is still read as an on-hold status.",
             "order": 13
           },
           "deckard.tasks.suggestSteps": {

@@ -79,7 +79,7 @@ suite('Task board', () => {
       createTask(`t${number}`, `- [ ] Task ${number} #status/doing`, {}),
     );
     const done = Array.from({ length: 30 }, (_, number) =>
-      createTask(`d${number}`, `- [x] Done ${number}`, { completed: true, checkboxValue: 'x', doneAt: at(9, 1) + number }),
+      createTask(`d${number}`, `- [x] Done ${number}`, { completed: true, status: { symbol: 'x', name: 'Done', type: 'done' }, doneAt: at(9, 1) + number }),
     );
     const index: WorkspaceIndex = {
       files: new Map(), sections: new Map(), tags: new Map(), entities: new Map(), updatedAt: Date.now(),
@@ -464,12 +464,12 @@ function createIndex(): WorkspaceIndex {
     createTask('draft', '- [ ] Draft notes #status/todo 🔽', { priority: 'low' }),
     createTask('ship', '- [x] Ship it ✅ 2026-09-12', {
       completed: true,
-      checkboxValue: 'x',
+      status: { symbol: 'x', name: 'Done', type: 'done' },
       doneAt: at(9, 12),
     }),
     createTask('file', '- [x] File it ✅ 2026-09-10', {
       completed: true,
-      checkboxValue: 'x',
+      status: { symbol: 'x', name: 'Done', type: 'done' },
       doneAt: at(9, 10),
     }),
   ];
@@ -497,7 +497,7 @@ function createTask(id: string, sourceLineText: string, values: Partial<Task>): 
     associationTagGroups: [tags],
     lineNumber: 1,
     checkboxColumn: 3,
-    checkboxValue: ' ',
+    status: { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText,
     ...values,
   };

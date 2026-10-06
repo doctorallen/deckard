@@ -19,15 +19,42 @@ export type TaskLineIndent = 'whitespace' | 'spaces-and-tabs' | 'none';
 
 /**
  * The marks a checkbox may hold, as the characters allowed between its
- * brackets: ` ` open, `x` or `X` done, `>` migrated to another day.
+ * brackets: ` ` open, `x` or `X` done, `>` migrated to another day; or
+ * `STATUS_MARKS`, any status's character.
  */
-export type TaskLineMarks = ' ' | 'xX' | ' xX' | ' xX>' | '>' | typeof OTHER_MARKS;
+export type TaskLineMarks = ' ' | 'xX' | ' xX' | ' xX>' | '>' | typeof STATUS_MARKS | typeof STATUS_OR_MIGRATED_MARKS | typeof OTHER_MARKS;
 
 /**
- * Any mark but a task's or a migrated task's, such as Obsidian's `/` for in
- * progress or `-` for cancelled: a line the index reads as text.
+ * Any status's character (taskStatuses.ts): ` `, `x`, or `X` as always,
+ * and any other but `>` (a migrated task) and `]`, which, so that a link
+ * such as `- [a](https://…)` is not read as a task, must have a space or a
+ * tab after its box. Every task line is recognized by this one rule, so a
+ * new status is a task everywhere at once; what the character means is
+ * looked up in the statuses.
+ */
+export const STATUS_MARKS = 'status';
+
+/** Any status's character, or `>`: a task, or one migrated to another day. */
+export const STATUS_OR_MIGRATED_MARKS = 'status-or-migrated';
+
+/**
+ * Any mark but ` `, `x`, `X`, and `>`: a character whose status may make it
+ * a task or, for a `nonTask` status, text.
  */
 export const OTHER_MARKS = '^ xX>\\]';
+
+/**
+ * A status's character as a pattern, for a regular expression of a line's
+ * box: ` `, `x`, or `X`, or any other but `>` and `]` that has a space or a
+ * tab after its `]`. It captures nothing.
+ */
+export const STATUS_CHARACTER = String.raw`(?:[ xX]|[^\s>\]](?=\][ \t]))`;
+
+/** What each status shape's mark compiles to, captured. */
+const STATUS_MARK_PATTERNS: Readonly<Record<string, string>> = {
+  [STATUS_MARKS]: `(${STATUS_CHARACTER})`,
+  [STATUS_OR_MIGRATED_MARKS]: `(>|${STATUS_CHARACTER})`,
+};
 
 /**
  * What must follow a checkbox's `]`:
@@ -123,7 +150,7 @@ function taskLinePattern(shape: TaskLineShape): RegExp {
   const rest =
     shape.marks === 'unread'
       ? '()()'
-      : `([${shape.marks}])\\]${AFTER_PATTERNS[shape.after ?? 'anything']}${shape.oneLine ? '(?=.*$)' : ''}`;
+      : `${STATUS_MARK_PATTERNS[shape.marks] ?? `([${shape.marks}])`}\\]${AFTER_PATTERNS[shape.after ?? 'anything']}${shape.oneLine ? '(?=.*$)' : ''}`;
   const pattern = new RegExp(start + rest);
   compiled.set(shape, pattern);
   return pattern;

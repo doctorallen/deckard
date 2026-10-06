@@ -1,5 +1,5 @@
 import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
-import { matchTaskLine, TaskLineShape, findFencedLines } from '../../domain/markdown/lineShapes';
+import { matchTaskLine, STATUS_MARKS, TaskLineShape, findFencedLines } from '../../domain/markdown/lineShapes';
 import { QueryContext } from '../../domain/query/queryContext';
 import { parseIsoDate } from '../../domain/markdown/calendar';
 import { findTaskMetadataSpans } from '../../domain/markdown/taskFields';
@@ -28,8 +28,8 @@ export interface TaskLineMarks {
   hints: TaskLineHint[];
 }
 
-/** An open or done task line; one space or tab after its box belongs to the box. */
-const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: ' xX', after: 'optional-blank' };
+/** A task line of any status; one space or tab after its box belongs to the box. */
+const TASK_LINE: TaskLineShape = { indent: 'whitespace', marks: STATUS_MARKS, after: 'optional-blank' };
 /** A block id at the end of any line. */
 const BLOCK_ID = /[ \t]+(\^[A-Za-z0-9-]+)[ \t]*$/;
 

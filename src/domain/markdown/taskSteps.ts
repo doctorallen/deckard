@@ -6,7 +6,7 @@ import {
   isTaskItemLine,
   lineIndent,
 } from './listNesting';
-import { isHeadingLine, isTaskLineOf, matchTaskLine, TaskLineShape } from './lineShapes';
+import { isHeadingLine, isTaskLineOf, matchTaskLine, STATUS_CHARACTER, TaskLineShape } from './lineShapes';
 import { stripTags } from './parser';
 import { setTaskLineCompletion } from './taskLineEdits';
 
@@ -205,13 +205,16 @@ export function formatStepLines(
   return steps.map((step) => `${indent}${marker} [ ] ${step}`);
 }
 
+/** A leading bullet or number and a box, empty or holding any status's character. */
+const LEADING_MARKER = new RegExp(String.raw`^\s*(?:(?:[-*+•]|\d+[.)])\s+)?(?:\[${STATUS_CHARACTER}?\]\s*)?`);
+
 /**
  * A step as typed, tidied: a leading bullet, number, or checkbox is taken
  * off, since Deckard writes its own, and runs of whitespace collapse.
  */
 export function cleanStepText(text: string): string {
   return text
-    .replace(/^\s*(?:(?:[-*+•]|\d+[.)])\s+)?(?:\[[ xX]?\]\s*)?/, '')
+    .replace(LEADING_MARKER, '')
     .replace(/\s+/g, ' ')
     .trim();
 }

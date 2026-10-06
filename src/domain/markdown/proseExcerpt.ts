@@ -1,5 +1,5 @@
 import { findFrontmatterEnd } from './frontmatter';
-import { findFencedLines, isHeadingLine, matchTaskLine, TaskLineShape } from './lineShapes';
+import { findFencedLines, isHeadingLine, matchTaskLine, STATUS_OR_MIGRATED_MARKS, TaskLineShape } from './lineShapes';
 import { stripTags } from './parser';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
 
@@ -14,7 +14,7 @@ const TABLE_ROW = /^\s*\|/;
 const RULE = /^\s*([-*_])(?:\s*\1){2,}\s*$/;
 const IMAGE_ONLY = /^\s*(?:!\[[^\]]*\]\([^)]*\)|!\[\[[^\]]*\]\])\s*$/;
 /** A task line of any kind, migrated `[>]` included, with a gap before its words. */
-const TASK: TaskLineShape = { indent: 'whitespace', marks: ' xX>', after: 'gap' };
+const TASK: TaskLineShape = { indent: 'whitespace', marks: STATUS_OR_MIGRATED_MARKS, after: 'gap' };
 const LIST_OR_QUOTE = /^\s*(?:>\s*)*(?:(?:[-*+]|\d+[.)])[ \t]+)?/;
 
 /** One line's words: links read as their text, and marks, tags, and ids gone. */

@@ -22,7 +22,7 @@ export interface NoteLines {
  */
 export function readIndexedTaskLine(
   note: NoteLines,
-  task: Pick<Task, 'lineNumber' | 'sourceLineText' | 'checkboxColumn' | 'checkboxValue'>,
+  task: Pick<Task, 'lineNumber' | 'sourceLineText' | 'checkboxColumn' | 'status'>,
 ): string | undefined {
   if (
     task.lineNumber < 1 ||
@@ -33,7 +33,7 @@ export function readIndexedTaskLine(
   }
   const line = note.lineAt(task.lineNumber - 1);
   if (
-    line[task.checkboxColumn] !== task.checkboxValue ||
+    line[task.checkboxColumn] !== task.status.symbol ||
     line[task.checkboxColumn - 1] !== '[' ||
     line[task.checkboxColumn + 1] !== ']'
   ) {

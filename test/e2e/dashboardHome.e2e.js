@@ -21,7 +21,7 @@ const SETTLE_MS = 450;
 function createIndex() {
   const task = (id, title, lineNumber) => ({
     id, filePath: 'notes/tasks.md', title, completed: false, tags: [],
-    tagLabels: {}, lineNumber, checkboxColumn: 3, checkboxValue: ' ',
+    tagLabels: {}, lineNumber, checkboxColumn: 3, status: { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: `- [ ] ${title}`,
   });
   const tasks = [

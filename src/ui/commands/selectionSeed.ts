@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { isTaskLineOf, TaskLineShape } from '../../domain/markdown/lineShapes';
+import { isTaskLineOf, STATUS_MARKS, TaskLineShape } from '../../domain/markdown/lineShapes';
 import { parseTaskDraft, formatTaskDraft } from '../../domain/markdown/taskDraft';
 import { createWikiLink } from './insertLink';
 import { createPinForLine, findPinnedSection } from '../../domain/notes/pins';
@@ -59,7 +59,7 @@ export function captureSeed(
 }
 
 /** A line the link goes into as part of a task's words rather than after them. */
-const SEEDED_TASK: TaskLineShape = { indent: 'whitespace', marks: ' xX' };
+const SEEDED_TASK: TaskLineShape = { indent: 'whitespace', marks: STATUS_MARKS };
 
 /**
  * A captured line with a link back to where it came from: after the words

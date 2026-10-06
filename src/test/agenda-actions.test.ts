@@ -39,7 +39,7 @@ suite('Dating tasks from the Tasks view', () => {
     tagLabels: {},
     lineNumber: Number(id.replace(/\D/g, '')) || 1,
     checkboxColumn: 3,
-    checkboxValue: ' ',
+    status: { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: `- [ ] ${id}`,
     ...values,
   });

@@ -282,7 +282,7 @@ function createTask(values: Partial<Task> & { id: string }): Task {
     tagLabels: {},
     lineNumber: 1,
     checkboxColumn: 3,
-    checkboxValue: ' ',
+    status: { symbol: ' ', name: 'Todo', type: 'todo' },
     sourceLineText: '- [ ] task',
     ...values,
   };

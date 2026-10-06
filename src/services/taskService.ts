@@ -80,7 +80,7 @@ interface Rewrite<T> {
 /** The fields of a task that find and check its line. */
 export type TaskLineTarget = Pick<
   Task,
-  'filePath' | 'lineNumber' | 'sourceLineText' | 'checkboxColumn' | 'checkboxValue'
+  'filePath' | 'lineNumber' | 'sourceLineText' | 'checkboxColumn' | 'status'
 >;
 
 /**

@@ -1,6 +1,6 @@
 import { readCaptureText } from '../markdown/captureWords';
 import { DatePhraseOptions } from '../markdown/dates';
-import { isTaskLineOf, TaskLineShape } from '../markdown/lineShapes';
+import { isTaskLineOf, STATUS_CHARACTER, STATUS_MARKS, TaskLineShape } from '../markdown/lineShapes';
 import { Section } from '../model';
 import { TaskMetadataFormat } from '../markdown/taskFields';
 
@@ -36,8 +36,11 @@ export interface CaptureLineOptions {
 
 const LIST_ITEM = /^\s*(?:[-*+]|\d+[.)])\s/;
 
+/** A list item's bullet and, if it has one, its box, which a note line is written without. */
+const LEADING_BULLET_AND_BOX = new RegExp(String.raw`^[-*+][ \t]+(?:\[${STATUS_CHARACTER}\][ \t]+)?`);
+
 /** A task written as Deckard writes one: no indent, and one space either side of the box. */
-const WRITTEN_TASK: TaskLineShape = { indent: 'none', bulletGap: 'one-space', marks: ' xX', after: 'one-space' };
+const WRITTEN_TASK: TaskLineShape = { indent: 'none', bulletGap: 'one-space', marks: STATUS_MARKS, after: 'one-space' };
 
 /**
  * The line a capture is written as: a note line, the task as typed, or the
@@ -56,7 +59,7 @@ export function writeCapture(text: string, options: CaptureLineOptions): string 
 
 /** Writes a capture as a plain list item, for an idea that is not a to-do. */
 export function formatNoteLine(text: string): string {
-  return `- ${text.trim().replace(/^[-*+][ \t]+(?:\[[ xX]\][ \t]+)?/, '')}`;
+  return `- ${text.trim().replace(LEADING_BULLET_AND_BOX, '')}`;
 }
 
 /** Writes a capture as an open task, unless it is already written as a task. */
