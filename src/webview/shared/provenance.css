@@ -46,6 +46,8 @@ body.provenance-dismissed .home-row .home-row-detail, body.provenance-dismissed 
 .board-card { --frame: var(--edge); --inset: var(--space-3); }
 .card, .note, .task-row, .home-row, .tag-row, .board-card { --reach: 24px; }
 .note:has(.source ~ .source), .card:has(.source ~ .source), .task-row:has(.task-source ~ .task-source), .board-card:has(.task-source ~ .task-source) { --reach: 42px; }
+/* Three lines: where it is written, the headings above it, and its dates. */
+.note:has(.source ~ .source ~ .source), .card:has(.source ~ .source ~ .source), .task-row:has(.task-source ~ .task-source ~ .task-source), .board-card:has(.task-source ~ .task-source ~ .task-source) { --reach: 60px; }
 /* An entry that carries its line down holds still under the pointer, as a
    board card does: a theme's 3px slide moved the extension off the entry
    below it, which showed past its edge, and at Windows' fractional scaling
@@ -133,6 +135,10 @@ body.provenance-dismissed .home-row .home-row-detail, body.provenance-dismissed 
 .card:hover .source ~ .source, .card:focus-within .source ~ .source,
 .task-row:hover .task-source ~ .task-source, .task-row:focus-within .task-source ~ .task-source,
 .board-card:hover .task-source ~ .task-source, .board-card:focus-within .task-source ~ .task-source { top: calc(100% + 20px); }
+.note:hover .source ~ .source ~ .source, .note:focus-within .source ~ .source ~ .source,
+.card:hover .source ~ .source ~ .source, .card:focus-within .source ~ .source ~ .source,
+.task-row:hover .task-source ~ .task-source ~ .task-source, .task-row:focus-within .task-source ~ .task-source ~ .task-source,
+.board-card:hover .task-source ~ .task-source ~ .task-source, .board-card:focus-within .task-source ~ .task-source ~ .task-source { top: calc(100% + 38px); }
 
 /* Focus and the pointer each mark one entry. While the keyboard has focus
    somewhere, an entry under a resting pointer no longer carries its line

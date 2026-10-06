@@ -22,14 +22,19 @@ export interface EntryFacts {
   readonly updatedAt?: number;
 }
 
+/** An entry's location line, when its file and line are ticked: "atlas / line 4"; empty otherwise. */
+export function describeLocation(facts: EntryFacts): string {
+  return readEntryDetails().has('fileAndLine') ? facts.location : '';
+}
+
 /**
- * An entry's details line, those ticked that it has: "atlas / line 4 ·
- * Created 2026-09-12 · Updated 2026-10-03". Empty when it has none of them.
+ * An entry's dates line, those ticked that it has: "Created 2026-09-12 ·
+ * Updated 2026-10-03", drawn on a line of its own under where it is
+ * written. Empty when it has none of them.
  */
-export function describeEntryDetails(facts: EntryFacts): string {
+export function describeDates(facts: EntryFacts): string {
   const details = readEntryDetails();
   return [
-    details.has('fileAndLine') ? facts.location : '',
     details.has('created') && facts.createdAt !== undefined ? `Created ${formatIsoDate(facts.createdAt)}` : '',
     details.has('updated') && facts.updatedAt !== undefined ? `Updated ${formatIsoDate(facts.updatedAt)}` : '',
   ].filter(Boolean).join(' · ');

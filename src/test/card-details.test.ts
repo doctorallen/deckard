@@ -44,9 +44,12 @@ suite('Card details', () => {
     assert.strictEqual(open({}).text('.card .source'), 'atlas / line 1');
   });
 
-  test('adds the created and updated dates when they are ticked, in that order', () => {
-    const shown = open({ details: 'fileAndLine created updated' }).text('.card .source');
-    assert.strictEqual(shown, `atlas / line 1 · Created ${formatIsoDate(CREATED)} · Updated ${formatIsoDate(UPDATED)}`);
+  test('adds the created and updated dates on a line of their own, under where it is written', () => {
+    const shown = open({ details: 'fileAndLine created updated' });
+    assert.deepStrictEqual(shown.findAll('.card .source').map((line) => line.textContent), [
+      'atlas / line 1',
+      `Created ${formatIsoDate(CREATED)} · Updated ${formatIsoDate(UPDATED)}`,
+    ]);
   });
 
   test('shows the created date alone, without the file and line or the headings above, when only it is ticked', () => {
@@ -71,7 +74,7 @@ suite('Card details on tasks', () => {
     const store = createPreferences({ get: (_key: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never);
     const snapshot = createSearchPageSnapshot(index, store.reader.value, '#project/atlas', { queryContext: createQueryContext(Date.now()) });
     page = openWebviewPage(renderPage('searchPage', { chrome: { theme: 'cooper', zen: false, display: { details: 'fileAndLine created' } } }), snapshot);
-    assert.strictEqual(page.text('.task-row .task-source'), 'atlas / line 2 · Created 2026-09-12');
+    assert.deepStrictEqual(page.findAll('.task-row .task-source').map((line) => line.textContent), ['atlas / line 2', 'Atlas', 'Created 2026-09-12'], 'where it is written, the heading above it, then its dates');
   });
 
   test('a task with no detail ticked that it has draws no details line', () => {
@@ -116,7 +119,10 @@ suite('Card details in Related Notes', () => {
       }],
     };
     page = openWebviewPage(renderPage('sidebarNotes', { chrome: { theme: 'cooper', zen: false, display: { details: 'fileAndLine created' } } }), snapshot);
-    assert.strictEqual(page.text('.note .source'), `atlas / line 12 · Created ${formatIsoDate(CREATED)}`);
+    assert.deepStrictEqual(page.findAll('.note .source').map((line) => line.textContent), [
+      'atlas / line 12',
+      `Created ${formatIsoDate(CREATED)}`,
+    ], 'where it is written, then its dates');
     page.dispose();
     page = openWebviewPage(renderPage('sidebarNotes', { chrome: { theme: 'cooper', zen: false, display: { details: 'created' } } }), snapshot);
     assert.strictEqual(page.text('.note .source'), `Created ${formatIsoDate(CREATED)}`, 'without its file and line, or the headings above it');

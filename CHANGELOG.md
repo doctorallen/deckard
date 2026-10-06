@@ -16,7 +16,8 @@
 
 - **Card details.** `deckard.display.cardDetails` picks what an entry
   shows under it with File & line: its file and line, and its created and
-  updated dates, *Created 2026-09-12 · Updated 2026-10-03*, on search cards,
+  updated dates on a line of their own, *Created 2026-09-12 · Updated
+  2026-10-03*, on search cards,
   task rows, and board cards. A task's created date is its own ➕ date when
   it has one. File & line still says when: on hover, always, or never.
 

@@ -14,7 +14,6 @@ import { EllipsisIcon } from '../shared/strokeIcons';
 import { formatSourceLocation, HeadingPathSteps, plainTitle, PriorityBadge, TaskDetails, trimHeadingPath } from '../shared/taskRow';
 import { TaskTitle } from '../shared/taskTitle';
 import { board, boardCardKey } from './model';
-import { readEntryDetails } from '../shared/entryDetails';
 
 /** What a card's menu reads of its task: what it is now, whether it is done, and whether it has steps. */
 export interface MovableTask {
@@ -142,8 +141,7 @@ interface CardProps {
 function CardPlace({ card, fileName, steps }: { readonly card: TaskBoardCard; readonly fileName: string; readonly steps: Parameters<typeof HeadingPathSteps>[0]['steps'] }) {
   return (
     <>
-      <TaskDetails location={formatSourceLocation(fileName, card.line)} createdAt={card.createdAt} updatedAt={card.updatedAt} />
-      {steps.length && readEntryDetails().has('fileAndLine') ? <span key="path" class="task-source heading-path"><HeadingPathSteps steps={steps} /></span> : null}
+      <TaskDetails facts={{ location: formatSourceLocation(fileName, card.line), createdAt: card.createdAt, updatedAt: card.updatedAt }} steps={steps} />
     </>
   );
 }

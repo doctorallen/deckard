@@ -10,7 +10,7 @@ import type { InlineToken } from '../../ui/protocol/inline';
 import type { DashboardTask, TagTitleDisplayMode } from '../../ui/protocol/shared';
 import { DueText } from './dueText';
 import { TaskTitle } from './taskTitle';
-import { describeEntryDetails, type EntryFacts, readEntryDetails } from './entryDetails';
+import { describeDates, describeLocation, type EntryFacts, readEntryDetails } from './entryDetails';
 
 /** A priority's arrow: how far it is from the middle. */
 const PRIORITY_MARKS: Readonly<Record<string, string>> = { highest: '↑↑', high: '↑', medium: '', low: '↓', lowest: '↓↓' };
@@ -80,13 +80,21 @@ export function formatTaskDate(timestamp: number): string {
 }
 
 /**
- * A task's details line, carried down under it as a card's is: those ticked
- * in Card details, its file and line and its created and updated dates.
- * Nothing when it has none of them.
+ * A task's details, carried down under it as a card's are: where it is
+ * written, then the headings above it, then its dates, each on its own line,
+ * as Card details ticks them. Nothing for what is not ticked.
  */
-export function TaskDetails(facts: EntryFacts) {
-  const line = describeEntryDetails(facts);
-  return line ? <span key="source" class="task-source">{line}</span> : null;
+export function TaskDetails({ facts, steps, after }: { readonly facts: EntryFacts; readonly steps: Parameters<typeof HeadingPathSteps>[0]['steps']; readonly after?: ComponentChildren }) {
+  const location = describeLocation(facts);
+  const dates = describeDates(facts);
+  return (
+    <>
+      {location ? <span key="source" class="task-source">{location}</span> : null}
+      {after ?? null}
+      {steps.length && readEntryDetails().has('fileAndLine') ? <span key="path" class="task-source heading-path"><HeadingPathSteps steps={steps} /></span> : null}
+      {dates ? <span key="dates" class="task-source entry-dates">{dates}</span> : null}
+    </>
+  );
 }
 
 /**
@@ -224,9 +232,7 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, 
         </div>
         <div class="task-meta">
           <TaskFacts item={item} />
-          <TaskDetails location={formatSourceLocation(item.fileName, task.lineNumber)} createdAt={task.createdAt} updatedAt={task.updatedAt} />
-          {afterSource ?? null}
-          {steps.length && readEntryDetails().has('fileAndLine') ? <span key="path" class="task-source heading-path"><HeadingPathSteps steps={steps} /></span> : null}
+          <TaskDetails facts={{ location: formatSourceLocation(item.fileName, task.lineNumber), createdAt: task.createdAt, updatedAt: task.updatedAt }} steps={steps} after={afterSource} />
         </div>
       </div>
       {trailing}
