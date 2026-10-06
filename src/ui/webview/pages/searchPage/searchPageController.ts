@@ -50,6 +50,7 @@ import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 import { createSearchPageSnapshot, evaluateSearchPage, resolveQueryTagIntersection } from '../../../state/searchPageState';
 import { createQueryViewState } from '../../../state/querySuggestions';
 import { findWikiLinkPlace, parseWikiTarget } from '../../../../domain/index/backlinks';
+import { openResultAt } from '../../../commands/navigation';
 
 /**
  * The preference services a search page reads and writes: the blob it
@@ -611,7 +612,9 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       hub &&
       (filePath === hub.filePath || hub.otherFilePaths.includes(filePath))
     ) {
-      await openNoteAt(filePath, line, how);
+      // A hub note's page is this tag's page, which is open already: the
+      // hub always opens in the editor, whatever deckard.openNotesIn says.
+      await openResultAt(filePath, line, { ...(how.beside ? { beside: true } : {}), ...(how.pin ? { pin: true } : {}) });
       return;
     }
     const card = snapshot.sections.find(

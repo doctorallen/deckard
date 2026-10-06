@@ -344,6 +344,24 @@ suite('Search page host', () => {
     }
   });
 
+  test('opens the hub in the editor even where notes open on the note page, since its page is this one', async () => {
+    const settings = vscode.workspace.getConfiguration('deckard');
+    await settings.update('openNotesIn', 'page', vscode.ConfigurationTarget.Global);
+    const page = openSearchPage();
+    try {
+      page.host.refresh();
+      const calls = await record(async () => {
+        await page.send({ type: 'openSource', filePath: '/notes/atlas.md', line: 2 });
+        await page.send({ type: 'openSource', filePath: '/notes/planning.md', line: 1 });
+      });
+      assert.deepStrictEqual(calls[0], ['open', '/notes/atlas.md', true, false], 'the hub, in the editor');
+      assert.strictEqual(calls[1]?.[0], 'deckard.openNotePage', 'a card, on the note page');
+    } finally {
+      page.dispose();
+      await settings.update('openNotesIn', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
+
   test('a page the reader closes is gone, and one disposed of is no longer the active search', () => {
     const page = openSearchPage();
     try {
