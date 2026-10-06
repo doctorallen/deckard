@@ -79,6 +79,7 @@ import { NotesGraphPanel, readNotesGraphOptions } from '../ui/webview/notesGraph
 import { SidebarNotesView } from '../ui/webview/sidebarNotes';
 import { RelatedNotesDebugPanel } from '../ui/webview/relatedNotesDebug';
 import { StatsPanel } from '../ui/webview/stats';
+import { TaskStatusesPanel } from '../ui/webview/taskStatuses';
 import { NotePagePanel } from '../ui/webview/notePage';
 import { TaskBoardPanel } from '../ui/webview/taskBoard';
 import { ActiveSearch } from '../ui/webview/activeSearch';
@@ -90,6 +91,7 @@ import { suggestEsperThemesOnce } from '../ui/commands/esperThemes';
 import { initWriteTarget, isPausedHere, looksLikeCodeRepository, onDidChangePaused, readNotesFolder } from '../ui/commands/writeTarget';
 import { ScopeStatusBar } from '../ui/views/scopeStatusBar';
 import { countUnknownStatuses, noticeUnknownStatusesOnce } from '../ui/commands/otherCheckboxes';
+import { offerStatusMigrationOnce } from '../ui/commands/statusMove';
 import { openSettingAction, settingLabel } from '../ui/commands/notify';
 import { PreferenceSnapshots } from '../core/storage/preferenceSnapshots';
 import { OutlineTreeProvider, syncOutlineFollowCursorContext } from '../ui/views/outlineTree';
@@ -157,6 +159,7 @@ export interface Pages {
   calendar: CalendarPanel;
   taskBoard: TaskBoardPanel;
   notePage: NotePagePanel;
+  taskStatuses: TaskStatusesPanel;
 }
 
 /**
@@ -265,6 +268,9 @@ export function createServices(context: vscode.ExtensionContext): Services {
     void core.indexer.ready
       .then(() => noticeUnknownStatusesOnce(context.workspaceState, countUnknownStatuses(core.indexer.getSnapshot())))
       .catch((error: unknown) => reportError('Could not count the tasks whose status Deckard does not know', error));
+    void core.indexer.ready
+      .then(() => offerStatusMigrationOnce(context.workspaceState, core.indexer))
+      .catch((error: unknown) => reportError('Could not offer to move status tags into checkboxes', error));
   }
   syncWalkthroughContext(context, core.indexer);
   createEditorContexts(context, core, preferences);
@@ -355,6 +361,7 @@ function holdUntilShutdown(context: vscode.ExtensionContext, shutdown: DisposalO
     assistance.entitySuggestions,
     home.dashboard,
     sidebar.stats,
+    sidebar.taskStatuses,
     sidebar.help,
     sidebar.relatedNotesDebug,
     sidebar.notePage,
@@ -388,6 +395,7 @@ function listPages({ search, home, sidebar, calendar }: Built): Pages {
     calendar: calendar.calendarPage,
     taskBoard: home.taskBoard,
     notePage: sidebar.notePage,
+    taskStatuses: sidebar.taskStatuses,
   };
 }
 
@@ -997,7 +1005,8 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     activeNotePage,
     onOpenSearch: (query) => searchPanels.showQuery(query),
   });
-  return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug, notePage, activeNotePage };
+  const taskStatuses = new TaskStatusesPanel({ indexer, preferences: repository, history, extensionUri: context.extensionUri, themePreview });
+  return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug, notePage, activeNotePage, taskStatuses };
 }
 
 /** The Outline, the query blocks, the Tasks view and its service, the status bar, and capture. */

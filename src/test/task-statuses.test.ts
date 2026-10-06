@@ -27,6 +27,8 @@ import { createAgenda } from '../ui/state/agendaState';
 import { findTaskLineMarks } from '../ui/state/taskLineMarks';
 import { drawTaskStatus } from '../ui/state/drawnStatus';
 import { DEFAULT_TASK_POLICY } from '../domain/tasks/taskPolicy';
+import { countStatusMove, findStatusRenames, importObsidianStatuses, planStatusMove, renameStatusInQuery } from '../domain/tasks/statusMigration';
+import { checkStatusList } from '../domain/tasks/statusChecks';
 
 /** Each task's character, name, type, and whether it is done, as the parser read it. */
 function read(content: string, taskStatuses?: readonly TaskStatusDefinition[]): string[] {
@@ -430,5 +432,76 @@ suite('Task statuses: how a status is drawn', () => {
     assert.deepStrictEqual(draw(dropped), { name: 'Cancelled', type: 'cancelled' });
     assert.deepStrictEqual(draw(puzzled), { name: 'Unknown', type: 'todo', unknown: '?' });
     assert.deepStrictEqual(draw(stuck), { name: 'Blocked', type: 'onHold', icon: 'blocked' });
+  });
+});
+
+suite('Task statuses: moving over, importing, and editing', () => {
+  test('the move puts a tag with a character into its box, takes a stale tag away, and keeps the rest', () => {
+    const file = parseMarkdown('work.md', [
+      '- [ ] Draft #status/doing',
+      '- [x] Ship #status/doing ✅ 2026-10-01',
+      '- [ ] Legal #status/waiting',
+      '- [ ] Review #status/review',
+      '- [ ] Old #status/done',
+      '- [ ] Plain',
+    ].join('\n'));
+    const lines = planStatusMove(file.tasks, { statuses: DEFAULT_TASK_STATUSES, namespace: 'status', doneDate: '2026-10-06' });
+    assert.deepStrictEqual(lines.map((line) => [line.group, line.after]), [
+      ['character', '- [/] Draft'],
+      ['stale', '- [x] Ship ✅ 2026-10-01'],
+      ['kept', '- [ ] Legal #status/waiting'],
+      ['kept', '- [ ] Review #status/review'],
+      ['done', '- [x] Old ✅ 2026-10-06'],
+    ]);
+    assert.deepStrictEqual(countStatusMove(lines), { character: 1, stale: 1, done: 1, kept: 2 });
+  });
+
+  test('a vault\'s Obsidian Tasks statuses import with Deckard\'s tags for the same characters', () => {
+    const imported = importObsidianStatuses({
+      statusSettings: {
+        coreStatuses: [
+          { symbol: ' ', name: 'Todo', nextStatusSymbol: 'x', type: 'TODO' },
+          { symbol: 'x', name: 'Done', nextStatusSymbol: ' ', type: 'DONE' },
+        ],
+        customStatuses: [
+          { symbol: '/', name: 'In Progress', nextStatusSymbol: 'x', type: 'IN_PROGRESS' },
+          { symbol: 'P', name: 'Pro', nextStatusSymbol: 'C', type: 'NON_TASK' },
+          { symbol: '?', name: 'Question', type: 'MYSTERY' },
+        ],
+      },
+    });
+    assert.deepStrictEqual(
+      imported?.map((status) => `${status.symbol ?? '-'}:${status.name}:${status.type}:${status.tag ?? ''}:${status.next ?? ''}`),
+      [' :Todo:todo:todo:x', 'x:Done:done:: ', '/:In Progress:inProgress:doing:x', 'P:Pro:nonTask::C', '-:Waiting:onHold:waiting:', '-:Someday:onHold:someday:', 'X:Done:done:: '],
+    );
+    assert.strictEqual(importObsidianStatuses({}), undefined);
+  });
+
+  test('a rename is found by character, and carried into searches by name', () => {
+    const before = DEFAULT_TASK_STATUSES;
+    const after = before.map((status) => (status.symbol === '/' ? { ...status, name: 'Doing' } : status));
+    const renames = findStatusRenames(before, after);
+    assert.deepStrictEqual(renames, [{ from: 'In progress', to: 'Doing' }]);
+    assert.strictEqual(renameStatusInQuery('status:in-progress #project/x', renames[0]), 'status:doing #project/x');
+    assert.strictEqual(renameStatusInQuery('status = "in progress" OR -status:blocked', renames[0]), 'status = doing OR -status:blocked');
+    assert.strictEqual(renameStatusInQuery('status:[/]', renames[0]), 'status:[/]', 'a character finds it whatever it is called');
+  });
+
+  test('the editor checks a list as it is typed', () => {
+    const problems = (statuses: Parameters<typeof checkStatusList>[0], workflow = false) =>
+      checkStatusList(statuses, workflow).map((problem) => `${problem.row} ${problem.severity}: ${problem.text}`);
+    assert.deepStrictEqual(problems([{ symbol: '/', name: '', type: 'inProgress' }, { name: 'Loose', type: 'onHold' }]), [
+      '0 error: Give it a name.',
+      '1 error: Give it a character, a tag, or both.',
+    ]);
+    assert.deepStrictEqual(problems([{ symbol: '/', name: 'One', type: 'todo' }, { symbol: '/', name: 'Two', type: 'todo' }]), ['1 error: [/] is already One\'s character.']);
+    assert.match(problems([{ symbol: 'o', name: 'Open', type: 'todo' }])[0], /warning: status:open already means every open task/);
+    assert.deepStrictEqual(
+      problems([{ symbol: 'x', name: 'Done', type: 'done', next: '-' }, { symbol: '-', name: 'Cancelled', type: 'cancelled', next: '?' }], true),
+      [
+        '0 warning: A click on a done task should open it again, to do or in progress; [-] is Cancelled.',
+        '1 error: No status has the character [?] that a click moves it to.',
+      ],
+    );
   });
 });

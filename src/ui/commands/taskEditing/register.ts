@@ -6,6 +6,7 @@ import { editTaskCommand } from '../taskEditor';
 import { breakIntoStepsCommand, readTaskArgument } from '../taskSteps';
 import { toggleTaskDoneCommand } from '../toggleTaskDone';
 import { setTaskStatusCommand } from '../setTaskStatus';
+import { importObsidianStatusesCommand, moveStatusTagsCommand } from '../statusMove';
 import { registerCommand } from '../runCommand';
 
 /**
@@ -36,6 +37,8 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.setTaskStatus', (task?: unknown) =>
       setTaskStatusCommand(indexer, writes, readTaskArgument(task)),
     ),
+    registerCommand('deckard.moveStatusTagsIntoCheckboxes', () => moveStatusTagsCommand(indexer, services.history)),
+    registerCommand('deckard.importObsidianStatuses', () => importObsidianStatusesCommand()),
     registerCommand('deckard.moveTo', () =>
       moveToCommand(indexer, services.preferences.move, writes),
     ),

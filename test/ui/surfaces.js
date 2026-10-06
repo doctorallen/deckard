@@ -706,6 +706,43 @@ function createNotePageSurfaces() {
 }
 
 /**
+ * Edit Task Statuses, as the settings have them and with characters found
+ * in the notes, and in the workflow, where each row has its next status.
+ */
+function createTaskStatusesSurfaces() {
+  const statuses = [
+    { symbol: ' ', name: 'Todo', type: 'todo', tag: 'todo', next: 'x' },
+    { symbol: '/', name: 'In progress', type: 'inProgress', tag: 'doing', next: 'x' },
+    { symbol: 'x', name: 'Done', type: 'done', next: ' ' },
+    { symbol: 'X', name: 'Done', type: 'done', next: ' ' },
+    { symbol: '-', name: 'Cancelled', type: 'cancelled', next: ' ' },
+    { name: 'Waiting', type: 'onHold', tag: 'waiting' },
+    { name: 'Someday', type: 'onHold', tag: 'someday' },
+    { symbol: '=', name: 'Blocked', type: 'onHold', tag: 'blocked', icon: 'blocked', next: ' ' },
+  ];
+  const snapshot = (checkboxClick) => ({ statuses, checkboxClick, namespace: 'status', found: [{ symbol: '?', count: 3 }], canImport: true, target: 'user' });
+  return [
+    {
+      page: 'taskStatuses',
+      viewport: [900, 640],
+      snapshot: () => snapshot('done'),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.status-actions button'],
+    },
+    {
+      name: 'taskStatusesWorkflow',
+      page: 'taskStatuses',
+      viewport: [900, 760],
+      snapshot: () => snapshot('workflow'),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: [],
+    },
+  ];
+}
+
+/**
  * The Pages view, at a sidebar's width: as rows with each page's hint at the
  * right, and as one row of icons.
  */
@@ -751,6 +788,7 @@ function createSurfaces() {
     ...createSummarySurfaces(index, preferences),
     ...createNotePageSurfaces(),
     ...createPagesSurfaces(),
+    ...createTaskStatusesSurfaces(),
   ];
   return [
     ...surfaces,

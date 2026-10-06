@@ -212,6 +212,14 @@ suite('Component primitives', () => {
         },
         notePage: createNotePageSnapshot(index, 'notes/a.md', { queryContext: createQueryContext(Date.now()), history: { back: false, forward: false }, visit: 1 }),
         pagesView: { style: 'list', pages: [{ id: 'home', label: 'Home', description: 'Dashboard', detail: 'What is due today' }] },
+        taskStatuses: {
+          statuses: [{ symbol: ' ', name: 'Todo', type: 'todo' }, { symbol: 'x', name: 'Done', type: 'done' }],
+          checkboxClick: 'done',
+          namespace: 'status',
+          found: [],
+          canImport: false,
+          target: 'user',
+        },
       };
       // A calendar and Related Notes still say they are ready when they load,
       // as they always have, so the host sends a snapshot newer than the one

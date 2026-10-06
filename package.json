@@ -407,6 +407,21 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.moveStatusTagsIntoCheckboxes",
+        "title": "Move Status Tags into Checkboxes…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.importObsidianStatuses",
+        "title": "Import Statuses from Obsidian Tasks",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.editTaskStatuses",
+        "title": "Edit Task Statuses…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.agenda.setTaskStatus",
         "title": "Set Task Status…",
         "category": "Deckard"

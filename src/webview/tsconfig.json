@@ -32,7 +32,8 @@
         "../domain/markdown/calendar.ts",
         "../domain/markdown/tagKeys.ts",
         "../domain/tasks/taskColumns.ts",
-        "../domain/tasks/progressCount.ts"
+        "../domain/tasks/progressCount.ts",
+        "../domain/tasks/statusChecks.ts"
     ],
     "include": [
         "**/*.ts",

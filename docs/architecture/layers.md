@@ -64,6 +64,7 @@ A page computes some things for itself, from rules the host also applies or that
 | `domain/markdown/tagKeys.ts` | A namespace's words for its filter: `formatKeyWords`. The namespace itself comes from the host, read by the parser's `getEntityNamespace` (which reads a key through `readTagNamespace`, here too) | The Dashboard's Tags tab |
 | `domain/tasks/taskColumns.ts` | Whether a status column or a board namespace the reader typed can be taken: `checkNewStatusColumn` and `checkStatusNamespace` | The Task Board's settings |
 | `domain/tasks/progressCount.ts` | How far along tasks are, shown and spoken: `formatProgressCount`, `speakProgressText`, `progressPercent` | Every progress figure and bar |
+| `domain/tasks/statusChecks.ts` | What a list of task statuses gets wrong, as it is typed: `checkStatusList` | Edit Task Statuses |
 | `domain/dashboard/widgetCatalog.ts` | Which Home widgets there are, and what each can do: `WIDGET_KINDS` and `isWidgetKind`; and the limits the host keeps, so the page offers no more: `HOME_WIDGET_LIMIT`, `WIDGET_ENTRY_COUNTS`, `QUICK_ADD_MAX_LENGTH`, and `isWatchableNamespace` | The Dashboard |
 
 Each imports nothing but types from `domain/model`, and `domain-is-pure` keeps it free of `vscode` and I/O, so what a page bundles from it is the rule and nothing more. A module joins the list in the change whose page first needs it, in both places.
