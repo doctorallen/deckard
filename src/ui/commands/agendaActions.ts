@@ -28,7 +28,8 @@ import { Task, TASK_SORT_MODES, type TaskSortMode, WorkspaceIndex } from '../../
 import { TASK_SORT_LABELS } from '../../domain/model/sortOrders';
 import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
 import { setTaskDate } from '../../domain/markdown/taskLineEdits';
-import { addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
+import { addDays, formatIsoDate, parseIsoDate, startOfDay } from '../../domain/markdown/calendar';
+import { formatDay as formatPlacedDay } from '../../domain/tasks/agendaPlacement';
 
 /**
  * Dating tasks from where they are listed.
@@ -62,12 +63,10 @@ export function describeLoad(load: DayLoad): string {
   return parts.length ? parts.join(' · ') : 'nothing due';
 }
 
-const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-/** A date as the Tasks view writes it: `Fri 2026-09-25`. */
-export function formatDay(date: string): string {
-  const [year, month, day] = date.split('-').map(Number);
-  return `${WEEKDAY_SHORT[new Date(year, month - 1, day).getDay()]} ${date}`;
+/** A `YYYY-MM-DD` date as the Tasks view writes it: `Fri 2026-09-25`. */
+function formatDay(date: string): string {
+  const at = parseIsoDate(date);
+  return at === undefined ? date : formatPlacedDay(at);
 }
 
 /** Oldest due first, then the more important, then where they are written. */

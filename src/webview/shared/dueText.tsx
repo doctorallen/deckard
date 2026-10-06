@@ -1,16 +1,20 @@
 import type { ComponentChildren } from 'preact';
 
-import { splitDueLabel } from './dueParts';
+import type { DueParts } from '../../ui/protocol/shared';
 
 /**
- * A due label drawn in its parts. The date stays drawn under "relative"
- * whenever the wording gives no distance, as "Overdue · 2026-07-01" beyond a
- * month does, since the date is then all there is to go on.
+ * A due date drawn in its parts, as the host gave them, for Display's Dates
+ * preference: the state, which is always drawn so an overdue date always
+ * says "Overdue"; how far off it is; and the date. The page writes every
+ * part, and display.css only folds the one the reader turned off into
+ * visually hidden text, so a screen reader hears the whole date whichever
+ * is drawn. A wording with no date of its own to draw, as "Due 2026-12-25"
+ * beyond a month, is drawn whole, since the date is then all there is to
+ * go on.
  */
-export function DueText({ label, dateClass }: { readonly label: string; readonly dateClass?: string }): ComponentChildren {
-  const parts = splitDueLabel(label);
+export function DueText({ parts, dateClass }: { readonly parts: DueParts; readonly dateClass?: string }): ComponentChildren {
   if (!parts.date) {
-    return label;
+    return parts.state;
   }
   const relative = Boolean(parts.distance) || /today/i.test(parts.state);
   const classes = relative ? 'due-text due-relative' : 'due-text';

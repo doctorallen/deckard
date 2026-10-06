@@ -7,9 +7,10 @@ import type { BlockToken } from '../../domain/model/blocks';
 import type { InlineToken } from '../../domain/model/inline';
 import type { QueryViewState } from '../../domain/model/query';
 import type { TagReference } from '../../domain/model/tags';
-import type { Task, TaskStatusType } from '../../domain/model/tasks';
+import type { DueParts, Task, TaskStatusType } from '../../domain/model/tasks';
 
 export type { TagReference, TagTitleDisplayMode } from '../../domain/model/tags';
+export type { DueParts } from '../../domain/model/tasks';
 
 /**
  * A task's status as its box draws it, when it is neither a plain to do nor
@@ -48,6 +49,8 @@ export interface DashboardTask {
    * by the host so every list says it the same way. Open, dated tasks only.
    */
   dueLabel?: string;
+  /** `dueLabel` in the parts a row draws it in; set with `dueLabel`. */
+  dueParts?: DueParts;
   /** Whether the due date has passed; set with `dueLabel`. */
   overdue?: boolean;
   /** Whether it passed so long ago the task needs a new date; drawn muted. */

@@ -325,7 +325,7 @@ The date steps both calendars take are `domain/markdown/calendar.ts`'s (D1): `sh
 
 | Module | What a page uses |
 | --- | --- |
-| `taskRow.tsx` | `<TaskListRow item draggable titleDisplay leading trailing entry afterSource>` (`entry` is a search's `data-search-entry`, and `afterSource` what follows where the task is written, such as Links the hub note), `<PriorityBadge priority>`, `<ParkedLabel>`, `formatTaskDate`, `formatSourceLocation`, `trimHeadingPath` and `<HeadingPathSteps steps>`, and `taskTitleOf(element)` |
+| `taskRow.tsx` | `<TaskListRow item draggable titleDisplay leading trailing entry afterSource>` (`entry` is a search's `data-search-entry`, and `afterSource` what follows where the task is written, such as Links the hub note), `<PriorityBadge priority>`, `<ParkedLabel>`, `formatSourceLocation`, `trimHeadingPath` and `<HeadingPathSteps steps>`, and `taskTitleOf(element)` |
 | `taskTitle.tsx`, `tagButton.tsx` | `<TaskTitle tokens tags>`, a title from its `titleTokens` with its tags as controls where they are written; `<TagButton tag className>`, `withTagButtons`, and `<TitleWithTags title tags appendMissing>` for a plain title |
 | `queryEditor.tsx`, `queryText.ts` | `createQueryEditor(options)`, the search box: `bar(statusControls)` and `facets()` draw it from the page's store, and `receive`, `beforeRender`, `afterRender`, `focus`, and the `handle*` methods are told of each draw and event, as the template's editor was. `queryText.ts` reads and writes query text and the builder's tree with no page in it |
 | `facets.tsx` | `facetValuesShown(facet, expanded, className)`, `FACET_VISIBLE`, `<FacetValue facet value>`, `describeFacetValue`, `getWeightLevel`, and `<WeightRail level title>` |

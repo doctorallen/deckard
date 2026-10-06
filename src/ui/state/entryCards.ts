@@ -105,6 +105,11 @@ export function sortDashboardNotes(
   );
 }
 
+/** Words with their first letter in capitals, as a row starts its due date. */
+function capitalize(words: string): string {
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 /**
  * Adds the title as tokens and the source context without changing the domain task.
  * An open task's due date is worded against the context's today and policy.
@@ -132,7 +137,8 @@ export function createDashboardTask(
     fileName: task.filePath.split('/').pop() ?? task.filePath,
     ...(due
       ? {
-          dueLabel: due.label.charAt(0).toUpperCase() + due.label.slice(1),
+          dueLabel: capitalize(due.label),
+          dueParts: { ...due.parts, state: capitalize(due.parts.state) },
           overdue: due.overdue,
           ...(due.stale ? { stale: true } : {}),
           ...(due.days === 0 ? { dueToday: true } : {}),

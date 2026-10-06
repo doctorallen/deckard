@@ -126,7 +126,7 @@ named for what it draws:
 
 | Module | What a page uses |
 | --- | --- |
-| `taskRow.tsx` | `<TaskListRow item draggable titleDisplay leading trailing entry afterSource>` (**Task list** below); `<PriorityBadge priority>`, `<ParkedLabel>`, `formatTaskDate`, `formatSourceLocation`, `trimHeadingPath` and `<HeadingPathSteps steps>`, and `taskTitleOf(element)` |
+| `taskRow.tsx` | `<TaskListRow item draggable titleDisplay leading trailing entry afterSource>` (**Task list** below); `<PriorityBadge priority>`, `<ParkedLabel>`, `formatSourceLocation`, `trimHeadingPath` and `<HeadingPathSteps steps>`, and `taskTitleOf(element)` |
 | `taskTitle.tsx` | `<TaskTitle tokens tags>`: a task's title from its `titleTokens`, its tags as controls where they are written |
 | `queryEditor.tsx`, `queryText.ts`, `facets.tsx` | The search box (**The search box** below); query text and the builder's tree, with no page in it; and Refine's values, `<FacetValue>`, `facetValuesShown`, `FACET_VISIBLE`, and the weight rail, `<WeightRail level title>` with `getWeightLevel(weight)`: three steps, three from 0.75, two from 0.375 |
 | `tagMenu.tsx` | `openTagContextMenu(event, target)`, Rename tag and Park tag, or Unpark tag on a tag `setParkedTags(keys)` lists; `openContextMenu(event, items)`, whatever a page offers at the pointer; `closeTagContextMenu()` and `tagContextKey()`. A page passes the host's `parkedTags` to `setParkedTags` with each state |

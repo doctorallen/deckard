@@ -46,6 +46,7 @@ import { compareTasksByColumn, createTaskCells, DEFAULT_TASK_COLUMNS, getTaskCol
 import { buildSearchFacets } from '../../domain/search/facets';
 import { TASK_COLUMNS } from '../../domain/tasks/taskColumns';
 import {
+  CardDetailParts,
   TaskBoardCard,
   TaskBoardColumn,
   TaskBoardLayout,
@@ -64,7 +65,7 @@ import {
   Section,
   TaskColumnId,
 } from '../../domain/model';
-import { describeDueDate } from '../../domain/markdown/dueWording';
+import { describeDueDate, type DueDescription } from '../../domain/markdown/dueWording';
 import { TASK_PRIORITY_RANKS, TaskMetadataFormat } from '../../domain/markdown/taskFields';
 import { addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
 
@@ -1021,7 +1022,7 @@ function createCard(
     ...(task.updatedAt === undefined ? {} : { updatedAt: task.updatedAt }),
     overdue: open && task.dueAt !== undefined && task.dueAt < today && !needsNewDate(task.dueAt, now, taskPolicy),
     ...(open && needsNewDate(task.dueAt, now, taskPolicy) ? { stale: true } : {}),
-    details: [...(status ? [status] : []), ...cardDetails(task, { groupBy, today, taskPolicy, blockers })],
+    ...withDetails([...(status ? [{ text: status }] : []), ...cardDetails(task, { groupBy, today, taskPolicy, blockers })]),
     // Where the task is written folds under the card, as it does under a
     // row; it was the last detail on every card.
     headingPath: section ? getHeadingPath(section, sections) : [],
@@ -1051,6 +1052,22 @@ function describeCardStatus(
   return name === UNKNOWN_STATUS_NAME ? `${name} [${task.status.symbol}]` : name;
 }
 
+/** One fact under a card's title, with the parts of the date it holds. */
+type CardDetail = { readonly text: string } & Omit<CardDetailParts, 'index'>;
+
+/** A card's details as their words, and the parts of those that hold a date. */
+function withDetails(details: readonly CardDetail[]): Pick<TaskBoardCard, 'details' | 'detailParts'> {
+  const parts = details.flatMap(({ text: _text, ...detail }, index) =>
+    (detail.date !== undefined || detail.due ? [{ index, ...detail }] : []));
+  return { details: details.map((detail) => detail.text), ...(parts.length ? { detailParts: parts } : {}) };
+}
+
+/** A detail that writes a date after its words: "done 2026-09-14". */
+function datedDetail(words: string, at: number): CardDetail {
+  const date = formatIsoDate(at);
+  return { text: `${words} ${date}`, date };
+}
+
 /**
  * What a card says under its title: when a done task was done, or an open
  * task's due, scheduled, and future start dates; its priority, unless the
@@ -1064,33 +1081,41 @@ function cardDetails(
     taskPolicy: QueryContext['taskPolicy'];
     blockers: readonly string[];
   },
-): string[] {
+): CardDetail[] {
   const open = !task.completed;
   return [
-    !open && task.doneAt !== undefined
-      ? `done ${formatIsoDate(task.doneAt)}`
-      : '',
-    open ? dueDetail(task, today, taskPolicy) : '',
-    open && task.scheduledAt !== undefined
-      ? `scheduled ${formatIsoDate(task.scheduledAt)}`
-      : '',
-    open && task.startAt !== undefined && task.startAt > today
-      ? `starts ${formatIsoDate(task.startAt)}`
-      : '',
-    groupBy !== 'priority' && task.priority
-      ? `${task.priority} priority`
-      : '',
-    task.recurrence ? `repeats ${task.recurrence}` : '',
-    open && blockers.length > 0 ? `blocked by ${blockers.join(', ')}` : '',
-  ].filter(Boolean);
+    !open && task.doneAt !== undefined ? datedDetail('done', task.doneAt) : undefined,
+    open ? dueDetail(task, today, taskPolicy) : undefined,
+    open && task.scheduledAt !== undefined ? datedDetail('scheduled', task.scheduledAt) : undefined,
+    open && task.startAt !== undefined && task.startAt > today ? datedDetail('starts', task.startAt) : undefined,
+    groupBy !== 'priority' && task.priority ? { text: `${task.priority} priority` } : undefined,
+    task.recurrence ? { text: `repeats ${task.recurrence}` } : undefined,
+    open && blockers.length > 0 ? { text: `blocked by ${blockers.join(', ')}` } : undefined,
+  ].filter((detail): detail is CardDetail => detail !== undefined);
 }
 
-/** An open task's due date in words beside today; its written words when they are not a date; else nothing. */
-function dueDetail(task: Task, today: number, taskPolicy: QueryContext['taskPolicy']): string {
+/**
+ * An open task's due date in words beside today, with its parts and tone;
+ * its written words when they are not a date; else nothing.
+ */
+function dueDetail(task: Task, today: number, taskPolicy: QueryContext['taskPolicy']): CardDetail | undefined {
   if (task.dueAt !== undefined) {
-    return describeDueDate(task.dueAt, today, taskPolicy, task.dueText).label;
+    const due = describeDueDate(task.dueAt, today, taskPolicy, task.dueText);
+    const tone = dueTone(due);
+    return { text: due.label, date: due.date, due: due.parts, ...(tone ? { tone } : {}) };
   }
-  return task.dueText ? `due ${task.dueText}` : '';
+  return task.dueText ? { text: `due ${task.dueText}` } : undefined;
+}
+
+/** How a due date is colored: overdue, past needing a new date, due today, or not at all. */
+function dueTone(due: DueDescription): CardDetailParts['tone'] {
+  if (due.overdue) {
+    return 'overdue';
+  }
+  if (due.stale) {
+    return 'stale';
+  }
+  return due.days === 0 ? 'today' : undefined;
 }
 
 /** The move values a task already has, for its card's menu to check. */

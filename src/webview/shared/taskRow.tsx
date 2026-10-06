@@ -10,6 +10,7 @@ import type { ComponentChildren } from 'preact';
 import type { InlineToken } from '../../ui/protocol/inline';
 import type { DashboardTask, TagTitleDisplayMode } from '../../ui/protocol/shared';
 import { ParentTag } from './tagButton';
+import { formatIsoDate } from '../../domain/markdown/calendar';
 import { DueText } from './dueText';
 import { TaskTitle } from './taskTitle';
 import { describeDates, describeLocation, type EntryFacts, readEntryDetails } from './entryDetails';
@@ -73,12 +74,6 @@ export function plainTitle(tokens: readonly InlineToken[]): string {
     }
   }).join('');
   return words(tokens).replace(/\s+/g, ' ').trim();
-}
-
-/** A task timestamp as the YYYY-MM-DD form the note uses, in local time. */
-export function formatTaskDate(timestamp: number): string {
-  const date = new Date(timestamp);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 /**
@@ -191,7 +186,7 @@ function TaskFacts({ item }: { readonly item: DashboardTask }) {
     } else if (item.dueToday) {
       tone = 'today';
     }
-    due = <span key="due" class={`due-date ${tone}`}><DueText label={item.dueLabel} /></span>;
+    due = <span key="due" class={`due-date ${tone}`}>{item.dueParts ? <DueText parts={item.dueParts} /> : item.dueLabel}</span>;
   } else if (task.dueText) {
     due = <span key="due-text" class="due-date">{`Due ${task.dueText}`}</span>;
   }
@@ -200,7 +195,7 @@ function TaskFacts({ item }: { readonly item: DashboardTask }) {
     <>
       {item.parked ? <ParkedLabel key="parked" /> : null}
       {due}
-      {task.scheduledAt === undefined ? null : <span key="scheduled" class="task-detail">{`Scheduled ${formatTaskDate(task.scheduledAt)}`}</span>}
+      {task.scheduledAt === undefined ? null : <span key="scheduled" class="task-detail">{`Scheduled ${formatIsoDate(task.scheduledAt)}`}</span>}
       <PriorityBadge key="priority" priority={task.priority} />
       {task.recurrence ? <span key="repeats" class="task-detail">{`Repeats ${task.recurrence}`}</span> : null}
       {item.stepsLabel ? <span key="steps" class="task-detail task-steps"><ProgressText text={item.stepsLabel} /></span> : null}

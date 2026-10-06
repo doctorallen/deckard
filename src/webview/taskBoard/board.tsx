@@ -7,7 +7,7 @@ import { speakProgressText } from '../../domain/tasks/progressCount';
 import { ProgressText } from '../shared/progressText';
 import type { ComponentChild } from 'preact';
 
-import type { TaskBoardCard, TaskBoardColumn, TaskBoardSettings, TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
+import type { CardDetailParts, TaskBoardCard, TaskBoardColumn, TaskBoardSettings, TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
 import type { ActionMenuGroup, ActionMenuItem } from '../shared/actionMenu';
 import { IconButton } from '../shared/buttons';
 import { DueText } from '../shared/dueText';
@@ -83,36 +83,24 @@ export function describeBoardColumn(label: string, count: number, limit: number 
   };
 }
 
-/** A detail's words with each date in it kept on one line: "2026-09-01" broke at its hyphens in a narrow column. */
-function withDates(detail: string): ComponentChild[] {
-  const drawn: ComponentChild[] = [];
-  let offset = 0;
-  for (const match of detail.matchAll(/\d{4}-\d{2}-\d{2}/g)) {
-    const at = match.index ?? 0;
-    if (at > offset) {
-      drawn.push(detail.slice(offset, at));
-    }
-    drawn.push(<span class="board-date">{match[0]}</span>);
-    offset = at + match[0].length;
+/** A detail's words with its date kept on one line: "2026-09-01" broke at its hyphens in a narrow column. */
+function withDate(detail: string, date: string | undefined): ComponentChild[] {
+  const at = date ? detail.lastIndexOf(date) : -1;
+  if (!date || at < 0) {
+    return [detail];
   }
-  if (offset < detail.length) {
-    drawn.push(detail.slice(offset));
-  }
-  return drawn;
+  return [detail.slice(0, at), <span class="board-date">{date}</span>, detail.slice(at + date.length)].filter((part) => part !== '');
 }
 
-/** The class of a detail: an overdue date, quietly or not, one due today, or a stale one. */
-function detailClass(card: TaskBoardCard, detail: string): string | undefined {
-  // The host words the due date, "overdue 15 days · 2026-09-08", so the
-  // state is in the text; the page only colors it.
-  const overdue = card.overdue && detail.startsWith('overdue');
-  if (overdue) {
+/** The class of a detail by its tone: an overdue date, quietly or not, one due today, or a stale one. */
+function detailClass(card: TaskBoardCard, tone: CardDetailParts['tone']): string | undefined {
+  if (tone === 'overdue') {
     return card.overdueTone === 'quiet' ? 'overdue quiet' : 'overdue';
   }
-  if (detail.startsWith('due today')) {
+  if (tone === 'today') {
     return 'due-today';
   }
-  return card.stale && detail.startsWith('was due') ? 'stale' : undefined;
+  return tone === 'stale' ? 'stale' : undefined;
 }
 
 /** The short facts under a card's title; priority is the badge the task rows draw. */
@@ -126,9 +114,12 @@ function CardDetails({ card }: { readonly card: TaskBoardCard }) {
         if (priority) {
           return <PriorityBadge key={`priority-${index}`} priority={priority[1]} />;
         }
-        // A due date is drawn in its parts, for Display's Dates preference.
-        const drawn = /^(due|overdue)\b/i.test(detail) && detail.includes(' · ') ? <DueText label={detail} dateClass="board-date" /> : withDates(detail);
-        return <span key={`detail-${index}`} class={detailClass(card, detail)}>{drawn}</span>;
+        // A date is drawn from the parts the host gave, since it is in the
+        // reader's format; a due date in its parts, for Display's Dates
+        // preference.
+        const parts = card.detailParts?.find((part) => part.index === index);
+        const drawn = parts?.due?.date ? <DueText parts={parts.due} dateClass="board-date" /> : withDate(detail, parts?.date);
+        return <span key={`detail-${index}`} class={detailClass(card, parts?.tone)}>{drawn}</span>;
       })}
     </p>
   );

@@ -5,6 +5,9 @@
  * list says something worth reading as well as where to go.
  */
 
+import { formatIsoDate } from '../../domain/markdown/calendar';
+import { formatShortDay } from '../../domain/markdown/dates';
+
 /** Each page, by the name of its glyph in resources/pages. */
 export type DeckardPageId = 'home' | 'board' | 'calendar' | 'today' | 'graph' | 'find' | 'stats' | 'help';
 
@@ -52,7 +55,6 @@ export function isDeckardPageId(value: unknown): value is DeckardPageId {
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** `n thing` or `n things`. */
 function count(n: number, one: string, many: string): string {
@@ -61,7 +63,7 @@ function count(n: number, one: string, many: string): string {
 
 /** Every page, in the order the Pages view and Go to… list them. */
 export function listDeckardPages(facts: PageFacts): DeckardPage[] {
-  const day = `${DAYS[facts.today.getDay()]}, ${MONTHS[facts.today.getMonth()].slice(0, 3)} ${facts.today.getDate()}`;
+  const day = formatShortDay(formatIsoDate(facts.today.getTime()), facts.today.getTime());
   return [
     {
       id: 'home',

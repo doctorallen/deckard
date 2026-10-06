@@ -12,6 +12,7 @@ import type {
 import type { InlineToken } from '../../domain/model/inline';
 import type { QueryViewState } from '../../domain/model/query';
 import type { TagReference } from '../../domain/model/tags';
+import type { DueParts } from '../../domain/model/tasks';
 import type { Correlated, IndexingMessage, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
@@ -44,6 +45,23 @@ export interface SetTaskSortMessage {
   mode: TaskSortMode;
 }
 
+/**
+ * What a card draws of one of its details that holds a date: the date,
+ * which is kept on one line, and for its due date the parts and how it is
+ * colored. The date is in the reader's format, so the page never looks for
+ * it by its shape.
+ */
+export interface CardDetailParts {
+  /** The detail's place in `details`. */
+  index: number;
+  /** The date the detail writes, at its end. */
+  date?: string;
+  /** The due date's parts, for Display's Dates preference. */
+  due?: DueParts;
+  /** Overdue, red or quiet by the card's `overdueTone`; due today; or past needing a new date. */
+  tone?: 'overdue' | 'today' | 'stale';
+}
+
 /** One task as a board card draws it. */
 export interface TaskBoardCard {
   taskId: string;
@@ -64,6 +82,8 @@ export interface TaskBoardCard {
   updatedAt?: number;
   /** Short facts under the title, such as "due 2026-09-14". */
   details: string[];
+  /** The parts of the details that hold a date, so the page draws them without reading the words. */
+  detailParts?: CardDetailParts[];
   overdue: boolean;
   /** Past `needsNewDateAfterDays`: its date reads `was due …`, muted. */
   stale?: boolean;

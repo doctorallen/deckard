@@ -1,3 +1,4 @@
+import type { DueParts } from '../model/tasks';
 import { needsNewDate, TaskPolicy } from '../tasks/taskPolicy';
 import { DAY_MS, formatIsoDate, startOfDay } from './calendar';
 
@@ -8,8 +9,12 @@ export interface DueDescription {
    * `overdue` or `due` alone once the date is more than a month away.
    */
   relative: string;
-  /** The relative phrase with the date beside it, as a row or card writes it. */
+  /** The relative phrase with the date beside it, as a row or card writes it, and a message says it. */
   label: string;
+  /** The date as the label writes it. */
+  date: string;
+  /** The label in the parts a page draws it in. */
+  parts: DueParts;
   overdue: boolean;
   /**
    * Set once the date is more than `needsNewDateAfterDays` behind today: the
@@ -41,33 +46,39 @@ export function describeDueDate(
   const days = Math.round((startOfDay(dueAt) - startOfDay(now)) / DAY_MS);
   const date = dueText ?? formatIsoDate(dueAt);
   if (days < 0 && needsNewDate(dueAt, now, taskPolicy)) {
-    return { relative: 'was due', label: `was due ${date}`, overdue: false, stale: true, days };
+    const label = `was due ${date}`;
+    return { relative: 'was due', label, date, parts: { state: label, distance: '', date: '' }, overdue: false, stale: true, days };
   }
   const overdue = days < 0;
-  const relative = relativeDueWording(days);
-  const label = relative === 'due' ? `due ${date}` : `${relative} · ${date}`;
-  return { relative, label, overdue, days };
+  const { state, distance } = relativeDueWording(days);
+  const relative = `${state}${distance}`;
+  if (relative === 'due') {
+    const label = `due ${date}`;
+    return { relative, label, date, parts: { state: label, distance: '', date: '' }, overdue, days };
+  }
+  return { relative, label: `${relative} · ${date}`, date, parts: { state, distance, date }, overdue, days };
 }
 
 /**
- * How far a due date is from today, in words: `due today`, `due tomorrow`,
- * `overdue 1 day`, `due in 3 days`, `overdue 15 days`, and beyond
- * RELATIVE_DUE_LIMIT_DAYS either way just `due` or `overdue`.
+ * How far a due date is from today, in words, as its state and distance:
+ * `due today`, `due` ` tomorrow`, `overdue` ` 1 day`, `due` ` in 3 days`,
+ * `overdue` ` 15 days`, and beyond RELATIVE_DUE_LIMIT_DAYS either way just
+ * `due` or `overdue`.
  */
-function relativeDueWording(days: number): string {
+function relativeDueWording(days: number): Pick<DueParts, 'state' | 'distance'> {
   if (days === 0) {
-    return 'due today';
+    return { state: 'due today', distance: '' };
   }
   if (days === 1) {
-    return 'due tomorrow';
+    return { state: 'due', distance: ' tomorrow' };
   }
   if (days === -1) {
-    return 'overdue 1 day';
+    return { state: 'overdue', distance: ' 1 day' };
   }
   const overdue = days < 0;
   const distance = Math.abs(days);
   if (distance > RELATIVE_DUE_LIMIT_DAYS) {
-    return overdue ? 'overdue' : 'due';
+    return { state: overdue ? 'overdue' : 'due', distance: '' };
   }
-  return overdue ? `overdue ${distance} days` : `due in ${days} days`;
+  return overdue ? { state: 'overdue', distance: ` ${distance} days` } : { state: 'due', distance: ` in ${days} days` };
 }
