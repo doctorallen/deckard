@@ -11,6 +11,10 @@
   "Draft the brief" says it is part of `#project/atlas`. Selecting the tag
   narrows the board's search by it, as Refine does (Shift-click for OR,
   Alt-click to leave it out); Cmd/Ctrl-click opens the tag's page.
+- **Sorts the other way.** A search page's **Sort** adds **Oldest
+  created**, **Least recently updated**, and **Z-A**, and the Task board's
+  list sorts by any of those, **Newest created**, **Recently updated**,
+  **A-Z**, or **Rank**. An exported query block keeps the order.
 
 ## 2.3.0 - 2026-10-06
 

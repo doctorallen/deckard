@@ -26,13 +26,13 @@ import {
   SearchPageSize,
   SearchPreview,
   TableSort,
+  TAG_OVERVIEW_SORT_MODES,
   TagOverviewLayout,
-  TagOverviewSortMode,
   TagSortMode,
+  TASK_SORT_MODES,
   TaskBoardGroupBy,
   TaskColumnId,
   TaskLayout,
-  TaskSortMode,
 } from '../../domain/model/preferences';
 
 /**
@@ -140,9 +140,7 @@ const DASHBOARD_WIDGET_QUERY_LIMIT = 2000;
 const DASHBOARD_WIDGET_PAGE_LIMIT = 10000;
 
 const TAG_SORT_MODES: readonly TagSortMode[] = ['alphabetical', 'count', 'access', 'custom'];
-const TASK_SORT_MODES: readonly TaskSortMode[] = ['rank', 'created', 'updated'];
 const COLUMN_COUNTS: readonly DashboardColumnCount[] = [1, 2, 3, 4];
-const TAG_OVERVIEW_SORT_MODES: readonly TagOverviewSortMode[] = ['alphabetical', 'created', 'updated', 'access'];
 const TAG_OVERVIEW_LAYOUTS: readonly TagOverviewLayout[] = ['tabs', 'split'];
 const SEARCH_PREVIEWS: readonly SearchPreview[] = ['none', 'lines', 'full'];
 const RELATED_NOTES_SORT_MODES: readonly RelatedNotesSortMode[] = ['newest', 'oldest', 'tags', 'access'];

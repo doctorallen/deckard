@@ -25,7 +25,7 @@ import { readQueryContext } from '../../../commands/queryContext';
 import { mergeIndexedTag } from '../../../commands/renameTag';
 import { offerSavedSearchOnHome } from '../../../commands/savedSearchHome';
 import type { TaskWrites } from '../../../commands/taskActions';
-import { formatQueryBlock } from '../../../state/queryBlockState';
+import { formatQueryBlock, queryBlockSortOf } from '../../../state/queryBlockState';
 import { SearchHistory, SearchHistoryEntry } from '../../../state/searchHistory';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
@@ -536,7 +536,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     const search = this.queryText.trim();
     const sort = this.search.preferences.reader.value.tagOverviewSortMode;
     const liveBlock = search
-      ? () => formatQueryBlock(search, sort === 'created' || sort === 'updated' ? { sort } : {})
+      ? () => formatQueryBlock(search, queryBlockSortOf(sort, 'notes'))
       : undefined;
     await presentExport(plan, liveBlock);
   }

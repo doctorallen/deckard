@@ -1,6 +1,6 @@
 import { formatProgressCount } from '../../domain/tasks/progressCount';
 import { countTaskProgress, isCancelledTask, nameTaskStatus, readTaskStatus, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
-import type { TaskStatusType } from '../../domain/model';
+import type { TagOverviewSortMode, TaskSortMode, TaskStatusType } from '../../domain/model';
 import { getFileName } from '../../shared/paths';
 import { formatIsoDate } from '../../domain/markdown/calendar';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
@@ -166,6 +166,33 @@ export interface QueryBlockWriteOptions {
   view?: 'list' | 'table';
   columns?: readonly string[];
   noteColumns?: readonly string[];
+}
+
+/**
+ * A page's sort as a query block writes it, so an exported block lists in
+ * the order the page did. Rank and use have no column a block can sort by,
+ * and A-Z is a block's own order for notes, so those write nothing.
+ */
+export function queryBlockSortOf(
+  mode: TaskSortMode | TagOverviewSortMode,
+  kind: 'notes' | 'tasks',
+): Pick<QueryBlockWriteOptions, 'sort' | 'direction'> {
+  switch (mode) {
+    case 'created':
+    case 'updated':
+      return { sort: mode };
+    case 'createdOldest':
+      return { sort: 'created', direction: 'asc' };
+    case 'updatedOldest':
+      return { sort: 'updated', direction: 'asc' };
+    case 'alphabetical':
+      return kind === 'tasks' ? { sort: 'title' } : {};
+    case 'alphabeticalReverse':
+      return { sort: 'title', direction: 'desc' };
+    case 'rank':
+    case 'access':
+      return {};
+  }
 }
 
 /**

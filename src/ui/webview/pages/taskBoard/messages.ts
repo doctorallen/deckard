@@ -4,7 +4,7 @@
  * what, if anything, a move to it may write, and checks each task, line,
  * and tag against the index as it is now.
  */
-import type { TaskBoardGroupBy, TaskSortMode } from '../../../../domain/model/preferences';
+import { TASK_SORT_MODES, type TaskBoardGroupBy, type TaskSortMode } from '../../../../domain/model/preferences';
 import {
   isBoardNamespace,
   isStatusColumnList,
@@ -60,7 +60,7 @@ function isTaskBoardGroupBy(value: unknown): value is TaskBoardGroupBy {
 
 /** A list's orders: the ones the state layer implements. */
 function isTaskSortMode(value: unknown): value is TaskSortMode {
-  return value === 'rank' || value === 'created' || value === 'updated';
+  return (TASK_SORT_MODES as readonly unknown[]).includes(value);
 }
 
 /** The messages that name a task and nothing else. */

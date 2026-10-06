@@ -4,6 +4,7 @@
  */
 import type { ComponentChildren } from 'preact';
 
+import { NOTE_SORT_LABELS } from '../../domain/model/sortOrders';
 import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { TagReference } from '../../ui/protocol/shared';
 import { HelpButton, IconButton } from '../shared/buttons';
@@ -46,12 +47,7 @@ function HistoryButtons({ history }: { readonly history: SearchPageSnapshot['his
 
 /** How the notes are ordered, in the gear: the select alone, its label being the row's. */
 function SortControl({ mode }: { readonly mode: SearchPageSnapshot['sortMode'] }) {
-  const options: ReadonlyArray<readonly [string, string]> = [
-    ['alphabetical', 'A-Z'],
-    ['created', 'Newest created'],
-    ['updated', 'Recently updated'],
-    ['access', 'Most accessed'],
-  ];
+  const options = Object.entries(NOTE_SORT_LABELS);
   return (
     <label class="control-label">
       <span class="control-icon">

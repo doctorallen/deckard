@@ -18,6 +18,7 @@ import {
   PersistedPreferences,
   RankedNote,
   Section,
+  TAG_OVERVIEW_SORT_MODES,
   TagInfo,
   Task,
   WorkspaceIndex,
@@ -368,7 +369,7 @@ suite('Dashboard state', () => {
       ),
     );
     const index = createFileIndex(files);
-    for (const tagOverviewSortMode of ['alphabetical', 'created', 'updated', 'access'] as const) {
+    for (const tagOverviewSortMode of TAG_OVERVIEW_SORT_MODES) {
       const preferences = {
         ...defaultPreferences,
         tagOverviewSortMode,
@@ -656,6 +657,20 @@ suite('Dashboard state', () => {
       ),
       ['first', 'third', 'second'],
     );
+  });
+
+  test('sorts tasks oldest first, least recently updated first, and by title either way', () => {
+    const first = createTask('Bravo', false, 1, { createdAt: 10, updatedAt: 30 });
+    const second = createTask('alpha', false, 2, { createdAt: 30, updatedAt: 10 });
+    const third = createTask('Charlie', false, 3, { createdAt: 20, updatedAt: 20 });
+    const undated = createTask('Delta', false, 4);
+    const titles = (mode: Parameters<typeof sortTasks>[2]) =>
+      sortTasks([undated, first, second, third], [], mode).map((task) => task.title);
+
+    assert.deepStrictEqual(titles('createdOldest'), ['Bravo', 'Charlie', 'alpha', 'Delta'], 'an undated task is last either way');
+    assert.deepStrictEqual(titles('updatedOldest'), ['alpha', 'Charlie', 'Bravo', 'Delta']);
+    assert.deepStrictEqual(titles('alphabetical'), ['alpha', 'Bravo', 'Charlie', 'Delta'], 'case does not decide');
+    assert.deepStrictEqual(titles('alphabeticalReverse'), ['Delta', 'Charlie', 'Bravo', 'alpha']);
   });
 
   test('ranks related notes by matching tags before overlap', () => {
@@ -1367,6 +1382,18 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(
       sortTagOverviewCards(cards, 'updated').map((card) => card.heading),
       ['Updated', 'Beta', 'Alpha'],
+    );
+    assert.deepStrictEqual(
+      sortTagOverviewCards(cards, 'alphabeticalReverse').map((card) => card.heading),
+      ['Updated', 'Beta', 'Alpha'],
+    );
+    assert.deepStrictEqual(
+      sortTagOverviewCards(cards, 'createdOldest').map((card) => card.heading),
+      ['Updated', 'Beta', 'Alpha'],
+    );
+    assert.deepStrictEqual(
+      sortTagOverviewCards(cards, 'updatedOldest').map((card) => card.heading),
+      ['Alpha', 'Beta', 'Updated'],
     );
   });
 

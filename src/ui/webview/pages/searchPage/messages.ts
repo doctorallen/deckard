@@ -3,7 +3,7 @@
  * The page sends its navigation and its display choices; the host still
  * checks each tag, line, and task against the index as it is now.
  */
-import { SEARCH_PAGE_SIZES, SearchPageSize } from '../../../../domain/model/preferences';
+import { SEARCH_PAGE_SIZES, SearchPageSize, TAG_OVERVIEW_SORT_MODES, type TagOverviewSortMode } from '../../../../domain/model/preferences';
 import type {
   EditResultsMessage,
   NavigateSearchHistoryMessage,
@@ -131,8 +131,8 @@ const narrowSetSearchPreview: Narrower<SetSearchPreviewMessage> = (value) =>
 
 /** One of the orders a search page sorts its notes in, apart from Home's tag orders. */
 const narrowSetTagOverviewSort: Narrower<SetTagOverviewSortMessage> = (value) =>
-  value.mode === 'alphabetical' || value.mode === 'created' || value.mode === 'updated' || value.mode === 'access'
-    ? { type: 'setTagOverviewSort', mode: value.mode }
+  (TAG_OVERVIEW_SORT_MODES as readonly unknown[]).includes(value.mode)
+    ? { type: 'setTagOverviewSort', mode: value.mode as TagOverviewSortMode }
     : undefined;
 
 /** Notes and tasks as tabs or side by side. */

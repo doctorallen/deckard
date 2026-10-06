@@ -31,7 +31,7 @@ import {
 import { breakIntoStepsCommand } from '../../../commands/taskSteps';
 import { normalizeAgendaQuery } from '../../../state/agendaState';
 import { mergeOrder } from '../../../state/dashboardState';
-import { formatQueryBlock, QueryBlockWriteOptions } from '../../../state/queryBlockState';
+import { formatQueryBlock, queryBlockSortOf, QueryBlockWriteOptions } from '../../../state/queryBlockState';
 import { createTaskBoard } from '../../../state/taskBoardState';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
@@ -680,10 +680,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         ...(sort ? { sort: sort.column, direction: sort.direction } : {}),
       };
     }
-    if (preferences.taskBoardLayout === 'list' && preferences.taskSortMode !== 'rank') {
-      return { sort: preferences.taskSortMode };
-    }
-    return {};
+    return preferences.taskBoardLayout === 'list' ? queryBlockSortOf(preferences.taskSortMode, 'tasks') : {};
   }
 
   /**

@@ -34,43 +34,51 @@ import type { EntryLine } from '../../domain/index/noteEntryIndex';
 /**
  * Sorts tasks by the selected policy and falls back to source location.
  *
- * Missing filesystem dates sort last, and the path/line fallback makes results
- * deterministic when several tasks share the same timestamp or rank.
+ * Missing filesystem dates sort last either way, and the path/line fallback
+ * makes results deterministic when several tasks share the same timestamp,
+ * title, or rank.
  */
 export function sortTasks(
   tasks: Task[],
   taskOrder: string[],
   taskSortMode: TaskSortMode = 'rank',
 ): Task[] {
-  const order = new Map(taskOrder.map((taskId, index) => [taskId, index]));
-  return tasks.sort((left, right) => {
-    if (taskSortMode === 'created') {
-      const result = compareDatesDescending(left.createdAt, right.createdAt);
-      if (result !== 0) {
-        return result;
-      }
-    }
+  const compare = createTaskComparator(taskOrder, taskSortMode);
+  return tasks.sort((left, right) =>
+    compare(left, right) ||
+    left.filePath.localeCompare(right.filePath) ||
+    left.lineNumber - right.lineNumber,
+  );
+}
 
-    if (taskSortMode === 'updated') {
-      const result = compareDatesDescending(left.updatedAt, right.updatedAt);
-      if (result !== 0) {
-        return result;
-      }
+/**
+ * How two tasks compare by the selected policy alone, 0 when it can't tell
+ * them apart, so a caller can fall back to an order of its own, as the
+ * board's columns fall back to due date and priority.
+ */
+export function createTaskComparator(
+  taskOrder: readonly string[],
+  taskSortMode: TaskSortMode,
+): (left: Task, right: Task) => number {
+  switch (taskSortMode) {
+    case 'created':
+      return (left, right) => compareDatesDescending(left.createdAt, right.createdAt);
+    case 'createdOldest':
+      return (left, right) => compareDatesAscending(left.createdAt, right.createdAt);
+    case 'updated':
+      return (left, right) => compareDatesDescending(left.updatedAt, right.updatedAt);
+    case 'updatedOldest':
+      return (left, right) => compareDatesAscending(left.updatedAt, right.updatedAt);
+    case 'alphabetical':
+      return (left, right) => baseCollator.compare(left.title, right.title);
+    case 'alphabeticalReverse':
+      return (left, right) => baseCollator.compare(right.title, left.title);
+    case 'rank': {
+      const order = new Map(taskOrder.map((taskId, index) => [taskId, index]));
+      return (left, right) =>
+        (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER);
     }
-
-    if (taskSortMode === 'rank') {
-      const leftOrder = order.get(left.id) ?? Number.MAX_SAFE_INTEGER;
-      const rightOrder = order.get(right.id) ?? Number.MAX_SAFE_INTEGER;
-      if (leftOrder !== rightOrder) {
-        return leftOrder - rightOrder;
-      }
-    }
-
-    return (
-      left.filePath.localeCompare(right.filePath) ||
-      left.lineNumber - right.lineNumber
-    );
-  });
+  }
 }
 
 /**
@@ -302,22 +310,9 @@ export function compareTagOverviewCards(
   right: SortableNote,
   sortMode: TagOverviewSortMode,
 ): number {
-  if (sortMode === 'created') {
-    const result = compareDatesDescending(left.createdAt, right.createdAt);
-    if (result !== 0) {
-      return result;
-    }
-  }
-
-  if (sortMode === 'updated') {
-    const result = compareDatesDescending(left.updatedAt, right.updatedAt);
-    if (result !== 0) {
-      return result;
-    }
-  }
-
-  if (sortMode === 'access' && left.accessCount !== right.accessCount) {
-    return right.accessCount - left.accessCount;
+  const result = compareNotesBy(left, right, sortMode);
+  if (result !== 0) {
+    return result;
   }
 
   return (
@@ -325,6 +320,37 @@ export function compareTagOverviewCards(
     defaultCollator.compare(left.filePath, right.filePath) ||
     left.startLine - right.startLine
   );
+}
+
+/** How two notes compare by the selected mode alone, 0 when it can't tell them apart. */
+function compareNotesBy(left: SortableNote, right: SortableNote, sortMode: TagOverviewSortMode): number {
+  switch (sortMode) {
+    case 'created':
+      return compareDatesDescending(left.createdAt, right.createdAt);
+    case 'createdOldest':
+      return compareDatesAscending(left.createdAt, right.createdAt);
+    case 'updated':
+      return compareDatesDescending(left.updatedAt, right.updatedAt);
+    case 'updatedOldest':
+      return compareDatesAscending(left.updatedAt, right.updatedAt);
+    case 'access':
+      return right.accessCount - left.accessCount;
+    case 'alphabeticalReverse':
+      return baseCollator.compare(right.heading, left.heading);
+    case 'alphabetical':
+      return 0;
+  }
+}
+
+/** Oldest first, with unknown dates after known ones, as compareDatesDescending keeps them. */
+function compareDatesAscending(
+  left: number | undefined,
+  right: number | undefined,
+): number {
+  if (left === undefined || right === undefined) {
+    return compareDatesDescending(left, right);
+  }
+  return left - right;
 }
 
 /**

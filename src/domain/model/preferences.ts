@@ -16,20 +16,38 @@
 export type TagSortMode = 'alphabetical' | 'count' | 'access' | 'custom';
 
 /**
- * How a list of tasks is ordered: in the reader's own ranked order, or by
- * when each was created or last updated.
+ * How a list of tasks is ordered: in the reader's own ranked order, by when
+ * each was created or last updated, either way, or by title, either way.
  */
-export type TaskSortMode = 'rank' | 'created' | 'updated';
+export const TASK_SORT_MODES = [
+  'rank',
+  'created',
+  'createdOldest',
+  'updated',
+  'updatedOldest',
+  'alphabetical',
+  'alphabeticalReverse',
+] as const;
+
+/** One of TASK_SORT_MODES. */
+export type TaskSortMode = (typeof TASK_SORT_MODES)[number];
 
 /** How many columns a Dashboard or search page lays a list out in. */
 export type DashboardColumnCount = 1 | 2 | 3 | 4;
 
-/** How a search page orders the notes it found. */
-export type TagOverviewSortMode =
-  | 'alphabetical'
-  | 'created'
-  | 'updated'
-  | 'access';
+/** How a search page orders the notes it found: by title or date either way, or by use. */
+export const TAG_OVERVIEW_SORT_MODES = [
+  'alphabetical',
+  'alphabeticalReverse',
+  'created',
+  'createdOldest',
+  'updated',
+  'updatedOldest',
+  'access',
+] as const;
+
+/** One of TAG_OVERVIEW_SORT_MODES. */
+export type TagOverviewSortMode = (typeof TAG_OVERVIEW_SORT_MODES)[number];
 
 /** Whether a search page shows its notes and tasks as tabs or side by side. */
 export type TagOverviewLayout = 'tabs' | 'split';

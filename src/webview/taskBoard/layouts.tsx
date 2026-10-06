@@ -4,6 +4,7 @@
  * edits what the Tasks view lists.
  */
 import { describeBox, statusBoxProps } from '../shared/taskBox';
+import { TASK_SORT_LABELS } from '../../domain/model/sortOrders';
 import type { TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
 import { IconButton } from '../shared/buttons';
 import { Inline } from '../shared/inline';
@@ -136,7 +137,7 @@ export function SortControl({ snapshot }: { readonly snapshot: TaskBoardSnapshot
       Sort:
       <span class="control-icon">
         <select data-action="set-task-sort" aria-label="Sort tasks">
-          {([['rank', 'Rank'], ['created', 'Created'], ['updated', 'Updated']] as const).map(([value, label]) => (
+          {Object.entries(TASK_SORT_LABELS).map(([value, label]) => (
             <option value={value} selected={snapshot.taskSortMode === value}>{label}</option>
           ))}
         </select>

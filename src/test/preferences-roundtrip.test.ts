@@ -542,11 +542,11 @@ suite('Preferences round trip', () => {
       const fields: Array<[string, readonly unknown[], unknown]> = [
         ['tagSortMode', ['alphabetical', 'count', 'access', 'custom'], 'alphabetical'],
         ['entitySortMode', ['alphabetical', 'count', 'access', 'custom'], 'alphabetical'],
-        ['taskSortMode', ['rank', 'created', 'updated'], 'rank'],
+        ['taskSortMode', ['rank', 'created', 'createdOldest', 'updated', 'updatedOldest', 'alphabetical', 'alphabeticalReverse'], 'rank'],
         ['dashboardTaskColumns', [1, 2, 3, 4], 1],
         ['dashboardNoteColumns', [1, 2, 3, 4], 1],
         ['dashboardTagColumns', [1, 2, 3, 4], 2],
-        ['tagOverviewSortMode', ['alphabetical', 'created', 'updated', 'access'], 'alphabetical'],
+        ['tagOverviewSortMode', ['alphabetical', 'alphabeticalReverse', 'created', 'createdOldest', 'updated', 'updatedOldest', 'access'], 'alphabetical'],
         ['tagOverviewLayout', ['tabs', 'split'], 'tabs'],
         ['searchPageSize', [10, 30, 50, 100, 200], 30],
         ['searchPreview', ['none', 'lines', 'full'], 'lines'],

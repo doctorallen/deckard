@@ -46,7 +46,7 @@ The search icon in the [Tasks view](tasks.md#tasks-view)'s title opens the board
 ## Table and list
 
 - **Table** shows tasks as rows: title, due date, priority, person, and note by default. Add other fields in the gear's **Columns**. Select a header to sort, again to reverse; **Rank order** restores your ranking. A [query block](query-blocks.md#query-blocks) draws the same table with `view=table`.
-- **List** shows tasks as rows with **Sort: Rank/Created/Updated**. In Rank, drag a row, right-click it to move it, or press **Alt+↑** and **Alt+↓**.
+- **List** shows tasks as rows with **Sort**: **Rank**, **Newest created**, **Oldest created**, **Recently updated**, **Least recently updated**, **A-Z**, or **Z-A**. In Rank, drag a row, right-click it to move it, or press **Alt+↑** and **Alt+↓**.
 - **Status columns**, in the gear, lists the status columns in order. Drag a row to reorder, add a column, remove an empty one with **×**, set the status namespace, or show a Cancelled column. These save to `deckard.board.statuses`, `deckard.board.statusNamespace`, and `deckard.board.showCancelled`.
 
 ## Keyboard
