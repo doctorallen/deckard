@@ -5,6 +5,8 @@
  * task dropped on it takes that column's edit.
  */
 
+import { TASK_SORT_MODES, type TaskSortMode } from '../model/preferences';
+
 /** What the Agenda's groups are: when a task is wanted, or what it carries. */
 export type AgendaGroupBy = 'due' | 'priority' | 'status' | 'assignee' | 'tag';
 
@@ -20,6 +22,12 @@ export interface SettingsReader {
 export function readAgendaGrouping(settings: SettingsReader): AgendaGroupBy {
   const value = settings.get<string>('agenda.groupBy', 'due');
   return AGENDA_GROUP_BYS.some((grouping) => grouping === value) ? (value as AgendaGroupBy) : 'due';
+}
+
+/** How each of the Tasks view's groups orders its tasks, from `deckard.agenda.sort`; `rank` for anything else. */
+export function readAgendaSort(settings: SettingsReader): TaskSortMode {
+  const value = settings.get<string>('agenda.sort', 'rank');
+  return TASK_SORT_MODES.find((mode) => mode === value) ?? 'rank';
 }
 
 /**

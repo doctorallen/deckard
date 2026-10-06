@@ -15,6 +15,15 @@
   created**, **Least recently updated**, and **Z-A**, and the Task board's
   list sorts by any of those, **Newest created**, **Recently updated**,
   **A-Z**, or **Rank**. An exported query block keeps the order.
+- **Rank cards on the Task board.** The board gains **Sort** beside its
+  grouping, by **Rank** unless you choose another. Sorted by rank, drag a
+  card up or down its column, or press Alt+↑ and Alt+↓, to put it in your
+  own order; the rank is the one the list and the Tasks view keep, so it
+  holds whichever way the board is grouped. Cards you haven't ranked still
+  go by due date and priority.
+- **Sort the Tasks view.** **Sort Tasks By…**, in the view's title
+  (`deckard.agenda.sort`), orders each group by rank, by when its tasks
+  were created or updated, or by title, either way.
 
 ## 2.3.0 - 2026-10-06
 

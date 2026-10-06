@@ -666,6 +666,12 @@
         "icon": "$(group-by-ref-type)"
       },
       {
+        "command": "deckard.agenda.setSort",
+        "title": "Sort Tasks By…",
+        "category": "Deckard",
+        "icon": "$(sort-precedence)"
+      },
+      {
         "command": "deckard.outline.enableFollowCursor",
         "title": "Follow Cursor in Outline",
         "category": "Deckard",
@@ -1332,6 +1338,11 @@
         },
         {
           "command": "deckard.agenda.setGrouping",
+          "when": "view == deckard.agenda",
+          "group": "navigation@1"
+        },
+        {
+          "command": "deckard.agenda.setSort",
           "when": "view == deckard.agenda",
           "group": "navigation@1"
         },
@@ -2753,6 +2764,30 @@
             ],
             "default": "due",
             "description": "What the Tasks view's groups are. The group control in its title sets the same thing.",
+            "order": 7
+          },
+          "deckard.agenda.sort": {
+            "type": "string",
+            "enum": [
+              "rank",
+              "created",
+              "createdOldest",
+              "updated",
+              "updatedOldest",
+              "alphabetical",
+              "alphabeticalReverse"
+            ],
+            "enumDescriptions": [
+              "The order you dragged tasks into; tasks you haven't placed follow in each group's own order.",
+              "Newest created first: a task's ➕ date, else its note's.",
+              "Oldest created first.",
+              "The task whose note changed most recently first.",
+              "The task whose note changed longest ago first.",
+              "By title, A to Z.",
+              "By title, Z to A."
+            ],
+            "default": "rank",
+            "markdownDescription": "How each of the Tasks view's groups orders its tasks. Within a tie, a group keeps its own order: by date or priority. Dragging a task onto another ranks it only when this is `rank`. The sort control in the view's title sets the same thing.",
             "order": 7
           },
           "deckard.agenda.groupNamespace": {

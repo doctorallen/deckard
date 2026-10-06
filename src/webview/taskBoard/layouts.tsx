@@ -130,7 +130,7 @@ export function TableSortNote({ snapshot }: { readonly snapshot: TaskBoardSnapsh
   );
 }
 
-/** Under the search box while the list is shown: how it is ordered. */
+/** Under the search box while the list or the board is shown: how tasks are ordered, in a list or within each column. */
 export function SortControl({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   return (
     <label class="control-label">

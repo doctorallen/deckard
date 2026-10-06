@@ -40,7 +40,7 @@ import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import { tokenizeInline } from '../../domain/markdown/inline';
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
-import { createDashboardTask, sortTasks, withDrawnStatus } from './entryCards';
+import { createDashboardTask, createTaskComparator, sortTasks, withDrawnStatus } from './entryCards';
 import { createQueryViewState } from './querySuggestions';
 import { compareTasksByColumn, createTaskCells, DEFAULT_TASK_COLUMNS, getTaskColumn, TableTask } from './resultTable';
 import { buildSearchFacets } from '../../domain/search/facets';
@@ -174,7 +174,14 @@ export function createTaskBoard({
 
   const board: TaskBoardLayout =
     layout === 'board'
-      ? layoutTaskBoard({ index, tasks, requestedGroupBy: groupBy, options, namespace: preferences.taskBoardGroupNamespace })
+      ? layoutTaskBoard({
+          index,
+          tasks,
+          requestedGroupBy: groupBy,
+          options,
+          namespace: preferences.taskBoardGroupNamespace,
+          sort: createTaskComparator(preferences.taskOrder, preferences.taskSortMode),
+        })
       : { groupBy, columns: [], taskCount: tasks.length };
   return {
     ...board,
@@ -338,6 +345,12 @@ export interface TaskBoardLayoutRequest {
   options: TaskBoardOptions;
   /** The tag namespace a tag grouping groups by. */
   namespace?: string;
+  /**
+   * How an open column orders its cards before its own order, soonest due
+   * then highest priority, decides: the reader's rank or another sort. Done
+   * and Cancelled always list the most recently closed first.
+   */
+  sort?: (left: Task, right: Task) => number;
 }
 
 /**
@@ -351,6 +364,7 @@ export function layoutTaskBoard({
   requestedGroupBy,
   options,
   namespace,
+  sort,
 }: TaskBoardLayoutRequest): TaskBoardLayout {
   // A tag grouping without a namespace to group by lays out as status.
   const groupBy: TaskBoardGroupBy =
@@ -399,7 +413,7 @@ export function layoutTaskBoard({
     ...drafts.map((draft) => {
       // A column of hundreds draws its first hundred, and the rest on
       // request: building thousands of cards made the whole board slow.
-      const sorted = draft.tasks.sort(compareOpen);
+      const sorted = draft.tasks.sort((left, right) => sort?.(left, right) || compareOpen(left, right));
       const drawn = shown?.has(draft.id) ? sorted : sorted.slice(0, columnLimit);
       const cards = drawn.map((task) => toCard(task, draft));
       const limit = findLimit(draft.id, options.limits);

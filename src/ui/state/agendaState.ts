@@ -10,7 +10,8 @@ import type { TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { Placement, placeTask } from '../../domain/tasks/agendaPlacement';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
-import { Task, TaskPriority, WorkspaceIndex } from '../../domain/model';
+import { Task, TaskPriority, TaskSortMode, WorkspaceIndex } from '../../domain/model';
+import { createTaskComparator } from './entryCards';
 import { formatTaskMetadata, TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
 
 /**
@@ -125,6 +126,12 @@ export interface AgendaOptions {
    * would have had anyway.
    */
   taskOrder?: readonly string[];
+  /**
+   * How each group orders its tasks before its own order decides:
+   * `rank`, the default, is `taskOrder`; the others are the task sorts the
+   * Task board's list offers.
+   */
+  taskSortMode?: TaskSortMode;
   /**
    * Adds a last group, Done today, of the tasks completed today, so the
    * list shows what was finished and not only what is left.
@@ -266,9 +273,9 @@ export function createAgenda(
   context: Pick<QueryContext, 'now' | 'taskPolicy'>,
   options: AgendaOptions,
 ): AgendaGroup[] {
-  const { tasks = index.tasks.values(), upcomingDays, groupBy = 'due', taskOrder = [] } = options;
+  const { tasks = index.tasks.values(), upcomingDays, groupBy = 'due', taskOrder = [], taskSortMode = 'rank' } = options;
   const listed = withoutPlainSteps([...tasks]);
-  const byRank = rankFirst(taskOrder);
+  const byRank = sortFirst(taskOrder, taskSortMode);
   const today = startOfDay(context.now);
   const tomorrow = addDays(today, 1);
   const window: AgendaWindow = {
@@ -320,17 +327,13 @@ function withoutPlainSteps(all: readonly Task[]): Task[] {
 }
 
 /**
- * Puts the tasks a reader dragged into place first, in the order they left
- * them, and orders the rest by `fallback`.
+ * Orders by the sort chosen, then by `fallback`, the group's own order. By
+ * rank, the tasks a reader dragged into place come first, in the order they
+ * left them; the rest follow in the group's order.
  */
-function rankFirst(taskOrder: readonly string[]): (fallback: EntryOrder) => EntryOrder {
-  const ranked = new Map(taskOrder.map((taskId, at) => [taskId, at]));
-  return (fallback) =>
-    (left, right) => {
-      const leftRank = ranked.get(left.task.id) ?? Number.MAX_SAFE_INTEGER;
-      const rightRank = ranked.get(right.task.id) ?? Number.MAX_SAFE_INTEGER;
-      return leftRank - rightRank || fallback(left, right);
-    };
+function sortFirst(taskOrder: readonly string[], mode: TaskSortMode): (fallback: EntryOrder) => EntryOrder {
+  const compare = createTaskComparator(taskOrder, mode);
+  return (fallback) => (left, right) => compare(left.task, right.task) || fallback(left, right);
 }
 
 /** The 🆔 ids open tasks carry, so a ⛔ naming one is still blocked. */

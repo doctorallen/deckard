@@ -30,7 +30,7 @@ import {
 } from '../../../commands/taskBoardActions';
 import { breakIntoStepsCommand } from '../../../commands/taskSteps';
 import { normalizeAgendaQuery } from '../../../state/agendaState';
-import { mergeOrder } from '../../../state/dashboardState';
+import { rankShown } from '../../../../domain/tasks/taskRank';
 import { formatQueryBlock, queryBlockSortOf, QueryBlockWriteOptions } from '../../../state/queryBlockState';
 import { createTaskBoard } from '../../../state/taskBoardState';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
@@ -429,7 +429,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       reorderTasks: async (message) => {
         const index = this.board.indexer.getSnapshot();
         if (reader.value.taskSortMode === 'rank') {
-          await taskLayout.setTaskOrder(mergeOrder(message.taskIds, index.tasks.keys()));
+          await taskLayout.setTaskOrder(rankShown(reader.value.taskOrder, message.taskIds, index.tasks.keys()));
         }
       },
       setBoardQuery: (message, page) => this.applySearch(message.query, page),

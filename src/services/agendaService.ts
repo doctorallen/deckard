@@ -1,4 +1,4 @@
-import { Task, WorkspaceIndex } from '../domain/model';
+import { Task, TaskSortMode, WorkspaceIndex } from '../domain/model';
 import { readStatusWriteMode, type StatusWriteMode } from '../domain/tasks/statusWrites';
 import { QueryContext } from '../domain/query/queryContext';
 import {
@@ -7,6 +7,7 @@ import {
   readAgendaGroupNamespace,
   readAgendaGrouping,
   readAgendaQuery,
+  readAgendaSort,
   readUpcomingDays,
 } from '../domain/tasks/agendaGroups';
 import { TaskMove } from '../domain/tasks/boardMoves';
@@ -41,6 +42,7 @@ export interface AgendaBuild {
   statusNamespace?: string;
   groupNamespace?: string;
   taskOrder?: readonly string[];
+  taskSortMode?: TaskSortMode;
   doneToday?: boolean;
   upcomingByDay?: boolean;
 }
@@ -156,6 +158,16 @@ export class AgendaService<G extends AgendaGroupLike> {
     };
   }
 
+  /** How each group orders its tasks, from `deckard.agenda.sort`. */
+  public readSort(): TaskSortMode {
+    return readAgendaSort(this.settings());
+  }
+
+  /** Writes how each group orders its tasks; false when the setting could not be written. */
+  public async setSort(mode: TaskSortMode): Promise<boolean> {
+    return await this.options.writeSetting('agenda.sort', mode);
+  }
+
   /** What the view lists, from `deckard.agenda.query`. */
   public readQuery(): string {
     return readAgendaQuery(this.settings());
@@ -186,6 +198,7 @@ export class AgendaService<G extends AgendaGroupLike> {
       statusNamespace: readStatusNamespace(settings),
       groupNamespace: readAgendaGroupNamespace(settings, model.isNamespaceName),
       taskOrder,
+      taskSortMode: readAgendaSort(settings),
       doneToday: true,
       upcomingByDay: true,
     });

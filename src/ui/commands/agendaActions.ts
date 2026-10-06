@@ -24,7 +24,8 @@ import {
   updateTaskLine,
 } from './taskActions';
 import { registerCommand } from './runCommand';
-import { Task, WorkspaceIndex } from '../../domain/model';
+import { Task, TASK_SORT_MODES, type TaskSortMode, WorkspaceIndex } from '../../domain/model';
+import { TASK_SORT_LABELS } from '../../domain/model/sortOrders';
 import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
 import { setTaskDate } from '../../domain/markdown/taskLineEdits';
 import { addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
@@ -420,6 +421,28 @@ export async function pickAgendaGrouping(
   }
   const change = await agenda.setGrouping({ chosen: chosen.id, current, namespace: picked });
   return change.kind === 'grouped' ? change.groupBy : undefined;
+}
+
+/**
+ * Asks how each of the Agenda's groups orders its tasks, and keeps the
+ * answer in `deckard.agenda.sort`. Returns the sort now in force, or
+ * undefined when nothing changed.
+ */
+export async function pickAgendaSort(agenda: Pick<AgendaService<AgendaGroup>, 'readSort' | 'setSort'>): Promise<TaskSortMode | undefined> {
+  const current = agenda.readSort();
+  const chosen = await vscode.window.showQuickPick(
+    TASK_SORT_MODES.map((mode) => ({
+      label: TASK_SORT_LABELS[mode],
+      description: mode === current ? 'Current' : undefined,
+      detail: mode === 'rank' ? 'The order you drag tasks into. Tasks you haven\'t placed follow in each group\'s own order.' : undefined,
+      mode,
+    })),
+    { title: 'Sort tasks by', placeHolder: 'Choose how each group orders its tasks' },
+  );
+  if (!chosen || chosen.mode === current) {
+    return undefined;
+  }
+  return (await agenda.setSort(chosen.mode)) ? chosen.mode : undefined;
 }
 
 /** What the picker says beside the grouping in force. */

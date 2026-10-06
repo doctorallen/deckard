@@ -5,7 +5,8 @@ import { escapeMarkdown } from '../../shared/text';
 import { AgendaService, AgendaStatus } from '../../services/agendaService';
 import { resolveSourceUri } from '../commands/navigation';
 import { clickTask, TaskWrites, toggleTask, updateTaskLine } from '../commands/taskActions';
-import { mergeOrder } from '../state/dashboardState';
+import { rankShown } from '../../domain/tasks/taskRank';
+import { TASK_SORT_LABELS } from '../../domain/model/sortOrders';
 import { AgendaEntry, AgendaGroup } from '../state/agendaState';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
 import { stripTrailingTags } from '../../domain/ranking/entryLabels';
@@ -379,10 +380,29 @@ export class AgendaTreeProvider
       return;
     }
     if (target.kind === 'task') {
-      await this.rankBefore(tasks, target.entry.task.id);
+      if (await this.sortedByRank()) {
+        await this.rankBefore(tasks, target.entry.task.id);
+      }
       return;
     }
     await this.moveToGroup(tasks, target, from);
+  }
+
+  /**
+   * Whether a drop onto a task can rank it: only while the view is sorted by
+   * rank, since under any other sort the task would land back where the sort
+   * puts it. Offers to sort by rank, which then lets the drop through.
+   */
+  private async sortedByRank(): Promise<boolean> {
+    const sort = this.services.agenda.readSort();
+    if (sort === 'rank') {
+      return true;
+    }
+    const choice = await vscode.window.showInformationMessage(
+      `The Tasks view is sorted by ${TASK_SORT_LABELS[sort]}, so a task dragged onto another stays where that sort puts it. Sort by rank to put tasks in your own order.`,
+      'Sort by Rank',
+    );
+    return choice === 'Sort by Rank' && (await this.services.agenda.setSort('rank'));
   }
 
   /** Puts the dragged tasks in front of the one they were dropped on. */
@@ -409,7 +429,7 @@ export class AgendaTreeProvider
       ordered.push(taskId);
     }
     await this.preferences.taskLayout.setTaskOrder(
-      mergeOrder(ordered, this.index.tasks.keys()),
+      rankShown(this.preferences.reader.value.taskOrder, ordered, this.index.tasks.keys()),
     );
     this.refresh();
   }

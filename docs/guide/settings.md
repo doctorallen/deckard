@@ -27,6 +27,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.outline.showCounts": true,
 	"deckard.agenda.groupBy": "due",
 	"deckard.agenda.groupNamespace": "project",
+	"deckard.agenda.sort": "rank",
 	"deckard.agenda.upcomingDays": 7,
 	"deckard.agenda.query": "",
 	"deckard.tasks.addDoneDate": true,
@@ -124,6 +125,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.outline.inheritedTags` | `false` | Also shows the front-matter tags every heading inherits. |
 | `deckard.outline.showCounts` | `true` | Shows each Outline heading's done tasks, such as `2/5`, and links naming it, such as `↩3`. |
 | `deckard.agenda.groupBy` | `due` | What the [Tasks view's](tasks.md#tasks-view) groups are: `due`, `priority`, `status`, `assignee`, or `tag`. The group control in its title sets it too. |
+| `deckard.agenda.sort` | `rank` | How each of the Tasks view's groups orders its tasks: `rank`, `created`, `createdOldest`, `updated`, `updatedOldest`, `alphabetical`, or `alphabeticalReverse`. The sort control in its title sets it too. |
 | `deckard.agenda.groupNamespace` | `project` | The tag namespace the Tasks view groups by when `deckard.agenda.groupBy` is `tag`, such as `context` for `#context/phone`. Inherited tags count. |
 | `deckard.agenda.upcomingDays` | `7` | How many days ahead the Tasks view's **Upcoming** group reaches; a dated task past that is in **Later**. |
 | `deckard.agenda.query` | Empty | A [query](search.md#query-language) limiting the open tasks in the Tasks view, Home's agenda, and the status bar, such as `is:mine`. Empty means every open task. |

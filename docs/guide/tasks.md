@@ -224,7 +224,7 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
 
 **What it lists.** Set `deckard.agenda.query` to any [query](search.md#query-language), such as `is:mine`, `#project/atlas`, or `has:due OR has:scheduled OR has:start`. Home's agenda widget and the [status bar](#status-bar-and-reminders) count the same list. The search icon in the title opens the search on the [Task board](task-board.md#editing-what-the-tasks-view-lists): change it there, then select **Save to Tasks view**, which keeps what the box shows. **List in Tasks view**, in the board's gear, makes the view list any board's search. **Show every open task** or **Clear the Tasks View's Search** (in the `…` menu and palette) clears it.
 
-**Group by**, in the title, chooses **Due status** (the groups above), **Priority**, **Status**, **Person**, or **Tag namespace…**; `deckard.agenda.groupBy` keeps it.
+**Group by**, in the title, chooses **Due status** (the groups above), **Priority**, **Status**, **Person**, or **Tag namespace…**; `deckard.agenda.groupBy` keeps it. **Sort by**, beside it, orders each group: **Rank** (the default), **Newest created**, **Oldest created**, **Recently updated**, **Least recently updated**, **A-Z**, or **Z-A**; `deckard.agenda.sort` keeps it. A tie keeps the group's own order, by date or priority.
 
 - **Tag namespace** groups by tags in one namespace, such as `#project/…`, busiest first, **No project** last. Inherited tags count. `deckard.agenda.groupNamespace` keeps the namespace.
 - **Priority** runs highest to lowest, **No priority** last.
@@ -234,7 +234,7 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
 **Working with tasks:**
 
 - Select a task to open its line. `blocked by …` shows while a ⛔ task is open.
-- **Drag a task onto another** to rank it, as on the [Task board's](task-board.md#task-board) list. Ranked tasks lead their group. This writes nothing to your notes.
+- **Drag a task onto another** to rank it, as on the [Task board](task-board.md#task-board). Ranked tasks lead their group. This writes nothing to your notes, and works while the view is sorted by **Rank**; under another sort, Deckard offers to switch.
 - **Drag a task onto a group** to write that priority, status, due date (**Today**), tag, or person into it. **Overdue**, **Later**, and **Needs a new date** take no drops.
 - Check a task's box to complete it, with its ✅ date and next occurrence.
 - **Right-click** to make it due today, tomorrow, next Monday, or a date [in plain words](#dates-in-plain-words); to edit it (also the pencil); to [break it into steps](#breaking-a-task-into-steps); or for **Move to…**, which moves it with its steps under another heading, into today's note, or into a new note, leaving a link; see [Moving lines and tasks](organizing.md#moving-lines-and-tasks). Select several to act on them together, as one write, [previewed and undone](search-pages.md#previewing-and-undoing-a-write).

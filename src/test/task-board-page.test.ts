@@ -348,6 +348,43 @@ suite('Task Board page', () => {
     assert.strictEqual(shown.findAll('.task-board.is-dragging-card, .board-column.drop-target, .board-card.dragging').length, 0, 'nothing is left marked as dragged');
   });
 
+  test('on a board sorted by rank, a card takes its own place in its column, by drag or Alt+arrows', () => {
+    const THREE = { 'notes/a.md': '- [ ] One #status/todo\n- [ ] Two #status/todo\n- [ ] Three #status/todo\n' };
+    const board = boardOf(THREE);
+    const ids = Object.fromEntries(board.columns.flatMap((column) => column.cards).map((card) => [card.title, card.taskId]));
+    const shown = show(board);
+    const titles = () => shown.findAll('.board-column[data-column-id="status:todo"] .board-card .task-title').map((title) => String(title.textContent));
+    const reordered = () => shown.lastPosted('reorderTasks')?.taskIds;
+
+    press(shown, cardTitled(shown, 'One'), 'ArrowDown', { altKey: true });
+    assert.deepStrictEqual(reordered(), [ids.Two, ids.One, ids.Three], 'Alt+Down moves it one place down and ranks the column');
+    assert.deepStrictEqual(titles(), ['Two', 'One', 'Three'], 'at once');
+
+    /** A drag event at `target` with the pointer at `clientY`. */
+    const drag = (type: string, target: Element, transfer: object, clientY = 0): Event => {
+      const event = new shown.window.Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'dataTransfer', { value: transfer });
+      Object.defineProperty(event, 'clientY', { value: clientY });
+      target.dispatchEvent(event);
+      return event;
+    };
+    const transfer = { types: [] as string[], effectAllowed: '', dropEffect: '', setData(type: string) { this.types.push(type); } };
+    const three = cardTitled(shown, 'Three');
+    drag('dragstart', three, transfer);
+    // jsdom lays nothing out, so every card's middle is at 0: above it is before the first card.
+    assert.strictEqual(drag('dragover', cardTitled(shown, 'Two'), transfer, -1).defaultPrevented, true, 'its own column takes it');
+    assert.strictEqual(shown.findAll('.rank-drop-line').length, 1, 'a line shows where it will land');
+    drag('drop', cardTitled(shown, 'Two'), transfer, -1);
+    assert.deepStrictEqual(reordered(), [ids.Three, ids.Two, ids.One]);
+    assert.strictEqual(shown.lastPosted('moveTask'), undefined, 'a drop in its own column moves it nowhere else');
+    assert.strictEqual(shown.findAll('.rank-drop-line').length, 0, 'and the line goes');
+
+    const sorted = show(boardOf(THREE, { taskSortMode: 'created' }));
+    sorted.posted.length = 0;
+    press(sorted, cardTitled(sorted, 'One'), 'ArrowDown', { altKey: true });
+    assert.strictEqual(sorted.lastPosted('reorderTasks'), undefined, 'under another sort, a card keeps the place the sort gives it');
+  });
+
   test('x pressed twice before the host answers completes the card, then reopens it', async () => {
     const shown = show(boardOf(TWO));
     const beta = cardTitled(shown, 'Beta');

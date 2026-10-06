@@ -73,6 +73,10 @@
    outweigh the theme sheet, which is laid down after this one. */
 .board-cards .board-card:hover { transform: none; }
 .board-card.dragging { opacity: .45; }
+/* Where a card dragged within its column lands, on a board sorted by rank:
+   a line between two cards that takes no room of its own, so the cards
+   don't jump while the pointer moves. */
+.rank-drop-line { height: 2px; margin-block: calc(var(--space-2) / -2 - 1px); border-radius: 1px; background: var(--amber); pointer-events: none; }
 .board-card .task-title, .board-card .parent-tag-line { padding-right: var(--space-6); }
 /* The details are a row that wraps between them, with a gap where a
    separator used to be: a "·" at the end of a wrapped line dangled there

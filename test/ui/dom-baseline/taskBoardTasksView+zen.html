@@ -434,6 +434,59 @@
             type="button"
           >Tag…</button
           ></div
+        ><label
+          class="control-label"
+        >Sort:<span
+            class="control-icon"
+          ><select
+              aria-label="Sort tasks"
+              data-action="set-task-sort"
+              data-dom-value="rank"
+            ><option
+                data-dom-selected="true"
+                data-dom-value="rank"
+              >Rank</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="created"
+              >Newest created</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="createdOldest"
+              >Oldest created</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="updated"
+              >Recently updated</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="updatedOldest"
+              >Least recently updated</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="alphabetical"
+              >A-Z</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="alphabeticalReverse"
+              >Z-A</option
+              ></select
+            ><svg
+              aria-hidden="true"
+              class="control-icon-svg"
+              fill="none"
+              focusable="false"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><path
+                d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"
+              ></path
+              ></svg
+            ></span
+          ></label
         ><button
           aria-pressed="false"
           class="board-available"

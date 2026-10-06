@@ -181,7 +181,7 @@ function ParentTagToggle({ snapshot }: { readonly snapshot: TaskBoardSnapshot })
   );
 }
 
-/** What the search box's status line holds: the list's sort, the table's, or the board's grouping, then Can start now. */
+/** What the search box's status line holds: the list's sort, the table's, or the board's grouping and sort, then Can start now. */
 function StatusControls({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   let control;
   if (snapshot.layout === 'list') {
@@ -189,7 +189,7 @@ function StatusControls({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) 
   } else if (snapshot.layout === 'table') {
     control = <TableSortNote snapshot={snapshot} />;
   } else {
-    control = <GroupSwitch snapshot={snapshot} />;
+    control = <><GroupSwitch snapshot={snapshot} /><SortControl snapshot={snapshot} /></>;
   }
   return <>{control}<AvailableToggle pressed={Boolean(snapshot.availableOnly)} /></>;
 }
@@ -318,6 +318,7 @@ installBoardMoves({
       current: snapshot?.groupBy === 'tag' ? snapshot.groupNamespace : undefined,
     };
   },
+  ranked: () => shown()?.taskSortMode === 'rank',
 });
 installViewOptions();
 

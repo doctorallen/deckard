@@ -1,6 +1,7 @@
 /**
- * Moving cards: a card's keys, its menu, its checkbox, opening it, and
- * dragging it between columns. A move shows at once, and the host's next
+ * Moving cards: a card's keys, its menu, its checkbox, opening it,
+ * dragging it between columns, and, on a board sorted by rank, putting it
+ * in its own place within its column. A move shows at once, and the host's next
  * state confirms it or puts the card back. An edit to a task whose last
  * edit the host has not answered waits for it, on a card or on a list or
  * table row. Listeners sit on the document, installed once, so the page
@@ -22,6 +23,8 @@ export interface BoardMovesOptions {
   readonly post: Post;
   /** The namespaces open tasks carry, and the one the board is grouped by, if any. */
   readonly namespaces: () => { readonly offered: ReadonlyArray<{ name: string; openTasks: number }>; readonly current: string | undefined };
+  /** Whether the board is sorted by rank, so a card can be put in its own place within its column. */
+  readonly ranked: () => boolean;
 }
 
 /** The card an element is in, on the board. */
@@ -43,6 +46,57 @@ function visibleCards(column: Element): HTMLElement[] {
 function columnTitle(column: Element | null | undefined): string {
   const title = column && column.querySelector('.board-column-title span');
   return title ? String(title.textContent) : 'the column';
+}
+
+/**
+ * Whether the cards of `column` can be put in the reader's own order: the
+ * board is sorted by rank, and the column is an open one. Done and
+ * Cancelled always list the most recently closed first.
+ */
+function canRankColumn(column: HTMLElement | null | undefined, ranked: boolean): column is HTMLElement {
+  return Boolean(ranked && column && column.dataset.columnId !== 'done' && column.dataset.columnId !== 'cancelled');
+}
+
+/** The card a card dropped at `clientY` lands before, or null for the column's end. */
+function cardBefore(column: HTMLElement, clientY: number, dragged: HTMLElement | undefined): HTMLElement | null {
+  for (const card of visibleCards(column)) {
+    if (card === dragged) {
+      continue;
+    }
+    const box = card.getBoundingClientRect();
+    if (clientY < box.top + box.height / 2) {
+      return card;
+    }
+  }
+  return null;
+}
+
+/** Shows where a card dragged within its column will land: a line before `before`, or after the last card. */
+function showRankLine(column: HTMLElement, before: HTMLElement | null): void {
+  const list = column.querySelector('.board-cards');
+  const current = document.querySelector('.rank-drop-line');
+  if (!list || (current && current.parentElement === list && current.nextElementSibling === before)) {
+    return;
+  }
+  clearRankLine();
+  const line = document.createElement('div');
+  line.className = 'rank-drop-line';
+  line.setAttribute('aria-hidden', 'true');
+  list.insertBefore(line, before);
+}
+
+/** Takes the line a dragged card showed away. */
+function clearRankLine(): void {
+  document.querySelectorAll('.rank-drop-line').forEach((line) => line.remove());
+}
+
+/** The column a card dragged within its own column, on a ranked board, is over. */
+function rankColumn(event: DragEvent, ranked: boolean): HTMLElement | undefined {
+  const target = event.target instanceof Element ? event.target : null;
+  const column = target ? target.closest<HTMLElement>('.task-board .board-column') : null;
+  return board.dragId && carriesCard(event) && column && column.dataset.columnId === board.dragColumn && canRankColumn(column, ranked)
+    ? column
+    : undefined;
 }
 
 /** Makes `card` the board's one Tab stop, focuses it, and scrolls it into view. */
@@ -402,6 +456,38 @@ class BoardMoves {
     announce(said);
   }
 
+  /**
+   * Puts a card before `before` in its column, or last for null, and ranks
+   * the column's cards in the order they now show. The rank is the one the
+   * list and the Tasks view keep, so the order holds in any grouping.
+   */
+  private rankCard(card: HTMLElement, before: HTMLElement | null): void {
+    const column = card.closest<HTMLElement>('.board-column');
+    const list = card.parentElement;
+    if (!column || !list || before === card || card.nextElementSibling === before) {
+      return;
+    }
+    listsChanged();
+    list.insertBefore(card, before);
+    this.post({ type: 'reorderTasks', taskIds: visibleCards(column).map((shown) => String(shown.dataset.taskId)) });
+    announce(before ? `Moved ${taskTitleOf(card)} above ${taskTitleOf(before)}.` : `Moved ${taskTitleOf(card)} to the bottom of ${columnTitle(column)}.`);
+  }
+
+  /** Alt+Up and Alt+Down: a card one place up or down its column, on a ranked board; true when the key was one. */
+  private rankByKey(event: KeyboardEvent, card: HTMLElement): boolean {
+    const column = card.closest<HTMLElement>('.board-column');
+    if (!event.altKey || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') || !canRankColumn(column, this.options.ranked())) {
+      return false;
+    }
+    const cards = visibleCards(column);
+    const at = cards.indexOf(card);
+    if (event.key === 'ArrowUp' ? at > 0 : at < cards.length - 1) {
+      this.rankCard(card, event.key === 'ArrowUp' ? cards[at - 1] : cards[at + 2] ?? null);
+      card.focus();
+    }
+    return true;
+  }
+
   /** The arrows, Home, and End between cards. */
   private walk(key: string, card: HTMLElement, column: HTMLElement, columns: HTMLElement[]): void {
     const cards = visibleCards(column);
@@ -558,6 +644,10 @@ class BoardMoves {
       this.openCard(card, event);
       return;
     }
+    if (this.rankByKey(event, card)) {
+      event.preventDefault();
+      return;
+    }
     if (event.metaKey || event.ctrlKey || event.altKey) {
       return;
     }
@@ -573,6 +663,16 @@ class BoardMoves {
    * redraw took that card away.
    */
   private onDrop(event: DragEvent): void {
+    const own = rankColumn(event, this.options.ranked());
+    if (own) {
+      event.preventDefault();
+      const card = own.querySelector<HTMLElement>('.board-card.dragging');
+      if (card) {
+        this.rankCard(card, cardBefore(own, event.clientY, card));
+      }
+      endDrag();
+      return;
+    }
     const column = dropColumn(event);
     // A card dropped anywhere but a column is no field's to take.
     if (carriesCard(event)) {
@@ -623,7 +723,7 @@ class BoardMoves {
         event.preventDefault();
       }
     });
-    listenForDrags();
+    listenForDrags(() => this.options.ranked());
     document.addEventListener('drop', (event) => this.onDrop(event));
   }
 }
@@ -655,12 +755,17 @@ function endDrag(): void {
   document.querySelectorAll('.task-board .board-card.dragging').forEach((card) => card.classList.remove('dragging'));
   document.querySelectorAll('.task-board.is-dragging-card').forEach((element) => element.classList.remove('is-dragging-card'));
   clearDropTargets();
+  clearRankLine();
   board.dragId = undefined;
   board.dragColumn = undefined;
 }
 
-/** A card picked up, carried over the columns, and put down; the drop itself is the board's. */
-function listenForDrags(): void {
+/**
+ * A card picked up, carried over the columns, and put down; the drop itself
+ * is the board's. Over its own column on a ranked board, a line shows where
+ * it will land instead of the column lighting up.
+ */
+function listenForDrags(ranked: () => boolean): void {
   document.addEventListener('dragstart', (event) => {
     const card = boardCard(event.target);
     // A drag of anything else lets go of a card a cut-short drag left held.
@@ -688,6 +793,17 @@ function listenForDrags(): void {
     endDrag();
   });
   document.addEventListener('dragover', (event) => {
+    const own = rankColumn(event, ranked());
+    if (own) {
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'move';
+      }
+      clearDropTargets();
+      showRankLine(own, cardBefore(own, event.clientY, own.querySelector<HTMLElement>('.board-card.dragging') ?? undefined));
+      return;
+    }
+    clearRankLine();
     const column = dropColumn(event);
     if (!column) {
       return;
