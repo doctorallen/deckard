@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.3.0 - 2026-10-06
+
+### Highlights
+
+- Task statuses: `[/]` in progress, `[-]` cancelled, `[=]` blocked, searched with `status:` and set from the board.
+- Search pages group their results by tag or by heading, each group with its progress, and a project's page lists its parts.
+- Card details add when an entry was created and updated, and the Pages view can be a row of icons.
+
 ### Added
 
 - **Hierarchy on search pages.** **Hierarchy** in the gear groups the
