@@ -416,7 +416,7 @@ function openController() {
 }
 
 suite('Related Notes controller', () => {
-  test('an edit to the theme and the Tasks view\'s search at once resets the HTML and sends the state, then sends it again', async () => {
+  test('an edit to the theme and the Tasks view\'s search at once resets the HTML and sends the state, and the same pages are not sent again', async () => {
     await closeEditors();
     const { result: page, fire } = withConfigurationEvents(() => openController());
     try {
@@ -424,7 +424,7 @@ suite('Related Notes controller', () => {
       await settle();
       const events = recordSurface(page.surface);
       fire('deckard.theme', 'deckard.agenda.query');
-      assert.deepStrictEqual(events, ['html', 'post state', 'post state']);
+      assert.deepStrictEqual(events, ['html', 'post state']);
     } finally {
       page.dispose();
     }

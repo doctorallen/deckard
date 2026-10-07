@@ -161,8 +161,8 @@ suite('The shared task parts draw what the template script drew', () => {
       ['tags in the title', listed('Call Ren #context/phone', {}, { titleTags: [PHONE] })],
     ];
     const options: Array<[string, Record<string, unknown>]> = [
-      ['inline', { titleDisplay: 'inline' }],
-      ['separate', { titleDisplay: 'separate' }],
+      // Tags in a title are drawn where they are written.
+      ['inline', {}],
       ['draggable, with a menu', { draggable: true, trailing: shared().h('button', { class: 'row-menu' }, '⋯') }],
       ['a mark in place of the checkbox', { leading: shared().h('span', { class: 'repeat-mark', 'aria-hidden': 'true' }, '↻') }],
     ];

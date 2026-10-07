@@ -70,7 +70,8 @@ suite('Context: the pages at its top', () => {
     const toolbar = shown.find('.context-pages');
     assert.strictEqual(toolbar.getAttribute('role'), 'toolbar');
     assert.strictEqual(toolbar.getAttribute('aria-orientation'), 'vertical');
-    assert.strictEqual(shown.find('#app').firstElementChild, toolbar, 'the pages lead the view');
+    assert.strictEqual(shown.find('#app').firstElementChild, toolbar.parentElement, 'the pages lead the view');
+    assert.ok(toolbar.parentElement?.classList.contains('context-pages-band'), 'in the band with their gear');
   });
 
   test('as icons, each page is its glyph in one toolbar, named to a screen reader and on hover', () => {
@@ -91,7 +92,7 @@ suite('Context: the pages at its top', () => {
       { state: 'loading' as const },
     ]) {
       const shown = open({ style: 'icons', pages: PAGES }, state);
-      assert.strictEqual(shown.find('#app').firstElementChild, shown.find('.context-pages'), state.state);
+      assert.strictEqual(shown.find('#app').firstElementChild, shown.find('.context-pages-band'), state.state);
       shown.dispose();
     }
     page = undefined;

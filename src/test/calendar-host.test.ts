@@ -225,7 +225,7 @@ suite('Calendar host', () => {
         await send({ type: 'openNote', filePath: `/notes/${today}.md`, line: 3 });
         await send({ type: 'selectDay', date: today, extra: 1 });
         await send({ type: 'chooseTheme' });
-        await send({ type: 'setShowRepeats', show: false });
+        await send({ type: 'setShowWeekends', show: false });
       });
       assert.deepStrictEqual(calls, []);
       assert.deepStrictEqual(surface.webview.posted, []);

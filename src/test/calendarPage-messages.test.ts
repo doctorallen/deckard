@@ -38,13 +38,13 @@ suite('Calendar page messages', () => {
   });
 
   test("accepts the gear's settings as a choice and nothing else", () => {
-    assert.deepStrictEqual(narrowCalendarPageMessage({ type: 'setShowRepeats', show: false }), { type: 'setShowRepeats', show: false });
     assert.deepStrictEqual(narrowCalendarPageMessage({ type: 'setShowWeekends', show: true }), { type: 'setShowWeekends', show: true });
     for (const message of [
-      { type: 'setShowRepeats' },
-      { type: 'setShowRepeats', show: 'off' },
-      { type: 'setShowRepeats', show: false, extra: 1 },
+      { type: 'setShowWeekends' },
+      { type: 'setShowWeekends', show: 'off' },
+      { type: 'setShowWeekends', show: false, extra: 1 },
       { type: 'setShowWeekends', show: 1 },
+      { type: 'setShowRepeats', show: false },
     ]) {
       assert.strictEqual(narrowCalendarPageMessage(message), undefined, JSON.stringify(message));
     }

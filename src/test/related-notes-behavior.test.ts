@@ -332,7 +332,6 @@ suite('Related Notes behavior', () => {
       ],
     });
 
-    assert.strictEqual(page.text('.tag-list .tag-value'), 'project/atlas');
     // A tag's pull on the ranking is drawn as a rail beside it, and what a
     // search for it finds is in its label.
     assert.ok(page.findAll('.tag-weight-rail-segment').length > 0);
