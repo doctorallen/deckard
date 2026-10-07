@@ -95,7 +95,7 @@ export interface QuickFindResults {
   /** Every match, before the lists above were cut short. */
   totals: { notes: number; tasks: number };
   /**
-   * What was typed, and the line Capture would write, when Find found
+   * What was typed, and the line its Add row would write, when Find found
    * nothing that has every word and the words read as something to do.
    */
   capture?: { text: string; line: string };
@@ -115,7 +115,7 @@ export interface QuickFindOptions {
   taskLimit?: number;
   /** Whole conditions to offer for the word being typed, such as `is:open`. */
   conditions?: readonly QuerySuggestion[];
-  /** Writes typed words as Capture would, for Find's Capture row. */
+  /** Writes typed words as a task line, for Find's Add row. */
   formatCapture?: (text: string) => string;
 }
 
@@ -231,7 +231,7 @@ function readTypedSearch(index: WorkspaceIndex, input: string, context: QueryCon
 
 /**
  * Fills the note and task rows of a search that parsed, with the totals,
- * the partial-match message, the spelling suggestion, and the Capture row.
+ * the partial-match message, the spelling suggestion, and the Add row.
  */
 function addRankedEntries(
   results: QuickFindResults,

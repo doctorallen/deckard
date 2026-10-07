@@ -1,6 +1,6 @@
 import { TaskPriority } from '../model';
 import { DatePhraseOptions, parseDatePhrase } from './dates';
-import { parseTaskDraft, formatTaskDraft } from './taskDraft';
+import { parseTaskDraft, formatTaskDraft, TaskDraft } from './taskDraft';
 import { TaskMetadataFormat } from './taskFields';
 import { parseRecurrence } from './recurrence';
 
@@ -234,4 +234,42 @@ function readTrailingDay(
     }
   }
   return undefined;
+}
+
+/** A draft with the words of its description read, and what they said. */
+export interface DraftWordsReading {
+  draft: TaskDraft;
+  /** What the words at the end said, empty when they said nothing. */
+  read: Omit<CaptureReading, 'line'>;
+}
+
+/**
+ * A task's words, written into Add Task's Description, read as a quick add
+ * reads them: a day, a priority, a repeat rule, and who the task is for,
+ * taken off the end into the draft's own fields, which they replace. The
+ * rest of the draft, its status and its other fields, is kept. When the
+ * words say none of these, they are the description as typed, trimmed.
+ */
+export function readDraftWords(
+  draft: TaskDraft,
+  written: string,
+  now: number = Date.now(),
+  options: DatePhraseOptions = {},
+): DraftWordsReading {
+  const description = written.trim();
+  const { line, ...read } = readCaptureText(`- [ ] ${description}`, draft.format, now, options);
+  if (Object.keys(read).length === 0) {
+    return { draft: { ...draft, description }, read };
+  }
+  return {
+    draft: {
+      ...draft,
+      description: parseTaskDraft(line, draft.format).description,
+      due: read.due ?? draft.due,
+      priority: read.priority ?? draft.priority,
+      recurrence: read.recurrence ?? draft.recurrence,
+      assignee: read.assignee ?? draft.assignee,
+    },
+    read,
+  };
 }

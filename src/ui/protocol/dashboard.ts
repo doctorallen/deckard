@@ -293,7 +293,7 @@ export interface CreateTagHubMessage {
   tagKey: string;
 }
 
-/** Captures a next action for a tag that has nothing open. */
+/** Adds a next action, to today's note, for a tag that has nothing open. */
 export interface AddNextActionMessage {
   type: 'addNextAction';
   tagKey: string;

@@ -154,8 +154,6 @@ suite('Extension Test Suite', () => {
         'deckard.importObsidianStatuses',
         'deckard.editTaskStatuses',
         'deckard.agenda.setTaskStatus',
-        'deckard.capture',
-        'deckard.captureUnderHeading',
         'deckard.writeReview',
         'deckard.rollTasksForward',
         'deckard.newNoteFromTemplate',

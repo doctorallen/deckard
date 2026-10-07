@@ -211,7 +211,7 @@ function QuietPeopleBody({ widget }: WidgetBodyProps) {
       tags={widget.tags}
       empty={empty}
       actionFor={widget.noOpenTasks
-        ? (tag) => <RowAction action="add-next-action" attributes={{ 'data-tag-key': tag.key }} label="Add next action" title={`Capture a next action for ${tag.label}`} />
+        ? (tag) => <RowAction action="add-next-action" attributes={{ 'data-tag-key': tag.key }} label="Add next action" title={`Add a next action for ${tag.label} to today's note`} />
         : undefined}
     />
   );

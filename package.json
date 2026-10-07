@@ -174,14 +174,14 @@
           },
           {
             "id": "deckard.walkthrough.captureTask",
-            "title": "Capture a task",
-            "description": "Write a task from anywhere without leaving what you are doing: Capture (Ctrl+Shift+Alt+N; Cmd+Shift+Alt+N on macOS) adds it to today's note and reads a date or a priority from its last words, such as \"call Rhea friday\".\n[Capture a task](command:deckard.capture)\n[Open the Tasks view](command:deckard.agenda.focus)",
+            "title": "Add a task",
+            "description": "Write a task from anywhere: Add Task (Ctrl+Shift+Alt+N; Cmd+Shift+Alt+N on macOS) adds it to the note you are in, or to today's note when none is open, and reads a date or a priority from its last words, such as \"call Rhea friday\".\n[Add a task](command:deckard.addTask)\n[Open the Tasks view](command:deckard.agenda.focus)",
             "media": {
               "image": "resources/walkthrough/tasks.png",
               "altText": "The Tasks view listing overdue, today's, and upcoming tasks beside a daily note."
             },
             "completionEvents": [
-              "onCommand:deckard.capture",
+              "onCommand:deckard.addTask",
               "onContext:deckard.hasTasks"
             ]
           },
@@ -219,7 +219,7 @@
       },
       {
         "view": "deckard.agenda",
-        "contents": "Your open tasks appear here, grouped by when they are wanted.\n\nWrite one in a note as a checklist item, or capture one without leaving the editor.\n[Capture a task](command:deckard.capture)\n[Open the Task Board](command:deckard.showTaskBoard)",
+        "contents": "Your open tasks appear here, grouped by when they are wanted.\n\nWrite one in a note as a checklist item, or add one from anywhere.\n[Add a task](command:deckard.addTask)\n[Open the Task Board](command:deckard.showTaskBoard)",
         "when": "!deckard.agendaFiltered"
       },
       {
@@ -424,16 +424,6 @@
       {
         "command": "deckard.agenda.setTaskStatus",
         "title": "Set Task Status…",
-        "category": "Deckard"
-      },
-      {
-        "command": "deckard.capture",
-        "title": "Capture",
-        "category": "Deckard"
-      },
-      {
-        "command": "deckard.captureUnderHeading",
-        "title": "Capture Under a Heading",
         "category": "Deckard"
       },
       {
@@ -958,10 +948,6 @@
           "when": "editorLangId == markdown && deckard.onTaskLine"
         },
         {
-          "command": "deckard.addTask",
-          "when": "editorLangId == markdown && !deckard.onTaskLine"
-        },
-        {
           "command": "deckard.toggleTaskDone",
           "when": "editorLangId == markdown && deckard.onTaskLine"
         },
@@ -1208,7 +1194,6 @@
         },
         {
           "command": "deckard.addTask",
-          "when": "!deckard.onTaskLine",
           "group": "1_task@4"
         },
         {
@@ -1521,7 +1506,7 @@
         "mac": "cmd+shift+alt+f"
       },
       {
-        "command": "deckard.capture",
+        "command": "deckard.addTask",
         "key": "ctrl+shift+alt+n",
         "mac": "cmd+shift+alt+n"
       },

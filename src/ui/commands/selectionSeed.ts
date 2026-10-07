@@ -7,11 +7,11 @@ import { createPinForLine, findPinnedSection } from '../../domain/notes/pins';
 import { WorkspaceIndex } from '../../domain/model';
 import { TaskMetadataFormat } from '../../domain/markdown/taskFields';
 
-/** The longest selection, in characters, that Find and Capture start from. */
+/** The longest selection, in characters, that Find and Add Task start from. */
 export const SHORT_SELECTION_LIMIT = 120;
 
 /**
- * Find and Capture start from the words selected in the editor, when they
+ * Find and Add Task start from the words selected in the editor, when they
  * are a few words on one line: something to search for or write down, not
  * a passage, which Move to… is for. Undefined for no selection, one over
  * more than a line or SHORT_SELECTION_LIMIT, or only whitespace.
@@ -27,7 +27,7 @@ export function shortSelection(
   return text.trim() && text.length <= SHORT_SELECTION_LIMIT ? text.trim() : undefined;
 }
 
-/** What Capture starts from: the selected words, and a link back to them. */
+/** What Add Task starts from: the selected words, and a link back to them. */
 export interface CaptureSeed {
   text: string;
   /** `[[Note#Heading]]` for the heading the words were selected under. */
@@ -35,7 +35,7 @@ export interface CaptureSeed {
 }
 
 /**
- * What Capture starts from in this editor: the short selection, with a link
+ * What Add Task starts from in this editor: the short selection, with a link
  * to the heading it was selected under when the editor holds an indexed
  * note. Undefined when there is no short selection.
  */

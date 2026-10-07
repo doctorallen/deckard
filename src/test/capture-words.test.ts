@@ -1,9 +1,10 @@
 import * as assert from 'assert';
 
-import { readCaptureText } from '../domain/markdown/captureWords';
+import { readCaptureText, readDraftWords } from '../domain/markdown/captureWords';
+import { formatTaskDraft, parseTaskDraft } from '../domain/markdown/taskDraft';
 import { formatNoteLine } from '../domain/capture/captureLines';
 
-suite('Capture reads its last words', () => {
+suite('A new task reads its last words', () => {
   // Friday 2026-09-25, noon.
   const now = new Date(2026, 8, 25, 12).getTime();
   const read = (text: string) => readCaptureText(`- [ ] ${text}`, 'emoji', now);
@@ -70,6 +71,20 @@ suite('Capture reads its last words', () => {
   test('a capture with nothing to read is written exactly as typed', () => {
     assert.strictEqual(read('Plan the offsite').line, '- [ ] Plan the offsite');
     assert.strictEqual(read('tomorrow').line, '- [ ] tomorrow', 'a day alone is the whole task');
+  });
+
+  test('Add Task reads the words into the draft’s fields, keeping its status and the rest', () => {
+    const draft = parseTaskDraft('- [/] Old words ⏬ ⛔ b2');
+    const { draft: read, read: said } = readDraftWords(draft, ' Call Ren friday p2 ', now);
+    assert.deepStrictEqual(said, { priority: 'high', due: '2026-10-02' });
+    assert.strictEqual(formatTaskDraft(read), '- [/] Call Ren ⏫ 📅 2026-10-02 ⛔ b2');
+    const plain = readDraftWords(draft, ' Plan the offsite ', now);
+    assert.deepStrictEqual(plain.read, {}, 'nothing to read');
+    assert.strictEqual(formatTaskDraft(plain.draft), '- [/] Plan the offsite ⏬ ⛔ b2');
+    assert.strictEqual(
+      formatTaskDraft(readDraftWords(parseTaskDraft('- [ ] '), 'Send the deck for @dana', now).draft),
+      '- [ ] Send the deck 👤 @dana',
+    );
   });
 
   test('a note line is a plain list item', () => {

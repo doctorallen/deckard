@@ -16,7 +16,7 @@ Run `Deckard: Find in Notes`, or press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt<
 - <kbd>Cmd</kbd>+<kbd>Enter</kbd>, or the row's button, opens a result to the side and keeps Find open. <kbd>Alt</kbd>+<kbd>Enter</kbd> inserts a link at the cursor (for a task, to its heading). <kbd>Cmd</kbd>+<kbd>.</kbd> lists every action for the row with its key: open, link, copy a link, pin; complete, reopen, date, or edit a task; favorite or rename a tag; save or forget a recent search. Use <kbd>Ctrl</kbd> for <kbd>Cmd</kbd> on Windows and Linux.
 - Task rows have **Complete** (or **Reopen**), which redraws in place with **Undo**, and **Set due**: Today, Tomorrow, Next Monday, a date, or none.
 - **Create note “…”** appears for words that read as a name no note has.
-- **Capture “…” to today's note** appears when nothing has every word and you typed only words, tags, and people. It reads the line as [Quick capture](tasks.md#quick-capture) does: `Call Ren friday p2` becomes `- [ ] Call Ren ⏫ 📅 2026-10-02`.
+- **Add “…” to today's note** appears when nothing has every word and you typed only words, tags, and people. It reads the line as [Add Task's quick add](tasks.md#adding-a-task) does: `Call Ren friday p2` becomes `- [ ] Call Ren ⏫ 📅 2026-10-02`.
 - A day such as `friday`, `oct 3`, or `last friday` offers that day's note, creating it if needed. A short weekday alone, such as `fri`, is a word.
 - Opened with words selected on one line, Find starts with them as its search.
 

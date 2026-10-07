@@ -3,6 +3,8 @@ import * as vscode from 'vscode';
 import type { Services } from '../../../composition/services';
 import { moveToCommand } from '../moveTo';
 import { editTaskCommand } from '../taskEditor';
+import { addTaskCommand, AddTaskStart } from '../addTask';
+import { startColumnTask } from '../taskBoardActions';
 import { breakIntoStepsCommand, readTaskArgument } from '../taskSteps';
 import { toggleTaskDoneCommand } from '../toggleTaskDone';
 import { setTaskStatusCommand } from '../setTaskStatus';
@@ -17,14 +19,16 @@ export function register(context: vscode.ExtensionContext, services: Services): 
   const { indexer } = services;
   const writes = services.writes.tasks;
   context.subscriptions.push(
-    // One editor, two names: which one the palette offers is decided by
-    // whether the cursor is on a task.
+    // One editor, two commands: Edit Task for the task on the cursor's
+    // line, Add Task for a new one anywhere, into the note open or today's.
     registerCommand('deckard.editTask', () =>
       editTaskCommand(indexer),
     ),
-    registerCommand('deckard.addTask', () =>
-      editTaskCommand(indexer),
-    ),
+    // A board column's + Add task passes its column; the palette, nothing.
+    registerCommand('deckard.addTask', async (argument?: unknown) => {
+      const start = readAddTaskArgument(argument);
+      return start && addTaskCommand(services.writes.addTask, start);
+    }),
     // The Task Board runs this with the task it was asked about; an editor
     // menu passes its note, which is not a task.
     registerCommand('deckard.breakIntoSteps', (task?: unknown) =>
@@ -43,4 +47,22 @@ export function register(context: vscode.ExtensionContext, services: Services): 
       moveToCommand(indexer, services.preferences.move, writes),
     ),
   );
+}
+
+/**
+ * What Add Task starts from, read from its argument: a board column's id,
+ * as `{ column }`, starts the task in that column, and anything else starts
+ * an empty one. Undefined when the column refuses a new task, which it says.
+ */
+function readAddTaskArgument(argument: unknown): AddTaskStart | undefined {
+  const column = argument && typeof argument === 'object' ? (argument as { column?: unknown }).column : undefined;
+  if (typeof column !== 'string' || column === '') {
+    return {};
+  }
+  const started = startColumnTask(column);
+  if (started.kind === 'refused') {
+    void vscode.window.showInformationMessage(started.reason);
+    return undefined;
+  }
+  return { line: started.line };
 }

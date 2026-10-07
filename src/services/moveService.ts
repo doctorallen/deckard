@@ -53,7 +53,7 @@ export interface MoveTarget<U> {
   create?: string;
 }
 
-/** Where the moved lines go in a note, as Capture places a line. */
+/** Where the moved lines go in a note, as Add Task places a line. */
 export interface Insertion {
   line: number;
   character: number;
@@ -75,7 +75,7 @@ export interface MoveServiceOptions<U extends ResourceUri, H> {
   keepRank: TaskRankKeeper;
   /** The note an index path names, or undefined when no folder holds it. */
   resolveUri(filePath: string): PromiseLike<U | undefined>;
-  /** Where lines added to a note or a section of it go, as Capture adds a line. */
+  /** Where lines added to a note or a section of it go, as Add Task adds a line. */
   placeInsertion(
     content: string,
     line: string,
@@ -251,7 +251,7 @@ export class MoveService<U extends ResourceUri, H = unknown> {
 
   /**
    * Adds the splice that puts the moved lines into the target note, where
-   * Capture would put a line, and returns the zero-based line they start on.
+   * Add Task would put a line, and returns the zero-based line they start on.
    */
   private putIn(
     splicesBy: Map<string, NoteSplices<U>>,

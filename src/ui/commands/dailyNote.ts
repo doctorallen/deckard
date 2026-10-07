@@ -288,3 +288,21 @@ export async function chooseTargetFolder(): Promise<
       (await pickWorkspaceFolder()),
   );
 }
+
+/**
+ * Where today's note is, or will be made, as the workspace shows its path:
+ * `notes/2026-10-06.md`, in the folder of the active editor or the only
+ * folder open. With several folders open and none settled, its name alone,
+ * since the folder is asked for only when something is written. Nothing is
+ * created and nothing asked.
+ */
+export async function nameTodaysNote(day: Date = new Date()): Promise<string> {
+  const uri = vscode.window.activeTextEditor?.document.uri;
+  const folders = vscode.workspace.workspaceFolders ?? [];
+  const folder = (uri ? vscode.workspace.getWorkspaceFolder(uri) : undefined) ?? (folders.length === 1 ? folders[0] : undefined);
+  if (!folder) {
+    return `${getPeriodicNote('day', day, readWeekStart()).name}.md`;
+  }
+  const note = (await findExistingPeriodicNote(folder, 'day', day)) ?? getPeriodicNoteUri(folder, 'day', day);
+  return vscode.workspace.asRelativePath(note, false);
+}

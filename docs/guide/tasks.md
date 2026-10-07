@@ -44,7 +44,7 @@ A `👤` field says who a task is for. Mentioning someone does not make the task
 - `@dana` and `#person/dana` are the same person, as in the [people](notes-and-links.md) views.
 - Search with `assignee = @dana`, `assignee = none`, `is:assigned`, or `is:unassigned`. `is:mine` finds tasks for you (set `deckard.me`, such as `@ren-kade`) plus tasks for nobody.
 - On the [Task board](task-board.md#task-board), group by **Person**. Drop a card on a person to set the field, or on **Nobody named** to clear it. In any grouping, a card's **⋯** menu has **For someone…** (key **f**), which lists the people you write about.
-- [Capture](#quick-capture) reads `for @dana` at the end, or `@dana to …` at the start, as who the task is for.
+- [Add Task](#adding-a-task) reads `for @dana` at the end, or `@dana to …` at the start, as who the task is for.
 - The first search in a window that uses `is:mine` or `is:waiting` while `deckard.me` is empty says so, with the setting a click away.
 
 ### Dataview format
@@ -57,11 +57,12 @@ The fields are `due`, `scheduled`, `start`, `created`, `completion`, `cancelled`
 
 ### Editing a whole task
 
-**Deckard: Edit Task** (on a task line) or **Deckard: Add Task** (elsewhere), on the same shortcut, opens the line's fields, headed by the line as it will be written. A non-task line's text becomes the description. It is also **Edit task…** on the lightbulb.
+**Deckard: Edit Task** (on a task line) or **Deckard: Add Task** (elsewhere), on the same shortcut, opens the line's fields, headed by the line as it will be written. A non-task line's text becomes the description. Edit Task is also **Edit task…** on the lightbulb. Add Task works from anywhere, and writes a new task where its **Note** row says; see [Adding a task](#adding-a-task).
 
 | Field | What it takes |
 | --- | --- |
-| **Description** | The words, tags and people included |
+| **Note** | Add Task only: where the task goes, this note, today's, another, or under a heading |
+| **Description** | The words, tags and people included. For a new task, a day, priority, repeat rule, or person at the end fills its field |
 | **Status** | Any of your [task statuses](#task-statuses). Completing writes the ✅ date, or `[completion:: …]` on a Dataview-format line; reopening removes it |
 | **Due**, **Scheduled**, **Start** | A date in plain words |
 | **Priority** | Highest to lowest, or none |
@@ -107,7 +108,7 @@ Keep typing to narrow the list, as in `/prio` or `/every`.
 
 ### Dates in plain words
 
-Every date box, including `[[` day links and [Quick capture](#quick-capture), reads these words and shows the day it read, such as *Monday 2026-09-28 · in 3 days*. On Friday 2026-09-25:
+Every date box, including `[[` day links and the last words of a [new task](#adding-a-task), reads these words and shows the day it read, such as *Monday 2026-09-28 · in 3 days*. On Friday 2026-09-25:
 
 | Written | Means |
 | --- | --- |
@@ -248,14 +249,16 @@ The status bar shows **3 due today**, or **1 overdue, 3 due today** in the warni
 - **Reminder.** Set `deckard.taskReminderTime` to a time such as `09:00` to see what is due once a day, or when VS Code next opens that day. It offers **Open Tasks View**, **Reschedule Overdue…**, and **Turn Off Reminders**. Empty by default.
 - **Word count.** While a note is open: **412 words · 2 min**, or **38 of 412 words** with a selection. Front matter, code, comments, link addresses, and task metadata are not counted; minutes are at 238 words a minute. Right-click the status bar to hide it.
 
-## Quick capture
+## Adding a task
 
-Run `Deckard: Capture` and type a task; `#` and `@` complete your tags as you type. Deckard adds it as `- [ ] …` to today's daily note, creating it from your template if needed. The box stays open when you click away, and if you close it with words in it, the next Capture brings them back.
+Run `Deckard: Add Task` from anywhere: <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> elsewhere. It opens the [task editor](#editing-a-whole-task) on a new task, titled with where the task will go, such as *Add a task to 2026-10-06.md*. Nothing is written until you choose **Write the task**. Then a message says where it went, such as *Added it to notes/2026-10-06.md in deckard-work*, with **Open**; in the note you are in, the status bar says it.
 
-- **Quick add.** Words at the end are read in any order: a day (`today`, `friday`, `next monday`, `in 3 days`, `oct 3`; or after `on`, `by`, or `due`, a short day such as `fri`, `+2w`, a date, or `10/3`), a priority (`p1` to `p4`, or `!!!`, `!!`, `!`), a repeat rule (`every week`, `daily`), and who it is for (`for @dana`). `@dana to …` at the start hands the task to Dana too; a person mentioned anywhere else stays a mention. `Call Ren friday p2` becomes `- [ ] Call Ren ⏫ 📅 2026-10-02`, and `Send the deck for @dana friday` becomes `- [ ] Send the deck 📅 2026-10-02 👤 @dana`, previewed as you type. **Keep the words as written** reads nothing. **Add as a note line** writes a plain `- …` item.
-- **Under a heading.** The list button, or `Deckard: Capture Under a Heading`, picks a heading from any note, starting with the five used last, and writes the task under the heading's own lines, above any nested heading.
-- **From a selection.** Select up to 120 characters on one line and Capture starts from them, with a link to the heading they were under: `- [ ] Call Ren [[2026-09-22#Weekly review]] 📅 2026-10-02`. The link button turns it off. **Restore what you were typing** brings back your earlier draft.
-- Unsaved changes in an open note are kept, and the note is saved.
+- **Note**, the first row, is where the task goes. In a Markdown note, it is that note, at the cursor: a blank line becomes the task, a line of plain words becomes the task with those words, and on a task the new one goes on the line below. With no note open, or another kind of file, it is today's daily note, created from your template if needed, with the task after its last list item or text. Choose the row for **This note**, **Today's note**, **Another note…** (the notes changed last first), or **Under a heading…**, which picks a heading in any note, starting with the five used last, and writes the task under the heading's own lines, above any nested heading.
+- **Quick add.** Words at the end of the **Description** fill the task's fields, in any order: a day (`today`, `friday`, `next monday`, `in 3 days`, `oct 3`; or after `on`, `by`, or `due`, a short day such as `fri`, `+2w`, a date, or `10/3`), a priority (`p1` to `p4`, or `!!!`, `!!`, `!`), a repeat rule (`every week`, `daily`), and who it is for (`for @dana`). `@dana to …` at the start hands the task to Dana too; a person mentioned anywhere else stays a mention. `Call Ren friday p2` becomes `- [ ] Call Ren ⏫ 📅 2026-10-02`, and the box says what it read as you type. **Keep the words as written**, the button in the box's title, reads nothing.
+- **From a selection.** Select up to 120 characters on one line and Add Task starts from them. Written into another note, the task links back to the heading they were under: `- [ ] Call Ren [[2026-09-22#Weekly review]] 📅 2026-10-02`. In the note they were selected in, it goes on the line below them.
+- On the [Task board](task-board.md#task-board), a column's **+ Add task** starts Add Task with that column's status, priority, date, person, or tag.
+- [Find](search.md) offers **Add “…” to today's note** for words that match nothing, and Home's **Quick add** writes a line to today's note, each read as Quick add reads it.
+- Unsaved changes in an open note are kept. A task written into another note saves it; one written into the note you are in waits for you to save it, as your own typing does.
 
 ---
 

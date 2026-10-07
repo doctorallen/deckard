@@ -1,57 +1,13 @@
 import { findSameSection } from '../domain/capture/captureLines';
 import type { PinnedNote, Section, WorkspaceIndex } from '../domain/model';
-import type { KeyValueStore } from '../ports/keyValueStore';
 
 /**
- * Capture: writing what was typed into today's note or under a chosen
- * heading, and keeping the words until they are written.
+ * Writing a new task into a note: at its end, or under a chosen heading.
  *
- * The Capture command asks, and presents what CaptureService returns; which
- * heading the words go under once the note has changed, when the draft is
- * let go, and which heading is remembered as used, are decided here.
+ * Add Task asks, and presents what CaptureService returns; which heading
+ * the task goes under once the note has changed, and which heading is
+ * remembered as used, are decided here.
  */
-
-/** Where a capture goes: today's daily note, or under a chosen heading. */
-export type CaptureTarget = 'today' | 'heading';
-
-/** What was being typed when Capture closed without writing it. */
-export interface CaptureDraft {
-  text: string;
-  target: CaptureTarget;
-  literal: boolean;
-}
-
-const DRAFT_KEY = 'deckard.capture.draft';
-
-/**
- * Keeps what was typed into Capture until it is written, so closing the box,
- * or another quick input taking its place, does not lose the words.
- */
-export class CaptureDrafts {
-  /** Keeps the draft in `memory`, the workspace's store. */
-  public constructor(private readonly memory: Pick<KeyValueStore, 'get' | 'update'>) {}
-
-  /** The draft, when it was typed into the same command. */
-  public read(target: CaptureTarget): CaptureDraft | undefined {
-    const draft = this.memory.get<CaptureDraft>(DRAFT_KEY);
-    return draft &&
-      typeof draft.text === 'string' &&
-      draft.text.trim() !== '' &&
-      draft.target === target
-      ? { text: draft.text, target, literal: draft.literal === true }
-      : undefined;
-  }
-
-  /** Keeps `draft` for the next Capture, in place of any before it. */
-  public save(draft: CaptureDraft): PromiseLike<void> {
-    return this.memory.update(DRAFT_KEY, draft);
-  }
-
-  /** Lets the draft go, once its words are written or the box is emptied. */
-  public clear(): PromiseLike<void> {
-    return this.memory.update(DRAFT_KEY, undefined);
-  }
-}
 
 /** The notes a capture is written into, as they stand now. */
 export interface CaptureNotes<U> {
@@ -71,7 +27,6 @@ export interface CaptureNotes<U> {
 export interface CaptureServiceOptions<U> {
   index: { getSnapshot(): WorkspaceIndex };
   notes: CaptureNotes<U>;
-  drafts: Pick<CaptureDrafts, 'clear'>;
   /** Where a heading written under is remembered, so it is offered first next time. */
   recentHeadings: { recordRecentHeading(pin: PinnedNote): PromiseLike<void> };
 }
@@ -90,22 +45,15 @@ export type HeadingCaptureResult<U> =
   | { kind: 'missing-note' }
   | { kind: 'missing-heading' };
 
-/**
- * Writes captures. The draft is let go only once its words are in a note,
- * so a note that refuses the edit, or a heading that is gone, keeps them.
- */
+/** Writes new tasks into notes, and remembers the headings they went under. */
 export class CaptureService<U> {
-  /** Reads the index and writes the notes, the draft, and the recent headings through `options`. */
+  /** Reads the index and writes the notes and the recent headings through `options`. */
   public constructor(private readonly options: CaptureServiceOptions<U>) {}
 
-  /** Adds `line` to today's note at `noteUri`, after its last list item or text. */
-  public async captureToToday(noteUri: U, line: string): Promise<CaptureResult<U>> {
+  /** Adds `line` to the note at `noteUri`, such as today's, after its last list item or text. */
+  public async captureToNote(noteUri: U, line: string): Promise<CaptureResult<U>> {
     const taskLine = await this.options.notes.append(noteUri, line);
-    if (taskLine === undefined) {
-      return { kind: 'refused', uri: noteUri };
-    }
-    await this.options.drafts.clear();
-    return { kind: 'added', uri: noteUri, taskLine };
+    return taskLine === undefined ? { kind: 'refused', uri: noteUri } : { kind: 'added', uri: noteUri, taskLine };
   }
 
   /**
@@ -133,7 +81,6 @@ export class CaptureService<U> {
     if (taskLine === undefined) {
       return { kind: 'refused', uri };
     }
-    await this.options.drafts.clear();
     // Remembered as the note held it when written to, since the index may
     // have read the note again since the heading was chosen.
     await this.options.recentHeadings.recordRecentHeading({

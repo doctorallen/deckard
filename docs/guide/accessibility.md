@@ -15,7 +15,7 @@ Deckard is built to be used with a keyboard, a screen reader, high contrast, and
 
 | Where | Keys |
 | --- | --- |
-| Anywhere | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> Find, <kbd>…</kbd>+<kbd>N</kbd> Capture, <kbd>…</kbd>+<kbd>D</kbd> today's note, <kbd>…</kbd>+<kbd>P</kbd> Go to… any page (<kbd>Cmd</kbd> for <kbd>Ctrl</kbd> on macOS) |
+| Anywhere | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> Find, <kbd>…</kbd>+<kbd>N</kbd> Add Task, <kbd>…</kbd>+<kbd>D</kbd> today's note, <kbd>…</kbd>+<kbd>P</kbd> Go to… any page (<kbd>Cmd</kbd> for <kbd>Ctrl</kbd> on macOS) |
 | Any right-click menu | <kbd>Shift</kbd>+<kbd>F10</kbd>, the context-menu key, or <kbd>Alt</kbd>+<kbd>Enter</kbd> opens it on what has focus; arrows move, <kbd>Enter</kbd> chooses, <kbd>Escape</kbd> closes |
 | Task board | One Tab stop; arrows move between cards and columns; on a card, **x** done, **t**/**m** due today or tomorrow, **d** a date, **f** who it is for, **1**–**5** priority, **[** and **]** the next column, **e** edit, **?** every key. See [Task board: Keyboard](task-board.md#keyboard) |
 | A card's **⋯** menu | Each item shows its one-key shortcut |

@@ -203,7 +203,7 @@ export interface PersistedPreferences {
   relatedNotesPreviewLines?: 0 | 2;
   /** The results chosen in Find for what was typed, which it offers first. */
   findChoices?: FindChoice[];
-  /** The headings Capture and Move to… went under last, newest first. */
+  /** The headings Add Task and Move to… went under last, newest first. */
   recentHeadings?: PinnedNote[];
   sectionAccessCounts: Record<string, number>;
   savedFilters: SavedFilter[];

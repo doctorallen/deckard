@@ -19,7 +19,7 @@ import { DEFAULT_TASK_STATUSES, type TaskStatusDefinition } from '../../domain/t
 import { readTaskStatusOptions } from './parseSettings';
 import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { askForDate, readDateFormats } from './datePrompt';
+import { askForDate, readDateFormats, readDateOptions } from './datePrompt';
 import { showQuickPickUntilHidden } from './prompts';
 import { describeCompletion, readTaskMetadataFormat } from './taskActions';
 import { TaskPriority, WorkspaceIndex } from '../../domain/model';
@@ -28,6 +28,7 @@ import { parseRecurrence, suggestRecurrence } from '../../domain/markdown/recurr
 import { formatIsoDate } from '../../domain/markdown/calendar';
 import { type DateFormats, DEFAULT_DATE_FORMATS } from '../../domain/markdown/dateFormat';
 import { CompletionWrite, writeCompletion } from '../../domain/markdown/taskLineEdits';
+import { DraftWordsReading, readDraftWords } from '../../domain/markdown/captureWords';
 
 /**
  * Editing a whole task at once: its words, its dates, its priority, its
@@ -59,8 +60,23 @@ type DraftField =
   | 'tag';
 
 interface FieldRow extends vscode.QuickPickItem {
-  field?: DraftField;
+  /** The field the row edits, or `note`, Add Task's choice of where the task goes. */
+  field?: DraftField | 'note';
   done?: boolean;
+}
+
+/**
+ * Add Task's Note row: where the task will be written, and a way to choose
+ * another note. The title and the row read it again on every turn, so a
+ * choice made shows at once.
+ */
+export interface DraftNote {
+  /** The editor's title, naming the note: `Add a task to 2026-10-06.md`. */
+  title(): string;
+  /** What the row says: the note's path, and which note it is. */
+  describe(): string;
+  /** Asks where the task goes instead; settles once the reader has chosen or left. */
+  choose(): Promise<void>;
 }
 
 const PRIORITIES: readonly { label: string; value?: TaskPriority }[] = [
@@ -103,15 +119,21 @@ function nameDraftStatus(draft: TaskDraft, reading: DraftStatusReading): string 
   return readLineStatus(formatTaskDraft(draft), draftCheckboxColumn(draft), reading.statuses).name;
 }
 
-/** The rows of the editor, as the pick shows them for a draft, its dates in the reader's `formats`. */
+/**
+ * The rows of the editor, as the pick shows them for a draft, its dates in
+ * the reader's `formats`. Add Task's editor leads with the Note row, which
+ * says `note`, where the task will be written.
+ */
 export function createEditorRows(
   draft: TaskDraft,
   reading: DraftStatusReading = DEFAULT_STATUS_READING,
   formats: DateFormats = DEFAULT_DATE_FORMATS,
+  note?: string,
 ): FieldRow[] {
   const value = (text: string | undefined, empty = 'Not set'): string =>
     text && text.trim() ? text : empty;
   return [
+    ...(note === undefined ? [] : [{ label: '$(file) Note', description: note, field: 'note' as const }]),
     {
       label: '$(pencil) Description',
       description: value(draft.description, 'Empty'),
@@ -183,24 +205,22 @@ export function createEditorRows(
  */
 export async function editTaskDraft(
   initial: TaskDraft,
-  options: {
-    title: string;
-    index?: TaskEditorIndex;
-    now?: number;
-    /** The statuses the Status row offers, and how one is written. */
-    status?: DraftStatusReading;
-  } = {
+  options: EditorOptions = {
     title: 'Edit task',
   },
 ): Promise<TaskDraft | undefined> {
   let draft = initial;
   for (;;) {
-    const chosen = await pickField(draft, options.title, options.status ?? DEFAULT_STATUS_READING);
+    const chosen = await pickField(draft, options);
     if (!chosen) {
       return undefined;
     }
     if (chosen.done) {
       return draft;
+    }
+    if (chosen.field === 'note') {
+      await options.note?.choose();
+      continue;
     }
     const next = await readField(draft, chosen.field, options);
     if (next) {
@@ -209,17 +229,41 @@ export async function editTaskDraft(
   }
 }
 
-/** One turn of the editor: the fields, headed by the line so far. */
-function pickField(
-  draft: TaskDraft,
-  title: string,
-  reading: DraftStatusReading,
-): Promise<FieldRow | undefined> {
+/** How the editor is opened: its title, what its rows read with, and Add Task's own parts. */
+export interface EditorOptions {
+  /** The title, when there is no Note row to name the note instead. */
+  title: string;
+  index?: TaskEditorIndex;
+  now?: number;
+  /** The statuses the Status row offers, and how one is written. */
+  status?: DraftStatusReading;
+  /** Add Task's Note row, which leads the rows and names the note in the title. */
+  note?: DraftNote;
+  /** Reads a day, a priority, a repeat rule, or a person at the end of the description into its field. */
+  readWords?: boolean;
+  /** The line as it will be written, when it is more than the draft, such as with a link back. */
+  preview?: (draft: TaskDraft) => string;
+}
+
+/**
+ * One turn of the editor: the fields, headed by the line so far. With a
+ * Note row, Description is the row Enter opens, as it is without one.
+ */
+function pickField(draft: TaskDraft, options: EditorOptions): Promise<FieldRow | undefined> {
   return showQuickPickUntilHidden<FieldRow, FieldRow>({
     configure: (pick) => {
-      pick.title = title;
-      pick.placeholder = formatTaskDraft(draft).trim();
-      pick.items = createEditorRows(draft, reading, readDateFormats());
+      pick.title = options.note ? options.note.title() : options.title;
+      pick.placeholder = (options.preview ? options.preview(draft) : formatTaskDraft(draft)).trim();
+      pick.items = createEditorRows(
+        draft,
+        options.status ?? DEFAULT_STATUS_READING,
+        readDateFormats(),
+        options.note?.describe(),
+      );
+      const description = pick.items.find((row) => row.field === 'description');
+      if (options.note && description) {
+        pick.activeItems = [description];
+      }
       pick.ignoreFocusOut = true;
     },
     accept: (pick) => pick.selectedItems[0],
@@ -326,6 +370,7 @@ interface FieldContext {
   index?: TaskEditorIndex;
   now: number;
   status?: DraftStatusReading;
+  readWords?: boolean;
 }
 
 /** Asks for one field's value and returns the draft it makes; undefined when the reader cancels. */
@@ -335,7 +380,7 @@ type FieldReader = (draft: TaskDraft, context: FieldContext) => Promise<TaskDraf
 async function readField(
   draft: TaskDraft,
   field: DraftField | undefined,
-  options: { index?: TaskEditorIndex; now?: number; status?: DraftStatusReading },
+  options: Pick<EditorOptions, 'index' | 'now' | 'status' | 'readWords'>,
 ): Promise<TaskDraft | undefined> {
   const now = options.now ?? Date.now();
   if (field === undefined) {
@@ -345,7 +390,10 @@ async function readField(
 }
 
 /** The words of the task, as typed; tags written in them stay. */
-async function readDescription(draft: TaskDraft): Promise<TaskDraft | undefined> {
+async function readDescription(draft: TaskDraft, { now, readWords }: FieldContext): Promise<TaskDraft | undefined> {
+  if (readWords) {
+    return readNewDescription(draft, now);
+  }
   const written = await vscode.window.showInputBox({
     title: 'Description',
     prompt: 'What the task says. Tags written here stay in the line.',
@@ -353,6 +401,90 @@ async function readDescription(draft: TaskDraft): Promise<TaskDraft | undefined>
     ignoreFocusOut: true,
   });
   return written === undefined ? undefined : { ...draft, description: written.trim() };
+}
+
+/** The two title-bar buttons of a new task's Description, one shown at a time. */
+function createWordsButtons(): Record<'literal' | 'reading', vscode.QuickInputButton> {
+  return {
+    literal: {
+      iconPath: new vscode.ThemeIcon('whole-word'),
+      tooltip: 'Keep the words as written: read no date or priority from them',
+    },
+    reading: {
+      iconPath: new vscode.ThemeIcon('wand'),
+      tooltip: 'Read a date, priority, repeat rule, or person from the last words',
+    },
+  };
+}
+
+/** A description that is only tags, as a tag column starts one: the words go before them. */
+const ONLY_TAGS = /^(?:#\S+[ \t]*)+$/u;
+
+/**
+ * The words of a new task, with a day, a priority, a repeat rule, or
+ * `for @dana` at their end read into its fields, as a quick add reads
+ * them, and said under the box as they are typed. Keep the words as
+ * written reads nothing.
+ */
+function readNewDescription(draft: TaskDraft, now: number): Promise<TaskDraft | undefined> {
+  const formats = readDateFormats();
+  const dateOptions = readDateOptions();
+  const box = vscode.window.createInputBox();
+  box.title = 'Description';
+  box.prompt = 'What the task says. A day, priority, or repeat rule at the end fills its field: Call Ren friday p2';
+  box.ignoreFocusOut = true;
+  if (ONLY_TAGS.test(draft.description)) {
+    // The column's tag stays at the end, and typing starts before it.
+    box.value = ` ${draft.description}`;
+    box.valueSelection = [0, 0];
+  } else {
+    box.value = draft.description;
+  }
+  let literal = false;
+  const buttons = createWordsButtons();
+  const update = (): void => {
+    box.buttons = [literal ? buttons.reading : buttons.literal];
+    const said = literal ? undefined : describeWordsReading(readDraftWords(draft, box.value, now, dateOptions), formats);
+    box.validationMessage = said === undefined ? undefined : { message: said, severity: vscode.InputBoxValidationSeverity.Info };
+  };
+  return new Promise((resolve) => {
+    let answer: TaskDraft | undefined;
+    box.onDidChangeValue(update);
+    box.onDidTriggerButton(() => {
+      literal = !literal;
+      update();
+    });
+    box.onDidAccept(() => {
+      answer = literal
+        ? { ...draft, description: box.value.trim() }
+        : readDraftWords(draft, box.value, now, dateOptions).draft;
+      box.hide();
+    });
+    box.onDidHide(() => {
+      box.dispose();
+      resolve(answer);
+    });
+    update();
+    box.show();
+  });
+}
+
+/**
+ * What the words at the end of a description fill, in a line under the
+ * box: `Due Friday 2026-10-09 · Priority high`. Undefined when they fill
+ * nothing.
+ */
+export function describeWordsReading(
+  { read }: Pick<DraftWordsReading, 'read'>,
+  formats: DateFormats = DEFAULT_DATE_FORMATS,
+): string | undefined {
+  const said = [
+    ...(read.due === undefined ? [] : [`Due ${nameDay(read.due, formats)}`]),
+    ...(read.priority === undefined ? [] : [`Priority ${read.priority}`]),
+    ...(read.recurrence === undefined ? [] : [`Repeats ${read.recurrence}`]),
+    ...(read.assignee === undefined ? [] : [`For ${read.assignee}`]),
+  ];
+  return said.length === 0 ? undefined : said.join(' · ');
 }
 
 /** One of the six priorities, the current one marked; None takes it off. */
@@ -449,7 +581,7 @@ async function readAssignee(
 
 /** The reader for each field the pick lists. */
 const FIELD_READERS: Readonly<Record<DraftField, FieldReader>> = {
-  description: (draft) => readDescription(draft),
+  description: (draft, context) => readDescription(draft, context),
   status: (draft, { now, status }) => readStatus(draft, { now, reading: status ?? DEFAULT_STATUS_READING }),
   due: (draft, { now }) => readDate(draft, 'due', now),
   scheduled: (draft, { now }) => readDate(draft, 'scheduled', now),
@@ -670,7 +802,7 @@ export async function editTaskCommand(
  * so the note may have changed under it, and writing to the line number
  * alone would overwrite whatever line now sits there.
  */
-function lineStillReads(
+export function lineStillReads(
   document: vscode.TextDocument,
   line: vscode.TextLine,
   command: string,
@@ -689,7 +821,7 @@ function lineStillReads(
 }
 
 /** Says what completing a repeating task started, or what it could not read. */
-function sayCompletion(edited: TaskDraft, completion: CompletionWrite): void {
+export function sayCompletion(edited: TaskDraft, completion: CompletionWrite): void {
   if (completion.next === undefined && completion.unreadRule === undefined) {
     return;
   }

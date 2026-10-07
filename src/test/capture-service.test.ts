@@ -46,17 +46,12 @@ function indexOf(notes: Record<string, string>): WorkspaceIndex {
   );
 }
 
-/** A service over `notes`, recording each draft cleared and heading remembered. */
+/** A service over `notes`, recording each heading remembered. */
 function service(index: WorkspaceIndex, notes: FakeNotes) {
   const events: string[] = [];
   const captures = new CaptureService({
     index: { getSnapshot: () => index },
     notes,
-    drafts: {
-      clear: async () => {
-        events.push('draft cleared');
-      },
-    },
     recentHeadings: {
       recordRecentHeading: async (pin: PinnedNote) => {
         events.push(`remembered ${pin.heading}`);
@@ -69,23 +64,23 @@ function service(index: WorkspaceIndex, notes: FakeNotes) {
 suite('CaptureService', () => {
   const day = '# Day\n## Calls\n- [ ] One\n\n## Later\nText\n';
 
-  test('today: the line is added, and only then is the draft let go', async () => {
+  test('a note: the line is added after its last text', async () => {
     const notes = new FakeNotes({ 'daily/2026-09-25.md': '# 2026-09-25\n' });
     const { captures, events } = service(indexOf({}), notes);
 
-    assert.deepStrictEqual(await captures.captureToToday('daily/2026-09-25.md', '- [ ] Call Ren'), {
+    assert.deepStrictEqual(await captures.captureToNote('daily/2026-09-25.md', '- [ ] Call Ren'), {
       kind: 'added',
       uri: 'daily/2026-09-25.md',
       taskLine: 2,
     });
     assert.strictEqual(notes.texts.get('daily/2026-09-25.md'), '# 2026-09-25\n\n- [ ] Call Ren\n');
-    assert.deepStrictEqual(events, ['draft cleared']);
+    assert.deepStrictEqual(events, [], 'no heading to remember');
   });
 
-  test('today: a note that refuses the edit keeps the draft', async () => {
+  test('a note: one that refuses the edit says so', async () => {
     const { captures, events } = service(indexOf({}), new FakeNotes({ 'today.md': '' }, true));
 
-    assert.deepStrictEqual(await captures.captureToToday('today.md', '- [ ] Call Ren'), {
+    assert.deepStrictEqual(await captures.captureToNote('today.md', '- [ ] Call Ren'), {
       kind: 'refused',
       uri: 'today.md',
     });
@@ -105,7 +100,7 @@ suite('CaptureService', () => {
       taskLine: 4,
     });
     assert.strictEqual(notes.texts.get('day.md'), 'Intro\n# Day\n## Calls\n- [ ] One\n- [ ] Call Ren\n\n## Later\nText\n');
-    assert.deepStrictEqual(events, ['draft cleared', 'remembered Calls']);
+    assert.deepStrictEqual(events, ['remembered Calls']);
   });
 
   test('under a heading: found and remembered when the index read the note again while the heading was being chosen', async () => {
@@ -121,7 +116,7 @@ suite('CaptureService', () => {
       taskLine: 4,
     });
     assert.strictEqual(notes.texts.get('day.md'), '# Day\nA line added above.\n## Calls\n- [ ] One\n- [ ] Call Ren\n\n## Later\nText\n');
-    assert.deepStrictEqual(events, ['draft cleared', 'remembered Calls']);
+    assert.deepStrictEqual(events, ['remembered Calls']);
   });
 
   test('under a heading: a note that is gone, a heading that is gone, or a refused edit writes nothing', async () => {
@@ -142,6 +137,6 @@ suite('CaptureService', () => {
       uri: 'day.md',
     });
 
-    assert.deepStrictEqual([...gone.events, ...renamed.events, ...refused.events], [], 'every draft is kept');
+    assert.deepStrictEqual([...gone.events, ...renamed.events, ...refused.events], [], 'no heading is remembered');
   });
 });

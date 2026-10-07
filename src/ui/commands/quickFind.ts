@@ -63,7 +63,7 @@ interface QuickFindPickItem extends vscode.QuickPickItem {
   indexing?: boolean;
   /** The row that opens the daily note for the day typed. */
   openDate?: string;
-  /** The row that captures what was typed to today's note. */
+  /** The row that adds what was typed to today's note, as a task. */
   capture?: { text: string; line: string };
 }
 
@@ -635,8 +635,8 @@ export class QuickFind implements vscode.Disposable {
     }
     if (chosen.capture) {
       picker.hide();
-      // Written as Capture writes it; the words were captured, so they are
-      // not kept as a search.
+      // Written with its last words read, as Add Task reads them; the words
+      // were added as a task, so they are not kept as a search.
       return captureToToday(chosen.capture.text, chosen.capture.line);
     }
     if (chosen.create === undefined) {
@@ -861,7 +861,7 @@ function toPickItem(item: QuickFindItem): QuickFindPickItem {
 
 /**
  * The rows below the results, each only when it applies: create a note by
- * the name typed, capture what was typed, and show every result.
+ * the name typed, add what was typed as a task, and show every result.
  */
 function trailingRows(
   results: QuickFindResults,
@@ -891,7 +891,7 @@ function trailingRows(
       items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
     }
     items.push({
-      label: `$(inbox) Capture “${results.capture.text}” to today’s note`,
+      label: `$(inbox) Add “${results.capture.text}” to today’s note`,
       detail: results.capture.line,
       alwaysShow: true,
       capture: results.capture,

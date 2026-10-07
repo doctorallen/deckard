@@ -289,7 +289,7 @@ suite('Quick Find', () => {
       const none = finder.find('Call Ren friday p2');
       assert.strictEqual(none.capture?.text, 'Call Ren friday p2');
       assert.strictEqual(none.capture?.line, `- [ ] Call Ren ⏫ 📅 ${friday}`);
-      assert.ok(toPickItems(none, 'Call Ren friday p2').some((item) => item.label === '$(inbox) Capture “Call Ren friday p2” to today’s note'));
+      assert.ok(toPickItems(none, 'Call Ren friday p2').some((item) => item.label === '$(inbox) Add “Call Ren friday p2” to today’s note'));
       assert.ok(finder.find('#project/atlas budget meeting').capture, 'a tag among the words');
       assert.strictEqual(finder.find('is:overdue zebra').capture, undefined, 'not a search with a condition');
       assert.strictEqual(finder.find('budget').capture, undefined, 'not when a note has every word');

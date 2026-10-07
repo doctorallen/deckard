@@ -50,7 +50,7 @@ export function TaskList({ snapshot }: { readonly snapshot: TaskBoardSnapshot })
           <div class="empty">
             {snapshot.taskCount
               ? 'No tasks match this search.'
-              : 'No tasks yet. Write "- [ ] something" in a note, or use Deckard: Capture. The character in a task\'s box, as [/] for In progress, puts it in a column.'}
+              : 'No tasks yet. Write "- [ ] something" in a note, or use Deckard: Add Task. The character in a task\'s box, as [/] for In progress, puts it in a column.'}
           </div>
         )}
     </div>
@@ -64,7 +64,7 @@ export function TaskList({ snapshot }: { readonly snapshot: TaskBoardSnapshot })
 export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   const table = snapshot.table;
   if (!table || table.rows.length === 0) {
-    return <div key="empty" class="empty">{snapshot.taskCount ? 'No tasks match this search.' : 'No tasks yet. Write "- [ ] something" in a note, or use Deckard: Capture.'}</div>;
+    return <div key="empty" class="empty">{snapshot.taskCount ? 'No tasks match this search.' : 'No tasks yet. Write "- [ ] something" in a note, or use Deckard: Add Task.'}</div>;
   }
   const sort = table.sort;
   // The title is the column the reader cannot leave out, wherever the

@@ -22,11 +22,7 @@ import { offerSavedSearchOnHome } from '../../../commands/savedSearchHome';
 import { settingTarget, writeSetting } from '../../../commands/settings';
 import { clickTask, openTask, quoteTaskTitle, TaskWrites } from '../../../commands/taskActions';
 import { listPeopleRecency } from '../../../state/peopleRecency';
-import {
-  captureIntoColumn,
-  moveTaskToColumn,
-  readTaskBoardOptions,
-} from '../../../commands/taskBoardActions';
+import { moveTaskToColumn, readTaskBoardOptions } from '../../../commands/taskBoardActions';
 import { breakIntoStepsCommand } from '../../../commands/taskSteps';
 import { countStatusTagsLeft, describeStatusTagsLeft } from '../../../commands/statusMove';
 import { normalizeAgendaQuery } from '../../../state/agendaState';
@@ -522,7 +518,8 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
           await breakIntoStepsCommand(indexer, writes, task);
         }
       },
-      addTaskToColumn: (message) => captureIntoColumn(message.column),
+      // One way to add a task: Add Task's editor, started in the column.
+      addTaskToColumn: (message) => vscode.commands.executeCommand('deckard.addTask', { column: message.column }),
     };
   }
 

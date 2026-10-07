@@ -103,7 +103,7 @@ export function pickWorkspacePreferences(
 /** How many recent searches are kept. */
 export const RECENT_QUERY_LIMIT = 20;
 
-/** How many headings Capture and Move to… remember. */
+/** How many headings Add Task and Move to… remember. */
 export const RECENT_HEADING_LIMIT = 5;
 
 /** The most Find choices kept; the least recently chosen goes first. */

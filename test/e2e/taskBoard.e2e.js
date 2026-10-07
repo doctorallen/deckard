@@ -365,8 +365,15 @@ test('a column that takes a card takes a new task, and a menu offers any date', 
   const { view } = await openBoard();
   const add = view.find('[data-action="board-add-task"]');
   assert.ok(add, 'a column that takes a drop has + Add task');
+  vscode._test.executedCommands.length = 0;
   view.click(add);
   assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'addTaskToColumn', column: add.dataset.columnId });
+  await delay(10);
+  // One way to add a task: Add Task's editor, started in the column.
+  assert.deepStrictEqual(
+    vscode._test.executedCommands.filter((entry) => entry.command === 'deckard.addTask').map((entry) => entry.args),
+    [[{ column: add.dataset.columnId }]],
+  );
 });
 
 test('saves its search as a view that reopens on the Task Board', async () => {

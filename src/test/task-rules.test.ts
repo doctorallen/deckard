@@ -185,4 +185,16 @@ suite('Task rules', () => {
       line: '- [ ] Call Ren',
     });
   });
+
+  test('a column starts Add Task on an empty task with its edit made', () => {
+    const start = (column: string) => resolveColumnCapture('- [ ] ', (task) => resolveTaskMove(task, column, options, noTags));
+    assert.deepStrictEqual(start('status:in-progress'), { kind: 'capture', line: '- [/] ' });
+    assert.deepStrictEqual(start('priority:high'), { kind: 'capture', line: '- [ ] ⏫' });
+    assert.deepStrictEqual(start('due:today'), { kind: 'capture', line: '- [ ] 📅 2026-09-25' });
+    assert.deepStrictEqual(start('assignee:@dana'), { kind: 'capture', line: '- [ ] 👤 @dana' });
+    assert.deepStrictEqual(start('due:later'), {
+      kind: 'refused',
+      reason: 'Drop a task on Today, Tomorrow, or No due date to change its due date.',
+    });
+  });
 });

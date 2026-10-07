@@ -17,7 +17,7 @@ Each [GitHub release](https://github.com/doctorallen/deckard/releases) also carr
 
 **Samples:** `Deckard: Create a Work Sample` writes a week of a team lead's notes: standups, two 1:1s, a project hub, and two decision records, with **Try it** in its README. `Deckard: Create the Story Tour` writes a longer tour, ten notes, one per part of Deckard, each ending with **Try it**: the commands, keys, and searches to run. Each opens in this window when no folder is open, and otherwise in a new window or this one, as you choose; its notes are dated from the day you make it, and running the command again offers a fresh copy.
 
-**Walkthrough:** `Deckard: Get Started`, or **Walkthrough** in Home's gear, opens six steps: write a note, tag it and mention a person, link two notes, find anything, capture a task, and see the workspace. Each is checked off as you do it. It is the place to start: the work sample is offered from its first step.
+**Walkthrough:** `Deckard: Get Started`, or **Walkthrough** in Home's gear, opens six steps: write a note, tag it and mention a person, link two notes, find anything, add a task, and see the workspace. Each is checked off as you do it. It is the place to start: the work sample is offered from its first step.
 
 **In your own notes:**
 
@@ -39,7 +39,7 @@ In a code repository, Deckard's editor features apply only to notes: a README ou
 - The status bar says **Deckard: whole workspace**. Select it to choose a notes folder, leave folders out, pause Deckard here, or keep reading everything, which hides it.
 - Before the first note Deckard makes there, it asks once: **Write Here**, **Choose a Folder…**, which sets the notes folder, or **Pause Deckard Here**. Dismissing it writes nothing.
 - The first scan's summary offers **Not a Notes Workspace**, which pauses Deckard.
-- Capture says where it wrote, such as *Added it to notes/2026-10-07.md in deckard-work.*
+- Add Task says where it wrote, such as *Added it to notes/2026-10-07.md in deckard-work.*
 
 **Paused**, Deckard reads and writes nothing in the workspace, and the status bar says **Deckard paused**; select it, or run `Deckard: Resume in This Workspace`, to start again. `Deckard: Pause in This Workspace` pauses any workspace. Both answers are kept in VS Code's storage for the workspace, not in a file in the repository.
 

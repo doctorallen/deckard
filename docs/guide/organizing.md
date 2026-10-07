@@ -14,7 +14,7 @@ Run `Deckard: Extract Heading` with the cursor in a heading section. Deckard mov
 
 `Deckard: Move to…` moves what the cursor is on (a task or list item with everything nested under it, or one line of prose), or every line a selection touches, under another heading, into today's note, or into a new note. It does not move a heading, a blank line, front matter, or half a code block. Run it from the lightbulb, the palette, the Tasks view, a Task board card's menu, or Find.
 
-- The list starts with **New note…** and **Today's note**, then the five headings Capture and Move to… used last, then every heading. Lines go under the heading's own lines, above any nested heading.
+- The list starts with **New note…** and **Today's note**, then the five headings Add Task and Move to… used last, then every heading. Lines go under the heading's own lines, above any nested heading.
 - A task left behind becomes `- [>] Call Ren 📅 2026-09-20 → [[2026-09-25]]`; anything else becomes a `[[link]]` to where it went. A `[>]` line is not a task.
 - If the lines or heading changed before you chose, nothing is written. The move is not previewed: it is the one you chose. **Undo**, or `Deckard: Undo Last Change`, puts both notes back, or neither: if either changed since, nothing is put back.
 
