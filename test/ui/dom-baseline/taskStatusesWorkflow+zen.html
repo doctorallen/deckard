@@ -32,7 +32,7 @@
         ></div
       ><p
         class="status-note"
-      >What each checkbox character means, and the #status/… tag that stands for it. Saved to your user settings.</p
+      >What each checkbox character means. Saved to your user settings.</p
       ></header
     ><fieldset
       class="status-click"
@@ -66,8 +66,6 @@
           ><th
           >Type</th
           ><th
-          >Tag</th
-          ><th
           >Next</th
           ><th
           >Icon</th
@@ -97,19 +95,6 @@
           ><td
           ><span
             >To do</span
-            ></td
-          ><td
-            class="status-tag"
-          ><span
-              aria-hidden="true"
-              class="status-tag-prefix"
-            >#status/</span
-            ><input
-              aria-label="Todo: tag, after #status/"
-              data-dom-value="todo"
-              data-field="tag"
-              data-row="0"
-              type="text"
             ></td
           ><td
           ><select
@@ -142,6 +127,14 @@
                 data-dom-selected="false"
                 data-dom-value="-"
               >[-] Cancelled</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="w"
+              >[w] Waiting</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="s"
+              >[s] Someday</option
               ><option
                 data-dom-selected="false"
                 data-dom-value="="
@@ -240,19 +233,6 @@
               ></select
             ></td
           ><td
-            class="status-tag"
-          ><span
-              aria-hidden="true"
-              class="status-tag-prefix"
-            >#status/</span
-            ><input
-              aria-label="In progress: tag, after #status/"
-              data-dom-value="doing"
-              data-field="tag"
-              data-row="1"
-              type="text"
-            ></td
-          ><td
           ><select
               aria-label="In progress: the status a click moves it to"
               class="status-next"
@@ -283,6 +263,14 @@
                 data-dom-selected="false"
                 data-dom-value="-"
               >[-] Cancelled</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="w"
+              >[w] Waiting</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="s"
+              >[s] Someday</option
               ><option
                 data-dom-selected="false"
                 data-dom-value="="
@@ -356,19 +344,6 @@
             >Done</span
             ></td
           ><td
-            class="status-tag"
-          ><span
-              aria-hidden="true"
-              class="status-tag-prefix"
-            >#status/</span
-            ><input
-              aria-label="Done: tag, after #status/"
-              data-dom-value=""
-              data-field="tag"
-              data-row="2"
-              type="text"
-            ></td
-          ><td
           ><select
               aria-label="Done: the status a click moves it to"
               class="status-next"
@@ -399,6 +374,14 @@
                 data-dom-selected="false"
                 data-dom-value="-"
               >[-] Cancelled</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="w"
+              >[w] Waiting</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="s"
+              >[s] Someday</option
               ><option
                 data-dom-selected="false"
                 data-dom-value="="
@@ -467,19 +450,6 @@
               ></select
             ></td
           ><td
-            class="status-tag"
-          ><span
-              aria-hidden="true"
-              class="status-tag-prefix"
-            >#status/</span
-            ><input
-              aria-label="Done: tag, after #status/"
-              data-dom-value=""
-              data-field="tag"
-              data-row="3"
-              type="text"
-            ></td
-          ><td
           ><select
               aria-label="Done: the status a click moves it to"
               class="status-next"
@@ -510,6 +480,14 @@
                 data-dom-selected="false"
                 data-dom-value="-"
               >[-] Cancelled</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="w"
+              >[w] Waiting</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="s"
+              >[s] Someday</option
               ><option
                 data-dom-selected="false"
                 data-dom-value="="
@@ -586,19 +564,6 @@
               ></select
             ></td
           ><td
-            class="status-tag"
-          ><span
-              aria-hidden="true"
-              class="status-tag-prefix"
-            >#status/</span
-            ><input
-              aria-label="Cancelled: tag, after #status/"
-              data-dom-value=""
-              data-field="tag"
-              data-row="4"
-              type="text"
-            ></td
-          ><td
           ><select
               aria-label="Cancelled: the status a click moves it to"
               class="status-next"
@@ -631,6 +596,14 @@
               >[-] Cancelled</option
               ><option
                 data-dom-selected="false"
+                data-dom-value="w"
+              >[w] Waiting</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="s"
+              >[s] Someday</option
+              ><option
+                data-dom-selected="false"
                 data-dom-value="="
               >[=] Blocked</option
               ></select
@@ -657,7 +630,7 @@
           ><input
               aria-label="Waiting: character"
               class="status-symbol-input"
-              data-dom-value=""
+              data-dom-value="w"
               data-field="symbol"
               data-row="5"
               maxlength="2"
@@ -705,31 +678,18 @@
               ></select
             ></td
           ><td
-            class="status-tag"
-          ><span
-              aria-hidden="true"
-              class="status-tag-prefix"
-            >#status/</span
-            ><input
-              aria-label="Waiting: tag, after #status/"
-              data-dom-value="waiting"
-              data-field="tag"
-              data-row="5"
-              type="text"
-            ></td
-          ><td
           ><select
               aria-label="Waiting: the status a click moves it to"
               class="status-next"
-              data-dom-value=""
+              data-dom-value=" "
               data-field="next"
               data-row="5"
             ><option
-                data-dom-selected="true"
+                data-dom-selected="false"
                 data-dom-value=""
               >None</option
               ><option
-                data-dom-selected="false"
+                data-dom-selected="true"
                 data-dom-value=" "
               >[ ] Todo</option
               ><option
@@ -748,6 +708,14 @@
                 data-dom-selected="false"
                 data-dom-value="-"
               >[-] Cancelled</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="w"
+              >[w] Waiting</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="s"
+              >[s] Someday</option
               ><option
                 data-dom-selected="false"
                 data-dom-value="="
@@ -806,7 +774,7 @@
           ><input
               aria-label="Someday: character"
               class="status-symbol-input"
-              data-dom-value=""
+              data-dom-value="s"
               data-field="symbol"
               data-row="6"
               maxlength="2"
@@ -854,31 +822,18 @@
               ></select
             ></td
           ><td
-            class="status-tag"
-          ><span
-              aria-hidden="true"
-              class="status-tag-prefix"
-            >#status/</span
-            ><input
-              aria-label="Someday: tag, after #status/"
-              data-dom-value="someday"
-              data-field="tag"
-              data-row="6"
-              type="text"
-            ></td
-          ><td
           ><select
               aria-label="Someday: the status a click moves it to"
               class="status-next"
-              data-dom-value=""
+              data-dom-value=" "
               data-field="next"
               data-row="6"
             ><option
-                data-dom-selected="true"
+                data-dom-selected="false"
                 data-dom-value=""
               >None</option
               ><option
-                data-dom-selected="false"
+                data-dom-selected="true"
                 data-dom-value=" "
               >[ ] Todo</option
               ><option
@@ -897,6 +852,14 @@
                 data-dom-selected="false"
                 data-dom-value="-"
               >[-] Cancelled</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="w"
+              >[w] Waiting</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="s"
+              >[s] Someday</option
               ><option
                 data-dom-selected="false"
                 data-dom-value="="
@@ -1003,19 +966,6 @@
               ></select
             ></td
           ><td
-            class="status-tag"
-          ><span
-              aria-hidden="true"
-              class="status-tag-prefix"
-            >#status/</span
-            ><input
-              aria-label="Blocked: tag, after #status/"
-              data-dom-value="blocked"
-              data-field="tag"
-              data-row="7"
-              type="text"
-            ></td
-          ><td
           ><select
               aria-label="Blocked: the status a click moves it to"
               class="status-next"
@@ -1046,6 +996,14 @@
                 data-dom-selected="false"
                 data-dom-value="-"
               >[-] Cancelled</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="w"
+              >[w] Waiting</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="s"
+              >[s] Someday</option
               ><option
                 data-dom-selected="false"
                 data-dom-value="="
@@ -1157,6 +1115,10 @@
         >[X] Done → [ ] Todo</li
         ><li
         >[-] Cancelled → [ ] Todo</li
+        ><li
+        >[w] Waiting → [ ] Todo</li
+        ><li
+        >[s] Someday → [ ] Todo</li
         ><li
         >[=] Blocked → [ ] Todo</li
         ></ul

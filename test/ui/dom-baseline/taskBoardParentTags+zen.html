@@ -140,132 +140,226 @@
                 class="board-settings"
               ><p
                   class="board-settings-note"
-                >Columns when grouped by Status. Every status your open tasks carry is a column, listed here or not; drag to set their order. No status comes first and Done last. Saved in your settings, so the order applies to every workspace unless this one sets its own.</p
+                >Columns when grouped by Status, one per status in your list. Tick one to show it, drag to set the order. Done is always a column; a character no status names gets one of its own.</p
                 ><ul
                   aria-label="Status columns"
                   class="board-status-list"
                 ><li
                     class="board-status is-draggable"
-                    data-status="todo"
+                    data-status="Todo"
                     data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
                     tabindex="0"
                   ><span
                       aria-hidden="true"
                       class="board-status-grip"
                     >⠿</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Todo [ ] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Todo"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[ ]</span
+                      ><span
+                        class="board-status-name"
+                      >Todo</span
+                      ></label
                     ><span
-                      class="board-status-name"
-                    >Todo</span
-                    ><button
-                      aria-label="Remove Todo"
-                      data-action="remove-status"
-                      data-status="todo"
-                      data-tip="Remove column"
-                      type="button"
-                    >×</button
+                      class="board-status-count"
+                      data-tip="Open tasks with this status, in the whole workspace"
+                    >2 open</span
                     ></li
                   ><li
                     class="board-status is-draggable"
-                    data-status="doing"
+                    data-status="In progress"
                     data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
                     tabindex="0"
                   ><span
                       aria-hidden="true"
                       class="board-status-grip"
                     >⠿</span
-                    ><span
-                      class="board-status-name"
-                    >In progress</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show In progress [/] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="In progress"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[/]</span
+                      ><span
+                        class="board-status-name"
+                      >In progress</span
+                      ></label
                     ><span
                       class="board-status-count"
-                      data-tip="Open tasks with this status; a column while any have it"
-                    >1</span
+                      data-tip="Open tasks with this status, in the whole workspace"
+                    >1 open</span
                     ></li
                   ><li
                     class="board-status is-draggable"
-                    data-status="waiting"
+                    data-status="Waiting"
                     data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
                     tabindex="0"
                   ><span
                       aria-hidden="true"
                       class="board-status-grip"
                     >⠿</span
-                    ><span
-                      class="board-status-name"
-                    >Waiting</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Waiting [w] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Waiting"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[w]</span
+                      ><span
+                        class="board-status-name"
+                      >Waiting</span
+                      ></label
                     ><span
                       class="board-status-count"
-                      data-tip="Open tasks with this status; a column while any have it"
-                    >1</span
+                      data-tip="Open tasks with this status, in the whole workspace"
+                    >1 open</span
                     ></li
                   ><li
                     class="board-status is-draggable"
-                    data-status="blocked"
+                    data-status="Someday"
                     data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
                     tabindex="0"
                   ><span
                       aria-hidden="true"
                       class="board-status-grip"
                     >⠿</span
-                    ><span
-                      class="board-status-name"
-                    >Blocked</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Someday [s] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Someday"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[s]</span
+                      ><span
+                        class="board-status-name"
+                      >Someday</span
+                      ></label
+                    ></li
+                  ><li
+                    class="board-status is-draggable"
+                    data-status="Blocked"
+                    data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                    tabindex="0"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    >⠿</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Blocked [=] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Blocked"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[=]</span
+                      ><span
+                        class="board-status-name"
+                      >Blocked</span
+                      ></label
                     ><span
                       class="board-status-count"
-                      data-tip="Open tasks with this status; a column while any have it"
-                    >1</span
+                      data-tip="Open tasks with this status, in the whole workspace"
+                    >1 open</span
+                    ></li
+                  ><li
+                    class="board-status"
+                    data-tip="Done is always a column, after every open status"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    ></span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Done [x] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Done"
+                        disabled=""
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[x]</span
+                      ><span
+                        class="board-status-name"
+                      >Done</span
+                      ></label
+                    ></li
+                  ><li
+                    class="board-status"
+                    data-tip="Cancelled comes after Done when it is shown"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    ></span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Cancelled [-] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="false"
+                        data-dom-value="on"
+                        data-name="Cancelled"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[-]</span
+                      ><span
+                        class="board-status-name"
+                      >Cancelled</span
+                      ></label
                     ></li
                   ></ul
-                ><p
-                  class="board-settings-note"
-                >Add a status for an empty column to drop cards into. One no open task has can be removed.</p
-                ><form
+                ><div
                   class="board-settings-row"
-                  data-form="add-status"
-                ><input
-                    aria-label="New status column"
-                    autocomplete="off"
-                    data-action="status-draft"
-                    data-dom-value=""
-                    placeholder="Add a status, such as review"
-                    spellcheck="false"
-                    type="text"
+                ><button
+                    data-action="new-task-status"
+                    data-tip="Add a status to the list, with its character"
+                    type="button"
+                  >New status…</button
                   ><button
-                    type="submit"
-                  >Add</button
-                  ></form
-                ><span
-                >Status tag</span
-                ><form
-                  class="board-settings-row"
-                  data-form="status-namespace"
-                ><span
-                    class="board-settings-prefix"
-                  >#</span
-                  ><input
-                    aria-label="Status tag namespace"
-                    autocomplete="off"
-                    data-action="namespace-draft"
-                    data-dom-value="status"
-                    spellcheck="false"
-                    type="text"
-                  ><span
-                    class="board-settings-prefix"
-                  >/doing</span
-                  ><button
-                    type="submit"
-                  >Save</button
-                  ></form
-                ><label
-                  class="board-settings-row"
-                ><input
-                    data-action="show-cancelled"
-                    data-dom-checked="false"
-                    data-dom-value="on"
-                    type="checkbox"
-                  ><span
-                  >Show a Cancelled column after Done</span
-                  ></label
+                    data-action="edit-task-statuses"
+                    data-tip="Open Edit Task Statuses"
+                    type="button"
+                  >Edit statuses…</button
+                  ></div
                 ></div
               ></div
             ><div
@@ -501,15 +595,22 @@
         class="board task-board"
         role="group"
       ><section
-          aria-label="No status, 2 tasks"
+          aria-label="Todo [ ], 2 tasks"
           class="board-column"
-          data-column-id="status:"
+          data-column-id="status:todo"
           data-droppable="true"
           data-hidden-count="0"
+          data-label="Todo"
+          data-symbol=" "
         ><h2
             class="board-column-title"
           ><span
-            >No status</span
+              class="board-column-label"
+            >Todo<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[ ]</span
+              ></span
             ><span
               class="board-count"
             >2</span
@@ -517,19 +618,19 @@
           ><button
             class="board-add"
             data-action="board-add-task"
-            data-column-id="status:"
-            data-tip="Capture a task straight into No status"
+            data-column-id="status:todo"
+            data-tip="Capture a task straight into Todo"
             type="button"
           >+ Add task</button
           ><div
-            aria-label="No status"
+            aria-label="Todo"
             class="board-cards"
             role="list"
           ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Book the flights, No status"
+              aria-label="Book the flights, Todo"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/field-season.md"
               data-line="5"
               data-task-id="task-6d3zqd-968ga4"
@@ -628,9 +729,9 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Order the connectors, No status"
+              aria-label="Order the connectors, Todo"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/field-season.md"
               data-line="10"
               data-task-id="task-mq2evr-78fa3i"
@@ -736,43 +837,22 @@
             ></div
           ></section
         ><section
-          aria-label="Todo, 0 tasks"
+          aria-label="In progress [/], 1 task"
           class="board-column"
-          data-column-id="status:todo"
+          data-column-id="status:in-progress"
           data-droppable="true"
           data-hidden-count="0"
+          data-label="In progress"
+          data-symbol="/"
         ><h2
             class="board-column-title"
           ><span
-            >Todo</span
-            ><span
-              class="board-count"
-            >0</span
-            ></h2
-          ><button
-            class="board-add"
-            data-action="board-add-task"
-            data-column-id="status:todo"
-            data-tip="Capture a task straight into Todo"
-            type="button"
-          >+ Add task</button
-          ><div
-            class="board-cards"
-          ><p
-              class="board-empty"
-            >No tasks. Drag a card here, or move one with its ⋯ menu.</p
-            ></div
-          ></section
-        ><section
-          aria-label="In progress, 1 task"
-          class="board-column"
-          data-column-id="status:doing"
-          data-droppable="true"
-          data-hidden-count="0"
-        ><h2
-            class="board-column-title"
-          ><span
-            >In progress</span
+              class="board-column-label"
+            >In progress<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[/]</span
+              ></span
             ><span
               class="board-count"
             >1</span
@@ -780,7 +860,7 @@
           ><button
             class="board-add"
             data-action="board-add-task"
-            data-column-id="status:doing"
+            data-column-id="status:in-progress"
             data-tip="Capture a task straight into In progress"
             type="button"
           >+ Add task</button
@@ -792,7 +872,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Calibrate the receivers, In progress"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/field-season.md"
               data-line="7"
               data-task-id="task-mgyuzk-tp2wk9"
@@ -896,15 +976,22 @@
             ></div
           ></section
         ><section
-          aria-label="Waiting, 1 task"
+          aria-label="Waiting [w], 1 task"
           class="board-column"
           data-column-id="status:waiting"
           data-droppable="true"
           data-hidden-count="0"
+          data-label="Waiting"
+          data-symbol="w"
         ><h2
             class="board-column-title"
           ><span
-            >Waiting</span
+              class="board-column-label"
+            >Waiting<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[w]</span
+              ></span
             ><span
               class="board-count"
             >1</span
@@ -927,7 +1014,7 @@
               data-card-column="status:waiting"
               data-file-path="notes/field-season.md"
               data-line="8"
-              data-task-id="task-gkyfw8-fpwyf"
+              data-task-id="task-pfoe7v-8tcvlw"
               data-tip-around=""
               draggable="true"
               role="listitem"
@@ -1028,15 +1115,57 @@
             ></div
           ></section
         ><section
-          aria-label="Blocked, 1 task"
+          aria-label="Someday [s], 0 tasks"
+          class="board-column"
+          data-column-id="status:someday"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="Someday"
+          data-symbol="s"
+        ><h2
+            class="board-column-title"
+          ><span
+              class="board-column-label"
+            >Someday<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[s]</span
+              ></span
+            ><span
+              class="board-count"
+            >0</span
+            ></h2
+          ><button
+            class="board-add"
+            data-action="board-add-task"
+            data-column-id="status:someday"
+            data-tip="Capture a task straight into Someday"
+            type="button"
+          >+ Add task</button
+          ><div
+            class="board-cards"
+          ><p
+              class="board-empty"
+            >No tasks. Drag a card here, or move one with its ⋯ menu.</p
+            ></div
+          ></section
+        ><section
+          aria-label="Blocked [=], 1 task"
           class="board-column"
           data-column-id="status:blocked"
           data-droppable="true"
           data-hidden-count="0"
+          data-label="Blocked"
+          data-symbol="="
         ><h2
             class="board-column-title"
           ><span
-            >Blocked</span
+              class="board-column-label"
+            >Blocked<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[=]</span
+              ></span
             ><span
               class="board-count"
             >1</span
@@ -1167,15 +1296,22 @@
             ></div
           ></section
         ><section
-          aria-label="Done, 0 tasks"
+          aria-label="Done [x], 0 tasks"
           class="board-column"
           data-column-id="done"
           data-droppable="true"
           data-hidden-count="0"
+          data-label="Done"
+          data-symbol="x"
         ><h2
             class="board-column-title"
           ><span
-            >Done</span
+              class="board-column-label"
+            >Done<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[x]</span
+              ></span
             ><span
               class="board-count"
             >0</span
