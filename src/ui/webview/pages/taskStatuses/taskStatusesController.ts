@@ -10,7 +10,7 @@ import { pluralize } from '../../../../shared/text';
 import { resolveSourceUri } from '../../../commands/navigation';
 import { writeSetting } from '../../../commands/settings';
 import type { WorkspaceWriteHistory } from '../../../commands/workspaceWrites';
-import type { TaskStatusesPageToHost, TaskStatusesSnapshot } from '../../../protocol/taskStatuses';
+import type { NewStatusRow, TaskStatusesPageToHost, TaskStatusesSnapshot } from '../../../protocol/taskStatuses';
 import type { PageChrome } from '../../components';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { getTaskStatusesHtml } from '../../taskStatusesHtml';
@@ -54,8 +54,16 @@ export class TaskStatusesController implements PageController<TaskStatusesSnapsh
     },
   };
 
+  /** The new row the page opens with, until the list is saved. */
+  private newRow: NewStatusRow | undefined;
+
   /** Reads the list and the notes through `statuses`. */
   public constructor(private readonly statuses: TaskStatusesControllerOptions) {}
+
+  /** Asks the page to open with a new row of this name and type, the next time it is drawn. */
+  public addNewRow(row: Omit<NewStatusRow, 'id'>): void {
+    this.newRow = { ...row, id: (this.newRow?.id ?? 0) + 1 };
+  }
 
   /** The page's HTML, carrying `state` to draw at once when given one. */
   public html(webview: vscode.Webview, chrome: PageChrome, state?: TaskStatusesSnapshot): string {
@@ -77,6 +85,7 @@ export class TaskStatusesController implements PageController<TaskStatusesSnapsh
       found: [...counts].map(([symbol, count]) => ({ symbol, count })).sort((left, right) => right.count - left.count || left.symbol.localeCompare(right.symbol)),
       canImport: true,
       target: configuration.inspect('tasks.statuses')?.workspaceValue === undefined ? 'user' : 'workspace',
+      ...(this.newRow ? { newRow: { ...this.newRow } } : {}),
     };
   }
 
@@ -110,6 +119,7 @@ export class TaskStatusesController implements PageController<TaskStatusesSnapsh
       return;
     }
     const before = readTaskStatusSettings(vscode.workspace.getConfiguration('deckard'));
+    this.newRow = undefined;
     await this.write('tasks.statuses', statuses);
     page.refresh();
     const renames = findStatusRenames(before, readTaskStatuses(statuses));

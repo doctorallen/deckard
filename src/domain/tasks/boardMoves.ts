@@ -6,7 +6,8 @@ import { parseMarkdown, readPerson, TAG_WORD_CHARACTERS } from '../markdown/pars
 import { Task, TaskPriority } from '../model';
 import { QueryContext } from '../query/queryContext';
 import { needsNewDate } from './taskPolicy';
-import { isOpenTask, statusForColumnKey } from './taskStatuses';
+import { isOpenTask, statusForColumnKey, type TaskStatusDefinition, UNKNOWN_STATUS_NAME } from './taskStatuses';
+import { readUnknownColumnKey } from './statusColumns';
 import { setTaskStatus } from './statusWrites';
 import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskFields';
 import { appendToTaskText, setTaskAssignee, setTaskDate, setTaskLineCompletion, setTaskPriority } from '../markdown/taskLineEdits';
@@ -105,15 +106,20 @@ export function resolveTaskMove(
 }
 
 /**
- * A status column: the status its key stands for, written as its
- * character; No status, a plain `[ ]`. A key no status stands for is
- * refused, since the board it came from is out of date.
+ * A status column: the status its key stands for, by its name as a slug,
+ * or an unknown character's column, written as its character. A key no
+ * status stands for is refused, since the board it came from is out of
+ * date.
  */
 function moveToStatus({ task, value, options }: MoveRequest): TaskMove {
   const statuses = options.queryContext.taskPolicy.statuses;
-  const status = value ? statusForColumnKey(statuses, value) : statuses.find((candidate) => candidate.symbol === ' ');
+  const unknown = readUnknownColumnKey(value);
+  const status: TaskStatusDefinition | undefined =
+    unknown === undefined ? statusForColumnKey(statuses, value) : { symbol: unknown, name: UNKNOWN_STATUS_NAME, type: 'todo' };
   if (!status) {
-    return refuseMove(`No status in the "Tasks: Statuses" setting is called ${formatStatusLabel(value)}. Refresh the board and try again.`);
+    return refuseMove(value
+      ? `No status in the "Tasks: Statuses" setting is called ${formatStatusLabel(value)}. Refresh the board and try again.`
+      : 'That column no longer exists on the board. Refresh the board and try again.');
   }
   if (isOpenTask(task) && task.status.symbol === status.symbol) {
     return { kind: 'unchanged' };

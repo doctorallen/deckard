@@ -162,3 +162,16 @@ Tags are read once more, by the move alone, which knows the old meaning:
 10. A plain `[ ]` still leaves a table's Status cell, a query block's
     status, and a card's status line empty, as before: its box says it is
     to do, and "Todo" on every row says nothing more.
+11. The gear lists Done after the open statuses and Cancelled after Done,
+    as the board draws them, rather than Done last: Done is fixed and not
+    dragged, and Cancelled only ticks.
+12. The hidden columns, once the gear sets them, replace the default:
+    ticking Cancelled stores an empty list rather than remembering a
+    default to subtract from.
+13. A card in an Unknown column does not say "Unknown [?]" again: its
+    column's header says it.
+14. Statuses that share a name share a column, written as the first of
+    them, since a column goes by its name.
+15. New status… and Give It a Character open Edit Task Statuses with a new
+    row (a `newRow` in its snapshot, added once and kept until the list is
+    saved), its character field focused, rather than a form of their own.

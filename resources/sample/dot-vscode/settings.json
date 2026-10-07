@@ -3,7 +3,6 @@
   "deckard.templatesFolder": "templates",
   "deckard.agenda.query": "",
   "deckard.me": "#person/juno-hale",
-  "deckard.board.statuses": ["todo", "in-progress", "waiting"],
   "deckard.board.limits": { "in-progress": 2 },
   "deckard.tasks.needsNewDateAfterDays": 30,
   "deckard.parked.tags": ["parked"],

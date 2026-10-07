@@ -6,6 +6,8 @@ import { registerCommand } from '../runCommand';
 import { openNoteAt } from '../noteOpening';
 import { findHubTagKey } from '../../state/hubTree';
 import { goToPage } from '../../views/pagesTree';
+import type { TaskStatusType } from '../../../domain/model';
+import { isTaskStatusType } from '../../../domain/tasks/taskStatuses';
 
 /**
  * Opening the pages: Go to…, Home, Stats, Help and
@@ -24,7 +26,9 @@ export function register(context: vscode.ExtensionContext, services: Services): 
       dashboard.show(),
     ),
     registerCommand('deckard.showStats', () => stats.show()),
-    registerCommand('deckard.editTaskStatuses', () => taskStatuses.show()),
+    // New status… on the board's gear, and Give It a Character after the
+    // move into checkboxes, open it on a new row.
+    registerCommand('deckard.editTaskStatuses', (options?: unknown) => taskStatuses.show(readNewStatusRow(options))),
     // A page may open Help at the section about it, such as the calendar's.
     registerCommand('deckard.showHelp', (anchor?: unknown) =>
       help.show(typeof anchor === 'string' && /^[\w-]+$/.test(anchor) ? anchor : undefined),
@@ -212,4 +216,19 @@ function registerEntryRelatedNotes(services: Services): vscode.Disposable[] {
       },
     ),
   ];
+}
+
+/**
+ * The new row Edit Task Statuses is asked to open with, from a command's
+ * argument: `{ newStatus: { name?, type? } }`, or none.
+ */
+function readNewStatusRow(options: unknown): { name: string; type: TaskStatusType } | undefined {
+  const newStatus = (options as { newStatus?: { name?: unknown; type?: unknown } } | undefined)?.newStatus;
+  if (!newStatus || typeof newStatus !== 'object') {
+    return undefined;
+  }
+  return {
+    name: typeof newStatus.name === 'string' ? newStatus.name.slice(0, 80) : '',
+    type: isTaskStatusType(newStatus.type) ? newStatus.type : 'todo',
+  };
 }

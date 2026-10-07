@@ -355,7 +355,6 @@ suite('Task statuses: the board and the Tasks view', () => {
   ]);
   const options: TaskBoardOptions = {
     queryContext: createQueryContext(new Date(2026, 9, 5).getTime()),
-    statuses: ['todo', 'in-progress'],
     format: 'emoji',
   };
   const titleOf = (taskId: string): string => (index.tasks.get(taskId)?.title ?? '').split(' ')[0];
@@ -365,36 +364,37 @@ suite('Task statuses: the board and the Tasks view', () => {
       column.cards.map((card) => `${titleOf(card.taskId)}${card.details.length && card.details[0].startsWith('Unknown') ? ` (${card.details[0]})` : ''}`),
     ]);
 
-  test('columns go by status: a name in the settings orders them, and a character places a card', () => {
+  test('columns are the list\'s open statuses, a character places a card, and one no status names has a column of its own', () => {
     assert.deepStrictEqual(columns(options), [
-      ['No status', ['puzzled (Unknown [?])']],
       ['Todo', ['plain', 'tagged']],
       ['In progress', ['started']],
-      ['Blocked', ['stuck']],
       ['Waiting', ['waiting']],
+      ['Someday', []],
+      ['Blocked', ['stuck']],
+      ['Unknown', ['puzzled']],
       ['Done', ['finished']],
     ]);
   });
 
   test('a Cancelled column follows Done when the gear shows it', () => {
-    assert.deepStrictEqual(columns({ ...options, showCancelled: true }).slice(-2), [
+    assert.deepStrictEqual(columns({ ...options, hiddenColumns: [] }).slice(-2), [
       ['Done', ['finished']],
       ['Cancelled', ['dropped']],
     ]);
   });
 
-  test('the Tasks view groups by the same columns, by name', () => {
-    const groups = createAgenda(index, createQueryContext(new Date(2026, 9, 5).getTime()), { upcomingDays: 7, groupBy: 'status' });
-    assert.deepStrictEqual(
-      groups.map((group) => [group.id, group.label, group.entries.map((entry) => entry.task.title.split(' ')[0])]),
-      [
-        ['todo', 'Todo', ['plain', 'tagged']],
-        ['blocked', 'Blocked', ['stuck']],
-        ['in-progress', 'In progress', ['started']],
-        ['waiting', 'Waiting', ['waiting']],
-        ['none', 'No status', ['puzzled']],
-      ],
-    );
+  test('the Tasks view groups by the same columns, in the board\'s order, hidden ones too', () => {
+    const groups = (statusOrder?: string[]) =>
+      createAgenda(index, createQueryContext(new Date(2026, 9, 5).getTime()), { upcomingDays: 7, groupBy: 'status', ...(statusOrder ? { statusOrder } : {}) })
+        .map((group) => [group.id, group.label, group.entries.map((entry) => entry.task.title.split(' ')[0])]);
+    assert.deepStrictEqual(groups(), [
+      ['todo', 'Todo', ['plain', 'tagged']],
+      ['in-progress', 'In progress', ['started']],
+      ['waiting', 'Waiting', ['waiting']],
+      ['blocked', 'Blocked', ['stuck']],
+      ['unknown-63', 'Unknown [?]', ['puzzled']],
+    ]);
+    assert.deepStrictEqual(groups(['Blocked', 'Waiting']).map((group) => group[0]), ['blocked', 'waiting', 'todo', 'in-progress', 'unknown-63']);
   });
 });
 

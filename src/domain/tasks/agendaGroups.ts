@@ -78,7 +78,8 @@ export function groupColumnId(
     return `priority:${priority === 'none' ? '' : priority}`;
   }
   if (groupBy === 'status') {
-    return `status:${groupId === 'none' ? '' : groupId}`;
+    // The group's id is the key of the board's column for its status.
+    return `status:${groupId}`;
   }
   if (groupBy === 'assignee') {
     // The group's id is the person's tag key, which is what the field holds.

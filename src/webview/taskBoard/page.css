@@ -26,14 +26,14 @@ header { align-items: flex-start; }
 .board-status:focus-visible { outline: 1px solid var(--focus); outline-offset: 1px; }
 .board-status-grip { color: var(--muted); font-size: var(--text-sm); line-height: 1; }
 .board-status.drag-ghost { list-style: none; }
+.board-status-grip:empty { width: 1ch; }
+.board-status-tick { display: flex; flex: 1 1 auto; align-items: center; gap: 6px; min-width: 0; }
+.board-status-box { color: var(--muted); font: var(--text-sm) var(--font-mono); white-space: pre; }
 .board-status-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; color: var(--text); font: var(--text-sm) var(--font-mono); }
-.board-status button { min-width: 26px; min-height: 26px; padding: 2px 6px; }
-.board-status-count { min-width: 26px; padding: 0 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); text-align: center; }
-.board-settings-row { display: flex; align-items: center; gap: 4px; }
+.board-status-count { padding: 0 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); text-align: right; white-space: nowrap; }
+.board-settings-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .board-settings-row input { flex: 1 1 auto; min-width: 0; min-height: 26px; }
 .board-settings-row button { min-height: 26px; padding: 2px 8px; }
-.board-settings-prefix { color: var(--muted); font: var(--text-sm) var(--font-mono); }
-.board-settings-error { margin: 0; color: var(--warning-orange); font-size: var(--text-xs); }
 
 /* The board is wide rather than a reading column, and leads with a cyan rule. */
 main { max-width: none; border-top: var(--edge) solid var(--cyan); }

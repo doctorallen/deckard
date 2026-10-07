@@ -6,7 +6,8 @@ import { formatDisplayDate } from '../../domain/markdown/dateFormat';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import { QueryContext } from '../../domain/query/queryContext';
-import { isOpenTask, readStatusColumnKey, statusForColumnKey } from '../../domain/tasks/taskStatuses';
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
+import { listUnknownColumns, orderOpenStatuses, readTaskColumnKey } from '../../domain/tasks/statusColumns';
 import type { TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { Placement, placeTask } from '../../domain/tasks/agendaPlacement';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
@@ -120,6 +121,8 @@ export interface AgendaOptions {
   groupBy?: AgendaGroupBy;
   /** The namespace whose tags are the groups when `groupBy` is `tag`. */
   groupNamespace?: string;
+  /** The board's status columns' order, by status name, which By status follows. */
+  statusOrder?: readonly string[];
   /**
    * The order a reader dragged their tasks into, from preferences. A task
    * they placed leads its group; the rest follow in the order the group
@@ -259,7 +262,7 @@ type Regrouper = (
 const REGROUPERS = new Map<AgendaGroupBy, Regrouper>([
   ['priority', (entries, _index, _options, order) => groupByPriority(entries, order)],
   ['status', (entries, _index, options, order) =>
-    groupByStatus(entries, options.taskPolicy.statuses, order)],
+    groupByStatus(entries, { statuses: options.taskPolicy.statuses, order: options.statusOrder }, order)],
   ['tag', (entries, index, options, order) =>
     groupByTag(entries, index, options.groupNamespace ?? 'project', order)],
 ]);
@@ -451,19 +454,30 @@ function groupByPriority(
 }
 
 /**
- * Each task's status, its checkbox's, busiest status first, by the key the
+ * Each task's status, its checkbox's, in the board's column order, hidden
+ * statuses too, since this is a list and not a board, then a group per
+ * character no status names, `Unknown [?]`. A group goes by the key the
  * board's column for it has, so a drop on a group writes what a drop on
- * that column does; a character no status names is No status.
+ * that column does.
  */
 function groupByStatus(
   entries: readonly AgendaEntry[],
-  statuses: TaskPolicy['statuses'],
+  reading: { statuses: TaskPolicy['statuses']; order?: readonly string[] },
   order: (left: AgendaEntry, right: AgendaEntry) => number,
 ): AgendaGroup[] {
-  const statusOf = (entry: AgendaEntry): string => readStatusColumnKey(entry.task, statuses) ?? '';
-  const labelOf = (key: string): string =>
-    key ? statusForColumnKey(statuses, key)?.name ?? capitalize(key.replace(/[-_]+/g, ' ')) : 'No status';
-  return collect(entries, statusOf, labelOf, order);
+  const held = new Map<string, AgendaEntry[]>();
+  entries.forEach((entry) => {
+    const key = readTaskColumnKey(entry.task, reading.statuses);
+    held.set(key, [...(held.get(key) ?? []), entry]);
+  });
+  const columns = [
+    ...orderOpenStatuses(reading.statuses, reading.order ? { order: reading.order } : {}),
+    ...listUnknownColumns(entries.map((entry) => entry.task), reading.statuses).map((column) => ({ ...column, name: `${column.name} [${column.symbol}]` })),
+  ];
+  return columns.flatMap((column) => {
+    const group = held.get(column.key);
+    return group ? [{ id: column.key, label: column.name, entries: [...group].sort(order) }] : [];
+  });
 }
 
 /**

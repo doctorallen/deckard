@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 
-import { updateTaskBoardSetting } from '../../ui/commands/taskBoardActions';
 import { createChooseThemeDeps } from '../../ui/commands/chooseTheme';
 import { DeckardTheme } from '../../ui/webview/themeNames';
 import { activateDeckard, arrange, arrangementsOf, assertWrittenWhereSet, clearEverywhere, isMultiRoot } from './scopes';
@@ -38,12 +37,6 @@ const SETTINGS: WrittenSetting<unknown>[] = [
     how: 'the Calendar repeat commands',
     write: toggle('deckard.calendar.showRepeats', 'deckard.calendar.hideRepeats'),
     values: [true, false],
-  },
-  {
-    key: 'board.statuses',
-    how: "the Task Board's columns",
-    write: (value: string[]) => updateTaskBoardSetting('statuses', value),
-    values: [['todo', 'done'], ['next', 'later', 'done']],
   },
   {
     key: 'theme',

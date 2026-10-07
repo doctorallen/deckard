@@ -11,7 +11,6 @@ import { PersistedPreferences, WorkspaceIndex } from '../domain/model';
 
 const options: TaskBoardOptions = {
   queryContext: createQueryContext(Date.parse('2026-09-21T12:00:00Z')),
-  statuses: ['todo'],
   format: 'emoji',
 };
 

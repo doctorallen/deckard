@@ -1,81 +1,63 @@
 import * as assert from 'assert';
-import * as fs from 'fs';
-import * as path from 'path';
 
+import { isBoardNamespace } from '../domain/tasks/taskColumns';
 import {
-  checkNewStatusColumn,
-  isBoardNamespace,
-  isStatusColumnList,
-  isStatusColumnName,
-  MAX_STATUS_COLUMNS,
-} from '../domain/tasks/taskColumns';
+  isCancelledHidden,
+  listUnknownColumns,
+  orderOpenStatuses,
+  readTaskColumnKey,
+  readUnknownColumnKey,
+  unknownColumnKey,
+} from '../domain/tasks/statusColumns';
+import { DEFAULT_TASK_STATUSES, readTaskStatuses } from '../domain/tasks/taskStatuses';
 
 /**
- * The board's status columns, checked once for both sides: the gear says at
- * once why what was typed cannot be a column, and the host refuses a list
- * the setting would not hold.
+ * The board's status columns, a view of the status list: the gear orders
+ * and hides them by name, and the board and the Tasks view read the same
+ * order.
  */
 suite('Status columns', () => {
-  test('a status is letters, digits, - and _, starting with a letter or digit', () => {
-    for (const status of ['todo', 'in-review', 'v2', '2nd_pass', 'Doing', 'à-faire', 'prêt', '進行中', 'e\u0301tape']) {
-      assert.strictEqual(isStatusColumnName(status), true, status);
-    }
-    for (const status of ['', 'to do', '-todo', '_todo', '#todo', 'todo/now', 7, undefined, null]) {
-      assert.strictEqual(isStatusColumnName(status), false, String(status));
-    }
+  const keys = (choices: Parameters<typeof orderOpenStatuses>[1] = {}) =>
+    orderOpenStatuses(DEFAULT_TASK_STATUSES, choices).map((entry) => `${entry.key}${entry.hidden ? ' (hidden)' : ''}`);
+
+  test('every open status is a column, in the list\'s order, until the gear says otherwise', () => {
+    assert.deepStrictEqual(keys(), ['todo', 'in-progress', 'waiting', 'someday', 'blocked']);
+    assert.deepStrictEqual(
+      orderOpenStatuses(DEFAULT_TASK_STATUSES).map((entry) => `[${entry.symbol}] ${entry.name}`),
+      ['[ ] Todo', '[/] In progress', '[w] Waiting', '[s] Someday', '[=] Blocked'],
+    );
   });
 
-  test('a namespace starts with a letter', () => {
-    for (const namespace of ['status', 'stage-2', 'Context', 'a_b', 'état', 'Étape', '状態']) {
-      assert.strictEqual(isBoardNamespace(namespace), true, namespace);
-    }
-    for (const namespace of ['', '1stage', 'a b', '-x', 'a/b', '\u0301a', 'a·b', 3, undefined]) {
-      assert.strictEqual(isBoardNamespace(namespace), false, String(namespace));
-    }
+  test('the gear orders columns by name, the rest after, and hides them by name', () => {
+    assert.deepStrictEqual(keys({ order: ['Blocked', 'in progress', 'Gone'] }), ['blocked', 'in-progress', 'todo', 'waiting', 'someday']);
+    assert.deepStrictEqual(keys({ hidden: ['someday'] }), ['todo', 'in-progress', 'waiting', 'someday (hidden)', 'blocked']);
   });
 
-  test('a list holds no more than the gear keeps, each a status', () => {
-    assert.strictEqual(isStatusColumnList([]), true);
-    assert.strictEqual(isStatusColumnList(['todo', 'doing']), true);
-    assert.strictEqual(isStatusColumnList(Array.from({ length: MAX_STATUS_COLUMNS }, (_, at) => `s${at}`)), true);
-    assert.strictEqual(isStatusColumnList(Array.from({ length: MAX_STATUS_COLUMNS + 1 }, (_, at) => `s${at}`)), false);
-    assert.strictEqual(isStatusColumnList(['todo', 'to do']), false);
-    assert.strictEqual(isStatusColumnList('todo'), false);
-    assert.strictEqual(isStatusColumnList(undefined), false);
+  test('Cancelled is hidden until the gear shows it, by its status\'s name', () => {
+    assert.strictEqual(isCancelledHidden(DEFAULT_TASK_STATUSES), true);
+    assert.strictEqual(isCancelledHidden(DEFAULT_TASK_STATUSES, { hidden: [] }), false);
+    const dropped = readTaskStatuses([{ symbol: '-', name: 'Dropped', type: 'cancelled' }]);
+    assert.strictEqual(isCancelledHidden(dropped), false, 'a cancelled status of another name is shown');
+    assert.strictEqual(isCancelledHidden(dropped, { hidden: ['dropped'] }), true);
   });
 
-  test('a status typed to add is saved trimmed and in lower case, or says why it cannot be', () => {
-    assert.strictEqual(checkNewStatusColumn('   ', ['todo']), undefined, 'an empty field adds nothing');
-    assert.deepStrictEqual(checkNewStatusColumn('  Review ', ['todo']), { value: 'review' });
-    assert.deepStrictEqual(checkNewStatusColumn('in review', ['todo']), {
-      error: 'A status is letters, digits, - and _, starting with a letter or digit.',
-    });
-    assert.deepStrictEqual(checkNewStatusColumn('TODO', ['todo', 'doing']), { error: 'todo is already a column.' });
-    assert.deepStrictEqual(checkNewStatusColumn(' À-Faire ', ['todo']), { value: 'à-faire' }, 'a status in any script, as tags are');
+  test('a character no status names is a column of its own, by its code point', () => {
+    assert.strictEqual(unknownColumnKey('?'), 'unknown-63');
+    assert.strictEqual(readUnknownColumnKey('unknown-63'), '?');
+    assert.strictEqual(readUnknownColumnKey('unknown-x'), undefined);
+    assert.strictEqual(readUnknownColumnKey('todo'), undefined);
+    const tasks = ['?', '!', '?', '/'].map((symbol) => ({ status: { symbol, name: symbol === '/' ? 'In progress' : 'Unknown', type: 'todo' as const } }));
+    assert.deepStrictEqual(listUnknownColumns(tasks, DEFAULT_TASK_STATUSES).map((entry) => entry.key), ['unknown-33', 'unknown-63']);
+    assert.strictEqual(readTaskColumnKey({ status: { symbol: '!', name: 'Unknown', type: 'todo' } }, DEFAULT_TASK_STATUSES), 'unknown-33');
+    assert.strictEqual(readTaskColumnKey({ status: { symbol: 'w', name: 'Waiting', type: 'onHold' } }, DEFAULT_TASK_STATUSES), 'waiting');
   });
 
   test('a namespace to group by starts with a letter, in any script', () => {
-    for (const typed of ['status', 'Context', 'état', '状態']) {
-      assert.strictEqual(isBoardNamespace(typed), true, typed);
+    for (const namespace of ['status', 'stage-2', 'Context', 'a_b', 'état', 'Étape', '状態']) {
+      assert.strictEqual(isBoardNamespace(namespace), true, namespace);
     }
-    for (const typed of ['', '1stage', 'a b', '-x', 'a/b', '\u0301a']) {
-      assert.strictEqual(isBoardNamespace(typed), false, typed);
-    }
-  });
-
-  test('the settings allow what the board takes, as VS Code reads their patterns', () => {
-    const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', '..', 'package.json'), 'utf8')) as {
-      contributes: { configuration: { properties: Record<string, { pattern?: string; items?: { pattern?: string } }> }[] };
-    };
-    const settings = Object.assign({}, ...manifest.contributes.configuration.map((section) => section.properties)) as Record<
-      string,
-      { pattern?: string; items?: { pattern?: string } }
-    >;
-    // VS Code compiles a setting's pattern with the `u` flag.
-    const pattern = (source: string | undefined): RegExp => new RegExp(source ?? '', 'u');
-    const statuses = pattern(settings['deckard.board.statuses'].items?.pattern);
-    for (const typed of ['todo', 'Doing', '2nd_pass', 'à-faire', '進行中', 'e\u0301tape', '', 'to do', '-todo', '#todo', 'a/b']) {
-      assert.strictEqual(statuses.test(typed), isStatusColumnName(typed), `deckard.board.statuses: ${typed}`);
+    for (const namespace of ['', '1stage', 'a b', '-x', 'a/b', '́a', 'a·b', 3, undefined]) {
+      assert.strictEqual(isBoardNamespace(namespace), false, String(namespace));
     }
   });
 });

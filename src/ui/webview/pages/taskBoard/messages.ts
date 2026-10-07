@@ -7,7 +7,6 @@
 import { TASK_SORT_MODES, type TaskBoardGroupBy, type TaskSortMode } from '../../../../domain/model/preferences';
 import {
   isBoardNamespace,
-  isStatusColumnList,
   isTaskColumnId,
 } from '../../../../domain/tasks/taskColumns';
 import type {
@@ -23,9 +22,10 @@ import type {
   SaveToTasksViewMessage,
   SetBoardGroupMessage,
   SetBoardQueryMessage,
-  SetBoardStatusesMessage,
+  EditTaskStatusesMessage,
+  SetBoardColumnOrderMessage,
+  SetBoardColumnShownMessage,
   SetBoardParentTagMessage,
-  SetBoardShowCancelledMessage,
   SetTableColumnsMessage,
   SetTableSortMessage,
   SetTaskLayoutMessage,
@@ -171,16 +171,33 @@ const narrowSetTaskSort: Narrower<SetTaskSortMessage> = (value) =>
 const narrowReorderTasks: Narrower<ReorderTasksMessage> = (value) =>
   isStringArray(value.taskIds) ? { type: 'reorderTasks', taskIds: [...value.taskIds] } : undefined;
 
-/**
- * The status columns, in order: no more than the gear keeps, each a status
- * the setting allows, by the validator the page checks them with.
- */
-const narrowSetBoardStatuses: Narrower<SetBoardStatusesMessage> = (value) =>
-  isStatusColumnList(value.statuses) ? { type: 'setBoardStatuses', statuses: [...value.statuses] } : undefined;
+/** The most status names an order may hold, far more than any list has. */
+const MAX_COLUMN_NAMES = 100;
+/** The longest a status's name may be. */
+const MAX_NAME_LENGTH = 80;
 
-/** Whether to draw the Cancelled column. */
-const narrowSetBoardShowCancelled: Narrower<SetBoardShowCancelledMessage> = (value) =>
-  typeof value.show === 'boolean' ? { type: 'setBoardShowCancelled', show: value.show } : undefined;
+/** Whether a value is a status's name as the gear sends one: some text, not too long. */
+function isStatusName(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0 && value.length <= MAX_NAME_LENGTH;
+}
+
+/** The status columns' order: status names, no more than a list holds. */
+const narrowSetBoardColumnOrder: Narrower<SetBoardColumnOrderMessage> = (value) =>
+  Array.isArray(value.names) && value.names.length <= MAX_COLUMN_NAMES && value.names.every(isStatusName)
+    ? { type: 'setBoardColumnOrder', names: [...value.names] }
+    : undefined;
+
+/** One status's column shown or hidden, by its name. */
+const narrowSetBoardColumnShown: Narrower<SetBoardColumnShownMessage> = (value) =>
+  isStatusName(value.name) && typeof value.shown === 'boolean'
+    ? { type: 'setBoardColumnShown', name: value.name, shown: value.shown }
+    : undefined;
+
+/** Edit Task Statuses, opened from the gear, on a new row or not. */
+const narrowEditTaskStatuses: Narrower<EditTaskStatusesMessage> = (value) =>
+  value.newStatus === undefined || typeof value.newStatus === 'boolean'
+    ? { type: 'editTaskStatuses', ...(value.newStatus ? { newStatus: true } : {}) }
+    : undefined;
 
 /** Whether to show each card's nearest parent tag. */
 const narrowSetBoardParentTag: Narrower<SetBoardParentTagMessage> = (value) =>
@@ -220,8 +237,9 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   setTableColumns: narrowSetTableColumns,
   setTaskSort: narrowSetTaskSort,
   reorderTasks: narrowReorderTasks,
-  setBoardStatuses: narrowSetBoardStatuses,
-  setBoardShowCancelled: narrowSetBoardShowCancelled,
+  setBoardColumnOrder: narrowSetBoardColumnOrder,
+  setBoardColumnShown: narrowSetBoardColumnShown,
+  editTaskStatuses: narrowEditTaskStatuses,
   setBoardParentTag: narrowSetBoardParentTag,
 };
 

@@ -18,7 +18,6 @@ import { appendTagToLine } from './bulkEdit';
 import { readQueryContext } from './queryContext';
 import { formatCaptureLine } from '../../domain/capture/captureLines';
 import { Task } from '../../domain/model';
-import { readBoardStatuses } from '../../domain/tasks/taskPolicy';
 
 /**
  * Reads the task board settings. Every page that shows a board reads them
@@ -29,11 +28,9 @@ export function readTaskBoardOptions(queryContext: QueryContext): TaskBoardOptio
   const configuration = vscode.workspace.getConfiguration('deckard');
   return {
     queryContext,
-    statuses: readBoardStatuses(configuration),
     format: readTaskMetadataFormat(configuration),
     limits: readBoardLimits(configuration.get<unknown>('board.limits', {})),
     addCancelledDate: configuration.get<boolean>('tasks.addCancelledDate', true),
-    showCancelled: configuration.get<boolean>('board.showCancelled', false) === true,
     parentTag: configuration.get<boolean>('board.parentTag', false) === true,
   };
 }
@@ -44,8 +41,8 @@ export function readTaskBoardOptions(queryContext: QueryContext): TaskBoardOptio
  * already set, so a workspace that sets its own columns keeps them there.
  */
 export async function updateTaskBoardSetting(
-  key: 'statuses' | 'showCancelled' | 'parentTag',
-  value: string[] | string | boolean,
+  key: 'parentTag',
+  value: boolean,
 ): Promise<void> {
   const configuration = vscode.workspace.getConfiguration('deckard');
   const current = configuration.inspect(`board.${key}`);

@@ -97,7 +97,6 @@ function relatedTagKeys(snapshot: ReturnType<typeof overview>): string[] {
 
 const boardOptions: TaskBoardOptions = {
   queryContext: createQueryContext(Date.now()),
-  statuses: ['todo', 'doing'],
   format: 'emoji',
 };
 

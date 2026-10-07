@@ -15,7 +15,6 @@ const at = (month: number, day: number): number =>
 /** Mid-morning on Sunday 2026-09-13. */
 const options: TaskBoardOptions = {
   queryContext: createQueryContext(at(9, 13) + 9 * 60 * 60 * 1000),
-  statuses: ['todo', 'in-progress'],
   format: 'emoji',
 };
 
@@ -63,14 +62,18 @@ suite('Task board', () => {
     ]);
 
   test('groups by the status in each task\'s box', () => {
-    assert.deepStrictEqual(ids(board(createIndex(), 'status', '', options)), [
-      ['status:', []],
+    const layout = board(createIndex(), 'status', '', options);
+    assert.deepStrictEqual(ids(layout), [
+      // Every open status of the list, in its order; Cancelled is hidden.
       ['status:todo', ['call', 'draft']],
       ['status:in-progress', ['audit']],
-      // A status found on a task but not configured gets its own column.
       ['status:waiting', ['brief']],
+      ['status:someday', []],
+      ['status:blocked', []],
       ['done', ['ship', 'file']],
     ]);
+    assert.deepStrictEqual(layout.columns.map((column) => column.symbol), [' ', '/', 'w', 's', '=', 'x'], 'each header says its character');
+    assert.deepStrictEqual(board(createIndex(), 'priority', '', options).columns.map((column) => column.symbol), [undefined, undefined, undefined, undefined, undefined, undefined, undefined], 'only status columns say one');
   });
 
   test('a long column draws its first hundred cards, and the rest on request', () => {
@@ -117,25 +120,29 @@ suite('Task board', () => {
     assert.ok(!layout.columns.find((column) => column.id === 'done')?.cards.some((card) => card.taskId === 'marked'));
   });
 
-  test('a configured name no open status has adds no column', () => {
-    const layout = board(createIndex(), 'status', '', {
-      ...options,
-      statuses: ['todo', 'in-progress', 'done', 'doing'],
-    });
-    assert.deepStrictEqual(
-      layout.columns.map((column) => column.label),
-      ['No status', 'Todo', 'In progress', 'Waiting', 'Done'],
-    );
+  test('the gear orders the status columns and hides them, by name', () => {
+    const layout = board(createIndex(), 'status', '', { ...options, columnOrder: ['Waiting', 'Gone'], hiddenColumns: ['someday', 'cancelled'] });
+    assert.deepStrictEqual(layout.columns.map((column) => column.label), ['Waiting', 'Todo', 'In progress', 'Blocked', 'Done']);
+    const index = createIndex();
+    index.tasks.set('dropped', createTask('dropped', '- [-] Drop it ❌ 2026-09-11', { status: { symbol: '-', name: 'Cancelled', type: 'cancelled' }, cancelledAt: at(9, 11) }));
+    const all = board(index, 'status', '', { ...options, hiddenColumns: [] });
+    assert.deepStrictEqual(all.columns.slice(-2).map((column) => [column.id, column.symbol, column.cards.map((card) => card.taskId)]), [
+      ['done', 'x', ['ship', 'file']],
+      ['cancelled', '-', ['dropped']],
+    ], 'Cancelled follows Done when the gear shows it');
+    const preferred = createTaskBoard({ index, preferences: preferencesWith({ taskBoardColumnOrder: ['Blocked'], taskBoardHiddenColumns: [] }), search: { query: '' }, options });
+    assert.deepStrictEqual(preferred.columns.map((column) => column.id).slice(0, 2), ['status:blocked', 'status:todo'], 'the board reads the gear\'s preferences');
+    assert.strictEqual(preferred.columns.at(-1)?.id, 'cancelled');
   });
 
-  test('a plain box is Todo, so the board never says the tasks have no status', () => {
-    const bare = createIndex();
-    for (const task of bare.tasks.values()) {
-      if (!task.completed) {
-        task.status = { symbol: ' ', name: 'Todo', type: 'todo' };
-      }
-    }
-    assert.strictEqual(board(bare, 'status', '', options).statusHint, undefined);
+  test('a character no status names is a column of its own, after the statuses', () => {
+    const index = createIndex();
+    index.tasks.set('ask', createTask('ask', '- [?] Ask about the lens', {}));
+    const layout = board(index, 'status', '', options);
+    const unknown = layout.columns.find((column) => column.id === 'status:unknown-63');
+    assert.deepStrictEqual([unknown?.label, unknown?.symbol, unknown?.cards.map((card) => card.taskId)], ['Unknown', '?', ['ask']]);
+    assert.strictEqual(layout.columns.indexOf(unknown as never), layout.columns.length - 2, 'last before Done');
+    assert.strictEqual(resolveTaskMove(index.tasks.get('call') as Task, 'status:unknown-63', options).kind, 'edit');
   });
 
   test('groups by priority and by due date', () => {
@@ -274,16 +281,21 @@ suite('Task board', () => {
     );
     assert.deepStrictEqual(listed.taskCounts, { all: 2, active: 0, completed: 2 });
     assert.deepStrictEqual(listed.settings, {
-      statuses: ['todo', 'in-progress'],
-      // Every column the board draws, the unlisted Waiting with them.
+      // Every status the gear lists, each with its open tasks.
       columns: [
-        { status: 'todo', openTasks: 2, label: 'Todo' },
-        { status: 'in-progress', openTasks: 1, label: 'In progress' },
-        { status: 'waiting', openTasks: 1, label: 'Waiting' },
+        { id: 'status:todo', name: 'Todo', symbol: ' ', shown: true, openTasks: 2 },
+        { id: 'status:in-progress', name: 'In progress', symbol: '/', shown: true, openTasks: 1 },
+        { id: 'status:waiting', name: 'Waiting', symbol: 'w', shown: true, openTasks: 1 },
+        { id: 'status:someday', name: 'Someday', symbol: 's', shown: true, openTasks: 0 },
+        { id: 'status:blocked', name: 'Blocked', symbol: '=', shown: true, openTasks: 0 },
+        { id: 'done', name: 'Done', symbol: 'x', shown: true, openTasks: 0, fixed: true },
+        { id: 'cancelled', name: 'Cancelled', symbol: '-', shown: false, openTasks: 0 },
       ],
-      showCancelled: false,
       parentTag: false,
     });
+    const hidden = createTaskBoard({ index: createIndex(), preferences: preferencesWith({ taskBoardHiddenColumns: ['Waiting'] }), search: { query: '' }, options });
+    assert.deepStrictEqual(hidden.settings.columns[2], { id: 'status:waiting', name: 'Waiting', symbol: 'w', shown: false, openTasks: 1 }, 'a hidden status still counts its open tasks');
+    assert.strictEqual(hidden.taskCount, 6, 'and the board\'s total counts them');
     assert.strictEqual(board(createIndex(), 'status', '', options).tasks, undefined);
   });
 

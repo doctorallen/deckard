@@ -212,6 +212,13 @@ export interface PersistedPreferences {
   taskBoardGroup: TaskBoardGroupBy;
   /** The namespace whose tags are the board's columns when grouped by tag. */
   taskBoardGroupNamespace?: string;
+  /**
+   * The order of the board's status columns, by status name, as its gear
+   * sets it. A status not named follows those named, in the list's order.
+   */
+  taskBoardColumnOrder?: string[];
+  /** The statuses the board draws no column for, by name; Cancelled when unset. */
+  taskBoardHiddenColumns?: string[];
 
   /** The widgets on the Dashboard's Home, in order. */
   dashboardWidgets: DashboardWidgetConfig[];

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import type { TaskStatusesPageToHost, TaskStatusesSnapshot } from '../protocol/taskStatuses';
+import type { NewStatusRow, TaskStatusesPageToHost, TaskStatusesSnapshot } from '../protocol/taskStatuses';
 import { PanelAdapter } from './host/panelAdapter';
 import { WebviewHost, type HostIndexer } from './host/webviewHost';
 import { TaskStatusesController, type TaskStatusesControllerOptions } from './pages/taskStatuses/taskStatusesController';
@@ -19,17 +19,22 @@ export interface TaskStatusesPanelOptions extends TaskStatusesControllerOptions 
  */
 export class TaskStatusesPanel implements vscode.Disposable {
   private readonly page: PanelAdapter<TaskStatusesSnapshot, TaskStatusesPageToHost>;
+  private readonly controller: TaskStatusesController;
 
   /** Builds the page; nothing is shown until `show`. */
   public constructor(options: TaskStatusesPanelOptions) {
+    this.controller = new TaskStatusesController(options);
     this.page = new PanelAdapter(
-      new WebviewHost(new TaskStatusesController(options), { indexer: options.indexer, themePreview: options.themePreview }),
+      new WebviewHost(this.controller, { indexer: options.indexer, themePreview: options.themePreview }),
       { viewType: 'deckard.taskStatuses', title: 'Task Statuses', extensionUri: options.extensionUri, icon: ['resources', 'deckard.svg'] },
     );
   }
 
-  /** Opens the page, or brings it to the front. */
-  public show(): Promise<void> {
+  /** Opens the page, or brings it to the front, with a new row to fill in when one is given. */
+  public show(newRow?: Omit<NewStatusRow, 'id'>): Promise<void> {
+    if (newRow) {
+      this.controller.addNewRow(newRow);
+    }
     return this.page.show();
   }
 

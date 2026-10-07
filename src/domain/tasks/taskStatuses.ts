@@ -226,15 +226,3 @@ export function statusForColumnKey(statuses: readonly TaskStatusDefinition[], ke
   const wanted = key.toLowerCase();
   return statuses.find((status) => isOpenType(status.type) && slugStatusName(status.name) === wanted);
 }
-
-/**
- * The status column a task sits in, by key: its box's status's. Undefined
- * for a character no status names.
- */
-export function readStatusColumnKey(
-  task: Pick<Task, 'status'>,
-  statuses: readonly TaskStatusDefinition[],
-): string | undefined {
-  const status = bySymbol(statuses).get(task.status.symbol);
-  return status ? statusColumnKey(status) : undefined;
-}

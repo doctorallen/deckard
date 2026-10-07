@@ -31,6 +31,8 @@ import {
 import { breakIntoStepsCommand } from '../../../commands/taskSteps';
 import { normalizeAgendaQuery } from '../../../state/agendaState';
 import { rankShown } from '../../../../domain/tasks/taskRank';
+import { DEFAULT_HIDDEN_COLUMNS } from '../../../../domain/tasks/statusColumns';
+import { normalizeStatusName } from '../../../../domain/tasks/taskStatuses';
 import { formatQueryBlock, queryBlockSortOf, QueryBlockWriteOptions } from '../../../state/queryBlockState';
 import { createTaskBoard } from '../../../state/taskBoardState';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
@@ -393,8 +395,9 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     | 'useSearchForAgenda'
     | 'saveToTasksView'
     | 'leaveTasksViewMode'
-    | 'setBoardStatuses'
-    | 'setBoardShowCancelled'
+    | 'setBoardColumnOrder'
+    | 'setBoardColumnShown'
+    | 'editTaskStatuses'
     | 'setBoardParentTag'
   > {
     const { taskLayout, reader } = this.board.preferences;
@@ -439,9 +442,14 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         this.leaveTasksViewMode();
         page.refresh();
       },
-      setBoardStatuses: (message) =>
-        updateTaskBoardSetting('statuses', [...new Set(message.statuses.map((status) => status.toLowerCase()))]),
-      setBoardShowCancelled: (message) => updateTaskBoardSetting('showCancelled', message.show),
+      setBoardColumnOrder: (message) => taskLayout.setTaskBoardColumnOrder(message.names),
+      setBoardColumnShown: (message) => {
+        const name = normalizeStatusName(message.name);
+        const hidden = (reader.value.taskBoardHiddenColumns ?? DEFAULT_HIDDEN_COLUMNS).filter((each) => normalizeStatusName(each) !== name);
+        return taskLayout.setTaskBoardHiddenColumns(message.shown ? hidden : [...hidden, message.name]);
+      },
+      editTaskStatuses: (message) =>
+        vscode.commands.executeCommand('deckard.editTaskStatuses', message.newStatus ? { newStatus: {} } : undefined),
       setBoardParentTag: (message) => updateTaskBoardSetting('parentTag', message.show),
     };
   }

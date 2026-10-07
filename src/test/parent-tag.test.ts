@@ -35,7 +35,6 @@ const index = indexOf({
 
 const options: TaskBoardOptions = {
   queryContext: createQueryContext(new Date(2026, 9, 6).getTime()),
-  statuses: ['todo', 'doing'],
   format: 'emoji',
 };
 

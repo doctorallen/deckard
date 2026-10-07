@@ -45,7 +45,7 @@ suite('Component primitives', () => {
       index,
       preferences: { ...store.reader.value, taskBoardLayout: 'board' },
       search: { query: '' },
-      options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'in-progress'], format: 'emoji' },
+      options: { queryContext: createQueryContext(NOW), format: 'emoji' },
       tagTitleDisplayMode: 'inline',
     });
     page = openWebviewPage(renderPage('taskBoard'), board);
@@ -283,38 +283,23 @@ suite('Component primitives', () => {
     });
   });
 
-  suite('removals (9g)', () => {
-    test('a removed status column can be put back for a moment', () => {
-      const board = openBoard();
-      board.click('[data-action="remove-status"][data-status="in-progress"]');
-      assert.deepStrictEqual(board.lastPosted('setBoardStatuses'), { type: 'setBoardStatuses', statuses: ['todo'] });
-      assert.match(board.text('.undo-notice') ?? '', /^Removed the in-progress column\. Undo$/);
-      assert.strictEqual(board.document.activeElement, board.find('[data-action="undo-remove-status"]'), 'focus is on Undo');
-      board.click('[data-action="undo-remove-status"]');
-      assert.deepStrictEqual(board.lastPosted('setBoardStatuses'), { type: 'setBoardStatuses', statuses: ['todo', 'in-progress'] });
-      assert.strictEqual(board.findAll('.undo-notice').length, 0);
-    });
-  });
-
   suite('status columns in the gear', () => {
-    test('lists every status the board draws, and a status tasks carry cannot be removed', () => {
+    test('lists every status, an open one ordered by its row, and says how many open tasks each has', () => {
       const board = openBoard('# Work\n- [w] Send the proposal\n- [/] Book the room\n');
       assert.deepStrictEqual(
-        board.findAll('.board-status').map((row) => row.getAttribute('data-status')),
-        ['todo', 'in-progress', 'waiting'],
-        'the listed ones, then one the tasks carry',
+        board.findAll('.board-status').map((row) => row.querySelector('.board-status-name')?.textContent),
+        ['Todo', 'In progress', 'Waiting', 'Someday', 'Blocked', 'Done', 'Cancelled'],
+        'the list\'s open statuses, then Done and Cancelled',
       );
-      assert.ok(board.find('[data-action="remove-status"][data-status="todo"]'), 'an empty column can be removed');
-      assert.strictEqual(board.findAll('[data-action="remove-status"][data-status="waiting"]').length, 0, 'one a task carries cannot');
-      assert.strictEqual(board.text('.board-status[data-status="waiting"] .board-status-count'), '1');
-      board.find('.board-status[data-status="waiting"]').dispatchEvent(
+      assert.strictEqual(board.text('.board-status[data-status="Waiting"] .board-status-count'), '1 open');
+      board.find('.board-status[data-status="Waiting"]').dispatchEvent(
         new board.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }),
       );
       board.click('#rank-context-menu [data-context-action="top"]');
       assert.deepStrictEqual(
-        board.lastPosted('setBoardStatuses'),
-        { type: 'setBoardStatuses', statuses: ['waiting', 'todo', 'in-progress'] },
-        'ordering saves every column, the unlisted one with them',
+        board.lastPosted('setBoardColumnOrder'),
+        { type: 'setBoardColumnOrder', names: ['Waiting', 'Todo', 'In progress', 'Someday', 'Blocked'] },
+        'ordering saves every open status, by name',
       );
     });
   });

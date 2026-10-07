@@ -1,65 +1,78 @@
 /**
- * The gear's status columns: dragged into order and each removable, and a
- * field to add one.
+ * The gear's status columns: the status list as the board shows it, a row
+ * per status, ticked to draw its column and dragged into order, with its
+ * box and how many open tasks have it; and the way to the list itself.
  */
-import type { TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
+import type { BoardStatusColumn, TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
 import { board } from './model';
 
-/** `spellcheck="false"`, written as an attribute in every browser: Chrome's property would read the string as true. */
-const NO_SPELLCHECK: Readonly<Record<string, string>> = { spellCheck: 'false' };
-
-/** What is being typed into the gear's fields, and what was wrong with the last thing saved. */
-export interface SettingsDrafts {
-  readonly status: string;
-  readonly error: string;
-}
-
-/**
- * Every status column the board draws, listed or not, in its order. Ordering
- * them saves the whole order, so a status the tasks carry keeps its place.
- */
+/** The names of the statuses whose columns can be ordered, in the board's order: the open ones. */
 export function statusColumnNames(snapshot: TaskBoardSnapshot): string[] {
-  const columns = snapshot.settings.columns;
-  return columns ? columns.map((column) => column.status) : snapshot.settings.statuses.slice();
+  return snapshot.settings.columns.filter(isOrdered).map((column) => column.name);
 }
 
-/** One status column, dragged into order; one no open task carries can be removed. */
-function StatusRow({ status, openTasks, label }: { readonly status: string; readonly openTasks: number; readonly label?: string }) {
+/** Whether a status's column is ordered by dragging: an open status's is; Done's and Cancelled's are not. */
+function isOrdered(column: BoardStatusColumn): boolean {
+  return column.id.startsWith('status:');
+}
+
+/** How many open tasks have a status, and whether the board hides them: "9 open, hidden". */
+function describeCount(column: BoardStatusColumn): string {
+  if (!column.openTasks) {
+    return '';
+  }
+  return `${column.openTasks} open${column.shown ? '' : ', hidden'}`;
+}
+
+/** What a row's tip says: how to move it, or why it stays where it is. */
+function rowTip(column: BoardStatusColumn): string {
+  if (isOrdered(column)) {
+    return 'Drag to reorder, or press the menu key (Shift+F10) to move it first or last';
+  }
+  return column.fixed ? 'Done is always a column, after every open status' : 'Cancelled comes after Done when it is shown';
+}
+
+/** One status: its tick, its box and name, its open count, and, for an open status, its grip. */
+function StatusRow({ column }: { readonly column: BoardStatusColumn }) {
+  const ordered = isOrdered(column);
+  const count = describeCount(column);
   return (
-    <li class="board-status is-draggable" tabIndex={0} data-status={status} data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last">
-      <span class="board-status-grip" aria-hidden="true">⠿</span>
-      <span class="board-status-name">{label || status}</span>
-      {/* A status open tasks carry is a column whether it is listed or not, so there is nothing to remove: it would come straight back. */}
-      {openTasks === 0
-        ? <button key="remove" type="button" data-action="remove-status" data-status={status} aria-label={`Remove ${label || status}`} data-tip="Remove column">×</button>
-        : <span key="count" class="board-status-count" data-tip="Open tasks with this status; a column while any have it">{openTasks}</span>}
+    <li
+      class={ordered ? 'board-status is-draggable' : 'board-status'}
+      tabIndex={ordered ? 0 : undefined}
+      data-status={ordered ? column.name : undefined}
+      data-tip={rowTip(column)}
+    >
+      <span class="board-status-grip" aria-hidden="true">{ordered ? '⠿' : ''}</span>
+      <label class="board-status-tick">
+        <input
+          type="checkbox"
+          data-action="show-status-column"
+          data-name={column.name}
+          checked={column.shown}
+          disabled={column.fixed === true}
+          aria-label={`Show ${column.name} [${column.symbol}] as a column`}
+        />
+        <span class="board-status-box" aria-hidden="true">{`[${column.symbol}]`}</span>
+        <span class="board-status-name">{column.name}</span>
+      </label>
+      {count ? <span key="count" class="board-status-count" data-tip="Open tasks with this status, in the whole workspace">{count}</span> : null}
     </li>
   );
 }
 
-/** The status columns, and a field to add one. */
-export function StatusSettings({ snapshot, drafts }: { readonly snapshot: TaskBoardSnapshot; readonly drafts: SettingsDrafts }) {
-  const columns: { status: string; openTasks: number; label?: string }[] = snapshot.settings.columns || snapshot.settings.statuses.map((status) => ({ status, openTasks: 0 }));
+/** The status columns, and the way to the status list. */
+export function StatusSettings({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   return (
     <div class="board-settings">
-      <p class="board-settings-note">Columns when grouped by Status. Every status your open tasks carry is a column, listed here or not; drag to set their order. No status comes first and Done last. Saved in your settings, so the order applies to every workspace unless this one sets its own.</p>
-      {columns.length
-        ? (
-          <ul key={`statuses-${board.generation}`} class="board-status-list" aria-label="Status columns">
-            {columns.map((column) => <StatusRow key={column.status} status={column.status} openTasks={column.openTasks} label={column.label} />)}
-          </ul>
-        )
-        : <p key="none" class="board-settings-note">No task has a status yet, so the board has only No status and Done.</p>}
-      <p class="board-settings-note">Add a status for an empty column to drop cards into. One no open task has can be removed.</p>
-      <form class="board-settings-row" data-form="add-status">
-        <input type="text" data-action="status-draft" value={drafts.status} placeholder="Add a status, such as review" aria-label="New status column" autocomplete="off" {...NO_SPELLCHECK} />
-        <button type="submit">Add</button>
-      </form>
-      <label class="board-settings-row">
-        <input type="checkbox" data-action="show-cancelled" checked={snapshot.settings.showCancelled === true} />
-        <span>Show a Cancelled column after Done</span>
-      </label>
-      {drafts.error ? <p key="error" class="board-settings-error" role="alert">{drafts.error}</p> : null}
+      <p class="board-settings-note">Columns when grouped by Status, one per status in your list. Tick one to show it, drag to set the order. Done is always a column; a character no status names gets one of its own.</p>
+      <ul key={`statuses-${board.generation}`} class="board-status-list" aria-label="Status columns">
+        {snapshot.settings.columns.map((column) => <StatusRow key={column.id} column={column} />)}
+      </ul>
+      <div class="board-settings-row">
+        <button type="button" data-action="new-task-status" data-tip="Add a status to the list, with its character">New status…</button>
+        <button type="button" data-action="edit-task-statuses" data-tip="Open Edit Task Statuses">Edit statuses…</button>
+      </div>
     </div>
   );
 }

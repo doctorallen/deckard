@@ -109,9 +109,11 @@ export interface TaskBoardCard {
  * One column of the board: what dropping a card there writes, and its cards.
  */
 export interface TaskBoardColumn {
-  /** What dropping a task here writes, such as `status:doing` or `done`. */
+  /** What dropping a task here writes, such as `status:in-progress` or `done`. */
   id: string;
   label: string;
+  /** The character of the status a status column stands for, which its header says after its name: `/`. */
+  symbol?: string;
   /** False for a column that no single edit can move a task into. */
   droppable: boolean;
   cards: TaskBoardCard[];
@@ -128,13 +130,6 @@ export interface TaskBoardLayout {
   groupBy: TaskBoardGroupBy;
   columns: TaskBoardColumn[];
   taskCount: number;
-  /**
-   * Present when the board is grouped by status and almost no open task
-   * carries one, so the first column holds nearly everything: how many of
-   * the open tasks have no status. The page says so above the columns and
-   * offers the due-date grouping, which works for any task.
-   */
-  statusHint?: { withoutStatus: number; open: number };
   /** The namespace the columns are the tags of, when grouped by tag. */
   groupNamespace?: string;
   /** The namespaces open tasks carry, busiest first, for the Tag… menu. */
@@ -217,19 +212,30 @@ export interface TaskTableRow {
   cells: TableCell[];
 }
 
-/** The `deckard.board` settings, as the Task Board's view options show them. */
+/** What the Task Board's view options show and edit. */
 export interface TaskBoardSettings {
-  statuses: string[];
   /**
-   * Every status column the board draws, in its order: the listed ones,
-   * then any other status an open task carries. The gear lists these, so a
-   * column that is on the board is in the list that orders it.
+   * Every status the gear lists, in the board's order: the open statuses,
+   * then Done, then Cancelled. A card's menu offers each.
    */
-  columns?: { status: string; openTasks: number; label?: string }[];
-  /** Whether the board draws a Cancelled column after Done. */
-  showCancelled?: boolean;
+  columns: BoardStatusColumn[];
   /** Whether each card and row shows its task's nearest parent tag. */
   parentTag?: boolean;
+}
+
+/** One status as the gear lists it, a column or not. */
+export interface BoardStatusColumn {
+  /** What a drop on its column writes: `status:in-progress`, `done`, or `cancelled`. */
+  id: string;
+  name: string;
+  /** Its character: `/`. */
+  symbol: string;
+  /** Whether the board draws a column for it; the gear's tick. */
+  shown: boolean;
+  /** Open tasks in the workspace with it, whether its column is drawn or not. */
+  openTasks: number;
+  /** Done: always a column, after every open status, and not moved. */
+  fixed?: boolean;
 }
 
 /**
@@ -314,21 +320,28 @@ export interface SetBoardQueryMessage {
   query: string;
 }
 
-/** Replaces the status columns, in order. */
-export interface SetBoardStatusesMessage {
-  type: 'setBoardStatuses';
-  statuses: string[];
+/** Orders the board's status columns, by status name. */
+export interface SetBoardColumnOrderMessage {
+  type: 'setBoardColumnOrder';
+  names: string[];
+}
+
+/** Shows or hides one status's column, by its name. */
+export interface SetBoardColumnShownMessage {
+  type: 'setBoardColumnShown';
+  name: string;
+  shown: boolean;
+}
+
+/** Opens Edit Task Statuses; on a new row when `newStatus` is true. */
+export interface EditTaskStatusesMessage {
+  type: 'editTaskStatuses';
+  newStatus?: boolean;
 }
 
 /** Shows or hides each card's nearest parent tag. */
 export interface SetBoardParentTagMessage {
   type: 'setBoardParentTag';
-  show: boolean;
-}
-
-/** Shows or hides the Cancelled column. */
-export interface SetBoardShowCancelledMessage {
-  type: 'setBoardShowCancelled';
   show: boolean;
 }
 
@@ -449,8 +462,9 @@ export interface TaskBoardPageToHost {
   setTableSort: SetTableSortMessage;
   setTableColumns: SetTableColumnsMessage;
   reorderTasks: ReorderTasksMessage;
-  setBoardStatuses: SetBoardStatusesMessage;
-  setBoardShowCancelled: SetBoardShowCancelledMessage;
+  setBoardColumnOrder: SetBoardColumnOrderMessage;
+  setBoardColumnShown: SetBoardColumnShownMessage;
+  editTaskStatuses: EditTaskStatusesMessage;
   setBoardParentTag: SetBoardParentTagMessage;
 }
 

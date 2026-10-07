@@ -1,4 +1,3 @@
-import { isStatusColumnName } from './taskColumns';
 import { DEFAULT_TASK_STATUSES, type TaskStatusDefinition } from './taskStatuses';
 
 /**
@@ -25,25 +24,6 @@ export const DEFAULT_TASK_POLICY: Readonly<TaskPolicy> = {
   needsNewDateAfterDays: 30,
   statuses: DEFAULT_TASK_STATUSES,
 };
-
-/** The status columns a board has when `deckard.board.statuses` says none. */
-const DEFAULT_BOARD_STATUSES: readonly string[] = ['todo', 'doing', 'waiting'];
-
-/**
- * The board's status columns, from `deckard.board.statuses`, in order. The
- * Task Board, the Dashboard's board, and a drop in the Tasks view read them
- * here: the Tasks view used to read the list as it was written, with no
- * columns when it was unset, while the board checked and lowercased each
- * one and fell back on todo, doing, and waiting. A value that is not a
- * list reads as those three, and a status that cannot be written as a tag
- * is left out.
- */
-export function readBoardStatuses(settings: { get<T>(key: string, defaultValue: T): T }): string[] {
-  const value = settings.get<unknown>('board.statuses', DEFAULT_BOARD_STATUSES);
-  return (Array.isArray(value) ? value : DEFAULT_BOARD_STATUSES)
-    .filter(isStatusColumnName)
-    .map((status) => status.toLowerCase());
-}
 
 /**
  * True for a due date more than the policy's `needsNewDateAfterDays` behind

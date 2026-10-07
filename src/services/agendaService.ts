@@ -12,7 +12,6 @@ import {
 import { TaskMove } from '../domain/tasks/boardMoves';
 import { countLoad, RescheduleContext } from '../domain/tasks/reschedule';
 import { quoteTitle, readMetadataFormat } from '../domain/tasks/taskLines';
-import { readBoardStatuses } from '../domain/tasks/taskPolicy';
 import type { Configuration } from '../ports/configuration';
 import { TaskMetadataFormat } from '../domain/markdown/taskFields';
 
@@ -39,6 +38,8 @@ export interface AgendaBuild {
   upcomingDays: number;
   groupBy?: AgendaGroupBy;
   groupNamespace?: string;
+  /** The board's status columns' order, by status name, which By status follows. */
+  statusOrder?: readonly string[];
   taskOrder?: readonly string[];
   taskSortMode?: TaskSortMode;
   doneToday?: boolean;
@@ -48,7 +49,6 @@ export interface AgendaBuild {
 /** The board settings a drop on a group writes with. */
 export interface BoardMoveOptions {
   queryContext: QueryContext;
-  statuses: readonly string[];
   format: TaskMetadataFormat;
   addCancelledDate?: boolean;
 }
@@ -172,9 +172,10 @@ export class AgendaService<G extends AgendaGroupLike> {
   /**
    * The view for `index`: its groups, badge, and status, built at one
    * moment and one reading of the settings, so the list and its badge agree
-   * about what today is. `taskOrder` is the order tasks were dragged into.
+   * about what today is. `taskOrder` is the order tasks were dragged into,
+   * and `statusOrder` the board's status columns' order, by name.
    */
-  public buildView(index: WorkspaceIndex, taskOrder: readonly string[]): AgendaView<G> {
+  public buildView(index: WorkspaceIndex, taskOrder: readonly string[], statusOrder: readonly string[] = []): AgendaView<G> {
     const settings = this.settings();
     const days = readUpcomingDays(settings);
     const groupBy = readAgendaGrouping(settings);
@@ -187,6 +188,7 @@ export class AgendaService<G extends AgendaGroupLike> {
       upcomingDays: days,
       groupBy,
       groupNamespace: readAgendaGroupNamespace(settings, model.isNamespaceName),
+      statusOrder,
       taskOrder,
       taskSortMode: readAgendaSort(settings),
       doneToday: true,
@@ -347,7 +349,6 @@ export class AgendaService<G extends AgendaGroupLike> {
     const configuration = this.settings();
     return {
       queryContext,
-      statuses: readBoardStatuses(configuration),
       format: readMetadataFormat(configuration),
       addCancelledDate: configuration.get<boolean>('tasks.addCancelledDate', true),
     };

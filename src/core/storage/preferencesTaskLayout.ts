@@ -6,7 +6,7 @@ import type {
   TaskSortMode,
 } from '../../domain/model/preferences';
 import type { PreferencesRepository } from './preferencesRepository';
-import { normalizeTableColumns, normalizeTableSort } from './preferencesSchema';
+import { normalizeStatusNames, normalizeTableColumns, normalizeTableSort } from './preferencesSchema';
 
 /**
  * How tasks are ordered and laid out: the reader's own rank order, the sort
@@ -70,6 +70,16 @@ export class TaskLayoutService {
         ? { taskBoardGroup, taskBoardGroupNamespace: namespace.toLowerCase() }
         : { taskBoardGroup },
     );
+  }
+
+  /** Orders the board's status columns, by status name, as its gear's rows are dragged. */
+  public async setTaskBoardColumnOrder(names: readonly string[]): Promise<void> {
+    await this.repository.update({ taskBoardColumnOrder: normalizeStatusNames(names) ?? [] });
+  }
+
+  /** Chooses the statuses the board draws no column for, by name. */
+  public async setTaskBoardHiddenColumns(names: readonly string[]): Promise<void> {
+    await this.repository.update({ taskBoardHiddenColumns: normalizeStatusNames(names) ?? [] });
   }
 
   /** Chooses the table layout's columns; the title is always among them. */

@@ -118,7 +118,6 @@ function recountColumn(column: HTMLElement | null): void {
   if (!column) {
     return;
   }
-  const title = column.querySelector('.board-column-title span');
   const cards = visibleCards(column);
   const count = cards.length + Number(column.dataset.hiddenCount || 0);
   const id = column.dataset.columnId;
@@ -126,7 +125,7 @@ function recountColumn(column: HTMLElement | null): void {
     ? 0
     : cards.filter((card) => card.querySelector('.board-details .overdue') && !card.classList.contains('completed')).length;
   const limit = column.dataset.limit === undefined ? undefined : Number(column.dataset.limit);
-  const described = describeBoardColumn(title ? String(title.textContent) : '', count, limit, overdue);
+  const described = describeBoardColumn({ label: String(column.dataset.label ?? ''), symbol: column.dataset.symbol }, count, limit, overdue);
   const counter = column.querySelector('.board-count');
   // Written only when it changed, so the text the draw made stays the one
   // the next draw updates.

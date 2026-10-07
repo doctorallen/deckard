@@ -282,7 +282,7 @@ suite('Agenda', () => {
     assert.strictEqual(groupColumnId('priority:high', 'priority'), 'priority:high');
     assert.strictEqual(groupColumnId('priority:none', 'priority'), 'priority:');
     assert.strictEqual(groupColumnId('in-progress', 'status'), 'status:in-progress');
-    assert.strictEqual(groupColumnId('none', 'status'), 'status:');
+    assert.strictEqual(groupColumnId('unknown-63', 'status'), 'status:unknown-63');
     assert.strictEqual(groupColumnId('today', 'due'), 'due:today');
     // Overdue and Upcoming cover a range of days, so neither names one edit.
     assert.strictEqual(groupColumnId('overdue', 'due'), undefined);

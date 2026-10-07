@@ -74,6 +74,21 @@ suite('Edit Task Statuses page', () => {
     });
   });
 
+  test('asked for a new row, the page adds it once, keeps it as the host redraws, and asks for its character', () => {
+    const asked = { ...SNAPSHOT, newRow: { id: 1, name: 'Review', type: 'onHold' as const } };
+    const shown = open(asked);
+    const names = () => shown.findAll('.status-table tbody tr').map((row) => (row.querySelector('[data-field="name"]') as HTMLInputElement).value);
+    assert.deepStrictEqual(names(), ['Todo', 'In progress', 'Done', 'Review']);
+    assert.match(shown.text('.status-problems') ?? '', /Review: Give it a character\./);
+    type(shown, 3, 'symbol', 'r');
+    shown.send(asked);
+    assert.deepStrictEqual(names(), ['Todo', 'In progress', 'Done', 'Review'], 'the same request is not added twice');
+    assert.strictEqual((shown.find('[data-row="3"][data-field="symbol"]') as HTMLInputElement).value, 'r', 'and what was typed is kept');
+    shown.click('[data-action="save"]');
+    const saved = shown.lastPosted('saveTaskStatuses') as { statuses: unknown[] } | undefined;
+    assert.deepStrictEqual(saved?.statuses.at(-1), { name: 'Review', type: 'onHold', symbol: 'r' });
+  });
+
   test('in the workflow, each row has its next character, and the page draws where a click leads', () => {
     const shown = open({ ...SNAPSHOT, checkboxClick: 'workflow' });
     assert.ok(shown.findAll('th').some((cell) => cell.textContent === 'Next'));

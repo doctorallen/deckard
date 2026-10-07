@@ -39,6 +39,8 @@
 }
 .board-column.is-overdue .board-column-title { color: var(--danger); }
 .board-count { color: var(--muted); }
+/* A status column's character, after its name, quieter than it: In progress [/]. */
+.board-column-symbol { margin-left: var(--space-1); color: var(--muted); white-space: pre; }
 /* A column with hundreds of tasks scrolls in place: without this one long
    column made the whole page hundreds of cards tall, and dragging to a far
    column meant scrolling away from both.
@@ -125,9 +127,6 @@
 .result-table .row-menu { position: static; }
 .result-table .result-menu { width: 36px; }
 .board-empty { margin: 0; padding: var(--space-3); border: 1px dashed var(--line); color: var(--muted); font-size: var(--text-sm); text-align: center; }
-.board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); color: var(--muted); font-size: var(--text-sm); }
-.board-hint code { font-family: var(--font-mono); color: var(--text); }
-.board-hint button { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
 .board-more { margin: 0; color: var(--muted); font-size: var(--text-xs); }
 /* A new task captured straight into a column, at its foot. */
 .board-add { justify-self: start; min-height: 24px; padding: 2px var(--space-2); border-style: dashed; background: transparent; color: var(--muted); font-size: var(--text-xs); }

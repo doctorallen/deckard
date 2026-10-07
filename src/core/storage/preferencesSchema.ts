@@ -348,22 +348,50 @@ function normalizeSearchPages(
   };
 }
 
-/** The Task Board's layout, its table's columns and sort, and its grouping. */
+/** The Task Board's layout, its table's columns and sort, its grouping, and its status columns. */
 function normalizeTaskBoard(
   source: Partial<PersistedPreferences>,
 ): Pick<
   PersistedPreferences,
-  'taskBoardLayout' | 'taskTableColumns' | 'taskTableSort' | 'taskBoardGroup' | 'taskBoardGroupNamespace'
+  | 'taskBoardLayout'
+  | 'taskTableColumns'
+  | 'taskTableSort'
+  | 'taskBoardGroup'
+  | 'taskBoardGroupNamespace'
+  | 'taskBoardColumnOrder'
+  | 'taskBoardHiddenColumns'
 > {
   const stored = source.taskBoardGroupNamespace;
   const namespace = isBoardNamespace(stored) ? stored.toLowerCase() : undefined;
+  const order = normalizeStatusNames(source.taskBoardColumnOrder);
+  const hidden = normalizeStatusNames(source.taskBoardHiddenColumns);
   return {
     taskBoardLayout: oneOf(source.taskBoardLayout, TASK_LAYOUTS, 'board'),
     taskTableColumns: normalizeTableColumns(source.taskTableColumns),
     taskTableSort: normalizeTableSort(source.taskTableSort),
     taskBoardGroup: oneOf(source.taskBoardGroup, namespace ? BOARD_GROUPS : BOARD_GROUPS_WITHOUT_TAG, 'status'),
     ...(namespace ? { taskBoardGroupNamespace: namespace } : {}),
+    ...(order ? { taskBoardColumnOrder: order } : {}),
+    ...(hidden ? { taskBoardHiddenColumns: hidden } : {}),
   };
+}
+
+/** The most status names a board's column choices keep, far more than any list has. */
+const MAX_STATUS_NAMES = 100;
+
+/**
+ * Status names as the board's column choices keep them: trimmed, each
+ * once, no more than a list holds; undefined for anything that is not a
+ * list. An empty list is kept, since no hidden column is a choice.
+ */
+export function normalizeStatusNames(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const names = value
+    .filter((name): name is string => typeof name === 'string' && name.trim().length > 0 && name.length <= 80)
+    .map((name) => name.trim());
+  return [...new Set(names)].slice(0, MAX_STATUS_NAMES);
 }
 
 /** What the workspace remembers of its notes: times, searches, Home, pins, and Find. */

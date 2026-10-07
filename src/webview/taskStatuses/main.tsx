@@ -258,8 +258,32 @@ function TaskStatusesPage({ state }: { readonly state: StatusesState }) {
   );
 }
 
+/** The id of the new row the host asked for last that the page has added, so each is added once. */
+let addedNewRow: number | undefined;
+
+/**
+ * The page's state for a snapshot from the host: the list as the settings
+ * have it, edits dropped, unless the host asks for a new row, which is
+ * added once, after the list, and kept, with the edits since, until the
+ * list is saved.
+ */
+function receive(snapshot: TaskStatusesSnapshot | undefined, rows: StatusesState['rows']): StatusesState {
+  const asked = snapshot?.newRow;
+  if (!snapshot || !asked) {
+    return { snapshot, rows: undefined };
+  }
+  if (asked.id === addedNewRow) {
+    return { snapshot, rows };
+  }
+  addedNewRow = asked.id;
+  const added = [...markCore(snapshot.statuses), { name: asked.name, type: asked.type }];
+  // The new row's character is the first thing to fill in.
+  setTimeout(() => document.querySelector<HTMLElement>(`[data-row="${added.length - 1}"][data-field="symbol"]`)?.focus(), 0);
+  return { snapshot, rows: added };
+}
+
 const store = startPage<StatusesState>({
-  initial: { snapshot: readEmbeddedState<TaskStatusesSnapshot>(), rows: undefined },
+  initial: receive(readEmbeddedState<TaskStatusesSnapshot>(), undefined),
   ready: (state) => state.snapshot !== undefined,
   view: (state) => <TaskStatusesPage state={state} />,
 });
@@ -311,4 +335,4 @@ document.addEventListener('change', (event) => {
   }
 });
 
-onHostMessage<StateMessage<TaskStatusesSnapshot>>('state', (message) => store.update({ snapshot: message.data, rows: undefined }));
+onHostMessage<StateMessage<TaskStatusesSnapshot>>('state', (message) => store.update(receive(message.data, store.state.rows)));

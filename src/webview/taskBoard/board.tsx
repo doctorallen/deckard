@@ -24,17 +24,14 @@ export interface MovableTask {
   readonly steps?: unknown;
 }
 
-/** A status as its menu item says it: capitalized, dashes and underscores as spaces. */
-function statusLabel(status: string): string {
-  return status.charAt(0).toUpperCase() + status.slice(1).replace(/[-_]+/g, ' ');
-}
-
 /**
  * Every edit a card can make, whatever the board is grouped by: its status,
  * priority, and due date as single choices, each checked where the task is
  * and showing its key, the board's other columns, its steps, done, and Move
  * to… The menu used to offer the columns of the current grouping alone, so
- * changing a due date meant regrouping the whole board first.
+ * changing a due date meant regrouping the whole board first. The statuses
+ * the board draws a column for come first; every other one is under More
+ * statuses.
  */
 export function taskCardMoves(card: MovableTask, columnId: string, columns: readonly TaskBoardColumn[], settings: TaskBoardSettings | undefined): ActionMenuGroup[] {
   const current = card.current || [];
@@ -44,10 +41,10 @@ export function taskCardMoves(card: MovableTask, columnId: string, columns: read
     checked: current.includes(value) || value === columnId,
     ...(key ? { key } : {}),
   });
-  const statuses = (settings && settings.statuses) || [];
-  // A status is named as its column is, In progress for doing, when the host said so.
-  const named = new Map(((settings && settings.columns) || []).map((column) => [column.status, column.label]));
-  const statusOptions = [option('status:', 'No status'), ...statuses.map((status) => option(`status:${status}`, named.get(status) || statusLabel(status)))];
+  // Done is its own choice, Complete it, below.
+  const statuses = ((settings && settings.columns) || []).filter((column) => !column.fixed);
+  const statusOptions = statuses.filter((column) => column.shown).map((column) => option(column.id, column.name));
+  const moreOptions = statuses.filter((column) => !column.shown).map((column) => option(column.id, column.name));
   const priorityOptions = ([['highest', 'Highest', '1'], ['high', 'High', '2'], ['medium', 'Medium', '3'], ['low', 'Low', '4'], ['lowest', 'Lowest', '5'], ['', 'No priority', '0']] as const)
     .map(([value, label, key]) => option(`priority:${value}`, label, key));
   const dueOptions: ActionMenuItem[] = [
@@ -58,10 +55,11 @@ export function taskCardMoves(card: MovableTask, columnId: string, columns: read
   // as a due band the board made, still moves the card.
   const others = columns
     .filter((column) => column.droppable && column.id !== columnId
-      && !column.id.startsWith('status:') && !column.id.startsWith('priority:') && !column.id.startsWith('due:') && column.id !== 'done')
+      && !column.id.startsWith('status:') && !column.id.startsWith('priority:') && !column.id.startsWith('due:') && column.id !== 'done' && column.id !== 'cancelled')
     .map((column) => ({ value: column.id, label: column.label }));
   return [
     { label: 'Status', items: statusOptions },
+    { label: 'More statuses', items: moreOptions },
     { label: 'Priority', items: priorityOptions },
     { label: 'Due', items: dueOptions },
     { label: 'This board', items: others },
@@ -74,12 +72,18 @@ export function taskCardMoves(card: MovableTask, columnId: string, columns: read
 
 /**
  * A column's count as its header shows it, "40 / 3 · 38 overdue", and its
- * name as a screen reader hears it.
+ * name as a screen reader hears it, with its status's character when it
+ * has one: "In progress [/], 40 tasks, limit 3, 38 overdue".
  */
-export function describeBoardColumn(label: string, count: number, limit: number | undefined, overdueCount: number): { count: string; name: string } {
+export function describeBoardColumn(
+  { label, symbol }: { readonly label: string; readonly symbol?: string },
+  count: number,
+  limit: number | undefined,
+  overdueCount: number,
+): { count: string; name: string } {
   return {
     count: String(count) + (limit === undefined ? '' : ` / ${limit}`) + (overdueCount ? ` · ${overdueCount} overdue` : ''),
-    name: `${label}, ${count}${count === 1 ? ' task' : ' tasks'}${limit === undefined ? '' : `, limit ${limit}`}${overdueCount ? `, ${overdueCount} overdue` : ''}`,
+    name: `${label}${symbol === undefined ? '' : ` [${symbol}]`}, ${count}${count === 1 ? ' task' : ' tasks'}${limit === undefined ? '' : `, limit ${limit}`}${overdueCount ? `, ${overdueCount} overdue` : ''}`,
   };
 }
 
@@ -231,7 +235,7 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
     ? 0
     : cards.filter((card) => card.overdue && !card.completed).length;
   const limit = column.limit;
-  const described = describeBoardColumn(column.label, count, limit, overdueCount);
+  const described = describeBoardColumn(column, count, limit, overdueCount);
   let className = 'board-column';
   if (column.id === 'due:overdue') {
     className += ' is-overdue';
@@ -247,9 +251,18 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
       data-droppable={String(column.droppable)}
       data-hidden-count={String(column.hiddenCount || 0)}
       data-limit={limit === undefined ? undefined : String(limit)}
+      data-label={column.label}
+      data-symbol={column.symbol}
       aria-label={described.name}
     >
-      <h2 class="board-column-title"><span>{column.label}</span><span class="board-count">{described.count}</span></h2>
+      <h2 class="board-column-title">
+        <span class="board-column-label">
+          {column.label}
+          {/* The status's character, said once, in the column's name. */}
+          {column.symbol === undefined ? null : <span key="symbol" class="board-column-symbol" aria-hidden="true">{`[${column.symbol}]`}</span>}
+        </span>
+        <span class="board-count">{described.count}</span>
+      </h2>
       {/* A column that takes a drop takes a new task the same way, from under its title. */}
       {column.droppable && column.id !== 'done'
         ? <button key="add" type="button" class="board-add" data-action="board-add-task" data-column-id={column.id} data-tip={`Capture a task straight into ${column.label}`}>+ Add task</button>
@@ -259,22 +272,6 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
       {/* One that does not take a drop says so while a card is dragged, and where to go instead. */}
       {column.droppable ? null : <p key="refuses" class="board-refuses">{refusal}</p>}
     </section>
-  );
-}
-
-/**
- * Grouped by status with almost no statuses written, the board is one tall
- * column and four near-empty ones. Say so, and offer the grouping that works
- * for any task, before the reader takes the board for broken.
- */
-function StatusHint({ hint }: { readonly hint: { withoutStatus: number; open: number } }) {
-  return (
-    <p class="board-hint">
-      {`${hint.withoutStatus} of ${hint.open} open tasks have no status. Write a character in a task's box, as `}
-      <code>[/]</code>
-      {', or drag a card into a column, to give it one. '}
-      <button type="button" data-action="set-board-group" data-group="due">Group by due date</button>
-    </p>
   );
 }
 
@@ -296,7 +293,6 @@ export function TaskBoard({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
   }
   return (
     <>
-      {snapshot.statusHint ? <StatusHint key="hint" hint={snapshot.statusHint} /> : null}
       <div key={`board-${board.generation}`} class="board task-board" role="group" aria-label="Task board">
         {snapshot.columns.map((column) => <BoardColumn key={column.id} column={column} cards={column.cards} columns={snapshot.columns} />)}
       </div>

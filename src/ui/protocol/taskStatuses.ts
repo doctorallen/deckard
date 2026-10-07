@@ -26,6 +26,20 @@ export interface TaskStatusesSnapshot {
   canImport: boolean;
   /** Where Save writes: this workspace's settings, when it sets the list, else the user's. */
   target: 'workspace' | 'user';
+  /**
+   * A status to add as a new row, which the page appends once, by its id,
+   * and keeps until the list is saved: New status… on the board's gear, or
+   * a status tag the move into checkboxes found no character for.
+   */
+  newRow?: NewStatusRow;
+}
+
+/** A new row the page opens with: its name, maybe empty, and its type. */
+export interface NewStatusRow {
+  /** Which request it is, so the page adds each once. */
+  id: number;
+  name: string;
+  type: TaskStatusType;
 }
 
 /** Saves the list as edited. */

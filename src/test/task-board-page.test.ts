@@ -22,7 +22,7 @@ suite('Task Board page', () => {
   });
 
   const NOW = Date.parse('2026-09-21T12:00:00Z');
-  const options = { queryContext: createQueryContext(NOW), statuses: ['todo', 'in-progress'], format: 'emoji' as const };
+  const options = { queryContext: createQueryContext(NOW), format: 'emoji' as const };
 
   const open = (): { page: WebviewPage; taskId: string } => {
     const index = buildWorkspaceIndex(
@@ -79,7 +79,7 @@ suite('Task Board page', () => {
     const column = page.find('.board-column[data-column-id="status:in-progress"]');
     assert.strictEqual(column.querySelector('.board-count')?.textContent, '6 / 3 · 5 overdue');
     assert.ok(column.classList.contains('over-limit'));
-    assert.strictEqual(column.getAttribute('aria-label'), 'In progress, 6 tasks, limit 3, 5 overdue');
+    assert.strictEqual(column.getAttribute('aria-label'), 'In progress [/], 6 tasks, limit 3, 5 overdue');
     const quiet = page.findAll('.board-details .overdue.quiet');
     assert.strictEqual(quiet.length, 3, 'the worst third, two of five, keep the red');
     assert.ok(quiet.every((span) => /^overdue/.test(span.textContent ?? '')), 'still says overdue in words');
@@ -98,7 +98,7 @@ suite('Task Board page', () => {
     assert.strictEqual(menu.hidden, false);
     assert.strictEqual(button.getAttribute('aria-expanded'), 'true');
     const headings = page.findAll('#action-menu .menu-heading').map((heading) => heading.textContent);
-    assert.deepStrictEqual(headings, ['Status', 'Priority', 'Due', 'For', 'Steps', 'Done', 'Note']);
+    assert.deepStrictEqual(headings, ['Status', 'More statuses', 'Priority', 'Due', 'For', 'Steps', 'Done', 'Note']);
     const labels = page.findAll('#action-menu [data-menu-value] .menu-label').map((item) => item.textContent);
     for (const label of ['Todo', 'In progress', 'High', 'Due tomorrow', 'No due date', 'Complete it']) {
       assert.ok(labels.includes(label), `offers ${label}`);
@@ -199,7 +199,7 @@ suite('Task Board page', () => {
     assert.strictEqual(card().getAttribute('aria-busy'), 'true');
     assert.strictEqual(column('status:todo').querySelector('.board-count')?.textContent, '0');
     assert.strictEqual(column('status:in-progress').querySelector('.board-count')?.textContent, '1');
-    assert.match(column('status:in-progress').getAttribute('aria-label') ?? '', /^In progress, 1 task/);
+    assert.match(column('status:in-progress').getAttribute('aria-label') ?? '', /^In progress \[\/\], 1 task/);
     assert.strictEqual(page.document.activeElement, card(), 'focus stays on the card');
 
     page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'moveRefused', taskId, requestId: 1 } }));
@@ -455,7 +455,7 @@ suite('Task Board page', () => {
     type(shown, 'beta');
     assert.deepStrictEqual(shownCards(shown).map((card) => card.querySelector('.task-title')?.textContent), ['Beta']);
     assert.strictEqual(shown.find('.board-column[data-column-id="status:todo"] .board-count').textContent, '1', 'the column counts what the words leave');
-    assert.match(shown.find('.board-column[data-column-id="status:todo"]').getAttribute('aria-label') ?? '', /^Todo, 1 task/);
+    assert.match(shown.find('.board-column[data-column-id="status:todo"]').getAttribute('aria-label') ?? '', /^Todo \[ \], 1 task/);
     assert.deepStrictEqual(shownCards(shown).map((card) => card.getAttribute('tabindex')), ['0'], 'a card the words leave is the Tab stop');
 
     // A card shown by its file's name is still shown once the board is drawn again.
@@ -588,42 +588,60 @@ suite('Task Board page', () => {
     }
   });
 
-  test('focus on Undo goes back to the status columns when Undo is taken or withdrawn', () => {
-    const files = { 'notes/a.md': '- [ ] Alpha\n' };
-    const withStatuses = (statuses: string[]) => {
-      const index = buildWorkspaceIndex(new Map(Object.entries(files).map(([path, text]) => [path, parseMarkdown(path, text)])));
-      const preferences = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-      try {
-        return createTaskBoard({ index, preferences: { ...preferences.reader.value, taskBoardLayout: 'board' }, search: { query: '' }, options: { ...options, statuses }, tagTitleDisplayMode: 'inline' });
-      } finally {
-        preferences.repository.dispose();
+  test('the gear lists every status, ticked to show its column, and opens the status list', () => {
+    const shown = show(boardOf({ 'notes/a.md': '- [ ] Alpha\n- [s] Later\n- [s] Much later\n' }, { taskBoardHiddenColumns: ['Someday'] }));
+    (shown.find('details.view-options') as HTMLDetailsElement).open = true;
+    const rows = shown.findAll('.board-status').map((row) => [
+      row.querySelector('.board-status-box')?.textContent,
+      row.querySelector('.board-status-name')?.textContent,
+      (row.querySelector('input[data-action="show-status-column"]') as HTMLInputElement).checked,
+      row.querySelector('.board-status-count')?.textContent ?? '',
+    ]);
+    assert.deepStrictEqual(rows, [
+      ['[ ]', 'Todo', true, '1 open'],
+      ['[/]', 'In progress', true, ''],
+      ['[w]', 'Waiting', true, ''],
+      ['[s]', 'Someday', false, '2 open, hidden'],
+      ['[=]', 'Blocked', true, ''],
+      ['[x]', 'Done', true, ''],
+      ['[-]', 'Cancelled', true, ''],
+    ]);
+    assert.strictEqual((shown.find('.board-status input[data-name="Done"]') as HTMLInputElement).disabled, true, 'Done is always a column');
+    assert.strictEqual(shown.findAll('.board-status.is-draggable').length, 5, 'the open statuses are dragged into order');
+    assert.deepStrictEqual(shown.findAll('.board-column').map((column) => column.getAttribute('aria-label')), [
+      'Todo [ ], 1 task', 'In progress [/], 0 tasks', 'Waiting [w], 0 tasks', 'Blocked [=], 0 tasks', 'Done [x], 0 tasks', 'Cancelled [-], 0 tasks',
+    ], 'each column says its character once, in its name; hiding Someday shows Cancelled, which the gear no longer hides');
+    assert.strictEqual(shown.find('.board-column[data-column-id="status:todo"] .board-column-symbol').textContent, '[ ]');
+
+    const someday = shown.find('.board-status input[data-name="Someday"]') as HTMLInputElement;
+    someday.checked = true;
+    someday.dispatchEvent(new shown.window.Event('change', { bubbles: true }));
+    assert.deepStrictEqual(shown.lastPosted('setBoardColumnShown'), { type: 'setBoardColumnShown', name: 'Someday', shown: true });
+
+    shown.find('.board-status[data-status="Blocked"]').dispatchEvent(new shown.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    shown.click('#rank-context-menu [data-context-action="top"]');
+    assert.deepStrictEqual(shown.lastPosted('setBoardColumnOrder'), { type: 'setBoardColumnOrder', names: ['Blocked', 'Todo', 'In progress', 'Waiting', 'Someday'] });
+
+    shown.click('[data-action="new-task-status"]');
+    assert.deepStrictEqual(shown.lastPosted('editTaskStatuses'), { type: 'editTaskStatuses', newStatus: true });
+    shown.click('[data-action="edit-task-statuses"]');
+    assert.deepStrictEqual(shown.lastPosted('editTaskStatuses'), { type: 'editTaskStatuses' });
+  });
+
+  test('a card\'s menu offers the columns\' statuses, and every other under More statuses', () => {
+    const shown = show(boardOf({ 'notes/a.md': '- [ ] Alpha\n' }, { taskBoardHiddenColumns: ['Someday', 'Cancelled'] }));
+    (shown.find('.board-card [data-action="board-menu"]') as HTMLElement).click();
+    const group = (label: string) => {
+      const heading = shown.findAll('#action-menu .menu-heading').find((each) => each.textContent === label);
+      assert.ok(heading, label);
+      const items: string[] = [];
+      for (let next = heading.nextElementSibling; next && !next.classList.contains('menu-heading'); next = next.nextElementSibling) {
+        items.push(String(next.querySelector('.menu-label')?.textContent ?? next.textContent));
       }
+      return items;
     };
-    const shown = show(withStatuses(['todo', 'in-progress']));
-    // The page's timers are held, so the offer's end can be run when the test says.
-    const timers: (() => void)[] = [];
-    shown.window.setTimeout = ((callback: () => void) => timers.push(callback)) as never;
-    (shown.find('details.view-options') as HTMLDetailsElement).open = true;
-    const undo = () => shown.find('.undo-notice [data-action="undo-remove-status"]') as HTMLElement;
-    /** Removes the Doing column with its ×, which a click focuses first, as the browser's does. */
-    const removeDoing = (): void => {
-      const remove = shown.find('[data-action="remove-status"][data-status="in-progress"]') as HTMLElement;
-      remove.focus();
-      remove.click();
-    };
-
-    removeDoing();
-    assert.strictEqual(shown.document.activeElement, undo(), 'focus is on Undo');
-    undo().click();
-    assert.strictEqual(shown.document.activeElement, shown.find('[data-action="remove-status"][data-status="in-progress"]'), 'taken, it goes back to the column\'s remove button');
-
-    (shown.find('details.view-options') as HTMLDetailsElement).open = true;
-    removeDoing();
-    shown.send(withStatuses(['todo']));
-    assert.strictEqual(shown.document.activeElement, undo());
-    timers.splice(0).forEach((run) => run());
-    assert.strictEqual(shown.findAll('.undo-notice').length, 0, 'the offer is withdrawn');
-    assert.strictEqual(shown.document.activeElement, shown.find('.board-status[data-status="todo"]'), 'withdrawn, it goes to the status column where the removed one was');
+    assert.deepStrictEqual(group('Status'), ['Todo', 'In progress', 'Waiting', 'Blocked']);
+    assert.deepStrictEqual(group('More statuses'), ['Someday', 'Cancelled']);
   });
 
   test('a list row\'s and a card\'s controls are named by the title as it reads, not its Markdown', () => {

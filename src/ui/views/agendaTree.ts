@@ -25,12 +25,13 @@ interface AgendaIndexSource {
 
 /**
  * What the Agenda reads from preferences, and writes: the order tasks were
- * dragged into, read from the blob and kept by the task layout.
+ * dragged into, read from the blob and kept by the task layout, and the
+ * board's status columns' order, which By status follows.
  */
 interface AgendaPreferences {
   reader: {
     readonly onDidChange: vscode.Event<unknown>;
-    readonly value: { taskOrder: string[] };
+    readonly value: { taskOrder: string[]; taskBoardColumnOrder?: string[] };
   };
   taskLayout: { setTaskOrder(taskOrder: string[]): Promise<void> };
 }
@@ -285,7 +286,8 @@ export class AgendaTreeProvider
       this.setStatus(describeIndexing(this.indexer.scanProgress), 0);
       return [];
     }
-    const view = this.services.agenda.buildView(this.index, this.preferences?.reader.value.taskOrder ?? []);
+    const preferences = this.preferences?.reader.value;
+    const view = this.services.agenda.buildView(this.index, preferences?.taskOrder ?? [], preferences?.taskBoardColumnOrder ?? []);
     this.setStatus(describeAgendaStatus(view.status), view.urgent);
     // The way back to every open task is offered while a search narrows it.
     this.services.contextKeys.publish({ filtered: view.filtered, querySet: view.querySet });

@@ -7,7 +7,6 @@
  */
 import type { StateMessage } from '../../ui/protocol/messaging';
 import type { SavedToTasksViewMessage, TaskBoardMessage, TaskBoardSnapshot, ToggleRefusedMessage } from '../../ui/protocol/taskBoard';
-import { checkNewStatusColumn } from '../../domain/tasks/taskColumns';
 import { type ActionMenuGroup, closeActionMenu, openActionMenu } from '../shared/actionMenu';
 import { HelpButton } from '../shared/buttons';
 import { Eyebrow } from '../shared/eyebrow';
@@ -20,7 +19,6 @@ import { createQueryEditor, refineModeOf } from '../shared/queryEditor';
 import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { announce } from '../shared/status';
 import { taskTitleOf } from '../shared/taskRow';
-import { createUndoNotice } from '../shared/undoToast';
 import {
   displayLevelOption,
   installViewOptions,
@@ -33,7 +31,7 @@ import { GroupSwitch, TaskBoard, taskCardMoves } from './board';
 import { type BoardScroll, editRow, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll, sendHeldEdits, settleRefusedEdit } from './boardMoves';
 import { AgendaToggle, AvailableToggle, canRank, ColumnPicker, ResultTable, SaveSearchButton, SortControl, syncSaveToTasksView, TableSortNote, TaskList, TasksViewActions, TasksViewStrip } from './layouts';
 import { board, type BoardPageState, type DrawnBoard, lingerRemaining } from './model';
-import { type SettingsDrafts, statusColumnNames, StatusSettings } from './statusSettings';
+import { statusColumnNames, StatusSettings } from './statusSettings';
 
 /**
  * The number of the last move sent. Each move carries the next one, and a
@@ -50,9 +48,6 @@ function post(message: TaskBoardMessage): void {
   }
   vscodeApi().postMessage(sent);
 }
-
-/** What is being typed into the gear's fields, kept across draws, and what was wrong with the last one saved. */
-let drafts: SettingsDrafts = { status: '', error: '' };
 
 /** The snapshot the host sent last, which the search box reads as it is told of it. */
 let latest: TaskBoardSnapshot | undefined;
@@ -163,7 +158,7 @@ function BoardViewOptions({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
         { label: 'Tasks view', content: <AgendaToggle snapshot={snapshot} /> },
         ...(isTable ? [{ label: 'Columns', content: <ColumnPicker snapshot={snapshot} />, stacked: true }] : []),
         ...(isTable ? [] : [{ label: 'Cards', content: <ParentTagToggle snapshot={snapshot} /> }]),
-        { label: 'Status columns', content: <StatusSettings snapshot={snapshot} drafts={drafts} />, stacked: true },
+        { label: 'Status columns', content: <StatusSettings snapshot={snapshot} />, stacked: true },
         themeOption(),
         displayLevelOption(),
       ]}
@@ -255,10 +250,9 @@ function listedTaskIds(): string[] {
   return (shown()?.tasks || []).map((item) => item.task.id);
 }
 
-/** Sends a new list of status columns. */
-function setStatuses(statuses: string[]): void {
-  drafts = { ...drafts, error: '' };
-  post({ type: 'setBoardStatuses', statuses });
+/** Sends the status columns' new order, by status name. */
+function setColumnOrder(names: string[]): void {
+  post({ type: 'setBoardColumnOrder', names });
 }
 
 // A ranked list, and the status columns in the gear, are ordered by
@@ -275,11 +269,11 @@ installRankedRows({
       return false;
     }
     if (kind === 'status') {
-      const statuses = rankKeys(statusColumnNames(snapshot), key, targetKey, before);
-      if (!statuses) {
+      const names = rankKeys(statusColumnNames(snapshot), key, targetKey, before);
+      if (!names) {
         return false;
       }
-      setStatuses(statuses);
+      setColumnOrder(names);
       return true;
     }
     const ids = rankKeys(listedTaskIds(), key, targetKey, before);
@@ -292,9 +286,9 @@ installRankedRows({
   move: (kind, key, toTop) => {
     const snapshot = shown();
     if (kind === 'status' && snapshot) {
-      const statuses = moveKeyToEdge(statusColumnNames(snapshot), key, toTop);
-      if (statuses) {
-        setStatuses(statuses);
+      const names = moveKeyToEdge(statusColumnNames(snapshot), key, toTop);
+      if (names) {
+        setColumnOrder(names);
       }
       return;
     }
@@ -403,61 +397,6 @@ function toggleColumn(id: string, on: boolean): void {
   post({ type: 'setTableColumns', columns: next });
 }
 
-/**
- * Undo for a status column removed from the gear. Taken or withdrawn with
- * focus on it, focus goes back to the removed column's ×, or, when the
- * column has gone, to the column now where it was, or to the gear when it
- * has closed.
- */
-const statusUndo = createUndoNotice<{ status: string; index: number; after: string[] }>(() => redraw(), (removed) => {
-  const rows = Array.from(document.querySelectorAll<HTMLElement>('.board-status'));
-  const row = rows[Math.min(removed.index, rows.length - 1)];
-  return row && !row.closest('details:not([open])') ? row : document.querySelector<HTMLElement>('.view-options > summary');
-});
-
-/** Adds the status typed in the gear as a column, or says why it cannot be one. */
-function addStatus(snapshot: TaskBoardSnapshot): void {
-  const names = statusColumnNames(snapshot);
-  const checked = checkNewStatusColumn(drafts.status, names);
-  if (!checked) {
-    return;
-  }
-  if (checked.error !== undefined) {
-    drafts = { ...drafts, error: checked.error };
-    redraw();
-    return;
-  }
-  drafts = { ...drafts, status: '' };
-  setStatuses([...names, checked.value]);
-}
-
-/** Removes a status column from the gear, offering Undo. */
-function removeStatus(snapshot: TaskBoardSnapshot, status: string | undefined): void {
-  const statuses = statusColumnNames(snapshot);
-  const index = statuses.indexOf(String(status));
-  const removed = index >= 0 ? statuses.splice(index, 1)[0] : undefined;
-  if (!(removed !== undefined)) {
-    return;
-  }
-
-  setStatuses(statuses);
-  statusUndo.show(`Removed the ${removed} column.`, 'undo-remove-status', { status: removed, index, after: statuses });
-}
-
-/** Puts back the status column removed last, where it was. */
-function undoRemoveStatus(snapshot: TaskBoardSnapshot): void {
-  const undone = statusUndo.take();
-  if (undone) {
-    // The columns as last sent, if the host has not answered yet.
-    const names = statusColumnNames(snapshot);
-    const current = names.includes(undone.status) ? undone.after : names;
-    const statuses = current.slice();
-    statuses.splice(Math.min(undone.index, statuses.length), 0, undone.status);
-    setStatuses(statuses);
-  }
-  redraw();
-}
-
 /** What each of the page's own controls does on a click, given the snapshot it shows. */
 const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: TaskBoardSnapshot) => void>> = {
   'open-tag': (target) => post({ type: 'openTag', tagKey: String(target.dataset.tagKey) }),
@@ -474,8 +413,8 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: TaskBoard
   'toggle-available': (_target, snapshot) => post({ type: 'setBoardQuery', query: snapshot.availableToggleQuery || 'is:available' }),
   'export-tasks': () => post({ type: 'exportResults', kind: 'tasks' }),
   'set-task-layout': (target) => post({ type: 'setTaskLayout', layout: target.dataset.value as never }),
-  'remove-status': (target, snapshot) => removeStatus(snapshot, target.dataset.status),
-  'undo-remove-status': (_target, snapshot) => undoRemoveStatus(snapshot),
+  'new-task-status': () => post({ type: 'editTaskStatuses', newStatus: true }),
+  'edit-task-statuses': () => post({ type: 'editTaskStatuses' }),
 };
 
 /**
@@ -545,19 +484,6 @@ document.addEventListener('contextmenu', (event) => {
   }
 });
 
-document.addEventListener('submit', (event) => {
-  const element = event.target instanceof Element ? event.target : null;
-  const form = element ? element.closest<HTMLElement>('[data-form]') : null;
-  const snapshot = shown();
-  if (!form) {
-    return;
-  }
-  event.preventDefault();
-  if (snapshot && form.dataset.form === 'add-status') {
-    addStatus(snapshot);
-  }
-});
-
 document.addEventListener('keydown', (event) => {
   if (editor.handleKeydown(event)) {
     return;
@@ -594,19 +520,13 @@ document.addEventListener('change', (event) => {
   if (target.dataset.action === 'show-parent-tag') {
     post({ type: 'setBoardParentTag', show: target.checked });
   }
-  if (target.dataset.action === 'show-cancelled') {
-    post({ type: 'setBoardShowCancelled', show: target.checked });
+  if (target.dataset.action === 'show-status-column') {
+    post({ type: 'setBoardColumnShown', name: String(target.dataset.name), shown: target.checked });
   }
 });
 
 document.addEventListener('input', (event) => {
-  if (editor.handleInput(event)) {
-    return;
-  }
-  const target = event.target as HTMLInputElement;
-  if (target.dataset.action === 'status-draft') {
-    drafts = { ...drafts, status: target.value };
-  }
+  editor.handleInput(event);
 });
 
 /**
