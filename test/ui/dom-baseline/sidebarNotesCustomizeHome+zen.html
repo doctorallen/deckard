@@ -4,7 +4,6 @@
   data-counts="hidden"
   data-dates="relative"
   data-density="compact"
-  data-file-line="never"
   data-help="hidden"
   data-level="zen"
   data-styling="plain"
@@ -14,219 +13,272 @@
     data-sidebar=""
     id="app"
   ><div
-      aria-label="Deckard pages"
-      aria-orientation="vertical"
-      class="context-pages"
-      role="toolbar"
-    ><button
-        aria-current="page"
-        aria-label="Home, 3 tasks due today"
-        class="pages-row"
-        data-action="go-to-page"
-        data-page="home"
-        data-tip="What is due today, what slipped, and the widgets you arrange"
-        tabindex="0"
-        type="button"
-      ><svg
-          aria-hidden="true"
-          class="pages-glyph"
-          focusable="false"
-          viewBox="0 0 16 16"
-        ><path
-            d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"
-            fill="currentColor"
-            fill-rule="evenodd"
-          ></path
-          ></svg
-        ><span
-          class="pages-label"
-        >Home</span
-        ><span
-          class="pages-description"
-        >3 tasks due today</span
-        ></button
+      class="context-pages-band"
+    ><div
+        aria-label="Deckard pages"
+        aria-orientation="vertical"
+        class="context-pages"
+        role="toolbar"
       ><button
-        aria-label="Task Board, 2 tasks overdue"
-        class="pages-row"
-        data-action="go-to-page"
-        data-page="board"
-        data-tip="Open tasks as columns by status, priority, due date, person, or tag"
-        tabindex="-1"
-        type="button"
-      ><svg
-          aria-hidden="true"
-          class="pages-glyph"
-          focusable="false"
-          viewBox="0 0 16 16"
-        ><path
-            d="M2 2h3.5v12H2zm4.25 0h3.5v8.5h-3.5zm4.25 0H14v5.5h-3.5z"
-            fill="currentColor"
-            fill-rule="evenodd"
-          ></path
-          ></svg
-        ><span
-          class="pages-label"
-        >Task Board</span
-        ><span
-          class="pages-description"
-        >2 tasks overdue</span
-        ></button
-      ><button
-        aria-label="Calendar, September 2026"
-        class="pages-row"
-        data-action="go-to-page"
-        data-page="calendar"
-        data-tip="Dated tasks and daily notes by day; drag a task to another day"
-        tabindex="-1"
-        type="button"
-      ><svg
-          aria-hidden="true"
-          class="pages-glyph"
-          focusable="false"
-          viewBox="0 0 16 16"
-        ><path
-            d="M4 1h1.5v1.5h5V1H12v1.5h2.5v12h-13v-12H4zM3 6v7h10V6zm5.5 2.5h3v3h-3z"
-            fill="currentColor"
-            fill-rule="evenodd"
-          ></path
-          ></svg
-        ><span
-          class="pages-label"
-        >Calendar</span
-        ><span
-          class="pages-description"
-        >September 2026</span
-        ></button
-      ><button
-        aria-label="Today's note, Mon, Sep 21 · not written yet"
-        class="pages-row"
-        data-action="go-to-page"
-        data-page="today"
-        data-tip="Opens today's daily note, writing it from your template first if needed"
-        tabindex="-1"
-        type="button"
-      ><svg
-          aria-hidden="true"
-          class="pages-glyph"
-          focusable="false"
-          viewBox="0 0 16 16"
-        ><path
-            d="M2.5 1h7l4 4v10h-11zM9 1.8V5.5h3.7zM8 7.2a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6z"
-            fill="currentColor"
-            fill-rule="evenodd"
-          ></path
-          ></svg
-        ><span
-          class="pages-label"
-        >Today's note</span
-        ><span
-          class="pages-description"
-        >Mon, Sep 21 · not written yet</span
-        ></button
-      ><button
-        aria-label="Notes Graph, 42 notes"
-        class="pages-row"
-        data-action="go-to-page"
-        data-page="graph"
-        data-tip="Every note, task, and tag connection as a map"
-        tabindex="-1"
-        type="button"
-      ><svg
-          aria-hidden="true"
-          class="pages-glyph"
-          focusable="false"
-          viewBox="0 0 16 16"
-        ><path
-            d="M4 1.5a2.5 2.5 0 0 1 2.4 3.2l2.3 1.6a2.5 2.5 0 0 1 3.1-.6l.9-1.2a2 2 0 1 1 1.2.9l-.9 1.2a2.5 2.5 0 0 1-.6 3.5l.8 1.6a2 2 0 1 1-1.3.7l-.8-1.6a2.5 2.5 0 0 1-3.1-1.9H5.9a2.5 2.5 0 1 1 0-1.5H8l.1-.3-2.2-1.6A2.5 2.5 0 1 1 4 1.5z"
-            fill="currentColor"
-            fill-rule="evenodd"
-          ></path
-          ></svg
-        ><span
-          class="pages-label"
-        >Notes Graph</span
-        ><span
-          class="pages-description"
-        >42 notes</span
-        ></button
-      ><button
-        aria-label="Find in Notes…, ⌥⇧⌘F"
-        class="pages-row"
-        data-action="go-to-page"
-        data-page="find"
-        data-tip="Notes, tasks, tags, and saved searches as you type"
-        tabindex="-1"
-        type="button"
-      ><svg
-          aria-hidden="true"
-          class="pages-glyph"
-          focusable="false"
-          viewBox="0 0 16 16"
-        ><path
-            d="M6.5 1a5.5 5.5 0 0 1 4.4 8.8l3.7 3.7-1.4 1.4-3.7-3.7A5.5 5.5 0 1 1 6.5 1zm0 2a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"
-            fill="currentColor"
-            fill-rule="evenodd"
-          ></path
-          ></svg
-        ><span
-          class="pages-label"
-        >Find in Notes…</span
-        ><span
-          class="pages-description"
-        >⌥⇧⌘F</span
-        ></button
-      ><button
-        aria-label="Stats, 30 files"
-        class="pages-row"
-        data-action="go-to-page"
-        data-page="stats"
-        data-tip="What needs attention, the totals, and what you open most"
-        tabindex="-1"
-        type="button"
-      ><svg
-          aria-hidden="true"
-          class="pages-glyph"
-          focusable="false"
-          viewBox="0 0 16 16"
-        ><path
-            d="M1.5 13h13v1.5h-13zM2.5 8H5v4H2.5zm4.25-5h2.5v9h-2.5zM11 6h2.5v6H11z"
-            fill="currentColor"
-            fill-rule="evenodd"
-          ></path
-          ></svg
-        ><span
-          class="pages-label"
-        >Stats</span
-        ><span
-          class="pages-description"
-        >30 files</span
-        ></button
-      ><button
-        aria-label="Help, Get Started and the guide"
-        class="pages-row"
-        data-action="go-to-page"
-        data-page="help"
-        data-tip="The guide, its pages down the side"
-        tabindex="-1"
-        type="button"
-      ><svg
-          aria-hidden="true"
-          class="pages-glyph"
-          focusable="false"
-          viewBox="-5.5 0 19 19"
-        ><path
-            d="M7.987 5.653a4.536 4.536 0 0 1-.149 1.213 4.276 4.276 0 0 1-.389.958 5.186 5.186 0 0 1-.533.773c-.195.233-.386.454-.568.658l-.024.026c-.17.18-.328.353-.468.516a3.596 3.596 0 0 0-.4.567 2.832 2.832 0 0 0-.274.677 3.374 3.374 0 0 0-.099.858v.05a1.03 1.03 0 0 1-2.058 0v-.05a5.427 5.427 0 0 1 .167-1.385 4.92 4.92 0 0 1 .474-1.17 5.714 5.714 0 0 1 .63-.89c.158-.184.335-.38.525-.579.166-.187.34-.39.52-.603a3.108 3.108 0 0 0 .319-.464 2.236 2.236 0 0 0 .196-.495 2.466 2.466 0 0 0 .073-.66 1.891 1.891 0 0 0-.147-.762 1.944 1.944 0 0 0-.416-.633 1.917 1.917 0 0 0-.62-.418 1.758 1.758 0 0 0-.723-.144 1.823 1.823 0 0 0-.746.146 1.961 1.961 0 0 0-1.06 1.062 1.833 1.833 0 0 0-.146.747v.028a1.03 1.03 0 1 1-2.058 0v-.028a3.882 3.882 0 0 1 .314-1.56 4.017 4.017 0 0 1 2.135-2.139 3.866 3.866 0 0 1 1.561-.314 3.792 3.792 0 0 1 1.543.314A3.975 3.975 0 0 1 7.678 4.09a3.933 3.933 0 0 1 .31 1.563zm-2.738 9.81a1.337 1.337 0 0 1 0 1.033 1.338 1.338 0 0 1-.71.71l-.005.003a1.278 1.278 0 0 1-.505.103 1.338 1.338 0 0 1-1.244-.816 1.313 1.313 0 0 1 .284-1.451 1.396 1.396 0 0 1 .434-.283 1.346 1.346 0 0 1 .526-.105 1.284 1.284 0 0 1 .505.103l.005.003a1.404 1.404 0 0 1 .425.281 1.28 1.28 0 0 1 .285.418z"
-            fill="currentColor"
-            fill-rule="evenodd"
-          ></path
-          ></svg
-        ><span
-          class="pages-label"
-        >Help</span
-        ><span
-          class="pages-description"
-        >Get Started and the guide</span
-        ></button
+          aria-current="page"
+          aria-label="Home, 3 tasks due today"
+          class="pages-row"
+          data-action="go-to-page"
+          data-page="home"
+          data-tip="What is due today, what slipped, and the widgets you arrange"
+          tabindex="0"
+          type="button"
+        ><svg
+            aria-hidden="true"
+            class="pages-glyph"
+            focusable="false"
+            viewBox="0 0 16 16"
+          ><path
+              d="M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z"
+              fill="currentColor"
+              fill-rule="evenodd"
+            ></path
+            ></svg
+          ><span
+            class="pages-label"
+          >Home</span
+          ><span
+            class="pages-description"
+          >3 tasks due today</span
+          ></button
+        ><button
+          aria-label="Task Board, 2 tasks overdue"
+          class="pages-row"
+          data-action="go-to-page"
+          data-page="board"
+          data-tip="Open tasks as columns by status, priority, due date, person, or tag"
+          tabindex="-1"
+          type="button"
+        ><svg
+            aria-hidden="true"
+            class="pages-glyph"
+            focusable="false"
+            viewBox="0 0 16 16"
+          ><path
+              d="M2 2h3.5v12H2zm4.25 0h3.5v8.5h-3.5zm4.25 0H14v5.5h-3.5z"
+              fill="currentColor"
+              fill-rule="evenodd"
+            ></path
+            ></svg
+          ><span
+            class="pages-label"
+          >Task Board</span
+          ><span
+            class="pages-description"
+          >2 tasks overdue</span
+          ></button
+        ><button
+          aria-label="Calendar, September 2026"
+          class="pages-row"
+          data-action="go-to-page"
+          data-page="calendar"
+          data-tip="Dated tasks and daily notes by day; drag a task to another day"
+          tabindex="-1"
+          type="button"
+        ><svg
+            aria-hidden="true"
+            class="pages-glyph"
+            focusable="false"
+            viewBox="0 0 16 16"
+          ><path
+              d="M4 1h1.5v1.5h5V1H12v1.5h2.5v12h-13v-12H4zM3 6v7h10V6zm5.5 2.5h3v3h-3z"
+              fill="currentColor"
+              fill-rule="evenodd"
+            ></path
+            ></svg
+          ><span
+            class="pages-label"
+          >Calendar</span
+          ><span
+            class="pages-description"
+          >September 2026</span
+          ></button
+        ><button
+          aria-label="Today's note, Mon, Sep 21 · not written yet"
+          class="pages-row"
+          data-action="go-to-page"
+          data-page="today"
+          data-tip="Opens today's daily note, writing it from your template first if needed"
+          tabindex="-1"
+          type="button"
+        ><svg
+            aria-hidden="true"
+            class="pages-glyph"
+            focusable="false"
+            viewBox="0 0 16 16"
+          ><path
+              d="M2.5 1h7l4 4v10h-11zM9 1.8V5.5h3.7zM8 7.2a2.3 2.3 0 1 0 0 4.6 2.3 2.3 0 0 0 0-4.6z"
+              fill="currentColor"
+              fill-rule="evenodd"
+            ></path
+            ></svg
+          ><span
+            class="pages-label"
+          >Today's note</span
+          ><span
+            class="pages-description"
+          >Mon, Sep 21 · not written yet</span
+          ></button
+        ><button
+          aria-label="Notes Graph, 42 notes"
+          class="pages-row"
+          data-action="go-to-page"
+          data-page="graph"
+          data-tip="Every note, task, and tag connection as a map"
+          tabindex="-1"
+          type="button"
+        ><svg
+            aria-hidden="true"
+            class="pages-glyph"
+            focusable="false"
+            viewBox="0 0 16 16"
+          ><path
+              d="M4 1.5a2.5 2.5 0 0 1 2.4 3.2l2.3 1.6a2.5 2.5 0 0 1 3.1-.6l.9-1.2a2 2 0 1 1 1.2.9l-.9 1.2a2.5 2.5 0 0 1-.6 3.5l.8 1.6a2 2 0 1 1-1.3.7l-.8-1.6a2.5 2.5 0 0 1-3.1-1.9H5.9a2.5 2.5 0 1 1 0-1.5H8l.1-.3-2.2-1.6A2.5 2.5 0 1 1 4 1.5z"
+              fill="currentColor"
+              fill-rule="evenodd"
+            ></path
+            ></svg
+          ><span
+            class="pages-label"
+          >Notes Graph</span
+          ><span
+            class="pages-description"
+          >42 notes</span
+          ></button
+        ><button
+          aria-label="Find in Notes…, ⌥⇧⌘F"
+          class="pages-row"
+          data-action="go-to-page"
+          data-page="find"
+          data-tip="Notes, tasks, tags, and saved searches as you type"
+          tabindex="-1"
+          type="button"
+        ><svg
+            aria-hidden="true"
+            class="pages-glyph"
+            focusable="false"
+            viewBox="0 0 16 16"
+          ><path
+              d="M6.5 1a5.5 5.5 0 0 1 4.4 8.8l3.7 3.7-1.4 1.4-3.7-3.7A5.5 5.5 0 1 1 6.5 1zm0 2a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"
+              fill="currentColor"
+              fill-rule="evenodd"
+            ></path
+            ></svg
+          ><span
+            class="pages-label"
+          >Find in Notes…</span
+          ><span
+            class="pages-description"
+          >⌥⇧⌘F</span
+          ></button
+        ><button
+          aria-label="Stats, 30 files"
+          class="pages-row"
+          data-action="go-to-page"
+          data-page="stats"
+          data-tip="What needs attention, the totals, and what you open most"
+          tabindex="-1"
+          type="button"
+        ><svg
+            aria-hidden="true"
+            class="pages-glyph"
+            focusable="false"
+            viewBox="0 0 16 16"
+          ><path
+              d="M1.5 13h13v1.5h-13zM2.5 8H5v4H2.5zm4.25-5h2.5v9h-2.5zM11 6h2.5v6H11z"
+              fill="currentColor"
+              fill-rule="evenodd"
+            ></path
+            ></svg
+          ><span
+            class="pages-label"
+          >Stats</span
+          ><span
+            class="pages-description"
+          >30 files</span
+          ></button
+        ><button
+          aria-label="Help, Get Started and the guide"
+          class="pages-row"
+          data-action="go-to-page"
+          data-page="help"
+          data-tip="The guide, its pages down the side"
+          tabindex="-1"
+          type="button"
+        ><svg
+            aria-hidden="true"
+            class="pages-glyph"
+            focusable="false"
+            viewBox="-5.5 0 19 19"
+          ><path
+              d="M7.987 5.653a4.536 4.536 0 0 1-.149 1.213 4.276 4.276 0 0 1-.389.958 5.186 5.186 0 0 1-.533.773c-.195.233-.386.454-.568.658l-.024.026c-.17.18-.328.353-.468.516a3.596 3.596 0 0 0-.4.567 2.832 2.832 0 0 0-.274.677 3.374 3.374 0 0 0-.099.858v.05a1.03 1.03 0 0 1-2.058 0v-.05a5.427 5.427 0 0 1 .167-1.385 4.92 4.92 0 0 1 .474-1.17 5.714 5.714 0 0 1 .63-.89c.158-.184.335-.38.525-.579.166-.187.34-.39.52-.603a3.108 3.108 0 0 0 .319-.464 2.236 2.236 0 0 0 .196-.495 2.466 2.466 0 0 0 .073-.66 1.891 1.891 0 0 0-.147-.762 1.944 1.944 0 0 0-.416-.633 1.917 1.917 0 0 0-.62-.418 1.758 1.758 0 0 0-.723-.144 1.823 1.823 0 0 0-.746.146 1.961 1.961 0 0 0-1.06 1.062 1.833 1.833 0 0 0-.146.747v.028a1.03 1.03 0 1 1-2.058 0v-.028a3.882 3.882 0 0 1 .314-1.56 4.017 4.017 0 0 1 2.135-2.139 3.866 3.866 0 0 1 1.561-.314 3.792 3.792 0 0 1 1.543.314A3.975 3.975 0 0 1 7.678 4.09a3.933 3.933 0 0 1 .31 1.563zm-2.738 9.81a1.337 1.337 0 0 1 0 1.033 1.338 1.338 0 0 1-.71.71l-.005.003a1.278 1.278 0 0 1-.505.103 1.338 1.338 0 0 1-1.244-.816 1.313 1.313 0 0 1 .284-1.451 1.396 1.396 0 0 1 .434-.283 1.346 1.346 0 0 1 .526-.105 1.284 1.284 0 0 1 .505.103l.005.003a1.404 1.404 0 0 1 .425.281 1.28 1.28 0 0 1 .285.418z"
+              fill="currentColor"
+              fill-rule="evenodd"
+            ></path
+            ></svg
+          ><span
+            class="pages-label"
+          >Help</span
+          ><span
+            class="pages-description"
+          >Get Started and the guide</span
+          ></button
+        ></div
+      ><details
+        class="view-options"
+        data-options="pages"
+      ><summary
+          aria-label="Pages: how they look, and which"
+          data-tip="Pages: how they look, and which"
+        ><svg
+            aria-hidden="true"
+            class="settings-icon toolbar-icon"
+            focusable="false"
+            viewBox="0 0 24 24"
+          ><path
+              clip-rule="evenodd"
+              d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"
+              fill-rule="evenodd"
+            ></path
+            ><path
+              clip-rule="evenodd"
+              d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"
+              fill-rule="evenodd"
+            ></path
+            ></svg
+          ></summary
+        ><div
+          class="is-dropdown popover view-options-menu"
+        ><div
+            class="view-options-group"
+          ><span
+            >Look</span
+            ><div
+              aria-label="How the pages look"
+              class="segmented view-options-choices"
+              role="group"
+            ><button
+                aria-pressed="true"
+                class="active"
+                data-action="set-pages-style"
+                data-value="list"
+                type="button"
+              >List</button
+              ><button
+                aria-pressed="false"
+                data-action="set-pages-style"
+                data-value="icons"
+                type="button"
+              >Icons</button
+              ></div
+            ></div
+          ></div
+        ></details
       ></div
     ><div
       class="active-file"
