@@ -417,8 +417,12 @@ function createWordsButtons(): Record<'literal' | 'reading', vscode.QuickInputBu
   };
 }
 
-/** A description that is only tags, as a tag column starts one: the words go before them. */
-const ONLY_TAGS = /^(?:#\S+[ \t]*)+$/u;
+/**
+ * A description that is only tags, as a tag column starts one: the words go
+ * before them. Each tag after the first follows a space, so a run of tags
+ * splits one way only and the match stays linear.
+ */
+const ONLY_TAGS = /^#\S+(?:[ \t]+#\S+)*[ \t]*$/u;
 
 /**
  * The words of a new task, with a day, a priority, a repeat rule, or

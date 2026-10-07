@@ -65,7 +65,8 @@ export function isRunnableFromHelp(manifest: HelpManifest, command: string): boo
  */
 export function linkCommandNames(html: string, commands: ReadonlyMap<string, HelpCommand>): string {
   return html.replace(/<(code|strong)>Deckard: ([^<]+)<\/\1>/g, (whole, _tag: string, title: string) => {
-    const command = commands.get(title.replace(/&amp;/g, '&').replace(/&#x27;|&#39;|’/g, "'"));
+    // One pass, so an escaped entity such as &amp;#39; reads as written.
+    const command = commands.get(title.replace(/&(amp|#x27|#39);|’/g, (_entity, name?: string) => (name === 'amp' ? '&' : "'")));
     return command?.runnable
       ? `<button type="button" class="command-link" data-command="${escapeHtml(command.command)}">Deckard: ${title}</button>`
       : whole;
