@@ -715,6 +715,20 @@ function createSummarySurfaces(index, preferences) {
       clippers: [],
       hovered: ['.card'],
     },
+    {
+      // Grouped by tag, side by side: each group's name, what it holds, and
+      // its progress bar at the right of one row, over its notes beside its
+      // tasks, so no half of a row stands empty.
+      name: 'searchPageGrouped',
+      page: 'searchPage',
+      viewport: [900, 900],
+      snapshot: () => createSearchPageSnapshot(index, { ...preferences.reader.value, tagOverviewLayout: 'split', searchHierarchy: 'tags' }, '#project/atlas', {
+        queryContext: createQueryContext(NOW),
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.card'],
+    },
   ];
 }
 

@@ -1,8 +1,9 @@
 /**
- * The hierarchy: what a search found, under each tag Refine offers. In the
- * tabs layout the Notes tab groups the notes and the Tasks tab the tasks,
- * with how far along each group's tasks are; side by side, each group is one
- * row, its notes beside its tasks, so the two line up.
+ * Group by: what a search found, under each tag Refine offers or nested by
+ * tagged heading. In the tabs layout the Notes tab groups the notes and the
+ * Tasks tab the tasks; side by side, each group is one row, its notes beside
+ * its tasks, so the two line up. Wherever a group's tasks are shown, how far
+ * along they are sits at the right of its heading.
  */
 import { formatProgressCount } from '../../domain/tasks/progressCount';
 import type { SearchPageSnapshot, SearchResultGroup } from '../../ui/protocol/searchPage';
@@ -93,13 +94,17 @@ function GroupProgress({ group }: { readonly group: SearchResultGroup }) {
   );
 }
 
-/** The group's name, what it holds, and, on the Tasks tab, its progress; side by side the progress heads the tasks' column. */
+/**
+ * The group's name, what it holds, and, wherever its tasks are shown, its
+ * progress at the right of the same row, so side by side the tasks' column
+ * starts with its rows.
+ */
 function GroupHeader({ group, part, place, looseLabel }: { readonly group: SearchResultGroup; readonly part: GroupPart; readonly place: GroupPlace; readonly looseLabel: string }) {
   return (
     <div class="result-group-header">
       <GroupHeading group={group} place={place} looseLabel={looseLabel} />
       <span class="result-group-count">{describeGroup(group, part)}</span>
-      {part === 'tasks' ? <GroupProgress group={group} /> : null}
+      {part === 'notes' ? null : <GroupProgress group={group} />}
     </div>
   );
 }
@@ -188,7 +193,7 @@ function ResultGroup({ group, part, place, view }: {
         ? (
           <div class="result-group-columns">
             <div class="result-group-column">{notes}</div>
-            <div class="result-group-column"><GroupProgress group={group} />{tasks}</div>
+            <div class="result-group-column">{tasks}</div>
           </div>
         )
         : notes || tasks}

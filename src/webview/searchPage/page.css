@@ -47,8 +47,10 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .overview-pane-heading { margin: 0; color: var(--text); font-size: var(--text-lg); font-weight: 650; }
 .edit-results { flex: 0 0 auto; min-height: 24px; padding: 2px 10px; font-size: var(--text-xs); }
 .overview-pane .cards, .overview-pane .task-list { margin-top: 12px; }
-/* Hierarchy: a group per tag Refine offers, each under a rule, its name, what
-   it holds, and how far along its tasks are on one line. */
+/* Group by: a group per tag Refine offers, or per tagged heading, each under
+   a rule, its name, what it holds, and how far along its tasks are on one
+   line, the progress at its right. Where the row is too narrow, the progress
+   wraps under the name rather than overflowing. */
 .result-groups { margin-top: var(--space-5); }
 .result-groups-note { margin: 0 0 var(--space-3); color: var(--muted); font-size: var(--text-sm); }
 .result-group { min-width: 0; padding-top: var(--space-4); border-top: 1px solid var(--line); }
@@ -56,7 +58,7 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .result-group-header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
 .result-group-heading { margin: 0; color: var(--text); font-size: var(--text-lg); font-weight: 650; overflow-wrap: anywhere; }
 .result-group-count { color: var(--muted); font-size: var(--text-sm); }
-.result-group-progress { display: inline-flex; flex: 1 1 200px; align-items: center; gap: var(--space-2); max-width: 320px; }
+.result-group-progress { display: inline-flex; flex: 1 1 200px; align-items: center; gap: var(--space-2); max-width: 320px; margin-left: auto; }
 .result-group-progress .progress-bar { flex: 1 1 auto; width: auto; min-width: 60px; }
 .result-group-progress-label { flex: 0 0 auto; color: var(--muted); font-size: var(--text-sm); }
 .result-group .cards, .result-group .task-list { margin-top: var(--space-3); }
@@ -69,9 +71,6 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .overview-split-groups > .overview-split { margin-bottom: 0; }
 .result-group-columns { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
 .result-group-column { min-width: 0; }
-/* Side by side, the progress heads the tasks' column, over the rows it counts. */
-.result-group-column > .result-group-progress { display: flex; max-width: none; margin-top: var(--space-3); }
-.result-group-column > .result-group-progress + .task-list { margin-top: var(--space-2); }
 @media (max-width: 700px) { .result-group-columns { grid-template-columns: 1fr; } }
 .result-group-more { margin: var(--space-3) 0 0; color: var(--muted); font-size: var(--text-sm); }
 .result-group-tag.result-group-tag {

@@ -114,6 +114,12 @@
   the view once, on the first start after the update.
 - **A tag's hub note stays as you left it.** A hub starts open, and once
   you fold one, the next tag's page starts with its hub folded too.
+- **Hierarchy is Group by.** A search page's gear groups the results with
+  **Group by**: **None**, **Tag**, or **Heading** (were **Off**, **By
+  tag**, and **By heading**), and the choice you made carries over. A
+  group's progress bar sits at the right of its name, in either layout, so
+  side by side the tasks start under the name rather than under an empty
+  half row.
 
 ### Removed
 
