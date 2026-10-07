@@ -187,3 +187,9 @@ Tags are read once more, by the move alone, which knows the old meaning:
     its old type, rather than taking Deckard's own `[w]`.
 19. The Tasks view's message says to run the command, since a tree view's
     message has no button.
+20. `deckard.agenda.groupBy`'s "The #status/… tag written on each task"
+    description is left for the settings review, which moves the setting
+    into a preference and takes its descriptions with it.
+21. The UI surfaces' board tasks keep their `#status/doing` tag beside
+    `[/]`, so the pages that list tags draw what they did and only the
+    board's goldens move.

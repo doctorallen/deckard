@@ -8,7 +8,7 @@ Every change Deckard makes to your files, what starts it, and the setting that c
 | --- | --- | --- |
 | A task's box ticked or cleared, with its ✅ date, or `[completion:: …]` on a Dataview-format line | A checkbox on any page, the Tasks view, the board, a query block's preview, or `Deckard: Toggle Task Done` | `deckard.tasks.addDoneDate` turns the date off |
 | A repeating task's next occurrence, on a new line beside it | Completing a repeating task | The task's own repeat rule |
-| A task's dates, priority, status tag, assignee, or steps | The task editor, a board drag or card menu, the Tasks view's drops, Reschedule All… | `deckard.tasks.metadataFormat` for a task with no metadata yet |
+| A task's dates, priority, status character, assignee, or steps | The task editor, a board drag or card menu, the Tasks view's drops, Reschedule All… | `deckard.tasks.metadataFormat` for a task with no metadata yet |
 | A captured task at the end of today's note | `Deckard: Capture` or a board column's **+ Add task** | Asks first in a code repository with no notes folder; see [Getting started](getting-started.md#get-started) |
 | A tag added, renamed, or merged on every line that carries it | Rename Tag, Merge Tag…, a search page's edit, **Add a tag** | Shown first when it reaches several notes |
 | `[[links]]` rewritten to a renamed note or heading | Renaming a note in the Explorer, or `Deckard: Rename Heading` | `deckard.updateLinksOnRename` |

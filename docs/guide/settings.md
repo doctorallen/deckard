@@ -38,8 +38,6 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.me": "",
 	"deckard.statusBar": true,
 	"deckard.taskReminderTime": "",
-	"deckard.board.statusNamespace": "status",
-	"deckard.board.statuses": ["todo", "doing", "waiting"],
 	"deckard.editor.preset": "full",
 	"deckard.editor.referenceCounts": true,
 	"deckard.editor.hoverPreviews": true,
@@ -135,21 +133,16 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.tasks.metadataFormat` | `emoji` | The Tasks format Deckard writes for a task with no metadata yet: `emoji` (📅 2026-09-20) or `dataview` ([due:: 2026-09-20]). Existing tasks keep theirs; Deckard reads both. |
 | `deckard.tasks.metadataSuggestions` | `true` | Suggests dates, priorities, repeat rules, people, and dependencies after typing `/` in a task. |
 | `deckard.tasks.assigneeFromPersonTag` | `false` | Reads the first person named in a task as the person it is for; see [Who a task is for](tasks.md#who-a-task-is-for). |
-| `deckard.board.limits` | `{}` | Work-in-progress limits for board columns, by status, such as `{ "doing": 3 }`, or by column id, such as `{ "priority:high": 5 }`. An over-limit column says so. |
-| `deckard.tasks.statuses` | Todo, In progress, Done, Cancelled, Waiting, Someday, Blocked | What each checkbox character means: `[/]` in progress, `[-]` cancelled, `[=]` blocked. Each status has a name, a type (to do, in progress, on hold, done, cancelled, or not a task), and the `#status/…` tag that stands for it. A character no status names is a task to do, called Unknown. |
+| `deckard.board.limits` | `{}` | Work-in-progress limits for board columns, by status, its name with a hyphen for a space, such as `{ "in-progress": 3 }`, or by column id, such as `{ "priority:high": 5 }`. An over-limit column says so. |
+| `deckard.tasks.statuses` | Todo, In progress, Done, Cancelled, Waiting, Someday, Blocked | What each checkbox character means: `[/]` in progress, `[w]` waiting, `[s]` someday, `[=]` blocked, `[-]` cancelled. Each status has its character, a name, and a type (to do, in progress, on hold, done, cancelled, or not a task). A task's status is its character alone. A character no status names is a task to do, called Unknown. |
 | `deckard.tasks.checkboxClick` | `done` | What a click on a task's box does: `done` marks it done whatever its status, and unchecking reopens it as `[ ]`; `workflow` moves it to its status's next status, as Obsidian Tasks does. |
-| `deckard.tasks.writeStatusAs` | `match` | How a status with both a character and a tag is written: `match` as the line already writes it, `checkbox` always as its character, `tag` always as its tag. |
 | `deckard.tasks.addCancelledDate` | `true` | Adds a cancelled date (❌) when Deckard cancels a task, and removes it when the task is reopened. |
-| `deckard.tasks.onHoldStatuses` | `["waiting", "someday"]` | Deprecated: give a status the on-hold type in `deckard.tasks.statuses`. Each tag listed is still read as an on-hold status. |
 | `deckard.tasks.suggestSteps` | `true` | Offers **Suggest steps** in Break into Steps… when a VS Code language model, such as GitHub Copilot, is installed. Only the task's words are sent, and only when you choose it. See [Suggest steps](ai-assistants.md#suggest-steps). |
 | `deckard.me` | Empty | Who you are in your notes, such as `@ren-kade`, so `is:mine` finds the tasks that name you. See [Who a task is for](tasks.md#who-a-task-is-for). |
 | `deckard.tasks.needsNewDateAfterDays` | `30` | How many days past its due date an open task stays in Overdue. After that it moves to **Needs a new date** and leaves the status bar's count. `0` keeps every overdue task in Overdue. |
 | `deckard.statusBar` | `true` | Shows how many tasks are due today in the status bar, hidden while nothing is due. See [Status bar and reminders](tasks.md#status-bar-and-reminders). |
 | `deckard.taskReminderTime` | Empty | A time of day, such as `09:00`, from which Deckard says how many tasks are due, once a day. Empty means no reminder. |
-| `deckard.board.showCancelled` | `false` | Draws a Cancelled column after Done on the Task board. The board's gear turns it on and off. |
 | `deckard.board.parentTag` | `false` | Shows each task's nearest parent tag above its title on the Task board's cards and list rows. The board's gear turns it on and off. |
-| `deckard.board.statusNamespace` | `status` | The tag namespace that holds a task's status on the task board, so the default reads `#status/doing`. |
-| `deckard.board.statuses` | `["todo", "doing", "waiting"]` | The task board's status columns, in order. An unlisted status found on a task gets a column after them. |
 | `deckard.editor.preset` | `full` | What Deckard draws in the editor, as one choice: `full`, everything; `tasks`, task hints and problem reports without link counts, mention lenses, or breadcrumbs; `writing`, the / menu, hover previews, and problem reports only. A `deckard.editor.*` setting you change yourself wins over it. `Deckard: Choose Editor Preset…` sets it. |
 | `deckard.editor.referenceCounts` | `true` | Shows backlink, heading-reference, and open-task counts above a note's lines. |
 | `deckard.editor.hoverPreviews` | `true` | Previews a `[[Wiki link]]`'s target and summarizes a tag's entries on hover. |

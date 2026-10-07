@@ -70,15 +70,15 @@ Shorthands, written the way GitHub writes them:
 | Shorthand | Finds |
 | --- | --- |
 | `is:open`, `is:done` | Open tasks (to do, in progress, or on hold), or done tasks. |
-| `is:in-progress` | Tasks in progress, such as `[/]` or `#status/doing` on an empty box. |
+| `is:in-progress` | Tasks in progress, such as `[/]`. |
 | `is:cancelled`, `is:closed` | Cancelled tasks, such as `[-]`, and tasks done or cancelled. |
 | `is:overdue` | Open tasks past their due date. |
 | `is:today` | Open tasks due today, or scheduled for today or earlier and started: the Tasks view's **Today**. |
 | `is:needs-date` | Open tasks more than `deckard.tasks.needsNewDateAfterDays` (30) days past due: the Tasks view's **Needs a new date**. |
 | `is:due` | Open tasks due within seven days, overdue included. |
 | `is:task`, `is:note` | Every task, or note sections without tasks. |
-| `is:blocked`, `is:blocking` | Open tasks waiting for a still-open task or with the Blocked status (`[=]` or `#status/blocked`), and the open tasks they wait for. |
-| `is:waiting` | Open tasks with an on-hold status (Waiting, Someday, Blocked, or one of your own), or assigned with 👤 to someone other than you. With `deckard.me` empty, every assigned task counts. |
+| `is:blocked`, `is:blocking` | Open tasks waiting for a still-open task or with the Blocked status (`[=]`), and the open tasks they wait for. |
+| `is:waiting` | Open tasks with an on-hold status (Waiting `[w]`, Someday `[s]`, Blocked `[=]`, or one of your own), or assigned with 👤 to someone other than you. With `deckard.me` empty, every assigned task counts. |
 | `is:available` | Open tasks that are not blocked, started (no 🛫 date, or one today or earlier), and not on hold. |
 | `is:mine` | Tasks for the person `deckard.me` names, and tasks for nobody. Without that setting, only the latter. |
 | `is:assigned`, `is:unassigned` | Tasks that name a person, and tasks that name nobody. |
@@ -101,7 +101,7 @@ Fields:
 | `link` | Entries that link to a note, by its name or any `aliases:` name. `[[Atlas#Decision]]` narrows to a heading, `[[Atlas#^q3]]` to a marked line; text after `\|` is ignored. Only `=` and `!=`; brackets are optional after `link`. | `[[Atlas]]`, `link = [[Atlas#Decision]]`, `-[[Atlas]]` |
 | `text` | Words in a note body, task line, or front-matter-only file. `:` and `~` match a substring; `=` and `!=` a whole word. | `text ~ elevator`, `text = plan` |
 | `task` | `open`, `done`, or `any`. Returns only tasks. | `task = open` |
-| `status` | A [task status](tasks.md#task-statuses) by name, ignoring case, with a hyphen or quotes for a space; by its character in brackets; or `unknown` for a character no status names. `open`, `done`, and `any` mean what they do for `task`. `-status:` leaves a status out. Only tasks. | `status:in-progress`, `status:"in progress"`, `status:[=]`, `-status:waiting` |
+| `status` | A [task status](tasks.md#task-statuses) by name, ignoring case, with a hyphen or quotes for a space; by its character in brackets; or `unknown` for a character no status names. `open`, `done`, and `any` mean what they do for `task`. `-status:` leaves a status out. A status is the character in a task's box; a `#status/…` tag is searched as a tag. Only tasks. | `status:in-progress`, `status:"in progress"`, `status:[=]`, `-status:waiting` |
 | `due`, `scheduled`, `start` | A task's 📅, ⏳, or 🛫 date: a date, `today`, `tomorrow`, a weekday such as `friday` (the next one), any other [day in plain words](tasks.md#dates-in-plain-words) quoted or with `-` for spaces, a week or month (`this-week`, `next-week`, `this-month`, `next-month`, `2026-10`), a window such as `7d` counted forward, or `none`. Only tasks. | `due < today`, `due <= friday`, `due <= "oct 3"`, `due = this-week`, `due = none` |
 | `done`, `cancelled` | A task's ✅ or ❌ date. Windows count back from today; a weekday means the last one. | `done = 7d`, `done >= "last friday"`, `cancelled = 30d` |
 | `priority` | `highest`, `high`, `medium`, `none`, `low`, or `lowest`. No priority counts as `none`, between `medium` and `low`. | `priority >= high` |

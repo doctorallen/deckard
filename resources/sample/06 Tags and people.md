@@ -9,7 +9,7 @@ namespaces:
 #person/sable-ortiz      people                 #team/wardens            teams
 #project/ghostline-relay  projects             #contact/praxis-loom     people outside the teams
 #location/south-spindle   places               #context/phone           where a task can be done
-#status/doing             a task's status      #risk/workload           what could go wrong
+#feature/camera-angle     what a record keeps  #risk/workload           what could go wrong
 ```
 
 A tag on a heading covers everything under it. A tag on a line covers that

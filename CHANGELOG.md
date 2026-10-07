@@ -61,6 +61,45 @@
   offers has a row on its Commands page. A page's **?** opens the guide
   page about it, such as the calendar's at Daily notes, reviews, and the
   calendar.
+- **A task's status is its checkbox character, and nothing else**, as in
+  Obsidian Tasks. A `#status/doing` tag no longer makes a task in progress:
+  it is a tag like any other, searched and shown as one, and `[ ]` is Todo
+  whatever it carries. Every status Deckard writes is its character.
+  Waiting is now `[w]` and Someday `[s]`.
+- **Moving your notes over.** While task lines carry status tags Deckard
+  used to read, the first scan of each session says how many, and the Task
+  board and the Tasks view say so too. **Preview the Move** (Deckard: Move
+  Status Tags into Checkboxes…) writes each tag as the character of the
+  status it meant, removes one its box already says, and rewrites query
+  blocks that search by a status tag as `status:` searches, in one previewed
+  change Undo takes back; saved searches and Home's widgets follow when you
+  say so. A tag no status has a character for stays, and **Give It a
+  Character** opens Edit Task Statuses on a new status of its name. The old
+  board settings move once: their column order, Cancelled shown, and
+  `deckard.board.limits` keys such as `doing`, now `in-progress`.
+- **The Task board's status columns are your status list.** Each open
+  status is a column, headed by its character, such as **In progress
+  [/]**, and the gear's **Status columns** ticks which statuses are columns
+  and drags them into order, kept on this machine as the board's layout
+  is. A status the board hides still counts its open tasks, says so in the
+  gear, and is under **More statuses** in a card's menu. A character no
+  status names gets an **Unknown [?]** column of its own. **New status…**
+  and **Edit statuses…** open Edit Task Statuses. The Tasks view's **By
+  status** follows the board's order.
+- **Import Statuses from Obsidian Tasks** imports the vault's statuses as
+  they are, adding Waiting `[w]` and Someday `[s]` only where the vault has
+  no status of that name or character.
+
+### Removed
+
+- The **No status** column, its group in the Tasks view, and the board's
+  "few tasks carry a status" hint: a plain `[ ]` is Todo.
+- The settings `deckard.tasks.writeStatusAs`, `deckard.tasks.onHoldStatuses`,
+  `deckard.board.statusNamespace`, `deckard.board.statuses`, and
+  `deckard.board.showCancelled`, and the `tag` of a status in
+  `deckard.tasks.statuses`. The board's gear sets its columns, and a status
+  with no character is left out of the list.
+- **Keep Tags**, the first scan's choice to keep writing statuses as tags.
 
 ## 2.3.0 - 2026-10-06
 

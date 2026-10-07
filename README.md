@@ -82,7 +82,7 @@ A note is written the way you already write:
 
 Talked with @dana about the vendor shortlist. See [[Vendor review]].
 
-- [ ] Send the proposal 📅 2026-10-09 ⏫ #status/doing
+- [/] Send the proposal 📅 2026-10-09 ⏫
 - [ ] Book the review room 🔁 every week
 ```
 

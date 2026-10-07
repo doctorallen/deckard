@@ -55,7 +55,9 @@ function createIndex(withSteps = false) {
   const long = 'Chase the replicant through the neon market and file the report before the rain';
   const lines = ['# Tasks #project/atlas', ''];
   for (let i = 1; i <= 40; i += 1) {
-    lines.push(`- [/] ${i === 1 ? long : `Board task ${i}`} 📅 ${fixtureDue(i)}`);
+    // In progress by their boxes; the #status/doing tag is a tag like any
+    // other, kept so the pages that list tags draw what they always have.
+    lines.push(`- [/] ${i === 1 ? long : `Board task ${i}`} 📅 ${fixtureDue(i)} #status/doing`);
     // The board's cards: the long first task has steps, the next of them
     // too long for a column, so its line must ellipsize, not widen the card.
     if (i === 1 && withSteps) {

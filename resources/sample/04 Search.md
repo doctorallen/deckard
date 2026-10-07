@@ -59,7 +59,7 @@ tag = #risk/*
 ```search
 #project/ghostline-relay is:open
 #team/wardens OR #team/harbor
-#project/ghostline-relay -#status/doing
+#project/ghostline-relay -status:in-progress
 (#person/ren-kade OR #person/leena-sato) AND is:open
 NOT (is:done OR is:step)
 ```
@@ -189,9 +189,9 @@ created = 2026-08
 
 ## By status
 
-A task's status is the character in its box, or, in an empty box, a status
-tag on its line. `status:` finds one by its name, a hyphen for a space, or
-by its character in brackets.
+A task's status is the character in its box: `[/]` is In progress, `[w]`
+Waiting. `status:` finds one by its name, a hyphen for a space, or by its
+character in brackets.
 
 ```search
 status:in-progress
@@ -200,8 +200,8 @@ status:[-]
 -status:someday is:waiting
 ```
 
-- `status:in-progress`: the same 3, written either way, the same as
-  `is:in-progress`. `status:waiting`: 1, Praxis Loom.
+- `status:in-progress`: the same 3 as `is:in-progress`. `status:waiting`:
+  1, Praxis Loom.
 - `status:[-]` is every task whose box holds `-`: the shell camera.
 - `-status:someday is:waiting` leaves the someday idea out of what is
   waiting: 4.
