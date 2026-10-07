@@ -204,6 +204,7 @@ suite('Extension Test Suite', () => {
         'deckard.agenda.editQuery',
         'deckard.clearAgendaQuery',
         'deckard.agenda.setGrouping',
+        'deckard.agenda.setSort',
         'deckard.outline.enableFollowCursor',
         'deckard.outline.disableFollowCursor',
         'deckard.focusSection',
