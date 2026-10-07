@@ -127,7 +127,7 @@ topics:
 
 `Deckard: Move Inline Tags to Front Matter` moves the note's explicit tags into plural front-matter fields, merging existing values and keeping other YAML. Use it only for tags that belong to the whole note.
 
-**Renaming tags.** Run `Deckard: Rename Tag`, right-click a tag on the Dashboard, a search page, or Related Notes and choose **Rename tag**, or hover a tag in the editor and choose **Rename**. It renames the tag everywhere it is written, leaving ordinary words and fenced code alone. Renaming to an existing tag merges the two; see [Merging tags](search-pages.md#merging-tags). Enter a complete tag such as `#management/new-name`, or only a name to keep the marker and namespace. The box previews the result, such as *Merges into #project/atlas (42 entries).*
+**Renaming tags.** Run `Deckard: Rename Tag`, right-click a tag on the Dashboard, a search page, or Related Notes and choose **Rename tag**, or hover a tag in the editor and choose **Rename**. It renames the tag everywhere it is written, leaving ordinary words and fenced code alone. Renaming to an existing tag merges the two; see [Merging tags](search-pages.md#merging-tags). Enter a complete tag such as `#management/new-name`, or only a name to keep the marker and namespace. The box starts from the old name and previews the result, such as *Merges into #project/atlas (42 entries).*
 
 **Syntax rules:**
 
@@ -181,7 +181,7 @@ topics:
 
 Put Markdown files in a `templates` folder at the workspace root, or the folder `deckard.templatesFolder` names, and run `Deckard: New Note from Template`. Choose a template and a title; Deckard creates the note in your notes folder and opens it. The templates folder is never indexed. With no templates yet, it offers **Create Starter Templates**: a meeting, a 1:1, and a decision record, which you can change or delete like any other file.
 
-To write into a specific folder, right-click it in the Explorer and choose **Deckard → New Note from Template Here…**. **Deckard: Create Daily Note** and **Deckard: New Note from Template** are also in **File → New File…** and on the Welcome page.
+To write into a specific folder, right-click it in the Explorer and choose **Deckard → New Note from Template Here…**. The same menu's **Exclude from Deckard** leaves the folder out of the index, and **Include in Deckard** brings it back. **Deckard: Create Daily Note** and **Deckard: New Note from Template** are also in **File → New File…** and on the Welcome page.
 
 | Placeholder | Becomes |
 | --- | --- |

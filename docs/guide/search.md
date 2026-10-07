@@ -117,7 +117,7 @@ Fields:
 
 **Created and updated.** A note's created date is its `created:` or `date:` front matter; otherwise a daily note's day (or its file's age, if older), or the file's creation time. Its updated date is its `updated:` front matter, or the file's modified time.
 
-**Operators:** `=` is, `!=` is not, `~` contains, `!~` does not contain, and `>`, `>=`, `<`, `<=` for dates and priorities. A window such as `7d` compares by its far end: `updated > 7d` means within the last seven days, and `due < 7d` means due within the next seven, overdue included. `:` reads as `=` for every field but `text` (`tag:#atlas`), where it matches a substring as `~` does (`text:plan` finds "planning"); Deckard writes `=` or `~` when formatting. A comparison can follow it: `updated:>2026-01-01` equals `updated > 2026-01-01`. Use `NOT` to negate a parenthesized group.
+**Operators:** `=` is, `!=` is not, `~` contains, `!~` does not contain, and `>`, `>=`, `<`, `<=` for dates and priorities. A window such as `7d` compares by its far end: `updated > 7d` means within the last seven days, and `due < 7d` means due within the next seven, overdue included. `:` reads as `=` for every field but `text` (`tag:#atlas`), where it matches a substring as `~` does (`text:plan` finds "planning"); Deckard writes `=` or `~` when formatting. A comparison can follow it: `updated:>2026-01-01` equals `updated > 2026-01-01`. Every operator has an opposite, so any one condition can be negated without `NOT`; use `NOT` to negate a parenthesized group.
 
 ---
 

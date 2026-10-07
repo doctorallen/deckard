@@ -6,7 +6,7 @@ Run `Deckard: Open Task Board`, or select **Task Board** at the top of the Conte
 
 ## Groupings
 
-- **Status**: a column per [task status](tasks.md#task-statuses), named as the status is, such as **In progress**. `[/]` and `#status/doing` share **In progress**, and `[=]` has a **Blocked** column. `deckard.board.statuses` sets the first columns (`todo`, `doing`, `waiting` by default), each by its status's tag, or by its name with hyphens for spaces when it has no tag; other statuses follow, and tasks without one are in **No status**. A character no status names stays in **No status**, and its card names it, such as **Unknown [?]**. `deckard.board.statusNamespace` uses another namespace for the tags, such as `#stage/…`. A status inherited from a heading does not count.
+- **Status**: a column per [task status](tasks.md#task-statuses), named as the status is, such as **In progress**. `[/]` and `#status/doing` share **In progress**, and `[=]` has a **Blocked** column. `deckard.board.statuses` sets the first columns (`todo`, `doing`, `waiting` by default), each by its status's tag, or by its name with hyphens for spaces when it has no tag; other statuses follow, and tasks without one are in **No status**. A character no status names stays in **No status**, and its card names it, such as **Unknown [?]**. `deckard.board.statusNamespace` uses another namespace for the tags, such as `#stage/…`. A status inherited from a heading does not count. While most open tasks have no status, the board says how many above the columns and offers **Group by due date**, which needs none.
 - Dropping on a status column writes the status as `deckard.tasks.writeStatusAs` says: by default, a line with a status tag gets the tag changed, and a plain line gets the character, so `- [ ] Draft` dropped on **In progress** becomes `- [/] Draft`. A status with no character, such as Waiting, is written as its tag. Dropping on **No status** writes a plain `[ ]` and removes the tag.
 - **Priority**: a column per priority. Dropping writes it in the task's format, such as ⏫ or `[priority:: high]`.
 - **Due date**: **Needs a new date** (more than 30 days overdue, titled in red), Overdue, Today, Tomorrow, Within a week, Later, and No due date. Drop on **Today** or **Tomorrow** to set the date, or **No due date** to remove it; other columns take no drops.
@@ -60,6 +60,8 @@ The board is one Tab stop. Arrow keys move between cards and columns. On a focus
 - **[** and **]** move it to the adjacent column.
 - **e** opens the task editor; **s** [breaks it into steps](tasks.md#breaking-a-task-into-steps); **Enter** opens its line, and **Cmd+Enter** (Ctrl+Enter on Windows and Linux) opens it beside the board.
 - **?** lists the keys.
+
+A card's **⋯** menu checks the task's current status, priority, and due date, and shows the key for each choice; the keys work in the menu too.
 
 ### Contexts, areas, and projects
 

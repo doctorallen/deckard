@@ -87,11 +87,11 @@ A checkbox indented under a task is one of its **steps**:
   - [ ] Send the invite
 ```
 
-Run **Deckard: Break into Steps…** from the lightbulb, the palette, or the editor's **Deckard** submenu on a task line; a task's right-click menu in the Tasks view; or a board card's **⋯** menu (or **s**). Type a step and press Enter for each. **Write** adds them as `- [ ]` lines under the task in one change, undone by the message's **Undo** or **Deckard: Undo Last Change**. Escape writes nothing. With a VS Code language model, **Suggest steps** drafts a list; see [Suggest steps](ai-assistants.md#suggest-steps).
+Run **Deckard: Break into Steps…** from the lightbulb, the palette, or the editor's **Deckard** submenu on a task line; a task's right-click menu in the Tasks view; or a board card's **⋯** menu (or **s**). Type a step and press Enter for each. **Write** adds them as `- [ ]` lines under the task, after any it already has, in one change, undone by the message's **Undo** or **Deckard: Undo Last Change**. Escape writes nothing. With a VS Code language model, **Suggest steps** drafts a list; see [Suggest steps](ai-assistants.md#suggest-steps).
 
 - A heading, code block, or unindented paragraph ends the steps; a blank line does not. A checkbox under a plain bullet is its own task.
 - `is:step` finds steps; `has:steps` finds tasks with them; `-is:step` leaves steps out of search pages.
-- A task with steps shows **Steps 2/5 done (40%) · next: Draft the email**. In the editor, a lens above it draws the same with a bar, **███░░░░░░░ Steps 1/3 done (33%) · next: Draft the email**; select it to go to the next open step. `deckard.editor.stepProgress` turns it off. On the Task board and in the Tasks view, steps ride on their task unless they have their own date, priority, person, or tag, or the task is done or not listed.
+- A task with steps shows **Steps 2/5 done (40%) · next: Draft the email**. In the editor, a lens above it draws the same with a bar, **███░░░░░░░ Steps 1/3 done (33%) · next: Draft the email**; select it to go to the next open step. `deckard.editor.stepProgress` turns it off. On the Task board and in the Tasks view, steps ride on their task unless they have their own date, priority, person, or tag, or the task is done or not listed. In the Tasks view, a task with steps opens to them.
 - Checking a task's last open step offers **Complete Task**. Completing a task with open steps offers **Complete Steps**, with its own **Undo**. Toggle Task Done, bulk edits, and the assistant complete only what they are given.
 
 ### Typing metadata
@@ -169,7 +169,7 @@ The character between a task's brackets is its status, as in [Obsidian Tasks](ht
 ### Setting a status
 
 - **Checking a box** marks the task done from any status, with its ✅ date and next occurrence. Unchecking a done or cancelled task reopens it as `[ ]` and removes its status tag. With `deckard.tasks.checkboxClick` set to `workflow`, a click moves a task to its status's next status instead, as Obsidian Tasks does.
-- **Deckard: Toggle Task Done** always goes to done and back: an in-progress or cancelled task is completed too.
+- **Deckard: Toggle Task Done** always goes to done and back: an in-progress or cancelled task is completed too. It completes the tasks under every cursor, or reopens them when all are done, in one edit that one Undo takes back.
 - **Deckard: Set Task Status…**, in the palette, the editor's right-click menu, and a task's right-click menu in the Tasks view, picks any status. The [task editor's](#editing-a-whole-task) **Status** row lists every status, and a bulk edit's **Set a status** sets one on many tasks. The assistant's tool for changing a task takes a status by name, or as its character, such as `[/]`.
 - Typing `- [` in a note offers every status's character.
 - **Character or tag.** `deckard.tasks.writeStatusAs` chooses how a status is written:
@@ -252,10 +252,10 @@ The status bar shows **3 due today**, or **1 overdue, 3 due today** in the warni
 
 ## Quick capture
 
-Run `Deckard: Capture` and type a task. Deckard adds it as `- [ ] …` to today's daily note, creating it from your template if needed. If you close the box with words in it, the next Capture brings them back.
+Run `Deckard: Capture` and type a task; `#` and `@` complete your tags as you type. Deckard adds it as `- [ ] …` to today's daily note, creating it from your template if needed. The box stays open when you click away, and if you close it with words in it, the next Capture brings them back.
 
 - **Quick add.** Words at the end are read in any order: a day (`today`, `friday`, `next monday`, `in 3 days`, `oct 3`; or after `on`, `by`, or `due`, a short day such as `fri`, `+2w`, a date, or `10/3`), a priority (`p1` to `p4`, or `!!!`, `!!`, `!`), a repeat rule (`every week`, `daily`), and who it is for (`for @dana`). `@dana to …` at the start hands the task to Dana too; a person mentioned anywhere else stays a mention. `Call Ren friday p2` becomes `- [ ] Call Ren ⏫ 📅 2026-10-02`, and `Send the deck for @dana friday` becomes `- [ ] Send the deck 📅 2026-10-02 👤 @dana`, previewed as you type. **Keep the words as written** reads nothing. **Add as a note line** writes a plain `- …` item.
-- **Under a heading.** The list button, or `Deckard: Capture Under a Heading`, picks a heading from any note, starting with the five used last.
+- **Under a heading.** The list button, or `Deckard: Capture Under a Heading`, picks a heading from any note, starting with the five used last, and writes the task under the heading's own lines, above any nested heading.
 - **From a selection.** Select up to 120 characters on one line and Capture starts from them, with a link to the heading they were under: `- [ ] Call Ren [[2026-09-22#Weekly review]] 📅 2026-10-02`. The link button turns it off. **Restore what you were typing** brings back your earlier draft.
 - Unsaved changes in an open note are kept, and the note is saved.
 

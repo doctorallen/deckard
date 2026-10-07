@@ -2,7 +2,7 @@
 
 ## Search pages
 
-Every search opens a **search page** in its own tab; a tag's overview is the search page for that tag. Open one by Cmd/Ctrl-clicking a tag in the editor, selecting a tag anywhere Deckard shows one, searching from Home or [Find](search.md#find), or running `Deckard: Open Search Page…` or `Deckard: Open a Tag's Search Page`. A search already open comes forward. Parked notes and tasks are listed last, marked **Parked**.
+Every search opens a **search page** in its own tab; a tag's overview is the search page for that tag. Open one by Cmd/Ctrl-clicking a tag in the editor, selecting a tag anywhere Deckard shows one, searching from Home or [Find](search.md#find), or running `Deckard: Open Search Page…` or `Deckard: Open a Tag's Search Page…`. A search already open comes forward. Parked notes and tasks are listed last, marked **Parked**.
 
 ![Deckard Tag Overview showing matching notes, active tasks, and display controls.](../images/tag-overview.png)
 
@@ -17,7 +17,7 @@ Every search opens a **search page** in its own tab; a tag's overview is the sea
 - Searched words are marked, and each result's header shows its file, line, and headings (folded in zen mode).
 - **Paging.** Results show a page at a time with **Previous**, **Next**, page numbers, and the range (*271–300 of 3,760*). Notes and tasks page separately. **Per page** chooses 10, 30, 50, 100, or 200, starts at 30, and is remembered. Counts and Refine cover the whole search.
 - **View options** (the gear): **Tabs** or **Side by side**, **Hierarchy** off, by tag, or by heading, rendered or Markdown source (**Format** → Source, remembered), and one to four columns for notes and for tasks.
-- **Save** keeps the search, then offers **Show Results on Home** (a widget of its results) or **Open Home**. A saved search of tags follows them when they are renamed.
+- **Save** keeps the search, then offers **Show Results on Home** (a widget of its results) or **Open Home**. A saved search of tags follows them when they are renamed. Until there is a search to save, **Save** stays in place, and says so when focused.
 - **Opening results.** Select an entry to jump to its heading. A click opens a preview tab, reused by the next result; a double-click keeps the tab; Cmd/Ctrl-click opens it beside the page. This also holds on the Task board, Home, Stats, and the Notes Graph, where Alt-click opens beside it.
 - **‹** and **›** beside the gear, <kbd>Alt</kbd>+<kbd>←</kbd> and <kbd>Alt</kbd>+<kbd>→</kbd>, or the mouse's back and forward buttons move through the page's searches.
 

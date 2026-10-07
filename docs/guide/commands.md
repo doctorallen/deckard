@@ -8,8 +8,12 @@
 | **Deckard: Open Notes Graph Around This Note** | Opens the Notes Graph one hop out from the note in the editor, without changing its default scope. |
 | **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, due date, person, or any tag namespace. |
 | **Deckard: Open Stats** | Opens index totals and local view-count statistics. |
+| **Deckard: Open Calendar** | Opens the calendar across the editor, each day listing its tasks; see [Calendar](daily-notes.md#calendar). |
 | **Deckard: Open Help** | Opens the quick-start and advanced feature guide. |
 | **Deckard: Choose Theme…** | Previews each theme on the open pages; Enter keeps one, Escape goes back. |
+| **Deckard: Choose Display…** | Shows each Display step, Full, Quiet, or Zen, on the open pages as you move through them; see [Display](themes-and-zen.md#display). |
+| **Deckard: Toggle Zen** | Goes to Zen, and back to the step you were on. **Deckard: Enter Zen** and **Deckard: Leave Zen** go one way each; see [Zen](themes-and-zen.md#zen). |
+| **Deckard: Choose Date Format…** | Shows today in each format; **Custom…** says it back as you type; see [Dates](themes-and-zen.md#dates). |
 | **Deckard: Get Started** | Opens the walkthrough: six steps, each checked off as you do it. |
 | **Deckard: What's New** | Opens Help at **What's new**. |
 | **Deckard: Open Log** | Opens Deckard's log, including timings. |
@@ -49,7 +53,14 @@
 | **Deckard: Capture** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> elsewhere. Adds a task to today's note without leaving the current editor. |
 | **Deckard: Capture Under a Heading** | Adds a task under a heading you choose in any note. |
 | **Deckard: Roll Unfinished Tasks Forward** | Carries the last daily note's unfinished tasks into today's, creating it if needed. |
+| **Deckard: Reschedule Overdue Tasks…** | Dates the overdue tasks at once, saying how full each day is; see [Tasks view](tasks.md#tasks-view). |
+| **Deckard: Edit What the Tasks View Lists…** | Opens the Task Board on what the Tasks view lists, to change it and keep it with **Save to Tasks view**; see [Editing what the Tasks view lists](task-board.md#editing-what-the-tasks-view-lists). |
+| **Deckard: Clear the Tasks View's Search** | Lets the Tasks view list every open task again. |
+| **Deckard: Group Tasks By…** | Chooses the Tasks view's groups: due status, priority, status, person, or a tag namespace. |
+| **Deckard: Sort Tasks By…** | Orders each of the Tasks view's groups: by rank, created or updated date, or title. |
 | **Deckard: New Note from Template** | Creates a note from a template in your templates folder. |
+| **Deckard: New Note from Template Here…** | The same, in the folder right-clicked in the Explorer, from its **Deckard** menu. |
+| **Deckard: Exclude from Deckard** | On a folder's **Deckard** menu in the Explorer: leaves the folder out of the index. **Deckard: Include in Deckard** brings a folder left out by name back. |
 | **Deckard: Copy MCP Server Setup** | Copies the command that adds Deckard's [MCP server](ai-assistants.md#claude-code-and-other-mcp-clients) to Claude Code. |
 | **Deckard: Reset MCP Server Token** | Makes a new MCP server token, invalidating copied setups. |
 | **Deckard: Move to…** | Moves the line, task, or selection under another heading or into a new note, and leaves a link behind. |
@@ -59,6 +70,10 @@
 | **Deckard: Open a Tag's Search Page…** | Opens a tag's search page, asking which tag when none is supplied. |
 | **Deckard: Insert Query Block…** | Writes a live [query block](query-blocks.md#query-blocks) at the cursor. |
 | **Deckard: Find in Notes** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> elsewhere. Searches notes, tasks, tags, and saved searches as you type; see [Find](search.md#find). |
+| **Deckard: Open Beside in Find** | <kbd>Cmd</kbd>+<kbd>Enter</kbd> (<kbd>Ctrl</kbd>+<kbd>Enter</kbd> elsewhere) in Find: opens the highlighted result beside the editor, keeping Find open. |
+| **Deckard: Insert a Link from Find** | <kbd>Alt</kbd>+<kbd>Enter</kbd> in Find: links the highlighted result where the cursor was. |
+| **Deckard: List Actions in Find** | <kbd>Cmd</kbd>+<kbd>.</kbd> (<kbd>Ctrl</kbd>+<kbd>.</kbd> elsewhere) in Find: lists everything the highlighted result can do. |
+| **Deckard: Open Search Page** | Opens a search page, ready for a search. |
 | **Deckard: Open Search Page…** | Opens a search page on a search, such as `#project/atlas AND is:open`; with nothing typed, a page of every note. |
 | **Deckard: Link Current Heading to Entity** | Adds a person, project, topic, organization, or meeting tag to the current heading. |
 | **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |

@@ -22,7 +22,7 @@ Three figures sit above Home: **Due today** and **Overdue**, as the [Tasks view]
 | **Tasks view** | Overdue, today's, and upcoming tasks | The Tasks view |
 | **Favorite tags** | Your favorite tags | The Tags tab |
 | **Frequent tags** | The tags you open most, lately | The Tags tab |
-| **Saved searches** | Your saved searches, each removable | Where each was saved |
+| **Saved searches** | Your saved searches, each removable, and **Show results** on one until Home lists what it finds | Where each was saved |
 | **Saved search results** | What one saved search finds | Its search page, or the Task board |
 | **Recent searches** | The searches you ran lately | Their search pages |
 | **Recently opened** | Notes you opened from Deckard lately | The notes |
@@ -66,7 +66,7 @@ The arrangement is kept in VS Code's preferences, not your notes.
 
 ### Tags
 
-- **Tags** lists namespaced and unnamespaced tags together, each named by what follows its namespace, so `#project/alpha/notes` reads *alpha/notes*. Search them, by the tag as written or as its row shows it, narrow with **Namespace** (a person's `@` tag counts as **Person**) or to tags without one, and sort alphabetically, by entry count, by most accessed, or by custom rank. In Rank mode, drag a row or use its context menu to move it, or press <kbd>Alt</kbd>+<kbd>Up</kbd> or <kbd>Alt</kbd>+<kbd>Down</kbd>, which move a tag within favorites or the rest; drag it across to favorite or unfavorite it. Display order does not change your files.
+- **Tags** lists namespaced and unnamespaced tags together, each named by what follows its namespace, so `#project/alpha/notes` reads *alpha/notes*. Search them, by the tag as written or as its row shows it, narrow with **Namespace** (a person's `@` tag counts as **Person**) or to tags without one, and sort alphabetically, by entry count, by most accessed, or by custom rank. The heart on a tag makes it a favorite, and favorites come first whatever the sort. In Rank mode, drag a row, use its context menu's **Move to top** and **Move to bottom**, or press <kbd>Alt</kbd>+<kbd>Up</kbd> or <kbd>Alt</kbd>+<kbd>Down</kbd>, which move a tag within favorites or the rest; drag it across to favorite or unfavorite it. Display order does not change your files.
 - **Searches are kept** between visits. While one narrows the list, a line such as *Showing 3 of 42 tags matching “vendor”* offers **Clear search**, which also clears **Namespace**.
 - **Saved searches** are listed below the tags. Select one to reopen it where it was saved, or use **Remove**.
 - The View options gear sets one through four tag columns.
