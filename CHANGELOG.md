@@ -25,6 +25,25 @@
   (`deckard.agenda.sort`), orders each group by rank, by when its tasks
   were created or updated, or by title, either way.
 
+- **A date format of your own.** `deckard.display.dateFormat` writes every
+  date Deckard shows you in a format you choose, such as `DD/MM/YYYY`,
+  `D MMM YYYY`, or `L` for your display language's own, on pages, in the
+  Tasks view, Find, the task editor, the date box, completions, and
+  messages. Formats use the tokens Obsidian's daily notes use, so one
+  copied from a vault works unchanged. `deckard.display.shortDateFormat`
+  is for a day of this year where there is little room, such as the Tasks
+  view's day headings. `Deckard: Choose Date Format…` shows today in each
+  of a few formats, and **Custom…** says it back as you type. Dates
+  written into notes, file names, and searches stay `YYYY-MM-DD`.
+
+### Changed
+
+- **Short dates.** The Tasks view's day headings read "Mon, Sep 28"
+  (were "Mon Sep 28"), the calendar's day title "Fri, Sep 25" (was
+  "Friday, September 25"), and a search completion's week "Sun, Sep 20 to
+  Sat, Sep 26" (was "Sep 20 to Sep 26"). A short date in another year is
+  written in full, "2027-03-10", rather than "Wed, Mar 10, 2027".
+
 ## 2.3.0 - 2026-10-06
 
 ### Highlights

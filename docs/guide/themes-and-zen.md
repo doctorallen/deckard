@@ -51,6 +51,30 @@ Each setting follows the step while it's *Auto*; set one and it stays as you set
 
 Every Display setting is yours alone: it's the same in every workspace, and a workspace's settings never change how your pages look.
 
+### Dates
+
+Deckard writes every date it shows you in one format, `YYYY-MM-DD` unless you set another: on pages, in the Tasks view and the editor's lenses, in Find, the task editor, the date box, completions, and every message that names a day. `Deckard: Choose Date Format…` shows today in a few formats, such as `DD/MM/YYYY`, `D MMM YYYY`, and `ddd, MMM D, YYYY`, and **Custom…** says today back in a format as you type it. The format is `deckard.display.dateFormat`; **Customize…** in the gear opens it in Settings.
+
+A format is written with the tokens Obsidian's daily notes, Templater, and Periodic Notes use, so one copied from a vault works here unchanged:
+
+| Token | Writes | Token | Writes |
+| --- | --- | --- | --- |
+| `YYYY` / `YY` | 2026 / 26 | `Q` | 4, the quarter |
+| `M` / `MM` | 10, 01 padded | `MMM` / `MMMM` | Oct / October |
+| `D` / `DD` | 2, 02 padded | `Do` | 2nd |
+| `ddd` / `dddd` | Fri / Friday | `dd` | Fr |
+| `W` / `WW` | the ISO week | `w` / `ww` | the week, from `deckard.calendar.weekStart` |
+| `DDD` | 275, the day of the year | `E` | 5, Monday 1 |
+| `L` | 10/02/2026, as your display language writes it | `LL` | October 2, 2026 |
+
+The rest of Moment's tokens work too: `Qo`, `Mo`, `do`, `wo`, and `Wo` ordinals, `GGGG` and `gggg` week years, `DDDD`, `H`, `h`, `k`, `m`, `s`, `A`, `a`, `X`, `x`, and `l` to `llll`. A date in a note has no time, so a time reads 00:00; only a note's created and updated dates have one.
+
+Text in `[brackets]` is written as it is, so `[Week] W` writes *Week 40*; any other character is written as it is too. Names are English, as the rest of Deckard is, and `L` and `LL` follow VS Code's display language. A format that is empty, or writes no part of a date, reads as `YYYY-MM-DD`.
+
+Where a day has little room, as the Tasks view's day headings, the Pages view, the calendar's day title, search completions, and Linked from, it's written in `deckard.display.shortDateFormat`, `ddd, MMM D` unless you set another, such as `ddd D MMM`. A day in another year is written in the full format, so a short format needs no year. Where Deckard names the weekday beside a date, as the task editor's *Friday 2026-09-25*, it leaves the weekday out when your format writes one.
+
+What Deckard writes into your notes stays `YYYY-MM-DD`: task dates such as `📅 2026-10-02`, daily note names, reviews, inserted links, searches such as `due = 2026-10-02`, exports, and what the AI assistant's tools give and take. A numeric date typed into a date box is read day first when your format writes the day first, as `DD/MM/YYYY` does.
+
 ## Zen
 
 Zen is Display's last step, one click away from any page: the Zen button in a page's title bar, `Deckard: Toggle Zen`, or `Deckard: Enter Zen` and `Deckard: Leave Zen`. Leaving goes back to the step you were on, or to Full.

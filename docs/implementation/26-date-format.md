@@ -183,3 +183,35 @@ of the shared formatters; they go.
 7. **The date box keeps reading what it reads**; it doesn't parse the
    reader's format. A numeric date is read day first when the format puts
    `D` before `M`, else as the display language orders it.
+
+## As built
+
+Where the code took another way than the plan above:
+
+1. **`readDateFormats()` lives in `ui/commands/datePrompt.ts`**, beside
+   `readWeekStart`, not in `displaySettings.ts`: the date box says a day
+   back in the format, and `displaySettings.ts` already imports the week
+   start from `datePrompt.ts`, so reading the formats there would have
+   made a cycle. `displaySettings.ts` imports it, with
+   `DATE_FORMAT_SETTINGS`.
+2. **`DateFormats` carries the week start** for `w` and `gggg`, and the
+   page shell writes a fourth attribute, `data-week-start`, only when it
+   isn't Sunday and a format counts weeks by it. A change to
+   `deckard.calendar.weekStart` redraws open pages too.
+3. **`data-date-locale` is written only when the language isn't English.**
+4. **A due date written in words** (a task's `dueText`, such as `Sep 8`)
+   keeps its words while the formats are the defaults, as before; once
+   the reader sets a format, the date is written in it.
+5. **Card details keep their words** in `details`; `detailParts` beside
+   them gives, by index, each date, the due date's parts, and its tone, so
+   the order of `details` and every reader of it is unchanged.
+6. **`describeDueDate`'s fourth parameter is an options object**,
+   `{ dueText, formats }`, since the lint rule allows four parameters.
+7. **Choose Display…** links to Choose Date Format… beside Customize….
+8. **The settings guide's rows** landed with the settings (phase 3), so
+   `settings-guide.test.ts` passed at every commit; the Themes and
+   Display page's Dates section, and the link to it, came in phase 6.
+9. **The DOM golden** is a new surface, `taskBoardDated`, the board drawn
+   in `ddd D MMMM YYYY` and `ddd D MMM`; its goldens and Linux visual
+   baselines are recorded by the Chrome suites, which this work did not
+   run.

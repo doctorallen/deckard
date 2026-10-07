@@ -131,6 +131,8 @@ const LOOKS = { cards: 'flat', tags: 'text' };
 /** Display's preferences, each away from its default: what a page writes, drawn on Home and the board. */
 const WRITTEN_HOME = { counts: 'hidden', fileAndLine: 'never', dates: 'date' };
 const WRITTEN_BOARD = { counts: 'hidden', fileAndLine: 'always', dates: 'relative' };
+/** A date format of the reader's own, full and short, as the body carries it. */
+const DATED = { dateFormat: 'ddd D MMMM YYYY', shortDateFormat: 'ddd D MMM' };
 
 /**
  * The Dashboard as the host sends it: Home with its widgets, or the Tags
@@ -867,6 +869,7 @@ function createSurfaces() {
     ...createBoardSurfaces(boardIndex, preferences),
     createStatusBoardSurface(preferences),
     createParentTagBoardSurface(preferences),
+    createDatedBoardSurface(boardIndex, preferences),
     ...createCalendarSurfaces(),
     ...createRelatedNotesSurfaces(index, files),
     ...createSummarySurfaces(index, preferences),
@@ -880,6 +883,40 @@ function createSurfaces() {
     ...createReferenceSurfaces(index, files),
     ...createMenuSurfaces(surfaces),
   ];
+}
+
+/**
+ * The Task Board with its dates in a format of the reader's own, as the
+ * host words them and the page draws them: day first, with the weekday and
+ * the month's name, longer than YYYY-MM-DD, and still kept to one line in
+ * a card.
+ *
+ * @param {object} boardIndex The workspace the other board surfaces draw.
+ * @param {object} preferences The preference services, whose reader holds what is stored.
+ * @returns {object} The board, by status, its dates in the reader's format.
+ */
+function createDatedBoardSurface(boardIndex, preferences) {
+  return {
+    name: 'taskBoardDated',
+    page: 'taskBoard',
+    display: DATED,
+    viewport: [900, 700],
+    snapshot: () => createTaskBoard({
+      index: boardIndex,
+      preferences: preferences.reader.value,
+      search: { query: '' },
+      options: {
+        queryContext: createQueryContext(NOW, { dateFormats: { date: DATED.dateFormat, short: DATED.shortDateFormat, locale: 'en', weekStart: 0 } }),
+        statuses: ['todo', 'doing', 'done'],
+        statusNamespace: 'status',
+        format: 'emoji',
+      },
+      tagTitleDisplayMode: 'inline',
+    }),
+    scrollers: ['html', '.board-cards'],
+    clippers: ['.board-column'],
+    hovered: ['.board-card'],
+  };
 }
 
 /**
