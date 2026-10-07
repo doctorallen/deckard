@@ -5,8 +5,8 @@
 ### Added
 
 - **Parent tags on the Task board.** **Show the tag each task is under**,
-  in the gear's **Cards** (`deckard.board.parentTag`), puts each task's
-  nearest parent tag above its title on cards and list rows: the tag on
+  in the gear's **Cards**, puts each task's nearest parent tag above its
+  title on cards and list rows, and the board keeps the choice: the tag on
   the nearest tagged heading above it, or its note's front matter, so
   "Draft the brief" says it is part of `#project/atlas`. Selecting the tag
   narrows the board's search by it, as Refine does (Shift-click for OR,
@@ -21,9 +21,14 @@
   own order; the rank is the one the list and the Tasks view keep, so it
   holds whichever way the board is grouped. Cards you haven't ranked still
   go by due date and priority.
-- **Sort the Tasks view.** **Sort Tasks By…**, in the view's title
-  (`deckard.agenda.sort`), orders each group by rank, by when its tasks
-  were created or updated, or by title, either way.
+- **Sort the Tasks view.** **Sort Tasks By…**, in the view's title,
+  orders each group by rank, by when its tasks were created or updated, or
+  by title, either way, and the view keeps the choice.
+- **Show Related Notes Ranking.** `Deckard: Show Related Notes Ranking`,
+  in the palette for a Markdown note, shows how Related Notes ranks for
+  the tagged entry the cursor is in: each tag's weight and where it came
+  from, the associations, links, and shared words, score by score. It was
+  a link on a tagged entry's hover in developer mode.
 
 - **A date format of your own.** `deckard.display.dateFormat` writes every
   date Deckard shows you in a format you choose, such as `DD/MM/YYYY`,
@@ -47,11 +52,11 @@
   VS Code gives a sidebar web view a fixed height whatever it draws, so a
   row of icons there took more of the sidebar than the list. The pages now
   lead the **Context** view in everything it shows, and stay put while it
-  scrolls, the page in front shown pressed. `deckard.pages.style` still
-  draws them as rows with what is worth knowing about each, or as one row
-  of icons named on hover and to a screen reader, and `deckard.pages.shown`
-  still picks which. They are one Tab stop, and the arrow keys move between
-  them. **Go to…** and its key are unchanged.
+  scrolls, the page in front shown pressed. A gear beside them draws them
+  as rows with what is worth knowing about each, or as one row of icons
+  named on hover and to a screen reader, and picks which pages to keep.
+  They are one Tab stop, and the arrow keys move between them. **Go to…**
+  and its key are unchanged.
 - **Help is the guide.** Help no longer has a quick glance of its own
   beside the guide: it shows the guide's pages, with the guide's contents
   down the side, grouped and ordered as the guide lists them, and the page
@@ -90,6 +95,26 @@
   they are, adding Waiting `[w]` and Someday `[s]` only where the vault has
   no status of that name or character.
 
+- **Templates for daily, weekly, and monthly notes are files.** `Daily.md`,
+  `Weekly.md`, and `Monthly.md` in the templates folder are what a new
+  daily, weekly, or monthly note starts from, with `{date}`, `{week}`, and
+  `{month}` filled in for its period; without one, a note starts from its
+  heading line, as before. A template you kept as a file in the templates
+  folder works once it has that name; one you wrote into a setting goes
+  into that file.
+- **Card details on hover, at every step.** An entry's details show under
+  it on hover and focus at every Display step, Zen included, and
+  `deckard.display.cardDetails` says which: where it is written, and its
+  created and updated dates. Untick all three for none.
+- **Each view keeps its own choices.** The Tasks view's grouping and sort,
+  the Task board's parent tags, the Calendar's day panel and weekends, the
+  page width, the pages at the top of Context, and the Outline following
+  the cursor are kept by the control that sets them, as every other view
+  choice is, rather than in settings. A value you had set is carried into
+  the view once, on the first start after the update.
+- **A tag's hub note stays as you left it.** A hub starts open, and once
+  you fold one, the next tag's page starts with its hub folded too.
+
 ### Removed
 
 - The **No status** column, its group in the Tasks view, and the board's
@@ -100,6 +125,45 @@
   `deckard.tasks.statuses`. The board's gear sets its columns, and a status
   with no character is left out of the list.
 - **Keep Tags**, the first scan's choice to keep writing statuses as tags.
+- **Settings fixed at the value nearly everyone kept**, after a review of
+  every setting: `deckard.tagTitleDisplayMode`
+  (tags inline in titles), `deckard.previewWorkspaceWrites` (a write that
+  reaches several notes is shown first), `deckard.moveTo.leaveBehind`
+  (Move to… leaves a link), `deckard.updateLinksOnRename` (renaming a note
+  carries its links), `deckard.enableTagAutocomplete` and
+  `deckard.tasks.metadataSuggestions` (both completions offered),
+  `deckard.tagOverview.includeHubLinks` (a tag's page lists what links its
+  hub; **Leave them out** goes), `deckard.tagOverview.hubNoteExpanded` (the
+  hub starts open, then as you left it), `deckard.dailyNote.rolloverDays`
+  and `deckard.agenda.upcomingDays` (a week), `deckard.calendar.showRepeats`
+  (repeats drawn; the Calendar's repeat commands and the page's Repeats row
+  go), `deckard.outline.showTags` and `deckard.outline.showCounts` (shown),
+  `deckard.outline.inheritedTags` (a heading's own tags only),
+  `deckard.weeklyNote.naming` (named by its days; `2026-W38.md` is still
+  found), `deckard.personMarker` (`@`), `deckard.tasks.addDoneDate` and
+  `deckard.tasks.addCancelledDate` (dates written),
+  `deckard.tasks.assigneeFromPersonTag` (only `👤` assigns),
+  `deckard.relatedNotesAssociationMinimumSupport` (1),
+  `deckard.relatedNotesRecencyHalfLifeDays` (no decay),
+  `deckard.enableKeywordLinks`, `deckard.enableHeadingTagRelationships`,
+  and `deckard.autoSelectNoteSections` (on), `deckard.statusBar` (VS Code's
+  status bar menu hides the item), and `deckard.showWhatsNew` (on).
+- **Deprecated settings, now gone.** `deckard.zenMode`, which
+  `deckard.display.level` replaced; `deckard.parseInlineTags`, which
+  `deckard.noteBoundaries` replaced; and `deckard.developerMode`, whose
+  ranking breakdown is `Deckard: Show Related Notes Ranking`.
+- **Settings collapsed into another.** `deckard.display.fileAndLine` into
+  `deckard.display.cardDetails`; `deckard.dailyNoteTemplate`,
+  `deckard.weeklyNoteTemplate`, and `deckard.monthlyNoteTemplate` into
+  `Daily.md`, `Weekly.md`, and `Monthly.md` in the templates folder.
+- **Settings moved to the view that sets them.** `deckard.agenda.groupBy`,
+  `deckard.agenda.groupNamespace`, and `deckard.agenda.sort` (the Tasks
+  view's Group and Sort), `deckard.board.parentTag` (the board gear's
+  Cards), `deckard.calendar.dayPanel` and `deckard.calendar.showWeekends`
+  (the Calendar's `…` menu and the page's gear), `deckard.display.pageWidth`
+  (Page width in every gear), `deckard.pages.style` and
+  `deckard.pages.shown` (the gear beside the pages in Context), and
+  `deckard.outline.followCursor` (the Outline's title).
 
 ## 2.3.0 - 2026-10-06
 

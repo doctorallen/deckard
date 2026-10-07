@@ -112,3 +112,33 @@ there.
 - The e2e stubs drop the removed keys from their configuration.
 - New: the carry mapping, the hub's remembered collapse, the three
   periodic templates read by name, the ranking command from the palette.
+
+## As built
+
+- **The domain keeps its options.** The parser still takes a person
+  marker, whether to read inline tags, and whether a person tag assigns;
+  the ranking still takes keyword links, an association support, and a
+  recency half-life; their tests exercise them. Only the settings that
+  reached them are gone, and nothing passes another value.
+- **The parse fingerprint keeps the three fixed values** (`inline`, `@`,
+  `field-assigns`) where the settings were, so a full-text cache built
+  with them as they shipped is still read, and one built with any other
+  value is rebuilt once.
+- **The Calendar page's gear loses its Repeats row**, and the Calendar
+  view's menu its Turn On and Turn Off Repeats.
+- **The pages' gear** is a second `<ViewOptions>` on the Context view,
+  named `pages` so it stays open or closed apart from Related Notes' gear:
+  List or Icons, and a pressed button for each page.
+- **Zen's two commands** are registered on their own, beside the view
+  toggles, since Zen is Display's step and not a view choice.
+- **The carry** is `carryMovedSettingsOnce` in `composition/movedSettings.ts`,
+  with `deckard.movedSettingsCarried` set in `globalState` and
+  `workspaceState`. It runs as the preferences are made, so the in-memory
+  blob holds the carried values before any view is built.
+- **The scope suites** lose the outline and agenda grouping suites, and the
+  Calendar's rows of the written-where-set suite; `view-choices-scopes`
+  runs each pair of commands and watches its context key, and
+  `moved-settings-scopes` writes an old setting into the workspace's own
+  settings file, which VS Code still reads without a schema, and carries it.
+- **The architecture inventories** (`docs/architecture/inventories/`) are
+  dated snapshots and keep the settings as they were.

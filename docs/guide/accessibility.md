@@ -36,7 +36,7 @@ Every command is in the Command Palette under **Deckard:**, and each can be give
 - **Zoom:** pages reflow with VS Code's zoom (`window.zoomLevel`) and at narrow widths; the calendar page and Help fold to one column.
 - **Focus is its own mark.** The focused entry has the focus ring and opens its *file / line* below it, pushing the next entry down rather than covering it; while you use the keyboard, an entry under a resting pointer stays as it is.
 - **Motion:** with your system's reduce-motion setting on, pages hold still: no animated transitions or smooth scrolling.
-- **Display** turns decoration and helper text down on any page, Quiet or Zen, and **Counts**, **File & line**, and **Dates** choose what a page writes, every hidden part still read aloud; see [Themes and Display](themes-and-zen.md#display).
+- **Display** turns decoration and helper text down on any page, Quiet or Zen, and **Counts**, **Card details**, and **Dates** choose what a page writes, every hidden part still read aloud; see [Themes and Display](themes-and-zen.md#display).
 
 Something that does not work as described here is a bug; please [report it](https://github.com/doctorallen/deckard/issues).
 

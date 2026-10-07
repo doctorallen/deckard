@@ -10,7 +10,7 @@ Run `Deckard: Open Dashboard` to open the **Home** and **Tags** tabs. Left/Right
 
 Three figures sit above Home: **Due today** and **Overdue**, as the [Tasks view](tasks.md#tasks-view) counts them, and **Done this week**, every task finished since the week began. Each opens a search for what it counts; the first two are scoped by `deckard.agenda.query` when that is set. Open tasks and the other workspace totals are on [Stats](#stats).
 
-**What's new:** after an update that adds features, Home shows *Updated to Deckard 1.23.* once, with **What's new** and **Dismiss**. `deckard.showWhatsNew` turns the line off.
+**What's new:** after an update that adds features, Home shows *Updated to Deckard 1.23.* once, with **What's new** and **Dismiss**.
 
 **Widgets.** A new Home starts with Try next, the search box, the Tasks view, recently opened notes, favorite tags, and saved searches. In the Tasks view widget, the **Overdue** heading is red, and each row under it says so as a task row does anywhere, such as *Overdue 20 days · 2026-09-01*, in red. **Customize Home**, beside the Home and Tags tabs, adds, removes, resizes, and reorders widgets.
 

@@ -36,7 +36,7 @@ What names your notes belongs to the folder it describes, so opening another pro
 - **The Dashboard is empty:** make sure a workspace is open, its Markdown files are within the configured scope, and they use the Markdown patterns shown above.
 - **Related Notes shows no results:** open a saved Markdown note containing a tag, then check that another saved note uses the same tag.
 - **A task is missing from the Tasks view:** it may be parked. Search `is:parked`.
-- **A task or section is missing:** confirm the task is an unordered checklist item, the heading is an ATX heading such as `## Heading`, and `deckard.parseInlineTags` is enabled for tagged non-heading lines.
+- **A task or section is missing:** confirm the task is an unordered checklist item, the heading is an ATX heading such as `## Heading`, and `deckard.noteBoundaries` is `line` for a tagged line that is not a heading to be an entry of its own.
 - **A heading is missing from the Outline:** the Outline shows ATX headings only, not underlined `Title`/`===` headings, and excludes headings in fenced code blocks.
 - **Content in a code block:** text in fenced code is found by Find and a search's words, but tags, tasks, and links inside it are ignored, and it is left out of completion.
 - **A numeric hash is missing:** numeric-only `#` tokens are not tags. Use an `@` marker or include a non-numeric character.

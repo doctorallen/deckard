@@ -15,7 +15,7 @@ Open the **Context** view from the Deckard Activity Bar while editing a saved Ma
 - **Parked notes** are not suggested unless the current note is parked; then they come last.
 - Home, the Task board, the Notes Graph, and Help are at the top of the view, and in **Go to…**; see [Getting started](getting-started.md#finding-your-way).
 
-**Untagged notes.** A note with no tags lists up to ten entries with similar wording, under **Similar wording (no tags yet)**, marked weak, and above them **Tags used by similar notes**. Select **Add** beside a tag to write it on the heading or line at the cursor and save the note; the message offers **Undo**, as does **Undo Last Change**. A tagged note never gets this list. `deckard.enableKeywordLinks` turns it off along with the wording signal.
+**Untagged notes.** A note with no tags lists up to ten entries with similar wording, under **Similar wording (no tags yet)**, marked weak, and above them **Tags used by similar notes**. Select **Add** beside a tag to write it on the heading or line at the cursor and save the note; the message offers **Undo**, as does **Undo Last Change**. A tagged note never gets this list.
 
 **Linked from** lists notes that link to this one, newest updated first, each with its update time, link count, and linking lines under their headings. The count is the number of notes. **›** on a line unfolds up to fifteen more lines of its section.
 
@@ -37,7 +37,7 @@ Open the **Context** view from the Deckard Activity Bar while editing a saved Ma
 
 A note with both `#project/atlas` and `#follow-up` ranks ahead of one with only an associated `#risk/vendor` tag. Associations are normalized for support and tag prevalence, so common tags cannot dominate.
 
-Terms on the **Debug related notes** page:
+Terms on the **Related Notes Ranking** page:
 
 - **Source unit**: one tagged heading, tagged line, task, or heading relationship where a tag is observed; not necessarily a whole file.
 - **Raw evidence**: an association's starting strength.
@@ -52,7 +52,7 @@ Tagged headings highlight their section; tagged lines and tasks highlight their 
 
 ### Understand a score
 
-Each result has a three-step rail for a strong, moderate, or weak relation. Select it, or use the keyboard, to see the exact score, signals, and weights. For the full calculation, hover a tagged entry and choose **Debug related notes for [entry]**, which shows where each tag came from, heading paths, daily-note context, association support and prevalence, link evidence, lexical terms, recency, and specificity.
+Each result has a three-step rail for a strong, moderate, or weak relation. Select it, or use the keyboard, to see the exact score, signals, and weights. For the full calculation, put the cursor in a tagged entry and run `Deckard: Show Related Notes Ranking`, which shows where each tag came from, heading paths, daily-note context, association support and prevalence, link evidence, lexical terms, recency, and specificity.
 
 ### Refine a search from the sidebar
 
@@ -88,7 +88,7 @@ Open **Outline** from the Deckard Activity Bar to see the active Markdown file's
 
 - Each heading shows its title, without markers or tags, and its own tags beside it. A heading of only tags shows those tags as its title.
 - Untagged headings are kept for structure. Headings in fenced code blocks are ignored, and `Sprint #3` stays in the title. Underlined `Title`/`===` headings are not shown.
-- **2/5** means two of five tasks under the heading are done, sub-headings included; **↩3** means links in other notes name it three times. Zen hides them, and `deckard.outline.showCounts` turns them off.
+- **2/5** means two of five tasks under the heading are done, sub-headings included; **↩3** means links in other notes name it three times. Zen hides them.
 - The tree follows the file as you type.
 - Select a heading to jump to it. Right-click a tagged heading for **Open the Tag's Search Page** and **Rename Tag**.
 - The eye control sets whether the Outline follows the cursor; **Collapse all** is beside it.

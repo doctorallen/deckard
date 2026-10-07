@@ -64,12 +64,12 @@ Migration of billing onto the new ledger.
 - An overview without a hub offers a **Create hub note** button under its title, and `Deckard: Create Hub Note for Tag…` does the same from the palette. It writes one to the notes folder, never overwriting a note, starting from a template named after the tag's namespace (such as `project.md`) if there is one; see [Templates](notes-and-links.md#templates).
 - When several notes describe a tag, the first by path leads and the others are listed beneath it.
 - Hovering the tag in the editor names its hub, renaming the tag updates `describes:`, and filtered and query views leave the hub out.
-- Select the hub's title row to collapse or expand it until the overview closes. `deckard.tagOverview.hubNoteExpanded` sets whether hubs start open (default: open).
+- Select the hub's title row to collapse or expand it. A hub starts open, and the next tag's page starts the way you left the last one.
 - **Progress.** A tag with tasks shows a bar under its hub, and how far along they are: *2/6 done (33%) · 1 overdue · next due in 3 days*. Each part is a link that searches just those tasks: the done ones, the overdue ones, the ones that need a new date, or the ones due next. A task more than 30 days past due counts as needing a new date rather than overdue, as Home's Overdue figure counts it (`deckard.tasks.needsNewDateAfterDays`). Its tasks are those a search for the tag finds, steps aside. The hub note says the same on its first line in the editor (`deckard.editor.hubProgress`), and Home's [Progress widget](home-and-stats.md) lists every project's.
 - **Parts.** A tag written on headings with tagged headings under them, such as `# Checkout v2 #project/checkout-v2` over `## Design #phase/design` and `## Build #phase/build`, lists those parts under its progress, each with how far along its own tasks are: *#phase/design 2/3 done (67%) · #phase/build 1/3 done (33%)*. A part gathers its tasks from every note that writes it under the project, and a heading tagged further down counts in its part. Each is a link that narrows the page to that part, keeping the project's page; selected again, it goes back to the whole project.
 - **Narrowing a tag's page.** A search that adds terms to one tag, such as *1 overdue* above or a Refine choice, is still that tag's page: the hub stays, folded so the results sit near the top, and the bar still counts all of the tag's tasks. The part of the words you searched is outlined; select it again to go back to the tag. A search of two tags, such as `#project/atlas @dana`, is a plain search. Entries that only link to the hub are listed on the tag's plain page alone.
 - **Untagged mentions.** For a tag name of three letters or more, the top of **Refine** says how many entries write it as a plain word: *12 entries mention "atlas" without the tag.* **Show them** runs `text = atlas -#project/atlas`, without the hub, so **Bulk edit → Add a tag** can tag them. `@dana` counts "dana" the same way.
-- **Hub links.** The page also lists entries and tasks that link to the hub note without the tag, marked *Links the hub note*, with a line under the hub: *Also listing 5 entries that link to Atlas plan without the tag.* **Leave them out** turns `deckard.tagOverview.includeHubLinks` off. While on, counts, tabs, pages, Bulk edit, and Export include them.
+- **Hub links.** The page also lists entries and tasks that link to the hub note without the tag, marked *Links the hub note*, with a line under the hub: *Also listing 5 entries that link to Atlas plan without the tag.* Counts, tabs, pages, Bulk edit, and Export include them.
 
 ### The Hubs view
 
@@ -107,11 +107,8 @@ Rename a tag to one that exists, or run `Deckard: Merge Tag…` and pick the tag
 Renaming a tag, merging tags, and renaming a heading rewrite notes you never opened.
 
 - **Preview.** A write reaching more than one note opens in VS Code's refactor preview, each change under its note. Uncheck any to leave it out, then apply. Deckard reports only what landed.
-- `deckard.previewWorkspaceWrites` sets when this happens: `severalNotes` (the default), `always`, or `never`.
 - **Deckard: Undo Last Change** restores the notes from before that write, after saying how many. A note changed since, in the editor or on disk, is left alone and counted. A move made with **Move to…**, tasks carried forward, and a heading renamed with its links go back together or not at all: if one of their notes changed since, Undo puts nothing back and names that note, and works again once the note is as Deckard left it. Favorites and saved searches that followed a renamed tag move back.
 - Only the last write is kept. For anything earlier, use version control.
-
-Set `deckard.enableHeadingTagRelationships` to `false` to refine by the tags the results carry instead of by related tags.
 
 ---
 

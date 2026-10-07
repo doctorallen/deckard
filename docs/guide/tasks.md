@@ -21,7 +21,7 @@ Deckard reads both formats of the [Obsidian Tasks](https://publish.obsidian.md/t
 
 - Markers and a trailing block id such as `^a1b2` are left out of titles and shown as details. A marker can be anywhere on the line.
 - Without a 📅 date, Deckard reads `2026-09-12`, `Sep 12`, or `next Friday` from the text, counting from the note's date (a daily note's name or top heading, else a `date:`, `created:`, or `updated:` front-matter date, else the last save). `Sep 12` is in that date's year, unless the same day in the year before or after is nearer and within two months: `Jan 5` in the note for December 28 is the coming January.
-- Completing a task adds ✅ with today's date; reopening removes it. `deckard.tasks.addDoneDate` set to `false` changes only the checkbox.
+- Completing a task adds ✅ with today's date; reopening removes it.
 - Completing a 🔁 task anywhere writes its next occurrence on the line above. The due date (else scheduled or start) moves by the rule and the other dates keep their distance; `when done` counts from today. The new task drops ✅, 🆔, and any block id, and its [steps](#breaking-a-task-into-steps) return unchecked. A bulk edit writes the next occurrence alone.
 - Repeat rules:
   - Obsidian Tasks rules: `every day`, `every 3 weeks`, `every month`, `every year`, `every weekday`, `every Monday`, `every week on Tuesday, Friday`, `every month on the 15th`, `every month on the last`, `every other week` (or day, month, year), `every other Tuesday`, `every 2 weeks on Monday, Thursday` (weeks start on Monday), `every month on the second Tuesday` or `on the last Friday`.
@@ -46,7 +46,6 @@ A `👤` field says who a task is for. Mentioning someone does not make the task
 - On the [Task board](task-board.md#task-board), group by **Person**. Drop a card on a person to set the field, or on **Nobody named** to clear it. In any grouping, a card's **⋯** menu has **For someone…** (key **f**), which lists the people you write about.
 - [Capture](#quick-capture) reads `for @dana` at the end, or `@dana to …` at the start, as who the task is for.
 - The first search in a window that uses `is:mine` or `is:waiting` while `deckard.me` is empty says so, with the setting a click away.
-- `deckard.tasks.assigneeFromPersonTag` treats the first person in a task's words as its owner when there is no `👤`.
 
 ### Dataview format
 
@@ -63,7 +62,7 @@ The fields are `due`, `scheduled`, `start`, `created`, `completion`, `cancelled`
 | Field | What it takes |
 | --- | --- |
 | **Description** | The words, tags and people included |
-| **Status** | Any of your [task statuses](#task-statuses). Completing writes the ✅ date, or `[completion:: …]` on a Dataview-format line; reopening removes it. `deckard.tasks.addDoneDate` turns the date off |
+| **Status** | Any of your [task statuses](#task-statuses). Completing writes the ✅ date, or `[completion:: …]` on a Dataview-format line; reopening removes it |
 | **Due**, **Scheduled**, **Start** | A date in plain words |
 | **Priority** | Highest to lowest, or none |
 | **Repeats** | A common rule, or any rule you write |
@@ -104,7 +103,7 @@ Type `/` after a space in a task to pick metadata:
 - **for @dana** for each person your notes name often, and **for a person** to write one;
 - **task id**, and **depends on** each open task's id.
 
-Keep typing to narrow the list, as in `/prio` or `/every`. Set `deckard.tasks.metadataSuggestions` to `false` to turn this off.
+Keep typing to narrow the list, as in `/prio` or `/every`.
 
 ### Dates in plain words
 
@@ -173,7 +172,7 @@ The character between a task's brackets is its status, as in [Obsidian Tasks](ht
 - **Deckard: Toggle Task Done** always goes to done and back: an in-progress or cancelled task is completed too. It completes the tasks under every cursor, or reopens them when all are done, in one edit that one Undo takes back.
 - **Deckard: Set Task Status…**, in the palette, the editor's right-click menu, and a task's right-click menu in the Tasks view, picks any status. The [task editor's](#editing-a-whole-task) **Status** row lists every status, and a bulk edit's **Set a status** sets one on many tasks. The assistant's tool for changing a task takes a status by name, or as its character, such as `[/]`.
 - Typing `- [` in a note offers every status's character.
-- Every status is written as its character. Done and cancelled add ✅ or ❌; `deckard.tasks.addCancelledDate` turns the ❌ date off.
+- Every status is written as its character. Done and cancelled add ✅ or ❌ with the date.
 - **Done is a completion**, however it is set: a 🔁 task writes its next occurrence. Cancelling a 🔁 task writes none, and its message offers **Keep It Repeating**, which writes it.
 
 ### How statuses look
@@ -216,16 +215,16 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
 
 - **Overdue**: past due, most recently slipped first, five at a time with **Show 12 more** for the rest.
 - **Today**: due today, or scheduled for today or earlier and started, most important first.
-- **Upcoming**: due, scheduled, or starting in the next seven days (`deckard.agenda.upcomingDays`), one group per day. Drop a task on a day to make it due then.
+- **Upcoming**: due, scheduled, or starting in the next seven days, one group per day. Drop a task on a day to make it due then.
 - **Later** (dated tasks past that) and **No date** start folded.
 - **Done today**: finished today, by ✅ date. Uncheck to reopen; drop a task here to complete it.
 - **Needs a new date**: more than 30 days past due, left out of Overdue, the badge, and the status bar. Date them with the calendar button or **Reschedule All…**. `deckard.tasks.needsNewDateAfterDays` sets the days; `0` turns this off. `is:overdue` still finds them.
 
 **What it lists.** Set `deckard.agenda.query` to any [query](search.md#query-language), such as `is:mine`, `#project/atlas`, or `has:due OR has:scheduled OR has:start`. Home's agenda widget and the [status bar](#status-bar-and-reminders) count the same list. The search icon in the title opens the search on the [Task board](task-board.md#editing-what-the-tasks-view-lists): change it there, then select **Save to Tasks view**, which keeps what the box shows. **List in Tasks view**, in the board's gear, makes the view list any board's search. **Show every open task** or **Clear the Tasks View's Search** (in the `…` menu and palette) clears it.
 
-**Group by**, in the title, chooses **Due status** (the groups above), **Priority**, **Status**, **Person**, or **Tag namespace…**; `deckard.agenda.groupBy` keeps it. **Sort by**, beside it, orders each group: **Rank** (the default), **Newest created**, **Oldest created**, **Recently updated**, **Least recently updated**, **A-Z**, or **Z-A**; `deckard.agenda.sort` keeps it. A tie keeps the group's own order, by date or priority.
+**Group by**, in the title, chooses **Due status** (the groups above), **Priority**, **Status**, **Person**, or **Tag namespace…**; the view keeps your choice. **Sort by**, beside it, orders each group: **Rank** (the default), **Newest created**, **Oldest created**, **Recently updated**, **Least recently updated**, **A-Z**, or **Z-A**; the view keeps that too. A tie keeps the group's own order, by date or priority.
 
-- **Tag namespace** groups by tags in one namespace, such as `#project/…`, busiest first, **No project** last. Inherited tags count. `deckard.agenda.groupNamespace` keeps the namespace.
+- **Tag namespace** groups by tags in one namespace, such as `#project/…`, busiest first, **No project** last. Inherited tags count. The namespace is kept with the workspace.
 - **Priority** runs highest to lowest, **No priority** last.
 - **Status** groups by [status](#task-statuses), in the order of the [Task board's](task-board.md#groupings) status columns, hidden ones too, and a group per character no status names, such as **Unknown [?]**, after them. Dropping a task on a group writes its status the way the board does.
 - **Person** groups by [who each task is for](#who-a-task-is-for), **Nobody named** last.
@@ -244,7 +243,7 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
 
 ## Status bar and reminders
 
-The status bar shows **3 due today**, or **1 overdue, 3 due today** in the warning color, counting the Tasks view's Overdue and Today groups. It is hidden while nothing is due. Select it to open the view; hover for the first few overdue tasks, how many [need a new date](#tasks-view), and how many were done today. Tasks more than `deckard.tasks.needsNewDateAfterDays` (30) days overdue are not counted. `deckard.statusBar` turns it off.
+The status bar shows **3 due today**, or **1 overdue, 3 due today** in the warning color, counting the Tasks view's Overdue and Today groups. It is hidden while nothing is due. Select it to open the view; hover for the first few overdue tasks, how many [need a new date](#tasks-view), and how many were done today. Tasks more than `deckard.tasks.needsNewDateAfterDays` (30) days overdue are not counted. Right-click the status bar to hide it, as any status bar item.
 
 - **Reminder.** Set `deckard.taskReminderTime` to a time such as `09:00` to see what is due once a day, or when VS Code next opens that day. It offers **Open Tasks View**, **Reschedule Overdue…**, and **Turn Off Reminders**. Empty by default.
 - **Word count.** While a note is open: **412 words · 2 min**, or **38 of 412 words** with a selection. Front matter, code, comments, link addresses, and task metadata are not counted; minutes are at 238 words a minute. Right-click the status bar to hide it.

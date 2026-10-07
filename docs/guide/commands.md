@@ -81,6 +81,7 @@
 | **Deckard: Merge Tag…** | Merges one tag into an existing one, after a preview. |
 | **Deckard: Rename Heading** | Renames the heading the cursor is in and rewrites every `[[Note#Heading]]` link that named it. |
 | **Deckard: Undo Last Change** | Reverts Deckard's last workspace-wide write, such as a tag rename or merge. |
+| **Deckard: Show Related Notes Ranking** | Shows how Related Notes ranks for the tagged entry the cursor is in, piece by piece; see [Related notes](connections.md). |
 | **Deckard: Follow Cursor in Outline** | Selects the Outline heading containing the editor cursor. The Outline title has the same control. |
 | **Deckard: Stop Following Cursor in Outline** | Leaves the Outline selection where you put it. |
 | **Deckard: Focus Section** | Folds the rest of the note away from the current section or Outline heading. |

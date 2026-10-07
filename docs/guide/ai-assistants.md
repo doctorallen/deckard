@@ -9,7 +9,7 @@ Deckard gives AI assistants in VS Code four tools through VS Code's language mod
 
 **Reading.** The first time an assistant calls a tool in a session, VS Code asks you to allow it. Deckard sends nothing itself; the assistant may send what it gets to its model service. Set `deckard.assistantTools` to `false` to turn the tools off. Calls are timed in [Deckard's log](privacy-and-troubleshooting.md#limitations-and-troubleshooting).
 
-**Writing.** The assistant asks before every write, and nothing is written until you approve the exact line in the refactor preview, whatever `deckard.previewWorkspaceWrites` says. A change is refused if the line is no longer the task the index knows. `Deckard: Undo Last Change` takes a write back.
+**Writing.** The assistant asks before every write, and nothing is written until you approve the exact line in the refactor preview, even for one note. A change is refused if the line is no longer the task the index knows. `Deckard: Undo Last Change` takes a write back.
 
 ### Suggest steps
 
