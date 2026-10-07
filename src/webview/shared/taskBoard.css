@@ -87,7 +87,10 @@
    wraps inside itself rather than widening every card in the column. */
 .board-details { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-2); margin: 0; }
 .board-details span { min-width: 0; white-space: normal; }
-.board-details .board-date { display: inline; white-space: nowrap; }
+/* A date moves to the next line whole, and breaks only at its own spaces
+   when it is wider than the column, as a long format such as "Wednesday,
+   16 September 2026" can be; an ISO date never is. */
+.board-details .board-date { display: inline-block; max-width: 100%; white-space: normal; }
 /* Written to outweigh a theme's own .task .source, which LCARS lays down
    after this sheet and which took the color off "overdue 20 days". */
 .task .board-details .overdue { color: var(--danger); }
