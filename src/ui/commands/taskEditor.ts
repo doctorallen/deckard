@@ -84,22 +84,17 @@ const REPEAT_RULES: readonly string[] = [
 /** The statuses a draft's status is read and written with. */
 export interface DraftStatusReading {
   statuses: readonly TaskStatusDefinition[];
-  /** `deckard.tasks.addCancelledDate`; cancelling writes a ❌ date unless it is false. */
-  addCancelledDate: boolean;
 }
 
 /** Deckard's own statuses, as a draft is read when no settings are given. */
 const DEFAULT_STATUS_READING: DraftStatusReading = {
   statuses: DEFAULT_TASK_STATUSES,
-  addCancelledDate: true,
 };
 
 /** The status settings of the note at `scope`, for the editor. */
 export function readDraftStatusReading(scope?: vscode.Uri): DraftStatusReading {
-  const configuration = vscode.workspace.getConfiguration('deckard', scope);
   return {
     statuses: readTaskStatusOptions(scope),
-    addCancelledDate: configuration.get<boolean>('tasks.addCancelledDate', true),
   };
 }
 
@@ -192,8 +187,6 @@ export async function editTaskDraft(
     title: string;
     index?: TaskEditorIndex;
     now?: number;
-    /** `deckard.tasks.addDoneDate`: whether completing writes a ✅ date. */
-    addDoneDate?: boolean;
     /** The statuses the Status row offers, and how one is written. */
     status?: DraftStatusReading;
   } = {
@@ -237,12 +230,7 @@ function pickField(
  * The draft a field's new value makes. These are what the editor actually
  * does to a task; the prompts around them only collect the words.
  */
-export function completeDraft(
-  draft: TaskDraft,
-  now: number,
-  /** `deckard.tasks.addDoneDate`; off, completing writes no ✅ date. */
-  addDoneDate = true,
-): TaskDraft {
+export function completeDraft(draft: TaskDraft, now: number): TaskDraft {
   const completed = !draft.completed;
   // Completing here writes the done date a checkbox would have written, and
   // reopening takes it away again, so both agree with the rest of Deckard.
@@ -252,15 +240,14 @@ export function completeDraft(
     symbol: completed ? 'x' : ' ',
     cancelled: undefined,
     ...(completed
-      ? { done: draft.done ?? (addDoneDate ? formatIsoDate(now) : undefined) }
+      ? { done: draft.done ?? formatIsoDate(now) }
       : { done: undefined }),
   };
 }
 
-/** What setDraftStatus writes with: the moment, and whether a close writes its date. */
+/** What setDraftStatus writes with: the moment a close is dated, and the statuses. */
 export interface DraftStatusWrite {
   now: number;
-  addDoneDate: boolean;
   reading: DraftStatusReading;
 }
 
@@ -268,12 +255,12 @@ export interface DraftStatusWrite {
  * The draft a status makes: its line written as setTaskStatus writes any
  * status, its character with the dates its type keeps, and read back.
  */
-export function setDraftStatus(draft: TaskDraft, to: TaskStatusDefinition, { now, addDoneDate, reading }: DraftStatusWrite): TaskDraft {
+export function setDraftStatus(draft: TaskDraft, to: TaskStatusDefinition, { now, reading }: DraftStatusWrite): TaskDraft {
   const date = formatIsoDate(now);
   const line = setTaskStatus(formatTaskDraft(draft), draftCheckboxColumn(draft), {
     to,
-    ...(addDoneDate ? { doneDate: date } : {}),
-    ...(reading.addCancelledDate ? { cancelledDate: date } : {}),
+    doneDate: date,
+    cancelledDate: date,
     preferredFormat: draft.format,
   });
   return parseTaskDraft(line, draft.format, reading.statuses);
@@ -338,8 +325,6 @@ export function setDraftDependencies(
 interface FieldContext {
   index?: TaskEditorIndex;
   now: number;
-  /** `deckard.tasks.addDoneDate`; completing writes a ✅ date unless it is false. */
-  addDoneDate?: boolean;
   status?: DraftStatusReading;
 }
 
@@ -350,7 +335,7 @@ type FieldReader = (draft: TaskDraft, context: FieldContext) => Promise<TaskDraf
 async function readField(
   draft: TaskDraft,
   field: DraftField | undefined,
-  options: { index?: TaskEditorIndex; now?: number; addDoneDate?: boolean; status?: DraftStatusReading },
+  options: { index?: TaskEditorIndex; now?: number; status?: DraftStatusReading },
 ): Promise<TaskDraft | undefined> {
   const now = options.now ?? Date.now();
   if (field === undefined) {
@@ -465,7 +450,7 @@ async function readAssignee(
 /** The reader for each field the pick lists. */
 const FIELD_READERS: Readonly<Record<DraftField, FieldReader>> = {
   description: (draft) => readDescription(draft),
-  status: (draft, { now, addDoneDate, status }) => readStatus(draft, { now, addDoneDate: addDoneDate ?? true, reading: status ?? DEFAULT_STATUS_READING }),
+  status: (draft, { now, status }) => readStatus(draft, { now, reading: status ?? DEFAULT_STATUS_READING }),
   due: (draft, { now }) => readDate(draft, 'due', now),
   scheduled: (draft, { now }) => readDate(draft, 'scheduled', now),
   start: (draft, { now }) => readDate(draft, 'start', now),
@@ -633,7 +618,6 @@ export async function editTaskCommand(
     title: existing ? 'Edit task' : 'Add task',
     ...(index ? { index } : {}),
     now,
-    addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
     status,
   });
   if (!edited) {

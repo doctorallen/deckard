@@ -1,10 +1,6 @@
 import * as vscode from 'vscode';
 
-import {
-  EntityNamespaceAliases,
-  getEntityNamespaceAliases,
-  getPersonMarker,
-} from '../../domain/markdown/parser';
+import { EntityNamespaceAliases, getEntityNamespaceAliases } from '../../domain/markdown/parser';
 import { readTaskStatusSettings, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
 
 /**
@@ -14,12 +10,8 @@ import { readTaskStatusSettings, type TaskStatusDefinition } from '../../domain/
  * its own.
  */
 export interface ParseOptions {
-  /** `deckard.parseInlineTags`: whether a tag on a line that is not a heading makes that line an entry. */
-  readonly parseInlineTags: boolean;
   /** `deckard.entityNamespaceAliases`, merged over the built-in aliases. */
   readonly entityNamespaceAliases: EntityNamespaceAliases;
-  /** `deckard.personMarker`, or `@` when the setting is not one allowed character. */
-  readonly personMarker: string;
   /** `deckard.tasks.statuses`: what each checkbox character means. */
   readonly taskStatuses: readonly TaskStatusDefinition[];
 }
@@ -28,9 +20,7 @@ export interface ParseOptions {
 export function readParseOptions(scope: vscode.Uri): ParseOptions {
   const configuration = vscode.workspace.getConfiguration('deckard', scope);
   return {
-    parseInlineTags: configuration.get<boolean>('parseInlineTags', true),
     entityNamespaceAliases: getEntityNamespaceAliases(configuration.get<unknown>('entityNamespaceAliases', {})),
-    personMarker: getPersonMarker(configuration.get<unknown>('personMarker', '@')),
     taskStatuses: readTaskStatusSettings(configuration),
   };
 }
@@ -50,12 +40,4 @@ export function readEntityNamespaceAliases(scope?: vscode.Uri): EntityNamespaceA
   return getEntityNamespaceAliases(
     vscode.workspace.getConfiguration('deckard', scope).get<unknown>('entityNamespaceAliases', {}),
   );
-}
-
-/**
- * `deckard.personMarker` alone, for completion, which must know the marker
- * before it reads anything else on the line.
- */
-export function readPersonMarker(scope: vscode.Uri): string {
-  return getPersonMarker(vscode.workspace.getConfiguration('deckard', scope).get<unknown>('personMarker', '@'));
 }

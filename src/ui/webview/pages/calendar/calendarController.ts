@@ -82,7 +82,6 @@ export class CalendarController {
       createCalendar(this.indexer.getSnapshot(), this.month, readQueryContext(), {
         dayPanel: this.host.dayPanel(),
         selectedDate: this.selectedDate,
-        showRepeats: readShowRepeats(),
         showWeekends: readShowWeekends(),
         ...options,
       }),
@@ -271,11 +270,6 @@ export function readShowWeekends(): boolean {
   return vscode.workspace.getConfiguration('deckard').get<boolean>('calendar.showWeekends', true) !== false;
 }
 
-/** `deckard.calendar.showRepeats`: whether a repeating task is drawn on its rule's later dates. */
-export function readShowRepeats(): boolean {
-  return vscode.workspace.getConfiguration('deckard').get<boolean>('calendar.showRepeats', true) !== false;
-}
-
 /** `deckard.calendar.dayPanel`: whether the chosen day shows below the month. */
 export function readDayPanel(): boolean {
   return vscode.workspace.getConfiguration('deckard').get<boolean>('calendar.dayPanel', false) === true;
@@ -362,7 +356,6 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
         if (
           event.affectsConfiguration('deckard.calendar.weekStart') ||
           event.affectsConfiguration('deckard.calendar.dayPanel') ||
-          event.affectsConfiguration('deckard.calendar.showRepeats') ||
           event.affectsConfiguration('deckard.calendar.showWeekends') ||
           event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
         ) {

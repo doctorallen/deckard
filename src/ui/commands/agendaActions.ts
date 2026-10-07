@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import { isOpenTask } from '../../domain/tasks/taskStatuses';
-import { AgendaGroupBy, readAgendaQuery, readUpcomingDays } from '../../domain/tasks/agendaGroups';
+import { AgendaGroupBy, readAgendaQuery, UPCOMING_DAYS } from '../../domain/tasks/agendaGroups';
 import { DayLoad, DueChoice, dueDateFor, RescheduleContext } from '../../domain/tasks/reschedule';
 import { QueryContext } from '../../domain/query/queryContext';
 import { pluralize } from '../../shared/text';
@@ -369,10 +369,9 @@ export async function rescheduleTasks(
  * `deckard.agenda.query` selects them. The status bar's hover lists these.
  */
 export function listOverdueTasks(index: WorkspaceIndex, context: QueryContext): Task[] {
-  const settings = vscode.workspace.getConfiguration('deckard');
   return selectOverdueTasks(index, context, {
-    query: readAgendaQuery(settings),
-    upcomingDays: readUpcomingDays(settings),
+    query: readAgendaQuery(vscode.workspace.getConfiguration('deckard')),
+    upcomingDays: UPCOMING_DAYS,
   });
 }
 

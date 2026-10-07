@@ -398,8 +398,8 @@ function splitByDay(
 
 /**
  * The tasks completed today, by their ✅ date, the latest line first. A task
- * completed with `deckard.tasks.addDoneDate` off carries no date, and cannot
- * be counted.
+ * completed with no date written, by hand or by another tool, cannot be
+ * counted.
  */
 function createDoneToday(
   tasks: readonly Task[],

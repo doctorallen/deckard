@@ -22,7 +22,6 @@ function rank(workspace: ReturnType<typeof createEvaluationWorkspace>, testCase:
     enableKeywordLinks: true,
     relatedNotesSortMode: 'tags',
     sectionAccessCounts: {},
-    tagTitleDisplayMode: 'inline',
     activeEntryTitle: scope ? scope.file.sections[0]?.heading : undefined,
     activeTagWeights: scope?.tagWeights,
   }).notes;
@@ -72,7 +71,6 @@ suite('Related Notes for a note with no tags', () => {
       enableKeywordLinks: keywordLinks,
       relatedNotesSortMode: 'tags',
       sectionAccessCounts: {},
-      tagTitleDisplayMode: 'inline',
       rankingOptions: { excludedTagNamespaces: ['status'] },
     });
   };

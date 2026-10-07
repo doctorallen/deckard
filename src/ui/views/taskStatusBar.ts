@@ -212,7 +212,6 @@ export class TaskStatusBar implements vscode.Disposable {
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
-          event.affectsConfiguration('deckard.statusBar') ||
           event.affectsConfiguration('deckard.agenda.query') ||
           event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
         ) {
@@ -277,14 +276,6 @@ export class TaskStatusBar implements vscode.Disposable {
   /** Draws the count, or hides the item when nothing is due. */
   public refresh(): void {
     this.lastRefreshDate = localDate(this.now());
-    if (
-      !vscode.workspace
-        .getConfiguration('deckard')
-        .get<boolean>('statusBar', true)
-    ) {
-      this.item.hide();
-      return;
-    }
     const context = readQueryContext(this.now().getTime());
     const counts = countDueTasks(this.indexer.getSnapshot(), context, getAgendaQuery());
     const text = describeDueTasks(counts);

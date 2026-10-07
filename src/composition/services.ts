@@ -102,7 +102,7 @@ import { AgendaGroup, createAgenda, selectAgendaTasks, selectOverdueTasks } from
 import { isNamespaceName } from '../ui/state/tagGrouping';
 import { resolveTaskMove } from '../ui/state/taskBoardState';
 import { AgendaService } from '../services/agendaService';
-import { isWhatsNewShown, WhatsNew } from '../ui/commands/whatsNew';
+import { WhatsNew } from '../ui/commands/whatsNew';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { TryNextLedger } from '../ui/commands/tryNext';
 import { settingTarget, writeSetting } from '../ui/commands/settings';
@@ -442,7 +442,6 @@ function createLedgers(context: vscode.ExtensionContext) {
       Buffer.from(
         await vscode.workspace.fs.readFile(vscode.Uri.joinPath(context.extensionUri, 'CHANGELOG.md')),
       ).toString('utf8'),
-    isShown: isWhatsNewShown,
   });
   context.subscriptions.push(whatsNew);
   // What Home's Try next has been told, kept with the workspace. A
@@ -631,12 +630,7 @@ function createSearch(
   const exportService = new ExportService({
     index: indexer,
     search: (query) =>
-      evaluateSearchPage(indexer.getSnapshot(), query, {
-        includeHubLinks: vscode.workspace
-          .getConfiguration('deckard')
-          .get<boolean>('tagOverview.includeHubLinks', true),
-        queryContext: readQueryContext(),
-      }).results,
+      evaluateSearchPage(indexer.getSnapshot(), query, { queryContext: readQueryContext() }).results,
     queryBlock: (query) => formatQueryBlock(query),
   });
   const { repository, usage, savedSearches, display, pins, homeWidgets, tagRenames } = preferences;
@@ -1176,7 +1170,7 @@ function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'tas
  */
 function createLateContexts(context: vscode.ExtensionContext, core: Core, pages: Pages): SectionFocus {
   void syncOutlineFollowCursorContext();
-  context.subscriptions.push(startZenMode(context.globalState, context.workspaceState));
+  context.subscriptions.push(startZenMode(context.globalState));
   // Which note a section is focused in, which leaving it clears.
   const sectionFocus = new SectionFocus();
   context.subscriptions.push(sectionFocus);

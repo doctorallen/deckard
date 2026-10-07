@@ -108,9 +108,8 @@ export async function moveStatusTagsCommand(
   history: WorkspaceWriteHistory,
   preferences?: SearchPreferences,
 ): Promise<void> {
-  const addDoneDate = vscode.workspace.getConfiguration('deckard').get<boolean>('tasks.addDoneDate', true);
   const index = indexer.getSnapshot();
-  const { lines, statuses, legacy } = planFromIndex(index, addDoneDate ? formatIsoDate(Date.now()) : undefined);
+  const { lines, statuses, legacy } = planFromIndex(index, formatIsoDate(Date.now()));
   const rewrite = (query: string): string => moveStatusTagsInQuery(query, legacy, statuses);
   const counts = countStatusMove(lines);
   const blocks = await findQueryBlockEdits(index.files.values(), rewrite, new RegExp(`${legacy.namespace}/`, 'i'));

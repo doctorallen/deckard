@@ -19,7 +19,6 @@ import type {
   RenameTagMessage,
   SearchRefineState,
   SidebarReadyMessage,
-  TagTitleDisplayMode,
 } from './shared';
 
 export type { RankedNote, SuggestedTag } from '../../domain/model/relatedNotes';
@@ -135,7 +134,6 @@ export interface SidebarNotesSnapshot {
    * related notes, and the tags those entries use.
    */
   similar?: { notes: RankedNote[]; tags: SuggestedTag[] };
-  tagTitleDisplayMode: TagTitleDisplayMode;
   graph?: SidebarGraphContext;
   /** The active search page's Refine options, shown in its place. */
   refine?: SearchRefineState;

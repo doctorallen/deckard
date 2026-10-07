@@ -39,7 +39,6 @@ import type {
   SetDisplayMessage,
   SetZenModeMessage,
   TagOverviewCard,
-  TagTitleDisplayMode,
   ToggleTaskMessage,
 } from './shared';
 
@@ -102,7 +101,6 @@ export interface DashboardSnapshot {
    */
   taskGlance?: TaskGlance;
   tagColumns: DashboardColumnCount;
-  tagTitleDisplayMode: TagTitleDisplayMode;
   tagSortMode: TagSortMode;
   entitySortMode: TagSortMode;
   selectedTag?: string;

@@ -16,6 +16,7 @@ import type {
   SetResultPageMessage,
   SetResultsPerPageMessage,
   SetSearchColumnsMessage,
+  SetHubOpenMessage,
   SetSearchPreviewMessage,
   SetTagOverviewLayoutMessage,
   SetSearchHierarchyMessage,
@@ -108,6 +109,10 @@ const narrowSetResultsPerPage: Narrower<SetResultsPerPageMessage> = (value) =>
   (SEARCH_PAGE_SIZES as readonly unknown[]).includes(value.size)
     ? { type: 'setResultsPerPage', size: value.size as SearchPageSize }
     : undefined;
+
+/** The hub note opened or folded, and nothing else. */
+const narrowSetHubOpen: Narrower<SetHubOpenMessage> = (value) =>
+  Object.keys(value).length === 2 && typeof value.open === 'boolean' ? { type: 'setHubOpen', open: value.open } : undefined;
 
 /** Edit every note or every task the search found. */
 const narrowEditResults: Narrower<EditResultsMessage> = (value) =>
@@ -205,7 +210,7 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   mergeTags: narrowMergeTags,
   saveTagOverviewFilter: narrowSaveTagOverviewFilter,
   createHubNote: exactlyType('createHubNote'),
-  excludeHubLinks: exactlyType('excludeHubLinks'),
+  setHubOpen: narrowSetHubOpen,
   clearOverviewQuery: exactlyType('clearOverviewQuery'),
   openHelp: exactlyType('openHelp'),
   openGoTo: exactlyType('openGoTo'),

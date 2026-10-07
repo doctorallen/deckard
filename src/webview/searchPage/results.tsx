@@ -157,7 +157,7 @@ function emptyNotesMessage(snapshot: SearchPageSnapshot): string {
 /** The notes pane: its heading and actions, the cards, and its pages. */
 function NotesPane({ view }: { readonly view: ResultsView }) {
   const { snapshot, openedCards } = view;
-  const display: CardDisplay = { renderMode: snapshot.renderMode, preview: snapshot.preview, titleDisplay: snapshot.tagTitleDisplayMode };
+  const display: CardDisplay = { renderMode: snapshot.renderMode, preview: snapshot.preview };
   if (isGrouped(snapshot) && snapshot.sections.length) {
     return (
       <section class="overview-pane" aria-labelledby={paneLabel('notes', view)}>
@@ -182,10 +182,10 @@ function NotesPane({ view }: { readonly view: ResultsView }) {
 }
 
 /** One task a search found, marked so plain words being typed can hide it, and saying when it is listed for the hub. */
-function SearchTask({ item, snapshot }: { readonly item: DashboardTask; readonly snapshot: SearchPageSnapshot }) {
+function SearchTask({ item }: { readonly item: DashboardTask }) {
   // Said after the task's location, as a card says it in its source row.
   const via = item.via === 'hubLink' ? <span key="via" class="card-via">Links the hub note</span> : null;
-  return <TaskListRow item={item} titleDisplay={snapshot.tagTitleDisplayMode} entry="tasks" afterSource={via} />;
+  return <TaskListRow item={item} entry="tasks" afterSource={via} />;
 }
 
 /** The tasks pane: its heading and actions, the rows, and its pages. */
@@ -203,7 +203,7 @@ function TasksPane({ view }: { readonly view: ResultsView }) {
     <section class="overview-pane" aria-labelledby={paneLabel('tasks', view)}>
       <PaneHeader kind="tasks" view={view} />
       {snapshot.tasks.length
-        ? <div key="list" class="task-list">{snapshot.tasks.map((item, position) => <SearchTask key={`${position}:${item.task.id}`} item={item} snapshot={snapshot} />)}</div>
+        ? <div key="list" class="task-list">{snapshot.tasks.map((item, position) => <SearchTask key={`${position}:${item.task.id}`} item={item} />)}</div>
         : <div key="empty" class="empty">No tasks match this search.<OtherResults kind="tasks" view={view} /></div>}
       <Pagination kind="tasks" paging={pagingOf(snapshot.taskPaging, snapshot.tasks.length)} pageSizes={snapshot.pageSizes} />
     </section>

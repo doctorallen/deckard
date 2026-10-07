@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { fileExists } from './fs';
 
-import { getPersonMarker } from '../../domain/markdown/parser';
 import { matchesPerson } from '../../domain/query/queryEvaluator';
 import { readFolderSetting } from '../../shared/paths';
 import { pluralize } from '../../shared/text';
@@ -40,7 +39,6 @@ export interface SetupFacts {
   indexed: { files: number; sections: number; tasks: number; tags: number };
   /** How many notes their folder parks, and how many a front-matter tag does. */
   parked?: { byFolder: number; byTag: number };
-  personMarker: string;
   /** How many people the index knows, by the marker or `#person/`. */
   people: number;
   me?: string;
@@ -73,7 +71,6 @@ export async function collectSetupFacts(
     folders.push(await collectSetupFolder(folder, scanner));
   }
   const excludeSetting = configuration.get<Record<string, unknown>>('exclude', {});
-  const personMarker = getPersonMarker(configuration.get<unknown>('personMarker'));
   const meSetting = configuration.get<unknown>('me', '');
   const me = (typeof meSetting === 'string' ? meSetting.trim() : '') || undefined;
   const people = [...index.entities.values()].filter((entity) => entity.kind === 'person').length;
@@ -99,7 +96,6 @@ export async function collectSetupFacts(
     ...(index.parked
       ? { parked: { byFolder: index.parked.byFolder, byTag: index.parked.byTag } }
       : {}),
-    personMarker,
     people,
     me,
     meIsKnown,
@@ -250,8 +246,8 @@ function peopleSection(facts: SetupFacts): string[] {
   const lines = ['', '## People', ''];
   lines.push(
     facts.people === 0
-      ? `- ℹ️ No people yet. Write \`${facts.personMarker}name\` or \`#person/name\` to name one.`
-      : ok(`${facts.people} ${facts.people === 1 ? 'person' : 'people'} known, written with \`${facts.personMarker}\` or \`#person/\`.`),
+      ? `- ℹ️ No people yet. Write \`@name\` or \`#person/name\` to name one.`
+      : ok(`${facts.people} ${facts.people === 1 ? 'person' : 'people'} known, written with \`@\` or \`#person/\`.`),
     describeMe(facts),
   );
   return lines;
@@ -267,7 +263,7 @@ function describeMe(facts: SetupFacts): string {
   }
   return warn(
     `\`deckard.me\` is \`${facts.me}\`, but no note names that person.`,
-    `Check the spelling against how you write yourself in notes, or the marker: people are written with \`${facts.personMarker}\` here.`,
+    `Check the spelling against how you write yourself in notes: people are written with \`@\` here.`,
   );
 }
 

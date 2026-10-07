@@ -239,8 +239,7 @@ function createHubLinkIndex() {
   return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
 }
 
-test('a tag\'s page lists what links its hub note, each saying so, and can leave them out', async () => {
-  vscode._test.settings.delete('deckard.tagOverview.includeHubLinks');
+test('a tag\'s page lists what links its hub note, each saying so', async () => {
   const { view } = await openOverview('#project/atlas', { index: createHubLinkIndex() });
   assert.deepStrictEqual(visibleTitles(view), ['Atlas planning', 'Budget']);
   const budget = view.findAll('.card').find((card) => card.textContent.includes('Budget'));
@@ -250,40 +249,7 @@ test('a tag\'s page lists what links its hub note, each saying so, and can leave
   assert.ok(!planning.querySelector('.card-via'));
   assert.ok(view.find('.task-row .card-via'), 'and so does the linking task');
   const line = view.findAll('.tag-note').find((note) => note.textContent.startsWith('Also listing'));
-  assert.strictEqual(line.textContent, 'Also listing 2 entries that link to atlas without the tag. Leave them out');
-
-  vscode._test.configurationUpdates.length = 0;
-  view.click(view.find('[data-action="exclude-hub-links"]'));
-  await settle();
-  assert.deepStrictEqual(vscode._test.configurationUpdates.map((update) => [update.name, update.value, update.target]), [
-    ['deckard.tagOverview.includeHubLinks', false, vscode.ConfigurationTarget.Global],
-  ]);
-  await settle();
-  assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
-  assert.ok(!view.findAll('.tag-note').some((note) => note.textContent.startsWith('Also listing')));
-  vscode._test.settings.delete('deckard.tagOverview.includeHubLinks');
-});
-
-test('a tag\'s page leaves hub links out where a workspace turns them on', async () => {
-  vscode._test.settings.delete('deckard.tagOverview.includeHubLinks');
-  vscode._test.workspaceSettings.set('deckard.tagOverview.includeHubLinks', true);
-  try {
-    const { view } = await openOverview('#project/atlas', { index: createHubLinkIndex() });
-    assert.deepStrictEqual(visibleTitles(view), ['Atlas planning', 'Budget']);
-
-    vscode._test.configurationUpdates.length = 0;
-    view.click(view.find('[data-action="exclude-hub-links"]'));
-    await settle();
-    assert.deepStrictEqual(vscode._test.configurationUpdates.map((update) => [update.name, update.value, update.target]), [
-      ['deckard.tagOverview.includeHubLinks', false, vscode.ConfigurationTarget.Workspace],
-    ]);
-    assert.strictEqual(vscode._test.workspaceSettings.get('deckard.tagOverview.includeHubLinks'), false);
-    assert.strictEqual(vscode._test.settings.has('deckard.tagOverview.includeHubLinks'), false, 'the user\'s settings are left alone');
-    await settle();
-    assert.deepStrictEqual(visibleTitles(view), ['Atlas planning']);
-  } finally {
-    vscode._test.workspaceSettings.delete('deckard.tagOverview.includeHubLinks');
-  }
+  assert.strictEqual(line.textContent, 'Also listing 2 entries that link to atlas without the tag.');
 });
 
 test('a tag\'s page says how else the tag is written, with Include in search and Merge', async () => {

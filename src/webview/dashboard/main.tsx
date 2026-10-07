@@ -86,7 +86,6 @@ function findWidget(kind: DashboardWidget['kind']): DashboardWidget | undefined 
 function homeContext(snapshot: DashboardPageState): HomeContext {
   return {
     editing: view.editingHome,
-    titleDisplay: snapshot.tagTitleDisplayMode,
     savedFilters: snapshot.savedFilters,
     openOptions: view.openWidgetOptions,
     queryDrafts: view.widgetQueryDrafts,

@@ -8,7 +8,7 @@ import {
   writeCapture,
 } from '../../domain/capture/captureLines';
 import { readDateOptions } from './datePrompt';
-import { getPersonMarker } from '../../domain/markdown/parser';
+import { PERSON_MARKER } from '../../domain/markdown/parser';
 import { pickDestination } from './destinationPicker';
 import { captureSeed, withSourceLink } from './selectionSeed';
 import type { IndexReader } from '../../core/workspace/indexReader';
@@ -78,7 +78,7 @@ export async function capture(
       draft: drafts.read(initialTarget),
       seed,
       tags: [...indexer.getSnapshot().tags.values()],
-      personMarker: getPersonMarker(vscode.workspace.getConfiguration('deckard').get('personMarker')),
+      personMarker: PERSON_MARKER,
       preview: (text, literal, link) =>
         withSourceLink(writeCapture(text, { ...readCaptureOptions(Date.now()), literal, asNote: false }), link),
     }),

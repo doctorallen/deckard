@@ -265,8 +265,8 @@ export class TaskService<U extends ResourceUri, H = unknown> {
       const to = pick(statuses);
       const replacement = setTaskStatus(line, task.checkboxColumn, {
         to,
-        ...(configuration.get<boolean>('tasks.addDoneDate', true) ? { doneDate: formatIsoDate(now) } : {}),
-        ...(configuration.get<boolean>('tasks.addCancelledDate', true) ? { cancelledDate: formatIsoDate(now) } : {}),
+        doneDate: formatIsoDate(now),
+        cancelledDate: formatIsoDate(now),
         preferredFormat: readMetadataFormat(configuration),
       });
       if (to.type !== 'done' || task.completed) {
@@ -399,9 +399,7 @@ export class TaskService<U extends ResourceUri, H = unknown> {
     if (open.length === 0) {
       return { kind: 'stale', uri };
     }
-    const doneDate = configuration.get<boolean>('tasks.addDoneDate', true)
-      ? formatIsoDate(this.options.clock.now())
-      : undefined;
+    const doneDate = formatIsoDate(this.options.clock.now());
     const format = readMetadataFormat(configuration);
     const replacements = open.map((line) => {
       const text = lines[line];
@@ -469,7 +467,6 @@ export class TaskService<U extends ResourceUri, H = unknown> {
   ): Promise<ToggleOutcome> {
     const configuration = this.options.configuration.getConfiguration('deckard', request.uri);
     const result = toggleTaskLines(request.lines, request.now, {
-      addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
       format: readMetadataFormat(configuration),
       eol: request.eol,
       documentLines: request.documentLines,

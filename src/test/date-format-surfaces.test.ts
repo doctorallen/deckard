@@ -45,7 +45,6 @@ suite('Dates in the reader\'s format', () => {
         preferences: { ...store.reader.value, taskBoardLayout: 'board' },
         search: { query: '' },
         options: { queryContext: context, statuses: ['todo', 'doing'], format: 'emoji', showDone: true } as never,
-        tagTitleDisplayMode: 'inline',
       });
     } finally {
       store.repository.dispose();

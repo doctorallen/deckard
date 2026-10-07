@@ -142,11 +142,6 @@ suite('Task service', () => {
     const reopened = await reopening.service.toggle(tasksOf('plan.md', done)[0], false);
     assert.strictEqual(reopening.fake.text('plan.md'), '- [ ] Send proposal\n');
     assert.strictEqual(reopened.kind === 'updated' ? reopened.outcome : 'none', undefined);
-
-    const open = '- [ ] Send proposal\n';
-    const plain = setup({ 'plan.md': open }, { 'deckard.tasks.addDoneDate': false });
-    await plain.service.toggle(tasksOf('plan.md', open)[0], true);
-    assert.strictEqual(plain.fake.text('plan.md'), '- [x] Send proposal\n');
   });
 
   test('sets any status as its character, with the dates its type keeps, and reopens as [ ] with its tags kept', async () => {
@@ -162,7 +157,7 @@ suite('Task service', () => {
       fake.text('plan.md'),
       '- [/] Draft the plan\n- [-] Order the banner #status/doing ❌ 2026-09-25\n- [ ] Book the room #status/doing\n',
     );
-    const waiting = setup({ 'plan.md': '- [ ] Draft the plan\n' }, { 'deckard.tasks.addCancelledDate': false });
+    const waiting = setup({ 'plan.md': '- [ ] Draft the plan\n' });
     await waiting.service.setStatus(tasksOf('plan.md', '- [ ] Draft the plan\n')[0], named('Waiting'));
     assert.strictEqual(waiting.fake.text('plan.md'), '- [w] Draft the plan\n');
   });

@@ -52,11 +52,8 @@ export function readAgendaQuery(settings: SettingsReader): string {
   return typeof value === 'string' ? value : '';
 }
 
-/** How many days Upcoming reaches, from `deckard.agenda.upcomingDays`: 1 to 90, 7 by default. */
-export function readUpcomingDays(settings: SettingsReader): number {
-  const value = settings.get<number>('agenda.upcomingDays', 7);
-  return Number.isFinite(value) ? Math.min(Math.max(Math.round(value), 1), 90) : 7;
-}
+/** How many days the Tasks view's Upcoming reaches: a week. */
+export const UPCOMING_DAYS = 7;
 
 /**
  * The Task board column a group means, when it means one.

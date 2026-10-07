@@ -408,7 +408,7 @@ function timeCalendarSnapshot(index, now, options) {
   setTimingLog(log);
   const timings = [0, 1, 2, 3, 4].map(() => {
     log.lines.length = 0;
-    measure('Calendar', () => createCalendar(index, month, createQueryContext(now), { showRepeats: true, showWeekends: true, ...options }));
+    measure('Calendar', () => createCalendar(index, month, createQueryContext(now), { showWeekends: true, ...options }));
     return readTiming(log.lines, ['Calendar']);
   });
   setTimingLog(undefined);
@@ -441,7 +441,7 @@ function timeTaskBoardSnapshot(index, now) {
   setTimingLog(log);
   const timings = [0, 1, 2, 3, 4].map(() => {
     log.lines.length = 0;
-    measure('Task board', () => createTaskBoard({ index, preferences, search: { query: 'is:open' }, options, tagTitleDisplayMode: 'inline' }));
+    measure('Task board', () => createTaskBoard({ index, preferences, search: { query: 'is:open' }, options }));
     return readTiming(log.lines, ['Task board']);
   });
   setTimingLog(undefined);
@@ -492,12 +492,9 @@ function timeSearchPageSnapshot(index, now, query) {
   const options = {
     queryContext: createQueryContext(now),
     originQuery: query,
-    tagTitleDisplayMode: 'inline',
     notePage: 1,
     taskPage: 1,
     previewWords: [],
-    includeHubLinks: true,
-    enableHeadingTagRelationships: true,
   };
   const log = captureLog();
   setTimingLog(log);
@@ -540,8 +537,8 @@ function timeDashboardSnapshot(index, now) {
       // One moment for the whole page, as the host reads it once.
       const queryContext = createQueryContext(now);
       return {
-        ...createDashboardSnapshot({ index, preferences, tagTitleDisplayMode: 'inline', agendaQuery: '', queryContext }),
-        widgets: createDashboardWidgets(index, preferences, { queryContext, upcomingDays: 7, agendaQuery: '', tagTitleDisplayMode: 'inline' }),
+        ...createDashboardSnapshot({ index, preferences, agendaQuery: '', queryContext }),
+        widgets: createDashboardWidgets(index, preferences, { queryContext, agendaQuery: '' }),
       };
     });
     return readTiming(log.lines, ['Dashboard']);
@@ -566,11 +563,9 @@ function timeRelatedNotesSnapshot(index, now, filePath) {
   }
   const options = {
     now,
-    enableKeywordLinks: true,
     relatedNotesSortMode: 'tags',
     sectionAccessCounts: {},
-    tagTitleDisplayMode: 'inline',
-    rankingOptions: { associationMinimumSupport: 1, recencyHalfLifeDays: 0, hidePeriodicNotes: false, excludedTagNamespaces: ['status'] },
+    rankingOptions: { hidePeriodicNotes: false, excludedTagNamespaces: ['status'] },
   };
   const log = captureLog();
   setTimingLog(log);

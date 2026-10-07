@@ -88,7 +88,7 @@ suite('Calendar page host', () => {
     const { result: page, fire } = withConfigurationEvents(() => openPage());
     try {
       const events = recordSurface(page.surface);
-      fire('deckard.zenMode', 'deckard.calendar.showRepeats');
+      fire('deckard.display.level', 'deckard.calendar.weekStart');
       assert.deepStrictEqual(events, ['html', 'post state']);
     } finally {
       page.dispose();
@@ -158,11 +158,11 @@ suite('Calendar page host', () => {
   test("runs the gear's theme and help, at the periodic notes, and writes no setting already so", async () => {
     const page = openPage();
     try {
-      const shown = vscode.workspace.getConfiguration('deckard').get<boolean>('calendar.showRepeats', true) !== false;
+      const shown = vscode.workspace.getConfiguration('deckard').get<boolean>('calendar.showWeekends', true) !== false;
       const calls = await recordCommands(async () => {
         await page.send({ type: 'chooseTheme' });
         await page.send({ type: 'openHelp' });
-        await page.send({ type: 'setShowRepeats', show: shown });
+        await page.send({ type: 'setShowWeekends', show: shown });
       });
       assert.deepStrictEqual(calls, [['deckard.chooseTheme'], ['deckard.showHelp', 'periodic']]);
     } finally {

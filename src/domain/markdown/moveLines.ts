@@ -196,23 +196,16 @@ export function dedentBlock(lines: readonly string[]): string[] {
   return lines.map((line) => (prefix && line.startsWith(prefix) ? line.slice(prefix.length) : line));
 }
 
-/** What a move leaves where the lines were. */
-export type LeaveBehind = 'link' | 'nothing';
-
 /**
- * The lines left behind: nothing; or each open task marked `[>]` with a
- * link to where it went, as rollover's migrate marks it; or, for anything
- * else, one line linking there, a list item when the block began with one.
+ * The lines left behind: each open task marked `[>]` with a link to where
+ * it went, as rollover's migrate marks it; or, for anything else, one line
+ * linking there, a list item when the block began with one.
  */
 export function leaveBehind(
   block: MoveBlock,
   allLines: readonly string[],
   target: string,
-  mode: LeaveBehind,
 ): string[] {
-  if (mode === 'nothing') {
-    return [];
-  }
   if (block.openTasks) {
     return block.openTasks.map((task) => markMigrated(allLines[task.line], task.checkboxColumn, target));
   }

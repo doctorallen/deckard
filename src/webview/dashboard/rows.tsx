@@ -7,7 +7,7 @@ import { ProgressText } from '../shared/progressText';
 import type { ComponentChild, ComponentChildren } from 'preact';
 
 import type { DashboardSavedFilter, DashboardWidgetNote, DashboardWidgetTag, DashboardWidgetTagPair } from '../../ui/protocol/dashboard';
-import type { DashboardTask, TagTitleDisplayMode } from '../../ui/protocol/shared';
+import type { DashboardTask } from '../../ui/protocol/shared';
 import { ProgressBar } from '../shared/progressBar';
 import { TagLabel } from '../shared/tagLabel';
 import { TaskListRow } from '../shared/taskRow';
@@ -117,13 +117,12 @@ export function HomeNotes(props: {
 export function HomeTasks(props: {
   readonly tasks: readonly DashboardTask[] | undefined;
   readonly empty: string;
-  readonly titleDisplay: TagTitleDisplayMode;
 }) {
-  const { tasks, empty, titleDisplay } = props;
+  const { tasks, empty } = props;
   if (!tasks || !tasks.length) {
     return <EmptyLine text={empty} />;
   }
-  return <div class="task-list">{tasks.map((item) => <TaskListRow key={item.task.id} item={item} titleDisplay={titleDisplay} />)}</div>;
+  return <div class="task-list">{tasks.map((item) => <TaskListRow key={item.task.id} item={item} />)}</div>;
 }
 
 /** Two tags written together, each pair opening a search for both. */

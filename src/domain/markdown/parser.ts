@@ -99,8 +99,8 @@ export interface MarkdownParseOptions {
   personMarker?: string;
   /**
    * Whether a task with no 👤 field is owned by the first person named in its
-   * sentence, as Deckard read it before the field existed; see
-   * `deckard.tasks.assigneeFromPersonTag`.
+   * sentence, as Deckard read it before the field existed. Off: only the
+   * field assigns a task.
    */
   assigneeFromPersonTag?: boolean;
   /** What each checkbox character means; see `deckard.tasks.statuses` and taskStatuses.ts. */
@@ -212,6 +212,9 @@ function resolveNamespaceAlias(
   }
   return current;
 }
+
+/** The marker that names a person, as in `@mara-vale`. */
+export const PERSON_MARKER = '@';
 
 /**
  * Limits people markers to one punctuation character so they remain distinct

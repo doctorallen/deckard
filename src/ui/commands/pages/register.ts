@@ -174,7 +174,11 @@ function registerGraphNodeCommands(services: Services): vscode.Disposable[] {
   ];
 }
 
-/** Related Notes for the entry a lens or hover was on, and its debug page. */
+/**
+ * Related Notes for the entry a lens or hover was on, and the page that
+ * shows how it ranks, for the entry a link names or, from the palette, the
+ * one the cursor is in.
+ */
 function registerEntryRelatedNotes(services: Services): vscode.Disposable[] {
   const { sidebarNotes } = services.views;
   const { relatedNotesDebug } = services.pages;
@@ -200,19 +204,11 @@ function registerEntryRelatedNotes(services: Services): vscode.Disposable[] {
     registerCommand(
       'deckard.showEntryRelatedNotesDebug',
       async (documentUri?: unknown, sourceLine?: unknown) => {
-        if (
-          typeof documentUri !== 'string' ||
-          typeof sourceLine !== 'number' ||
-          !Number.isInteger(sourceLine) ||
-          sourceLine < 1
-        ) {
+        const asked = readEntryArguments(documentUri, sourceLine);
+        if (!asked || !isMarkdownFile(asked.uri)) {
           return;
         }
-        const uri = vscode.Uri.parse(documentUri);
-        if (!isMarkdownFile(uri)) {
-          return;
-        }
-        await relatedNotesDebug.show(uri, sourceLine);
+        await relatedNotesDebug.show(asked.uri, asked.line);
       },
     ),
   ];
@@ -231,4 +227,19 @@ function readNewStatusRow(options: unknown): { name: string; type: TaskStatusTyp
     name: typeof newStatus.name === 'string' ? newStatus.name.slice(0, 80) : '',
     type: isTaskStatusType(newStatus.type) ? newStatus.type : 'todo',
   };
+}
+
+/**
+ * The entry a command was asked about: the note and line a link names, or,
+ * run from the palette with neither, the line the cursor is on in the
+ * editor; undefined for anything else.
+ */
+function readEntryArguments(documentUri: unknown, sourceLine: unknown): { uri: vscode.Uri; line: number } | undefined {
+  if (documentUri === undefined && sourceLine === undefined) {
+    const editor = vscode.window.activeTextEditor;
+    return editor ? { uri: editor.document.uri, line: editor.selection.active.line + 1 } : undefined;
+  }
+  return typeof documentUri === 'string' && typeof sourceLine === 'number' && Number.isInteger(sourceLine) && sourceLine >= 1
+    ? { uri: vscode.Uri.parse(documentUri), line: sourceLine }
+    : undefined;
 }

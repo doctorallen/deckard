@@ -60,7 +60,6 @@ import {
 import {
   PersistedPreferences,
   TagReference,
-  TagTitleDisplayMode,
   Task,
   TaskBoardGroupBy,
   TaskPriority,
@@ -111,8 +110,6 @@ export interface TaskBoardOptions {
    * refused.
    */
   limits?: Readonly<Record<string, number>>;
-  /** `deckard.tasks.addCancelledDate`. */
-  addCancelledDate?: boolean;
   /** Whether each card and row shows its task's nearest parent tag (`deckard.board.parentTag`). */
   parentTag?: boolean;
 }
@@ -153,8 +150,6 @@ export interface TaskBoardRequest {
   preferences: PersistedPreferences;
   search: TaskBoardSearch;
   options: TaskBoardOptions;
-  /** How a tag in a title is drawn; inline by default. */
-  tagTitleDisplayMode?: TagTitleDisplayMode;
 }
 
 /**
@@ -167,7 +162,6 @@ export function createTaskBoard({
   preferences,
   search,
   options,
-  tagTitleDisplayMode = 'inline',
 }: TaskBoardRequest): TaskBoardSnapshot {
   const boardOptions: TaskBoardOptions = {
     ...options,
@@ -232,7 +226,6 @@ export function createTaskBoard({
       completed: tasks.filter((task) => task.completed).length,
     },
     taskSortMode: preferences.taskSortMode,
-    tagTitleDisplayMode,
     availableOnly: hasAvailableTerm(search.query),
     availableToggleQuery: toggleAvailable(search.query),
     settings: {

@@ -12,7 +12,6 @@ import {
   listDailyNotes,
   NotePeriod,
   PeriodicNoteVariables,
-  WeekNaming,
 } from '../../domain/notes/periodicNotes';
 import { readWeekStart } from './datePrompt';
 import { resolveSourceUri } from './navigation';
@@ -103,11 +102,6 @@ export function fillPeriodicTemplate(
   );
 }
 
-/** `deckard.weeklyNote.naming`: `iso` names a week `2026-W40`, anything else by its days. */
-export function readWeekNaming(): WeekNaming {
-  return vscode.workspace.getConfiguration('deckard').get<string>('weeklyNote.naming', 'range') === 'iso' ? 'iso' : 'range';
-}
-
 /**
  * `deckard.periodicNotes.folder` for a day, inside the notes folder:
  * `journal/{yyyy}` as `journal/2026`; empty for the notes folder itself.
@@ -136,7 +130,7 @@ export function getPeriodicNoteUri(
   period: NotePeriod,
   day: Date,
   {
-    name = getPeriodicNote(period, day, readWeekStart(), readWeekNaming()).name,
+    name = getPeriodicNote(period, day, readWeekStart()).name,
     folder = readPeriodicFolder(targetFolder, day),
   }: {
     /** A name to use instead of the one this period would be given. */
@@ -180,7 +174,7 @@ export async function ensurePeriodicNote(
   // name it goes by; only a period with none gets a new one.
   const noteUri =
     (await findExistingPeriodicNote(targetFolder, period, day, weekStart)) ??
-    getPeriodicNoteUri(targetFolder, period, day, { name: getPeriodicNote(period, day, weekStart, readWeekNaming()).name });
+    getPeriodicNoteUri(targetFolder, period, day, { name: getPeriodicNote(period, day, weekStart).name });
 
   await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(noteUri, '..'));
   try {
@@ -206,7 +200,7 @@ export async function findExistingPeriodicNote(
   // note was written before the folder could be set.
   const folders = [...new Set([readPeriodicFolder(targetFolder, day), ''])];
   for (const folder of folders) {
-    for (const name of findPeriodicNoteNames(period, day, weekStart, readWeekNaming())) {
+    for (const name of findPeriodicNoteNames(period, day, weekStart)) {
       const candidate = getPeriodicNoteUri(targetFolder, period, day, { name, folder });
       try {
         await vscode.workspace.fs.stat(candidate);

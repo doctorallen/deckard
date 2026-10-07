@@ -24,9 +24,8 @@ interface MentionIndexSource {
  *
  * Which mentions are still there to link is LinkService's decision; a note
  * it could not open is left as it is and counted in the message. The write
- * is one write to the history: previewed as
- * `deckard.previewWorkspaceWrites` asks, and taken back by `Deckard: Undo
- * Last Change`.
+ * is one write to the history: previewed when it reaches several notes,
+ * and taken back by `Deckard: Undo Last Change`.
  */
 export async function linkMentions(
   indexer: MentionIndexSource,

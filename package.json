@@ -626,7 +626,7 @@
       },
       {
         "command": "deckard.showEntryRelatedNotesDebug",
-        "title": "Debug Related Notes",
+        "title": "Show Related Notes Ranking",
         "category": "Deckard"
       },
       {
@@ -851,16 +851,6 @@
         "command": "deckard.calendar.includeWeekends",
         "title": "Include Weekends",
         "category": "Deckard"
-      },
-      {
-        "command": "deckard.calendar.showRepeats",
-        "title": "Turn On Repeats",
-        "category": "Deckard"
-      },
-      {
-        "command": "deckard.calendar.hideRepeats",
-        "title": "Turn Off Repeats",
-        "category": "Deckard"
       }
     ],
     "submenus": [
@@ -957,7 +947,7 @@
         },
         {
           "command": "deckard.showEntryRelatedNotesDebug",
-          "when": "false"
+          "when": "editorLangId == markdown"
         },
         {
           "command": "deckard.editTask",
@@ -1144,10 +1134,6 @@
           "when": "false"
         },
         {
-          "command": "deckard.calendar.showRepeats",
-          "when": "false"
-        },
-        {
           "command": "deckard.calendar.hideWeekends",
           "when": "false"
         },
@@ -1157,10 +1143,6 @@
         },
         {
           "command": "deckard.calendar.openInEditor",
-          "when": "false"
-        },
-        {
-          "command": "deckard.calendar.hideRepeats",
           "when": "false"
         }
       ],
@@ -1405,16 +1387,6 @@
           "command": "deckard.calendar.includeWeekends",
           "when": "view == deckard.calendar && !config.deckard.calendar.showWeekends",
           "group": "1_calendar@3"
-        },
-        {
-          "command": "deckard.calendar.showRepeats",
-          "when": "view == deckard.calendar && !config.deckard.calendar.showRepeats",
-          "group": "1_calendar@2"
-        },
-        {
-          "command": "deckard.calendar.hideRepeats",
-          "when": "view == deckard.calendar && config.deckard.calendar.showRepeats",
-          "group": "1_calendar@2"
         }
       ],
       "view/item/context": [
@@ -1883,13 +1855,6 @@
             "description": "Visual theme used by Deckard webviews.",
             "order": 1
           },
-          "deckard.zenMode": {
-            "type": "boolean",
-            "default": false,
-            "description": "Replaced by Display: on reads as `deckard.display.level` Zen until a step is set.",
-            "markdownDeprecationMessage": "Zen mode is now **Display: Zen**. Set `#deckard.display.level#` instead; the editor settings Zen turned off are now each their own setting.",
-            "order": 2
-          },
           "deckard.display.level": {
             "type": "string",
             "enum": [
@@ -2166,12 +2131,6 @@
             "description": "How wide Deckard's pages draw: Home, search and tag pages, the note page, Stats, and Help. The Task Board and the Calendar always use their full width. Your own choice, the same in every workspace.",
             "order": 2
           },
-          "deckard.showWhatsNew": {
-            "type": "boolean",
-            "default": true,
-            "description": "After an update that adds features, Home shows one line linking to what is new. Help's What's new section lists recent releases either way.",
-            "order": 3
-          },
           "deckard.dashboard.openOnStartup": {
             "type": "boolean",
             "default": false,
@@ -2241,32 +2200,11 @@
             "markdownDescription": "Draw Saturday and Sunday in the Calendar and on the calendar page. Turned off, a week is its five working days; a task due on a weekend is still in the Tasks view and on the board.",
             "order": 7
           },
-          "deckard.calendar.showRepeats": {
-            "type": "boolean",
-            "default": true,
-            "scope": "window",
-            "markdownDescription": "Show every date a repeating task falls on in the weeks the Calendar draws, not only its next one, marked ↻. They are projected from the task's rule and never written. A `when done` rule is shown on its next date only, since the dates after it depend on when it is done.",
-            "order": 7
-          },
           "deckard.periodicNotes.folder": {
             "type": "string",
             "scope": "resource",
             "default": "",
             "description": "The folder, inside the notes folder, that new daily, weekly, and monthly notes are written to, such as journal/{yyyy} for one folder a year ({mm} is the month). Empty writes them at the top of the notes folder. Notes already written elsewhere are still found and read.",
-            "order": 10
-          },
-          "deckard.weeklyNote.naming": {
-            "type": "string",
-            "enum": [
-              "range",
-              "iso"
-            ],
-            "enumDescriptions": [
-              "week-2026-09-13-2026-09-19: the week's first and last days.",
-              "2026-W38: the ISO week, as many journaling tools name it."
-            ],
-            "default": "range",
-            "description": "How a new weekly note is named. A week's note under either name is found and read.",
             "order": 10
           },
           "deckard.periodicNote.review": {
@@ -2314,13 +2252,6 @@
             "order": 9,
             "markdownDescription": "What a newly created daily note does with the unfinished tasks of the last one. [Roll Unfinished Tasks Forward](command:deckard.rollTasksForward) does the same thing whenever you ask for it."
           },
-          "deckard.dailyNote.rolloverDays": {
-            "type": "number",
-            "minimum": 0,
-            "default": 7,
-            "description": "How many days back a rollover looks for unfinished tasks. 7 by default; 0 reaches as far back as your daily notes go. An older dated task shows under the Tasks view's Needs a new date anyway.",
-            "order": 10
-          },
           "deckard.templatesFolder": {
             "type": "string",
             "scope": "resource",
@@ -2359,12 +2290,6 @@
             ],
             "markdownDescription": "Tags that park whatever carries them: a note whose front matter has one, a heading and everything under it, or a task. A tag parks its sub-tags too, so `project/old` parks `#project/old/phase-1`. **Park Note** writes the first of these into the note's front matter. Parked items stay searchable with `is:parked`.",
             "order": 14
-          },
-          "deckard.developerMode": {
-            "type": "boolean",
-            "default": false,
-            "description": "Offer Deckard's own diagnostics, such as the related-notes ranking breakdown on a tagged entry's hover. Useful when tuning Related Notes; off for everyday note taking.",
-            "order": 15
           }
         },
         "order": 0
@@ -2389,22 +2314,6 @@
             "description": "Where one note ends and the next begins inside a Markdown file. Tasks are always their own entry, wherever they are written.",
             "order": 0
           },
-          "deckard.parseInlineTags": {
-            "type": "boolean",
-            "scope": "resource",
-            "default": true,
-            "markdownDeprecationMessage": "Use `#deckard.noteBoundaries#` instead. `false` is read as `heading`.",
-            "description": "Index tags on non-heading Markdown lines as standalone entries.",
-            "order": 1
-          },
-          "deckard.personMarker": {
-            "type": "string",
-            "scope": "resource",
-            "default": "@",
-            "pattern": "^[!$%&*+,.?:;=@^|~]$",
-            "description": "Single-character marker for people. For example, set this to \"~\" to recognize ~mara-vale as a person.",
-            "order": 2
-          },
           "deckard.entityNamespaceAliases": {
             "type": "object",
             "scope": "resource",
@@ -2417,45 +2326,6 @@
             },
             "description": "Maps one #namespace to another. Targets can be built-in or custom; for example, { \"proj\": \"project\", \"leadership\": \"management\" } treats #proj/atlas as a project and collapses #leadership/performance into #management/performance.",
             "order": 3
-          },
-          "deckard.enableTagAutocomplete": {
-            "type": "boolean",
-            "scope": "resource",
-            "default": true,
-            "description": "Show indexed tag suggestions after a tag or people marker. Disable without affecting tag indexing, highlighting, or navigation.",
-            "order": 4
-          },
-          "deckard.tagTitleDisplayMode": {
-            "type": "string",
-            "enum": [
-              "inline",
-              "separate"
-            ],
-            "enumDescriptions": [
-              "Keep tags in related-note and tag-overview titles.",
-              "Remove tags from titles and show them as separate tag controls."
-            ],
-            "default": "inline",
-            "description": "Choose whether tags stay inline in note titles or appear separately.",
-            "order": 5
-          },
-          "deckard.tagOverview.hubNoteExpanded": {
-            "type": "boolean",
-            "default": true,
-            "description": "Show a tag's hub note open at the top of its page. When off, the hub starts collapsed to its title row; select the title to open it.",
-            "order": 6
-          },
-          "deckard.tagOverview.includeHubLinks": {
-            "type": "boolean",
-            "default": true,
-            "description": "On a tag's page, also list the entries that link to its hub note without carrying the tag, each marked \"Links the hub note\".",
-            "order": 7
-          },
-          "deckard.enableHeadingTagRelationships": {
-            "type": "boolean",
-            "default": true,
-            "description": "Offer related tags, weighted by explicit co-occurrence and heading proximity, when refining a search of tags.",
-            "order": 8
           }
         },
         "order": 1
@@ -2506,42 +2376,6 @@
             "default": true,
             "description": "Mark a [[Wiki link]] that opens no note, because no note has its name or several do, and offer to create a missing note.",
             "order": 3
-          },
-          "deckard.updateLinksOnRename": {
-            "type": "boolean",
-            "default": true,
-            "description": "Rewrite every [[Wiki link]] that names a note by its old title when the note is renamed, in the same step as the rename, so one Undo takes back both.",
-            "order": 4
-          },
-          "deckard.previewWorkspaceWrites": {
-            "type": "string",
-            "enum": [
-              "severalNotes",
-              "always",
-              "never"
-            ],
-            "enumDescriptions": [
-              "Show a write that reaches more than one note in VS Code's refactor preview first.",
-              "Show every write that changes a note, however few it changes.",
-              "Apply writes without showing them first."
-            ],
-            "default": "severalNotes",
-            "order": 5,
-            "markdownDescription": "When renaming or merging a tag, and renaming a heading, show the changes in VS Code's refactor preview before they are written, where each one can be left out. [Undo Last Change](command:deckard.undoLastChange) takes back whatever was written."
-          },
-          "deckard.moveTo.leaveBehind": {
-            "type": "string",
-            "enum": [
-              "link",
-              "nothing"
-            ],
-            "enumDescriptions": [
-              "A task becomes \"- [>] … → [[where it went]]\"; anything else becomes a [[link]] to where it went.",
-              "Nothing: the lines are taken out."
-            ],
-            "default": "link",
-            "order": 6,
-            "description": "What Move to… leaves where the lines were."
           },
           "deckard.editor.taskDependencies": {
             "type": "boolean",
@@ -2646,61 +2480,12 @@
       },
       {
         "title": "Related Notes",
-        "properties": {
-          "deckard.autoSelectNoteSections": {
-            "type": "boolean",
-            "scope": "resource",
-            "default": true,
-            "description": "Automatically show Related Notes for the tagged note section containing the cursor.",
-            "order": 0
-          },
-          "deckard.enableKeywordLinks": {
-            "type": "boolean",
-            "scope": "resource",
-            "default": true,
-            "description": "Let wording that two notes share move a related note up or down a little, when it already shares a tag, an association, or a link, and list entries with similar wording under a note that has no tags yet. For a note with tags, shared wording never makes a note related on its own. Turn off to rank by tags and links alone.",
-            "tags": [
-              "advanced"
-            ],
-            "order": 1
-          },
-          "deckard.relatedNotesAssociationMinimumSupport": {
-            "type": "number",
-            "scope": "resource",
-            "minimum": 1,
-            "maximum": 20,
-            "default": 1,
-            "description": "How many headings, tagged lines, or tasks must write two tags together before Related Notes treats the tags as associated. 1 counts an association written once.",
-            "tags": [
-              "advanced"
-            ],
-            "order": 2
-          },
-          "deckard.relatedNotesRecencyHalfLifeDays": {
-            "type": "number",
-            "scope": "resource",
-            "minimum": 0,
-            "maximum": 3650,
-            "default": 0,
-            "description": "Give recently written notes a small lift in Related Notes: a note this many days old gets half the lift of one written today. 0 turns it off. A daily note's date or a front-matter date is used before the file's.",
-            "tags": [
-              "advanced"
-            ],
-            "order": 3
-          }
-        },
+        "properties": {},
         "order": 3
       },
       {
         "title": "Tasks",
         "properties": {
-          "deckard.tasks.addDoneDate": {
-            "type": "boolean",
-            "scope": "resource",
-            "default": true,
-            "description": "Add a completion date (✅ or [completion:: …]) when Deckard completes a task. Reopening the task removes it.",
-            "order": 0
-          },
           "deckard.tasks.metadataFormat": {
             "type": "string",
             "scope": "resource",
@@ -2716,20 +2501,6 @@
             "description": "Format Deckard writes for a task that has no metadata yet, in / suggestions and completion dates. A task that already uses one format keeps it, and Deckard reads both.",
             "order": 1
           },
-          "deckard.tasks.assigneeFromPersonTag": {
-            "type": "boolean",
-            "default": false,
-            "scope": "resource",
-            "description": "Treat the first person named in a task's words as the person it is for, the way Deckard read tasks before the 👤 field existed. Off, only 👤 (or [assignee:: …]) says who a task is for, and a name in the sentence is a mention.",
-            "order": 2
-          },
-          "deckard.tasks.metadataSuggestions": {
-            "type": "boolean",
-            "scope": "resource",
-            "default": true,
-            "description": "Suggest due dates, priorities, repeat rules, and dependencies after typing / in a task.",
-            "order": 3
-          },
           "deckard.me": {
             "type": "string",
             "default": "",
@@ -2743,12 +2514,6 @@
             "default": 30,
             "description": "How many days past its due date an open task stays in Overdue. After that it moves to the Tasks view's folded Needs a new date group, and leaves the status bar's count and its warning color. 0 keeps every overdue task in Overdue.",
             "order": 4
-          },
-          "deckard.statusBar": {
-            "type": "boolean",
-            "default": true,
-            "description": "Show how many tasks are due today in the status bar, which opens the Tasks view when selected. The item is hidden while nothing is due.",
-            "order": 5
           },
           "deckard.taskReminderTime": {
             "type": "string",
@@ -2808,14 +2573,6 @@
             "default": "project",
             "markdownDescription": "The tag namespace the Tasks view groups by when `#deckard.agenda.groupBy#` is `tag`, so `context` gives a group each to `#context/phone`, `#context/computer`, and the rest. A tag a task inherits from a heading or its note's front matter counts.",
             "order": 8
-          },
-          "deckard.agenda.upcomingDays": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 90,
-            "default": 7,
-            "description": "How many days ahead the Tasks view's Upcoming group looks for due, scheduled, and start dates.",
-            "order": 9
           },
           "deckard.agenda.query": {
             "type": "string",
@@ -2968,13 +2725,6 @@
             "markdownDescription": "What a click on a task's box does, in a page, the Markdown preview, and the Tasks view. **Deckard: Toggle Task Done** always goes to done and back. Set other statuses with **Deckard: Set Task Status…** or the Task board.",
             "order": 12
           },
-          "deckard.tasks.addCancelledDate": {
-            "type": "boolean",
-            "scope": "resource",
-            "default": true,
-            "description": "Add a cancelled date (❌ or [cancelled:: …]) when Deckard cancels a task. Reopening the task removes it.",
-            "order": 0
-          },
           "deckard.tasks.suggestSteps": {
             "type": "boolean",
             "default": true,
@@ -2987,30 +2737,11 @@
       {
         "title": "Outline",
         "properties": {
-          "deckard.outline.showTags": {
-            "type": "boolean",
-            "default": true,
-            "description": "Show each heading's tags beside it in the Deckard Outline.",
-            "order": 0
-          },
           "deckard.outline.followCursor": {
             "type": "boolean",
             "default": true,
             "description": "Select the Deckard Outline heading that contains the editor cursor.",
             "order": 1
-          },
-          "deckard.outline.inheritedTags": {
-            "type": "boolean",
-            "scope": "resource",
-            "default": false,
-            "description": "Also show front-matter tags that every heading in the file inherits.",
-            "order": 2
-          },
-          "deckard.outline.showCounts": {
-            "type": "boolean",
-            "default": true,
-            "description": "Show beside each heading in the Deckard Outline how many of the tasks under it are done, such as 2/5, and how many links name it, such as ↩3.",
-            "order": 3
           }
         },
         "order": 5

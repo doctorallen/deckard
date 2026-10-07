@@ -415,14 +415,14 @@ function openController() {
 }
 
 suite('Related Notes controller', () => {
-  test('an edit to the theme and a ranking setting at once resets the HTML and sends the state, then sends it again', async () => {
+  test('an edit to the theme and the Tasks view\'s search at once resets the HTML and sends the state, then sends it again', async () => {
     await closeEditors();
     const { result: page, fire } = withConfigurationEvents(() => openController());
     try {
       page.host.attach(page.surface);
       await settle();
       const events = recordSurface(page.surface);
-      fire('deckard.theme', 'deckard.enableKeywordLinks');
+      fire('deckard.theme', 'deckard.agenda.query');
       assert.deepStrictEqual(events, ['html', 'post state', 'post state']);
     } finally {
       page.dispose();

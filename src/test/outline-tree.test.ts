@@ -133,14 +133,10 @@ suite('Outline tree', () => {
     assert.notStrictEqual(after[0].line, before[0].line);
   });
 
-  test('adds inherited front-matter tags only when asked', () => {
+  test('lists the tags written on a heading, not those it inherits', () => {
     assert.strictEqual(
       formatOutlineTags(outline()[0]),
       '#project/atlas #urgent',
-    );
-    assert.strictEqual(
-      formatOutlineTags(outline(notes, { inheritedTags: true })[0]),
-      '#project/atlas #urgent #area/notes',
     );
   });
 
@@ -192,11 +188,10 @@ suite('Outline tree', () => {
     assert.deepStrictEqual(plan.children[0].tasks, { done: 1, total: 3 });
     assert.strictEqual(notesHeading.tasks, undefined);
     assert.strictEqual(
-      formatOutlineDescription(plan, { tags: true, counts: true }),
+      formatOutlineDescription(plan),
       '2/5 (40%) · ↩3 · #project/atlas',
     );
-    assert.strictEqual(formatOutlineDescription(plan, { tags: true, counts: false }), '#project/atlas');
-    assert.strictEqual(formatOutlineDescription(notesHeading, { tags: true, counts: true }), '');
+    assert.strictEqual(formatOutlineDescription(notesHeading), '');
     assert.deepStrictEqual(describeOutlineCounts(plan), ['Tasks 2/5 done (40%)', 'Linked 3 times']);
   });
   test('filters to the headings that carry a tag, keeping their ancestors', () => {

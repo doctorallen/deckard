@@ -39,7 +39,6 @@ export function createCalendarDay(
   index: WorkspaceIndex,
   date: string,
   context: QueryContext,
-  options: Pick<CalendarOptions, 'showRepeats'> = {},
 ): CalendarDayDetail {
   const now = new Date(context.now);
   const [year, month, day] = date.split('-').map(Number);
@@ -49,7 +48,7 @@ export function createCalendarDay(
   const notePath = listDailyNotes(index).find((note) => note.date === date)?.filePath;
   const on = (at: number | undefined): boolean => at !== undefined && formatLocalDate(new Date(at)) === date;
   const { due, scheduled, done } = collectDayTasks(index, on);
-  const repeats = options.showRepeats ? repeatsOn(index, at.getTime(), at.getTime(), now).get(date) ?? [] : [];
+  const repeats = repeatsOn(index, at.getTime(), at.getTime(), now).get(date) ?? [];
   const rows = (tasks: Task[]): DashboardTask[] =>
     tasks.sort(byImportanceThenSource).map((task) => createDashboardTask(task, index.sections, context));
   const created = listNotesCreatedOn(index, on);
@@ -191,8 +190,6 @@ function repeatsOn(index: WorkspaceIndex, from: number, to: number, now: Date): 
 
 /** What the calendar draws besides the month. */
 export interface CalendarOptions {
-  /** Draw a repeating task on its rule's later dates, not only its next. */
-  showRepeats?: boolean;
   /** Draw Saturday and Sunday; true unless turned off. */
   showWeekends?: boolean;
   /**
@@ -245,14 +242,12 @@ export function createCalendar(
   // Every day drawn, a neighbor month's included, so a repeat is where the
   // grid says it is in both months.
   const lastRow = rowStarts[rowStarts.length - 1];
-  const repeats = options.showRepeats
-    ? repeatsOn(
-        index,
-        rowStarts[0].getTime(),
-        new Date(lastRow.getFullYear(), lastRow.getMonth(), lastRow.getDate() + 6).getTime(),
-        now,
-      )
-    : new Map<string, Task[]>();
+  const repeats = repeatsOn(
+    index,
+    rowStarts[0].getTime(),
+    new Date(lastRow.getFullYear(), lastRow.getMonth(), lastRow.getDate() + 6).getTime(),
+    now,
+  );
   const staleBefore = needsNewDateBefore(context.now, context.taskPolicy);
   const staleDate = staleBefore === undefined ? undefined : formatLocalDate(new Date(staleBefore));
   const grid: MonthGrid = {
@@ -291,7 +286,6 @@ export function createCalendar(
       : { needsNewDateBefore: formatLocalDate(new Date(staleBefore)) }),
     weekdays: Array.from({ length: 7 }, (_, offset) => SHORT_WEEKDAY_NAMES[(weekStart + offset) % 7]),
     weeks,
-    ...(options.showRepeats ? { showRepeats: true } : {}),
     ...(options.showWeekends === false ? { hideWeekends: true } : {}),
     ...(options.dayPanel ? createDayPanel(index, context, options, today) : {}),
   };
@@ -508,7 +502,7 @@ function createDayPanel(
   return {
     dayPanel: true,
     selectedDate,
-    selected: createCalendarDay(index, selectedDate, context, options),
+    selected: createCalendarDay(index, selectedDate, context),
   };
 }
 

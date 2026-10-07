@@ -31,14 +31,9 @@ export const DISPLAY_SETTINGS = {
 /** One of the display choices, by its setting's name. */
 export type DisplaySetting = keyof typeof DISPLAY_SETTINGS;
 
-/**
- * The step in force: `deckard.display.level` when the reader has set it,
- * else Zen for one who had `deckard.zenMode` on, else Full.
- */
+/** The step in force: `deckard.display.level` when the reader has set it, else Full. */
 export function readDisplayLevel(): DisplayLevel {
-  const deckard = vscode.workspace.getConfiguration('deckard');
-  const set = deckard.inspect<string>(DISPLAY_SETTINGS.level.key)?.globalValue;
-  return resolveDisplayLevel(set, deckard.get<boolean>('zenMode', false));
+  return resolveDisplayLevel(vscode.workspace.getConfiguration('deckard').inspect<string>(DISPLAY_SETTINGS.level.key)?.globalValue);
 }
 
 /** The scale settings as the reader set them, `auto` or a value of their own. */

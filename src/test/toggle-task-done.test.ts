@@ -8,7 +8,7 @@ import { selectedLines, toggleTaskLines } from '../domain/tasks/toggleLines';
 
 /** Friday 2026-09-25, mid-morning. */
 const now = new Date(2026, 8, 25, 10, 0, 0).getTime();
-const options = { addDoneDate: true, format: 'emoji' as const, eol: '\n' };
+const options = { format: 'emoji' as const, eol: '\n' };
 
 function lines(...texts: string[]): { line: number; text: string }[] {
   return texts.map((text, line) => ({ line, text }));

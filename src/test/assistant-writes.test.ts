@@ -69,11 +69,6 @@ suite('Assistant writes', () => {
       written.text,
       '- [ ] Water the plants 🔁 every week 📅 2026-09-28\n- [x] Water the plants 🔁 every week 📅 2026-09-21 ✅ 2026-09-21',
     );
-    assert.strictEqual(
-      changeTaskLine({ line, changes: { complete: true }, now: NOW, fallbackFormat: 'emoji', eol: '\n', addDoneDate: false }).text.split('\n')[1],
-      '- [x] Water the plants 🔁 every week 📅 2026-09-21',
-      'no done date when the setting is off',
-    );
   });
 
   test('completing a repeating task gives the next one its steps back, unchecked', async () => {

@@ -325,6 +325,7 @@ function normalizeSearchPages(
   | 'searchPageSize'
   | 'searchPreview'
   | 'searchHierarchy'
+  | 'hubNoteCollapsed'
   | 'relatedNotesSortMode'
   | 'hideDailyNotes'
   | 'relatedNotesPreviewLines'
@@ -342,6 +343,7 @@ function normalizeSearchPages(
     searchPageSize: oneOf<SearchPageSize>(source.searchPageSize, SEARCH_PAGE_SIZES, DEFAULT_SEARCH_PAGE_SIZE),
     searchPreview: oneOf(source.searchPreview, SEARCH_PREVIEWS, 'lines'),
     ...(source.searchHierarchy === 'tags' || source.searchHierarchy === 'headings' ? { searchHierarchy: source.searchHierarchy } : {}),
+    ...(source.hubNoteCollapsed === true ? { hubNoteCollapsed: true as const } : {}),
     relatedNotesSortMode: oneOf(source.relatedNotesSortMode, RELATED_NOTES_SORT_MODES, 'tags'),
     ...(source.hideDailyNotes === true ? { hideDailyNotes: true as const } : {}),
     ...(previewLines === 0 || previewLines === 2 ? { relatedNotesPreviewLines: previewLines } : {}),

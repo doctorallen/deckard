@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { applyRollover, describeRollover, getRolloverLookbackDays, placeCarriedOver } from '../ui/commands/rollover';
+import { applyRollover, describeRollover, placeCarriedOver, ROLLOVER_LOOKBACK_DAYS } from '../ui/commands/rollover';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { planRollover } from '../domain/notes/rolloverPlan';
 import { markMigrated } from '../domain/markdown/taskLineEdits';
@@ -86,8 +86,8 @@ suite('Task rollover', () => {
     assert.strictEqual(plan?.tasks.length, 1);
   });
 
-  test('looks back a week unless told otherwise', () => {
-    assert.strictEqual(getRolloverLookbackDays(), 7);
+  test('looks back a week', () => {
+    assert.strictEqual(ROLLOVER_LOOKBACK_DAYS, 7);
   });
 
   test('looks back only as far as it is asked to', () => {

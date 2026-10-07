@@ -43,7 +43,6 @@ export function TaskList({ snapshot }: { readonly snapshot: TaskBoardSnapshot })
             key={item.task.id}
             item={item}
             draggable={draggable}
-            titleDisplay={snapshot.tagTitleDisplayMode}
             trailing={<RowMenuButton taskId={item.task.id} title={plainTitle(item.titleTokens) || item.task.title} />}
           />
         ))

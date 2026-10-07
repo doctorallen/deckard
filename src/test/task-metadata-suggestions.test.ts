@@ -13,7 +13,7 @@ const now = new Date(2026, 8, 13, 9).getTime();
 
 suite('Task metadata suggestions', () => {
   const createProvider = (
-    settings: TaskMetadataSuggestionSettings = { enabled: true, format: 'emoji' },
+    settings: TaskMetadataSuggestionSettings = { format: 'emoji' },
   ): TaskMetadataCompletionProvider =>
     new TaskMetadataCompletionProvider(
       { ready: Promise.resolve(), getSnapshot: createIndex },
@@ -66,7 +66,7 @@ suite('Task metadata suggestions', () => {
       '[due:: 2026-09-13]',
     );
 
-    const dataviewSetting = createProvider({ enabled: true, format: 'dataview' });
+    const dataviewSetting = createProvider({ format: 'dataview' });
     assert.strictEqual(
       find(await suggest(dataviewSetting, '- [ ] Send /'), 'high priority')
         ?.insertText,
@@ -91,11 +91,7 @@ suite('Task metadata suggestions', () => {
       await suggest(provider, '```\n- [ ] Send /\n```', 1),
       [],
     );
-
-    const disabled = createProvider({ enabled: false, format: 'emoji' });
-    assert.deepStrictEqual(await suggest(disabled, '- [ ] Send /'), []);
     provider.dispose();
-    disabled.dispose();
   });
 });
 

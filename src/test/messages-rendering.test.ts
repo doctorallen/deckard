@@ -64,7 +64,6 @@ suite('Webview contracts', () => {
         snapshot: {
           activeTags: [],
           notes: [],
-          tagTitleDisplayMode: 'inline',
           state: 'noMatches',
         },
       },
@@ -716,7 +715,6 @@ suite('Webview contracts', () => {
     const page = openWebviewPage(renderPage('sidebarNotes'), {
       activeFileName: 'today.md',
       activeTags: [],
-      tagTitleDisplayMode: 'inline',
       state: 'ready',
       notes: [{
         sectionId: 'section-1', filePath: 'notes/atlas.md', title: 'Actions', fileName: 'atlas.md', sourceLine: 12,

@@ -317,7 +317,6 @@ suite('Completing steps', () => {
   test('Toggle Task Done brings the steps back with the next occurrence too', () => {
     const lines = ['- [ ] Weekly review 📅 2026-09-10 🔁 every week', '  - [x] Inbox ✅ 2026-09-09'];
     const result = toggleTaskLines([{ line: 0, text: lines[0] }], Date.now(), {
-      addDoneDate: false,
       format: 'emoji',
       eol: '\n',
       documentLines: lines,

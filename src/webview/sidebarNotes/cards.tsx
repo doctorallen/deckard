@@ -8,7 +8,6 @@ import type { ComponentChildren } from 'preact';
 
 import type { NotesGraphNode, SidebarGraphContext } from '../../ui/protocol/notesGraph';
 import type { RankedNote, SidebarNotesSnapshot, SuggestedTag } from '../../ui/protocol/sidebarNotes';
-import type { TagReference, TagTitleDisplayMode } from '../../ui/protocol/shared';
 import { LinkIcon } from '../shared/strokeIcons';
 import { TitleWithTags } from '../shared/tagButton';
 import { TagLabel } from '../shared/tagLabel';
@@ -17,11 +16,10 @@ import { explainRelevance, RelevanceScore } from './weights';
 import { describeLocation, readEntryDetails } from '../shared/entryDetails';
 import { EntryDates } from '../shared/entryDates';
 
-/** What a card shows besides its entry: how many lines of excerpt, and how titles draw their tags. */
+/** What a card shows besides its entry: how many lines of excerpt. */
 export interface CardDisplay {
   /** 0, 1, or 2 lines of each excerpt. */
   readonly previewLines: number;
-  readonly titleDisplay: TagTitleDisplayMode;
 }
 
 /** The parts a card is made of, which every kind of card lays out the same way. */
@@ -48,27 +46,6 @@ function NoteCard(props: NoteCardProps) {
       {props.body}
     </article>
   );
-}
-
-/** A tag under a result, which opens the tag rather than the result. */
-function MatchedTag({ tag }: { readonly tag: TagReference }) {
-  return (
-    <button class="matched-tag" data-action="open-tag" data-tag-key={tag.key} aria-label={`Open ${tag.label} overview`}>
-      <TagLabel label={tag.label} />
-    </button>
-  );
-}
-
-/**
- * The tags drawn as chips on a result's card: the matched tags under the
- * title when tags are shown apart from it and there are any, or else the
- * title's own.
- */
-function chipsOf(note: RankedNote, titleDisplay: TagTitleDisplayMode): readonly TagReference[] {
-  if (titleDisplay === 'separate' && note.matchedTags.length) {
-    return note.matchedTags || [];
-  }
-  return note.titleTags || [];
 }
 
 /** The searched-for words a result shares with the note, which its excerpt marks: five at most. */
@@ -110,13 +87,13 @@ function RankedNoteDetails({ note, fileName }: { readonly note: RankedNote; read
 export function RankedNoteCard({ note, display }: { readonly note: RankedNote; readonly display: CardDisplay }) {
   const title = note.title || note.fileName || note.filePath;
   const fileName = note.fileName || note.filePath;
-  const reasons = explainRelevance(note, chipsOf(note, display.titleDisplay).map((tag) => tag.label));
+  const reasons = explainRelevance(note, (note.titleTags || []).map((tag) => tag.label));
   const steps = trimHeadingPath(note.headingPath, fileName, note.title);
   return (
     <NoteCard
       className=""
       attributes={cardAttributes(note)}
-      title={display.titleDisplay === 'inline' ? <TitleWithTags title={title} tags={note.titleTags || []} /> : title}
+      title={<TitleWithTags title={title} tags={note.titleTags || []} />}
       trailing={<div class="note-actions"><InsertLink title={title} /><RelevanceScore note={note} reasons={reasons} /></div>}
       source={<RankedNoteDetails note={note} fileName={fileName} />}
       body={[
@@ -124,9 +101,6 @@ export function RankedNoteCard({ note, display }: { readonly note: RankedNote; r
         <EntryDates facts={{ location: '', createdAt: note.createdAt, updatedAt: note.updatedAt }} className="source" />,
         note.excerpt && display.previewLines > 0 ? <p class="note-excerpt">{note.excerpt}</p> : null,
         reasons.length ? <div class="relevance-reason">{reasons[0]}</div> : null,
-        <div class="tag-list" aria-label="Matching tags">
-          {display.titleDisplay === 'separate' ? note.matchedTags.map((tag) => <MatchedTag tag={tag} />) : null}
-        </div>,
       ]}
     />
   );

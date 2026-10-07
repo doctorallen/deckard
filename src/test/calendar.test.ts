@@ -268,7 +268,7 @@ suite('Calendar', () => {
       ['notes/home.md', note('notes/home.md', '# Home\n- [ ] Water the plants 📅 2026-09-15 🔁 every week\n- [ ] Pay rent 📅 2026-09-14 🔁 every month when done\n- [x] Old chore 📅 2026-09-01 🔁 every day ✅ 2026-09-01')],
     ]));
     const now = new Date(2026, 8, 13, 10);
-    const shown = createCalendar(repeating, '2026-09', createQueryContext(now.getTime()), { showRepeats: true, dayPanel: true, selectedDate: '2026-09-22' });
+    const shown = createCalendar(repeating, '2026-09', createQueryContext(now.getTime()), { dayPanel: true, selectedDate: '2026-09-22' });
     const day = (date: string) => shown.weeks.flatMap((week) => week.days).find((entry) => entry.date === date);
     assert.strictEqual(day('2026-09-15')?.dueCount, 1, 'its own date is due');
     assert.strictEqual(day('2026-09-15')?.repeatCount, undefined, 'and not a repeat as well');
@@ -282,10 +282,6 @@ suite('Calendar', () => {
     assert.strictEqual(day('2026-10-03')?.repeatCount, undefined, 'a when done rule is not projected');
     assert.deepStrictEqual(shown.selected?.repeats?.map((item) => item.task.title), ['Water the plants']);
     assert.deepStrictEqual(shown.selected?.due, [], 'a repeat is not due');
-
-    const off = createCalendar(repeating, '2026-09', createQueryContext(now.getTime()), { dayPanel: true, selectedDate: '2026-09-22' });
-    assert.strictEqual(off.weeks.flatMap((week) => week.days).find((entry) => entry.date === '2026-09-22')?.repeatCount, undefined);
-    assert.strictEqual(off.selected?.repeats, undefined, 'the setting off draws none');
 
     const page = openWebviewPage(renderPage('calendar'), shown);
     try {

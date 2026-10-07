@@ -17,7 +17,7 @@ import { findBreadcrumbs } from '../state/hubTree';
 import { getPeriodicNoteUri } from '../commands/dailyNote';
 import { CREATE_MISSING_NOTES_COMMAND } from '../commands/linkHealth';
 import { resolveSourceUri } from '../commands/navigation';
-import { getRolloverLookbackDays, getRolloverMode } from '../commands/rollover';
+import { getRolloverMode, ROLLOVER_LOOKBACK_DAYS } from '../commands/rollover';
 import { LINK_MENTIONS_COMMAND } from '../commands/unlinkedMentions';
 import { readEditorToggle } from './editorToggles';
 import { LazyCodeLens, locate, resolveLazyCodeLens } from './codeLenses';
@@ -212,7 +212,7 @@ function provideDailyNoteLenses({
     file,
     index,
     today: formatLocalDate(now),
-    lookbackDays: getRolloverLookbackDays(document.uri),
+    lookbackDays: ROLLOVER_LOOKBACK_DAYS,
     mode: getRolloverMode(document.uri) === 'migrate' ? 'migrate' : 'move',
   });
   if (!actions) {

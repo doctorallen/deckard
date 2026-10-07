@@ -30,7 +30,6 @@ export function readTaskBoardOptions(queryContext: QueryContext): TaskBoardOptio
     queryContext,
     format: readTaskMetadataFormat(configuration),
     limits: readBoardLimits(configuration.get<unknown>('board.limits', {})),
-    addCancelledDate: configuration.get<boolean>('tasks.addCancelledDate', true),
     parentTag: configuration.get<boolean>('board.parentTag', false) === true,
   };
 }

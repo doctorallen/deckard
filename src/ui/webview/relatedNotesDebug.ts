@@ -36,7 +36,7 @@ export class RelatedNotesDebugPanel implements vscode.Disposable {
       new WebviewHost<never, RelatedNotesDebugPageToHost>(this.controller, { themePreview }),
       {
         viewType: 'deckard.relatedNotesDebug',
-        title: 'Deckard: Related Notes Debug',
+        title: 'Deckard: Related Notes Ranking',
         extensionUri,
         icon: ['resources', 'deckard.svg'],
       },
@@ -57,8 +57,8 @@ export class RelatedNotesDebugPanel implements vscode.Disposable {
     );
     if (!diagnostic) {
       void reportFailure({
-        outcome: 'Deckard could not find that entry in the note as it is now.',
-        fix: 'Save the note so Deckard reads it again, then try again.',
+        outcome: 'Deckard found no tagged entry there in the note as it is saved.',
+        fix: 'Put the cursor in a heading or line with a tag, save the note, and try again.',
       });
       return;
     }
@@ -69,7 +69,7 @@ export class RelatedNotesDebugPanel implements vscode.Disposable {
     if (open) {
       this.page.host.renderHtml();
     }
-    panel.title = `Deckard: Related Notes Debug — ${diagnostic.title}`;
+    panel.title = `Deckard: Related Notes Ranking — ${diagnostic.title}`;
     panel.reveal(vscode.ViewColumn.Active);
   }
 

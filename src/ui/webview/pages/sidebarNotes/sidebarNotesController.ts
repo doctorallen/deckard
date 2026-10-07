@@ -6,9 +6,9 @@ import { openNoteAt } from '../../../commands/noteOpening';
 import { whenPublished } from '../../../../core/workspace/publishing';
 import { isMarkdownFile } from '../../../../core/workspace/scanner';
 import { listedParkedTags } from '../../../../domain/index/parked';
-import { getEntityNamespaceAliases, getPersonMarker } from '../../../../domain/markdown/parser';
+import { getEntityNamespaceAliases } from '../../../../domain/markdown/parser';
 import { findTagTarget } from '../../../../domain/markdown/tagTarget';
-import type { ParsedFile, Section, TagTitleDisplayMode, WorkspaceIndex } from '../../../../domain/model';
+import type { ParsedFile, Section, WorkspaceIndex } from '../../../../domain/model';
 import { refineQueryText } from '../../../../domain/query/queryEdit';
 import type { NavigationService } from '../../../../services/navigationService';
 import { logTrace, measure } from '../../../../shared/timing';
@@ -49,7 +49,6 @@ import type { PageChrome } from '../../components';
 import type { ThemePreview } from '../../themePreview';
 import { narrowSidebarNotesMessage } from './messages';
 import { RelatedNotesRankingOptions } from '../../../../domain/ranking/relatedNotesContext';
-import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 
 /** How long cursor moves must pause before the sidebar ranks a new entry. */
 const selectionRefreshDelayMs = 120;
@@ -375,10 +374,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       })),
       snapshot: createSidebarSnapshot(index, filePath, entryScope.file, {
         now: Date.now(),
-        enableKeywordLinks: this.areKeywordLinksEnabled(),
         relatedNotesSortMode: 'tags',
         sectionAccessCounts: this.sidebar.preferences.reader.value.sectionAccessCounts,
-        tagTitleDisplayMode: this.getTagTitleDisplayMode(),
         activeEntryTitle: getEntryTitle(entryScope.file),
         activeTagWeights: entryScope.tagWeights,
         rankingOptions: this.getRelatedNotesRankingOptions(),
@@ -606,7 +603,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     ];
   }
 
-  /** Redraws for a setting the ranking or its titles read. */
+  /** Draws the pages again for a setting they read, and forgets a state a setting may have changed. */
   private onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent): void {
     // The pages at the top: which, how, and Home's count of what is due.
     if (event.affectsConfiguration('deckard.pages') || event.affectsConfiguration('deckard.agenda.query')) {
@@ -617,24 +614,6 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     if (event.affectsConfiguration('deckard')) {
       this.forgetCurrent();
     }
-    if (
-      event.affectsConfiguration('deckard.enableKeywordLinks') ||
-      event.affectsConfiguration('deckard.relatedNotesAssociationMinimumSupport') ||
-      event.affectsConfiguration('deckard.relatedNotesRecencyHalfLifeDays')
-    ) {
-      this.refresh();
-    }
-    if (event.affectsConfiguration('deckard.tagTitleDisplayMode')) {
-      this.refresh();
-    }
-    if (event.affectsConfiguration('deckard.enableHeadingTagRelationships')) {
-      this.refresh();
-    }
-    if (!event.affectsConfiguration('deckard.autoSelectNoteSections')) {
-      return;
-    }
-    this.updateEntryContextFromActiveEditor();
-    this.refresh();
   }
 
   /** The view the sidebar is shown in, while its host has one. */
@@ -743,10 +722,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     const reader = this.sidebar.preferences.reader.value;
     const snapshot = createSidebarSnapshot(index, filePath, entry?.file ?? file, {
       now,
-      enableKeywordLinks: this.areKeywordLinksEnabled(),
       relatedNotesSortMode: reader.relatedNotesSortMode,
       sectionAccessCounts: reader.sectionAccessCounts,
-      tagTitleDisplayMode: this.getTagTitleDisplayMode(),
       activeEntryTitle: entry ? getEntryTitle(entry.file) : undefined,
       activeTagWeights: entry?.tagWeights,
       rankingOptions: this.getRelatedNotesRankingOptions(),
@@ -790,16 +767,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     return {
       activeTags: [],
       notes: [],
-      tagTitleDisplayMode: this.getTagTitleDisplayMode(),
       ...fields,
     };
-  }
-
-  /** How tag titles are drawn, as the setting says. */
-  private getTagTitleDisplayMode(): TagTitleDisplayMode {
-    return normalizeTagTitleDisplayMode(
-      vscode.workspace.getConfiguration('deckard').get<unknown>('tagTitleDisplayMode', 'inline'),
-    );
   }
 
   /**
@@ -851,13 +820,6 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     if (!fromSelection && this.suppressAutomaticEntrySelection) {
       return;
     }
-    // The note page reads the setting as the window has it, as the ranking's settings do.
-    if (!shouldAutoSelectNoteSections(vscode.window.activeTextEditor?.document.uri)) {
-      if (this.entryContext?.source === 'cursor') {
-        this.entryContext = undefined;
-      }
-      return;
-    }
     const entry = active.line === undefined ? undefined : findTaggedEntry(active.file, active.line);
     this.entryContext = entry
       ? {
@@ -868,21 +830,9 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       : undefined;
   }
 
-  /**
-   * Reads the active note's workspace setting for related-note ranking.
-   */
-  private areKeywordLinksEnabled(): boolean {
-    return vscode.workspace
-      .getConfiguration('deckard', vscode.window.activeTextEditor?.document.uri)
-      .get<boolean>('enableKeywordLinks', true);
-  }
-
-  /** The ranking's settings, for the active note's folder, and what it leaves out. */
+  /** What the ranking leaves out, and the date formats its reasons are written in. */
   private getRelatedNotesRankingOptions(): RelatedNotesRankingOptions {
-    const configuration = vscode.workspace.getConfiguration('deckard', vscode.window.activeTextEditor?.document.uri);
     return {
-      associationMinimumSupport: configuration.get<number>('relatedNotesAssociationMinimumSupport', 1),
-      recencyHalfLifeDays: configuration.get<number>('relatedNotesRecencyHalfLifeDays', 0),
       hidePeriodicNotes: this.sidebar.preferences.reader.value.hideDailyNotes === true,
       dateFormats: readDateFormats(),
     };
@@ -1017,7 +967,6 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     const before = lines[target.line - 1];
     const after = appendTagToLine(before, tag.label, {
       entityNamespaceAliases: getEntityNamespaceAliases(configuration.get<unknown>('entityNamespaceAliases', {})),
-      personMarker: getPersonMarker(configuration.get<unknown>('personMarker', '@')),
     });
     if (after === before) {
       void vscode.window.showInformationMessage(`This line already has ${tag.label}.`);
@@ -1159,11 +1108,6 @@ function getEntryTitle(file: ParsedFile): string | undefined {
  */
 function isMarkdownDocument(document: vscode.TextDocument): boolean {
   return isMarkdownFile(document.uri);
-}
-
-/** Whether the cursor chooses the entry ranked for, as the note's folder sets it. */
-function shouldAutoSelectNoteSections(uri: vscode.Uri | undefined): boolean {
-  return vscode.workspace.getConfiguration('deckard', uri).get<boolean>('autoSelectNoteSections', true);
 }
 
 /** A message's type, for the log, or `invalid payload`. */

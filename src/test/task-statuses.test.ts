@@ -310,13 +310,14 @@ suite('Task statuses: writing one', () => {
   });
 
   test('Toggle Task Done completes any status that is not done, and reopens as [ ], a tag kept', () => {
-    const options = { addDoneDate: false, format: 'emoji' as const, eol: '\n' };
+    const options = { format: 'emoji' as const, eol: '\n' };
+    const noon = new Date(2026, 8, 25, 12).getTime();
     const lines = [
       { line: 0, text: '- [/] Draft' },
       { line: 1, text: '- [-] Banner' },
       { line: 2, text: '- [x] Room' },
     ];
-    assert.deepStrictEqual(toggleTaskLines(lines, 0, options).lines.map((line) => line.after), ['- [x] Draft', '- [x] Banner']);
+    assert.deepStrictEqual(toggleTaskLines(lines, noon, options).lines.map((line) => line.after), ['- [x] Draft ✅ 2026-09-25', '- [x] Banner ✅ 2026-09-25']);
     assert.deepStrictEqual(
       toggleTaskLines([{ line: 0, text: '- [x] Draft #status/doing' }], 0, options).lines.map((line) => line.after),
       ['- [ ] Draft #status/doing'],

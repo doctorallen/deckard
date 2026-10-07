@@ -42,8 +42,8 @@ export interface CalendarDay {
   scheduledCount: number;
   scheduledTitles?: string[];
   /**
-   * Repeating tasks whose rule lands on the day after their current date,
-   * with `deckard.calendar.showRepeats`: projected, not due.
+   * Repeating tasks whose rule lands on the day after their current date:
+   * projected, not due.
    */
   repeatCount?: number;
   repeatTitles?: string[];
@@ -97,8 +97,6 @@ export interface CalendarSnapshot {
    */
   needsNewDateBefore?: string;
   weeks: CalendarWeek[];
-  /** Whether repeats are drawn, from `deckard.calendar.showRepeats`. */
-  showRepeats?: boolean;
   /**
    * Saturday and Sunday are left out of the grid, from
    * `deckard.calendar.showWeekends`. The weeks still hold them, for their
@@ -213,12 +211,6 @@ export interface CalendarMoveTaskMessage extends Partial<Correlated> {
   date: string;
 }
 
-/** The page's gear: whether repeats are drawn, written to the setting. */
-export interface CalendarSetShowRepeatsMessage {
-  type: 'setShowRepeats';
-  show: boolean;
-}
-
 /** The page's gear: whether weekends are drawn, written to the setting. */
 export interface CalendarSetShowWeekendsMessage {
   type: 'setShowWeekends';
@@ -268,7 +260,6 @@ export interface CalendarHostToPage {
  * messages, and its gear's and help's.
  */
 export interface CalendarPagePageToHost extends CalendarPageToHost {
-  setShowRepeats: CalendarSetShowRepeatsMessage;
   setShowWeekends: CalendarSetShowWeekendsMessage;
   setZenMode: SetZenModeMessage;
   setDisplay: SetDisplayMessage;

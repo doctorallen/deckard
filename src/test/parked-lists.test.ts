@@ -96,8 +96,6 @@ suite('Parked tasks leave the lists of things to do', () => {
     ];
     const [tasks, stale, parked] = createDashboardWidgets(index, defaults({ dashboardWidgets: configs }), {
       queryContext: createQueryContext(now),
-      upcomingDays: 7,
-      tagTitleDisplayMode: 'inline',
     });
     assert.strictEqual(tasks.total, 3);
     assert.strictEqual(stale.total, 3);

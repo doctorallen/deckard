@@ -54,7 +54,6 @@ import {
 import { getTaskBoardHtml } from '../../taskBoardHtml';
 import type { PageChrome } from '../../components';
 import { narrowTaskBoardMessage } from './messages';
-import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 
 /** What the Task Board searches for until it is told otherwise. */
 export const DEFAULT_TASK_BOARD_QUERY = 'is:open';
@@ -201,11 +200,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         }
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (
-          event.affectsConfiguration('deckard.board') ||
-          event.affectsConfiguration('deckard.tasks') ||
-          event.affectsConfiguration('deckard.tagTitleDisplayMode')
-        ) {
+        if (event.affectsConfiguration('deckard.board') || event.affectsConfiguration('deckard.tasks')) {
           page.refresh();
         }
       }),
@@ -335,9 +330,6 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   /** The board for the search as it stands, with what the sidebar and the Tasks view say of it. */
   private createSnapshot(): TaskBoardSnapshot {
     const configuration = (): vscode.WorkspaceConfiguration => vscode.workspace.getConfiguration('deckard');
-    const tagTitleDisplayMode = normalizeTagTitleDisplayMode(
-      configuration().get<unknown>('tagTitleDisplayMode', 'inline'),
-    );
     const listed = normalizeAgendaQuery(configuration().get<string>('agenda.query', ''));
     const agendaListsThisSearch = listed === normalizeAgendaQuery(this.query);
     const index = this.board.indexer.getSnapshot();
@@ -351,7 +343,6 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
           ...readTaskBoardOptions(readQueryContext()),
           shownColumns: this.shownColumns,
         },
-        tagTitleDisplayMode,
       }),
       refineInSidebar: this.board.activeSearch.isRefineInSidebar(this.board.source),
       agendaListsThisSearch,
@@ -575,7 +566,6 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       preferences: { ...this.board.preferences.reader.value, taskBoardLayout: 'list' },
       search: { query: this.query, invalidQuery: this.invalidQuery },
       options: { ...readTaskBoardOptions(readQueryContext()), doneLimit: Number.MAX_SAFE_INTEGER },
-      tagTitleDisplayMode: 'inline',
     });
     const plan = this.board.exports.fromResults('tasks', {
       tasks: (board.tasks ?? []).map((item) => item.task),

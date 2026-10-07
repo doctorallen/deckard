@@ -90,7 +90,7 @@ const EMPTY_DIAGNOSTIC = {
   sourceLine: 1,
   title: 'Entry',
   tags: [],
-  snapshot: { activeTags: [], notes: [], tagTitleDisplayMode: 'inline', state: 'ready' },
+  snapshot: { activeTags: [], notes: [], state: 'ready' },
 } as unknown as EntryRelatedNotesDiagnostic;
 
 /**

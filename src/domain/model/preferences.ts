@@ -185,6 +185,8 @@ export interface PersistedPreferences {
   searchPreview: SearchPreview;
   /** A search page groups its results by tag or by heading, in either layout; stored only when on. */
   searchHierarchy?: 'tags' | 'headings';
+  /** A tag's page starts with its hub note folded, as the reader last left one; stored only when folded. */
+  hubNoteCollapsed?: true;
   relatedNotesSortMode: RelatedNotesSortMode;
   /** Related Notes and Linked from leave out daily, weekly, and monthly notes. */
   hideDailyNotes?: true;

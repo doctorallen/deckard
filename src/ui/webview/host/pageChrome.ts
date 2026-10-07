@@ -21,7 +21,6 @@ export function readPageChrome(themePreview?: { readonly current: PageChrome['th
 export function affectsPageChrome(event: vscode.ConfigurationChangeEvent): boolean {
   return (
     event.affectsConfiguration('deckard.theme') ||
-    event.affectsConfiguration('deckard.zenMode') ||
     affectsDisplayChoices(event)
   );
 }

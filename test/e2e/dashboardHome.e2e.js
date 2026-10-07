@@ -540,7 +540,7 @@ test('a snapshot that arrives mid-drag leaves one of each widget once the drop i
   assert.strictEqual(view.findAll('.drag-placeholder, .drag-ghost').length, 0);
 });
 
-test('the Tasks view widget reaches as far ahead as the Tasks view, at most 90 days', async () => {
+test('the Tasks view widget reaches a week ahead, as the Tasks view does', async () => {
   const day = (offset) => {
     const date = new Date();
     date.setDate(date.getDate() + offset);
@@ -552,16 +552,10 @@ test('the Tasks view widget reaches as far ahead as the Tasks view, at most 90 d
     { createdAt: 1, updatedAt: 2 },
     {},
   );
-  // Outside the manifest's 1 to 90, which VS Code only warns about.
-  vscode._test.settings.set('deckard.agenda.upcomingDays', 365);
-  try {
-    const { view } = await openDashboard(buildWorkspaceIndex(new Map([[note.filePath, note]])));
-    const groups = view.findAll('.home-widget[data-widget-id="agenda"] .home-widget-group').map((heading) => heading.textContent);
-    // The far task is Later, past the 90 days Upcoming reaches in the Tasks view.
-    assert.deepStrictEqual(groups, ['Upcoming 1', 'Later 1']);
-  } finally {
-    vscode._test.settings.delete('deckard.agenda.upcomingDays');
-  }
+  const { view } = await openDashboard(buildWorkspaceIndex(new Map([[note.filePath, note]])));
+  const groups = view.findAll('.home-widget[data-widget-id="agenda"] .home-widget-group').map((heading) => heading.textContent);
+  // The far task is Later, past the week Upcoming reaches in the Tasks view.
+  assert.deepStrictEqual(groups, ['Upcoming 1', 'Later 1']);
 });
 
 test('the tiles say what is due today, overdue, and done this week, and each opens its search', async () => {

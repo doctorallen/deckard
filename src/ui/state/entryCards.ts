@@ -11,13 +11,12 @@ import type { InlineToken } from '../../domain/model/inline';
 import {
   getHeadingPath,
   getInlineSource,
-  getNoteTitle,
   getTitleTags,
 } from '../../domain/ranking/entryLabels';
 import { describeDueDate } from '../../domain/markdown/dueWording';
 import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
 import { TagOverviewHub } from '../protocol/searchPage';
-import { ParsedFile, Section, Task, TagTitleDisplayMode, TagOverviewSortMode, TaskSortMode } from '../../domain/model';
+import { ParsedFile, Section, Task, TagOverviewSortMode, TaskSortMode } from '../../domain/model';
 import { DashboardTask, TagOverviewCard } from '../protocol/shared';
 import { DashboardNote } from '../protocol/dashboard';
 import { stripTags } from '../../domain/markdown/parser';
@@ -157,13 +156,11 @@ export function createTagOverviewCard(
   section: Section,
   {
     sectionAccessCounts,
-    tagTitleDisplayMode,
     pinned = false,
     sections,
     content,
   }: {
     sectionAccessCounts: Record<string, number>;
-    tagTitleDisplayMode: TagTitleDisplayMode;
     pinned?: boolean;
     sections?: ReadonlyMap<string, Section>;
     /** The entry's text, read through the untagged headings it owns; its own text when not given. */
@@ -174,7 +171,7 @@ export function createTagOverviewCard(
     id: section.id,
     ...(sections ? { headingPath: getHeadingPath(section, sections) } : {}),
     filePath: section.filePath,
-    heading: getNoteTitle(section.heading, tagTitleDisplayMode),
+    heading: section.heading,
     ...(pinned ? { pinned } : {}),
     titleTags: getTitleTags(
       section.tags,
@@ -281,13 +278,6 @@ export function createTagOverviewHub(
     })),
     otherFilePaths,
   };
-}
-
-/** Reads the tag-title setting: `separate` when it says so, `inline` for anything else. */
-export function normalizeTagTitleDisplayMode(
-  value: unknown,
-): TagTitleDisplayMode {
-  return value === 'separate' ? 'separate' : 'inline';
 }
 
 /**

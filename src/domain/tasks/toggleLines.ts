@@ -64,7 +64,6 @@ export function toggleTaskLines(
   lines: readonly { line: number; text: string }[],
   now: number,
   options: {
-    addDoneDate: boolean;
     format: TaskMetadataFormat;
     eol: string;
     /** The whole note, so a repeating task's next occurrence takes its steps. */
@@ -87,7 +86,7 @@ export function toggleTaskLines(
     const checkboxColumn = match.opening.length;
     const box = setTaskLineCompletion(text, checkboxColumn, {
       completed,
-      doneDate: options.addDoneDate ? formatIsoDate(now) : undefined,
+      doneDate: formatIsoDate(now),
       preferredFormat: options.format,
     });
     const title = parseTaskMetadata(text.slice(checkboxColumn + 2)).title;

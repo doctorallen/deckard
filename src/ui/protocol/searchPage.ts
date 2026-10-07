@@ -36,7 +36,6 @@ import type {
   SetZenModeMessage,
   TagOverviewCard,
   TagReference,
-  TagTitleDisplayMode,
   ToggleTaskMessage,
 } from './shared';
 import type { NoteBlock, OpenWikiLinkMessage } from './notePage';
@@ -107,7 +106,6 @@ export interface SearchPageSnapshot {
   groups?: SearchResultGroup[];
   noteColumns: DashboardColumnCount;
   taskColumns: DashboardColumnCount;
-  tagTitleDisplayMode: TagTitleDisplayMode;
   /**
    * Whether the Related Notes sidebar is showing this search's Refine
    * options, so the page shows a line in their place.
@@ -234,9 +232,10 @@ export interface CreateHubNoteMessage {
   type: 'createHubNote';
 }
 
-/** A tag's page's Leave them out: stop listing what only links the hub. */
-export interface ExcludeHubLinksMessage {
-  type: 'excludeHubLinks';
+/** A tag's page's hub note opened or folded by the reader, which the next tag's page starts as. */
+export interface SetHubOpenMessage {
+  type: 'setHubOpen';
+  open: boolean;
 }
 
 /** Sets how many columns a search page lays its notes or tasks out in. */
@@ -402,7 +401,7 @@ export interface SearchPagePageToHost {
   previewSearch: PreviewSearchMessage;
   editResults: EditResultsMessage;
   createHubNote: CreateHubNoteMessage;
-  excludeHubLinks: ExcludeHubLinksMessage;
+  setHubOpen: SetHubOpenMessage;
   mergeTags: MergeTagsMessage;
 }
 

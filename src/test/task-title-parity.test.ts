@@ -68,7 +68,7 @@ suite('Task title parity', () => {
 
   test('the Task Board, as a board, a list, and a table', () => {
     for (const layout of ['board', 'list', 'table'] as const) {
-      const board = createTaskBoard({ index: index(), preferences: preferences({ taskBoardLayout: layout, taskTableColumns: ['title'] }), search: { query: '' }, options, tagTitleDisplayMode: 'inline' });
+      const board = createTaskBoard({ index: index(), preferences: preferences({ taskBoardLayout: layout, taskTableColumns: ['title'] }), search: { query: '' }, options });
       const page = open(renderPage('taskBoard'), board);
       const selector = layout === 'table' ? '.result-table .result-title' : '.task-title';
       const titles = titlesOn(page, selector);
@@ -78,7 +78,7 @@ suite('Task title parity', () => {
   });
 
   test('a date in a board card stays one word', () => {
-    const board = createTaskBoard({ index: index(), preferences: preferences({ taskBoardLayout: 'board' }), search: { query: '' }, options, tagTitleDisplayMode: 'inline' });
+    const board = createTaskBoard({ index: index(), preferences: preferences({ taskBoardLayout: 'board' }), search: { query: '' }, options });
     const page = open(renderPage('taskBoard'), board);
     const dates = page.findAll('.board-details .board-date');
     assert.deepStrictEqual(dates.map((date) => date.textContent), ['2026-09-21']);
@@ -89,7 +89,7 @@ suite('Task title parity', () => {
     const prefs = preferences();
     const snapshot = {
       ...createDashboardSnapshot({ index: built, preferences: prefs, queryContext: createQueryContext(Date.now()) }),
-      widgets: createDashboardWidgets(built, prefs, { queryContext: createQueryContext(NOW), upcomingDays: 7, tagTitleDisplayMode: 'inline' }),
+      widgets: createDashboardWidgets(built, prefs, { queryContext: createQueryContext(NOW) }),
     };
     const page = open(renderPage('dashboard'), snapshot);
     const titles = titlesOn(page, '.task-title');

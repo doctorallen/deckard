@@ -13,7 +13,7 @@ import { DEFAULT_TASK_STATUSES, normalizeStatusName, type TaskStatusDefinition }
 
 /** Deckard's own statuses. */
 function readDefaultStatusReading(): DraftStatusReading {
-  return { statuses: DEFAULT_TASK_STATUSES, addCancelledDate: true };
+  return { statuses: DEFAULT_TASK_STATUSES };
 }
 import { readTaskMetadataFormat } from './taskActions';
 import { WorkspaceWriteHistory } from './workspaceWrites';
@@ -31,8 +31,7 @@ import { readDateFormats } from './datePrompt';
  *
  * The query and tag tools are read-only. These two add a task and change
  * one, and every write goes through the same refactor preview Deckard's own
- * multi-note writes use - always, whatever `deckard.previewWorkspaceWrites`
- * says - so the reader sees the exact line about to change, in the note it
+ * multi-note writes use - always, even for one note - so the reader sees the exact line about to change, in the note it
  * is in, and can decline it. `Deckard: Undo Last Change` takes it back
  * afterwards, as it does any write. Over MCP there is no other confirmation,
  * so the preview is the guard; in VS Code the tool also asks before it runs.
@@ -57,8 +56,6 @@ export interface ChangeTaskLineOptions {
   fallbackFormat?: TaskMetadataFormat;
   /** The note's line ending, which joins a repeat's next line; `\n` by default. */
   eol?: string;
-  /** `deckard.tasks.addDoneDate`; off, completing writes no ✅ date. On by default. */
-  addDoneDate?: boolean;
   /** The steps a repeating task's next occurrence takes, unchecked; none by default. */
   steps?: readonly string[];
   /** The statuses a `status` change is found among, and how it is written; Deckard's own by default. */
@@ -100,7 +97,6 @@ export function changeTaskLine({
   now,
   fallbackFormat = 'emoji',
   eol = '\n',
-  addDoneDate = true,
   steps = [],
   statusReading,
 }: ChangeTaskLineOptions): CompletionWrite {
@@ -108,11 +104,11 @@ export function changeTaskLine({
   const before: TaskDraft = parseTaskDraft(line, fallbackFormat, reading.statuses);
   let draft = changeFields(before, changes);
   if (changes.complete !== undefined && changes.complete !== draft.completed) {
-    draft = completeDraft(draft, now, addDoneDate);
+    draft = completeDraft(draft, now);
   }
   const status = changes.status === undefined ? undefined : findNamedStatus(reading.statuses, changes.status);
   if (status) {
-    draft = setDraftStatus(draft, status, { now, addDoneDate, reading });
+    draft = setDraftStatus(draft, status, { now, reading });
   }
   return writeEditedTask({ before, edited: draft, now, eol, steps });
 }
@@ -265,7 +261,6 @@ export async function changeTask(
     now,
     fallbackFormat: readTaskMetadataFormat(configuration),
     eol: document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
-    addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
     // A next occurrence takes the task's steps back unchecked, as a checkbox's does.
     steps: readStepsForNextOccurrence(document.getText().split(/\r?\n/), task.lineNumber - 1),
   });

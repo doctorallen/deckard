@@ -118,7 +118,6 @@ const ACTIONS: Readonly<Record<string, ActionHandler>> = {
       gear.open = false;
     }
   },
-  'set-show-repeats': (element) => sendPage({ type: 'setShowRepeats', show: element.getAttribute('data-value') === 'on' }),
   'set-show-weekends': (element) => sendPage({ type: 'setShowWeekends', show: element.getAttribute('data-value') === 'on' }),
   'step-calendar': (element) => step(Number(element.getAttribute('data-by'))),
   'go-today': goToday,

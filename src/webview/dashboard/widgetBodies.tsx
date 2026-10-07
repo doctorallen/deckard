@@ -6,7 +6,6 @@ import type { ComponentChild } from 'preact';
 
 import { QUICK_ADD_MAX_LENGTH, widgetNamespace } from '../../domain/dashboard/widgetCatalog';
 import type { DashboardWidget, DashboardWidgetKind } from '../../ui/protocol/dashboard';
-import type { DashboardTask } from '../../ui/protocol/shared';
 import type { HomeContext } from './homeContext';
 import {
   EmptyLine,
@@ -43,16 +42,11 @@ function TryNextBody({ widget }: WidgetBodyProps) {
   );
 }
 
-/** Tasks, as a list draws them, or what to say for none. */
-function Tasks({ tasks, empty, home }: { readonly tasks: readonly DashboardTask[] | undefined; readonly empty: string; readonly home: HomeContext }) {
-  return <HomeTasks tasks={tasks} empty={empty} titleDisplay={home.titleDisplay} />;
-}
-
 /** The tasks a search finds, or why the search could not run. */
-function TasksBody({ widget, home }: WidgetBodyProps) {
+function TasksBody({ widget }: WidgetBodyProps) {
   return widget.error
     ? <p class="query-error" role="alert">{widget.error}</p>
-    : <Tasks tasks={widget.tasks} empty={`No tasks match ${widget.query || 'this search'}.`} home={home} />;
+    : <HomeTasks tasks={widget.tasks} empty={`No tasks match ${widget.query || 'this search'}.`} />;
 }
 
 /**
@@ -77,14 +71,14 @@ function AgendaFooter({ widget }: { readonly widget: DashboardWidget }) {
 }
 
 /** Overdue, today, and upcoming, each group that has a task, and the line under them. */
-function AgendaBody({ widget, home }: WidgetBodyProps) {
+function AgendaBody({ widget }: WidgetBodyProps) {
   const groups = (widget.agenda || []).filter((group) => group.count > 0);
   return (
     <>
       {groups.length
         ? groups.map((group) => [
           <h3 key={`${group.id}-heading`} class={`home-widget-group${group.id === 'overdue' ? ' overdue' : ''}`}>{`${group.label} `}<span class="tag-count">{group.count}</span></h3>,
-          <Tasks key={`${group.id}-tasks`} tasks={group.tasks} empty="" home={home} />,
+          <HomeTasks key={`${group.id}-tasks`} tasks={group.tasks} empty="" />,
         ])
         : <EmptyLine text="Nothing is overdue or due soon." />}
       <AgendaFooter widget={widget} />
@@ -127,7 +121,7 @@ function StatsBody({ widget }: WidgetBodyProps) {
 }
 
 /** Today's date, and its note's open tasks, or the offer to create the note. */
-function TodayNoteBody({ widget, home }: WidgetBodyProps) {
+function TodayNoteBody({ widget }: WidgetBodyProps) {
   const today = widget.today;
   const summary = (
     <div class="home-today-summary">
@@ -138,7 +132,7 @@ function TodayNoteBody({ widget, home }: WidgetBodyProps) {
   if (!today || !today.filePath) {
     return <>{summary}<EmptyLine text="There is no daily note for today yet." /></>;
   }
-  return <>{summary}<Tasks tasks={widget.tasks} empty="No open tasks in today’s note." home={home} /></>;
+  return <>{summary}<HomeTasks tasks={widget.tasks} empty="No open tasks in today’s note." /></>;
 }
 
 /** A field that adds a task to today's note, and what became of the last one. */
@@ -245,20 +239,20 @@ function PinnedNotesBody({ widget }: WidgetBodyProps) {
 }
 
 /** What one saved search finds: its notes and its open tasks, or its tasks alone for one saved on the Task Board. */
-function SavedQueryBody({ widget, home }: WidgetBodyProps) {
+function SavedQueryBody({ widget }: WidgetBodyProps) {
   if (widget.missing) {
     return <p class="home-widget-empty">{'This saved search was removed. '}<button type="button" data-action="customize-home">Pick another</button></p>;
   }
   // A search saved on the Task Board finds tasks alone.
   if (widget.savedPage === 'taskBoard') {
-    return <Tasks tasks={widget.tasks} empty="No open tasks match." home={home} />;
+    return <HomeTasks tasks={widget.tasks} empty="No open tasks match." />;
   }
   return (
     <>
       <h3 class="home-widget-group">{'Notes '}<span class="tag-count">{widget.noteTotal || 0}</span></h3>
       <HomeNotes notes={widget.notes} empty="No notes match." />
       <h3 class="home-widget-group">{'Open tasks '}<span class="tag-count">{widget.total || 0}</span></h3>
-      <Tasks tasks={widget.tasks} empty="No open tasks match." home={home} />
+      <HomeTasks tasks={widget.tasks} empty="No open tasks match." />
     </>
   );
 }
@@ -277,7 +271,7 @@ const BODIES: Readonly<Record<DashboardWidgetKind, (props: WidgetBodyProps) => C
   stats: StatsBody,
   todayNote: TodayNoteBody,
   quickAdd: QuickAddBody,
-  staleTasks: ({ widget, home }) => <Tasks tasks={widget.tasks} empty={`No open task sits in a note left unchanged for ${widget.days || 30} days.`} home={home} />,
+  staleTasks: ({ widget }) => <HomeTasks tasks={widget.tasks} empty={`No open task sits in a note left unchanged for ${widget.days || 30} days.`} />,
   relatedNotes: RelatedNotesBody,
   tagPairs: ({ widget }) => <TagPairs pairs={widget.tagPairs} />,
   unhubbedTags: UnhubbedTagsBody,

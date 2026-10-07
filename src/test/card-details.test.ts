@@ -105,7 +105,6 @@ suite('Card details in Related Notes', () => {
     const snapshot = {
       activeFileName: 'today.md',
       activeTags: [],
-      tagTitleDisplayMode: 'inline',
       state: 'ready',
       notes: [{
         sectionId: 'section-1',

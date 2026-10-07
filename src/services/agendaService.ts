@@ -7,7 +7,7 @@ import {
   readAgendaGrouping,
   readAgendaQuery,
   readAgendaSort,
-  readUpcomingDays,
+  UPCOMING_DAYS,
 } from '../domain/tasks/agendaGroups';
 import { TaskMove } from '../domain/tasks/boardMoves';
 import { countLoad, RescheduleContext } from '../domain/tasks/reschedule';
@@ -50,7 +50,6 @@ export interface AgendaBuild {
 export interface BoardMoveOptions {
   queryContext: QueryContext;
   format: TaskMetadataFormat;
-  addCancelledDate?: boolean;
 }
 
 /**
@@ -177,7 +176,7 @@ export class AgendaService<G extends AgendaGroupLike> {
    */
   public buildView(index: WorkspaceIndex, taskOrder: readonly string[], statusOrder: readonly string[] = []): AgendaView<G> {
     const settings = this.settings();
-    const days = readUpcomingDays(settings);
+    const days = UPCOMING_DAYS;
     const groupBy = readAgendaGrouping(settings);
     const query = readAgendaQuery(settings);
     const context = this.options.readQueryContext();
@@ -214,10 +213,9 @@ export class AgendaService<G extends AgendaGroupLike> {
   /** The open tasks the view lists as overdue now, once the first index is built. */
   public async listOverdue(): Promise<Task[]> {
     await this.options.index.ready;
-    const settings = this.settings();
     return this.options.model.listOverdue(this.options.index.getSnapshot(), this.options.readQueryContext(), {
-      query: readAgendaQuery(settings),
-      upcomingDays: readUpcomingDays(settings),
+      query: readAgendaQuery(this.settings()),
+      upcomingDays: UPCOMING_DAYS,
     });
   }
 
@@ -350,7 +348,6 @@ export class AgendaService<G extends AgendaGroupLike> {
     return {
       queryContext,
       format: readMetadataFormat(configuration),
-      addCancelledDate: configuration.get<boolean>('tasks.addCancelledDate', true),
     };
   }
 

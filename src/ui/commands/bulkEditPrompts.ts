@@ -5,7 +5,6 @@ import { readTaskStatusOptions } from './parseSettings';
 import {
   extractTags,
   getEntityNamespaceAliases,
-  getPersonMarker,
   stripTags,
 } from '../../domain/markdown/parser';
 import {
@@ -167,24 +166,14 @@ async function readEdit(
   }
 
   if (chosen === 'tag') {
-    const configuration = vscode.workspace.getConfiguration('deckard', uri);
-    const options = {
-      entityNamespaceAliases: getEntityNamespaceAliases(
-        configuration.get<unknown>('entityNamespaceAliases', {}),
-      ),
-      personMarker: getPersonMarker(
-        configuration.get<unknown>('personMarker', '@'),
-      ),
-    };
+    const entityNamespaceAliases = getEntityNamespaceAliases(
+      vscode.workspace.getConfiguration('deckard', uri).get<unknown>('entityNamespaceAliases', {}),
+    );
     const written = await vscode.window.showInputBox({
       title: 'Add a tag',
       prompt: 'One tag, such as #project/atlas or @ren-kade, written at the end of each line.',
       validateInput: (value) => {
-        const tags = extractTags(
-          value.trim(),
-          options.entityNamespaceAliases,
-          options.personMarker,
-        );
+        const tags = extractTags(value.trim(), entityNamespaceAliases);
         return tags.length === 1 && tags[0].label === value.trim()
           ? undefined
           : 'Write exactly one tag, such as #project/atlas.';

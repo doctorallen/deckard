@@ -145,7 +145,7 @@ function GroupNotes({ group, place, view }: { readonly group: SearchResultGroup;
   if (!group.notes.length) {
     return null;
   }
-  const display: CardDisplay = { renderMode: snapshot.renderMode, preview: snapshot.preview, titleDisplay: snapshot.tagTitleDisplayMode };
+  const display: CardDisplay = { renderMode: snapshot.renderMode, preview: snapshot.preview };
   const first = view.positions.next;
   view.positions.next += group.notes.length;
   return (
@@ -158,11 +158,11 @@ function GroupNotes({ group, place, view }: { readonly group: SearchResultGroup;
 }
 
 /** A group's task rows. */
-function GroupTasks({ group, place, snapshot }: { readonly group: SearchResultGroup; readonly place: GroupPlace; readonly snapshot: SearchPageSnapshot }) {
+function GroupTasks({ group, place }: { readonly group: SearchResultGroup; readonly place: GroupPlace }) {
   if (!group.tasks.length) {
     return null;
   }
-  return <div class="task-list">{group.tasks.map((item) => <TaskListRow key={`${place.id}:${item.task.id}`} item={item} titleDisplay={snapshot.tagTitleDisplayMode} entry="tasks" />)}</div>;
+  return <div class="task-list">{group.tasks.map((item) => <TaskListRow key={`${place.id}:${item.task.id}`} item={item} entry="tasks" />)}</div>;
 }
 
 /**
@@ -176,7 +176,7 @@ function ResultGroup({ group, part, place, view }: {
   readonly view: GroupView;
 }) {
   const notes = part === 'tasks' ? null : <GroupNotes group={group} place={place} view={view} />;
-  const tasks = part === 'notes' ? null : <GroupTasks group={group} place={place} snapshot={view.snapshot} />;
+  const tasks = part === 'notes' ? null : <GroupTasks group={group} place={place} />;
   const children = (group.children ?? []).filter((child) => holds(child, part));
   // The only group, when nothing could be grouped, would only repeat the tab
   // over it: its results are drawn with no header.

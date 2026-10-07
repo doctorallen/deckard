@@ -18,7 +18,6 @@ import {
   CalendarIndex,
   calendarHandlers,
   onDidFocusWindow,
-  readShowRepeats,
   readShowWeekends,
 } from '../calendar/calendarController';
 import { narrowCalendarPageMessage } from './messages';
@@ -94,11 +93,6 @@ export class CalendarPageController implements PageController<CalendarSnapshot, 
     });
     this.handlers = {
       ...calendarHandlers(this.calendar),
-      setShowRepeats: async (message) => {
-        if (message.show !== readShowRepeats()) {
-          await writeSetting('calendar.showRepeats', message.show, settingTarget('calendar.showRepeats'));
-        }
-      },
       setShowWeekends: async (message) => {
         if (message.show !== readShowWeekends()) {
           await writeSetting('calendar.showWeekends', message.show, settingTarget('calendar.showWeekends'));
@@ -153,7 +147,6 @@ export class CalendarPageController implements PageController<CalendarSnapshot, 
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.calendar.weekStart') ||
-          event.affectsConfiguration('deckard.calendar.showRepeats') ||
           event.affectsConfiguration('deckard.calendar.showWeekends') ||
           event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
         ) {

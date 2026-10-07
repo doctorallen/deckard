@@ -152,15 +152,6 @@ test('a task dragged to another day asks the host to move it, and a refusal is s
   assert.strictEqual(view.find('#live-status').textContent, `"Call Ren" was not moved to ${tomorrow}.`);
 });
 
-test('the gear turns repeats off where the setting is written', async () => {
-  const { view } = await openPage();
-  vscode._test.configurationUpdates.length = 0;
-  view.find('.view-options').setAttribute('open', '');
-  view.click(view.find('.view-options [data-action="set-show-repeats"][data-value="off"]'));
-  await settle();
-  assert.deepStrictEqual(vscode._test.configurationUpdates.map((update) => [update.name, update.value]), [['deckard.calendar.showRepeats', false]]);
-});
-
 test('with Related Notes open, the chosen day is there and the month takes the width', async () => {
   vscode._test.createdPanels.length = 0;
   const index = createIndex();

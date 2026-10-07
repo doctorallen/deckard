@@ -16,11 +16,8 @@
  * - `outline`: where set, through the Outline's own setter, which also sets
  *   the context key that picks which button the view's title offers
  *   (setOutlineFollowCursor).
- * - `zen`: through Zen's own setter, which moves Display's step to Zen
- *   or back to the step the reader was on, and sets the context key that
- *   picks which command the palette offers (setZenMode).
  */
-export type ToggleTarget = 'where-set' | 'outline' | 'zen';
+export type ToggleTarget = 'where-set' | 'outline';
 
 /** One setting, and the two commands that turn it on and off. */
 export interface SettingToggle {
@@ -53,25 +50,11 @@ export const SETTING_TOGGLES: readonly SettingToggle[] = [
     target: 'where-set',
   },
   {
-    enable: 'deckard.calendar.showRepeats',
-    disable: 'deckard.calendar.hideRepeats',
-    setting: 'calendar.showRepeats',
-    values: { enable: true, disable: false },
-    target: 'where-set',
-  },
-  {
     enable: 'deckard.outline.enableFollowCursor',
     disable: 'deckard.outline.disableFollowCursor',
     setting: 'outline.followCursor',
     values: { enable: true, disable: false },
     target: 'outline',
-  },
-  {
-    enable: 'deckard.enableZenMode',
-    disable: 'deckard.disableZenMode',
-    setting: 'zenMode',
-    values: { enable: true, disable: false },
-    target: 'zen',
   },
 ];
 

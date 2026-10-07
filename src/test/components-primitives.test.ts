@@ -46,7 +46,6 @@ suite('Component primitives', () => {
       preferences: { ...store.reader.value, taskBoardLayout: 'board' },
       search: { query: '' },
       options: { queryContext: createQueryContext(NOW), format: 'emoji' },
-      tagTitleDisplayMode: 'inline',
     });
     page = openWebviewPage(renderPage('taskBoard'), board);
     return page;
@@ -207,7 +206,7 @@ suite('Component primitives', () => {
         calendar: createCalendar(index, '2026-09', createQueryContext(Date.now())),
         calendarPage: createCalendar(index, '2026-09', createQueryContext(Date.now()), { dayPanel: true, layout: 'page' }),
         sidebarNotes: {
-          ...createSidebarSnapshot(index, 'notes/a.md', index.files.get('notes/a.md'), { now: Date.now(), tagTitleDisplayMode: 'inline' }),
+          ...createSidebarSnapshot(index, 'notes/a.md', index.files.get('notes/a.md'), { now: Date.now() }),
           parkedTags: [],
         },
         notePage: createNotePageSnapshot(index, 'notes/a.md', { queryContext: createQueryContext(Date.now()), history: { back: false, forward: false }, visit: 1 }),
@@ -242,7 +241,7 @@ suite('Component primitives', () => {
 
     test('the sidebar\'s indexing count shows at once and keeps the page busy', async () => {
       page = openWebviewPage(renderPage('sidebarNotes'), {
-        state: 'loading', progress: { completed: 412, total: 3760 }, notes: [], activeTags: [], tagTitleDisplayMode: 'inline',
+        state: 'loading', progress: { completed: 412, total: 3760 }, notes: [], activeTags: [],
       });
       await Promise.resolve();
       assert.strictEqual(page.text('.loading.is-immediate'), 'Indexing this workspace: 412 of 3,760 notes read…');
@@ -394,7 +393,7 @@ suite('Component primitives', () => {
         ['notes/b.md', parseMarkdown('notes/b.md', '# Relay drills #project/ghostline-relay\nThe pilot stays on relay traffic.\n')],
       ]));
       page = openWebviewPage(renderPage('sidebarNotes'), {
-        ...createSidebarSnapshot(index, 'notes/a.md', index.files.get('notes/a.md'), { now: Date.now(), tagTitleDisplayMode: 'inline' }),
+        ...createSidebarSnapshot(index, 'notes/a.md', index.files.get('notes/a.md'), { now: Date.now() }),
         parkedTags: [],
       });
       const card = page.find('article.note') as HTMLElement;
@@ -426,7 +425,7 @@ suite('Component primitives', () => {
       const queryContext = createQueryContext(Date.now());
       page = openWebviewPage(renderPage('dashboard'), {
         ...createDashboardSnapshot({ index, preferences, queryContext }),
-        widgets: createDashboardWidgets(index, preferences, { queryContext, upcomingDays: 7, tagTitleDisplayMode: 'inline' }),
+        widgets: createDashboardWidgets(index, preferences, { queryContext }),
       });
       const row = page.find('.home-row[data-query="#person/sable-ortiz AND #team/harbor"]') as HTMLElement;
       const detail = row.querySelector('.home-row-detail') as Element;

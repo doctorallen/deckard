@@ -35,8 +35,6 @@ export interface TaskMoveOptions {
   queryContext: Pick<QueryContext, 'now' | 'taskPolicy'> & Partial<Pick<QueryContext, 'dateFormats'>>;
   /** Format for metadata written on a task that has none yet. */
   format: TaskMetadataFormat;
-  /** `deckard.tasks.addCancelledDate`: whether a drop on Cancelled writes ❌; true by default. */
-  addCancelledDate?: boolean;
 }
 
 /**
@@ -145,7 +143,7 @@ function moveToCancelled(task: Task, options: TaskMoveOptions): TaskMove {
     label: status.name,
     edit: (line) => setTaskStatus(line, task.checkboxColumn, {
       to: status,
-      ...(options.addCancelledDate === false ? {} : { cancelledDate: formatIsoDate(options.queryContext.now) }),
+      cancelledDate: formatIsoDate(options.queryContext.now),
       preferredFormat: options.format,
     }),
   };

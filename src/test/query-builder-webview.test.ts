@@ -832,7 +832,6 @@ function createState(
     preview: 'lines',
     sortMode: 'alphabetical',
     layout: 'tabs',
-    tagTitleDisplayMode: 'inline',
     query: {
       text: queryText,
       terms: [],

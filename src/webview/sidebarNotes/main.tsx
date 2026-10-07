@@ -84,7 +84,7 @@ const OWN_CONTENT: Partial<Record<SidebarNotesSnapshot['state'], OwnContent>> = 
 
 /** What the sidebar lists, by the state it is in: the related notes, unless the state draws its own. */
 function Content({ snapshot }: { readonly snapshot: SidebarNotesSnapshot }) {
-  const display: CardDisplay = { previewLines: previewLines(snapshot), titleDisplay: snapshot.tagTitleDisplayMode };
+  const display: CardDisplay = { previewLines: previewLines(snapshot) };
   const own = OWN_CONTENT[snapshot.state];
   return <>{own ? own(snapshot, display) : <NoteList snapshot={snapshot} display={display} />}</>;
 }

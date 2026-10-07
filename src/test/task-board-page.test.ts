@@ -29,7 +29,7 @@ suite('Task Board page', () => {
       new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n- [ ] Send the proposal 📅 2026-09-21\n')]]),
     );
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board' }, search: { query: '' }, options, tagTitleDisplayMode: 'inline' });
+    const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board' }, search: { query: '' }, options });
     page = openWebviewPage(renderPage('taskBoard'), board);
     return { page, taskId: board.columns.flatMap((column) => column.cards)[0].taskId };
   };
@@ -39,7 +39,7 @@ suite('Task Board page', () => {
     const index = buildWorkspaceIndex(new Map(Object.entries(files).map(([path, text]) => [path, parseMarkdown(path, text)])));
     const preferences = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     try {
-      return createTaskBoard({ index, preferences: { ...preferences.reader.value, taskBoardLayout: 'board', ...layout } as never, search: { query }, options, tagTitleDisplayMode: 'inline' });
+      return createTaskBoard({ index, preferences: { ...preferences.reader.value, taskBoardLayout: 'board', ...layout } as never, search: { query }, options });
     } finally {
       preferences.repository.dispose();
     }
@@ -74,7 +74,7 @@ suite('Task Board page', () => {
       new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', `# Atlas\n${lines.join('\n')}\n- [/] Fresh\n`)]]),
     );
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board', taskBoardGroup: 'status' }, search: { query: '' }, options: { ...options, limits: { 'in-progress': 3 } }, tagTitleDisplayMode: 'inline' });
+    const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board', taskBoardGroup: 'status' }, search: { query: '' }, options: { ...options, limits: { 'in-progress': 3 } } });
     page = openWebviewPage(renderPage('taskBoard'), board);
     const column = page.find('.board-column[data-column-id="status:in-progress"]');
     assert.strictEqual(column.querySelector('.board-count')?.textContent, '6 / 3 · 5 overdue');
@@ -117,7 +117,7 @@ suite('Task Board page', () => {
     );
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     for (const layout of ['board', 'list'] as const) {
-      const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: layout }, search: { query: '' }, options, tagTitleDisplayMode: 'inline' });
+      const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: layout }, search: { query: '' }, options });
       page?.dispose();
       page = openWebviewPage(renderPage('taskBoard'), board);
       const badge = page.find('.priority-badge.priority-highest');
@@ -170,7 +170,7 @@ suite('Task Board page', () => {
   test('List in Tasks view sits in the gear, and says when there is nothing to change', () => {
     const index = buildWorkspaceIndex(new Map([['notes/a.md', parseMarkdown('notes/a.md', '- [ ] One')]]));
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board' }, search: { query: 'is:mine' }, options, tagTitleDisplayMode: 'inline' });
+    const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board' }, search: { query: 'is:mine' }, options });
     page = openWebviewPage(renderPage('taskBoard'), { ...board, agendaListsThisSearch: false, agendaQueryIsDefault: true });
     assert.strictEqual(page.findAll('.query-bar-row [data-action="use-for-agenda"]').length, 0, 'not in the search bar');
     const toggle = () => page!.find('.view-options [data-action="use-for-agenda"]');
@@ -211,7 +211,7 @@ suite('Task Board page', () => {
       new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n- [ ] Send the proposal 📅 2026-09-21\n')]]),
     );
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const list = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'list' }, search: { query: '' }, options, tagTitleDisplayMode: 'inline' });
+    const list = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'list' }, search: { query: '' }, options });
     page = openWebviewPage(renderPage('taskBoard'), list);
     const box = page.find('.task-row input[data-action="toggle-task"]') as HTMLInputElement;
 
@@ -233,7 +233,6 @@ suite('Task Board page', () => {
       preferences: { ...store.reader.value, taskBoardLayout: 'table', taskTableColumns: ['due', 'title'] },
       search: { query: '' },
       options,
-      tagTitleDisplayMode: 'inline',
     });
     page = openWebviewPage(renderPage('taskBoard'), table);
     const box = page.find('.result-row input[data-action="toggle-task"]') as HTMLInputElement;
@@ -252,7 +251,7 @@ suite('Task Board page', () => {
     const lines = Array.from({ length: 120 }, (_, number) => `- [/] Task ${number}`);
     const index = buildWorkspaceIndex(new Map([['notes/a.md', parseMarkdown('notes/a.md', lines.join('\n'))]]));
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board', taskBoardGroup: 'status' }, search: { query: '' }, options, tagTitleDisplayMode: 'inline' });
+    const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board', taskBoardGroup: 'status' }, search: { query: '' }, options });
     page = openWebviewPage(renderPage('taskBoard'), board);
     const column = page.find('.board-column[data-column-id="status:in-progress"]');
     assert.strictEqual(column.querySelectorAll('.board-card').length, 100);
@@ -555,7 +554,7 @@ suite('Task Board page', () => {
   test('a card\'s parent tag narrows the search as Refine does, and Cmd/Ctrl opens its page', () => {
     const index = buildWorkspaceIndex(new Map([['notes/z.md', parseMarkdown('notes/z.md', '# Zeus #project/zeus\n- [ ] Alpha #project/atlas\n')]]));
     const preferences = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const board = createTaskBoard({ index, preferences: { ...preferences.reader.value, taskBoardLayout: 'board' }, search: { query: '#project/atlas' }, options: { ...options, parentTag: true }, tagTitleDisplayMode: 'inline' });
+    const board = createTaskBoard({ index, preferences: { ...preferences.reader.value, taskBoardLayout: 'board' }, search: { query: '#project/atlas' }, options: { ...options, parentTag: true } });
     store = preferences;
     const shown = show(board);
     const tag = () => shown.find('.board-card .parent-tag');
@@ -578,7 +577,7 @@ suite('Task Board page', () => {
 
     // A search leaving the tag out shows no card under it, so there is no third case.
     for (const query of ['#project/atlas AND #project/zeus', '(#project/atlas OR #project/zeus)']) {
-      const again = show(createTaskBoard({ index, preferences: { ...preferences.reader.value, taskBoardLayout: 'board' }, search: { query }, options: { ...options, parentTag: true }, tagTitleDisplayMode: 'inline' }));
+      const again = show(createTaskBoard({ index, preferences: { ...preferences.reader.value, taskBoardLayout: 'board' }, search: { query }, options: { ...options, parentTag: true } }));
       for (const init of [{}, { altKey: true }, { shiftKey: true }]) {
         again.posted.length = 0;
         again.find('.board-card .parent-tag').dispatchEvent(new again.window.MouseEvent('click', { bubbles: true, cancelable: true, ...init }));

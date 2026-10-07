@@ -138,7 +138,6 @@ suite('Parked notes stay out of Related Notes, the graph, and completion', () =>
       unreadable: [],
       indexed: { files: 10, sections: 20, tasks: 5, tags: 4 },
       parked: { byFolder: 6, byTag: 1 },
-      personMarker: '@',
       people: 0,
       meIsKnown: false,
       tasksForMe: 0,

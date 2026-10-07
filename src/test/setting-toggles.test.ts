@@ -32,12 +32,8 @@ suite('Setting toggles', () => {
         'deckard.calendar.closeDayPanel calendar.dayPanel=false where-set',
         'deckard.calendar.includeWeekends calendar.showWeekends=true where-set',
         'deckard.calendar.hideWeekends calendar.showWeekends=false where-set',
-        'deckard.calendar.showRepeats calendar.showRepeats=true where-set',
-        'deckard.calendar.hideRepeats calendar.showRepeats=false where-set',
         'deckard.outline.enableFollowCursor outline.followCursor=true outline',
         'deckard.outline.disableFollowCursor outline.followCursor=false outline',
-        'deckard.enableZenMode zenMode=true zen',
-        'deckard.disableZenMode zenMode=false zen',
       ],
     );
   });
@@ -54,10 +50,10 @@ suite('Setting toggles', () => {
     }
   });
 
-  test('uses the Outline and zen setters only for their own settings', () => {
-    // Those two targets are the setters that also set a context key, and
-    // each writes one setting it names itself.
-    const own = { outline: 'outline.followCursor', zen: 'zenMode' } as const;
+  test('uses the Outline setter only for its own setting', () => {
+    // That target is the setter that also sets a context key, and it
+    // writes one setting it names itself.
+    const own = { outline: 'outline.followCursor' } as const;
     for (const toggle of SETTING_TOGGLES) {
       if (toggle.target !== 'where-set') {
         assert.strictEqual(toggle.setting, own[toggle.target]);

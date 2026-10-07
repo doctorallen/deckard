@@ -43,14 +43,13 @@ const CHANGELOG = [
 function whatsNew(
   version: string,
   state: vscode.Memento,
-  options: { existingUser?: boolean; shown?: boolean; changelog?: string } = {},
+  options: { existingUser?: boolean; changelog?: string } = {},
 ): WhatsNew {
   return new WhatsNew({
     globalState: state,
     version,
     existingUser: options.existingUser ?? true,
     readChangelog: async () => options.changelog ?? CHANGELOG,
-    isShown: () => options.shown ?? true,
   });
 }
 
@@ -95,11 +94,10 @@ suite("What's new", () => {
     assert.strictEqual(news.pending(), undefined);
   });
 
-  test('clearing it takes the line away, and the setting hides it', async () => {
+  test('clearing it takes the line away', async () => {
     const state = memento({ [LAST_SEEN_VERSION]: '1.22.0' });
     const news = whatsNew('1.23.0', state);
     await news.onActivate();
-    assert.strictEqual(whatsNew('1.23.0', state, { shown: false }).pending(), undefined);
     let fired = 0;
     news.onDidChange(() => (fired += 1));
     await news.clear();

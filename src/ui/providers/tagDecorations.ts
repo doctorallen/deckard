@@ -25,10 +25,8 @@ const decorationDelayMs = 150;
  * drawn, so a change to any of them redraws every visible editor.
  */
 const REDRAW_SETTINGS = [
-  'deckard.parseInlineTags',
   'deckard.highlightNoteSections',
   'deckard.entityNamespaceAliases',
-  'deckard.personMarker',
   'deckard.notesFolder',
   'deckard.exclude',
   'files.exclude',
@@ -200,13 +198,7 @@ export class EditorTagDecorations implements vscode.Disposable {
       'Tag links',
       () => {
         const text = document.getText();
-        const options = readParseOptions(document.uri);
-        return extractTagSpans(
-          text,
-          options.parseInlineTags,
-          options.entityNamespaceAliases,
-          options.personMarker,
-        ).map((span) => {
+        return extractTagSpans(text, true, readParseOptions(document.uri).entityNamespaceAliases).map((span) => {
           const range = new vscode.Range(
             span.lineNumber - 1,
             span.startColumn,
@@ -267,13 +259,8 @@ export class EditorTagDecorations implements vscode.Disposable {
    */
   private decorate(editor: vscode.TextEditor): void {
     const content = editor.document.getText();
-    const { parseInlineTags, entityNamespaceAliases, personMarker } = readParseOptions(editor.document.uri);
-    const decorations = extractTagSpans(
-      content,
-      parseInlineTags,
-      entityNamespaceAliases,
-      personMarker,
-    ).map((span) => ({
+    const { entityNamespaceAliases } = readParseOptions(editor.document.uri);
+    const decorations = extractTagSpans(content, true, entityNamespaceAliases).map((span) => ({
       range: new vscode.Range(
         span.lineNumber - 1,
         span.startColumn,
@@ -428,18 +415,6 @@ function createEntryRelatedNotesUri(
   );
 }
 
-/** The command link that opens the ranking breakdown for the entry at a line. */
-function createEntryRelatedNotesDebugUri(
-  documentUri: string,
-  lineNumber: number,
-): vscode.Uri {
-  return vscode.Uri.parse(
-    `command:deckard.showEntryRelatedNotesDebug?${encodeURIComponent(
-      JSON.stringify([documentUri, lineNumber]),
-    )}`,
-  );
-}
-
 /** A command link whose one argument is a tag key, encoded as JSON. */
 function createTagCommandUri(command: string, tagKey: string): vscode.Uri {
   return vscode.Uri.parse(
@@ -467,33 +442,23 @@ export interface EntryHoverOptions {
   title: string;
   documentUri: string;
   lineNumber: number;
-  /**
-   * Whether to offer the ranking breakdown as well. It explains Deckard to
-   * itself, so it is offered only where it was asked for: every tagged entry
-   * used to carry the link. `deckard.developerMode` by default.
-   */
-  includeDebug?: boolean;
   /** Whether this entry is already pinned, which names the pin link. */
   pinned?: boolean;
 }
 
 /**
- * A tagged entry's hover: trusted links that show its related notes, pin or
- * unpin it, and in developer mode explain its ranking.
+ * A tagged entry's hover: trusted links that show its related notes, and
+ * pin or unpin it. How it is ranked is `Deckard: Show Related Notes
+ * Ranking`, from the palette, which explains Deckard to itself and so is
+ * not offered on every tagged entry.
  */
 export function createEntryRelatedNotesHoverMessage({
   title,
   documentUri,
   lineNumber,
-  includeDebug = vscode.workspace
-    .getConfiguration('deckard')
-    .get<boolean>('developerMode', false),
   pinned = false,
 }: EntryHoverOptions): vscode.MarkdownString {
   const safeTitle = escapeMarkdown(title);
-  const debugLink = includeDebug
-    ? `  \n[Debug related notes for ${safeTitle}](${createEntryRelatedNotesDebugUri(documentUri, lineNumber)})`
-    : '';
   // Pinning belongs beside the other thing this entry can do, since this
   // hover is where an entry is already in front of the reader.
   const pinLink = `  \n[${
@@ -504,14 +469,13 @@ export function createEntryRelatedNotesHoverMessage({
     pinned,
   )})`;
   const hover = new vscode.MarkdownString(
-    `[Show related notes for ${safeTitle}](${createEntryRelatedNotesUri(documentUri, lineNumber)})${pinLink}${debugLink}`,
+    `[Show related notes for ${safeTitle}](${createEntryRelatedNotesUri(documentUri, lineNumber)})${pinLink}`,
   );
   hover.isTrusted = {
     enabledCommands: [
       'deckard.showEntryRelatedNotes',
       'deckard.pinNote',
       'deckard.unpinNote',
-      ...(includeDebug ? ['deckard.showEntryRelatedNotesDebug'] : []),
     ],
   };
   return hover;

@@ -114,7 +114,6 @@ function relatedRows(index: WorkspaceIndex, filePath: string, hideDailyNotes = f
     enableKeywordLinks: true,
     relatedNotesSortMode: 'tags',
     sectionAccessCounts: {},
-    tagTitleDisplayMode: 'inline',
     rankingOptions: { associationMinimumSupport: 1, recencyHalfLifeDays: 0, hidePeriodicNotes: hideDailyNotes, excludedTagNamespaces: ['status'] },
   });
   return file

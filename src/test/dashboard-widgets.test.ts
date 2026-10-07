@@ -68,7 +68,7 @@ function widgets(configs: DashboardWidgetConfig[], index = createIndex()) {
   return createDashboardWidgets(
     index,
     { ...preferences, dashboardWidgets: configs },
-    { queryContext: createQueryContext(now), upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+    { queryContext: createQueryContext(now) },
   );
 }
 
@@ -238,7 +238,7 @@ suite('Dashboard Home widgets', () => {
     const [noNote] = createDashboardWidgets(
       index,
       { ...preferences, dashboardWidgets: [{ id: 'd', kind: 'todayNote', width: 'half' }] },
-      { queryContext: createQueryContext(now + DAY), upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+      { queryContext: createQueryContext(now + DAY) },
     );
     assert.deepStrictEqual(noNote.today, { date: '2026-09-17', openTaskCount: 0 });
   });
@@ -260,8 +260,6 @@ suite('Dashboard Home widgets', () => {
       },
       {
         queryContext: createQueryContext(now),
-        upcomingDays: 7,
-        tagTitleDisplayMode: 'inline',
         sourceNotePath: 'notes/old.md',
       },
     );
@@ -328,7 +326,7 @@ suite('Dashboard Home widgets', () => {
         ...preferences,
         dashboardWidgets: [{ id: 'p', kind: 'tagPairs', width: 'full', count: 10 }],
       },
-      { queryContext: createQueryContext(now), upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+      { queryContext: createQueryContext(now) },
     );
 
     const listed = pairs.tagPairs ?? [];
@@ -360,7 +358,7 @@ suite('Dashboard Home widgets', () => {
         ...preferences,
         dashboardWidgets: [{ id: 'p', kind: 'tagPairs', width: 'full', count: 20 }],
       },
-      { queryContext: createQueryContext(now), upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+      { queryContext: createQueryContext(now) },
     );
 
     // Pressing a row searches for both tags. The number beside it has to be
@@ -393,7 +391,7 @@ suite('Dashboard Home widgets', () => {
           { id: 'n', kind: 'newTags', width: 'half', count: 5, days: 14 },
         ],
       },
-      { queryContext: createQueryContext(now), upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+      { queryContext: createQueryContext(now) },
     );
     assert.deepStrictEqual(
       pairs.tagPairs?.map((pair) => pair.tags.map((tag) => tag.key)),

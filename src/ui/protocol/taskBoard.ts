@@ -28,7 +28,6 @@ import type {
   SetDisplayMessage,
   SetZenModeMessage,
   SidebarReadyMessage,
-  TagTitleDisplayMode,
   ToggleTaskMessage,
   DrawnStatus,
 } from './shared';
@@ -153,7 +152,6 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   /** How many searched tasks are open and how many are done. */
   taskCounts: { all: number; active: number; completed: number };
   taskSortMode: TaskSortMode;
-  tagTitleDisplayMode: TagTitleDisplayMode;
   /** The board settings the page's view options edit. */
   settings: TaskBoardSettings;
   /** Whether the sidebar is showing this search's Refine options. */

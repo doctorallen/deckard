@@ -5,9 +5,9 @@
  */
 import type { BlockToken } from '../../ui/protocol/inline';
 import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
-import type { TagOverviewCard, TagTitleDisplayMode } from '../../ui/protocol/shared';
+import type { TagOverviewCard } from '../../ui/protocol/shared';
 import { BlockExcerpt } from './blockExcerpt';
-import { TagButton, TitleWithTags } from './tagButton';
+import { TitleWithTags } from './tagButton';
 import { formatSourceLocation, HeadingPathSteps, ParkedLabel, trimHeadingPath } from './taskRow';
 import { describeLocation, readEntryDetails } from './entryDetails';
 import { EntryDates } from './entryDates';
@@ -18,8 +18,6 @@ export interface CardDisplay {
   readonly renderMode: SearchPageSnapshot['renderMode'];
   /** How much of each body: none, three lines with Show all, or the whole. */
   readonly preview: SearchPageSnapshot['preview'] | undefined;
-  /** `inline` draws a title's tags as controls where they are written; `separate` lists them after it. */
-  readonly titleDisplay: TagTitleDisplayMode;
 }
 
 /**
@@ -125,15 +123,11 @@ function searchTextOf(card: TagOverviewCard, fileName: string): string {
   return [card.heading, fileName, card.rawContent, card.tags.map((tag) => tag.label).join(' ')].join(' ').toLowerCase();
 }
 
-/** A card's title: its heading with its tags as controls, or its heading alone with its tags after it. */
-function CardTitle({ card, titleDisplay }: { readonly card: TagOverviewCard; readonly titleDisplay: TagTitleDisplayMode }) {
-  const separate = titleDisplay === 'separate';
+/** A card's title: its heading with its tags as controls where they are written. */
+function CardTitle({ card }: { readonly card: TagOverviewCard }) {
   return (
     <h2 class="card-title">
-      {titleDisplay === 'inline' ? <TitleWithTags title={card.heading} tags={card.titleTags} /> : card.heading}
-      {separate && card.tags.length
-        ? <span key="tags" class="tag-list" aria-label="Section tags">{card.tags.map((tag) => <TagButton tag={tag} />)}</span>
-        : null}
+      <TitleWithTags title={card.heading} tags={card.titleTags} />
       {card.parked ? <ParkedLabel key="parked" /> : null}
     </h2>
   );
@@ -179,7 +173,7 @@ export function SearchCard({ card, position, display, opened }: SearchCardProps)
       data-parked={card.parked ? 'true' : 'false'}
     >
       <div class="card-header">
-        <CardTitle card={card} titleDisplay={display.titleDisplay} />
+        <CardTitle card={card} />
         <CardDetails card={card} fileName={fileName} />
         {steps.length && readEntryDetails().has('fileAndLine') ? <div key="path" class="source heading-path"><HeadingPathSteps steps={steps} /></div> : null}
         <EntryDates facts={{ location: '', createdAt: card.createdAt, updatedAt: card.updatedAt }} className="source" />

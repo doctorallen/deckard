@@ -53,17 +53,13 @@ function LayoutChoices({ layout }: { readonly layout: CalendarLayout }) {
   return <ViewOptionChoices action="set-calendar-layout" choices={[['month', 'Month'], ['week', 'Week']]} selected={layout} label="Calendar layout" />;
 }
 
-/** The gear: the layout, repeats, weekends, the theme, and zen. */
+/** The gear: the layout, weekends, the theme, and zen. */
 function PageViewOptions({ state }: { readonly state: DrawnCalendarPage }) {
   const snapshot = state.snapshot;
   return (
     <ViewOptions
       groups={[
         { label: 'Layout', content: <LayoutChoices layout={state.layout} /> },
-        {
-          label: 'Repeats',
-          content: <ViewOptionChoices action="set-show-repeats" choices={[['on', 'On'], ['off', 'Off']]} selected={snapshot.showRepeats ? 'on' : 'off'} label="Repeats" />,
-        },
         {
           label: 'Weekends',
           content: <ViewOptionChoices action="set-show-weekends" choices={[['on', 'Shown'], ['off', 'Hidden']]} selected={snapshot.hideWeekends ? 'off' : 'on'} label="Weekends" />,

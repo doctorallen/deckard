@@ -68,21 +68,13 @@ function overview(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
   tagKey: string,
-  {
-    tagTitleDisplayMode = 'inline',
-    enableHeadingTagRelationships = true,
-    addedTagKeys = [],
-  }: {
-    tagTitleDisplayMode?: 'inline' | 'separate';
-    enableHeadingTagRelationships?: boolean;
-    addedTagKeys?: string[];
-  } = {},
+  { addedTagKeys = [] }: { addedTagKeys?: string[] } = {},
 ) {
   return createSearchPageSnapshot(
     index,
     preferences,
     [tagKey, ...addedTagKeys].join(' AND '),
-    { queryContext: createQueryContext(Date.now()), tagTitleDisplayMode, enableHeadingTagRelationships },
+    { queryContext: createQueryContext(Date.now()) },
   );
 }
 
@@ -441,7 +433,6 @@ suite('Dashboard state', () => {
 
     assert.strictEqual(page.noteColumns, 3);
     assert.strictEqual(page.renderMode, 'markdown');
-    assert.strictEqual(page.tagTitleDisplayMode, 'inline');
     assert.deepStrictEqual(
       page.sections.map((note) => note.heading),
       ['Second note #home', 'First note #work'],
@@ -469,20 +460,19 @@ suite('Dashboard state', () => {
       ['Second note #home', 'First note #work'],
     );
 
-    const separate = createSearchPageSnapshot(
+    const rendered = createSearchPageSnapshot(
       index,
       { ...preferences, renderMode: 'html' },
       '',
-      { queryContext: createQueryContext(Date.now()), tagTitleDisplayMode: 'separate' },
+      { queryContext: createQueryContext(Date.now()) },
     );
-    assert.strictEqual(separate.renderMode, 'html');
-    assert.strictEqual(separate.tagTitleDisplayMode, 'separate');
-    const separateNote = separate.sections.find(
+    assert.strictEqual(rendered.renderMode, 'html');
+    const renderedNote = rendered.sections.find(
       (note) => note.filePath === first.filePath,
     );
-    assert.ok(separateNote);
-    assert.strictEqual(separateNote.heading, 'First note');
-    assert.strictEqual(separateNote.titleTags[0].label, '#work');
+    assert.ok(renderedNote);
+    assert.strictEqual(renderedNote.heading, 'First note #work');
+    assert.strictEqual(renderedNote.titleTags[0].label, '#work');
   });
 
   test('keeps lightweight tags alongside canonical entities in the dashboard', () => {
@@ -840,7 +830,6 @@ suite('Dashboard state', () => {
       activeFile: active,
       activeTags: [{ key: '#source', label: '#source' }],
       enableKeywordLinks: false,
-      tagTitleDisplayMode: 'inline',
       activeTagWeights: new Map(),
       ranking: { now: Date.now(), associationMinimumSupport: 2 },
     });
@@ -932,7 +921,6 @@ suite('Dashboard state', () => {
       activeFile: active,
       activeTags: [{ key: '#work', label: '#work' }],
       enableKeywordLinks: false,
-      tagTitleDisplayMode: 'inline',
       activeTagWeights: new Map(),
       ranking: { now: Date.now(), recencyHalfLifeDays: 30 },
     });
@@ -962,7 +950,6 @@ suite('Dashboard state', () => {
         { key: '#management/performance', label: '#management/performance' },
       ],
       enableKeywordLinks: false,
-      tagTitleDisplayMode: 'inline',
       activeTagWeights: new Map([
         ['#project-name', 1],
         ['#follow-up', 1],
@@ -1057,7 +1044,6 @@ suite('Dashboard state', () => {
       enableKeywordLinks: false,
       relatedNotesSortMode: 'tags',
       sectionAccessCounts: {},
-      tagTitleDisplayMode: 'inline',
       activeEntryTitle: scope.file.sections[0].heading,
       activeTagWeights: scope.tagWeights,
     });
@@ -1264,7 +1250,6 @@ suite('Dashboard state', () => {
       enableKeywordLinks: false,
       relatedNotesSortMode: 'tags',
       sectionAccessCounts: {},
-      tagTitleDisplayMode: 'inline',
       activeEntryTitle: 'Selected note',
       activeTagWeights: new Map([
         ['#contact/miko-tern', 1],
@@ -1334,18 +1319,6 @@ suite('Dashboard state', () => {
     assert.deepStrictEqual(
       snapshot.notes.map((note) => note.sourceLine),
       [3, 1],
-    );
-
-    const separate = createSidebarSnapshot(index, active.filePath, active, {
-      now: Date.now(),
-      enableKeywordLinks: true,
-      relatedNotesSortMode: 'tags',
-      sectionAccessCounts: {},
-      tagTitleDisplayMode: 'separate',
-    });
-    assert.deepStrictEqual(
-      separate.notes.map((note) => note.title),
-      ['Second reference', 'First reference'],
     );
   });
 
@@ -1419,8 +1392,6 @@ suite('Dashboard state', () => {
     assert.strictEqual(snapshot.sections[0].accessCount, 4);
     assert.strictEqual(snapshot.layout, 'tabs');
 
-    const separate = overview(index, preferences, '#work', { tagTitleDisplayMode: 'separate' });
-    assert.strictEqual(separate.sections[0].heading, 'Heading');
   });
 
   test('filters a tag overview to entries carrying both relationship tags', () => {
@@ -1569,7 +1540,7 @@ suite('Dashboard state', () => {
     );
   });
 
-  test('projects dense relationship groups and supports disabling them', () => {
+  test('projects dense relationship groups', () => {
     const parentTags = Array.from(
       { length: 12 },
       (_, index) => `#parent/${String(index + 1).padStart(2, '0')}`,
@@ -1593,19 +1564,8 @@ suite('Dashboard state', () => {
       defaultPreferences,
       '#hub/relationship-overview',
     );
-    const disabled = overview(
-      index,
-      defaultPreferences,
-      '#hub/relationship-overview',
-      { enableHeadingTagRelationships: false },
-    );
 
     assert.strictEqual(relatedTagKeys(enabled).length, 24);
-    assert.deepStrictEqual(relatedTagKeys(disabled), []);
-    assert.ok(
-      disabled.query.facets.some((facet) => facet.id === 'tags'),
-      'without relationships, the tags on the results are counted instead',
-    );
   });
 
   test('filters generic-tag overview tasks by completion state', () => {
@@ -1744,11 +1704,6 @@ suite('Dashboard state', () => {
     );
     assert.deepStrictEqual(page.tag?.key, '#work');
 
-    const separate = overview(index, defaultPreferences, '#work', { tagTitleDisplayMode: 'separate' });
-    assert.deepStrictEqual(
-      separate.sections.map((note) => note.heading),
-      ['Alpha', 'Beta', 'Zeta'],
-    );
   });
 
   test('offers a tag\'s associations as Related, and narrows them with the search', () => {

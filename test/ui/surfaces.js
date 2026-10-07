@@ -149,10 +149,10 @@ function createDashboardState(index, preferences, mode) {
   const queryContext = createQueryContext(NOW);
   const viewPreferences = { ...preferences, dashboardViewState: { ...preferences.dashboardViewState, mode } };
   return {
-    ...createDashboardSnapshot({ index, preferences: viewPreferences, tagTitleDisplayMode: 'inline', agendaQuery: '', queryContext }),
+    ...createDashboardSnapshot({ index, preferences: viewPreferences, agendaQuery: '', queryContext }),
     homeArranged: false,
     ...(mode === 'home'
-      ? { widgets: createDashboardWidgets(index, viewPreferences, { queryContext, upcomingDays: 7, agendaQuery: '', tagTitleDisplayMode: 'inline' }) }
+      ? { widgets: createDashboardWidgets(index, viewPreferences, { queryContext, agendaQuery: '' }) }
       : {}),
     parkedTags: [],
   };
@@ -231,10 +231,8 @@ function createDiagnostic(index, files) {
     ],
     snapshot: createSidebarSnapshot(index, 'notes/atlas.md', files.get('notes/atlas.md'), {
       now: NOW,
-      enableKeywordLinks: true,
       relatedNotesSortMode: 'tags',
       sectionAccessCounts: {},
-      tagTitleDisplayMode: 'inline',
     }),
   };
 }
@@ -343,7 +341,6 @@ function createStatusBoardSurface(preferences) {
         preferences: preferences.reader.value,
         search: { query: '' },
         options: { queryContext: createQueryContext(NOW), format: 'emoji', hiddenColumns: [] },
-        tagTitleDisplayMode: 'inline',
       }),
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
@@ -383,7 +380,6 @@ function createParentTagBoardSurface(preferences) {
       preferences: preferences.reader.value,
       search: { query: '' },
       options: { queryContext: createQueryContext(NOW), format: 'emoji', parentTag: true },
-      tagTitleDisplayMode: 'inline',
     }),
     scrollers: ['html', '.board-cards'],
     clippers: ['.board-column'],
@@ -425,7 +421,6 @@ function createBoardSurfaces(boardIndex, preferences) {
         preferences: preferences.reader.value,
         search: { query: '' },
         options: { queryContext: createQueryContext(NOW), format: 'emoji' },
-        tagTitleDisplayMode: 'inline',
       }),
       scrollers: ['.board-cards'],
       clippers: ['.board-column'],
@@ -442,7 +437,6 @@ function createBoardSurfaces(boardIndex, preferences) {
         preferences: { ...preferences.reader.value, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'project' },
         search: { query: '' },
         options: { queryContext: createQueryContext(NOW), format: 'emoji' },
-        tagTitleDisplayMode: 'inline',
       }),
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
@@ -459,7 +453,6 @@ function createBoardSurfaces(boardIndex, preferences) {
         preferences: preferences.reader.value,
         search: { query: '' },
         options: { queryContext: createQueryContext(NOW), format: 'emoji' },
-        tagTitleDisplayMode: 'inline',
       }),
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
@@ -479,7 +472,6 @@ function createBoardSurfaces(boardIndex, preferences) {
           preferences: preferences.reader.value,
           search: { query: '#project/atlas' },
           options: { queryContext: createQueryContext(NOW), format: 'emoji' },
-          tagTitleDisplayMode: 'inline',
         }),
         tasksViewMode: { listed: false },
       }),
@@ -550,10 +542,8 @@ function createCalendarSurfaces() {
         pages: createContextPages('icons', 'calendar'),
         activeTags: [],
         notes: [],
-        tagTitleDisplayMode: 'inline',
         calendarDay: createCalendar(createCalendarPageIndex(), '2026-09', createQueryContext(NOW), {
           dayPanel: true,
-          showRepeats: true,
           selectedDate: '2026-09-24',
         }).selected,
         state: 'calendarDay',
@@ -570,7 +560,6 @@ function createCalendarSurfaces() {
       snapshot: () => createCalendar(createCalendarPageIndex(), '2026-09', createQueryContext(NOW), {
         dayPanel: true,
         layout: 'page',
-        showRepeats: true,
         selectedDate: '2026-09-24',
       }),
       scrollers: ['html'],
@@ -585,7 +574,6 @@ function createCalendarSurfaces() {
       snapshot: () => createCalendar(createCalendarPageIndex(), '2026-09', createQueryContext(NOW), {
         dayPanel: true,
         layout: 'page',
-        showRepeats: true,
       }),
       scrollers: ['html'],
       clippers: ['.cal-chip', '.day-panel .task-row'],
@@ -612,10 +600,8 @@ function createRelatedNotesSurfaces(index, files) {
       snapshot: () => ({
         ...createSidebarSnapshot(index, 'notes/atlas.md', files.get('notes/atlas.md'), {
           now: NOW,
-          enableKeywordLinks: true,
           relatedNotesSortMode: 'tags',
           sectionAccessCounts: {},
-          tagTitleDisplayMode: 'inline',
         }),
         pages: createContextPages('list'),
       }),
@@ -640,10 +626,8 @@ function createRelatedNotesSurfaces(index, files) {
         return {
           ...createSidebarSnapshot(buildWorkspaceIndex(untaggedFiles), 'notes/untagged.md', untagged, {
             now: NOW,
-            enableKeywordLinks: true,
             relatedNotesSortMode: 'tags',
             sectionAccessCounts: {},
-            tagTitleDisplayMode: 'inline',
           }),
           previewLines: 1,
         };
@@ -663,7 +647,6 @@ function createRelatedNotesSurfaces(index, files) {
         pages: createContextPages('list', 'home'),
         activeTags: [],
         notes: [],
-        tagTitleDisplayMode: 'inline',
         state: 'customizeHome',
         homeWidgets: [
           { value: 'tasks', label: 'Tasks', description: 'The tasks a search finds, ranked as on the Task Board' },
@@ -914,7 +897,6 @@ function createDatedBoardSurface(boardIndex, preferences) {
         queryContext: createQueryContext(NOW, { dateFormats: { date: DATED.dateFormat, short: DATED.shortDateFormat, locale: 'en', weekStart: 0 } }),
         format: 'emoji',
       },
-      tagTitleDisplayMode: 'inline',
     }),
     scrollers: ['html', '.board-cards'],
     clippers: ['.board-column'],

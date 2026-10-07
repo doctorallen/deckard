@@ -80,7 +80,7 @@ function HubBody({ hub, renderMode }: { readonly hub: NonNullable<SearchPageSnap
 
 /**
  * The note that describes the page's tag, open or closed as the reader
- * left it, or as `deckard.tagOverview.hubNoteExpanded` says until they do.
+ * left it here, or as they left the last tag's page until they do.
  */
 export function HubNote({ snapshot, hubOpen }: { readonly snapshot: SearchPageSnapshot; readonly hubOpen: boolean | undefined }) {
   const hub = snapshot.hub;
@@ -172,12 +172,11 @@ function LookalikeNote({ tag, other }: { readonly tag: SearchPageTag; readonly o
   );
 }
 
-/** Entries listed because they link to the hub note without the tag, and the way to leave them out. */
+/** Entries listed because they link to the hub note without the tag. */
 function HubLinksNote({ count, title }: { readonly count: number; readonly title: string }) {
   return (
     <p class="tag-note">
-      {`Also listing ${count} ${count === 1 ? 'entry that links' : 'entries that link'} to ${title} without the tag. `}
-      <button type="button" class="tag-note-action" data-action="exclude-hub-links" data-tip="List only the entries that carry the tag">Leave them out</button>
+      {`Also listing ${count} ${count === 1 ? 'entry that links' : 'entries that link'} to ${title} without the tag.`}
     </p>
   );
 }

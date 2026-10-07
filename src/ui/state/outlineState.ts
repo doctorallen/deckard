@@ -37,10 +37,6 @@ export interface OutlineNode {
 
 /** How buildOutline reads a note's tags and where it counts links to each heading from. */
 export interface OutlineOptions {
-  /** The configured people marker, so stripping matches how tags were parsed. */
-  personMarker?: string;
-  /** Include front-matter tags that every heading in the file inherits. */
-  inheritedTags?: boolean;
   /** Where links to a heading are counted from, with the note's own path. */
   backlinks?: { toHeading(filePath: string, heading: string): readonly unknown[] };
   filePath?: string;
@@ -122,19 +118,16 @@ export function formatOutlineTags(node: OutlineNode): string {
  * that name it, and its tags, as `2/5 · ↩3 · #project/atlas`, each part left
  * out when it is empty or turned off.
  */
-export function formatOutlineDescription(
-  node: OutlineNode,
-  show: { tags: boolean; counts: boolean },
-): string {
+export function formatOutlineDescription(node: OutlineNode): string {
   const parts: string[] = [];
-  if (show.counts && node.tasks) {
+  if (node.tasks) {
     // A row beside a heading has room for the count alone; its tooltip says the rest.
     parts.push(formatProgressCount(node.tasks.done, node.tasks.total, { compact: true }));
   }
-  if (show.counts && node.links) {
+  if (node.links) {
     parts.push(`↩${node.links}`);
   }
-  const tags = show.tags ? formatOutlineTags(node) : '';
+  const tags = formatOutlineTags(node);
   if (tags) {
     parts.push(tags);
   }
@@ -206,8 +199,8 @@ function createNode(
   file: ParsedFile,
   options: OutlineOptions,
 ): OutlineNode {
-  const tags = collectTags(section, file, options);
-  const strippedHeading = stripTags(section.heading, options.personMarker);
+  const tags = [...(section.headingTags ?? [])];
+  const strippedHeading = stripTags(section.heading);
   const tagLabel = tags.map((tag) => tag.label).join(' ');
   const labelFromTags = strippedHeading.length === 0 && tagLabel.length > 0;
   const under = file.tasks.filter(
@@ -234,31 +227,6 @@ function createNode(
     endLine: section.endLine,
     children: [],
   };
-}
-
-/**
- * Keeps tags written on the heading ahead of the ones it merely inherits.
- */
-function collectTags(
-  section: Section,
-  file: ParsedFile,
-  options: OutlineOptions,
-): TagReference[] {
-  const tags = [...(section.headingTags ?? [])];
-  if (!options.inheritedTags) {
-    return tags;
-  }
-
-  const keys = new Set(tags.map((tag) => tag.key));
-  file.frontmatterTags.forEach((tag) => {
-    if (keys.has(tag.key)) {
-      return;
-    }
-    keys.add(tag.key);
-    tags.push(tag);
-  });
-
-  return tags;
 }
 
 /**

@@ -36,7 +36,6 @@ const followCursorDelayMs = 100;
 /** The settings that change what the Outline shows, so a change rebuilds it. */
 const OUTLINE_SETTINGS = [
   'deckard.outline',
-  'deckard.personMarker',
   'deckard.entityNamespaceAliases',
 ];
 
@@ -135,7 +134,7 @@ export class OutlineTreeProvider
   }
 
   /**
-   * A heading's row: its tags and counts beside it as the settings say, its
+   * A heading's row: its tags and counts beside it, its
    * full text in the tooltip, and a click that reveals it in the editor.
    */
   public getTreeItem(node: OutlineNode): vscode.TreeItem {
@@ -148,7 +147,7 @@ export class OutlineTreeProvider
     const tags = formatOutlineTags(node);
     item.id = node.id;
     item.description =
-      formatOutlineDescription(node, { tags: this.areTagsShown(), counts: this.areCountsShown() }) ||
+      formatOutlineDescription(node) ||
       undefined;
     item.tooltip = createTooltip(node, tags);
     const spoken = speakRow(node.label, item.description);
@@ -290,10 +289,6 @@ export class OutlineTreeProvider
         'Outline',
         () =>
           buildOutline(this.indexer.parse(document.uri, document.getText()), {
-            personMarker: vscode.workspace
-              .getConfiguration('deckard', document.uri)
-              .get<string>('personMarker'),
-            inheritedTags: this.areInheritedTagsShown(document.uri),
             backlinks: getBacklinkIndex(this.indexer.getSnapshot()),
             filePath: this.indexer.getFilePath(document.uri),
           }),
@@ -317,8 +312,6 @@ export class OutlineTreeProvider
     }
     const uri = this.indexer.getUri(location.filePath) ?? vscode.Uri.file(location.filePath);
     const roots = buildOutline(file, {
-      personMarker: vscode.workspace.getConfiguration('deckard').get<string>('personMarker'),
-      inheritedTags: this.areInheritedTagsShown(uri),
       backlinks: getBacklinkIndex(this.indexer.getSnapshot()),
       filePath: location.filePath,
     });
@@ -407,27 +400,6 @@ export class OutlineTreeProvider
     }
   }
 
-  /** Whether headings show their tags beside them, from `deckard.outline.showTags`. */
-  private areTagsShown(): boolean {
-    return vscode.workspace
-      .getConfiguration('deckard')
-      .get<boolean>('outline.showTags', true);
-  }
-
-  /** Whether the Sections view counts each heading's tasks. */
-  private areCountsShown(): boolean {
-    return vscode.workspace.getConfiguration('deckard').get<boolean>('outline.showCounts', true);
-  }
-
-  /**
-   * Whether a heading lists the tags it inherits from the headings and front
-   * matter above it, from `deckard.outline.inheritedTags` for the note's folder.
-   */
-  private areInheritedTagsShown(uri: vscode.Uri): boolean {
-    return vscode.workspace
-      .getConfiguration('deckard', uri)
-      .get<boolean>('outline.inheritedTags', false);
-  }
 }
 
 /**

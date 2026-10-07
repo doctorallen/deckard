@@ -49,8 +49,8 @@ suite('Zen mode', () => {
 
   const setZen = async (enabled: boolean): Promise<void> => {
     await configuration().update(
-      'zenMode',
-      enabled,
+      'display.level',
+      enabled ? 'zen' : undefined,
       vscode.ConfigurationTarget.Global,
     );
   };
@@ -60,7 +60,7 @@ suite('Zen mode', () => {
     store?.repository.dispose();
     store = undefined;
     await configuration().update(
-      'zenMode',
+      'display.level',
       undefined,
       vscode.ConfigurationTarget.Global,
     );
@@ -94,8 +94,6 @@ suite('Zen mode', () => {
       ...createDashboardSnapshot({ index: built, preferences, queryContext: createQueryContext(Date.now()) }),
       widgets: createDashboardWidgets(built, preferences, {
         queryContext: createQueryContext(Date.parse('2026-09-21T00:00:00Z')),
-        upcomingDays: 7,
-        tagTitleDisplayMode: 'inline' as const,
       }),
     };
     const page = openWebviewPage(

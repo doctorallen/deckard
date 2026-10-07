@@ -5,6 +5,7 @@ import {
   extractTags,
   getEntityNamespaceAliases,
   getPersonMarker,
+  PERSON_MARKER,
 } from '../../domain/markdown/parser';
 import { PreferenceServices } from '../../core/storage/preferences';
 import { pluralize } from '../../shared/text';
@@ -586,9 +587,7 @@ function getParseOptions(uri?: vscode.Uri): Required<RenameTagOptions> {
     entityNamespaceAliases: getEntityNamespaceAliases(
       configuration.get<unknown>('entityNamespaceAliases', {}),
     ),
-    personMarker: getPersonMarker(
-      configuration.get<unknown>('personMarker', '@'),
-    ),
+    personMarker: PERSON_MARKER,
   };
 }
 

@@ -309,14 +309,18 @@ async function createCdpClient(webSocketDebuggerUrl) {
   };
 }
 
-/** Writes the workspace's settings for the theme, zen, and color theme asked for, and copies in the development notes. */
+/** Writes the settings for the theme, zen, and color theme asked for, and copies in the development notes. */
 function writeFixture() {
+  if (zen) {
+    // Display is the reader's own, so Zen is in the user's settings.
+    mkdirSync(join(profile, 'User'), { recursive: true });
+    writeFileSync(join(profile, 'User', 'settings.json'), JSON.stringify({ 'deckard.display.level': 'zen' }));
+  }
   mkdirSync(join(workspace, '.vscode'));
   writeFileSync(
     join(workspace, '.vscode', 'settings.json'),
     JSON.stringify({
       'deckard.theme': theme,
-      ...(zen ? { 'deckard.zenMode': true } : {}),
       ...(colorTheme ? { 'workbench.colorTheme': colorTheme } : {}),
       'workbench.secondarySideBar.defaultVisibility': false,
       'workbench.startupEditor': 'none',

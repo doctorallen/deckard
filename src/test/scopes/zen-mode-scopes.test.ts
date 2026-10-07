@@ -4,21 +4,18 @@ import * as vscode from 'vscode';
 
 import { setZenMode as zenHandler } from '../../ui/webview/host/sharedHandlers';
 import { isZenModeEnabled, syncZenModeContext, zenModeContextKey } from '../../ui/webview/zenMode';
-import { activateDeckard, clearEverywhere, deckard, isMultiRoot, Level, levels, recordContextKeys, setAt, settled } from './scopes';
+import { activateDeckard, deckard, isMultiRoot, levels, recordContextKeys, setAt, settled } from './scopes';
 
-/** Where zen is set before a test turns it on and off, one value per level. */
+/** The step set in the user's settings before a test turns Zen on and off. */
 interface Arrangement {
   name: string;
-  values: Partial<Record<Level, boolean>>;
+  step?: 'quiet' | 'zen';
 }
 
 const ARRANGEMENTS: Arrangement[] = [
-  { name: 'set nowhere', values: {} },
-  { name: 'set in the user settings', values: { user: true } },
-  { name: 'set in the workspace settings', values: { workspace: true } },
-  { name: "set in a folder's settings.json", values: { folder: true } },
-  { name: 'on for the user, off in the workspace', values: { user: true, workspace: false } },
-  { name: 'off for the user, on in the workspace', values: { user: false, workspace: true } },
+  { name: 'no step set' },
+  { name: 'Zen set', step: 'zen' },
+  { name: 'Quiet set', step: 'quiet' },
 ];
 
 /** How a reader turns zen on and off: the palette's two commands, or a page's gear. */
@@ -30,12 +27,11 @@ interface Path {
 }
 
 /**
- * Zen mode is read as Display's Zen step until a step is set, from wherever
- * VS Code reads it: the workspace's settings when they set it, else the
- * user's. Whatever is set where, turning Zen on or off writes the step to
- * the user's settings, which every Display setting is, has to change what
- * the pages show, a second turn has to undo it, and the palette has to
- * offer the command that changes something.
+ * Zen is Display's Zen step, in the user's settings, where every Display
+ * setting is. Whatever step is set, turning Zen on or off has to write the
+ * step there and change what the pages show, a second turn has to undo it,
+ * and the palette and the title bar have to offer the command that changes
+ * something, through the context key the step sets.
  */
 suite(`Zen mode, with settings at every level (${isMultiRoot() ? 'multi-root' : 'single folder'})`, () => {
   let contextKeys: ReturnType<typeof recordContextKeys>;
@@ -50,7 +46,6 @@ suite(`Zen mode, with settings at every level (${isMultiRoot() ? 'multi-root' : 
   suiteTeardown(() => contextKeys.dispose());
 
   teardown(async () => {
-    await clearEverywhere('zenMode');
     await setAt('display.level', 'user', undefined);
   });
 
@@ -84,14 +79,12 @@ suite(`Zen mode, with settings at every level (${isMultiRoot() ? 'multi-root' : 
   };
 
   /**
-   * Sets zen where the arrangement says, as a reader editing settings.json
-   * would, and returns what is then in force, once the context key the
-   * palette reads agrees with it.
+   * Sets the step the arrangement says, as a reader editing settings.json
+   * would, and returns whether Zen is then in force, once the context key
+   * the palette reads agrees with it.
    */
   const arrange = async (arrangement: Arrangement): Promise<boolean> => {
-    for (const [level, value] of Object.entries(arrangement.values) as [Level, boolean][]) {
-      await setAt('zenMode', level, value);
-    }
+    await setAt('display.level', 'user', arrangement.step);
     const before = isZenModeEnabled();
     assert.ok(
       await settled(() => contextKeys.value(zenModeContextKey) === before),

@@ -46,7 +46,6 @@ suite('Context: the pages at its top', () => {
       activeFileName: 'today.md',
       activeTags: [],
       notes: [],
-      tagTitleDisplayMode: 'inline',
       state: 'ready',
       parkedTags: [],
       ...state,
@@ -156,7 +155,7 @@ suite('Context: the pages at its top', () => {
     const shown = open({ style: 'icons', pages: PAGES });
     const icons = shown.findAll('.pages-icon') as HTMLElement[];
     press(icons[0], 'End');
-    shown.send({ activeTags: [], notes: [], tagTitleDisplayMode: 'inline', state: 'noMarkdown', parkedTags: [], pages: { style: 'icons', pages: PAGES } });
+    shown.send({ activeTags: [], notes: [], state: 'noMarkdown', parkedTags: [], pages: { style: 'icons', pages: PAGES } });
     assert.deepStrictEqual((shown.findAll('.pages-icon') as HTMLElement[]).map((icon) => icon.tabIndex), [-1, -1, 0]);
   });
 

@@ -79,10 +79,7 @@ export const SETTING_ROWS: readonly SettingRow[] = [
   // reparses every note rather than reusing any.
   {
     settings: [
-      'deckard.parseInlineTags',
       'deckard.noteBoundaries',
-      'deckard.personMarker',
-      'deckard.tasks.assigneeFromPersonTag',
       // What each checkbox character means.
       'deckard.tasks.statuses',
     ],

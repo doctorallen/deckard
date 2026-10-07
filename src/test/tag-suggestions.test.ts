@@ -201,28 +201,6 @@ suite('Tag suggestions', () => {
     );
     provider.dispose();
   });
-
-  test('does not suggest tags when autocomplete is disabled', async () => {
-    const provider = new TagCompletionProvider(
-      {
-        ready: Promise.resolve(),
-        getSnapshot: () => createIndex([createTag('@project', 4)]),
-      },
-      () => false,
-    );
-    const document = createDocument(
-      '/tmp/deckard/notes/case.md',
-      'Review @project',
-    );
-
-    const items = await provider.provideCompletionItems(
-      document,
-      new vscode.Position(0, 10),
-    );
-
-    assert.deepStrictEqual(items, []);
-    provider.dispose();
-  });
 });
 
 function createTag(key: string, count: number): TagInfo {

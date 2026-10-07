@@ -8,7 +8,7 @@ import { ProgressText } from './progressText';
 import type { ComponentChildren } from 'preact';
 
 import type { InlineToken } from '../../ui/protocol/inline';
-import type { DashboardTask, TagTitleDisplayMode } from '../../ui/protocol/shared';
+import type { DashboardTask } from '../../ui/protocol/shared';
 import { ParentTag } from './tagButton';
 import { formatPageDate } from './dateFormats';
 import { DueText } from './dueText';
@@ -158,8 +158,6 @@ export interface TaskListRowProps {
   readonly item: DashboardTask;
   /** A row that can be ranked by dragging it. */
   readonly draggable?: boolean;
-  /** `separate` draws the title's Markdown alone, without its tags as controls. */
-  readonly titleDisplay?: TagTitleDisplayMode;
   /** What stands where the checkbox goes, for a row that cannot be completed from here. */
   readonly leading?: ComponentChildren;
   /** What follows the row's text, such as its menu. */
@@ -208,7 +206,7 @@ function TaskFacts({ item }: { readonly item: DashboardTask }) {
  * The headings above the task, tags stripped, go under the file and line:
  * the same two lines a note card and the sidebar show.
  */
-export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, entry, afterSource }: TaskListRowProps) {
+export function TaskListRow({ item, draggable, leading, trailing, entry, afterSource }: TaskListRowProps) {
   const task = item.task;
   let rowClass = 'row task-row';
   if (task.completed) {
@@ -229,7 +227,7 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, 
       <div>
         <ParentTag tag={item.parentTag} />
         <div key={item.task.title} class="task-title">
-          <TaskTitle tokens={item.titleTokens} tags={titleDisplay === 'separate' ? undefined : item.titleTags} />
+          <TaskTitle tokens={item.titleTokens} tags={item.titleTags} />
         </div>
         <div class="task-meta">
           <TaskFacts item={item} />

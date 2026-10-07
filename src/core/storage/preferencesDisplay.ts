@@ -82,6 +82,14 @@ export class DisplayService {
     await this.repository.update({ searchHierarchy: searchHierarchy === 'off' ? undefined : searchHierarchy });
   }
 
+  /**
+   * Keeps whether a tag's hub note was left folded, so the next tag's page
+   * starts the way the reader left the last one.
+   */
+  public async setHubNoteCollapsed(collapsed: boolean): Promise<void> {
+    await this.repository.update({ hubNoteCollapsed: collapsed ? true : undefined });
+  }
+
   /** Selects how much of each result a search page shows. */
   public async setSearchPreview(searchPreview: SearchPreview): Promise<void> {
     await this.repository.update({ searchPreview });

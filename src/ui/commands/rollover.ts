@@ -199,7 +199,7 @@ export async function rollTasksForward(
   const result = await rollover.rollForward({
     index: indexer.getSnapshot(),
     mode,
-    lookbackDays: getRolloverLookbackDays(folder.uri),
+    lookbackDays: ROLLOVER_LOOKBACK_DAYS,
     ensureToday: () => ensureDailyNote(folder),
   });
   if (result.kind === 'nothing-waiting') {
@@ -353,13 +353,8 @@ export function placeCarriedOver(
   };
 }
 
-/** How far back a rollover looks, in days; zero reaches as far as the notes. */
-export function getRolloverLookbackDays(uri?: vscode.Uri): number {
-  const days = vscode.workspace
-    .getConfiguration('deckard', uri)
-    .get<number>('dailyNote.rolloverDays', 7);
-  return Number.isFinite(days) && days > 0 ? Math.floor(days) : 0;
-}
+/** How far back a rollover looks for unfinished tasks, in days: a week. */
+export const ROLLOVER_LOOKBACK_DAYS = 7;
 
 /**
  * Opens today's note, creating it from the template, and carries the last

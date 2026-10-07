@@ -5,7 +5,6 @@ import type { TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
 import {
   extractTags,
   getEntityNamespaceAliases,
-  getPersonMarker,
   hasAtxHeadingClosingHashes,
 } from '../../domain/markdown/parser';
 import { pluralize } from '../../shared/text';
@@ -256,13 +255,8 @@ class BulkTally {
     const rewritten = rewrite(entry, edit, source.text, {
       eol,
       format: readTaskMetadataFormat(configuration),
-      addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
-      addCancelledDate: configuration.get<boolean>('tasks.addCancelledDate', true),
       entityNamespaceAliases: getEntityNamespaceAliases(
         configuration.get<unknown>('entityNamespaceAliases', {}),
-      ),
-      personMarker: getPersonMarker(
-        configuration.get<unknown>('personMarker', '@'),
       ),
     });
     const replacement = rewritten?.text;
@@ -297,10 +291,7 @@ interface OpenNote {
 interface RewriteOptions {
   eol: string;
   format: 'emoji' | 'dataview';
-  addDoneDate: boolean;
-  addCancelledDate: boolean;
   entityNamespaceAliases: Record<string, string>;
-  personMarker: string;
 }
 
 /** What one entry's line becomes, or nothing when the edit does not fit it. */
@@ -342,7 +333,7 @@ function rewrite(
   const now = Date.now();
   const completed = setTaskLineCompletion(line, task.checkboxColumn, {
     completed: edit.completed,
-    doneDate: options.addDoneDate ? formatIsoDate(now) : undefined,
+    doneDate: formatIsoDate(now),
     preferredFormat: options.format,
   });
   if (!edit.completed) {
@@ -362,8 +353,8 @@ function writeStatus(task: Task, status: TaskStatusDefinition, line: string, opt
   const date = formatIsoDate(now);
   const text = setTaskStatus(line, task.checkboxColumn, {
     to: status,
-    ...(options.addDoneDate ? { doneDate: date } : {}),
-    ...(options.addCancelledDate ? { cancelledDate: date } : {}),
+    doneDate: date,
+    cancelledDate: date,
     preferredFormat: options.format,
   });
   if (text === line) {

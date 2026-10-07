@@ -33,12 +33,6 @@ const SETTINGS: WrittenSetting<unknown>[] = [
     values: [true, false],
   },
   {
-    key: 'calendar.showRepeats',
-    how: 'the Calendar repeat commands',
-    write: toggle('deckard.calendar.showRepeats', 'deckard.calendar.hideRepeats'),
-    values: [true, false],
-  },
-  {
     key: 'theme',
     how: 'Choose Theme…',
     write: (value: DeckardTheme) =>
