@@ -3013,6 +3013,17 @@
               ><td
                 ><button
                     class="command-link"
+                    data-command="deckard.agenda.setSort"
+                    type="button"
+                  >Sort Tasks By…</button
+                  ></td
+                ><td
+                ></td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
                     data-command="deckard.outline.enableFollowCursor"
                     type="button"
                   >Follow Cursor in Outline</button
@@ -3093,6 +3104,17 @@
                   ></td
                 ><td
                 ></td
+                ></tr
+              ><tr
+              ><td
+                ><button
+                    class="command-link"
+                    data-command="deckard.chooseDateFormat"
+                    type="button"
+                  >Choose Date Format…</button
+                  ></td
+                ><td
+                >Shows today in each format; Custom… says it back as you type.</td
                 ></tr
               ><tr
               ><td
@@ -3579,6 +3601,30 @@
                   ></td
                 ><td
                 >How pages write a task's due date. An overdue date always says Overdue, and a screen reader hears the whole date either way. Your own choice, the same in every workspace.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.display.dateFormat</code
+                  ></td
+                ><td
+                ><code
+                  >"YYYY-MM-DD"</code
+                  ></td
+                ><td
+                >How Deckard writes a date for you to read: on pages, in views, in messages, and in the task editor. Written with the tokens Obsidian's daily notes use, such as YYYY-MM-DD, DD/MM/YYYY, D MMM YYYY, or ddd, MMM D, YYYY; L and LL are your display language's own forms, and text in [brackets] is written as it is. Dates written into notes, file names, and searches stay YYYY-MM-DD. Empty, or a format with no date in it, reads as YYYY-MM-DD. Choose Date Format… shows each with today's date. Your own choice, the same in every workspace.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.display.shortDateFormat</code
+                  ></td
+                ><td
+                ><code
+                  >"ddd, MMM D"</code
+                  ></td
+                ><td
+                >How Deckard writes a day of this year where there is little room: the Tasks view's day headings, the Pages view, the calendar's day title, search completions, and Linked from. A day in another year is written in deckard.display.dateFormat. The same tokens, such as ddd, D MMM or D/M. Empty, or a format with no date in it, reads as ddd, MMM D. Your own choice, the same in every workspace.</td
                 ></tr
               ><tr
               ><td
@@ -4407,6 +4453,18 @@
                   ></td
                 ><td
                 >What the Tasks view's groups are. The group control in its title sets the same thing.</td
+                ></tr
+              ><tr
+              ><td
+                ><code
+                  >deckard.agenda.sort</code
+                  ></td
+                ><td
+                ><code
+                  >"rank"</code
+                  ></td
+                ><td
+                >How each of the Tasks view's groups orders its tasks. Within a tie, a group keeps its own order: by date or priority. Dragging a task onto another ranks it only when this is rank. The sort control in the view's title sets the same thing.</td
                 ></tr
               ><tr
               ><td
