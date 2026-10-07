@@ -133,7 +133,7 @@
 .board-hint button { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
 .board-empty { margin: 0; padding: var(--space-3); border: 1px dashed var(--line); color: var(--muted); font-size: var(--text-sm); text-align: center; }
 .board-more { margin: 0; color: var(--muted); font-size: var(--text-xs); }
-/* A new task captured straight into a column, at its foot. */
+/* A column's + Add task, which starts Add Task in that column. */
 .board-add { justify-self: start; min-height: 24px; padding: 2px var(--space-2); border-style: dashed; background: transparent; color: var(--muted); font-size: var(--text-xs); }
 /* While a card is held, a column that will not take it fades its cards and
    says why, rather than letting the drop fail without a word. */

@@ -265,7 +265,7 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
       </h2>
       {/* A column that takes a drop takes a new task the same way, from under its title. */}
       {column.droppable && column.id !== 'done'
-        ? <button key="add" type="button" class="board-add" data-action="board-add-task" data-column-id={column.id} data-tip={`Capture a task straight into ${column.label}`}>+ Add task</button>
+        ? <button key="add" type="button" class="board-add" data-action="board-add-task" data-column-id={column.id} data-tip={`Add a task already in ${column.label}`}>+ Add task</button>
         : null}
       <ColumnCards key="cards" column={column} cards={cards} columns={columns} />
       {column.hiddenCount ? <p key="more" class="board-more"><button data-action="show-column-rest" data-column-id={column.id}>{`Show ${column.hiddenCount} more`}</button></p> : null}

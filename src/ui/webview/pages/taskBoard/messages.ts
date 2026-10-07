@@ -224,6 +224,7 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   moveTaskTo: taskOnly('moveTaskTo'),
   editTask: taskOnly('editTask'),
   breakIntoSteps: taskOnly('breakIntoSteps'),
+  addTask: exactlyType('addTask'),
   addTaskToColumn: narrowAddTaskToColumn,
   setBoardGroup: narrowSetBoardGroup,
   showColumnRest: narrowShowColumnRest,

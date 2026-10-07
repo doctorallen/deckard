@@ -771,10 +771,27 @@ suite('Task Board page', () => {
   const barButtons = (shown: WebviewPage) =>
     shown.findAll('.query-bar-row > button').map((button) => button.getAttribute('data-action'));
 
+  test('Add task ends the search bar and runs Add Task; a column’s + Add task starts it in the column', () => {
+    const shown = show(boardOf(TWO, { taskBoardGroup: 'status' }));
+    const add = shown.find('.query-bar-row > [data-action="add-task"]');
+    assert.strictEqual(add.textContent, 'Add task');
+    assert.ok(add.getAttribute('data-tip'), 'its tip says where the task goes');
+    assert.ok(!add.classList.contains('query-primary'), 'Search keeps the one filled button');
+    shown.click('.query-bar-row > [data-action="add-task"]');
+    assert.deepStrictEqual(shown.lastPosted('addTask'), { type: 'addTask' });
+
+    const column = shown.find('.board-column[data-column-id="status:in-progress"] [data-action="board-add-task"]');
+    assert.strictEqual(column.textContent, '+ Add task');
+    assert.strictEqual(column.getAttribute('data-tip'), 'Add a task already in In progress');
+    shown.click('.board-column[data-column-id="status:in-progress"] [data-action="board-add-task"]');
+    assert.deepStrictEqual(shown.lastPosted('addTaskToColumn'), { type: 'addTaskToColumn', column: 'status:in-progress' });
+    assert.strictEqual(shown.findAll('.board-column[data-column-id="done"] [data-action="board-add-task"]').length, 0, 'Done takes no new task');
+  });
+
   test('a plain board has no Tasks view strip, and keeps its Save and its filled Search', () => {
     const shown = show(boardOf(TWO, {}, 'is:open'));
     assert.deepStrictEqual(shown.findAll('.tasks-view-strip'), []);
-    assert.deepStrictEqual(barButtons(shown), ['apply-query', 'clear-query', 'save-board-search', 'export-tasks']);
+    assert.deepStrictEqual(barButtons(shown), ['apply-query', 'clear-query', 'save-board-search', 'export-tasks', 'add-task']);
     assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save');
     assert.ok(shown.find('[data-action="apply-query"]').classList.contains('query-apply'), 'Search is the filled button');
     assert.strictEqual(shown.savedState() && (shown.savedState() as Record<string, unknown>).tasksViewMode, undefined);
@@ -792,7 +809,7 @@ suite('Task Board page', () => {
     assert.strictEqual(cancel?.textContent, 'Cancel');
     assert.ok(cancel?.getAttribute('data-tip'), 'its tip says what Cancel keeps');
 
-    assert.deepStrictEqual(barButtons(shown), ['apply-query', 'clear-query', 'save-to-tasks-view', 'save-board-search', 'export-tasks'], 'Save to Tasks view first, then Save as search');
+    assert.deepStrictEqual(barButtons(shown), ['apply-query', 'clear-query', 'save-to-tasks-view', 'save-board-search', 'export-tasks', 'add-task'], 'Save to Tasks view first, then Save as search');
     const save = () => shown.find('[data-action="save-to-tasks-view"]');
     assert.strictEqual(save().textContent, 'Save to Tasks view');
     assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save as search');

@@ -427,7 +427,12 @@ export interface BreakIntoStepsMessage {
   taskId: string;
 }
 
-/** A column's + Add task: capture a task already in that column. */
+/** The page's Add task: Add Task, into the note it names, today's by default. */
+export interface AddTaskMessage {
+  type: 'addTask';
+}
+
+/** A column's + Add task: Add Task, the task started in that column. */
 export interface AddTaskToColumnMessage {
   type: 'addTaskToColumn';
   column: string;
@@ -444,6 +449,7 @@ export interface TaskBoardPageToHost {
   moveTaskTo: MoveTaskToMessage;
   editTask: EditTaskMessage;
   breakIntoSteps: BreakIntoStepsMessage;
+  addTask: AddTaskMessage;
   addTaskToColumn: AddTaskToColumnMessage;
   exportResults: ExportResultsMessage;
   setZenMode: SetZenModeMessage;

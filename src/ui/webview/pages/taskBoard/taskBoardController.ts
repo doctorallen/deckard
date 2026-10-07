@@ -448,10 +448,10 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     };
   }
 
-  /** What a card or row does to its task, and a column's + Add task. */
+  /** What a card or row does to its task, and the page's Add task and a column's. */
   private taskHandlers(): Pick<
     Handlers,
-    'toggleTask' | 'moveTask' | 'pickTaskDate' | 'pickTaskAssignee' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps' | 'addTaskToColumn'
+    'toggleTask' | 'moveTask' | 'pickTaskDate' | 'pickTaskAssignee' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps' | 'addTask' | 'addTaskToColumn'
   > {
     const { indexer, preferences, writes } = this.board;
     return {
@@ -519,6 +519,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         }
       },
       // One way to add a task: Add Task's editor, started in the column.
+      addTask: () => vscode.commands.executeCommand('deckard.addTask'),
       addTaskToColumn: (message) => vscode.commands.executeCommand('deckard.addTask', { column: message.column }),
     };
   }

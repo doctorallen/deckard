@@ -103,10 +103,12 @@ const editor = createQueryEditor({
   refineElsewhere: () => Boolean(latest && latest.refineInSidebar),
   // Saving sits with the search it saves; the saved search reopens here.
   // Opened to edit what the Tasks view lists, saving to the view comes first.
+  // Add task ends the row, the one control there that is not about the search.
   actions: (hasText) => (
     <>
       {latest?.tasksViewMode ? <TasksViewActions listed={tasksViewListsBox()} hasText={hasText} /> : <SaveSearchButton label="Save" hasText={hasText} />}
       <button data-action="export-tasks" data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export tasks</button>
+      <button data-action="add-task" data-tip="Write a new task in the task editor, into today's note or another you choose">Add task</button>
     </>
   ),
   ownPrimary: () => Boolean(latest?.tasksViewMode),
@@ -427,6 +429,7 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: TaskBoard
   'use-for-agenda': () => post({ type: 'useSearchForAgenda' }),
   'toggle-available': (_target, snapshot) => post({ type: 'setBoardQuery', query: snapshot.availableToggleQuery || 'is:available' }),
   'export-tasks': () => post({ type: 'exportResults', kind: 'tasks' }),
+  'add-task': () => post({ type: 'addTask' }),
   'set-task-layout': (target) => post({ type: 'setTaskLayout', layout: target.dataset.value as never }),
   'new-task-status': () => post({ type: 'editTaskStatuses', newStatus: true }),
   'edit-task-statuses': () => post({ type: 'editTaskStatuses' }),

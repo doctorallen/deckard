@@ -376,6 +376,18 @@ test('a column that takes a card takes a new task, and a menu offers any date', 
   );
 });
 
+test('the page’s Add task runs Add Task', async () => {
+  const { view } = await openBoard();
+  vscode._test.executedCommands.length = 0;
+  view.click(view.find('[data-action="add-task"]'));
+  assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'addTask' });
+  await delay(10);
+  assert.deepStrictEqual(
+    vscode._test.executedCommands.filter((entry) => entry.command === 'deckard.addTask').map((entry) => entry.args),
+    [[]],
+  );
+});
+
 test('saves its search as a view that reopens on the Task Board', async () => {
   const { view, preferences, index } = await openBoard();
   const save = () => view.find('[data-action="save-board-search"]');
