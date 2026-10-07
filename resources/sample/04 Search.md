@@ -22,7 +22,7 @@ is for getting to something quickly. Results appear as you type.
   calibrated instead**.
 - Type `yesterday`. Find offers to open yesterday's daily note.
 - Type `Order rain boots tomorrow`. Nothing matches, so Find offers to
-  capture it as a task in today's note, due tomorrow.
+  add it as a task to today's note, due tomorrow.
 - On a task in the results, press **Complete** or **Set due** without leaving
   Find. <kbd>Cmd</kbd>+<kbd>.</kbd> lists everything a row can do.
 

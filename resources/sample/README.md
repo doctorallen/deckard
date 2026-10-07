@@ -39,7 +39,7 @@ Windows and Linux.
 8. [Daily notes and reviews](<08 Daily notes and reviews.md>): daily notes,
    rollover, weekly reviews, the calendar, and your tasks in your own
    calendar app.
-9. [Capture, move, and park](<09 Capture, move, and park.md>): Capture,
+9. [Add, move, and park](<09 Add, move, and park.md>): Add Task,
    Move to…, Extract Heading, templates and the `/` menu, and parked notes.
 10. [Home, Stats, and the graph](<10 Home, Stats, and the graph.md>): Home and
     its Progress widget, Related Notes, Stats, the Notes Graph, themes, and

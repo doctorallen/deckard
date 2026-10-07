@@ -39,10 +39,11 @@ Keys are written both ways: <kbd>Ctrl</kbd> on Windows and Linux,
   page lists every 1:1, every mention, and the tasks that are Noor's.
 - **See what links here.** Open [[ADR-001 Card form]] and look at
   **Linked from** in the Context view.
-- **Capture a task.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>
-  (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> on macOS) and
-  type `Review Theo's flag cleanup for @theo-park friday`: it lands in
-  today's note, due Friday, as Theo's.
+- **Add a task.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>
+  (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> on macOS) with
+  no note open, choose **Description**, and type `Review Theo's flag cleanup
+  for @theo-park friday`: the title names today's note, and **Write the
+  task** puts it there, due Friday, as Theo's.
 - **Find anything.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd>
   (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd>) and type
   `flags`, then `#project/checkout-v2 is:open`.

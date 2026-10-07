@@ -120,8 +120,31 @@
   group's progress bar sits at the right of its name, in either layout, so
   side by side the tasks start under the name rather than under an empty
   half row.
+- **Add Task works anywhere, and replaces Capture.** `Deckard: Add Task`
+  opens the task editor on a new task from anywhere, and takes Capture's
+  key, Ctrl+Shift+Alt+N (Cmd+Shift+Alt+N on macOS). Its first row, **Note**,
+  says where the task goes, and its title names the note, such as "Add a
+  task to 2026-10-06.md": the Markdown note you are in, at the cursor, or
+  today's note, created if needed, when none is open. Choose it for this
+  note, today's, **Another note…**, or **Under a heading…**. Once written, a
+  message says where it went, with **Open**. Words at the end of the
+  description fill its fields as Capture read them (`Call Ren friday p2`),
+  and words you selected start the task, with a link back when it goes
+  elsewhere. A key you bound to `deckard.capture` needs binding to
+  `deckard.addTask`.
+- **Add task on the Task board.** The board's search bar ends with **Add
+  task**, which runs Add Task, and a column's **+ Add task** opens the same
+  editor with the column's status, priority, date, person, or tag filled
+  in, where it asked for one line before. Find's row for words that match
+  nothing reads **Add "…" to today's note**.
 
 ### Removed
+
+- **Capture** and **Capture Under a Heading**, which Add Task replaces: its
+  **Note** row writes to today's note or under a heading. The Capture box's
+  draft kept between runs, its **Add as a note line**, and its `#` and `@`
+  completion go with it; the editor's **Add a tag** and **Assignee** rows
+  offer your tags and people.
 
 - The **No status** column, its group in the Tasks view, and the board's
   "few tasks carry a status" hint: a plain `[ ]` is Todo.

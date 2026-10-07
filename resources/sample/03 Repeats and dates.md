@@ -32,7 +32,7 @@ rules it cannot read, and a list of the ways a date can be typed.
 ## Dates in plain words
 
 Every box that asks for a date reads the same words: the task editor, a
-date from the Tasks view or the board, a bulk edit, Capture, and
+date from the Tasks view or the board, a bulk edit, Add Task, and
 **Deckard: Open Daily Note for Date…**. It says back the day it read before
 anything is written, such as *Monday 2026-09-28 · in 3 days*.
 
@@ -63,10 +63,11 @@ span: `due = next-week` is every day of next week.
    `weekly`, which offers **every week**.
 4. Put the cursor on *Clean the rain shells*, open **Deckard: Edit Task**,
    choose **Repeats**, and pick another rule, or write your own.
-5. Run **Deckard: Capture** (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>)
-   and type `Call Hush Baird friday p2 every week`. The line it will write is
-   shown under the box, with a due date, a priority, and a rule, before
-   anything is saved. Press Escape if you would rather not add it.
+5. Run **Deckard: Add Task** (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>),
+   choose **Description**, and type `Call Hush Baird friday p2 every week`.
+   The box says the due date, priority, and rule it read, and the editor
+   shows the line it will write before anything is saved. Press Escape if
+   you would rather not add it.
 6. Run **Deckard: Open Daily Note for Date…** and type `yesterday`. It opens
    yesterday's note, which is already in this sample.
 7. In the task editor, type `+1m` into **Due**. A month is a calendar month,

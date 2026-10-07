@@ -69,4 +69,4 @@ others**, which lists what the `is:waiting` search finds.
    It Up to Date** instead, and Deckard rewrites the file whenever your notes
    change, for a calendar app to subscribe to.
 
-Next: [[09 Capture, move, and park]]
+Next: [[09 Add, move, and park]]

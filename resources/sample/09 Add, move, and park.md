@@ -1,16 +1,18 @@
-# Capture, move, and park
+# Add, move, and park
 
 Notes do not stay where they were first written. This note is for getting
 things in quickly, moving them where they belong, starting notes from a
 template, and setting finished work aside.
 
-## Capture
+## Add a task
 
-**Deckard: Capture** (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>)
-adds a task to today's note without leaving the editor you are in. The words
-at the end are read as a quick add reads them: a day, a priority from `p1` to
-`p4`, and a repeat rule. **Deckard: Capture Under a Heading** adds it under a
-heading you pick instead, and Find offers to capture words that match nothing.
+**Deckard: Add Task** (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>)
+opens the task editor on a new task. Its first row, **Note**, says where the
+task goes: the note you are in, at the cursor, or today's note when no note
+is open. Choose it to send the task to today's note, another note, or under
+a heading you pick. The words at the end of the description are read as a
+quick add reads them: a day, a priority from `p1` to `p4`, and a repeat
+rule. Find offers to add words that match nothing to today's note.
 
 ## Harbor inbox #team/harbor
 
@@ -46,12 +48,15 @@ task is on no list of things to do, and `is:parked` still finds it.
 
 ## Try it
 
-1. Press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> and type
-   `Check the flood gauges tomorrow p1`. The line under the box shows the
-   task it will write, due tomorrow at the highest priority. Press Enter; it
-   is added to today's note, and you stay here.
-2. Select the words *Kenji's exit map* above and run Capture. The words are
-   already in the box, with a link back to the Harbor inbox heading.
+1. Press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>. The
+   title names this note; choose **Note**, then **Today's note**, and the
+   title names today's. Choose **Description** and type `Check the flood
+   gauges tomorrow p1`: the box says it read a due date of tomorrow and the
+   highest priority. Choose **Write the task**. A message says it went into
+   today's note, and you stay here.
+2. Select the words *Kenji's exit map* above and run Add Task. The words are
+   already the description. Send it to today's note, and the task links back
+   to the Harbor inbox heading.
 3. Put the cursor on the relief task in the Harbor inbox and run **Deckard:
    Move to…** (it is on the lightbulb too). Choose **Today's note**. The task
    moves, and the line left here reads `- [>]` with a link to where it went.
