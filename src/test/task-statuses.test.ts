@@ -26,8 +26,19 @@ import { createAgenda } from '../ui/state/agendaState';
 import { findTaskLineMarks } from '../ui/state/taskLineMarks';
 import { drawTaskStatus } from '../ui/state/drawnStatus';
 import { DEFAULT_TASK_POLICY } from '../domain/tasks/taskPolicy';
-import { countStatusMove, findStatusRenames, importObsidianStatuses, planStatusMove, renameStatusInQuery } from '../domain/tasks/statusMigration';
-import { readLegacyStatusTags } from '../domain/tasks/legacyStatusTags';
+import {
+  countKnownStatusTags,
+  countStatusMove,
+  findStatusRenames,
+  importObsidianStatuses,
+  listKeptStatusTags,
+  moveLegacyColumnOrder,
+  moveLegacyLimits,
+  moveStatusTagsInQuery,
+  planStatusMove,
+  renameStatusInQuery,
+} from '../domain/tasks/statusMigration';
+import { nameStatusTag, readLegacyStatusTags } from '../domain/tasks/legacyStatusTags';
 import { checkStatusList } from '../domain/tasks/statusChecks';
 
 /** Each task's character, name, type, and whether it is done, as the parser read it. */
@@ -454,7 +465,10 @@ suite('Task statuses: moving over, importing, and editing', () => {
       { name: 'Done', type: 'done', tag: 'finished', symbol: 'x' },
     ]);
     assert.strictEqual(legacy.namespace, 'stage');
-    assert.deepStrictEqual([...legacy.characters], [['review', 'r'], ['todo', ' '], ['doing', '/'], ['waiting', 'w'], ['someday', 's'], ['blocked', '=']]);
+    // Waiting, written with no character, gives its tag none: the list now
+    // has no status for it until one is given a character.
+    assert.deepStrictEqual([...legacy.characters], [['review', 'r'], ['todo', ' '], ['doing', '/'], ['someday', 's'], ['blocked', '=']]);
+    assert.deepStrictEqual([...legacy.types], [['review', 'onHold'], ['waiting', 'onHold'], ['todo', 'todo'], ['doing', 'inProgress'], ['someday', 'onHold'], ['blocked', 'onHold']]);
     const file = parseMarkdown('work.md', ['- [ ] Look #stage/review', '- [ ] Wait #stage/waiting', '- [ ] Plain #stage/todo', '- [ ] Other #status/doing'].join('\n'));
     const statuses = readTaskStatuses([{ symbol: ' ', name: 'Todo', type: 'todo' }, { symbol: 'r', name: 'Review', type: 'onHold' }]);
     assert.deepStrictEqual(planStatusMove(file.tasks, { statuses, legacy }).map((line) => [line.group, line.after]), [
@@ -462,6 +476,40 @@ suite('Task statuses: moving over, importing, and editing', () => {
       ['kept', '- [ ] Wait #stage/waiting'],
       ['stale', '- [ ] Plain'],
     ]);
+  });
+
+  test('the notice counts the tags the move knows, and Give It a Character offers the ones it keeps', () => {
+    const file = parseMarkdown('work.md', [
+      '- [ ] Draft #status/doing',
+      '- [ ] Look #status/review',
+      '- [ ] Again #status/review',
+      '- [ ] Old #status/done',
+      '- [x] Ship #status/doing',
+      '- [ ] Odd #status/on-call',
+    ].join('\n'));
+    const lines = planStatusMove(file.tasks, { statuses: DEFAULT_TASK_STATUSES, legacy: readLegacyStatusTags(undefined, undefined) });
+    assert.strictEqual(countKnownStatusTags(lines), 3, 'doing twice, and done; review and on-call were never Deckard\'s');
+    assert.deepStrictEqual(listKeptStatusTags(lines), [{ tag: 'review', count: 2 }, { tag: 'on-call', count: 1 }]);
+    assert.strictEqual(nameStatusTag('on-call'), 'On call');
+  });
+
+  test('searches that name a status tag search by its status', () => {
+    const legacy = readLegacyStatusTags(undefined, undefined);
+    const move = (query: string) => moveStatusTagsInQuery(query, legacy, DEFAULT_TASK_STATUSES);
+    assert.strictEqual(move('#project/x -#status/doing'), '#project/x -status:in-progress');
+    assert.strictEqual(move('(#status/waiting OR tag:#status/someday) AND tag:status/blocked'), '(status:waiting OR status:someday) AND status:blocked');
+    assert.strictEqual(move('#Status/Done'), 'status:done');
+    assert.strictEqual(move('#status/review status/doing #status/doing-now'), '#status/review status/doing #status/doing-now', 'a tag no status stands for, and words, stay');
+    const staged = readLegacyStatusTags('stage', undefined);
+    assert.strictEqual(moveStatusTagsInQuery('#stage/doing #status/doing', staged, DEFAULT_TASK_STATUSES), 'status:in-progress #status/doing');
+  });
+
+  test('the old board settings move into the gear\'s choices and the limits\' keys', () => {
+    const legacy = readLegacyStatusTags(undefined, undefined);
+    assert.deepStrictEqual(moveLegacyColumnOrder(['todo', 'doing', 'waiting', 'review', 'blocked', 'in-progress'], legacy, DEFAULT_TASK_STATUSES), ['Todo', 'In progress', 'Waiting', 'Blocked']);
+    assert.strictEqual(moveLegacyColumnOrder('todo', legacy, DEFAULT_TASK_STATUSES), undefined);
+    assert.deepStrictEqual(moveLegacyLimits({ doing: 3, 'priority:high': 5, review: 2 }, legacy, DEFAULT_TASK_STATUSES), { 'in-progress': 3, 'priority:high': 5, review: 2 });
+    assert.strictEqual(moveLegacyLimits({ 'in-progress': 3 }, legacy, DEFAULT_TASK_STATUSES), undefined, 'nothing to move');
   });
 
   test('a vault\'s Obsidian Tasks statuses import as they are, with Waiting and Someday where the vault has neither', () => {

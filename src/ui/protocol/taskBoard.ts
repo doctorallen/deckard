@@ -172,6 +172,12 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   availableOnly?: boolean;
   /** The search Can start now switches to. */
   availableToggleQuery?: string;
+  /**
+   * While task lines still carry status tags Deckard no longer reads, what
+   * the strip above the board says of them, "23 tasks still have #status
+   * tags.", beside Move them.
+   */
+  statusTagsLeft?: string;
 }
 
 /** The board as the Tasks view's search editor. */
@@ -333,6 +339,11 @@ export interface SetBoardColumnShownMessage {
   shown: boolean;
 }
 
+/** Runs Move Status Tags into Checkboxes…, from the strip that says how many are left. */
+export interface MoveStatusTagsMessage {
+  type: 'moveStatusTags';
+}
+
 /** Opens Edit Task Statuses; on a new row when `newStatus` is true. */
 export interface EditTaskStatusesMessage {
   type: 'editTaskStatuses';
@@ -465,6 +476,7 @@ export interface TaskBoardPageToHost {
   setBoardColumnOrder: SetBoardColumnOrderMessage;
   setBoardColumnShown: SetBoardColumnShownMessage;
   editTaskStatuses: EditTaskStatusesMessage;
+  moveStatusTags: MoveStatusTagsMessage;
   setBoardParentTag: SetBoardParentTagMessage;
 }
 

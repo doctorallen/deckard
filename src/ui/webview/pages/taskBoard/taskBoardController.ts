@@ -29,6 +29,7 @@ import {
   updateTaskBoardSetting,
 } from '../../../commands/taskBoardActions';
 import { breakIntoStepsCommand } from '../../../commands/taskSteps';
+import { countStatusTagsLeft, describeStatusTagsLeft } from '../../../commands/statusMove';
 import { normalizeAgendaQuery } from '../../../state/agendaState';
 import { rankShown } from '../../../../domain/tasks/taskRank';
 import { DEFAULT_HIDDEN_COLUMNS } from '../../../../domain/tasks/statusColumns';
@@ -339,9 +340,11 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     );
     const listed = normalizeAgendaQuery(configuration().get<string>('agenda.query', ''));
     const agendaListsThisSearch = listed === normalizeAgendaQuery(this.query);
+    const index = this.board.indexer.getSnapshot();
+    const tagsLeft = countStatusTagsLeft(index);
     return {
       ...createTaskBoard({
-        index: this.board.indexer.getSnapshot(),
+        index,
         preferences: this.board.preferences.reader.value,
         search: { query: this.query, invalidQuery: this.invalidQuery },
         options: {
@@ -353,6 +356,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       refineInSidebar: this.board.activeSearch.isRefineInSidebar(this.board.source),
       agendaListsThisSearch,
       agendaQueryIsDefault: listed === '',
+      ...(tagsLeft.count ? { statusTagsLeft: describeStatusTagsLeft(tagsLeft) } : {}),
       // A search that did not parse is in the box over the last one that
       // did, and the view does not list what the box shows.
       ...(this.tasksViewMode ? { tasksViewMode: { listed: agendaListsThisSearch && this.invalidQuery === undefined } } : {}),
@@ -398,6 +402,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     | 'setBoardColumnOrder'
     | 'setBoardColumnShown'
     | 'editTaskStatuses'
+    | 'moveStatusTags'
     | 'setBoardParentTag'
   > {
     const { taskLayout, reader } = this.board.preferences;
@@ -450,6 +455,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       },
       editTaskStatuses: (message) =>
         vscode.commands.executeCommand('deckard.editTaskStatuses', message.newStatus ? { newStatus: {} } : undefined),
+      moveStatusTags: () => vscode.commands.executeCommand('deckard.moveStatusTagsIntoCheckboxes'),
       setBoardParentTag: (message) => updateTaskBoardSetting('parentTag', message.show),
     };
   }

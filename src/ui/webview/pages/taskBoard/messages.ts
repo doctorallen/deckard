@@ -240,6 +240,7 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   setBoardColumnOrder: narrowSetBoardColumnOrder,
   setBoardColumnShown: narrowSetBoardColumnShown,
   editTaskStatuses: narrowEditTaskStatuses,
+  moveStatusTags: exactlyType('moveStatusTags'),
   setBoardParentTag: narrowSetBoardParentTag,
 };
 

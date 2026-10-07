@@ -175,3 +175,15 @@ Tags are read once more, by the move alone, which knows the old meaning:
 15. New status… and Give It a Character open Edit Task Statuses with a new
     row (a `newRow` in its snapshot, added once and kept until the list is
     saved), its character field focused, rather than a form of their own.
+16. The notice comes back each session while a task line carries a tag
+    the map knows, with no workspace flag: Later means later, and moving
+    the tags ends it.
+17. Open tasks tagged done are listed for ticking by a pick before the
+    preview (Leave Them Open / Check Them Off), as the move already did,
+    rather than as unticked rows of the preview: VS Code's refactor preview
+    starts every change ticked.
+18. A tag written with no character in the old status list (Waiting
+    before) is kept by the move and offered to Give It a Character, with
+    its old type, rather than taking Deckard's own `[w]`.
+19. The Tasks view's message says to run the command, since a tree view's
+    message has no button.

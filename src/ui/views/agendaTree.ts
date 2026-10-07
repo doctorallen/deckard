@@ -13,6 +13,7 @@ import { stripTrailingTags } from '../../domain/ranking/entryLabels';
 import { Task, WorkspaceIndex } from '../../domain/model';
 import { speakRow } from './spokenRow';
 import { DATE_FORMAT_SETTINGS } from '../commands/datePrompt';
+import { countStatusTagsLeft, describeStatusTagsLeft } from '../commands/statusMove';
 
 /** What the Tasks view reads from the indexer, and when it redraws. */
 interface AgendaIndexSource {
@@ -288,7 +289,11 @@ export class AgendaTreeProvider
     }
     const preferences = this.preferences?.reader.value;
     const view = this.services.agenda.buildView(this.index, preferences?.taskOrder ?? [], preferences?.taskBoardColumnOrder ?? []);
-    this.setStatus(describeAgendaStatus(view.status), view.urgent);
+    // While task lines carry status tags Deckard no longer reads, the view
+    // says so, so a task that reads as Todo has its reason beside it.
+    const left = countStatusTagsLeft(this.index);
+    const tagsLeft = left.count ? `${describeStatusTagsLeft(left)} Run Deckard: Move Status Tags into Checkboxes… to move them.` : undefined;
+    this.setStatus([describeAgendaStatus(view.status), tagsLeft].filter(Boolean).join(' ') || undefined, view.urgent);
     // The way back to every open task is offered while a search narrows it.
     this.services.contextKeys.publish({ filtered: view.filtered, querySet: view.querySet });
     if (this.view) {

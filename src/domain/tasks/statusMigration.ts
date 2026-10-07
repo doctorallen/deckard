@@ -8,10 +8,11 @@
  * every other tag where it is, saying why. Nothing here writes: it lists
  * the edits, and the command shows them.
  */
+import { escapeRegExp } from '../../shared/text';
 import type { Task, TaskStatusType } from '../model';
 import { type LegacyStatusTags, readWrittenStatusTag, removeStatusTags } from './legacyStatusTags';
 import { setTaskLineMark } from '../markdown/taskLineEdits';
-import { DEFAULT_TASK_STATUSES, normalizeStatusName, readTaskStatuses, type TaskStatusDefinition } from './taskStatuses';
+import { DEFAULT_TASK_STATUSES, normalizeStatusName, readTaskStatuses, slugStatusName, statusForColumnKey, type TaskStatusDefinition } from './taskStatuses';
 
 /**
  * Which group of the move a line is in:
@@ -90,6 +91,89 @@ export function planStatusMove(tasks: Iterable<Task>, options: StatusMoveOptions
     lines.push({ ...at, after: setTaskLineMark(untagged, column, { symbol, closed: undefined }), group: 'character' });
   }
   return lines;
+}
+
+/** How many task lines still carry a status tag the move knows, which the notice and the strip count. */
+export function countKnownStatusTags(lines: readonly StatusMoveLine[]): number {
+  return lines.filter((line) => line.known).length;
+}
+
+/**
+ * The tags the move leaves, each with how many lines carry it, the most
+ * first: the ones Give It a Character offers to make a status of.
+ */
+export function listKeptStatusTags(lines: readonly StatusMoveLine[]): { tag: string; count: number }[] {
+  const counts = new Map<string, number>();
+  lines.filter((line) => line.group === 'kept').forEach((line) => counts.set(line.tag, (counts.get(line.tag) ?? 0) + 1));
+  return [...counts].map(([tag, count]) => ({ tag, count })).sort((left, right) => right.count - left.count || left.tag.localeCompare(right.tag));
+}
+
+/**
+ * The status a status tag meant that the list has now: the one with the
+ * character the tag stood for. Undefined for `done`, and for a tag no
+ * status of the list has a character for.
+ */
+export function statusForLegacyTag(tag: string, legacy: LegacyStatusTags, statuses: readonly TaskStatusDefinition[]): TaskStatusDefinition | undefined {
+  const symbol = legacy.characters.get(tag.toLowerCase());
+  return symbol === undefined ? undefined : statuses.find((status) => status.symbol === symbol);
+}
+
+/**
+ * A search with each status tag the move knows written as the status it
+ * meant: `#status/doing` as `status:in-progress`, `-#status/waiting` as
+ * `-status:waiting`, `tag:#status/done` as `status:done`. A tag no status
+ * of the list has a character for stays, as does the rest of the search.
+ */
+export function moveStatusTagsInQuery(query: string, legacy: LegacyStatusTags, statuses: readonly TaskStatusDefinition[]): string {
+  const namespace = escapeRegExp(legacy.namespace);
+  const pattern = new RegExp(`(^|[\\s(-])(?:tag[ \\t]*[:=][ \\t]*#?|#)${namespace}/([\\p{L}\\p{N}][\\p{L}\\p{N}\\p{M}_-]*)(?=$|[\\s)])`, 'giu');
+  return query.replace(pattern, (whole, head: string, tag: string) => {
+    if (tag.toLowerCase() === 'done') {
+      return `${head}status:done`;
+    }
+    const status = statusForLegacyTag(tag, legacy, statuses);
+    return status ? `${head}status:${slugStatusName(status.name)}` : whole;
+  });
+}
+
+/**
+ * `deckard.board.statuses`, the board's old column order, as the names of
+ * the statuses it meant, for the gear's order: each value by the tag it
+ * was, or by a status's name; one that means no status is left out.
+ * Undefined when the value is not a list.
+ */
+export function moveLegacyColumnOrder(value: unknown, legacy: LegacyStatusTags, statuses: readonly TaskStatusDefinition[]): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const names = value.flatMap((entry) => {
+    if (typeof entry !== 'string') {
+      return [];
+    }
+    const status = statusForLegacyTag(entry, legacy, statuses) ?? statusForColumnKey(statuses, entry);
+    return status ? [status.name] : [];
+  });
+  return [...new Set(names)];
+}
+
+/**
+ * `deckard.board.limits` with each key that names an old status tag
+ * written as its status's slug, `doing` as `in-progress`; a whole column's
+ * key, or one that names no status, as it was. Undefined when nothing
+ * changes.
+ */
+export function moveLegacyLimits(value: unknown, legacy: LegacyStatusTags, statuses: readonly TaskStatusDefinition[]): Record<string, unknown> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  let changed = false;
+  const moved = Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, limit]) => {
+    const status = key.includes(':') ? undefined : statusForLegacyTag(key, legacy, statuses);
+    const slug = status ? slugStatusName(status.name) : key;
+    changed ||= slug !== key;
+    return [slug, limit];
+  }));
+  return changed ? moved : undefined;
 }
 
 /** How many lines each group of a move holds, for the sentence that offers it. */

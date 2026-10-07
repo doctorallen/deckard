@@ -56,6 +56,7 @@ suite('Task Board messages', () => {
     assert.strictEqual(narrowTaskBoardMessage({ type: 'setBoardColumnShown', name: 'Cancelled', shown: 'yes' }), undefined);
     assert.deepStrictEqual(narrowTaskBoardMessage({ type: 'editTaskStatuses', newStatus: true }), { type: 'editTaskStatuses', newStatus: true });
     assert.deepStrictEqual(narrowTaskBoardMessage({ type: 'editTaskStatuses' }), { type: 'editTaskStatuses' });
+    assert.deepStrictEqual(narrowTaskBoardMessage({ type: 'moveStatusTags' }), { type: 'moveStatusTags' });
     for (const gone of [{ type: 'setBoardStatuses', statuses: ['todo'] }, { type: 'setBoardShowCancelled', show: true }, { type: 'setBoardStatusNamespace', namespace: 'stage' }]) {
       assert.strictEqual(narrowTaskBoardMessage(gone), undefined, `${gone.type} is gone`);
     }

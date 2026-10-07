@@ -189,6 +189,20 @@ function StatusControls({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) 
   return <>{control}<AvailableToggle pressed={Boolean(snapshot.availableOnly)} /></>;
 }
 
+/**
+ * While task lines carry status tags Deckard no longer reads, a line above
+ * the tasks says how many, so a task that reads as Todo has its reason
+ * beside it, and Move them previews the move into checkboxes.
+ */
+function StatusTagsStrip({ text }: { readonly text: string }) {
+  return (
+    <p class="board-hint" role="status">
+      {text}
+      <button type="button" data-action="move-status-tags" data-tip="Preview writing each status tag as its task's character">Move them</button>
+    </p>
+  );
+}
+
 /** The searched tasks, as the layout shows them. */
 function BoardContent({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   if (snapshot.layout === 'list') {
@@ -215,6 +229,7 @@ function BoardPage({ state }: { readonly state: DrawnBoard }) {
         </div>
       </header>
       {snapshot.tasksViewMode ? <TasksViewStrip /> : null}
+      {snapshot.statusTagsLeft ? <StatusTagsStrip key="status-tags" text={snapshot.statusTagsLeft} /> : null}
       {editor.bar(<StatusControls snapshot={snapshot} />)}
       {editor.facets()}
       <section key="tasks" class="board-area" aria-label="Tasks"><BoardContent snapshot={snapshot} /></section>
@@ -415,6 +430,7 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: TaskBoard
   'set-task-layout': (target) => post({ type: 'setTaskLayout', layout: target.dataset.value as never }),
   'new-task-status': () => post({ type: 'editTaskStatuses', newStatus: true }),
   'edit-task-statuses': () => post({ type: 'editTaskStatuses' }),
+  'move-status-tags': () => post({ type: 'moveStatusTags' }),
 };
 
 /**

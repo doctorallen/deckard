@@ -628,6 +628,16 @@ suite('Task Board page', () => {
     assert.deepStrictEqual(shown.lastPosted('editTaskStatuses'), { type: 'editTaskStatuses' });
   });
 
+  test('while status tags are left, a strip says how many and offers to move them', () => {
+    const plain = boardOf({ 'notes/a.md': '- [ ] Alpha #status/doing\n' });
+    const shown = show(plain);
+    assert.strictEqual(shown.findAll('.board-hint').length, 0, 'the host says when there are any');
+    shown.send({ ...plain, statusTagsLeft: '1 task still has a #status tag.' });
+    assert.strictEqual(shown.text('.board-hint'), '1 task still has a #status tag.Move them');
+    shown.click('.board-hint [data-action="move-status-tags"]');
+    assert.deepStrictEqual(shown.lastPosted('moveStatusTags'), { type: 'moveStatusTags' });
+  });
+
   test('a card\'s menu offers the columns\' statuses, and every other under More statuses', () => {
     const shown = show(boardOf({ 'notes/a.md': '- [ ] Alpha\n' }, { taskBoardHiddenColumns: ['Someday', 'Cancelled'] }));
     (shown.find('.board-card [data-action="board-menu"]') as HTMLElement).click();

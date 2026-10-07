@@ -268,7 +268,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
       .then(() => noticeUnknownStatusesOnce(context.workspaceState, countUnknownStatuses(core.indexer.getSnapshot())))
       .catch((error: unknown) => reportError('Could not count the tasks whose status Deckard does not know', error));
     void core.indexer.ready
-      .then(() => offerStatusMigrationOnce(context.workspaceState, core.indexer))
+      .then(() => offerStatusMigrationOnce(context.workspaceState, core.indexer, { board: { reader: preferences.repository, taskLayout: preferences.taskLayout } }))
       .catch((error: unknown) => reportError('Could not offer to move status tags into checkboxes', error));
   }
   syncWalkthroughContext(context, core.indexer);

@@ -2,12 +2,11 @@ import * as vscode from 'vscode';
 
 import type { PreferencesRepository } from '../../../../core/storage/preferencesRepository';
 import type { IndexReader, IndexUpdates } from '../../../../core/workspace/indexReader';
-import { findFencedLines } from '../../../../domain/markdown/lineShapes';
 import { checkStatusList } from '../../../../domain/tasks/statusChecks';
 import { findStatusRenames, renameStatusInQuery, type StatusRename } from '../../../../domain/tasks/statusMigration';
 import { readTaskStatuses, readTaskStatusSettings, UNKNOWN_STATUS_NAME } from '../../../../domain/tasks/taskStatuses';
 import { pluralize } from '../../../../shared/text';
-import { resolveSourceUri } from '../../../commands/navigation';
+import { findQueryBlockEdits } from '../../../commands/queryBlockEdits';
 import { writeSetting } from '../../../commands/settings';
 import type { WorkspaceWriteHistory } from '../../../commands/workspaceWrites';
 import type { NewStatusRow, TaskStatusesPageToHost, TaskStatusesSnapshot } from '../../../protocol/taskStatuses';
@@ -25,9 +24,6 @@ export interface TaskStatusesControllerOptions {
   history: WorkspaceWriteHistory;
   extensionUri: vscode.Uri;
 }
-
-/** The fences whose lines are searches: a query block, and a block of searches to copy. */
-const SEARCH_FENCE = /^\s*(`{3,}|~{3,})\s*(deckard|search)\b/;
 
 /**
  * Edit Task Statuses: `deckard.tasks.statuses` as rows to edit, since the
@@ -141,7 +137,7 @@ export class TaskStatusesController implements PageController<TaskStatusesSnapsh
     const searches =
       widgets.filter((widget, at) => widget.query !== current.dashboardWidgets[at].query).length +
       filters.filter((filter, at) => filter.query !== current.savedFilters[at].query).length;
-    const blocks = await this.findQueryBlockEdits(rename);
+    const blocks = await findQueryBlockEdits(this.statuses.indexer.getSnapshot().files.values(), rename, /status[ \t]*(?:!=|[:=])/i);
     if (searches + blocks.lines === 0) {
       return;
     }
@@ -159,37 +155,5 @@ export class TaskStatusesController implements PageController<TaskStatusesSnapsh
     if (blocks.lines) {
       await this.statuses.history.write(blocks.edit, { label: `Rename ${names} in query blocks`, preview: 'always' });
     }
-  }
-
-  /** The lines of query blocks in notes that search by a renamed status's old name, rewritten. */
-  private async findQueryBlockEdits(rename: (query: string) => string): Promise<{ edit: vscode.WorkspaceEdit; lines: number }> {
-    const edit = new vscode.WorkspaceEdit();
-    let lines = 0;
-    for (const file of this.statuses.indexer.getSnapshot().files.values()) {
-      if (!/status[ \t]*(?:!=|[:=])/i.test(file.content)) {
-        continue;
-      }
-      const text = file.content.split(/\r?\n/);
-      const fenced = findFencedLines(text);
-      const uri = await resolveSourceUri(file.filePath);
-      let inSearch = false;
-      text.forEach((line, at) => {
-        if (!fenced.has(at)) {
-          inSearch = false;
-          return;
-        }
-        if (SEARCH_FENCE.test(line)) {
-          inSearch = true;
-          return;
-        }
-        const renamed = inSearch ? rename(line) : line;
-        if (!uri || renamed === line) {
-          return;
-        }
-        edit.replace(uri, new vscode.Range(at, 0, at, line.length), renamed);
-        lines += 1;
-      });
-    }
-    return { edit, lines };
   }
 }
