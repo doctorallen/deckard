@@ -18,8 +18,8 @@ import { escapeHtml, escapeHtmlText } from '../../shared/html';
 import { tokenizeInlineWithoutWikiLinks } from '../../domain/markdown/inline';
 import type { InlineToken } from '../../domain/model/inline';
 import { WorkspaceIndex, TaskColumnId } from '../../domain/model';
-import { describeDueDate } from '../../domain/markdown/dueWording';
-import { formatIsoDate } from '../../domain/markdown/calendar';
+import { describeDueDate, formatDueDate } from '../../domain/markdown/dueWording';
+import { type DateFormats, formatDisplayDate } from '../../domain/markdown/dateFormat';
 import { DEFAULT_NOTE_COLUMNS, NoteColumnId, noteColumnLabel } from '../../domain/notes/noteColumns';
 import { speakProgressText } from '../../domain/tasks/progressCount';
 
@@ -170,7 +170,7 @@ function renderResults(
   }
   return [
     ...(options.view === 'table'
-      ? renderNoteTable(snapshot, options.noteColumns ?? [...DEFAULT_NOTE_COLUMNS])
+      ? renderNoteTable(snapshot, options.noteColumns ?? [...DEFAULT_NOTE_COLUMNS], context.dateFormats)
       : renderGroup(
           { kind: 'notes', label: 'Notes', items: snapshot.notes, total: snapshot.noteCount },
           renderNote,
@@ -190,14 +190,14 @@ function renderResults(
  * is left empty rather than saying "0" or "none", so what a note does have
  * stands out down a column.
  */
-function renderNoteTable(snapshot: QueryBlockSnapshot, columns: readonly NoteColumnId[]): string[] {
+function renderNoteTable(snapshot: QueryBlockSnapshot, columns: readonly NoteColumnId[], formats: DateFormats): string[] {
   if (snapshot.notes.length === 0) {
     return [];
   }
   const head = columns.map((column) => `<th scope="col">${escapeHtml(noteColumnLabel(column))}</th>`).join('');
   const rows = snapshot.notes.map((item) => {
     const cells = columns.map((column) =>
-      column === 'title' ? `<td>${renderLink(item)}</td>` : renderTextCell(describeNoteCell(item, column)),
+      column === 'title' ? `<td>${renderLink(item)}</td>` : renderTextCell(describeNoteCell(item, column, formats)),
     );
     return `<tr class="deckard-query-row">${cells.join('')}</tr>`;
   });
@@ -333,7 +333,7 @@ function renderTask(
     renderTaskDue(item, context),
     item.scheduledAt === undefined
       ? ''
-      : `scheduled ${formatIsoDate(item.scheduledAt)}`,
+      : `scheduled ${formatDisplayDate(item.scheduledAt, context.dateFormats)}`,
     item.priority ? renderPriority(item.priority) : '',
     item.recurrence ? `repeats ${escapeHtml(item.recurrence)}` : '',
   ]
@@ -390,9 +390,10 @@ function renderTaskDue(item: QueryBlockItem, context: QueryContext): string {
   const { now, taskPolicy } = context;
   const done = item.completed === true;
   if (item.dueAt === undefined || done) {
-    return item.dueText ? `<span class="deckard-query-due">${escapeHtml(`due ${item.dueText}`)}</span>` : '';
+    const written = item.dueAt === undefined ? item.dueText : formatDueDate(item.dueAt, item.dueText, context.dateFormats);
+    return written ? `<span class="deckard-query-due">${escapeHtml(`due ${written}`)}</span>` : '';
   }
-  const due = describeDueDate(item.dueAt, now, taskPolicy, item.dueText);
+  const due = describeDueDate(item.dueAt, now, taskPolicy, { dueText: item.dueText, formats: context.dateFormats });
   if (!due.label) {
     return '';
   }

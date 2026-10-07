@@ -5,8 +5,7 @@
  * list says something worth reading as well as where to go.
  */
 
-import { formatIsoDate } from '../../domain/markdown/calendar';
-import { formatShortDay } from '../../domain/markdown/dates';
+import { type DateFormats, formatDisplayDate } from '../../domain/markdown/dateFormat';
 
 /** Each page, by the name of its glyph in resources/pages. */
 export type DeckardPageId = 'home' | 'board' | 'calendar' | 'today' | 'graph' | 'find' | 'stats' | 'help';
@@ -35,6 +34,8 @@ export interface PageFacts {
   todayNoteExists: boolean;
   /** The key Find is bound to, as the platform writes it. */
   findKey: string;
+  /** The reader's date formats, which today is named in. */
+  dateFormats?: DateFormats;
 }
 
 /** The command that opens each page. */
@@ -63,7 +64,7 @@ function count(n: number, one: string, many: string): string {
 
 /** Every page, in the order the Pages view and Go to… list them. */
 export function listDeckardPages(facts: PageFacts): DeckardPage[] {
-  const day = formatShortDay(formatIsoDate(facts.today.getTime()), facts.today.getTime());
+  const day = formatDisplayDate(facts.today.getTime(), facts.dateFormats, 'short');
   return [
     {
       id: 'home',

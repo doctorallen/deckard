@@ -65,9 +65,10 @@ import {
   Section,
   TaskColumnId,
 } from '../../domain/model';
+import { type DateFormats, formatDisplayDate } from '../../domain/markdown/dateFormat';
 import { describeDueDate, type DueDescription } from '../../domain/markdown/dueWording';
 import { TASK_PRIORITY_RANKS, TaskMetadataFormat } from '../../domain/markdown/taskFields';
-import { addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
+import { addDays, startOfDay } from '../../domain/markdown/calendar';
 
 /**
  * The task board lays tasks out as a Kanban board. Its columns come from what
@@ -1022,7 +1023,7 @@ function createCard(
     ...(task.updatedAt === undefined ? {} : { updatedAt: task.updatedAt }),
     overdue: open && task.dueAt !== undefined && task.dueAt < today && !needsNewDate(task.dueAt, now, taskPolicy),
     ...(open && needsNewDate(task.dueAt, now, taskPolicy) ? { stale: true } : {}),
-    ...withDetails([...(status ? [{ text: status }] : []), ...cardDetails(task, { groupBy, today, taskPolicy, blockers })]),
+    ...withDetails([...(status ? [{ text: status }] : []), ...cardDetails(task, { groupBy, today, taskPolicy, blockers, formats: context.dateFormats })]),
     // Where the task is written folds under the card, as it does under a
     // row; it was the last detail on every card.
     headingPath: section ? getHeadingPath(section, sections) : [],
@@ -1062,9 +1063,9 @@ function withDetails(details: readonly CardDetail[]): Pick<TaskBoardCard, 'detai
   return { details: details.map((detail) => detail.text), ...(parts.length ? { detailParts: parts } : {}) };
 }
 
-/** A detail that writes a date after its words: "done 2026-09-14". */
-function datedDetail(words: string, at: number): CardDetail {
-  const date = formatIsoDate(at);
+/** A detail that writes a date after its words, in the reader's format: "done 2026-09-14". */
+function datedDetail(words: string, at: number, formats: DateFormats): CardDetail {
+  const date = formatDisplayDate(at, formats);
   return { text: `${words} ${date}`, date };
 }
 
@@ -1075,19 +1076,20 @@ function datedDetail(words: string, at: number): CardDetail {
  */
 function cardDetails(
   task: Task,
-  { groupBy, today, taskPolicy, blockers }: {
+  { groupBy, today, taskPolicy, blockers, formats }: {
     groupBy: TaskBoardGroupBy;
     today: number;
     taskPolicy: QueryContext['taskPolicy'];
     blockers: readonly string[];
+    formats: DateFormats;
   },
 ): CardDetail[] {
   const open = !task.completed;
   return [
-    !open && task.doneAt !== undefined ? datedDetail('done', task.doneAt) : undefined,
-    open ? dueDetail(task, today, taskPolicy) : undefined,
-    open && task.scheduledAt !== undefined ? datedDetail('scheduled', task.scheduledAt) : undefined,
-    open && task.startAt !== undefined && task.startAt > today ? datedDetail('starts', task.startAt) : undefined,
+    !open && task.doneAt !== undefined ? datedDetail('done', task.doneAt, formats) : undefined,
+    open ? dueDetail(task, today, taskPolicy, formats) : undefined,
+    open && task.scheduledAt !== undefined ? datedDetail('scheduled', task.scheduledAt, formats) : undefined,
+    open && task.startAt !== undefined && task.startAt > today ? datedDetail('starts', task.startAt, formats) : undefined,
     groupBy !== 'priority' && task.priority ? { text: `${task.priority} priority` } : undefined,
     task.recurrence ? { text: `repeats ${task.recurrence}` } : undefined,
     open && blockers.length > 0 ? { text: `blocked by ${blockers.join(', ')}` } : undefined,
@@ -1098,9 +1100,9 @@ function cardDetails(
  * An open task's due date in words beside today, with its parts and tone;
  * its written words when they are not a date; else nothing.
  */
-function dueDetail(task: Task, today: number, taskPolicy: QueryContext['taskPolicy']): CardDetail | undefined {
+function dueDetail(task: Task, today: number, taskPolicy: QueryContext['taskPolicy'], formats: DateFormats): CardDetail | undefined {
   if (task.dueAt !== undefined) {
-    const due = describeDueDate(task.dueAt, today, taskPolicy, task.dueText);
+    const due = describeDueDate(task.dueAt, today, taskPolicy, { dueText: task.dueText, formats });
     const tone = dueTone(due);
     return { text: due.label, date: due.date, due: due.parts, ...(tone ? { tone } : {}) };
   }

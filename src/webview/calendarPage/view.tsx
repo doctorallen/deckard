@@ -20,6 +20,7 @@ import {
 } from '../shared/calendar/model';
 import { Eyebrow } from '../shared/eyebrow';
 import { displayLevelOption, themeOption, ViewOptionChoices, ViewOptions } from '../shared/viewOptions';
+import { formatPageDay } from '../shared/dateFormats';
 
 /** The page's layout: a month of weeks, or the chosen day's week. */
 export type CalendarLayout = 'month' | 'week';
@@ -199,7 +200,7 @@ function PageDay({ state, day, tabStop }: PageDayProps) {
 export function CalendarPage({ state }: { readonly state: DrawnCalendarPage }) {
   const snapshot: CalendarSnapshot = state.snapshot;
   const week = state.layout === 'week' ? chosenWeek(state) : undefined;
-  const shown: Shown = { week, title: week ? `${week.days[0].date} to ${week.days[6].date}` : snapshot.title };
+  const shown: Shown = { week, title: week ? `${formatPageDay(week.days[0].date)} to ${formatPageDay(week.days[6].date)}` : snapshot.title };
   const weeks = week ? [week] : snapshot.weeks;
   const tabStop = tabStopDate(state, weeks);
   const days = (row: CalendarWeek) => row.days.filter((day) => isDrawn(snapshot, day)).map((day) => <PageDay state={state} day={day} tabStop={tabStop} />);

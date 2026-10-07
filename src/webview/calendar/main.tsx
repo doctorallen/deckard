@@ -24,6 +24,7 @@ import {
 } from '../shared/calendar/model';
 import { eventElement } from '../shared/calendar/events';
 import { CalendarSession, send } from '../shared/calendar/session';
+import { formatPageDay } from '../shared/dateFormats';
 
 /** The month's title, its note, and the steps to the months either side, and back to today. */
 function CalendarHeader({ state }: { readonly state: DrawnCalendar }) {
@@ -169,6 +170,6 @@ onHostMessage<CalendarMoveRefusedMessage>('moveRefused', (message) => {
   const button = [...document.querySelectorAll<HTMLElement>('.day-panel [data-action="move-task"]')]
     .find((move) => move.dataset.taskId === message.taskId);
   const title = button?.closest('.task-row')?.querySelector('.task-title')?.textContent;
-  announce(button && title ? `"${title}" was not moved to ${String(button.dataset.date)}.` : 'The task was not moved.');
+  announce(button && title ? `"${title}" was not moved to ${formatPageDay(String(button.dataset.date))}.` : 'The task was not moved.');
 });
 send({ type: 'ready' });

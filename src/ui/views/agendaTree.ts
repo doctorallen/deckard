@@ -12,6 +12,7 @@ import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
 import { stripTrailingTags } from '../../domain/ranking/entryLabels';
 import { Task, WorkspaceIndex } from '../../domain/model';
 import { speakRow } from './spokenRow';
+import { DATE_FORMAT_SETTINGS } from '../commands/datePrompt';
 
 /** What the Tasks view reads from the indexer, and when it redraws. */
 interface AgendaIndexSource {
@@ -181,9 +182,11 @@ export class AgendaTreeProvider
         }
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
+        // A date format changes how every reason and day heading reads.
         if (
           event.affectsConfiguration('deckard.agenda') ||
-          event.affectsConfiguration('deckard.tasks')
+          event.affectsConfiguration('deckard.tasks') ||
+          Object.values(DATE_FORMAT_SETTINGS).some((key) => event.affectsConfiguration(`deckard.${key}`))
         ) {
           this.refresh();
         }

@@ -1,7 +1,8 @@
 import { formatNamespaceValue, labelValue, noValueLabel, readNamespaceValues } from './tagGrouping';
 import { mentionsParked, withoutParked } from '../../domain/index/parked';
 import { describeSteps, isPlainStep } from '../../domain/markdown/taskSteps';
-import { SHORT_WEEKDAY_NAMES, addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
+import { addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
+import { formatDisplayDate } from '../../domain/markdown/dateFormat';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import { QueryContext } from '../../domain/query/queryContext';
@@ -270,7 +271,7 @@ const REGROUPERS = new Map<AgendaGroupBy, Regrouper>([
  */
 export function createAgenda(
   index: WorkspaceIndex,
-  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'> & Partial<Pick<QueryContext, 'dateFormats'>>,
   options: AgendaOptions,
 ): AgendaGroup[] {
   const { tasks = index.tasks.values(), upcomingDays, groupBy = 'due', taskOrder = [], taskSortMode = 'rank' } = options;
@@ -297,7 +298,7 @@ export function createAgenda(
     return [
       ...(options.upcomingByDay
         ? byDue.flatMap((group) =>
-            group.id === 'upcoming' ? splitByDay(group.entries, tomorrow) : [group],
+            group.id === 'upcoming' ? splitByDay(group.entries, tomorrow, context) : [group],
           )
         : byDue),
       ...done,
@@ -349,7 +350,7 @@ function collectOpenDependencyIds(index: WorkspaceIndex): Set<string> {
 function placeOpenTasks(
   listed: readonly Task[],
   index: WorkspaceIndex,
-  context: Pick<QueryContext, 'taskPolicy'>,
+  context: Pick<QueryContext, 'taskPolicy'> & Partial<Pick<QueryContext, 'dateFormats'>>,
   { window, openDependencyIds }: { window: AgendaWindow; openDependencyIds: ReadonlySet<string> },
 ): Map<AgendaGroupId, AgendaEntry[]> {
   const groups = new Map<AgendaGroupId, AgendaEntry[]>(
@@ -359,7 +360,7 @@ function placeOpenTasks(
     if (!isOpenTask(task)) {
       continue;
     }
-    const placement = placeTask(task, window, context.taskPolicy);
+    const placement = placeTask(task, window, context.taskPolicy, context.dateFormats);
     if (placement) {
       groups
         .get(placement.group)
@@ -371,9 +372,14 @@ function placeOpenTasks(
 
 /**
  * Upcoming, one group per day that has tasks, each keeping the group's own
- * order: `upcoming:2026-09-28`, labeled Tomorrow or `Mon Sep 28`.
+ * order: `upcoming:2026-09-28`, labeled Tomorrow or by its day in the
+ * reader's short format, `Mon, Sep 28`.
  */
-function splitByDay(entries: readonly AgendaEntry[], tomorrow: number): AgendaGroup[] {
+function splitByDay(
+  entries: readonly AgendaEntry[],
+  tomorrow: number,
+  { now, dateFormats }: Pick<QueryContext, 'now'> & Partial<Pick<QueryContext, 'dateFormats'>>,
+): AgendaGroup[] {
   const days = new Map<string, AgendaEntry[]>();
   [...entries]
     .sort((left, right) => startOfDay(left.at) - startOfDay(right.at))
@@ -383,18 +389,9 @@ function splitByDay(entries: readonly AgendaEntry[], tomorrow: number): AgendaGr
     });
   return [...days.entries()].map(([date, held]) => ({
     id: `upcoming:${date}`,
-    label: startOfDay(held[0].at) === tomorrow ? 'Tomorrow' : formatDayLabel(held[0].at),
+    label: startOfDay(held[0].at) === tomorrow ? 'Tomorrow' : formatDisplayDate(held[0].at, dateFormats, 'short', now),
     entries: entries.filter((entry) => held.includes(entry)),
   }));
-}
-
-/** Month names as a day label writes them, independent of locale. */
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/** A day as a group names it, `Mon Sep 28`, with no locale comma. */
-function formatDayLabel(at: number): string {
-  const date = new Date(at);
-  return `${SHORT_WEEKDAY_NAMES[date.getDay()]} ${MONTHS[date.getMonth()]} ${date.getDate()}`;
 }
 
 /**

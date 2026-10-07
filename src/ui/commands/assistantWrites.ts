@@ -23,6 +23,8 @@ import { WorkspaceIndex } from '../../domain/model';
 import { TaskMetadataFormat } from '../../domain/markdown/taskFields';
 import { CompletionWrite } from '../../domain/markdown/taskLineEdits';
 import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
+import { type DateFormats, DEFAULT_DATE_FORMATS, formatDisplayDay } from '../../domain/markdown/dateFormat';
+import { readDateFormats } from './datePrompt';
 
 /**
  * What an assistant may write, and how.
@@ -115,14 +117,14 @@ export function changeTaskLine({
   return writeEditedTask({ before, edited: draft, now, eol, steps });
 }
 
-/** One line saying what changed, for the preview's label and the answer. */
-export function describeChange(changes: Omit<ChangeTaskInput, 'note' | 'line'>): string {
+/** One line saying what changed, for the preview's label, its date in the reader's `formats`. */
+export function describeChange(changes: Omit<ChangeTaskInput, 'note' | 'line'>, formats: DateFormats = DEFAULT_DATE_FORMATS): string {
   const parts: string[] = [];
   if (changes.title !== undefined) {parts.push('retitle it');}
   if (changes.complete === true) {parts.push('complete it');}
   if (changes.complete === false) {parts.push('reopen it');}
   if (changes.status !== undefined) {parts.push(`set its status to ${changes.status}`);}
-  if (changes.due !== undefined) {parts.push(changes.due ? `make it due ${changes.due}` : 'clear its due date');}
+  if (changes.due !== undefined) {parts.push(changes.due ? `make it due ${formatDisplayDay(changes.due, formats)}` : 'clear its due date');}
   if (changes.priority !== undefined) {parts.push(changes.priority ? `set its priority to ${changes.priority}` : 'clear its priority');}
   if (changes.assignee !== undefined) {parts.push(changes.assignee ? `hand it to ${changes.assignee}` : 'take it from whoever it was for');}
   return parts.join(', ');
@@ -275,7 +277,7 @@ export async function changeTask(
   edit.replace(uri, current.range, replacement);
   const written = await history.write(edit, {
     label: 'Assistant: change a task',
-    description: `${describeChange(changes)} — "${shorten(task.title)}" in ${task.filePath}`,
+    description: `${describeChange(changes, readDateFormats())} — "${shorten(task.title)}" in ${task.filePath}`,
     preview: 'always',
   });
   if (!written.applied) {

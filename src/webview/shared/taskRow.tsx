@@ -10,7 +10,7 @@ import type { ComponentChildren } from 'preact';
 import type { InlineToken } from '../../ui/protocol/inline';
 import type { DashboardTask, TagTitleDisplayMode } from '../../ui/protocol/shared';
 import { ParentTag } from './tagButton';
-import { formatIsoDate } from '../../domain/markdown/calendar';
+import { formatPageDate } from './dateFormats';
 import { DueText } from './dueText';
 import { TaskTitle } from './taskTitle';
 import { describeDates, describeLocation, type EntryFacts, readEntryDetails } from './entryDetails';
@@ -195,7 +195,7 @@ function TaskFacts({ item }: { readonly item: DashboardTask }) {
     <>
       {item.parked ? <ParkedLabel key="parked" /> : null}
       {due}
-      {task.scheduledAt === undefined ? null : <span key="scheduled" class="task-detail">{`Scheduled ${formatIsoDate(task.scheduledAt)}`}</span>}
+      {task.scheduledAt === undefined ? null : <span key="scheduled" class="task-detail">{`Scheduled ${formatPageDate(task.scheduledAt)}`}</span>}
       <PriorityBadge key="priority" priority={task.priority} />
       {task.recurrence ? <span key="repeats" class="task-detail">{`Repeats ${task.recurrence}`}</span> : null}
       {item.stepsLabel ? <span key="steps" class="task-detail task-steps"><ProgressText text={item.stepsLabel} /></span> : null}

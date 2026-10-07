@@ -25,6 +25,7 @@ import { createWikiLink, insertWikiLink } from '../../../commands/insertLink';
 import { resolveSourceUri } from '../../../commands/navigation';
 import { describeRejectedEdit, noteName, reportFailure, reportStale } from '../../../commands/notify';
 import { linkMentions } from '../../../commands/unlinkedMentions';
+import { readDateFormats } from '../../../commands/datePrompt';
 import { readLinkStyle } from '../../../commands/linkMaintenancePorts';
 import { formatNoteLink } from '../../../../domain/markdown/wikiLinks';
 import type { WorkspaceWriteHistory } from '../../../commands/workspaceWrites';
@@ -698,7 +699,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
           ...snapshot,
           hideDailyNotes,
           previewLines,
-          links: collectNoteLinks(index, indexedFile, { now, hideDailyNotes }),
+          links: collectNoteLinks(index, indexedFile, { now, hideDailyNotes, dateFormats: readDateFormats() }),
         }
       : { ...snapshot, hideDailyNotes, previewLines };
   }
@@ -826,6 +827,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       excludedTagNamespaces: [
         readStatusNamespace(vscode.workspace.getConfiguration('deckard')),
       ],
+      dateFormats: readDateFormats(),
     };
   }
 

@@ -4,7 +4,7 @@
  * its file and line, and its created and updated dates. The file and line
  * alone, when the body says nothing.
  */
-import { formatIsoDate } from '../../domain/markdown/calendar';
+import { formatPageDate } from './dateFormats';
 
 /** One of the details an entry can show. */
 export type EntryDetail = 'fileAndLine' | 'created' | 'updated';
@@ -29,13 +29,13 @@ export function describeLocation(facts: EntryFacts): string {
 
 /**
  * An entry's dates line, those ticked that it has: "Created 2026-09-12 ·
- * Updated 2026-10-03", drawn on a line of its own under where it is
- * written. Empty when it has none of them.
+ * Updated 2026-10-03", in the reader's format, drawn on a line of its own
+ * under where it is written. Empty when it has none of them.
  */
 export function describeDates(facts: EntryFacts): string {
   const details = readEntryDetails();
   return [
-    details.has('created') && facts.createdAt !== undefined ? `Created ${formatIsoDate(facts.createdAt)}` : '',
-    details.has('updated') && facts.updatedAt !== undefined ? `Updated ${formatIsoDate(facts.updatedAt)}` : '',
+    details.has('created') && facts.createdAt !== undefined ? `Created ${formatPageDate(facts.createdAt)}` : '',
+    details.has('updated') && facts.updatedAt !== undefined ? `Updated ${formatPageDate(facts.updatedAt)}` : '',
   ].filter(Boolean).join(' · ');
 }

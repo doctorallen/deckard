@@ -3,6 +3,7 @@ import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { needsNewDateBefore } from '../../domain/tasks/taskPolicy';
 import { stripTags } from '../../domain/markdown/parser';
 import { SHORT_WEEKDAY_NAMES } from '../../domain/markdown/calendar';
+import { formatDisplayDate } from '../../domain/markdown/dateFormat';
 import { QueryContext } from '../../domain/query/queryContext';
 import { createDashboardTask } from './entryCards';
 import {
@@ -23,16 +24,6 @@ const TOOLTIP_ITEMS = 5;
 
 /** How many of a day's tasks, and of its new notes, the panel lists at once. */
 const PANEL_NOTES = 5;
-
-/** Day titles for the panel in the current year, which need no year. */
-const dayTitle = new Intl.DateTimeFormat('en', { weekday: 'long', month: 'long', day: 'numeric' });
-/** Day titles for the panel in any other year. */
-const dayTitleWithYear = new Intl.DateTimeFormat('en', {
-  weekday: 'long',
-  month: 'long',
-  day: 'numeric',
-  year: 'numeric',
-});
 
 /** A day moved by some days, as YYYY-MM-DD. */
 function addDaysTo(date: string, days: number): string {
@@ -68,7 +59,8 @@ export function createCalendarDay(
   const target = next > tomorrow ? next : tomorrow;
   return {
     date,
-    title: (year === now.getFullYear() ? dayTitle : dayTitleWithYear).format(at),
+    // The reader's short format, `Fri, Sep 25`; a day in another year in their full one.
+    title: formatDisplayDate(at.getTime(), context.dateFormats, 'short', context.now),
     ...(relative ? { relative } : {}),
     ...(notePath ? { notePath } : {}),
     due: rows(due),

@@ -5,14 +5,16 @@ import { isMarkdownFile } from '../../core/workspace/scanner';
 import { TaskService } from '../../services/taskService';
 import { describeRejectedEdit, noteName, reportFailure } from './notify';
 import { describeCompletion } from './taskActions';
+import { readDateFormats } from './datePrompt';
+import { type DateFormats, DEFAULT_DATE_FORMATS } from '../../domain/markdown/dateFormat';
 import { quoteTitle } from '../../domain/tasks/taskLines';
 
-/** The sentence a toggle says in the status bar, or as a warning. */
-export function describeToggle(result: ToggleResult): { text: string; severity: 'info' | 'warning' } {
+/** The sentence a toggle says in the status bar, or as a warning, a date in it in the reader's `formats`. */
+export function describeToggle(result: ToggleResult, formats: DateFormats = DEFAULT_DATE_FORMATS): { text: string; severity: 'info' | 'warning' } {
   const [first] = result.lines;
   if (result.lines.length === 1) {
     return result.completed
-      ? describeCompletion(first.title, first.next, first.unreadRule)
+      ? describeCompletion(first.title, first.next, first.unreadRule, formats)
       : { text: `Reopened ${quoteTitle(first.title)}.`, severity: 'info' };
   }
   const count = result.lines.length;
@@ -97,7 +99,7 @@ export async function toggleTaskDoneCommand(
     return undefined;
   }
 
-  const said = describeToggle(outcome.result);
+  const said = describeToggle(outcome.result, readDateFormats());
   if (said.severity === 'warning') {
     void vscode.window.showWarningMessage(said.text);
   } else {

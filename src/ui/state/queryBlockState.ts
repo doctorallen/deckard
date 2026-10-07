@@ -2,7 +2,7 @@ import { formatProgressCount } from '../../domain/tasks/progressCount';
 import { countTaskProgress, isCancelledTask, nameTaskStatus, readTaskStatus, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
 import type { TagOverviewSortMode, TaskSortMode, TaskStatusType } from '../../domain/model';
 import { getFileName } from '../../shared/paths';
-import { formatIsoDate } from '../../domain/markdown/calendar';
+import { type DateFormats, formatDisplayDate } from '../../domain/markdown/dateFormat';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { parseQuery } from '../../domain/query/queryParser';
@@ -814,17 +814,20 @@ function compareAscending(left?: number, right?: number): number {
   return left - right;
 }
 
-/** One cell of a table of notes, as text; empty when the entry has nothing to show there. */
-export function describeNoteCell(item: QueryBlockItem, column: NoteColumnId): string {
+/**
+ * One cell of a table of notes, as text, its dates in the reader's
+ * `formats`; empty when the entry has nothing to show there.
+ */
+export function describeNoteCell(item: QueryBlockItem, column: NoteColumnId, formats?: DateFormats): string {
   switch (column) {
     case 'title':
       return item.title;
     case 'note':
       return item.fileName.replace(/\.md$/i, '');
     case 'created':
-      return item.createdAt === undefined ? '' : formatIsoDate(item.createdAt);
+      return item.createdAt === undefined ? '' : formatDisplayDate(item.createdAt, formats);
     case 'updated':
-      return item.updatedAt === undefined ? '' : formatIsoDate(item.updatedAt);
+      return item.updatedAt === undefined ? '' : formatDisplayDate(item.updatedAt, formats);
     case 'links':
       return item.linkCount ? String(item.linkCount) : '';
     case 'tasks':

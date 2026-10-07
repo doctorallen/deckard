@@ -15,6 +15,7 @@
  */
 import { chooseFocusDay, isWeekend } from '../../../domain/markdown/calendar';
 import type { CalendarDay, CalendarSnapshot, CalendarWeek } from '../../../ui/protocol/calendar';
+import { formatPageDay } from '../dateFormats';
 
 /** A calendar's state: the host's snapshot, and what the reader did since. */
 export interface CalendarState {
@@ -71,7 +72,7 @@ export function dueTone(snapshot: CalendarSnapshot, day: CalendarDay): { readonl
 
 /** A day as a screen reader hears it: its date, today, its note, and its counts. */
 export function describeDay(day: CalendarDay, tone: { readonly stale: boolean; readonly overdue: boolean }): string {
-  const parts = [day.date];
+  const parts = [formatPageDay(day.date)];
   if (day.isToday) {
     parts.push('today');
   }

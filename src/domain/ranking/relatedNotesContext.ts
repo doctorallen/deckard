@@ -3,6 +3,7 @@
  * settings, the note it ranks against, and each qualifying entry as the
  * scorer receives it.
  */
+import type { DateFormats } from '../markdown/dateFormat';
 import { ParsedFile, Section, TagReference, TagTitleDisplayMode, WorkspaceIndex } from '../model';
 import { ActiveNote, LinkNames } from './linkEvidence';
 import { TagAssociationMatches } from './tagAssociations';
@@ -21,6 +22,8 @@ export interface RelatedNotesRankingOptions {
   hidePeriodicNotes?: boolean;
   /** Namespaces never suggested as a tag, such as the board's status. */
   excludedTagNamespaces?: string[];
+  /** The reader's date formats, which a reason names a daily note's day in. */
+  dateFormats?: DateFormats;
 }
 
 /** A ranking's settings, with the moment a note's age is counted to. */

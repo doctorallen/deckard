@@ -575,7 +575,7 @@ function listWidgetNamespaces(index: WorkspaceIndex, fallback: string): string[]
  */
 function buildProgressWidget({ index, options, config, widget, take }: WidgetBuild): DashboardWidget {
   const namespace = widgetNamespace(config);
-  const { now, taskPolicy } = options.queryContext;
+  const { now, taskPolicy, dateFormats } = options.queryContext;
   const keys = new Set(
     [...index.tags.keys()].filter((key) => isInNamespace(key, namespace) && !isParkedOnlyTag(index, key)),
   );
@@ -590,7 +590,7 @@ function buildProgressWidget({ index, options, config, widget, take }: WidgetBui
     tags: take(rows).map(({ tag, progress }) => ({
       key: tag.key,
       label: tag.label,
-      detail: describeTagProgress(progress, now, taskPolicy),
+      detail: describeTagProgress(progress, now, taskPolicy, dateFormats),
       progress: { done: progress.done, total: progress.total },
     })),
   };

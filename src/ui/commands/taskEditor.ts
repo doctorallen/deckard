@@ -20,13 +20,14 @@ import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
 import { readTaskStatusOptions } from './parseSettings';
 import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { askForDate } from './datePrompt';
+import { askForDate, readDateFormats } from './datePrompt';
 import { showQuickPickUntilHidden } from './prompts';
 import { describeCompletion, readTaskMetadataFormat } from './taskActions';
 import { TaskPriority, WorkspaceIndex } from '../../domain/model';
 import { TaskDateField } from '../../domain/markdown/taskFields';
 import { parseRecurrence, suggestRecurrence } from '../../domain/markdown/recurrence';
 import { formatIsoDate } from '../../domain/markdown/calendar';
+import { type DateFormats, DEFAULT_DATE_FORMATS } from '../../domain/markdown/dateFormat';
 import { CompletionWrite, writeCompletion } from '../../domain/markdown/taskLineEdits';
 
 /**
@@ -114,8 +115,12 @@ function nameDraftStatus(draft: TaskDraft, reading: DraftStatusReading): string 
   return readLineStatus(formatTaskDraft(draft), draftCheckboxColumn(draft), reading.statuses, reading.namespace).name;
 }
 
-/** The rows of the editor, as the pick shows them for a draft. */
-export function createEditorRows(draft: TaskDraft, reading: DraftStatusReading = DEFAULT_STATUS_READING): FieldRow[] {
+/** The rows of the editor, as the pick shows them for a draft, its dates in the reader's `formats`. */
+export function createEditorRows(
+  draft: TaskDraft,
+  reading: DraftStatusReading = DEFAULT_STATUS_READING,
+  formats: DateFormats = DEFAULT_DATE_FORMATS,
+): FieldRow[] {
   const value = (text: string | undefined, empty = 'Not set'): string =>
     text && text.trim() ? text : empty;
   return [
@@ -132,17 +137,17 @@ export function createEditorRows(draft: TaskDraft, reading: DraftStatusReading =
     { label: 'Dates', kind: vscode.QuickPickItemKind.Separator },
     {
       label: '$(calendar) Due',
-      description: value(draft.due && nameDay(draft.due)),
+      description: value(draft.due && nameDay(draft.due, formats)),
       field: 'due',
     },
     {
       label: '$(watch) Scheduled',
-      description: value(draft.scheduled && nameDay(draft.scheduled)),
+      description: value(draft.scheduled && nameDay(draft.scheduled, formats)),
       field: 'scheduled',
     },
     {
       label: '$(rocket) Start',
-      description: value(draft.start && nameDay(draft.start)),
+      description: value(draft.start && nameDay(draft.start, formats)),
       field: 'start',
     },
     { label: 'And', kind: vscode.QuickPickItemKind.Separator },
@@ -228,7 +233,7 @@ function pickField(
     configure: (pick) => {
       pick.title = title;
       pick.placeholder = formatTaskDraft(draft).trim();
-      pick.items = createEditorRows(draft, reading);
+      pick.items = createEditorRows(draft, reading, readDateFormats());
       pick.ignoreFocusOut = true;
     },
     accept: (pick) => pick.selectedItems[0],
@@ -717,6 +722,7 @@ function sayCompletion(edited: TaskDraft, completion: CompletionWrite): void {
     edited.description,
     completion.next,
     completion.unreadRule,
+    readDateFormats(),
   );
   // The reader is looking at the line, and Cmd/Ctrl+Z undoes the edit, so
   // a next one started is said in passing; a rule that could not be read

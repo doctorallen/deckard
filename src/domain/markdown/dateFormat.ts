@@ -163,6 +163,18 @@ export function usesLocaleWeeks(format: string): boolean {
 /** The tokens that count weeks from the reader's week start. */
 const LOCALE_WEEK_TOKENS: ReadonlySet<string> = new Set(['w', 'ww', 'wo', 'gggg']);
 
+/**
+ * Whether a format writes the day of the month before the month, as
+ * `DD/MM/YYYY` and `D MMM` do, so a date box reads `3/10` as the 3rd of
+ * October for its reader.
+ */
+export function writesDayFirst(format: string): boolean {
+  const tokens = readFormat(format).flatMap((part) => (part.token === undefined ? [] : [part.token]));
+  const day = tokens.findIndex((token) => token === 'D' || token === 'DD' || token === 'Do');
+  const month = tokens.findIndex((token) => token.startsWith('M'));
+  return day !== -1 && month !== -1 && day < month;
+}
+
 /** The tokens that write the day of the week. */
 const WEEKDAY_TOKENS: ReadonlySet<string> = new Set(['d', 'do', 'dd', 'ddd', 'dddd', 'E', 'LLLL', 'llll']);
 

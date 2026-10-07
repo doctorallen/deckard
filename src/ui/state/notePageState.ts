@@ -7,7 +7,7 @@ import { readFrontmatterValueTag, stripTags } from '../../domain/markdown/parser
 import { STATUS_CHARACTER } from '../../domain/markdown/lineShapes';
 import { formatKeyWords, readTagNamespace } from '../../domain/markdown/tagKeys';
 import { MarkdownToken, NoteEmbedMeta, parseBlockMarkdown } from '../../domain/markdown/markdownTokens';
-import { describeDueDate } from '../../domain/markdown/dueWording';
+import { describeDueDate, formatDueDate } from '../../domain/markdown/dueWording';
 import { resolveEmbed, createSourceParser } from '../../domain/notes/embeds';
 import { BLOCK_ID_PATTERN } from '../../domain/markdown/taskFields';
 import { DEFAULT_NOTE_COLUMNS, noteColumnLabel } from '../../domain/notes/noteColumns';
@@ -382,7 +382,7 @@ function runQueryBlock(query: string, options: NonNullable<ReturnType<typeof par
       : {}),
     notes: snapshot.notes.map((item) => ({
       ...row(item),
-      ...(table ? { cells: noteColumns.map((column) => describeNoteCell(item, column)) } : {}),
+      ...(table ? { cells: noteColumns.map((column) => describeNoteCell(item, column, queryContext.dateFormats)) } : {}),
     })),
     tasks: snapshot.tasks.map((item) => ({
       ...row(item),
@@ -399,8 +399,10 @@ function describeRow(item: QueryBlockItem, context: QueryContext): string {
   if (item.completed === undefined || item.dueAt === undefined) {
     return where;
   }
-  const due = describeDueDate(item.dueAt, context.now, context.taskPolicy, item.dueText);
-  return `${item.completed ? `due ${item.dueText ?? ''}`.trim() : due.label} · ${where}`;
+  const due = item.completed
+    ? `due ${formatDueDate(item.dueAt, item.dueText, context.dateFormats)}`
+    : describeDueDate(item.dueAt, context.now, context.taskPolicy, { dueText: item.dueText, formats: context.dateFormats }).label;
+  return `${due} · ${where}`;
 }
 
 /** A list, each item its blocks, an item that is a task with its box. */

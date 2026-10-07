@@ -6,10 +6,10 @@ import {
   makeDay,
   MONTH_NUMBERS,
   parseIsoDate,
-  SHORT_WEEKDAY_NAMES,
   startOfDay,
   WEEKDAY_NAMES,
 } from './calendar';
+import { type DateFormats, DEFAULT_DATE_FORMATS, formatDisplayDay, nameDisplayDay } from './dateFormat';
 
 /**
  * One way to read a date written in plain words.
@@ -45,20 +45,6 @@ export interface DatePhraseOptions {
   direction?: 'future' | 'past';
 }
 
-const SHORT_MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
 const LONG_MONTHS = [
   'January',
   'February',
@@ -359,27 +345,23 @@ const PHRASE_READERS: readonly ((text: string, context: PhraseContext) => Phrase
 ];
 
 /**
- * A day said back as a box shows it: its weekday, the date, and how far it is
- * from the day of `now`, `Monday 2026-09-28 · in 3 days`. Beyond a month
- * the distance is left to the date.
+ * A day said back as a box shows it: its weekday, the date in the reader's
+ * format, and how far it is from the day of `now`, `Monday 2026-09-28 · in
+ * 3 days`. Beyond a month the distance is left to the date.
  */
-export function describeDay(date: string, now: number): string {
+export function describeDay(date: string, now: number, formats: DateFormats = DEFAULT_DATE_FORMATS): string {
   const at = parseIsoDate(date);
   if (at === undefined) {
     return date;
   }
   const distance = describeDistance(at, now);
-  return distance ? `${nameDay(date)} · ${distance}` : nameDay(date);
+  return distance ? `${nameDay(date, formats)} · ${distance}` : nameDay(date, formats);
 }
 
-/** A day with its weekday and nothing else: `Friday 2026-09-25`. */
-export function nameDay(date: string): string {
+/** A day with its weekday and nothing else: `Friday 2026-09-25`, or the reader's format alone when it names the weekday. */
+export function nameDay(date: string, formats: DateFormats = DEFAULT_DATE_FORMATS): string {
   const at = parseIsoDate(date);
-  if (at === undefined) {
-    return date;
-  }
-  const weekday = WEEKDAY_NAMES[new Date(at).getDay()];
-  return `${weekday[0].toUpperCase()}${weekday.slice(1)} ${date}`;
+  return at === undefined ? date : nameDisplayDay(at, formats);
 }
 
 /** `today`, `in 3 days`, `3 days ago`, from the day of `now`; nothing beyond 31 days. */
@@ -400,23 +382,12 @@ export function describeDistance(at: number, now: number): string | undefined {
   return days > 0 ? `in ${days} days` : `${-days} days ago`;
 }
 
-/** A day written short, `Fri, Oct 2`, with its year when it is not the year of `now`. */
-export function formatShortDay(date: string, now: number): string {
-  const at = parseIsoDate(date);
-  if (at === undefined) {
-    return date;
-  }
-  const day = new Date(at);
-  const text = `${SHORT_WEEKDAY_NAMES[day.getDay()]}, ${SHORT_MONTHS[day.getMonth()]} ${day.getDate()}`;
-  return day.getFullYear() === new Date(now).getFullYear()
-    ? text
-    : `${text}, ${day.getFullYear()}`;
-}
-
-/** A month and day written short, `Sep 20`. */
-export function formatMonthDay(at: number): string {
-  const day = new Date(at);
-  return `${SHORT_MONTHS[day.getMonth()]} ${day.getDate()}`;
+/**
+ * A day written short, in the reader's short format, `Fri, Oct 2`; a day
+ * not in the year of `now` in their full format.
+ */
+export function formatShortDay(date: string, now: number, formats: DateFormats = DEFAULT_DATE_FORMATS): string {
+  return formatDisplayDay(date, formats, 'short', now);
 }
 
 /** A month's name, with its year when it is not the year of `now`: `August`, `December 2025`. */

@@ -18,7 +18,8 @@ import { countNotes } from '../../domain/index/noteEntryIndex';
 export function readPageFacts(indexer: Pick<IndexReader, 'getSnapshot'>, now: Date = new Date()): PageFacts {
   const index = indexer.getSnapshot();
   const agendaQuery = vscode.workspace.getConfiguration('deckard').get<string>('agenda.query', '');
-  const glance = createTaskGlance(index, agendaQuery, readQueryContext(now.getTime()));
+  const context = readQueryContext(now.getTime());
+  const glance = createTaskGlance(index, agendaQuery, context);
   const today = formatLocalDate(now);
   return {
     dueToday: glance.today,
@@ -28,6 +29,7 @@ export function readPageFacts(indexer: Pick<IndexReader, 'getSnapshot'>, now: Da
     today: now,
     todayNoteExists: listDailyNotes(index).some((note) => note.date === today),
     findKey: process.platform === 'darwin' ? '⌥⇧⌘F' : 'Ctrl+Shift+Alt+F',
+    dateFormats: context.dateFormats,
   };
 }
 

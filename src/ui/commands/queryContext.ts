@@ -4,8 +4,7 @@ import { getEntityNamespaceAliases } from '../../domain/markdown/parser';
 import { createQueryContext, QueryContext } from '../../domain/query/queryContext';
 import { readStatusNamespace, TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { readTaskStatusSettings } from '../../domain/tasks/taskStatuses';
-import { readWeekStart } from './datePrompt';
-import { readDateFormats } from './displaySettings';
+import { readDateFormats, readWeekStart } from './datePrompt';
 
 /**
  * The QueryContext a view, command, or tool works in, read from settings at

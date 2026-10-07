@@ -12,7 +12,7 @@ import { AGENDA_GROUPINGS, AgendaGroup, selectOverdueTasks } from '../state/agen
 import { describeNamespaceValues, listTaskNamespaces } from '../state/tagGrouping';
 import type { AgendaNode } from '../views/agendaTree';
 import { applyBulkEdit, reportBulkEditResult } from './bulkEdit';
-import { askForDate } from './datePrompt';
+import { askForDate, readDateFormats } from './datePrompt';
 import { moveTasks } from './moveTo';
 import { breakIntoStepsCommand } from './taskSteps';
 import { setTaskStatusCommand } from './setTaskStatus';
@@ -30,6 +30,7 @@ import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
 import { setTaskDate } from '../../domain/markdown/taskLineEdits';
 import { addDays, formatIsoDate, parseIsoDate, startOfDay } from '../../domain/markdown/calendar';
 import { formatDay as formatPlacedDay } from '../../domain/tasks/agendaPlacement';
+import { type DateFormats, DEFAULT_DATE_FORMATS, formatDisplayDay } from '../../domain/markdown/dateFormat';
 
 /**
  * Dating tasks from where they are listed.
@@ -63,10 +64,10 @@ export function describeLoad(load: DayLoad): string {
   return parts.length ? parts.join(' · ') : 'nothing due';
 }
 
-/** A `YYYY-MM-DD` date as the Tasks view writes it: `Fri 2026-09-25`. */
-function formatDay(date: string): string {
+/** A `YYYY-MM-DD` date as the Tasks view writes it, in the reader's format: `Fri 2026-09-25`. */
+function formatDay(date: string, formats: DateFormats): string {
   const at = parseIsoDate(date);
-  return at === undefined ? date : formatPlacedDay(at);
+  return at === undefined ? date : formatPlacedDay(at, formats);
 }
 
 /** Oldest due first, then the more important, then where they are written. */
@@ -130,6 +131,7 @@ export function describeLoadAfter(
   date: string | undefined,
   now: number,
   counts: { today: number; due: number },
+  formats: DateFormats = DEFAULT_DATE_FORMATS,
 ): string {
   if (!date) {
     return '';
@@ -137,7 +139,7 @@ export function describeLoadAfter(
   const tasks = (count: number): string => `${count} ${count === 1 ? 'task' : 'tasks'}`;
   return date === dueDateFor('today', now)
     ? `Today now has ${tasks(counts.today)}.`
-    : `${formatDay(date)} now has ${tasks(counts.due)} due.`;
+    : `${formatDay(date, formats)} now has ${tasks(counts.due)} due.`;
 }
 
 /**
@@ -163,20 +165,22 @@ export async function setTaskDateField(
         date,
         preferredFormat: readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard', uri)),
       }),
-    describeDateChange(quoteTaskTitle(task), field, date),
+    describeDateChange(quoteTaskTitle(task), field, date, readDateFormats()),
   );
 }
 
-/** What a date change says: `"Call Ren" is due 2026-09-26.` */
+/** What a date change says, the date in the reader's format: `"Call Ren" is due 2026-09-26.` */
 export function describeDateChange(
   title: string,
   field: 'due' | 'scheduled',
   date: string | undefined,
+  formats: DateFormats = DEFAULT_DATE_FORMATS,
 ): string {
+  const written = date && formatDisplayDay(date, formats);
   if (field === 'scheduled') {
-    return date ? `${title} is scheduled ${date}.` : `${title} has no scheduled date now.`;
+    return written ? `${title} is scheduled ${written}.` : `${title} has no scheduled date now.`;
   }
-  return date ? `${title} is due ${date}.` : `${title} has no due date now.`;
+  return written ? `${title} is due ${written}.` : `${title} has no due date now.`;
 }
 
 /**
@@ -205,7 +209,7 @@ export async function setTasksDue(
           date,
           preferredFormat: readTaskMetadataFormat(vscode.workspace.getConfiguration('deckard', uri)),
         }),
-      describeDateChange(quoteTaskTitle(task), 'due', date),
+      describeDateChange(quoteTaskTitle(task), 'due', date, readDateFormats()),
     );
     return;
   }
@@ -226,7 +230,7 @@ export async function setTasksDue(
     message += ` ${describeLoadAfter(date, now, {
       today: context.todayCount(),
       due: context.load(date).due,
-    })}`;
+    }, readDateFormats())}`;
   }
   reportBulkEditResult(edit, result, message);
 }
@@ -264,17 +268,18 @@ export async function setTasksDueEach(
   const notes = pluralize(result.notes, 'note');
   const dates = [...new Set(open.map((task) => choice.dates.get(task.id) as string))].sort();
   const now = Date.now();
+  const formats = readDateFormats();
   const today = dueDateFor('today', now);
   const todayTasks = open.filter((task) => choice.dates.get(task.id) === today).length;
   const lead =
     choice.plan === 'spread'
-      ? `Spread ${open.length} tasks over ${formatDay(dates[0])} to ${formatDay(dates[dates.length - 1])}, in ${notes}.`
-      : `Moved ${todayTasks} ${todayTasks === 1 ? 'task' : 'tasks'} to today and ${open.length - todayTasks} to ${formatDay(dates[dates.length - 1])}, in ${notes}.`;
+      ? `Spread ${open.length} tasks over ${formatDay(dates[0], formats)} to ${formatDay(dates[dates.length - 1], formats)}, in ${notes}.`
+      : `Moved ${todayTasks} ${todayTasks === 1 ? 'task' : 'tasks'} to today and ${open.length - todayTasks} to ${formatDay(dates[dates.length - 1], formats)}, in ${notes}.`;
   const left =
     result.skipped === 0
       ? ''
       : ` ${result.skipped} ${result.skipped === 1 ? 'was' : 'were'} left as they are, since they changed.`;
-  const load = context ? ` ${describeLoadAfter(today, now, { today: context.todayCount(), due: 0 })}` : '';
+  const load = context ? ` ${describeLoadAfter(today, now, { today: context.todayCount(), due: 0 }, formats)}` : '';
   void vscode.window.showInformationMessage(`${lead}${left}${load}`);
 }
 
@@ -290,10 +295,11 @@ export async function pickReschedule(
   options: { title?: string } = {},
 ): Promise<RescheduleChoice | null> {
   const now = Date.now();
+  const formats = readDateFormats();
   const open = tasks.filter(isOpenTask);
   const day = (label: string, date: string) => ({
     label,
-    description: load ? `${formatDay(date)} · ${describeLoad(load(date))}` : formatDay(date),
+    description: load ? `${formatDay(date, formats)} · ${describeLoad(load(date))}` : formatDay(date, formats),
     choice: { kind: 'one' as const, date },
   });
   type Item = vscode.QuickPickItem & { choice?: RescheduleChoice; ask?: boolean };
@@ -310,7 +316,7 @@ export async function pickReschedule(
     const least = Math.min(...perDay);
     items.push({
       label: 'Spread over the next 5 days',
-      description: `${formatDay(days[0])} to ${formatDay(days[days.length - 1])}, weekdays · ${least === most ? most : `${least}–${most}`} a day`,
+      description: `${formatDay(days[0], formats)} to ${formatDay(days[days.length - 1], formats)}, weekdays · ${least === most ? most : `${least}–${most}`} a day`,
       choice: { kind: 'each', plan: 'spread', dates },
     });
   }
@@ -318,7 +324,7 @@ export async function pickReschedule(
     const dates = planThreeToday(open, now);
     items.push({
       label: '3 for today, the rest next week',
-      description: `3 on ${formatDay(dueDateFor('today', now))}, ${open.length - 3} on ${formatDay(dueDateFor('nextWeek', now))}`,
+      description: `3 on ${formatDay(dueDateFor('today', now), formats)}, ${open.length - 3} on ${formatDay(dueDateFor('nextWeek', now), formats)}`,
       choice: { kind: 'each', plan: 'threeToday', dates },
     });
   }

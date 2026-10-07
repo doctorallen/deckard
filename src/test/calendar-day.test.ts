@@ -108,11 +108,11 @@ suite('The calendar day panel', () => {
     const { date, title, relative, notePath } = createCalendarDay(index, '2026-09-25', createQueryContext(NOW.getTime()));
     assert.deepStrictEqual(
       { date, title, relative, notePath },
-      { date: '2026-09-25', title: 'Friday, September 25', relative: 'Today', notePath: 'notes/2026-09-25.md' },
+      { date: '2026-09-25', title: 'Fri, Sep 25', relative: 'Today', notePath: 'notes/2026-09-25.md' },
     );
     assert.strictEqual(createCalendarDay(index, '2026-09-24', createQueryContext(NOW.getTime())).relative, 'Yesterday');
     assert.strictEqual(createCalendarDay(index, '2026-09-26', createQueryContext(NOW.getTime())).relative, 'Tomorrow');
-    assert.strictEqual(createCalendarDay(index, '2027-10-01', createQueryContext(NOW.getTime())).title, 'Friday, October 1, 2027');
+    assert.strictEqual(createCalendarDay(index, '2027-10-01', createQueryContext(NOW.getTime())).title, '2027-10-01');
     assert.strictEqual(createCalendarDay(index, '2026-10-02', createQueryContext(NOW.getTime())).notePath, undefined);
   });
 
@@ -143,7 +143,7 @@ suite('The calendar day panel', () => {
   test('on, a click chooses the day and opens nothing; a double-click or Enter opens it', async () => {
     const page = open(true);
     try {
-      assert.strictEqual(page.text('#day-title'), 'Friday, September 25 · Today');
+      assert.strictEqual(page.text('#day-title'), 'Fri, Sep 25 · Today');
       assert.strictEqual(day(page, '2026-09-25').parentElement?.getAttribute('aria-selected'), 'true');
       day(page, '2026-09-22').click();
       assert.strictEqual(day(page, '2026-09-22').parentElement?.getAttribute('aria-selected'), 'true');
@@ -182,7 +182,7 @@ suite('The calendar day panel', () => {
     }
     const page = open(true, '2026-09-22');
     try {
-      assert.strictEqual(page.text('#day-title'), 'Tuesday, September 22');
+      assert.strictEqual(page.text('#day-title'), 'Tue, Sep 22');
       const button = page.findAll('[data-action="show-month"]').find((candidate) => candidate.textContent === 'Today') as HTMLElement;
       button.click();
       assert.deepStrictEqual(page.lastPosted('showMonth'), { type: 'showMonth', month: '2026-09', date: '2026-09-25' });

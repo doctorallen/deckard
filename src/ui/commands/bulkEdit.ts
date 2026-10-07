@@ -17,6 +17,8 @@ import { describeStale, noteName, openNoteAction, reportFailure } from './notify
 import { Section, Task } from '../../domain/model';
 import { formatIsoDate } from '../../domain/markdown/calendar';
 import { CompletionWrite, setTaskDate, setTaskLineCompletion, writeCompletion } from '../../domain/markdown/taskLineEdits';
+import { type DateFormats, DEFAULT_DATE_FORMATS, formatDisplayDay } from '../../domain/markdown/dateFormat';
+import { readDateFormats } from './datePrompt';
 
 /**
  * One edit made to many results at once.
@@ -64,8 +66,8 @@ export interface BulkEditResult {
   unreadRules?: number;
 }
 
-/** What a bulk edit is called, in the preview and in the Undo prompt. */
-export function describeBulkEdit(edit: BulkEdit, entries: number): string {
+/** What a bulk edit is called, in the preview and in the Undo prompt, its date in the reader's format. */
+export function describeBulkEdit(edit: BulkEdit, entries: number, formats: DateFormats = DEFAULT_DATE_FORMATS): string {
   const count = `${entries} ${entries === 1 ? 'result' : 'results'}`;
   switch (edit.kind) {
     case 'complete':
@@ -74,7 +76,7 @@ export function describeBulkEdit(edit: BulkEdit, entries: number): string {
       return `setting the status of ${count} to ${edit.status.name}`;
     case 'due':
       return edit.date
-        ? `setting the due date of ${count} to ${edit.date}`
+        ? `setting the due date of ${count} to ${formatDisplayDay(edit.date, formats)}`
         : `clearing the due date of ${count}`;
     case 'dueEach':
       return `spreading the due dates of ${count}`;
@@ -83,15 +85,15 @@ export function describeBulkEdit(edit: BulkEdit, entries: number): string {
   }
 }
 
-/** The verb a bulk edit's result sentence opens with, with its preposition. */
-function verbFor(edit: BulkEdit): string {
+/** The verb a bulk edit's result sentence opens with, with its preposition, its date in the reader's format. */
+function verbFor(edit: BulkEdit, formats: DateFormats): string {
   switch (edit.kind) {
     case 'complete':
       return edit.completed ? 'Completed' : 'Reopened';
     case 'status':
       return `Set the status to ${edit.status.name} on`;
     case 'due':
-      return edit.date ? `Set the due date to ${edit.date} on` : 'Cleared the due date on';
+      return edit.date ? `Set the due date to ${formatDisplayDay(edit.date, formats)} on` : 'Cleared the due date on';
     case 'dueEach':
       return 'Set a due date on';
     case 'tag':
@@ -173,9 +175,10 @@ export async function applyBulkEdit(
   if (changed === 0) {
     return { changed: 0, ...left, notes: 0, unreadRules: 0 };
   }
+  const formats = readDateFormats();
   const written = await history.write(tally.workspaceEdit, {
-    label: describeBulkEdit(edit, changed),
-    description: describeBulkEdit(edit, changed),
+    label: describeBulkEdit(edit, changed, formats),
+    description: describeBulkEdit(edit, changed, formats),
   });
   return written.applied
     ? { changed, ...left, notes: written.notes.length, unreadRules }
@@ -381,10 +384,11 @@ function firstLine(content: string): string {
   return content.split(/\r?\n/)[0] ?? '';
 }
 
-/** One sentence for what a bulk edit did. */
+/** One sentence for what a bulk edit did, its date in the reader's `formats`. */
 export function describeBulkEditResult(
   edit: BulkEdit,
   result: BulkEditResult,
+  formats: DateFormats = DEFAULT_DATE_FORMATS,
 ): string {
   const stale = result.stale ?? 0;
   const unchanged = result.unchanged ?? result.skipped - stale;
@@ -395,7 +399,7 @@ export function describeBulkEditResult(
           result.staleUris?.length ? result.staleUris.map(noteName) : ['The note'],
         );
   }
-  const verb = verbFor(edit);
+  const verb = verbFor(edit, formats);
   const left = describeLeftAlone(unchanged, stale);
   const rules = describeUnreadRules(result.unreadRules ?? 0);
   return `${verb} ${pluralize(result.changed, 'result')} in ${pluralize(result.notes, 'note')}.${left}${rules}`;
@@ -448,7 +452,7 @@ export function reportBulkEditResult(
   result: BulkEditResult,
   more = '',
 ): void {
-  const text = describeBulkEditResult(edit, result) + more;
+  const text = describeBulkEditResult(edit, result, readDateFormats()) + more;
   const severity = bulkEditSeverity(result);
   if (severity === 'error') {
     const uris = result.staleUris ?? [];

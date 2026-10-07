@@ -44,6 +44,7 @@ import type { PageChrome } from '../../components';
 import { narrowDashboardMessage } from './messages';
 import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 import { isDefaultHomeLayout } from '../../../../core/storage/preferencesSchema';
+import { readDateFormats } from '../../../commands/datePrompt';
 
 /** Today, as a day number, so a rollover is one comparison. */
 function startOfToday(): number {
@@ -628,6 +629,7 @@ export class DashboardController implements PageController<DashboardPageState, D
         ranking: {
           associationMinimumSupport: configuration.get<number>('relatedNotesAssociationMinimumSupport', 1),
           recencyHalfLifeDays: configuration.get<number>('relatedNotesRecencyHalfLifeDays', 0),
+          dateFormats: readDateFormats(),
         },
       },
     });

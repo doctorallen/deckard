@@ -1,6 +1,7 @@
 import type { DueParts } from '../model/tasks';
 import { needsNewDate, TaskPolicy } from '../tasks/taskPolicy';
 import { DAY_MS, formatIsoDate, startOfDay } from './calendar';
+import { type DateFormats, formatDisplayDate, isDefaultDateFormats } from './dateFormat';
 
 /** How a due date reads beside today, and whether it has passed. */
 export interface DueDescription {
@@ -35,16 +36,17 @@ const RELATIVE_DUE_LIMIT_DAYS = 30;
  * "overdue" is in the text, so the state never rests on color alone.
  *
  * Today is the day `now` falls on, and `taskPolicy` says when an overdue date
- * is stale: the wording depends on nothing else.
+ * is stale; the date is written as formatDueDate writes it, from the task's
+ * `dueText` and the reader's `formats`.
  */
 export function describeDueDate(
   dueAt: number,
   now: number,
   taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'>,
-  dueText?: string,
+  { dueText, formats }: { readonly dueText?: string; readonly formats?: DateFormats } = {},
 ): DueDescription {
   const days = Math.round((startOfDay(dueAt) - startOfDay(now)) / DAY_MS);
-  const date = dueText ?? formatIsoDate(dueAt);
+  const date = formatDueDate(dueAt, dueText, formats);
   if (days < 0 && needsNewDate(dueAt, now, taskPolicy)) {
     const label = `was due ${date}`;
     return { relative: 'was due', label, date, parts: { state: label, distance: '', date: '' }, overdue: false, stale: true, days };
@@ -57,6 +59,18 @@ export function describeDueDate(
     return { relative, label, date, parts: { state: label, distance: '', date: '' }, overdue, days };
   }
   return { relative, label: `${relative} · ${date}`, date, parts: { state, distance, date }, overdue, days };
+}
+
+/**
+ * A task's due date as a reader sees it: in the reader's format once they
+ * have set one; else as the task wrote it, which may be words such as
+ * `Sep 8`; else `YYYY-MM-DD`.
+ */
+export function formatDueDate(dueAt: number, dueText: string | undefined, formats: DateFormats | undefined): string {
+  if (formats && !isDefaultDateFormats(formats)) {
+    return formatDisplayDate(dueAt, formats);
+  }
+  return dueText ?? formatIsoDate(dueAt);
 }
 
 /**

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
-import { createDateFormats, DEFAULT_DATE_FORMAT, DEFAULT_DATE_LOCALE, DEFAULT_SHORT_DATE_FORMAT, type DateFormats, usesLocaleWeeks } from '../../domain/markdown/dateFormat';
-import { readWeekStart } from './datePrompt';
+import { DEFAULT_DATE_FORMAT, DEFAULT_DATE_LOCALE, DEFAULT_SHORT_DATE_FORMAT, type DateFormats, usesLocaleWeeks } from '../../domain/markdown/dateFormat';
+import { DATE_FORMAT_SETTINGS, readDateFormats } from './datePrompt';
 import { writeSetting } from './settings';
 import { changedScaleSettings, resolveDisplayLevel, resolveScaleValues, SCALE_SETTINGS, type DisplayChoices, type DisplayLevel, type ScaleSetting } from '../state/displayLevel';
 
@@ -76,24 +76,6 @@ export function readDisplayChoices(previewed?: DisplayLevel): DisplayChoices {
     ...(deckard.get<string>(DISPLAY_SETTINGS.pageWidth.key) === 'full' ? { width: 'full' as const } : {}),
     ...dateFormatChoices(readDateFormats()),
   };
-}
-
-/** The settings that hold the reader's date formats, under `deckard.`. */
-export const DATE_FORMAT_SETTINGS = { date: 'display.dateFormat', short: 'display.shortDateFormat' } as const;
-
-/**
- * The reader's date formats, read now: both settings, each at its default
- * when empty or unreadable, VS Code's display language for `L` to `llll`,
- * and `deckard.calendar.weekStart` for `w`.
- */
-export function readDateFormats(): DateFormats {
-  const deckard = vscode.workspace.getConfiguration('deckard');
-  return createDateFormats({
-    date: deckard.get<unknown>(DATE_FORMAT_SETTINGS.date),
-    short: deckard.get<unknown>(DATE_FORMAT_SETTINGS.short),
-    locale: vscode.env.language,
-    weekStart: readWeekStart(),
-  });
 }
 
 /**

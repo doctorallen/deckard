@@ -94,7 +94,7 @@ suite('Agenda', () => {
       byDay.map((group) => [group.id, group.label, group.entries.map((entry) => entry.task.id)]),
       [
         ['upcoming:2026-09-14', 'Tomorrow', ['tomorrow', 'monday']],
-        ['upcoming:2026-09-17', 'Thu Sep 17', ['thursday', 'starts']],
+        ['upcoming:2026-09-17', 'Thu, Sep 17', ['thursday', 'starts']],
       ],
     );
     assert.deepStrictEqual(

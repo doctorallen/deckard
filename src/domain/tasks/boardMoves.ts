@@ -1,5 +1,6 @@
 import { escapeRegExp } from '../../shared/text';
-import { SHORT_WEEKDAY_NAMES, addDays, formatIsoDate, startOfDay } from '../markdown/calendar';
+import { addDays, formatIsoDate, startOfDay } from '../markdown/calendar';
+import { nameDisplayDay } from '../markdown/dateFormat';
 import { findCodeAndLinkRanges, isInRanges } from '../markdown/inlineRanges';
 import { parseMarkdown, readPerson, TAG_WORD_CHARACTERS } from '../markdown/parser';
 import { Task, TaskPriority } from '../model';
@@ -33,7 +34,7 @@ export type TaskMove =
 /** The board settings a move is resolved with. */
 export interface TaskMoveOptions {
   /** The moment and task policy the due bands are drawn against. */
-  queryContext: Pick<QueryContext, 'now' | 'taskPolicy'>;
+  queryContext: Pick<QueryContext, 'now' | 'taskPolicy'> & Partial<Pick<QueryContext, 'dateFormats'>>;
   /** Namespace that holds a task's status, `status` for `#status/doing`. */
   statusNamespace: string;
   /** Format for metadata written on a task that has none yet. */
@@ -250,10 +251,9 @@ function moveToDate({ task, value, options, reopen }: MoveRequest): TaskMove {
     return { kind: 'unchanged' };
   }
   const [year, month, day] = value.split('-').map(Number);
-  const weekday = SHORT_WEEKDAY_NAMES[new Date(year, month - 1, day).getDay()];
   return {
     kind: 'edit',
-    label: `Due ${weekday} ${value}`,
+    label: `Due ${nameDisplayDay(new Date(year, month - 1, day).getTime(), options.queryContext.dateFormats, { weekday: 'short' })}`,
     edit: (line) => setTaskDate(reopen(line), task.checkboxColumn, {
       field: 'due',
       date: value,

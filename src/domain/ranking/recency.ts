@@ -11,6 +11,8 @@ import { getDailyNoteDate } from './entryLabels';
 export interface RelevantDate {
   at: number;
   source: string;
+  /** A daily note's day, `YYYY-MM-DD`, which the reason names after its source. */
+  day?: string;
 }
 
 /**
@@ -32,7 +34,7 @@ export function getRelevantDate(file: ParsedFile): RelevantDate | undefined {
   if (date) {
     const at = new Date(`${date}T00:00:00`).getTime();
     if (!Number.isNaN(at)) {
-      return { at, source: frontmatter ? 'dated note' : `daily note ${date}` };
+      return frontmatter ? { at, source: 'dated note' } : { at, source: 'daily note', day: date };
     }
   }
   return file.updatedAt === undefined

@@ -57,6 +57,11 @@ suite('Card details', () => {
     assert.strictEqual(shown.text('.card .source'), `Created ${formatIsoDate(CREATED)}`);
     assert.strictEqual(shown.findAll('.card .heading-path').length, 0);
   });
+
+  test('writes the dates in the reader\'s format, as the body says it', () => {
+    const shown = open({ details: 'created updated', dateFormat: 'D MMMM YYYY' });
+    assert.strictEqual(shown.text('.card .source'), 'Created 12 September 2026 · Updated 3 October 2026');
+  });
 });
 
 suite('Card details on tasks', () => {

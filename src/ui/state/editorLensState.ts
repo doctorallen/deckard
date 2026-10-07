@@ -241,7 +241,7 @@ export interface HubProgress {
 export function findHubProgress(
   file: ParsedFile,
   index: WorkspaceIndex,
-  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'> & Partial<Pick<QueryContext, 'dateFormats'>>,
 ): HubProgress[] {
   const describes = file.hub?.describes ?? [];
   if (!describes.length) {
@@ -252,7 +252,7 @@ export function findHubProgress(
   return describes.flatMap((tag) => {
     const progress = counted.get(tag.key);
     return progress
-      ? [{ tagKey: tag.key, tagLabel: tag.label, text: describeTagProgress(progress, context.now, context.taskPolicy) }]
+      ? [{ tagKey: tag.key, tagLabel: tag.label, text: describeTagProgress(progress, context.now, context.taskPolicy, context.dateFormats) }]
       : [];
   });
 }

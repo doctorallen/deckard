@@ -16,6 +16,7 @@ import {
   QuickFindItem,
   QuickFindResults,
 } from '../state/quickFindState';
+import { type DateFormats, formatDisplayDay } from '../../domain/markdown/dateFormat';
 import { describeDistance, formatShortDay, parseDatePhrase } from '../../domain/markdown/dates';
 import { openDailyNoteFor } from './dailyNoteForDate';
 import { readDateOptions } from './datePrompt';
@@ -80,12 +81,13 @@ const SHORT_WEEKDAY = /^(?:sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)$/i;
  * The daily note row for what is typed, when the whole of it is a day, such
  * as `friday` or `oct 3`, and could be a note's name. A short weekday alone,
  * such as `sat`, is left to the search. `now` is the moment the keystroke's
- * results are read at, which the day is found from and described against.
+ * results are read at, which the day is found from and described against,
+ * in the reader's `formats`.
  */
 export function findDailyNoteRow(
   value: string,
   now: number,
-  options: Parameters<typeof parseDatePhrase>[2] = {},
+  options: Parameters<typeof parseDatePhrase>[2] & { readonly formats?: DateFormats } = {},
 ): DailyNoteRow | undefined {
   const text = value.trim();
   if (!text || !isNoteName(text) || SHORT_WEEKDAY.test(text)) {
@@ -97,10 +99,11 @@ export function findDailyNoteRow(
   }
   const at = parseIsoDate(date);
   const distance = at === undefined ? undefined : describeDistance(at, now);
+  const written = formatDisplayDay(date, options.formats);
   return {
     date,
-    label: `$(calendar) Open daily note for ${formatShortDay(date, now)}`,
-    description: distance ? `${date} · ${distance}` : date,
+    label: `$(calendar) Open daily note for ${formatShortDay(date, now, options.formats)}`,
+    description: distance ? `${written} · ${distance}` : written,
   };
 }
 
@@ -567,7 +570,7 @@ export class QuickFind implements vscode.Disposable {
     picker.items = toPickItems(
       results,
       picker.value,
-      findDailyNoteRow(picker.value, queryContext.now, readDateOptions()),
+      findDailyNoteRow(picker.value, queryContext.now, { ...readDateOptions(), formats: queryContext.dateFormats }),
     );
     if (activeKey === undefined) {
       return;

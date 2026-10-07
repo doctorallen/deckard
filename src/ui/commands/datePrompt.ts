@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { createDateFormats, type DateFormats, writesDayFirst } from '../../domain/markdown/dateFormat';
 import {
   DatePhraseOptions,
   describeDay,
@@ -68,23 +69,47 @@ export function readWeekStart(): Weekday {
   return value === 'locale' ? localeWeekStart(vscode.env.language) : 0;
 }
 
-/** How a date box reads what is typed into it. */
+/** The settings that hold the reader's date formats, under `deckard.`. */
+export const DATE_FORMAT_SETTINGS = { date: 'display.dateFormat', short: 'display.shortDateFormat' } as const;
+
+/**
+ * The reader's date formats, read now: both settings, each at its default
+ * when empty or unreadable, VS Code's display language for `L` to `llll`,
+ * and `deckard.calendar.weekStart` for `w`. They are read here, beside the
+ * week start, so the date box says a day back the way every view writes it.
+ */
+export function readDateFormats(): DateFormats {
+  const deckard = vscode.workspace.getConfiguration('deckard');
+  return createDateFormats({
+    date: deckard.get<unknown>(DATE_FORMAT_SETTINGS.date),
+    short: deckard.get<unknown>(DATE_FORMAT_SETTINGS.short),
+    locale: vscode.env.language,
+    weekStart: readWeekStart(),
+  });
+}
+
+/**
+ * How a date box reads what is typed into it. A numeric date is read day
+ * first when the reader's format writes the day first, else in the order
+ * the display language writes one.
+ */
 export function readDateOptions(): DatePhraseOptions {
   return {
     weekStart: readWeekStart(),
-    numericOrder: numericOrderFor(vscode.env.language),
+    numericOrder: writesDayFirst(readDateFormats().date) ? 'dmy' : numericOrderFor(vscode.env.language),
   };
 }
 
 /**
- * What a date box says as it is typed: the day it read, the one error, or
- * nothing for an empty box, which clears the date. `now` is the moment the
- * box was opened at, which every keystroke reads the day against.
+ * What a date box says as it is typed: the day it read, in the reader's
+ * `formats`, the one error, or nothing for an empty box, which clears the
+ * date. `now` is the moment the box was opened at, which every keystroke
+ * reads the day against.
  */
 export function validateDateInput(
   value: string,
   now: number,
-  options: DatePhraseOptions = {},
+  options: DatePhraseOptions & { readonly formats?: DateFormats } = {},
 ): string | vscode.InputBoxValidationMessage | undefined {
   const read = parseDatePhrase(value, now, options);
   if (!read) {
@@ -93,7 +118,7 @@ export function validateDateInput(
   // Saying the day back is the point of accepting words for one.
   return read.date
     ? {
-        message: describeDay(read.date, now),
+        message: describeDay(read.date, now, options.formats),
         severity: vscode.InputBoxValidationSeverity.Info,
       }
     : undefined;
@@ -110,7 +135,7 @@ export async function askForDate(ask: {
   now?: number;
 }): Promise<{ date: string | undefined } | undefined> {
   const now = ask.now ?? Date.now();
-  const options = readDateOptions();
+  const options = { ...readDateOptions(), formats: readDateFormats() };
   const written = await vscode.window.showInputBox({
     title: ask.title,
     prompt: DATE_INPUT_PROMPT,

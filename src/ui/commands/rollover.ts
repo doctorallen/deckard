@@ -28,6 +28,8 @@ import { resolveSourceUri } from './navigation';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
 import { getCaptureInsertion } from '../../domain/capture/captureLines';
 import { findFencedLines, readHeading } from '../../domain/markdown/lineShapes';
+import { type DateFormats, DEFAULT_DATE_FORMATS, formatDisplayDay } from '../../domain/markdown/dateFormat';
+import { readDateFormats } from './datePrompt';
 
 /**
  * Roll Tasks Forward, and the rollover a new daily note starts with.
@@ -216,7 +218,7 @@ export async function rollTasksForward(
     // A rollover writes into notes nobody opened, so both the note it wrote
     // into and the way back are offered where it is announced.
     void offerRollover(
-      describeRollover(written, mode),
+      describeRollover(written, mode, readDateFormats()),
       result.todayUri,
       written.handle,
       indexer,
@@ -265,8 +267,10 @@ async function offerRollover(
 export function describeRollover(
   result: RolloverResult,
   mode: Exclude<RolloverMode, 'off'>,
+  formats: DateFormats = DEFAULT_DATE_FORMATS,
 ): string {
-  const oldest = result.fromDates[0];
+  const oldest = result.fromDates[0] === undefined ? undefined : formatDisplayDay(result.fromDates[0], formats);
+  const newest = result.fromDates[result.fromDates.length - 1];
   if (result.carried === 0) {
     return `Nothing was carried forward: the open tasks in your earlier daily notes are already in today's note, or have changed since.`;
   }
@@ -274,7 +278,7 @@ export function describeRollover(
   // Where from: one day by name, several as the span they cover.
   const from =
     result.notes <= 1
-      ? ` from ${result.fromDates[result.fromDates.length - 1] ?? oldest}`
+      ? ` from ${newest === undefined ? oldest : formatDisplayDay(newest, formats)}`
       : ` from ${result.notes} daily notes, back to ${oldest}`;
   const left =
     result.skipped === 0

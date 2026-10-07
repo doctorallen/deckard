@@ -19,7 +19,7 @@ export interface ProgressPartLink {
  */
 export function linkProgressParts(
   progress: TagProgress,
-  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'> & Partial<Pick<QueryContext, 'dateFormats'>>,
   counted: (terms: string) => string,
   whose: string,
 ): ProgressPartLink[] {
@@ -32,5 +32,5 @@ export function linkProgressParts(
       : undefined,
     allDone: undefined,
   };
-  return describeTagProgressParts(progress, context.now, context.taskPolicy).map((part) => ({ text: part.text, ...searches[part.kind] }));
+  return describeTagProgressParts(progress, context.now, context.taskPolicy, context.dateFormats).map((part) => ({ text: part.text, ...searches[part.kind] }));
 }

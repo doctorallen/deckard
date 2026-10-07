@@ -9,6 +9,8 @@ import { getFileName } from '../../shared/paths';
 import { getPlainTextTerms } from '../../domain/query/queryEdit';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
+import type { DateFormats } from '../../domain/markdown/dateFormat';
+import { formatDueDate } from '../../domain/markdown/dueWording';
 import {
   collectQueryTagKeys,
   visitConditions,
@@ -322,6 +324,8 @@ interface EntryScoring {
   /** The floor every entry starts from: QUERY_MATCH for a search with conditions. */
   base: number;
   now: number;
+  /** The reader's date formats, which a task's due date is written in. */
+  dateFormats: DateFormats;
 }
 
 /**
@@ -356,6 +360,7 @@ function rankEntries({
     learned,
     base: plainTerms ? 0 : QUERY_MATCH,
     now: context.now,
+    dateFormats: context.dateFormats,
   };
   const noteEntries: RankedEntry[] = [
     ...sections.map((section) => rankSection(scoring, section)),
@@ -475,7 +480,7 @@ function rankFile(scoring: EntryScoring, file: ParsedFile): RankedEntry {
 
 /** A task as a ranked row; an open task is usually the one being looked for, so it gains a little. */
 function rankTask(scoring: EntryScoring, task: Task): RankedEntry {
-  const { index, words, textScores, learned, base } = scoring;
+  const { index, words, textScores, learned, base, dateFormats } = scoring;
   const title = stripTags(task.title) || task.title;
   const found = textScores.get(task.id);
   const titleScore = scoreTitle(words, title);
@@ -487,7 +492,7 @@ function rankTask(scoring: EntryScoring, task: Task): RankedEntry {
     ),
     updatedAt: task.updatedAt ?? 0,
     parked: isParkedTask(index, task.id),
-    item: parkedItem(createTaskItem(index, task, title), isParkedTask(index, task.id)),
+    item: parkedItem(createTaskItem(index, task, { title, dateFormats }), isParkedTask(index, task.id)),
   };
 }
 
@@ -1035,15 +1040,16 @@ function createSectionItem(
   };
 }
 
-/** A task as a row: its title, its note, and its due date, priority, and headings. */
+/** A task as a row: its title, its note, and its due date in the reader's format, priority, and headings. */
 function createTaskItem(
   index: WorkspaceIndex,
   task: Task,
-  title: string,
+  { title, dateFormats }: { readonly title: string; readonly dateFormats: DateFormats },
 ): QuickFindItem {
   const section = task.sectionId ? index.sections.get(task.sectionId) : undefined;
+  const due = task.dueAt === undefined ? task.dueText : formatDueDate(task.dueAt, task.dueText, dateFormats);
   const facts = [
-    task.dueText ? `due ${task.dueText}` : undefined,
+    due ? `due ${due}` : undefined,
     task.priority ? `${task.priority} priority` : undefined,
     section ? getHeadingPath(section, index.sections).join(' › ') : undefined,
   ].filter(Boolean);

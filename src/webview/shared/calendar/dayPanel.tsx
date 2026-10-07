@@ -11,6 +11,7 @@
 import type { CalendarDayDetail, CalendarMessage } from '../../../ui/protocol/calendar';
 import type { DashboardTask } from '../../../ui/protocol/shared';
 import { announce } from '../status';
+import { formatPageDay } from '../dateFormats';
 import { CalendarIcon } from './calendarIcon';
 import { eventElement } from './events';
 import { TaskListRow } from '../taskRow';
@@ -40,7 +41,7 @@ function DayTask({ item, field, move }: { readonly item: DashboardTask; readonly
         data-task-id={item.task.id}
         data-field={field}
         data-date={move.date}
-        aria-label={`Move "${item.task.title}" to ${move.label === 'Tomorrow' ? 'tomorrow, ' : 'the next day, '}${move.date}`}
+        aria-label={`Move "${item.task.title}" to ${move.label === 'Tomorrow' ? 'tomorrow, ' : 'the next day, '}${formatPageDay(move.date)}`}
       >
         {move.label}
       </button>
@@ -112,7 +113,7 @@ function CreatedGroup({ day }: { readonly day: CalendarDayDetail }) {
       </ul>
       {rest > 0
         ? (
-          <button type="button" class="day-more" data-action="search-created" data-date={day.date} aria-label={`Search the ${day.notesTotal} notes created on ${day.date}`}>
+          <button type="button" class="day-more" data-action="search-created" data-date={day.date} aria-label={`Search the ${day.notesTotal} notes created on ${formatPageDay(day.date)}`}>
             {`Search all ${day.notesTotal}`}
           </button>
         )
@@ -125,7 +126,7 @@ function CreatedGroup({ day }: { readonly day: CalendarDayDetail }) {
 function DayNote({ day }: { readonly day: CalendarDayDetail }) {
   if (day.notePath) {
     return (
-      <button type="button" class="day-note" data-action="open-note" data-file-path={day.notePath} aria-label={`Open the daily note for ${day.date}`}>
+      <button type="button" class="day-note" data-action="open-note" data-file-path={day.notePath} aria-label={`Open the daily note for ${formatPageDay(day.date)}`}>
         <CalendarIcon />
         <span class="day-note-label">Daily note</span>
         <span class="day-note-action">Open</span>
@@ -135,7 +136,7 @@ function DayNote({ day }: { readonly day: CalendarDayDetail }) {
   return (
     <div class="day-note-line">
       <span class="day-note-label">No daily note yet</span>
-      <button type="button" data-action="create-day" data-date={day.date} aria-label={`Create the daily note for ${day.date}`}>Create</button>
+      <button type="button" data-action="create-day" data-date={day.date} aria-label={`Create the daily note for ${formatPageDay(day.date)}`}>Create</button>
     </div>
   );
 }

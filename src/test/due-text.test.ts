@@ -35,6 +35,6 @@ suite('Due dates in their parts, for Display\'s Dates preference', () => {
 
   test('the date is given apart from its words, as the label writes it', () => {
     assert.strictEqual(describeDueDate(NOW + 82 * DAY, NOW, POLICY).date, '2026-12-25');
-    assert.strictEqual(describeDueDate(NOW - 15 * DAY, NOW, POLICY, 'Sep 19').date, 'Sep 19');
+    assert.strictEqual(describeDueDate(NOW - 15 * DAY, NOW, POLICY, { dueText: 'Sep 19' }).date, 'Sep 19');
   });
 });

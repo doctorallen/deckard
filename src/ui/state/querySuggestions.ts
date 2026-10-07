@@ -8,7 +8,6 @@ import { ParsedQuery, QUERY_FIELD_OPERATORS, QUERY_FIELDS, QUERY_PRIORITY_VALUES
 import { DEFAULT_TASK_POLICY, type TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { normalizeStatusName, readTaskStatus, UNKNOWN_STATUS_NAME } from '../../domain/tasks/taskStatuses';
 import {
-  formatMonthDay,
   formatMonthName,
   formatShortDay,
   parseDatePhrase,
@@ -19,6 +18,7 @@ import { getFileName } from '../../shared/paths';
 import { pluralize } from '../../shared/text';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { addDays } from '../../domain/markdown/calendar';
+import { formatDisplayDate } from '../../domain/markdown/dateFormat';
 import {
   TagInfo,
   TagReference,
@@ -135,7 +135,7 @@ export function describeTagMatches(
 export function createQuerySuggestions(
   index: WorkspaceIndex,
   recentQueries: readonly string[],
-  context: Pick<QueryContext, 'now' | 'weekStart'> & Partial<Pick<QueryContext, 'taskPolicy'>>,
+  context: Pick<QueryContext, 'now' | 'weekStart'> & Partial<Pick<QueryContext, 'taskPolicy' | 'dateFormats'>>,
 ): QuerySuggestions {
   const fields: QuerySuggestion[] = QUERY_FIELDS.map((field) => ({
     value: field,
@@ -235,12 +235,12 @@ const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'satur
 /**
  * The date completions: `dates` look back, for when a note was created or
  * changed, `taskDates` look ahead, for when a task is due, and `noDate` asks
- * for none. A week or a
- * month says the days it covers, and a weekday the day it is, so a value is
- * chosen by what it means today.
+ * for none. A week or a month says the days it covers, and a weekday the
+ * day it is, in the reader's short format, so a value is chosen by what it
+ * means today.
  */
 function suggestDates(
-  { now, weekStart }: Pick<QueryContext, 'now' | 'weekStart'>,
+  { now, weekStart, dateFormats }: Pick<QueryContext, 'now' | 'weekStart'> & Partial<Pick<QueryContext, 'dateFormats'>>,
 ): { dates: QuerySuggestion[]; taskDates: QuerySuggestion[]; noDate: QuerySuggestion } {
   const span = (value: string): string => {
     const range = resolveDatePeriod(value, now, weekStart);
@@ -249,12 +249,12 @@ function suggestDates(
     }
     return value.endsWith('-month')
       ? formatMonthName(range.start, now)
-      : `${formatMonthDay(range.start)} to ${formatMonthDay(addDays(range.end, -1))}`;
+      : `${formatDisplayDate(range.start, dateFormats, 'short', now)} to ${formatDisplayDate(addDays(range.end, -1), dateFormats, 'short', now)}`;
   };
   const period = (value: string): QuerySuggestion => ({ value, label: value, detail: span(value) });
   const weekday = (value: string, direction: 'past' | 'future'): QuerySuggestion => {
     const date = parseDatePhrase(value, now, { direction })?.date;
-    return { value, label: value, detail: date ? formatShortDay(date, now) : undefined };
+    return { value, label: value, detail: date ? formatShortDay(date, now, dateFormats) : undefined };
   };
   const dates: QuerySuggestion[] = [
     { value: 'today', label: 'today' },

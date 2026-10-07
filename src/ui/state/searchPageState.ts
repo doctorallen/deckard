@@ -558,7 +558,7 @@ function describeTagProgressLine(
       done: progress.done,
       total: progress.total,
       overdue: progress.overdue,
-      label: describeTagProgress(progress, context.now, context.taskPolicy),
+      label: describeTagProgress(progress, context.now, context.taskPolicy, context.dateFormats),
       // The tasks progress counts: neither steps nor parked ones. The part
       // whose search is the page's is on, and the way back to the tag.
       parts: linkProgressParts(progress, context, (terms) => `${tagKey} ${terms} -is:step -is:parked`, 'the tag’s').map((part) =>

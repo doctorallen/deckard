@@ -9,6 +9,7 @@ import type { ComponentChildren } from 'preact';
 import type { CalendarSnapshot, CalendarWeek } from '../../../ui/protocol/calendar';
 import { CalendarIcon } from './calendarIcon';
 import { drawnWeekdays } from './model';
+import { formatPageDay } from '../dateFormats';
 
 /** The weekday names across the top, after the rail's empty corner. */
 export function WeekdayRow({ snapshot }: { readonly snapshot: CalendarSnapshot }) {
@@ -26,7 +27,7 @@ export function WeekdayRow({ snapshot }: { readonly snapshot: CalendarSnapshot }
  * not. What it opens is in its tip.
  */
 export function WeekRail({ week }: { readonly week: CalendarWeek }) {
-  const days = `${week.days[0].date} to ${week.days[6].date}`;
+  const days = `${formatPageDay(week.days[0].date)} to ${formatPageDay(week.days[6].date)}`;
   const label = `${week.notePath ? "Open this week's note, " : "Start this week's note, "}${days}`;
   return (
     <span class="calendar-cell" role="rowheader">

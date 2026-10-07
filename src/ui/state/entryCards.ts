@@ -117,11 +117,11 @@ function capitalize(words: string): string {
 export function createDashboardTask(
   task: Task,
   sections: Map<string, Section>,
-  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'> & Partial<Pick<QueryContext, 'dateFormats'>>,
 ): DashboardTask {
   const due =
     isOpenTask(task) && task.dueAt !== undefined
-      ? describeDueDate(task.dueAt, context.now, context.taskPolicy, task.dueText)
+      ? describeDueDate(task.dueAt, context.now, context.taskPolicy, { dueText: task.dueText, formats: context.dateFormats })
       : undefined;
   return {
     task,

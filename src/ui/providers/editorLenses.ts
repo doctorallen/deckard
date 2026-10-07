@@ -26,6 +26,8 @@ import { findLinkProblems, findMissingNoteNames } from '../../domain/links/linkP
 import { formatLocalDate } from '../../domain/notes/periodicNotes';
 import { findUnlinkedMentions } from '../../domain/search/mentions';
 import { ParsedFile, Task, WorkspaceIndex } from '../../domain/model';
+import { formatDisplayDay } from '../../domain/markdown/dateFormat';
+import { readDateFormats } from '../commands/datePrompt';
 
 /** What the lenses read from the indexer, and when they redraw. */
 interface LensIndexSource {
@@ -235,8 +237,10 @@ function provideDailyNoteLenses({
       })),
     );
   }
+  // The days are written as the reader reads a date.
+  const formats = readDateFormats();
   if (actions.previous) {
-    const previous = actions.previous;
+    const previous = formatDisplayDay(actions.previous, formats);
     lenses.push(
       new LazyCodeLens(range, () => ({
         title: `‹ ${previous}`,
@@ -246,7 +250,7 @@ function provideDailyNoteLenses({
     );
   }
   if (actions.next) {
-    const next = actions.next;
+    const next = formatDisplayDay(actions.next, formats);
     lenses.push(
       new LazyCodeLens(range, () => ({
         title: `${next} ›`,

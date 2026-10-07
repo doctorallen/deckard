@@ -1,12 +1,12 @@
 import { isParkedFile } from '../../domain/index/parked';
-import { describeDistance, formatShortDay } from '../../domain/markdown/dates';
+import { type DateFormats, formatDisplayDate } from '../../domain/markdown/dateFormat';
+import { describeDistance } from '../../domain/markdown/dates';
 import { isPeriodicNoteFile, stripTags } from '../../domain/markdown/parser';
 import { getBacklinkIndex, noteTitle } from '../../domain/index/backlinks';
 import { getHeadingPath } from '../../domain/ranking/entryLabels';
 import { findUnlinkedMentions } from '../../domain/search/mentions';
 import { ParsedFile, Section, WorkspaceIndex } from '../../domain/model';
 import { NoteLinkEntry, NoteLinkGroup, NoteLinks, NoteMention } from '../protocol/sidebarNotes';
-import { formatIsoDate } from '../../domain/markdown/calendar';
 
 /**
  * What points at a note: the notes that link to it, each line in context
@@ -31,6 +31,8 @@ export interface NoteLinkOptions {
   now: number;
   /** Leave out links from daily, weekly, and monthly notes, and count them. */
   hideDailyNotes?: boolean;
+  /** The reader's date formats, which a note changed over a month ago is dated in. */
+  dateFormats?: DateFormats;
 }
 
 /**
@@ -54,7 +56,7 @@ export function collectNoteLinks(
   const entry = createEntryReader(index);
   const groups = groupBySource(index, linked);
   return {
-    linkedFromNotes: listLinkedFromNotes(index, groups, entry, options.now),
+    linkedFromNotes: listLinkedFromNotes(index, groups, entry, options),
     linkedFromCount: linked.length,
     linkedFromNoteCount: groups.length,
     ...(hidden.size > 0 ? { hiddenDailyNoteCount: hidden.size } : {}),
@@ -167,7 +169,7 @@ function listLinkedFromNotes(
   index: WorkspaceIndex,
   groups: readonly SourceGroup[],
   entry: EntryReader,
-  now: number,
+  when: Pick<NoteLinkOptions, 'now' | 'dateFormats'>,
 ): NoteLinkGroup[] {
   let room = LIMIT;
   const linkedFromNotes: NoteLinkGroup[] = [];
@@ -182,7 +184,7 @@ function listLinkedFromNotes(
       title: group.title,
       ...(group.updatedAt === undefined
         ? {}
-        : { updatedAt: group.updatedAt, updatedLabel: describeAge(group.updatedAt, now) }),
+        : { updatedAt: group.updatedAt, updatedLabel: describeAge(group.updatedAt, when) }),
       entries: shown.map((line) => {
         const row = entry(group.filePath, line);
         const sectionText = sectionTextAt(index, group.filePath, line + 1);
@@ -206,9 +208,9 @@ export function createLinksSearchQuery(
   return `link = [[${noteTitle(file.filePath)}]]${hideDailyNotes ? ' -is:periodic' : ''}`;
 }
 
-/** When a note was updated, in words: `today`, `3 days ago`, or its day. */
-function describeAge(at: number, now: number): string {
-  return describeDistance(at, now) ?? formatShortDay(formatIsoDate(at), now);
+/** When a note was updated, in words: `today`, `3 days ago`, or its day in the reader's short format. */
+function describeAge(at: number, { now, dateFormats }: Pick<NoteLinkOptions, 'now' | 'dateFormats'>): string {
+  return describeDistance(at, now) ?? formatDisplayDate(at, dateFormats, 'short', now);
 }
 
 /**
