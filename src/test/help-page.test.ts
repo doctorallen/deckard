@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { HelpPanel } from '../ui/webview/help';
+import { GUIDE_CONTENTS, GUIDE_PAGES, WHATS_NEW } from '../ui/webview/guide';
 import { HelpManifest } from '../ui/webview/pages/help/helpManifest';
 import { openWebviewPage } from './webviewPage';
 import { renderPage } from './pages';
@@ -18,45 +19,101 @@ suite('Help page', () => {
       fs.readFileSync(path.resolve(__dirname, '..', '..', 'package.json'), 'utf8'),
     ) as { contributes: HelpManifest }
   ).contributes;
-  const helpHtml = (platform: NodeJS.Platform = 'darwin') =>
-    renderPage('help', { help: { manifest, options: { platform } } });
 
-  test('names only commands Deckard contributes', () => {
-    const titles = new Set(manifest.commands?.map((command) => command.title));
-    const named = [...renderPage('help').matchAll(/<code>Deckard: ([^<]+)<\/code>/g)].map(
-      (match) => match[1],
-    );
-    assert.ok(named.length > 20, 'Help names the commands it describes');
-    assert.deepStrictEqual(named.filter((title) => !titles.has(title)), []);
-  });
-
-  test('a command it names runs from Help, with its shortcut beside it', () => {
-    const page = openWebviewPage(helpHtml());
+  test('its contents list the guide\u2019s pages as the guide\u2019s README groups and orders them', () => {
+    const page = openWebviewPage(renderPage('help'));
     try {
-      const find = page
-        .findAll('article button.command-link[data-command="deckard.searchWorkspace"]')
-        .find((button) => button.textContent === 'Deckard: Find in Notes');
-      assert.ok(find, 'the prose names Find as a button');
-      assert.strictEqual(find.nextElementSibling?.textContent, 'Cmd+Shift+Alt+F');
-      (find as HTMLElement).click();
-      assert.ok(
-        page.findAll('#commands td button.command-link').some((button) => button.textContent === 'Find in Notes'),
-        'and so does the commands table',
+      const links = page.findAll('nav a[data-guide-page]');
+      assert.deepStrictEqual(
+        links.map((link) => link.getAttribute('data-guide-page')),
+        ['README', ...GUIDE_CONTENTS.flatMap(({ pages }) => pages)],
       );
-      assert.deepStrictEqual(page.lastPosted('runCommand'), {
-        type: 'runCommand',
-        command: 'deckard.searchWorkspace',
-      });
-      assert.strictEqual(
-        page.findAll('article button.command-link[data-command="deckard.editTask"]').length,
-        0,
-        'Edit Task acts on the note in the editor, so Help names it as code',
+      assert.deepStrictEqual(
+        links.map((link) => link.textContent),
+        ['README', ...GUIDE_CONTENTS.flatMap(({ pages }) => pages)].map((name) => (name === WHATS_NEW ? 'Changelog' : GUIDE_PAGES[name])),
       );
-      assert.ok(page.findAll('article code').some((code) => code.textContent === 'Deckard: Edit Task'));
+      assert.deepStrictEqual(page.findAll('nav .nav-group').map((group) => group.textContent), GUIDE_CONTENTS.map(({ group }) => group));
+      assert.strictEqual(page.findAll('.card, .read-more, article section:not(#whats-new)').length, 0, 'and nothing of the quick glance');
     } finally {
       page.dispose();
     }
-    assert.match(helpHtml('linux'), /<kbd class="shortcut">Ctrl\+Shift\+Alt\+F<\/kbd>/);
+  });
+
+  test('opens at the guide\u2019s contents, and shows the page its host sends, marked in the contents', () => {
+    const page = openWebviewPage(renderPage('help'));
+    try {
+      assert.deepStrictEqual(page.posted, [{ type: 'openGuide', page: 'README' }]);
+      page.window.dispatchEvent(new page.window.MessageEvent('message', {
+        data: { type: 'guide', page: 'README', title: 'Deckard guide', html: '<h1 id="deckard-guide">Deckard guide</h1>' },
+      }));
+      assert.strictEqual(page.document.activeElement, page.find('#guide-view h1'), 'the focus is on its title');
+      assert.deepStrictEqual(page.findAll('nav a[aria-current="page"]').map((link) => link.getAttribute('data-guide-page')), ['README']);
+      assert.strictEqual((page.find('#whats-new') as HTMLElement).hidden, true);
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('a page in the contents is asked for, and What\u2019s new shows at once', () => {
+    const page = openWebviewPage(renderPage('help'));
+    try {
+      page.click('nav a[data-guide-page="tasks"]');
+      assert.deepStrictEqual(page.lastPosted('openGuide'), { type: 'openGuide', page: 'tasks' });
+      page.window.dispatchEvent(new page.window.MessageEvent('message', {
+        data: { type: 'guide', page: 'tasks', title: 'Tasks', html: '<h1 id="tasks">Tasks</h1>' },
+      }));
+      assert.deepStrictEqual(page.findAll('nav a[aria-current]').map((link) => link.getAttribute('data-guide-page')), ['tasks']);
+      const asked = page.posted.length;
+      page.click(`nav a[data-guide-page="${WHATS_NEW}"]`);
+      assert.strictEqual(page.posted.length, asked, 'What\u2019s new is drawn in the page, so nothing is asked for');
+      assert.strictEqual((page.find('#whats-new') as HTMLElement).hidden, false);
+      assert.strictEqual((page.find('#guide-view') as HTMLElement).hidden, true);
+      assert.deepStrictEqual(page.findAll('nav a[aria-current]').map((link) => link.getAttribute('data-guide-page')), [WHATS_NEW]);
+      assert.strictEqual(page.document.activeElement?.textContent, 'Changelog');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('a command a guide page names runs from Help', () => {
+    const page = openWebviewPage(renderPage('help'));
+    try {
+      page.window.dispatchEvent(new page.window.MessageEvent('message', {
+        data: {
+          type: 'guide',
+          page: 'search',
+          title: 'Search',
+          html: '<h1>Search</h1><p><button type="button" class="command-link" data-command="deckard.searchWorkspace">Deckard: Find in Notes</button></p>',
+        },
+      }));
+      page.click('#guide-view .command-link');
+      assert.deepStrictEqual(page.lastPosted('runCommand'), { type: 'runCommand', command: 'deckard.searchWorkspace' });
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('asked to show a place, it goes there', () => {
+    const page = openWebviewPage(renderPage('help'));
+    try {
+      page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'reveal', page: 'tasks', anchor: 'task-metadata' } }));
+      assert.deepStrictEqual(page.lastPosted('openGuide'), { type: 'openGuide', page: 'tasks', anchor: 'task-metadata' });
+      page.window.dispatchEvent(new page.window.MessageEvent('message', {
+        data: { type: 'guide', page: 'tasks', title: 'Tasks', anchor: 'task-metadata', html: '<h1 id="tasks">Tasks</h1><h2 id="task-metadata">Task metadata</h2><h2 id="tasks-view">Tasks view</h2>' },
+      }));
+      const revealed: string[] = [];
+      page.window.HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) {
+        revealed.push(this.id);
+      };
+      const asked = page.posted.length;
+      page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'reveal', page: 'tasks', anchor: 'tasks-view' } }));
+      assert.deepStrictEqual(revealed, ['tasks-view'], 'a heading of the page shown is gone to at once');
+      assert.strictEqual(page.posted.length, asked);
+      page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'reveal', page: WHATS_NEW } }));
+      assert.strictEqual((page.find('#whats-new') as HTMLElement).hidden, false);
+    } finally {
+      page.dispose();
+    }
   });
 
   test("lists what is new, newest first, and marks what is new since the update", () => {
@@ -68,25 +125,25 @@ suite('Help page', () => {
       ),
     ];
     const page = openWebviewPage(
-      renderPage('help', { help: { manifest, options: { releases, newSince: '1.25.0', anchor: 'whats-new' } } }),
+      renderPage('help', { help: { options: { releases, newSince: '1.25.0', place: { page: WHATS_NEW } } } }),
     );
     try {
       assert.deepStrictEqual(
-        page.findAll('#whats-new h3').map((heading) => heading.firstChild?.textContent?.trim()),
+        page.findAll('#whats-new h2').map((heading) => heading.firstChild?.textContent?.trim()),
         ['1.27.0 · 2026-10-09', '1.26.0 · 2026-10-08', '1.25.0 · 2026-10-07', '1.24.0 · 2026-10-06', '1.23.0 · 2026-10-05'],
       );
       assert.strictEqual(page.findAll('#whats-new .whats-new-chip').length, 2, 'New only after 1.25.0');
       assert.strictEqual(page.find('#whats-new li strong').textContent, '1.27.0');
-      assert.strictEqual(page.document.body.getAttribute('data-anchor'), 'whats-new');
-      assert.strictEqual(page.document.activeElement?.textContent, "What's new", 'opened on What is new, it goes there');
+      assert.strictEqual(page.document.body.getAttribute('data-page'), WHATS_NEW);
+      assert.deepStrictEqual(page.posted, [], 'no guide page is asked for');
+      assert.strictEqual(page.document.activeElement?.textContent, 'Changelog', 'opened on What is new, it goes there');
       page.click('[data-action="open-changelog"]');
       assert.ok(page.lastPosted('openChangelog'));
-      assert.ok(page.find('nav a[href="#whats-new"]'));
     } finally {
       page.dispose();
     }
     assert.match(
-      renderPage('help', { help: { manifest, options: { releases: [] } } }),
+      renderPage('help', { help: { options: { releases: [] } } }),
       /This version's changes are listed in the changelog\./,
     );
   });
@@ -106,17 +163,6 @@ suite('Help page', () => {
       help.dispose();
     }
     assert.deepStrictEqual(ran, ['deckard.showStats']);
-  });
-
-  test('its rail marks the section being read', () => {
-    const page = openWebviewPage(
-      renderPage('help'),
-    );
-    try {
-      assert.strictEqual(page.findAll('nav a[aria-current="location"]').length, 1);
-    } finally {
-      page.dispose();
-    }
   });
 
   test('its panel runs scripts, made new or restored', async () => {
@@ -158,8 +204,8 @@ suite('Help page', () => {
     }
   });
 
-  test('shown again, it comes back to the guide page it showed and where it was scrolled', () => {
-    const html = renderPage('help', { help: { manifest, options: { anchor: 'whats-new' } } });
+  test('shown again, it comes back to the page it showed and where it was scrolled', () => {
+    const html = renderPage('help', { help: { options: { place: { page: WHATS_NEW } } } });
     const guide = { type: 'guide', page: 'search', title: 'Search', anchor: 'query-language', html: '<h1 id="search">Search</h1><h2 id="query-language">Query language</h2>' };
     let saved: unknown;
     const first = openWebviewPage(html);
@@ -168,10 +214,7 @@ suite('Help page', () => {
       saved = first.savedState();
       const { drawn, ...place } = saved as { drawn: unknown };
       assert.strictEqual(typeof drawn, 'string');
-      assert.deepStrictEqual(place, { guide: { page: 'search', anchor: 'query-language' }, scrollY: 0 });
-      first.click('#guide-view [data-action="guide-back"]');
-      const { drawn: _drawn, ...back } = first.savedState() as { drawn: unknown };
-      assert.deepStrictEqual(back, { scrollY: 0 }, 'back on Help, no guide page is kept');
+      assert.deepStrictEqual(place, { place: { page: 'search', anchor: 'query-language' }, scrollY: 0 });
     } finally {
       first.dispose();
     }
@@ -180,7 +223,7 @@ suite('Help page', () => {
     const again = openWebviewPage(html, undefined, { savedState: { ...(saved as object), scrollY: 640 } });
     try {
       assert.deepStrictEqual(again.posted, [{ type: 'openGuide', page: 'search', anchor: 'query-language' }], 'it asks for its guide page again');
-      assert.notStrictEqual(again.document.activeElement?.textContent, "What's new", 'rather than opening at the section it was drawn at');
+      assert.strictEqual((again.find('#whats-new') as HTMLElement).hidden, true, 'rather than opening at the place it was drawn at');
       const revealed: string[] = [];
       again.window.HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) {
         revealed.push(this.id);
@@ -188,58 +231,21 @@ suite('Help page', () => {
       again.window.dispatchEvent(new again.window.MessageEvent('message', { data: guide }));
       assert.strictEqual(again.text('#guide-view h2'), 'Query language');
       assert.deepStrictEqual(revealed, [], 'and goes where it was scrolled, not to the heading');
-      const { drawn: _drawn, ...place } = again.savedState() as { drawn: unknown; guide?: unknown };
-      assert.deepStrictEqual(place.guide, { page: 'search', anchor: 'query-language' });
+      const { place } = again.savedState() as { place?: unknown };
+      assert.deepStrictEqual(place, { page: 'search', anchor: 'query-language' });
     } finally {
       again.dispose();
     }
-  });
 
-  test('Back from a guide page opened from the introduction puts the focus on Help\'s title', () => {
-    const page = openWebviewPage(renderPage('help'));
+    // Shown again on What's new, it is there at once.
+    const onWhatsNew = openWebviewPage(html, undefined, {
+      savedState: { ...(saved as object), place: { page: WHATS_NEW } },
+    });
     try {
-      const link = page.find('p.read-more a[data-guide-page="README"]') as HTMLElement;
-      assert.strictEqual(link.closest('section'), null, 'the full guide link is in no section');
-      link.focus();
-      link.click();
-      page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'guide', page: 'README', title: 'Guide', html: '<h1>Guide</h1>' } }));
-      const back = page.find('#guide-view [data-action="guide-back"]') as HTMLElement;
-      back.focus();
-      back.click();
-      assert.strictEqual(page.document.activeElement, page.find('main > article h1'), 'not dropped to the page itself');
+      assert.deepStrictEqual(onWhatsNew.posted, []);
+      assert.strictEqual((onWhatsNew.find('#whats-new') as HTMLElement).hidden, false);
     } finally {
-      page.dispose();
-    }
-  });
-
-  test('shown again on a guide page, Back still returns to the section it was opened from', () => {
-    const html = renderPage('help');
-    const guide = (page: string) => ({ type: 'guide', page, title: 'Tags', html: '<h1>Tags</h1>' });
-    const first = openWebviewPage(html);
-    let saved: unknown;
-    try {
-      first.click('#tags .read-more a[data-guide-page]');
-      const asked = first.lastPosted('openGuide') as { page: string };
-      first.window.dispatchEvent(new first.window.MessageEvent('message', { data: guide(asked.page) }));
-      saved = first.savedState();
-      assert.strictEqual((saved as { returnTo?: string }).returnTo, 'tags');
-    } finally {
-      first.dispose();
-    }
-    // VS Code loads the same HTML again when a hidden Help is shown.
-    const again = openWebviewPage(html, undefined, { savedState: saved });
-    try {
-      const asked = again.lastPosted('openGuide') as { page: string };
-      again.window.dispatchEvent(new again.window.MessageEvent('message', { data: guide(asked.page) }));
-      const revealed: string[] = [];
-      again.window.HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) {
-        revealed.push(this.id);
-      };
-      again.click('#guide-view [data-action="guide-back"]');
-      assert.deepStrictEqual(revealed, ['tags'], 'Back goes to Tags, not the top');
-      assert.strictEqual(again.document.activeElement, again.find('#tags h2'));
-    } finally {
-      again.dispose();
+      onWhatsNew.dispose();
     }
   });
 
@@ -256,14 +262,12 @@ suite('Help page', () => {
       }
     })();
     const redrawn = openWebviewPage(
-      renderPage('help', { help: { manifest, options: { anchor: 'whats-new' } } }),
+      renderPage('help', { help: { options: { place: { page: 'tasks', anchor: 'task-metadata' } } } }),
       undefined,
       { savedState: saved },
     );
     try {
-      assert.deepStrictEqual(redrawn.posted, [], 'no guide page is asked for');
-      assert.strictEqual(redrawn.document.activeElement?.textContent, "What's new");
-      assert.strictEqual((redrawn.find('#guide-view') as HTMLElement).hidden, true);
+      assert.deepStrictEqual(redrawn.posted, [{ type: 'openGuide', page: 'tasks', anchor: 'task-metadata' }]);
     } finally {
       redrawn.dispose();
     }

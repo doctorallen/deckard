@@ -120,7 +120,7 @@ export function listDeckardPages(facts: PageFacts): DeckardPage[] {
       label: 'Help',
       command: DECKARD_PAGE_COMMANDS.help,
       description: 'Get Started and the guide',
-      detail: 'The quick glance, with the full guide a click away',
+      detail: 'The guide, its pages down the side',
     },
   ];
 }

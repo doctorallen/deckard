@@ -52,6 +52,15 @@
   of icons named on hover and to a screen reader, and `deckard.pages.shown`
   still picks which. They are one Tab stop, and the arrow keys move between
   them. **Go to…** and its key are unchanged.
+- **Help is the guide.** Help no longer has a quick glance of its own
+  beside the guide: it shows the guide's pages, with the guide's contents
+  down the side, grouped and ordered as the guide lists them, and the page
+  being read marked. A command a page names is a button that runs it, and
+  **Changelog** at the end is What's new. What the quick glance said that
+  the guide did not is in the guide now, and every command the palette
+  offers has a row on its Commands page. A page's **?** opens the guide
+  page about it, such as the calendar's at Daily notes, reviews, and the
+  calendar.
 
 ## 2.3.0 - 2026-10-06
 

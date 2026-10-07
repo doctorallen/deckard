@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { GUIDE_PAGES, guideSlug, HELP_READ_MORE } from '../ui/webview/guide';
+import { GUIDE_CONTENTS, GUIDE_PAGES, guideSlug, HELP_SECTIONS, helpPlace, WHATS_NEW } from '../ui/webview/guide';
 import { GUIDE_IMAGE_BASE, resolveGuideLink } from '../ui/webview/pages/help/guideLinks';
 import { renderGuidePage } from '../ui/webview/pages/help/guidePage';
 import { openWebviewPage } from './webviewPage';
@@ -11,6 +11,13 @@ import { renderPage } from './pages';
 
 const guideFolder = path.resolve(__dirname, '..', '..', 'docs', 'guide');
 const read = (page: string): string => fs.readFileSync(path.join(guideFolder, `${page}.md`), 'utf8');
+/** Deckard's manifest, whose commands the guide names. */
+const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', '..', 'package.json'), 'utf8')) as {
+  contributes: {
+    commands: Array<{ command: string; title: string; category?: string }>;
+    menus: { commandPalette: Array<{ command: string; when?: string }> };
+  };
+};
 
 /** The anchors GitHub gives a page's headings, outside fenced code. */
 function anchorsOf(page: string): Set<string> {
@@ -100,13 +107,53 @@ suite('The guide', () => {
     });
   });
 
-  test('every Help section reads more on a page, and at a heading, that exist', () => {
-    Object.entries(HELP_READ_MORE).forEach(([section, target]) => {
+  test('Help lists the pages as the guide\u2019s contents do, in its groups and order', () => {
+    const contents: Array<{ group: string; pages: string[] }> = [];
+    for (const line of read('README').split('\n')) {
+      const group = /^## (.+)$/.exec(line)?.[1];
+      const link = /^- \[([^\]]+)\]\(([^)]+)\)/.exec(line);
+      if (group) {
+        contents.push({ group, pages: [] });
+      } else if (link && contents.length > 0) {
+        const page = link[2] === '../../CHANGELOG.md' ? WHATS_NEW : link[2].replace(/\.md$/, '');
+        if (page !== WHATS_NEW) {
+          assert.strictEqual(link[1], GUIDE_PAGES[page], `the contents name ${page} by its title`);
+        }
+        contents[contents.length - 1].pages.push(page);
+      }
+    }
+    assert.deepStrictEqual(contents, GUIDE_CONTENTS);
+    const listed = GUIDE_CONTENTS.flatMap(({ pages }) => pages);
+    assert.deepStrictEqual(Object.keys(GUIDE_PAGES).filter((page) => page !== 'README' && !listed.includes(page)), [], 'every page is in the contents');
+  });
+
+  test('every place Help was opened at by name leads to a page, and a heading, that exist', () => {
+    Object.entries(HELP_SECTIONS).forEach(([section, target]) => {
       assert.ok(target.page in GUIDE_PAGES, `${section} names a page`);
       if (target.anchor) {
         assert.ok(anchorsOf(target.page).has(target.anchor), `${target.page} has #${target.anchor}`);
       }
     });
+    assert.deepStrictEqual(helpPlace('periodic'), { page: 'daily-notes' }, 'the calendar page\u2019s Help');
+    assert.deepStrictEqual(helpPlace('task-views'), { page: 'task-board' }, 'the Task Board\u2019s Help');
+    assert.deepStrictEqual(helpPlace('links'), { page: 'notes-and-links', anchor: 'markdown-format' }, 'the note page\u2019s Help');
+    assert.deepStrictEqual(helpPlace('whats-new'), { page: WHATS_NEW });
+    assert.deepStrictEqual(helpPlace('settings'), { page: 'settings' }, 'a page by its file name');
+    assert.deepStrictEqual(helpPlace('no-such-place'), { page: 'README' });
+    assert.deepStrictEqual(helpPlace(undefined), { page: 'README' });
+  });
+
+  test('names only commands Deckard contributes', () => {
+    const titles = new Set(manifest.contributes.commands.filter((command) => command.category === 'Deckard').map((command) => command.title));
+    const unknown: string[] = [];
+    Object.keys(GUIDE_PAGES).forEach((page) => {
+      for (const match of read(page).matchAll(/(?:`|\*\*)Deckard: ([^`*]+)(?:`|\*\*)/g)) {
+        if (!titles.has(match[1]) && match[1] !== 'whole workspace') {
+          unknown.push(`${page}: ${match[1]}`);
+        }
+      }
+    });
+    assert.deepStrictEqual(unknown, []);
   });
 
   test('every link between pages lands on a page and a heading that exist', () => {
@@ -179,25 +226,31 @@ suite('The guide', () => {
     assert.deepStrictEqual(problems, []);
   });
 
-  test('Read more asks for its page, which shows in place of Help, and Back returns', async () => {
+  test('the commands page names every command the palette offers', () => {
+    const hidden = new Set(manifest.contributes.menus.commandPalette.filter((entry) => entry.when === 'false').map((entry) => entry.command));
+    const commands = read('commands');
+    const missing = manifest.contributes.commands
+      .filter((command) => command.category === 'Deckard' && !hidden.has(command.command))
+      .map((command) => command.title)
+      .filter((title) => !commands.includes(`**Deckard: ${title}**`));
+    assert.deepStrictEqual(missing, []);
+  });
+
+  test('a link in a guide page asks for its page, and one to a heading goes to it', async () => {
     const page = openWebviewPage(renderPage('help'));
     try {
-      const sections = page.findAll('article section[id]').map((section) => section.id);
-      const withoutReadMore = sections.filter(
-        (id) => id !== 'whats-new' && page.findAll(`#${id} .read-more [data-guide-page]`).length === 0,
-      );
-      assert.deepStrictEqual(withoutReadMore, [], 'every section but What’s new reads more');
-      page.click('#query .read-more a');
-      assert.deepStrictEqual(page.lastPosted('openGuide'), { type: 'openGuide', page: 'search', anchor: 'query-language' });
       page.window.dispatchEvent(new page.window.MessageEvent('message', {
         data: { type: 'guide', page: 'search', title: 'Search', html: await renderGuidePage(read('search')) },
       }));
-      assert.strictEqual((page.find('main > article') as HTMLElement).hidden, true, 'Help steps aside');
       assert.strictEqual(page.text('#guide-view h1'), 'Search');
+      page.click('#guide-view [data-guide-page="search-pages"]:not([data-guide-anchor])');
+      assert.deepStrictEqual(page.lastPosted('openGuide'), { type: 'openGuide', page: 'search-pages' });
+      const revealed: string[] = [];
+      page.window.HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) {
+        revealed.push(this.id);
+      };
       page.click('#guide-view [data-guide-anchor="query-language"]');
-      page.click('#guide-view [data-action="guide-back"]');
-      assert.strictEqual((page.find('main > article') as HTMLElement).hidden, false, 'and comes back');
-      assert.strictEqual((page.find('#guide-view') as HTMLElement).hidden, true);
+      assert.deepStrictEqual(revealed, ['query-language']);
     } finally {
       page.dispose();
     }

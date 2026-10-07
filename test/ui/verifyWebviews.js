@@ -59,7 +59,6 @@ const LAYOUT_CONTRACTS = {
   help: [
     ['main', 'display', 'grid'],
     ['main', 'grid-template-columns', 'minmax(180px'],
-    ['.cards', 'grid-template-columns', 'repeat(2'],
   ],
   stats: [
     ['main', 'max-width', '1100px'],

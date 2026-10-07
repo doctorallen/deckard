@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import type { HelpMessage, HelpPageToHost, HelpRevealMessage } from '../protocol/help';
 import type { IndexReader } from '../../core/workspace/indexReader';
 import type { WhatsNew } from '../commands/whatsNew';
+import { helpPlace } from './guide';
 import type { HelpManifest } from './pages/help/helpManifest';
 import type { MessageHandler } from './host/pageController';
 import { PanelAdapter } from './host/panelAdapter';
@@ -16,9 +17,8 @@ export interface HelpPanelOptions {
   /** The theme Choose Theme… is previewing, which the page draws in. */
   themePreview: ThemePreview;
   /**
-   * What the extension contributes, so the commands and settings tables
-   * describe this version rather than a copy written beside them. Without
-   * it, the tables are empty.
+   * What the extension contributes, so a command a guide page names runs
+   * from Help only when it may. Without it, none runs.
    */
   manifest?: HelpManifest;
   /** The shipped changelog's Highlights, for What's new. */
@@ -28,7 +28,7 @@ export interface HelpPanelOptions {
 }
 
 /**
- * Hosts Deckard's self-contained product guide in a reusable webview panel.
+ * Hosts Deckard's guide, docs/guide, in a reusable webview panel.
  *
  * The page is `HelpController`, run by a `WebviewHost` in one panel; this
  * is the name the extension and its serializer know it by.
@@ -47,20 +47,23 @@ export class HelpPanel implements vscode.Disposable {
   }
 
   /**
-   * Opens Help, at a section when one is named, such as `whats-new`. A new
+   * Opens Help, at a place when one is named: `whats-new`, a guide page by
+   * its file name, or a section of the old quick glance, such as
+   * `periodic`, at the guide page that holds it now (`helpPlace`). A new
    * panel is drawn at it, and so is a hidden one, whose page is not running
    * to be asked and is loaded again when shown; a visible one is asked to
    * show it.
    */
   public async show(anchor?: string): Promise<void> {
     const panel = this.page.panel;
+    const place = anchor ? helpPlace(anchor) : undefined;
     if (!panel) {
       await this.controller.loadReleases();
-      this.controller.drawingAt(anchor, () => this.page.open());
-    } else if (anchor && !panel.visible) {
-      this.controller.drawingAt(anchor, () => this.page.host.renderHtml());
-    } else if (anchor) {
-      const reveal: HelpRevealMessage = { type: 'reveal', anchor };
+      this.controller.drawingAt(place, () => this.page.open());
+    } else if (place && !panel.visible) {
+      this.controller.drawingAt(place, () => this.page.host.renderHtml());
+    } else if (place) {
+      const reveal: HelpRevealMessage = { type: 'reveal', ...place };
       this.page.host.post(reveal);
     }
     this.page.panel?.reveal(vscode.ViewColumn.Active);

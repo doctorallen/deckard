@@ -464,8 +464,8 @@ suite('Component primitives', () => {
       const opening = '.note, .card, .task-row, .home-row, .tag-row, .board-card, .saved-filter-row';
       let seen = 0;
       const read = readGoldens((surface, body) => {
-        // Help's cards and notes are callouts in prose: they fold nothing
-        // under them and hold no tip.
+        // Help is the guide's prose: nothing in it folds a line under
+        // itself or holds a tip.
         if (surface.startsWith('help')) {
           return;
         }

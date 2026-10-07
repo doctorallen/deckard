@@ -6,7 +6,6 @@ import { getNotePageHtml } from '../ui/webview/notePageHtml';
 import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getHelpHtml, HelpOptions } from '../ui/webview/helpHtml';
-import type { HelpManifest } from '../ui/webview/pages/help/helpManifest';
 import { getNotesGraphHtml } from '../ui/webview/notesGraphHtml';
 import { getRelatedNotesDebugHtml } from '../ui/webview/relatedNotesDebugHtml';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
@@ -32,7 +31,7 @@ export interface PageOptions {
    * omitted.
    */
   chrome?: PageChrome;
-  help?: { manifest?: HelpManifest; options?: Omit<HelpOptions, 'chrome'> };
+  help?: { options?: Omit<HelpOptions, 'chrome'> };
   diagnostic?: EntryRelatedNotesDiagnostic;
   /**
    * The snapshot the shell carries as inert JSON, for a page that reads
@@ -111,8 +110,7 @@ export const PAGES: readonly CatalogPage[] = [
   {
     id: 'help',
     title: 'Help',
-    // The shortcuts are drawn for one platform, so the DOM goldens match on every OS.
-    render: (context) => getHelpHtml(context.webview, context.extensionUri, context.help?.manifest, { platform: 'darwin', ...context.help?.options, chrome: context.chrome }),
+    render: (context) => getHelpHtml(context.webview, context.extensionUri, { ...context.help?.options, chrome: context.chrome }),
   },
   {
     id: 'stats',

@@ -238,8 +238,9 @@ function createDiagnostic(index, files) {
 }
 
 /**
- * Help, a guide page shown inside it, the Notes Graph's controls, and the
- * Related Notes debug page: the pages that had no surface before Phase 6.
+ * Help at What's new, a guide page shown in Help, the Notes Graph's
+ * controls, and the Related Notes debug page: the pages that had no surface
+ * before Phase 6.
  *
  * @param {object} index The workspace.
  * @param {Map<string, object>} files The parsed notes, by path.
@@ -248,7 +249,16 @@ function createDiagnostic(index, files) {
 function createReferenceSurfaces(index, files) {
   const graph = toWire(createNotesGraphSnapshot(index), { notes: true, tasks: true });
   return [
-    { page: 'help', viewport: [1100, 900], scrollers: ['html'], clippers: [], hovered: ['nav a'] },
+    // Help opened at What's new, which its host draws in the page; a guide
+    // page is the host's to send, as helpGuide's is.
+    {
+      page: 'help',
+      viewport: [1100, 900],
+      messages: () => [{ type: 'reveal', page: 'whats-new' }],
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['nav a'],
+    },
     {
       name: 'helpGuide',
       page: 'help',

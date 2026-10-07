@@ -2,30 +2,30 @@
 
 ## Keeping Help accurate
 
-Update `src/ui/webview/helpHtml.ts` in the same change whenever a user-facing
-Deckard feature, command, setting, workflow, behavior, or limitation is added
-or changed. Keep the **Quick start** section focused on the minimum usable
-workflow, and place detailed configuration and specialized workflows in the
-appropriate advanced category.
+Update the guide, `docs/guide/*.md`, in the same change whenever a
+user-facing Deckard feature, command, setting, workflow, behavior, or
+limitation is added or changed. Help is the guide: it shows these pages
+inside VS Code, so there is no second copy to keep in step.
 
-Documentation lives in three places, each with its own job:
+Documentation lives in two places, each with its own job:
 
-- **Help** (`helpHtml.ts`) is the quick glance: what a reader most needs to
-  know about each area, with **Read more** into the guide.
 - **The guide** (`docs/guide/*.md`) is the full documentation, one topic to a
-  page. Put the detail here: every option, edge case, and example. It ships in
-  the VSIX, where Help's **Read more** shows it, is readable on GitHub, and is
+  page: every option, edge case, and example. It ships in the VSIX, where
+  Help shows it with its pages down the side, is readable on GitHub, and is
   built into the site at <https://deckard.esperinnovations.com> by
-  `.github/workflows/docs.yml`. Link pages
-  to one another with relative `.md` links, and to screenshots as
-  `../images/…`.
+  `.github/workflows/docs.yml`. Link pages to one another with relative
+  `.md` links, and to screenshots as `../images/…`. Name a command as
+  `Deckard: Title`, in code or bold, with its exact title: Help makes it a
+  button that runs it.
 - **`README.md`** is the pitch: what Deckard is, the feature table, the
   themes, and a quick start. Add to it only when a feature belongs in that
   table; its detail goes in the guide.
 
-Help and the guide must describe the same current behavior before a change is
-merged. A new guide page also needs a line in `docs/guide/README.md`, and, if
-Help has a section for it, the page named in that section's **Read more**.
+A new guide page needs a line in `docs/guide/README.md`, which is the
+guide's contents and the list down the side of Help, and the same line in
+`GUIDE_PAGES` and `GUIDE_CONTENTS` in `src/ui/webview/guide.ts`; the guide
+test holds the two to each other. A new command needs a row in
+`docs/guide/commands.md`, and a new setting one in `docs/guide/settings.md`.
 
 ## How the code is built
 

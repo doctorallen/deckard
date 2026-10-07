@@ -1,7 +1,7 @@
 /**
  * The Help page's protocol: the commands, guide pages, and changelog it
- * asks for, and what the host sends back. Help is drawn by the host from
- * the extension's manifest, so it is sent no snapshot.
+ * asks for, and what the host sends back. Help's contents and What's new
+ * are drawn by the host in its HTML, so it is sent no snapshot.
  */
 import type { MessageOf } from './messaging';
 import type { GoToPageMessage, ListGoToMessage, OpenGoToMessage } from './shared';
@@ -20,7 +20,7 @@ export interface OpenChangelogMessage {
   type: 'openChangelog';
 }
 
-/** Read more: a guide page by its file name, at a heading when one is named. */
+/** A guide page by its file name, at a heading when one is named. */
 export interface OpenGuideMessage {
   type: 'openGuide';
   page: string;
@@ -37,15 +37,19 @@ export interface HelpPageToHost {
   goToPage: GoToPageMessage;
 }
 
-/** Help, already open, asked to show a section, such as `whats-new`. */
+/**
+ * Help, already open, asked to show a place: a guide page by its file name,
+ * or `whats-new`, at a heading when one is named.
+ */
 export interface HelpRevealMessage {
   type: 'reveal';
-  anchor: string;
+  page: string;
+  anchor?: string;
 }
 
 /**
- * A guide page, rendered from the copy the VSIX ships, to show in place of
- * Help, at a heading when one was asked for. A page that cannot be read is
+ * A guide page, rendered from the copy the VSIX ships, to show in Help, at
+ * a heading when one was asked for, its command names made buttons. A page that cannot be read is
  * one sentence saying so, with a link to it on GitHub; one VS Code's
  * Markdown extension cannot render is one sentence saying so, with a link
  * to it on the guide's site.

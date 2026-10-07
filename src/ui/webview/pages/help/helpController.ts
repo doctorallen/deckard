@@ -3,10 +3,10 @@ import * as vscode from 'vscode';
 import type { Release } from '../../../../core/changelog';
 import type { HelpGuideMessage, HelpPageToHost } from '../../../protocol/help';
 import type { WhatsNew } from '../../../commands/whatsNew';
-import { GUIDE_PAGES, isGuidePage } from '../../guide';
+import { GUIDE_PAGES, type HelpPlace, isGuidePage } from '../../guide';
 import { getHelpHtml } from '../../helpHtml';
 import { guideUnavailableHtml, renderGuidePage, warmGuideRenderer } from './guidePage';
-import { HelpManifest, isRunnableFromHelp } from './helpManifest';
+import { describeHelpCommands, HelpManifest, isRunnableFromHelp, linkCommandNames } from './helpManifest';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import type { PageChrome } from '../../components';
 import { narrowHelpMessage } from './messages';
@@ -17,8 +17,8 @@ import { goToPage, listGoTo, openGoTo } from '../../host/sharedHandlers';
 export interface HelpControllerOptions {
   extensionUri: vscode.Uri;
   /**
-   * What the extension contributes, so the commands and settings tables
-   * describe this version rather than a copy written beside them.
+   * What the extension contributes, so a command a guide page names runs
+   * from it only when Help may run it.
    */
   manifest: HelpManifest;
   /** The shipped changelog's Highlights, for What's new. */
@@ -28,9 +28,9 @@ export interface HelpControllerOptions {
 }
 
 /**
- * The Help page: Deckard's self-contained product guide, drawn by the host
- * from the manifest and the changelog. It is sent no snapshot; it asks to
- * run a command, to read a guide page in place, or to open the changelog.
+ * The Help page: Deckard's guide, docs/guide, its contents beside the page
+ * being read, and What's new from the changelog. It is sent no snapshot;
+ * it asks to run a command, to read a guide page, or to open the changelog.
  */
 export class HelpController implements PageController<never, HelpPageToHost> {
   public readonly name = 'Help';
@@ -39,8 +39,8 @@ export class HelpController implements PageController<never, HelpPageToHost> {
   public readonly handlers: MessageHandlers<HelpPageToHost>;
   /** What's new's releases, read when Help opens and drawn from then on. */
   private releases: Release[] = [];
-  /** The section the HTML being drawn opens at, while one is asked for. */
-  private anchor: string | undefined;
+  /** The place the HTML being drawn opens at, while one is asked for. */
+  private place: HelpPlace | undefined;
 
   /** Draws from `help.manifest` and `help.whatsNew`, and reads the guide under `help.extensionUri`. */
   public constructor(private readonly help: HelpControllerOptions) {
@@ -50,7 +50,7 @@ export class HelpController implements PageController<never, HelpPageToHost> {
       // comes back there when shown.
       retainContextWhenHidden: false,
       enableFindWidget: true,
-      // The page's own script marks the section being read in the rail. A
+      // The page's own script asks for the guide page it shows. A
       // panel restored after a reload keeps the options it was made with,
       // which before 1.23 had no scripts, so they are kept and scripts set.
       scripts: 'merge',
@@ -83,25 +83,26 @@ export class HelpController implements PageController<never, HelpPageToHost> {
   }
 
   /**
-   * Runs `draw` with Help's HTML opening at `anchor`. Only a new panel's
-   * first HTML takes one; a redraw after a theme change opens at the top.
+   * Runs `draw` with Help's HTML opening at `place`. Only a new panel's
+   * first HTML takes one; a redraw after a theme change opens at the
+   * guide's contents.
    */
-  public drawingAt<T>(anchor: string | undefined, draw: () => T): T {
-    this.anchor = anchor;
+  public drawingAt<T>(place: HelpPlace | undefined, draw: () => T): T {
+    this.place = place;
     try {
       return draw();
     } finally {
-      this.anchor = undefined;
+      this.place = undefined;
     }
   }
 
-  /** Help's HTML, at the section asked for while one is. */
+  /** Help's HTML, at the place asked for while one is. */
   public html(webview: vscode.Webview, chrome: PageChrome): string {
     const newSince = this.help.whatsNew?.newSince();
-    return getHelpHtml(webview, this.help.extensionUri, this.help.manifest, {
+    return getHelpHtml(webview, this.help.extensionUri, {
       releases: this.releases,
       ...(newSince ? { newSince } : {}),
-      ...(this.anchor ? { anchor: this.anchor } : {}),
+      ...(this.place ? { place: this.place } : {}),
       chrome,
     });
   }
@@ -121,8 +122,9 @@ export class HelpController implements PageController<never, HelpPageToHost> {
 
   /**
    * Shows a guide page in the panel, read from the copy the VSIX ships and
-   * rendered by VS Code's Markdown extension. A page that cannot be read,
-   * or rendered, says so where the page would be.
+   * rendered by VS Code's Markdown extension, each command it names that
+   * Help may run made a button. A page that cannot be read, or rendered,
+   * says so where the page would be.
    */
   private async showGuide(page: PageContext, name: string, anchor?: string): Promise<void> {
     if (!page.surface || !isGuidePage(name)) {
@@ -162,7 +164,7 @@ export class HelpController implements PageController<never, HelpPageToHost> {
       return '<p>Deckard could not read this page of the guide. It is also on GitHub, at <a href="https://github.com/doctorallen/deckard/blob/master/docs/guide/' + name + '.md">docs/guide/' + name + '.md</a>.</p>';
     }
     try {
-      return await renderGuidePage(source);
+      return linkCommandNames(await renderGuidePage(source), describeHelpCommands(this.help.manifest));
     } catch {
       return guideUnavailableHtml(name);
     }

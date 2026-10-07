@@ -2,12 +2,12 @@
 
 Also online at [deckard.esperinnovations.com](https://deckard.esperinnovations.com).
 
-Everything Deckard does, one topic to a page. The [README](../../README.md) is the short version; the **Help** page inside VS Code (`Deckard: Open Help`) is the quick glance, and each of its sections has **Read more**, which opens the page here that goes into detail.
+Everything Deckard does, one topic to a page. The [README](../../README.md) is the short version. Inside VS Code, `Deckard: Open Help` shows this guide, with these pages down the side.
 
 ## Start
 
 - [Getting started](getting-started.md): requirements, installing, the sample workspace, and the walkthrough.
-- [Themes and Zen mode](themes-and-zen.md): the eight themes, and turning Deckard's chrome down.
+- [Themes and Display](themes-and-zen.md): the eight themes, and turning Deckard's chrome down.
 
 ## Writing
 

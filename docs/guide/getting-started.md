@@ -47,9 +47,9 @@ In a code repository, Deckard's editor features apply only to notes: a README ou
 
 ## Help
 
-Run `Deckard: Open Help`, or select **Help** at the top of the Context view. A command Help names, such as `Deckard: Find in Notes`, is a button that runs it, with its shortcut beside it. One that acts on the note in the editor, such as `Deckard: Edit Task`, is named for you to run from a note.
+Run `Deckard: Open Help`, or select **Help** at the top of the Context view. Help is this guide inside VS Code: its pages are down the side, grouped and ordered as [the guide's contents](README.md) list them, with the page being read marked, and **Changelog** at the end lists what is new in recent releases. A command the guide names, such as `Deckard: Find in Notes`, is a button in Help that runs it. One that acts on the note in the editor, such as `Deckard: Edit Task`, is named for you to run from a note. VS Code's find (Cmd+F on macOS, Ctrl+F elsewhere) searches the page shown.
 
-![Deckard Help page with quick-start instructions and feature navigation.](../images/help.png)
+![Deckard Help, with the guide's pages down the side.](../images/help.png)
 
 ---
 
