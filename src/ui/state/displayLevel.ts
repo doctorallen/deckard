@@ -5,8 +5,9 @@
  * is the reader's and wins whatever the step. Full is Deckard as it ships;
  * Quiet takes off each theme's decoration and the lines that teach, and
  * draws tags as text, at today's spacing; Zen also tightens the spacing,
- * draws cards flat, and leaves out counts, file and line, and the date
- * beside how far off a task is due.
+ * draws cards flat, and leaves out counts and the date beside how far off
+ * a task is due. An entry's details, its file and line among them, show on
+ * hover at every step; `deckard.display.cardDetails` says which.
  */
 
 /** The scale's steps, in order. */
@@ -22,7 +23,6 @@ export const SCALE_SETTINGS = {
   cardFrames: ['auto', 'raised', 'flat'],
   tags: ['auto', 'chips', 'text'],
   counts: ['auto', 'shown', 'hidden'],
-  fileAndLine: ['auto', 'hover', 'always', 'never'],
   dates: ['auto', 'both', 'relative', 'date'],
 } as const;
 /** One of the settings the scale moves, by its name under `deckard.display.`. */
@@ -36,7 +36,6 @@ export interface ScaleValues {
   cardFrames: 'raised' | 'flat';
   tags: 'chips' | 'text';
   counts: 'shown' | 'hidden';
-  fileAndLine: 'hover' | 'always' | 'never';
   dates: 'both' | 'relative' | 'date';
 }
 
@@ -44,15 +43,15 @@ export interface ScaleValues {
 export const STEP_VALUES: Readonly<Record<DisplayLevel, ScaleValues>> = {
   full: {
     themeStyling: 'styled', helpText: 'shown', density: 'comfortable',
-    cardFrames: 'raised', tags: 'chips', counts: 'shown', fileAndLine: 'hover', dates: 'both',
+    cardFrames: 'raised', tags: 'chips', counts: 'shown', dates: 'both',
   },
   quiet: {
     themeStyling: 'plain', helpText: 'hidden', density: 'comfortable',
-    cardFrames: 'raised', tags: 'text', counts: 'shown', fileAndLine: 'hover', dates: 'both',
+    cardFrames: 'raised', tags: 'text', counts: 'shown', dates: 'both',
   },
   zen: {
     themeStyling: 'plain', helpText: 'hidden', density: 'compact',
-    cardFrames: 'flat', tags: 'text', counts: 'hidden', fileAndLine: 'never', dates: 'relative',
+    cardFrames: 'flat', tags: 'text', counts: 'hidden', dates: 'relative',
   },
 };
 
@@ -84,7 +83,6 @@ export function resolveScaleValues(level: DisplayLevel, set: Partial<Record<Scal
     cardFrames: pick('cardFrames'),
     tags: pick('tags'),
     counts: pick('counts'),
-    fileAndLine: pick('fileAndLine'),
     dates: pick('dates'),
   };
 }
@@ -114,7 +112,7 @@ export function zenToggleTarget(current: DisplayLevel, before: unknown): Display
  * each value named only when it isn't the default: plain theme styling,
  * help text hidden, compact density, flat rows rather than raised cards,
  * tags as text rather than chips, counts beside names hidden, an entry's
- * file and line always or never drawn, and due dates as only how far off
+ * details never drawn, and due dates as only how far off
  * or only the date, and pages as wide as their panel (`full`).
  */
 export interface DisplayChoices {
@@ -128,7 +126,8 @@ export interface DisplayChoices {
   readonly cards?: 'flat';
   readonly tags?: 'text';
   readonly counts?: 'hidden';
-  readonly fileAndLine?: 'always' | 'never';
+  /** `never` when Card details ticks nothing, so an entry's details stay folded on hover too. */
+  readonly fileAndLine?: 'never';
   /** The details an entry shows besides, or in place of, its file and line, when not the file and line alone: "fileAndLine created". */
   readonly details?: string;
   readonly dates?: 'relative' | 'date';

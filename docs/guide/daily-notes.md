@@ -7,11 +7,24 @@ Run `Deckard: Create Daily Note`, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt
 - `Deckard: Open Previous Daily Note` and `Deckard: Open Next Daily Note` step to the nearest daily note before or after the current one. From another note they start from today.
 - `Deckard: Open Daily Note for Date…` lists yesterday, today, tomorrow, and your seven newest daily notes, or takes a day [in plain words](tasks.md#dates-in-plain-words), such as `last friday` or `2026-10-02`; a missing note is created from the template. [Find](search.md#find) does the same when you type only a day.
 - `Deckard: Open Weekly Note` and `Deckard: Open Monthly Note` create or open `week-2026-09-13-2026-09-19.md` and `month-september-2026.md`. A week runs Sunday to Saturday, or from the day `deckard.calendar.weekStart` names.
-- Templates are `deckard.weeklyNoteTemplate` and `deckard.monthlyNoteTemplate`. `{week}` becomes *2026-09-13 to 2026-09-19*, `{month}` becomes *September 2026*, and `{date}` the period's first day.
+- A new note starts from its [template](#templates).
 - Older names, `2026-W38.md` and `2026-09.md`, are still read and opened for their period. `deckard.weeklyNote.naming` set to `iso` names new weekly notes `2026-W38.md`.
 - **Where they go.** New daily, weekly, and monthly notes are written at the top of the notes folder, or in `deckard.periodicNotes.folder` inside it, such as `journal/{yyyy}` for a folder a year (`{mm}` is the month). A note already written elsewhere is still found for its day.
-- **Templates as files.** Each template setting holds the text itself, or the name of a Markdown file in the templates folder, such as `Daily.md`, which Deckard reads when it makes the note.
 - **Whose clock.** Days and times are those of the machine Deckard runs on: over Remote-SSH or in a Codespace, the remote's time zone, so a remote set to UTC starts a new day at UTC midnight. The / menu's **Time (UTC)** writes the time in UTC for a log such as an incident timeline, beside **Time** for the machine's own.
+
+### Templates
+
+A new daily, weekly, or monthly note starts from a file in the templates folder (`deckard.templatesFolder`, `templates` unless you change it), when it is there:
+
+| Note | Template | Without one |
+| --- | --- | --- |
+| Daily | `Daily.md` | `# {date}` |
+| Weekly | `Weekly.md` | `# {week}` |
+| Monthly | `Monthly.md` | `# {month}` |
+
+- In a template, `{date}` becomes the period's first day, as *2026-09-13*; `{week}` the days the week holds, as *2026-09-13 to 2026-09-19*; and `{month}` the month, as *September 2026*. Any of the three works in any template.
+- The file is read each time a note is made, so a change to it reaches the next note. A note that already exists is never rewritten.
+- The templates folder is not indexed, and [New Note from Template](notes-and-links.md#templates) lists these files too. With the setting empty there are no templates, and each note starts from the line in the last column.
 
 ### Writing a review
 

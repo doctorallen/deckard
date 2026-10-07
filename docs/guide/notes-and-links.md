@@ -194,6 +194,8 @@ Anything else in braces is left as written.
 
 A template named after a tag namespace, such as `person.md` or `project.md`, starts every new [hub note](search-pages.md#hub-notes) for that namespace. It can use `{tag}`, and Deckard adds `describes:` front matter unless the template has its own.
 
+`Daily.md`, `Weekly.md`, and `Monthly.md` start every new daily, weekly, and monthly note, with `{date}`, `{week}`, and `{month}` filled in for the period; see [Templates](daily-notes.md#templates) under daily notes.
+
 ---
 
 ← [Getting started](getting-started.md) · [All topics](README.md) · [Tasks](tasks.md) →

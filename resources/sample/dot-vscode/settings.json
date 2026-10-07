@@ -6,7 +6,6 @@
   "deckard.board.limits": { "in-progress": 2 },
   "deckard.tasks.needsNewDateAfterDays": 30,
   "deckard.parked.tags": ["parked"],
-  "deckard.dailyNoteTemplate": "# {date}\n\n",
   "deckard.dailyNote.rollover": "migrate",
   "deckard.periodicNote.reviewSections": [{ "title": "Waiting on others", "query": "is:waiting" }],
   "deckard.calendar.dayPanel": true

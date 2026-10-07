@@ -132,7 +132,7 @@ const LOOKS = { cards: 'flat', tags: 'text' };
 
 /** Display's preferences, each away from its default: what a page writes, drawn on Home and the board. */
 const WRITTEN_HOME = { counts: 'hidden', fileAndLine: 'never', dates: 'date' };
-const WRITTEN_BOARD = { counts: 'hidden', fileAndLine: 'always', dates: 'relative' };
+const WRITTEN_BOARD = { counts: 'hidden', dates: 'relative' };
 /** A date format of the reader's own, full and short, as the body carries it. */
 const DATED = { dateFormat: 'ddd D MMMM YYYY', shortDateFormat: 'ddd D MMM' };
 

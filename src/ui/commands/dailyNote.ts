@@ -83,12 +83,16 @@ export function ensureDailyNote(
   return ensurePeriodicNote(targetFolder, 'day');
 }
 
-const PERIOD_TEMPLATES: Readonly<
-  Record<NotePeriod, { setting: string; fallback: string }>
+/**
+ * Each period's template: a file of that name in the templates folder, when
+ * there is one, else Deckard's own text.
+ */
+export const PERIOD_TEMPLATES: Readonly<
+  Record<NotePeriod, { file: string; fallback: string }>
 > = {
-  day: { setting: 'dailyNoteTemplate', fallback: '# {date}\n\n' },
-  week: { setting: 'weeklyNoteTemplate', fallback: '# {week}\n\n' },
-  month: { setting: 'monthlyNoteTemplate', fallback: '# {month}\n\n' },
+  day: { file: 'Daily.md', fallback: '# {date}\n\n' },
+  week: { file: 'Weekly.md', fallback: '# {week}\n\n' },
+  month: { file: 'Monthly.md', fallback: '# {month}\n\n' },
 };
 
 /** Fills `{date}`, `{week}`, and `{month}` in a periodic note's template. */
@@ -165,11 +169,7 @@ export async function ensurePeriodicNote(
   day: Date = new Date(),
   weekStart: Weekday = readWeekStart(),
 ): Promise<vscode.Uri> {
-  const { setting, fallback } = PERIOD_TEMPLATES[period];
-  const template = await readPeriodicTemplate(
-    targetFolder,
-    vscode.workspace.getConfiguration('deckard', targetFolder.uri).get<string>(setting, fallback),
-  );
+  const template = await readPeriodicTemplate(targetFolder, period);
   // A note the workspace already keeps for this period is the note, whichever
   // name it goes by; only a period with none gets a new one.
   const noteUri =
@@ -214,25 +214,24 @@ export async function findExistingPeriodicNote(
 }
 
 /**
- * A periodic template as its setting holds it: the text itself, or the name
- * of a Markdown file in the templates folder, such as `Daily.md`, read from
- * there. A file that cannot be read is used as text, so the note is still
- * made and says what was asked for.
+ * A period's template: `Daily.md`, `Weekly.md`, or `Monthly.md` in the
+ * templates folder, `deckard.templatesFolder`, when it is there, else
+ * Deckard's own text. With no templates folder, Deckard's own text.
  */
-async function readPeriodicTemplate(targetFolder: vscode.WorkspaceFolder, value: string): Promise<string> {
-  const name = value.trim();
-  if (name.includes('\n') || !/\.md$/i.test(name)) {
-    return value;
-  }
+export async function readPeriodicTemplate(targetFolder: vscode.WorkspaceFolder, period: NotePeriod): Promise<string> {
+  const { file, fallback } = PERIOD_TEMPLATES[period];
   const templatesFolder = readFolderSetting(
     vscode.workspace.getConfiguration('deckard', targetFolder.uri).get<unknown>('templatesFolder', 'templates'),
     'templates',
   );
+  if (!templatesFolder) {
+    return fallback;
+  }
   try {
-    const uri = vscode.Uri.joinPath(targetFolder.uri, ...templatesFolder.split('/').filter(Boolean), ...name.split('/'));
+    const uri = vscode.Uri.joinPath(targetFolder.uri, ...templatesFolder.split('/').filter(Boolean), file);
     return new TextDecoder().decode(await vscode.workspace.fs.readFile(uri));
   } catch {
-    return value;
+    return fallback;
   }
 }
 

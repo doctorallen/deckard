@@ -7,7 +7,7 @@ suite('Display choices on the page body', () => {
     assert.strictEqual(getPageTailCss({ theme: 'cooper', zen: false }).bodyAttribute, '');
     assert.strictEqual(
       getPageTailCss({ theme: 'cooper', zen: true }).bodyAttribute,
-      ' class="zen" data-level="zen" data-styling="plain" data-help="hidden" data-density="compact" data-cards="flat" data-tags="text" data-counts="hidden" data-file-line="never" data-dates="relative"',
+      ' class="zen" data-level="zen" data-styling="plain" data-help="hidden" data-density="compact" data-cards="flat" data-tags="text" data-counts="hidden" data-dates="relative"',
       'zen with no choices given draws as Zen does',
     );
     assert.strictEqual(

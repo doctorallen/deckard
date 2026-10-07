@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { createDailyNote } from '../ui/commands/dailyNote';
+import { createDailyNote, readPeriodicTemplate } from '../ui/commands/dailyNote';
 import {
   describeExtractFailure,
   extractHeadingNote,
@@ -449,6 +449,21 @@ suite('Source commands', () => {
 
     assert.strictEqual(secondContent, preservedContent);
     await deleteTemporaryRoot(temporaryRoot);
+  });
+
+  test('starts a periodic note from Daily.md, Weekly.md, or Monthly.md in the templates folder, else its own line', async () => {
+    const temporaryRoot = await createTemporaryRoot();
+    const workspaceFolder = { uri: temporaryRoot, name: 'temporary', index: 0 } as vscode.WorkspaceFolder;
+    const templates = vscode.Uri.joinPath(temporaryRoot, 'templates');
+    await vscode.workspace.fs.createDirectory(templates);
+    await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(templates, 'Weekly.md'), Buffer.from('# Week of {date}\n', 'utf8'));
+    try {
+      assert.strictEqual(await readPeriodicTemplate(workspaceFolder, 'week'), '# Week of {date}\n');
+      assert.strictEqual(await readPeriodicTemplate(workspaceFolder, 'day'), '# {date}\n\n', 'no Daily.md');
+      assert.strictEqual(await readPeriodicTemplate(workspaceFolder, 'month'), '# {month}\n\n', 'no Monthly.md');
+    } finally {
+      await deleteTemporaryRoot(temporaryRoot);
+    }
   });
 
   test('moves a tagged heading section and leaves a link in its place', async () => {

@@ -22,7 +22,7 @@ suite('Display: the scale', () => {
       (Object.keys(STEP_VALUES.full) as (keyof typeof STEP_VALUES.full)[]).filter((key) => STEP_VALUES[level][key] !== STEP_VALUES.full[key]);
     assert.deepStrictEqual(turnedDown('full'), []);
     assert.deepStrictEqual(turnedDown('quiet'), ['themeStyling', 'helpText', 'tags']);
-    assert.deepStrictEqual(turnedDown('zen'), ['themeStyling', 'helpText', 'density', 'cardFrames', 'tags', 'counts', 'fileAndLine', 'dates']);
+    assert.deepStrictEqual(turnedDown('zen'), ['themeStyling', 'helpText', 'density', 'cardFrames', 'tags', 'counts', 'dates']);
     for (const key of turnedDown('quiet')) {
       assert.strictEqual(STEP_VALUES.zen[key], STEP_VALUES.quiet[key], `Zen keeps what Quiet turned down: ${key}`);
     }

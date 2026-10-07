@@ -23,7 +23,6 @@ export const DISPLAY_SETTINGS = {
   cardFrames: { key: 'display.cardFrames', values: ['auto', 'raised', 'flat'] },
   tags: { key: 'display.tags', values: ['auto', 'chips', 'text'] },
   counts: { key: 'display.counts', values: ['auto', 'shown', 'hidden'] },
-  fileAndLine: { key: 'display.fileAndLine', values: ['auto', 'hover', 'always', 'never'] },
   dates: { key: 'display.dates', values: ['auto', 'both', 'relative', 'date'] },
   pageWidth: { key: 'display.pageWidth', values: ['limited', 'full'] },
 } as const;
@@ -66,7 +65,7 @@ export function readDisplayChoices(previewed?: DisplayLevel): DisplayChoices {
     ...(scale.cardFrames === 'flat' ? { cards: 'flat' as const } : {}),
     ...(scale.tags === 'text' ? { tags: 'text' as const } : {}),
     ...(scale.counts === 'hidden' ? { counts: 'hidden' as const } : {}),
-    ...readDetailChoices(deckard, scale.fileAndLine),
+    ...readDetailChoices(deckard),
     ...(scale.dates === 'both' ? {} : { dates: scale.dates }),
     ...(deckard.get<string>(DISPLAY_SETTINGS.pageWidth.key) === 'full' ? { width: 'full' as const } : {}),
     ...dateFormatChoices(readDateFormats()),
@@ -91,23 +90,17 @@ export function dateFormatChoices(formats: DateFormats): Pick<DisplayChoices, 'd
 const CARD_DETAILS = ['fileAndLine', 'created', 'updated'] as const;
 
 /**
- * When an entry's details show and which: `deckard.display.cardDetails`
- * ticks them, File & line says when. The file and line alone is the default
- * and writes nothing; none ticked draws none, as never does.
+ * Which of an entry's details show on hover: those
+ * `deckard.display.cardDetails` ticks. The file and line alone is the
+ * default and writes nothing; none ticked draws none.
  */
-function readDetailChoices(
-  deckard: vscode.WorkspaceConfiguration,
-  fileAndLine: 'hover' | 'always' | 'never',
-): Pick<DisplayChoices, 'fileAndLine' | 'details'> {
+function readDetailChoices(deckard: vscode.WorkspaceConfiguration): Pick<DisplayChoices, 'fileAndLine' | 'details'> {
   const ticked = deckard.get<Record<string, unknown>>('display.cardDetails') ?? {};
   const details = CARD_DETAILS.filter((detail) => (detail === 'fileAndLine' ? ticked[detail] !== false : ticked[detail] === true));
   if (!details.length) {
     return { fileAndLine: 'never' };
   }
-  return {
-    ...(fileAndLine === 'hover' ? {} : { fileAndLine }),
-    ...(details.length === 1 && details[0] === 'fileAndLine' ? {} : { details: details.join(' ') }),
-  };
+  return details.length === 1 && details[0] === 'fileAndLine' ? {} : { details: details.join(' ') };
 }
 
 /**

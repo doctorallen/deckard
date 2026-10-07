@@ -21,7 +21,7 @@ interface HomeRowProps {
   readonly attributes: Attributes;
   readonly label: ComponentChildren;
   readonly detail?: string;
-  /** What the readout is: where a note is written, which File & line governs, or a count, which Counts does. */
+  /** What the readout is: where a note is written, which Card details governs, or a count, which Counts does. */
   readonly detailKind: 'file' | 'count';
   /** How far along what the row names is, drawn as a bar between its label and its detail. */
   readonly progress?: { readonly done: number; readonly total: number };
