@@ -1,5 +1,5 @@
-import { DEFAULT_TASK_POLICY, needsNewDate, type TaskPolicy } from '../tasks/taskPolicy';
-import { isOpenTask, normalizeStatusName, readTaskStatus } from '../tasks/taskStatuses';
+import { needsNewDate } from '../tasks/taskPolicy';
+import { isOpenTask, normalizeStatusName } from '../tasks/taskStatuses';
 import { addDays, startOfDay } from '../markdown/calendar';
 import { getFileName } from '../../shared/paths';
 import { EntityNamespaceAliases, isDailyNoteFile, isPeriodicNoteFile } from '../markdown/parser';
@@ -72,7 +72,6 @@ export function evaluateQuery(
 
   const membership = buildTagMembership(index);
   const context = createEvaluationContext(index, node, query);
-  const statusPolicy = query.taskPolicy;
   const links = context.links;
   const withLinks = (unit: QueryUnit, key: string): QueryUnit =>
     links ? { ...unit, links: links.byUnit.get(key) } : unit;
@@ -89,7 +88,7 @@ export function evaluateQuery(
   const tasks = [...index.tasks.values()].filter((task) =>
     matchesNode(
       node,
-      withLinks(createTaskUnit(index, membership, task, statusPolicy), `task:${task.id}`),
+      withLinks(createTaskUnit(index, membership, task), `task:${task.id}`),
       context,
     ),
   );
@@ -202,7 +201,7 @@ export function countTagMatches(
     }
   });
   index.tasks.forEach((task) =>
-    add(createTaskUnit(index, membership, task, COUNTED_STATUS_POLICY).tagKeys, 'tasks'),
+    add(createTaskUnit(index, membership, task).tagKeys, 'tasks'),
   );
   index.files.forEach((file) => {
     if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
@@ -281,7 +280,7 @@ export function countTagPairMatches(
     }
   });
   index.tasks.forEach((task) =>
-    add(createTaskUnit(index, membership, task, COUNTED_STATUS_POLICY).tagKeys, 'tasks'),
+    add(createTaskUnit(index, membership, task).tagKeys, 'tasks'),
   );
   index.files.forEach((file) => {
     if ((membership.files.get(file.filePath)?.size ?? 0) > 0) {
@@ -292,13 +291,6 @@ export function countTagPairMatches(
   tagPairMatchCounts.set(index, pairs);
   return pairs;
 }
-
-/**
- * The statuses a count reads a task's status with. A count reads only a
- * unit's tags, never its status, so the count of an index is the same
- * whatever the settings say, and one cache per index serves every reader.
- */
-const COUNTED_STATUS_POLICY = DEFAULT_TASK_POLICY;
 
 /**
  * The most tags an entry may carry before its pairs are skipped. A note that
@@ -537,12 +529,11 @@ export function readTaskTagKeys(index: WorkspaceIndex, task: Task): Set<string> 
   return tagKeys;
 }
 
-/** A task as a condition tests it, its status read with the policy's statuses and namespace. */
+/** A task as a condition tests it, its status its box's. */
 function createTaskUnit(
   index: WorkspaceIndex,
   membership: TagMembership,
   task: Task,
-  policy: Pick<TaskPolicy, 'statusNamespace' | 'statuses'>,
 ): QueryUnit {
   const tagKeys = readTaskTagKeys(index, task);
   membership.tasks.get(task.id)?.forEach((tagKey) => tagKeys.add(tagKey));
@@ -564,7 +555,7 @@ function createTaskUnit(
     dependencyId: task.dependencyId,
     dependsOn: task.dependsOn,
     assignee: task.assignee,
-    status: readTaskStatus(task, policy.statuses, policy.statusNamespace),
+    status: task.status,
     parked: index.parked?.tasks.has(task.id) ?? false,
     step: task.parentTaskId !== undefined,
     stepCount: task.steps?.total ?? 0,

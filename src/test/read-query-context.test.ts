@@ -21,4 +21,17 @@ suite('The QueryContext read from settings', () => {
     assert.strictEqual(aliases.proj, 'project');
     assert.strictEqual(aliases.organization, 'org');
   });
+
+  test('carries the reader\'s date formats, an empty one at its default', async () => {
+    await configuration().update('display.dateFormat', 'DD/MM/YYYY', vscode.ConfigurationTarget.Global);
+    await configuration().update('display.shortDateFormat', ' ', vscode.ConfigurationTarget.Global);
+    try {
+      const { dateFormats } = readQueryContext(0);
+      assert.strictEqual(dateFormats.date, 'DD/MM/YYYY');
+      assert.strictEqual(dateFormats.short, 'ddd, MMM D');
+    } finally {
+      await configuration().update('display.dateFormat', undefined, vscode.ConfigurationTarget.Global);
+      await configuration().update('display.shortDateFormat', undefined, vscode.ConfigurationTarget.Global);
+    }
+  });
 });

@@ -216,10 +216,6 @@ suite('Rename Heading', () => {
     const shown: string[] = [];
     const kept = replaced.map(([key]) => Object.getOwnPropertyDescriptor(window, key));
     replaced.forEach(([key, value]) => Object.defineProperty(window, key, { configurable: true, get: () => value }));
-    // Two notes would open the refactor preview, which no one is here to accept.
-    const settings = vscode.workspace.getConfiguration('deckard');
-    const preview = settings.inspect('previewWorkspaceWrites')?.globalValue;
-    await settings.update('previewWorkspaceWrites', 'never', vscode.ConfigurationTarget.Global);
     try {
       const renamed = await renameHeadingCommand(
         {
@@ -229,11 +225,11 @@ suite('Rename Heading', () => {
           isNotesFile: () => true,
           refresh: async () => undefined,
         },
-        new WorkspaceWriteHistory(),
+        // Two notes would open the refactor preview, which no one is here to accept.
+        new WorkspaceWriteHistory('never'),
       );
       assert.strictEqual(renamed, 'Supplier review', shown.join('\n'));
     } finally {
-      await settings.update('previewWorkspaceWrites', preview, vscode.ConfigurationTarget.Global);
       replaced.forEach(([key], at) => {
         const descriptor = kept[at];
         if (descriptor) {

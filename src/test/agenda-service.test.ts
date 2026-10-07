@@ -4,6 +4,7 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { Task, WorkspaceIndex } from '../domain/model';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createQueryContext } from '../domain/query/queryContext';
+import type { AgendaViewChoices } from '../domain/tasks/agendaGroups';
 import { refuseMove, resolveTaskMove } from '../domain/tasks/boardMoves';
 import { AgendaService, AgendaServiceOptions, GroupMoveStep } from '../services/agendaService';
 import { AgendaGroup, createAgenda, selectAgendaTasks, selectOverdueTasks } from '../ui/state/agendaState';
@@ -19,17 +20,16 @@ const now = at(9, 25) + 10 * 60 * 60 * 1000;
 const NOTE = [
   '# Plan',
   '- [ ] Late 📅 2026-09-20',
-  '- [ ] Now 📅 2026-09-25 #status/doing',
+  '- [/] Now 📅 2026-09-25',
   '- [ ] Soon 📅 2026-09-28',
   '- [x] Done ✅ 2026-09-25',
 ].join('\n');
 
-/** An agenda service over one note, with settings, and what it wrote. */
-function setup(settings: Record<string, unknown> = {}, note = NOTE) {
+/** An agenda service over one note, with settings and view choices, and what it kept. */
+function setup(settings: Record<string, unknown> = {}, note = NOTE, choices: AgendaViewChoices = {}) {
   const index = buildWorkspaceIndex(new Map([['plan.md', parseMarkdown('plan.md', note)]]));
-  const written: [string, unknown][] = [];
+  const written: unknown[][] = [];
   const refreshes: string[] = [];
-  const boards: { statuses: readonly string[] }[] = [];
   let ready = false;
   const options: AgendaServiceOptions<AgendaGroup> = {
     configuration: new FakeSettings(settings),
@@ -54,18 +54,20 @@ function setup(settings: Record<string, unknown> = {}, note = NOTE) {
           .find((group) => group.id === 'today')?.entries.length ?? 0,
       }),
       listOverdue: selectOverdueTasks,
-      resolveMove: (task, columnId, board) => {
-        boards.push(board);
-        return resolveTaskMove(task, columnId, board, () => refuseMove('no tags'));
-      },
+      resolveMove: (task, columnId, board) => resolveTaskMove(task, columnId, board, () => refuseMove('no tags')),
       isNamespaceName: (value) => typeof value === 'string' && /^[A-Za-z][A-Za-z0-9_-]*$/.test(value),
     },
-    writeSetting: async (key, value) => {
-      written.push([key, value]);
-      return key !== 'agenda.refused';
+    preferences: {
+      value: choices,
+      setAgendaGrouping: async (groupBy, namespace) => {
+        written.push(['grouping', groupBy, namespace]);
+      },
+      setAgendaSort: async (sort) => {
+        written.push(['sort', sort]);
+      },
     },
   };
-  return { index, written, refreshes, boards, service: new AgendaService(options), wasReady: () => ready };
+  return { index, written, refreshes, service: new AgendaService(options), wasReady: () => ready };
 }
 
 /** The task whose words are `title`. */
@@ -85,7 +87,7 @@ suite('Agenda service', () => {
     assert.strictEqual(view.status, undefined);
     assert.deepStrictEqual([view.query, view.filtered, view.querySet], ['', false, false]);
 
-    const searched = setup({ 'deckard.agenda.query': 'tag:#status/doing' });
+    const searched = setup({ 'deckard.agenda.query': 'status:in-progress' });
     const narrowed = searched.service.buildView(searched.index, []);
     assert.deepStrictEqual(narrowed.groups.map((group) => group.id), ['today']);
     assert.deepStrictEqual([narrowed.filtered, narrowed.querySet], [true, true]);
@@ -110,16 +112,15 @@ suite('Agenda service', () => {
     }
   });
 
-  test('reads its grouping from the settings, falling back on what it cannot read', () => {
-    assert.deepStrictEqual(setup({ 'deckard.agenda.groupBy': 'sideways' }).service.readGrouping(), {
-      groupBy: 'due',
-      groupNamespace: 'project',
-    });
+  test('reads its grouping and sort from the preferences, falling back on what it cannot read', () => {
+    assert.deepStrictEqual(setup().service.readGrouping(), { groupBy: 'due', groupNamespace: 'project' });
     assert.deepStrictEqual(
-      setup({ 'deckard.agenda.groupBy': 'tag', 'deckard.agenda.groupNamespace': 'Context' }).service.readGrouping(),
+      setup({}, NOTE, { agendaGroupBy: 'tag', agendaGroupNamespace: 'Context' }).service.readGrouping(),
       { groupBy: 'tag', groupNamespace: 'context' },
     );
-    assert.strictEqual(setup({ 'deckard.board.statusNamespace': '  ' }).service.readStatusNamespace(), 'status');
+    assert.strictEqual(setup({}, NOTE, { agendaGroupBy: 'tag', agendaGroupNamespace: '  ' }).service.readGrouping().groupNamespace, 'project');
+    assert.strictEqual(setup().service.readSort(), 'rank');
+    assert.strictEqual(setup({}, NOTE, { agendaSort: 'created' }).service.readSort(), 'created');
   });
 
   test('lists what is overdue once the index is ready, and names a subject', async () => {
@@ -148,7 +149,7 @@ suite('Agenda service', () => {
     const reads: string[] = [];
     const result = await service.moveToGroup(
       [late, now],
-      { groupId: 'doing', groupBy: 'status' },
+      { groupId: 'in-progress', groupBy: 'status' },
       { from: new Map(), index: () => (reads.push('index'), index) },
       async (step) => {
         steps.push(step);
@@ -205,19 +206,6 @@ suite('Agenda service', () => {
     );
   });
 
-  test('a drop reads the board\'s status columns as the Task Board reads them', async () => {
-    const cases: [unknown, string[]][] = [
-      [undefined, ['todo', 'doing', 'waiting']],
-      [['Review', 7, 'not a status', 'doing'], ['review', 'doing']],
-      ['doing', ['todo', 'doing', 'waiting']],
-    ];
-    for (const [statuses, read] of cases) {
-      const { index, service, boards } = setup(statuses === undefined ? {} : { 'deckard.board.statuses': statuses });
-      await service.moveToGroup([taskTitled(index, 'Late')], { groupId: 'doing', groupBy: 'status' }, { from: new Map(), index: () => index }, async () => undefined);
-      assert.deepStrictEqual(boards.at(-1)?.statuses, read, JSON.stringify(statuses));
-    }
-  });
-
   test('completes and reopens only the boxes that changed, each read again from the index', async () => {
     const { index, service } = setup();
     const late = taskTitled(index, 'Late');
@@ -238,17 +226,17 @@ suite('Agenda service', () => {
     assert.deepStrictEqual(result, { failed: true });
   });
 
-  test('writes a new grouping where it is kept, namespace first for tags', async () => {
+  test('keeps a new grouping, a tag grouping with its namespace', async () => {
     const first = setup();
     assert.deepStrictEqual(await first.service.setGrouping({ chosen: 'tag', current: 'due', namespace: 'context' }), {
       kind: 'grouped',
       groupBy: 'tag',
     });
-    assert.deepStrictEqual(first.written, [['agenda.groupNamespace', 'context'], ['agenda.groupBy', 'tag']]);
+    assert.deepStrictEqual(first.written, [['grouping', 'tag', 'context']]);
 
     const again = setup();
     await again.service.setGrouping({ chosen: 'tag', current: 'tag', namespace: 'project' });
-    assert.deepStrictEqual(again.written, [['agenda.groupNamespace', 'project']], 'already by tag, only the namespace');
+    assert.deepStrictEqual(again.written, [['grouping', 'tag', 'project']], 'already by tag, another namespace');
 
     const same = setup();
     assert.deepStrictEqual(await same.service.setGrouping({ chosen: 'due', current: 'due' }), { kind: 'unchanged' });

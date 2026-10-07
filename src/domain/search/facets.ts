@@ -7,8 +7,7 @@
  * nothing, and each value carries the clause that adds it to the query, so
  * refining by facet and writing a query are the same thing.
  */
-import { isCancelledTask, isOpenTask, normalizeStatusName, readTaskStatus } from '../tasks/taskStatuses';
-import { DEFAULT_TASK_POLICY, type TaskPolicy } from '../tasks/taskPolicy';
+import { isCancelledTask, isOpenTask, normalizeStatusName } from '../tasks/taskStatuses';
 import { addDays, startOfDay } from '../markdown/calendar';
 import { formatMonthName } from '../markdown/dates';
 import { countLinkTargets, resolveLinkQuery } from '../query/queryLinks';
@@ -56,8 +55,6 @@ export interface FacetOptions {
    * otherwise finds, offered as one value that asks for them.
    */
   parkedLeftOut?: number;
-  /** The statuses and status namespace each task's status is read with; Deckard's own when not given. */
-  taskPolicy?: Pick<TaskPolicy, 'statuses' | 'statusNamespace'>;
 }
 
 const TAG_VALUE_LIMIT = 10;
@@ -185,7 +182,7 @@ function statusFacet(context: FacetContext): SearchFacet[] {
       { label: 'Open', clause: 'is:open', count: tasks.filter(isOpenTask).length },
       { label: 'Done', clause: 'is:done', count: tasks.filter((task) => task.completed).length },
       { label: 'Cancelled', clause: 'is:cancelled', count: tasks.filter(isCancelledTask).length },
-      ...countStatuses(tasks, context.options.taskPolicy ?? DEFAULT_TASK_POLICY),
+      ...countStatuses(tasks),
     ]),
   ];
 }
@@ -196,11 +193,11 @@ function statusFacet(context: FacetContext): SearchFacet[] {
  * plain `[ ]` is not one, since Open already says it, nor is a done or a
  * cancelled status, which Done and Cancelled say.
  */
-function countStatuses(tasks: readonly Task[], policy: Pick<TaskPolicy, 'statuses' | 'statusNamespace'>): SearchFacetValue[] {
+function countStatuses(tasks: readonly Task[]): SearchFacetValue[] {
   const counts = new Map<string, SearchFacetValue>();
   for (const task of tasks) {
-    const status = readTaskStatus(task, policy.statuses, policy.statusNamespace);
-    if (!isOpenTask(task) || (status === task.status && status.symbol === ' ')) {
+    const status = task.status;
+    if (!isOpenTask(task) || status.symbol === ' ') {
       continue;
     }
     const slug = normalizeStatusName(status.name).replace(/ /g, '-');

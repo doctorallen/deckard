@@ -6,14 +6,15 @@ import { openNoteAt } from '../../../commands/noteOpening';
 import { whenPublished } from '../../../../core/workspace/publishing';
 import { isMarkdownFile } from '../../../../core/workspace/scanner';
 import { listedParkedTags } from '../../../../domain/index/parked';
-import { getEntityNamespaceAliases, getPersonMarker } from '../../../../domain/markdown/parser';
+import { getEntityNamespaceAliases } from '../../../../domain/markdown/parser';
 import { findTagTarget } from '../../../../domain/markdown/tagTarget';
-import type { ParsedFile, Section, TagTitleDisplayMode, WorkspaceIndex } from '../../../../domain/model';
+import type { ParsedFile, Section, WorkspaceIndex } from '../../../../domain/model';
 import { refineQueryText } from '../../../../domain/query/queryEdit';
 import type { NavigationService } from '../../../../services/navigationService';
 import { logTrace, measure } from '../../../../shared/timing';
 import type { SidebarGraphContext } from '../../../protocol/notesGraph';
 import type {
+  ContextPages,
   LinkMentionMessage,
   RefineActiveSearchMessage,
   SidebarNotesPageState,
@@ -25,9 +26,12 @@ import { createWikiLink, insertWikiLink } from '../../../commands/insertLink';
 import { resolveSourceUri } from '../../../commands/navigation';
 import { describeRejectedEdit, noteName, reportFailure, reportStale } from '../../../commands/notify';
 import { linkMentions } from '../../../commands/unlinkedMentions';
+import { readDateFormats } from '../../../commands/datePrompt';
 import { readLinkStyle } from '../../../commands/linkMaintenancePorts';
 import { formatNoteLink } from '../../../../domain/markdown/wikiLinks';
 import type { WorkspaceWriteHistory } from '../../../commands/workspaceWrites';
+import { listContextPages } from '../../../state/contextPages';
+import { isDeckardPageId, listDeckardPages } from '../../../state/deckardPages';
 import { createEntryScope, findTaggedEntry } from '../../../state/entryScope';
 import { collectNoteLinks, createLinksSearchQuery } from '../../../state/noteLinks';
 import { createSidebarSnapshot, EntryRelatedNotesDiagnostic } from '../../../state/relatedNotesRanking';
@@ -37,15 +41,14 @@ import type { ActiveNotePage } from '../../activeNotePage';
 import type { ActiveSearch } from '../../activeSearch';
 import { onDidChangePageChrome } from '../../host/pageChrome';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
-import { openHelp, openTag, parkTag, renameTag } from '../../host/sharedHandlers';
+import { goToPage, openHelp, openTag, parkTag, renameTag } from '../../host/sharedHandlers';
+import { readPageFacts, readPageInFront } from '../../../views/pagesTree';
 import { ViewSurface, WebviewSurface } from '../../host/surface';
 import { getSidebarNotesHtml } from '../../sidebarNotesHtml';
 import type { PageChrome } from '../../components';
 import type { ThemePreview } from '../../themePreview';
 import { narrowSidebarNotesMessage } from './messages';
 import { RelatedNotesRankingOptions } from '../../../../domain/ranking/relatedNotesContext';
-import { readStatusNamespace } from '../../../../domain/tasks/taskPolicy';
-import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 
 /** How long cursor moves must pause before the sidebar ranks a new entry. */
 const selectionRefreshDelayMs = 120;
@@ -132,6 +135,12 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
    * anything has, or while nothing has been posted.
    */
   private current: { state: SidebarNotesPageState; day: string } | undefined;
+  /**
+   * The state last posted, whether or not anything it was ranked from has
+   * changed since, which the pages at the top are posted again on when only
+   * they have changed, with no ranking. Undefined while no view is attached.
+   */
+  private posted: SidebarNotesPageState | undefined;
 
   /** Reads from `sidebar.indexer` and `sidebar.preferences`, and checks clicks through `sidebar.navigation`. */
   public constructor(private readonly sidebar: SidebarNotesControllerOptions) {
@@ -155,7 +164,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
    * `refresh`, which also logs; this is the same state, without the log.
    */
   public buildSnapshot(): SidebarNotesPageState {
-    return { ...this.createSnapshot(), parkedTags: listedParkedTags(this.sidebar.indexer) };
+    return { ...this.createSnapshot(), parkedTags: listedParkedTags(this.sidebar.indexer), pages: this.buildPages() };
   }
 
   /** An index update redraws the sidebar as every other change does. */
@@ -202,9 +211,16 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     }
     disposables.push(activeSearch.onDidChange(() => this.refresh()), ...this.followEditor());
     // The ranking reads the preferences, and not every write to them redraws
-    // the sidebar, so any write means the state last posted may be out of date.
+    // the sidebar, so any write means the state last posted may be out of
+    // date. The pages at the top are kept there too, and drawn again.
     const { reader } = this.sidebar.preferences;
-    disposables.push(reader.onDidChange(() => this.forgetCurrent()), reader.onDidRecordVisit(() => this.forgetCurrent()));
+    disposables.push(
+      reader.onDidChange(() => {
+        this.forgetCurrent();
+        this.refreshPages();
+      }),
+      reader.onDidRecordVisit(() => this.forgetCurrent()),
+    );
     disposables.push(
       // The theme or zen changing reloads the page, and the state is sent
       // again at once rather than when the page asks.
@@ -213,6 +229,15 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
         this.refresh();
       }, this.sidebar.themePreview),
       vscode.workspace.onDidChangeConfiguration((event) => this.onDidChangeConfiguration(event)),
+      // The pages at the top say which is in front, and the window coming
+      // back may be on a new day, which their hints count from.
+      vscode.window.tabGroups.onDidChangeTabs(() => this.refreshPages()),
+      vscode.window.tabGroups.onDidChangeTabGroups(() => this.refreshPages()),
+      vscode.window.onDidChangeWindowState((state) => {
+        if (state.focused) {
+          this.refreshPages();
+        }
+      }),
     );
     return disposables;
   }
@@ -259,6 +284,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
   public onDidDetach(): void {
     logRelatedNotes('Related Notes webview disposed.');
     this.forgetCurrent();
+    this.posted = undefined;
     this.sidebar.activeSearch.setSidebarVisible(false);
     this.sidebar.activeCalendar?.setSidebarVisible(false);
   }
@@ -355,10 +381,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       })),
       snapshot: createSidebarSnapshot(index, filePath, entryScope.file, {
         now: Date.now(),
-        enableKeywordLinks: this.areKeywordLinksEnabled(),
         relatedNotesSortMode: 'tags',
         sectionAccessCounts: this.sidebar.preferences.reader.value.sectionAccessCounts,
-        tagTitleDisplayMode: this.getTagTitleDisplayMode(),
         activeEntryTitle: getEntryTitle(entryScope.file),
         activeTagWeights: entryScope.tagWeights,
         rankingOptions: this.getRelatedNotesRankingOptions(),
@@ -395,7 +419,11 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     const kept = reuse ? this.currentState() : undefined;
     if (kept) {
       logRelatedNotes('Related Notes state is unchanged since it was ranked; sending it again.');
-      this.post(page, kept);
+      // The pages at the top are read again: what they say is not ranked,
+      // and may have changed while the view was hidden.
+      const state = { ...kept, pages: this.buildPages() };
+      this.current = { state, day: today() };
+      this.post(page, state);
       return;
     }
 
@@ -407,8 +435,40 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     logRelatedNotes(
       `Sending Related Notes state: ${snapshot.state}${describeSource(snapshot)}, ${snapshot.notes.length} note entries.`,
     );
-    const state: SidebarNotesPageState = { ...snapshot, parkedTags: listedParkedTags(this.sidebar.indexer) };
+    const state: SidebarNotesPageState = { ...snapshot, parkedTags: listedParkedTags(this.sidebar.indexer), pages: this.buildPages() };
     this.current = { state, day: today() };
+    this.post(page, state);
+  }
+
+  /**
+   * Deckard's pages, drawn at the top: the ones the reader keeps there, in
+   * order, with their hints as the notes are now and the page in front.
+   */
+  private buildPages(): ContextPages {
+    const { indexer } = this.sidebar;
+    return listContextPages(listDeckardPages(readPageFacts(indexer)), this.sidebar.preferences.reader.value, readPageInFront(indexer));
+  }
+
+  /**
+   * Sends the state last posted again with the pages at the top as they are
+   * now, when they have changed: a tab brought to the front, a new day, or
+   * the reader choosing other pages. Nothing is ranked again, and a hidden
+   * view is sent nothing; it reads them when it is shown.
+   */
+  private refreshPages(): void {
+    const page = this.page;
+    const posted = this.posted;
+    if (!page || !posted || page.surface?.visible !== true) {
+      return;
+    }
+    const pages = this.buildPages();
+    if (JSON.stringify(pages) === JSON.stringify(posted.pages)) {
+      return;
+    }
+    const state = { ...posted, pages };
+    if (this.current?.state === posted) {
+      this.current = { ...this.current, state };
+    }
     this.post(page, state);
   }
 
@@ -430,6 +490,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
    * again from, and logs whether it was delivered.
    */
   private post(page: PageContext<SidebarNotesPageState>, state: SidebarNotesPageState): void {
+    this.posted = state;
     void page.postState(state)?.then(
       (delivered) =>
         logRelatedNotes(
@@ -455,6 +516,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       openTaskBoard: () => vscode.commands.executeCommand('deckard.showTaskBoard'),
       createDailyNote: () => vscode.commands.executeCommand('deckard.createDailyNote'),
       openHelp: openHelp(),
+      goToPage: goToPage(),
       activateNotesGraphNode: (message: SidebarNotesPageToHost['activateNotesGraphNode']) =>
         vscode.commands.executeCommand('deckard.activateNotesGraphNode', message.nodeId, message.open),
       hoverNotesGraphNode: (message: SidebarNotesPageToHost['hoverNotesGraphNode']) =>
@@ -510,6 +572,13 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
         await display.setRelatedNotesPreviewLines(message.lines);
         this.refresh();
       },
+      // The pages at the top are drawn again from the preferences' change.
+      setPagesStyle: (message: SidebarNotesPageToHost['setPagesStyle']) => display.setContextPagesStyle(message.style),
+      setPageShown: async (message: SidebarNotesPageToHost['setPageShown']) => {
+        if (isDeckardPageId(message.page)) {
+          await display.setContextPageShown(message.page, message.shown);
+        }
+      },
       // Home's widgets are Home's to add, and to reset.
       homeAddWidget: (message: SidebarNotesPageToHost['homeAddWidget']) => {
         this.sidebar.activeHome?.active?.addWidget(message.value);
@@ -548,31 +617,17 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     ];
   }
 
-  /** Redraws for a setting the ranking or its titles read. */
+  /** Draws the pages again for a setting they read, and forgets a state a setting may have changed. */
   private onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent): void {
-    // The ranking reads settings it does not redraw for, such as the board's
-    // status namespace, so any of Deckard's means the state may be out of date.
+    // The pages at the top: Home's count of what is due.
+    if (event.affectsConfiguration('deckard.agenda.query')) {
+      this.refreshPages();
+    }
+    // The ranking reads settings it does not redraw for, such as the date
+    // format, so any of Deckard's means the state may be out of date.
     if (event.affectsConfiguration('deckard')) {
       this.forgetCurrent();
     }
-    if (
-      event.affectsConfiguration('deckard.enableKeywordLinks') ||
-      event.affectsConfiguration('deckard.relatedNotesAssociationMinimumSupport') ||
-      event.affectsConfiguration('deckard.relatedNotesRecencyHalfLifeDays')
-    ) {
-      this.refresh();
-    }
-    if (event.affectsConfiguration('deckard.tagTitleDisplayMode')) {
-      this.refresh();
-    }
-    if (event.affectsConfiguration('deckard.enableHeadingTagRelationships')) {
-      this.refresh();
-    }
-    if (!event.affectsConfiguration('deckard.autoSelectNoteSections')) {
-      return;
-    }
-    this.updateEntryContextFromActiveEditor();
-    this.refresh();
   }
 
   /** The view the sidebar is shown in, while its host has one. */
@@ -681,10 +736,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     const reader = this.sidebar.preferences.reader.value;
     const snapshot = createSidebarSnapshot(index, filePath, entry?.file ?? file, {
       now,
-      enableKeywordLinks: this.areKeywordLinksEnabled(),
       relatedNotesSortMode: reader.relatedNotesSortMode,
       sectionAccessCounts: reader.sectionAccessCounts,
-      tagTitleDisplayMode: this.getTagTitleDisplayMode(),
       activeEntryTitle: entry ? getEntryTitle(entry.file) : undefined,
       activeTagWeights: entry?.tagWeights,
       rankingOptions: this.getRelatedNotesRankingOptions(),
@@ -698,7 +751,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
           ...snapshot,
           hideDailyNotes,
           previewLines,
-          links: collectNoteLinks(index, indexedFile, { now, hideDailyNotes }),
+          links: collectNoteLinks(index, indexedFile, { now, hideDailyNotes, dateFormats: readDateFormats() }),
         }
       : { ...snapshot, hideDailyNotes, previewLines };
   }
@@ -728,16 +781,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     return {
       activeTags: [],
       notes: [],
-      tagTitleDisplayMode: this.getTagTitleDisplayMode(),
       ...fields,
     };
-  }
-
-  /** How tag titles are drawn, as the setting says. */
-  private getTagTitleDisplayMode(): TagTitleDisplayMode {
-    return normalizeTagTitleDisplayMode(
-      vscode.workspace.getConfiguration('deckard').get<unknown>('tagTitleDisplayMode', 'inline'),
-    );
   }
 
   /**
@@ -789,13 +834,6 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     if (!fromSelection && this.suppressAutomaticEntrySelection) {
       return;
     }
-    // The note page reads the setting as the window has it, as the ranking's settings do.
-    if (!shouldAutoSelectNoteSections(vscode.window.activeTextEditor?.document.uri)) {
-      if (this.entryContext?.source === 'cursor') {
-        this.entryContext = undefined;
-      }
-      return;
-    }
     const entry = active.line === undefined ? undefined : findTaggedEntry(active.file, active.line);
     this.entryContext = entry
       ? {
@@ -806,26 +844,11 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       : undefined;
   }
 
-  /**
-   * Reads the active note's workspace setting for related-note ranking.
-   */
-  private areKeywordLinksEnabled(): boolean {
-    return vscode.workspace
-      .getConfiguration('deckard', vscode.window.activeTextEditor?.document.uri)
-      .get<boolean>('enableKeywordLinks', true);
-  }
-
-  /** The ranking's settings, for the active note's folder, and what it leaves out. */
+  /** What the ranking leaves out, and the date formats its reasons are written in. */
   private getRelatedNotesRankingOptions(): RelatedNotesRankingOptions {
-    const configuration = vscode.workspace.getConfiguration('deckard', vscode.window.activeTextEditor?.document.uri);
     return {
-      associationMinimumSupport: configuration.get<number>('relatedNotesAssociationMinimumSupport', 1),
-      recencyHalfLifeDays: configuration.get<number>('relatedNotesRecencyHalfLifeDays', 0),
       hidePeriodicNotes: this.sidebar.preferences.reader.value.hideDailyNotes === true,
-      // The board's status is how a task moves, not what a note is about.
-      excludedTagNamespaces: [
-        readStatusNamespace(vscode.workspace.getConfiguration('deckard')),
-      ],
+      dateFormats: readDateFormats(),
     };
   }
 
@@ -958,7 +981,6 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     const before = lines[target.line - 1];
     const after = appendTagToLine(before, tag.label, {
       entityNamespaceAliases: getEntityNamespaceAliases(configuration.get<unknown>('entityNamespaceAliases', {})),
-      personMarker: getPersonMarker(configuration.get<unknown>('personMarker', '@')),
     });
     if (after === before) {
       void vscode.window.showInformationMessage(`This line already has ${tag.label}.`);
@@ -1100,11 +1122,6 @@ function getEntryTitle(file: ParsedFile): string | undefined {
  */
 function isMarkdownDocument(document: vscode.TextDocument): boolean {
   return isMarkdownFile(document.uri);
-}
-
-/** Whether the cursor chooses the entry ranked for, as the note's folder sets it. */
-function shouldAutoSelectNoteSections(uri: vscode.Uri | undefined): boolean {
-  return vscode.workspace.getConfiguration('deckard', uri).get<boolean>('autoSelectNoteSections', true);
 }
 
 /** A message's type, for the log, or `invalid payload`. */

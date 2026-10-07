@@ -148,9 +148,8 @@ suite('Sample workspace', () => {
     const settings = JSON.parse(files.get('.vscode/settings.json') ?? '{}') as Record<string, unknown>;
     assert.strictEqual(settings['deckard.notesFolder'], '');
     assert.strictEqual(settings['deckard.me'], '#person/juno-hale');
-    assert.strictEqual(settings['deckard.calendar.dayPanel'], true);
     assert.strictEqual(settings['deckard.dailyNote.rollover'], 'migrate');
-    assert.deepStrictEqual(settings['deckard.board.limits'], { doing: 2 });
+    assert.deepStrictEqual(settings['deckard.board.limits'], { 'in-progress': 2 });
     assert.deepStrictEqual(settings['deckard.periodicNote.reviewSections'], [
       { title: 'Waiting on others', query: 'is:waiting' },
     ]);
@@ -255,13 +254,12 @@ suite('Sample workspace', () => {
       ['assignee = #person/ren-kade', 2],
       ['priority >= high', 2],
       ['kind = context', 4],
-      ['#status/doing', 2],
     ];
     for (const [query, count] of claims) {
       assert.strictEqual(found(query).tasks.length, count, query);
     }
     assert.deepStrictEqual(tasks('is:needs-date'), ['Renew the Praxis Loom receiver lease']);
-    assert.deepStrictEqual(tasks('is:blocked'), ['Run the passive-ping comparison #status/todo']);
+    assert.deepStrictEqual(tasks('is:blocked'), ['Run the passive-ping comparison']);
     assert.deepStrictEqual(tasks('start > today'), ['Rerun the falloff test at the east exits']);
     const nextMonth = tasks('due = next-month');
     assert.ok(nextMonth.includes("Write the pilot's close-out report"), 'the close-out report is due next month');

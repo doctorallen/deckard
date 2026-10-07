@@ -285,13 +285,7 @@ export class EditorReferences
     position: vscode.Position,
     text: string,
   ): Promise<vscode.Hover | undefined> {
-    const options = readParseOptions(document.uri);
-    const span = extractTagSpans(
-      text,
-      options.parseInlineTags,
-      options.entityNamespaceAliases,
-      options.personMarker,
-    ).find(
+    const span = extractTagSpans(text, true, readParseOptions(document.uri).entityNamespaceAliases).find(
       (candidate) =>
         candidate.lineNumber - 1 === position.line &&
         position.character >= candidate.startColumn &&

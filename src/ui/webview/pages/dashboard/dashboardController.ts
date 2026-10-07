@@ -4,7 +4,7 @@ import { openNoteAt } from '../../../commands/noteOpening';
 import { PreferenceServices } from '../../../../core/storage/preferences';
 import type { IndexControl, IndexReader, IndexScanStatus, IndexUpdates } from '../../../../core/workspace/indexReader';
 import { listedParkedTags } from '../../../../domain/index/parked';
-import { readAgendaQuery, readUpcomingDays } from '../../../../domain/tasks/agendaGroups';
+import { readAgendaQuery } from '../../../../domain/tasks/agendaGroups';
 import type { DashboardColumnCount, DashboardMode, PersistedPreferences } from '../../../../domain/model/preferences';
 import type { WorkspaceIndex } from '../../../../domain/model';
 import type { QueryContext } from '../../../../domain/query/queryContext';
@@ -42,8 +42,8 @@ import {
 } from '../../host/sharedHandlers';
 import type { PageChrome } from '../../components';
 import { narrowDashboardMessage } from './messages';
-import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 import { isDefaultHomeLayout } from '../../../../core/storage/preferencesSchema';
+import { readDateFormats } from '../../../commands/datePrompt';
 
 /** Today, as a day number, so a rollover is one comparison. */
 function startOfToday(): number {
@@ -168,7 +168,6 @@ export class DashboardController implements PageController<DashboardPageState, D
     const { preferences, indexer } = this.home;
     const blob = preferences.reader.value;
     const configuration = vscode.workspace.getConfiguration('deckard');
-    const tagTitleDisplayMode = normalizeTagTitleDisplayMode(configuration.get<unknown>('tagTitleDisplayMode', 'inline'));
     const index = indexer.getSnapshot();
     // One moment and one reading of the settings for the whole page, so its
     // tiles and its widgets agree about what today is.
@@ -184,7 +183,6 @@ export class DashboardController implements PageController<DashboardPageState, D
       ...createDashboardSnapshot({
         index,
         preferences: viewPreferences,
-        tagTitleDisplayMode,
         agendaQuery: readAgendaQuery(configuration),
         queryContext,
       }),
@@ -192,7 +190,7 @@ export class DashboardController implements PageController<DashboardPageState, D
       ...(this.home.whatsNew?.pending() ? { whatsNew: this.home.whatsNew.pending() } : {}),
       // Switching tabs asks the host again, so only Home gets its widgets.
       ...(this.dashboardMode === 'home'
-        ? { widgets: this.buildWidgets(index, viewPreferences, configuration, { queryContext, tagTitleDisplayMode, tryNext }) }
+        ? { widgets: this.buildWidgets(index, viewPreferences, configuration, { queryContext, tryNext }) }
         : {}),
     };
     return { ...data, parkedTags: listedParkedTags(indexer) };
@@ -202,8 +200,7 @@ export class DashboardController implements PageController<DashboardPageState, D
    * What else redraws Home besides the index and its theme: What's new and
    * Try next changing, the note in the editor changing while a widget
    * follows it, a visit while Recently opened is shown, the preferences,
-   * and the settings it draws from: how tag titles show, the agenda, and
-   * whether What's new is said. The host listens to the theme and zen
+   * and the agenda's settings, which it draws from. The host listens to the theme and zen
    * first, so an edit that changes the theme and the agenda at once resets
    * the page's HTML before either sends it a snapshot, as it always did.
    */
@@ -247,12 +244,7 @@ export class DashboardController implements PageController<DashboardPageState, D
         page.refresh();
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        const titleDisplayChanged = event.affectsConfiguration('deckard.tagTitleDisplayMode');
-        if (
-          titleDisplayChanged ||
-          event.affectsConfiguration('deckard.agenda') ||
-          event.affectsConfiguration('deckard.showWhatsNew')
-        ) {
+        if (event.affectsConfiguration('deckard.agenda')) {
           page.refresh();
         }
       }),
@@ -609,27 +601,18 @@ export class DashboardController implements PageController<DashboardPageState, D
     configuration: vscode.WorkspaceConfiguration,
     reading: {
       queryContext: QueryContext;
-      tagTitleDisplayMode: ReturnType<typeof normalizeTagTitleDisplayMode>;
       tryNext: TryNextSuggestion | undefined;
     },
   ): DashboardSnapshot['widgets'] {
-    const { queryContext, tagTitleDisplayMode, tryNext } = reading;
-    // The agenda's settings are read as the Tasks view reads them, so its
-    // widget lists what the view does, however they were written.
+    const { queryContext, tryNext } = reading;
+    // The agenda's search is read as the Tasks view reads it, so its
+    // widget lists what the view does, however it was written.
     return createDashboardWidgets(index, viewPreferences, {
       queryContext,
-      upcomingDays: readUpcomingDays(configuration),
       agendaQuery: readAgendaQuery(configuration),
-      tagTitleDisplayMode,
       sourceNotePath: this.getSourceNotePath(),
       ...(tryNext ? { tryNext } : {}),
-      relatedNotes: {
-        enableKeywordLinks: configuration.get<boolean>('enableKeywordLinks', true),
-        ranking: {
-          associationMinimumSupport: configuration.get<number>('relatedNotesAssociationMinimumSupport', 1),
-          recencyHalfLifeDays: configuration.get<number>('relatedNotesRecencyHalfLifeDays', 0),
-        },
-      },
+      relatedNotesRanking: { dateFormats: readDateFormats() },
     });
   }
 

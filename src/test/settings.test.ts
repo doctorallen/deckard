@@ -14,7 +14,7 @@ suite('Settings writes', () => {
     assert.ok(
       isUnregisteredSettingError(
         new Error(
-          'Unable to write to User Settings because deckard.agenda.groupBy is not a registered configuration.',
+          'Unable to write to User Settings because deckard.agenda.query is not a registered configuration.',
         ),
       ),
     );
@@ -25,39 +25,39 @@ suite('Settings writes', () => {
   test('writes through, and reports success', async () => {
     const written: unknown[] = [];
     const ok = await writeSetting(
-      'agenda.groupBy',
-      'priority',
+      'agenda.query',
+      'is:open',
       vscode.ConfigurationTarget.Global,
       { update: async (...args: unknown[]) => void written.push(args) },
     );
     assert.strictEqual(ok, true);
     assert.deepStrictEqual(written, [
-      ['agenda.groupBy', 'priority', vscode.ConfigurationTarget.Global],
+      ['agenda.query', 'is:open', vscode.ConfigurationTarget.Global],
     ]);
   });
 
   test('turns an unregistered setting into a sentence, and says it did not write', async () => {
     const ok = await writeSetting(
-      'agenda.groupBy',
-      'priority',
+      'agenda.query',
+      'is:open',
       vscode.ConfigurationTarget.Global,
       {
         update: async () => {
           throw new Error(
-            'Unable to write to User Settings because deckard.agenda.groupBy is not a registered configuration.',
+            'Unable to write to User Settings because deckard.agenda.query is not a registered configuration.',
           );
         },
       },
     );
     assert.strictEqual(ok, false);
-    assert.match(describeUnregisteredSetting('agenda.groupBy'), /Quit and reopen VS Code/);
-    assert.match(describeUnregisteredSetting('agenda.groupBy'), /"Agenda: Group By" setting/);
-    assert.doesNotMatch(describeUnregisteredSetting('agenda.groupBy'), /deckard\.agenda/);
+    assert.match(describeUnregisteredSetting('agenda.query'), /Quit and reopen VS Code/);
+    assert.match(describeUnregisteredSetting('agenda.query'), /"Agenda: Query" setting/);
+    assert.doesNotMatch(describeUnregisteredSetting('agenda.query'), /deckard\.agenda/);
   });
 
   test('lets any other failure through as it was', async () => {
     await assert.rejects(
-      writeSetting('agenda.groupBy', 'priority', vscode.ConfigurationTarget.Global, {
+      writeSetting('agenda.query', 'is:open', vscode.ConfigurationTarget.Global, {
         update: async () => {
           throw new Error('EACCES: permission denied');
         },

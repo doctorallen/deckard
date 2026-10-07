@@ -1,7 +1,7 @@
 /**
  * DECKARD's menu at the top of every page: selecting DECKARD ▾ in a page's
  * eyebrow drops a menu under it of every other page, each with the hint
- * the Pages view gives it, and Go to… with its key at the foot. The host
+ * the top of Context gives it, and Go to… with its key at the foot. The host
  * is asked for the pages each time, so the hints are as the notes are now.
  *
  * The menu is drawn outside the page's own tree, on the body, so a page

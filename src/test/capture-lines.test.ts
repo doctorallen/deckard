@@ -8,8 +8,6 @@ import {
   getCaptureInsertion,
   writeCapture,
 } from '../domain/capture/captureLines';
-import { CaptureDrafts } from '../services/captureService';
-import { completeLastWord, getTagSuggestions } from '../ui/commands/captureBox';
 
 /** The content once an insertion is made, as the editor would make it. */
 function applyInsertion(content: string, insertion: CaptureInsertion): string {
@@ -29,57 +27,7 @@ function capture(content: string, heading?: string): { content: string; taskLine
   return { content: applyInsertion(content, insertion), taskLine: insertion.taskLine };
 }
 
-suite('Quick capture', () => {  const tags = [
-    { label: '#project/atlas', count: 9 },
-    { label: '#project/harbor', count: 3 },
-    { label: '#risk/atlas-budget', count: 5 },
-    { label: '@alex-smith', count: 4 },
-  ];
-
-  test('keeps what was typed for the command it was typed into', async () => {
-    const stored = new Map<string, unknown>();
-    const drafts = new CaptureDrafts({
-      get: <T>(key: string) => stored.get(key) as T,
-      update: async (key: string, value: unknown) => void stored.set(key, value),
-    });
-
-    await drafts.save({ text: 'Call Ren friday', target: 'today', literal: true });
-    assert.deepStrictEqual(drafts.read('today'), {
-      text: 'Call Ren friday',
-      target: 'today',
-      literal: true,
-    });
-    assert.strictEqual(drafts.read('heading'), undefined, 'kept for Capture, not the other');
-
-    await drafts.clear();
-    assert.strictEqual(drafts.read('today'), undefined);
-  });
-
-  test('suggests tags for the word being typed, most used first', () => {
-    assert.deepStrictEqual(getTagSuggestions('Call Ren #pro', tags), [
-      '#project/atlas',
-      '#project/harbor',
-    ]);
-    assert.deepStrictEqual(
-      getTagSuggestions('Call Ren #atlas', tags),
-      ['#project/atlas', '#risk/atlas-budget'],
-      'tags containing the word follow',
-    );
-    assert.deepStrictEqual(getTagSuggestions('Ask (@al', tags), ['@alex-smith']);
-    assert.deepStrictEqual(getTagSuggestions('Call Ren #pro ', tags), [], 'the word has ended');
-    assert.deepStrictEqual(getTagSuggestions('Call Ren', tags), [], 'only tags are completed');
-    assert.deepStrictEqual(getTagSuggestions('#project/atlas', tags), [], 'already complete');
-    assert.strictEqual(getTagSuggestions('#', tags, '@', 2).length, 2, 'at most the limit');
-  });
-
-  test('completing a tag replaces the word being typed', () => {
-    assert.strictEqual(
-      completeLastWord('Call Ren #pro', '#project/atlas'),
-      'Call Ren #project/atlas ',
-    );
-    assert.strictEqual(completeLastWord('Ask (@al', '@alex-smith'), 'Ask (@alex-smith ');
-  });
-
+suite('Quick capture', () => {
   test('writes a capture as an open task', () => {
     assert.strictEqual(
       formatCaptureLine('  Call Ren #project/atlas '),

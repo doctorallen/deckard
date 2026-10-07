@@ -37,6 +37,9 @@ suite('Related Notes messages', () => {
     assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'openDashboard' }), { type: 'openDashboard' });
     assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'createDailyNote' }), { type: 'createDailyNote' });
     assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'openHelp' }), { type: 'openHelp' });
+    // A page at the top of Context, by its id; the host opens only a page it lists.
+    assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'goToPage', page: 'board', extra: 1 }), { type: 'goToPage', page: 'board' });
+    assert.strictEqual(narrowSidebarNotesMessage({ type: 'goToPage', page: 'Board!' }), undefined);
     assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'clearEntryRelatedNotes' }), { type: 'clearEntryRelatedNotes' });
     assert.deepStrictEqual(
       narrowSidebarNotesMessage({ type: 'setRelatedNotesSort', mode: 'access' }),

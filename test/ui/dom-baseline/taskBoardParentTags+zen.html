@@ -1,0 +1,1339 @@
+<body
+  class="zen"
+  data-cards="flat"
+  data-counts="hidden"
+  data-dates="relative"
+  data-density="compact"
+  data-help="hidden"
+  data-level="zen"
+  data-styling="plain"
+  data-tags="text"
+> <main
+    id="app"
+  ><header
+    ><div
+      ><p
+          class="eyebrow"
+        ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label="Deckard: go to another page"
+            class="eyebrow-home"
+            data-go-to=""
+            type="button"
+          >DECKARD ▾</button
+          ><span
+            class="eyebrow-trail"
+          > / TASK BOARD</span
+          ></p
+        ><h1
+        >Task Board</h1
+        ></div
+      ><div
+        class="board-header-actions"
+      ><span
+          class="board-total"
+        >5 tasks</span
+        ><button
+          aria-label="Open Help"
+          class="help-button icon-button"
+          data-action="open-help"
+          data-help-anchor="task-views"
+          data-tip="Open Help"
+          type="button"
+        ><svg
+            aria-hidden="true"
+            class="help-icon toolbar-icon"
+            fill="currentColor"
+            focusable="false"
+            viewBox="-5.5 0 19 19"
+          ><path
+              d="M7.987 5.653a4.536 4.536 0 0 1-.149 1.213 4.276 4.276 0 0 1-.389.958 5.186 5.186 0 0 1-.533.773c-.195.233-.386.454-.568.658l-.024.026c-.17.18-.328.353-.468.516a3.596 3.596 0 0 0-.4.567 2.832 2.832 0 0 0-.274.677 3.374 3.374 0 0 0-.099.858v.05a1.03 1.03 0 0 1-2.058 0v-.05a5.427 5.427 0 0 1 .167-1.385 4.92 4.92 0 0 1 .474-1.17 5.714 5.714 0 0 1 .63-.89c.158-.184.335-.38.525-.579.166-.187.34-.39.52-.603a3.108 3.108 0 0 0 .319-.464 2.236 2.236 0 0 0 .196-.495 2.466 2.466 0 0 0 .073-.66 1.891 1.891 0 0 0-.147-.762 1.944 1.944 0 0 0-.416-.633 1.917 1.917 0 0 0-.62-.418 1.758 1.758 0 0 0-.723-.144 1.823 1.823 0 0 0-.746.146 1.961 1.961 0 0 0-1.06 1.062 1.833 1.833 0 0 0-.146.747v.028a1.03 1.03 0 1 1-2.058 0v-.028a3.882 3.882 0 0 1 .314-1.56 4.017 4.017 0 0 1 2.135-2.139 3.866 3.866 0 0 1 1.561-.314 3.792 3.792 0 0 1 1.543.314A3.975 3.975 0 0 1 7.678 4.09a3.933 3.933 0 0 1 .31 1.563zm-2.738 9.81a1.337 1.337 0 0 1 0 1.033 1.338 1.338 0 0 1-.71.71l-.005.003a1.278 1.278 0 0 1-.505.103 1.338 1.338 0 0 1-1.244-.816 1.313 1.313 0 0 1 .284-1.451 1.396 1.396 0 0 1 .434-.283 1.346 1.346 0 0 1 .526-.105 1.284 1.284 0 0 1 .505.103l.005.003a1.404 1.404 0 0 1 .425.281 1.28 1.28 0 0 1 .285.418z"
+            ></path
+            ></svg
+          ></button
+        ><details
+          class="view-options"
+        ><summary
+            aria-label="View options"
+            data-tip="View options"
+          ><svg
+              aria-hidden="true"
+              class="settings-icon toolbar-icon"
+              focusable="false"
+              viewBox="0 0 24 24"
+            ><path
+                clip-rule="evenodd"
+                d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"
+                fill-rule="evenodd"
+              ></path
+              ><path
+                clip-rule="evenodd"
+                d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"
+                fill-rule="evenodd"
+              ></path
+              ></svg
+            ></summary
+          ><div
+            class="is-dropdown popover view-options-menu"
+          ><div
+              class="view-options-group"
+            ><span
+              >Layout</span
+              ><div
+                aria-label="Task layout"
+                class="segmented view-options-choices"
+                role="group"
+              ><button
+                  aria-pressed="false"
+                  data-action="set-task-layout"
+                  data-value="list"
+                  type="button"
+                >List</button
+                ><button
+                  aria-pressed="true"
+                  class="active"
+                  data-action="set-task-layout"
+                  data-value="board"
+                  type="button"
+                >Board</button
+                ><button
+                  aria-pressed="false"
+                  data-action="set-task-layout"
+                  data-value="table"
+                  type="button"
+                >Table</button
+                ></div
+              ></div
+            ><div
+              class="view-options-group"
+            ><span
+              >Tasks view</span
+              ><button
+                aria-pressed="false"
+                data-action="use-for-agenda"
+                data-tip="Make the Tasks view list this search"
+                type="button"
+              >List in Tasks view</button
+              ></div
+            ><div
+              class="view-options-group"
+            ><span
+              >Cards</span
+              ><label
+                class="board-settings-row"
+              ><input
+                  data-action="show-parent-tag"
+                  data-dom-checked="true"
+                  data-dom-value="on"
+                  type="checkbox"
+                ><span
+                >Show the tag each task is under</span
+                ></label
+              ></div
+            ><div
+              class="is-stacked view-options-group"
+            ><span
+              >Status columns</span
+              ><div
+                class="board-settings"
+              ><p
+                  class="board-settings-note"
+                >Columns when grouped by Status, one per status in your list. Tick one to show it, drag to set the order. Done is always a column; a character no status names gets one of its own.</p
+                ><ul
+                  aria-label="Status columns"
+                  class="board-status-list"
+                ><li
+                    class="board-status is-draggable"
+                    data-status="Todo"
+                    data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                    tabindex="0"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    >⠿</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Todo [ ] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Todo"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[ ]</span
+                      ><span
+                        class="board-status-name"
+                      >Todo</span
+                      ></label
+                    ><span
+                      class="board-status-count"
+                      data-tip="Open tasks with this status, in the whole workspace"
+                    >2 open</span
+                    ></li
+                  ><li
+                    class="board-status is-draggable"
+                    data-status="In progress"
+                    data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                    tabindex="0"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    >⠿</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show In progress [/] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="In progress"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[/]</span
+                      ><span
+                        class="board-status-name"
+                      >In progress</span
+                      ></label
+                    ><span
+                      class="board-status-count"
+                      data-tip="Open tasks with this status, in the whole workspace"
+                    >1 open</span
+                    ></li
+                  ><li
+                    class="board-status is-draggable"
+                    data-status="Waiting"
+                    data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                    tabindex="0"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    >⠿</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Waiting [w] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Waiting"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[w]</span
+                      ><span
+                        class="board-status-name"
+                      >Waiting</span
+                      ></label
+                    ><span
+                      class="board-status-count"
+                      data-tip="Open tasks with this status, in the whole workspace"
+                    >1 open</span
+                    ></li
+                  ><li
+                    class="board-status is-draggable"
+                    data-status="Someday"
+                    data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                    tabindex="0"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    >⠿</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Someday [s] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Someday"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[s]</span
+                      ><span
+                        class="board-status-name"
+                      >Someday</span
+                      ></label
+                    ></li
+                  ><li
+                    class="board-status is-draggable"
+                    data-status="Blocked"
+                    data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                    tabindex="0"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    >⠿</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Blocked [=] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Blocked"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[=]</span
+                      ><span
+                        class="board-status-name"
+                      >Blocked</span
+                      ></label
+                    ><span
+                      class="board-status-count"
+                      data-tip="Open tasks with this status, in the whole workspace"
+                    >1 open</span
+                    ></li
+                  ><li
+                    class="board-status"
+                    data-tip="Done is always a column, after every open status"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    ></span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Done [x] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Done"
+                        disabled=""
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[x]</span
+                      ><span
+                        class="board-status-name"
+                      >Done</span
+                      ></label
+                    ></li
+                  ><li
+                    class="board-status"
+                    data-tip="Cancelled comes after Done when it is shown"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    ></span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Cancelled [-] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="false"
+                        data-dom-value="on"
+                        data-name="Cancelled"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[-]</span
+                      ><span
+                        class="board-status-name"
+                      >Cancelled</span
+                      ></label
+                    ></li
+                  ></ul
+                ><div
+                  class="board-settings-row"
+                ><button
+                    data-action="new-task-status"
+                    data-tip="Add a status to the list, with its character"
+                    type="button"
+                  >New status…</button
+                  ><button
+                    data-action="edit-task-statuses"
+                    data-tip="Open Edit Task Statuses"
+                    type="button"
+                  >Edit statuses…</button
+                  ></div
+                ></div
+              ></div
+            ><div
+              class="view-options-group"
+            ><span
+              >Theme</span
+              ><button
+                aria-label="Theme: Replicant. Choose another"
+                class="theme-choice"
+                data-action="choose-theme"
+                type="button"
+              >Replicant…</button
+              ></div
+            ><div
+              class="view-options-group"
+            ><span
+              >Display</span
+              ><div
+                class="view-options-display"
+              ><div
+                  aria-label="Display"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="full"
+                    type="button"
+                  >Full</button
+                  ><button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="quiet"
+                    type="button"
+                  >Quiet</button
+                  ><button
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-display"
+                    data-display="level"
+                    data-value="zen"
+                    type="button"
+                  >Zen</button
+                  ></div
+                ><p
+                  class="view-options-changed"
+                ><button
+                    class="view-options-link"
+                    data-action="display-command"
+                    data-command="customize"
+                    type="button"
+                  >Customize…</button
+                  ></p
+                ></div
+              ></div
+            ></div
+          ></details
+        ></div
+      ></header
+    ><section
+      aria-label="Search tasks"
+      class="query-workspace"
+    ><div
+        class="query-bar-row"
+      ><span
+          class="query-bar-shell query-input-shell"
+          data-query-text=""
+        ><input
+            aria-autocomplete="list"
+            aria-controls="suggestions-query"
+            aria-expanded="false"
+            aria-label="Search tasks"
+            autocomplete="off"
+            class="query-input"
+            data-action="query-input"
+            data-dom-value=""
+            data-suggest-key="query"
+            placeholder="Search tasks: words, #tags, is:open, has:due, due < 7d, priority >= high…"
+            role="combobox"
+            spellcheck="false"
+            type="text"
+          ><div
+            aria-label="Suggestions"
+            class="is-dropdown popover query-suggestions"
+            data-suggestions="query"
+            hidden=""
+            id="suggestions-query"
+            role="listbox"
+          ></div
+          ></span
+        ><button
+          class="query-apply"
+          data-action="apply-query"
+          data-tip="Run this search"
+        >Search</button
+        ><button
+          aria-disabled="true"
+          data-action="clear-query"
+          data-query-clears=""
+          data-tip="Clear the search"
+          data-tip-disabled="The search is already empty"
+        >Clear</button
+        ><button
+          aria-disabled="true"
+          data-action="save-board-search"
+          data-query-needs-text=""
+          data-tip="Keep this search, named, on Home; it reopens on the Task Board"
+          data-tip-disabled="Type a search to save it"
+        >Save</button
+        ><button
+          data-action="export-tasks"
+          data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file"
+        >Export tasks</button
+        ><button
+          data-action="add-task"
+          data-tip="Write a new task in the task editor, into today's note or another you choose"
+        >Add task</button
+        ></div
+      ><div
+        class="query-status"
+      ><button
+          aria-expanded="false"
+          class="query-builder-toggle"
+          data-action="toggle-builder"
+          data-tip="Build the search one condition at a time"
+        >Builder</button
+        ><span
+          class="query-hint"
+        >Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span
+        ><div
+          aria-label="Group tasks by"
+          class="segmented task-board-group"
+          role="group"
+        ><button
+            aria-pressed="true"
+            class="active"
+            data-action="set-board-group"
+            data-group="status"
+            type="button"
+          >Status</button
+          ><button
+            aria-pressed="false"
+            data-action="set-board-group"
+            data-group="priority"
+            type="button"
+          >Priority</button
+          ><button
+            aria-pressed="false"
+            data-action="set-board-group"
+            data-group="due"
+            type="button"
+          >Due date</button
+          ><button
+            aria-pressed="false"
+            data-action="set-board-group"
+            data-group="assignee"
+            type="button"
+          >Person</button
+          ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-pressed="false"
+            data-action="pick-board-namespace"
+            data-tip="Group by the tags in one namespace, such as #project/… or #context/…"
+            type="button"
+          >Tag…</button
+          ></div
+        ><label
+          class="control-label"
+        >Sort:<span
+            class="control-icon"
+          ><select
+              aria-label="Sort tasks"
+              data-action="set-task-sort"
+              data-dom-value="rank"
+            ><option
+                data-dom-selected="true"
+                data-dom-value="rank"
+              >Rank</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="created"
+              >Newest created</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="createdOldest"
+              >Oldest created</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="updated"
+              >Recently updated</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="updatedOldest"
+              >Least recently updated</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="alphabetical"
+              >A-Z</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="alphabeticalReverse"
+              >Z-A</option
+              ></select
+            ><svg
+              aria-hidden="true"
+              class="control-icon-svg"
+              fill="none"
+              focusable="false"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><path
+                d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"
+              ></path
+              ></svg
+            ></span
+          ></label
+        ><button
+          aria-pressed="false"
+          class="board-available"
+          data-action="toggle-available"
+          data-tip="Leave out blocked, not-yet-started, and waiting or someday tasks (is:available)"
+          type="button"
+        >Can start now</button
+        ></div
+      ></section
+    ><section
+      aria-label="Tasks"
+      class="board-area"
+    ><div
+        aria-label="Task board"
+        class="board task-board"
+        role="group"
+      ><section
+          aria-label="Todo [ ], 2 tasks"
+          class="board-column"
+          data-column-id="status:todo"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="Todo"
+          data-symbol=" "
+        ><h2
+            class="board-column-title"
+          ><span
+              class="board-column-label"
+            >Todo<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[ ]</span
+              ></span
+            ><span
+              class="board-count"
+            >2</span
+            ></h2
+          ><button
+            class="board-add"
+            data-action="board-add-task"
+            data-column-id="status:todo"
+            data-tip="Add a task already in Todo"
+            type="button"
+          >+ Add task</button
+          ><div
+            aria-label="Todo"
+            class="board-cards"
+            role="list"
+          ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Book the flights, Todo"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/field-season.md"
+              data-line="5"
+              data-task-id="task-6d3zqd-968ga4"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="0"
+            ><input
+                aria-label="Complete Book the flights"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="parent-tag-line"
+                ><button
+                    aria-label="Add #area/research to the search. Enter adds AND, Alt-Enter adds AND NOT, Shift-Enter adds OR, Cmd or Ctrl-Enter opens it in a new tab."
+                    class="parent-tag tag-open"
+                    data-action="refine-by-tag"
+                    data-tag-key="#area/research"
+                    data-tip="Add #area/research to the search · Shift-click: OR · Alt-click: AND NOT · Cmd/Ctrl-click: open in a new tab"
+                    type="button"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#area</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >research</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-title"
+                >Book the flights</div
+                ><p
+                  class="board-details source"
+                ></p
+                ><span
+                  class="task-source"
+                >field-season / line 5</span
+                ><span
+                  class="heading-path task-source"
+                >Field season</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Book the flights: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Order the connectors, Todo"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/field-season.md"
+              data-line="10"
+              data-task-id="task-mq2evr-78fa3i"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Order the connectors"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="parent-tag-line"
+                ><button
+                    aria-label="Add #project/atlas to the search. Enter adds AND, Alt-Enter adds AND NOT, Shift-Enter adds OR, Cmd or Ctrl-Enter opens it in a new tab."
+                    class="parent-tag tag-open"
+                    data-action="refine-by-tag"
+                    data-tag-key="#project/atlas"
+                    data-tip="Add #project/atlas to the search · Shift-click: OR · Alt-click: AND NOT · Cmd/Ctrl-click: open in a new tab"
+                    type="button"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#project</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >atlas</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-title"
+                >Order the connectors</div
+                ><p
+                  class="board-details source"
+                ></p
+                ><span
+                  class="task-source"
+                >field-season / line 10</span
+                ><span
+                  class="heading-path task-source"
+                >Field season<span
+                    class="heading-path-joiner"
+                  > &gt; </span
+                  >Antenna array<span
+                    class="heading-path-joiner"
+                  > &gt; </span
+                  >Cabling</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Order the connectors: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ></div
+          ></section
+        ><section
+          aria-label="In progress [/], 1 task"
+          class="board-column"
+          data-column-id="status:in-progress"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="In progress"
+          data-symbol="/"
+        ><h2
+            class="board-column-title"
+          ><span
+              class="board-column-label"
+            >In progress<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[/]</span
+              ></span
+            ><span
+              class="board-count"
+            >1</span
+            ></h2
+          ><button
+            class="board-add"
+            data-action="board-add-task"
+            data-column-id="status:in-progress"
+            data-tip="Add a task already in In progress"
+            type="button"
+          >+ Add task</button
+          ><div
+            aria-label="In progress"
+            class="board-cards"
+            role="list"
+          ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Calibrate the receivers, In progress"
+              class="board-card task"
+              data-card-column="status:in-progress"
+              data-file-path="notes/field-season.md"
+              data-line="7"
+              data-task-id="task-mgyuzk-tp2wk9"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Calibrate the receivers, In progress"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="parent-tag-line"
+                ><button
+                    aria-label="Add #project/atlas to the search. Enter adds AND, Alt-Enter adds AND NOT, Shift-Enter adds OR, Cmd or Ctrl-Enter opens it in a new tab."
+                    class="parent-tag tag-open"
+                    data-action="refine-by-tag"
+                    data-tag-key="#project/atlas"
+                    data-tip="Add #project/atlas to the search · Shift-click: OR · Alt-click: AND NOT · Cmd/Ctrl-click: open in a new tab"
+                    type="button"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#project</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >atlas</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-title"
+                >Calibrate the receivers</div
+                ><p
+                  class="board-details source"
+                ></p
+                ><span
+                  class="task-source"
+                >field-season / line 7</span
+                ><span
+                  class="heading-path task-source"
+                >Field season<span
+                    class="heading-path-joiner"
+                  > &gt; </span
+                  >Antenna array</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Calibrate the receivers: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ></div
+          ></section
+        ><section
+          aria-label="Waiting [w], 1 task"
+          class="board-column"
+          data-column-id="status:waiting"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="Waiting"
+          data-symbol="w"
+        ><h2
+            class="board-column-title"
+          ><span
+              class="board-column-label"
+            >Waiting<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[w]</span
+              ></span
+            ><span
+              class="board-count"
+            >1</span
+            ></h2
+          ><button
+            class="board-add"
+            data-action="board-add-task"
+            data-column-id="status:waiting"
+            data-tip="Add a task already in Waiting"
+            type="button"
+          >+ Add task</button
+          ><div
+            aria-label="Waiting"
+            class="board-cards"
+            role="list"
+          ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Hear back from legal, Waiting"
+              class="board-card task"
+              data-card-column="status:waiting"
+              data-file-path="notes/field-season.md"
+              data-line="8"
+              data-task-id="task-pfoe7v-8tcvlw"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Hear back from legal, Waiting"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="onHold"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="parent-tag-line"
+                ><button
+                    aria-label="Add #project/atlas to the search. Enter adds AND, Alt-Enter adds AND NOT, Shift-Enter adds OR, Cmd or Ctrl-Enter opens it in a new tab."
+                    class="parent-tag tag-open"
+                    data-action="refine-by-tag"
+                    data-tag-key="#project/atlas"
+                    data-tip="Add #project/atlas to the search · Shift-click: OR · Alt-click: AND NOT · Cmd/Ctrl-click: open in a new tab"
+                    type="button"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#project</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >atlas</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-title"
+                >Hear back from legal</div
+                ><p
+                  class="board-details source"
+                ></p
+                ><span
+                  class="task-source"
+                >field-season / line 8</span
+                ><span
+                  class="heading-path task-source"
+                >Field season<span
+                    class="heading-path-joiner"
+                  > &gt; </span
+                  >Antenna array</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Hear back from legal: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ></div
+          ></section
+        ><section
+          aria-label="Someday [s], 0 tasks"
+          class="board-column"
+          data-column-id="status:someday"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="Someday"
+          data-symbol="s"
+        ><h2
+            class="board-column-title"
+          ><span
+              class="board-column-label"
+            >Someday<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[s]</span
+              ></span
+            ><span
+              class="board-count"
+            >0</span
+            ></h2
+          ><button
+            class="board-add"
+            data-action="board-add-task"
+            data-column-id="status:someday"
+            data-tip="Add a task already in Someday"
+            type="button"
+          >+ Add task</button
+          ><div
+            class="board-cards"
+          ><p
+              class="board-empty"
+            >No tasks. Drag a card here, or move one with its ⋯ menu.</p
+            ></div
+          ></section
+        ><section
+          aria-label="Blocked [=], 1 task"
+          class="board-column"
+          data-column-id="status:blocked"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="Blocked"
+          data-symbol="="
+        ><h2
+            class="board-column-title"
+          ><span
+              class="board-column-label"
+            >Blocked<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[=]</span
+              ></span
+            ><span
+              class="board-count"
+            >1</span
+            ></h2
+          ><button
+            class="board-add"
+            data-action="board-add-task"
+            data-column-id="status:blocked"
+            data-tip="Add a task already in Blocked"
+            type="button"
+          >+ Add task</button
+          ><div
+            aria-label="Blocked"
+            class="board-cards"
+            role="list"
+          ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Wait for the vendor's quote, Blocked"
+              class="board-card task"
+              data-card-column="status:blocked"
+              data-file-path="notes/field-season.md"
+              data-line="12"
+              data-task-id="task-mtuqu7-1uh34z0"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><span
+                class="task-box-with-icon"
+              ><input
+                  aria-label="Complete Wait for the vendor's quote, Blocked"
+                  data-action="board-toggle-task"
+                  data-dom-checked="false"
+                  data-dom-value="on"
+                  data-status="onHold"
+                  data-tip="Complete this task"
+                  tabindex="-1"
+                  type="checkbox"
+                ><span
+                  aria-hidden="true"
+                  class="status-icon"
+                >⊘</span
+                ></span
+              ><div
+                class="task-summary"
+              ><div
+                  class="parent-tag-line"
+                ><button
+                    aria-label="Add #team/ops to the search. Enter adds AND, Alt-Enter adds AND NOT, Shift-Enter adds OR, Cmd or Ctrl-Enter opens it in a new tab."
+                    class="parent-tag tag-open"
+                    data-action="refine-by-tag"
+                    data-tag-key="#team/ops"
+                    data-tip="Add #team/ops to the search · Shift-click: OR · Alt-click: AND NOT · Cmd/Ctrl-click: open in a new tab"
+                    type="button"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-namespace"
+                      ><span
+                          class="tag-namespace-text"
+                        >#team</span
+                        >/</span
+                      ><span
+                        class="tag-value"
+                      >ops</span
+                      ></span
+                    ></button
+                  ></div
+                ><div
+                  class="task-title"
+                >Wait for the vendor's quote</div
+                ><p
+                  class="board-details source"
+                ></p
+                ><span
+                  class="task-source"
+                >field-season / line 12</span
+                ><span
+                  class="heading-path task-source"
+                >Field season<span
+                    class="heading-path-joiner"
+                  > &gt; </span
+                  >Vendors</span
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Wait for the vendor's quote: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ></div
+          ></section
+        ><section
+          aria-label="Done [x], 0 tasks"
+          class="board-column"
+          data-column-id="done"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="Done"
+          data-symbol="x"
+        ><h2
+            class="board-column-title"
+          ><span
+              class="board-column-label"
+            >Done<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[x]</span
+              ></span
+            ><span
+              class="board-count"
+            >0</span
+            ></h2
+          ><div
+            class="board-cards"
+          ><p
+              class="board-empty"
+            >No tasks. Drag a card here, or move one with its ⋯ menu.</p
+            ></div
+          ></section
+        ></div
+      ></section
+    ></main
+  > <div
+    aria-live="polite"
+    class="visually-hidden"
+    id="live-status"
+    role="status"
+  ></div
+  > </body
+>

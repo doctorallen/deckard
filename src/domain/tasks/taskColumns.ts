@@ -32,69 +32,15 @@ export function isTaskColumnId(value: unknown): value is TaskColumnId {
 }
 
 /**
- * A status a board column stands for, as `deckard.board.statuses` allows
- * one: letters and digits of any script, the marks that accent them, `-`
- * and `_`, starting with a letter or digit, so it can be written as a tag.
- * These are the parser's characters for a part of a tag's name
- * (`TAG_WORD_CHARACTERS`), written out here because a page imports this
- * module and must not bundle the parser.
- */
-const STATUS_COLUMN_NAME = /^[\p{L}\p{N}][\p{L}\p{N}\p{M}_-]*$/u;
-
-/**
- * A namespace as the board takes one, the status tag's as
- * `deckard.board.statusNamespace` allows it, or the one a board is grouped
- * by: the characters of a status, starting with a letter.
+ * A namespace as the board takes one, the one it is grouped by: letters
+ * and digits of any script, the marks that accent them, `-` and `_`,
+ * starting with a letter. These are the parser's characters for a part of
+ * a tag's name (`TAG_WORD_CHARACTERS`), written out here because a page
+ * imports this module and must not bundle the parser.
  */
 const BOARD_NAMESPACE = /^\p{L}[\p{L}\p{N}\p{M}_-]*$/u;
 
-/** The most status columns the board's gear may set. */
-export const MAX_STATUS_COLUMNS = 50;
-
-/** Whether a value is a status a board column can stand for. */
-export function isStatusColumnName(value: unknown): value is string {
-  return typeof value === 'string' && STATUS_COLUMN_NAME.test(value);
-}
-
-/** Whether a value is a namespace the board can take its statuses or its columns from. */
+/** Whether a value is a namespace the board can take its columns from. */
 export function isBoardNamespace(value: unknown): value is string {
   return typeof value === 'string' && BOARD_NAMESPACE.test(value);
-}
-
-/** Whether a value is a list of status columns the gear may set: no more than it keeps, each a status. */
-export function isStatusColumnList(value: unknown): value is string[] {
-  return Array.isArray(value) && value.length <= MAX_STATUS_COLUMNS && value.every(isStatusColumnName);
-}
-
-/** What the gear makes of what was typed: the value to save, or why it cannot be saved. */
-export type BoardSettingCheck = { readonly value: string; readonly error?: undefined } | { readonly value?: undefined; readonly error: string };
-
-/**
- * A status typed into the gear to add as a column, read as the gear saves
- * it: trimmed and in lower case, or why it cannot be a column. An empty
- * field is nothing to add, and gives undefined.
- */
-export function checkNewStatusColumn(typed: string, columns: readonly string[]): BoardSettingCheck | undefined {
-  const name = typed.trim().toLowerCase();
-  if (!name) {
-    return undefined;
-  }
-  if (!isStatusColumnName(name)) {
-    return { error: 'A status is letters, digits, - and _, starting with a letter or digit.' };
-  }
-  if (columns.includes(name)) {
-    return { error: `${name} is already a column.` };
-  }
-  return { value: name };
-}
-
-/**
- * A status tag namespace typed into the gear, read as the gear saves it:
- * trimmed and in lower case, or why it cannot be one.
- */
-export function checkStatusNamespace(typed: string): BoardSettingCheck {
-  const name = typed.trim().toLowerCase();
-  return isBoardNamespace(name)
-    ? { value: name }
-    : { error: 'A status tag is letters, digits, - and _, starting with a letter.' };
 }

@@ -90,3 +90,29 @@ export function rankMovesAfterEdits(
   }
   return moves;
 }
+
+/**
+ * The rank order once a reader has put a list, a column, or a group in the
+ * order `shown` gives: every task shown is ranked, in that order, as one run
+ * starting where the first of them was ranked before (or after every ranked
+ * task, when none was), and every other ranked task keeps its place. A task
+ * no longer in `live` is let go.
+ *
+ * Only what was shown is ranked, so a column's other tasks, never seen in
+ * this order, keep the order their sort gives them.
+ */
+export function rankShown(
+  current: readonly string[],
+  shown: readonly string[],
+  live: Iterable<string>,
+): string[] {
+  const liveIds = new Set(live);
+  const run = [...new Set(shown)].filter((id) => liveIds.has(id));
+  const inRun = new Set(run);
+  const kept = current.filter((id) => liveIds.has(id));
+  const anchor = kept.findIndex((id) => inRun.has(id));
+  const rest = kept.filter((id) => !inRun.has(id));
+  // Nothing before the first shown task is shown, so it starts the run where it was.
+  const at = anchor < 0 ? rest.length : anchor;
+  return [...rest.slice(0, at), ...run, ...rest.slice(at)];
+}

@@ -108,6 +108,21 @@
               >List in Tasks view</button
               ></div
             ><div
+              class="view-options-group"
+            ><span
+              >Cards</span
+              ><label
+                class="board-settings-row"
+              ><input
+                  data-action="show-parent-tag"
+                  data-dom-checked="false"
+                  data-dom-value="on"
+                  type="checkbox"
+                ><span
+                >Show the tag each task is under</span
+                ></label
+              ></div
+            ><div
               class="is-stacked view-options-group"
             ><span
               >Status columns</span
@@ -115,98 +130,218 @@
                 class="board-settings"
               ><p
                   class="board-settings-note"
-                >Columns when grouped by Status. Every status your open tasks carry is a column, listed here or not; drag to set their order. No status comes first and Done last. Saved in your settings, so the order applies to every workspace unless this one sets its own.</p
+                >Columns when grouped by Status, one per status in your list. Tick one to show it, drag to set the order. Done is always a column; a character no status names gets one of its own.</p
                 ><ul
                   aria-label="Status columns"
                   class="board-status-list"
                 ><li
                     class="board-status is-draggable"
-                    data-status="todo"
+                    data-status="Todo"
                     data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
                     tabindex="0"
                   ><span
                       aria-hidden="true"
                       class="board-status-grip"
                     >⠿</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Todo [ ] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Todo"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[ ]</span
+                      ><span
+                        class="board-status-name"
+                      >Todo</span
+                      ></label
                     ><span
-                      class="board-status-name"
-                    >Todo</span
-                    ><button
-                      aria-label="Remove Todo"
-                      data-action="remove-status"
-                      data-status="todo"
-                      data-tip="Remove column"
-                      type="button"
-                    >×</button
+                      class="board-status-count"
+                      data-tip="Open tasks with this status, in the whole workspace"
+                    >14 open</span
                     ></li
                   ><li
                     class="board-status is-draggable"
-                    data-status="doing"
+                    data-status="In progress"
                     data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
                     tabindex="0"
                   ><span
                       aria-hidden="true"
                       class="board-status-grip"
                     >⠿</span
-                    ><span
-                      class="board-status-name"
-                    >In progress</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show In progress [/] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="In progress"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[/]</span
+                      ><span
+                        class="board-status-name"
+                      >In progress</span
+                      ></label
                     ><span
                       class="board-status-count"
-                      data-tip="Open tasks with this status; a column while any have it"
-                    >40</span
+                      data-tip="Open tasks with this status, in the whole workspace"
+                    >40 open</span
+                    ></li
+                  ><li
+                    class="board-status is-draggable"
+                    data-status="Waiting"
+                    data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                    tabindex="0"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    >⠿</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Waiting [w] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Waiting"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[w]</span
+                      ><span
+                        class="board-status-name"
+                      >Waiting</span
+                      ></label
+                    ></li
+                  ><li
+                    class="board-status is-draggable"
+                    data-status="Someday"
+                    data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                    tabindex="0"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    >⠿</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Someday [s] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Someday"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[s]</span
+                      ><span
+                        class="board-status-name"
+                      >Someday</span
+                      ></label
+                    ></li
+                  ><li
+                    class="board-status is-draggable"
+                    data-status="Blocked"
+                    data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                    tabindex="0"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    >⠿</span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Blocked [=] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Blocked"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[=]</span
+                      ><span
+                        class="board-status-name"
+                      >Blocked</span
+                      ></label
+                    ></li
+                  ><li
+                    class="board-status"
+                    data-tip="Done is always a column, after every open status"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    ></span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Done [x] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-name="Done"
+                        disabled=""
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[x]</span
+                      ><span
+                        class="board-status-name"
+                      >Done</span
+                      ></label
+                    ></li
+                  ><li
+                    class="board-status"
+                    data-tip="Cancelled comes after Done when it is shown"
+                  ><span
+                      aria-hidden="true"
+                      class="board-status-grip"
+                    ></span
+                    ><label
+                      class="board-status-tick"
+                    ><input
+                        aria-label="Show Cancelled [-] as a column"
+                        data-action="show-status-column"
+                        data-dom-checked="false"
+                        data-dom-value="on"
+                        data-name="Cancelled"
+                        type="checkbox"
+                      ><span
+                        aria-hidden="true"
+                        class="board-status-box"
+                      >[-]</span
+                      ><span
+                        class="board-status-name"
+                      >Cancelled</span
+                      ></label
                     ></li
                   ></ul
-                ><p
-                  class="board-settings-note"
-                >Add a status for an empty column to drop cards into. One no open task has can be removed.</p
-                ><form
+                ><div
                   class="board-settings-row"
-                  data-form="add-status"
-                ><input
-                    aria-label="New status column"
-                    autocomplete="off"
-                    data-action="status-draft"
-                    data-dom-value=""
-                    placeholder="Add a status, such as review"
-                    spellcheck="false"
-                    type="text"
+                ><button
+                    data-action="new-task-status"
+                    data-tip="Add a status to the list, with its character"
+                    type="button"
+                  >New status…</button
                   ><button
-                    type="submit"
-                  >Add</button
-                  ></form
-                ><span
-                >Status tag</span
-                ><form
-                  class="board-settings-row"
-                  data-form="status-namespace"
-                ><span
-                    class="board-settings-prefix"
-                  >#</span
-                  ><input
-                    aria-label="Status tag namespace"
-                    autocomplete="off"
-                    data-action="namespace-draft"
-                    data-dom-value="status"
-                    spellcheck="false"
-                    type="text"
-                  ><span
-                    class="board-settings-prefix"
-                  >/doing</span
-                  ><button
-                    type="submit"
-                  >Save</button
-                  ></form
-                ><label
-                  class="board-settings-row"
-                ><input
-                    data-action="show-cancelled"
-                    data-dom-checked="false"
-                    data-dom-value="on"
-                    type="checkbox"
-                  ><span
-                  >Show a Cancelled column after Done</span
-                  ></label
+                    data-action="edit-task-statuses"
+                    data-tip="Open Edit Task Statuses"
+                    type="button"
+                  >Edit statuses…</button
+                  ></div
                 ></div
               ></div
             ><div
@@ -322,6 +457,10 @@
           data-action="export-tasks"
           data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file"
         >Export tasks</button
+        ><button
+          data-action="add-task"
+          data-tip="Write a new task in the task editor, into today's note or another you choose"
+        >Add task</button
         ></div
       ><div
         class="query-status"
@@ -372,6 +511,59 @@
             type="button"
           >Tag…</button
           ></div
+        ><label
+          class="control-label"
+        >Sort:<span
+            class="control-icon"
+          ><select
+              aria-label="Sort tasks"
+              data-action="set-task-sort"
+              data-dom-value="rank"
+            ><option
+                data-dom-selected="true"
+                data-dom-value="rank"
+              >Rank</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="created"
+              >Newest created</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="createdOldest"
+              >Oldest created</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="updated"
+              >Recently updated</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="updatedOldest"
+              >Least recently updated</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="alphabetical"
+              >A-Z</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="alphabeticalReverse"
+              >Z-A</option
+              ></select
+            ><svg
+              aria-hidden="true"
+              class="control-icon-svg"
+              fill="none"
+              focusable="false"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><path
+                d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"
+              ></path
+              ></svg
+            ></span
+          ></label
         ><button
           aria-pressed="false"
           class="board-available"
@@ -389,15 +581,22 @@
         class="board task-board"
         role="group"
       ><section
-          aria-label="No status, 13 tasks"
+          aria-label="Todo [ ], 13 tasks"
           class="board-column"
-          data-column-id="status:"
+          data-column-id="status:todo"
           data-droppable="true"
           data-hidden-count="0"
+          data-label="Todo"
+          data-symbol=" "
         ><h2
             class="board-column-title"
           ><span
-            >No status</span
+              class="board-column-label"
+            >Todo<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[ ]</span
+              ></span
             ><span
               class="board-count"
             >13</span
@@ -405,19 +604,19 @@
           ><button
             class="board-add"
             data-action="board-add-task"
-            data-column-id="status:"
-            data-tip="Capture a task straight into No status"
+            data-column-id="status:todo"
+            data-tip="Add a task already in Todo"
             type="button"
           >+ Add task</button
           ><div
-            aria-label="No status"
+            aria-label="Todo"
             class="board-cards"
             role="list"
           ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Later task 1, No status, due 2026-12-01"
+              aria-label="Later task 1, Todo, due 2026-12-01"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/tasks.md"
               data-line="45"
               data-task-id="task-pg15go-pwocl3"
@@ -498,9 +697,9 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Later task 2, No status, due 2026-12-01"
+              aria-label="Later task 2, Todo, due 2026-12-01"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/tasks.md"
               data-line="46"
               data-task-id="task-ov6q2g-1ppollx"
@@ -581,9 +780,9 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Later task 3, No status, due 2026-12-01"
+              aria-label="Later task 3, Todo, due 2026-12-01"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/tasks.md"
               data-line="47"
               data-task-id="task-45ajmg-16kc8qr"
@@ -664,9 +863,9 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Later task 4, No status, due 2026-12-01"
+              aria-label="Later task 4, Todo, due 2026-12-01"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/tasks.md"
               data-line="48"
               data-task-id="task-gklmtk-169cnat"
@@ -747,9 +946,9 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Later task 5, No status, due 2026-12-01"
+              aria-label="Later task 5, Todo, due 2026-12-01"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/tasks.md"
               data-line="49"
               data-task-id="task-xqm8pk-1gmxvj"
@@ -830,9 +1029,9 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Later task 6, No status, due 2026-12-01"
+              aria-label="Later task 6, Todo, due 2026-12-01"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/tasks.md"
               data-line="50"
               data-task-id="task-ugjnsd-1jpuxok"
@@ -913,9 +1112,9 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Later task 7, No status, due 2026-12-01"
+              aria-label="Later task 7, Todo, due 2026-12-01"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/tasks.md"
               data-line="51"
               data-task-id="task-9qnhcd-9ofrza"
@@ -996,9 +1195,9 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Later task 8, No status, due 2026-12-01"
+              aria-label="Later task 8, Todo, due 2026-12-01"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/tasks.md"
               data-line="52"
               data-task-id="task-az8p3n-yohk9w"
@@ -1079,9 +1278,9 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Later task 9, No status, due 2026-12-01"
+              aria-label="Later task 9, Todo, due 2026-12-01"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/tasks.md"
               data-line="53"
               data-task-id="task-vp4vjn-1gjd4gi"
@@ -1162,9 +1361,9 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Later task 10, No status, due 2026-12-01"
+              aria-label="Later task 10, Todo, due 2026-12-01"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/tasks.md"
               data-line="54"
               data-task-id="task-e8hp96-1d2bnjv"
@@ -1245,9 +1444,9 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Later task 11, No status, due 2026-12-01"
+              aria-label="Later task 11, Todo, due 2026-12-01"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/tasks.md"
               data-line="55"
               data-task-id="task-keeplw-vw1zcn"
@@ -1328,9 +1527,9 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Later task 12, No status, due 2026-12-01"
+              aria-label="Later task 12, Todo, due 2026-12-01"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/tasks.md"
               data-line="56"
               data-task-id="task-fzsxi6-m08wy7"
@@ -1411,9 +1610,9 @@
               ></article
             ><article
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
-              aria-label="Undated task, No status"
+              aria-label="Undated task, Todo"
               class="board-card task"
-              data-card-column="status:"
+              data-card-column="status:todo"
               data-file-path="notes/tasks.md"
               data-line="57"
               data-task-id="task-o1mm8r-nx6pgq"
@@ -1490,43 +1689,22 @@
             ></div
           ></section
         ><section
-          aria-label="Todo, 0 tasks"
+          aria-label="In progress [/], 40 tasks, 6 overdue"
           class="board-column"
-          data-column-id="status:todo"
+          data-column-id="status:in-progress"
           data-droppable="true"
           data-hidden-count="0"
+          data-label="In progress"
+          data-symbol="/"
         ><h2
             class="board-column-title"
           ><span
-            >Todo</span
-            ><span
-              class="board-count"
-            >0</span
-            ></h2
-          ><button
-            class="board-add"
-            data-action="board-add-task"
-            data-column-id="status:todo"
-            data-tip="Capture a task straight into Todo"
-            type="button"
-          >+ Add task</button
-          ><div
-            class="board-cards"
-          ><p
-              class="board-empty"
-            >No tasks. Drag a card here, or move one with its ⋯ menu.</p
-            ></div
-          ></section
-        ><section
-          aria-label="In progress, 40 tasks, 6 overdue"
-          class="board-column"
-          data-column-id="status:doing"
-          data-droppable="true"
-          data-hidden-count="0"
-        ><h2
-            class="board-column-title"
-          ><span
-            >In progress</span
+              class="board-column-label"
+            >In progress<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[/]</span
+              ></span
             ><span
               class="board-count"
             >40 · 6 overdue</span
@@ -1534,8 +1712,8 @@
           ><button
             class="board-add"
             data-action="board-add-task"
-            data-column-id="status:doing"
-            data-tip="Capture a task straight into In progress"
+            data-column-id="status:in-progress"
+            data-tip="Add a task already in In progress"
             type="button"
           >+ Add task</button
           ><div
@@ -1546,7 +1724,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Chase the replicant through the neon market and file the report before the rain, In progress, overdue 6 days · 2026-09-15, Steps 1 of 2 done, 50%"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="3"
               data-task-id="task-84k6vj-elap6m"
@@ -1658,7 +1836,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 2, In progress, overdue 5 days · 2026-09-16"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="6"
               data-task-id="task-w0wf19-6ga1pk"
@@ -1755,7 +1933,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 3, In progress, overdue 4 days · 2026-09-17"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="7"
               data-task-id="task-k4oaq-1aovw8l"
@@ -1852,7 +2030,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 4, In progress, overdue 3 days · 2026-09-18"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="8"
               data-task-id="task-x55rmp-50zryy"
@@ -1949,7 +2127,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 5, In progress, overdue 2 days · 2026-09-19"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="9"
               data-task-id="task-5ax70g-1fb32hr"
@@ -2046,7 +2224,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 6, In progress, overdue 1 day · 2026-09-20"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="10"
               data-task-id="task-u8wnvd-1qvaths"
@@ -2143,7 +2321,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 7, In progress, due today · 2026-09-21"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="11"
               data-task-id="task-876ars-1wk0kwx"
@@ -2237,7 +2415,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 8, In progress, due today · 2026-09-21"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="12"
               data-task-id="task-lpp6zs-85vs23"
@@ -2331,7 +2509,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 9, In progress, due today · 2026-09-21"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="13"
               data-task-id="task-z8837s-1iohyo1"
@@ -2425,7 +2603,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 10, In progress, due tomorrow · 2026-09-22"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="14"
               data-task-id="task-rhzoks-1tfib2x"
@@ -2521,7 +2699,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 11, In progress, due in 2 days · 2026-09-23"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="15"
               data-task-id="task-ek1utt-12cttbm"
@@ -2617,7 +2795,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 12, In progress, due in 3 days · 2026-09-24"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="16"
               data-task-id="task-ef0nqq-cry4gb"
@@ -2713,7 +2891,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 13, In progress, due in 4 days · 2026-09-25"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="17"
               data-task-id="task-rn0vnv-ue48yk"
@@ -2809,7 +2987,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 14, In progress, due in 5 days · 2026-09-26"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="18"
               data-task-id="task-1c1mwo-7dimit"
@@ -2905,7 +3083,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 15, In progress, due in 5 days · 2026-09-26"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="19"
               data-task-id="task-5dk322-1j6vjzx"
@@ -3001,7 +3179,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 16, In progress, due in 6 days · 2026-09-27"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="20"
               data-task-id="task-kkv26q-1jn60bv"
@@ -3097,7 +3275,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 17, In progress, due in 7 days · 2026-09-28"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="21"
               data-task-id="task-lh6h7v-4oh0mq"
@@ -3193,7 +3371,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 18, In progress, due in 8 days · 2026-09-29"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="22"
               data-task-id="task-7hw1co-1w949u5"
@@ -3289,7 +3467,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 19, In progress, due in 9 days · 2026-09-30"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="23"
               data-task-id="task-878h1s-mala3"
@@ -3385,7 +3563,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 20, In progress, due in 10 days · 2026-10-01"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="24"
               data-task-id="task-4xb4tn-wzjcv8"
@@ -3481,7 +3659,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 21, In progress, due in 10 days · 2026-10-01"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="25"
               data-task-id="task-vsoo9-1prrf2c"
@@ -3577,7 +3755,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 22, In progress, due in 11 days · 2026-10-02"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="26"
               data-task-id="task-s39twa-1si5w1l"
@@ -3673,7 +3851,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 23, In progress, due in 12 days · 2026-10-03"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="27"
               data-task-id="task-dyrpib-gdh5sq"
@@ -3769,7 +3947,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 24, In progress, due in 13 days · 2026-10-04"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="28"
               data-task-id="task-f0at28-1iehzzz"
@@ -3865,7 +4043,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 25, In progress, due in 14 days · 2026-10-05"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="29"
               data-task-id="task-r1qqcd-zwmfps"
@@ -3961,7 +4139,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 26, In progress, due in 15 days · 2026-10-06"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="30"
               data-task-id="task-bufr7p-zerp1e"
@@ -4057,7 +4235,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 27, In progress, due in 15 days · 2026-10-06"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="31"
               data-task-id="task-7sxb2b-icr2ua"
@@ -4153,7 +4331,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 28, In progress, due in 16 days · 2026-10-07"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="32"
               data-task-id="task-l657i8-1nnb2q9"
@@ -4249,7 +4427,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 29, In progress, due in 17 days · 2026-10-08"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="33"
               data-task-id="task-kvwbwd-zgo0hg"
@@ -4345,7 +4523,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 30, In progress, due in 18 days · 2026-10-09"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="34"
               data-task-id="task-zbiyp1-107e9po"
@@ -4441,7 +4619,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 31, In progress, due in 19 days · 2026-10-10"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="35"
               data-task-id="task-k0gkvn-13z0yze"
@@ -4537,7 +4715,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 32, In progress, due in 20 days · 2026-10-11"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="36"
               data-task-id="task-m1kyiy-vuclh"
@@ -4633,7 +4811,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 33, In progress, due in 20 days · 2026-10-11"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="37"
               data-task-id="task-i02idk-1mxg2mp"
@@ -4729,7 +4907,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 34, In progress, due in 21 days · 2026-10-12"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="38"
               data-task-id="task-az006z-1mo5hto"
@@ -4825,7 +5003,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 35, In progress, due in 22 days · 2026-10-13"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="39"
               data-task-id="task-v31j7m-sd0b3z"
@@ -4921,7 +5099,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 36, In progress, due in 23 days · 2026-10-14"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="40"
               data-task-id="task-fvqk2y-vcvefj"
@@ -5017,7 +5195,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 37, In progress, due in 24 days · 2026-10-15"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="41"
               data-task-id="task-d3byhl-1kfkbck"
@@ -5113,7 +5291,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 38, In progress, due in 25 days · 2026-10-16"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="42"
               data-task-id="task-sypkx0-1m4d90l"
@@ -5209,7 +5387,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 39, In progress, due in 25 days · 2026-10-16"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="43"
               data-task-id="task-ox74rm-1bm6gpd"
@@ -5305,7 +5483,7 @@
               aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
               aria-label="Board task 40, In progress, due in 26 days · 2026-10-17"
               class="board-card task"
-              data-card-column="status:doing"
+              data-card-column="status:in-progress"
               data-file-path="notes/tasks.md"
               data-line="44"
               data-task-id="task-voaaeu-3mysun"
@@ -5400,15 +5578,127 @@
             ></div
           ></section
         ><section
-          aria-label="Done, 1 task"
+          aria-label="Waiting [w], 0 tasks"
+          class="board-column"
+          data-column-id="status:waiting"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="Waiting"
+          data-symbol="w"
+        ><h2
+            class="board-column-title"
+          ><span
+              class="board-column-label"
+            >Waiting<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[w]</span
+              ></span
+            ><span
+              class="board-count"
+            >0</span
+            ></h2
+          ><button
+            class="board-add"
+            data-action="board-add-task"
+            data-column-id="status:waiting"
+            data-tip="Add a task already in Waiting"
+            type="button"
+          >+ Add task</button
+          ><div
+            class="board-cards"
+          ><p
+              class="board-empty"
+            >No tasks. Drag a card here, or move one with its ⋯ menu.</p
+            ></div
+          ></section
+        ><section
+          aria-label="Someday [s], 0 tasks"
+          class="board-column"
+          data-column-id="status:someday"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="Someday"
+          data-symbol="s"
+        ><h2
+            class="board-column-title"
+          ><span
+              class="board-column-label"
+            >Someday<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[s]</span
+              ></span
+            ><span
+              class="board-count"
+            >0</span
+            ></h2
+          ><button
+            class="board-add"
+            data-action="board-add-task"
+            data-column-id="status:someday"
+            data-tip="Add a task already in Someday"
+            type="button"
+          >+ Add task</button
+          ><div
+            class="board-cards"
+          ><p
+              class="board-empty"
+            >No tasks. Drag a card here, or move one with its ⋯ menu.</p
+            ></div
+          ></section
+        ><section
+          aria-label="Blocked [=], 0 tasks"
+          class="board-column"
+          data-column-id="status:blocked"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="Blocked"
+          data-symbol="="
+        ><h2
+            class="board-column-title"
+          ><span
+              class="board-column-label"
+            >Blocked<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[=]</span
+              ></span
+            ><span
+              class="board-count"
+            >0</span
+            ></h2
+          ><button
+            class="board-add"
+            data-action="board-add-task"
+            data-column-id="status:blocked"
+            data-tip="Add a task already in Blocked"
+            type="button"
+          >+ Add task</button
+          ><div
+            class="board-cards"
+          ><p
+              class="board-empty"
+            >No tasks. Drag a card here, or move one with its ⋯ menu.</p
+            ></div
+          ></section
+        ><section
+          aria-label="Done [x], 1 task"
           class="board-column"
           data-column-id="done"
           data-droppable="true"
           data-hidden-count="0"
+          data-label="Done"
+          data-symbol="x"
         ><h2
             class="board-column-title"
           ><span
-            >Done</span
+              class="board-column-label"
+            >Done<span
+                aria-hidden="true"
+                class="board-column-symbol"
+              >[x]</span
+              ></span
             ><span
               class="board-count"
             >1</span
@@ -5527,7 +5817,7 @@
       ><button
         aria-checked="true"
         class="menu-item"
-        data-menu-value="status:"
+        data-menu-value="status:todo"
         role="menuitemradio"
         type="button"
       ><span
@@ -5550,26 +5840,12 @@
           ></span
         ><span
           class="menu-label"
-        >No status</span
-        ></button
-      ><button
-        aria-checked="false"
-        class="menu-item"
-        data-menu-value="status:todo"
-        role="menuitemradio"
-        type="button"
-      ><span
-          aria-hidden="true"
-          class="menu-check"
-        ></span
-        ><span
-          class="menu-label"
         >Todo</span
         ></button
       ><button
         aria-checked="false"
         class="menu-item"
-        data-menu-value="status:doing"
+        data-menu-value="status:in-progress"
         role="menuitemradio"
         type="button"
       ><span
@@ -5583,7 +5859,7 @@
       ><button
         aria-checked="false"
         class="menu-item"
-        data-menu-value="status:done"
+        data-menu-value="status:waiting"
         role="menuitemradio"
         type="button"
       ><span
@@ -5592,7 +5868,35 @@
         ></span
         ><span
           class="menu-label"
-        >Done</span
+        >Waiting</span
+        ></button
+      ><button
+        aria-checked="false"
+        class="menu-item"
+        data-menu-value="status:someday"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Someday</span
+        ></button
+      ><button
+        aria-checked="false"
+        class="menu-item"
+        data-menu-value="status:blocked"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Blocked</span
         ></button
       ></div
     ><div
@@ -5602,6 +5906,30 @@
     ><div
         class="menu-heading"
         id="action-menu-group-1"
+        role="presentation"
+      >More statuses</div
+      ><button
+        aria-checked="false"
+        class="menu-item"
+        data-menu-value="cancelled"
+        role="menuitemradio"
+        type="button"
+      ><span
+          aria-hidden="true"
+          class="menu-check"
+        ></span
+        ><span
+          class="menu-label"
+        >Cancelled</span
+        ></button
+      ></div
+    ><div
+      aria-labelledby="action-menu-group-2"
+      class="menu-group"
+      role="group"
+    ><div
+        class="menu-heading"
+        id="action-menu-group-2"
         role="presentation"
       >Priority</div
       ><button
@@ -5740,12 +6068,12 @@
         ></button
       ></div
     ><div
-      aria-labelledby="action-menu-group-2"
+      aria-labelledby="action-menu-group-3"
       class="menu-group"
       role="group"
     ><div
         class="menu-heading"
-        id="action-menu-group-2"
+        id="action-menu-group-3"
         role="presentation"
       >Due</div
       ><button
@@ -5823,12 +6151,12 @@
         ></button
       ></div
     ><div
-      aria-labelledby="action-menu-group-3"
+      aria-labelledby="action-menu-group-4"
       class="menu-group"
       role="group"
     ><div
         class="menu-heading"
-        id="action-menu-group-3"
+        id="action-menu-group-4"
         role="presentation"
       >For</div
       ><button
@@ -5852,12 +6180,12 @@
         ></button
       ></div
     ><div
-      aria-labelledby="action-menu-group-4"
+      aria-labelledby="action-menu-group-5"
       class="menu-group"
       role="group"
     ><div
         class="menu-heading"
-        id="action-menu-group-4"
+        id="action-menu-group-5"
         role="presentation"
       >Steps</div
       ><button
@@ -5881,12 +6209,12 @@
         ></button
       ></div
     ><div
-      aria-labelledby="action-menu-group-5"
+      aria-labelledby="action-menu-group-6"
       class="menu-group"
       role="group"
     ><div
         class="menu-heading"
-        id="action-menu-group-5"
+        id="action-menu-group-6"
         role="presentation"
       >Done</div
       ><button
@@ -5910,12 +6238,12 @@
         ></button
       ></div
     ><div
-      aria-labelledby="action-menu-group-6"
+      aria-labelledby="action-menu-group-7"
       class="menu-group"
       role="group"
     ><div
         class="menu-heading"
-        id="action-menu-group-6"
+        id="action-menu-group-7"
         role="presentation"
       >Note</div
       ><button

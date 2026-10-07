@@ -640,8 +640,8 @@ suite('Refining a search', () => {
     const values = createQuerySuggestions(index, [], createQueryContext(new Date(2026, 8, 25, 12).getTime())).values;
     const detail = (field: 'due' | 'created', value: string) =>
       values[field]?.find((suggestion) => suggestion.value === value)?.detail;
-    assert.strictEqual(detail('due', 'next-week'), 'Sep 27 to Oct 3');
-    assert.strictEqual(detail('due', 'this-week'), 'Sep 20 to Sep 26');
+    assert.strictEqual(detail('due', 'next-week'), 'Sun, Sep 27 to Sat, Oct 3');
+    assert.strictEqual(detail('due', 'this-week'), 'Sun, Sep 20 to Sat, Sep 26');
     assert.strictEqual(detail('created', 'last-month'), 'August');
     assert.strictEqual(detail('due', 'friday'), 'Fri, Oct 2');
     assert.strictEqual(detail('created', 'friday'), 'Fri, Sep 18');

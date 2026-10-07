@@ -13,6 +13,7 @@ import { withConfigurationEvents } from './configurationEvents';
 import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createTaskWrites } from './taskWrites';
+import { createMemoryPreferences } from './preferenceServices';
 import { pageWebview, REPOSITORY_ROOT } from './pageWebview';
 import { formatLocalDate } from '../domain/notes/periodicNotes';
 
@@ -38,6 +39,7 @@ function openCalendar(options: { scanning?: boolean } = {}) {
     ...(options.scanning ? { hasIndexed: false, scanProgress: { completed: 1, total: 4 }, onDidProgress: progress.event } : {}),
   };
   const themePreview = new ThemePreview();
+  const preferences = createMemoryPreferences();
   let host: WebviewHost<CalendarSnapshot, CalendarPageToHost> | undefined;
   const controller = new CalendarViewController({
     indexer,
@@ -46,6 +48,7 @@ function openCalendar(options: { scanning?: boolean } = {}) {
     post: (message) => host?.post(message),
     openTag: (tagKey) => openedTags.push(tagKey),
     extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
+    preferences,
   });
   host = new WebviewHost(controller, { indexer, themePreview });
   const surface = new FakeSurface();
@@ -99,7 +102,7 @@ suite('Calendar host', () => {
     const { result: calendar, fire } = withConfigurationEvents(() => openCalendar());
     try {
       const events = recordSurface(calendar.surface);
-      fire('deckard.theme', 'deckard.calendar.showWeekends');
+      fire('deckard.theme', 'deckard.calendar.weekStart');
       assert.deepStrictEqual(events, ['html', 'post state']);
     } finally {
       calendar.host.dispose();
@@ -222,7 +225,7 @@ suite('Calendar host', () => {
         await send({ type: 'openNote', filePath: `/notes/${today}.md`, line: 3 });
         await send({ type: 'selectDay', date: today, extra: 1 });
         await send({ type: 'chooseTheme' });
-        await send({ type: 'setShowRepeats', show: false });
+        await send({ type: 'setShowWeekends', show: false });
       });
       assert.deepStrictEqual(calls, []);
       assert.deepStrictEqual(surface.webview.posted, []);

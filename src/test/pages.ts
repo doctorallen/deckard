@@ -6,15 +6,12 @@ import { getNotePageHtml } from '../ui/webview/notePageHtml';
 import { getCalendarHtml } from '../ui/webview/calendarHtml';
 import { getDashboardHtml } from '../ui/webview/dashboardHtml';
 import { getHelpHtml, HelpOptions } from '../ui/webview/helpHtml';
-import type { HelpManifest } from '../ui/webview/pages/help/helpManifest';
 import { getNotesGraphHtml } from '../ui/webview/notesGraphHtml';
 import { getRelatedNotesDebugHtml } from '../ui/webview/relatedNotesDebugHtml';
 import { getSearchPageHtml } from '../ui/webview/searchPageHtml';
 import { getSidebarNotesHtml } from '../ui/webview/sidebarNotesHtml';
 import { getStatsHtml } from '../ui/webview/statsHtml';
 import { getTaskBoardHtml } from '../ui/webview/taskBoardHtml';
-import { getPagesViewHtml } from '../ui/webview/pagesViewHtml';
-import type { PagesViewSnapshot } from '../ui/protocol/pagesView';
 import { getTaskStatusesHtml } from '../ui/webview/taskStatusesHtml';
 import type { TaskStatusesSnapshot } from '../ui/protocol/taskStatuses';
 import type { ShellUri, ShellWebview } from '../ui/webview/host/pageShell';
@@ -34,7 +31,7 @@ export interface PageOptions {
    * omitted.
    */
   chrome?: PageChrome;
-  help?: { manifest?: HelpManifest; options?: Omit<HelpOptions, 'chrome'> };
+  help?: { options?: Omit<HelpOptions, 'chrome'> };
   diagnostic?: EntryRelatedNotesDiagnostic;
   /**
    * The snapshot the shell carries as inert JSON, for a page that reads
@@ -67,7 +64,6 @@ export type PageId =
   | 'calendarPage'
   | 'relatedNotesDebug'
   | 'notePage'
-  | 'pagesView'
   | 'taskStatuses';
 
 /** One Deckard webview page, and how to render it. */
@@ -94,7 +90,7 @@ const EMPTY_DIAGNOSTIC = {
   sourceLine: 1,
   title: 'Entry',
   tags: [],
-  snapshot: { activeTags: [], notes: [], tagTitleDisplayMode: 'inline', state: 'ready' },
+  snapshot: { activeTags: [], notes: [], state: 'ready' },
 } as unknown as EntryRelatedNotesDiagnostic;
 
 /**
@@ -114,8 +110,7 @@ export const PAGES: readonly CatalogPage[] = [
   {
     id: 'help',
     title: 'Help',
-    // The shortcuts are drawn for one platform, so the DOM goldens match on every OS.
-    render: (context) => getHelpHtml(context.webview, context.extensionUri, context.help?.manifest, { platform: 'darwin', ...context.help?.options, chrome: context.chrome }),
+    render: (context) => getHelpHtml(context.webview, context.extensionUri, { ...context.help?.options, chrome: context.chrome }),
   },
   {
     id: 'stats',
@@ -146,12 +141,6 @@ export const PAGES: readonly CatalogPage[] = [
     id: 'relatedNotesDebug',
     title: 'Related Notes debug',
     render: (context) => getRelatedNotesDebugHtml(context.webview, context.extensionUri, context.diagnostic ?? EMPTY_DIAGNOSTIC, context.chrome),
-  },
-  {
-    id: 'pagesView',
-    title: 'Pages',
-    render: (context) => getPagesViewHtml(context.webview, context.extensionUri, context.chrome, context.state as PagesViewSnapshot | undefined),
-    readsInertState: true,
   },
   {
     id: 'taskStatuses',

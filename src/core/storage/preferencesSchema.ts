@@ -11,6 +11,8 @@ import { HOME_WIDGET_LIMIT, isWatchableNamespace, isWidgetKind, WIDGET_ENTRY_COU
 import { legacyIdOf } from '../../domain/markdown/parser';
 import { isBoardNamespace, isTaskColumnId } from '../../domain/tasks/taskColumns';
 import {
+  AGENDA_GROUP_BYS,
+  AgendaGroupBy,
   DashboardColumnCount,
   DashboardViewState,
   DashboardWidgetConfig,
@@ -26,13 +28,13 @@ import {
   SearchPageSize,
   SearchPreview,
   TableSort,
+  TAG_OVERVIEW_SORT_MODES,
   TagOverviewLayout,
-  TagOverviewSortMode,
   TagSortMode,
+  TASK_SORT_MODES,
   TaskBoardGroupBy,
   TaskColumnId,
   TaskLayout,
-  TaskSortMode,
 } from '../../domain/model/preferences';
 
 /**
@@ -68,6 +70,7 @@ export const WORKSPACE_PREFERENCE_KEYS = [
   'pinnedNotes',
   'dashboardWidgets',
   'dashboardViewState',
+  'agendaGroupNamespace',
 ] as const satisfies readonly (keyof PersistedPreferences)[];
 
 /** Everything except the workspace's share: what stays machine-wide. */
@@ -100,7 +103,7 @@ export function pickWorkspacePreferences(
 /** How many recent searches are kept. */
 export const RECENT_QUERY_LIMIT = 20;
 
-/** How many headings Capture and Move to… remember. */
+/** How many headings Add Task and Move to… remember. */
 export const RECENT_HEADING_LIMIT = 5;
 
 /** The most Find choices kept; the least recently chosen goes first. */
@@ -140,9 +143,7 @@ const DASHBOARD_WIDGET_QUERY_LIMIT = 2000;
 const DASHBOARD_WIDGET_PAGE_LIMIT = 10000;
 
 const TAG_SORT_MODES: readonly TagSortMode[] = ['alphabetical', 'count', 'access', 'custom'];
-const TASK_SORT_MODES: readonly TaskSortMode[] = ['rank', 'created', 'updated'];
 const COLUMN_COUNTS: readonly DashboardColumnCount[] = [1, 2, 3, 4];
-const TAG_OVERVIEW_SORT_MODES: readonly TagOverviewSortMode[] = ['alphabetical', 'created', 'updated', 'access'];
 const TAG_OVERVIEW_LAYOUTS: readonly TagOverviewLayout[] = ['tabs', 'split'];
 const SEARCH_PREVIEWS: readonly SearchPreview[] = ['none', 'lines', 'full'];
 const RELATED_NOTES_SORT_MODES: readonly RelatedNotesSortMode[] = ['newest', 'oldest', 'tags', 'access'];
@@ -267,6 +268,7 @@ export function normalizePreferences(
     savedFilters: normalizeSavedFilters(source.savedFilters),
     ...normalizeTaskBoard(source),
     ...normalizeWorkspaceMemory(source),
+    ...normalizeViewChoices(source),
   };
 }
 
@@ -327,6 +329,7 @@ function normalizeSearchPages(
   | 'searchPageSize'
   | 'searchPreview'
   | 'searchHierarchy'
+  | 'hubNoteCollapsed'
   | 'relatedNotesSortMode'
   | 'hideDailyNotes'
   | 'relatedNotesPreviewLines'
@@ -344,28 +347,96 @@ function normalizeSearchPages(
     searchPageSize: oneOf<SearchPageSize>(source.searchPageSize, SEARCH_PAGE_SIZES, DEFAULT_SEARCH_PAGE_SIZE),
     searchPreview: oneOf(source.searchPreview, SEARCH_PREVIEWS, 'lines'),
     ...(source.searchHierarchy === 'tags' || source.searchHierarchy === 'headings' ? { searchHierarchy: source.searchHierarchy } : {}),
+    ...(source.hubNoteCollapsed === true ? { hubNoteCollapsed: true as const } : {}),
     relatedNotesSortMode: oneOf(source.relatedNotesSortMode, RELATED_NOTES_SORT_MODES, 'tags'),
     ...(source.hideDailyNotes === true ? { hideDailyNotes: true as const } : {}),
     ...(previewLines === 0 || previewLines === 2 ? { relatedNotesPreviewLines: previewLines } : {}),
   };
 }
 
-/** The Task Board's layout, its table's columns and sort, and its grouping. */
+/** The Task Board's layout, its table's columns and sort, its grouping, and its status columns. */
 function normalizeTaskBoard(
   source: Partial<PersistedPreferences>,
 ): Pick<
   PersistedPreferences,
-  'taskBoardLayout' | 'taskTableColumns' | 'taskTableSort' | 'taskBoardGroup' | 'taskBoardGroupNamespace'
+  | 'taskBoardLayout'
+  | 'taskTableColumns'
+  | 'taskTableSort'
+  | 'taskBoardGroup'
+  | 'taskBoardGroupNamespace'
+  | 'taskBoardColumnOrder'
+  | 'taskBoardHiddenColumns'
 > {
   const stored = source.taskBoardGroupNamespace;
   const namespace = isBoardNamespace(stored) ? stored.toLowerCase() : undefined;
+  const order = normalizeStatusNames(source.taskBoardColumnOrder);
+  const hidden = normalizeStatusNames(source.taskBoardHiddenColumns);
   return {
     taskBoardLayout: oneOf(source.taskBoardLayout, TASK_LAYOUTS, 'board'),
     taskTableColumns: normalizeTableColumns(source.taskTableColumns),
     taskTableSort: normalizeTableSort(source.taskTableSort),
     taskBoardGroup: oneOf(source.taskBoardGroup, namespace ? BOARD_GROUPS : BOARD_GROUPS_WITHOUT_TAG, 'status'),
     ...(namespace ? { taskBoardGroupNamespace: namespace } : {}),
+    ...(order ? { taskBoardColumnOrder: order } : {}),
+    ...(hidden ? { taskBoardHiddenColumns: hidden } : {}),
+    ...(source.boardParentTag === true ? { boardParentTag: true as const } : {}),
   };
+}
+
+/**
+ * The choices the views keep for themselves, each only when it isn't the
+ * default, and only a value the view offers: how the Tasks view is grouped
+ * and sorted, the Calendar's day panel and weekends, the Outline following
+ * the cursor, the page width, and the pages at the top of Context.
+ */
+function normalizeViewChoices(
+  source: Partial<PersistedPreferences>,
+): Pick<
+  PersistedPreferences,
+  | 'agendaGroupBy'
+  | 'agendaGroupNamespace'
+  | 'agendaSort'
+  | 'calendarDayPanel'
+  | 'calendarHideWeekends'
+  | 'outlineFollowCursorOff'
+  | 'pageWidth'
+  | 'contextPagesStyle'
+  | 'contextPagesHidden'
+> {
+  const groupBy = oneOf<AgendaGroupBy>(source.agendaGroupBy, AGENDA_GROUP_BYS, 'due');
+  const sort = oneOf(source.agendaSort, TASK_SORT_MODES, 'rank');
+  const stored = source.agendaGroupNamespace;
+  const namespace = isBoardNamespace(stored) ? stored.toLowerCase() : undefined;
+  const hidden = uniqueStrings(source.contextPagesHidden);
+  return {
+    ...(groupBy === 'due' ? {} : { agendaGroupBy: groupBy }),
+    ...(namespace && namespace !== 'project' ? { agendaGroupNamespace: namespace } : {}),
+    ...(sort === 'rank' ? {} : { agendaSort: sort }),
+    ...(source.calendarDayPanel === true ? { calendarDayPanel: true as const } : {}),
+    ...(source.calendarHideWeekends === true ? { calendarHideWeekends: true as const } : {}),
+    ...(source.outlineFollowCursorOff === true ? { outlineFollowCursorOff: true as const } : {}),
+    ...(source.pageWidth === 'full' ? { pageWidth: 'full' as const } : {}),
+    ...(source.contextPagesStyle === 'icons' ? { contextPagesStyle: 'icons' as const } : {}),
+    ...(hidden.length ? { contextPagesHidden: hidden } : {}),
+  };
+}
+
+/** The most status names a board's column choices keep, far more than any list has. */
+const MAX_STATUS_NAMES = 100;
+
+/**
+ * Status names as the board's column choices keep them: trimmed, each
+ * once, no more than a list holds; undefined for anything that is not a
+ * list. An empty list is kept, since no hidden column is a choice.
+ */
+export function normalizeStatusNames(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const names = value
+    .filter((name): name is string => typeof name === 'string' && name.trim().length > 0 && name.length <= 80)
+    .map((name) => name.trim());
+  return [...new Set(names)].slice(0, MAX_STATUS_NAMES);
 }
 
 /** What the workspace remembers of its notes: times, searches, Home, pins, and Find. */
@@ -866,6 +937,7 @@ export function clonePreferences(value: PersistedPreferences): PersistedPreferen
     dashboardWidgets: cloneWidgets(value.dashboardWidgets),
     ...(value.findChoices ? { findChoices: value.findChoices.map((choice) => ({ ...choice })) } : {}),
     ...(value.recentHeadings ? { recentHeadings: value.recentHeadings.map((pin) => ({ ...pin })) } : {}),
+    ...(value.contextPagesHidden ? { contextPagesHidden: [...value.contextPagesHidden] } : {}),
   };
 }
 

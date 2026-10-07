@@ -11,7 +11,6 @@ export interface EditedStatus {
   symbol?: string;
   name: string;
   type: TaskStatusType;
-  tag?: string;
   next?: string;
   icon?: string;
 }
@@ -21,14 +20,26 @@ export interface TaskStatusesSnapshot {
   statuses: EditedStatus[];
   /** `deckard.tasks.checkboxClick`. */
   checkboxClick: 'done' | 'workflow';
-  /** The namespace status tags are written in, `status`. */
-  namespace: string;
   /** Characters the notes use that no status names, each with how many tasks use it, the most used first. */
   found: Array<{ symbol: string; count: number }>;
   /** Whether a vault's Obsidian Tasks statuses can be imported. */
   canImport: boolean;
   /** Where Save writes: this workspace's settings, when it sets the list, else the user's. */
   target: 'workspace' | 'user';
+  /**
+   * A status to add as a new row, which the page appends once, by its id,
+   * and keeps until the list is saved: New status… on the board's gear, or
+   * a status tag the move into checkboxes found no character for.
+   */
+  newRow?: NewStatusRow;
+}
+
+/** A new row the page opens with: its name, maybe empty, and its type. */
+export interface NewStatusRow {
+  /** Which request it is, so the page adds each once. */
+  id: number;
+  name: string;
+  type: TaskStatusType;
 }
 
 /** Saves the list as edited. */

@@ -18,13 +18,14 @@ export interface ViewOptionGroup {
 
 /**
  * The gear and its menu. The menu stays as the reader left it, open or
- * closed, across a redraw of the page.
+ * closed, across a redraw of the page. A page with a second gear names it,
+ * so each is kept open or closed on its own, and labels it for what it sets.
  */
-export function ViewOptions({ groups }: { readonly groups: readonly ViewOptionGroup[] }) {
-  const wasOpen = Boolean(document.querySelector('.view-options[open]'));
+export function ViewOptions({ groups, name, label = 'View options' }: { readonly groups: readonly ViewOptionGroup[]; readonly name?: string; readonly label?: string }) {
+  const wasOpen = Boolean(document.querySelector(name ? `.view-options[data-options="${name}"][open]` : '.view-options:not([data-options])[open]'));
   return (
-    <details class="view-options" open={wasOpen}>
-      <summary aria-label="View options" data-tip="View options"><SettingsIcon /></summary>
+    <details class="view-options" open={wasOpen} data-options={name}>
+      <summary aria-label={label} data-tip={label}><SettingsIcon /></summary>
       <div class="view-options-menu popover is-dropdown">
         {groups.map((group) => (
           <div class={group.stacked ? 'view-options-group is-stacked' : 'view-options-group'}>

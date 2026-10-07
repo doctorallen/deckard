@@ -3,15 +3,9 @@
   "deckard.templatesFolder": "templates",
   "deckard.agenda.query": "",
   "deckard.me": "#person/juno-hale",
-  "deckard.board.statusNamespace": "status",
-  "deckard.board.statuses": ["todo", "doing", "waiting"],
-  "deckard.board.limits": { "doing": 2 },
+  "deckard.board.limits": { "in-progress": 2 },
   "deckard.tasks.needsNewDateAfterDays": 30,
-  "deckard.tasks.onHoldStatuses": ["waiting", "someday"],
   "deckard.parked.tags": ["parked"],
-  "deckard.dailyNoteTemplate": "# {date}\n\n",
   "deckard.dailyNote.rollover": "migrate",
-  "deckard.dailyNote.rolloverDays": 7,
-  "deckard.periodicNote.reviewSections": [{ "title": "Waiting on others", "query": "is:waiting" }],
-  "deckard.calendar.dayPanel": true
+  "deckard.periodicNote.reviewSections": [{ "title": "Waiting on others", "query": "is:waiting" }]
 }

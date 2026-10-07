@@ -237,6 +237,11 @@ document.addEventListener('toggle', (event) => {
       filteredHubOpen = target.open;
     } else {
       hubOpen = target.open;
+      // Kept for the next tag's page too, as the reader left this one; the
+      // page drawing the hub as it was kept says nothing.
+      if (latest?.hub && target.open !== (latest.hub.expanded !== false)) {
+        send({ type: 'setHubOpen', open: target.open });
+      }
     }
   }
 }, true);
@@ -412,7 +417,6 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   // reader sees and so what Save keeps.
   'save-filter': () => send({ type: 'saveTagOverviewFilter', query: editor.currentText() }),
   'create-hub': () => send({ type: 'createHubNote' }),
-  'exclude-hub-links': () => send({ type: 'excludeHubLinks' }),
   'unpark-tag': (target) => {
     if (target.dataset.tagKey) {
       send({ type: 'unparkTag', tagKey: target.dataset.tagKey });

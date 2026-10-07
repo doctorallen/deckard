@@ -2,6 +2,206 @@
 
 ## Unreleased
 
+## 2.4.0 - 2026-10-06
+
+### Highlights
+
+- A task's status is its checkbox character, `[w]` Waiting and `[s]` Someday, and the board's columns are your status list.
+- **Add Task** works anywhere and replaces Capture, board cards rank by drag, and dates follow a format of your own.
+- Help is the guide, Deckard's pages sit at the top of Context, and 48 settings gave way to one way of doing each thing.
+
+### Added
+
+- **Parent tags on the Task board.** **Show the tag each task is under**,
+  in the gear's **Cards**, puts each task's nearest parent tag above its
+  title on cards and list rows, and the board keeps the choice: the tag on
+  the nearest tagged heading above it, or its note's front matter, so
+  "Draft the brief" says it is part of `#project/atlas`. Selecting the tag
+  narrows the board's search by it, as Refine does (Shift-click for OR,
+  Alt-click to leave it out); Cmd/Ctrl-click opens the tag's page.
+- **Sorts the other way.** A search page's **Sort** adds **Oldest
+  created**, **Least recently updated**, and **Z-A**, and the Task board's
+  list sorts by any of those, **Newest created**, **Recently updated**,
+  **A-Z**, or **Rank**. An exported query block keeps the order.
+- **Rank cards on the Task board.** The board gains **Sort** beside its
+  grouping, by **Rank** unless you choose another. Sorted by rank, drag a
+  card up or down its column, or press Alt+↑ and Alt+↓, to put it in your
+  own order; the rank is the one the list and the Tasks view keep, so it
+  holds whichever way the board is grouped. Cards you haven't ranked still
+  go by due date and priority.
+- **Sort the Tasks view.** **Sort Tasks By…**, in the view's title,
+  orders each group by rank, by when its tasks were created or updated, or
+  by title, either way, and the view keeps the choice.
+- **Open Related Notes Ranking.** `Deckard: Open Related Notes Ranking`,
+  in the palette for a Markdown note, shows how Related Notes ranks for
+  the tagged entry the cursor is in: each tag's weight and where it came
+  from, the associations, links, and shared words, score by score. It was
+  a link on a tagged entry's hover in developer mode.
+
+- **A date format of your own.** `deckard.display.dateFormat` writes every
+  date Deckard shows you in a format you choose, such as `DD/MM/YYYY`,
+  `D MMM YYYY`, or `L` for your display language's own, on pages, in the
+  Tasks view, Find, the task editor, the date box, completions, and
+  messages. Formats use the tokens Obsidian's daily notes use, so one
+  copied from a vault works unchanged. `deckard.display.shortDateFormat`
+  is for a day of this year where there is little room, such as the Tasks
+  view's day headings. `Deckard: Choose Date Format…` shows today in each
+  of a few formats, and **Custom…** says it back as you type. Dates
+  written into notes, file names, and searches stay `YYYY-MM-DD`.
+
+### Changed
+
+- **Short dates.** The Tasks view's day headings read "Mon, Sep 28"
+  (were "Mon Sep 28"), the calendar's day title "Fri, Sep 25" (was
+  "Friday, September 25"), and a search completion's week "Sun, Sep 20 to
+  Sat, Sep 26" (was "Sep 20 to Sep 26"). A short date in another year is
+  written in full, "2027-03-10", rather than "Wed, Mar 10, 2027".
+- **Deckard's pages are at the top of Context.** The Pages view is gone:
+  VS Code gives a sidebar web view a fixed height whatever it draws, so a
+  row of icons there took more of the sidebar than the list. The pages now
+  lead the **Context** view in everything it shows, and stay put while it
+  scrolls, the page in front shown pressed. A gear beside them draws them
+  as rows with what is worth knowing about each, or as one row of icons
+  named on hover and to a screen reader, and picks which pages to keep.
+  They are one Tab stop, and the arrow keys move between them. **Go to…**
+  and its key are unchanged.
+- **Help is the guide.** Help no longer has a quick glance of its own
+  beside the guide: it shows the guide's pages, with the guide's contents
+  down the side, grouped and ordered as the guide lists them, and the page
+  being read marked. A command a page names is a button that runs it, and
+  **Changelog** at the end is What's new. What the quick glance said that
+  the guide did not is in the guide now, and every command the palette
+  offers has a row on its Commands page. A page's **?** opens the guide
+  page about it, such as the calendar's at Daily notes, reviews, and the
+  calendar.
+- **A task's status is its checkbox character, and nothing else**, as in
+  Obsidian Tasks. A `#status/doing` tag no longer makes a task in progress:
+  it is a tag like any other, searched and shown as one, and `[ ]` is Todo
+  whatever it carries. Every status Deckard writes is its character.
+  Waiting is now `[w]` and Someday `[s]`.
+- **Moving your notes over.** While task lines carry status tags Deckard
+  used to read, the first scan of each session says how many, and the Task
+  board and the Tasks view say so too. **Preview the Move** (Deckard: Move
+  Status Tags into Checkboxes…) writes each tag as the character of the
+  status it meant, removes one its box already says, and rewrites query
+  blocks that search by a status tag as `status:` searches, in one previewed
+  change Undo takes back; saved searches and Home's widgets follow when you
+  say so. A tag no status has a character for stays, and **Give It a
+  Character** opens Edit Task Statuses on a new status of its name. The old
+  board settings move once: their column order, Cancelled shown, and
+  `deckard.board.limits` keys such as `doing`, now `in-progress`.
+- **The Task board's status columns are your status list.** Each open
+  status is a column, headed by its character, such as **In progress
+  [/]**, and the gear's **Status columns** ticks which statuses are columns
+  and drags them into order, kept on this machine as the board's layout
+  is. A status the board hides still counts its open tasks, says so in the
+  gear, and is under **More statuses** in a card's menu. A character no
+  status names gets an **Unknown [?]** column of its own. **New status…**
+  and **Edit statuses…** open Edit Task Statuses. The Tasks view's **By
+  status** follows the board's order.
+- **Import Statuses from Obsidian Tasks** imports the vault's statuses as
+  they are, adding Waiting `[w]` and Someday `[s]` only where the vault has
+  no status of that name or character.
+
+- **Templates for daily, weekly, and monthly notes are files.** `Daily.md`,
+  `Weekly.md`, and `Monthly.md` in the templates folder are what a new
+  daily, weekly, or monthly note starts from, with `{date}`, `{week}`, and
+  `{month}` filled in for its period; without one, a note starts from its
+  heading line, as before. A template you kept as a file in the templates
+  folder works once it has that name; one you wrote into a setting goes
+  into that file.
+- **Card details on hover, at every step.** An entry's details show under
+  it on hover and focus at every Display step, Zen included, and
+  `deckard.display.cardDetails` says which: where it is written, and its
+  created and updated dates. Untick all three for none.
+- **Each view keeps its own choices.** The Tasks view's grouping and sort,
+  the Task board's parent tags, the Calendar's day panel and weekends, the
+  page width, the pages at the top of Context, and the Outline following
+  the cursor are kept by the control that sets them, as every other view
+  choice is, rather than in settings. A value you had set is carried into
+  the view once, on the first start after the update.
+- **A tag's hub note stays as you left it.** A hub starts open, and once
+  you fold one, the next tag's page starts with its hub folded too.
+- **Hierarchy is Group by.** A search page's gear groups the results with
+  **Group by**: **None**, **Tag**, or **Heading** (were **Off**, **By
+  tag**, and **By heading**), and the choice you made carries over. A
+  group's progress bar sits at the right of its name, in either layout, so
+  side by side the tasks start under the name rather than under an empty
+  half row.
+- **Add Task works anywhere, and replaces Capture.** `Deckard: Add Task`
+  opens the task editor on a new task from anywhere, and takes Capture's
+  key, Ctrl+Shift+Alt+N (Cmd+Shift+Alt+N on macOS). Its first row, **Note**,
+  says where the task goes, and its title names the note, such as "Add a
+  task to 2026-10-06.md": the Markdown note you are in, at the cursor, or
+  today's note, created if needed, when none is open. Choose it for this
+  note, today's, **Another note…**, or **Under a heading…**. Once written, a
+  message says where it went, with **Open**. Words at the end of the
+  description fill its fields as Capture read them (`Call Ren friday p2`),
+  and words you selected start the task, with a link back when it goes
+  elsewhere. A key you bound to `deckard.capture` needs binding to
+  `deckard.addTask`.
+- **Add task on the Task board.** The board's search bar ends with **Add
+  task**, which runs Add Task, and a column's **+ Add task** opens the same
+  editor with the column's status, priority, date, person, or tag filled
+  in, where it asked for one line before. Find's row for words that match
+  nothing reads **Add "…" to today's note**.
+
+### Removed
+
+- **Capture** and **Capture Under a Heading**, which Add Task replaces: its
+  **Note** row writes to today's note or under a heading. The Capture box's
+  draft kept between runs, its **Add as a note line**, and its `#` and `@`
+  completion go with it; the editor's **Add a tag** and **Assignee** rows
+  offer your tags and people.
+
+- The **No status** column, its group in the Tasks view, and the board's
+  "few tasks carry a status" hint: a plain `[ ]` is Todo.
+- The settings `deckard.tasks.writeStatusAs`, `deckard.tasks.onHoldStatuses`,
+  `deckard.board.statusNamespace`, `deckard.board.statuses`, and
+  `deckard.board.showCancelled`, and the `tag` of a status in
+  `deckard.tasks.statuses`. The board's gear sets its columns, and a status
+  with no character is left out of the list.
+- **Keep Tags**, the first scan's choice to keep writing statuses as tags.
+- **Settings fixed at the value nearly everyone kept**, after a review of
+  every setting: `deckard.tagTitleDisplayMode`
+  (tags inline in titles), `deckard.previewWorkspaceWrites` (a write that
+  reaches several notes is shown first), `deckard.moveTo.leaveBehind`
+  (Move to… leaves a link), `deckard.updateLinksOnRename` (renaming a note
+  carries its links), `deckard.enableTagAutocomplete` and
+  `deckard.tasks.metadataSuggestions` (both completions offered),
+  `deckard.tagOverview.includeHubLinks` (a tag's page lists what links its
+  hub; **Leave them out** goes), `deckard.tagOverview.hubNoteExpanded` (the
+  hub starts open, then as you left it), `deckard.dailyNote.rolloverDays`
+  and `deckard.agenda.upcomingDays` (a week), `deckard.calendar.showRepeats`
+  (repeats drawn; the Calendar's repeat commands and the page's Repeats row
+  go), `deckard.outline.showTags` and `deckard.outline.showCounts` (shown),
+  `deckard.outline.inheritedTags` (a heading's own tags only),
+  `deckard.weeklyNote.naming` (named by its days; `2026-W38.md` is still
+  found), `deckard.personMarker` (`@`), `deckard.tasks.addDoneDate` and
+  `deckard.tasks.addCancelledDate` (dates written),
+  `deckard.tasks.assigneeFromPersonTag` (only `👤` assigns),
+  `deckard.relatedNotesAssociationMinimumSupport` (1),
+  `deckard.relatedNotesRecencyHalfLifeDays` (no decay),
+  `deckard.enableKeywordLinks`, `deckard.enableHeadingTagRelationships`,
+  and `deckard.autoSelectNoteSections` (on), `deckard.statusBar` (VS Code's
+  status bar menu hides the item), and `deckard.showWhatsNew` (on).
+- **Deprecated settings, now gone.** `deckard.zenMode`, which
+  `deckard.display.level` replaced; `deckard.parseInlineTags`, which
+  `deckard.noteBoundaries` replaced; and `deckard.developerMode`, whose
+  ranking breakdown is `Deckard: Open Related Notes Ranking`.
+- **Settings collapsed into another.** `deckard.display.fileAndLine` into
+  `deckard.display.cardDetails`; `deckard.dailyNoteTemplate`,
+  `deckard.weeklyNoteTemplate`, and `deckard.monthlyNoteTemplate` into
+  `Daily.md`, `Weekly.md`, and `Monthly.md` in the templates folder.
+- **Settings moved to the view that sets them.** `deckard.agenda.groupBy`,
+  `deckard.agenda.groupNamespace`, and `deckard.agenda.sort` (the Tasks
+  view's Group and Sort), `deckard.board.parentTag` (the board gear's
+  Cards), `deckard.calendar.dayPanel` and `deckard.calendar.showWeekends`
+  (the Calendar's `…` menu and the page's gear), `deckard.display.pageWidth`
+  (Page width in every gear), `deckard.pages.style` and
+  `deckard.pages.shown` (the gear beside the pages in Context), and
+  `deckard.outline.followCursor` (the Outline's title).
+
 ## 2.3.0 - 2026-10-06
 
 ### Highlights

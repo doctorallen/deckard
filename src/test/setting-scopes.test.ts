@@ -13,11 +13,8 @@ const READ_PER_FOLDER = [
   'deckard.notesFolder',
   'deckard.templatesFolder',
   'deckard.exclude',
-  'deckard.parseInlineTags',
   'deckard.noteBoundaries',
-  'deckard.personMarker',
   'deckard.entityNamespaceAliases',
-  'deckard.tasks.assigneeFromPersonTag',
   'deckard.parked.folders',
 ];
 

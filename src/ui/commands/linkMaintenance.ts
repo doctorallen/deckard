@@ -8,7 +8,7 @@ import { findHeadingAtLine } from '../../domain/notes/headingLookup';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { checkRewrites, LinkService } from '../../services/linkService';
 import { createLinkService, toWorkspaceEdit, vscodeLiveNotes } from './linkMaintenancePorts';
-import { getWritePreview, shouldPreview, WorkspaceWriteHistory, WritePreview } from './workspaceWrites';
+import { shouldPreview, WorkspaceWriteHistory, WritePreview } from './workspaceWrites';
 import { WorkspaceIndex } from '../../domain/model';
 
 /**
@@ -40,13 +40,13 @@ export async function createLinkRewriteEdit(
 
 /**
  * What a rename's link edit carries: a request to be shown first when it
- * reaches as many notes as `deckard.previewWorkspaceWrites` previews, as
- * every other write that reaches several notes is. VS Code then asks
- * whether to make the changes, with Show Preview, before the rename lands.
+ * reaches several notes, as every other write that reaches several notes
+ * is. VS Code then asks whether to make the changes, with Show Preview,
+ * before the rename lands.
  */
 export function renameEditMetadata(
   notes: number,
-  preview: WritePreview,
+  preview: WritePreview = 'severalNotes',
 ): vscode.WorkspaceEditEntryMetadata | undefined {
   return shouldPreview(preview, notes)
     ? {
@@ -94,9 +94,6 @@ export class LinkMaintenance implements vscode.Disposable {
   ) {
     this.disposables.push(
       events.onWillRenameFiles((event) => {
-        if (!isEnabled()) {
-          return;
-        }
         event.waitUntil(this.planRenames(event.files));
       }),
       events.onDidRenameFiles((event) => {
@@ -149,7 +146,7 @@ export class LinkMaintenance implements vscode.Disposable {
     } else {
       this.unreported.delete(key);
     }
-    return toWorkspaceEdit(plan.edits, renameEditMetadata(plan.notes, getWritePreview()));
+    return toWorkspaceEdit(plan.edits, renameEditMetadata(plan.notes));
   }
 
   /** A note as the editor has it, when it is open. */
@@ -290,11 +287,4 @@ function reportHeadingRenamed(heading: string, others: number): void {
 /** One rename's files as text, so the rename VS Code made is matched to the one planned. */
 function renameKey(files: RenamedFiles): string {
   return files.map(({ oldUri, newUri }) => `${oldUri.toString()} ${newUri.toString()}`).join('\n');
-}
-
-/** Whether renaming a note carries its links along, as the setting says. */
-function isEnabled(): boolean {
-  return vscode.workspace
-    .getConfiguration('deckard')
-    .get<boolean>('updateLinksOnRename', true);
 }

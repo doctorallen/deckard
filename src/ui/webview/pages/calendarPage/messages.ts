@@ -15,17 +15,14 @@ import {
 } from '../../host/narrowing';
 import { CALENDAR_MESSAGES } from '../calendar/messages';
 
-/** A gear row that turns a calendar setting on or off: the choice and nothing else. */
-function narrowShow<T extends 'setShowRepeats' | 'setShowWeekends'>(type: T): Narrower<{ type: T; show: boolean }> {
-  return (value) =>
-    typeof value.show === 'boolean' && Object.keys(value).length === 2 ? { type, show: value.show } : undefined;
-}
+/** The gear's Weekends row: the choice and nothing else. */
+const narrowShowWeekends: Narrower<{ type: 'setShowWeekends'; show: boolean }> = (value) =>
+  typeof value.show === 'boolean' && Object.keys(value).length === 2 ? { type: 'setShowWeekends', show: value.show } : undefined;
 
 /** Each message the calendar page may send, and what it must hold. */
 export const CALENDAR_PAGE_MESSAGES: NarrowingTable<CalendarPagePageToHost> = {
   ...CALENDAR_MESSAGES,
-  setShowRepeats: narrowShow('setShowRepeats'),
-  setShowWeekends: narrowShow('setShowWeekends'),
+  setShowWeekends: narrowShowWeekends,
   setZenMode: narrowSetZenMode,
   setDisplay: narrowSetDisplay,
   displayCommand: narrowDisplayCommand,

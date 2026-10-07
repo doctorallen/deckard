@@ -1,7 +1,7 @@
 /**
- * Each page's glyph, as the Pages view draws it (resources/pages/*.svg),
- * for DECKARD's menu: drawn in the row's own ink, so a theme's colors and a
- * hovered row's carry to it.
+ * Each page's glyph, as Go to… draws it (resources/pages/*.svg), for the
+ * pages at the top of Context and DECKARD's menu: drawn in the row's own
+ * ink, so a theme's colors and a hovered row's carry to it.
  */
 export const PAGE_ICONS: Readonly<Record<string, { readonly viewBox: string; readonly path: string }>> = {
   home: { viewBox: '0 0 16 16', path: 'M2 2h5v5H2zm7 0h5v3H9zm0 5h5v7H9zM2 9h5v5H2z' },

@@ -9,12 +9,10 @@ import {
   resolveColumnCapture,
   resolveTaskMove,
   setTaskNamespaceTags,
-  setTaskStatusTag,
   TaskMove,
 } from '../domain/tasks/boardMoves';
 import { DEFAULT_TASK_POLICY } from '../domain/tasks/taskPolicy';
 import { formatIsoDate } from '../domain/markdown/calendar';
-import { readStatusTag } from '../domain/tasks/taskStatuses';
 import { Task } from '../domain/model';
 
 const at = (month: number, day: number): number => new Date(2026, month - 1, day).getTime();
@@ -36,7 +34,6 @@ function apply(move: TaskMove, line: string): string {
 
 const options = {
   queryContext: createQueryContext(now),
-  statusNamespace: 'status',
   format: 'emoji' as const,
 };
 const noTags = (): TaskMove => refuseMove('no tags here');
@@ -92,7 +89,8 @@ suite('Task rules', () => {
     const draft = task(line);
     assert.strictEqual(apply(resolveTaskMove(draft, 'done', options, noTags), line), 'complete');
     assert.strictEqual(apply(resolveTaskMove(draft, 'status:todo', options, noTags), line), 'unchanged');
-    assert.strictEqual(apply(resolveTaskMove(draft, 'status:doing', options, noTags), line), '- [ ] Draft notes #status/doing');
+    assert.strictEqual(apply(resolveTaskMove(draft, 'status:in-progress', options, noTags), line), '- [/] Draft notes #status/todo');
+    assert.strictEqual(apply(resolveTaskMove(draft, 'status:waiting', options, noTags), line), '- [w] Draft notes #status/todo');
     assert.strictEqual(apply(resolveTaskMove(draft, 'priority:high', options, noTags), line), '- [ ] Draft notes #status/todo ⏫');
     assert.strictEqual(apply(resolveTaskMove(draft, 'due:tomorrow', options, noTags), line), '- [ ] Draft notes #status/todo 📅 2026-09-26');
     assert.strictEqual(apply(resolveTaskMove(draft, 'due:2026-09-30', options, noTags), line), '- [ ] Draft notes #status/todo 📅 2026-09-30');
@@ -125,22 +123,20 @@ suite('Task rules', () => {
 
   test('moving a finished task out of Done reopens it in the same edit, as its status\'s character', () => {
     const line = '- [x] Ship it ✅ 2026-09-20';
-    assert.strictEqual(apply(resolveTaskMove(task(line), 'status:doing', options, noTags), line), '- [/] Ship it');
-    // A line already written with a status tag keeps writing one.
+    assert.strictEqual(apply(resolveTaskMove(task(line), 'status:in-progress', options, noTags), line), '- [/] Ship it');
+    // A status tag on the line is a tag like any other, and stays.
     const tagged = '- [x] Ship it #status/todo ✅ 2026-09-20';
-    assert.strictEqual(apply(resolveTaskMove(task(tagged), 'status:doing', options, noTags), tagged), '- [ ] Ship it #status/doing');
-    assert.strictEqual(apply(resolveTaskMove(task('- [/] Ship it'), 'status:', options, noTags), '- [/] Ship it'), '- [ ] Ship it');
+    assert.strictEqual(apply(resolveTaskMove(task(tagged), 'status:in-progress', options, noTags), tagged), '- [/] Ship it #status/todo');
+    assert.strictEqual(apply(resolveTaskMove(task('- [/] Ship it'), 'status:todo', options, noTags), '- [/] Ship it'), '- [ ] Ship it');
     assert.strictEqual(apply(resolveTaskMove(task('- [/] Ship it'), 'status:blocked', options, noTags), '- [/] Ship it'), '- [=] Ship it');
-    assert.strictEqual(apply(resolveTaskMove(task('- [/] Ship it'), 'status:review', options, noTags), '- [/] Ship it'), '- [ ] Ship it #status/review');
+    assert.deepStrictEqual(resolveTaskMove(task('- [/] Ship it'), 'status:review', options, noTags), {
+      kind: 'refused',
+      reason: 'No status in the "Tasks: Statuses" setting is called Review. Refresh the board and try again.',
+    });
     assert.strictEqual(apply(resolveTaskMove(task('- [/] Ship it'), 'cancelled', options, noTags), '- [/] Ship it'), `- [-] Ship it ❌ ${formatIsoDate(now)}`);
   });
 
-  test('writes status and namespace tags where they are, and nowhere in code', () => {
-    assert.strictEqual(
-      setTaskStatusTag('- [ ] Plan #status/todo #project/x', 3, 'status', 'doing'),
-      '- [ ] Plan #status/doing #project/x',
-    );
-    assert.strictEqual(setTaskStatusTag('- [ ] Plan `#status/todo`', 3, 'status', undefined), '- [ ] Plan `#status/todo`');
+  test('writes namespace tags where they are', () => {
     assert.strictEqual(
       setTaskNamespaceTags('- [ ] Plan #project/x ^id', 3, { remove: ['#project/x'], add: '#project/y' }),
       '- [ ] Plan #project/y ^id',
@@ -149,28 +145,12 @@ suite('Task rules', () => {
       setTaskNamespaceTags('- [ ] Plan ^id', 3, { remove: [], add: '#project/y' }),
       '- [ ] Plan #project/y ^id',
     );
-    assert.strictEqual(readStatusTag(task('- [ ] Plan #Status/Doing'), 'status'), 'doing');
   });
 
-  test('reads and writes a status or a namespace tag in any script, as tags are', () => {
-    const line = '- [ ] Plan #status/à-faire #project/café';
-    assert.strictEqual(readStatusTag(task(line), 'status'), 'à-faire');
-    assert.strictEqual(
-      apply(resolveTaskMove(task(line), 'status:à-faire', options, noTags), line),
-      'unchanged',
-      'a status in any script is a column a card can be dropped on',
-    );
-    assert.strictEqual(
-      apply(resolveTaskMove(task(line), 'status:doing', options, noTags), line),
-      '- [ ] Plan #status/doing #project/café',
-    );
-    assert.strictEqual(
-      apply(resolveTaskMove(task('- [ ] Plan #status/todo'), 'status:été', options, noTags), '- [ ] Plan #status/todo'),
-      '- [ ] Plan #status/été',
-    );
-    // An accented status is taken whole, not cut short at its first accent.
-    assert.strictEqual(setTaskStatusTag('- [ ] Plan #status/café', 3, 'status', 'doing'), '- [ ] Plan #status/doing');
-    assert.strictEqual(setTaskStatusTag('- [ ] Plan #état/prêt', 3, 'état', undefined), '- [ ] Plan');
+  test('drops on a status in any script, and writes a namespace tag in any script, as tags are', () => {
+    const statuses = [...DEFAULT_TASK_POLICY.statuses, { symbol: 'à', name: 'À faire', type: 'todo' as const }];
+    const accented = { ...options, queryContext: { ...options.queryContext, taskPolicy: { ...DEFAULT_TASK_POLICY, statuses } } };
+    assert.strictEqual(apply(resolveTaskMove(task('- [ ] Plan'), 'status:à-faire', accented, noTags), '- [ ] Plan'), '- [à] Plan');
     // A label that is the start of a longer tag leaves that tag alone.
     assert.strictEqual(
       setTaskNamespaceTags('- [ ] Plan #project/caf #project/café', 3, { remove: ['#project/caf'], add: '#project/x' }),
@@ -190,7 +170,7 @@ suite('Task rules', () => {
   });
 
   test('captures into a column with the column’s edit made, or says why not', () => {
-    const intoDoing = (task: Task) => resolveTaskMove(task, 'status:doing', options, noTags);
+    const intoDoing = (task: Task) => resolveTaskMove(task, 'status:in-progress', options, noTags);
     assert.deepStrictEqual(resolveColumnCapture('- [ ] Call Ren', intoDoing), {
       kind: 'capture',
       line: '- [/] Call Ren',
@@ -203,6 +183,18 @@ suite('Task rules', () => {
     assert.deepStrictEqual(resolveColumnCapture('- [ ] Call Ren', (task) => resolveTaskMove(task, 'done', options, noTags)), {
       kind: 'capture',
       line: '- [ ] Call Ren',
+    });
+  });
+
+  test('a column starts Add Task on an empty task with its edit made', () => {
+    const start = (column: string) => resolveColumnCapture('- [ ] ', (task) => resolveTaskMove(task, column, options, noTags));
+    assert.deepStrictEqual(start('status:in-progress'), { kind: 'capture', line: '- [/] ' });
+    assert.deepStrictEqual(start('priority:high'), { kind: 'capture', line: '- [ ] ⏫' });
+    assert.deepStrictEqual(start('due:today'), { kind: 'capture', line: '- [ ] 📅 2026-09-25' });
+    assert.deepStrictEqual(start('assignee:@dana'), { kind: 'capture', line: '- [ ] 👤 @dana' });
+    assert.deepStrictEqual(start('due:later'), {
+      kind: 'refused',
+      reason: 'Drop a task on Today, Tomorrow, or No due date to change its due date.',
     });
   });
 });

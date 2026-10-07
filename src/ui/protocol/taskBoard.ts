@@ -12,6 +12,7 @@ import type {
 import type { InlineToken } from '../../domain/model/inline';
 import type { QueryViewState } from '../../domain/model/query';
 import type { TagReference } from '../../domain/model/tags';
+import type { DueParts } from '../../domain/model/tasks';
 import type { Correlated, IndexingMessage, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
@@ -27,7 +28,6 @@ import type {
   SetDisplayMessage,
   SetZenModeMessage,
   SidebarReadyMessage,
-  TagTitleDisplayMode,
   ToggleTaskMessage,
   DrawnStatus,
 } from './shared';
@@ -44,6 +44,23 @@ export interface SetTaskSortMessage {
   mode: TaskSortMode;
 }
 
+/**
+ * What a card draws of one of its details that holds a date: the date,
+ * which is kept on one line, and for its due date the parts and how it is
+ * colored. The date is in the reader's format, so the page never looks for
+ * it by its shape.
+ */
+export interface CardDetailParts {
+  /** The detail's place in `details`. */
+  index: number;
+  /** The date the detail writes, at its end. */
+  date?: string;
+  /** The due date's parts, for Display's Dates preference. */
+  due?: DueParts;
+  /** Overdue, red or quiet by the card's `overdueTone`; due today; or past needing a new date. */
+  tone?: 'overdue' | 'today' | 'stale';
+}
+
 /** One task as a board card draws it. */
 export interface TaskBoardCard {
   taskId: string;
@@ -55,6 +72,8 @@ export interface TaskBoardCard {
   completed: boolean;
   /** Its status, when it is neither a plain to do nor done, which its box is drawn by. */
   status?: DrawnStatus;
+  /** The tag of the nearest tagged heading it is under, or its note's, when the board shows them. */
+  parentTag?: TagReference;
   filePath: string;
   line: number;
   /** When the task was created, its own ➕ date or its note's, and when its note last changed, for Card details. */
@@ -62,6 +81,8 @@ export interface TaskBoardCard {
   updatedAt?: number;
   /** Short facts under the title, such as "due 2026-09-14". */
   details: string[];
+  /** The parts of the details that hold a date, so the page draws them without reading the words. */
+  detailParts?: CardDetailParts[];
   overdue: boolean;
   /** Past `needsNewDateAfterDays`: its date reads `was due …`, muted. */
   stale?: boolean;
@@ -87,9 +108,11 @@ export interface TaskBoardCard {
  * One column of the board: what dropping a card there writes, and its cards.
  */
 export interface TaskBoardColumn {
-  /** What dropping a task here writes, such as `status:doing` or `done`. */
+  /** What dropping a task here writes, such as `status:in-progress` or `done`. */
   id: string;
   label: string;
+  /** The character of the status a status column stands for, which its header says after its name: `/`. */
+  symbol?: string;
   /** False for a column that no single edit can move a task into. */
   droppable: boolean;
   cards: TaskBoardCard[];
@@ -106,13 +129,6 @@ export interface TaskBoardLayout {
   groupBy: TaskBoardGroupBy;
   columns: TaskBoardColumn[];
   taskCount: number;
-  /**
-   * Present when the board is grouped by status and almost no open task
-   * carries one, so the first column holds nearly everything: how many of
-   * the open tasks have no status. The page says so above the columns and
-   * offers the due-date grouping, which works for any task.
-   */
-  statusHint?: { withoutStatus: number; open: number };
   /** The namespace the columns are the tags of, when grouped by tag. */
   groupNamespace?: string;
   /** The namespaces open tasks carry, busiest first, for the Tag… menu. */
@@ -136,7 +152,6 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   /** How many searched tasks are open and how many are done. */
   taskCounts: { all: number; active: number; completed: number };
   taskSortMode: TaskSortMode;
-  tagTitleDisplayMode: TagTitleDisplayMode;
   /** The board settings the page's view options edit. */
   settings: TaskBoardSettings;
   /** Whether the sidebar is showing this search's Refine options. */
@@ -155,6 +170,12 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   availableOnly?: boolean;
   /** The search Can start now switches to. */
   availableToggleQuery?: string;
+  /**
+   * While task lines still carry status tags Deckard no longer reads, what
+   * the strip above the board says of them, "23 tasks still have #status
+   * tags.", beside Move them.
+   */
+  statusTagsLeft?: string;
 }
 
 /** The board as the Tasks view's search editor. */
@@ -195,18 +216,30 @@ export interface TaskTableRow {
   cells: TableCell[];
 }
 
-/** The `deckard.board` settings, as the Task Board's view options show them. */
+/** What the Task Board's view options show and edit. */
 export interface TaskBoardSettings {
-  statuses: string[];
-  statusNamespace: string;
   /**
-   * Every status column the board draws, in its order: the listed ones,
-   * then any other status an open task carries. The gear lists these, so a
-   * column that is on the board is in the list that orders it.
+   * Every status the gear lists, in the board's order: the open statuses,
+   * then Done, then Cancelled. A card's menu offers each.
    */
-  columns?: { status: string; openTasks: number; label?: string }[];
-  /** Whether the board draws a Cancelled column after Done. */
-  showCancelled?: boolean;
+  columns: BoardStatusColumn[];
+  /** Whether each card and row shows its task's nearest parent tag. */
+  parentTag?: boolean;
+}
+
+/** One status as the gear lists it, a column or not. */
+export interface BoardStatusColumn {
+  /** What a drop on its column writes: `status:in-progress`, `done`, or `cancelled`. */
+  id: string;
+  name: string;
+  /** Its character: `/`. */
+  symbol: string;
+  /** Whether the board draws a column for it; the gear's tick. */
+  shown: boolean;
+  /** Open tasks in the workspace with it, whether its column is drawn or not. */
+  openTasks: number;
+  /** Done: always a column, after every open status, and not moved. */
+  fixed?: boolean;
 }
 
 /**
@@ -291,22 +324,34 @@ export interface SetBoardQueryMessage {
   query: string;
 }
 
-/** Replaces the status columns, in order. */
-export interface SetBoardStatusesMessage {
-  type: 'setBoardStatuses';
-  statuses: string[];
+/** Orders the board's status columns, by status name. */
+export interface SetBoardColumnOrderMessage {
+  type: 'setBoardColumnOrder';
+  names: string[];
 }
 
-/** Shows or hides the Cancelled column. */
-export interface SetBoardShowCancelledMessage {
-  type: 'setBoardShowCancelled';
+/** Shows or hides one status's column, by its name. */
+export interface SetBoardColumnShownMessage {
+  type: 'setBoardColumnShown';
+  name: string;
+  shown: boolean;
+}
+
+/** Runs Move Status Tags into Checkboxes…, from the strip that says how many are left. */
+export interface MoveStatusTagsMessage {
+  type: 'moveStatusTags';
+}
+
+/** Opens Edit Task Statuses; on a new row when `newStatus` is true. */
+export interface EditTaskStatusesMessage {
+  type: 'editTaskStatuses';
+  newStatus?: boolean;
+}
+
+/** Shows or hides each card's nearest parent tag. */
+export interface SetBoardParentTagMessage {
+  type: 'setBoardParentTag';
   show: boolean;
-}
-
-/** Chooses the namespace whose tags are the board's statuses. */
-export interface SetBoardStatusNamespaceMessage {
-  type: 'setBoardStatusNamespace';
-  namespace: string;
 }
 
 /**
@@ -382,7 +427,12 @@ export interface BreakIntoStepsMessage {
   taskId: string;
 }
 
-/** A column's + Add task: capture a task already in that column. */
+/** The page's Add task: Add Task, into the note it names, today's by default. */
+export interface AddTaskMessage {
+  type: 'addTask';
+}
+
+/** A column's + Add task: Add Task, the task started in that column. */
 export interface AddTaskToColumnMessage {
   type: 'addTaskToColumn';
   column: string;
@@ -399,6 +449,7 @@ export interface TaskBoardPageToHost {
   moveTaskTo: MoveTaskToMessage;
   editTask: EditTaskMessage;
   breakIntoSteps: BreakIntoStepsMessage;
+  addTask: AddTaskMessage;
   addTaskToColumn: AddTaskToColumnMessage;
   exportResults: ExportResultsMessage;
   setZenMode: SetZenModeMessage;
@@ -426,9 +477,11 @@ export interface TaskBoardPageToHost {
   setTableSort: SetTableSortMessage;
   setTableColumns: SetTableColumnsMessage;
   reorderTasks: ReorderTasksMessage;
-  setBoardStatuses: SetBoardStatusesMessage;
-  setBoardStatusNamespace: SetBoardStatusNamespaceMessage;
-  setBoardShowCancelled: SetBoardShowCancelledMessage;
+  setBoardColumnOrder: SetBoardColumnOrderMessage;
+  setBoardColumnShown: SetBoardColumnShownMessage;
+  editTaskStatuses: EditTaskStatusesMessage;
+  moveStatusTags: MoveStatusTagsMessage;
+  setBoardParentTag: SetBoardParentTagMessage;
 }
 
 /**

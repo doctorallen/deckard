@@ -55,7 +55,9 @@ function createIndex(withSteps = false) {
   const long = 'Chase the replicant through the neon market and file the report before the rain';
   const lines = ['# Tasks #project/atlas', ''];
   for (let i = 1; i <= 40; i += 1) {
-    lines.push(`- [ ] ${i === 1 ? long : `Board task ${i}`} 📅 ${fixtureDue(i)} #status/doing`);
+    // In progress by their boxes; the #status/doing tag is a tag like any
+    // other, kept so the pages that list tags draw what they always have.
+    lines.push(`- [/] ${i === 1 ? long : `Board task ${i}`} 📅 ${fixtureDue(i)} #status/doing`);
     // The board's cards: the long first task has steps, the next of them
     // too long for a column, so its line must ellipsize, not widen the card.
     if (i === 1 && withSteps) {
@@ -130,7 +132,9 @@ const LOOKS = { cards: 'flat', tags: 'text' };
 
 /** Display's preferences, each away from its default: what a page writes, drawn on Home and the board. */
 const WRITTEN_HOME = { counts: 'hidden', fileAndLine: 'never', dates: 'date' };
-const WRITTEN_BOARD = { counts: 'hidden', fileAndLine: 'always', dates: 'relative' };
+const WRITTEN_BOARD = { counts: 'hidden', dates: 'relative' };
+/** A date format of the reader's own, full and short, as the body carries it. */
+const DATED = { dateFormat: 'ddd D MMMM YYYY', shortDateFormat: 'ddd D MMM' };
 
 /**
  * The Dashboard as the host sends it: Home with its widgets, or the Tags
@@ -145,10 +149,10 @@ function createDashboardState(index, preferences, mode) {
   const queryContext = createQueryContext(NOW);
   const viewPreferences = { ...preferences, dashboardViewState: { ...preferences.dashboardViewState, mode } };
   return {
-    ...createDashboardSnapshot({ index, preferences: viewPreferences, tagTitleDisplayMode: 'inline', agendaQuery: '', queryContext }),
+    ...createDashboardSnapshot({ index, preferences: viewPreferences, agendaQuery: '', queryContext }),
     homeArranged: false,
     ...(mode === 'home'
-      ? { widgets: createDashboardWidgets(index, viewPreferences, { queryContext, upcomingDays: 7, agendaQuery: '', tagTitleDisplayMode: 'inline' }) }
+      ? { widgets: createDashboardWidgets(index, viewPreferences, { queryContext, agendaQuery: '' }) }
       : {}),
     parkedTags: [],
   };
@@ -227,17 +231,16 @@ function createDiagnostic(index, files) {
     ],
     snapshot: createSidebarSnapshot(index, 'notes/atlas.md', files.get('notes/atlas.md'), {
       now: NOW,
-      enableKeywordLinks: true,
       relatedNotesSortMode: 'tags',
       sectionAccessCounts: {},
-      tagTitleDisplayMode: 'inline',
     }),
   };
 }
 
 /**
- * Help, a guide page shown inside it, the Notes Graph's controls, and the
- * Related Notes debug page: the pages that had no surface before Phase 6.
+ * Help at What's new, a guide page shown in Help, the Notes Graph's
+ * controls, and the Related Notes debug page: the pages that had no surface
+ * before Phase 6.
  *
  * @param {object} index The workspace.
  * @param {Map<string, object>} files The parsed notes, by path.
@@ -246,7 +249,16 @@ function createDiagnostic(index, files) {
 function createReferenceSurfaces(index, files) {
   const graph = toWire(createNotesGraphSnapshot(index), { notes: true, tasks: true });
   return [
-    { page: 'help', viewport: [1100, 900], scrollers: ['html'], clippers: [], hovered: ['nav a'] },
+    // Help opened at What's new, which its host draws in the page; a guide
+    // page is the host's to send, as helpGuide's is.
+    {
+      page: 'help',
+      viewport: [1100, 900],
+      messages: () => [{ type: 'reveal', page: 'whats-new' }],
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['nav a'],
+    },
     {
       name: 'helpGuide',
       page: 'help',
@@ -264,7 +276,9 @@ function createReferenceSurfaces(index, files) {
       page: 'notesGraph',
       viewport: [1100, 800],
       snapshot: () => ({ ...graph, focus: { local: false, depth: 1, skipPeriodic: false, workspaceNodeCount: graph.nodes.length } }),
-      css: 'canvas { visibility: hidden !important; } #layout-probe { display: none !important; }',
+      // The canvas, and the note that says the layout is still settling,
+      // are drawn at whatever moment Chrome is read, so neither is compared.
+      css: 'canvas { visibility: hidden !important; } #sim-note, #layout-probe { display: none !important; }',
       scrollers: ['html'],
       clippers: [],
       hovered: ['button'],
@@ -328,13 +342,51 @@ function createStatusBoardSurface(preferences) {
         index: statusIndex(),
         preferences: preferences.reader.value,
         search: { query: '' },
-        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'waiting', 'blocked'], statusNamespace: 'status', format: 'emoji', showCancelled: true },
-        tagTitleDisplayMode: 'inline',
+        options: { queryContext: createQueryContext(NOW), format: 'emoji', hiddenColumns: [] },
       }),
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
       hovered: ['.board-card'],
     };
+}
+
+/**
+ * The Task Board with each card's parent tag above its title: a heading's
+ * tag, one passed down through an untagged heading, and the note's own.
+ *
+ * @param {object} preferences The preference services, whose reader holds what is stored.
+ * @returns {object} The board, by status, with parent tags shown.
+ */
+function createParentTagBoardSurface(preferences) {
+  const text = [
+    '---',
+    'tags: [area/research]',
+    '---',
+    '# Field season',
+    '- [ ] Book the flights',
+    '## Antenna array #project/atlas',
+    '- [/] Calibrate the receivers',
+    '- [w] Hear back from legal',
+    '### Cabling',
+    '- [ ] Order the connectors',
+    '## Vendors #team/ops',
+    '- [=] Wait for the vendor\'s quote',
+  ].join('\n');
+  const index = buildWorkspaceIndex(new Map([['notes/field-season.md', parseMarkdown('notes/field-season.md', text)]]));
+  return {
+    name: 'taskBoardParentTags',
+    page: 'taskBoard',
+    viewport: [1400, 600],
+    snapshot: () => createTaskBoard({
+      index,
+      preferences: preferences.reader.value,
+      search: { query: '' },
+      options: { queryContext: createQueryContext(NOW), format: 'emoji', parentTag: true },
+    }),
+    scrollers: ['html', '.board-cards'],
+    clippers: ['.board-column'],
+    hovered: ['.board-card', '.parent-tag'],
+  };
 }
 
 /** A note with a task of every status a board draws. */
@@ -343,7 +395,7 @@ function statusIndex() {
     '# Statuses',
     '- [ ] Draft the brief',
     '- [/] Calibrate the receivers',
-    '- [ ] Hear back from legal #status/waiting',
+    '- [w] Hear back from legal',
     '- [=] Wait for the vendor\'s quote',
     '- [?] Ask about the second lens',
     '- [x] Book the room ✅ 2026-09-24',
@@ -370,8 +422,7 @@ function createBoardSurfaces(boardIndex, preferences) {
         index: boardIndex,
         preferences: preferences.reader.value,
         search: { query: '' },
-        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
-        tagTitleDisplayMode: 'inline',
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
       }),
       scrollers: ['.board-cards'],
       clippers: ['.board-column'],
@@ -387,8 +438,7 @@ function createBoardSurfaces(boardIndex, preferences) {
         index: boardIndex,
         preferences: { ...preferences.reader.value, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'project' },
         search: { query: '' },
-        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
-        tagTitleDisplayMode: 'inline',
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
       }),
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
@@ -404,8 +454,7 @@ function createBoardSurfaces(boardIndex, preferences) {
         index: boardIndex,
         preferences: preferences.reader.value,
         search: { query: '' },
-        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
-        tagTitleDisplayMode: 'inline',
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
       }),
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
@@ -424,8 +473,7 @@ function createBoardSurfaces(boardIndex, preferences) {
           index: boardIndex,
           preferences: preferences.reader.value,
           search: { query: '#project/atlas' },
-          options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
-          tagTitleDisplayMode: 'inline',
+          options: { queryContext: createQueryContext(NOW), format: 'emoji' },
         }),
         tasksViewMode: { listed: false },
       }),
@@ -434,6 +482,21 @@ function createBoardSurfaces(boardIndex, preferences) {
       hovered: ['.query-bar-row .query-primary'],
     },
   ];
+}
+
+/**
+ * Deckard's pages as Context draws them at its top, every page kept, with
+ * hints as they read at NOW, drawn as `style` says and with `current` in
+ * front, if any.
+ *
+ * @param {'list' | 'icons'} style How the pages are drawn.
+ * @param {string} [current] The page in front, drawn pressed.
+ * @returns {object} The pages, as the sidebar's state carries them.
+ */
+function createContextPages(style, current) {
+  const facts = { dueToday: 3, overdue: 2, notes: 42, files: 30, today: new Date(NOW), todayNoteExists: false, findKey: '⌥⇧⌘F' };
+  const pages = listDeckardPages(facts).map(({ id, label, description, detail }) => ({ id, label, description, detail }));
+  return { style, pages, ...(current ? { current } : {}) };
 }
 
 /**
@@ -472,17 +535,17 @@ function createCalendarSurfaces() {
       hovered: ['.day-panel .task-row'],
     },
     {
-      // Related Notes showing the calendar page's chosen day.
+      // Related Notes showing the calendar page's chosen day, under the
+      // pages as a row of icons, the calendar pressed.
       name: 'sidebarNotesCalendarDay',
       page: 'sidebarNotes',
       viewport: [240, 700],
       snapshot: () => ({
+        pages: createContextPages('icons', 'calendar'),
         activeTags: [],
         notes: [],
-        tagTitleDisplayMode: 'inline',
         calendarDay: createCalendar(createCalendarPageIndex(), '2026-09', createQueryContext(NOW), {
           dayPanel: true,
-          showRepeats: true,
           selectedDate: '2026-09-24',
         }).selected,
         state: 'calendarDay',
@@ -499,7 +562,6 @@ function createCalendarSurfaces() {
       snapshot: () => createCalendar(createCalendarPageIndex(), '2026-09', createQueryContext(NOW), {
         dayPanel: true,
         layout: 'page',
-        showRepeats: true,
         selectedDate: '2026-09-24',
       }),
       scrollers: ['html'],
@@ -514,7 +576,6 @@ function createCalendarSurfaces() {
       snapshot: () => createCalendar(createCalendarPageIndex(), '2026-09', createQueryContext(NOW), {
         dayPanel: true,
         layout: 'page',
-        showRepeats: true,
       }),
       scrollers: ['html'],
       clippers: ['.cal-chip', '.day-panel .task-row'],
@@ -535,15 +596,16 @@ function createRelatedNotesSurfaces(index, files) {
   return [
     {
       // As narrow as a reader is likely to drag the sidebar: the page's own
-      // floor is 220px.
+      // floor is 220px. The pages lead, as rows with their hints.
       page: 'sidebarNotes',
       viewport: [240, 700],
-      snapshot: () => createSidebarSnapshot(index, 'notes/atlas.md', files.get('notes/atlas.md'), {
-        now: NOW,
-        enableKeywordLinks: true,
-        relatedNotesSortMode: 'tags',
-        sectionAccessCounts: {},
-        tagTitleDisplayMode: 'inline',
+      snapshot: () => ({
+        ...createSidebarSnapshot(index, 'notes/atlas.md', files.get('notes/atlas.md'), {
+          now: NOW,
+          relatedNotesSortMode: 'tags',
+          sectionAccessCounts: {},
+        }),
+        pages: createContextPages('list'),
       }),
       scrollers: ['html'],
       clippers: [],
@@ -566,10 +628,8 @@ function createRelatedNotesSurfaces(index, files) {
         return {
           ...createSidebarSnapshot(buildWorkspaceIndex(untaggedFiles), 'notes/untagged.md', untagged, {
             now: NOW,
-            enableKeywordLinks: true,
             relatedNotesSortMode: 'tags',
             sectionAccessCounts: {},
-            tagTitleDisplayMode: 'inline',
           }),
           previewLines: 1,
         };
@@ -580,14 +640,15 @@ function createRelatedNotesSurfaces(index, files) {
     },
     {
       // Customize Home in the sidebar: each widget to add is a button with
-      // its description under its name, on the button's own fill.
+      // its description under its name, on the button's own fill, under
+      // the pages as rows, Home pressed.
       name: 'sidebarNotesCustomizeHome',
       page: 'sidebarNotes',
       viewport: [240, 700],
       snapshot: () => ({
+        pages: createContextPages('list', 'home'),
         activeTags: [],
         notes: [],
-        tagTitleDisplayMode: 'inline',
         state: 'customizeHome',
         homeWidgets: [
           { value: 'tasks', label: 'Tasks', description: 'The tasks a search finds, ranked as on the Task Board' },
@@ -650,6 +711,20 @@ function createSummarySurfaces(index, preferences) {
       display: LOOKS,
       viewport: [900, 900],
       snapshot: () => createSearchPageSnapshot(index, preferences.reader.value, '#project/atlas', {
+        queryContext: createQueryContext(NOW),
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.card'],
+    },
+    {
+      // Grouped by tag, side by side: each group's name, what it holds, and
+      // its progress bar at the right of one row, over its notes beside its
+      // tasks, so no half of a row stands empty.
+      name: 'searchPageGrouped',
+      page: 'searchPage',
+      viewport: [900, 900],
+      snapshot: () => createSearchPageSnapshot(index, { ...preferences.reader.value, tagOverviewLayout: 'split', searchHierarchy: 'tags' }, '#project/atlas', {
         queryContext: createQueryContext(NOW),
       }),
       scrollers: ['html'],
@@ -753,16 +828,16 @@ function createNotePageSurfaces() {
  */
 function createTaskStatusesSurfaces() {
   const statuses = [
-    { symbol: ' ', name: 'Todo', type: 'todo', tag: 'todo', next: 'x' },
-    { symbol: '/', name: 'In progress', type: 'inProgress', tag: 'doing', next: 'x' },
+    { symbol: ' ', name: 'Todo', type: 'todo', next: 'x' },
+    { symbol: '/', name: 'In progress', type: 'inProgress', next: 'x' },
     { symbol: 'x', name: 'Done', type: 'done', next: ' ' },
     { symbol: 'X', name: 'Done', type: 'done', next: ' ' },
     { symbol: '-', name: 'Cancelled', type: 'cancelled', next: ' ' },
-    { name: 'Waiting', type: 'onHold', tag: 'waiting' },
-    { name: 'Someday', type: 'onHold', tag: 'someday' },
-    { symbol: '=', name: 'Blocked', type: 'onHold', tag: 'blocked', icon: 'blocked', next: ' ' },
+    { symbol: 'w', name: 'Waiting', type: 'onHold', next: ' ' },
+    { symbol: 's', name: 'Someday', type: 'onHold', next: ' ' },
+    { symbol: '=', name: 'Blocked', type: 'onHold', icon: 'blocked', next: ' ' },
   ];
-  const snapshot = (checkboxClick) => ({ statuses, checkboxClick, namespace: 'status', found: [{ symbol: '?', count: 3 }], canImport: true, target: 'user' });
+  const snapshot = (checkboxClick) => ({ statuses, checkboxClick, found: [{ symbol: '?', count: 3 }], canImport: true, target: 'user' });
   return [
     {
       page: 'taskStatuses',
@@ -785,34 +860,6 @@ function createTaskStatusesSurfaces() {
 }
 
 /**
- * The Pages view, at a sidebar's width: as rows with each page's hint at the
- * right, and as one row of icons.
- */
-function createPagesSurfaces() {
-  const facts = { dueToday: 3, overdue: 2, notes: 42, files: 30, today: new Date(NOW), todayNoteExists: false, findKey: '⌥⇧⌘F' };
-  const pages = listDeckardPages(facts).map(({ id, label, description, detail }) => ({ id, label, description, detail }));
-  return [
-    {
-      page: 'pagesView',
-      viewport: [300, 260],
-      snapshot: () => ({ style: 'list', pages }),
-      scrollers: ['html'],
-      clippers: [],
-      hovered: ['.pages-row'],
-    },
-    {
-      name: 'pagesViewIcons',
-      page: 'pagesView',
-      viewport: [300, 120],
-      snapshot: () => ({ style: 'icons', pages }),
-      scrollers: ['html'],
-      clippers: [],
-      hovered: ['.pages-icon'],
-    },
-  ];
-}
-
-/**
  * The surfaces measured, each with the snapshot its page renders from and
  * the geometry it must keep. A probe runs in the page and reports; the
  * expectations here read the report. They are the same with zen on or off;
@@ -826,11 +873,12 @@ function createSurfaces() {
   const surfaces = [
     ...createBoardSurfaces(boardIndex, preferences),
     createStatusBoardSurface(preferences),
+    createParentTagBoardSurface(preferences),
+    createDatedBoardSurface(boardIndex, preferences),
     ...createCalendarSurfaces(),
     ...createRelatedNotesSurfaces(index, files),
     ...createSummarySurfaces(index, preferences),
     ...createNotePageSurfaces(),
-    ...createPagesSurfaces(),
     ...createTaskStatusesSurfaces(),
   ];
   return [
@@ -839,6 +887,37 @@ function createSurfaces() {
     ...createReferenceSurfaces(index, files),
     ...createMenuSurfaces(surfaces),
   ];
+}
+
+/**
+ * The Task Board with its dates in a format of the reader's own, as the
+ * host words them and the page draws them: day first, with the weekday and
+ * the month's name, longer than YYYY-MM-DD, and still kept to one line in
+ * a card.
+ *
+ * @param {object} boardIndex The workspace the other board surfaces draw.
+ * @param {object} preferences The preference services, whose reader holds what is stored.
+ * @returns {object} The board, by status, its dates in the reader's format.
+ */
+function createDatedBoardSurface(boardIndex, preferences) {
+  return {
+    name: 'taskBoardDated',
+    page: 'taskBoard',
+    display: DATED,
+    viewport: [900, 700],
+    snapshot: () => createTaskBoard({
+      index: boardIndex,
+      preferences: preferences.reader.value,
+      search: { query: '' },
+      options: {
+        queryContext: createQueryContext(NOW, { dateFormats: { date: DATED.dateFormat, short: DATED.shortDateFormat, locale: 'en', weekStart: 0 } }),
+        format: 'emoji',
+      },
+    }),
+    scrollers: ['html', '.board-cards'],
+    clippers: ['.board-column'],
+    hovered: ['.board-card'],
+  };
 }
 
 /**

@@ -3,9 +3,10 @@ import { QueryContext } from '../../domain/query/queryContext';
 import { TASK_COLUMNS, TaskColumn } from '../../domain/tasks/taskColumns';
 import { TableSort, TaskColumnId, TaskPriority } from '../../domain/model';
 import { TableCell } from '../protocol/taskBoard';
-import { describeDueDate } from '../../domain/markdown/dueWording';
+import { describeDueDate, formatDueDate } from '../../domain/markdown/dueWording';
+import { formatDisplayDate } from '../../domain/markdown/dateFormat';
 import { TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
-import { formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
+import { startOfDay } from '../../domain/markdown/calendar';
 
 /**
  * A query's results as rows, with the query's own fields as columns.
@@ -76,7 +77,7 @@ export interface TableTask {
   priority?: TaskPriority;
   /** The person's tag as written, such as `@dana`. */
   assignee?: string;
-  /** The `#status/…` name, without the namespace. */
+  /** Its status's name; none for a plain to do. */
   status?: string;
   /** Tag labels, as written. */
   tags?: readonly string[];
@@ -96,11 +97,11 @@ export interface TableTask {
 export function createTaskCells(
   task: TableTask,
   columns: readonly TaskColumnId[],
-  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'> & Partial<Pick<QueryContext, 'dateFormats'>>,
 ): TableCell[] {
   const today = startOfDay(context.now);
   const date = (at: number | undefined): TableCell =>
-    at === undefined ? { text: '' } : { text: formatIsoDate(at) };
+    at === undefined ? { text: '' } : { text: formatDisplayDate(at, context.dateFormats) };
   return columns.map((column): TableCell => {
     switch (column) {
       case 'title':
@@ -147,16 +148,16 @@ export function createTaskCells(
  */
 function dueCell(
   task: TableTask,
-  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'> & Partial<Pick<QueryContext, 'dateFormats'>>,
   today: number,
 ): TableCell {
   if (task.dueAt === undefined) {
     return { text: task.dueText ?? '' };
   }
   if (task.completed) {
-    return { text: task.dueText ?? formatIsoDate(task.dueAt) };
+    return { text: formatDueDate(task.dueAt, task.dueText, context.dateFormats) };
   }
-  const due = describeDueDate(task.dueAt, context.now, context.taskPolicy, task.dueText);
+  const due = describeDueDate(task.dueAt, context.now, context.taskPolicy, { dueText: task.dueText, formats: context.dateFormats });
   if (due.stale) {
     return { text: due.label, kind: 'muted' };
   }

@@ -7,7 +7,7 @@ import { readFrontmatterValueTag, stripTags } from '../../domain/markdown/parser
 import { STATUS_CHARACTER } from '../../domain/markdown/lineShapes';
 import { formatKeyWords, readTagNamespace } from '../../domain/markdown/tagKeys';
 import { MarkdownToken, NoteEmbedMeta, parseBlockMarkdown } from '../../domain/markdown/markdownTokens';
-import { describeDueDate } from '../../domain/markdown/dueWording';
+import { describeDueDate, formatDueDate } from '../../domain/markdown/dueWording';
 import { resolveEmbed, createSourceParser } from '../../domain/notes/embeds';
 import { BLOCK_ID_PATTERN } from '../../domain/markdown/taskFields';
 import { DEFAULT_NOTE_COLUMNS, noteColumnLabel } from '../../domain/notes/noteColumns';
@@ -55,8 +55,6 @@ const BACKLINK_LINE_LIMIT = 3;
 /** What a note page is built in besides the index and the note. */
 export interface NotePageOptions {
   queryContext: QueryContext;
-  /** The namespace of status tags; `status` unless given. */
-  statusNamespace?: string;
   /** The line to show and mark. */
   focusLine?: number;
   history: { back: boolean; forward: boolean };
@@ -121,7 +119,7 @@ export function createNotePageSnapshot(
 export function readNoteBody(
   index: WorkspaceIndex,
   filePath: string,
-  options: Pick<NotePageOptions, 'queryContext' | 'statusNamespace'>,
+  options: Pick<NotePageOptions, 'queryContext'>,
 ): { blocks: NoteBlock[]; tags: Array<{ key: string; label: string }> } | undefined {
   const file = index.files.get(filePath);
   if (!file) {
@@ -352,8 +350,8 @@ function readFence(token: MarkdownToken, source: Source, line: number): NoteBloc
 
 /** What a query block finds, drawn as the preview draws it: lists, or tables for `view=table`. */
 function runQueryBlock(query: string, options: NonNullable<ReturnType<typeof parseQueryBlockInfo>>, reading: Reading): NoteQueryResult {
-  const { queryContext, statusNamespace } = reading.options;
-  const snapshot = getQueryBlockSnapshot(reading.index, query, options, { queryContext, statusNamespace: statusNamespace ?? 'status' });
+  const { queryContext } = reading.options;
+  const snapshot = getQueryBlockSnapshot(reading.index, query, options, { queryContext });
   if (snapshot.hasError) {
     const error = snapshot.messages.find((message) => message.severity === 'error')?.text ?? 'This query cannot run.';
     return { counts: '', error, notes: [], tasks: [], noteCount: 0, taskCount: 0 };
@@ -382,7 +380,7 @@ function runQueryBlock(query: string, options: NonNullable<ReturnType<typeof par
       : {}),
     notes: snapshot.notes.map((item) => ({
       ...row(item),
-      ...(table ? { cells: noteColumns.map((column) => describeNoteCell(item, column)) } : {}),
+      ...(table ? { cells: noteColumns.map((column) => describeNoteCell(item, column, queryContext.dateFormats)) } : {}),
     })),
     tasks: snapshot.tasks.map((item) => ({
       ...row(item),
@@ -399,8 +397,10 @@ function describeRow(item: QueryBlockItem, context: QueryContext): string {
   if (item.completed === undefined || item.dueAt === undefined) {
     return where;
   }
-  const due = describeDueDate(item.dueAt, context.now, context.taskPolicy, item.dueText);
-  return `${item.completed ? `due ${item.dueText ?? ''}`.trim() : due.label} · ${where}`;
+  const due = item.completed
+    ? `due ${formatDueDate(item.dueAt, item.dueText, context.dateFormats)}`
+    : describeDueDate(item.dueAt, context.now, context.taskPolicy, { dueText: item.dueText, formats: context.dateFormats }).label;
+  return `${due} · ${where}`;
 }
 
 /** A list, each item its blocks, an item that is a task with its box. */

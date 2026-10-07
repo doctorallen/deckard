@@ -46,7 +46,7 @@ Each service is a small class over the repository. It reads the blob as it stand
 | `CaptureService` | `UsageService`, for the recent headings |
 | Tidy | `PreferencesMaintenance` |
 | Export, Import, and Restore | `reader` and `maintenance` |
-| The destination picker, Capture, Insert Query Block, the reviews, `[[` completion, and the rolling copies | the reader's `value`, and the copies `onDidChange` |
+| The destination picker, Add Task, Insert Query Block, the reviews, `[[` completion, and the rolling copies | the reader's `value`, and the copies `onDidChange` |
 | The prune after each index update and after start | `UsageService.carrySectionAccess` and `PreferencesMaintenance.prune` |
 
 `PreferenceServices.reader` is the repository itself, typed as `PreferencesReader`, so a reader cannot write. The suites and harnesses build the same set with `createPreferences` in `src/test/preferenceServices.ts`.

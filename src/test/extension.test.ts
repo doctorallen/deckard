@@ -93,14 +93,11 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 102);
-    assert.strictEqual(settings['deckard.calendar.dayPanel'].default, false);
-    assert.strictEqual(settings['deckard.calendar.showRepeats'].default, true);
+    assert.strictEqual(Object.keys(settings).length, 58);
     assert.deepStrictEqual(settings['deckard.parked.tags'].default, ['parked']);
     assert.deepStrictEqual(settings['deckard.parked.folders'].default, {});
     assert.deepStrictEqual(settings['deckard.periodicNote.reviewSections'].default, []);
     assert.deepStrictEqual(settings['deckard.board.limits'].default, {});
-    assert.deepStrictEqual(settings['deckard.tasks.onHoldStatuses'].default, ['waiting', 'someday']);
     assert.strictEqual(settings['deckard.tasks.needsNewDateAfterDays'].default, 30);
     // The day a week starts on.
     assert.deepStrictEqual(settings['deckard.calendar.weekStart'].enum, ['sunday', 'monday', 'locale']);
@@ -157,8 +154,6 @@ suite('Extension Test Suite', () => {
         'deckard.importObsidianStatuses',
         'deckard.editTaskStatuses',
         'deckard.agenda.setTaskStatus',
-        'deckard.capture',
-        'deckard.captureUnderHeading',
         'deckard.writeReview',
         'deckard.rollTasksForward',
         'deckard.newNoteFromTemplate',
@@ -204,6 +199,7 @@ suite('Extension Test Suite', () => {
         'deckard.agenda.editQuery',
         'deckard.clearAgendaQuery',
         'deckard.agenda.setGrouping',
+        'deckard.agenda.setSort',
         'deckard.outline.enableFollowCursor',
         'deckard.outline.disableFollowCursor',
         'deckard.focusSection',
@@ -212,6 +208,7 @@ suite('Extension Test Suite', () => {
         'deckard.outline.clearTagFilter',
         'deckard.chooseTheme',
         'deckard.chooseDisplay',
+        'deckard.chooseDateFormat',
         'deckard.enableZenMode',
         'deckard.disableZenMode',
         'deckard.toggleZen',
@@ -237,8 +234,6 @@ suite('Extension Test Suite', () => {
         'deckard.calendar.closeDayPanel',
         'deckard.calendar.hideWeekends',
         'deckard.calendar.includeWeekends',
-        'deckard.calendar.showRepeats',
-        'deckard.calendar.hideRepeats',
       ],
     );
     assert.strictEqual(
@@ -250,49 +245,7 @@ suite('Extension Test Suite', () => {
     assert.deepStrictEqual(settings['deckard.exclude'].default, {});
     assert.strictEqual(
       settings[
-        'deckard.parseInlineTags'
-      ].default,
-      true,
-    );
-    assert.strictEqual(
-      settings[
         'deckard.highlightNoteSections'
-      ].default,
-      true,
-    );
-    assert.strictEqual(
-      settings[
-        'deckard.autoSelectNoteSections'
-      ].default,
-      true,
-    );
-    assert.strictEqual(
-      settings[
-        'deckard.tagTitleDisplayMode'
-      ].default,
-      'inline',
-    );
-    assert.deepStrictEqual(
-      settings[
-        'deckard.tagTitleDisplayMode'
-      ].enum,
-      ['inline', 'separate'],
-    );
-    assert.strictEqual(
-      settings[
-        'deckard.enableHeadingTagRelationships'
-      ].default,
-      true,
-    );
-    assert.strictEqual(
-      settings[
-        'deckard.enableKeywordLinks'
-      ].default,
-      true,
-    );
-    assert.strictEqual(
-      settings[
-        'deckard.enableTagAutocomplete'
       ].default,
       true,
     );
@@ -304,21 +257,9 @@ suite('Extension Test Suite', () => {
     );
     assert.strictEqual(
       settings[
-        'deckard.personMarker'
-      ].default,
-      '@',
-    );
-    assert.strictEqual(
-      settings[
         'deckard.dashboard.openOnStartup'
       ].default,
       false,
-    );
-    assert.strictEqual(
-      settings[
-        'deckard.tagOverview.hubNoteExpanded'
-      ].default,
-      true,
     );
     assert.ok(
       extension.packageJSON.contributes?.views?.deckard?.some(

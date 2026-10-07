@@ -4,6 +4,7 @@
  * edits what the Tasks view lists.
  */
 import { describeBox, statusBoxProps } from '../shared/taskBox';
+import { TASK_SORT_LABELS } from '../../domain/model/sortOrders';
 import type { TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
 import { IconButton } from '../shared/buttons';
 import { Inline } from '../shared/inline';
@@ -42,7 +43,6 @@ export function TaskList({ snapshot }: { readonly snapshot: TaskBoardSnapshot })
             key={item.task.id}
             item={item}
             draggable={draggable}
-            titleDisplay={snapshot.tagTitleDisplayMode}
             trailing={<RowMenuButton taskId={item.task.id} title={plainTitle(item.titleTokens) || item.task.title} />}
           />
         ))
@@ -50,7 +50,7 @@ export function TaskList({ snapshot }: { readonly snapshot: TaskBoardSnapshot })
           <div class="empty">
             {snapshot.taskCount
               ? 'No tasks match this search.'
-              : `No tasks yet. Write "- [ ] something" in a note, or use Deckard: Capture. A #${snapshot.settings.statusNamespace}/… tag on a task puts it in a column.`}
+              : 'No tasks yet. Write "- [ ] something" in a note, or choose Add task. The character in a task\'s box, as [/] for In progress, puts it in a column.'}
           </div>
         )}
     </div>
@@ -64,7 +64,7 @@ export function TaskList({ snapshot }: { readonly snapshot: TaskBoardSnapshot })
 export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   const table = snapshot.table;
   if (!table || table.rows.length === 0) {
-    return <div key="empty" class="empty">{snapshot.taskCount ? 'No tasks match this search.' : 'No tasks yet. Write "- [ ] something" in a note, or use Deckard: Capture.'}</div>;
+    return <div key="empty" class="empty">{snapshot.taskCount ? 'No tasks match this search.' : 'No tasks yet. Write "- [ ] something" in a note, or choose Add task.'}</div>;
   }
   const sort = table.sort;
   // The title is the column the reader cannot leave out, wherever the
@@ -129,14 +129,14 @@ export function TableSortNote({ snapshot }: { readonly snapshot: TaskBoardSnapsh
   );
 }
 
-/** Under the search box while the list is shown: how it is ordered. */
+/** Under the search box while the list or the board is shown: how tasks are ordered, in a list or within each column. */
 export function SortControl({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   return (
     <label class="control-label">
       Sort:
       <span class="control-icon">
         <select data-action="set-task-sort" aria-label="Sort tasks">
-          {([['rank', 'Rank'], ['created', 'Created'], ['updated', 'Updated']] as const).map(([value, label]) => (
+          {Object.entries(TASK_SORT_LABELS).map(([value, label]) => (
             <option value={value} selected={snapshot.taskSortMode === value}>{label}</option>
           ))}
         </select>

@@ -34,8 +34,6 @@ export interface SidebarSnapshotOptions {
   /** `tags` unless given. */
   relatedNotesSortMode?: RelatedNotesSortMode;
   sectionAccessCounts?: Record<string, number>;
-  /** `inline` unless given. */
-  tagTitleDisplayMode?: TagTitleDisplayMode;
   /** The title of the entry chosen within the note, when one is. */
   activeEntryTitle?: string;
   /** How much each of the note's tags counts, when an entry weighs them. */
@@ -54,13 +52,12 @@ export function createSidebarSnapshot(
 ): SidebarNotesSnapshot {
   const { now, activeEntryTitle, activeTagWeights, rankingOptions } = options;
   const { enableKeywordLinks = true, relatedNotesSortMode = 'tags' } = options;
-  const { sectionAccessCounts = {}, tagTitleDisplayMode = 'inline' } = options;
+  const { sectionAccessCounts = {} } = options;
   if (!activeFile) {
     return {
       activeTags: [],
       notes: [],
       relatedNotesSortMode,
-      tagTitleDisplayMode,
       state: 'noMarkdown',
     };
   }
@@ -91,7 +88,6 @@ export function createSidebarSnapshot(
       file: activeFile,
       tags: activeTags,
       enableKeywordLinks,
-      tagTitleDisplayMode,
       tagWeights: activeTagWeights,
     },
     { ...rankingOptions, now },
@@ -103,7 +99,7 @@ export function createSidebarSnapshot(
     activeTags.length === 0 && enableKeywordLinks
       ? findSimilarWording(
           index,
-          { filePath: activeFilePath, file: activeFile, tagTitleDisplayMode, listed: notes },
+          { filePath: activeFilePath, file: activeFile, listed: notes },
           rankingOptions,
         )
       : undefined;
@@ -121,7 +117,6 @@ export function createSidebarSnapshot(
         }
       : {}),
     relatedNotesSortMode,
-    tagTitleDisplayMode,
     state: getSidebarState(notes, activeTags),
   };
 }

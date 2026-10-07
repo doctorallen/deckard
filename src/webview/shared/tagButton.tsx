@@ -34,6 +34,32 @@ function labelPattern(tags: readonly TagReference[]): RegExp | undefined {
 }
 
 /**
+ * The tag a task is under, above its title, when the board shows parent
+ * tags: what the task is part of, which its own words may not say. It
+ * narrows the board's search as Refine's value for the tag does (Shift
+ * adds OR, Alt AND NOT); Cmd/Ctrl opens the tag's page in a new tab.
+ */
+export function ParentTag({ tag }: { readonly tag: TagReference | undefined }) {
+  if (!tag) {
+    return null;
+  }
+  return (
+    <div key="parent-tag" class="parent-tag-line">
+      <button
+        type="button"
+        class="tag-open parent-tag"
+        data-action="refine-by-tag"
+        data-tag-key={tag.key}
+        data-tip={`Add ${tag.label} to the search · Shift-click: OR · Alt-click: AND NOT · Cmd/Ctrl-click: open in a new tab`}
+        aria-label={`Add ${tag.label} to the search. Enter adds AND, Alt-Enter adds AND NOT, Shift-Enter adds OR, Cmd or Ctrl-Enter opens it in a new tab.`}
+      >
+        <TagLabel label={tag.label} />
+      </button>
+    </div>
+  );
+}
+
+/**
  * Text with each tag written in it drawn as the control that opens it, in
  * its place, as `inline-tag` buttons. With `appendMissing`, a tag the text
  * does not write comes after it, so every tag is still a control. Returns

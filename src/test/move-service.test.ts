@@ -79,20 +79,6 @@ suite('Move service', () => {
     assert.deepStrictEqual(ranks, [[task.id, parseMarkdown('plan.md', fake.text('plan.md') ?? '').tasks[1].id]]);
   });
 
-  test('leaves nothing behind when the settings say so, and previews when every write is', async () => {
-    const { fake, history, service } = setup(
-      { 'inbox.md': inbox, 'plan.md': plan },
-      { 'deckard.moveTo.leaveBehind': 'nothing', 'deckard.previewWorkspaceWrites': 'always' },
-    );
-    await service.move([{ uri: noteUri('inbox.md'), filePath: 'inbox.md', block: blockAt(inbox, 2) }], {
-      uri: noteUri('plan.md'),
-      link: 'plan',
-      name: 'plan',
-    });
-    assert.strictEqual(fake.text('inbox.md'), '# Inbox\n- [ ] Call Ren\n');
-    assert.strictEqual(history.writes[0].options.preview, 'always');
-  });
-
   test('creates the new note it moves into, and its Undo deletes that note again', async () => {
     const { fake, files, history, ranks, service } = setup({ 'inbox.md': inbox });
     const result = await service.move([{ uri: noteUri('inbox.md'), filePath: 'inbox.md', block: blockAt(inbox, 1) }], {

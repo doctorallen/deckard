@@ -2,7 +2,7 @@
 
 ## Related Notes
 
-Related notes are listed in the **Context** view in the Deckard sidebar. The same view shows a search's Refine, a graph node's connections, the calendar page's chosen day, or Home's widgets while one of those is in front.
+Related notes are listed in the **Context** view in the Deckard sidebar, under Deckard's pages, which lead the view in every state. The same view shows a search's Refine, a graph node's connections, the calendar page's chosen day, or Home's widgets while one of those is in front.
 
 Open the **Context** view from the Deckard Activity Bar while editing a saved Markdown note; its **Related notes** list suggests note entries that may concern the same work, each showing its first line with shared words marked.
 
@@ -13,9 +13,9 @@ Open the **Context** view from the Deckard Activity Bar while editing a saved Ma
 - Each result shows its heading path and main reason for matching; daily notes also show their date, as in `2026-09-10 > Project Atlas > Check-in`. A nested child heading with the same tags as its parent comes first. Results show 50 at a time; **Show more** adds 50.
 - **Link button.** Beside each score, it writes a `[[Note#Heading]]` link to that entry at your cursor, replacing any selection. It names the heading without its tags, or the note alone when the heading repeats the note's title. A tagged line or task is linked through the heading above it. When two notes share the name, Deckard writes the link and says which notes it could mean.
 - **Parked notes** are not suggested unless the current note is parked; then they come last.
-- Home, the Task board, the Notes Graph, and Help are in the **Pages** view above it, and in **Go to…**; see [Getting started](getting-started.md#finding-your-way).
+- Home, the Task board, the Notes Graph, and Help are at the top of the view, and in **Go to…**; see [Getting started](getting-started.md#finding-your-way).
 
-**Untagged notes.** A note with no tags lists up to ten entries with similar wording, under **Similar wording (no tags yet)**, marked weak, and above them **Tags used by similar notes**. Select **Add** beside a tag to write it on the heading or line at the cursor and save the note; the message offers **Undo**, as does **Undo Last Change**. A tagged note never gets this list. `deckard.enableKeywordLinks` turns it off along with the wording signal.
+**Untagged notes.** A note with no tags lists up to ten entries with similar wording, under **Similar wording (no tags yet)**, marked weak, and above them **Tags used by similar notes**. Select **Add** beside a tag to write it on the heading or line at the cursor and save the note; the message offers **Undo**, as does **Undo Last Change**. A tagged note never gets this list.
 
 **Linked from** lists notes that link to this one, newest updated first, each with its update time, link count, and linking lines under their headings. The count is the number of notes. **›** on a line unfolds up to fifteen more lines of its section.
 
@@ -37,7 +37,7 @@ Open the **Context** view from the Deckard Activity Bar while editing a saved Ma
 
 A note with both `#project/atlas` and `#follow-up` ranks ahead of one with only an associated `#risk/vendor` tag. Associations are normalized for support and tag prevalence, so common tags cannot dominate.
 
-Terms on the **Debug related notes** page:
+Terms on the **Related Notes Ranking** page:
 
 - **Source unit**: one tagged heading, tagged line, task, or heading relationship where a tag is observed; not necessarily a whole file.
 - **Raw evidence**: an association's starting strength.
@@ -52,7 +52,7 @@ Tagged headings highlight their section; tagged lines and tasks highlight their 
 
 ### Understand a score
 
-Each result has a three-step rail for a strong, moderate, or weak relation. Select it, or use the keyboard, to see the exact score, signals, and weights. For the full calculation, hover a tagged entry and choose **Debug related notes for [entry]**, which shows where each tag came from, heading paths, daily-note context, association support and prevalence, link evidence, lexical terms, recency, and specificity.
+Each result has a three-step rail for a strong, moderate, or weak relation. Select it, or use the keyboard, to see the exact score, signals, and weights. For the full calculation, put the cursor in a tagged entry and run `Deckard: Open Related Notes Ranking`, which shows where each tag came from, heading paths, daily-note context, association support and prevalence, link evidence, lexical terms, recency, and specificity.
 
 ### Refine a search from the sidebar
 
@@ -73,7 +73,7 @@ Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard 
 
 - **Navigate.** Scroll to zoom, drag empty space to pan, and drag a dot to rearrange its cluster. **Fit** reframes the graph.
 - **Select.** Hover a dot to highlight its neighbors and see what joins it, such as `atlas.md:12 · 4 wiki links · 2 headings · 7 tags` or `Tag · on 42 notes and tasks · 5 related tags`. Select a dot to list its connected nodes in the sidebar (**Connected nodes**, shown only while the graph is active). Select the top sidebar item to open it; select another to move the selection, or Cmd/Ctrl-click to open it. Cmd/Ctrl-click a dot to open it, or Alt-click to open it beside the graph. Selecting empty space clears the selection. From the keyboard, Tab to the graph and use the arrow keys to select a dot; Enter or Space opens it, Alt+Enter beside the graph, and Escape clears the selection.
-- **Focus.** With a note open, the graph starts around it, one hop out, and follows the editor. Clear **Around this note** for the whole graph. **Hops out** sets the reach: one hop is the note, its tags, and the notes it links to; two adds what those touch, including tags usually written with yours. The line beneath names the note and counts the nodes on screen. **Pass through daily notes**, on by default, hides daily, weekly, and monthly notes but still counts them as a hop. The tag checklist narrows to the neighborhood's tags.
+- **Focus.** With a note open, the graph starts around it, one hop out, and follows the editor. Clear **Around this note** for the whole graph. **Hops out** sets the reach, one to three hops: one hop is the note, its tags, and the notes it links to; two adds what those touch, including tags usually written with yours. The line beneath names the note and counts the nodes on screen. **Pass through daily notes**, on by default, hides daily, weekly, and monthly notes but still counts them as a hop. The tag checklist narrows to the neighborhood's tags.
 - **Labels.** At rest, the best-connected notes are named; zooming in names the rest. Groups of four or more are named after their most distinctive tags (`atlas · design`), or their best-connected note. Click a group name, or choose it from **Group**, to pick it out; the rest dim.
 - **Lines**: solid for a wiki link you wrote, dashed for a heading and its sub-heading, dotted for a shared tag, dash-dot for a path through a daily note in a focused graph. The status line has a legend. **Only links I wrote** draws every wiki link and nothing else, and counts links and notes with none.
 - **Filters** search titles and paths, restrict to selected tags, and toggle notes, tasks, tag nodes (off by default), and orphans. Parked notes and tasks, and tags only they carry, stay hidden until **Show parked** is on. **Clear filters** clears tag filters and the picked group.
@@ -88,7 +88,7 @@ Open **Outline** from the Deckard Activity Bar to see the active Markdown file's
 
 - Each heading shows its title, without markers or tags, and its own tags beside it. A heading of only tags shows those tags as its title.
 - Untagged headings are kept for structure. Headings in fenced code blocks are ignored, and `Sprint #3` stays in the title. Underlined `Title`/`===` headings are not shown.
-- **2/5** means two of five tasks under the heading are done, sub-headings included; **↩3** means links in other notes name it three times. Zen hides them, and `deckard.outline.showCounts` turns them off.
+- **2/5** means two of five tasks under the heading are done, sub-headings included; **↩3** means links in other notes name it three times. Zen hides them.
 - The tree follows the file as you type.
 - Select a heading to jump to it. Right-click a tagged heading for **Open the Tag's Search Page** and **Rename Tag**.
 - The eye control sets whether the Outline follows the cursor; **Collapse all** is beside it.

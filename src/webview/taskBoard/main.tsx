@@ -7,7 +7,6 @@
  */
 import type { StateMessage } from '../../ui/protocol/messaging';
 import type { SavedToTasksViewMessage, TaskBoardMessage, TaskBoardSnapshot, ToggleRefusedMessage } from '../../ui/protocol/taskBoard';
-import { checkNewStatusColumn, checkStatusNamespace } from '../../domain/tasks/taskColumns';
 import { type ActionMenuGroup, closeActionMenu, openActionMenu } from '../shared/actionMenu';
 import { HelpButton } from '../shared/buttons';
 import { Eyebrow } from '../shared/eyebrow';
@@ -16,11 +15,10 @@ import { installMenuKeys } from '../shared/menuKeys';
 import { openSourceMessage } from '../shared/openSource';
 import { onHostMessage, startPage } from '../shared/page';
 import { closeRankMenu, installRankedRows, moveKeyToEdge, rankKeys } from '../shared/rankedRows';
-import { createQueryEditor } from '../shared/queryEditor';
+import { createQueryEditor, refineModeOf } from '../shared/queryEditor';
 import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { announce } from '../shared/status';
 import { taskTitleOf } from '../shared/taskRow';
-import { createUndoNotice } from '../shared/undoToast';
 import {
   displayLevelOption,
   installViewOptions,
@@ -33,7 +31,7 @@ import { GroupSwitch, TaskBoard, taskCardMoves } from './board';
 import { type BoardScroll, editRow, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll, sendHeldEdits, settleRefusedEdit } from './boardMoves';
 import { AgendaToggle, AvailableToggle, canRank, ColumnPicker, ResultTable, SaveSearchButton, SortControl, syncSaveToTasksView, TableSortNote, TaskList, TasksViewActions, TasksViewStrip } from './layouts';
 import { board, type BoardPageState, type DrawnBoard, lingerRemaining } from './model';
-import { type SettingsDrafts, statusColumnNames, StatusSettings } from './statusSettings';
+import { statusColumnNames, StatusSettings } from './statusSettings';
 
 /**
  * The number of the last move sent. Each move carries the next one, and a
@@ -50,9 +48,6 @@ function post(message: TaskBoardMessage): void {
   }
   vscodeApi().postMessage(sent);
 }
-
-/** What is being typed into the gear's fields, kept across draws, and what was wrong with the last one saved. */
-let drafts: SettingsDrafts = { status: '', namespace: undefined, error: '' };
 
 /** The snapshot the host sent last, which the search box reads as it is told of it. */
 let latest: TaskBoardSnapshot | undefined;
@@ -108,10 +103,12 @@ const editor = createQueryEditor({
   refineElsewhere: () => Boolean(latest && latest.refineInSidebar),
   // Saving sits with the search it saves; the saved search reopens here.
   // Opened to edit what the Tasks view lists, saving to the view comes first.
+  // Add task ends the row, the one control there that is not about the search.
   actions: (hasText) => (
     <>
       {latest?.tasksViewMode ? <TasksViewActions listed={tasksViewListsBox()} hasText={hasText} /> : <SaveSearchButton label="Save" hasText={hasText} />}
       <button data-action="export-tasks" data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export tasks</button>
+      <button data-action="add-task" data-tip="Write a new task in the task editor, into today's note or another you choose">Add task</button>
     </>
   ),
   ownPrimary: () => Boolean(latest?.tasksViewMode),
@@ -162,7 +159,8 @@ function BoardViewOptions({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
         { label: 'Layout', content: <ViewOptionChoices action="set-task-layout" choices={[['list', 'List'], ['board', 'Board'], ['table', 'Table']]} selected={snapshot.layout} label="Task layout" /> },
         { label: 'Tasks view', content: <AgendaToggle snapshot={snapshot} /> },
         ...(isTable ? [{ label: 'Columns', content: <ColumnPicker snapshot={snapshot} />, stacked: true }] : []),
-        { label: 'Status columns', content: <StatusSettings snapshot={snapshot} drafts={drafts} />, stacked: true },
+        ...(isTable ? [] : [{ label: 'Cards', content: <ParentTagToggle snapshot={snapshot} /> }]),
+        { label: 'Status columns', content: <StatusSettings snapshot={snapshot} />, stacked: true },
         themeOption(),
         displayLevelOption(),
       ]}
@@ -170,7 +168,17 @@ function BoardViewOptions({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
   );
 }
 
-/** What the search box's status line holds: the list's sort, the table's, or the board's grouping, then Can start now. */
+/** The gear's switch for the tag each card and row is under. */
+function ParentTagToggle({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
+  return (
+    <label class="board-settings-row">
+      <input type="checkbox" data-action="show-parent-tag" checked={snapshot.settings.parentTag === true} />
+      <span>Show the tag each task is under</span>
+    </label>
+  );
+}
+
+/** What the search box's status line holds: the list's sort, the table's, or the board's grouping and sort, then Can start now. */
 function StatusControls({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   let control;
   if (snapshot.layout === 'list') {
@@ -178,9 +186,23 @@ function StatusControls({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) 
   } else if (snapshot.layout === 'table') {
     control = <TableSortNote snapshot={snapshot} />;
   } else {
-    control = <GroupSwitch snapshot={snapshot} />;
+    control = <><GroupSwitch snapshot={snapshot} /><SortControl snapshot={snapshot} /></>;
   }
   return <>{control}<AvailableToggle pressed={Boolean(snapshot.availableOnly)} /></>;
+}
+
+/**
+ * While task lines carry status tags Deckard no longer reads, a line above
+ * the tasks says how many, so a task that reads as Todo has its reason
+ * beside it, and Move them previews the move into checkboxes.
+ */
+function StatusTagsStrip({ text }: { readonly text: string }) {
+  return (
+    <p class="board-hint" role="status">
+      {text}
+      <button type="button" data-action="move-status-tags" data-tip="Preview writing each status tag as its task's character">Move them</button>
+    </p>
+  );
 }
 
 /** The searched tasks, as the layout shows them. */
@@ -209,6 +231,7 @@ function BoardPage({ state }: { readonly state: DrawnBoard }) {
         </div>
       </header>
       {snapshot.tasksViewMode ? <TasksViewStrip /> : null}
+      {snapshot.statusTagsLeft ? <StatusTagsStrip key="status-tags" text={snapshot.statusTagsLeft} /> : null}
       {editor.bar(<StatusControls snapshot={snapshot} />)}
       {editor.facets()}
       <section key="tasks" class="board-area" aria-label="Tasks"><BoardContent snapshot={snapshot} /></section>
@@ -244,10 +267,9 @@ function listedTaskIds(): string[] {
   return (shown()?.tasks || []).map((item) => item.task.id);
 }
 
-/** Sends a new list of status columns. */
-function setStatuses(statuses: string[]): void {
-  drafts = { ...drafts, error: '' };
-  post({ type: 'setBoardStatuses', statuses });
+/** Sends the status columns' new order, by status name. */
+function setColumnOrder(names: string[]): void {
+  post({ type: 'setBoardColumnOrder', names });
 }
 
 // A ranked list, and the status columns in the gear, are ordered by
@@ -264,11 +286,11 @@ installRankedRows({
       return false;
     }
     if (kind === 'status') {
-      const statuses = rankKeys(statusColumnNames(snapshot), key, targetKey, before);
-      if (!statuses) {
+      const names = rankKeys(statusColumnNames(snapshot), key, targetKey, before);
+      if (!names) {
         return false;
       }
-      setStatuses(statuses);
+      setColumnOrder(names);
       return true;
     }
     const ids = rankKeys(listedTaskIds(), key, targetKey, before);
@@ -281,9 +303,9 @@ installRankedRows({
   move: (kind, key, toTop) => {
     const snapshot = shown();
     if (kind === 'status' && snapshot) {
-      const statuses = moveKeyToEdge(statusColumnNames(snapshot), key, toTop);
-      if (statuses) {
-        setStatuses(statuses);
+      const names = moveKeyToEdge(statusColumnNames(snapshot), key, toTop);
+      if (names) {
+        setColumnOrder(names);
       }
       return;
     }
@@ -307,6 +329,7 @@ installBoardMoves({
       current: snapshot?.groupBy === 'tag' ? snapshot.groupNamespace : undefined,
     };
   },
+  ranked: () => shown()?.taskSortMode === 'rank',
 });
 installViewOptions();
 
@@ -391,80 +414,6 @@ function toggleColumn(id: string, on: boolean): void {
   post({ type: 'setTableColumns', columns: next });
 }
 
-/**
- * Undo for a status column removed from the gear. Taken or withdrawn with
- * focus on it, focus goes back to the removed column's ×, or, when the
- * column has gone, to the column now where it was, or to the gear when it
- * has closed.
- */
-const statusUndo = createUndoNotice<{ status: string; index: number; after: string[] }>(() => redraw(), (removed) => {
-  const rows = Array.from(document.querySelectorAll<HTMLElement>('.board-status'));
-  const row = rows[Math.min(removed.index, rows.length - 1)];
-  return row && !row.closest('details:not([open])') ? row : document.querySelector<HTMLElement>('.view-options > summary');
-});
-
-/** Adds the status typed in the gear as a column, or says why it cannot be one. */
-function addStatus(snapshot: TaskBoardSnapshot): void {
-  const names = statusColumnNames(snapshot);
-  const checked = checkNewStatusColumn(drafts.status, names);
-  if (!checked) {
-    return;
-  }
-  if (checked.error !== undefined) {
-    drafts = { ...drafts, error: checked.error };
-    redraw();
-    return;
-  }
-  drafts = { ...drafts, status: '' };
-  setStatuses([...names, checked.value]);
-}
-
-/** Saves the status tag typed in the gear, or says why it cannot be one. */
-function saveNamespace(snapshot: TaskBoardSnapshot): void {
-  if (drafts.namespace === undefined) {
-    return;
-  }
-  const checked = checkStatusNamespace(drafts.namespace);
-  if (checked.error !== undefined) {
-    drafts = { ...drafts, error: checked.error };
-    redraw();
-    return;
-  }
-  drafts = { ...drafts, error: '', namespace: undefined };
-  if (checked.value === snapshot.settings.statusNamespace) {
-    redraw();
-  } else {
-    post({ type: 'setBoardStatusNamespace', namespace: checked.value });
-  }
-}
-
-/** Removes a status column from the gear, offering Undo. */
-function removeStatus(snapshot: TaskBoardSnapshot, status: string | undefined): void {
-  const statuses = statusColumnNames(snapshot);
-  const index = statuses.indexOf(String(status));
-  const removed = index >= 0 ? statuses.splice(index, 1)[0] : undefined;
-  if (!(removed !== undefined)) {
-    return;
-  }
-
-  setStatuses(statuses);
-  statusUndo.show(`Removed the ${removed} column.`, 'undo-remove-status', { status: removed, index, after: statuses });
-}
-
-/** Puts back the status column removed last, where it was. */
-function undoRemoveStatus(snapshot: TaskBoardSnapshot): void {
-  const undone = statusUndo.take();
-  if (undone) {
-    // The columns as last sent, if the host has not answered yet.
-    const names = statusColumnNames(snapshot);
-    const current = names.includes(undone.status) ? undone.after : names;
-    const statuses = current.slice();
-    statuses.splice(Math.min(undone.index, statuses.length), 0, undone.status);
-    setStatuses(statuses);
-  }
-  redraw();
-}
-
 /** What each of the page's own controls does on a click, given the snapshot it shows. */
 const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: TaskBoardSnapshot) => void>> = {
   'open-tag': (target) => post({ type: 'openTag', tagKey: String(target.dataset.tagKey) }),
@@ -480,10 +429,26 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: TaskBoard
   'use-for-agenda': () => post({ type: 'useSearchForAgenda' }),
   'toggle-available': (_target, snapshot) => post({ type: 'setBoardQuery', query: snapshot.availableToggleQuery || 'is:available' }),
   'export-tasks': () => post({ type: 'exportResults', kind: 'tasks' }),
+  'add-task': () => post({ type: 'addTask' }),
   'set-task-layout': (target) => post({ type: 'setTaskLayout', layout: target.dataset.value as never }),
-  'remove-status': (target, snapshot) => removeStatus(snapshot, target.dataset.status),
-  'undo-remove-status': (_target, snapshot) => undoRemoveStatus(snapshot),
+  'new-task-status': () => post({ type: 'editTaskStatuses', newStatus: true }),
+  'edit-task-statuses': () => post({ type: 'editTaskStatuses' }),
+  'move-status-tags': () => post({ type: 'moveStatusTags' }),
 };
+
+/**
+ * A card's parent tag, clicked: Cmd/Ctrl opens the tag's page in a new tab,
+ * as a tag does in the editor; otherwise it narrows the board's search, as
+ * Refine's value for the tag would.
+ */
+function refineByTag(target: HTMLElement, event: MouseEvent): void {
+  const tagKey = String(target.dataset.tagKey);
+  if (event.metaKey || event.ctrlKey) {
+    post({ type: 'openTag', tagKey });
+  } else if (!editor.refineBy(tagKey, refineModeOf(event))) {
+    announce(`${tagKey} is already in the search.`);
+  }
+}
 
 /** The row an event happened in, in the list or the table. */
 function rowOf(target: Element | null): HTMLElement | null {
@@ -505,6 +470,10 @@ document.addEventListener('click', (event) => {
     const action = String(target.dataset.action);
     if (action === 'task-row-menu') {
       openRowMenu(target);
+      return;
+    }
+    if (action === 'refine-by-tag') {
+      refineByTag(target, event);
       return;
     }
     const snapshot = shown();
@@ -531,22 +500,6 @@ document.addEventListener('contextmenu', (event) => {
   const button = row.querySelector<HTMLElement>('[data-action="task-row-menu"]');
   if (button && openRowMenu(button)) {
     event.preventDefault();
-  }
-});
-
-document.addEventListener('submit', (event) => {
-  const element = event.target instanceof Element ? event.target : null;
-  const form = element ? element.closest<HTMLElement>('[data-form]') : null;
-  const snapshot = shown();
-  if (!form) {
-    return;
-  }
-  event.preventDefault();
-  if (snapshot && form.dataset.form === 'add-status') {
-    addStatus(snapshot);
-  }
-  if (snapshot && form.dataset.form === 'status-namespace') {
-    saveNamespace(snapshot);
   }
 });
 
@@ -583,22 +536,16 @@ document.addEventListener('change', (event) => {
   if (target.dataset.action === 'toggle-table-column') {
     toggleColumn(String(target.dataset.value), target.checked);
   }
-  if (target.dataset.action === 'show-cancelled') {
-    post({ type: 'setBoardShowCancelled', show: target.checked });
+  if (target.dataset.action === 'show-parent-tag') {
+    post({ type: 'setBoardParentTag', show: target.checked });
+  }
+  if (target.dataset.action === 'show-status-column') {
+    post({ type: 'setBoardColumnShown', name: String(target.dataset.name), shown: target.checked });
   }
 });
 
 document.addEventListener('input', (event) => {
-  if (editor.handleInput(event)) {
-    return;
-  }
-  const target = event.target as HTMLInputElement;
-  if (target.dataset.action === 'status-draft') {
-    drafts = { ...drafts, status: target.value };
-  }
-  if (target.dataset.action === 'namespace-draft') {
-    drafts = { ...drafts, namespace: target.value };
-  }
+  editor.handleInput(event);
 });
 
 /**

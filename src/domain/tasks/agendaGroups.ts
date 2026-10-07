@@ -1,37 +1,42 @@
 /**
- * What the Tasks view's groups are and what its settings say: how it is
- * grouped, which namespace a tag grouping uses, what it lists, and how far
- * ahead Upcoming reaches; and which board column a group stands for, so a
- * task dropped on it takes that column's edit.
+ * What the Tasks view's groups are and how it is grouped and sorted, as its
+ * preferences keep them; what it lists, from its setting; how far ahead
+ * Upcoming reaches; and which board column a group stands for, so a task
+ * dropped on it takes that column's edit.
  */
 
-/** What the Agenda's groups are: when a task is wanted, or what it carries. */
-export type AgendaGroupBy = 'due' | 'priority' | 'status' | 'assignee' | 'tag';
+import type { AgendaGroupBy, PersistedPreferences, TaskSortMode } from '../model/preferences';
 
-/** Every grouping, in the order the picker offers them. */
-export const AGENDA_GROUP_BYS: readonly AgendaGroupBy[] = ['due', 'priority', 'status', 'assignee', 'tag'];
+export { AGENDA_GROUP_BYS, type AgendaGroupBy } from '../model/preferences';
 
 /** The part of a settings section the readers here need. */
 export interface SettingsReader {
   get<T>(key: string, defaultValue: T): T;
 }
 
-/** How the Agenda is grouped, from `deckard.agenda.groupBy`; `due` for anything else. */
-export function readAgendaGrouping(settings: SettingsReader): AgendaGroupBy {
-  const value = settings.get<string>('agenda.groupBy', 'due');
-  return AGENDA_GROUP_BYS.some((grouping) => grouping === value) ? (value as AgendaGroupBy) : 'due';
+/** The preferences the Tasks view's grouping and sort are kept in. */
+export type AgendaViewChoices = Pick<PersistedPreferences, 'agendaGroupBy' | 'agendaGroupNamespace' | 'agendaSort'>;
+
+/** How the Tasks view is grouped: by due date unless the reader chose otherwise. */
+export function readAgendaGrouping(choices: AgendaViewChoices): AgendaGroupBy {
+  return choices.agendaGroupBy ?? 'due';
+}
+
+/** How each of the Tasks view's groups orders its tasks: by rank unless the reader chose otherwise. */
+export function readAgendaSort(choices: AgendaViewChoices): TaskSortMode {
+  return choices.agendaSort ?? 'rank';
 }
 
 /**
- * The namespace the Tasks view groups by, from `deckard.agenda.groupNamespace`,
- * lowercased; `project` for a name `isNamespaceName` refuses.
+ * The namespace the Tasks view groups by when it groups by tag, lowercased;
+ * `project` until one is chosen, and for a name `isNamespaceName` refuses.
  */
 export function readAgendaGroupNamespace(
-  settings: SettingsReader,
+  choices: AgendaViewChoices,
   isNamespaceName: (value: unknown) => boolean,
 ): string {
-  const value = settings.get<string>('agenda.groupNamespace', 'project');
-  return isNamespaceName(value) ? value.toLowerCase() : 'project';
+  const value = choices.agendaGroupNamespace;
+  return value !== undefined && isNamespaceName(value) ? value.toLowerCase() : 'project';
 }
 
 /**
@@ -44,11 +49,8 @@ export function readAgendaQuery(settings: SettingsReader): string {
   return typeof value === 'string' ? value : '';
 }
 
-/** How many days Upcoming reaches, from `deckard.agenda.upcomingDays`: 1 to 90, 7 by default. */
-export function readUpcomingDays(settings: SettingsReader): number {
-  const value = settings.get<number>('agenda.upcomingDays', 7);
-  return Number.isFinite(value) ? Math.min(Math.max(Math.round(value), 1), 90) : 7;
-}
+/** How many days the Tasks view's Upcoming reaches: a week. */
+export const UPCOMING_DAYS = 7;
 
 /**
  * The Task board column a group means, when it means one.
@@ -70,7 +72,8 @@ export function groupColumnId(
     return `priority:${priority === 'none' ? '' : priority}`;
   }
   if (groupBy === 'status') {
-    return `status:${groupId === 'none' ? '' : groupId}`;
+    // The group's id is the key of the board's column for its status.
+    return `status:${groupId}`;
   }
   if (groupBy === 'assignee') {
     // The group's id is the person's tag key, which is what the field holds.

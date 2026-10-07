@@ -52,7 +52,7 @@ function createIndex() {
 function createDays(): Array<[string, CalendarDayDetail]> {
   const index = createIndex();
   const context = createQueryContext(NOW);
-  const full = createCalendarDay(index, '2026-09-25', context, { showRepeats: true });
+  const full = createCalendarDay(index, '2026-09-25', context);
   const first = full.due[0];
   const extras: CalendarDayDetail = {
     ...full,
@@ -60,7 +60,7 @@ function createDays(): Array<[string, CalendarDayDetail]> {
     notePath: undefined,
     due: [
       { ...first, parked: true, stepsLabel: 'Steps 1/2 done (50%) · next: one', headingPath: ['Atlas', 'Actions', 'Deeper'] },
-      { ...first, dueLabel: undefined, overdue: undefined, headingPath: ['Atlas'] },
+      { ...first, dueLabel: undefined, dueParts: undefined, overdue: undefined, headingPath: ['Atlas'] },
       { ...first, stale: true, overdue: false },
       { ...first, overdue: true },
     ],
@@ -69,7 +69,7 @@ function createDays(): Array<[string, CalendarDayDetail]> {
     ['a full day', full],
     ['every group shown whole, and rows with every part', extras],
     ['a quiet day with no note', createCalendarDay(index, '2026-09-22', context)],
-    ['a later day, with a repeat', createCalendarDay(index, '2026-10-02', context, { showRepeats: true })],
+    ['a later day, with a repeat', createCalendarDay(index, '2026-10-02', context)],
   ];
 }
 

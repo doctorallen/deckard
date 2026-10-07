@@ -21,9 +21,11 @@ Before a task edit or extraction, Deckard checks the source is unchanged since i
 - **Per workspace:** favorite tags and entities, pinned notes, saved searches, Home's widgets, tag and note view counts, and the custom task order.
 - **Per machine:** sort modes, column counts, layouts, and page sizes.
 
-**Favorites, pins, and saved searches** are never deleted on their own. When their tag or note is gone, `Deckard: Tidy Favorites, Pins, and Saved Searches` lists them and asks before removing them.
+What names your notes belongs to the folder it describes, so opening another project cannot disturb it. Upgrading from 1.18 or earlier hands what was stored machine-wide to the first workspace you open.
 
-**Copies:** Deckard keeps the last twenty copies. `Deckard: Restore Favorites, Pins, and Searches from a Copy` takes one back. `Deckard: Export Favorites, Pins, and Searches` writes a JSON file that `Deckard: Import` reads back. Import and Restore write a copy of what is there before they replace it, so either can be taken back with Restore; a window with no folder open keeps no copies, and says so before it replaces anything.
+**Favorites, pins, and saved searches** are never deleted on their own. When their tag or note is gone, `Deckard: Tidy Favorites, Pins, and Saved Searches` lists them and asks before removing them. Only what Deckard works out for itself, view counts and access order, is cleaned up automatically.
+
+**Copies:** a moment after each change, Deckard writes a copy of what this workspace remembers into the workspace's storage, and keeps the last twenty. `Deckard: Restore Favorites, Pins, and Searches from a Copy` offers them newest first and takes one back. `Deckard: Export Favorites, Pins, and Searches` writes a JSON file that `Deckard: Import Favorites, Pins, and Searches` reads back. Import and Restore write a copy of what is there before they replace it, so either can be taken back with Restore; a window with no folder open keeps no copies, and says so before it replaces anything.
 
 ## Limitations and troubleshooting
 
@@ -34,7 +36,7 @@ Before a task edit or extraction, Deckard checks the source is unchanged since i
 - **The Dashboard is empty:** make sure a workspace is open, its Markdown files are within the configured scope, and they use the Markdown patterns shown above.
 - **Related Notes shows no results:** open a saved Markdown note containing a tag, then check that another saved note uses the same tag.
 - **A task is missing from the Tasks view:** it may be parked. Search `is:parked`.
-- **A task or section is missing:** confirm the task is an unordered checklist item, the heading is an ATX heading such as `## Heading`, and `deckard.parseInlineTags` is enabled for tagged non-heading lines.
+- **A task or section is missing:** confirm the task is an unordered checklist item, the heading is an ATX heading such as `## Heading`, and `deckard.noteBoundaries` is `line` for a tagged line that is not a heading to be an entry of its own.
 - **A heading is missing from the Outline:** the Outline shows ATX headings only, not underlined `Title`/`===` headings, and excludes headings in fenced code blocks.
 - **Content in a code block:** text in fenced code is found by Find and a search's words, but tags, tasks, and links inside it are ignored, and it is left out of completion.
 - **A numeric hash is missing:** numeric-only `#` tokens are not tags. Use an `@` marker or include a non-numeric character.

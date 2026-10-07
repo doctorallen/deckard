@@ -387,7 +387,16 @@ module.exports = {
   EndOfLine: { LF: 1, CRLF: 2 },
   QuickPickItemKind: { Separator: -1, Default: 0 },
   TextEditorRevealType: { Default: 0, InCenter: 1, InCenterIfOutsideViewport: 2, AtTop: 3 },
+  /** What a tab shows, which no tab here ever does: Context reads the active tab's to press the page in front. */
+  TabInputWebview: class TabInputWebview {},
+  TabInputText: class TabInputText {},
   window: {
+    /** One group with no tab in front, whose tabs never change. */
+    tabGroups: {
+      activeTabGroup: { activeTab: undefined },
+      onDidChangeTabs: new EventEmitter().event,
+      onDidChangeTabGroups: new EventEmitter().event,
+    },
     createWebviewPanel,
     /**
      * Records the message in `_test.shown.info` and answers with the button a

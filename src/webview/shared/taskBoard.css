@@ -39,6 +39,8 @@
 }
 .board-column.is-overdue .board-column-title { color: var(--danger); }
 .board-count { color: var(--muted); }
+/* A status column's character, after its name, quieter than it: In progress [/]. */
+.board-column-symbol { margin-left: var(--space-1); color: var(--muted); white-space: pre; }
 /* A column with hundreds of tasks scrolls in place: without this one long
    column made the whole page hundreds of cards tall, and dragging to a far
    column meant scrolling away from both.
@@ -73,7 +75,11 @@
    outweigh the theme sheet, which is laid down after this one. */
 .board-cards .board-card:hover { transform: none; }
 .board-card.dragging { opacity: .45; }
-.board-card .task-title { padding-right: var(--space-6); }
+/* Where a card dragged within its column lands, on a board sorted by rank:
+   a line between two cards that takes no room of its own, so the cards
+   don't jump while the pointer moves. */
+.rank-drop-line { --rank-line-pull: calc(var(--space-2) / -2 - 1px); height: 2px; margin-block: var(--rank-line-pull); border-radius: 1px; background: var(--amber); pointer-events: none; }
+.board-card .task-title, .board-card .parent-tag-line { padding-right: var(--space-6); }
 /* The details are a row that wraps between them, with a gap where a
    separator used to be: a "·" at the end of a wrapped line dangled there
    with nothing after it. A detail wider than the column on its own, as
@@ -81,7 +87,10 @@
    wraps inside itself rather than widening every card in the column. */
 .board-details { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-2); margin: 0; }
 .board-details span { min-width: 0; white-space: normal; }
-.board-details .board-date { display: inline; white-space: nowrap; }
+/* A date moves to the next line whole, and breaks only at its own spaces
+   when it is wider than the column, as a long format such as "Wednesday,
+   16 September 2026" can be; an ISO date never is. */
+.board-details .board-date { display: inline-block; max-width: 100%; white-space: normal; }
 /* Written to outweigh a theme's own .task .source, which LCARS lays down
    after this sheet and which took the color off "overdue 20 days". */
 .task .board-details .overdue { color: var(--danger); }
@@ -120,12 +129,11 @@
 .task-row:has(> .row-menu) { padding-right: var(--space-6); }
 .result-table .row-menu { position: static; }
 .result-table .result-menu { width: 36px; }
-.board-empty { margin: 0; padding: var(--space-3); border: 1px dashed var(--line); color: var(--muted); font-size: var(--text-sm); text-align: center; }
 .board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); color: var(--muted); font-size: var(--text-sm); }
-.board-hint code { font-family: var(--font-mono); color: var(--text); }
 .board-hint button { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
+.board-empty { margin: 0; padding: var(--space-3); border: 1px dashed var(--line); color: var(--muted); font-size: var(--text-sm); text-align: center; }
 .board-more { margin: 0; color: var(--muted); font-size: var(--text-xs); }
-/* A new task captured straight into a column, at its foot. */
+/* A column's + Add task, which starts Add Task in that column. */
 .board-add { justify-self: start; min-height: 24px; padding: 2px var(--space-2); border-style: dashed; background: transparent; color: var(--muted); font-size: var(--text-xs); }
 /* While a card is held, a column that will not take it fades its cards and
    says why, rather than letting the drop fail without a word. */

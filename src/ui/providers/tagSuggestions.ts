@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { hasAtxHeadingClosingHashes } from '../../domain/markdown/parser';
+import { hasAtxHeadingClosingHashes, PERSON_MARKER } from '../../domain/markdown/parser';
 import {
   getTagCompletionContext,
   matchesTagCompletion,
@@ -11,7 +11,6 @@ import { isMarkdownFile } from '../../core/workspace/scanner';
 import { findQueryBlocks, isQueryBlockLine } from '../state/queryBlockState';
 import { whenPublished } from '../../core/workspace/publishing';
 import { isParkedFile, isParkedOnlyTag } from '../../domain/index/parked';
-import { readPersonMarker } from '../commands/parseSettings';
 import { WorkspaceIndex } from '../../domain/model';
 import { findFencedLines } from '../../domain/markdown/lineShapes';
 
@@ -25,9 +24,6 @@ interface TagIndexSource {
   /** The note's path in the index, which says whether it is parked. */
   getFilePath?(uri: vscode.Uri): string;
 }
-
-/** Whether tag completion is on for a document, from `deckard.enableTagAutocomplete`. */
-type TagAutocompleteEnabled = (document: vscode.TextDocument) => boolean;
 
 /** Where tags are completed: every Markdown file, which the provider narrows to notes. */
 const TAG_SELECTOR: vscode.DocumentSelector = { pattern: '**/*.md' };
@@ -51,19 +47,8 @@ const TAG_TRIGGER_CHARACTERS = [
 export class TagCompletionProvider implements vscode.Disposable {
   private readonly registrations: vscode.Disposable[] = [];
 
-  /**
-   * Takes the index to complete from and the setting that turns completion
-   * off; nothing is registered until `register`.
-   */
-  public constructor(
-    private readonly indexer: TagIndexSource,
-    private readonly isAutocompleteEnabled: TagAutocompleteEnabled = (
-      document,
-    ) =>
-      vscode.workspace
-        .getConfiguration('deckard', document.uri)
-        .get<boolean>('enableTagAutocomplete', true),
-  ) {}
+  /** Takes the index to complete from; nothing is registered until `register`. */
+  public constructor(private readonly indexer: TagIndexSource) {}
 
   /**
    * Registers the provider for Markdown files with the characters that start
@@ -98,23 +83,14 @@ export class TagCompletionProvider implements vscode.Disposable {
     document: vscode.TextDocument,
     position: vscode.Position,
   ): Promise<vscode.CompletionItem[]> {
-    if (
-      !this.isAutocompleteEnabled(document) ||
-      !isMarkdownFile(document.uri) ||
-      !(this.indexer.isNotesFile?.(document.uri) ?? true)
-    ) {
+    if (!isMarkdownFile(document.uri) || !(this.indexer.isNotesFile?.(document.uri) ?? true)) {
       return [];
     }
 
     // Punctuation such as `.` and `,` also triggers completion, so the cursor's
     // line is checked for a tag before anything reads the whole document.
     const line = document.lineAt(position.line).text;
-    const personMarker = readPersonMarker(document.uri);
-    const context = getTagCompletionContext(
-      line,
-      position.character,
-      personMarker,
-    );
+    const context = getTagCompletionContext(line, position.character);
     if (!context) {
       return [];
     }
@@ -144,7 +120,7 @@ export class TagCompletionProvider implements vscode.Disposable {
     // parked note, where those are the tags in use.
     const filePath = this.indexer.getFilePath?.(document.uri);
     const offerParked = filePath !== undefined && isParkedFile(index, filePath);
-    return selectTagCompletions(index, context, { personMarker, offerParked }).map((row) =>
+    return selectTagCompletions(index, context, offerParked).map((row) =>
       toCompletionItem(row, context, position),
     );
   }
@@ -165,12 +141,12 @@ interface TagCompletion {
 function selectTagCompletions(
   index: WorkspaceIndex,
   context: TagCompletionContext,
-  { personMarker, offerParked }: { personMarker: string; offerParked: boolean },
+  offerParked: boolean,
 ): TagCompletion[] {
   const query = context.query.toLowerCase();
   return [...index.tags.values()]
     .filter((tag) =>
-      matchesTagCompletion(tag, context.marker, query, personMarker),
+      matchesTagCompletion(tag, context.marker, query, PERSON_MARKER),
     )
     .filter((tag) => offerParked || !isParkedOnlyTag(index, tag.key))
     .filter(
@@ -179,21 +155,18 @@ function selectTagCompletions(
     )
     .sort((left, right) => left.label.localeCompare(right.label))
     .map((tag) => ({
-      label: completionLabel(tag, context.marker, personMarker),
+      label: completionLabel(tag, context.marker),
       count: tag.count,
     }));
 }
 
 /**
- * A tag as it is written after the marker typed: a person with the person
- * marker in use, an `@` tag as `@name`, and any other tag as its label.
+ * A tag as it is written after the marker typed: a person after `@` by its
+ * key, and any other tag as its label.
  */
-function completionLabel(tag: TagInfo, marker: string, personMarker: string): string {
-  if (marker === personMarker && tag.key.startsWith('@')) {
-    return `${personMarker}${tag.key.slice(1)}`;
-  }
-  if (marker === '@' && tag.key.startsWith('#tag-at/')) {
-    return `@${tag.key.slice('#tag-at/'.length)}`;
+function completionLabel(tag: TagInfo, marker: string): string {
+  if (marker === PERSON_MARKER && tag.key.startsWith('@')) {
+    return `${PERSON_MARKER}${tag.key.slice(1)}`;
   }
   return tag.label;
 }

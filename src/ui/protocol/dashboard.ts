@@ -39,7 +39,6 @@ import type {
   SetDisplayMessage,
   SetZenModeMessage,
   TagOverviewCard,
-  TagTitleDisplayMode,
   ToggleTaskMessage,
 } from './shared';
 
@@ -102,7 +101,6 @@ export interface DashboardSnapshot {
    */
   taskGlance?: TaskGlance;
   tagColumns: DashboardColumnCount;
-  tagTitleDisplayMode: TagTitleDisplayMode;
   tagSortMode: TagSortMode;
   entitySortMode: TagSortMode;
   selectedTag?: string;
@@ -295,7 +293,7 @@ export interface CreateTagHubMessage {
   tagKey: string;
 }
 
-/** Captures a next action for a tag that has nothing open. */
+/** Adds a next action, to today's note, for a tag that has nothing open. */
 export interface AddNextActionMessage {
   type: 'addNextAction';
   tagKey: string;

@@ -6,7 +6,6 @@ import { listedParkedTags } from '../../../../domain/index/parked';
 import { resolveIndexedTagKey } from '../../../../domain/index/tagNavigation';
 import { EntityNamespaceAliases, formatEntityTitle } from '../../../../domain/markdown/parser';
 import type { Section, Task, WorkspaceIndex } from '../../../../domain/model';
-import type { TagTitleDisplayMode } from '../../../../domain/model/tags';
 import { formatQuery } from '../../../../domain/query/queryFormat';
 import { parseQuery } from '../../../../domain/query/queryParser';
 import type { ExportService } from '../../../../services/exportService';
@@ -18,14 +17,13 @@ import { editResults } from '../../../commands/bulkEditPrompts';
 import { presentExport } from '../../../commands/exportResults';
 import { createHubNote } from '../../../commands/hubNote';
 import { NoteOpening, openNoteAt } from '../../../commands/noteOpening';
-import { settingTarget, writeSetting } from '../../../commands/settings';
 import { setPinned } from '../../../commands/pinNote';
 import { readEntityNamespaceAliases } from '../../../commands/parseSettings';
 import { readQueryContext } from '../../../commands/queryContext';
 import { mergeIndexedTag } from '../../../commands/renameTag';
 import { offerSavedSearchOnHome } from '../../../commands/savedSearchHome';
 import type { TaskWrites } from '../../../commands/taskActions';
-import { formatQueryBlock } from '../../../state/queryBlockState';
+import { formatQueryBlock, queryBlockSortOf } from '../../../state/queryBlockState';
 import { SearchHistory, SearchHistoryEntry } from '../../../state/searchHistory';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
@@ -46,7 +44,6 @@ import {
 import { getSearchPageHtml } from '../../searchPageHtml';
 import type { PageChrome } from '../../components';
 import { narrowSearchPageMessage } from './messages';
-import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 import { createSearchPageSnapshot, evaluateSearchPage, resolveQueryTagIntersection } from '../../../state/searchPageState';
 import { createQueryViewState } from '../../../state/querySuggestions';
 import { findWikiLinkPlace, parseWikiTarget } from '../../../../domain/index/backlinks';
@@ -190,7 +187,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       goToPage: goToPage(),
       saveTagOverviewFilter: (message, page) => this.saveSearch(page, message.query),
       mergeTags: (message) => this.mergeTags(message.sourceKey, message.targetKey),
-      excludeHubLinks: () => excludeHubLinks(),
+      setHubOpen: (message) => preferences.display.setHubNoteCollapsed(!message.open),
       createHubNote: async () => {
         const tagKey = this.currentSnapshot().tag?.key;
         if (tagKey) {
@@ -374,14 +371,9 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       {
         queryContext,
         originQuery: this.originQuery,
-        tagTitleDisplayMode: getTagTitleDisplayMode(),
         notePage: this.notePage,
         taskPage: this.taskPage,
         previewWords: this.previewWords,
-        includeHubLinks: includesHubLinks(),
-        enableHeadingTagRelationships: vscode.workspace
-          .getConfiguration('deckard')
-          .get<boolean>('enableHeadingTagRelationships', true),
         // Correcting a spelling needs the full-text cache. An indexer
         // without one answers no search page any the worse for it, so the
         // page asks only when there is something to ask.
@@ -397,7 +389,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
         forward: this.history.canGoForward,
       },
       ...(snapshot.hub
-        ? { hub: { ...snapshot.hub, expanded: isHubNoteExpanded() } }
+        ? { hub: { ...snapshot.hub, expanded: preferences.hubNoteCollapsed !== true } }
         : {}),
       // The results come from the last search that parsed; only the box
       // shows the text that did not.
@@ -536,7 +528,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     const search = this.queryText.trim();
     const sort = this.search.preferences.reader.value.tagOverviewSortMode;
     const liveBlock = search
-      ? () => formatQueryBlock(search, sort === 'created' || sort === 'updated' ? { sort } : {})
+      ? () => formatQueryBlock(search, queryBlockSortOf(sort, 'notes'))
       : undefined;
     await presentExport(plan, liveBlock);
   }
@@ -568,7 +560,6 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     }
     // The same list the page shows: on a tag's page, what links its hub too.
     const { results } = evaluateSearchPage(index, this.queryText, {
-      includeHubLinks: includesHubLinks(),
       queryContext: readQueryContext(),
     });
     return {
@@ -713,39 +704,4 @@ function getPageTitle(snapshot: SearchPageSnapshot): string {
     return 'Deckard Search';
   }
   return `Search: ${text.length > 40 ? `${text.slice(0, 39)}…` : text}`;
-}
-
-/** Whether a tag's page lists what only links its hub note. */
-function includesHubLinks(): boolean {
-  return vscode.workspace
-    .getConfiguration('deckard')
-    .get<boolean>('tagOverview.includeHubLinks', true);
-}
-
-/** Whether a tag's hub note starts open. */
-function isHubNoteExpanded(): boolean {
-  return vscode.workspace
-    .getConfiguration('deckard')
-    .get<boolean>('tagOverview.hubNoteExpanded', true);
-}
-
-/** How a tag's title is drawn in a card, from `deckard.tagTitleDisplayMode`. */
-function getTagTitleDisplayMode(): TagTitleDisplayMode {
-  return normalizeTagTitleDisplayMode(
-    vscode.workspace
-      .getConfiguration('deckard')
-      .get<unknown>('tagTitleDisplayMode', 'inline'),
-  );
-}
-
-/**
- * A tag page's Leave Them Out, beside the entries listed only because they
- * link from the tag's hub note: turns
- * `deckard.tagOverview.includeHubLinks` off for every tag's page, where the
- * value in force is set. It was always written to the user's settings, so
- * in a workspace that set it the page kept listing them. Returns whether it
- * was written.
- */
-export function excludeHubLinks(): Promise<boolean> {
-  return writeSetting('tagOverview.includeHubLinks', false, settingTarget('tagOverview.includeHubLinks'));
 }

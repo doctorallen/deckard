@@ -3,7 +3,6 @@ import * as vscode from 'vscode';
 import type { IndexReader, IndexScanStatus, IndexUpdates } from '../../../../core/workspace/indexReader';
 import { findWikiLinkPlace, parseWikiTarget } from '../../../../domain/index/backlinks';
 import type { Task } from '../../../../domain/model';
-import { readStatusNamespace } from '../../../../domain/tasks/taskPolicy';
 import type { NavigationService } from '../../../../services/navigationService';
 import type { NotePagePageToHost, NotePageSnapshot } from '../../../protocol/notePage';
 import { openResultAt } from '../../../commands/navigation';
@@ -135,7 +134,6 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
     }
     const snapshot = createNotePageSnapshot(this.notes.indexer.getSnapshot(), this.current.filePath, {
       queryContext: readQueryContext(),
-      statusNamespace: readStatusNamespace(vscode.workspace.getConfiguration('deckard')),
       ...(this.current.line === undefined ? {} : { focusLine: this.current.line }),
       history: { back: this.back.length > 0, forward: this.forward.length > 0 },
       visit: this.visit,

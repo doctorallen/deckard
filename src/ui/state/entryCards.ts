@@ -11,13 +11,12 @@ import type { InlineToken } from '../../domain/model/inline';
 import {
   getHeadingPath,
   getInlineSource,
-  getNoteTitle,
   getTitleTags,
 } from '../../domain/ranking/entryLabels';
 import { describeDueDate } from '../../domain/markdown/dueWording';
 import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
 import { TagOverviewHub } from '../protocol/searchPage';
-import { ParsedFile, Section, Task, TagTitleDisplayMode, TagOverviewSortMode, TaskSortMode } from '../../domain/model';
+import { ParsedFile, Section, Task, TagOverviewSortMode, TaskSortMode } from '../../domain/model';
 import { DashboardTask, TagOverviewCard } from '../protocol/shared';
 import { DashboardNote } from '../protocol/dashboard';
 import { stripTags } from '../../domain/markdown/parser';
@@ -34,43 +33,51 @@ import type { EntryLine } from '../../domain/index/noteEntryIndex';
 /**
  * Sorts tasks by the selected policy and falls back to source location.
  *
- * Missing filesystem dates sort last, and the path/line fallback makes results
- * deterministic when several tasks share the same timestamp or rank.
+ * Missing filesystem dates sort last either way, and the path/line fallback
+ * makes results deterministic when several tasks share the same timestamp,
+ * title, or rank.
  */
 export function sortTasks(
   tasks: Task[],
   taskOrder: string[],
   taskSortMode: TaskSortMode = 'rank',
 ): Task[] {
-  const order = new Map(taskOrder.map((taskId, index) => [taskId, index]));
-  return tasks.sort((left, right) => {
-    if (taskSortMode === 'created') {
-      const result = compareDatesDescending(left.createdAt, right.createdAt);
-      if (result !== 0) {
-        return result;
-      }
-    }
+  const compare = createTaskComparator(taskOrder, taskSortMode);
+  return tasks.sort((left, right) =>
+    compare(left, right) ||
+    left.filePath.localeCompare(right.filePath) ||
+    left.lineNumber - right.lineNumber,
+  );
+}
 
-    if (taskSortMode === 'updated') {
-      const result = compareDatesDescending(left.updatedAt, right.updatedAt);
-      if (result !== 0) {
-        return result;
-      }
+/**
+ * How two tasks compare by the selected policy alone, 0 when it can't tell
+ * them apart, so a caller can fall back to an order of its own, as the
+ * board's columns fall back to due date and priority.
+ */
+export function createTaskComparator(
+  taskOrder: readonly string[],
+  taskSortMode: TaskSortMode,
+): (left: Task, right: Task) => number {
+  switch (taskSortMode) {
+    case 'created':
+      return (left, right) => compareDatesDescending(left.createdAt, right.createdAt);
+    case 'createdOldest':
+      return (left, right) => compareDatesAscending(left.createdAt, right.createdAt);
+    case 'updated':
+      return (left, right) => compareDatesDescending(left.updatedAt, right.updatedAt);
+    case 'updatedOldest':
+      return (left, right) => compareDatesAscending(left.updatedAt, right.updatedAt);
+    case 'alphabetical':
+      return (left, right) => baseCollator.compare(left.title, right.title);
+    case 'alphabeticalReverse':
+      return (left, right) => baseCollator.compare(right.title, left.title);
+    case 'rank': {
+      const order = new Map(taskOrder.map((taskId, index) => [taskId, index]));
+      return (left, right) =>
+        (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER);
     }
-
-    if (taskSortMode === 'rank') {
-      const leftOrder = order.get(left.id) ?? Number.MAX_SAFE_INTEGER;
-      const rightOrder = order.get(right.id) ?? Number.MAX_SAFE_INTEGER;
-      if (leftOrder !== rightOrder) {
-        return leftOrder - rightOrder;
-      }
-    }
-
-    return (
-      left.filePath.localeCompare(right.filePath) ||
-      left.lineNumber - right.lineNumber
-    );
-  });
+  }
 }
 
 /**
@@ -97,6 +104,11 @@ export function sortDashboardNotes(
   );
 }
 
+/** Words with their first letter in capitals, as a row starts its due date. */
+function capitalize(words: string): string {
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 /**
  * Adds the title as tokens and the source context without changing the domain task.
  * An open task's due date is worded against the context's today and policy.
@@ -104,11 +116,11 @@ export function sortDashboardNotes(
 export function createDashboardTask(
   task: Task,
   sections: Map<string, Section>,
-  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'> & Partial<Pick<QueryContext, 'dateFormats'>>,
 ): DashboardTask {
   const due =
     isOpenTask(task) && task.dueAt !== undefined
-      ? describeDueDate(task.dueAt, context.now, context.taskPolicy, task.dueText)
+      ? describeDueDate(task.dueAt, context.now, context.taskPolicy, { dueText: task.dueText, formats: context.dateFormats })
       : undefined;
   return {
     task,
@@ -124,7 +136,8 @@ export function createDashboardTask(
     fileName: task.filePath.split('/').pop() ?? task.filePath,
     ...(due
       ? {
-          dueLabel: due.label.charAt(0).toUpperCase() + due.label.slice(1),
+          dueLabel: capitalize(due.label),
+          dueParts: { ...due.parts, state: capitalize(due.parts.state) },
           overdue: due.overdue,
           ...(due.stale ? { stale: true } : {}),
           ...(due.days === 0 ? { dueToday: true } : {}),
@@ -143,13 +156,11 @@ export function createTagOverviewCard(
   section: Section,
   {
     sectionAccessCounts,
-    tagTitleDisplayMode,
     pinned = false,
     sections,
     content,
   }: {
     sectionAccessCounts: Record<string, number>;
-    tagTitleDisplayMode: TagTitleDisplayMode;
     pinned?: boolean;
     sections?: ReadonlyMap<string, Section>;
     /** The entry's text, read through the untagged headings it owns; its own text when not given. */
@@ -160,7 +171,7 @@ export function createTagOverviewCard(
     id: section.id,
     ...(sections ? { headingPath: getHeadingPath(section, sections) } : {}),
     filePath: section.filePath,
-    heading: getNoteTitle(section.heading, tagTitleDisplayMode),
+    heading: section.heading,
     ...(pinned ? { pinned } : {}),
     titleTags: getTitleTags(
       section.tags,
@@ -269,13 +280,6 @@ export function createTagOverviewHub(
   };
 }
 
-/** Reads the tag-title setting: `separate` when it says so, `inline` for anything else. */
-export function normalizeTagTitleDisplayMode(
-  value: unknown,
-): TagTitleDisplayMode {
-  return value === 'separate' ? 'separate' : 'inline';
-}
-
 /**
  * `localeCompare` with options builds a collator on every call, which made
  * sorting thousands of cards the slowest part of the Dashboard. These compare
@@ -302,22 +306,9 @@ export function compareTagOverviewCards(
   right: SortableNote,
   sortMode: TagOverviewSortMode,
 ): number {
-  if (sortMode === 'created') {
-    const result = compareDatesDescending(left.createdAt, right.createdAt);
-    if (result !== 0) {
-      return result;
-    }
-  }
-
-  if (sortMode === 'updated') {
-    const result = compareDatesDescending(left.updatedAt, right.updatedAt);
-    if (result !== 0) {
-      return result;
-    }
-  }
-
-  if (sortMode === 'access' && left.accessCount !== right.accessCount) {
-    return right.accessCount - left.accessCount;
+  const result = compareNotesBy(left, right, sortMode);
+  if (result !== 0) {
+    return result;
   }
 
   return (
@@ -325,6 +316,37 @@ export function compareTagOverviewCards(
     defaultCollator.compare(left.filePath, right.filePath) ||
     left.startLine - right.startLine
   );
+}
+
+/** How two notes compare by the selected mode alone, 0 when it can't tell them apart. */
+function compareNotesBy(left: SortableNote, right: SortableNote, sortMode: TagOverviewSortMode): number {
+  switch (sortMode) {
+    case 'created':
+      return compareDatesDescending(left.createdAt, right.createdAt);
+    case 'createdOldest':
+      return compareDatesAscending(left.createdAt, right.createdAt);
+    case 'updated':
+      return compareDatesDescending(left.updatedAt, right.updatedAt);
+    case 'updatedOldest':
+      return compareDatesAscending(left.updatedAt, right.updatedAt);
+    case 'access':
+      return right.accessCount - left.accessCount;
+    case 'alphabeticalReverse':
+      return baseCollator.compare(right.heading, left.heading);
+    case 'alphabetical':
+      return 0;
+  }
+}
+
+/** Oldest first, with unknown dates after known ones, as compareDatesDescending keeps them. */
+function compareDatesAscending(
+  left: number | undefined,
+  right: number | undefined,
+): number {
+  if (left === undefined || right === undefined) {
+    return compareDatesDescending(left, right);
+  }
+  return left - right;
 }
 
 /**

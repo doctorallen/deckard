@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import {
   extractTags,
-  getPersonMarker,
+  PERSON_MARKER,
   stripTags,
 } from '../../domain/markdown/parser';
 import { BLOCK_ID_PATTERN } from '../../domain/markdown/taskFields';
@@ -47,13 +47,8 @@ export async function linkCurrentHeading(
     return;
   }
 
-  const personMarker = getPersonMarker(
-    vscode.workspace
-      .getConfiguration('deckard', editor.document.uri)
-      .get<unknown>('personMarker', '@'),
-  );
   const tagColumn = findHeadingTagColumn(line.text);
-  const headingName = stripTags(line.text.slice(0, tagColumn).replace(/^ {0,3}#{1,6}[ \t]+/, ''), personMarker);
+  const headingName = stripTags(line.text.slice(0, tagColumn).replace(/^ {0,3}#{1,6}[ \t]+/, ''));
   const entities = [...indexer.getSnapshot().entities.values()];
   const choice = await vscode.window.showQuickPick(
     [
@@ -79,13 +74,13 @@ export async function linkCurrentHeading(
     return;
   }
 
-  const entity = choice.entity ?? (await createEntity(headingName, personMarker));
+  const entity = choice.entity ?? (await createEntity(headingName));
   if (!entity) {
     return;
   }
 
   if (
-    extractTags(line.text, undefined, personMarker).some(
+    extractTags(line.text).some(
       (tag) => tag.key === entity.key,
     )
   ) {
@@ -128,7 +123,6 @@ export function findHeadingTagColumn(text: string): number {
  */
 async function createEntity(
   defaultName: string,
-  personMarker: string,
 ): Promise<Pick<Entity, 'key' | 'label'> | undefined> {
   const kinds: EntityKindChoice[] = [
     { label: 'Person', value: 'person' },
@@ -158,7 +152,7 @@ async function createEntity(
   if (!slug) {
     return undefined;
   }
-  const marker = kind.value === 'person' ? personMarker : '#';
+  const marker = kind.value === 'person' ? PERSON_MARKER : '#';
   const namespace =
     kind.value === 'organization' ? 'org' : kind.value;
   const label =

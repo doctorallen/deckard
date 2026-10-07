@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import { extractTags, getEntityKind } from '../../domain/markdown/parser';
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { readEntityNamespaceAliases, readPersonMarker } from '../commands/parseSettings';
+import { readEntityNamespaceAliases } from '../commands/parseSettings';
 
 /**
  * Offers a quiet, reviewable entry point for headings that lack an entity tag.
@@ -52,10 +52,9 @@ export class EntityHeadingSuggestions implements vscode.Disposable {
     }
     const line = document.lineAt(range.start.line).text;
     const aliases = readEntityNamespaceAliases(document.uri);
-    const personMarker = readPersonMarker(document.uri);
     if (
       !/^ {0,3}#{1,6}[ \t]+/.test(line) ||
-      extractTags(line, aliases, personMarker).some((tag) =>
+      extractTags(line, aliases).some((tag) =>
         getEntityKind(tag, aliases),
       )
     ) {

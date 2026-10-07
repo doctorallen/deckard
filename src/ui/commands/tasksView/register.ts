@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 
 import type { Services } from '../../../composition/services';
-import { getAgendaQuery, pickAgendaGrouping, registerAgendaCommands } from '../agendaActions';
+import { getAgendaQuery, pickAgendaGrouping, pickAgendaSort, registerAgendaCommands } from '../agendaActions';
 import { clearSetting } from '../settings';
 import { exportTaskCalendarCommand, TaskCalendarFile } from '../taskCalendarFile';
 import { registerCommand } from '../runCommand';
 
 /**
- * The Tasks view: its menus (registerAgendaCommands), its grouping, and its
+ * The Tasks view: its menus (registerAgendaCommands), its grouping, its sort, and its
  * search, edited on the Task Board or cleared; and the tasks as a calendar
  * file, exported once or kept up to date.
  */
@@ -25,6 +25,7 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.agenda.setGrouping', () =>
       pickAgendaGrouping(agenda, indexer.getSnapshot()),
     ),
+    registerCommand('deckard.agenda.setSort', () => pickAgendaSort(agenda)),
     // The board is the search editor: the view's search opens there to be
     // tried and changed, and its Save to Tasks view keeps it.
     registerCommand('deckard.agenda.editQuery', () =>

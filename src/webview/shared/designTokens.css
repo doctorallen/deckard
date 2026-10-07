@@ -20,8 +20,6 @@
   --tag-text: var(--cyan);
   /* A text tag's #namespace/, told from its name by color, 4.5:1 or better. */
   --tag-namespace: var(--muted);
-  /* An entry's file and line, drawn under every entry (Display's File & line: always). */
-  --source-ink: var(--muted);
   --panel-deep: #050608;
   --text: #D9E0E4;
   --muted: #7D8792;

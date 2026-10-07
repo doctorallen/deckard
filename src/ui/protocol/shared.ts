@@ -7,9 +7,10 @@ import type { BlockToken } from '../../domain/model/blocks';
 import type { InlineToken } from '../../domain/model/inline';
 import type { QueryViewState } from '../../domain/model/query';
 import type { TagReference } from '../../domain/model/tags';
-import type { Task, TaskStatusType } from '../../domain/model/tasks';
+import type { DueParts, Task, TaskStatusType } from '../../domain/model/tasks';
 
 export type { TagReference, TagTitleDisplayMode } from '../../domain/model/tags';
+export type { DueParts } from '../../domain/model/tasks';
 
 /**
  * A task's status as its box draws it, when it is neither a plain to do nor
@@ -48,6 +49,8 @@ export interface DashboardTask {
    * by the host so every list says it the same way. Open, dated tasks only.
    */
   dueLabel?: string;
+  /** `dueLabel` in the parts a row draws it in; set with `dueLabel`. */
+  dueParts?: DueParts;
   /** Whether the due date has passed; set with `dueLabel`. */
   overdue?: boolean;
   /** Whether it passed so long ago the task needs a new date; drawn muted. */
@@ -58,6 +61,8 @@ export interface DashboardTask {
   stepsLabel?: string;
   /** Its status, when it is neither a plain to do nor done. */
   status?: DrawnStatus;
+  /** The tag of the nearest tagged heading it is under, or its note's, where a list shows them. */
+  parentTag?: TagReference;
 }
 
 /**
@@ -208,13 +213,13 @@ export interface ListGoToMessage {
   type: 'listGoTo';
 }
 
-/** A page chosen from the eyebrow's menu, by its id, such as `board`. */
+/** A page chosen from the eyebrow's menu, or from the pages at the top of Context, by its id, such as `board`. */
 export interface GoToPageMessage {
   type: 'goToPage';
   page: string;
 }
 
-/** One page in the eyebrow's menu, with its hint, as the Pages view shows it. */
+/** One page in the eyebrow's menu, with its hint, as the top of Context shows it. */
 export interface GoToMenuPage {
   id: string;
   label: string;

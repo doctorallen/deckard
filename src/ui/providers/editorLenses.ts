@@ -17,7 +17,7 @@ import { findBreadcrumbs } from '../state/hubTree';
 import { getPeriodicNoteUri } from '../commands/dailyNote';
 import { CREATE_MISSING_NOTES_COMMAND } from '../commands/linkHealth';
 import { resolveSourceUri } from '../commands/navigation';
-import { getRolloverLookbackDays, getRolloverMode } from '../commands/rollover';
+import { getRolloverMode, ROLLOVER_LOOKBACK_DAYS } from '../commands/rollover';
 import { LINK_MENTIONS_COMMAND } from '../commands/unlinkedMentions';
 import { readEditorToggle } from './editorToggles';
 import { LazyCodeLens, locate, resolveLazyCodeLens } from './codeLenses';
@@ -26,6 +26,8 @@ import { findLinkProblems, findMissingNoteNames } from '../../domain/links/linkP
 import { formatLocalDate } from '../../domain/notes/periodicNotes';
 import { findUnlinkedMentions } from '../../domain/search/mentions';
 import { ParsedFile, Task, WorkspaceIndex } from '../../domain/model';
+import { formatDisplayDay } from '../../domain/markdown/dateFormat';
+import { readDateFormats } from '../commands/datePrompt';
 
 /** What the lenses read from the indexer, and when they redraw. */
 interface LensIndexSource {
@@ -210,7 +212,7 @@ function provideDailyNoteLenses({
     file,
     index,
     today: formatLocalDate(now),
-    lookbackDays: getRolloverLookbackDays(document.uri),
+    lookbackDays: ROLLOVER_LOOKBACK_DAYS,
     mode: getRolloverMode(document.uri) === 'migrate' ? 'migrate' : 'move',
   });
   if (!actions) {
@@ -235,8 +237,10 @@ function provideDailyNoteLenses({
       })),
     );
   }
+  // The days are written as the reader reads a date.
+  const formats = readDateFormats();
   if (actions.previous) {
-    const previous = actions.previous;
+    const previous = formatDisplayDay(actions.previous, formats);
     lenses.push(
       new LazyCodeLens(range, () => ({
         title: `‹ ${previous}`,
@@ -246,7 +250,7 @@ function provideDailyNoteLenses({
     );
   }
   if (actions.next) {
-    const next = actions.next;
+    const next = formatDisplayDay(actions.next, formats);
     lenses.push(
       new LazyCodeLens(range, () => ({
         title: `${next} ›`,

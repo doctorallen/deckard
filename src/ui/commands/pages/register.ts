@@ -6,9 +6,11 @@ import { registerCommand } from '../runCommand';
 import { openNoteAt } from '../noteOpening';
 import { findHubTagKey } from '../../state/hubTree';
 import { goToPage } from '../../views/pagesTree';
+import type { TaskStatusType } from '../../../domain/model';
+import { isTaskStatusType } from '../../../domain/tasks/taskStatuses';
 
 /**
- * Opening the pages: the Pages view and Go to…, Home, Stats, Help and
+ * Opening the pages: Go to…, Home, Stats, Help and
  * What's new, the Notes Graph and its nodes, the Calendar page, the Task
  * Board, the note page, and Related Notes for one entry.
  */
@@ -17,15 +19,16 @@ export function register(context: vscode.ExtensionContext, services: Services): 
   const { dashboard, stats, help, notesGraph, calendar: calendarPage, taskBoard, taskStatuses } = services.pages;
   const { readNotesGraphOptions } = services.pageCommands;
   const calendar = services.views.calendar;
-  // Every page, as the Pages view lists them (registered with the other
-  // sidebar webviews), from anywhere.
+  // Every page, as the top of Context lists them, from anywhere.
   context.subscriptions.push(registerCommand('deckard.goTo', () => goToPage(indexer, context.extensionUri)));
   context.subscriptions.push(
     registerCommand('deckard.showDashboard', () =>
       dashboard.show(),
     ),
     registerCommand('deckard.showStats', () => stats.show()),
-    registerCommand('deckard.editTaskStatuses', () => taskStatuses.show()),
+    // New status… on the board's gear, and Give It a Character after the
+    // move into checkboxes, open it on a new row.
+    registerCommand('deckard.editTaskStatuses', (options?: unknown) => taskStatuses.show(readNewStatusRow(options))),
     // A page may open Help at the section about it, such as the calendar's.
     registerCommand('deckard.showHelp', (anchor?: unknown) =>
       help.show(typeof anchor === 'string' && /^[\w-]+$/.test(anchor) ? anchor : undefined),
@@ -171,7 +174,11 @@ function registerGraphNodeCommands(services: Services): vscode.Disposable[] {
   ];
 }
 
-/** Related Notes for the entry a lens or hover was on, and its debug page. */
+/**
+ * Related Notes for the entry a lens or hover was on, and the page that
+ * shows how it ranks, for the entry a link names or, from the palette, the
+ * one the cursor is in.
+ */
 function registerEntryRelatedNotes(services: Services): vscode.Disposable[] {
   const { sidebarNotes } = services.views;
   const { relatedNotesDebug } = services.pages;
@@ -197,20 +204,42 @@ function registerEntryRelatedNotes(services: Services): vscode.Disposable[] {
     registerCommand(
       'deckard.showEntryRelatedNotesDebug',
       async (documentUri?: unknown, sourceLine?: unknown) => {
-        if (
-          typeof documentUri !== 'string' ||
-          typeof sourceLine !== 'number' ||
-          !Number.isInteger(sourceLine) ||
-          sourceLine < 1
-        ) {
+        const asked = readEntryArguments(documentUri, sourceLine);
+        if (!asked || !isMarkdownFile(asked.uri)) {
           return;
         }
-        const uri = vscode.Uri.parse(documentUri);
-        if (!isMarkdownFile(uri)) {
-          return;
-        }
-        await relatedNotesDebug.show(uri, sourceLine);
+        await relatedNotesDebug.show(asked.uri, asked.line);
       },
     ),
   ];
+}
+
+/**
+ * The new row Edit Task Statuses is asked to open with, from a command's
+ * argument: `{ newStatus: { name?, type? } }`, or none.
+ */
+function readNewStatusRow(options: unknown): { name: string; type: TaskStatusType } | undefined {
+  const newStatus = (options as { newStatus?: { name?: unknown; type?: unknown } } | undefined)?.newStatus;
+  if (!newStatus || typeof newStatus !== 'object') {
+    return undefined;
+  }
+  return {
+    name: typeof newStatus.name === 'string' ? newStatus.name.slice(0, 80) : '',
+    type: isTaskStatusType(newStatus.type) ? newStatus.type : 'todo',
+  };
+}
+
+/**
+ * The entry a command was asked about: the note and line a link names, or,
+ * run from the palette with neither, the line the cursor is on in the
+ * editor; undefined for anything else.
+ */
+function readEntryArguments(documentUri: unknown, sourceLine: unknown): { uri: vscode.Uri; line: number } | undefined {
+  if (documentUri === undefined && sourceLine === undefined) {
+    const editor = vscode.window.activeTextEditor;
+    return editor ? { uri: editor.document.uri, line: editor.selection.active.line + 1 } : undefined;
+  }
+  return typeof documentUri === 'string' && typeof sourceLine === 'number' && Number.isInteger(sourceLine) && sourceLine >= 1
+    ? { uri: vscode.Uri.parse(documentUri), line: sourceLine }
+    : undefined;
 }

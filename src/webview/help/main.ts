@@ -1,13 +1,14 @@
 /**
- * Help's page script: Help's body is the guide the host builds from the
- * manifest (decision Q6 of docs/implementation/20-webviews.md), so this only
- * moves around in it. It runs a command named in the guide, opens a guide
- * page in place of Help and comes back, goes to the section the host asks
- * for, and marks the section being read in the rail.
+ * Help's page script: Help is the guide, docs/guide, with its contents down
+ * the side (decision Q6 of docs/implementation/20-webviews.md has the host
+ * draw it). This asks the host for the guide page to show and shows it,
+ * shows What's new, which the host drew in the page, runs a command named
+ * in the guide, goes to the place the host asks for, and marks the page
+ * being read in the contents.
  *
  * Help is not kept running while its tab is hidden, so VS Code loads it
  * again when it is shown. What it saves with `setState` brings it back where
- * it was: the guide page it showed, and how far down it was scrolled.
+ * it was: the page it showed, and how far down it was scrolled.
  */
 import type { HelpGuideMessage, HelpHostToPage, HelpMessage } from '../../ui/protocol/help';
 import { installGoToMenu } from '../shared/goToMenu';
@@ -21,36 +22,41 @@ interface VsCodeApi {
 
 declare function acquireVsCodeApi(): VsCodeApi;
 
+/** A place in Help: a guide page by its file name, or What's new, at a heading when one is named. */
+interface Place {
+  page: string;
+  anchor?: string;
+}
+
 /**
  * What Help saves, so that shown again it comes back where it was: the
- * guide page it shows, if any, at the heading it was opened at, and the
- * section of Help it was opened from, for Back; how far down the window
+ * page it shows, at the heading it was opened at; how far down the window
  * was scrolled; and which drawing of the page saved it.
  * VS Code hands the state to the page whenever its HTML loads, and the host
- * draws the HTML anew for a theme or zen change, a section asked for while
+ * draws the HTML anew for a theme or zen change, a place asked for while
  * Help is hidden, and a window reload; each drawing opens where it is asked
- * to, as it always has, so a state saved by another drawing is not read.
+ * to, so a state saved by another drawing is not read.
  */
 interface HelpState {
-  guide?: { page: string; anchor?: string };
-  /** The section of Help the guide page was opened from, while one is shown. */
-  returnTo?: string;
+  place: Place;
   scrollY: number;
   /** The drawing of the page that saved it, from the nonce the host drew it with. */
   drawn: string;
 }
 
+/** What's new: drawn by the host in the page, not a page of the guide. */
+const WHATS_NEW = 'whats-new';
+/** The guide's own contents, which Help opens at when asked for no other place. */
+const CONTENTS = 'README';
 /** How long scrolling must pause before where it stopped is saved, in milliseconds. */
 const SAVE_DELAY = 200;
 
 const vscode = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : undefined;
-const article = document.querySelector<HTMLElement>('main > article');
 const guideView = document.getElementById('guide-view');
+const whatsNew = document.getElementById(WHATS_NEW);
 const drawn = drawingOf(document.currentScript);
-/** The section a guide page was opened from, for Back. */
-let returnTo: string | undefined;
-/** The guide page shown, while one is. */
-let shownGuide: HelpState['guide'];
+/** The place shown, once one is. */
+let shown: Place | undefined;
 /** The guide page asked for to come back to, and where it was scrolled. */
 let restoring: { page: string; scrollY: number } | undefined;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -72,21 +78,18 @@ function drawingOf(script: HTMLOrSVGScriptElement | null): string {
 /** What this drawing of the page saved, or undefined when it saved nothing. */
 function readState(): HelpState | undefined {
   const state = vscode?.getState() as Partial<HelpState> | undefined;
-  if (!state || state.drawn !== drawn || typeof state.scrollY !== 'number') {
+  if (!state || state.drawn !== drawn || typeof state.scrollY !== 'number' || typeof state.place?.page !== 'string') {
     return undefined;
   }
-  const guide = state.guide && typeof state.guide.page === 'string' ? state.guide : undefined;
-  const back = guide && typeof state.returnTo === 'string' ? { returnTo: state.returnTo } : {};
-  return { ...(guide ? { guide } : {}), ...back, scrollY: state.scrollY, drawn };
+  const { page, anchor } = state.place;
+  return { place: { page, ...(typeof anchor === 'string' ? { anchor } : {}) }, scrollY: state.scrollY, drawn };
 }
 
-/**
- * Saves which guide page is shown, if any, and where Back goes from it,
- * and how far down the window is.
- */
+/** Saves which page is shown, and how far down the window is. */
 function save(): void {
-  const back = shownGuide && returnTo ? { returnTo } : {};
-  vscode?.setState({ ...(shownGuide ? { guide: shownGuide } : {}), ...back, scrollY: window.scrollY, drawn });
+  if (shown) {
+    vscode?.setState({ place: shown, scrollY: window.scrollY, drawn });
+  }
 }
 
 /** Saves where scrolling stopped, once it has paused. */
@@ -95,115 +98,118 @@ function saveSoon(): void {
   saveTimer = setTimeout(save, SAVE_DELAY);
 }
 
-/** Scrolls `root`'s element with this id to the top, if it has one. */
-function revealIn(root: ParentNode, anchor: string | undefined): void {
-  const heading = anchor ? root.querySelector(`[id="${anchor.replace(/"/g, '')}"]`) : null;
-  heading?.scrollIntoView?.({ block: 'start' });
-}
-
-/**
- * Sets the guide view's markup: the way back, then the page. This is the
- * one place the page sets HTML. The page's HTML is trusted: the host
- * rendered it from the guide the VSIX ships (docs/guide), with VS Code's
- * Markdown engine, and nothing in it comes from the reader's notes. Its
- * scripts, if it had any, would not run: neither does a script set as
- * HTML, nor one without the page's nonce.
- */
-function setGuideHtml(view: HTMLElement, page: string, html: string): void {
-  const topics = page === 'README' ? '' : '<a href="#" class="guide-back" data-guide-page="README">All guide topics</a>';
-  view.innerHTML = `<div class="guide-bar"><a href="#" class="guide-back" data-action="guide-back">← Back to Help</a>${topics}</div>${html}`;
-}
-
-/** A guide page in place of Help, with the way back first. */
-function showGuide(message: HelpGuideMessage): void {
-  if (!article || !guideView) {
-    return;
-  }
-  setGuideHtml(guideView, message.page, message.html);
-  article.hidden = true;
-  guideView.hidden = false;
-  const comingBack = restoring?.page === message.page ? restoring : undefined;
-  restoring = undefined;
-  if (comingBack) {
-    window.scrollTo(0, comingBack.scrollY);
-  } else if (message.anchor) {
-    revealIn(guideView, message.anchor);
-  } else {
-    window.scrollTo(0, 0);
-  }
-  const title = guideView.querySelector<HTMLElement>('h1');
-  if (title) {
-    title.setAttribute('tabindex', '-1');
-    title.focus({ preventScroll: Boolean(message.anchor) || Boolean(comingBack) });
-  }
-  shownGuide = { page: message.page, ...(message.anchor ? { anchor: message.anchor } : {}) };
-  save();
-}
-
-/**
- * Help again in place of the guide page, at a section when one is named,
- * else at the top, with the focus on the heading it lands at: the guide
- * page, and whatever had the focus on it, are gone.
- */
-function showHelp(anchor?: string): void {
-  if (!article || !guideView) {
-    return;
-  }
-  guideView.hidden = true;
-  guideView.replaceChildren();
-  article.hidden = false;
-  if (!reveal(anchor)) {
-    window.scrollTo(0, 0);
-    focusHeading(article.querySelector<HTMLElement>('h1'));
-  }
-  shownGuide = undefined;
-  save();
-}
-
 /** Puts the focus on a heading, which takes it only from a script. */
-function focusHeading(heading: HTMLElement | null): void {
+function focusHeading(heading: HTMLElement | null, preventScroll: boolean): void {
   if (!heading) {
     return;
   }
   heading.setAttribute('tabindex', '-1');
-  heading.focus({ preventScroll: true });
+  heading.focus({ preventScroll });
+}
+
+/** Scrolls the guide page's heading with this id to the top; false when it has none. */
+function revealHeading(anchor: string | undefined): boolean {
+  const heading = anchor && guideView ? guideView.querySelector(`[id="${anchor.replace(/"/g, '')}"]`) : null;
+  heading?.scrollIntoView?.({ block: 'start' });
+  return heading !== null;
+}
+
+/** Marks the page shown in the contents, and only that one. */
+function markContents(page: string): void {
+  document.querySelectorAll('nav [data-guide-page]').forEach((link) => {
+    if (link.getAttribute('data-guide-page') === page) {
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.removeAttribute('aria-current');
+    }
+  });
 }
 
 /**
- * Opened on a section, such as What's new, the page goes to it; false
- * when there is no such section.
+ * Sets the guide view's markup to a guide page. This is the one place the
+ * page sets HTML. The page's HTML is trusted: the host rendered it from the
+ * guide the VSIX ships (docs/guide), with VS Code's Markdown engine, and
+ * nothing in it comes from the reader's notes. Its scripts, if it had any,
+ * would not run: neither does a script set as HTML, nor one without the
+ * page's nonce.
  */
-function reveal(anchor: string | null | undefined): boolean {
-  const section = anchor ? document.getElementById(anchor) : null;
-  if (!section) {
-    return false;
-  }
-  section.scrollIntoView?.({ block: 'start' });
-  focusHeading(section.querySelector<HTMLElement>('h2'));
-  return true;
+function setGuideHtml(view: HTMLElement, html: string): void {
+  view.innerHTML = html;
 }
 
-/** Asks for a guide page, noting where Help was for Back when it is Help that asked. */
-function openGuide(link: Element, page: string, anchor: string | undefined): void {
-  if (guideView?.hidden) {
-    returnTo = link.closest('section')?.id || undefined;
+/**
+ * A guide page the host sent, in place of the page shown before: scrolled
+ * where it was when Help is coming back to it, else at the heading asked
+ * for, else at the top, with the focus on its title.
+ */
+function showGuide(message: HelpGuideMessage): void {
+  if (!guideView) {
+    return;
+  }
+  setGuideHtml(guideView, message.html);
+  guideView.hidden = false;
+  if (whatsNew) {
+    whatsNew.hidden = true;
+  }
+  const comingBack = restoring?.page === message.page ? restoring : undefined;
+  restoring = undefined;
+  let scrolled = Boolean(comingBack);
+  if (comingBack) {
+    window.scrollTo(0, comingBack.scrollY);
+  } else {
+    scrolled = revealHeading(message.anchor);
+    if (!scrolled) {
+      window.scrollTo(0, 0);
+    }
+  }
+  focusHeading(guideView.querySelector<HTMLElement>('h1'), scrolled);
+  shown = { page: message.page, ...(message.anchor ? { anchor: message.anchor } : {}) };
+  markContents(message.page);
+  save();
+}
+
+/** What's new, which the host drew in the page, in place of the guide page shown before. */
+function showWhatsNew(scrollY = 0): void {
+  if (!guideView || !whatsNew) {
+    return;
+  }
+  guideView.hidden = true;
+  guideView.replaceChildren();
+  whatsNew.hidden = false;
+  window.scrollTo(0, scrollY);
+  focusHeading(whatsNew.querySelector<HTMLElement>('h1'), scrollY > 0);
+  shown = { page: WHATS_NEW };
+  markContents(WHATS_NEW);
+  save();
+}
+
+/** Goes to a place: What's new at once, or a guide page once the host sends it. */
+function go({ page, anchor }: Place): void {
+  if (page === WHATS_NEW) {
+    showWhatsNew();
+    return;
+  }
+  if (page === shown?.page && anchor && revealHeading(anchor)) {
+    shown = { page, anchor };
+    save();
+    return;
   }
   vscode?.postMessage(anchor ? { type: 'openGuide', page, anchor } : { type: 'openGuide', page });
 }
 
-/** A link to a guide page, or to a heading on the one shown. */
+/** A link to a guide page, or to a heading on the page shown. */
 function followGuideLink(event: Event, link: Element): void {
   event.preventDefault();
   const page = link.getAttribute('data-guide-page');
   const anchor = link.getAttribute('data-guide-anchor') || undefined;
-  if (page && vscode) {
-    openGuide(link, page, anchor);
-  } else if (anchor && guideView) {
-    revealIn(guideView, anchor);
+  if (page) {
+    go({ page, ...(anchor ? { anchor } : {}) });
+  } else {
+    revealHeading(anchor);
   }
 }
 
-/** A click on a command, the changelog, a guide link, Back, or the rail. */
+/** A click on a command, the changelog, a guide link, or the contents' button. */
 function onClick(event: MouseEvent): void {
   const target = event.target instanceof Element ? event.target : null;
   if (!target) {
@@ -218,65 +224,37 @@ function onClick(event: MouseEvent): void {
     event.preventDefault();
     vscode.postMessage({ type: 'openChangelog' });
   }
-  const guideLink = target.closest('[data-guide-page], [data-guide-anchor]');
-  if (guideLink) {
-    followGuideLink(event, guideLink);
-    return;
-  }
-  if (target.closest('[data-action="guide-back"]')) {
-    event.preventDefault();
-    showHelp(returnTo);
-    return;
-  }
-  if (foldMap(target)) {
-    return;
-  }
-  // The rail leads back to Help from a guide page.
-  const railLink = target.closest('nav a[href^="#"]');
-  if (!railLink || !guideView || guideView.hidden) {
-    return;
-  }
-  event.preventDefault();
-  showHelp(railLink.getAttribute('href')?.slice(1));
-}
-
-/**
- * The map's own clicks where it sits above the guide: its Contents button
- * opens or folds it, and a link in it folds it again once it has led
- * somewhere. True when the click was the button's, and nothing else is to
- * be done with it.
- */
-function foldMap(target: Element): boolean {
   const toggle = target.closest('.nav-toggle');
   if (toggle) {
-    setMapOpen(toggle.getAttribute('aria-expanded') !== 'true');
-    return true;
+    setContentsOpen(toggle.getAttribute('aria-expanded') !== 'true');
+    return;
   }
-  if (target.closest('nav a[href^="#"]')) {
-    setMapOpen(false);
+  const guideLink = target.closest('[data-guide-page], [data-guide-anchor]');
+  if (!guideLink) {
+    return;
   }
-  return false;
+  // A link in the contents folds them again once it has led somewhere.
+  if (guideLink.closest('nav')) {
+    setContentsOpen(false);
+  }
+  followGuideLink(event, guideLink);
 }
 
 /**
- * Opens or folds the map where it sits above the guide, behind its Contents
- * button. Beside the guide the button is not shown and the map is always
- * open, whatever this says.
+ * Opens or folds the contents where they sit above the page, behind their
+ * Contents button. Beside the page the button is not shown and the
+ * contents are always open, whatever this says.
  */
-function setMapOpen(open: boolean): void {
+function setContentsOpen(open: boolean): void {
   document.querySelector('nav')?.classList.toggle('is-open', open);
   document.querySelector('.nav-toggle')?.setAttribute('aria-expanded', String(open));
 }
 
-/** What the host sends: a section to go to, or the guide page asked for. */
+/** What the host sends: a place to go to, or the guide page asked for. */
 function onMessage(event: MessageEvent<HelpHostToPage[keyof HelpHostToPage] | undefined>): void {
   const message = event.data;
   if (message?.type === 'reveal') {
-    if (guideView && !guideView.hidden) {
-      showHelp();
-    }
-    reveal(message.anchor);
-    save();
+    go({ page: message.page, ...(message.anchor ? { anchor: message.anchor } : {}) });
   }
   if (message?.type === 'guide') {
     showGuide(message);
@@ -285,70 +263,24 @@ function onMessage(event: MessageEvent<HelpHostToPage[keyof HelpHostToPage] | un
 
 /**
  * Opens where the page was when it was hidden, if this drawing saved a
- * place: on a guide page, which is asked for again and scrolled to once it
- * comes, or on Help, scrolled as it was. Otherwise it opens on the section
- * the host drew it at, if any.
+ * place, scrolled as it was: What's new at once, or a guide page, asked for
+ * again and scrolled once it comes. Otherwise it opens at the place the
+ * host drew it at, or at the guide's contents.
  */
 function open(): void {
   const saved = readState();
-  if (!saved) {
-    reveal(document.body.getAttribute('data-anchor'));
+  if (saved?.place.page === WHATS_NEW) {
+    showWhatsNew(saved.scrollY);
     return;
   }
-  if (saved.guide && vscode) {
-    restoring = { page: saved.guide.page, scrollY: saved.scrollY };
-    returnTo = saved.returnTo;
-    const { page, anchor } = saved.guide;
-    vscode.postMessage(anchor ? { type: 'openGuide', page, anchor } : { type: 'openGuide', page });
+  if (saved) {
+    restoring = { page: saved.place.page, scrollY: saved.scrollY };
+    go(saved.place);
     return;
   }
-  window.scrollTo(0, saved.scrollY);
-}
-
-/**
- * The rail marks the section under the top of the window as the reader
- * scrolls, so a long page says where it is. A section counts as read once
- * it crosses the band between a tenth and a third of the way down, and the
- * last one counts when the page cannot scroll any further.
- */
-function followRail(): void {
-  const links = [...document.querySelectorAll('nav a[href^="#"]')];
-  const sections = links
-    .map((link) => document.getElementById(link.getAttribute('href')?.slice(1) ?? ''))
-    .filter((section): section is HTMLElement => section !== null);
-  if (!sections.length) {
-    return;
-  }
-  let current: string | undefined;
-  const mark = (id: string): void => {
-    if (id === current) {
-      return;
-    }
-    current = id;
-    links.forEach((link) => {
-      if (link.getAttribute('href') === `#${id}`) {
-        link.setAttribute('aria-current', 'location');
-      } else {
-        link.removeAttribute('aria-current');
-      }
-    });
-  };
-  mark(sections[0].id);
-  if (typeof IntersectionObserver !== 'function') {
-    return;
-  }
-  const crossing: Record<string, boolean> = {};
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      crossing[entry.target.id] = entry.isIntersecting;
-    });
-    const atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
-    const first = atEnd ? sections[sections.length - 1] : sections.find((section) => crossing[section.id]);
-    if (first) {
-      mark(first.id);
-    }
-  }, { rootMargin: '-10% 0px -67% 0px' });
-  sections.forEach((section) => observer.observe(section));
+  const page = document.body.getAttribute('data-page') || CONTENTS;
+  const anchor = document.body.getAttribute('data-anchor') || undefined;
+  go({ page, ...(anchor ? { anchor } : {}) });
 }
 
 document.addEventListener('click', onClick);
@@ -360,4 +292,3 @@ if (vscode) {
 window.addEventListener('message', onMessage);
 window.addEventListener('scroll', saveSoon, { passive: true });
 open();
-followRail();

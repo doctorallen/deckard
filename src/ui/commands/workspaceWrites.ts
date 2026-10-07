@@ -73,6 +73,15 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
   private turn: Promise<unknown> = Promise.resolve();
 
   /**
+   * `preview` is when a write that names none is shown first: when it
+   * reaches several notes, unless a test builds a history that never asks,
+   * since no one is there to accept the preview.
+   */
+  public constructor(private readonly preview: WritePreview = 'severalNotes') {
+    super();
+  }
+
+  /**
    * Puts every note the write changed back as it was, unless it has changed
    * again since, in which case it is left to whoever changed it. Given
    * `mine`, it takes back nothing once that write is no longer the last,
@@ -182,7 +191,7 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
     }
 
     const confirm = shouldPreview(
-      options.preview ?? getWritePreview(),
+      options.preview ?? this.preview,
       entries.length,
     );
     const applied = await vscode.workspace.applyEdit(
@@ -472,16 +481,6 @@ async function applyUndo(plan: UndoPlan): Promise<boolean> {
 /** How a write is shown before it lands. */
 export type WritePreview = 'always' | 'severalNotes' | 'never';
 
-/** Reads `deckard.previewWorkspaceWrites`; any value it does not know reads as severalNotes. */
-export function getWritePreview(): WritePreview {
-  const setting = vscode.workspace
-    .getConfiguration('deckard')
-    .get<string>('previewWorkspaceWrites', 'severalNotes');
-  return setting === 'always' || setting === 'never'
-    ? setting
-    : 'severalNotes';
-}
-
 /** Whether a write of this many notes is shown first. */
 export function shouldPreview(preview: WritePreview, notes: number): boolean {
   if (preview === 'never' || notes === 0) {
@@ -496,7 +495,7 @@ export interface WorkspaceWriteOptions {
   label: string;
   /** What each changed note's row says in the preview. */
   description?: string;
-  /** Whether to show the write first; the setting when not given. */
+  /** Whether to show the write first; the history's own choice when not given. */
   preview?: WritePreview;
   /** Puts back what the write changed outside the notes, on an Undo. */
   restore?: () => Promise<void>;

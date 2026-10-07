@@ -7,11 +7,25 @@ Run `Deckard: Create Daily Note`, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt
 - `Deckard: Open Previous Daily Note` and `Deckard: Open Next Daily Note` step to the nearest daily note before or after the current one. From another note they start from today.
 - `Deckard: Open Daily Note for Date…` lists yesterday, today, tomorrow, and your seven newest daily notes, or takes a day [in plain words](tasks.md#dates-in-plain-words), such as `last friday` or `2026-10-02`; a missing note is created from the template. [Find](search.md#find) does the same when you type only a day.
 - `Deckard: Open Weekly Note` and `Deckard: Open Monthly Note` create or open `week-2026-09-13-2026-09-19.md` and `month-september-2026.md`. A week runs Sunday to Saturday, or from the day `deckard.calendar.weekStart` names.
-- Templates are `deckard.weeklyNoteTemplate` and `deckard.monthlyNoteTemplate`. `{week}` becomes *2026-09-13 to 2026-09-19*, `{month}` becomes *September 2026*, and `{date}` the period's first day.
-- Older names, `2026-W38.md` and `2026-09.md`, are still read and opened for their period. `deckard.weeklyNote.naming` set to `iso` names new weekly notes `2026-W38.md`.
+- A new note starts from its [template](#templates).
+- [Add Task](tasks.md#adding-a-task) (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>) with no note open writes into today's note, creating it if needed, and its title names the note before anything is written.
+- Older names, `2026-W38.md` and `2026-09.md`, are still read and opened for their period.
 - **Where they go.** New daily, weekly, and monthly notes are written at the top of the notes folder, or in `deckard.periodicNotes.folder` inside it, such as `journal/{yyyy}` for a folder a year (`{mm}` is the month). A note already written elsewhere is still found for its day.
-- **Templates as files.** Each template setting holds the text itself, or the name of a Markdown file in the templates folder, such as `Daily.md`, which Deckard reads when it makes the note.
 - **Whose clock.** Days and times are those of the machine Deckard runs on: over Remote-SSH or in a Codespace, the remote's time zone, so a remote set to UTC starts a new day at UTC midnight. The / menu's **Time (UTC)** writes the time in UTC for a log such as an incident timeline, beside **Time** for the machine's own.
+
+### Templates
+
+A new daily, weekly, or monthly note starts from a file in the templates folder (`deckard.templatesFolder`, `templates` unless you change it), when it is there:
+
+| Note | Template | Without one |
+| --- | --- | --- |
+| Daily | `Daily.md` | `# {date}` |
+| Weekly | `Weekly.md` | `# {week}` |
+| Monthly | `Monthly.md` | `# {month}` |
+
+- In a template, `{date}` becomes the period's first day, as *2026-09-13*; `{week}` the days the week holds, as *2026-09-13 to 2026-09-19*; and `{month}` the month, as *September 2026*. Any of the three works in any template.
+- The file is read each time a note is made, so a change to it reaches the next note. A note that already exists is never rewritten.
+- The templates folder is not indexed, and [New Note from Template](notes-and-links.md#templates) lists these files too. With the setting empty there are no templates, and each note starts from the line in the last column.
 
 ### Writing a review
 
@@ -43,7 +57,7 @@ Run `Deckard: Create Daily Note`, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt
 | `migrate` | writes them into today's, and marks each line left behind `[>]` with a link to today: `- [>] Call Ren 📅 2026-09-20 → [[2026-09-25]]` |
 | `copy` | the older name for `migrate` |
 
-- Tasks come from **every earlier daily note**, oldest first, within `deckard.dailyNote.rolloverDays` (a week by default; `0` for no limit). Other notes are left alone.
+- Tasks come from **every earlier daily note**, oldest first, within the last week. Other notes are left alone.
 - Tasks are written exactly as they were, in order, under a **Carried over** heading at the end of today's note, one level below its first heading (`## Carried over` under `# {date}`). A second rollover adds to it.
 - [Steps](tasks.md#breaking-a-task-into-steps) travel with their task. `move` takes everything under the task; `migrate` copies its open steps and marks each line it leaves. A step whose task is not carried comes forward on its own at the top level.
 - A `[>]` line is not a task, so it stops counting as open, and its link gives today's note a backlink.
@@ -57,7 +71,7 @@ The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunda
 
 Select a day, the mark beside a week, or the month's name to open its note; Deckard offers to create a missing one. The arrows step through months; **Today** returns.
 
-**The day panel.** Turn on `deckard.calendar.dayPanel`, or choose **Open Day Panel** from the Calendar's `…` menu, to show the chosen day under the month. A click, Space, or arrow keys then choose a day; double-click or Enter opens its note. The panel shows:
+**The day panel.** Choose **Open Day Panel** from the Calendar's `…` menu to show the chosen day under the month; **Close Day Panel** takes it away, and the Calendar keeps your choice. A click, Space, or arrow keys then choose a day; double-click or Enter opens its note. The panel shows:
 
 - the day's name, such as *Friday, September 25 · Today*, and its daily note, **Open** or **Create**;
 - tasks due, then scheduled, five of each with **Show 7 more**, each with a checkbox and a **Tomorrow** button (**Next day** after tomorrow) that moves its date, with Undo;
@@ -66,11 +80,11 @@ Select a day, the mark beside a week, or the month's name to open its note; Deck
 
 **Close Day Panel** brings back one-click opening.
 
-**Repeats.** A repeating task shows a muted **↻** on every later date its rule lands on in the visible weeks, and a **Repeats** group in the day panel. These dates are not written; a row opens the task. A `when done` rule shows only its next date. Turn this off with `deckard.calendar.showRepeats` or **Turn Off Repeats** in the `…` menu.
+**Repeats.** A repeating task shows a muted **↻** on every later date its rule lands on in the visible weeks, and a **Repeats** group in the day panel. These dates are not written; a row opens the task. A `when done` rule shows only its next date.
 
-**Weekends.** Turn off `deckard.calendar.showWeekends`, or choose **Hide Weekends** from the `…` menu, to show five working days, in the sidebar and on the calendar page. **Include Weekends** brings them back.
+**Weekends.** Choose **Hide Weekends** from the `…` menu, or **Weekends** in the calendar page's gear, to show five working days, in the sidebar and on the calendar page. **Include Weekends** brings them back.
 
-**The calendar page.** `Deckard: Open Calendar`, **Calendar** in the Pages view, or the button in the Calendar view's title bar, opens the calendar as a page. Each day lists its tasks by name: due, then scheduled (⏳), then repeats (↻, dashed), with **+3 more**. Click a day to choose it; its panel sits beside or under the month, or in the Context sidebar while that is open.
+**The calendar page.** `Deckard: Open Calendar`, **Calendar** at the top of the Context view, or the button in the Calendar view's title bar, opens the calendar as a page. Each day lists its tasks by name: due, then scheduled (⏳), then repeats (↻, dashed), with **+3 more**. Click a day to choose it; its panel sits beside or under the month, or in the Context sidebar while that is open.
 
 - **Month** and **Week** switch layouts.
 - Drag a due or scheduled task to another day to move its date. Repeats stay put.

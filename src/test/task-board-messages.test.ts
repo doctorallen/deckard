@@ -44,22 +44,22 @@ suite('Task Board messages', () => {
       { type: 'reorderTasks', taskIds: ['b', 'a'] },
     );
     assert.deepStrictEqual(
-      narrowTaskBoardMessage({ type: 'setBoardStatuses', statuses: ['todo', 'in-review'] }),
-      { type: 'setBoardStatuses', statuses: ['todo', 'in-review'] },
+      narrowTaskBoardMessage({ type: 'setBoardColumnOrder', names: ['Waiting', 'In progress'] }),
+      { type: 'setBoardColumnOrder', names: ['Waiting', 'In progress'] },
     );
-    assert.strictEqual(
-      narrowTaskBoardMessage({ type: 'setBoardStatuses', statuses: ['to do'] }),
-      undefined,
-      'a status that cannot be a tag is refused',
-    );
+    assert.strictEqual(narrowTaskBoardMessage({ type: 'setBoardColumnOrder', names: ['Waiting', ''] }), undefined, 'a status has a name');
+    assert.strictEqual(narrowTaskBoardMessage({ type: 'setBoardColumnOrder', names: 'Waiting' }), undefined);
     assert.deepStrictEqual(
-      narrowTaskBoardMessage({ type: 'setBoardStatusNamespace', namespace: 'stage' }),
-      { type: 'setBoardStatusNamespace', namespace: 'stage' },
+      narrowTaskBoardMessage({ type: 'setBoardColumnShown', name: 'Cancelled', shown: true }),
+      { type: 'setBoardColumnShown', name: 'Cancelled', shown: true },
     );
-    assert.strictEqual(
-      narrowTaskBoardMessage({ type: 'setBoardStatusNamespace', namespace: '1stage' }),
-      undefined,
-    );
+    assert.strictEqual(narrowTaskBoardMessage({ type: 'setBoardColumnShown', name: 'Cancelled', shown: 'yes' }), undefined);
+    assert.deepStrictEqual(narrowTaskBoardMessage({ type: 'editTaskStatuses', newStatus: true }), { type: 'editTaskStatuses', newStatus: true });
+    assert.deepStrictEqual(narrowTaskBoardMessage({ type: 'editTaskStatuses' }), { type: 'editTaskStatuses' });
+    assert.deepStrictEqual(narrowTaskBoardMessage({ type: 'moveStatusTags' }), { type: 'moveStatusTags' });
+    for (const gone of [{ type: 'setBoardStatuses', statuses: ['todo'] }, { type: 'setBoardShowCancelled', show: true }, { type: 'setBoardStatusNamespace', namespace: 'stage' }]) {
+      assert.strictEqual(narrowTaskBoardMessage(gone), undefined, `${gone.type} is gone`);
+    }
     assert.deepStrictEqual(
       narrowTaskBoardMessage({ type: 'moveTask', taskId: 'a', column: 'status:doing' }),
       { type: 'moveTask', taskId: 'a', column: 'status:doing' },
@@ -140,9 +140,10 @@ suite('Task Board messages', () => {
       { type: 'pickTaskDate', taskId: 'a' },
       { type: 'moveTaskTo', taskId: 'a' },
       { type: 'editTask', taskId: 'a' },
-      { type: 'addTaskToColumn', column: 'status:doing' },
-      { type: 'setBoardStatuses', statuses: [] },
-      { type: 'setBoardStatuses', statuses: Array.from({ length: 50 }, (_, at) => `s${at}`) },
+      { type: 'addTask' },
+      { type: 'addTaskToColumn', column: 'status:in-progress' },
+      { type: 'setBoardColumnOrder', names: [] },
+      { type: 'setBoardColumnOrder', names: Array.from({ length: 100 }, (_, at) => `Status ${at}`) },
     ]) {
       assert.deepStrictEqual(narrowTaskBoardMessage(message), message, JSON.stringify(message).slice(0, 80));
     }
@@ -168,14 +169,15 @@ suite('Task Board messages', () => {
       { type: 'pickTaskDate', taskId: 7 },
       { type: 'moveTaskTo', taskId: 'a', extra: 1 },
       { type: 'editTask' },
+      { type: 'addTask', column: 'status:in-progress' },
       { type: 'addTaskToColumn', column: '' },
       { type: 'addTaskToColumn', column: 'done', extra: 1 },
       { type: 'showColumnRest', columnId: '' },
       { type: 'setBoardGroup', groupBy: 'color' },
       { type: 'setTaskSort', mode: 'title' },
       { type: 'reorderTasks', taskIds: ['a', 1] },
-      { type: 'setBoardStatuses', statuses: Array.from({ length: 51 }, (_, at) => `s${at}`) },
-      { type: 'setBoardStatuses', statuses: ['-todo'] },
+      { type: 'setBoardColumnOrder', names: Array.from({ length: 101 }, (_, at) => `Status ${at}`) },
+      { type: 'setBoardColumnShown', name: 'x'.repeat(81), shown: true },
       { type: 'setZenMode', enabled: 'yes' },
       { type: 'exportResults', kind: 'notes-and-tasks' },
       { type: 'openSource', filePath: 'notes/tasks.md', line: 0 },

@@ -10,6 +10,7 @@ import {
 } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import { QueryContext } from '../../domain/query/queryContext';
+import { UPCOMING_DAYS } from '../../domain/tasks/agendaGroups';
 import { formatLocalDate, listDailyNotes } from '../../domain/notes/periodicNotes';
 import { createAgenda, selectAgendaTasks } from './agendaState';
 import { createDashboardSavedFilters, getSavedFilterQuery, sortTags } from './dashboardState';
@@ -30,7 +31,6 @@ import {
   DashboardWidgetConfig,
   DashboardWidgetKind,
   PersistedPreferences,
-  TagTitleDisplayMode,
   WorkspaceIndex,
 } from '../../domain/model';
 import { DashboardTryNext, DashboardWidget } from '../protocol/dashboard';
@@ -47,18 +47,12 @@ export interface DashboardWidgetOptions {
    * its dates read, and how old its entries are.
    */
   queryContext: QueryContext;
-  /** How far ahead the agenda widget looks, from `deckard.agenda.upcomingDays`. */
-  upcomingDays: number;
   /** What the agenda widget lists, from `deckard.agenda.query`. */
   agendaQuery?: string;
-  tagTitleDisplayMode: TagTitleDisplayMode;
   /** The note last open in an editor, which Home can rank by and pin. */
   sourceNotePath?: string;
   /** How Related Notes ranks, from its settings. */
-  relatedNotes?: {
-    enableKeywordLinks: boolean;
-    ranking: RelatedNotesRankingOptions;
-  };
+  relatedNotesRanking?: RelatedNotesRankingOptions;
   /** Try next's suggestion, which the host chooses. */
   tryNext?: DashboardTryNext;
 }
@@ -223,7 +217,7 @@ function buildTasksWidget({ index, preferences, options, config, widget, take }:
 function buildAgendaWidget({ index, options, widget, count }: WidgetBuild): DashboardWidget {
   const groups = createAgenda(index, options.queryContext, {
     tasks: selectAgendaTasks(index, options.agendaQuery ?? '', options.queryContext).tasks,
-    upcomingDays: options.upcomingDays,
+    upcomingDays: UPCOMING_DAYS,
     doneToday: true,
   });
   // What needs a new date is a line under the list, not a group in it.
@@ -364,7 +358,6 @@ function buildSavedQueryWidget({ index, preferences, options, config, widget, co
   }
   const query = getSavedFilterQuery(filter);
   const page = createSearchPageSnapshot(index, preferences, query, {
-    tagTitleDisplayMode: options.tagTitleDisplayMode,
     queryContext: options.queryContext,
     // A widget takes its own few entries off the top of the whole
     // result, so its own count, not the reader's page size, is the page.
@@ -441,19 +434,14 @@ function buildRelatedNotesWidget({ index, options, widget, take }: WidgetBuild):
   if (!filePath || !file) {
     return { ...widget, total: 0, notes: [] };
   }
-  const settings = options.relatedNotes ?? {
-    enableKeywordLinks: true,
-    ranking: {},
-  };
   const ranked = sortRelatedNotes(
     rankRelatedNotes({
       index,
       activeFilePath: filePath,
       activeFile: file,
       activeTags: collectFileTags(file),
-      enableKeywordLinks: settings.enableKeywordLinks,
       tagTitleDisplayMode: 'separate',
-      ranking: { ...settings.ranking, now: options.queryContext.now },
+      ranking: { ...options.relatedNotesRanking, now: options.queryContext.now },
     }),
     'tags',
     {},
@@ -575,7 +563,7 @@ function listWidgetNamespaces(index: WorkspaceIndex, fallback: string): string[]
  */
 function buildProgressWidget({ index, options, config, widget, take }: WidgetBuild): DashboardWidget {
   const namespace = widgetNamespace(config);
-  const { now, taskPolicy } = options.queryContext;
+  const { now, taskPolicy, dateFormats } = options.queryContext;
   const keys = new Set(
     [...index.tags.keys()].filter((key) => isInNamespace(key, namespace) && !isParkedOnlyTag(index, key)),
   );
@@ -590,7 +578,7 @@ function buildProgressWidget({ index, options, config, widget, take }: WidgetBui
     tags: take(rows).map(({ tag, progress }) => ({
       key: tag.key,
       label: tag.label,
-      detail: describeTagProgress(progress, now, taskPolicy),
+      detail: describeTagProgress(progress, now, taskPolicy, dateFormats),
       progress: { done: progress.done, total: progress.total },
     })),
   };

@@ -11,7 +11,8 @@ import { appendTagToLine } from '../ui/commands/bulkEdit';
 import { moveInlineTagsToFrontmatterContent } from '../ui/commands/moveTagsToFrontmatter';
 import { replaceIndexedTag } from '../domain/markdown/tagRename';
 import { getTagCompletionContext } from '../domain/markdown/completionContext';
-import { setTaskNamespaceTags, setTaskStatusTag } from '../domain/tasks/boardMoves';
+import { setTaskNamespaceTags } from '../domain/tasks/boardMoves';
+import { removeStatusTags } from '../domain/tasks/legacyStatusTags';
 
 const keys = (text: string): string[] => extractTags(text).map((tag) => tag.key);
 
@@ -85,10 +86,10 @@ suite('Tags in inline code', () => {
     assert.strictEqual(moveInlineTagsToFrontmatterContent('Write `#draft` here.'), undefined);
   });
 
-  test('board moves change the real status tag, not one in code', () => {
+  test('board moves and the status move change the real tag, not one in code', () => {
     assert.strictEqual(
-      setTaskStatusTag('- [ ] Show ` #status/todo` #status/todo', 3, 'status', 'doing'),
-      '- [ ] Show ` #status/todo` #status/doing',
+      removeStatusTags('- [ ] Show ` #status/todo` #status/todo', 3, 'status'),
+      '- [ ] Show ` #status/todo`',
     );
     assert.strictEqual(
       setTaskNamespaceTags('- [ ] Show ` #stage/a` #stage/a', 3, { remove: ['#stage/a'], add: '#stage/b' }),

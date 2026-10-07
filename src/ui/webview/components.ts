@@ -7,6 +7,7 @@
  * redraws a page in another look is in host/pageChrome.ts.
  */
 
+import { escapeHtml } from '../../shared/html';
 import type { DisplayChoices } from '../state/displayLevel';
 import { DeckardTheme } from './themeNames';
 
@@ -16,7 +17,7 @@ export type { DisplayChoices };
 /** Zen's values, for a page given only the zen flag, as the test harness gives it. */
 const ZEN_DISPLAY: DisplayChoices = {
   level: 'zen', styling: 'plain', help: 'hidden', density: 'compact',
-  cards: 'flat', tags: 'text', counts: 'hidden', fileAndLine: 'never', dates: 'relative',
+  cards: 'flat', tags: 'text', counts: 'hidden', dates: 'relative',
 };
 
 /**
@@ -102,6 +103,21 @@ function bodyMarkers(chrome: PageChrome): string {
     display.counts === 'hidden' ? ' data-counts="hidden"' : '',
     detailMarkers(display),
     display.width === 'full' ? ' data-width="full"' : '',
+    dateMarkers(display),
+  ].join('');
+}
+
+/**
+ * The markers for how dates read, each only when it isn't the default: the
+ * two formats, written as attribute text since the reader typed them, the
+ * language `L` to `llll` follow, and the week start `w` counts from.
+ */
+function dateMarkers(display: DisplayChoices): string {
+  return [
+    display.dateFormat ? ` data-date-format="${escapeHtml(display.dateFormat)}"` : '',
+    display.shortDateFormat ? ` data-short-date-format="${escapeHtml(display.shortDateFormat)}"` : '',
+    display.dateLocale ? ` data-date-locale="${escapeHtml(display.dateLocale)}"` : '',
+    display.weekStart ? ` data-week-start="${display.weekStart}"` : '',
   ].join('');
 }
 

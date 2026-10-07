@@ -25,7 +25,7 @@ const FACTS: PageFacts = {
   findKey: 'Cmd+Shift+Alt+F',
 };
 
-suite('Deckard pages: the Pages view and Go to…', () => {
+suite('Deckard pages: the top of Context and Go to…', () => {
   test('lists every page in order, each with a hint from the notes as they are', () => {
     const pages = listDeckardPages(FACTS);
     assert.deepStrictEqual(pages.map((page) => page.label), ['Home', 'Task Board', 'Calendar', "Today's note", 'Notes Graph', 'Find in Notes…', 'Stats', 'Help']);
@@ -64,9 +64,9 @@ suite('Deckard pages: the Pages view and Go to…', () => {
     }
   });
 
-  test('Pages is first in the sidebar, Go to… has its key, and Context\'s title bar carries no page icons', () => {
-    assert.strictEqual(manifest.contributes.views.deckard[0].id, 'deckard.pages');
-    assert.strictEqual((manifest.contributes.views.deckard[0] as { type?: string }).type, 'webview', 'a webview, so it can draw a row of icons');
+  test('Context is first in the sidebar, with no Pages view, Go to… has its key, and Context\'s title bar carries no page icons', () => {
+    assert.strictEqual(manifest.contributes.views.deckard[0].id, 'deckard.relatedNotes', 'the pages are drawn at its top');
+    assert.ok(!manifest.contributes.views.deckard.some((view) => view.id === 'deckard.pages'), 'no view of their own');
     assert.deepStrictEqual(
       manifest.contributes.keybindings.find((binding) => binding.command === 'deckard.goTo'),
       { command: 'deckard.goTo', key: 'ctrl+shift+alt+p', mac: 'cmd+shift+alt+p' },

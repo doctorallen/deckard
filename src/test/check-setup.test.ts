@@ -10,7 +10,6 @@ const healthy = (): SetupFacts => ({
   excludePatterns: ['**/archive'],
   unreadable: [],
   indexed: { files: 51, sections: 485, tasks: 104, tags: 185 },
-  personMarker: '@',
   people: 12,
   me: '@ren-kade',
   meIsKnown: true,

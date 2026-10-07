@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 
 import { stripTags } from '../../domain/markdown/parser';
 import { describeDay, parseDatePhrase } from '../../domain/markdown/dates';
-import { readDateOptions } from '../commands/datePrompt';
+import { readDateFormats, readDateOptions } from '../commands/datePrompt';
 import { measureAsync } from '../../shared/timing';
 import {
   createNoteTitleMap,
@@ -263,7 +263,7 @@ export class WikiLinkCompletionProvider implements vscode.Disposable {
       return [];
     }
     const item = new vscode.CompletionItem(date, vscode.CompletionItemKind.Value);
-    item.detail = `${describeDay(date, now)}, that day's note`;
+    item.detail = `${describeDay(date, now, readDateFormats())}, that day's note`;
     item.insertText = `${date}]]`;
     item.filterText = typed;
     item.sortText = '!';

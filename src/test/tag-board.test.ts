@@ -11,8 +11,6 @@ import { PersistedPreferences, WorkspaceIndex } from '../domain/model';
 
 const options: TaskBoardOptions = {
   queryContext: createQueryContext(Date.parse('2026-09-21T12:00:00Z')),
-  statusNamespace: 'status',
-  statuses: ['todo'],
   format: 'emoji',
 };
 
@@ -21,7 +19,7 @@ const NOTE = [
   '- [ ] Call Ren #context/phone',
   '- [ ] Draft #context/computer #context/phone',
   '- [ ] Loose',
-  '- [ ] Waits #status/waiting @dana',
+  '- [w] Waits @dana',
   '',
 ].join('\n');
 
@@ -37,7 +35,7 @@ function preferences(values: Partial<PersistedPreferences>): PersistedPreference
 }
 
 function board(values: Partial<PersistedPreferences>) {
-  return createTaskBoard({ index: indexOf(), preferences: preferences(values), search: { query: 'is:open' }, options, tagTitleDisplayMode: 'inline' });
+  return createTaskBoard({ index: indexOf(), preferences: preferences(values), search: { query: 'is:open' }, options });
 }
 
 suite('The Task board grouped by a tag namespace', () => {

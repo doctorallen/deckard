@@ -4,6 +4,8 @@ import { BLOCK_ID_PATTERN } from '../../domain/markdown/taskFields';
 import { findWikiLinkSpans } from '../../domain/markdown/wikiLinks';
 import { createSourceParser, findEmbedLines, resolveEmbed, withoutFrontmatter } from '../../domain/notes/embeds';
 import { DEFAULT_NOTE_COLUMNS, noteColumnLabel } from '../../domain/notes/noteColumns';
+import type { DateFormats } from '../../domain/markdown/dateFormat';
+import { formatDueDate } from '../../domain/markdown/dueWording';
 import { QueryContext } from '../../domain/query/queryContext';
 import { WorkspaceIndex } from '../../domain/model';
 import { createTaskCells, DEFAULT_TASK_COLUMNS, getTaskColumn } from './resultTable';
@@ -32,8 +34,6 @@ export interface PlainMarkdownContext {
   index: WorkspaceIndex;
   /** The moment and settings a query block's results are read at. */
   queryContext: QueryContext;
-  /** The namespace of status tags; `status` unless given. */
-  statusNamespace?: string;
 }
 
 /**
@@ -158,7 +158,6 @@ function writeEmbed(target: string, documentSource: string, context: PlainMarkdo
 export function writeQueryBlock(query: string, options: QueryBlockOptions, context: PlainMarkdownContext): string {
   const snapshot = getQueryBlockSnapshot(context.index, query, options, {
     queryContext: context.queryContext,
-    statusNamespace: context.statusNamespace ?? 'status',
   });
   if (snapshot.hasError) {
     return `\`${query.trim()}\``;
@@ -168,9 +167,9 @@ export function writeQueryBlock(query: string, options: QueryBlockOptions, conte
   }
   const table = options.view === 'table';
   const parts = [
-    ...(snapshot.notes.length ? [table ? writeNoteTable(snapshot.notes, options) : snapshot.notes.map(writeNoteItem).join('\n')] : []),
+    ...(snapshot.notes.length ? [table ? writeNoteTable(snapshot.notes, options, context.queryContext.dateFormats) : snapshot.notes.map(writeNoteItem).join('\n')] : []),
     ...(snapshot.noteCount > snapshot.notes.length ? [`_Showing ${snapshot.notes.length} of ${snapshot.noteCount} notes._`] : []),
-    ...(snapshot.tasks.length ? [table ? writeTaskTable(snapshot.tasks, options, context) : snapshot.tasks.map(writeTaskItem).join('\n')] : []),
+    ...(snapshot.tasks.length ? [table ? writeTaskTable(snapshot.tasks, options, context) : snapshot.tasks.map((item) => writeTaskItem(item, context.queryContext.dateFormats)).join('\n')] : []),
     ...(snapshot.taskCount > snapshot.tasks.length ? [`_Showing ${snapshot.tasks.length} of ${snapshot.taskCount} tasks._`] : []),
   ];
   return parts.join('\n\n');
@@ -188,18 +187,18 @@ function writeNoteItem(item: QueryBlockItem): string {
   return item.title === stem ? `- ${title}` : `- ${title} (${stem})`;
 }
 
-/** A task as a list item, its box as it stands, its due date beside it. */
-function writeTaskItem(item: QueryBlockItem): string {
-  const due = item.dueText ?? '';
+/** A task as a list item, its box as it stands, its due date beside it in the reader's format. */
+function writeTaskItem(item: QueryBlockItem, formats: DateFormats): string {
+  const due = item.dueAt === undefined ? item.dueText ?? '' : formatDueDate(item.dueAt, item.dueText, formats);
   return `- [${item.completed ? 'x' : ' '}] ${plainTitle(item.title)}${due ? ` (due ${due})` : ''}`;
 }
 
-/** The notes as a Markdown table, in the block's note columns. */
-function writeNoteTable(items: readonly QueryBlockItem[], options: QueryBlockOptions): string {
+/** The notes as a Markdown table, in the block's note columns, their dates in the reader's format. */
+function writeNoteTable(items: readonly QueryBlockItem[], options: QueryBlockOptions, formats: DateFormats): string {
   const columns = options.noteColumns ?? [...DEFAULT_NOTE_COLUMNS];
   return writeTable(
     columns.map((column) => noteColumnLabel(column)),
-    items.map((item) => columns.map((column) => (column === 'title' ? plainTitle(item.title) : describeNoteCell(item, column)))),
+    items.map((item) => columns.map((column) => (column === 'title' ? plainTitle(item.title) : describeNoteCell(item, column, formats)))),
   );
 }
 

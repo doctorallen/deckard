@@ -15,6 +15,7 @@ import { UsageService } from '../core/storage/preferencesUsage';
 import { SearchStore } from '../core/storage/searchStore';
 import { reportError, setTimingLog } from '../shared/timing';
 import { tidyAfterUpdate } from './tidyPreferences';
+import { carryMovedSettingsOnce } from './movedSettings';
 import { createWorkspaceIndex } from '../core/workspace/indexer';
 import type { IndexRoles } from '../core/workspace/indexReader';
 import { WorkspaceScanner } from '../core/workspace/scanner';
@@ -23,8 +24,9 @@ import { createVscodeProgress } from '../platform/vscodeProgress';
 import { createVscodeWorkspace } from '../platform/vscodeWorkspace';
 import { createVscodeWorkspaceEvents } from '../platform/vscodeWorkspaceEvents';
 import { VIEW_PRIORITY } from '../core/workspace/publishing';
-import { CaptureContext, captureToToday, createCaptureNotes } from '../ui/commands/capture';
-import { CaptureService, CaptureDrafts } from '../services/captureService';
+import { captureToToday, createCaptureNotes } from '../ui/commands/capture';
+import type { AddTaskContext } from '../ui/commands/addTask';
+import { CaptureService } from '../services/captureService';
 import { createHubNote } from '../ui/commands/hubNote';
 import { createDailyNoteWithRollover, createRolloverService, VscodeRolloverService } from '../ui/commands/rollover';
 import { createReviewService, ReviewWrites } from '../ui/commands/review';
@@ -94,7 +96,9 @@ import { countUnknownStatuses, noticeUnknownStatusesOnce } from '../ui/commands/
 import { offerStatusMigrationOnce } from '../ui/commands/statusMove';
 import { openSettingAction, settingLabel } from '../ui/commands/notify';
 import { PreferenceSnapshots } from '../core/storage/preferenceSnapshots';
-import { OutlineTreeProvider, syncOutlineFollowCursorContext } from '../ui/views/outlineTree';
+import { OutlineTreeProvider } from '../ui/views/outlineTree';
+import { publishViewChoices } from '../ui/commands/toggles/viewChoiceContext';
+import { startPageWidth } from '../ui/commands/displaySettings';
 import { QueryBlocks } from '../ui/preview/queryBlocks';
 import { AgendaTreeProvider } from '../ui/views/agendaTree';
 import { countDueTasks, TaskStatusBar } from '../ui/views/taskStatusBar';
@@ -102,11 +106,9 @@ import { AgendaGroup, createAgenda, selectAgendaTasks, selectOverdueTasks } from
 import { isNamespaceName } from '../ui/state/tagGrouping';
 import { resolveTaskMove } from '../ui/state/taskBoardState';
 import { AgendaService } from '../services/agendaService';
-import { isWhatsNewShown, WhatsNew } from '../ui/commands/whatsNew';
+import { WhatsNew } from '../ui/commands/whatsNew';
 import { ThemePreview } from '../ui/webview/themePreview';
-import { PagesView } from '../ui/webview/pagesView';
 import { TryNextLedger } from '../ui/commands/tryNext';
-import { settingTarget, writeSetting } from '../ui/commands/settings';
 import { DisposalOrder } from './disposalOrder';
 import { findUnlinkedMentions } from '../domain/search/mentions';
 import { evaluateSearchPage } from '../ui/state/searchPageState';
@@ -145,7 +147,7 @@ export interface Writes {
   rollover: VscodeRolloverService;
   reviews: ReviewWrites;
   templates: TemplateService<vscode.Uri>;
-  capture: CaptureContext;
+  addTask: AddTaskContext;
 }
 
 /** The editor-area pages, each one host that opens, restores, and redraws its panel. */
@@ -269,13 +271,13 @@ export function createServices(context: vscode.ExtensionContext): Services {
       .then(() => noticeUnknownStatusesOnce(context.workspaceState, countUnknownStatuses(core.indexer.getSnapshot())))
       .catch((error: unknown) => reportError('Could not count the tasks whose status Deckard does not know', error));
     void core.indexer.ready
-      .then(() => offerStatusMigrationOnce(context.workspaceState, core.indexer))
+      .then(() => offerStatusMigrationOnce(context.workspaceState, core.indexer, { board: { reader: preferences.repository, taskLayout: preferences.taskLayout } }))
       .catch((error: unknown) => reportError('Could not offer to move status tags into checkboxes', error));
   }
   syncWalkthroughContext(context, core.indexer);
   createEditorContexts(context, core, preferences);
   const assistance = createLinksAndAssistance(context, core, preferences);
-  const calendar = createCalendar(context, core, writes, search);
+  const calendar = createCalendar(context, { core, preferences, writes, search });
   const home = createHome(context, {
     core,
     preferences,
@@ -287,18 +289,16 @@ export function createServices(context: vscode.ExtensionContext): Services {
     tryNext,
   });
   const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, dashboard: home.dashboard, whatsNew, writes });
-  const trees = createTreesAndCapture(context, core, preferences, writes);
+  const trees = createTreesAndAddTask(context, core, preferences, writes);
   // With the note page in front, the Outline lists its note's headings.
   trees.outline.followNotePage(sidebar.activeNotePage);
   const built: Built = { core, preferences, writes, search, editor, assistance, calendar, home, sidebar, trees };
   holdUntilShutdown(context, shutdown, built);
   warnOfUnreadableNotes(context, core.indexer);
   tidyPreferencesOnUpdate(context, core.indexer, preferences);
-  const pagesView = new PagesView({ indexer: core.indexer, themePreview: search.themePreview, extensionUri: context.extensionUri });
-  context.subscriptions.push(pagesView);
-  registerViews(context, { sidebarNotes: sidebar.sidebarNotes, calendar: calendar.calendar, outline: trees.outline, agenda: trees.agenda, pages: pagesView });
+  registerViews(context, { sidebarNotes: sidebar.sidebarNotes, calendar: calendar.calendar, outline: trees.outline, agenda: trees.agenda });
   const pages = listPages(built);
-  const sectionFocus = createLateContexts(context, core, pages);
+  const sectionFocus = createLateContexts(context, core, pages, preferences);
   return {
     log,
     whatsNew,
@@ -307,7 +307,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     scanner: core.scanner,
     indexer: core.indexer,
     preferences,
-    writes: { ...writes, capture: trees.capture },
+    writes: { ...writes, addTask: trees.addTask },
     links: { service: assistance.links, notes: assistance.linkNotes },
     themePreview: search.themePreview,
     pages,
@@ -331,14 +331,14 @@ export function createServices(context: vscode.ExtensionContext): Services {
 interface Built {
   core: Core;
   preferences: PreferenceParts;
-  writes: Omit<Writes, 'capture'>;
+  writes: Omit<Writes, 'addTask'>;
   search: ReturnType<typeof createSearch>;
   editor: ReturnType<typeof createEditorProviders>;
   assistance: ReturnType<typeof createLinksAndAssistance>;
   calendar: ReturnType<typeof createCalendar>;
   home: ReturnType<typeof createHome>;
   sidebar: ReturnType<typeof createSidebarAndPages>;
-  trees: ReturnType<typeof createTreesAndCapture>;
+  trees: ReturnType<typeof createTreesAndAddTask>;
 }
 
 /**
@@ -445,7 +445,6 @@ function createLedgers(context: vscode.ExtensionContext) {
       Buffer.from(
         await vscode.workspace.fs.readFile(vscode.Uri.joinPath(context.extensionUri, 'CHANGELOG.md')),
       ).toString('utf8'),
-    isShown: isWhatsNewShown,
   });
   context.subscriptions.push(whatsNew);
   // What Home's Try next has been told, kept with the workspace. A
@@ -527,6 +526,11 @@ function createPreferences(context: vscode.ExtensionContext, core: Core): Prefer
   const tagRenames = new TagRenames(repository);
   const maintenance = new PreferencesMaintenance(repository);
   void repository.initialize();
+  // The settings that moved into the views' preferences, carried once,
+  // before any view is built from them.
+  void carryMovedSettingsOnce(repository, { global: context.globalState, workspace: context.workspaceState }).catch(
+    (error: unknown) => reportError('Could not carry the moved settings into the preferences', error),
+  );
   // What Move to… ranks destinations by and records a heading in, wherever
   // it is run from.
   const move = { reader: repository, usage };
@@ -552,9 +556,9 @@ function createPreferences(context: vscode.ExtensionContext, core: Core): Prefer
 
 /**
  * What tasks, tags, parking, rollover, reviews, and templates write through.
- * Capture's is made later, with the drafts, and filled in by createServices.
+ * Add Task's is made later, with the Tasks view, and filled in by createServices.
  */
-function createWrites(core: Core, preferences: PreferenceParts): Omit<Writes, 'capture'> {
+function createWrites(core: Core, preferences: PreferenceParts): Omit<Writes, 'addTask'> {
   const { history, workspace, indexer } = core;
   // What an edit to a task writes through, for every view that edits one.
   // A task's id comes from its own text, so an edit Deckard writes makes it
@@ -621,7 +625,7 @@ function createSearch(
   context: vscode.ExtensionContext,
   core: Core,
   preferences: PreferenceParts,
-  writes: Omit<Writes, 'capture'>,
+  writes: Omit<Writes, 'addTask'>,
 ) {
   const { indexer } = core;
   // The theme Choose Theme… shows on the open pages before one is kept.
@@ -634,12 +638,7 @@ function createSearch(
   const exportService = new ExportService({
     index: indexer,
     search: (query) =>
-      evaluateSearchPage(indexer.getSnapshot(), query, {
-        includeHubLinks: vscode.workspace
-          .getConfiguration('deckard')
-          .get<boolean>('tagOverview.includeHubLinks', true),
-        queryContext: readQueryContext(),
-      }).results,
+      evaluateSearchPage(indexer.getSnapshot(), query, { queryContext: readQueryContext() }).results,
     queryBlock: (query) => formatQueryBlock(query),
   });
   const { repository, usage, savedSearches, display, pins, homeWidgets, tagRenames } = preferences;
@@ -837,14 +836,27 @@ function createLinksAndAssistance(context: vscode.ExtensionContext, core: Core, 
  */
 function createCalendar(
   context: vscode.ExtensionContext,
-  core: Core,
-  writes: Omit<Writes, 'capture'>,
-  search: ReturnType<typeof createSearch>,
+  { core, preferences, writes, search }: {
+    core: Core;
+    preferences: PreferenceParts;
+    writes: Omit<Writes, 'addTask'>;
+    search: ReturnType<typeof createSearch>;
+  },
 ) {
   const { indexer } = core;
   const { themePreview, searchPanels } = search;
   const openTag = (tagKey: string) => searchPanels.show(tagKey);
-  const calendar = new CalendarView({ indexer, writes: writes.tasks, themePreview, extensionUri: context.extensionUri, openTag });
+  // Whether the day panel shows and weekends are drawn, which the
+  // Calendar's menu and the page's gear keep.
+  const calendarPreferences = { reader: preferences.repository, display: preferences.display };
+  const calendar = new CalendarView({
+    indexer,
+    writes: writes.tasks,
+    themePreview,
+    extensionUri: context.extensionUri,
+    openTag,
+    preferences: calendarPreferences,
+  });
   const activeCalendar = new ActiveCalendar();
   const activeHome = new ActiveHome();
   context.subscriptions.push(activeCalendar, activeHome);
@@ -855,6 +867,7 @@ function createCalendar(
     themePreview,
     activeCalendar,
     openTag,
+    preferences: calendarPreferences,
   });
   context.subscriptions.push(calendarPage);
   return { calendar, activeCalendar, activeHome, calendarPage };
@@ -864,7 +877,7 @@ function createCalendar(
 interface HomeParts {
   core: Core;
   preferences: PreferenceParts;
-  writes: Omit<Writes, 'capture'>;
+  writes: Omit<Writes, 'addTask'>;
   search: ReturnType<typeof createSearch>;
   /** Which entry a line pins, for Find's rows. */
   pins: PinService;
@@ -935,7 +948,7 @@ interface SidebarParts {
   calendar: ReturnType<typeof createCalendar>;
   dashboard: DashboardPanel;
   whatsNew: WhatsNew;
-  writes: Omit<Writes, 'capture'>;
+  writes: Omit<Writes, 'addTask'>;
 }
 
 /** Related Notes in the sidebar, and Stats, Help, the Notes Graph, the note page, and the debug page. */
@@ -1009,10 +1022,10 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
   return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug, notePage, activeNotePage, taskStatuses };
 }
 
-/** The Outline, the query blocks, the Tasks view and its service, the status bar, and capture. */
-function createTreesAndCapture(context: vscode.ExtensionContext, core: Core, preferences: PreferenceParts, writes: Omit<Writes, 'capture'>) {
+/** The Outline, the query blocks, the Tasks view and its service, the status bar, and Add Task. */
+function createTreesAndAddTask(context: vscode.ExtensionContext, core: Core, preferences: PreferenceParts, writes: Omit<Writes, 'addTask'>) {
   const { indexer } = core;
-  const outline = new OutlineTreeProvider(indexer);
+  const outline = new OutlineTreeProvider(indexer, preferences.repository);
   // A query block's checkboxes link to Deckard's URI handler, which ticks them.
   const queryBlocks = new QueryBlocks(indexer, {
     base: `${vscode.env.uriScheme}://${context.extension.id}`,
@@ -1032,8 +1045,14 @@ function createTreesAndCapture(context: vscode.ExtensionContext, core: Core, pre
       resolveMove: resolveTaskMove,
       isNamespaceName,
     },
-    // Where the grouping in force is set, so a workspace's own is the one changed.
-    writeSetting: (key, value) => writeSetting(key, value, settingTarget(key)),
+    // How the view is grouped and sorted, which its Group and Sort buttons keep.
+    preferences: {
+      get value() {
+        return preferences.repository.current;
+      },
+      setAgendaGrouping: (groupBy, namespace) => preferences.taskLayout.setAgendaGrouping(groupBy, namespace),
+      setAgendaSort: (sort) => preferences.taskLayout.setAgendaSort(sort),
+    },
   });
   const agenda = new AgendaTreeProvider(
     indexer,
@@ -1041,20 +1060,18 @@ function createTreesAndCapture(context: vscode.ExtensionContext, core: Core, pre
     { reader: preferences.repository, taskLayout: preferences.taskLayout },
   );
   const taskStatusBar = new TaskStatusBar(indexer, context.globalState);
-  const captureDrafts = new CaptureDrafts(context.workspaceState);
-  // Where a capture goes once it is typed, and when its draft is let go.
-  const capture: CaptureContext = {
+  // Where Add Task writes outside the note being edited, and the headings
+  // it remembers.
+  const addTask: AddTaskContext = {
     indexer,
-    drafts: captureDrafts,
     preferences: preferences.repository,
     captures: new CaptureService({
       index: indexer,
       notes: createCaptureNotes(indexer),
-      drafts: captureDrafts,
       recentHeadings: preferences.usage,
     }),
   };
-  return { outline, queryBlocks, agendaService, agenda, taskStatusBar, capture };
+  return { outline, queryBlocks, agendaService, agenda, taskStatusBar, addTask };
 }
 
 /** The command each button on the unreadable-notes warning runs. */
@@ -1139,13 +1156,9 @@ function tidyPreferencesOnUpdate(
 }
 
 /** Registers the two sidebar webviews and creates the Outline and Tasks trees. */
-function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'taskStatusBar'> & { pages: PagesView }): void {
-  const { sidebarNotes, calendar, outline, agenda, pages } = views;
+function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'taskStatusBar'>): void {
+  const { sidebarNotes, calendar, outline, agenda } = views;
   context.subscriptions.push(
-    // Every Deckard page, first in the sidebar, as labeled rows or a row of icons.
-    vscode.window.registerWebviewViewProvider('deckard.pages', pages, {
-      webviewOptions: { retainContextWhenHidden: false },
-    }),
     // Neither Related Notes nor the Calendar is kept running while hidden
     // (Q1 of docs/implementation/20-webviews.md); their controllers say so too.
     vscode.window.registerWebviewViewProvider('deckard.relatedNotes', sidebarNotes, {
@@ -1181,9 +1194,13 @@ function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'tas
  * code action. Each was made where it was registered; only the commands
  * around them moved out, to the features.
  */
-function createLateContexts(context: vscode.ExtensionContext, core: Core, pages: Pages): SectionFocus {
-  void syncOutlineFollowCursorContext();
-  context.subscriptions.push(startZenMode(context.globalState, context.workspaceState));
+function createLateContexts(context: vscode.ExtensionContext, core: Core, pages: Pages, preferences: PreferenceParts): SectionFocus {
+  // The Calendar's day panel and weekends, and the Outline following the
+  // cursor, as context keys their menus and titles read.
+  context.subscriptions.push(publishViewChoices(preferences.repository));
+  // Every page's width, which its gear keeps in the preferences.
+  context.subscriptions.push(startPageWidth({ reader: preferences.repository, display: preferences.display }));
+  context.subscriptions.push(startZenMode(context.globalState));
   // Which note a section is focused in, which leaving it clears.
   const sectionFocus = new SectionFocus();
   context.subscriptions.push(sectionFocus);

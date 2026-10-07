@@ -5,12 +5,15 @@ import { escapeMarkdown } from '../../shared/text';
 import { AgendaService, AgendaStatus } from '../../services/agendaService';
 import { resolveSourceUri } from '../commands/navigation';
 import { clickTask, TaskWrites, toggleTask, updateTaskLine } from '../commands/taskActions';
-import { mergeOrder } from '../state/dashboardState';
+import { rankShown } from '../../domain/tasks/taskRank';
+import { TASK_SORT_LABELS } from '../../domain/model/sortOrders';
 import { AgendaEntry, AgendaGroup } from '../state/agendaState';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
 import { stripTrailingTags } from '../../domain/ranking/entryLabels';
 import { Task, WorkspaceIndex } from '../../domain/model';
 import { speakRow } from './spokenRow';
+import { DATE_FORMAT_SETTINGS } from '../commands/datePrompt';
+import { countStatusTagsLeft, describeStatusTagsLeft } from '../commands/statusMove';
 
 /** What the Tasks view reads from the indexer, and when it redraws. */
 interface AgendaIndexSource {
@@ -23,12 +26,13 @@ interface AgendaIndexSource {
 
 /**
  * What the Agenda reads from preferences, and writes: the order tasks were
- * dragged into, read from the blob and kept by the task layout.
+ * dragged into, read from the blob and kept by the task layout, and the
+ * board's status columns' order, which By status follows.
  */
 interface AgendaPreferences {
   reader: {
     readonly onDidChange: vscode.Event<unknown>;
-    readonly value: { taskOrder: string[] };
+    readonly value: { taskOrder: string[]; taskBoardColumnOrder?: string[] };
   };
   taskLayout: { setTaskOrder(taskOrder: string[]): Promise<void> };
 }
@@ -180,9 +184,11 @@ export class AgendaTreeProvider
         }
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
+        // A date format changes how every reason and day heading reads.
         if (
           event.affectsConfiguration('deckard.agenda') ||
-          event.affectsConfiguration('deckard.tasks')
+          event.affectsConfiguration('deckard.tasks') ||
+          Object.values(DATE_FORMAT_SETTINGS).some((key) => event.affectsConfiguration(`deckard.${key}`))
         ) {
           this.refresh();
         }
@@ -281,8 +287,13 @@ export class AgendaTreeProvider
       this.setStatus(describeIndexing(this.indexer.scanProgress), 0);
       return [];
     }
-    const view = this.services.agenda.buildView(this.index, this.preferences?.reader.value.taskOrder ?? []);
-    this.setStatus(describeAgendaStatus(view.status), view.urgent);
+    const preferences = this.preferences?.reader.value;
+    const view = this.services.agenda.buildView(this.index, preferences?.taskOrder ?? [], preferences?.taskBoardColumnOrder ?? []);
+    // While task lines carry status tags Deckard no longer reads, the view
+    // says so, so a task that reads as Todo has its reason beside it.
+    const left = countStatusTagsLeft(this.index);
+    const tagsLeft = left.count ? `${describeStatusTagsLeft(left)} Run Deckard: Move Status Tags into Checkboxes… to move them.` : undefined;
+    this.setStatus([describeAgendaStatus(view.status), tagsLeft].filter(Boolean).join(' ') || undefined, view.urgent);
     // The way back to every open task is offered while a search narrows it.
     this.services.contextKeys.publish({ filtered: view.filtered, querySet: view.querySet });
     if (this.view) {
@@ -379,10 +390,33 @@ export class AgendaTreeProvider
       return;
     }
     if (target.kind === 'task') {
-      await this.rankBefore(tasks, target.entry.task.id);
+      if (await this.sortedByRank()) {
+        await this.rankBefore(tasks, target.entry.task.id);
+      }
       return;
     }
     await this.moveToGroup(tasks, target, from);
+  }
+
+  /**
+   * Whether a drop onto a task can rank it: only while the view is sorted by
+   * rank, since under any other sort the task would land back where the sort
+   * puts it. Offers to sort by rank, which then lets the drop through.
+   */
+  private async sortedByRank(): Promise<boolean> {
+    const sort = this.services.agenda.readSort();
+    if (sort === 'rank') {
+      return true;
+    }
+    const choice = await vscode.window.showInformationMessage(
+      `The Tasks view is sorted by ${TASK_SORT_LABELS[sort]}, so a task dragged onto another stays where that sort puts it. Sort by rank to put tasks in your own order.`,
+      'Sort by Rank',
+    );
+    if (choice !== 'Sort by Rank') {
+      return false;
+    }
+    await this.services.agenda.setSort('rank');
+    return true;
   }
 
   /** Puts the dragged tasks in front of the one they were dropped on. */
@@ -409,7 +443,7 @@ export class AgendaTreeProvider
       ordered.push(taskId);
     }
     await this.preferences.taskLayout.setTaskOrder(
-      mergeOrder(ordered, this.index.tasks.keys()),
+      rankShown(this.preferences.reader.value.taskOrder, ordered, this.index.tasks.keys()),
     );
     this.refresh();
   }

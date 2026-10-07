@@ -14,14 +14,15 @@ const { DashboardPanel } = modules.dashboard;
 const { ThemePreview } = modules.themePreview;
 
 function createIndex() {
-  const task = (id, title, lineNumber, { tags = [], completed = false } = {}) => ({
+  const TODO = { symbol: ' ', name: 'Todo', type: 'todo' };
+  const task = (id, title, lineNumber, { tags = [], completed = false, status = TODO } = {}) => ({
     id, filePath: 'notes/tasks.md', title, completed, tags,
     tagLabels: Object.fromEntries(tags.map((tag) => [tag, tag])),
-    lineNumber, checkboxColumn: 3, status: completed ? { symbol: 'x', name: 'Done', type: 'done' } : { symbol: ' ', name: 'Todo', type: 'todo' },
-    sourceLineText: `- [${completed ? 'x' : ' '}] ${title} ${tags.join(' ')}`.trim(),
+    lineNumber, checkboxColumn: 3, status: completed ? { symbol: 'x', name: 'Done', type: 'done' } : status,
+    sourceLineText: `- [${completed ? 'x' : status.symbol}] ${title} ${tags.join(' ')}`.trim(),
   });
   const tasks = [
-    task('audit', 'Send the audit summary', 1, { tags: ['#project/atlas', '#status/doing'] }),
+    task('audit', 'Send the audit summary', 1, { tags: ['#project/atlas'], status: { symbol: '/', name: 'In progress', type: 'inProgress' } }),
     task('room', 'Book the review room', 2, { tags: ['#project/beta'] }),
     task('call', 'Call Ren', 3, { tags: ['#project/atlas'] }),
     task('ship', 'Ship the release', 4, { completed: true }),
@@ -37,7 +38,6 @@ function createIndex() {
     tags: new Map([
       tag('#project/atlas', ['audit', 'call']),
       tag('#project/beta', ['room']),
-      tag('#status/doing', ['audit']),
     ]),
     entities: new Map(),
     tagAssociations: new Map(),
@@ -297,7 +297,7 @@ test('a list row and a table row have the card\'s menu, which checks where the t
   panel._onWebviewMessage = () => undefined;
   try {
     view.click(tableRow.querySelector('[data-action="task-row-menu"]'));
-    assert.strictEqual(view.find('#action-menu [data-menu-value="status:"]').getAttribute('aria-checked'), 'true');
+    assert.strictEqual(view.find('#action-menu [data-menu-value="status:todo"]').getAttribute('aria-checked'), 'true');
     view.click(view.find('#action-menu [data-menu-value="move-to"]'));
     assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTaskTo', taskId: 'room' });
   } finally {
@@ -365,8 +365,27 @@ test('a column that takes a card takes a new task, and a menu offers any date', 
   const { view } = await openBoard();
   const add = view.find('[data-action="board-add-task"]');
   assert.ok(add, 'a column that takes a drop has + Add task');
+  vscode._test.executedCommands.length = 0;
   view.click(add);
   assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'addTaskToColumn', column: add.dataset.columnId });
+  await delay(10);
+  // One way to add a task: Add Task's editor, started in the column.
+  assert.deepStrictEqual(
+    vscode._test.executedCommands.filter((entry) => entry.command === 'deckard.addTask').map((entry) => entry.args),
+    [[{ column: add.dataset.columnId }]],
+  );
+});
+
+test('the page’s Add task runs Add Task', async () => {
+  const { view } = await openBoard();
+  vscode._test.executedCommands.length = 0;
+  view.click(view.find('[data-action="add-task"]'));
+  assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'addTask' });
+  await delay(10);
+  assert.deepStrictEqual(
+    vscode._test.executedCommands.filter((entry) => entry.command === 'deckard.addTask').map((entry) => entry.args),
+    [[]],
+  );
 });
 
 test('saves its search as a view that reopens on the Task Board', async () => {
@@ -683,88 +702,64 @@ test('the gear turns the board into a table, whose headers sort and whose column
   );
 });
 
-test('the gear edits the status columns without opening settings', async () => {
-  const { view, lastState } = await openBoard();
+test('the gear orders, shows, and hides the status columns, and opens the status list', async () => {
+  const { view, lastState, preferences } = await openBoard();
   const columns = () =>
     view.findAll('.board-column').map((column) => column.dataset.columnId);
   assert.deepStrictEqual(
     view.findAll('.board-status-name').map((name) => name.textContent),
-    // Each column by its status's name; the setting keeps the tags.
-    ['Todo', 'In progress', 'Waiting'],
+    // Each status of the list; Done is fixed, Cancelled hidden.
+    ['Todo', 'In progress', 'Waiting', 'Someday', 'Blocked', 'Done', 'Cancelled'],
   );
-
-  view.type(view.find('[data-action="status-draft"]'), 'Review');
-  view.submit(view.find('[data-form="add-status"]'));
-  await delay(10);
-  assert.deepStrictEqual(vscode._test.configurationUpdates.map((update) => [update.name, update.value]), [
-    ['deckard.board.statuses', ['todo', 'doing', 'waiting', 'review']],
-  ]);
-  assert.strictEqual(vscode._test.configurationUpdates[0].target, vscode.ConfigurationTarget.Global);
-  assert.deepStrictEqual(lastState().data.settings.statuses, ['todo', 'doing', 'waiting', 'review']);
-  assert.ok(columns().includes('status:review'), 'the board shows the new column');
-  assert.strictEqual(view.find('[data-action="status-draft"]').value, '', 'the field empties');
+  assert.deepStrictEqual(columns(), ['status:todo', 'status:in-progress', 'status:waiting', 'status:someday', 'status:blocked', 'done']);
+  assert.strictEqual(view.find('.board-column[data-column-id="status:in-progress"] .board-column-symbol').textContent, '[/]');
 
   // Dragging a column's row past another moves it there.
-  assert.strictEqual(view.find('[data-action="move-status"]'), null, 'no arrow buttons');
-  const row = (status) => view.find(`.board-status[data-status="${status}"]`);
-  assert.ok(row('review').classList.contains('is-draggable'));
-  view.fire('pointerdown', row('review').children[0], { button: 0, pointerId: 1, clientX: 10, clientY: 10 });
-  view.document.pointerTarget = row('waiting');
-  view.fire('pointermove', row('review'), { pointerId: 1, clientX: 10, clientY: 2 });
-  view.fire('pointerup', row('review'), { pointerId: 1, clientX: 10, clientY: 2 });
+  const row = (name) => view.find(`.board-status[data-status="${name}"]`);
+  assert.ok(row('Blocked').classList.contains('is-draggable'));
+  view.fire('pointerdown', row('Blocked').children[0], { button: 0, pointerId: 1, clientX: 10, clientY: 10 });
+  view.document.pointerTarget = row('In progress');
+  view.fire('pointermove', row('Blocked'), { pointerId: 1, clientX: 10, clientY: 2 });
+  view.fire('pointerup', row('Blocked'), { pointerId: 1, clientX: 10, clientY: 2 });
   // The click a drag ends with does nothing more.
   const posted = view.posted.length;
-  view.click(row('review'));
+  view.click(row('Blocked'));
   assert.strictEqual(view.posted.length, posted, 'only the new order is sent');
   await delay(10);
-  assert.deepStrictEqual(lastState().data.settings.statuses, ['todo', 'doing', 'review', 'waiting']);
+  assert.deepStrictEqual(preferences.reader.value.taskBoardColumnOrder, ['Todo', 'Blocked', 'In progress', 'Waiting', 'Someday']);
+  assert.deepStrictEqual(columns().slice(0, 3), ['status:todo', 'status:blocked', 'status:in-progress']);
+  assert.strictEqual(vscode._test.configurationUpdates.length, 0, 'a preference, not a setting');
   assert.strictEqual(view.find('.drag-ghost'), null, 'the ghost is cleared');
   assert.strictEqual(view.find('.drag-placeholder'), null, 'the placeholder is cleared');
 
   // Right-click moves a column first or last, without a drag.
-  view.fire('contextmenu', row('waiting'));
+  view.fire('contextmenu', row('Waiting'));
   const menu = view.findAll('#rank-context-menu button').map((button) => button.textContent);
   assert.deepStrictEqual(menu, ['Move up', 'Move down', 'Move to first column', 'Move to last column']);
   view.click(view.find('#rank-context-menu [data-context-action="top"]'));
   await delay(10);
-  assert.deepStrictEqual(lastState().data.settings.statuses, ['waiting', 'todo', 'doing', 'review']);
-  view.fire('contextmenu', row('waiting'));
-  view.click(view.find('#rank-context-menu [data-context-action="bottom"]'));
+  assert.deepStrictEqual(preferences.reader.value.taskBoardColumnOrder, ['Waiting', 'Todo', 'Blocked', 'In progress', 'Someday']);
+
+  // A tick shows or hides a column; Done's cannot be cleared.
+  const tick = (name) => view.find(`input[data-action="show-status-column"][data-name="${name}"]`);
+  assert.strictEqual(tick('Done').disabled, true);
+  tick('Cancelled').checked = true;
+  view.change(tick('Cancelled'));
+  tick('Someday').checked = false;
+  view.change(tick('Someday'));
   await delay(10);
-  assert.deepStrictEqual(lastState().data.settings.statuses, ['todo', 'doing', 'review', 'waiting']);
+  assert.deepStrictEqual(preferences.reader.value.taskBoardHiddenColumns, ['Someday']);
+  assert.ok(columns().includes('cancelled') && !columns().includes('status:someday'));
+  assert.strictEqual(lastState().data.settings.columns.find((column) => column.name === 'Someday').shown, false);
 
-  view.click(view.find('[data-action="remove-status"][data-status="todo"]'));
+  vscode._test.executedCommands.length = 0;
+  view.click(view.find('[data-action="new-task-status"]'));
+  view.click(view.find('[data-action="edit-task-statuses"]'));
   await delay(10);
-  assert.deepStrictEqual(lastState().data.settings.statuses, ['doing', 'review', 'waiting']);
-
-  view.type(view.find('[data-action="status-draft"]'), 'to do');
-  view.submit(view.find('[data-form="add-status"]'));
-  assert.ok(view.find('.board-settings-error'), 'a name that cannot be a tag is refused');
-  assert.strictEqual(view.find('[data-action="status-draft"]').value, 'to do', 'what was typed is kept');
-  assert.strictEqual(view.document.activeElement, view.find('[data-action="status-draft"]'));
-
-  view.type(view.find('[data-action="namespace-draft"]'), 'stage');
-  view.submit(view.find('[data-form="status-namespace"]'));
-  await delay(10);
-  assert.strictEqual(vscode._test.settings.get('deckard.board.statusNamespace'), 'stage');
-  assert.strictEqual(lastState().data.settings.statusNamespace, 'stage');
-});
-
-test('writes status columns where a workspace already sets them', async () => {
-  const { view } = await openBoard();
-  const getConfiguration = vscode.workspace.getConfiguration;
-  vscode.workspace.getConfiguration = (section) => ({
-    ...getConfiguration(section),
-    inspect: (key) => ({ key, workspaceValue: ['todo'] }),
-  });
-  try {
-    view.type(view.find('[data-action="status-draft"]'), 'blocked');
-    view.submit(view.find('[data-form="add-status"]'));
-    await delay(10);
-  } finally {
-    vscode.workspace.getConfiguration = getConfiguration;
-  }
-  assert.strictEqual(vscode._test.configurationUpdates[0].target, vscode.ConfigurationTarget.Workspace);
+  assert.deepStrictEqual(
+    vscode._test.executedCommands.filter((entry) => entry.command === 'deckard.editTaskStatuses').map((entry) => entry.args),
+    [[{ newStatus: {} }], [undefined]],
+  );
 });
 
 test('a hidden board skips updates and catches up when shown', async () => {

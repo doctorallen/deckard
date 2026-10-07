@@ -1,6 +1,5 @@
 import * as assert from 'assert';
 
-import { readTaskStatuses } from '../domain/tasks/taskStatuses';
 import { createQueryContext, QueryContextSettings } from '../domain/query/queryContext';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
@@ -60,15 +59,10 @@ suite('Task metadata queries', () => {
 
   test('is:waiting means waiting on someone, and is:available what can start now', () => {
     const extra = [
-      createTask({
-        id: 'marked-waiting',
-        associationTagGroups: [[{ key: '#status/waiting' } as never]],
-      }),
+      createTask({ id: 'marked-waiting', status: { symbol: 'w', name: 'Waiting', type: 'onHold' } }),
+      createTask({ id: 'tagged-waiting', associationTagGroups: [[{ key: '#status/waiting' } as never]] }),
       createTask({ id: 'for-dana', assignee: '#person/dana' }),
-      createTask({
-        id: 'someday',
-        associationTagGroups: [[{ key: '#status/someday' } as never]],
-      }),
+      createTask({ id: 'someday', status: { symbol: 's', name: 'Someday', type: 'onHold' } }),
       createTask({ id: 'not-started', startAt: inDays(4) }),
       createTask({ id: 'started', startAt: inDays(0) }),
       createTask({ id: 'blocked', dependsOn: ['x1'] }),
@@ -94,7 +88,7 @@ suite('Task metadata queries', () => {
     assert.notDeepStrictEqual(matches('is:waiting'), matches('is:blocked'), 'no longer a second is:blocked');
     assert.deepStrictEqual(matches('is:blocked'), ['blocked']);
     assert.deepStrictEqual(matches('is:available'), [
-      'blocker', 'for-dana', 'late', 'later', 'soon', 'started', 'today', 'undated',
+      'blocker', 'for-dana', 'late', 'later', 'soon', 'started', 'tagged-waiting', 'today', 'undated',
     ]);
     assert.deepStrictEqual(matches('is:actionable'), matches('is:available'));
     assert.deepStrictEqual(
@@ -102,10 +96,7 @@ suite('Task metadata queries', () => {
       ['marked-waiting', 'someday'],
       'what is for me is not waiting on anyone',
     );
-    assert.ok(
-      matches('is:available', { identity: '@dana', taskPolicy: { statuses: readTaskStatuses([{ name: 'Waiting', type: 'onHold', tag: 'waiting' }]) } }).includes('someday'),
-      'the statuses on hold come from the setting',
-    );
+    assert.ok(matches('is:available').includes('tagged-waiting'), 'a #status/waiting tag is a tag like any other');
   });
 
   test('finds tasks by scheduled date and priority', () => {

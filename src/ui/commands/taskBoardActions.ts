@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import { readCaptureText } from '../../domain/markdown/captureWords';
 import { readDateOptions } from './datePrompt';
-import { resolveColumnCapture } from '../../domain/tasks/boardMoves';
+import { ColumnCapture, resolveColumnCapture } from '../../domain/tasks/boardMoves';
 import { QueryContext } from '../../domain/query/queryContext';
 import { resolveTaskMove, TaskBoardOptions, TaskMoveContext } from '../state/taskBoardState';
 import {
@@ -12,14 +12,11 @@ import {
   quoteTaskTitle,
   updateTaskLine,
 } from './taskActions';
-import { writeSetting } from './settings';
 import { captureToToday } from './capture';
 import { appendTagToLine } from './bulkEdit';
 import { readQueryContext } from './queryContext';
 import { formatCaptureLine } from '../../domain/capture/captureLines';
 import { Task } from '../../domain/model';
-import { readBoardStatuses, readStatusNamespace } from '../../domain/tasks/taskPolicy';
-import { readStatusWriteMode } from '../../domain/tasks/statusWrites';
 
 /**
  * Reads the task board settings. Every page that shows a board reads them
@@ -30,32 +27,9 @@ export function readTaskBoardOptions(queryContext: QueryContext): TaskBoardOptio
   const configuration = vscode.workspace.getConfiguration('deckard');
   return {
     queryContext,
-    statusNamespace: readStatusNamespace(configuration),
-    statuses: readBoardStatuses(configuration),
     format: readTaskMetadataFormat(configuration),
     limits: readBoardLimits(configuration.get<unknown>('board.limits', {})),
-    writeAs: readStatusWriteMode(configuration.get<unknown>('tasks.writeStatusAs')),
-    addCancelledDate: configuration.get<boolean>('tasks.addCancelledDate', true),
-    showCancelled: configuration.get<boolean>('board.showCancelled', false) === true,
   };
-}
-
-/**
- * Writes one of the `deckard.board` settings from the Task Board's view
- * options, where the reader already chose it. The value goes where it is
- * already set, so a workspace that sets its own columns keeps them there.
- */
-export async function updateTaskBoardSetting(
-  key: 'statuses' | 'statusNamespace' | 'showCancelled',
-  value: string[] | string | boolean,
-): Promise<void> {
-  const configuration = vscode.workspace.getConfiguration('deckard');
-  const current = configuration.inspect(`board.${key}`);
-  const target =
-    current?.workspaceValue === undefined
-      ? vscode.ConfigurationTarget.Global
-      : vscode.ConfigurationTarget.Workspace;
-  await writeSetting(`board.${key}`, value, target, configuration);
 }
 
 /**
@@ -90,36 +64,21 @@ export async function moveTaskToColumn(
 }
 
 /**
- * Captures a task straight into a board column: the words read as Capture
- * reads them, then the edit the column stands for made to the line, so the
- * task lands in today's note already in the column it was added from.
+ * The task a board column's + Add task starts Add Task on: an empty task
+ * with the edit the column stands for made to it, so it opens already in
+ * the column, its status, priority, due date, person, or tag filled in.
+ * A column that names no edit for a new task, such as Done, starts an
+ * empty one; one that refuses says why.
  */
-export async function captureIntoColumn(columnId: string): Promise<boolean> {
-  const text = await vscode.window.showInputBox({
-    title: 'Add a task to this column',
-    prompt: "It goes in today's note. A date, priority, or repeat rule at the end is read as Capture reads it: Call Ren friday p2",
-    placeHolder: 'Call Ren about the #project/atlas budget',
-  });
-  if (!text?.trim()) {
-    return false;
-  }
-  const configuration = vscode.workspace.getConfiguration('deckard');
+export function startColumnTask(columnId: string): ColumnCapture {
   const queryContext = readQueryContext();
-  const line = readCaptureText(
-    formatCaptureLine(text),
-    readTaskMetadataFormat(configuration),
-    queryContext.now,
-    readDateOptions(),
-  ).line;
-  const captured = resolveColumnCapture(line, (task) =>
+  return resolveColumnCapture(COLUMN_TASK, (task) =>
     resolveTaskMove(task, columnId, readTaskBoardOptions(queryContext)),
   );
-  if (captured.kind === 'refused') {
-    void vscode.window.showInformationMessage(captured.reason);
-    return false;
-  }
-  return captureToToday(text, captured.line);
 }
+
+/** The empty task a column's edit is made to. */
+const COLUMN_TASK = '- [ ] ';
 
 /** `deckard.board.limits`, keeping only whole numbers of one or more. */
 export function readBoardLimits(value: unknown): Record<string, number> {
@@ -136,13 +95,13 @@ export function readBoardLimits(value: unknown): Record<string, number> {
 
 /**
  * A next action for a tag with nothing open, the stuck-projects review: the
- * words are read as Capture reads them, the tag is written at the end, and
+ * words are read as Add Task reads them, the tag is written at the end, and
  * the task goes into today's note.
  */
 export async function captureNextAction(tagLabel: string): Promise<boolean> {
   const text = await vscode.window.showInputBox({
     title: `Next action for ${tagLabel}`,
-    prompt: "It goes in today's note, with the tag. A date, priority, or repeat rule at the end is read as Capture reads it: Call Ren friday p2",
+    prompt: "It goes in today's note, with the tag. A date, priority, or repeat rule at the end fills its field: Call Ren friday p2",
     placeHolder: 'Draft the kickoff agenda',
     ignoreFocusOut: true,
   });

@@ -7,7 +7,7 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import type { WorkspaceIndex } from '../domain/model';
 import { NavigationService } from '../services/navigationService';
 import type { CalendarMessage } from '../ui/protocol/calendar';
-import type { SidebarNotesSnapshot } from '../ui/protocol/sidebarNotes';
+import type { SidebarNotesPageState, SidebarNotesSnapshot } from '../ui/protocol/sidebarNotes';
 import { ActiveCalendar } from '../ui/webview/activeCalendar';
 import { ActiveNotePage } from '../ui/webview/activeNotePage';
 import { ActiveHome } from '../ui/webview/activeHome';
@@ -19,6 +19,7 @@ import { ThemePreview } from '../ui/webview/themePreview';
 import { withConfigurationEvents } from './configurationEvents';
 import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
+import { setTimingLog } from '../shared/timing';
 import { createPreferences } from './preferenceServices';
 import { pageWebview, REPOSITORY_ROOT } from './pageWebview';
 import { indexKeyOf } from './indexKeys';
@@ -384,7 +385,7 @@ function openController() {
     getDay: () => undefined,
     handleDayMessage: async (message: CalendarMessage) => void asked.push(['day', message]),
   };
-  const states = () => surface.webview.postedOf<{ type: 'state'; data: SidebarNotesSnapshot & { parkedTags: string[] } }>('state').map((message) => message.data);
+  const states = () => surface.webview.postedOf<{ type: 'state'; data: SidebarNotesPageState }>('state').map((message) => message.data);
   return {
     host,
     surface,
@@ -415,15 +416,15 @@ function openController() {
 }
 
 suite('Related Notes controller', () => {
-  test('an edit to the theme and a ranking setting at once resets the HTML and sends the state, then sends it again', async () => {
+  test('an edit to the theme and the Tasks view\'s search at once resets the HTML and sends the state, and the same pages are not sent again', async () => {
     await closeEditors();
     const { result: page, fire } = withConfigurationEvents(() => openController());
     try {
       page.host.attach(page.surface);
       await settle();
       const events = recordSurface(page.surface);
-      fire('deckard.theme', 'deckard.enableKeywordLinks');
-      assert.deepStrictEqual(events, ['html', 'post state', 'post state']);
+      fire('deckard.theme', 'deckard.agenda.query');
+      assert.deepStrictEqual(events, ['html', 'post state']);
     } finally {
       page.dispose();
     }
@@ -587,7 +588,7 @@ suite('Related Notes controller', () => {
         return lines.filter((line) => line.startsWith('Related Notes:')).length;
       };
       assert.strictEqual(await count(() => undefined), 0, 'nothing changed');
-      assert.strictEqual(await count(() => fire('deckard.board.statusNamespace')), 1, 'a setting the ranking reads');
+      assert.strictEqual(await count(() => fire('deckard.display.dateFormat')), 1, 'a setting the ranking reads');
       assert.strictEqual(await count(() => page.preferences.usage.recordSectionAccess('anything')), 1, 'a visit the ranking counts');
       assert.strictEqual(await count(() => page.preferences.display.setHideDailyNotes(true)), 1, 'a preference');
       page.updateIndex(UPDATED);
@@ -740,6 +741,57 @@ suite('Related Notes controller', () => {
       assert.deepStrictEqual(calls, [['deckard.showTaskBoard']]);
       assert.strictEqual(page.surface.webview.posted.length, sent);
       assert.deepStrictEqual(page.openedTags, []);
+    } finally {
+      page.dispose();
+    }
+  });
+  test('carries Deckard\'s pages at its top, every page kept, and a page asked for opens by its command', async () => {
+    await closeEditors();
+    const page = openController();
+    try {
+      page.host.attach(page.surface);
+      await settle();
+      const pages = page.states()[0].pages;
+      assert.strictEqual(pages?.style, 'list');
+      assert.deepStrictEqual(pages?.pages.map((one) => one.id), ['home', 'board', 'calendar', 'today', 'graph', 'find', 'stats', 'help']);
+      const calls = await recordCommands(() => page.send({ type: 'goToPage', page: 'board' }));
+      assert.deepStrictEqual(calls, [['deckard.showTaskBoard']]);
+      const none = await recordCommands(() => page.send({ type: 'goToPage', page: 'nowhere' }));
+      assert.deepStrictEqual(none, [], 'an id that names no page opens nothing');
+    } finally {
+      page.dispose();
+    }
+  });
+
+  test('sends the pages again when the reader chooses another look for them, without ranking again', async () => {
+    await closeEditors();
+    const page = openController();
+    try {
+      page.host.attach(page.surface);
+      await settle();
+      const sent = page.states().length;
+      const last = page.states()[sent - 1];
+      await page.preferences.display.setContextPagesStyle('list');
+      assert.strictEqual(page.states().length, sent, 'the same pages are not sent again');
+      const lines: string[] = [];
+      const keep = (message: string): void => void lines.push(message);
+      setTimingLog({ logLevel: 2, trace: keep, debug: keep, info: keep });
+      try {
+        await page.send({ type: 'setPagesStyle', style: 'icons' });
+      } finally {
+        setTimingLog(undefined);
+      }
+      assert.strictEqual(page.preferences.repository.current.contextPagesStyle, 'icons', 'kept in the preferences');
+      assert.strictEqual(page.states().length, sent + 1);
+      const again = page.states()[sent];
+      assert.strictEqual(again.pages?.style, 'icons');
+      assert.deepStrictEqual({ ...again, pages: undefined }, { ...last, pages: undefined }, 'the rest as it was');
+      assert.deepStrictEqual(lines.filter((line) => line.startsWith('Related Notes:')), [], 'nothing ranked again');
+      await page.send({ type: 'setPageShown', page: 'stats', shown: false });
+      assert.deepStrictEqual(page.preferences.repository.current.contextPagesHidden, ['stats']);
+      const latest = page.states()[page.states().length - 1];
+      assert.ok(!latest.pages?.pages.some((one) => one.id === 'stats'), 'Stats is left out');
+      assert.strictEqual(latest.pages?.choices?.find((choice) => choice.id === 'stats')?.shown, false, 'and the gear says so');
     } finally {
       page.dispose();
     }

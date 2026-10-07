@@ -1,7 +1,6 @@
 import { matchTaskLine, STATUS_MARKS, TaskLineMatch, TaskLineShape } from '../markdown/lineShapes';
 import { readStepsForNextOccurrence } from '../markdown/taskSteps';
 import { setTaskLineCompletion, writeCompletion } from '../markdown/taskLineEdits';
-import { setTaskStatusTag } from './statusWrites';
 import { DEFAULT_TASK_STATUSES, isNonTaskSymbol, statusForSymbol, type TaskStatusDefinition } from './taskStatuses';
 import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskFields';
 import { formatIsoDate } from '../markdown/calendar';
@@ -57,7 +56,7 @@ export function selectedLines(
  * Completes or reopens the task lines given, the way Toggle Line Comment
  * decides: if any of them is not done, in progress or cancelled alike,
  * every one that is not is completed; otherwise every one is reopened, as
- * `[ ]`, its status tag taken away. A completion writes its done date and,
+ * `[ ]`. A completion writes its done date and,
  * for a repeating task, its next occurrence on the line above, through the
  * same path as every other completion.
  */
@@ -65,15 +64,12 @@ export function toggleTaskLines(
   lines: readonly { line: number; text: string }[],
   now: number,
   options: {
-    addDoneDate: boolean;
     format: TaskMetadataFormat;
     eol: string;
     /** The whole note, so a repeating task's next occurrence takes its steps. */
     documentLines?: readonly string[];
     /** What each character means; Deckard's own when not given. */
     statuses?: readonly TaskStatusDefinition[];
-    /** The namespace of the status tag a reopened task loses; none is touched when not given. */
-    statusNamespace?: string;
   },
 ): ToggleResult {
   const statuses = options.statuses ?? DEFAULT_TASK_STATUSES;
@@ -90,16 +86,15 @@ export function toggleTaskLines(
     const checkboxColumn = match.opening.length;
     const box = setTaskLineCompletion(text, checkboxColumn, {
       completed,
-      doneDate: options.addDoneDate ? formatIsoDate(now) : undefined,
+      doneDate: formatIsoDate(now),
       preferredFormat: options.format,
     });
-    const marked = completed || options.statusNamespace === undefined ? box : setTaskStatusTag(box, checkboxColumn, options.statusNamespace, undefined);
     const title = parseTaskMetadata(text.slice(checkboxColumn + 2)).title;
     if (!completed) {
-      toggled.push({ line, before: text, after: marked, title });
+      toggled.push({ line, before: text, after: box, title });
       continue;
     }
-    const completion = writeCompletion(marked, checkboxColumn, {
+    const completion = writeCompletion(box, checkboxColumn, {
       now,
       eol: options.eol,
       steps: options.documentLines ? readStepsForNextOccurrence(options.documentLines, line) : [],

@@ -88,6 +88,17 @@ export interface QueryEditorOptions {
   readonly ownPrimary?: () => boolean;
 }
 
+/** How a value is added to a search: AND, AND NOT, or OR beside the facet's chosen value. */
+export type RefineMode = 'and' | 'exclude' | 'or';
+
+/** The mode a click or Enter adds a value in: Alt leaves it out, Shift allows it as well, plain narrows. */
+export function refineModeOf(event: MouseEvent | KeyboardEvent): RefineMode {
+  if (event.altKey) {
+    return 'exclude';
+  }
+  return event.shiftKey ? 'or' : 'and';
+}
+
 /** A search box, as a page draws and drives it. */
 export interface QueryEditor {
   /** The bar, its status line, the search's terms, and the builder; `statusControls` sits in the status line. */
@@ -110,6 +121,14 @@ export interface QueryEditor {
   afterRender(): void;
   /** Puts the caret in the search box, with its recent searches. */
   focus(): void;
+  /**
+   * Narrows the search by a clause from outside Refine, such as a tag on a
+   * card, as a click on Refine's value for it would: added with AND, left
+   * out with `exclude`, or with `or` beside the value of the same facet the
+   * search already has. A clause the search already names, either way, is
+   * not added again; returns whether the search changed.
+   */
+  refineBy(clause: string, mode: RefineMode): boolean;
   /** Each returns true when the event belonged to the editor. */
   handleMousedown(event: MouseEvent): boolean;
   handleFocusIn(event: FocusEvent): void;
@@ -420,6 +439,26 @@ function isEditable(target: EventTarget | null): boolean {
 /** The element an event happened on, as an element, if it is one. */
 function targetOf(event: Event): HTMLElement | null {
   return event.target instanceof Element ? (event.target as HTMLElement) : null;
+}
+
+/**
+ * A tag the search already names in the namespace of `tag`, which a tag
+ * from outside Refine is put beside with OR when no facet offers it:
+ * `#project/atlas` for `#project/zeus`. None for a tag with no namespace.
+ */
+function namespaceSibling(text: string, tag: string): string | undefined {
+  const slash = tag.indexOf('/');
+  if (!/^[#@]/.test(tag) || slash < 0) {
+    return undefined;
+  }
+  const prefix = tag.slice(0, slash + 1).toLowerCase();
+  return text.split(/[\s()]+/).find((word) => word.toLowerCase().startsWith(prefix) && word.toLowerCase() !== tag.toLowerCase());
+}
+
+/** Whether a search names `clause` as a whole term, as written or with a `-` before it, anywhere in it. */
+function namesClause(text: string, clause: string): boolean {
+  const escaped = clause.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[\\s(])-?${escaped}(?=$|[\\s)])`, 'i').test(text);
 }
 
 /** Makes one search box for a page; see `QueryEditor`. */
@@ -876,7 +915,7 @@ class SearchBox implements QueryEditor {
    * Narrows by a facet value: adds it, leaves it out with Alt, or with Shift
    * allows it as well as the value of the same facet already chosen.
    */
-  private refine(clause: string, facetId: string, mode: 'and' | 'exclude' | 'or'): void {
+  private refine(clause: string, facetId: string, mode: RefineMode): void {
     const text = this.appliedText().trim();
     if (mode === 'or') {
       const facet = (this.query().facets || []).find((candidate) => candidate.id === facetId);
@@ -895,6 +934,24 @@ class SearchBox implements QueryEditor {
     } else {
       this.run(`${text} AND ${term}`, true, true);
     }
+  }
+
+  public refineBy(clause: string, mode: RefineMode): boolean {
+    if (namesClause(this.appliedText(), clause)) {
+      return false;
+    }
+    const facet = (this.query().facets || []).find((candidate) => candidate.values.some((value) => value.clause === clause));
+    const existing = facet && facet.applied && facet.applied[0];
+    const sibling = mode === 'or' && !existing ? namespaceSibling(this.appliedText(), clause) : undefined;
+    if (sibling) {
+      const merged = mergeAlternative(this.appliedText().trim(), sibling, clause);
+      if (merged !== undefined) {
+        this.run(merged, true, true);
+        return true;
+      }
+    }
+    this.refine(clause, facet ? facet.id : '', mode);
+    return true;
   }
 
   /** Recent searches, for an empty bar: each a whole search, which choosing runs. */
@@ -1451,15 +1508,7 @@ class SearchBox implements QueryEditor {
         bar.focus();
       }
     },
-    facet: (target, event) => {
-      let mode: 'and' | 'exclude' | 'or' = 'and';
-      if (event.altKey) {
-        mode = 'exclude';
-      } else if (event.shiftKey) {
-        mode = 'or';
-      }
-      this.refine(String(target.dataset.clause), String(target.dataset.facetId), mode);
-    },
+    facet: (target, event) => this.refine(String(target.dataset.clause), String(target.dataset.facetId), refineModeOf(event)),
     'facet-more': (target) => {
       const id = String(target.dataset.facetId);
       if (this.expandedFacets.has(id)) {

@@ -128,13 +128,13 @@ function withRoots<T extends { localResourceRoots?: readonly vscode.Uri[] }>(opt
   return { ...options, localResourceRoots: options.localResourceRoots?.map((root) => root.path) };
 }
 
-/** The section a Help page's HTML opens at, or undefined for the top. */
-function anchorOf(html: string): string | undefined {
-  return /<body[^>]* data-anchor="([^"]*)"/.exec(html)?.[1];
+/** The page a Help page's HTML opens at, or undefined for the guide's contents. */
+function pageOf(html: string): string | undefined {
+  return /<body[^>]* data-page="([^"]*)"/.exec(html)?.[1];
 }
 
 suite('Help host', () => {
-  test('a new Help reads What is new first, opens at the section asked for, and runs scripts', async () => {
+  test('a new Help reads What is new first, opens at the place asked for, and runs scripts', async () => {
     await withHelp(async (help, made, events) => {
       await help.show('whats-new');
       assert.deepStrictEqual(events, [['releases'], ['create', 'deckard.help', 'Deckard Help'], [RENDER, '']], 'and starts the Markdown extension');
@@ -149,47 +149,47 @@ suite('Help host', () => {
       assert.strictEqual(panel.webview.options.enableScripts, true);
       assert.ok(String((panel.iconPath as vscode.Uri).path).endsWith('resources/deckard.svg'));
       assert.strictEqual(panel.htmls.length, 1);
-      assert.strictEqual(anchorOf(panel.htmls[0]), 'whats-new');
+      assert.strictEqual(pageOf(panel.htmls[0]), 'whats-new');
       assert.match(panel.htmls[0], /1\.27\.0/);
       assert.strictEqual(panel.reveals, 1);
       assert.deepStrictEqual(panel.posted, [], 'Help is sent no snapshot');
     });
   });
 
-  test('an open Help is asked to show a section, and is brought forward either way', async () => {
+  test('an open Help is asked to show a place, and is brought forward either way', async () => {
     await withHelp(async (help, made, events) => {
       await help.show();
-      assert.strictEqual(anchorOf(made[0].htmls[0]), undefined);
+      assert.strictEqual(pageOf(made[0].htmls[0]), undefined);
       await help.show('commands');
       await help.show();
       assert.strictEqual(made.length, 1);
-      assert.deepStrictEqual(made[0].posted, [{ type: 'reveal', anchor: 'commands' }]);
+      assert.deepStrictEqual(made[0].posted, [{ type: 'reveal', page: 'commands' }]);
       assert.strictEqual(made[0].reveals, 3);
       assert.strictEqual(made[0].htmls.length, 1, 'the open page is not drawn again');
       assert.deepStrictEqual(events.filter(([event]) => event === 'releases').length, 1, 'What is new is read when Help opens');
     });
   });
 
-  test('a hidden Help, which is not running to be asked, is drawn again at the section asked for', async () => {
+  test('a hidden Help, which is not running to be asked, is drawn again at the place asked for', async () => {
     await withHelp(async (help, made) => {
       await help.show();
       made[0].visible = false;
       await help.show('commands');
       assert.strictEqual(made[0].htmls.length, 2);
-      assert.strictEqual(anchorOf(made[0].htmls[1]), 'commands');
+      assert.strictEqual(pageOf(made[0].htmls[1]), 'commands');
       assert.deepStrictEqual(made[0].posted, [], 'nothing is posted to a page that is not running');
       assert.strictEqual(made[0].reveals, 2);
       await help.show();
-      assert.strictEqual(made[0].htmls.length, 2, 'shown with no section, it is only brought forward');
+      assert.strictEqual(made[0].htmls.length, 2, 'shown with no place, it is only brought forward');
     });
   });
 
-  test('a theme change draws Help again from the top, and sends nothing', async () => {
+  test('a theme change draws Help again at the guide\u2019s contents, and sends nothing', async () => {
     await withHelp(async (help, made, _events, themePreview) => {
       await help.show('whats-new');
       themePreview.show('cooper');
       assert.strictEqual(made[0].htmls.length, 2);
-      assert.strictEqual(anchorOf(made[0].htmls[1]), undefined);
+      assert.strictEqual(pageOf(made[0].htmls[1]), undefined);
       assert.deepStrictEqual(made[0].posted, []);
     });
   });
@@ -203,7 +203,7 @@ suite('Help host', () => {
       assert.deepStrictEqual(events.slice(read), [['releases'], [RENDER, '']]);
       assert.deepStrictEqual(withRoots(kept.webview.options), { enableCommandUris: true, enableScripts: true, localResourceRoots: HELP_ROOTS });
       assert.strictEqual(kept.htmls.length, 1);
-      assert.strictEqual(anchorOf(kept.htmls[0]), undefined);
+      assert.strictEqual(pageOf(kept.htmls[0]), undefined);
       assert.deepStrictEqual(kept.posted, []);
       assert.strictEqual(kept.reveals, 0, 'a restored panel is not brought forward');
 
@@ -271,7 +271,7 @@ suite('Help host', () => {
       assert.strictEqual(made[0].htmls.length, 1, 'a closed panel is not drawn again');
       await help.show('whats-new');
       assert.strictEqual(made.length, 2);
-      assert.strictEqual(anchorOf(made[1].htmls[0]), 'whats-new');
+      assert.strictEqual(pageOf(made[1].htmls[0]), 'whats-new');
     });
   });
 
@@ -296,7 +296,7 @@ suite('Help host', () => {
     }
   });
 
-  test('its controller sends no snapshot and draws at a section only while asked', () => {
+  test('its controller sends no snapshot and draws at a place only while asked', () => {
     const controller = new HelpController({ extensionUri, manifest });
     const host = new WebviewHost<never, HelpPageToHost>(controller, { themePreview: new ThemePreview() });
     const surface = new FakeSurface();
@@ -305,11 +305,42 @@ suite('Help host', () => {
       host.refresh();
       assert.deepStrictEqual(surface.webview.posted, []);
       const webview = { cspSource: 'x', asWebviewUri: (uri: vscode.Uri) => uri } as unknown as vscode.Webview;
-      assert.strictEqual(anchorOf(controller.drawingAt('settings', () => controller.html(webview, { theme: 'corpo', zen: false }))), 'settings');
-      assert.strictEqual(anchorOf(controller.html(webview, { theme: 'corpo', zen: false })), undefined);
+      const drawn = controller.drawingAt({ page: 'tasks', anchor: 'task-metadata' }, () => controller.html(webview, { theme: 'corpo', zen: false }));
+      assert.strictEqual(pageOf(drawn), 'tasks');
+      assert.match(drawn, /<body[^>]* data-anchor="task-metadata"/);
+      assert.strictEqual(pageOf(controller.html(webview, { theme: 'corpo', zen: false })), undefined);
     } finally {
       host.dispose();
     }
+  });
+
+  test('a section of the old quick glance opens at the guide page that holds it now', async () => {
+    await withHelp(async (help, made) => {
+      await help.show('periodic');
+      assert.strictEqual(pageOf(made[0].htmls[0]), 'daily-notes');
+      await help.show('links');
+      await help.show('task-views');
+      await help.show('whats-new');
+      assert.deepStrictEqual(made[0].posted, [
+        { type: 'reveal', page: 'notes-and-links', anchor: 'markdown-format' },
+        { type: 'reveal', page: 'task-board' },
+        { type: 'reveal', page: 'whats-new' },
+      ]);
+    });
+  });
+
+  test('a command a guide page names is a button there when Help may run it', async () => {
+    await withGuideRenderer(
+      async () => '<p><code>Deckard: Show Stats</code> and <strong>Deckard: Edit Task</strong></p>',
+      async (surface) => {
+        await surface.webview.send({ type: 'openGuide', page: 'tasks' });
+        const [guide] = surface.webview.posted as Array<{ html: string }>;
+        assert.strictEqual(
+          guide.html,
+          '<p><button type="button" class="command-link" data-command="deckard.showStats">Deckard: Show Stats</button> and <strong>Deckard: Edit Task</strong></p>',
+        );
+      },
+    );
   });
 
   test('a guide page is rendered by the Markdown extension, its links and screenshots rewritten for the panel', async () => {

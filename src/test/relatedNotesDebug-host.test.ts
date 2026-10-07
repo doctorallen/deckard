@@ -14,7 +14,7 @@ function diagnosticFor(title: string): EntryRelatedNotesDiagnostic {
     sourceLine: 1,
     title,
     tags: [],
-    snapshot: { activeTags: [], notes: [], tagTitleDisplayMode: 'inline', state: 'ready' },
+    snapshot: { activeTags: [], notes: [], state: 'ready' },
   } as unknown as EntryRelatedNotesDiagnostic;
 }
 
@@ -110,7 +110,7 @@ suite('Related Notes debug host', () => {
       const [panel] = made;
       const roots = (options: vscode.WebviewOptions) => options.localResourceRoots?.map((root) => root.path);
       const { options, ...made0 } = panel.options as { options: vscode.WebviewPanelOptions & vscode.WebviewOptions };
-      assert.deepStrictEqual(made0, { viewType: 'deckard.relatedNotesDebug', title: 'Deckard: Related Notes Debug' });
+      assert.deepStrictEqual(made0, { viewType: 'deckard.relatedNotesDebug', title: 'Deckard: Related Notes Ranking' });
       assert.deepStrictEqual({ ...options, localResourceRoots: roots(options) }, {
         retainContextWhenHidden: false,
         enableFindWidget: true,
@@ -122,7 +122,7 @@ suite('Related Notes debug host', () => {
         'the page runs no script, and loads its sheet from the built pages',
       );
       assert.ok(String((panel.iconPath as vscode.Uri).path).endsWith('resources/deckard.svg'));
-      assert.strictEqual(panel.title, 'Deckard: Related Notes Debug — Kickoff');
+      assert.strictEqual(panel.title, 'Deckard: Related Notes Ranking — Kickoff');
       assert.strictEqual(panel.htmls.length, 1);
       assert.match(panel.htmls[0], /Kickoff/);
       assert.strictEqual(panel.reveals, 1);
@@ -137,7 +137,7 @@ suite('Related Notes debug host', () => {
       assert.strictEqual(made.length, 1);
       assert.strictEqual(made[0].htmls.length, 2);
       assert.match(made[0].htmls[1], /Retro/);
-      assert.strictEqual(made[0].title, 'Deckard: Related Notes Debug — Retro');
+      assert.strictEqual(made[0].title, 'Deckard: Related Notes Ranking — Retro');
       assert.strictEqual(made[0].reveals, 2);
     });
   });
@@ -147,7 +147,7 @@ suite('Related Notes debug host', () => {
       await debug.show(note, 3);
       assert.deepStrictEqual(made, []);
       assert.strictEqual(failures.length, 1);
-      assert.match(failures[0], /could not find that entry/);
+      assert.match(failures[0], /found no tagged entry there/);
     });
   });
 

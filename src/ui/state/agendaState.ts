@@ -1,16 +1,19 @@
 import { formatNamespaceValue, labelValue, noValueLabel, readNamespaceValues } from './tagGrouping';
 import { mentionsParked, withoutParked } from '../../domain/index/parked';
 import { describeSteps, isPlainStep } from '../../domain/markdown/taskSteps';
-import { SHORT_WEEKDAY_NAMES, addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
+import { addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
+import { formatDisplayDate } from '../../domain/markdown/dateFormat';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import { QueryContext } from '../../domain/query/queryContext';
-import { isOpenTask, readStatusColumnKey, statusForColumnKey } from '../../domain/tasks/taskStatuses';
+import { isOpenTask } from '../../domain/tasks/taskStatuses';
+import { listUnknownColumns, orderOpenStatuses, readTaskColumnKey } from '../../domain/tasks/statusColumns';
 import type { TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { Placement, placeTask } from '../../domain/tasks/agendaPlacement';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
-import { Task, TaskPriority, WorkspaceIndex } from '../../domain/model';
+import { Task, TaskPriority, TaskSortMode, WorkspaceIndex } from '../../domain/model';
+import { createTaskComparator } from './entryCards';
 import { formatTaskMetadata, TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
 
 /**
@@ -53,7 +56,7 @@ export const AGENDA_GROUPINGS: readonly {
     detail: 'Overdue, Today, and Upcoming',
   },
   { id: 'priority', label: 'Priority', detail: 'Highest to lowest' },
-  { id: 'status', label: 'Status', detail: 'The #status/… tag on each task' },
+  { id: 'status', label: 'Status', detail: "The status in each task's box, as [/] is In progress" },
   { id: 'assignee', label: 'Person', detail: 'Who each task is for' },
   {
     id: 'tag',
@@ -116,15 +119,22 @@ export interface AgendaOptions {
   /** How many days ahead Upcoming reaches; a date past that is Later. */
   upcomingDays: number;
   groupBy?: AgendaGroupBy;
-  statusNamespace?: string;
   /** The namespace whose tags are the groups when `groupBy` is `tag`. */
   groupNamespace?: string;
+  /** The board's status columns' order, by status name, which By status follows. */
+  statusOrder?: readonly string[];
   /**
    * The order a reader dragged their tasks into, from preferences. A task
    * they placed leads its group; the rest follow in the order the group
    * would have had anyway.
    */
   taskOrder?: readonly string[];
+  /**
+   * How each group orders its tasks before its own order decides:
+   * `rank`, the default, is `taskOrder`; the others are the task sorts the
+   * Task board's list offers.
+   */
+  taskSortMode?: TaskSortMode;
   /**
    * Adds a last group, Done today, of the tasks completed today, so the
    * list shows what was finished and not only what is left.
@@ -252,7 +262,7 @@ type Regrouper = (
 const REGROUPERS = new Map<AgendaGroupBy, Regrouper>([
   ['priority', (entries, _index, _options, order) => groupByPriority(entries, order)],
   ['status', (entries, _index, options, order) =>
-    groupByStatus(entries, { statuses: options.taskPolicy.statuses, namespace: options.statusNamespace ?? 'status' }, order)],
+    groupByStatus(entries, { statuses: options.taskPolicy.statuses, order: options.statusOrder }, order)],
   ['tag', (entries, index, options, order) =>
     groupByTag(entries, index, options.groupNamespace ?? 'project', order)],
 ]);
@@ -263,12 +273,12 @@ const REGROUPERS = new Map<AgendaGroupBy, Regrouper>([
  */
 export function createAgenda(
   index: WorkspaceIndex,
-  context: Pick<QueryContext, 'now' | 'taskPolicy'>,
+  context: Pick<QueryContext, 'now' | 'taskPolicy'> & Partial<Pick<QueryContext, 'dateFormats'>>,
   options: AgendaOptions,
 ): AgendaGroup[] {
-  const { tasks = index.tasks.values(), upcomingDays, groupBy = 'due', taskOrder = [] } = options;
+  const { tasks = index.tasks.values(), upcomingDays, groupBy = 'due', taskOrder = [], taskSortMode = 'rank' } = options;
   const listed = withoutPlainSteps([...tasks]);
-  const byRank = rankFirst(taskOrder);
+  const byRank = sortFirst(taskOrder, taskSortMode);
   const today = startOfDay(context.now);
   const tomorrow = addDays(today, 1);
   const window: AgendaWindow = {
@@ -290,7 +300,7 @@ export function createAgenda(
     return [
       ...(options.upcomingByDay
         ? byDue.flatMap((group) =>
-            group.id === 'upcoming' ? splitByDay(group.entries, tomorrow) : [group],
+            group.id === 'upcoming' ? splitByDay(group.entries, tomorrow, context) : [group],
           )
         : byDue),
       ...done,
@@ -320,17 +330,13 @@ function withoutPlainSteps(all: readonly Task[]): Task[] {
 }
 
 /**
- * Puts the tasks a reader dragged into place first, in the order they left
- * them, and orders the rest by `fallback`.
+ * Orders by the sort chosen, then by `fallback`, the group's own order. By
+ * rank, the tasks a reader dragged into place come first, in the order they
+ * left them; the rest follow in the group's order.
  */
-function rankFirst(taskOrder: readonly string[]): (fallback: EntryOrder) => EntryOrder {
-  const ranked = new Map(taskOrder.map((taskId, at) => [taskId, at]));
-  return (fallback) =>
-    (left, right) => {
-      const leftRank = ranked.get(left.task.id) ?? Number.MAX_SAFE_INTEGER;
-      const rightRank = ranked.get(right.task.id) ?? Number.MAX_SAFE_INTEGER;
-      return leftRank - rightRank || fallback(left, right);
-    };
+function sortFirst(taskOrder: readonly string[], mode: TaskSortMode): (fallback: EntryOrder) => EntryOrder {
+  const compare = createTaskComparator(taskOrder, mode);
+  return (fallback) => (left, right) => compare(left.task, right.task) || fallback(left, right);
 }
 
 /** The 🆔 ids open tasks carry, so a ⛔ naming one is still blocked. */
@@ -346,7 +352,7 @@ function collectOpenDependencyIds(index: WorkspaceIndex): Set<string> {
 function placeOpenTasks(
   listed: readonly Task[],
   index: WorkspaceIndex,
-  context: Pick<QueryContext, 'taskPolicy'>,
+  context: Pick<QueryContext, 'taskPolicy'> & Partial<Pick<QueryContext, 'dateFormats'>>,
   { window, openDependencyIds }: { window: AgendaWindow; openDependencyIds: ReadonlySet<string> },
 ): Map<AgendaGroupId, AgendaEntry[]> {
   const groups = new Map<AgendaGroupId, AgendaEntry[]>(
@@ -356,7 +362,7 @@ function placeOpenTasks(
     if (!isOpenTask(task)) {
       continue;
     }
-    const placement = placeTask(task, window, context.taskPolicy);
+    const placement = placeTask(task, window, context.taskPolicy, context.dateFormats);
     if (placement) {
       groups
         .get(placement.group)
@@ -368,9 +374,14 @@ function placeOpenTasks(
 
 /**
  * Upcoming, one group per day that has tasks, each keeping the group's own
- * order: `upcoming:2026-09-28`, labeled Tomorrow or `Mon Sep 28`.
+ * order: `upcoming:2026-09-28`, labeled Tomorrow or by its day in the
+ * reader's short format, `Mon, Sep 28`.
  */
-function splitByDay(entries: readonly AgendaEntry[], tomorrow: number): AgendaGroup[] {
+function splitByDay(
+  entries: readonly AgendaEntry[],
+  tomorrow: number,
+  { now, dateFormats }: Pick<QueryContext, 'now'> & Partial<Pick<QueryContext, 'dateFormats'>>,
+): AgendaGroup[] {
   const days = new Map<string, AgendaEntry[]>();
   [...entries]
     .sort((left, right) => startOfDay(left.at) - startOfDay(right.at))
@@ -380,24 +391,15 @@ function splitByDay(entries: readonly AgendaEntry[], tomorrow: number): AgendaGr
     });
   return [...days.entries()].map(([date, held]) => ({
     id: `upcoming:${date}`,
-    label: startOfDay(held[0].at) === tomorrow ? 'Tomorrow' : formatDayLabel(held[0].at),
+    label: startOfDay(held[0].at) === tomorrow ? 'Tomorrow' : formatDisplayDate(held[0].at, dateFormats, 'short', now),
     entries: entries.filter((entry) => held.includes(entry)),
   }));
 }
 
-/** Month names as a day label writes them, independent of locale. */
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/** A day as a group names it, `Mon Sep 28`, with no locale comma. */
-function formatDayLabel(at: number): string {
-  const date = new Date(at);
-  return `${SHORT_WEEKDAY_NAMES[date.getDay()]} ${MONTHS[date.getMonth()]} ${date.getDate()}`;
-}
-
 /**
  * The tasks completed today, by their ✅ date, the latest line first. A task
- * completed with `deckard.tasks.addDoneDate` off carries no date, and cannot
- * be counted.
+ * completed with no date written, by hand or by another tool, cannot be
+ * counted.
  */
 function createDoneToday(
   tasks: readonly Task[],
@@ -452,20 +454,30 @@ function groupByPriority(
 }
 
 /**
- * Each task's status, its checkbox's or its line's status tag's, busiest
- * status first, by the key the board's column for it has, so a drop on a
- * group writes what a drop on that column does; a plain `[ ]` with no tag,
- * and a character no status names, are No status.
+ * Each task's status, its checkbox's, in the board's column order, hidden
+ * statuses too, since this is a list and not a board, then a group per
+ * character no status names, `Unknown [?]`. A group goes by the key the
+ * board's column for it has, so a drop on a group writes what a drop on
+ * that column does.
  */
 function groupByStatus(
   entries: readonly AgendaEntry[],
-  reading: { statuses: TaskPolicy['statuses']; namespace: string },
+  reading: { statuses: TaskPolicy['statuses']; order?: readonly string[] },
   order: (left: AgendaEntry, right: AgendaEntry) => number,
 ): AgendaGroup[] {
-  const statusOf = (entry: AgendaEntry): string => readStatusColumnKey(entry.task, reading.statuses, reading.namespace) ?? '';
-  const labelOf = (key: string): string =>
-    key ? statusForColumnKey(reading.statuses, key)?.name ?? capitalize(key.replace(/[-_]+/g, ' ')) : 'No status';
-  return collect(entries, statusOf, labelOf, order);
+  const held = new Map<string, AgendaEntry[]>();
+  entries.forEach((entry) => {
+    const key = readTaskColumnKey(entry.task, reading.statuses);
+    held.set(key, [...(held.get(key) ?? []), entry]);
+  });
+  const columns = [
+    ...orderOpenStatuses(reading.statuses, reading.order ? { order: reading.order } : {}),
+    ...listUnknownColumns(entries.map((entry) => entry.task), reading.statuses).map((column) => ({ ...column, name: `${column.name} [${column.symbol}]` })),
+  ];
+  return columns.flatMap((column) => {
+    const group = held.get(column.key);
+    return group ? [{ id: column.key, label: column.name, entries: [...group].sort(order) }] : [];
+  });
 }
 
 /**

@@ -9,7 +9,6 @@ import type { NoteFiles } from './indexReader';
 import {
   extractTags,
   getEntityNamespaceAliases,
-  getPersonMarker,
   MarkdownParseOptions,
   NoteBoundaries,
   parseMarkdown,
@@ -286,10 +285,13 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
           PARSE_FORMAT,
           folder?.uri.toString() ?? '',
           options.noteBoundaries ?? 'line',
-          options.parseInlineTags === false ? 'no-inline' : 'inline',
-          options.personMarker ?? '',
+          // What three settings since removed were fixed at, so a cache
+          // built with them as they shipped is still read, and one built
+          // with any other value is rebuilt once.
+          'inline',
+          '@',
           JSON.stringify(options.entityNamespaceAliases ?? {}),
-          options.assigneeFromPersonTag === true ? 'person-assigns' : 'field-assigns',
+          'field-assigns',
           JSON.stringify(options.taskStatuses ?? []),
         ].join('\u0000');
       },
@@ -445,10 +447,6 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
     workspaceFolder?: WorkspaceFolder<U>,
   ): MarkdownParseOptions {
     return {
-      parseInlineTags: this.getConfiguration(workspaceFolder).get<boolean>(
-        'parseInlineTags',
-        true,
-      ),
       noteBoundaries: getNoteBoundaries(
         this.getConfiguration(workspaceFolder).get<unknown>(
           'noteBoundaries',
@@ -461,17 +459,6 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
           {},
         ),
       ),
-      personMarker: getPersonMarker(
-        this.getConfiguration(workspaceFolder).get<unknown>(
-          'personMarker',
-          '@',
-        ),
-      ),
-      assigneeFromPersonTag:
-        this.getConfiguration(workspaceFolder).get<boolean>(
-          'tasks.assigneeFromPersonTag',
-          false,
-        ) === true,
       taskStatuses: readTaskStatusSettings(this.getConfiguration(workspaceFolder)),
     };
   }
@@ -612,10 +599,7 @@ function parkedTagKey(value: string, options: MarkdownParseOptions): string | un
   if (!key || key.startsWith('@')) {
     return key;
   }
-  return (
-    extractTags(key, options.entityNamespaceAliases, options.personMarker)[0]?.key.toLowerCase() ??
-    key
-  );
+  return extractTags(key, options.entityNamespaceAliases)[0]?.key.toLowerCase() ?? key;
 }
 
 /** A stat's times as the dates a parsed note carries. */

@@ -4,6 +4,7 @@
  */
 import type { ComponentChildren } from 'preact';
 
+import { NOTE_SORT_LABELS } from '../../domain/model/sortOrders';
 import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { TagReference } from '../../ui/protocol/shared';
 import { HelpButton, IconButton } from '../shared/buttons';
@@ -46,12 +47,7 @@ function HistoryButtons({ history }: { readonly history: SearchPageSnapshot['his
 
 /** How the notes are ordered, in the gear: the select alone, its label being the row's. */
 function SortControl({ mode }: { readonly mode: SearchPageSnapshot['sortMode'] }) {
-  const options: ReadonlyArray<readonly [string, string]> = [
-    ['alphabetical', 'A-Z'],
-    ['created', 'Newest created'],
-    ['updated', 'Recently updated'],
-    ['access', 'Most accessed'],
-  ];
+  const options = Object.entries(NOTE_SORT_LABELS);
   return (
     <label class="control-label">
       <span class="control-icon">
@@ -114,7 +110,7 @@ function ColumnChoices({ section, selected }: { readonly section: 'notes' | 'tas
   );
 }
 
-/** The gear: sort, layout, format, preview, columns, theme, and zen. */
+/** The gear: sort, layout, grouping, format, preview, columns, theme, and zen. */
 function SearchViewOptions({ snapshot }: { readonly snapshot: SearchPageSnapshot }) {
   return (
     <ViewOptions
@@ -130,13 +126,13 @@ function SearchViewOptions({ snapshot }: { readonly snapshot: SearchPageSnapshot
           ),
         },
         {
-          label: 'Hierarchy',
+          label: 'Group by',
           content: (
             <ViewOptionChoices
               action="set-hierarchy"
-              choices={[['off', 'Off', 'No hierarchy'], ['tags', 'By tag', "Group by Refine's tags"], ['headings', 'By heading', 'Nest by tagged headings']]}
+              choices={[['off', 'None', 'None, the results ungrouped'], ['tags', 'Tag', "Tag, under Refine's tags"], ['headings', 'Heading', 'Heading, nested by tagged headings']]}
               selected={snapshot.hierarchy || 'off'}
-              label="Group the results by tag"
+              label="Group the results by"
             />
           ),
         },

@@ -50,12 +50,14 @@ async function openPage(...shown) {
   vscode._test.createdPanels.length = 0;
   const index = createIndex();
   const updates = new vscode.EventEmitter();
+  const preferences = createPreferences(createGlobalState());
   const page = new CalendarPanel({
     indexer: { ready: Promise.resolve(), getSnapshot: () => index, onDidUpdate: updates.event },
     extensionUri: vscode.Uri.file('/ext'),
     writes: modules.taskWrites.createTaskWrites(),
     themePreview: new ThemePreview(),
     openTag: () => undefined,
+    preferences,
   });
   await page.show(...shown);
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];
@@ -64,7 +66,7 @@ async function openPage(...shown) {
   await settle();
   const cell = (date) => view.find(`.day-cell[data-drop-date="${date}"]`);
   const chips = (date) => [...cell(date).querySelectorAll('.cal-chip')].map((chip) => [chip.dataset.kind, chip.textContent.replace(/^[↻⏳ ]+/, '')]);
-  return { page, panel, view, cell, chips };
+  return { page, panel, view, cell, chips, preferences };
 }
 
 // ---------------------------------------------------------------------------
@@ -152,13 +154,13 @@ test('a task dragged to another day asks the host to move it, and a refusal is s
   assert.strictEqual(view.find('#live-status').textContent, `"Call Ren" was not moved to ${tomorrow}.`);
 });
 
-test('the gear turns repeats off where the setting is written', async () => {
-  const { view } = await openPage();
-  vscode._test.configurationUpdates.length = 0;
+test('the gear hides the weekends, kept in the preferences, and the month is drawn without them', async () => {
+  const { view, preferences } = await openPage();
   view.find('.view-options').setAttribute('open', '');
-  view.click(view.find('.view-options [data-action="set-show-repeats"][data-value="off"]'));
+  view.click(view.find('.view-options [data-action="set-show-weekends"][data-value="off"]'));
   await settle();
-  assert.deepStrictEqual(vscode._test.configurationUpdates.map((update) => [update.name, update.value]), [['deckard.calendar.showRepeats', false]]);
+  assert.strictEqual(preferences.repository.current.calendarHideWeekends, true);
+  assert.ok(view.find('.view-options [data-action="set-show-weekends"][data-value="off"][aria-pressed="true"]'), 'the gear says so');
 });
 
 test('with Related Notes open, the chosen day is there and the month takes the width', async () => {
@@ -196,6 +198,7 @@ test('with Related Notes open, the chosen day is there and the month takes the w
     themePreview: new ThemePreview(),
     openTag: () => undefined,
     activeCalendar,
+    preferences: createPreferences(globalState),
   });
   await page.show();
   const panel = vscode._test.createdPanels[vscode._test.createdPanels.length - 1];

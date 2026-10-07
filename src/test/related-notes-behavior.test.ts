@@ -26,7 +26,6 @@ suite('Related Notes behavior', () => {
         activeFileName: 'today.md',
         activeTags: [],
         notes: [],
-        tagTitleDisplayMode: 'inline',
         state: 'ready',
         ...snapshot,
       },
@@ -213,7 +212,7 @@ suite('Related Notes behavior', () => {
     insert.focus();
     insert.click();
     // Linking gamma raises it to the top.
-    page.send({ activeFileName: 'today.md', activeTags: [], tagTitleDisplayMode: 'inline', state: 'ready', notes: ranked('gamma', 'alpha', 'beta') });
+    page.send({ activeFileName: 'today.md', activeTags: [], state: 'ready', notes: ranked('gamma', 'alpha', 'beta') });
     const active = page.document.activeElement as HTMLElement;
     assert.strictEqual(active.getAttribute('data-action'), 'insert-link');
     assert.strictEqual(active.closest<HTMLElement>('.note')?.dataset.filePath, 'notes/gamma.md', 'Enter again would link the result chosen, not the one now in its place');
@@ -225,49 +224,11 @@ suite('Related Notes behavior', () => {
     assert.strictEqual(page.find('.note [data-action="insert-link"]').getAttribute('aria-label'), 'Insert a link to atlas.md at the cursor');
   });
 
-  test('opens a matching tag rather than the result carrying it', () => {
-    // Matching tags are listed beneath a result only when titles are drawn
-    // without their tags; inline, the title already carries them.
-    const page = open({
-      tagTitleDisplayMode: 'separate',
-      notes: [
-        note({
-          matchedTags: [{ key: '#project/atlas', label: 'project/atlas' }],
-        }),
-      ],
-    });
-
-    page.click('.tag-list [data-action="open-tag"]');
-
-    assert.strictEqual(
-      page.lastPosted('openTag')?.tagKey,
-      '#project/atlas',
-    );
-    assert.strictEqual(page.lastPosted('openSource'), undefined);
-  });
-
   test('says each shared tag once', () => {
-    // Listed apart from the title, the matching tags are chips under it,
-    // and a "Shared: …" line naming the same tags said them twice.
+    // A title that carries the shared tag draws it as a chip, and a
+    // "Shared: …" line naming the same tag would say it twice.
     const shared = { key: '#project/atlas', label: 'project/atlas' };
-    const separate = open({
-      tagTitleDisplayMode: 'separate',
-      notes: [note({ matchedTags: [shared], reasons: ['Shared: project/atlas', 'Linked note'] })],
-    });
-    assert.strictEqual(separate.findAll('.tag-list [data-action="open-tag"]').length, 1);
-    assert.strictEqual(separate.text('.relevance-reason'), 'Linked note');
-    separate.dispose();
-
-    const chipsOnly = open({
-      tagTitleDisplayMode: 'separate',
-      notes: [note({ matchedTags: [shared], reasons: ['Shared: project/atlas'] })],
-    });
-    assert.strictEqual(chipsOnly.findAll('.relevance-reason').length, 0, 'the chips are the reason');
-    chipsOnly.dispose();
-
-    // Inline, a title that carries the shared tag draws it as a chip too.
     const inline = open({
-      tagTitleDisplayMode: 'inline',
       notes: [note({ matchedTags: [shared], titleTags: [shared], reasons: ['Shared: project/atlas'] })],
     });
     assert.strictEqual(inline.findAll('.relevance-reason').length, 0, 'the title chip is the reason');
@@ -275,7 +236,6 @@ suite('Related Notes behavior', () => {
 
     // A title without the shared tag leaves the line to say which it is.
     const elsewhere = open({
-      tagTitleDisplayMode: 'inline',
       notes: [note({ matchedTags: [shared], titleTags: [], reasons: ['Shared: project/atlas'] })],
     });
     assert.strictEqual(elsewhere.text('.relevance-reason'), 'Shared: project/atlas');
@@ -284,14 +244,12 @@ suite('Related Notes behavior', () => {
     // The same holds for the associated tags: named by the chips, the line
     // goes; naming a tag the chips do not, it stays.
     const associated = open({
-      tagTitleDisplayMode: 'separate',
-      notes: [note({ matchedTags: [shared], reasons: ['Shared: project/atlas', 'Associated: project/atlas'] })],
+      notes: [note({ matchedTags: [shared], titleTags: [shared], reasons: ['Shared: project/atlas', 'Associated: project/atlas'] })],
     });
     assert.strictEqual(associated.findAll('.relevance-reason').length, 0);
     associated.dispose();
     const further = open({
-      tagTitleDisplayMode: 'separate',
-      notes: [note({ matchedTags: [shared], reasons: ['Shared: project/atlas', 'Associated: project/atlas, topic/ops'] })],
+      notes: [note({ matchedTags: [shared], titleTags: [shared], reasons: ['Shared: project/atlas', 'Associated: project/atlas, topic/ops'] })],
     });
     assert.strictEqual(further.text('.relevance-reason'), 'Associated: project/atlas, topic/ops');
   });
@@ -364,7 +322,6 @@ suite('Related Notes behavior', () => {
 
   test('draws a tag with its weight beside it', () => {
     const page = open({
-      tagTitleDisplayMode: 'separate',
       notes: [
         note({
           matchedTags: [{ key: '#project/atlas', label: 'project/atlas' }],
@@ -375,7 +332,6 @@ suite('Related Notes behavior', () => {
       ],
     });
 
-    assert.strictEqual(page.text('.tag-list .tag-value'), 'project/atlas');
     // A tag's pull on the ranking is drawn as a rail beside it, and what a
     // search for it finds is in its label.
     assert.ok(page.findAll('.tag-weight-rail-segment').length > 0);

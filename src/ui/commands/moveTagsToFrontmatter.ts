@@ -6,7 +6,6 @@ import {
   extractTagSpans,
   getEntityKind,
   getEntityNamespaceAliases,
-  getPersonMarker,
   isBuiltInEntityKind,
 } from '../../domain/markdown/parser';
 import {
@@ -68,7 +67,6 @@ export async function moveInlineTagsToFrontmatter(): Promise<void> {
     getEntityNamespaceAliases(
       configuration.get<unknown>('entityNamespaceAliases', {}),
     ),
-    getPersonMarker(configuration.get<unknown>('personMarker', '@')),
   );
   if (!content) {
     void vscode.window.showInformationMessage(

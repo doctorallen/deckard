@@ -76,15 +76,14 @@ suite('What Move to… moves', () => {
 
   test('a task left behind is marked [>] with a link to where it went', () => {
     const moved = block(note, cursor(1));
-    assert.deepStrictEqual(leaveBehind(moved, note, '2026-09-25', 'link'), [
+    assert.deepStrictEqual(leaveBehind(moved, note, '2026-09-25'), [
       '- [>] Call Ren 📅 2026-09-20 → [[2026-09-25]]',
     ]);
     const two = block(note, select([1, 0], [6, 4]));
-    assert.strictEqual(leaveBehind(two, note, 'Atlas#Next', 'link').length, 2);
-    assert.deepStrictEqual(leaveBehind(block(note, cursor(7)), note, 'Atlas#Next', 'link'), ['[[Atlas#Next]]']);
+    assert.strictEqual(leaveBehind(two, note, 'Atlas#Next').length, 2);
+    assert.deepStrictEqual(leaveBehind(block(note, cursor(7)), note, 'Atlas#Next'), ['[[Atlas#Next]]']);
     const mixed = block(note, select([6, 0], [7, 3]));
-    assert.deepStrictEqual(leaveBehind(mixed, note, 'Atlas', 'link'), ['- [[Atlas]]']);
-    assert.deepStrictEqual(leaveBehind(moved, note, 'Atlas', 'nothing'), []);
+    assert.deepStrictEqual(leaveBehind(mixed, note, 'Atlas'), ['- [[Atlas]]']);
   });
 
   test('a forwarded task is neither a task nor a note on a tag\'s page', () => {

@@ -10,6 +10,7 @@ import {
 } from '../domain/markdown/dates';
 import { localeWeekStart, numericOrderFor } from '../ui/commands/datePrompt';
 import { formatIsoDate } from '../domain/markdown/calendar';
+import { DEFAULT_DATE_FORMATS } from '../domain/markdown/dateFormat';
 
 suite('Dates in plain words', () => {
   // Friday 2026-09-25, noon.
@@ -107,7 +108,11 @@ suite('Dates in plain words', () => {
     assert.strictEqual(describeDay('2026-09-22', friday), 'Tuesday 2026-09-22 · 3 days ago');
     assert.strictEqual(describeDay('2027-03-10', friday), 'Wednesday 2027-03-10');
     assert.strictEqual(formatShortDay('2026-10-02', friday), 'Fri, Oct 2');
-    assert.strictEqual(formatShortDay('2027-03-10', friday), 'Wed, Mar 10, 2027');
+    assert.strictEqual(formatShortDay('2027-03-10', friday), '2027-03-10', 'another year is written in full');
+    const formats = { ...DEFAULT_DATE_FORMATS, date: 'D MMMM YYYY', short: 'ddd D MMM' };
+    assert.strictEqual(describeDay('2026-09-28', friday, formats), 'Monday 28 September 2026 · in 3 days');
+    assert.strictEqual(formatShortDay('2026-10-02', friday, formats), 'Fri 2 Oct');
+    assert.strictEqual(formatShortDay('2027-03-10', friday, formats), '10 March 2027');
   });
 
   test('names a whole week or month', () => {

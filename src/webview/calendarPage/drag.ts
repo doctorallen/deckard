@@ -18,6 +18,7 @@ import { eventElement } from '../shared/calendar/events';
 import type { CalendarSession } from '../shared/calendar/session';
 import { send } from '../shared/calendar/session';
 import type { CalendarPageState } from './view';
+import { formatPageDay } from '../shared/dateFormats';
 
 /** The task being dragged, the day it came from, and its chip as drawn. */
 interface Dragged {
@@ -88,7 +89,7 @@ function createSentMoves(session: CalendarSession<CalendarPageState>): SentMoves
       if (move.chip && move.draws === session.draws && !waiting) {
         move.chip.classList.remove('is-pending');
       }
-      announce(`"${move.title}" was not moved to ${move.date}.`);
+      announce(`"${move.title}" was not moved to ${formatPageDay(move.date)}.`);
     },
   };
 }

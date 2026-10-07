@@ -72,7 +72,7 @@ suite('Parked tasks leave the lists of things to do', () => {
 
   test('the board leaves them out, and offers Parked with how many it left out', () => {
     const index = workspace();
-    const options = { queryContext: createQueryContext(now), statusNamespace: 'status', statuses: [], format: 'emoji' as const };
+    const options = { queryContext: createQueryContext(now), statuses: [], format: 'emoji' as const };
     const board = createTaskBoard({ index, preferences: defaults({ taskBoardLayout: 'list' }), search: { query: 'is:open' }, options });
     assert.deepStrictEqual(titles((board.tasks ?? []).map((item) => item.task)), ['Call', 'Carry me', 'Pay rent']);
     const parked = board.query.facets.find((facet) => facet.id === 'parked');
@@ -96,8 +96,6 @@ suite('Parked tasks leave the lists of things to do', () => {
     ];
     const [tasks, stale, parked] = createDashboardWidgets(index, defaults({ dashboardWidgets: configs }), {
       queryContext: createQueryContext(now),
-      upcomingDays: 7,
-      tagTitleDisplayMode: 'inline',
     });
     assert.strictEqual(tasks.total, 3);
     assert.strictEqual(stale.total, 3);

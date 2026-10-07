@@ -4,10 +4,9 @@
  * what, if anything, a move to it may write, and checks each task, line,
  * and tag against the index as it is now.
  */
-import type { TaskBoardGroupBy, TaskSortMode } from '../../../../domain/model/preferences';
+import { TASK_SORT_MODES, type TaskBoardGroupBy, type TaskSortMode } from '../../../../domain/model/preferences';
 import {
   isBoardNamespace,
-  isStatusColumnList,
   isTaskColumnId,
 } from '../../../../domain/tasks/taskColumns';
 import type {
@@ -23,9 +22,10 @@ import type {
   SaveToTasksViewMessage,
   SetBoardGroupMessage,
   SetBoardQueryMessage,
-  SetBoardStatusesMessage,
-  SetBoardShowCancelledMessage,
-  SetBoardStatusNamespaceMessage,
+  EditTaskStatusesMessage,
+  SetBoardColumnOrderMessage,
+  SetBoardColumnShownMessage,
+  SetBoardParentTagMessage,
   SetTableColumnsMessage,
   SetTableSortMessage,
   SetTaskLayoutMessage,
@@ -59,7 +59,7 @@ function isTaskBoardGroupBy(value: unknown): value is TaskBoardGroupBy {
 
 /** A list's orders: the ones the state layer implements. */
 function isTaskSortMode(value: unknown): value is TaskSortMode {
-  return value === 'rank' || value === 'created' || value === 'updated';
+  return (TASK_SORT_MODES as readonly unknown[]).includes(value);
 }
 
 /** The messages that name a task and nothing else. */
@@ -171,20 +171,37 @@ const narrowSetTaskSort: Narrower<SetTaskSortMessage> = (value) =>
 const narrowReorderTasks: Narrower<ReorderTasksMessage> = (value) =>
   isStringArray(value.taskIds) ? { type: 'reorderTasks', taskIds: [...value.taskIds] } : undefined;
 
-/**
- * The status columns, in order: no more than the gear keeps, each a status
- * the setting allows, by the validator the page checks them with.
- */
-const narrowSetBoardStatuses: Narrower<SetBoardStatusesMessage> = (value) =>
-  isStatusColumnList(value.statuses) ? { type: 'setBoardStatuses', statuses: [...value.statuses] } : undefined;
+/** The most status names an order may hold, far more than any list has. */
+const MAX_COLUMN_NAMES = 100;
+/** The longest a status's name may be. */
+const MAX_NAME_LENGTH = 80;
 
-/** The statuses' namespace, as the setting allows one. */
-const narrowSetBoardStatusNamespace: Narrower<SetBoardStatusNamespaceMessage> = (value) =>
-  isBoardNamespace(value.namespace) ? { type: 'setBoardStatusNamespace', namespace: value.namespace } : undefined;
+/** Whether a value is a status's name as the gear sends one: some text, not too long. */
+function isStatusName(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0 && value.length <= MAX_NAME_LENGTH;
+}
 
-/** Whether to draw the Cancelled column. */
-const narrowSetBoardShowCancelled: Narrower<SetBoardShowCancelledMessage> = (value) =>
-  typeof value.show === 'boolean' ? { type: 'setBoardShowCancelled', show: value.show } : undefined;
+/** The status columns' order: status names, no more than a list holds. */
+const narrowSetBoardColumnOrder: Narrower<SetBoardColumnOrderMessage> = (value) =>
+  Array.isArray(value.names) && value.names.length <= MAX_COLUMN_NAMES && value.names.every(isStatusName)
+    ? { type: 'setBoardColumnOrder', names: [...value.names] }
+    : undefined;
+
+/** One status's column shown or hidden, by its name. */
+const narrowSetBoardColumnShown: Narrower<SetBoardColumnShownMessage> = (value) =>
+  isStatusName(value.name) && typeof value.shown === 'boolean'
+    ? { type: 'setBoardColumnShown', name: value.name, shown: value.shown }
+    : undefined;
+
+/** Edit Task Statuses, opened from the gear, on a new row or not. */
+const narrowEditTaskStatuses: Narrower<EditTaskStatusesMessage> = (value) =>
+  value.newStatus === undefined || typeof value.newStatus === 'boolean'
+    ? { type: 'editTaskStatuses', ...(value.newStatus ? { newStatus: true } : {}) }
+    : undefined;
+
+/** Whether to show each card's nearest parent tag. */
+const narrowSetBoardParentTag: Narrower<SetBoardParentTagMessage> = (value) =>
+  typeof value.show === 'boolean' ? { type: 'setBoardParentTag', show: value.show } : undefined;
 
 /** Each message the Task Board may send, and what it must hold. */
 export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
@@ -207,6 +224,7 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   moveTaskTo: taskOnly('moveTaskTo'),
   editTask: taskOnly('editTask'),
   breakIntoSteps: taskOnly('breakIntoSteps'),
+  addTask: exactlyType('addTask'),
   addTaskToColumn: narrowAddTaskToColumn,
   setBoardGroup: narrowSetBoardGroup,
   showColumnRest: narrowShowColumnRest,
@@ -220,9 +238,11 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   setTableColumns: narrowSetTableColumns,
   setTaskSort: narrowSetTaskSort,
   reorderTasks: narrowReorderTasks,
-  setBoardStatuses: narrowSetBoardStatuses,
-  setBoardStatusNamespace: narrowSetBoardStatusNamespace,
-  setBoardShowCancelled: narrowSetBoardShowCancelled,
+  setBoardColumnOrder: narrowSetBoardColumnOrder,
+  setBoardColumnShown: narrowSetBoardColumnShown,
+  editTaskStatuses: narrowEditTaskStatuses,
+  moveStatusTags: exactlyType('moveStatusTags'),
+  setBoardParentTag: narrowSetBoardParentTag,
 };
 
 /** A message from the Task Board, narrowed by its table, or undefined. */

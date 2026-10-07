@@ -5,9 +5,9 @@ import { Section } from '../model';
 import { TaskMetadataFormat } from '../markdown/taskFields';
 
 /**
- * How Capture writes what was typed, and where in a note it goes. Pure, so
- * the Capture box, Find's Capture row, and the board's capture all write the
- * same line, and a test can pin every rule.
+ * How typed words are written as a task, and where in a note a new line
+ * goes. Pure, so Add Task, Find's Add row, and Home's Quick add place a line
+ * alike and write the same one, and a test can pin every rule.
  */
 
 /** Where a captured line is inserted, and the line the task ends up on. */

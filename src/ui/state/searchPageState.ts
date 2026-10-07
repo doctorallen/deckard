@@ -16,7 +16,6 @@ import { noteTitle } from '../../domain/index/backlinks';
 import { getFileName } from '../../shared/paths';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { buildBlockExcerpt } from '../../domain/markdown/blockExcerpt';
-import { getNoteTitle } from '../../domain/ranking/entryLabels';
 import {
   baseCollator,
   compareTagOverviewCards,
@@ -59,7 +58,6 @@ import {
   Section,
   TagInfo,
   Task,
-  TagTitleDisplayMode,
   TagAssociation,
   QueryFacet,
   WorkspaceIndex,
@@ -87,9 +85,6 @@ export function listFrontmatterOnlyFiles(index: WorkspaceIndex): ParsedFile[] {
 export interface SearchPageOptions {
   /** The search the page was opened with, which Clear returns to. */
   originQuery?: string;
-  tagTitleDisplayMode?: TagTitleDisplayMode;
-  /** Whether tags are related by their headings as well as written together. */
-  enableHeadingTagRelationships?: boolean;
   /**
    * The closest word the notes contain for each word they do not, from the
    * full-text cache. Without it a search that finds nothing simply says so.
@@ -111,11 +106,6 @@ export interface SearchPageOptions {
    * of the reader's; it outranks `paged`.
    */
   pageSize?: number;
-  /**
-   * On a tag's page, also list the entries that link to its hub note without
-   * the tag, as `deckard.tagOverview.includeHubLinks` says. On unless false.
-   */
-  includeHubLinks?: boolean;
   /** Which page of each list to carry, 1-based and clamped. */
   notePage?: number;
   taskPage?: number;
@@ -148,13 +138,12 @@ export function createSearchPageSnapshot(
   const text = queryText.trim();
   const page = evaluateSearchPage(index, text, options);
   const { parsed, preview, tagKeys, results, viaHub } = page;
-  const tagTitleDisplayMode = options.tagTitleDisplayMode ?? 'inline';
   // Every match is sorted and counted by a key, which costs nothing to
   // build; only the page being shown is drawn. Rendering, the heading path,
   // and the pin lookup ran for every match before, so an empty search of a
   // large workspace rendered every entry to show thirty.
   const sectionKey = (section: Section): NoteKey =>
-    createSectionKey(section, preferences.sectionAccessCounts, tagTitleDisplayMode);
+    createSectionKey(section, preferences.sectionAccessCounts);
   const ranked = rankNoteKeys(index, preferences, page, sectionKey);
   const pageSize =
     options.pageSize ??
@@ -165,7 +154,6 @@ export function createSearchPageSnapshot(
   const sections = drawNoteCards(index, preferences, {
     keys: takePage(ranked, notePaging),
     page,
-    tagTitleDisplayMode,
     markVia,
   });
   const tasks = parkedLast(
@@ -192,7 +180,7 @@ export function createSearchPageSnapshot(
     ranked,
     tasks,
     drawTask,
-    drawNotes: (keys) => drawNoteCards(index, preferences, { keys, page, tagTitleDisplayMode, markVia, withoutTasks: true }),
+    drawNotes: (keys) => drawNoteCards(index, preferences, { keys, page, markVia, withoutTasks: true }),
   });
 
   return {
@@ -224,7 +212,6 @@ export function createSearchPageSnapshot(
     hierarchy: preferences.searchHierarchy ?? 'off',
     noteColumns: preferences.dashboardNoteColumns,
     taskColumns: preferences.dashboardTaskColumns,
-    tagTitleDisplayMode,
   };
 }
 
@@ -259,10 +246,10 @@ function buildPageFacets(index: WorkspaceIndex, page: SearchPageResults, text: s
     return [];
   }
   const related =
-    tagKeys && (options.enableHeadingTagRelationships ?? true)
+    tagKeys
       ? createRelatedFacetValues(index, tagKeys, results)
       : undefined;
-  return buildSearchFacets(index, results, text, { related, now: options.queryContext.now, taskPolicy: options.queryContext.taskPolicy });
+  return buildSearchFacets(index, results, text, { related, now: options.queryContext.now });
 }
 
 /** What either hierarchy draws its groups from. */
@@ -398,10 +385,9 @@ function rankNoteKeys(
 function drawNoteCards(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
-  { keys, page, tagTitleDisplayMode, markVia, withoutTasks }: {
+  { keys, page, markVia, withoutTasks }: {
     keys: readonly NoteKey[];
     page: SearchPageResults;
-    tagTitleDisplayMode: TagTitleDisplayMode;
     markVia: <T extends object>(item: T, id: string) => T;
     /** Leave the task lines out of each card, when the tasks are listed beside it. */
     withoutTasks?: boolean;
@@ -417,7 +403,6 @@ function drawNoteCards(
   const cardFor = (section: Section): TagOverviewCard => {
     const card = createTagOverviewCard(section, {
       sectionAccessCounts: preferences.sectionAccessCounts,
-      tagTitleDisplayMode,
       pinned:
         pinnedKeys.size > 0 &&
         pinnedKeys.has(
@@ -558,7 +543,7 @@ function describeTagProgressLine(
       done: progress.done,
       total: progress.total,
       overdue: progress.overdue,
-      label: describeTagProgress(progress, context.now, context.taskPolicy),
+      label: describeTagProgress(progress, context.now, context.taskPolicy, context.dateFormats),
       // The tasks progress counts: neither steps nor parked ones. The part
       // whose search is the page's is on, and the way back to the tag.
       parts: linkProgressParts(progress, context, (terms) => `${tagKey} ${terms} -is:step -is:parked`, 'the tag’s').map((part) =>
@@ -673,13 +658,13 @@ export interface SearchPageResults {
 /**
  * Evaluates a search page's search, as the page, Bulk edit, and Export all
  * need it. A tag's page with a hub note also lists what links to the hub
- * without carrying the tag, unless `includeHubLinks` is false; the hub notes'
- * own entries stay out of that, as they are the hub.
+ * without carrying the tag; the hub notes' own entries stay out of that,
+ * as they are the hub.
  */
 export function evaluateSearchPage(
   index: WorkspaceIndex,
   queryText: string,
-  options: Pick<SearchPageOptions, 'previewWords' | 'includeHubLinks' | 'queryContext'>,
+  options: Pick<SearchPageOptions, 'previewWords' | 'queryContext'>,
 ): SearchPageResults {
   const text = queryText.trim();
   const parsed = parseQuery(text);
@@ -705,7 +690,7 @@ export function evaluateSearchPage(
   const viaHub = new Set<string>();
   // What links to the hub is the tag's plain page's alone: a filter's terms
   // would not narrow it.
-  if (!hubFile || filtered || options.includeHubLinks === false || !drafted.node) {
+  if (!hubFile || filtered || !drafted.node) {
     return { parsed, drafted, preview, tagKeys, focusTag, ...(filtered ? { filtered } : {}), hubFile, results, viaHub };
   }
   const hubs = new Set(hubPaths);
@@ -986,11 +971,10 @@ interface NoteKey {
 function createSectionKey(
   section: Section,
   sectionAccessCounts: Record<string, number>,
-  tagTitleDisplayMode: TagTitleDisplayMode,
 ): NoteKey {
   return {
     section,
-    heading: getNoteTitle(section.heading, tagTitleDisplayMode),
+    heading: section.heading,
     filePath: section.filePath,
     startLine: section.startLine,
     createdAt: section.createdAt,

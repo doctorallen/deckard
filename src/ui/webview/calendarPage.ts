@@ -7,7 +7,7 @@ import type { ActiveCalendar, CalendarDaySource } from './activeCalendar';
 import { PanelAdapter } from './host/panelAdapter';
 import { viewPriority } from './host/panelPriority';
 import { WebviewHost } from './host/webviewHost';
-import type { CalendarController } from './pages/calendar/calendarController';
+import type { CalendarController, CalendarPreferences } from './pages/calendar/calendarController';
 import { CalendarPageController } from './pages/calendarPage/calendarPageController';
 import type { ThemePreview } from './themePreview';
 
@@ -31,6 +31,8 @@ export interface CalendarPanelOptions {
   activeCalendar?: ActiveCalendar;
   /** Opens a tag's page, as a tag in a task's title in the day panel asks. */
   openTag: (tagKey: string) => unknown;
+  /** Whether weekends are drawn, which the page's gear sets. */
+  preferences: CalendarPreferences;
 }
 
 /**
@@ -61,6 +63,7 @@ export class CalendarPanel implements CalendarDaySource, vscode.Disposable {
       post: (message) => this.page.host.post(message),
       openTag: options.openTag,
       extensionUri: options.extensionUri,
+      preferences: options.preferences,
     });
     this.controller = this.pageController.calendar;
     // The page ranks for a redraw as a side view does: never ahead of the

@@ -24,6 +24,8 @@ import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
 import { Task } from '../../domain/model';
 import type { TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
 import { parseTaskMetadata, TaskMetadataFormat } from '../../domain/markdown/taskFields';
+import { type DateFormats, DEFAULT_DATE_FORMATS, formatDisplayDay } from '../../domain/markdown/dateFormat';
+import { readDateFormats } from './datePrompt';
 
 /**
  * What an edit to a task reaches: the task service, which makes every edit
@@ -232,7 +234,7 @@ export async function toggleTask(
     return describeStepsCompletion(
       writes,
       task,
-      describeCompletion(task.title, outcome?.next, outcome?.unreadRule),
+      describeCompletion(task.title, outcome?.next, outcome?.unreadRule, readDateFormats()),
       family,
     );
   };
@@ -280,7 +282,7 @@ async function keepRepeating(writes: TaskWrites, uri: vscode.Uri, filePath: stri
     return;
   }
   const next = result.kind === 'updated' ? result.outcome?.next : undefined;
-  presentLineUpdate(writes, { filePath }, result, `Started the next ${quoteTitle(readTaskTitle(at.text))}${next === undefined ? '' : describeNextOccurrence(next)}.`);
+  presentLineUpdate(writes, { filePath }, result, `Started the next ${quoteTitle(readTaskTitle(at.text))}${next === undefined ? '' : describeNextOccurrence(next, readDateFormats())}.`);
 }
 
 /** A task line's words, its metadata left out. */
@@ -423,11 +425,12 @@ export function describeCompletion(
   title: string,
   next?: string,
   unreadRule?: string,
+  formats: DateFormats = DEFAULT_DATE_FORMATS,
 ): CompletionMessage {
   const quoted = quoteTitle(title);
   if (next !== undefined) {
     return {
-      text: `Completed ${quoted}, and started the next one${describeNextOccurrence(next)}.`,
+      text: `Completed ${quoted}, and started the next one${describeNextOccurrence(next, formats)}.`,
       severity: 'info',
     };
   }
@@ -440,11 +443,11 @@ export function describeCompletion(
   return { text: `Completed ${quoted}.`, severity: 'info' };
 }
 
-/** When the occurrence a completion started is next wanted, if it says. */
-export function describeNextOccurrence(line: string): string {
+/** When the occurrence a completion started is next wanted, if it says, in the reader's format. */
+export function describeNextOccurrence(line: string, formats: DateFormats = DEFAULT_DATE_FORMATS): string {
   const { metadata } = parseTaskMetadata(line);
   const when = metadata.due ?? metadata.scheduled ?? metadata.start;
-  return when ? `, ${metadata.due ? 'due' : 'scheduled'} ${when}` : '';
+  return when ? `, ${metadata.due ? 'due' : 'scheduled'} ${formatDisplayDay(when, formats)}` : '';
 }
 
 /** A task's title, short enough to sit in a notification. */

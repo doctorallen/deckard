@@ -43,7 +43,7 @@ suite('Messages', () => {
   test('a setting is named as the Settings editor labels it', () => {
     assert.strictEqual(settingLabel('exclude'), 'Exclude');
     assert.strictEqual(settingLabel('agenda.query'), 'Agenda: Query');
-    assert.strictEqual(settingLabel('deckard.agenda.groupBy'), 'Agenda: Group By');
+    assert.strictEqual(settingLabel('deckard.agenda.query'), 'Agenda: Query');
     assert.strictEqual(settingLabel('mcpServer.port'), 'MCP Server: Port');
     assert.strictEqual(settingLabel('templatesFolder'), 'Templates Folder');
     assert.strictEqual(settingLabel('me'), 'Me');

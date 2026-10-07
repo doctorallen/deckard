@@ -142,14 +142,9 @@ suite('Task service', () => {
     const reopened = await reopening.service.toggle(tasksOf('plan.md', done)[0], false);
     assert.strictEqual(reopening.fake.text('plan.md'), '- [ ] Send proposal\n');
     assert.strictEqual(reopened.kind === 'updated' ? reopened.outcome : 'none', undefined);
-
-    const open = '- [ ] Send proposal\n';
-    const plain = setup({ 'plan.md': open }, { 'deckard.tasks.addDoneDate': false });
-    await plain.service.toggle(tasksOf('plan.md', open)[0], true);
-    assert.strictEqual(plain.fake.text('plan.md'), '- [x] Send proposal\n');
   });
 
-  test('sets any status, with the dates its type keeps, and reopens as [ ] without the status tag', async () => {
+  test('sets any status as its character, with the dates its type keeps, and reopens as [ ] with its tags kept', async () => {
     const statuses = DEFAULT_TASK_STATUSES;
     const named = (name: string) => statuses.find((status) => status.name === name) as TaskStatusDefinition;
     const text = '- [ ] Draft the plan\n- [ ] Order the banner #status/doing\n- [x] Book the room #status/doing ✅ 2026-09-20\n';
@@ -160,11 +155,11 @@ suite('Task service', () => {
     assert.strictEqual((await service.toggle(room, false)).kind, 'updated');
     assert.strictEqual(
       fake.text('plan.md'),
-      '- [/] Draft the plan\n- [-] Order the banner #status/doing ❌ 2026-09-25\n- [ ] Book the room\n',
+      '- [/] Draft the plan\n- [-] Order the banner #status/doing ❌ 2026-09-25\n- [ ] Book the room #status/doing\n',
     );
-    const tagged = setup({ 'plan.md': '- [ ] Draft the plan\n' }, { 'deckard.tasks.writeStatusAs': 'tag', 'deckard.tasks.addCancelledDate': false });
-    await tagged.service.setStatus(tasksOf('plan.md', '- [ ] Draft the plan\n')[0], named('In progress'));
-    assert.strictEqual(tagged.fake.text('plan.md'), '- [ ] Draft the plan #status/doing\n');
+    const waiting = setup({ 'plan.md': '- [ ] Draft the plan\n' });
+    await waiting.service.setStatus(tasksOf('plan.md', '- [ ] Draft the plan\n')[0], named('Waiting'));
+    assert.strictEqual(waiting.fake.text('plan.md'), '- [w] Draft the plan\n');
   });
 
   test('a change to done is a completion, next occurrence and all; a cancelled repeat can keep repeating', async () => {
@@ -184,12 +179,12 @@ suite('Task service', () => {
   });
 
   test('a click steps through the workflow only when the setting asks', async () => {
-    const text = '- [/] Draft the plan\n- [ ] Wait for legal #status/waiting\n';
+    const text = '- [/] Draft the plan\n- [w] Wait for legal\n';
     const [draft, waiting] = tasksOf('plan.md', text);
     assert.strictEqual(setup({ 'plan.md': text }).service.readNextStatus(draft), undefined);
     const workflow = setup({ 'plan.md': text }, { 'deckard.tasks.checkboxClick': 'workflow' });
     assert.strictEqual(workflow.service.readNextStatus(draft)?.name, 'Done');
-    assert.strictEqual(workflow.service.readNextStatus(waiting), undefined, 'Waiting names no next status');
+    assert.strictEqual(workflow.service.readNextStatus(waiting)?.name, 'Todo', 'Waiting goes back to Todo');
   });
 
   test('puts a line back, and leaves a line changed since alone', async () => {

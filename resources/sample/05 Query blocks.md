@@ -33,7 +33,7 @@ is:open has:due -is:step -is:parked
 With `view=table`, a block's notes are a table too, like a database in
 Notion. `noteColumns=` picks the columns: how many notes link to each entry,
 how far along its tasks are, its tags, its dates, or one namespace's tags,
-such as `#status`. Notes sort by any of them: this one puts the entries with
+such as `#risk`. Notes sort by any of them: this one puts the entries with
 the most open tasks first, and those with none last.
 
 ```deckard view=table noteColumns=note,links,tasks,updated sort=tasks dir=desc

@@ -104,7 +104,6 @@ suite('Calendar messages', () => {
 
   test('refuses what only the calendar page sends', () => {
     for (const message of [
-      { type: 'setShowRepeats', show: true },
       { type: 'setShowWeekends', show: false },
       { type: 'setZenMode', enabled: true },
       { type: 'chooseTheme' },

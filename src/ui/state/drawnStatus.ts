@@ -1,15 +1,14 @@
 import type { Task } from '../../domain/model';
 import type { TaskPolicy } from '../../domain/tasks/taskPolicy';
-import { readTaskStatus, UNKNOWN_STATUS_NAME } from '../../domain/tasks/taskStatuses';
+import { UNKNOWN_STATUS_NAME } from '../../domain/tasks/taskStatuses';
 import type { DrawnStatus } from '../protocol/shared';
 
 /**
- * A task's status as a page draws its box: its checkbox's, or the one its
- * status tag stands for, as every view reads it. Undefined for a plain to
- * do and for a done task, whose boxes say all there is.
+ * A task's status as a page draws its box: its checkbox's. Undefined for a
+ * plain to do and for a done task, whose boxes say all there is.
  */
-export function drawTaskStatus(task: Pick<Task, 'status' | 'associationTagGroups' | 'completed'>, policy: Pick<TaskPolicy, 'statuses' | 'statusNamespace'>): DrawnStatus | undefined {
-  const status = readTaskStatus(task, policy.statuses, policy.statusNamespace);
+export function drawTaskStatus(task: Pick<Task, 'status' | 'completed'>, policy: Pick<TaskPolicy, 'statuses'>): DrawnStatus | undefined {
+  const status = task.status;
   if (task.completed || (status.type === 'todo' && status.name !== UNKNOWN_STATUS_NAME)) {
     return undefined;
   }

@@ -23,6 +23,22 @@ export interface TaskStatus {
   type: TaskStatusType;
 }
 
+/**
+ * A due date as the host words it, "overdue 15 days · 2026-09-08", in the
+ * parts Display's Dates preference chooses between: the state, which is
+ * always drawn so an overdue date always says "overdue"; how far off it is;
+ * and the date. A page draws every part from these, never by reading the
+ * words, since the date is in the reader's format.
+ */
+export interface DueParts {
+  /** `overdue`, `due`, `due today`; the whole wording when it has no date of its own to draw, `due 2026-12-25` or `was due 2026-06-01`. */
+  readonly state: string;
+  /** ` 15 days`, ` in 3 days`, or ` tomorrow`; empty when the wording gives none. */
+  readonly distance: string;
+  /** The date, drawn after ` · `; empty when the state holds it. */
+  readonly date: string;
+}
+
 /** A checkbox line in a note, with its tags, dates, and the fields written on it. */
 export interface Task {
   id: string;
@@ -61,7 +77,7 @@ export interface Task {
   dependsOn?: string[];
   lineNumber: number;
   checkboxColumn: number;
-  /** Its checkbox's status; a `#status/…` tag on a ` ` box is read on top of this (taskStatuses.ts). */
+  /** Its checkbox's status, by the character in its box (taskStatuses.ts). */
   status: TaskStatus;
   sourceLineText: string;
   createdAt?: number;

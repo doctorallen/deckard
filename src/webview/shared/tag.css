@@ -35,6 +35,11 @@
 .tag-weight-rail-segment { display: block; width: 4px; height: 3px; border-radius: 1px; background: var(--muted); opacity: .3; }
 .tag-weight-rail-segment.filled { background: var(--cyan); opacity: 1; }
 .task-title .inline-tag { color: var(--text); font: inherit; text-transform: none; }
+/* The tag a task is under, on a line of its own above its title when the
+   board shows parent tags. It sits flush with the title, a target as tall
+   as an inline tag, and as small as the details under the title. */
+.parent-tag-line { display: flex; min-width: 0; margin: 0 0 2px; }
+.tag-open.parent-tag { min-height: 24px; margin-left: -4px; padding: 2px 4px; }
 
 /* Right-click actions on any tag; drawn by .popover. */
 .tag-context-menu { position: fixed; }

@@ -571,11 +571,8 @@ suite('Workspace scanner and index', () => {
     // Each parse setting, set away from its default. A setting that changes
     // getParseOptions but not the fingerprint would leave stale cached parses.
     const parseSettings: Array<[string, unknown]> = [
-      ['deckard.parseInlineTags', false],
       ['deckard.noteBoundaries', 'heading'],
       ['deckard.entityNamespaceAliases', { proj: 'project' }],
-      ['deckard.personMarker', '~'],
-      ['deckard.tasks.assigneeFromPersonTag', true],
     ];
     const settings = new FakeSettings();
     const folder = fakeFolder('/tmp/deckard-fingerprint', 'w');

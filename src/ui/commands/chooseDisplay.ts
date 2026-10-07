@@ -7,8 +7,9 @@ import { customizeDisplay, readDisplayLevel, readScaleSettings, setDisplayChoice
  * Choose Display…: the three steps, each shown on the open pages as it is
  * moved through, as Choose Theme… shows a theme; then, when the reader has
  * set any of the settings a step moves, a way to put the step's values back;
- * then Customize… and the editor's own presets. Nothing is written until a
- * step is kept; Escape puts back the step that was in use.
+ * then Customize…, the date format, and the editor's own presets. Nothing
+ * is written until a step is kept; Escape puts back the step that was in
+ * use.
  */
 
 /** The steps' names and what each draws. */
@@ -51,6 +52,7 @@ export function createDisplayItems(current: DisplayLevel, changed: number): Disp
     ...reset,
     { label: 'More', kind: vscode.QuickPickItemKind.Separator },
     { label: 'Customize…', description: 'Each Display setting, in Settings', run: () => customizeDisplay() },
+    { label: 'Choose Date Format…', description: 'How a date reads', run: () => vscode.commands.executeCommand('deckard.chooseDateFormat') },
     { label: 'Editor: Choose Editor Preset…', description: 'What Deckard draws in notes', run: () => vscode.commands.executeCommand('deckard.chooseEditorPreset') },
   ];
 }

@@ -8,7 +8,9 @@ import { ProgressText } from './progressText';
 import type { ComponentChildren } from 'preact';
 
 import type { InlineToken } from '../../ui/protocol/inline';
-import type { DashboardTask, TagTitleDisplayMode } from '../../ui/protocol/shared';
+import type { DashboardTask } from '../../ui/protocol/shared';
+import { ParentTag } from './tagButton';
+import { formatPageDate } from './dateFormats';
 import { DueText } from './dueText';
 import { TaskTitle } from './taskTitle';
 import { describeDates, describeLocation, type EntryFacts, readEntryDetails } from './entryDetails';
@@ -72,12 +74,6 @@ export function plainTitle(tokens: readonly InlineToken[]): string {
     }
   }).join('');
   return words(tokens).replace(/\s+/g, ' ').trim();
-}
-
-/** A task timestamp as the YYYY-MM-DD form the note uses, in local time. */
-export function formatTaskDate(timestamp: number): string {
-  const date = new Date(timestamp);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 /**
@@ -162,8 +158,6 @@ export interface TaskListRowProps {
   readonly item: DashboardTask;
   /** A row that can be ranked by dragging it. */
   readonly draggable?: boolean;
-  /** `separate` draws the title's Markdown alone, without its tags as controls. */
-  readonly titleDisplay?: TagTitleDisplayMode;
   /** What stands where the checkbox goes, for a row that cannot be completed from here. */
   readonly leading?: ComponentChildren;
   /** What follows the row's text, such as its menu. */
@@ -190,7 +184,7 @@ function TaskFacts({ item }: { readonly item: DashboardTask }) {
     } else if (item.dueToday) {
       tone = 'today';
     }
-    due = <span key="due" class={`due-date ${tone}`}><DueText label={item.dueLabel} /></span>;
+    due = <span key="due" class={`due-date ${tone}`}>{item.dueParts ? <DueText parts={item.dueParts} /> : item.dueLabel}</span>;
   } else if (task.dueText) {
     due = <span key="due-text" class="due-date">{`Due ${task.dueText}`}</span>;
   }
@@ -199,7 +193,7 @@ function TaskFacts({ item }: { readonly item: DashboardTask }) {
     <>
       {item.parked ? <ParkedLabel key="parked" /> : null}
       {due}
-      {task.scheduledAt === undefined ? null : <span key="scheduled" class="task-detail">{`Scheduled ${formatTaskDate(task.scheduledAt)}`}</span>}
+      {task.scheduledAt === undefined ? null : <span key="scheduled" class="task-detail">{`Scheduled ${formatPageDate(task.scheduledAt)}`}</span>}
       <PriorityBadge key="priority" priority={task.priority} />
       {task.recurrence ? <span key="repeats" class="task-detail">{`Repeats ${task.recurrence}`}</span> : null}
       {item.stepsLabel ? <span key="steps" class="task-detail task-steps"><ProgressText text={item.stepsLabel} /></span> : null}
@@ -212,7 +206,7 @@ function TaskFacts({ item }: { readonly item: DashboardTask }) {
  * The headings above the task, tags stripped, go under the file and line:
  * the same two lines a note card and the sidebar show.
  */
-export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, entry, afterSource }: TaskListRowProps) {
+export function TaskListRow({ item, draggable, leading, trailing, entry, afterSource }: TaskListRowProps) {
   const task = item.task;
   let rowClass = 'row task-row';
   if (task.completed) {
@@ -231,8 +225,9 @@ export function TaskListRow({ item, draggable, titleDisplay, leading, trailing, 
         ? <TaskBox taskId={task.id} completed={task.completed} status={item.status} title={plainTitle(item.titleTokens) || task.title} />
         : leading}
       <div>
+        <ParentTag tag={item.parentTag} />
         <div key={item.task.title} class="task-title">
-          <TaskTitle tokens={item.titleTokens} tags={titleDisplay === 'separate' ? undefined : item.titleTags} />
+          <TaskTitle tokens={item.titleTokens} tags={item.titleTags} />
         </div>
         <div class="task-meta">
           <TaskFacts item={item} />

@@ -1,9 +1,11 @@
 /**
- * Deckard's pages, as one list: what the Pages view shows, what Go to…
+ * Deckard's pages, as one list: what the top of Context shows, what Go to…
  * offers, and in what order. Each page has a glyph of its own, the command
  * that opens it, and a hint drawn from the notes as they are now, so the
  * list says something worth reading as well as where to go.
  */
+
+import { type DateFormats, formatDisplayDate } from '../../domain/markdown/dateFormat';
 
 /** Each page, by the name of its glyph in resources/pages. */
 export type DeckardPageId = 'home' | 'board' | 'calendar' | 'today' | 'graph' | 'find' | 'stats' | 'help';
@@ -32,6 +34,8 @@ export interface PageFacts {
   todayNoteExists: boolean;
   /** The key Find is bound to, as the platform writes it. */
   findKey: string;
+  /** The reader's date formats, which today is named in. */
+  dateFormats?: DateFormats;
 }
 
 /** The command that opens each page. */
@@ -52,16 +56,15 @@ export function isDeckardPageId(value: unknown): value is DeckardPageId {
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** `n thing` or `n things`. */
 function count(n: number, one: string, many: string): string {
   return `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 }
 
-/** Every page, in the order the Pages view and Go to… list them. */
+/** Every page, in the order the top of Context and Go to… list them. */
 export function listDeckardPages(facts: PageFacts): DeckardPage[] {
-  const day = `${DAYS[facts.today.getDay()]}, ${MONTHS[facts.today.getMonth()].slice(0, 3)} ${facts.today.getDate()}`;
+  const day = formatDisplayDate(facts.today.getTime(), facts.dateFormats, 'short');
   return [
     {
       id: 'home',
@@ -117,7 +120,7 @@ export function listDeckardPages(facts: PageFacts): DeckardPage[] {
       label: 'Help',
       command: DECKARD_PAGE_COMMANDS.help,
       description: 'Get Started and the guide',
-      detail: 'The quick glance, with the full guide a click away',
+      detail: 'The guide, its pages down the side',
     },
   ];
 }

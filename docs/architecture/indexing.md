@@ -55,7 +55,7 @@ No caller holds the pieces. Each is typed by the roles it uses, from `indexReade
 
 A note that cannot be read is recorded in `failures` with the reason, and the scan continues. One bad note must not hide the rest of the workspace. Stats and the setup check show the list.
 
-Parsing uses each folder's parse options: `deckard.noteBoundaries`, `deckard.parseInlineTags`, `deckard.personMarker`, `deckard.entityNamespaceAliases`, and `deckard.tasks.assigneeFromPersonTag`. The result is one `ParsedFile` per note.
+Parsing uses each folder's parse options: `deckard.noteBoundaries` and `deckard.entityNamespaceAliases`. The person marker is `@`, every tagged line is read, and only the `👤` field assigns a task. The result is one `ParsedFile` per note.
 
 ## IndexState: one fold for builds and updates
 
@@ -78,7 +78,7 @@ What each change requires is decided by `reactionsTo(change)`, a pure function w
 | A file watcher's create or change | Queue the note for a read |
 | A file watcher's delete | Queue a removal |
 | Saving a note | Queue a read; a write Deckard just made skips the debounce |
-| A parse setting: `noteBoundaries`, `parseInlineTags`, `personMarker`, `entityNamespaceAliases`, or `tasks.assigneeFromPersonTag` | Rescan and reparse every note, since the fingerprint changed |
+| A parse setting: `noteBoundaries` or `entityNamespaceAliases` | Rescan and reparse every note, since the fingerprint changed |
 | `deckard.exclude`, `files.exclude`, `search.exclude`, or `deckard.templatesFolder` | Rescan, reusing each note whose stat is unchanged |
 | `deckard.entityNamespaceAliases` | Also forget the parked rules, since parked tags are keyed through the aliases |
 | `deckard.notesFolder` or the workspace folders | Replace the watchers, then rescan; a folder change also forgets the parked rules |

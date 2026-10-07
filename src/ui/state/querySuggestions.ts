@@ -6,9 +6,8 @@ import { collectQueryTagKeys, quoteValue, toBuilderTree } from '../../domain/que
 import { FIELD_ALIASES, parseQuery } from '../../domain/query/queryParser';
 import { ParsedQuery, QUERY_FIELD_OPERATORS, QUERY_FIELDS, QUERY_PRIORITY_VALUES, QUERY_RESERVED_STATUS_VALUES } from '../../domain/query/queryTypes';
 import { DEFAULT_TASK_POLICY, type TaskPolicy } from '../../domain/tasks/taskPolicy';
-import { normalizeStatusName, readTaskStatus, UNKNOWN_STATUS_NAME } from '../../domain/tasks/taskStatuses';
+import { normalizeStatusName, UNKNOWN_STATUS_NAME } from '../../domain/tasks/taskStatuses';
 import {
-  formatMonthDay,
   formatMonthName,
   formatShortDay,
   parseDatePhrase,
@@ -19,6 +18,7 @@ import { getFileName } from '../../shared/paths';
 import { pluralize } from '../../shared/text';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { addDays } from '../../domain/markdown/calendar';
+import { formatDisplayDate } from '../../domain/markdown/dateFormat';
 import {
   TagInfo,
   TagReference,
@@ -135,7 +135,7 @@ export function describeTagMatches(
 export function createQuerySuggestions(
   index: WorkspaceIndex,
   recentQueries: readonly string[],
-  context: Pick<QueryContext, 'now' | 'weekStart'> & Partial<Pick<QueryContext, 'taskPolicy'>>,
+  context: Pick<QueryContext, 'now' | 'weekStart'> & Partial<Pick<QueryContext, 'taskPolicy' | 'dateFormats'>>,
 ): QuerySuggestions {
   const fields: QuerySuggestion[] = QUERY_FIELDS.map((field) => ({
     value: field,
@@ -235,12 +235,12 @@ const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'satur
 /**
  * The date completions: `dates` look back, for when a note was created or
  * changed, `taskDates` look ahead, for when a task is due, and `noDate` asks
- * for none. A week or a
- * month says the days it covers, and a weekday the day it is, so a value is
- * chosen by what it means today.
+ * for none. A week or a month says the days it covers, and a weekday the
+ * day it is, in the reader's short format, so a value is chosen by what it
+ * means today.
  */
 function suggestDates(
-  { now, weekStart }: Pick<QueryContext, 'now' | 'weekStart'>,
+  { now, weekStart, dateFormats }: Pick<QueryContext, 'now' | 'weekStart'> & Partial<Pick<QueryContext, 'dateFormats'>>,
 ): { dates: QuerySuggestion[]; taskDates: QuerySuggestion[]; noDate: QuerySuggestion } {
   const span = (value: string): string => {
     const range = resolveDatePeriod(value, now, weekStart);
@@ -249,12 +249,12 @@ function suggestDates(
     }
     return value.endsWith('-month')
       ? formatMonthName(range.start, now)
-      : `${formatMonthDay(range.start)} to ${formatMonthDay(addDays(range.end, -1))}`;
+      : `${formatDisplayDate(range.start, dateFormats, 'short', now)} to ${formatDisplayDate(addDays(range.end, -1), dateFormats, 'short', now)}`;
   };
   const period = (value: string): QuerySuggestion => ({ value, label: value, detail: span(value) });
   const weekday = (value: string, direction: 'past' | 'future'): QuerySuggestion => {
     const date = parseDatePhrase(value, now, { direction })?.date;
-    return { value, label: value, detail: date ? formatShortDay(date, now) : undefined };
+    return { value, label: value, detail: date ? formatShortDay(date, now, dateFormats) : undefined };
   };
   const dates: QuerySuggestion[] = [
     { value: 'today', label: 'today' },
@@ -369,11 +369,11 @@ const TASK_SUGGESTIONS: QuerySuggestion[] = [
  * characters no status names that its tasks use, each with how many open
  * tasks have it, and then open, done, and any.
  */
-function suggestStatuses(index: WorkspaceIndex, policy: Pick<TaskPolicy, 'statuses' | 'statusNamespace'>): QuerySuggestion[] {
+function suggestStatuses(index: WorkspaceIndex, policy: Pick<TaskPolicy, 'statuses'>): QuerySuggestion[] {
   const counts = new Map<string, number>();
   const unknown = new Set<string>();
   index.tasks.forEach((task) => {
-    const status = readTaskStatus(task, policy.statuses, policy.statusNamespace);
+    const status = task.status;
     const slug = normalizeStatusName(status.name).replace(/ /g, '-');
     counts.set(slug, (counts.get(slug) ?? 0) + 1);
     if (status.name === UNKNOWN_STATUS_NAME) {
@@ -392,7 +392,7 @@ function suggestStatuses(index: WorkspaceIndex, policy: Pick<TaskPolicy, 'status
       named.set(slug, {
         value: slug,
         label: status.name,
-        detail: `${status.symbol === undefined ? `#${policy.statusNamespace}/${status.tag ?? ''}` : `[${status.symbol}]`}${count ? ` · ${pluralize(count, 'task')}` : ''}`,
+        detail: `[${status.symbol}]${count ? ` · ${pluralize(count, 'task')}` : ''}`,
       });
     });
   const characters = [...unknown].sort().map((symbol) => ({

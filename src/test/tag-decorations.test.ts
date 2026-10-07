@@ -122,7 +122,6 @@ suite('Tag decorations', () => {
       title: 'Relay checks',
       documentUri: 'file:///tmp/deckard/relay.md',
       lineNumber: 12,
-      includeDebug: false,
     });
 
     assert.strictEqual(
@@ -130,8 +129,7 @@ suite('Tag decorations', () => {
       true,
     );
     assert.strictEqual(hover.value.includes('Show related notes for Relay checks'), true);
-    // The ranking breakdown is a developer tool, so an ordinary hover leaves
-    // it out; deckard.developerMode puts it back.
+    // The ranking breakdown is a developer tool, in the palette, not here.
     assert.strictEqual(hover.value.includes('Debug related notes for Relay checks'), false);
     // The entry is in front of the reader here, so pinning it is offered
     // beside its related notes.
@@ -151,31 +149,10 @@ suite('Tag decorations', () => {
       title: 'Relay checks',
       documentUri: 'file:///tmp/deckard/relay.md',
       lineNumber: 12,
-      includeDebug: false,
       pinned: true,
     });
 
     assert.strictEqual(hover.value.includes('Unpin Relay checks from Home'), true);
     assert.strictEqual(hover.value.includes('command:deckard.unpinNote'), true);
   });
-
-  test('offers the ranking breakdown in developer mode', () => {
-    const hover = createEntryRelatedNotesHoverMessage({
-      title: 'Relay checks',
-      documentUri: 'file:///tmp/deckard/relay.md',
-      lineNumber: 12,
-      includeDebug: true,
-    });
-
-    assert.strictEqual(hover.value.includes('Debug related notes for Relay checks'), true);
-    assert.deepStrictEqual(hover.isTrusted, {
-      enabledCommands: [
-        'deckard.showEntryRelatedNotes',
-        'deckard.pinNote',
-        'deckard.unpinNote',
-        'deckard.showEntryRelatedNotesDebug',
-      ],
-    });
-  });
-
 });

@@ -11,7 +11,6 @@ import {
   PersistedPreferences,
   TagInfo,
   Task,
-  TagTitleDisplayMode,
   TagReference,
   WorkspaceIndex,
 } from '../../domain/model';
@@ -23,8 +22,6 @@ export interface DashboardSnapshotOptions {
   index: WorkspaceIndex;
   preferences: PersistedPreferences;
   selectedTag?: string;
-  /** How a tag in a title is drawn; inline by default. */
-  tagTitleDisplayMode?: TagTitleDisplayMode;
   /** The Tasks view's search, which the task glance counts within. */
   agendaQuery?: string;
   /** The settings and moment the task counts are taken in. */
@@ -51,7 +48,6 @@ export function createDashboardSnapshot({
   index,
   preferences,
   selectedTag,
-  tagTitleDisplayMode = 'inline',
   agendaQuery,
   queryContext,
 }: DashboardSnapshotOptions): DashboardSnapshot {
@@ -77,7 +73,6 @@ export function createDashboardSnapshot({
     totalNoteCount: countNotes(index),
     totalTaskCount: index.tasks.size,
     tagColumns: preferences.dashboardTagColumns,
-    tagTitleDisplayMode,
     tagSortMode: preferences.tagSortMode,
     entitySortMode: preferences.entitySortMode,
     selectedTag,

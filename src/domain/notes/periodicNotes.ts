@@ -60,12 +60,6 @@ export type NotePeriod = 'day' | 'week' | 'month';
 export type PeriodicNoteVariables = Record<'date' | 'week' | 'month', string>;
 
 /**
- * How a week's note is named: `range`, its first and last days, as
- * `week-2026-09-13-2026-09-19`; or `iso`, its ISO week, as `2026-W38`.
- */
-export type WeekNaming = 'range' | 'iso';
-
-/**
  * The note for the period containing a day: its name, and the values its
  * template can use.
  *
@@ -80,7 +74,6 @@ export function getPeriodicNote(
   period: NotePeriod,
   day: Date,
   weekStart: Weekday = 0,
-  naming: WeekNaming = 'range',
 ): { name: string; variables: PeriodicNoteVariables } {
   const start = getPeriodStart(period, day, weekStart);
   const date = formatLocalDate(start);
@@ -90,7 +83,7 @@ export function getPeriodicNote(
     week: `${date} to ${formatLocalDate(end)}`,
     month: `${MONTH_NAMES[start.getMonth()]} ${start.getFullYear()}`,
   };
-  return { name: period === 'week' && naming === 'iso' ? isoWeekName(start) : periodicNoteName(period, start, end), variables };
+  return { name: periodicNoteName(period, start, end), variables };
 }
 
 /**
@@ -106,12 +99,6 @@ function periodicNoteName(period: NotePeriod, start: Date, end: Date): string {
     return `week-${date}-${formatLocalDate(end)}`;
   }
   return `month-${MONTH_NAMES[start.getMonth()].toLowerCase()}-${start.getFullYear()}`;
-}
-
-/** A week's ISO name, `2026-W38`, from the ISO week its middle day falls in. */
-function isoWeekName(start: Date): string {
-  const { year, week } = getIsoWeek(new Date(start.getFullYear(), start.getMonth(), start.getDate() + 3));
-  return `${year}-W${String(week).padStart(2, '0')}`;
 }
 
 /** The first day of the period holding a day: a week's first day, a month's 1st. */
@@ -157,9 +144,8 @@ export function findPeriodicNoteNames(
   period: NotePeriod,
   day: Date,
   weekStart: Weekday = 0,
-  naming: WeekNaming = 'range',
 ): string[] {
-  const { name } = getPeriodicNote(period, day, weekStart, naming);
+  const { name } = getPeriodicNote(period, day, weekStart);
   if (period === 'day') {
     return [name];
   }
@@ -171,7 +157,7 @@ export function findPeriodicNoteNames(
   // An ISO week is named for the week its Monday to Sunday holds, which is
   // the week an earlier note would have been written for.
   const { year, week } = getIsoWeek(middle);
-  const names = [name, `${year}-W${String(week).padStart(2, '0')}`, getPeriodicNote('week', day, weekStart).name];
+  const names = [name, `${year}-W${String(week).padStart(2, '0')}`];
   for (let other = 0; other < 7; other += 1) {
     if (other !== weekStart) {
       names.push(getPeriodicNote('week', middle, other as Weekday).name);

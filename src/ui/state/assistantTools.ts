@@ -47,7 +47,7 @@ export const QUERY_SYNTAX_GUIDE = [
   'text ~ "vendor" matches words in note and task text.',
   'link = [[Atlas]], or a bare [[Atlas]], matches the entries that link to the note Atlas, by its name or an alias; [[Atlas#Decision]] matches links to one heading.',
   'task = open, done, or any matches tasks only.',
-  'status:in-progress, status:blocked, or any status by its name (a hyphen for a space) matches tasks of that status, whether its box writes it, as [/], or its line tags it, as #status/doing; status:[/] matches a status by its character, and status:unknown the characters no status names.',
+  'status:in-progress, status:waiting, or any status by its name (a hyphen for a space) matches tasks of that status, which is the character in the task\'s box, as [/] or [w]; a #status/… tag is only a tag. status:[/] matches a status by its character, and status:unknown the characters no status names.',
   'due, scheduled, and start take a date such as 2026-09-20, today, tomorrow, a weekday such as friday (the next one), a phrase such as "oct 3" or end-of-month, a whole week or month such as this-week or next-month, a window such as 7d counted forward, or none.',
   'done = 7d matches tasks completed in the last seven days, and cancelled = 7d those cancelled.',
   'priority takes highest, high, medium, none, low, or lowest, as in priority >= high.',

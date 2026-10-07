@@ -169,7 +169,7 @@ suite('People recency', () => {
           { id: 'q', kind: 'quietPeople', width: 'half', count: 5, days: 90 },
         ],
       },
-      { queryContext: createQueryContext(now), upcomingDays: 7, tagTitleDisplayMode: 'inline' },
+      { queryContext: createQueryContext(now) },
     );
     assert.strictEqual(widget.total, 2);
     assert.deepStrictEqual(

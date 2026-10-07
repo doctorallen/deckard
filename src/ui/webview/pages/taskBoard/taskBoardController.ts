@@ -22,16 +22,14 @@ import { offerSavedSearchOnHome } from '../../../commands/savedSearchHome';
 import { settingTarget, writeSetting } from '../../../commands/settings';
 import { clickTask, openTask, quoteTaskTitle, TaskWrites } from '../../../commands/taskActions';
 import { listPeopleRecency } from '../../../state/peopleRecency';
-import {
-  captureIntoColumn,
-  moveTaskToColumn,
-  readTaskBoardOptions,
-  updateTaskBoardSetting,
-} from '../../../commands/taskBoardActions';
+import { moveTaskToColumn, readTaskBoardOptions } from '../../../commands/taskBoardActions';
 import { breakIntoStepsCommand } from '../../../commands/taskSteps';
+import { countStatusTagsLeft, describeStatusTagsLeft } from '../../../commands/statusMove';
 import { normalizeAgendaQuery } from '../../../state/agendaState';
-import { mergeOrder } from '../../../state/dashboardState';
-import { formatQueryBlock, QueryBlockWriteOptions } from '../../../state/queryBlockState';
+import { rankShown } from '../../../../domain/tasks/taskRank';
+import { DEFAULT_HIDDEN_COLUMNS } from '../../../../domain/tasks/statusColumns';
+import { normalizeStatusName } from '../../../../domain/tasks/taskStatuses';
+import { formatQueryBlock, queryBlockSortOf, QueryBlockWriteOptions } from '../../../state/queryBlockState';
 import { createTaskBoard } from '../../../state/taskBoardState';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
@@ -51,7 +49,6 @@ import {
 import { getTaskBoardHtml } from '../../taskBoardHtml';
 import type { PageChrome } from '../../components';
 import { narrowTaskBoardMessage } from './messages';
-import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 
 /** What the Task Board searches for until it is told otherwise. */
 export const DEFAULT_TASK_BOARD_QUERY = 'is:open';
@@ -198,11 +195,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         }
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (
-          event.affectsConfiguration('deckard.board') ||
-          event.affectsConfiguration('deckard.tasks') ||
-          event.affectsConfiguration('deckard.tagTitleDisplayMode')
-        ) {
+        if (event.affectsConfiguration('deckard.board') || event.affectsConfiguration('deckard.tasks')) {
           page.refresh();
         }
       }),
@@ -332,25 +325,26 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   /** The board for the search as it stands, with what the sidebar and the Tasks view say of it. */
   private createSnapshot(): TaskBoardSnapshot {
     const configuration = (): vscode.WorkspaceConfiguration => vscode.workspace.getConfiguration('deckard');
-    const tagTitleDisplayMode = normalizeTagTitleDisplayMode(
-      configuration().get<unknown>('tagTitleDisplayMode', 'inline'),
-    );
     const listed = normalizeAgendaQuery(configuration().get<string>('agenda.query', ''));
     const agendaListsThisSearch = listed === normalizeAgendaQuery(this.query);
+    const index = this.board.indexer.getSnapshot();
+    const tagsLeft = countStatusTagsLeft(index);
+    const preferences = this.board.preferences.reader.value;
     return {
       ...createTaskBoard({
-        index: this.board.indexer.getSnapshot(),
-        preferences: this.board.preferences.reader.value,
+        index,
+        preferences,
         search: { query: this.query, invalidQuery: this.invalidQuery },
         options: {
           ...readTaskBoardOptions(readQueryContext()),
           shownColumns: this.shownColumns,
+          parentTag: preferences.boardParentTag === true,
         },
-        tagTitleDisplayMode,
       }),
       refineInSidebar: this.board.activeSearch.isRefineInSidebar(this.board.source),
       agendaListsThisSearch,
       agendaQueryIsDefault: listed === '',
+      ...(tagsLeft.count ? { statusTagsLeft: describeStatusTagsLeft(tagsLeft) } : {}),
       // A search that did not parse is in the box over the last one that
       // did, and the view does not list what the box shows.
       ...(this.tasksViewMode ? { tasksViewMode: { listed: agendaListsThisSearch && this.invalidQuery === undefined } } : {}),
@@ -393,9 +387,11 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     | 'useSearchForAgenda'
     | 'saveToTasksView'
     | 'leaveTasksViewMode'
-    | 'setBoardStatuses'
-    | 'setBoardStatusNamespace'
-    | 'setBoardShowCancelled'
+    | 'setBoardColumnOrder'
+    | 'setBoardColumnShown'
+    | 'editTaskStatuses'
+    | 'moveStatusTags'
+    | 'setBoardParentTag'
   > {
     const { taskLayout, reader } = this.board.preferences;
     return {
@@ -428,7 +424,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       reorderTasks: async (message) => {
         const index = this.board.indexer.getSnapshot();
         if (reader.value.taskSortMode === 'rank') {
-          await taskLayout.setTaskOrder(mergeOrder(message.taskIds, index.tasks.keys()));
+          await taskLayout.setTaskOrder(rankShown(reader.value.taskOrder, message.taskIds, index.tasks.keys()));
         }
       },
       setBoardQuery: (message, page) => this.applySearch(message.query, page),
@@ -439,17 +435,23 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         this.leaveTasksViewMode();
         page.refresh();
       },
-      setBoardStatuses: (message) =>
-        updateTaskBoardSetting('statuses', [...new Set(message.statuses.map((status) => status.toLowerCase()))]),
-      setBoardStatusNamespace: (message) => updateTaskBoardSetting('statusNamespace', message.namespace.toLowerCase()),
-      setBoardShowCancelled: (message) => updateTaskBoardSetting('showCancelled', message.show),
+      setBoardColumnOrder: (message) => taskLayout.setTaskBoardColumnOrder(message.names),
+      setBoardColumnShown: (message) => {
+        const name = normalizeStatusName(message.name);
+        const hidden = (reader.value.taskBoardHiddenColumns ?? DEFAULT_HIDDEN_COLUMNS).filter((each) => normalizeStatusName(each) !== name);
+        return taskLayout.setTaskBoardHiddenColumns(message.shown ? hidden : [...hidden, message.name]);
+      },
+      editTaskStatuses: (message) =>
+        vscode.commands.executeCommand('deckard.editTaskStatuses', message.newStatus ? { newStatus: {} } : undefined),
+      moveStatusTags: () => vscode.commands.executeCommand('deckard.moveStatusTagsIntoCheckboxes'),
+      setBoardParentTag: (message) => taskLayout.setBoardParentTag(message.show),
     };
   }
 
-  /** What a card or row does to its task, and a column's + Add task. */
+  /** What a card or row does to its task, and the page's Add task and a column's. */
   private taskHandlers(): Pick<
     Handlers,
-    'toggleTask' | 'moveTask' | 'pickTaskDate' | 'pickTaskAssignee' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps' | 'addTaskToColumn'
+    'toggleTask' | 'moveTask' | 'pickTaskDate' | 'pickTaskAssignee' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps' | 'addTask' | 'addTaskToColumn'
   > {
     const { indexer, preferences, writes } = this.board;
     return {
@@ -516,7 +518,9 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
           await breakIntoStepsCommand(indexer, writes, task);
         }
       },
-      addTaskToColumn: (message) => captureIntoColumn(message.column),
+      // One way to add a task: Add Task's editor, started in the column.
+      addTask: () => vscode.commands.executeCommand('deckard.addTask'),
+      addTaskToColumn: (message) => vscode.commands.executeCommand('deckard.addTask', { column: message.column }),
     };
   }
 
@@ -561,7 +565,6 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       preferences: { ...this.board.preferences.reader.value, taskBoardLayout: 'list' },
       search: { query: this.query, invalidQuery: this.invalidQuery },
       options: { ...readTaskBoardOptions(readQueryContext()), doneLimit: Number.MAX_SAFE_INTEGER },
-      tagTitleDisplayMode: 'inline',
     });
     const plan = this.board.exports.fromResults('tasks', {
       tasks: (board.tasks ?? []).map((item) => item.task),
@@ -678,10 +681,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         ...(sort ? { sort: sort.column, direction: sort.direction } : {}),
       };
     }
-    if (preferences.taskBoardLayout === 'list' && preferences.taskSortMode !== 'rank') {
-      return { sort: preferences.taskSortMode };
-    }
-    return {};
+    return preferences.taskBoardLayout === 'list' ? queryBlockSortOf(preferences.taskSortMode, 'tasks') : {};
   }
 
   /**

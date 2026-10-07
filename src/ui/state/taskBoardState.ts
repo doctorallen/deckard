@@ -9,6 +9,7 @@ import {
   quoteTask,
   readNamespaceValues,
 } from './tagGrouping';
+import { findParentTag } from '../../domain/tasks/parentTag';
 import { drawTaskStatus } from './drawnStatus';
 import { describeStepParts, foldSteps } from '../../domain/markdown/taskSteps';
 import { mentionsParked, withoutParked } from '../../domain/index/parked';
@@ -18,17 +19,19 @@ import {
   isCancelledTask,
   isOpenTask,
   nameTaskStatus,
-  readStatusColumnKey,
-  readStatusTag,
-  statusColumnKey,
-  statusForColumnKey,
   UNKNOWN_STATUS_NAME,
 } from '../../domain/tasks/taskStatuses';
-import type { StatusWriteMode } from '../../domain/tasks/statusWrites';
+import {
+  findClosedStatus,
+  isCancelledHidden,
+  listUnknownColumns,
+  orderOpenStatuses,
+  readTaskColumnKey,
+  type StatusColumnEntry,
+} from '../../domain/tasks/statusColumns';
 import { QueryContext } from '../../domain/query/queryContext';
 import { extractTags } from '../../domain/markdown/parser';
 import {
-  formatStatusLabel,
   getDueBand,
   refuseMove,
   resolveTaskMove as resolveColumnMove,
@@ -39,12 +42,14 @@ import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import { tokenizeInline } from '../../domain/markdown/inline';
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
-import { createDashboardTask, sortTasks, withDrawnStatus } from './entryCards';
+import { createDashboardTask, createTaskComparator, sortTasks, withDrawnStatus } from './entryCards';
 import { createQueryViewState } from './querySuggestions';
 import { compareTasksByColumn, createTaskCells, DEFAULT_TASK_COLUMNS, getTaskColumn, TableTask } from './resultTable';
 import { buildSearchFacets } from '../../domain/search/facets';
 import { TASK_COLUMNS } from '../../domain/tasks/taskColumns';
 import {
+  BoardStatusColumn,
+  CardDetailParts,
   TaskBoardCard,
   TaskBoardColumn,
   TaskBoardLayout,
@@ -54,7 +59,7 @@ import {
 } from '../protocol/taskBoard';
 import {
   PersistedPreferences,
-  TagTitleDisplayMode,
+  TagReference,
   Task,
   TaskBoardGroupBy,
   TaskPriority,
@@ -62,17 +67,18 @@ import {
   Section,
   TaskColumnId,
 } from '../../domain/model';
-import { describeDueDate } from '../../domain/markdown/dueWording';
+import { type DateFormats, formatDisplayDate } from '../../domain/markdown/dateFormat';
+import { describeDueDate, type DueDescription } from '../../domain/markdown/dueWording';
 import { TASK_PRIORITY_RANKS, TaskMetadataFormat } from '../../domain/markdown/taskFields';
-import { addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
+import { addDays, startOfDay } from '../../domain/markdown/calendar';
 
 /**
  * The task board lays tasks out as a Kanban board. Its columns come from what
  * a task already says about itself, so moving a card is an ordinary edit to
  * the task line:
  *
- * - **Status**: a tag in the status namespace written on the task line, such
- *   as `#status/doing`.
+ * - **Status**: the character in the task's box, such as `[/]` for In
+ *   progress.
  * - **Priority**: the task's Obsidian Tasks priority.
  * - **Due date**: bands from Overdue to Later.
  *
@@ -86,10 +92,10 @@ export interface TaskBoardOptions {
    * its due bands drawn, and its dates worded against them.
    */
   queryContext: QueryContext;
-  /** Namespace that holds a task's status, `status` for `#status/doing`. */
-  statusNamespace: string;
-  /** Status columns in order. Other statuses found on tasks follow them. */
-  statuses: readonly string[];
+  /** The status columns' order, by status name, as the gear sets it (`taskBoardColumnOrder`). */
+  columnOrder?: readonly string[];
+  /** The statuses the gear draws no column for, by name (`taskBoardHiddenColumns`); Cancelled when not given. */
+  hiddenColumns?: readonly string[];
   /** Format for metadata written on a task that has none yet. */
   format: TaskMetadataFormat;
   /** Most completed tasks shown in Done. */
@@ -99,22 +105,21 @@ export interface TaskBoardOptions {
   /** Columns shown whole after "Show N more", Done included, by id. */
   shownColumns?: ReadonlySet<string>;
   /**
-   * Work-in-progress limits, by status (`doing`) or by whole column id
-   * (`priority:high`), from `deckard.board.limits`. A drop is never refused.
+   * Work-in-progress limits, by status (`in-progress`) or by whole column
+   * id (`priority:high`), from `deckard.board.limits`. A drop is never
+   * refused.
    */
   limits?: Readonly<Record<string, number>>;
-  /** How a dropped status is written (`deckard.tasks.writeStatusAs`). */
-  writeAs?: StatusWriteMode;
-  /** `deckard.tasks.addCancelledDate`. */
-  addCancelledDate?: boolean;
-  /** Whether the board draws a Cancelled column after Done (`deckard.board.showCancelled`). */
-  showCancelled?: boolean;
+  /** Whether each card and row shows its task's nearest parent tag, as the board's gear keeps it. */
+  parentTag?: boolean;
 }
 
 /** A column before it is cut to its limit and its tasks become cards. */
 interface ColumnDraft {
   id: string;
   label: string;
+  /** The character of the status the column stands for, which its header says. */
+  symbol?: string;
   droppable: boolean;
   tasks: Task[];
   /** By task, the other columns a task is also in, which its card says. */
@@ -145,8 +150,6 @@ export interface TaskBoardRequest {
   preferences: PersistedPreferences;
   search: TaskBoardSearch;
   options: TaskBoardOptions;
-  /** How a tag in a title is drawn; inline by default. */
-  tagTitleDisplayMode?: TagTitleDisplayMode;
 }
 
 /**
@@ -159,8 +162,12 @@ export function createTaskBoard({
   preferences,
   search,
   options,
-  tagTitleDisplayMode = 'inline',
 }: TaskBoardRequest): TaskBoardSnapshot {
+  const boardOptions: TaskBoardOptions = {
+    ...options,
+    columnOrder: preferences.taskBoardColumnOrder ?? options.columnOrder,
+    hiddenColumns: preferences.taskBoardHiddenColumns ?? options.hiddenColumns,
+  };
   const selected = selectTasks(index, search.query, options.queryContext);
   // A plain step rides on its task's card, so five steps are not five cards.
   const tasks = foldSteps(selected.tasks);
@@ -170,7 +177,14 @@ export function createTaskBoard({
 
   const board: TaskBoardLayout =
     layout === 'board'
-      ? layoutTaskBoard({ index, tasks, requestedGroupBy: groupBy, options, namespace: preferences.taskBoardGroupNamespace })
+      ? layoutTaskBoard({
+          index,
+          tasks,
+          requestedGroupBy: groupBy,
+          options: boardOptions,
+          namespace: preferences.taskBoardGroupNamespace,
+          sort: createTaskComparator(preferences.taskOrder, preferences.taskSortMode),
+        })
       : { groupBy, columns: [], taskCount: tasks.length };
   return {
     ...board,
@@ -186,7 +200,7 @@ export function createTaskBoard({
             index,
             { sections: [], files: [], tasks },
             search.query,
-            { parkedLeftOut, now: options.queryContext.now, taskPolicy: options.queryContext.taskPolicy },
+            { parkedLeftOut, now: options.queryContext.now },
           )
         : [],
       queryContext: options.queryContext,
@@ -198,7 +212,7 @@ export function createTaskBoard({
     tasks:
       layout === 'list'
         ? sortTasks(tasks, preferences.taskOrder, preferences.taskSortMode)
-            .map((task) => createDashboardTask(task, index.sections, options.queryContext))
+            .map((task) => ({ ...createDashboardTask(task, index.sections, options.queryContext), ...withParentTag(index, task, options, undefined) }))
         : undefined,
     table:
       layout === 'table'
@@ -212,14 +226,11 @@ export function createTaskBoard({
       completed: tasks.filter((task) => task.completed).length,
     },
     taskSortMode: preferences.taskSortMode,
-    tagTitleDisplayMode,
     availableOnly: hasAvailableTerm(search.query),
     availableToggleQuery: toggleAvailable(search.query),
     settings: {
-      statuses: [...options.statuses],
-      statusNamespace: options.statusNamespace,
-      columns: listStatusColumns(index, options),
-      showCancelled: options.showCancelled === true,
+      columns: listStatusColumns(index, boardOptions),
+      parentTag: options.parentTag === true,
     },
   };
 }
@@ -239,7 +250,7 @@ export function createTaskTable(
   const ranked = sortTasks([...tasks], preferences.taskOrder, 'rank');
   const asRows = ranked.map((task) => ({
     task,
-    table: toTableTask(task, options.queryContext.taskPolicy.statuses, options.statusNamespace),
+    table: toTableTask(task),
   }));
   const ordered = sort
     ? [...asRows].sort((left, right) =>
@@ -256,7 +267,7 @@ export function createTaskTable(
       filePath: task.filePath,
       line: task.lineNumber,
       completed: task.completed,
-      ...withDrawnStatus(drawTaskStatus(task, { statuses: options.queryContext.taskPolicy.statuses, statusNamespace: options.statusNamespace })),
+      ...withDrawnStatus(drawTaskStatus(task, options.queryContext.taskPolicy)),
       cells: createTaskCells(table, columns, options.queryContext),
     })),
   };
@@ -272,15 +283,33 @@ function createTaskMenus(
     tasks.map((task) => [
       task.id,
       {
-        current: currentMoves(task, today, { statuses: options.queryContext.taskPolicy.statuses, namespace: options.statusNamespace }),
+        current: currentMoves(task, today, options.queryContext.taskPolicy.statuses),
         ...(task.steps ? { steps: true } : {}),
       },
     ]),
   );
 }
 
+/**
+ * A task's nearest parent tag, as a field a card or a row carries, when the
+ * board shows them and the task has one its card does not already say: not
+ * a tag of the namespace the board is grouped by.
+ */
+function withParentTag(
+  index: WorkspaceIndex,
+  task: Task,
+  options: Pick<TaskBoardOptions, 'parentTag'>,
+  groupNamespace: string | undefined,
+): { parentTag?: TagReference } {
+  if (!options.parentTag) {
+    return {};
+  }
+  const parentTag = findParentTag(index, task, groupNamespace ? { groupNamespace } : {});
+  return parentTag ? { parentTag } : {};
+}
+
 /** A task as the column model reads it. */
-function toTableTask(task: Task, statuses: QueryContext['taskPolicy']['statuses'], statusNamespace: string): TableTask {
+function toTableTask(task: Task): TableTask {
   const title = stripTrailingTags(task.title) || task.title;
   return {
     title,
@@ -295,7 +324,7 @@ function toTableTask(task: Task, statuses: QueryContext['taskPolicy']['statuses'
     doneAt: task.doneAt,
     priority: task.priority,
     assignee: task.assignee,
-    status: nameTaskStatus(task, statuses, statusNamespace),
+    status: nameTaskStatus(task),
     tags: task.tags.map((key) => task.tagLabels[key] ?? key),
     fileName: task.filePath.split('/').pop() ?? task.filePath,
     line: task.lineNumber,
@@ -315,6 +344,12 @@ export interface TaskBoardLayoutRequest {
   options: TaskBoardOptions;
   /** The tag namespace a tag grouping groups by. */
   namespace?: string;
+  /**
+   * How an open column orders its cards before its own order, soonest due
+   * then highest priority, decides: the reader's rank or another sort. Done
+   * and Cancelled always list the most recently closed first.
+   */
+  sort?: (left: Task, right: Task) => number;
 }
 
 /**
@@ -328,6 +363,7 @@ export function layoutTaskBoard({
   requestedGroupBy,
   options,
   namespace,
+  sort,
 }: TaskBoardLayoutRequest): TaskBoardLayout {
   // A tag grouping without a namespace to group by lays out as status.
   const groupBy: TaskBoardGroupBy =
@@ -349,39 +385,33 @@ export function layoutTaskBoard({
       context: options.queryContext,
       openDependencyIds,
       sections: index.sections,
-      statusNamespace: options.statusNamespace,
       column: draft?.label,
     });
     const others = draft?.alsoIn?.get(task.id);
+    const parent = withParentTag(index, task, options, groupBy === 'tag' ? namespace : undefined);
     const withTags =
       groupBy === 'tag' && namespace
-        ? { ...card, current: [...card.current, ...tagMoves(index, task, namespace)] }
-        : card;
+        ? { ...card, ...parent, current: [...card.current, ...tagMoves(index, task, namespace)] }
+        : { ...card, ...parent };
     return others && others.length > 0
       ? { ...withTags, details: [...withTags.details, `also in ${others.join(', ')}`] }
       : withTags;
   };
 
-  // A status named done is the board's own Done: an open task carrying it
-  // sits at the head of that column rather than in a second column of the
-  // same name.
-  const isMarkedDone = (task: Task): boolean =>
-    groupBy === 'status' &&
-    readStatusTag(task, options.statusNamespace) === 'done';
-  const markedDone = open.filter(isMarkedDone);
-  const drafts = draftColumns({ groupBy, open, index, options, namespace, isMarkedDone });
+  const drafts = draftColumns({ groupBy, open, index, options, namespace });
 
   const columns: TaskBoardColumn[] = [
     ...drafts.map((draft) => {
       // A column of hundreds draws its first hundred, and the rest on
       // request: building thousands of cards made the whole board slow.
-      const sorted = draft.tasks.sort(compareOpen);
+      const sorted = draft.tasks.sort((left, right) => sort?.(left, right) || compareOpen(left, right));
       const drawn = shown?.has(draft.id) ? sorted : sorted.slice(0, columnLimit);
       const cards = drawn.map((task) => toCard(task, draft));
       const limit = findLimit(draft.id, options.limits);
       return {
         id: draft.id,
         label: draft.label,
+        ...(draft.symbol === undefined ? {} : { symbol: draft.symbol }),
         droppable: draft.droppable,
         cards: draft.id === 'due:overdue' ? cards : toneOverdue(cards, drawn),
         hiddenCount: sorted.length - drawn.length,
@@ -390,26 +420,25 @@ export function layoutTaskBoard({
         ...(limit === undefined ? {} : { limit }),
       };
     }),
-    ...closedColumns({ done: [...markedDone.sort(compareOpen), ...done], marked: markedDone.length, cancelled: options.showCancelled ? cancelled : undefined }, doneLimit, toCard),
+    ...closedColumns({ done, cancelled, statuses: options.queryContext.taskPolicy.statuses, showSymbols: groupBy === 'status', hideCancelled: isCancelledHidden(options.queryContext.taskPolicy.statuses, readColumnChoices(options)) }, doneLimit, toCard),
   ];
 
   return {
     groupBy,
     columns,
     taskCount: tasks.length,
-    ...describeStatusCoverage(groupBy, columns, open.length),
     ...(groupBy === 'tag' && namespace ? { groupNamespace: namespace.toLowerCase() } : {}),
-    tagNamespaces: listBoardNamespaces(index, options.statusNamespace),
+    tagNamespaces: listBoardNamespaces(index),
   };
 }
 
 /**
- * The columns of closed tasks, last whatever the grouping: Done, its open
- * tasks marked done first, then the most recent done; and, when the gear
- * shows it, Cancelled, closed but not done.
+ * The columns of closed tasks, last whatever the grouping: Done, the most
+ * recent first; and, unless the gear hides it, Cancelled, closed but not
+ * done. Grouped by status, each says its status's character.
  */
 function closedColumns(
-  tasks: { done: Task[]; marked: number; cancelled: Task[] | undefined },
+  tasks: { done: Task[]; cancelled: Task[]; statuses: QueryContext['taskPolicy']['statuses']; showSymbols: boolean; hideCancelled: boolean },
   limit: number,
   toCard: (task: Task) => TaskBoardCard,
 ): TaskBoardColumn[] {
@@ -417,27 +446,39 @@ function closedColumns(
     cards: list.slice(0, kept).map((task) => toCard(task)),
     hiddenCount: Math.max(0, list.length - kept),
   });
+  const symbolOf = (type: 'done' | 'cancelled'): Pick<TaskBoardColumn, 'symbol'> => {
+    const symbol = tasks.showSymbols ? findClosedStatus(tasks.statuses, type)?.symbol : undefined;
+    return symbol === undefined ? {} : { symbol };
+  };
   return [
-    { id: 'done', label: 'Done', droppable: true, ...drawn(tasks.done, tasks.marked + limit) },
-    ...(tasks.cancelled ? [{ id: 'cancelled', label: 'Cancelled', droppable: true, ...drawn(tasks.cancelled, limit) }] : []),
+    { id: 'done', label: 'Done', ...symbolOf('done'), droppable: true, ...drawn(tasks.done, limit) },
+    ...(tasks.hideCancelled
+      ? []
+      : [{ id: 'cancelled', label: findClosedStatus(tasks.statuses, 'cancelled')?.name ?? 'Cancelled', ...symbolOf('cancelled'), droppable: true, ...drawn(tasks.cancelled, limit) }]),
   ];
+}
+
+/** The gear's column choices, as the options carry them. */
+function readColumnChoices(options: Pick<TaskBoardOptions, 'columnOrder' | 'hiddenColumns'>): { order?: readonly string[]; hidden?: readonly string[] } {
+  return {
+    ...(options.columnOrder ? { order: options.columnOrder } : {}),
+    ...(options.hiddenColumns ? { hidden: options.hiddenColumns } : {}),
+  };
 }
 
 /**
  * The open tasks' columns for the grouping, before Done, with due bands for
- * the due grouping. A status named done is the board's own Done, so the
- * tasks carrying it are left out of the status columns.
+ * the due grouping.
  */
-function draftColumns({ groupBy, open, index, options, namespace, isMarkedDone }: {
+function draftColumns({ groupBy, open, index, options, namespace }: {
   groupBy: TaskBoardGroupBy;
   open: Task[];
   index: WorkspaceIndex;
   options: TaskBoardOptions;
   namespace: string | undefined;
-  isMarkedDone: (task: Task) => boolean;
 }): ColumnDraft[] {
   if (groupBy === 'status') {
-    return createStatusColumns(open.filter((task) => !isMarkedDone(task)), options);
+    return createStatusColumns(open, options);
   }
   if (groupBy === 'priority') {
     return createPriorityColumns(open);
@@ -451,20 +492,15 @@ function draftColumns({ groupBy, open, index, options, namespace, isMarkedDone }
   return createDueColumns(open, options.queryContext);
 }
 
-/** The namespaces each index's Tag… menu offers, by status namespace, worked out once. */
-const boardNamespaces = new WeakMap<WorkspaceIndex, Map<string, { name: string; openTasks: number }[]>>();
+/** The namespaces each index's Tag… menu offers, worked out once. */
+const boardNamespaces = new WeakMap<WorkspaceIndex, { name: string; openTasks: number }[]>();
 
 /** The namespaces the Tag… menu offers, worked out once per index. */
-function listBoardNamespaces(
-  index: WorkspaceIndex,
-  statusNamespace: string,
-): { name: string; openTasks: number }[] {
-  const cached = boardNamespaces.get(index) ?? new Map<string, { name: string; openTasks: number }[]>();
-  boardNamespaces.set(index, cached);
-  let found = cached.get(statusNamespace);
+function listBoardNamespaces(index: WorkspaceIndex): { name: string; openTasks: number }[] {
+  let found = boardNamespaces.get(index);
   if (!found) {
-    found = listTaskNamespaces(index, [statusNamespace]).map(({ name, openTasks }) => ({ name, openTasks }));
-    cached.set(statusNamespace, found);
+    found = listTaskNamespaces(index).map(({ name, openTasks }) => ({ name, openTasks }));
+    boardNamespaces.set(index, found);
   }
   return found;
 }
@@ -569,35 +605,6 @@ function toneOverdue(cards: TaskBoardCard[], tasks: readonly Task[]): TaskBoardC
   return cards.map((card) =>
     card.overdue ? { ...card, overdueTone: loud.has(card.taskId) ? ('full' as const) : ('quiet' as const) } : card,
   );
-}
-
-/** Below this share of open tasks with a status, the board says so. */
-const STATUS_COVERAGE_HINT_BELOW = 0.25;
-/** A board this small is read at a glance, and needs no telling. */
-const STATUS_COVERAGE_HINT_MINIMUM_TASKS = 4;
-
-/**
- * A board grouped by status is a list drawn expensively when the tasks carry
- * no status: one tall "No status" column and four near-empty ones. That is
- * the first thing a new reader sees, since status is the default grouping and
- * a status is a tag most notes never write. When fewer than a quarter of the
- * open tasks have one, the layout says so, and the page offers the due-date
- * grouping, which works for any task.
- */
-function describeStatusCoverage(
-  groupBy: TaskBoardGroupBy,
-  columns: readonly TaskBoardColumn[],
-  open: number,
-): Pick<TaskBoardLayout, 'statusHint'> {
-  if (groupBy !== 'status' || open < STATUS_COVERAGE_HINT_MINIMUM_TASKS) {
-    return {};
-  }
-  const withoutStatus =
-    columns.find((column) => column.id === 'status:')?.cards.length ?? 0;
-  const withStatus = open - withoutStatus;
-  return withStatus / open < STATUS_COVERAGE_HINT_BELOW
-    ? { statusHint: { withoutStatus, open } }
-    : {};
 }
 
 /**
@@ -787,90 +794,63 @@ function selectTasks(
 }
 
 /**
- * The status columns in the order the board draws them, each with how many
- * open tasks in the workspace carry it: what the gear lists and orders.
+ * Every status the gear lists, in the board's order, each with how many
+ * open tasks in the workspace have it: the open statuses, then Done, fixed
+ * and last of the columns it orders, then Cancelled. Each says whether the
+ * board draws it, so a hidden status with open tasks says so.
  */
-function listStatusColumns(
-  index: WorkspaceIndex,
-  options: TaskBoardOptions,
-): { status: string; openTasks: number }[] {
+function listStatusColumns(index: WorkspaceIndex, options: TaskBoardOptions): BoardStatusColumn[] {
   const statuses = options.queryContext.taskPolicy.statuses;
+  const choices = readColumnChoices(options);
   const counts = new Map<string, number>();
   index.tasks.forEach((task) => {
     if (!isOpenTask(task)) {
       return;
     }
-    const status = readStatusColumnKey(task, statuses, options.statusNamespace);
-    if (status !== undefined && status !== 'done') {
-      counts.set(status, (counts.get(status) ?? 0) + 1);
-    }
+    const key = readTaskColumnKey(task, statuses);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
   });
-  const configured = readConfiguredKeys(options);
-  const found = [...counts.keys()].filter((status) => !configured.includes(status)).sort();
-  return [...configured, ...found].map((status) => ({ status, openTasks: counts.get(status) ?? 0, label: labelStatusColumn(options, status) }));
+  const done = findClosedStatus(statuses, 'done');
+  const cancelled = findClosedStatus(statuses, 'cancelled');
+  return [
+    ...orderOpenStatuses(statuses, choices).map((entry) => ({
+      id: `status:${entry.key}`,
+      name: entry.name,
+      symbol: entry.symbol,
+      shown: !entry.hidden,
+      openTasks: counts.get(entry.key) ?? 0,
+    })),
+    { id: 'done', name: done?.name ?? 'Done', symbol: done?.symbol ?? 'x', shown: true, openTasks: 0, fixed: true },
+    ...(cancelled ? [{ id: 'cancelled', name: cancelled.name, symbol: cancelled.symbol, shown: !isCancelledHidden(statuses, choices), openTasks: 0 }] : []),
+  ];
 }
 
 /**
- * The board's status columns as `deckard.board.statuses` orders them, each
- * by its key: a value that names a status by its tag or its name is that
- * status's column, so `doing` and `in-progress` are both In progress; any
- * other value is a tag of its own. A status named done is the board's own
- * Done column, drawn last whatever the grouping.
- */
-function readConfiguredKeys(options: TaskBoardOptions): string[] {
-  const statuses = options.queryContext.taskPolicy.statuses;
-  const keys = options.statuses.map((value) => {
-    const status = statusForColumnKey(statuses, value);
-    return status ? statusColumnKey(status) : value;
-  });
-  return [...new Set(keys)].filter((status) => status !== 'done');
-}
-
-/** A status column's heading: its status's name, or the tag written as words. */
-function labelStatusColumn(options: TaskBoardOptions, key: string): string {
-  return statusForColumnKey(options.queryContext.taskPolicy.statuses, key)?.name ?? formatStatusLabel(key);
-}
-
-/**
- * The open tasks by status: No status first, a plain `[ ]` with no status
- * tag and a character no status names; then the columns the settings
- * order; then any other status found on a task, in name order.
+ * The open tasks by status: a column per open status the gear does not
+ * hide, in its order, then one per character no status names that an open
+ * task uses. A task whose status the gear hides is on no column.
  */
 function createStatusColumns(
   open: Task[],
   options: TaskBoardOptions,
 ): ColumnDraft[] {
   const statuses = options.queryContext.taskPolicy.statuses;
-  const byStatus = new Map<string, Task[]>();
-  const withoutStatus: Task[] = [];
+  const byKey = new Map<string, Task[]>();
   for (const task of open) {
-    const status = readStatusColumnKey(task, statuses, options.statusNamespace);
-    if (status === undefined) {
-      withoutStatus.push(task);
-      continue;
-    }
-    const column = byStatus.get(status) ?? [];
-    column.push(task);
-    byStatus.set(status, column);
+    const key = readTaskColumnKey(task, statuses);
+    byKey.set(key, [...(byKey.get(key) ?? []), task]);
   }
-  const configured = readConfiguredKeys(options);
-  const found = [...byStatus.keys()]
-    .filter((status) => !configured.includes(status))
-    .sort();
-  return [
-    {
-      id: 'status:',
-      label: 'No status',
-      droppable: true,
-      tasks: withoutStatus,
-    },
-    ...[...configured, ...found].map((status) => ({
-      id: `status:${status}`,
-      label: labelStatusColumn(options, status),
-      droppable: true,
-      tasks: byStatus.get(status) ?? [],
-    })),
+  const shown: StatusColumnEntry[] = [
+    ...orderOpenStatuses(statuses, readColumnChoices(options)).filter((entry) => !entry.hidden),
+    ...listUnknownColumns(open, statuses),
   ];
+  return shown.map((entry) => ({
+    id: `status:${entry.key}`,
+    label: entry.name,
+    symbol: entry.symbol,
+    droppable: true,
+    tasks: byKey.get(entry.key) ?? [],
+  }));
 }
 
 function createPriorityColumns(open: Task[]): ColumnDraft[] {
@@ -949,17 +929,16 @@ function createDueColumns(open: Task[], context: QueryContext): ColumnDraft[] {
 
 function createCard(
   task: Task,
-  { groupBy, context, openDependencyIds, sections, statusNamespace, column }: {
+  { groupBy, context, openDependencyIds, sections, column }: {
     groupBy: TaskBoardGroupBy;
     context: QueryContext;
     openDependencyIds: ReadonlySet<string>;
     sections: ReadonlyMap<string, Section>;
-    statusNamespace: string;
     /** The heading of the column the card is in, when it is in one. */
     column?: string;
   },
 ): TaskBoardCard {
-  const status = describeCardStatus(task, context.taskPolicy.statuses, statusNamespace, column);
+  const status = describeCardStatus(task, column);
   const section = task.sectionId ? sections.get(task.sectionId) : undefined;
   const title = stripTrailingTags(task.title) || task.title;
   const { now, taskPolicy } = context;
@@ -976,41 +955,55 @@ function createCard(
       .map((key) => ({ key, label: task.tagLabels[key] ?? key }))
       .filter((tag) => title.includes(tag.label)),
     completed: task.completed,
-    ...withDrawnStatus(drawTaskStatus(task, { statuses: context.taskPolicy.statuses, statusNamespace })),
+    ...withDrawnStatus(drawTaskStatus(task, context.taskPolicy)),
     filePath: task.filePath,
     line: task.lineNumber,
     ...(task.createdAt === undefined ? {} : { createdAt: task.createdAt }),
     ...(task.updatedAt === undefined ? {} : { updatedAt: task.updatedAt }),
     overdue: open && task.dueAt !== undefined && task.dueAt < today && !needsNewDate(task.dueAt, now, taskPolicy),
     ...(open && needsNewDate(task.dueAt, now, taskPolicy) ? { stale: true } : {}),
-    details: [...(status ? [status] : []), ...cardDetails(task, { groupBy, today, taskPolicy, blockers })],
+    ...withDetails([...(status ? [{ text: status }] : []), ...cardDetails(task, { groupBy, today, taskPolicy, blockers, formats: context.dateFormats })]),
     // Where the task is written folds under the card, as it does under a
     // row; it was the last detail on every card.
     headingPath: section ? getHeadingPath(section, sections) : [],
-    current: currentMoves(task, today, { statuses: context.taskPolicy.statuses, namespace: statusNamespace }),
+    current: currentMoves(task, today, context.taskPolicy.statuses),
     ...(task.steps ? { steps: describeStepParts(task.steps) } : {}),
   };
 }
 
 /**
  * A card's status, when its column does not already say it: In progress
- * on a card in a priority column, or Unknown on a card in No status, with
- * the character it does not know. A plain to do, and a done task, say none.
+ * on a card in a priority column, or Unknown with the character it does
+ * not know. A plain to do, and a done task, say none.
  */
 function describeCardStatus(
   task: Task,
-  statuses: QueryContext['taskPolicy']['statuses'],
-  namespace: string,
   column: string | undefined,
 ): string | undefined {
   if (task.completed) {
     return undefined;
   }
-  const name = nameTaskStatus(task, statuses, namespace);
+  const name = nameTaskStatus(task);
   if (!name || name === column) {
     return undefined;
   }
   return name === UNKNOWN_STATUS_NAME ? `${name} [${task.status.symbol}]` : name;
+}
+
+/** One fact under a card's title, with the parts of the date it holds. */
+type CardDetail = { readonly text: string } & Omit<CardDetailParts, 'index'>;
+
+/** A card's details as their words, and the parts of those that hold a date. */
+function withDetails(details: readonly CardDetail[]): Pick<TaskBoardCard, 'details' | 'detailParts'> {
+  const parts = details.flatMap(({ text: _text, ...detail }, index) =>
+    (detail.date !== undefined || detail.due ? [{ index, ...detail }] : []));
+  return { details: details.map((detail) => detail.text), ...(parts.length ? { detailParts: parts } : {}) };
+}
+
+/** A detail that writes a date after its words, in the reader's format: "done 2026-09-14". */
+function datedDetail(words: string, at: number, formats: DateFormats): CardDetail {
+  const date = formatDisplayDate(at, formats);
+  return { text: `${words} ${date}`, date };
 }
 
 /**
@@ -1020,49 +1013,58 @@ function describeCardStatus(
  */
 function cardDetails(
   task: Task,
-  { groupBy, today, taskPolicy, blockers }: {
+  { groupBy, today, taskPolicy, blockers, formats }: {
     groupBy: TaskBoardGroupBy;
     today: number;
     taskPolicy: QueryContext['taskPolicy'];
     blockers: readonly string[];
+    formats: DateFormats;
   },
-): string[] {
+): CardDetail[] {
   const open = !task.completed;
   return [
-    !open && task.doneAt !== undefined
-      ? `done ${formatIsoDate(task.doneAt)}`
-      : '',
-    open ? dueDetail(task, today, taskPolicy) : '',
-    open && task.scheduledAt !== undefined
-      ? `scheduled ${formatIsoDate(task.scheduledAt)}`
-      : '',
-    open && task.startAt !== undefined && task.startAt > today
-      ? `starts ${formatIsoDate(task.startAt)}`
-      : '',
-    groupBy !== 'priority' && task.priority
-      ? `${task.priority} priority`
-      : '',
-    task.recurrence ? `repeats ${task.recurrence}` : '',
-    open && blockers.length > 0 ? `blocked by ${blockers.join(', ')}` : '',
-  ].filter(Boolean);
+    !open && task.doneAt !== undefined ? datedDetail('done', task.doneAt, formats) : undefined,
+    open ? dueDetail(task, today, taskPolicy, formats) : undefined,
+    open && task.scheduledAt !== undefined ? datedDetail('scheduled', task.scheduledAt, formats) : undefined,
+    open && task.startAt !== undefined && task.startAt > today ? datedDetail('starts', task.startAt, formats) : undefined,
+    groupBy !== 'priority' && task.priority ? { text: `${task.priority} priority` } : undefined,
+    task.recurrence ? { text: `repeats ${task.recurrence}` } : undefined,
+    open && blockers.length > 0 ? { text: `blocked by ${blockers.join(', ')}` } : undefined,
+  ].filter((detail): detail is CardDetail => detail !== undefined);
 }
 
-/** An open task's due date in words beside today; its written words when they are not a date; else nothing. */
-function dueDetail(task: Task, today: number, taskPolicy: QueryContext['taskPolicy']): string {
+/**
+ * An open task's due date in words beside today, with its parts and tone;
+ * its written words when they are not a date; else nothing.
+ */
+function dueDetail(task: Task, today: number, taskPolicy: QueryContext['taskPolicy'], formats: DateFormats): CardDetail | undefined {
   if (task.dueAt !== undefined) {
-    return describeDueDate(task.dueAt, today, taskPolicy, task.dueText).label;
+    const due = describeDueDate(task.dueAt, today, taskPolicy, { dueText: task.dueText, formats });
+    const tone = dueTone(due);
+    return { text: due.label, date: due.date, due: due.parts, ...(tone ? { tone } : {}) };
   }
-  return task.dueText ? `due ${task.dueText}` : '';
+  return task.dueText ? { text: `due ${task.dueText}` } : undefined;
+}
+
+/** How a due date is colored: overdue, past needing a new date, due today, or not at all. */
+function dueTone(due: DueDescription): CardDetailParts['tone'] {
+  if (due.overdue) {
+    return 'overdue';
+  }
+  if (due.stale) {
+    return 'stale';
+  }
+  return due.days === 0 ? 'today' : undefined;
 }
 
 /** The move values a task already has, for its card's menu to check. */
 function currentMoves(
   task: Task,
   today: number,
-  reading: { statuses: QueryContext['taskPolicy']['statuses']; namespace: string },
+  statuses: QueryContext['taskPolicy']['statuses'],
 ): string[] {
   return [
-    `status:${readStatusColumnKey(task, reading.statuses, reading.namespace) ?? ''}`,
+    `status:${readTaskColumnKey(task, statuses)}`,
     `priority:${task.priority ?? ''}`,
     ...dueMoves(task, today),
     ...(task.completed ? ['done'] : []),

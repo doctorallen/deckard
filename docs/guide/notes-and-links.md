@@ -127,7 +127,7 @@ topics:
 
 `Deckard: Move Inline Tags to Front Matter` moves the note's explicit tags into plural front-matter fields, merging existing values and keeping other YAML. Use it only for tags that belong to the whole note.
 
-**Renaming tags.** Run `Deckard: Rename Tag`, right-click a tag on the Dashboard, a search page, or Related Notes and choose **Rename tag**, or hover a tag in the editor and choose **Rename**. It renames the tag everywhere it is written, leaving ordinary words and fenced code alone. Renaming to an existing tag merges the two; see [Merging tags](search-pages.md#merging-tags). Enter a complete tag such as `#management/new-name`, or only a name to keep the marker and namespace. The box previews the result, such as *Merges into #project/atlas (42 entries).*
+**Renaming tags.** Run `Deckard: Rename Tag`, right-click a tag on the Dashboard, a search page, or Related Notes and choose **Rename tag**, or hover a tag in the editor and choose **Rename**. It renames the tag everywhere it is written, leaving ordinary words and fenced code alone. Renaming to an existing tag merges the two; see [Merging tags](search-pages.md#merging-tags). Enter a complete tag such as `#management/new-name`, or only a name to keep the marker and namespace. The box starts from the old name and previews the result, such as *Merges into #project/atlas (42 entries).*
 
 **Syntax rules:**
 
@@ -153,12 +153,12 @@ topics:
 **Presets.** `Deckard: Choose Editor Preset…` sets how much of what follows Deckard draws: **Full**, all of it; **Tasks**, the task hints and problem reports, without link counts, mention lenses, or breadcrumbs; **Writing**, the / menu, hover previews, and problem reports only. Each `deckard.editor.*` setting below still turns its own part on or off, and one you set wins over the preset.
 
 - **Title bar:** Deckard's button opens **Deckard: Note Actions…**, and the unicorn beside it opens the note as a page. A daily note also has **‹** and **›** for the previous and next daily notes. Right-click the title bar to hide any of them.
-- **Right-click in a note** for a **Deckard** submenu: the task on the line (Toggle Task Done, Edit Task, Break into Steps…, or Add Task), the heading (Rename Heading, Extract Heading), Move to…, and Pin or Unpin.
+- **Right-click in a note** for a **Deckard** submenu: the task on the line (Toggle Task Done, Edit Task, Set Task Status…, Break into Steps…), Add Task, the heading (Rename Heading, Extract Heading), Move to…, and Pin or Unpin.
 - **Theme colors:** in any Markdown file, wiki links, an embed's `!`, task dates (`📅 2026-10-02`, `[due:: 2026-10-02]`), repeat rules, priorities, Dataview keys, and a trailing `^block-id` use your theme's colors. To change one, add a rule to `editor.tokenColorCustomizations`, for example `{ "textMateRules": [{ "scope": "constant.numeric.date.deckard", "settings": { "foreground": "#7aa2f7" } }] }`. Scopes end in `.deckard`, such as `constant.numeric.date.due.deckard`, `string.other.repeat.deckard`, and `meta.link.wiki.deckard`.
 - **Task metadata** (dates, priority, repeat rule, ids, person) and any `^block-id` are dimmed (`deckard.editor.dimTaskMetadata`). An overdue task shows its due date in the overdue color and **overdue 5 days** at the line's end; one due today says **due today**; one more than 30 days overdue (`deckard.tasks.needsNewDateAfterDays`) says **needs a new date** (`deckard.editor.taskDueHints`). Change the colors in `workbench.colorCustomizations` as `deckard.overdueForeground` and `deckard.taskHintForeground`.
 - **Unreadable repeat rules** are marked on open tasks. The lightbulb offers up to three readable rules. `deckard.editor.repeatDiagnostics` turns this off.
 - **Word count** is in the status bar: see [Status bar and reminders](tasks.md#status-bar-and-reminders).
-- **Tags** are clickable: Cmd/Ctrl-click opens its page, and the hover has **Rename**. Heading tags are always handled; tags on other lines follow `deckard.parseInlineTags`.
+- **Tags** are clickable: Cmd/Ctrl-click opens its page, and the hover has **Rename**. Tags on every line are handled, headings' and others' alike.
 - **Tag completion:** typing `#` or `@` offers indexed tags with entry counts, ignoring fenced code except a `deckard` [query block](query-blocks.md#query-blocks).
 - **The / menu:** type `/` alone at the start of a line for what to write there: **Task**, **Heading 1** to **3**, lists, **Quote**, **Divider**, **Link to a note** and **Embed a note** (which open the note suggestions), **Today’s note**, **Today’s date**, a **Query block**, a **Notes table** or a **Tasks table**, and each template in your [templates folder](#templates). A template is written with the note's title, today's date, and the time filled in, and each `{ask:Question}` it holds is a tab stop that reads the question until you type over it. Keep typing to narrow the list: `/tab` finds the tables. `deckard.editor.slashMenu` turns it off.
 - **Task metadata completion:** typing `/` after a space in a task offers due dates, priorities, repeat rules, and dependencies. See [Typing metadata](tasks.md#typing-metadata).
@@ -181,7 +181,7 @@ topics:
 
 Put Markdown files in a `templates` folder at the workspace root, or the folder `deckard.templatesFolder` names, and run `Deckard: New Note from Template`. Choose a template and a title; Deckard creates the note in your notes folder and opens it. The templates folder is never indexed. With no templates yet, it offers **Create Starter Templates**: a meeting, a 1:1, and a decision record, which you can change or delete like any other file.
 
-To write into a specific folder, right-click it in the Explorer and choose **Deckard → New Note from Template Here…**. **Deckard: Create Daily Note** and **Deckard: New Note from Template** are also in **File → New File…** and on the Welcome page.
+To write into a specific folder, right-click it in the Explorer and choose **Deckard → New Note from Template Here…**. The same menu's **Exclude from Deckard** leaves the folder out of the index, and **Include in Deckard** brings it back. **Deckard: Create Daily Note** and **Deckard: New Note from Template** are also in **File → New File…** and on the Welcome page.
 
 | Placeholder | Becomes |
 | --- | --- |
@@ -193,6 +193,8 @@ To write into a specific folder, right-click it in the Explorer and choose **Dec
 Anything else in braces is left as written.
 
 A template named after a tag namespace, such as `person.md` or `project.md`, starts every new [hub note](search-pages.md#hub-notes) for that namespace. It can use `{tag}`, and Deckard adds `describes:` front matter unless the template has its own.
+
+`Daily.md`, `Weekly.md`, and `Monthly.md` start every new daily, weekly, and monthly note, with `{date}`, `{week}`, and `{month}` filled in for the period; see [Templates](daily-notes.md#templates) under daily notes.
 
 ---
 

@@ -12,11 +12,11 @@ import { openWebviewPage, shownText, type WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 
 /**
- * The search page's hierarchy, in either layout: the results under each tag
+ * The search page's Group by, in either layout: the results under each tag
  * Refine offers, each shown where it is most specific, and no card repeating
  * the text of a heading that is a note of its own, or its tasks.
  */
-suite('Search page: Hierarchy', () => {
+suite('Search page: Group by', () => {
   let page: WebviewPage | undefined;
 
   teardown(() => {
@@ -95,8 +95,8 @@ suite('Search page: Hierarchy', () => {
     assert.strictEqual(notes.querySelector('.progress-bar'), null, 'the notes tab draws no bar');
     assert.strictEqual(notes.querySelectorAll('.task-row').length, 0);
     assert.strictEqual(tasks.querySelector('.result-group-count')?.textContent, '2 tasks');
-    assert.strictEqual(tasks.querySelector('.result-group-progress-label [aria-hidden="true"]')?.textContent, '1/2 done (50%)');
-    assert.strictEqual(tasks.querySelector('.result-group-progress-label .visually-hidden')?.textContent, '1 of 2 done, 50%', 'as a screen reader is given it');
+    assert.strictEqual(tasks.querySelector('.result-group-header > .result-group-progress .result-group-progress-label [aria-hidden="true"]')?.textContent, '1/2 done (50%)', 'on the heading\'s row');
+    assert.deepStrictEqual(Array.from(tasks.querySelectorAll('.visually-hidden')).map((spoken) => spoken.textContent), ['1 of 2 done, 50%'], 'as a screen reader is given it, once');
     assert.strictEqual(tasks.querySelectorAll('.card').length, 0);
     (tasks.querySelector('.result-group-tag') as HTMLElement).click();
     assert.deepStrictEqual(page.lastPosted('setOverviewQuery'), { type: 'setOverviewQuery', query: '#project/atlas AND #decision/accepted', remember: false });
@@ -106,12 +106,15 @@ suite('Search page: Hierarchy', () => {
     page = openWebviewPage(renderPage('searchPage'), snapshotOf(PLAN, '#project/atlas', { layout: 'split' }));
     const decision = groupIn('.overview-split-groups', '#decision/accepted');
     assert.strictEqual(decision.querySelector('.result-group-count')?.textContent, '1 note · 2 tasks');
-    assert.strictEqual(decision.querySelector('.result-group-progress-label [aria-hidden="true"]')?.textContent, '1/2 done (50%)');
+    const header = decision.querySelector(':scope > .result-group-header') as Element;
+    assert.strictEqual(header.lastElementChild?.className, 'result-group-progress', 'the progress ends the heading\'s row');
+    assert.strictEqual(shownText(header.querySelector('.result-group-progress-label')), '1/2 done (50%)');
+    assert.ok(header.querySelector('.progress-bar'), 'with its bar');
+    assert.strictEqual(decision.querySelectorAll('.result-group-progress').length, 1, 'and only there');
     const [notes, tasks] = Array.from(decision.querySelectorAll('.result-group-column'));
     assert.strictEqual(notes.querySelectorAll('.card').length, 1);
     assert.strictEqual(tasks.querySelectorAll('.task-row').length, 2);
-    assert.strictEqual(tasks.firstElementChild?.className, 'result-group-progress', 'the progress heads the tasks');
-    assert.strictEqual(decision.querySelector('.result-group-header .progress-bar'), null);
+    assert.strictEqual(tasks.firstElementChild?.className, 'task-list', 'the tasks\' column starts with its rows');
     assert.strictEqual(page.findAll('[role="tab"]').length, 0, 'no tabs side by side');
   });
 
@@ -120,11 +123,15 @@ suite('Search page: Hierarchy', () => {
     assert.ok(decision?.rawContent.includes('We chose the hosted fields.'));
     assert.ok(!decision?.rawContent.includes('Sign the contract'), decision?.rawContent);
     const ungrouped = snapshotOf(PLAN, '#project/atlas', { hierarchy: 'off' }).sections.find((card) => card.heading.startsWith('Decision'));
-    assert.ok(ungrouped?.rawContent.includes('Sign the contract'), 'without the hierarchy a card is as written');
+    assert.ok(ungrouped?.rawContent.includes('Sign the contract'), 'ungrouped, a card is as written');
   });
 
-  test('the gear turns the hierarchy on and off, apart from the layout', () => {
+  test('the gear\'s Group by turns the groups on and off, apart from the layout', () => {
     page = openWebviewPage(renderPage('searchPage'), snapshotOf(PLAN, '#project/atlas', { hierarchy: 'off' }));
+    const row = page.findAll('.view-options-group').find((group) => group.querySelector('[data-action="set-hierarchy"]')) as Element;
+    assert.strictEqual(row.firstElementChild?.textContent, 'Group by');
+    assert.deepStrictEqual(Array.from(row.querySelectorAll('button')).map((button) => button.textContent), ['None', 'Tag', 'Heading']);
+    assert.ok(row.querySelector('[data-value="off"]')?.classList.contains('active'), 'None chosen');
     page.click('[data-action="set-hierarchy"][data-value="tags"]');
     assert.deepStrictEqual(page.lastPosted('setSearchHierarchy'), { type: 'setSearchHierarchy', hierarchy: 'tags' });
   });
@@ -151,7 +158,7 @@ suite('Search page: Hierarchy', () => {
     assert.ok(page.findAll('.result-group .card').length > 0, 'its results are drawn');
   });
 
-  test('with the hierarchy off, no groups are sent', () => {
+  test('ungrouped, no groups are sent', () => {
     assert.strictEqual(snapshotOf(PLAN, '#project/atlas', { hierarchy: 'off' }).groups, undefined);
   });
 });
@@ -206,7 +213,7 @@ suite('Search cards never repeat a note of their own', () => {
   });
 });
 
-suite('Search page: hierarchy by heading', () => {
+suite('Search page: grouped by heading', () => {
   let page: WebviewPage | undefined;
 
   teardown(() => {
@@ -272,11 +279,12 @@ suite('Search page: hierarchy by heading', () => {
     page = openWebviewPage(renderPage('searchPage'), snapshotOf('split'));
     const project = page.findAll('.overview-split-groups > .result-groups > .result-group').find((group) => group.querySelector('.result-group-tag')?.textContent === '#project/checkout-v2') as Element;
     assert.strictEqual(project.querySelector('.result-group-heading')?.tagName, 'H2');
-    assert.strictEqual(shownText(project.querySelector(':scope > .result-group-columns .result-group-progress-label')), '4/7 done (57%)');
+    assert.strictEqual(shownText(project.querySelector(':scope > .result-group-header .result-group-progress-label')), '4/7 done (57%)', 'at the right of its heading');
     const parts = Array.from(project.querySelectorAll(':scope > .result-subgroups > .result-group.is-part'));
     assert.deepStrictEqual(parts.map((part) => part.querySelector('.result-group-tag')?.textContent), ['#phase/design', '#phase/build']);
     assert.strictEqual(parts[0].querySelector('.result-group-heading')?.tagName, 'H3', 'a part is a level below its project');
-    assert.strictEqual(shownText(parts[0].querySelector('.result-group-progress-label')), '2/3 done (67%)');
+    assert.strictEqual(shownText(parts[0].querySelector(':scope > .result-group-header .result-group-progress-label')), '2/3 done (67%)', 'a part\'s at the right of its own');
+    assert.strictEqual(parts[0].querySelector(':scope > .result-group-columns .result-group-progress'), null);
     const ids = page.findAll('.result-group-heading').map((heading) => heading.id);
     assert.strictEqual(new Set(ids).size, ids.length, 'every heading has an id of its own');
   });
@@ -295,7 +303,7 @@ suite('Search page: hierarchy by heading', () => {
     assert.strictEqual(headings[headings.length - 1], 'Not in any part');
   });
 
-  test('the gear offers it beside By tag', () => {
+  test('the gear offers it beside Tag', () => {
     page = openWebviewPage(renderPage('searchPage'), snapshotOf());
     page.click('[data-action="set-hierarchy"][data-value="headings"]');
     assert.deepStrictEqual(page.lastPosted('setSearchHierarchy'), { type: 'setSearchHierarchy', hierarchy: 'headings' });

@@ -1,10 +1,10 @@
 import { register as assistant } from '../ui/commands/assistant/register';
-import { register as captureAndTemplates } from '../ui/commands/captureAndTemplates/register';
 import { register as dailyNotes } from '../ui/commands/dailyNotes/register';
 import { register as find } from '../ui/commands/find/register';
 import { register as hubs } from '../ui/commands/hubs/register';
 import { register as links } from '../ui/commands/links/register';
 import { register as notes } from '../ui/commands/notes/register';
+import { register as noteTemplates } from '../ui/commands/noteTemplates/register';
 import { register as outline } from '../ui/commands/outline/register';
 import { register as pages } from '../ui/commands/pages/register';
 import { register as parkingAndExclusion } from '../ui/commands/parkingAndExclusion/register';
@@ -39,7 +39,7 @@ export const features: readonly NamedFeature[] = [
   { name: 'daily notes', register: dailyNotes },
   { name: 'reviews', register: reviews },
   { name: 'task editing', register: taskEditing },
-  { name: 'capture and templates', register: captureAndTemplates },
+  { name: 'note templates', register: noteTemplates },
   { name: 'pins', register: pins },
   { name: 'parking and exclusion', register: parkingAndExclusion },
   { name: 'assistant and MCP', register: assistant },

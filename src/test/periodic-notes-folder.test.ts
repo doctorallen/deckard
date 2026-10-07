@@ -7,13 +7,11 @@ import { fillPeriodicFolder } from '../ui/commands/dailyNote';
 suite('Periodic notes where you keep them', () => {
   const day = new Date(2026, 8, 16);
 
-  test('a week is named by its days, or by its ISO week, and found by either', () => {
+  test('a week is named by its days, and found by its ISO week too', () => {
     assert.strictEqual(getPeriodicNote('week', day, 0).name, 'week-2026-09-13-2026-09-19');
-    assert.strictEqual(getPeriodicNote('week', day, 1, 'iso').name, '2026-W38');
-    const names = findPeriodicNoteNames('week', day, 0, 'iso');
-    assert.strictEqual(names[0], '2026-W38');
-    assert.ok(names.includes('week-2026-09-13-2026-09-19'), 'a range-named note is still found');
-    assert.strictEqual(getPeriodicNote('day', day, 0, 'iso').name, '2026-09-16', 'naming is for weeks only');
+    const names = findPeriodicNoteNames('week', day, 0);
+    assert.strictEqual(names[0], 'week-2026-09-13-2026-09-19');
+    assert.ok(names.includes('2026-W38'), 'an ISO-named note is still found');
   });
 
   test('a folder pattern takes the year and month of the note', () => {

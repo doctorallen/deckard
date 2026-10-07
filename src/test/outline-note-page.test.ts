@@ -6,6 +6,7 @@ import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { OutlineTreeProvider } from '../ui/views/outlineTree';
 import { ActiveNotePage } from '../ui/webview/activeNotePage';
+import { createMemoryPreferences } from './preferenceServices';
 
 /**
  * The Outline while the note page is in front: it lists the page's note,
@@ -28,7 +29,7 @@ suite('Outline: the note page', () => {
       getUri: () => undefined,
       onDidUpdate: () => ({ dispose: () => undefined }),
     };
-    const outline = new OutlineTreeProvider(indexer as never);
+    const outline = new OutlineTreeProvider(indexer as never, createMemoryPreferences().reader);
     const page = new ActiveNotePage();
     disposables.push(outline, page);
     outline.followNotePage(page);

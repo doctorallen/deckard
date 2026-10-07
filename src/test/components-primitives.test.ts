@@ -45,8 +45,7 @@ suite('Component primitives', () => {
       index,
       preferences: { ...store.reader.value, taskBoardLayout: 'board' },
       search: { query: '' },
-      options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' },
-      tagTitleDisplayMode: 'inline',
+      options: { queryContext: createQueryContext(NOW), format: 'emoji' },
     });
     page = openWebviewPage(renderPage('taskBoard'), board);
     return page;
@@ -207,15 +206,13 @@ suite('Component primitives', () => {
         calendar: createCalendar(index, '2026-09', createQueryContext(Date.now())),
         calendarPage: createCalendar(index, '2026-09', createQueryContext(Date.now()), { dayPanel: true, layout: 'page' }),
         sidebarNotes: {
-          ...createSidebarSnapshot(index, 'notes/a.md', index.files.get('notes/a.md'), { now: Date.now(), tagTitleDisplayMode: 'inline' }),
+          ...createSidebarSnapshot(index, 'notes/a.md', index.files.get('notes/a.md'), { now: Date.now() }),
           parkedTags: [],
         },
         notePage: createNotePageSnapshot(index, 'notes/a.md', { queryContext: createQueryContext(Date.now()), history: { back: false, forward: false }, visit: 1 }),
-        pagesView: { style: 'list', pages: [{ id: 'home', label: 'Home', description: 'Dashboard', detail: 'What is due today' }] },
         taskStatuses: {
           statuses: [{ symbol: ' ', name: 'Todo', type: 'todo' }, { symbol: 'x', name: 'Done', type: 'done' }],
           checkboxClick: 'done',
-          namespace: 'status',
           found: [],
           canImport: false,
           target: 'user',
@@ -244,7 +241,7 @@ suite('Component primitives', () => {
 
     test('the sidebar\'s indexing count shows at once and keeps the page busy', async () => {
       page = openWebviewPage(renderPage('sidebarNotes'), {
-        state: 'loading', progress: { completed: 412, total: 3760 }, notes: [], activeTags: [], tagTitleDisplayMode: 'inline',
+        state: 'loading', progress: { completed: 412, total: 3760 }, notes: [], activeTags: [],
       });
       await Promise.resolve();
       assert.strictEqual(page.text('.loading.is-immediate'), 'Indexing this workspace: 412 of 3,760 notes read…');
@@ -285,38 +282,23 @@ suite('Component primitives', () => {
     });
   });
 
-  suite('removals (9g)', () => {
-    test('a removed status column can be put back for a moment', () => {
-      const board = openBoard();
-      board.click('[data-action="remove-status"][data-status="todo"]');
-      assert.deepStrictEqual(board.lastPosted('setBoardStatuses'), { type: 'setBoardStatuses', statuses: ['doing'] });
-      assert.match(board.text('.undo-notice') ?? '', /^Removed the todo column\. Undo$/);
-      assert.strictEqual(board.document.activeElement, board.find('[data-action="undo-remove-status"]'), 'focus is on Undo');
-      board.click('[data-action="undo-remove-status"]');
-      assert.deepStrictEqual(board.lastPosted('setBoardStatuses'), { type: 'setBoardStatuses', statuses: ['todo', 'doing'] });
-      assert.strictEqual(board.findAll('.undo-notice').length, 0);
-    });
-  });
-
   suite('status columns in the gear', () => {
-    test('lists every status the board draws, and a status tasks carry cannot be removed', () => {
-      const board = openBoard('# Work\n- [ ] Send the proposal #status/waiting\n- [ ] Book the room #status/doing\n');
+    test('lists every status, an open one ordered by its row, and says how many open tasks each has', () => {
+      const board = openBoard('# Work\n- [w] Send the proposal\n- [/] Book the room\n');
       assert.deepStrictEqual(
-        board.findAll('.board-status').map((row) => row.getAttribute('data-status')),
-        ['todo', 'doing', 'waiting'],
-        'the listed ones, then one the tasks carry',
+        board.findAll('.board-status').map((row) => row.querySelector('.board-status-name')?.textContent),
+        ['Todo', 'In progress', 'Waiting', 'Someday', 'Blocked', 'Done', 'Cancelled'],
+        'the list\'s open statuses, then Done and Cancelled',
       );
-      assert.ok(board.find('[data-action="remove-status"][data-status="todo"]'), 'an empty column can be removed');
-      assert.strictEqual(board.findAll('[data-action="remove-status"][data-status="waiting"]').length, 0, 'one a task carries cannot');
-      assert.strictEqual(board.text('.board-status[data-status="waiting"] .board-status-count'), '1');
-      board.find('.board-status[data-status="waiting"]').dispatchEvent(
+      assert.strictEqual(board.text('.board-status[data-status="Waiting"] .board-status-count'), '1 open');
+      board.find('.board-status[data-status="Waiting"]').dispatchEvent(
         new board.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }),
       );
       board.click('#rank-context-menu [data-context-action="top"]');
       assert.deepStrictEqual(
-        board.lastPosted('setBoardStatuses'),
-        { type: 'setBoardStatuses', statuses: ['waiting', 'todo', 'doing'] },
-        'ordering saves every column, the unlisted one with them',
+        board.lastPosted('setBoardColumnOrder'),
+        { type: 'setBoardColumnOrder', names: ['Waiting', 'Todo', 'In progress', 'Someday', 'Blocked'] },
+        'ordering saves every open status, by name',
       );
     });
   });
@@ -411,7 +393,7 @@ suite('Component primitives', () => {
         ['notes/b.md', parseMarkdown('notes/b.md', '# Relay drills #project/ghostline-relay\nThe pilot stays on relay traffic.\n')],
       ]));
       page = openWebviewPage(renderPage('sidebarNotes'), {
-        ...createSidebarSnapshot(index, 'notes/a.md', index.files.get('notes/a.md'), { now: Date.now(), tagTitleDisplayMode: 'inline' }),
+        ...createSidebarSnapshot(index, 'notes/a.md', index.files.get('notes/a.md'), { now: Date.now() }),
         parkedTags: [],
       });
       const card = page.find('article.note') as HTMLElement;
@@ -443,7 +425,7 @@ suite('Component primitives', () => {
       const queryContext = createQueryContext(Date.now());
       page = openWebviewPage(renderPage('dashboard'), {
         ...createDashboardSnapshot({ index, preferences, queryContext }),
-        widgets: createDashboardWidgets(index, preferences, { queryContext, upcomingDays: 7, tagTitleDisplayMode: 'inline' }),
+        widgets: createDashboardWidgets(index, preferences, { queryContext }),
       });
       const row = page.find('.home-row[data-query="#person/sable-ortiz AND #team/harbor"]') as HTMLElement;
       const detail = row.querySelector('.home-row-detail') as Element;
@@ -465,8 +447,8 @@ suite('Component primitives', () => {
       const opening = '.note, .card, .task-row, .home-row, .tag-row, .board-card, .saved-filter-row';
       let seen = 0;
       const read = readGoldens((surface, body) => {
-        // Help's cards and notes are callouts in prose: they fold nothing
-        // under them and hold no tip.
+        // Help is the guide's prose: nothing in it folds a line under
+        // itself or holds a tip.
         if (surface.startsWith('help')) {
           return;
         }

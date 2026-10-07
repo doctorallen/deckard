@@ -11,9 +11,9 @@ import { resolveSourceUri } from './navigation';
 import { completeDraft, readDraftStatusReading, setDraftStatus, writeEditedTask, type DraftStatusReading } from './taskEditor';
 import { DEFAULT_TASK_STATUSES, normalizeStatusName, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
 
-/** Deckard's own statuses, written as the line already writes them. */
+/** Deckard's own statuses. */
 function readDefaultStatusReading(): DraftStatusReading {
-  return { statuses: DEFAULT_TASK_STATUSES, namespace: 'status', writeAs: 'match', addCancelledDate: true };
+  return { statuses: DEFAULT_TASK_STATUSES };
 }
 import { readTaskMetadataFormat } from './taskActions';
 import { WorkspaceWriteHistory } from './workspaceWrites';
@@ -23,14 +23,15 @@ import { WorkspaceIndex } from '../../domain/model';
 import { TaskMetadataFormat } from '../../domain/markdown/taskFields';
 import { CompletionWrite } from '../../domain/markdown/taskLineEdits';
 import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
+import { type DateFormats, DEFAULT_DATE_FORMATS, formatDisplayDay } from '../../domain/markdown/dateFormat';
+import { readDateFormats } from './datePrompt';
 
 /**
  * What an assistant may write, and how.
  *
  * The query and tag tools are read-only. These two add a task and change
  * one, and every write goes through the same refactor preview Deckard's own
- * multi-note writes use - always, whatever `deckard.previewWorkspaceWrites`
- * says - so the reader sees the exact line about to change, in the note it
+ * multi-note writes use - always, even for one note - so the reader sees the exact line about to change, in the note it
  * is in, and can decline it. `Deckard: Undo Last Change` takes it back
  * afterwards, as it does any write. Over MCP there is no other confirmation,
  * so the preview is the guard; in VS Code the tool also asks before it runs.
@@ -55,8 +56,6 @@ export interface ChangeTaskLineOptions {
   fallbackFormat?: TaskMetadataFormat;
   /** The note's line ending, which joins a repeat's next line; `\n` by default. */
   eol?: string;
-  /** `deckard.tasks.addDoneDate`; off, completing writes no ✅ date. On by default. */
-  addDoneDate?: boolean;
   /** The steps a repeating task's next occurrence takes, unchecked; none by default. */
   steps?: readonly string[];
   /** The statuses a `status` change is found among, and how it is written; Deckard's own by default. */
@@ -98,7 +97,6 @@ export function changeTaskLine({
   now,
   fallbackFormat = 'emoji',
   eol = '\n',
-  addDoneDate = true,
   steps = [],
   statusReading,
 }: ChangeTaskLineOptions): CompletionWrite {
@@ -106,23 +104,23 @@ export function changeTaskLine({
   const before: TaskDraft = parseTaskDraft(line, fallbackFormat, reading.statuses);
   let draft = changeFields(before, changes);
   if (changes.complete !== undefined && changes.complete !== draft.completed) {
-    draft = completeDraft(draft, now, addDoneDate);
+    draft = completeDraft(draft, now);
   }
   const status = changes.status === undefined ? undefined : findNamedStatus(reading.statuses, changes.status);
   if (status) {
-    draft = setDraftStatus(draft, status, { now, addDoneDate, reading });
+    draft = setDraftStatus(draft, status, { now, reading });
   }
   return writeEditedTask({ before, edited: draft, now, eol, steps });
 }
 
-/** One line saying what changed, for the preview's label and the answer. */
-export function describeChange(changes: Omit<ChangeTaskInput, 'note' | 'line'>): string {
+/** One line saying what changed, for the preview's label, its date in the reader's `formats`. */
+export function describeChange(changes: Omit<ChangeTaskInput, 'note' | 'line'>, formats: DateFormats = DEFAULT_DATE_FORMATS): string {
   const parts: string[] = [];
   if (changes.title !== undefined) {parts.push('retitle it');}
   if (changes.complete === true) {parts.push('complete it');}
   if (changes.complete === false) {parts.push('reopen it');}
   if (changes.status !== undefined) {parts.push(`set its status to ${changes.status}`);}
-  if (changes.due !== undefined) {parts.push(changes.due ? `make it due ${changes.due}` : 'clear its due date');}
+  if (changes.due !== undefined) {parts.push(changes.due ? `make it due ${formatDisplayDay(changes.due, formats)}` : 'clear its due date');}
   if (changes.priority !== undefined) {parts.push(changes.priority ? `set its priority to ${changes.priority}` : 'clear its priority');}
   if (changes.assignee !== undefined) {parts.push(changes.assignee ? `hand it to ${changes.assignee}` : 'take it from whoever it was for');}
   return parts.join(', ');
@@ -263,7 +261,6 @@ export async function changeTask(
     now,
     fallbackFormat: readTaskMetadataFormat(configuration),
     eol: document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
-    addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
     // A next occurrence takes the task's steps back unchecked, as a checkbox's does.
     steps: readStepsForNextOccurrence(document.getText().split(/\r?\n/), task.lineNumber - 1),
   });
@@ -275,7 +272,7 @@ export async function changeTask(
   edit.replace(uri, current.range, replacement);
   const written = await history.write(edit, {
     label: 'Assistant: change a task',
-    description: `${describeChange(changes)} — "${shorten(task.title)}" in ${task.filePath}`,
+    description: `${describeChange(changes, readDateFormats())} — "${shorten(task.title)}" in ${task.filePath}`,
     preview: 'always',
   });
   if (!written.applied) {

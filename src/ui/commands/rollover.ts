@@ -28,6 +28,8 @@ import { resolveSourceUri } from './navigation';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
 import { getCaptureInsertion } from '../../domain/capture/captureLines';
 import { findFencedLines, readHeading } from '../../domain/markdown/lineShapes';
+import { type DateFormats, DEFAULT_DATE_FORMATS, formatDisplayDay } from '../../domain/markdown/dateFormat';
+import { readDateFormats } from './datePrompt';
 
 /**
  * Roll Tasks Forward, and the rollover a new daily note starts with.
@@ -197,7 +199,7 @@ export async function rollTasksForward(
   const result = await rollover.rollForward({
     index: indexer.getSnapshot(),
     mode,
-    lookbackDays: getRolloverLookbackDays(folder.uri),
+    lookbackDays: ROLLOVER_LOOKBACK_DAYS,
     ensureToday: () => ensureDailyNote(folder),
   });
   if (result.kind === 'nothing-waiting') {
@@ -216,7 +218,7 @@ export async function rollTasksForward(
     // A rollover writes into notes nobody opened, so both the note it wrote
     // into and the way back are offered where it is announced.
     void offerRollover(
-      describeRollover(written, mode),
+      describeRollover(written, mode, readDateFormats()),
       result.todayUri,
       written.handle,
       indexer,
@@ -265,8 +267,10 @@ async function offerRollover(
 export function describeRollover(
   result: RolloverResult,
   mode: Exclude<RolloverMode, 'off'>,
+  formats: DateFormats = DEFAULT_DATE_FORMATS,
 ): string {
-  const oldest = result.fromDates[0];
+  const oldest = result.fromDates[0] === undefined ? undefined : formatDisplayDay(result.fromDates[0], formats);
+  const newest = result.fromDates[result.fromDates.length - 1];
   if (result.carried === 0) {
     return `Nothing was carried forward: the open tasks in your earlier daily notes are already in today's note, or have changed since.`;
   }
@@ -274,7 +278,7 @@ export function describeRollover(
   // Where from: one day by name, several as the span they cover.
   const from =
     result.notes <= 1
-      ? ` from ${result.fromDates[result.fromDates.length - 1] ?? oldest}`
+      ? ` from ${newest === undefined ? oldest : formatDisplayDay(newest, formats)}`
       : ` from ${result.notes} daily notes, back to ${oldest}`;
   const left =
     result.skipped === 0
@@ -349,13 +353,8 @@ export function placeCarriedOver(
   };
 }
 
-/** How far back a rollover looks, in days; zero reaches as far as the notes. */
-export function getRolloverLookbackDays(uri?: vscode.Uri): number {
-  const days = vscode.workspace
-    .getConfiguration('deckard', uri)
-    .get<number>('dailyNote.rolloverDays', 7);
-  return Number.isFinite(days) && days > 0 ? Math.floor(days) : 0;
-}
+/** How far back a rollover looks for unfinished tasks, in days: a week. */
+export const ROLLOVER_LOOKBACK_DAYS = 7;
 
 /**
  * Opens today's note, creating it from the template, and carries the last

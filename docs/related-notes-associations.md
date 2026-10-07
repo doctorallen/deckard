@@ -2,7 +2,7 @@
 
 This document explains how Deckard decides that one note entry is related to
 another. It is a technical reference for the Related Notes sidebar and the
-**Debug related notes** page. The implementation is intentionally local and
+**Related Notes Ranking** page (`Deckard: Open Related Notes Ranking`). The implementation is intentionally local and
 deterministic: Markdown is indexed on the user's machine and the ranking
 calculation runs locally.
 
@@ -40,7 +40,7 @@ standard graph database.
 Deckard indexes several kinds of entries:
 
 - ATX headings such as `# Project` through `###### Detail`.
-- Tagged prose lines, when `deckard.parseInlineTags` is enabled.
+- Tagged prose lines, which are entries of their own while `deckard.noteBoundaries` is `line`.
 - Checklist tasks such as `- [ ] Review the proposal #follow-up`.
 
 Each heading has a structural parent. The parent is the nearest preceding
@@ -515,9 +515,9 @@ that appears in most documents.
 
 ## 7. Optional recency
 
-Recency is disabled by default. Set
-`deckard.relatedNotesRecencyHalfLifeDays` to a positive number to enable it.
-Deckard chooses the candidate file's date in this order:
+Recency is off: the ranking takes a half-life in days, and Deckard passes
+none, so a candidate's age adds nothing. With a half-life, the ranking
+would choose the candidate file's date in this order:
 
 1. A `date`, `created`, or `updated` ISO date in front matter.
 2. A `YYYY-MM-DD` filename or level-one heading, commonly used for daily
@@ -551,7 +551,7 @@ sort modes apply their date or local section-access comparison first, then use
 the same relevance tie-breakers. Access counts are local preferences and do
 not change the evidence calculation.
 
-## 9. How to read the Debug related notes page
+## 9. How to read the Related Notes Ranking page
 
 ### Selected tag weights
 
@@ -602,12 +602,10 @@ and any specificity adjustment.
 
 | Setting | Default | Effect on Related Notes |
 |---|---:|---|
-| `deckard.enableKeywordLinks` | `true` | Enables the capped lexical text signal, which adjusts the score of a candidate that already qualifies, and the Similar wording list under a note with no tags. Disable it to rank by tags, associations, and Wiki links alone. For a note with tags, shared wording never qualifies a candidate either way. |
-| `deckard.relatedNotesAssociationMinimumSupport` | `1` | Requires an association to appear in at least this many distinct source units. Raising it suppresses one-off learned associations without removing them from the index. |
-| `deckard.relatedNotesRecencyHalfLifeDays` | `0` | Enables the optional recency contribution when greater than zero. |
-| `deckard.parseInlineTags` | `true` | Controls whether tagged prose and list lines become separate indexed entries and association source units. |
-| `deckard.enableHeadingTagRelationships` | `true` | Controls the Associated tags views in Tag Overviews. Heading relationships are still represented in the index used for relationship evidence. |
+| `deckard.noteBoundaries` | `line` | `line` makes tagged prose and list lines separate indexed entries and association source units. |
 | `deckard.entityNamespaceAliases` | `{ "org": "organization" }` | Canonicalizes namespace keys before direct matching and association lookup. |
+
+The capped lexical signal and the Similar wording list are always on, an association needs one source unit, and recency is off; each was a setting before 2.4.
 
 If an expected relationship is missing, check the following:
 
@@ -616,16 +614,14 @@ If an expected relationship is missing, check the following:
    does not create an association.
 2. Is the candidate tag actually indexed in the candidate entry? A tag on a
    different section may be a different source reference.
-3. Is `relatedNotesAssociationMinimumSupport` higher than the pair's
-   **Shared source units** count?
-4. Does the candidate share only wording with the selected entry? Shared
+3. Does the candidate share only wording with the selected entry? Shared
    wording adjusts scores but never qualifies a candidate on its own
    (unless the note has no tags; see §5).
-5. Is a namespace alias causing two source spellings to use one canonical key?
+4. Is a namespace alias causing two source spellings to use one canonical key?
 
 If a candidate has no exact shared tag, it can still appear through an
 association or a Wiki link. Lexical similarity and recency can then add a small amount
-to its score. That is why the Debug page may show a candidate with an empty
+to its score. That is why the ranking page may show a candidate with an empty
 **Matched tags** table.
 
 ## 11. Worked end-to-end example

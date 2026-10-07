@@ -3,9 +3,7 @@ import * as assert from 'assert';
 import {
   DEFAULT_TASK_POLICY,
   needsNewDate,
-  readStatusNamespace,
 } from '../domain/tasks/taskPolicy';
-import { readStatusTag } from '../domain/tasks/taskStatuses';
 import { createAgenda } from '../ui/state/agendaState';
 import { createQueryContext } from '../domain/query/queryContext';
 import { Task, WorkspaceIndex } from '../domain/model';
@@ -54,26 +52,6 @@ suite('Task policy', () => {
       ).map((group) => group.id),
       ['overdue', 'nodate'],
     );
-  });
-
-  test('reads the status written on the task line, in the namespace set', () => {
-    const task = createTask({
-      id: 'a',
-      associationTagGroups: [[{ key: '#status/waiting', label: '#status/waiting' } as never]],
-    });
-    assert.strictEqual(readStatusTag(task, DEFAULT_TASK_POLICY.statusNamespace), 'waiting');
-    assert.strictEqual(readStatusTag(task, 'state'), undefined);
-  });
-
-  test('reads the status namespace once, for every view: trimmed, checked, and lowercased', () => {
-    const read = (value: unknown) =>
-      readStatusNamespace({ get: <T>(_key: string, fallback: T) => (value === undefined ? fallback : value) as T });
-    assert.strictEqual(read(undefined), 'status');
-    assert.strictEqual(read('Stage'), 'stage', 'tags are matched lowercased, so it is written lowercased');
-    assert.strictEqual(read('  phase_2 '), 'phase_2');
-    for (const value of ['', '  ', '#status', 'two words', '9lives', null, ['stage'], 7]) {
-      assert.strictEqual(read(value), 'status', JSON.stringify(value));
-    }
   });
 });
 

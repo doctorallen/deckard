@@ -7,9 +7,10 @@ import {
   formatShortDay,
   parseDatePhrase,
 } from '../../domain/markdown/dates';
+import { type DateFormats, formatDisplayDay } from '../../domain/markdown/dateFormat';
 import type { IndexControl, IndexReader } from '../../core/workspace/indexReader';
 import { chooseWorkspaceFolder, ensurePeriodicNote } from './dailyNote';
-import { DATE_INPUT_ERROR, readDateOptions } from './datePrompt';
+import { DATE_INPUT_ERROR, readDateFormats, readDateOptions } from './datePrompt';
 import { openSourceAt } from './navigation';
 import { createDailyNoteWithRollover } from './rollover';
 import { WorkspaceWriteHistory } from './workspaceWrites';
@@ -36,24 +37,26 @@ export interface DailyNotePick {
 
 const RECENT_LIMIT = 7;
 
-/** A day's date with how far it is from today: `2026-09-22 · 3 days ago`. */
-function describeDate(date: string, now: number): string {
+/** A day's date in the reader's format with how far it is from today: `2026-09-22 · 3 days ago`. */
+function describeDate(date: string, now: number, formats: DateFormats | undefined): string {
   const at = parseIsoDate(date);
   const distance = at === undefined ? undefined : describeDistance(at, now);
-  return distance ? `${date} · ${distance}` : date;
+  const written = formatDisplayDay(date, formats);
+  return distance ? `${written} · ${distance}` : written;
 }
 
 /**
  * The rows the picker shows: yesterday, today, tomorrow, and the newest daily
  * notes when nothing is typed; the day typed, or the one error, when
- * something is.
+ * something is. Each day is written in the reader's `options.formats`.
  */
 export function buildDailyNotePicks(
   notes: readonly DailyNoteEntry[],
   typed: string,
   now: number = Date.now(),
-  options: DatePhraseOptions = {},
+  options: DatePhraseOptions & { readonly formats?: DateFormats } = {},
 ): DailyNotePick[] {
+  const { formats } = options;
   const today = startOfDay(now);
   if (typed.trim()) {
     const date = parseDatePhrase(typed, now, options)?.date;
@@ -63,8 +66,8 @@ export function buildDailyNotePicks(
     const exists = notes.some((note) => note.date === date);
     return [
       {
-        label: `$(calendar) Open daily note for ${formatShortDay(date, now)}`,
-        description: describeDate(date, now),
+        label: `$(calendar) Open daily note for ${formatShortDay(date, now, formats)}`,
+        description: describeDate(date, now, formats),
         ...(exists ? {} : { detail: 'Creates it from the daily note template' }),
         date,
       },
@@ -77,7 +80,7 @@ export function buildDailyNotePicks(
   ] as const;
   const picks: DailyNotePick[] = named.map(([label, date]) => ({
     label,
-    description: describeDay(date, now),
+    description: describeDay(date, now, formats),
     date,
   }));
   const shown = new Set<string>(named.map(([, date]) => date));
@@ -95,8 +98,8 @@ export function buildDailyNotePicks(
     picks.push({ label: 'Recent daily notes', separator: true });
     picks.push(
       ...recent.map((note) => ({
-        label: formatShortDay(note.date, now),
-        description: describeDate(note.date, now),
+        label: formatShortDay(note.date, now, formats),
+        description: describeDate(note.date, now, formats),
         date: note.date,
       })),
     );
@@ -142,7 +145,7 @@ export async function openDailyNoteForDate(
 ): Promise<void> {
   await indexer.ready;
   const notes = listDailyNotes(indexer.getSnapshot());
-  const options = readDateOptions();
+  const options = { ...readDateOptions(), formats: readDateFormats() };
   const picker = vscode.window.createQuickPick<vscode.QuickPickItem & { date?: string }>();
   picker.title = 'Open a daily note';
   picker.placeholder = 'A day in plain words, such as last friday, oct 3, or 2026-10-02';

@@ -33,7 +33,6 @@ How much a page draws is a scale of three steps. Pick one with **Display** in a 
 | **Density** (`density`) | Comfortable | Comfortable | Compact |
 | **Cards** (`cardFrames`) | Raised | Raised | Flat |
 | **Counts** (`counts`) | Shown | Shown | Hidden |
-| **File & line** (`fileAndLine`) | On hover | On hover | Never |
 | **Dates** (`dates`) | Both | Both | How far off |
 
 - **Theme styling**: *styled* keeps each theme's grid, corners, glow, codes, and display headings; *plain* draws thin frames and sentence-case headings, two sizes kept. DECKARD ▾ stays either way.
@@ -42,25 +41,46 @@ How much a page draws is a scale of three steps. Pick one with **Display** in a 
 - **Density**: *comfortable* or *compact* spacing.
 - **Cards**: *raised* cards, or *flat* rows parted by a divider, which lift onto the card surface under the pointer or keyboard focus.
 - **Counts**: the number beside a name, such as a widget's total, a group's count, a board column's tasks, or a tab's results. Figures that are the point, such as Home's Due today and a calendar day's counts, always show.
-- **File & line**: where an entry is written, under it on *hover* and focus, *always* under every entry, or *never*.
 - **Dates**: a due date written *both* ways, "Overdue 2 days · 2026-10-02", only how far off (*relative*), "Overdue 2 days", or only the *date* with its state, "Overdue · 2026-10-02". An overdue date always says Overdue, and a date over a month away keeps its date.
 
 Each setting follows the step while it's *Auto*; set one and it stays as you set it at every step. The gear then says so, such as *2 changed · Reset · Customize…*: **Reset** puts the step's own values back, and **Customize…** opens Settings on Display, where each one you changed shows as Modified with its own Reset. None of them changes a color, and none removes a button or filter; whatever is out of sight stays in the page for a screen reader, which hears every count, file, and date in full. In every theme the flat cards' divider reaches 3:1 against the page and the tag color 4.5:1, which a test checks on each change.
 
-**Page width** (`deckard.display.pageWidth`), its own row in the gear under Theme, keeps pages *Limited* to a column at most 1000px wide, or makes them *Full*, the panel's full width, for a wide monitor. The steps never change it. The Task Board and the Calendar always use the panel's full width, so their gears have no Page width row.
+**Page width**, its own row in the gear under Theme, keeps pages *Limited* to a column at most 1000px wide, or makes them *Full*, the panel's full width, for a wide monitor. The steps never change it, and every page keeps the width you chose last.
+
+**Card details** (`deckard.display.cardDetails`) says which details an entry shows under it on hover and focus, at every step: where it is written, and its created and updated dates. Untick all three for none; a screen reader still reads where it is written. The Task Board and the Calendar always use the panel's full width, so their gears have no Page width row.
 
 Every Display setting is yours alone: it's the same in every workspace, and a workspace's settings never change how your pages look.
+
+### Dates
+
+Deckard writes every date it shows you in one format, `YYYY-MM-DD` unless you set another: on pages, in the Tasks view and the editor's lenses, in Find, the task editor, the date box, completions, and every message that names a day. `Deckard: Choose Date Format…` shows today in a few formats, such as `DD/MM/YYYY`, `D MMM YYYY`, and `ddd, MMM D, YYYY`, and **Custom…** says today back in a format as you type it. The format is `deckard.display.dateFormat`; **Customize…** in the gear opens it in Settings.
+
+A format is written with the tokens Obsidian's daily notes, Templater, and Periodic Notes use, so one copied from a vault works here unchanged:
+
+| Token | Writes | Token | Writes |
+| --- | --- | --- | --- |
+| `YYYY` / `YY` | 2026 / 26 | `Q` | 4, the quarter |
+| `M` / `MM` | 10, 01 padded | `MMM` / `MMMM` | Oct / October |
+| `D` / `DD` | 2, 02 padded | `Do` | 2nd |
+| `ddd` / `dddd` | Fri / Friday | `dd` | Fr |
+| `W` / `WW` | the ISO week | `w` / `ww` | the week, from `deckard.calendar.weekStart` |
+| `DDD` | 275, the day of the year | `E` | 5, Monday 1 |
+| `L` | 10/02/2026, as your display language writes it | `LL` | October 2, 2026 |
+
+The rest of Moment's tokens work too: `Qo`, `Mo`, `do`, `wo`, and `Wo` ordinals, `GGGG` and `gggg` week years, `DDDD`, `H`, `h`, `k`, `m`, `s`, `A`, `a`, `X`, `x`, and `l` to `llll`. A date in a note has no time, so a time reads 00:00; only a note's created and updated dates have one.
+
+Text in `[brackets]` is written as it is, so `[Week] W` writes *Week 40*; any other character is written as it is too. Names are English, as the rest of Deckard is, and `L` and `LL` follow VS Code's display language. A format that is empty, or writes no part of a date, reads as `YYYY-MM-DD`.
+
+Where a day has little room, as the Tasks view's day headings, the Pages view, the calendar's day title, search completions, and Linked from, it's written in `deckard.display.shortDateFormat`, `ddd, MMM D` unless you set another, such as `ddd D MMM`. A day in another year is written in the full format, so a short format needs no year. Where Deckard names the weekday beside a date, as the task editor's *Friday 2026-09-25*, it leaves the weekday out when your format writes one.
+
+What Deckard writes into your notes stays `YYYY-MM-DD`: task dates such as `📅 2026-10-02`, daily note names, reviews, inserted links, searches such as `due = 2026-10-02`, exports, and what the AI assistant's tools give and take. A numeric date typed into a date box is read day first when your format writes the day first, as `DD/MM/YYYY` does.
 
 ## Zen
 
 Zen is Display's last step, one click away from any page: the Zen button in a page's title bar, `Deckard: Toggle Zen`, or `Deckard: Enter Zen` and `Deckard: Leave Zen`. Leaving goes back to the step you were on, or to Full.
 
-- **Hidden:** decorative labels, the grid backdrop, the eyebrow's trail, the search box's line of syntax, counts beside names, and each entry's file and line; cards are flat, tags are text, and a due date says how far off it is.
+- **Hidden:** decorative labels, the grid backdrop, the eyebrow's trail, the search box's line of syntax, and counts beside names; cards are flat, tags are text, and a due date says how far off it is.
 - **Kept:** every button, filter, checkbox, and tag, and a task's due date, priority, and overdue marker.
-
-### Moving from Zen mode
-
-`deckard.zenMode` is replaced by Display. If you had it on, it becomes the Zen step, which goes further than Zen mode did: cards are flat, and counts and each entry's file and line are left out. **Customize…** sets any of them back. What Zen mode also turned off in the editor is now five settings of its own, turned off for you where you hadn't set them, so you can turn any back on: `deckard.editor.referenceCounts` (the counts above headings), `deckard.editor.unlinkedMentions` (the mention lens), `deckard.editor.taskDueHints` (the overdue and due-today hints), `deckard.highlightNoteSections` (the band behind the section being edited), and `deckard.outline.showCounts` (the task counts in the Outline). One notice says so, once.
 
 ---
 

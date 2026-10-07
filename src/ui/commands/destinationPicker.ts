@@ -9,7 +9,7 @@ import { PersistedPreferences, Section, WorkspaceIndex } from '../../domain/mode
 import { PreferencesReader } from '../../core/storage/preferencesRepository';
 
 /**
- * Where Capture Under a Heading and Move to… put something: a heading, and
+ * Where Add Task's Under a heading… and Move to… put something: a heading, and
  * for Move to…, today's note or a new note. One list for both, so the
  * headings they went under last come first in each.
  */

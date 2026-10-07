@@ -1,10 +1,11 @@
 /**
- * Related Notes, in the sidebar: the notes related to the Markdown note
- * being edited, with what links to it, or, while another page is in front,
- * that page's part: a search's Refine, the calendar's chosen day, Home's
- * widgets to add, or a graph node's connections. The host ranks and sends
- * its state; the page draws it and says what the reader asked for, and the
- * host checks every row a click names against what it would list now.
+ * Related Notes, in the sidebar: Deckard's pages at its top, then the notes
+ * related to the Markdown note being edited, with what links to it, or,
+ * while another page is in front, that page's part: a search's Refine, the
+ * calendar's chosen day, Home's widgets to add, or a graph node's
+ * connections. The host ranks and sends its state; the page draws it and
+ * says what the reader asked for, and the host checks every row a click
+ * names against what it would list now.
  */
 import type { ComponentChild } from 'preact';
 
@@ -24,6 +25,7 @@ import { type CardDisplay, CustomizeHome, GraphConnections, NoTags, RankedNoteCa
 import { Context, RelatedNotesControls } from './context';
 import { Links } from './links';
 import { choicesToKeep, isPageInFront, NOTE_PAGE_SIZE, noteListKey, previewLines, readChoices, type SidebarChoices, type SidebarStore } from './model';
+import { ContextPagesBar, installPagesKeys, settlePagesTabStop } from './pages';
 import { Refine } from './refine';
 
 console.log('[Deckard Related Notes] Webview script started.');
@@ -82,7 +84,7 @@ const OWN_CONTENT: Partial<Record<SidebarNotesSnapshot['state'], OwnContent>> = 
 
 /** What the sidebar lists, by the state it is in: the related notes, unless the state draws its own. */
 function Content({ snapshot }: { readonly snapshot: SidebarNotesSnapshot }) {
-  const display: CardDisplay = { previewLines: previewLines(snapshot), titleDisplay: snapshot.tagTitleDisplayMode };
+  const display: CardDisplay = { previewLines: previewLines(snapshot) };
   const own = OWN_CONTENT[snapshot.state];
   return <>{own ? own(snapshot, display) : <NoteList snapshot={snapshot} display={display} />}</>;
 }
@@ -108,14 +110,16 @@ function SectionHeading({ snapshot }: { readonly snapshot: SidebarNotesSnapshot 
 }
 
 /**
- * The whole sidebar: its context, the heading over its list, the list, and
- * what links to the note. The page's shortcuts are the view's own title-bar
- * actions, as every other sidebar view's are, so the page starts with what
- * it is about.
+ * The whole sidebar: Deckard's pages, its context, the heading over its
+ * list, the list, and what links to the note. The pages lead in every
+ * state, so they are always where the reader left them; the page's own
+ * shortcuts are the view's title-bar actions, as every other sidebar
+ * view's are.
  */
-function SidebarPage({ snapshot }: { readonly snapshot: SidebarNotesSnapshot }) {
+function SidebarPage({ snapshot }: { readonly snapshot: SidebarNotesPageState }) {
   return (
     <>
+      <ContextPagesBar pages={snapshot.pages} />
       <Context snapshot={snapshot} open={choices.contextOpen} showEveryActiveTag={choices.showEveryActiveTag} />
       <SectionHeading snapshot={snapshot} />
       <Content snapshot={snapshot} />
@@ -176,12 +180,14 @@ function closeRelevance(): void {
 let scrolled = false;
 
 /**
- * After each draw: the shared words are marked, the first draw goes back
- * to where the reader left the view, and the choices are kept, since a
- * draw is how each of them is made, and a new list starts Show more over.
+ * After each draw: the shared words are marked, the pages are one Tab stop
+ * again, the first draw goes back to where the reader left the view, and
+ * the choices are kept, since a draw is how each of them is made, and a new
+ * list starts Show more over.
  */
 function afterDraw(): void {
   markSharedWords();
+  settlePagesTabStop();
   focusCreatedNote();
   if (!scrolled) {
     scrolled = true;
@@ -202,6 +208,7 @@ const store = startPage<SidebarStore>({
   afterDraw,
 });
 installMenuKeys();
+installPagesKeys();
 
 /**
  * Draws the page again, as each of the template's draws did: the tag menu
@@ -283,6 +290,8 @@ const LINK_ACTIONS: ReadonlyArray<readonly [string, (element: HTMLElement, event
   ['set-hide-daily', (choice) => send({ type: 'setHideDailyNotes', hide: choice.dataset.value === 'hide' })],
   ['add-suggested-tag', (add) => send({ type: 'addSuggestedTag', tagKey: String(add.dataset.suggestedTag) })],
   ['set-preview-lines', (choice) => send({ type: 'setRelatedNotesPreviewLines', lines: Number(choice.dataset.value) as 0 | 1 | 2 })],
+  ['set-pages-style', (choice) => send({ type: 'setPagesStyle', style: choice.dataset.value === 'icons' ? 'icons' : 'list' })],
+  ['set-page-shown', (choice) => send({ type: 'setPageShown', page: String(choice.dataset.page), shown: choice.getAttribute('aria-pressed') !== 'true' })],
   ['open-links-search', () => send({ type: 'openLinksSearch' })],
   ['link-all-mentions', () => send({ type: 'linkAllMentions' })],
 ];
@@ -385,6 +394,7 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, event: MouseEvent) 
     mode: event.altKey ? 'exclude' : refineMode(event),
   }),
   'open-selected-graph-node': (target) => send({ type: 'activateNotesGraphNode', nodeId: String(target.dataset.nodeId), open: true }),
+  'go-to-page': (target) => send({ type: 'goToPage', page: String(target.dataset.page) }),
 };
 
 /** How a click without Alt adds a value to the search: Shift widens it with OR, and a plain click narrows with AND. */

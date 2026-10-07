@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 
 import { DEFAULT_TASK_POLICY } from '../domain/tasks/taskPolicy';
+import { DEFAULT_DATE_FORMATS } from '../domain/markdown/dateFormat';
 import { describeDueDate } from '../domain/markdown/dueWording';
 
 /**
@@ -46,7 +47,21 @@ suite('Due date wording', () => {
   });
 
   test('keeps the date as the task wrote it', () => {
-    assert.strictEqual(describeDueDate(day(8), now, DEFAULT_TASK_POLICY, '2026-09-08').label, 'overdue 15 days · 2026-09-08');
-    assert.strictEqual(describeDueDate(day(8), now, DEFAULT_TASK_POLICY, 'Sep 8').label, 'overdue 15 days · Sep 8');
+    assert.strictEqual(describeDueDate(day(8), now, DEFAULT_TASK_POLICY, { dueText: '2026-09-08' }).label, 'overdue 15 days · 2026-09-08');
+    assert.strictEqual(describeDueDate(day(8), now, DEFAULT_TASK_POLICY, { dueText: 'Sep 8' }).label, 'overdue 15 days · Sep 8');
+    assert.strictEqual(
+      describeDueDate(day(8), now, DEFAULT_TASK_POLICY, { dueText: 'Sep 8', formats: DEFAULT_DATE_FORMATS }).label,
+      'overdue 15 days · Sep 8',
+      'the default format keeps the words',
+    );
+  });
+
+  test('writes the date in the reader\'s format once one is set', () => {
+    const formats = { ...DEFAULT_DATE_FORMATS, date: 'D MMM YYYY' };
+    assert.strictEqual(describeDueDate(day(8), now, DEFAULT_TASK_POLICY, { dueText: 'Sep 8', formats }).label, 'overdue 15 days · 8 Sep 2026');
+    const far = describeDueDate(new Date(2026, 11, 1).getTime(), now, DEFAULT_TASK_POLICY, { formats });
+    assert.strictEqual(far.label, 'due 1 Dec 2026');
+    assert.deepStrictEqual(far.parts, { state: 'due 1 Dec 2026', distance: '', date: '' });
+    assert.strictEqual(far.date, '1 Dec 2026');
   });
 });

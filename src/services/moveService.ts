@@ -2,7 +2,6 @@ import {
   applySplices,
   blockSplice,
   dedentBlock,
-  LeaveBehind,
   leaveBehind,
   MoveBlock,
   readMoveBlock,
@@ -54,7 +53,7 @@ export interface MoveTarget<U> {
   create?: string;
 }
 
-/** Where the moved lines go in a note, as Capture places a line. */
+/** Where the moved lines go in a note, as Add Task places a line. */
 export interface Insertion {
   line: number;
   character: number;
@@ -76,7 +75,7 @@ export interface MoveServiceOptions<U extends ResourceUri, H> {
   keepRank: TaskRankKeeper;
   /** The note an index path names, or undefined when no folder holds it. */
   resolveUri(filePath: string): PromiseLike<U | undefined>;
-  /** Where lines added to a note or a section of it go, as Capture adds a line. */
+  /** Where lines added to a note or a section of it go, as Add Task adds a line. */
   placeInsertion(
     content: string,
     line: string,
@@ -195,7 +194,8 @@ export class MoveService<U extends ResourceUri, H = unknown> {
     const write = await this.options.history.write(edits, {
       label: 'Move to…',
       description: `Moved to ${target.name}`,
-      preview: this.readPreview(),
+      // One move the reader already chose, however many notes it touches.
+      preview: 'never',
       restore: deleteCreated,
       // Undoing only the note the task left, or only the one it went to,
       // would leave it in both or in neither.
@@ -231,20 +231,19 @@ export class MoveService<U extends ResourceUri, H = unknown> {
     return texts;
   }
 
-  /** The splice that takes each block out of its note, leaving what the settings say. */
+  /** The splice that takes each block out of its note, leaving a link to where it went. */
   private takeOut(
     sources: readonly MoveSource<U>[],
     texts: ReadonlyMap<string, string>,
     link: string,
   ): Map<string, NoteSplices<U>> {
-    const mode = this.readLeaveBehind();
     const splicesBy = new Map<string, NoteSplices<U>>();
     for (const source of sources) {
       const key = source.uri.toString();
       const text = texts.get(key) ?? '';
       const lines = text.split(/\r?\n/);
       const entry = splicesBy.get(key) ?? { uri: source.uri, text, splices: [] };
-      entry.splices.push(blockSplice(text, source.block, leaveBehind(source.block, lines, link, mode)));
+      entry.splices.push(blockSplice(text, source.block, leaveBehind(source.block, lines, link)));
       splicesBy.set(key, entry);
     }
     return splicesBy;
@@ -252,7 +251,7 @@ export class MoveService<U extends ResourceUri, H = unknown> {
 
   /**
    * Adds the splice that puts the moved lines into the target note, where
-   * Capture would put a line, and returns the zero-based line they start on.
+   * Add Task would put a line, and returns the zero-based line they start on.
    */
   private putIn(
     splicesBy: Map<string, NoteSplices<U>>,
@@ -323,26 +322,5 @@ export class MoveService<U extends ResourceUri, H = unknown> {
       }
       line += source.block.lines.length;
     }
-  }
-
-  /** What Move to… leaves behind, from `deckard.moveTo.leaveBehind`. */
-  private readLeaveBehind(): LeaveBehind {
-    return this.options.configuration
-      .getConfiguration('deckard')
-      .get<string>('moveTo.leaveBehind', 'link') === 'nothing'
-      ? 'nothing'
-      : 'link';
-  }
-
-  /**
-   * A move is previewed only when every write is: it is one move the reader
-   * already chose, however many notes it touches.
-   */
-  private readPreview(): 'always' | 'never' {
-    return this.options.configuration
-      .getConfiguration('deckard')
-      .get<string>('previewWorkspaceWrites', 'severalNotes') === 'always'
-      ? 'always'
-      : 'never';
   }
 }

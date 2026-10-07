@@ -6,6 +6,7 @@
 import { isCancelledTask } from './taskStatuses';
 import { formatProgressCount } from './progressCount';
 import { readTaskTagKeys } from '../query/queryEvaluator';
+import type { DateFormats } from '../markdown/dateFormat';
 import { describeDueDate } from '../markdown/dueWording';
 import { startOfDay } from '../markdown/calendar';
 import type { Task, WorkspaceIndex } from '../model';
@@ -150,8 +151,9 @@ export function describeTagProgress(
   progress: TagProgress,
   now: number,
   taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'>,
+  formats?: DateFormats,
 ): string {
-  return describeTagProgressParts(progress, now, taskPolicy).map((part) => part.text).join(' · ');
+  return describeTagProgressParts(progress, now, taskPolicy, formats).map((part) => part.text).join(' · ');
 }
 
 /** What one part of a tag's progress words counts: which tasks a search for it would list. */
@@ -168,6 +170,7 @@ export function describeTagProgressParts(
   progress: TagProgress,
   now: number,
   taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'>,
+  formats?: DateFormats,
 ): TagProgressPart[] {
   const parts: TagProgressPart[] = [{ kind: 'done', text: formatProgressCount(progress.done, progress.total) }];
   if (progress.overdue > 0) {
@@ -177,7 +180,7 @@ export function describeTagProgressParts(
     parts.push({ kind: 'needsDate', text: `${progress.needsDate} ${progress.needsDate === 1 ? 'needs' : 'need'} a new date` });
   }
   if (progress.nextDue) {
-    const due = describeDueDate(progress.nextDue.dueAt, now, taskPolicy, progress.nextDue.dueText);
+    const due = describeDueDate(progress.nextDue.dueAt, now, taskPolicy, { dueText: progress.nextDue.dueText, formats });
     parts.push({ kind: 'nextDue', text: due.relative === 'due' ? `next ${due.label}` : `next ${due.relative}` });
   } else if (progress.done === progress.total) {
     parts.push({ kind: 'allDone', text: 'all done' });

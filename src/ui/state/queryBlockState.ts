@@ -1,8 +1,8 @@
 import { formatProgressCount } from '../../domain/tasks/progressCount';
-import { countTaskProgress, isCancelledTask, nameTaskStatus, readTaskStatus, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
-import type { TaskStatusType } from '../../domain/model';
+import { countTaskProgress, isCancelledTask, nameTaskStatus } from '../../domain/tasks/taskStatuses';
+import type { TagOverviewSortMode, TaskSortMode, TaskStatusType } from '../../domain/model';
 import { getFileName } from '../../shared/paths';
-import { formatIsoDate } from '../../domain/markdown/calendar';
+import { type DateFormats, formatDisplayDate } from '../../domain/markdown/dateFormat';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { parseQuery } from '../../domain/query/queryParser';
@@ -166,6 +166,33 @@ export interface QueryBlockWriteOptions {
   view?: 'list' | 'table';
   columns?: readonly string[];
   noteColumns?: readonly string[];
+}
+
+/**
+ * A page's sort as a query block writes it, so an exported block lists in
+ * the order the page did. Rank and use have no column a block can sort by,
+ * and A-Z is a block's own order for notes, so those write nothing.
+ */
+export function queryBlockSortOf(
+  mode: TaskSortMode | TagOverviewSortMode,
+  kind: 'notes' | 'tasks',
+): Pick<QueryBlockWriteOptions, 'sort' | 'direction'> {
+  switch (mode) {
+    case 'created':
+    case 'updated':
+      return { sort: mode };
+    case 'createdOldest':
+      return { sort: 'created', direction: 'asc' };
+    case 'updatedOldest':
+      return { sort: 'updated', direction: 'asc' };
+    case 'alphabetical':
+      return kind === 'tasks' ? { sort: 'title' } : {};
+    case 'alphabeticalReverse':
+      return { sort: 'title', direction: 'desc' };
+    case 'rank':
+    case 'access':
+      return {};
+  }
 }
 
 /**
@@ -354,12 +381,10 @@ export function isQueryBlockLine(
 
 /**
  * What a block is read in besides its own options: the settings and moment
- * its query is evaluated in, and the namespace its task rows read a status in.
+ * its query is evaluated in.
  */
 export interface QueryBlockReading {
   queryContext: QueryContext;
-  /** The namespace of the status tags, from `deckard.board.statusNamespace`; `status` unless given. */
-  statusNamespace?: string;
 }
 
 /**
@@ -391,7 +416,6 @@ export function getQueryBlockSnapshot(
     new Date(reading.queryContext.now).toDateString(),
     queryText,
     options,
-    reading.statusNamespace ?? 'status',
   ]);
   let snapshot = snapshots.get(key);
   if (!snapshot) {
@@ -411,7 +435,6 @@ export function createQueryBlockSnapshot(
   options: QueryBlockOptions,
   reading: QueryBlockReading,
 ): QueryBlockSnapshot {
-  const statusNamespace = reading.statusNamespace ?? 'status';
   const query = queryText.trim();
   const optionMessages = options.warnings.map(
     (text): QueryBlockMessage => ({ severity: 'warning', text }),
@@ -461,7 +484,7 @@ export function createQueryBlockSnapshot(
     ...results.files.map((file) => createFileItem(file, index, table)),
   ].sort(createNoteComparator(options.sort, options.direction));
   const tasks = results.tasks
-    .map((task) => createTaskItem(task, index, { statuses: reading.queryContext.taskPolicy.statuses, namespace: statusNamespace }))
+    .map((task) => createTaskItem(task, index))
     .sort(createTaskComparator(options.sort, options.direction));
 
   return {
@@ -614,20 +637,16 @@ export function namespaceValues(item: Pick<QueryBlockItem, 'noteTags'>, namespac
   });
 }
 
-/**
- * A matched task as a row, with its status's name: its checkbox's, or the
- * one its own line's `#<namespace>/` tag names, as everything else reads it.
- */
+/** A matched task as a row, with its status's name: its checkbox's. */
 function createTaskItem(
   task: Task,
   index: WorkspaceIndex,
-  statusReading: { statuses: readonly TaskStatusDefinition[]; namespace: string },
 ): QueryBlockItem {
   const section = task.sectionId
     ? index.sections.get(task.sectionId)
     : undefined;
   // A done task's box says it is done; a status is named for an open or a cancelled one.
-  const status = task.completed ? undefined : nameTaskStatus(task, statusReading.statuses, statusReading.namespace);
+  const status = task.completed ? undefined : nameTaskStatus(task);
   return {
     id: task.id,
     title: stripTrailingTags(task.title) || task.title.trim(),
@@ -637,7 +656,7 @@ function createTaskItem(
     line: task.lineNumber,
     completed: task.completed,
     ...(isCancelledTask(task) ? { cancelled: true } : {}),
-    ...(readTaskStatus(task, statusReading.statuses, statusReading.namespace).type === 'inProgress' ? { statusType: 'inProgress' as const } : {}),
+    ...(task.status.type === 'inProgress' ? { statusType: 'inProgress' as const } : {}),
     dueAt: task.dueAt,
     dueText: task.dueText,
     scheduledAt: task.scheduledAt,
@@ -787,17 +806,20 @@ function compareAscending(left?: number, right?: number): number {
   return left - right;
 }
 
-/** One cell of a table of notes, as text; empty when the entry has nothing to show there. */
-export function describeNoteCell(item: QueryBlockItem, column: NoteColumnId): string {
+/**
+ * One cell of a table of notes, as text, its dates in the reader's
+ * `formats`; empty when the entry has nothing to show there.
+ */
+export function describeNoteCell(item: QueryBlockItem, column: NoteColumnId, formats?: DateFormats): string {
   switch (column) {
     case 'title':
       return item.title;
     case 'note':
       return item.fileName.replace(/\.md$/i, '');
     case 'created':
-      return item.createdAt === undefined ? '' : formatIsoDate(item.createdAt);
+      return item.createdAt === undefined ? '' : formatDisplayDate(item.createdAt, formats);
     case 'updated':
-      return item.updatedAt === undefined ? '' : formatIsoDate(item.updatedAt);
+      return item.updatedAt === undefined ? '' : formatDisplayDate(item.updatedAt, formats);
     case 'links':
       return item.linkCount ? String(item.linkCount) : '';
     case 'tasks':

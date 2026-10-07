@@ -161,8 +161,6 @@ suite('Task assignees', () => {
       requestedGroupBy: 'assignee',
       options: {
         queryContext: createQueryContext(Date.now()),
-        statuses: [],
-        statusNamespace: 'status',
         format: 'emoji',
       },
     });
@@ -188,8 +186,6 @@ suite('Task assignees', () => {
   test('hands a task over when its card is dropped on a person', () => {
     const options = {
       queryContext: createQueryContext(Date.now()),
-      statuses: [],
-      statusNamespace: 'status',
       format: 'emoji' as const,
     };
     const byLine = [...index.tasks.values()].sort(

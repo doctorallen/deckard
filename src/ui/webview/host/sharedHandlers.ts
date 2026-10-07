@@ -63,7 +63,7 @@ export function setZenMode(): MessageHandler<SetZenModeMessage> {
 
 /**
  * DECKARD at the top of a page, asking for its menu: every page but the one
- * it is on, with the Pages view's hints, sent back to the page.
+ * it is on, with the hints the top of Context gives them, sent back to the page.
  */
 export function listGoTo(options: {
   /** What the hints are read from; Help, drawn without one in tests, lists the pages bare. */
@@ -74,7 +74,7 @@ export function listGoTo(options: {
   return (_message, page) => page.post(describeGoToMenu(options.indexer, options.current));
 }
 
-/** A page chosen from DECKARD's menu, opened by its command; an id that names no page does nothing. */
+/** A page chosen from DECKARD's menu or the top of Context, opened by its command; an id that names no page does nothing. */
 export function goToPage(): MessageHandler<GoToPageMessage> {
   return (message) =>
     isDeckardPageId(message.page) ? vscode.commands.executeCommand(DECKARD_PAGE_COMMANDS[message.page]) : undefined;

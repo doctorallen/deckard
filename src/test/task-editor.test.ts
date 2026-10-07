@@ -122,14 +122,6 @@ suite('Task editor', () => {
     });
   });
 
-  test('completing writes no done date when the setting is off', () => {
-    const before = parseTaskDraft('- [ ] Ship it');
-    assert.strictEqual(
-      writeEditedTask({ before, edited: completeDraft(before, now, false), now, eol: '\n' }).text,
-      '- [x] Ship it',
-    );
-  });
-
   test('takes a date in words, and refuses what is not one', () => {
     const draft = parseTaskDraft('- [ ] Chase the contractor');
     assert.strictEqual(

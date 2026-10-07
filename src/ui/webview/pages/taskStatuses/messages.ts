@@ -8,7 +8,7 @@ import { NarrowingTable, Narrower, narrowWith, onlyType } from '../../host/narro
 
 /** The most statuses a list may hold, far more than any vault writes. */
 const MAX_STATUSES = 100;
-/** The longest a name or a tag may be. */
+/** The longest a name may be. */
 const MAX_TEXT = 80;
 
 /** A short string, or undefined for anything else. */
@@ -27,14 +27,12 @@ function readStatus(value: unknown): EditedStatus | undefined {
     return undefined;
   }
   const symbol = readText(entry.symbol);
-  const tag = readText(entry.tag);
   const next = readText(entry.next);
   const icon = TASK_STATUS_ICONS.find((known) => known === entry.icon);
   return {
     name,
     type: entry.type,
     ...(symbol ? { symbol } : {}),
-    ...(tag ? { tag } : {}),
     ...(next ? { next } : {}),
     ...(icon ? { icon } : {}),
   };

@@ -2,17 +2,17 @@
 
 Also online at [deckard.esperinnovations.com](https://deckard.esperinnovations.com).
 
-Everything Deckard does, one topic to a page. The [README](../../README.md) is the short version; the **Help** page inside VS Code (`Deckard: Open Help`) is the quick glance, and each of its sections has **Read more**, which opens the page here that goes into detail.
+Everything Deckard does, one topic to a page. The [README](../../README.md) is the short version. Inside VS Code, `Deckard: Open Help` shows this guide, with these pages down the side.
 
 ## Start
 
 - [Getting started](getting-started.md): requirements, installing, the sample workspace, and the walkthrough.
-- [Themes and Zen mode](themes-and-zen.md): the eight themes, and turning Deckard's chrome down.
+- [Themes and Display](themes-and-zen.md): the eight themes, and turning Deckard's chrome down.
 
 ## Writing
 
 - [Writing notes: tags, people, and links](notes-and-links.md): tags, `@people`, namespaced entities, front matter, `[[links]]`, embeds, what counts as a note, editor assistance, and templates.
-- [Tasks](tasks.md): writing tasks and their dates, priorities, repeats, and steps; the Tasks view, the status bar, and Capture.
+- [Tasks](tasks.md): writing tasks and their dates, priorities, repeats, and steps; the Tasks view, the status bar, and Add Task.
 - [Daily notes, reviews, and the calendar](daily-notes.md): today's note, carrying tasks forward, weekly and monthly reviews, and the calendar.
 - [Renaming, moving, and parking](organizing.md): renaming notes and headings, extracting a heading, moving lines, and parking what you are not working on.
 

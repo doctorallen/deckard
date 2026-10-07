@@ -19,9 +19,8 @@ interface TaskIndexSource {
   isNotesFile?(uri: vscode.Uri): boolean;
 }
 
-/** The two settings the suggestions answer to, for one note. */
+/** The setting the suggestions answer to, for one note. */
 export interface TaskMetadataSuggestionSettings {
-  enabled: boolean;
   /** Format for a task that has no metadata yet. */
   format: TaskMetadataFormat;
 }
@@ -107,18 +106,14 @@ export class TaskMetadataCompletionProvider implements vscode.Disposable {
   /**
    * The metadata a task can take, after a `/` that starts a word past the
    * task's checkbox, in the format the task already uses; nothing in fenced
-   * code, outside the notes, or while the setting is off.
+   * code or outside the notes.
    */
   public async provideCompletionItems(
     document: vscode.TextDocument,
     position: vscode.Position,
   ): Promise<vscode.CompletionItem[]> {
     const settings = this.readSettings(document);
-    if (
-      !settings.enabled ||
-      !isMarkdownFile(document.uri) ||
-      !(this.indexer.isNotesFile?.(document.uri) ?? true)
-    ) {
+    if (!isMarkdownFile(document.uri) || !(this.indexer.isNotesFile?.(document.uri) ?? true)) {
       return [];
     }
 
@@ -149,8 +144,8 @@ export class TaskMetadataCompletionProvider implements vscode.Disposable {
 }
 
 /**
- * Reads `deckard.tasks.metadataSuggestions` and the metadata format for a
- * note, scoped to it so a folder's own settings apply.
+ * Reads the metadata format for a note, scoped to it so a folder's own
+ * settings apply.
  */
 export function readTaskMetadataSuggestionSettings(
   document: vscode.TextDocument,
@@ -159,10 +154,7 @@ export function readTaskMetadataSuggestionSettings(
     'deckard',
     document.uri,
   );
-  return {
-    enabled: configuration.get<boolean>('tasks.metadataSuggestions', true),
-    format: readTaskMetadataFormat(configuration),
-  };
+  return { format: readTaskMetadataFormat(configuration) };
 }
 
 /**

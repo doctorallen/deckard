@@ -82,8 +82,6 @@ suite('Dashboard behavior', () => {
         ? {
             widgets: createDashboardWidgets(index, preferences, {
               queryContext: createQueryContext(Date.now()),
-              upcomingDays: 7,
-              tagTitleDisplayMode: 'inline',
             }),
           }
         : {}),

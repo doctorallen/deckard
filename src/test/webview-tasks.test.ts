@@ -148,9 +148,9 @@ suite('The shared task parts draw what the template script drew', () => {
     const items: Array<[string, DashboardTask]> = [
       ['plain', listed('Send the proposal')],
       ['done', listed('Send the proposal', { completed: true, status: { symbol: 'x', name: 'Done', type: 'done' } })],
-      ['due and overdue', listed('Pay rent', {}, { dueLabel: 'Overdue 3 days · 2026-09-18', overdue: true })],
-      ['due and stale', listed('Pay rent', {}, { dueLabel: 'Was due 2026-06-01', stale: true })],
-      ['due, on time', listed('Pay rent', {}, { dueLabel: 'Due tomorrow · 2026-09-22' })],
+      ['due and overdue', listed('Pay rent', {}, { dueLabel: 'Overdue 3 days · 2026-09-18', dueParts: { state: 'Overdue', distance: ' 3 days', date: '2026-09-18' }, overdue: true })],
+      ['due and stale', listed('Pay rent', {}, { dueLabel: 'Was due 2026-06-01', dueParts: { state: 'Was due 2026-06-01', distance: '', date: '' }, stale: true })],
+      ['due, on time', listed('Pay rent', {}, { dueLabel: 'Due tomorrow · 2026-09-22', dueParts: { state: 'Due', distance: ' tomorrow', date: '2026-09-22' } })],
       ['due as written', listed('Pay rent', { dueText: 'next week' })],
       // The template named the checkbox by the title's Markdown, "Toggle
       // Plan **the trip**"; its recording was corrected to the words a
@@ -161,8 +161,8 @@ suite('The shared task parts draw what the template script drew', () => {
       ['tags in the title', listed('Call Ren #context/phone', {}, { titleTags: [PHONE] })],
     ];
     const options: Array<[string, Record<string, unknown>]> = [
-      ['inline', { titleDisplay: 'inline' }],
-      ['separate', { titleDisplay: 'separate' }],
+      // Tags in a title are drawn where they are written.
+      ['inline', {}],
       ['draggable, with a menu', { draggable: true, trailing: shared().h('button', { class: 'row-menu' }, '⋯') }],
       ['a mark in place of the checkbox', { leading: shared().h('span', { class: 'repeat-mark', 'aria-hidden': 'true' }, '↻') }],
     ];
@@ -180,10 +180,7 @@ suite('The shared task parts draw what the template script drew', () => {
     }
   });
 
-  test('a date as the note writes it, where an entry is written, and the path above it', () => {
-    for (const [when, at] of [['noon on 5 January', new Date(2026, 0, 5, 12).getTime()], ['1 am on 31 December', new Date(2026, 11, 31, 1).getTime()]] as const) {
-      assert.strictEqual(shared().formatTaskDate(at), drawnByTemplate(`task date ${when}`));
-    }
+  test('where an entry is written, and the path above it', () => {
     for (const name of ['2026-09-22.md', 'Notes.MD', 'plain']) {
       assert.strictEqual(shared().formatSourceLocation(name, 7), drawnByTemplate(`source location ${name}`));
     }

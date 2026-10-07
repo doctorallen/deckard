@@ -11,7 +11,7 @@ import {
 /**
  * What a reader opened and chose, kept so rankings follow actual use: how
  * often and how lately each tag, entity, and heading was opened, which
- * result Find was chosen for what was typed, and the headings Capture and
+ * result Find was chosen for what was typed, and the headings Add Task and
  * Move to… went under. All of it is derived, so pruning collects what
  * names an entry the index no longer has.
  */
@@ -102,7 +102,7 @@ export class UsageService {
     await this.repository.update({ findChoices: next.slice(0, FIND_CHOICE_LIMIT) }, true);
   }
 
-  /** Remembers a heading Capture or Move to… went under, newest first. */
+  /** Remembers a heading Add Task or Move to… went under, newest first. */
   public async recordRecentHeading(pin: PinnedNote): Promise<void> {
     const key = pinKey(pin);
     const recentHeadings = [

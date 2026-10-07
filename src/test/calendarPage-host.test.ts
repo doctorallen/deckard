@@ -13,6 +13,7 @@ import { withConfigurationEvents } from './configurationEvents';
 import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
 import { createTaskWrites } from './taskWrites';
+import { createMemoryPreferences } from './preferenceServices';
 import { pageWebview, REPOSITORY_ROOT } from './pageWebview';
 import { openWebviewPage } from './webviewPage';
 import { formatLocalDate } from '../domain/notes/periodicNotes';
@@ -34,6 +35,7 @@ function openPage() {
   };
   const activeCalendar = new ActiveCalendar();
   const themePreview = new ThemePreview();
+  const preferences = createMemoryPreferences();
   let host: WebviewHost<CalendarSnapshot, CalendarPagePageToHost> | undefined;
   const source: CalendarDaySource = {
     getDay: () => controller.getDay(),
@@ -48,6 +50,7 @@ function openPage() {
     post: (message) => host?.post(message),
     openTag: () => undefined,
     extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
+    preferences,
   });
   host = new WebviewHost(controller, { indexer, themePreview });
   const surface = new FakeSurface();
@@ -59,6 +62,7 @@ function openPage() {
     source,
     activeCalendar,
     themePreview,
+    preferences,
     types: () => surface.webview.posted.map((message) => (message as { type: string }).type),
     states: () => surface.webview.postedOf<{ type: 'state'; data: CalendarSnapshot }>('state'),
     send: (message: unknown) => surface.webview.send(message),
@@ -88,7 +92,7 @@ suite('Calendar page host', () => {
     const { result: page, fire } = withConfigurationEvents(() => openPage());
     try {
       const events = recordSurface(page.surface);
-      fire('deckard.zenMode', 'deckard.calendar.showRepeats');
+      fire('deckard.display.level', 'deckard.calendar.weekStart');
       assert.deepStrictEqual(events, ['html', 'post state']);
     } finally {
       page.dispose();
@@ -155,14 +159,29 @@ suite('Calendar page host', () => {
     }
   });
 
+  test('the gear hides the weekends, kept in the preferences, and the month is drawn again without them', async () => {
+    const page = openPage();
+    try {
+      const before = page.states().length;
+      await page.send({ type: 'setShowWeekends', show: false });
+      assert.strictEqual(page.preferences.repository.current.calendarHideWeekends, true);
+      const states = page.states();
+      assert.ok(states.length > before, 'drawn again');
+      assert.strictEqual(states[states.length - 1].data.hideWeekends, true);
+      await page.send({ type: 'setShowWeekends', show: true });
+      assert.strictEqual(page.preferences.repository.current.calendarHideWeekends, undefined, 'shown is kept as nothing');
+    } finally {
+      page.dispose();
+    }
+  });
+
   test("runs the gear's theme and help, at the periodic notes, and writes no setting already so", async () => {
     const page = openPage();
     try {
-      const shown = vscode.workspace.getConfiguration('deckard').get<boolean>('calendar.showRepeats', true) !== false;
       const calls = await recordCommands(async () => {
         await page.send({ type: 'chooseTheme' });
         await page.send({ type: 'openHelp' });
-        await page.send({ type: 'setShowRepeats', show: shown });
+        await page.send({ type: 'setShowWeekends', show: true });
       });
       assert.deepStrictEqual(calls, [['deckard.chooseTheme'], ['deckard.showHelp', 'periodic']]);
     } finally {

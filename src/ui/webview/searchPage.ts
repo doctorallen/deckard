@@ -95,16 +95,6 @@ export class SearchPanels implements vscode.Disposable {
         this.panels.forEach((panel) => panel.renderHtml());
         this.refresh();
       }, this.themePreview),
-      vscode.workspace.onDidChangeConfiguration((event) => {
-        if (
-          event.affectsConfiguration('deckard.tagTitleDisplayMode') ||
-          event.affectsConfiguration('deckard.tagOverview.hubNoteExpanded') ||
-          event.affectsConfiguration('deckard.tagOverview.includeHubLinks') ||
-          event.affectsConfiguration('deckard.enableHeadingTagRelationships')
-        ) {
-          this.refresh();
-        }
-      }),
     );
   }
 

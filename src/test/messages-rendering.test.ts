@@ -1,5 +1,4 @@
 import * as assert from 'assert';
-import * as vscode from 'vscode';
 
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
@@ -13,15 +12,6 @@ import { renderPage } from './pages';
 import { linkedSheets, pageSheets, readSheet, themeSheet, withSheets } from './sheets';
 import { deckardThemes } from '../ui/webview/themeNames';
 import { createSearchPageSnapshot } from '../ui/state/searchPageState';
-
-/** Deckard's own manifest, which the Help page is built from. */
-function extension(): vscode.Extension<unknown> {
-  const found = vscode.extensions.all.find(
-    (candidate) => candidate.packageJSON.name === 'deckard-notes',
-  );
-  assert.ok(found, 'Deckard is installed in the test host');
-  return found;
-}
 
 /**
  * The Dashboard on its Tags tab, driven: its tags ranked by hand, and a
@@ -74,7 +64,6 @@ suite('Webview contracts', () => {
         snapshot: {
           activeTags: [],
           notes: [],
-          tagTitleDisplayMode: 'inline',
           state: 'noMatches',
         },
       },
@@ -726,7 +715,6 @@ suite('Webview contracts', () => {
     const page = openWebviewPage(renderPage('sidebarNotes'), {
       activeFileName: 'today.md',
       activeTags: [],
-      tagTitleDisplayMode: 'inline',
       state: 'ready',
       notes: [{
         sectionId: 'section-1', filePath: 'notes/atlas.md', title: 'Actions', fileName: 'atlas.md', sourceLine: 12,
@@ -810,50 +798,6 @@ suite('Webview contracts', () => {
     );
                                                                                                                                                       });
 
-  test('keeps the Help page in step with what Deckard contributes', () => {
-    // The commands and settings tables are built from the manifest, so this
-    // holds the page to it rather than to a copy of its words: a command or
-    // a setting added later is in the guide the moment it is contributed.
-    const manifest = extension().packageJSON.contributes;
-    const html = renderPage('help', { help: { manifest: manifest } });
-
-    const commands: { command: string; title: string }[] =
-      manifest?.commands ?? [];
-    assert.ok(commands.length > 0);
-    for (const command of commands.filter((entry) =>
-      entry.title.startsWith('Deckard:'),
-    )) {
-      assert.ok(
-        html.includes(command.title.replace('Deckard: ', '')),
-        `Help lists ${command.title}`,
-      );
-    }
-
-    const settings: string[] = (manifest?.configuration ?? []).flatMap(
-      (group: { properties?: Record<string, unknown> }) =>
-        Object.keys(group.properties ?? {}),
-    );
-    assert.ok(settings.length > 0);
-    for (const setting of settings) {
-      assert.ok(html.includes(setting), `Help lists ${setting}`);
-    }
-
-    // Every section the navigation offers is a section of the page.
-    const links = [...html.matchAll(/href="#([a-z-]+)"/g)].map(
-      (match) => match[1],
-    );
-    assert.ok(links.length >= 20, 'the guide is navigable in parts');
-    for (const link of new Set(links)) {
-      assert.ok(
-        html.includes(`<section id="${link}">`),
-        `#${link} is a section`,
-      );
-    }
-    for (const section of ['quick-start', 'commands', 'advanced', 'query', 'tasks']) {
-      assert.ok(links.includes(section), `the navigation offers #${section}`);
-    }
-  });
-
   test('every theme defers to a high contrast editor theme', () => {
     const contrast = readSheet('shared/highContrast.css');
     const block = /body\.vscode-high-contrast, body\.vscode-high-contrast-light \{([^}]*)\}/.exec(contrast);
@@ -872,34 +816,5 @@ suite('Webview contracts', () => {
     for (const theme of deckardThemes) {
       assert.ok(!themeSheet(theme).includes('vscode-high-contrast {'), `${theme}: no theme second-guesses it`);
     }
-  });
-
-  test('the Help rail marks the section being read', () => {
-    const page = openWebviewPage(
-      renderPage('help', { help: { manifest: extension().packageJSON.contributes } }),
-      undefined,
-    );
-    try {
-      // At the top, the first section is the one being read; scrolling
-      // moves the mark, which needs a browser to lay the page out.
-      assert.strictEqual(page.find('nav a[aria-current="location"]').getAttribute('href'), '#quick-start');
-      assert.strictEqual(page.findAll('nav a[aria-current]').length, 1);
-    } finally {
-      page.dispose();
-    }
-  });
-
-  test('renders the Help page as a reference, tables and all', () => {
-    const html = renderPage('help', { help: { manifest: extension().packageJSON.contributes } });
-
-    assert.ok(html.includes('<caption>Fields</caption>'), 'the query fields');
-    assert.ok(
-      html.includes('<caption>Markers, in the order Deckard writes them</caption>'),
-      'the task markers',
-    );
-    assert.ok(html.includes('deckard.noteBoundaries'), 'what counts as a note');
-    assert.ok(html.includes('resources/deckard.svg'), 'the logo it ships with');
-    assert.ok(html.includes('Associated tags'), 'how tags relate');
-    assert.ok(html.includes('#follow-up'), 'a tag anyone can write');
   });
 });

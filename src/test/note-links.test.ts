@@ -111,7 +111,6 @@ suite('What links to a note', () => {
         enableKeywordLinks: true,
         relatedNotesSortMode: 'tags',
         sectionAccessCounts: {},
-        tagTitleDisplayMode: 'inline',
         rankingOptions: { hidePeriodicNotes,
       } })
         .notes.map((note) => note.filePath)

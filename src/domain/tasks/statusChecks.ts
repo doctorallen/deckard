@@ -1,8 +1,7 @@
 /**
  * What Edit Task Statuses checks as a list is typed, which the page shows
  * beside the rows and the host checks again before it saves: a character
- * given twice, a status with no name, or with neither a character nor a
- * tag; a name the search language keeps for itself; and, in the workflow, a
+ * given twice, a status with no name or no character; a name the search language keeps for itself; and, in the workflow, a
  * next character no status has, or Done not followed by to do or in
  * progress, the check Obsidian Tasks' Review report makes. It reads only
  * the list, so a page can run it.
@@ -14,7 +13,6 @@ export interface CheckedStatus {
   readonly symbol?: string;
   readonly name: string;
   readonly type: TaskStatusType;
-  readonly tag?: string;
   readonly next?: string;
 }
 
@@ -36,8 +34,8 @@ function checkRow(status: CheckedStatus, row: number): StatusProblem[] {
   if (!name) {
     problems.push({ row, severity: 'error', text: 'Give it a name.' });
   }
-  if (status.symbol === undefined && !status.tag) {
-    problems.push({ row, severity: 'error', text: 'Give it a character, a tag, or both.' });
+  if (status.symbol === undefined) {
+    problems.push({ row, severity: 'error', text: 'Give it a character.' });
   }
   if (status.symbol !== undefined && [...status.symbol].length !== 1) {
     problems.push({ row, severity: 'error', text: 'A character is one character.' });

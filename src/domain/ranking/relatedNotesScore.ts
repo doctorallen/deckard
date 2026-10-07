@@ -8,7 +8,8 @@ import { ParsedFile, RankedNote, Section, TagReference } from '../model';
 import { getFileName } from '../../shared/paths';
 import { createSectionExcerpt } from './entryExcerpt';
 import { getLinkEvidence, LinkEvidence } from './linkEvidence';
-import { getRecencyWeight, getRelevantDate } from './recency';
+import { formatDisplayDay, type DateFormats } from '../markdown/dateFormat';
+import { getRecencyWeight, getRelevantDate, type RelevantDate } from './recency';
 import { EntryReference, FileScope, RankingContext } from './relatedNotesContext';
 import { AssociatedTag } from './tagAssociations';
 import { getCachedLexicalTerms, getLexicalWeight, LexicalEvidence } from './wordSimilarity';
@@ -82,7 +83,7 @@ export function scoreReference(
       specificityPenalty: evidence.specificityPenalty,
       lexicalTerms: lexicalEvidence.terms,
     },
-    reasons: describeReasons(file, evidence),
+    reasons: describeReasons(file, evidence, context.options.dateFormats),
   };
 }
 
@@ -197,7 +198,7 @@ function getSpecificityPenalty(
 }
 
 /** Why an entry is listed, one line for each kind of evidence it has. */
-function describeReasons(file: ParsedFile, evidence: ReferenceEvidence): string[] {
+function describeReasons(file: ParsedFile, evidence: ReferenceEvidence, formats: DateFormats | undefined): string[] {
   const { matchedTags, associatedMatches, linkEvidence, lexicalEvidence } = evidence;
   return [
     ...(matchedTags.length > 0
@@ -222,13 +223,19 @@ function describeReasons(file: ParsedFile, evidence: ReferenceEvidence): string[
             .join(', ')}`,
         ]
       : []),
-    ...(evidence.recencyWeight > 0
-      ? [`Recent ${getRelevantDate(file)?.source ?? 'note'}`]
-      : []),
+    ...(evidence.recencyWeight > 0 ? [describeRecency(getRelevantDate(file), formats)] : []),
     ...(evidence.specificityPenalty > 0
       ? ['Broader match contains a more specific entry']
       : []),
   ];
+}
+
+/** Why a note counts as recent: `Recent daily note 2026-09-12`, its day in the reader's format. */
+function describeRecency(date: RelevantDate | undefined, formats: DateFormats | undefined): string {
+  if (!date) {
+    return 'Recent note';
+  }
+  return date.day ? `Recent ${date.source} ${formatDisplayDay(date.day, formats)}` : `Recent ${date.source}`;
 }
 
 /**

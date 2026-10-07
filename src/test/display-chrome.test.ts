@@ -7,7 +7,7 @@ suite('Display choices on the page body', () => {
     assert.strictEqual(getPageTailCss({ theme: 'cooper', zen: false }).bodyAttribute, '');
     assert.strictEqual(
       getPageTailCss({ theme: 'cooper', zen: true }).bodyAttribute,
-      ' class="zen" data-level="zen" data-styling="plain" data-help="hidden" data-density="compact" data-cards="flat" data-tags="text" data-counts="hidden" data-file-line="never" data-dates="relative"',
+      ' class="zen" data-level="zen" data-styling="plain" data-help="hidden" data-density="compact" data-cards="flat" data-tags="text" data-counts="hidden" data-dates="relative"',
       'zen with no choices given draws as Zen does',
     );
     assert.strictEqual(
@@ -30,6 +30,18 @@ suite('Display choices on the page body', () => {
     assert.strictEqual(
       getPageTailCss({ theme: 'lcars', zen: true, display: { cards: 'flat', tags: 'text' } }).bodyAttribute,
       ' class="zen" data-cards="flat" data-tags="text"',
+    );
+  });
+
+  test('the date formats are marked only when set, as attribute text', () => {
+    assert.strictEqual(
+      getPageTailCss({ theme: 'cooper', zen: false, display: { dateFormat: 'DD/MM/YYYY', shortDateFormat: 'D MMM', dateLocale: 'de', weekStart: 1 } }).bodyAttribute,
+      ' data-date-format="DD/MM/YYYY" data-short-date-format="D MMM" data-date-locale="de" data-week-start="1"',
+    );
+    assert.strictEqual(
+      getPageTailCss({ theme: 'cooper', zen: false, display: { dateFormat: '[Day "D"] <MMM> & \'YY' } }).bodyAttribute,
+      ' data-date-format="[Day &quot;D&quot;] &lt;MMM&gt; &amp; &#39;YY"',
+      'a format is the reader\'s own text, so it is escaped',
     );
   });
 });

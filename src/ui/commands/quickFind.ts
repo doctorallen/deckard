@@ -16,6 +16,7 @@ import {
   QuickFindItem,
   QuickFindResults,
 } from '../state/quickFindState';
+import { type DateFormats, formatDisplayDay } from '../../domain/markdown/dateFormat';
 import { describeDistance, formatShortDay, parseDatePhrase } from '../../domain/markdown/dates';
 import { openDailyNoteFor } from './dailyNoteForDate';
 import { readDateOptions } from './datePrompt';
@@ -62,7 +63,7 @@ interface QuickFindPickItem extends vscode.QuickPickItem {
   indexing?: boolean;
   /** The row that opens the daily note for the day typed. */
   openDate?: string;
-  /** The row that captures what was typed to today's note. */
+  /** The row that adds what was typed to today's note, as a task. */
   capture?: { text: string; line: string };
 }
 
@@ -80,12 +81,13 @@ const SHORT_WEEKDAY = /^(?:sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)$/i;
  * The daily note row for what is typed, when the whole of it is a day, such
  * as `friday` or `oct 3`, and could be a note's name. A short weekday alone,
  * such as `sat`, is left to the search. `now` is the moment the keystroke's
- * results are read at, which the day is found from and described against.
+ * results are read at, which the day is found from and described against,
+ * in the reader's `formats`.
  */
 export function findDailyNoteRow(
   value: string,
   now: number,
-  options: Parameters<typeof parseDatePhrase>[2] = {},
+  options: Parameters<typeof parseDatePhrase>[2] & { readonly formats?: DateFormats } = {},
 ): DailyNoteRow | undefined {
   const text = value.trim();
   if (!text || !isNoteName(text) || SHORT_WEEKDAY.test(text)) {
@@ -97,10 +99,11 @@ export function findDailyNoteRow(
   }
   const at = parseIsoDate(date);
   const distance = at === undefined ? undefined : describeDistance(at, now);
+  const written = formatDisplayDay(date, options.formats);
   return {
     date,
-    label: `$(calendar) Open daily note for ${formatShortDay(date, now)}`,
-    description: distance ? `${date} · ${distance}` : date,
+    label: `$(calendar) Open daily note for ${formatShortDay(date, now, options.formats)}`,
+    description: distance ? `${written} · ${distance}` : written,
   };
 }
 
@@ -567,7 +570,7 @@ export class QuickFind implements vscode.Disposable {
     picker.items = toPickItems(
       results,
       picker.value,
-      findDailyNoteRow(picker.value, queryContext.now, readDateOptions()),
+      findDailyNoteRow(picker.value, queryContext.now, { ...readDateOptions(), formats: queryContext.dateFormats }),
     );
     if (activeKey === undefined) {
       return;
@@ -632,8 +635,8 @@ export class QuickFind implements vscode.Disposable {
     }
     if (chosen.capture) {
       picker.hide();
-      // Written as Capture writes it; the words were captured, so they are
-      // not kept as a search.
+      // Written with its last words read, as Add Task reads them; the words
+      // were added as a task, so they are not kept as a search.
       return captureToToday(chosen.capture.text, chosen.capture.line);
     }
     if (chosen.create === undefined) {
@@ -858,7 +861,7 @@ function toPickItem(item: QuickFindItem): QuickFindPickItem {
 
 /**
  * The rows below the results, each only when it applies: create a note by
- * the name typed, capture what was typed, and show every result.
+ * the name typed, add what was typed as a task, and show every result.
  */
 function trailingRows(
   results: QuickFindResults,
@@ -888,7 +891,7 @@ function trailingRows(
       items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
     }
     items.push({
-      label: `$(inbox) Capture “${results.capture.text}” to today’s note`,
+      label: `$(inbox) Add “${results.capture.text}” to today’s note`,
       detail: results.capture.line,
       alwaysShow: true,
       capture: results.capture,

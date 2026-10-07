@@ -1,4 +1,4 @@
-import { SHORT_WEEKDAY_NAMES, formatIsoDate } from '../markdown/calendar';
+import { type DateFormats, DEFAULT_DATE_FORMATS, nameDisplayDay } from '../markdown/dateFormat';
 import { Task } from '../model';
 import { needsNewDate, TaskPolicy } from './taskPolicy';
 
@@ -34,12 +34,13 @@ export interface AgendaDays {
 
 /**
  * The group one open task belongs in on `days.today`, the date that put it
- * there, and the words that say why.
+ * there, and the words that say why, their dates in the reader's `formats`.
  */
 export function placeTask(
   task: Task,
   days: AgendaDays,
   taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'>,
+  formats: DateFormats = DEFAULT_DATE_FORMATS,
 ): Placement {
   const { dueAt, scheduledAt, startAt } = task;
   if (
@@ -52,9 +53,9 @@ export function placeTask(
     return { group: 'nodate', at: NO_DATE, reason: '' };
   }
   return (
-    placeByDue(dueAt, days, taskPolicy) ??
-    placeBySchedule(task, days) ??
-    placeAhead(task, days)
+    placeByDue(dueAt, days, taskPolicy, formats) ??
+    placeBySchedule(task, days, formats) ??
+    placeAhead(task, days, formats)
   );
 }
 
@@ -63,15 +64,16 @@ function placeByDue(
   dueAt: number | undefined,
   { today, tomorrow }: AgendaDays,
   taskPolicy: Pick<TaskPolicy, 'needsNewDateAfterDays'>,
+  formats: DateFormats,
 ): Placement | undefined {
   if (dueAt === undefined) {
     return undefined;
   }
   if (needsNewDate(dueAt, today, taskPolicy)) {
-    return { group: 'needsdate', at: dueAt, reason: `was due ${formatDay(dueAt)}` };
+    return { group: 'needsdate', at: dueAt, reason: `was due ${formatDay(dueAt, formats)}` };
   }
   if (dueAt < today) {
-    return { group: 'overdue', at: dueAt, reason: `due ${formatDay(dueAt)}` };
+    return { group: 'overdue', at: dueAt, reason: `due ${formatDay(dueAt, formats)}` };
   }
   if (dueAt < tomorrow) {
     return { group: 'today', at: dueAt, reason: 'due today' };
@@ -83,6 +85,7 @@ function placeByDue(
 function placeBySchedule(
   { scheduledAt, startAt }: Task,
   { today, tomorrow }: AgendaDays,
+  formats: DateFormats,
 ): Placement | undefined {
   // A future start date means the task is not actionable yet, however early
   // it was scheduled.
@@ -95,7 +98,7 @@ function placeBySchedule(
     at: scheduledAt,
     reason:
       scheduledAt < today
-        ? `scheduled ${formatDay(scheduledAt)}`
+        ? `scheduled ${formatDay(scheduledAt, formats)}`
         : 'scheduled today',
   };
 }
@@ -110,6 +113,7 @@ function placeBySchedule(
 function placeAhead(
   { dueAt, scheduledAt, startAt }: Task,
   { tomorrow, horizon }: AgendaDays,
+  formats: DateFormats,
 ): Placement {
   const ahead = [
     { at: dueAt, verb: 'due' },
@@ -128,11 +132,15 @@ function placeAhead(
   return {
     group: soonest.at < horizon ? 'upcoming' : 'later',
     at: soonest.at,
-    reason: `${soonest.verb} ${formatDay(soonest.at)}`,
+    reason: `${soonest.verb} ${formatDay(soonest.at, formats)}`,
   };
 }
 
-/** Writes a date as "Mon 2026-09-14", so a week reads at a glance. */
-export function formatDay(at: number): string {
-  return `${SHORT_WEEKDAY_NAMES[new Date(at).getDay()]} ${formatIsoDate(at)}`;
+/**
+ * Writes a date as "Mon 2026-09-14", so a week reads at a glance: the
+ * weekday, then the date in the reader's format, which alone is written
+ * when it names the weekday itself.
+ */
+export function formatDay(at: number, formats: DateFormats = DEFAULT_DATE_FORMATS): string {
+  return nameDisplayDay(at, formats, { weekday: 'short' });
 }

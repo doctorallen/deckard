@@ -43,8 +43,6 @@ export interface WhatsNewOptions {
   existingUser: boolean;
   /** Reads CHANGELOG.md; unreadable reads as no releases. */
   readChangelog: () => Promise<string>;
-  /** Whether `deckard.showWhatsNew` is on. */
-  isShown?: () => boolean;
 }
 
 /**
@@ -103,13 +101,10 @@ export class WhatsNew implements vscode.Disposable {
     this.changeEmitter.fire();
   }
 
-  /** The line Home shows, while there is one and the setting allows it. */
+  /** The line Home shows, while there is one. */
   public pending(): { version: string } | undefined {
     const pending = this.options.globalState.get<PendingUpdate>(WHATS_NEW_PENDING);
-    if (!pending || !(this.options.isShown?.() ?? true)) {
-      return undefined;
-    }
-    return { version: shortVersion(pending.to) };
+    return pending ? { version: shortVersion(pending.to) } : undefined;
   }
 
   /** The version the reader updated from, so Help can mark what is new since. */
@@ -130,9 +125,4 @@ export class WhatsNew implements vscode.Disposable {
   public dispose(): void {
     this.changeEmitter.dispose();
   }
-}
-
-/** Reads `deckard.showWhatsNew`. */
-export function isWhatsNewShown(): boolean {
-  return vscode.workspace.getConfiguration('deckard').get<boolean>('showWhatsNew', true);
 }

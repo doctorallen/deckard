@@ -96,8 +96,7 @@ suite('Webview saved state', () => {
         index: index(),
         preferences: { ...store.reader.value, taskBoardLayout: 'board' },
         search: { query },
-        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' },
-        tagTitleDisplayMode: 'inline',
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
       });
       page = openWebviewPage(renderPage('taskBoard'), board, { savedState, clock });
       return page;
@@ -138,7 +137,7 @@ suite('Webview saved state', () => {
       const queryContext = createQueryContext(NOW);
       const full = {
         ...createDashboardSnapshot({ index: built, preferences: prefs, queryContext }),
-        widgets: createDashboardWidgets(built, prefs, { queryContext, upcomingDays: 7, tagTitleDisplayMode: 'inline' }),
+        widgets: createDashboardWidgets(built, prefs, { queryContext }),
       } as Record<string, unknown>;
       if (!fromHost) {
         delete full.viewState;
@@ -373,7 +372,6 @@ suite('Webview saved state', () => {
       activeTags: ['#a', '#b', '#c', '#d', '#e', '#f'].map((key) => ({ key, label: key, weight: 1 })),
       notes: Array.from({ length: 120 }, (_, number) => result(number)),
       relatedNotesSortMode: 'tags',
-      tagTitleDisplayMode: 'inline',
       state: 'ready',
       links: {
         linkedFromNotes: [{ filePath: entry.filePath, title: entry.title, entries: [entry], linkCount: 1 }],
@@ -421,7 +419,7 @@ suite('Webview saved state', () => {
     test('opens Refine\'s facets and the day\'s groups it left open', () => {
       const values = Array.from({ length: 8 }, (_, number) => ({ label: `#t${number}`, count: 1, clause: `#t${number}` }));
       const refine = open({ expandedRefine: ['tags'] }, {
-        activeTags: [], notes: [], tagTitleDisplayMode: 'inline', state: 'refine', parkedTags: [],
+        activeTags: [], notes: [], state: 'refine', parkedTags: [],
         refine: {
           page: 'search', title: 'Atlas', resultKinds: ['notes'],
           query: {
@@ -436,7 +434,7 @@ suite('Webview saved state', () => {
       // Seven tasks due on one day, two more than its group shows folded.
       const busy = buildWorkspaceIndex(new Map([['notes/busy.md', parseMarkdown('notes/busy.md', Array.from({ length: 7 }, (_, number) => `- [ ] Task ${number} 📅 2026-09-21`).join('\n'))]]));
       const daySnapshot = {
-        activeTags: [], notes: [], tagTitleDisplayMode: 'inline', state: 'calendarDay', parkedTags: [],
+        activeTags: [], notes: [], state: 'calendarDay', parkedTags: [],
         calendarDay: createCalendar(busy, '2026-09', createQueryContext(NOW), { dayPanel: true, selectedDate: '2026-09-21' }).selected,
       };
       const folded = open({}, daySnapshot);
