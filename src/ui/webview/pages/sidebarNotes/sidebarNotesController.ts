@@ -14,6 +14,7 @@ import type { NavigationService } from '../../../../services/navigationService';
 import { logTrace, measure } from '../../../../shared/timing';
 import type { SidebarGraphContext } from '../../../protocol/notesGraph';
 import type {
+  ContextPages,
   LinkMentionMessage,
   RefineActiveSearchMessage,
   SidebarNotesPageState,
@@ -29,6 +30,8 @@ import { readDateFormats } from '../../../commands/datePrompt';
 import { readLinkStyle } from '../../../commands/linkMaintenancePorts';
 import { formatNoteLink } from '../../../../domain/markdown/wikiLinks';
 import type { WorkspaceWriteHistory } from '../../../commands/workspaceWrites';
+import { listContextPages } from '../../../state/contextPages';
+import { listDeckardPages } from '../../../state/deckardPages';
 import { createEntryScope, findTaggedEntry } from '../../../state/entryScope';
 import { collectNoteLinks, createLinksSearchQuery } from '../../../state/noteLinks';
 import { createSidebarSnapshot, EntryRelatedNotesDiagnostic } from '../../../state/relatedNotesRanking';
@@ -38,7 +41,8 @@ import type { ActiveNotePage } from '../../activeNotePage';
 import type { ActiveSearch } from '../../activeSearch';
 import { onDidChangePageChrome } from '../../host/pageChrome';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
-import { openHelp, openTag, parkTag, renameTag } from '../../host/sharedHandlers';
+import { goToPage, openHelp, openTag, parkTag, renameTag } from '../../host/sharedHandlers';
+import { readPageFacts, readPageInFront } from '../../../views/pagesTree';
 import { ViewSurface, WebviewSurface } from '../../host/surface';
 import { getSidebarNotesHtml } from '../../sidebarNotesHtml';
 import type { PageChrome } from '../../components';
@@ -133,6 +137,12 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
    * anything has, or while nothing has been posted.
    */
   private current: { state: SidebarNotesPageState; day: string } | undefined;
+  /**
+   * The state last posted, whether or not anything it was ranked from has
+   * changed since, which the pages at the top are posted again on when only
+   * they have changed, with no ranking. Undefined while no view is attached.
+   */
+  private posted: SidebarNotesPageState | undefined;
 
   /** Reads from `sidebar.indexer` and `sidebar.preferences`, and checks clicks through `sidebar.navigation`. */
   public constructor(private readonly sidebar: SidebarNotesControllerOptions) {
@@ -156,7 +166,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
    * `refresh`, which also logs; this is the same state, without the log.
    */
   public buildSnapshot(): SidebarNotesPageState {
-    return { ...this.createSnapshot(), parkedTags: listedParkedTags(this.sidebar.indexer) };
+    return { ...this.createSnapshot(), parkedTags: listedParkedTags(this.sidebar.indexer), pages: this.buildPages() };
   }
 
   /** An index update redraws the sidebar as every other change does. */
@@ -214,6 +224,15 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
         this.refresh();
       }, this.sidebar.themePreview),
       vscode.workspace.onDidChangeConfiguration((event) => this.onDidChangeConfiguration(event)),
+      // The pages at the top say which is in front, and the window coming
+      // back may be on a new day, which their hints count from.
+      vscode.window.tabGroups.onDidChangeTabs(() => this.refreshPages()),
+      vscode.window.tabGroups.onDidChangeTabGroups(() => this.refreshPages()),
+      vscode.window.onDidChangeWindowState((state) => {
+        if (state.focused) {
+          this.refreshPages();
+        }
+      }),
     );
     return disposables;
   }
@@ -260,6 +279,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
   public onDidDetach(): void {
     logRelatedNotes('Related Notes webview disposed.');
     this.forgetCurrent();
+    this.posted = undefined;
     this.sidebar.activeSearch.setSidebarVisible(false);
     this.sidebar.activeCalendar?.setSidebarVisible(false);
   }
@@ -396,7 +416,11 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     const kept = reuse ? this.currentState() : undefined;
     if (kept) {
       logRelatedNotes('Related Notes state is unchanged since it was ranked; sending it again.');
-      this.post(page, kept);
+      // The pages at the top are read again: what they say is not ranked,
+      // and may have changed while the view was hidden.
+      const state = { ...kept, pages: this.buildPages() };
+      this.current = { state, day: today() };
+      this.post(page, state);
       return;
     }
 
@@ -408,8 +432,40 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     logRelatedNotes(
       `Sending Related Notes state: ${snapshot.state}${describeSource(snapshot)}, ${snapshot.notes.length} note entries.`,
     );
-    const state: SidebarNotesPageState = { ...snapshot, parkedTags: listedParkedTags(this.sidebar.indexer) };
+    const state: SidebarNotesPageState = { ...snapshot, parkedTags: listedParkedTags(this.sidebar.indexer), pages: this.buildPages() };
     this.current = { state, day: today() };
+    this.post(page, state);
+  }
+
+  /**
+   * Deckard's pages, drawn at the top: the ones the reader keeps there, in
+   * order, with their hints as the notes are now and the page in front.
+   */
+  private buildPages(): ContextPages {
+    const { indexer } = this.sidebar;
+    return listContextPages(listDeckardPages(readPageFacts(indexer)), vscode.workspace.getConfiguration('deckard'), readPageInFront(indexer));
+  }
+
+  /**
+   * Sends the state last posted again with the pages at the top as they are
+   * now, when they have changed: a tab brought to the front, a new day, or
+   * the reader choosing other pages. Nothing is ranked again, and a hidden
+   * view is sent nothing; it reads them when it is shown.
+   */
+  private refreshPages(): void {
+    const page = this.page;
+    const posted = this.posted;
+    if (!page || !posted || page.surface?.visible !== true) {
+      return;
+    }
+    const pages = this.buildPages();
+    if (JSON.stringify(pages) === JSON.stringify(posted.pages)) {
+      return;
+    }
+    const state = { ...posted, pages };
+    if (this.current?.state === posted) {
+      this.current = { ...this.current, state };
+    }
     this.post(page, state);
   }
 
@@ -431,6 +487,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
    * again from, and logs whether it was delivered.
    */
   private post(page: PageContext<SidebarNotesPageState>, state: SidebarNotesPageState): void {
+    this.posted = state;
     void page.postState(state)?.then(
       (delivered) =>
         logRelatedNotes(
@@ -456,6 +513,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       openTaskBoard: () => vscode.commands.executeCommand('deckard.showTaskBoard'),
       createDailyNote: () => vscode.commands.executeCommand('deckard.createDailyNote'),
       openHelp: openHelp(),
+      goToPage: goToPage(),
       activateNotesGraphNode: (message: SidebarNotesPageToHost['activateNotesGraphNode']) =>
         vscode.commands.executeCommand('deckard.activateNotesGraphNode', message.nodeId, message.open),
       hoverNotesGraphNode: (message: SidebarNotesPageToHost['hoverNotesGraphNode']) =>
@@ -551,6 +609,10 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
 
   /** Redraws for a setting the ranking or its titles read. */
   private onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent): void {
+    // The pages at the top: which, how, and Home's count of what is due.
+    if (event.affectsConfiguration('deckard.pages') || event.affectsConfiguration('deckard.agenda.query')) {
+      this.refreshPages();
+    }
     // The ranking reads settings it does not redraw for, such as the board's
     // status namespace, so any of Deckard's means the state may be out of date.
     if (event.affectsConfiguration('deckard')) {

@@ -24,11 +24,11 @@ Each [GitHub release](https://github.com/doctorallen/deckard/releases) also carr
 1. Open a folder or workspace in VS Code.
 2. Open any Markdown note in the workspace, or [restrict indexing to a folder](settings.md#settings).
 3. Run `Deckard: Open Dashboard` from the Command Palette.
-4. Select the Deckard icon in the Activity Bar. **Pages** lists Deckard's pages; under it, the **Context** view shows what links to the note you are editing and its related notes.
+4. Select the Deckard icon in the Activity Bar. The **Context** view lists Deckard's pages at its top; under them, it shows what links to the note you are editing and its related notes.
 
 ### Finding your way
 
-Every page Deckard opens is a row in the sidebar's **Pages** view, each with its own glyph and a word on what is there now: *3 tasks due today* beside Home, *2 tasks overdue* beside the Task Board, whether today's note is written yet. Once you know the glyphs, `deckard.pages.style` set to `icons` draws Pages as one row of them, named on hover, and `deckard.pages.shown` picks which pages it keeps. The same list is **Go to…**: `Deckard: Go to…`, <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> elsewhere. On any page, **DECKARD ▾** at the top drops the other pages as a menu, with **Go to…** at its foot; arrows move through it and <kbd>Escape</kbd> closes it.
+Every page Deckard opens is a row at the top of the sidebar's **Context** view, each with its own glyph and a word on what is there now: *3 tasks due today* beside Home, *2 tasks overdue* beside the Task Board, whether today's note is written yet. The page in front is shown pressed, and the pages stay at the top while the rest of Context scrolls. Once you know the glyphs, `deckard.pages.style` set to `icons` draws them as one row of icons, named on hover, and `deckard.pages.shown` picks which pages Context keeps. The pages are one <kbd>Tab</kbd> stop: the arrow keys move between them. The same list is **Go to…**: `Deckard: Go to…`, <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> elsewhere. On any page, **DECKARD ▾** at the top drops the other pages as a menu, with **Go to…** at its foot; arrows move through it and <kbd>Escape</kbd> closes it.
 
 Deckard refreshes when saved notes are added, edited, or deleted. The first time, it says what it found, such as *Deckard read 412 notes: 1,204 open tasks (17 overdue) and 185 tags.* A workspace of 3,000 notes or more is also told how the "Exclude" setting leaves folders out.
 
@@ -47,7 +47,7 @@ In a code repository, Deckard's editor features apply only to notes: a README ou
 
 ## Help
 
-Run `Deckard: Open Help`, or select **Help** in the Pages view. A command Help names, such as `Deckard: Find in Notes`, is a button that runs it, with its shortcut beside it. One that acts on the note in the editor, such as `Deckard: Edit Task`, is named for you to run from a note.
+Run `Deckard: Open Help`, or select **Help** at the top of the Context view. A command Help names, such as `Deckard: Find in Notes`, is a button that runs it, with its shortcut beside it. One that acts on the note in the editor, such as `Deckard: Edit Task`, is named for you to run from a note.
 
 ![Deckard Help page with quick-start instructions and feature navigation.](../images/help.png)
 

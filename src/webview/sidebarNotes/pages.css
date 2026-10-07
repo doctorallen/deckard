@@ -1,12 +1,21 @@
 /*
- * The Pages view, in the sidebar: rows as tight as a tree's, or one row of
- * icons. The page shell links its theme and the tail after it.
+ * Deckard's pages, at the top of Context: a band held at the top while the
+ * rest scrolls under it, of rows as tight as a tree's, or one row of icons.
+ * page.css imports this.
  */
-@import "../shared/base.css";
 
-main { padding: 2px 0 4px; }
-.pages-list { display: grid; margin: 0; padding: 0; list-style: none; }
-.pages-list.is-icons { display: flex; flex-wrap: wrap; gap: 2px; padding: 2px 6px; }
+.context-pages {
+  position: sticky;
+  top: 0;
+  /* Over the raised cards that scroll under it; a menu opened over it still wins. */
+  z-index: var(--z-dropdown);
+  display: grid;
+  margin: 0 0 var(--space-3);
+  padding: 2px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.context-pages.is-icons { display: flex; flex-wrap: wrap; gap: 2px; }
 .pages-row, .pages-icon {
   min-height: 0;
   margin: 0;
@@ -22,13 +31,15 @@ main { padding: 2px 0 4px; }
   letter-spacing: normal;
 }
 /* A row: the glyph, the name, and the hint at the right, cut short rather than wrapped. */
-.pages-row { display: grid; grid-template-columns: 16px auto minmax(0, 1fr); align-items: center; gap: 8px; width: 100%; padding: 3px 10px 3px 18px; text-align: left; }
+.pages-row { display: grid; grid-template-columns: 16px auto minmax(0, 1fr); align-items: center; gap: 8px; width: 100%; padding: 3px 8px; text-align: left; }
 .pages-label { white-space: nowrap; }
 .pages-description { overflow: hidden; color: var(--muted); font-size: var(--text-sm); text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 /* An icon: a 28px target. */
 .pages-icon { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; }
 .pages-glyph { width: 16px; height: 16px; flex: 0 0 auto; }
+/* The page in front, pressed, as a chosen control is: raised, with the bar along its foot. */
+.pages-row[aria-current="page"], .pages-icon[aria-current="page"] { border-color: var(--chosen-bg); background: var(--panel-raised); box-shadow: inset 0 calc(var(--edge) * -1) 0 var(--chosen-bg); }
 .pages-row:hover:where(:not(:disabled)), .pages-icon:hover:where(:not(:disabled)),
 .pages-row:focus-visible, .pages-icon:focus-visible { border-color: var(--line-strong); background: var(--hover-bg); color: var(--hover-fg); transform: none; }
 .pages-row:hover:where(:not(:disabled)) .pages-description, .pages-row:focus-visible .pages-description { color: inherit; }
-.pages-empty { margin: 6px 12px; color: var(--muted); font-size: var(--text-sm); }
+.pages-empty { margin: 0 0 var(--space-3); color: var(--muted); font-size: var(--text-sm); }

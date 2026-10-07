@@ -1,9 +1,11 @@
 /*
- * Related Notes, in the sidebar: its rules, then the day panel, then
- * the rules that come after the panel, since an @import must lead a sheet.
+ * Related Notes, in the sidebar: Deckard's pages at its top, its rules,
+ * then the day panel, then the rules that come after the panel, since an
+ * @import must lead a sheet.
  * Its own rules follow the base sheet; the page shell links its theme and the tail after it.
  */
 @import "../shared/base.css";
+@import "./pages.css";
 @import "./notes.css";
 @import "../shared/calendarDay.css";
 

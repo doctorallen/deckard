@@ -8,7 +8,7 @@ import { findHubTagKey } from '../../state/hubTree';
 import { goToPage } from '../../views/pagesTree';
 
 /**
- * Opening the pages: the Pages view and Go to…, Home, Stats, Help and
+ * Opening the pages: Go to…, Home, Stats, Help and
  * What's new, the Notes Graph and its nodes, the Calendar page, the Task
  * Board, the note page, and Related Notes for one entry.
  */
@@ -17,8 +17,7 @@ export function register(context: vscode.ExtensionContext, services: Services): 
   const { dashboard, stats, help, notesGraph, calendar: calendarPage, taskBoard, taskStatuses } = services.pages;
   const { readNotesGraphOptions } = services.pageCommands;
   const calendar = services.views.calendar;
-  // Every page, as the Pages view lists them (registered with the other
-  // sidebar webviews), from anywhere.
+  // Every page, as the top of Context lists them, from anywhere.
   context.subscriptions.push(registerCommand('deckard.goTo', () => goToPage(indexer, context.extensionUri)));
   context.subscriptions.push(
     registerCommand('deckard.showDashboard', () =>

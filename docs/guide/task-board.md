@@ -1,6 +1,6 @@
 # Task board
 
-Run `Deckard: Open Task Board`, or select **Task Board** in the Pages view or the board icon in the Tasks view's title bar. Drag a card to another column, or choose one from its **⋯** menu, to change the task in its note. The menu's **Move to…** moves the task and its steps under another heading. A card with steps shows **Steps 2/5 done (40%) · next: Draft the email**. The **View options** gear switches views and edits status columns. Parked tasks are left off unless the search says `is:parked`.
+Run `Deckard: Open Task Board`, or select **Task Board** at the top of the Context view or the board icon in the Tasks view's title bar. Drag a card to another column, or choose one from its **⋯** menu, to change the task in its note. The menu's **Move to…** moves the task and its steps under another heading. A card with steps shows **Steps 2/5 done (40%) · next: Draft the email**. The **View options** gear switches views and edits status columns. Parked tasks are left off unless the search says `is:parked`.
 
 ![Deckard Task Board showing tasks in status columns that end with Done.](../images/task-board.png)
 

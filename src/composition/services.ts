@@ -104,7 +104,6 @@ import { resolveTaskMove } from '../ui/state/taskBoardState';
 import { AgendaService } from '../services/agendaService';
 import { isWhatsNewShown, WhatsNew } from '../ui/commands/whatsNew';
 import { ThemePreview } from '../ui/webview/themePreview';
-import { PagesView } from '../ui/webview/pagesView';
 import { TryNextLedger } from '../ui/commands/tryNext';
 import { settingTarget, writeSetting } from '../ui/commands/settings';
 import { DisposalOrder } from './disposalOrder';
@@ -294,9 +293,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
   holdUntilShutdown(context, shutdown, built);
   warnOfUnreadableNotes(context, core.indexer);
   tidyPreferencesOnUpdate(context, core.indexer, preferences);
-  const pagesView = new PagesView({ indexer: core.indexer, themePreview: search.themePreview, extensionUri: context.extensionUri });
-  context.subscriptions.push(pagesView);
-  registerViews(context, { sidebarNotes: sidebar.sidebarNotes, calendar: calendar.calendar, outline: trees.outline, agenda: trees.agenda, pages: pagesView });
+  registerViews(context, { sidebarNotes: sidebar.sidebarNotes, calendar: calendar.calendar, outline: trees.outline, agenda: trees.agenda });
   const pages = listPages(built);
   const sectionFocus = createLateContexts(context, core, pages);
   return {
@@ -1139,13 +1136,9 @@ function tidyPreferencesOnUpdate(
 }
 
 /** Registers the two sidebar webviews and creates the Outline and Tasks trees. */
-function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'taskStatusBar'> & { pages: PagesView }): void {
-  const { sidebarNotes, calendar, outline, agenda, pages } = views;
+function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'taskStatusBar'>): void {
+  const { sidebarNotes, calendar, outline, agenda } = views;
   context.subscriptions.push(
-    // Every Deckard page, first in the sidebar, as labeled rows or a row of icons.
-    vscode.window.registerWebviewViewProvider('deckard.pages', pages, {
-      webviewOptions: { retainContextWhenHidden: false },
-    }),
     // Neither Related Notes nor the Calendar is kept running while hidden
     // (Q1 of docs/implementation/20-webviews.md); their controllers say so too.
     vscode.window.registerWebviewViewProvider('deckard.relatedNotes', sidebarNotes, {

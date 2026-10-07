@@ -70,7 +70,7 @@ Select a day, the mark beside a week, or the month's name to open its note; Deck
 
 **Weekends.** Turn off `deckard.calendar.showWeekends`, or choose **Hide Weekends** from the `…` menu, to show five working days, in the sidebar and on the calendar page. **Include Weekends** brings them back.
 
-**The calendar page.** `Deckard: Open Calendar`, **Calendar** in the Pages view, or the button in the Calendar view's title bar, opens the calendar as a page. Each day lists its tasks by name: due, then scheduled (⏳), then repeats (↻, dashed), with **+3 more**. Click a day to choose it; its panel sits beside or under the month, or in the Context sidebar while that is open.
+**The calendar page.** `Deckard: Open Calendar`, **Calendar** at the top of the Context view, or the button in the Calendar view's title bar, opens the calendar as a page. Each day lists its tasks by name: due, then scheduled (⏳), then repeats (↻, dashed), with **+3 more**. Click a day to choose it; its panel sits beside or under the month, or in the Context sidebar while that is open.
 
 - **Month** and **Week** switch layouts.
 - Drag a due or scheduled task to another day to move its date. Repeats stay put.

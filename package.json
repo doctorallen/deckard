@@ -1616,13 +1616,6 @@
     "views": {
       "deckard": [
         {
-          "id": "deckard.pages",
-          "name": "Pages",
-          "icon": "resources/pages/home-dark.svg",
-          "type": "webview",
-          "contextualTitle": "Deckard Pages"
-        },
-        {
           "id": "deckard.relatedNotes",
           "name": "Context",
           "icon": "resources/views/related-notes.svg",
@@ -2047,7 +2040,7 @@
               "Each page as a row with its name and what is worth knowing about it now.",
               "Each page as its icon alone, in one row, named on hover."
             ],
-            "description": "How the Pages view draws Deckard's pages. Your own choice, the same in every workspace."
+            "description": "How Deckard's pages are drawn at the top of the Context view. Your own choice, the same in every workspace."
           },
           "deckard.pages.shown": {
             "type": "object",
@@ -2097,7 +2090,7 @@
               "help": true
             },
             "scope": "application",
-            "description": "Which pages the Pages view shows, in its order. Go to… still lists every page. Your own choice, the same in every workspace."
+            "description": "Which pages the top of the Context view shows, in its order. Go to… still lists every page. Your own choice, the same in every workspace."
           },
           "deckard.display.cardDetails": {
             "type": "object",

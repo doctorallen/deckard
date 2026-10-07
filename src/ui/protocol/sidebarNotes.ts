@@ -1,7 +1,7 @@
 /**
- * The Related Notes sidebar's protocol: the ranked notes, what links to the
- * note being read, the states the sidebar can be in, and the messages it
- * sends.
+ * The Related Notes sidebar's protocol: Deckard's pages at its top, the
+ * ranked notes, what links to the note being read, the states the sidebar
+ * can be in, and the messages it sends.
  */
 import type { RelatedNotesSortMode } from '../../domain/model/preferences';
 import type { RankedNote, SuggestedTag } from '../../domain/model/relatedNotes';
@@ -10,6 +10,7 @@ import type { CalendarDayDetail, CalendarMessage } from './calendar';
 import type { MessageAs, MessageOf, StateMessage } from './messaging';
 import type { SidebarGraphContext } from './notesGraph';
 import type {
+  GoToPageMessage,
   OpenHelpMessage,
   OpenSourceMessage,
   OpenTagMessage,
@@ -253,11 +254,36 @@ export interface CalendarDayMessage {
   message: CalendarMessage;
 }
 
+/** How Context draws Deckard's pages at its top: labeled rows, or one row of their icons. */
+export type ContextPagesStyle = 'list' | 'icons';
+
+/** One page as Context draws it at its top. */
+export interface ContextPage {
+  /** The page's name in the page list, such as `board`, which names its glyph. */
+  id: string;
+  label: string;
+  /** What is worth knowing about it now, such as "3 due today". */
+  description: string;
+  /** A sentence on what it is, for its tip. */
+  detail: string;
+}
+
 /**
- * What the sidebar is sent as its state: its snapshot, and the tags its tag
- * menu offers to unpark.
+ * The pages Context draws at its top: the ones the reader keeps there, in
+ * order, how, and which of them is in front, drawn pressed.
  */
-export type SidebarNotesPageState = SidebarNotesSnapshot & { parkedTags: string[] };
+export interface ContextPages {
+  style: ContextPagesStyle;
+  pages: ContextPage[];
+  /** The page in front, such as `board` while the Task Board is. */
+  current?: string;
+}
+
+/**
+ * What the sidebar is sent as its state: its snapshot, the tags its tag
+ * menu offers to unpark, and Deckard's pages, drawn at its top.
+ */
+export type SidebarNotesPageState = SidebarNotesSnapshot & { parkedTags: string[]; pages?: ContextPages };
 
 /**
  * What the Related Notes sidebar sends its host, by type. The host checks
@@ -290,6 +316,7 @@ export interface SidebarNotesPageToHost {
   homeAddWidget: HomeAddWidgetMessage;
   homeResetWidgets: HomeResetWidgetsMessage;
   calendarDay: CalendarDayMessage;
+  goToPage: GoToPageMessage;
 }
 
 /** What the host sends the Related Notes sidebar, by type. */

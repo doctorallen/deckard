@@ -23,6 +23,7 @@ import {
   isSourceLocation,
   MAX_QUERY_LENGTH,
   narrowAs,
+  narrowGoToPage,
   Narrower,
   NarrowingTable,
   narrowOpenSource,
@@ -143,6 +144,7 @@ export const SIDEBAR_NOTES_MESSAGES: NarrowingTable<SidebarNotesPageToHost> = {
   homeAddWidget: narrowHomeAddWidget,
   homeResetWidgets: onlyType('homeResetWidgets'),
   calendarDay: narrowCalendarDay,
+  goToPage: narrowGoToPage,
 };
 
 /** A message from the Related Notes sidebar, narrowed by its table, or undefined. */

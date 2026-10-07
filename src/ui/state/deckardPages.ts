@@ -1,5 +1,5 @@
 /**
- * Deckard's pages, as one list: what the Pages view shows, what Go to…
+ * Deckard's pages, as one list: what the top of Context shows, what Go to…
  * offers, and in what order. Each page has a glyph of its own, the command
  * that opens it, and a hint drawn from the notes as they are now, so the
  * list says something worth reading as well as where to go.
@@ -62,7 +62,7 @@ function count(n: number, one: string, many: string): string {
   return `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 }
 
-/** Every page, in the order the Pages view and Go to… list them. */
+/** Every page, in the order the top of Context and Go to… list them. */
 export function listDeckardPages(facts: PageFacts): DeckardPage[] {
   const day = formatDisplayDate(facts.today.getTime(), facts.dateFormats, 'short');
   return [

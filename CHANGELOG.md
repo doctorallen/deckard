@@ -43,6 +43,15 @@
   "Friday, September 25"), and a search completion's week "Sun, Sep 20 to
   Sat, Sep 26" (was "Sep 20 to Sep 26"). A short date in another year is
   written in full, "2027-03-10", rather than "Wed, Mar 10, 2027".
+- **Deckard's pages are at the top of Context.** The Pages view is gone:
+  VS Code gives a sidebar web view a fixed height whatever it draws, so a
+  row of icons there took more of the sidebar than the list. The pages now
+  lead the **Context** view in everything it shows, and stay put while it
+  scrolls, the page in front shown pressed. `deckard.pages.style` still
+  draws them as rows with what is worth knowing about each, or as one row
+  of icons named on hover and to a screen reader, and `deckard.pages.shown`
+  still picks which. They are one Tab stop, and the arrow keys move between
+  them. **Go to…** and its key are unchanged.
 
 ## 2.3.0 - 2026-10-06
 

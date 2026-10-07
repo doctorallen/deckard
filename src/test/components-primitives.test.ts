@@ -211,7 +211,6 @@ suite('Component primitives', () => {
           parkedTags: [],
         },
         notePage: createNotePageSnapshot(index, 'notes/a.md', { queryContext: createQueryContext(Date.now()), history: { back: false, forward: false }, visit: 1 }),
-        pagesView: { style: 'list', pages: [{ id: 'home', label: 'Home', description: 'Dashboard', detail: 'What is due today' }] },
         taskStatuses: {
           statuses: [{ symbol: ' ', name: 'Todo', type: 'todo' }, { symbol: 'x', name: 'Done', type: 'done' }],
           checkboxClick: 'done',

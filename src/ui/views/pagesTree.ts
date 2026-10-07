@@ -9,9 +9,10 @@ import { DeckardPageId, listDeckardPages, PageFacts } from '../state/deckardPage
 import { countNotes } from '../../domain/index/noteEntryIndex';
 
 /**
- * What the Pages view and Go to… read about each page: its hint from the
- * notes as they are now, its glyph, and the menu DECKARD opens on a page.
- * The view itself is a webview (webview/pagesView.ts).
+ * What the pages at the top of Context and Go to… read about each page: its
+ * hint from the notes as they are now, its glyph, which page is in front,
+ * and the menu DECKARD opens on a page. Context draws them
+ * (webview/sidebarNotes/pages.tsx).
  */
 
 /** What the hints are drawn from, as the index and the settings are now. */
@@ -38,8 +39,8 @@ const GO_TO_KEY = process.platform === 'darwin' ? '⌥⇧⌘P' : 'Ctrl+Shift+Alt
 
 /**
  * The menu DECKARD opens at the top of a page: every page but `current`,
- * each with the hint the Pages view gives it, and Go to…'s key. Without an
- * index to read, the pages are listed without hints.
+ * each with the hint the top of Context gives it, and Go to…'s key.
+ * Without an index to read, the pages are listed without hints.
  */
 export function describeGoToMenu(indexer: Pick<IndexReader, 'getSnapshot'> | undefined, current?: DeckardPageId): GoToPagesMessage {
   const facts = indexer ? readPageFacts(indexer) : undefined;
@@ -51,6 +52,38 @@ export function describeGoToMenu(indexer: Pick<IndexReader, 'getSnapshot'> | und
       .map((page) => ({ id: page.id, label: page.label, description: facts ? page.description : '' })),
     key: GO_TO_KEY,
   };
+}
+
+/** The pages that are webview panels, by the view type VS Code names each one's tab with. */
+const PAGE_VIEW_TYPES: ReadonlyArray<readonly [string, DeckardPageId]> = [
+  ['deckard.dashboard', 'home'],
+  ['deckard.taskBoard', 'board'],
+  ['deckard.calendarPage', 'calendar'],
+  ['deckard.notesGraph', 'graph'],
+  ['deckard.stats', 'stats'],
+  ['deckard.help', 'help'],
+];
+
+/**
+ * The page in front: the active tab's, when it is one of Deckard's pages,
+ * or `today` while today's daily note is. Find is a quick pick, never in
+ * front, and anything else is no page.
+ */
+export function readPageInFront(
+  indexer: Pick<IndexReader, 'getSnapshot' | 'getFilePath'>,
+  now: Date = new Date(),
+): DeckardPageId | undefined {
+  const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+  if (input instanceof vscode.TabInputWebview) {
+    // VS Code puts a prefix of its own before the view type an extension gave.
+    return PAGE_VIEW_TYPES.find(([viewType]) => input.viewType.endsWith(viewType))?.[1];
+  }
+  if (!(input instanceof vscode.TabInputText) || !input.uri.path.toLowerCase().endsWith('.md')) {
+    return undefined;
+  }
+  const filePath = indexer.getFilePath(input.uri);
+  const today = formatLocalDate(now);
+  return listDailyNotes(indexer.getSnapshot()).some((note) => note.date === today && note.filePath === filePath) ? 'today' : undefined;
 }
 
 /** A page's glyph, light and dark, as an icon path. */

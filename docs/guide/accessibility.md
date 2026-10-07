@@ -4,7 +4,7 @@ Deckard is built to be used with a keyboard, a screen reader, high contrast, and
 
 ## Screen readers
 
-- **The sidebar views** Pages, Tasks, Outline, and Hubs are native VS Code trees, read as any tree is. The **Context** and **Calendar** views and every page (Home, the Task board, search pages, the calendar page, Stats, Help, the Note page) are webviews.
+- **The sidebar views** Tasks, Outline, and Hubs are native VS Code trees, read as any tree is. The **Context** and **Calendar** views and every page (Home, the Task board, search pages, the calendar page, Stats, Help, the Note page) are webviews.
 - **In a webview with NVDA or JAWS,** press <kbd>Insert</kbd>+<kbd>Space</kbd> (NVDA) or <kbd>Insert</kbd>+<kbd>Z</kbd> (JAWS) to switch to focus mode when you want Deckard's own keys, such as the Task board's; browse mode reads the page as a document. VoiceOver needs no switch.
 - **What changed is announced** through a status region, without moving focus: a card moved on the board, a widget added or removed on Home, and an Undo.
 - **Focus stays where it was** when a page redraws after an index update, and returns to the control that opened a menu or a dialog when it closes.
@@ -19,6 +19,7 @@ Deckard is built to be used with a keyboard, a screen reader, high contrast, and
 | Any right-click menu | <kbd>Shift</kbd>+<kbd>F10</kbd>, the context-menu key, or <kbd>Alt</kbd>+<kbd>Enter</kbd> opens it on what has focus; arrows move, <kbd>Enter</kbd> chooses, <kbd>Escape</kbd> closes |
 | Task board | One Tab stop; arrows move between cards and columns; on a card, **x** done, **t**/**m** due today or tomorrow, **d** a date, **f** who it is for, **1**–**5** priority, **[** and **]** the next column, **e** edit, **?** every key. See [Task board: Keyboard](task-board.md#keyboard) |
 | A card's **⋯** menu | Each item shows its one-key shortcut |
+| Deckard's pages, atop Context | One Tab stop, a toolbar named *Deckard pages*; <kbd>Down</kbd> and <kbd>Up</kbd> move through the list, <kbd>Right</kbd> and <kbd>Left</kbd> through the icons, <kbd>Home</kbd> and <kbd>End</kbd> to either end, <kbd>Enter</kbd> opens. The page in front is read as the current page |
 | **DECKARD ▾** atop a page | <kbd>Enter</kbd> or <kbd>Space</kbd> drops the menu of pages; arrows move, <kbd>Enter</kbd> goes, <kbd>Escape</kbd> closes it and returns to DECKARD |
 | Notes Graph | Tab to the graph, arrows select a dot, <kbd>Enter</kbd> opens it, <kbd>Alt</kbd>+<kbd>Enter</kbd> beside the graph, <kbd>Escape</kbd> clears |
 | Home and Tags tabs | <kbd>Left</kbd> and <kbd>Right</kbd> switch tabs |

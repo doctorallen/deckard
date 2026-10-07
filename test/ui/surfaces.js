@@ -479,6 +479,21 @@ function createBoardSurfaces(boardIndex, preferences) {
 }
 
 /**
+ * Deckard's pages as Context draws them at its top, every page kept, with
+ * hints as they read at NOW, drawn as `style` says and with `current` in
+ * front, if any.
+ *
+ * @param {'list' | 'icons'} style How the pages are drawn.
+ * @param {string} [current] The page in front, drawn pressed.
+ * @returns {object} The pages, as the sidebar's state carries them.
+ */
+function createContextPages(style, current) {
+  const facts = { dueToday: 3, overdue: 2, notes: 42, files: 30, today: new Date(NOW), todayNoteExists: false, findKey: '⌥⇧⌘F' };
+  const pages = listDeckardPages(facts).map(({ id, label, description, detail }) => ({ id, label, description, detail }));
+  return { style, pages, ...(current ? { current } : {}) };
+}
+
+/**
  * The sidebar calendar, with and without its weekends, Related Notes showing
  * the calendar page's chosen day, and the calendar page, wide and narrow.
  * Each draws its own small month, so no other surface's pixels move with it.
@@ -514,11 +529,13 @@ function createCalendarSurfaces() {
       hovered: ['.day-panel .task-row'],
     },
     {
-      // Related Notes showing the calendar page's chosen day.
+      // Related Notes showing the calendar page's chosen day, under the
+      // pages as a row of icons, the calendar pressed.
       name: 'sidebarNotesCalendarDay',
       page: 'sidebarNotes',
       viewport: [240, 700],
       snapshot: () => ({
+        pages: createContextPages('icons', 'calendar'),
         activeTags: [],
         notes: [],
         tagTitleDisplayMode: 'inline',
@@ -577,15 +594,18 @@ function createRelatedNotesSurfaces(index, files) {
   return [
     {
       // As narrow as a reader is likely to drag the sidebar: the page's own
-      // floor is 220px.
+      // floor is 220px. The pages lead, as rows with their hints.
       page: 'sidebarNotes',
       viewport: [240, 700],
-      snapshot: () => createSidebarSnapshot(index, 'notes/atlas.md', files.get('notes/atlas.md'), {
-        now: NOW,
-        enableKeywordLinks: true,
-        relatedNotesSortMode: 'tags',
-        sectionAccessCounts: {},
-        tagTitleDisplayMode: 'inline',
+      snapshot: () => ({
+        ...createSidebarSnapshot(index, 'notes/atlas.md', files.get('notes/atlas.md'), {
+          now: NOW,
+          enableKeywordLinks: true,
+          relatedNotesSortMode: 'tags',
+          sectionAccessCounts: {},
+          tagTitleDisplayMode: 'inline',
+        }),
+        pages: createContextPages('list'),
       }),
       scrollers: ['html'],
       clippers: [],
@@ -622,11 +642,13 @@ function createRelatedNotesSurfaces(index, files) {
     },
     {
       // Customize Home in the sidebar: each widget to add is a button with
-      // its description under its name, on the button's own fill.
+      // its description under its name, on the button's own fill, under
+      // the pages as rows, Home pressed.
       name: 'sidebarNotesCustomizeHome',
       page: 'sidebarNotes',
       viewport: [240, 700],
       snapshot: () => ({
+        pages: createContextPages('list', 'home'),
         activeTags: [],
         notes: [],
         tagTitleDisplayMode: 'inline',
@@ -827,34 +849,6 @@ function createTaskStatusesSurfaces() {
 }
 
 /**
- * The Pages view, at a sidebar's width: as rows with each page's hint at the
- * right, and as one row of icons.
- */
-function createPagesSurfaces() {
-  const facts = { dueToday: 3, overdue: 2, notes: 42, files: 30, today: new Date(NOW), todayNoteExists: false, findKey: '⌥⇧⌘F' };
-  const pages = listDeckardPages(facts).map(({ id, label, description, detail }) => ({ id, label, description, detail }));
-  return [
-    {
-      page: 'pagesView',
-      viewport: [300, 260],
-      snapshot: () => ({ style: 'list', pages }),
-      scrollers: ['html'],
-      clippers: [],
-      hovered: ['.pages-row'],
-    },
-    {
-      name: 'pagesViewIcons',
-      page: 'pagesView',
-      viewport: [300, 120],
-      snapshot: () => ({ style: 'icons', pages }),
-      scrollers: ['html'],
-      clippers: [],
-      hovered: ['.pages-icon'],
-    },
-  ];
-}
-
-/**
  * The surfaces measured, each with the snapshot its page renders from and
  * the geometry it must keep. A probe runs in the page and reports; the
  * expectations here read the report. They are the same with zen on or off;
@@ -874,7 +868,6 @@ function createSurfaces() {
     ...createRelatedNotesSurfaces(index, files),
     ...createSummarySurfaces(index, preferences),
     ...createNotePageSurfaces(),
-    ...createPagesSurfaces(),
     ...createTaskStatusesSurfaces(),
   ];
   return [

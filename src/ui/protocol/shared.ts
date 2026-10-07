@@ -213,13 +213,13 @@ export interface ListGoToMessage {
   type: 'listGoTo';
 }
 
-/** A page chosen from the eyebrow's menu, by its id, such as `board`. */
+/** A page chosen from the eyebrow's menu, or from the pages at the top of Context, by its id, such as `board`. */
 export interface GoToPageMessage {
   type: 'goToPage';
   page: string;
 }
 
-/** One page in the eyebrow's menu, with its hint, as the Pages view shows it. */
+/** One page in the eyebrow's menu, with its hint, as the top of Context shows it. */
 export interface GoToMenuPage {
   id: string;
   label: string;

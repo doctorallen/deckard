@@ -1,7 +1,7 @@
 /**
  * A page's eyebrow, DECKARD / where you are, whose DECKARD is the way to
  * every other page: selecting it drops a menu of them under it, as the
- * Pages view lists them (`goToMenu.ts`, installed once for every page in
+ * top of Context lists them (`goToMenu.ts`, installed once for every page in
  * `startPage`).
  */
 
