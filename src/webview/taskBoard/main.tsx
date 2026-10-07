@@ -506,8 +506,8 @@ function refineByTag(target: HTMLElement, event: MouseEvent): void {
   const tagKey = String(target.dataset.tagKey);
   if (event.metaKey || event.ctrlKey) {
     post({ type: 'openTag', tagKey });
-  } else {
-    editor.refineBy(tagKey, refineModeOf(event));
+  } else if (!editor.refineBy(tagKey, refineModeOf(event))) {
+    announce(`${tagKey} is already in the search.`);
   }
 }
 

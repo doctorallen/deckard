@@ -556,7 +556,7 @@ suite('Task Board page', () => {
     const index = buildWorkspaceIndex(new Map([['notes/z.md', parseMarkdown('notes/z.md', '# Zeus #project/zeus\n- [ ] Alpha #project/atlas\n')]]));
     const preferences = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     const board = createTaskBoard({ index, preferences: { ...preferences.reader.value, taskBoardLayout: 'board' }, search: { query: '#project/atlas' }, options: { ...options, parentTag: true }, tagTitleDisplayMode: 'inline' });
-    preferences.repository.dispose();
+    store = preferences;
     const shown = show(board);
     const tag = () => shown.find('.board-card .parent-tag');
     const click = (init: MouseEventInit = {}) => {
@@ -574,6 +574,17 @@ suite('Task Board page', () => {
       click(modifier);
       assert.deepStrictEqual(shown.lastPosted('openTag'), { type: 'openTag', tagKey: '#project/zeus' }, 'Cmd/Ctrl opens its page');
       assert.strictEqual(shown.lastPosted('setBoardQuery'), undefined, 'and leaves the search as it is');
+    }
+
+    // A search leaving the tag out shows no card under it, so there is no third case.
+    for (const query of ['#project/atlas AND #project/zeus', '(#project/atlas OR #project/zeus)']) {
+      const again = show(createTaskBoard({ index, preferences: { ...preferences.reader.value, taskBoardLayout: 'board' }, search: { query }, options: { ...options, parentTag: true }, tagTitleDisplayMode: 'inline' }));
+      for (const init of [{}, { altKey: true }, { shiftKey: true }]) {
+        again.posted.length = 0;
+        again.find('.board-card .parent-tag').dispatchEvent(new again.window.MouseEvent('click', { bubbles: true, cancelable: true, ...init }));
+        assert.strictEqual(again.lastPosted('setBoardQuery'), undefined, `${query}: a tag the search already names is not added again`);
+      }
+      assert.strictEqual(again.find('#live-status').textContent, '#project/zeus is already in the search.');
     }
   });
 

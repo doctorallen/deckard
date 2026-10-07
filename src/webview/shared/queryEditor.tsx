@@ -125,9 +125,10 @@ export interface QueryEditor {
    * Narrows the search by a clause from outside Refine, such as a tag on a
    * card, as a click on Refine's value for it would: added with AND, left
    * out with `exclude`, or with `or` beside the value of the same facet the
-   * search already has.
+   * search already has. A clause the search already names, either way, is
+   * not added again; returns whether the search changed.
    */
-  refineBy(clause: string, mode: RefineMode): void;
+  refineBy(clause: string, mode: RefineMode): boolean;
   /** Each returns true when the event belonged to the editor. */
   handleMousedown(event: MouseEvent): boolean;
   handleFocusIn(event: FocusEvent): void;
@@ -452,6 +453,12 @@ function namespaceSibling(text: string, tag: string): string | undefined {
   }
   const prefix = tag.slice(0, slash + 1).toLowerCase();
   return text.split(/[\s()]+/).find((word) => word.toLowerCase().startsWith(prefix) && word.toLowerCase() !== tag.toLowerCase());
+}
+
+/** Whether a search names `clause` as a whole term, as written or with a `-` before it, anywhere in it. */
+function namesClause(text: string, clause: string): boolean {
+  const escaped = clause.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[\\s(])-?${escaped}(?=$|[\\s)])`, 'i').test(text);
 }
 
 /** Makes one search box for a page; see `QueryEditor`. */
@@ -929,7 +936,10 @@ class SearchBox implements QueryEditor {
     }
   }
 
-  public refineBy(clause: string, mode: RefineMode): void {
+  public refineBy(clause: string, mode: RefineMode): boolean {
+    if (namesClause(this.appliedText(), clause)) {
+      return false;
+    }
     const facet = (this.query().facets || []).find((candidate) => candidate.values.some((value) => value.clause === clause));
     const existing = facet && facet.applied && facet.applied[0];
     const sibling = mode === 'or' && !existing ? namespaceSibling(this.appliedText(), clause) : undefined;
@@ -937,10 +947,11 @@ class SearchBox implements QueryEditor {
       const merged = mergeAlternative(this.appliedText().trim(), sibling, clause);
       if (merged !== undefined) {
         this.run(merged, true, true);
-        return;
+        return true;
       }
     }
     this.refine(clause, facet ? facet.id : '', mode);
+    return true;
   }
 
   /** Recent searches, for an empty bar: each a whole search, which choosing runs. */
