@@ -4,7 +4,6 @@ import * as path from 'path';
 
 import {
   checkNewStatusColumn,
-  checkStatusNamespace,
   isBoardNamespace,
   isStatusColumnList,
   isStatusColumnName,
@@ -55,13 +54,12 @@ suite('Status columns', () => {
     assert.deepStrictEqual(checkNewStatusColumn(' À-Faire ', ['todo']), { value: 'à-faire' }, 'a status in any script, as tags are');
   });
 
-  test('a status tag typed is saved trimmed and in lower case, or says why it cannot be', () => {
-    assert.deepStrictEqual(checkStatusNamespace(' Stage '), { value: 'stage' });
-    assert.deepStrictEqual(checkStatusNamespace('État'), { value: 'état' }, 'a namespace in any script, as tags are');
-    for (const typed of ['', '1stage', 'a b']) {
-      assert.deepStrictEqual(checkStatusNamespace(typed), {
-        error: 'A status tag is letters, digits, - and _, starting with a letter.',
-      }, typed);
+  test('a namespace to group by starts with a letter, in any script', () => {
+    for (const typed of ['status', 'Context', 'état', '状態']) {
+      assert.strictEqual(isBoardNamespace(typed), true, typed);
+    }
+    for (const typed of ['', '1stage', 'a b', '-x', 'a/b', '\u0301a']) {
+      assert.strictEqual(isBoardNamespace(typed), false, typed);
     }
   });
 
@@ -76,14 +74,8 @@ suite('Status columns', () => {
     // VS Code compiles a setting's pattern with the `u` flag.
     const pattern = (source: string | undefined): RegExp => new RegExp(source ?? '', 'u');
     const statuses = pattern(settings['deckard.board.statuses'].items?.pattern);
-    const onHold = pattern(settings['deckard.tasks.onHoldStatuses'].items?.pattern);
-    const namespace = pattern(settings['deckard.board.statusNamespace'].pattern);
     for (const typed of ['todo', 'Doing', '2nd_pass', 'à-faire', '進行中', 'e\u0301tape', '', 'to do', '-todo', '#todo', 'a/b']) {
       assert.strictEqual(statuses.test(typed), isStatusColumnName(typed), `deckard.board.statuses: ${typed}`);
-      assert.strictEqual(onHold.test(typed), isStatusColumnName(typed), `deckard.tasks.onHoldStatuses: ${typed}`);
-    }
-    for (const typed of ['status', 'Context', 'état', '状態', '', '1stage', 'a b', '-x', 'a/b', '\u0301a']) {
-      assert.strictEqual(namespace.test(typed), isBoardNamespace(typed), `deckard.board.statusNamespace: ${typed}`);
     }
   });
 });

@@ -19,7 +19,7 @@ const now = at(9, 25) + 10 * 60 * 60 * 1000;
 const NOTE = [
   '# Plan',
   '- [ ] Late 📅 2026-09-20',
-  '- [ ] Now 📅 2026-09-25 #status/doing',
+  '- [/] Now 📅 2026-09-25',
   '- [ ] Soon 📅 2026-09-28',
   '- [x] Done ✅ 2026-09-25',
 ].join('\n');
@@ -85,7 +85,7 @@ suite('Agenda service', () => {
     assert.strictEqual(view.status, undefined);
     assert.deepStrictEqual([view.query, view.filtered, view.querySet], ['', false, false]);
 
-    const searched = setup({ 'deckard.agenda.query': 'tag:#status/doing' });
+    const searched = setup({ 'deckard.agenda.query': 'status:in-progress' });
     const narrowed = searched.service.buildView(searched.index, []);
     assert.deepStrictEqual(narrowed.groups.map((group) => group.id), ['today']);
     assert.deepStrictEqual([narrowed.filtered, narrowed.querySet], [true, true]);
@@ -119,7 +119,6 @@ suite('Agenda service', () => {
       setup({ 'deckard.agenda.groupBy': 'tag', 'deckard.agenda.groupNamespace': 'Context' }).service.readGrouping(),
       { groupBy: 'tag', groupNamespace: 'context' },
     );
-    assert.strictEqual(setup({ 'deckard.board.statusNamespace': '  ' }).service.readStatusNamespace(), 'status');
   });
 
   test('lists what is overdue once the index is ready, and names a subject', async () => {
@@ -148,7 +147,7 @@ suite('Agenda service', () => {
     const reads: string[] = [];
     const result = await service.moveToGroup(
       [late, now],
-      { groupId: 'doing', groupBy: 'status' },
+      { groupId: 'in-progress', groupBy: 'status' },
       { from: new Map(), index: () => (reads.push('index'), index) },
       async (step) => {
         steps.push(step);
@@ -213,7 +212,7 @@ suite('Agenda service', () => {
     ];
     for (const [statuses, read] of cases) {
       const { index, service, boards } = setup(statuses === undefined ? {} : { 'deckard.board.statuses': statuses });
-      await service.moveToGroup([taskTitled(index, 'Late')], { groupId: 'doing', groupBy: 'status' }, { from: new Map(), index: () => index }, async () => undefined);
+      await service.moveToGroup([taskTitled(index, 'Late')], { groupId: 'in-progress', groupBy: 'status' }, { from: new Map(), index: () => index }, async () => undefined);
       assert.deepStrictEqual(boards.at(-1)?.statuses, read, JSON.stringify(statuses));
     }
   });

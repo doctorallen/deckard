@@ -47,14 +47,14 @@ const ICONS: ReadonlyArray<[string, string]> = [
 /** Deckard's own statuses, and Obsidian's core four, for the presets. */
 const PRESETS: Readonly<Record<string, readonly EditedStatus[]>> = {
   deckard: [
-    { symbol: ' ', name: 'Todo', type: 'todo', tag: 'todo', next: 'x' },
-    { symbol: '/', name: 'In progress', type: 'inProgress', tag: 'doing', next: 'x' },
+    { symbol: ' ', name: 'Todo', type: 'todo', next: 'x' },
+    { symbol: '/', name: 'In progress', type: 'inProgress', next: 'x' },
     { symbol: 'x', name: 'Done', type: 'done', next: ' ' },
     { symbol: 'X', name: 'Done', type: 'done', next: ' ' },
     { symbol: '-', name: 'Cancelled', type: 'cancelled', next: ' ' },
-    { name: 'Waiting', type: 'onHold', tag: 'waiting' },
-    { name: 'Someday', type: 'onHold', tag: 'someday' },
-    { symbol: '=', name: 'Blocked', type: 'onHold', tag: 'blocked', icon: 'blocked', next: ' ' },
+    { symbol: 'w', name: 'Waiting', type: 'onHold', next: ' ' },
+    { symbol: 's', name: 'Someday', type: 'onHold', next: ' ' },
+    { symbol: '=', name: 'Blocked', type: 'onHold', icon: 'blocked', next: ' ' },
   ],
   obsidian: [
     { symbol: ' ', name: 'Todo', type: 'todo', next: 'x' },
@@ -95,14 +95,13 @@ function boxOf(symbol: string | undefined): string {
   return symbol === undefined ? '' : `[${symbol}]`;
 }
 
-/** One status's row: its character, name, type, tag, next character in the workflow, icon, and a way to remove it. */
-function StatusRow({ status, at, workflow, namespace, problems, rows }: {
+/** One status's row: its character, name, type, next character in the workflow, icon, and a way to remove it. */
+function StatusRow({ status, at, workflow, problems, rows }: {
   readonly status: StatusRowState;
   readonly at: number;
   readonly workflow: boolean;
   /** Every row, whose characters the Next menu offers. */
   readonly rows: readonly StatusRowState[];
-  readonly namespace: string;
   readonly problems: readonly StatusProblem[];
 }) {
   const core = status.core === true;
@@ -124,10 +123,6 @@ function StatusRow({ status, at, workflow, namespace, problems, rows }: {
               {TYPES.map(([type, words]) => <option value={type} selected={status.type === type}>{words}</option>)}
             </select>
           )}
-      </td>
-      <td class="status-tag">
-        <span class="status-tag-prefix" aria-hidden="true">{`#${namespace}/`}</span>
-        <input type="text" value={status.tag ?? ''} aria-label={`${label}: tag, after #${namespace}/`} {...field('tag')} />
       </td>
       {workflow ? <td><NextMenu status={status} rows={rows} label={label} field={field('next')} /></td> : null}
       <td>
@@ -221,7 +216,7 @@ function TaskStatusesPage({ state }: { readonly state: StatusesState }) {
           <Eyebrow trail="TASKS" />
           <h1>Task Statuses</h1>
         </div>
-        <p class="status-note">{`What each checkbox character means, and the #${snapshot.namespace}/… tag that stands for it. Saved to your ${snapshot.target === 'workspace' ? "workspace's" : 'user'} settings.`}</p>
+        <p class="status-note">{`What each checkbox character means. Saved to your ${snapshot.target === 'workspace' ? "workspace's" : 'user'} settings.`}</p>
       </header>
       <fieldset class="status-click">
         <legend>Checking a box</legend>
@@ -234,7 +229,6 @@ function TaskStatusesPage({ state }: { readonly state: StatusesState }) {
             <th>Character</th>
             <th>Name</th>
             <th>Type</th>
-            <th>Tag</th>
             {workflow ? <th>Next</th> : null}
             <th>Icon</th>
             <th><span class="visually-hidden">Remove</span></th>
@@ -242,7 +236,7 @@ function TaskStatusesPage({ state }: { readonly state: StatusesState }) {
         </thead>
         <tbody>
           {rows.map((status, at) => (
-            <StatusRow key={at} status={status} at={at} workflow={workflow} namespace={snapshot.namespace} problems={problems.filter((problem) => problem.row === at)} rows={rows} />
+            <StatusRow key={at} status={status} at={at} workflow={workflow} problems={problems.filter((problem) => problem.row === at)} rows={rows} />
           ))}
         </tbody>
       </table>

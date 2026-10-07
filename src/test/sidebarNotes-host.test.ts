@@ -587,7 +587,7 @@ suite('Related Notes controller', () => {
         return lines.filter((line) => line.startsWith('Related Notes:')).length;
       };
       assert.strictEqual(await count(() => undefined), 0, 'nothing changed');
-      assert.strictEqual(await count(() => fire('deckard.board.statusNamespace')), 1, 'a setting the ranking reads');
+      assert.strictEqual(await count(() => fire('deckard.display.dateFormat')), 1, 'a setting the ranking reads');
       assert.strictEqual(await count(() => page.preferences.usage.recordSectionAccess('anything')), 1, 'a visit the ranking counts');
       assert.strictEqual(await count(() => page.preferences.display.setHideDailyNotes(true)), 1, 'a preference');
       page.updateIndex(UPDATED);

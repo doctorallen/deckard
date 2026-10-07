@@ -11,7 +11,6 @@ import { PersistedPreferences, WorkspaceIndex } from '../domain/model';
 
 const options: TaskBoardOptions = {
   queryContext: createQueryContext(Date.parse('2026-09-21T12:00:00Z')),
-  statusNamespace: 'status',
   statuses: ['todo'],
   format: 'emoji',
 };
@@ -21,7 +20,7 @@ const NOTE = [
   '- [ ] Call Ren #context/phone',
   '- [ ] Draft #context/computer #context/phone',
   '- [ ] Loose',
-  '- [ ] Waits #status/waiting @dana',
+  '- [w] Waits @dana',
   '',
 ].join('\n');
 

@@ -262,7 +262,7 @@ function buildPageFacets(index: WorkspaceIndex, page: SearchPageResults, text: s
     tagKeys && (options.enableHeadingTagRelationships ?? true)
       ? createRelatedFacetValues(index, tagKeys, results)
       : undefined;
-  return buildSearchFacets(index, results, text, { related, now: options.queryContext.now, taskPolicy: options.queryContext.taskPolicy });
+  return buildSearchFacets(index, results, text, { related, now: options.queryContext.now });
 }
 
 /** What either hierarchy draws its groups from. */

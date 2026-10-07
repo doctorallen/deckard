@@ -93,14 +93,13 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 106);
+    assert.strictEqual(Object.keys(settings).length, 103);
     assert.strictEqual(settings['deckard.calendar.dayPanel'].default, false);
     assert.strictEqual(settings['deckard.calendar.showRepeats'].default, true);
     assert.deepStrictEqual(settings['deckard.parked.tags'].default, ['parked']);
     assert.deepStrictEqual(settings['deckard.parked.folders'].default, {});
     assert.deepStrictEqual(settings['deckard.periodicNote.reviewSections'].default, []);
     assert.deepStrictEqual(settings['deckard.board.limits'].default, {});
-    assert.deepStrictEqual(settings['deckard.tasks.onHoldStatuses'].default, ['waiting', 'someday']);
     assert.strictEqual(settings['deckard.tasks.needsNewDateAfterDays'].default, 30);
     // The day a week starts on.
     assert.deepStrictEqual(settings['deckard.calendar.weekStart'].enum, ['sunday', 'monday', 'locale']);

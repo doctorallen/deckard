@@ -150,3 +150,15 @@ Tags are read once more, by the move alone, which knows the old meaning:
 5. The Tasks view's By status shows hidden statuses too.
 6. The move is never automatic; settings are moved once without asking,
    since they are Deckard's own and say the same thing after.
+7. Waiting `[w]` and Someday `[s]` go back to Todo in the workflow
+   (`next: " "`), as Blocked does.
+8. `deckard.board.statuses` and `deckard.board.showCancelled` go in phase
+   2, with the columns they set, rather than in phase 1: until the gear's
+   preferences replace them, the board has nothing else to order its
+   columns by.
+9. The legacy map (`legacyStatusTags.ts`) arrives in phase 1, not 3: the
+   move reads tags as soon as nothing else does, so it needs the old
+   meaning from the start.
+10. A plain `[ ]` still leaves a table's Status cell, a query block's
+    status, and a card's status line empty, as before: its box says it is
+    to do, and "Todo" on every row says nothing more.

@@ -35,7 +35,6 @@ const index = indexOf({
 
 const options: TaskBoardOptions = {
   queryContext: createQueryContext(new Date(2026, 9, 6).getTime()),
-  statusNamespace: 'status',
   statuses: ['todo', 'doing'],
   format: 'emoji',
 };
@@ -49,7 +48,7 @@ function taskNamed(word: string) {
 
 /** The parent tag's key for the task named, or none. */
 function parentOf(word: string, groupNamespace?: string): string | undefined {
-  return findParentTag(index, taskNamed(word), { statusNamespace: 'status', ...(groupNamespace ? { groupNamespace } : {}) })?.key;
+  return findParentTag(index, taskNamed(word), { ...(groupNamespace ? { groupNamespace } : {}) })?.key;
 }
 
 suite('Parent tags', () => {
@@ -63,9 +62,10 @@ suite('Parent tags', () => {
     assert.strictEqual(parentOf('alone'), undefined);
   });
 
-  test('a tag the card already says is skipped: its own line, a status, and the grouped namespace', () => {
+  test('a tag the card already says is skipped: its own line and the grouped namespace', () => {
     assert.strictEqual(parentOf('own'), '#area/work', 'its own line writes #project/atlas');
-    assert.strictEqual(parentOf('styled'), '#team/web', 'a status tag says nothing of what a task is part of');
+    assert.strictEqual(parentOf('styled'), '#status/doing', 'a status tag is a tag like any other');
+    assert.strictEqual(parentOf('styled', 'status'), '#team/web', 'columns grouped by status tags already name it');
     assert.strictEqual(parentOf('brief', 'project'), '#area/work', 'columns grouped by project already name it');
   });
 

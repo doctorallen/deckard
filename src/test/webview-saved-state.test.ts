@@ -96,7 +96,7 @@ suite('Webview saved state', () => {
         index: index(),
         preferences: { ...store.reader.value, taskBoardLayout: 'board' },
         search: { query },
-        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' },
+        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], format: 'emoji' },
         tagTitleDisplayMode: 'inline',
       });
       page = openWebviewPage(renderPage('taskBoard'), board, { savedState, clock });

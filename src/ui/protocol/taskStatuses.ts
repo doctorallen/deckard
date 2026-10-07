@@ -11,7 +11,6 @@ export interface EditedStatus {
   symbol?: string;
   name: string;
   type: TaskStatusType;
-  tag?: string;
   next?: string;
   icon?: string;
 }
@@ -21,8 +20,6 @@ export interface TaskStatusesSnapshot {
   statuses: EditedStatus[];
   /** `deckard.tasks.checkboxClick`. */
   checkboxClick: 'done' | 'workflow';
-  /** The namespace status tags are written in, `status`. */
-  namespace: string;
   /** Characters the notes use that no status names, each with how many tasks use it, the most used first. */
   found: Array<{ symbol: string; count: number }>;
   /** Whether a vault's Obsidian Tasks statuses can be imported. */

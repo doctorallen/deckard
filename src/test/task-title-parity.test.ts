@@ -42,7 +42,7 @@ suite('Task title parity', () => {
       ]),
     );
   const NOW = Date.parse('2026-09-21T12:00:00Z');
-  const options = { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji' as const };
+  const options = { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing'], format: 'emoji' as const };
 
   /** What a surface must show: the rendering, and none of the source. */
   const expectRendered = (html: string, where: string): void => {

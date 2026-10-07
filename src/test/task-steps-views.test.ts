@@ -37,7 +37,6 @@ function titleOf(index: WorkspaceIndex, id: string): string {
 
 const options: TaskBoardOptions = {
   queryContext: createQueryContext(new Date(2026, 8, 13, 9).getTime()),
-  statusNamespace: 'status',
   statuses: ['todo', 'doing'],
   format: 'emoji',
 };

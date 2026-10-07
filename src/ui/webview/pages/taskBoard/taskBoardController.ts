@@ -394,7 +394,6 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     | 'saveToTasksView'
     | 'leaveTasksViewMode'
     | 'setBoardStatuses'
-    | 'setBoardStatusNamespace'
     | 'setBoardShowCancelled'
     | 'setBoardParentTag'
   > {
@@ -442,7 +441,6 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       },
       setBoardStatuses: (message) =>
         updateTaskBoardSetting('statuses', [...new Set(message.statuses.map((status) => status.toLowerCase()))]),
-      setBoardStatusNamespace: (message) => updateTaskBoardSetting('statusNamespace', message.namespace.toLowerCase()),
       setBoardShowCancelled: (message) => updateTaskBoardSetting('showCancelled', message.show),
       setBoardParentTag: (message) => updateTaskBoardSetting('parentTag', message.show),
     };

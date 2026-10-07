@@ -51,7 +51,7 @@ export function TaskList({ snapshot }: { readonly snapshot: TaskBoardSnapshot })
           <div class="empty">
             {snapshot.taskCount
               ? 'No tasks match this search.'
-              : `No tasks yet. Write "- [ ] something" in a note, or use Deckard: Capture. A #${snapshot.settings.statusNamespace}/… tag on a task puts it in a column.`}
+              : 'No tasks yet. Write "- [ ] something" in a note, or use Deckard: Capture. The character in a task\'s box, as [/] for In progress, puts it in a column.'}
           </div>
         )}
     </div>

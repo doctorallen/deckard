@@ -46,12 +46,6 @@ const SETTINGS: WrittenSetting<unknown>[] = [
     values: [['todo', 'done'], ['next', 'later', 'done']],
   },
   {
-    key: 'board.statusNamespace',
-    how: "the Task Board's status namespace",
-    write: (value: string) => updateTaskBoardSetting('statusNamespace', value),
-    values: ['stage', 'phase'],
-  },
-  {
     key: 'theme',
     how: 'Choose Theme…',
     write: (value: DeckardTheme) =>

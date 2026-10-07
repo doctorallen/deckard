@@ -19,7 +19,6 @@ import { addNoteEmbedRenderer } from './noteEmbeds';
 import { addQueryBlockRenderer } from './queryBlockHtml';
 import { readQueryContext } from '../commands/queryContext';
 import { WorkspaceIndex } from '../../domain/model';
-import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
 import { clickTask, TaskWrites } from '../commands/taskActions';
 import {
   createSessionToken,
@@ -98,7 +97,6 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       onDidRender: () => {
         this.previewReadsIndex = true;
       },
-      getStatusNamespace: () => readStatusNamespace(vscode.workspace.getConfiguration('deckard')),
       getQueryContext: (now: number) => readQueryContext(now),
       ...(this.actions
         ? {

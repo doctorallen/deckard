@@ -8,7 +8,6 @@ import {
   countTaskProgress,
   DEFAULT_TASK_STATUSES,
   nameTaskStatus,
-  readTaskStatus,
   readTaskStatuses,
   readTaskStatusSettings,
   statusForSymbol,
@@ -19,7 +18,7 @@ import { createQueryContext } from '../domain/query/queryContext';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
 import { buildSearchFacets } from '../domain/search/facets';
-import { nextStatus, readLineStatus, setTaskStatus, type StatusWriteMode } from '../domain/tasks/statusWrites';
+import { nextStatus, readLineStatus, setTaskStatus } from '../domain/tasks/statusWrites';
 import { toggleTaskLines } from '../domain/tasks/toggleLines';
 import { isClosedTaskLine } from '../domain/markdown/taskSteps';
 import { layoutTaskBoard, type TaskBoardOptions } from '../ui/state/taskBoardState';
@@ -28,6 +27,7 @@ import { findTaskLineMarks } from '../ui/state/taskLineMarks';
 import { drawTaskStatus } from '../ui/state/drawnStatus';
 import { DEFAULT_TASK_POLICY } from '../domain/tasks/taskPolicy';
 import { countStatusMove, findStatusRenames, importObsidianStatuses, planStatusMove, renameStatusInQuery } from '../domain/tasks/statusMigration';
+import { readLegacyStatusTags } from '../domain/tasks/legacyStatusTags';
 import { checkStatusList } from '../domain/tasks/statusChecks';
 
 /** Each task's character, name, type, and whether it is done, as the parser read it. */
@@ -63,7 +63,7 @@ suite('Task statuses: the list', () => {
     );
   });
 
-  test('leaves out what can\'t be a status, and reads a character or a tag given twice as the first', () => {
+  test('leaves out what can\'t be a status, a status with no character among them, and reads a character given twice as the first', () => {
     const statuses = readTaskStatuses([
       { symbol: '?', name: 'Question', type: 'todo' },
       { symbol: '?', name: 'Second', type: 'done' },
@@ -72,19 +72,15 @@ suite('Task statuses: the list', () => {
       { symbol: 'ab', name: 'Two', type: 'todo' },
       { symbol: '!', name: '', type: 'todo' },
       { symbol: '!', name: 'Bad type', type: 'urgent' },
-      { name: 'No symbol or tag', type: 'onHold' },
-      { name: 'Waiting', type: 'onHold', tag: '#Waiting' },
-      { name: 'Paused', type: 'onHold', tag: 'waiting' },
+      { name: 'No symbol', type: 'onHold' },
+      { name: 'Waiting', type: 'onHold', tag: 'waiting' },
       'Blocked',
     ]);
-    assert.deepStrictEqual(statuses.map((status) => status.name), ['Todo', 'Question', 'Waiting', 'Done', 'Done']);
-    assert.strictEqual(statuses[2].tag, 'waiting');
+    assert.deepStrictEqual(statuses.map((status) => status.name), ['Todo', 'Question', 'Done', 'Done']);
+    assert.ok(statuses.every((status) => !('tag' in status)));
   });
 
-  test('reads deckard.tasks.onHoldStatuses as on-hold statuses no status stands for', () => {
-    const statuses = readTaskStatuses(undefined, ['waiting', 'on-call', 'not a tag!']);
-    assert.deepStrictEqual(statuses.at(-1), { name: 'On call', type: 'onHold', tag: 'on-call' });
-    assert.strictEqual(statuses.filter((status) => status.tag === 'waiting').length, 1);
+  test('reads deckard.tasks.statuses from settings', () => {
     const settings = new Map<string, unknown>([['tasks.statuses', [{ symbol: '/', name: 'Doing', type: 'inProgress' }]]]);
     assert.deepStrictEqual(
       readTaskStatusSettings({ get: <T>(key: string) => settings.get(key) as T | undefined }).map((status) => status.name),
@@ -100,13 +96,15 @@ suite('Task statuses: the list', () => {
 
 suite('Task statuses: reading a note', () => {
   test('every default character is a task of its status', () => {
-    assert.deepStrictEqual(read(['- [ ] a', '- [/] b', '- [x] c', '- [X] d', '- [-] e', '- [=] f'].join('\n')), [
+    assert.deepStrictEqual(read(['- [ ] a', '- [/] b', '- [x] c', '- [X] d', '- [-] e', '- [=] f', '- [w] g', '- [s] h'].join('\n')), [
       '[ ] Todo todo',
       '[/] In progress inProgress',
       '[x] Done done completed',
       '[X] Done done completed',
       '[-] Cancelled cancelled',
       '[=] Blocked onHold',
+      '[w] Waiting onHold',
+      '[s] Someday onHold',
     ]);
   });
 
@@ -184,7 +182,7 @@ suite('Task statuses: what the types mean, and searching', () => {
     '- [-] dropped ❌ 2026-10-02',
     '- [=] stuck',
     '- [ ] tagged-blocked #status/blocked',
-    '- [ ] tagged-waiting #status/waiting',
+    '- [w] waiting',
     '- [?] puzzled',
     '- [ ] tagged-done #status/done',
     '- [ ] review #status/review',
@@ -197,8 +195,8 @@ suite('Task statuses: what the types mean, and searching', () => {
   };
 
   test('is: goes by type: open, in progress, done, cancelled, and closed', () => {
-    assert.deepStrictEqual(matches('is:open'), ['plain', 'puzzled', 'review', 'started', 'stuck', 'tagged-blocked', 'tagged-doing', 'tagged-done', 'tagged-waiting']);
-    assert.deepStrictEqual(matches('is:in-progress'), ['started', 'tagged-doing']);
+    assert.deepStrictEqual(matches('is:open'), ['plain', 'puzzled', 'review', 'started', 'stuck', 'tagged-blocked', 'tagged-doing', 'tagged-done', 'waiting']);
+    assert.deepStrictEqual(matches('is:in-progress'), ['started']);
     assert.deepStrictEqual(matches('is:done'), ['finished']);
     assert.deepStrictEqual(matches('is:cancelled'), ['dropped']);
     assert.deepStrictEqual(matches('is:closed'), ['dropped', 'finished']);
@@ -206,9 +204,11 @@ suite('Task statuses: what the types mean, and searching', () => {
   });
 
   test('status: finds a status by name, by character, and keeps open, done, and any', () => {
-    assert.deepStrictEqual(matches('status:blocked'), ['stuck', 'tagged-blocked']);
-    assert.deepStrictEqual(matches('status:in-progress'), ['started', 'tagged-doing']);
-    assert.deepStrictEqual(matches('status:"in progress"'), ['started', 'tagged-doing']);
+    assert.deepStrictEqual(matches('status:blocked'), ['stuck']);
+    assert.deepStrictEqual(matches('status:in-progress'), ['started']);
+    assert.deepStrictEqual(matches('status:"in progress"'), ['started']);
+    assert.deepStrictEqual(matches('status:waiting'), ['waiting']);
+    assert.deepStrictEqual(matches('status:todo'), ['plain', 'review', 'tagged-blocked', 'tagged-doing', 'tagged-done']);
     assert.deepStrictEqual(matches('status:[=]'), ['stuck']);
     assert.deepStrictEqual(matches('status:[?]'), ['puzzled']);
     assert.deepStrictEqual(matches('status:unknown'), ['puzzled']);
@@ -216,21 +216,20 @@ suite('Task statuses: what the types mean, and searching', () => {
     assert.deepStrictEqual(matches('status:done'), ['finished']);
     assert.deepStrictEqual(matches('status:open'), matches('is:open'));
     assert.strictEqual(matches('status:any').length, 11);
-    assert.deepStrictEqual(matches('is:in-progress -status:[/]'), ['tagged-doing']);
+    assert.deepStrictEqual(matches('is:in-progress -status:[/]'), []);
   });
 
-  test('a done tag closes nothing, and a tag no status names leaves the box\'s status', () => {
-    const [done] = [...index.tasks.values()].filter((task) => task.title.startsWith('tagged-done'));
-    assert.deepStrictEqual(readTaskStatus(done, DEFAULT_TASK_STATUSES, 'status'), { symbol: ' ', name: 'Todo', type: 'todo' });
-    const [review] = [...index.tasks.values()].filter((task) => task.title.startsWith('review'));
-    assert.strictEqual(readTaskStatus(review, DEFAULT_TASK_STATUSES, 'status').name, 'Todo');
-    assert.strictEqual(nameTaskStatus(review, DEFAULT_TASK_STATUSES, 'status'), 'Review');
+  test('a status tag is a tag like any other: an empty box is Todo whatever it carries', () => {
+    const tagged = [...index.tasks.values()].filter((task) => task.title.startsWith('tagged-') || task.title.startsWith('review'));
+    assert.deepStrictEqual(tagged.map((task) => task.status), tagged.map(() => ({ symbol: ' ', name: 'Todo', type: 'todo' })));
+    assert.deepStrictEqual(tagged.map((task) => nameTaskStatus(task)), tagged.map(() => undefined));
+    assert.deepStrictEqual(matches('#status/doing'), ['tagged-doing']);
   });
 
   test('on hold, blocked, and available read the statuses', () => {
-    assert.deepStrictEqual(matches('is:waiting'), ['stuck', 'tagged-blocked', 'tagged-waiting']);
-    assert.deepStrictEqual(matches('is:blocked'), ['stuck', 'tagged-blocked']);
-    assert.deepStrictEqual(matches('is:available'), ['plain', 'puzzled', 'review', 'started', 'tagged-doing', 'tagged-done']);
+    assert.deepStrictEqual(matches('is:waiting'), ['stuck', 'waiting']);
+    assert.deepStrictEqual(matches('is:blocked'), ['stuck']);
+    assert.deepStrictEqual(matches('is:available'), ['plain', 'puzzled', 'review', 'started', 'tagged-blocked', 'tagged-doing', 'tagged-done']);
   });
 
   test('the cancelled date is a field of its own, looking back', () => {
@@ -255,8 +254,8 @@ suite('Task statuses: what the types mean, and searching', () => {
         'Open 9 is:open',
         'Done 1 is:done',
         'Cancelled 1 is:cancelled',
-        'Blocked 2 status:blocked',
-        'In progress 2 status:in-progress',
+        'Blocked 1 status:blocked',
+        'In progress 1 status:in-progress',
         'Unknown 1 status:unknown',
         'Waiting 1 status:waiting',
       ],
@@ -267,30 +266,20 @@ suite('Task statuses: what the types mean, and searching', () => {
 suite('Task statuses: writing one', () => {
   const statuses = DEFAULT_TASK_STATUSES;
   const named = (name: string) => statuses.find((status) => status.name === name) as TaskStatusDefinition;
-  const write = (line: string, name: string, writeAs: StatusWriteMode = 'match') =>
+  const write = (line: string, name: string) =>
     setTaskStatus(line, line.indexOf('[') + 1, {
       to: named(name),
-      namespace: 'status',
-      writeAs,
       doneDate: '2026-10-05',
       cancelledDate: '2026-10-05',
     });
 
-  test('match writes the character on a plain line and the tag on a tagged one', () => {
+  test('every status is written as its character, and a tag on the line stays a tag', () => {
     assert.strictEqual(write('- [ ] Draft', 'In progress'), '- [/] Draft');
-    assert.strictEqual(write('- [ ] Draft #status/todo', 'In progress'), '- [ ] Draft #status/doing');
+    assert.strictEqual(write('- [ ] Draft #status/todo', 'In progress'), '- [/] Draft #status/todo');
     assert.strictEqual(write('- [/] Draft', 'Blocked'), '- [=] Draft');
+    assert.strictEqual(write('- [/] Draft', 'Waiting'), '- [w] Draft');
+    assert.strictEqual(write('- [w] Draft', 'Someday'), '- [s] Draft');
     assert.strictEqual(write('- [/] Draft', 'Todo'), '- [ ] Draft');
-  });
-
-  test('checkbox always writes the character, taking the tag away; tag always the tag', () => {
-    assert.strictEqual(write('- [ ] Draft #status/doing', 'Blocked', 'checkbox'), '- [=] Draft');
-    assert.strictEqual(write('- [/] Draft', 'In progress', 'tag'), '- [ ] Draft #status/doing');
-  });
-
-  test('a status with no character is its tag in an empty box', () => {
-    assert.strictEqual(write('- [/] Draft', 'Waiting', 'checkbox'), '- [ ] Draft #status/waiting');
-    assert.strictEqual(write('- [ ] Draft #status/doing', 'Someday'), '- [ ] Draft #status/someday');
   });
 
   test('done and cancelled are their characters, with their dates, one replacing the other', () => {
@@ -301,15 +290,16 @@ suite('Task statuses: writing one', () => {
   });
 
   test('a line reads its status as the index does, and the workflow steps by next', () => {
-    assert.deepStrictEqual(readLineStatus('- [ ] Plan #status/waiting', 2 + 1, statuses, 'status'), { symbol: ' ', name: 'Waiting', type: 'onHold' });
+    assert.deepStrictEqual(readLineStatus('- [ ] Plan #status/waiting', 2 + 1, statuses), { symbol: ' ', name: 'Todo', type: 'todo' });
+    assert.deepStrictEqual(readLineStatus('- [w] Plan', 2 + 1, statuses), { symbol: 'w', name: 'Waiting', type: 'onHold' });
     assert.strictEqual(nextStatus({ symbol: '/', name: 'In progress', type: 'inProgress' }, statuses)?.symbol, 'x');
     assert.strictEqual(nextStatus({ symbol: 'x', name: 'Done', type: 'done' }, statuses)?.symbol, ' ');
-    assert.strictEqual(nextStatus({ symbol: ' ', name: 'Waiting', type: 'onHold' }, statuses), undefined);
+    assert.strictEqual(nextStatus({ symbol: 'w', name: 'Waiting', type: 'onHold' }, statuses)?.symbol, ' ');
     assert.strictEqual(nextStatus({ symbol: '?', name: 'Unknown', type: 'todo' }, statuses), undefined);
   });
 
-  test('Toggle Task Done completes any status that is not done, and reopens as [ ], its tag gone', () => {
-    const options = { addDoneDate: false, format: 'emoji' as const, eol: '\n', statusNamespace: 'status' };
+  test('Toggle Task Done completes any status that is not done, and reopens as [ ], a tag kept', () => {
+    const options = { addDoneDate: false, format: 'emoji' as const, eol: '\n' };
     const lines = [
       { line: 0, text: '- [/] Draft' },
       { line: 1, text: '- [-] Banner' },
@@ -318,7 +308,7 @@ suite('Task statuses: writing one', () => {
     assert.deepStrictEqual(toggleTaskLines(lines, 0, options).lines.map((line) => line.after), ['- [x] Draft', '- [x] Banner']);
     assert.deepStrictEqual(
       toggleTaskLines([{ line: 0, text: '- [x] Draft #status/doing' }], 0, options).lines.map((line) => line.after),
-      ['- [ ] Draft'],
+      ['- [ ] Draft #status/doing'],
     );
   });
 
@@ -359,13 +349,12 @@ suite('Task statuses: the board and the Tasks view', () => {
     '- [ ] tagged #status/doing',
     '- [=] stuck',
     '- [?] puzzled',
-    '- [ ] reviewing #status/review',
+    '- [w] waiting',
     '- [x] finished',
     '- [-] dropped',
   ]);
   const options: TaskBoardOptions = {
     queryContext: createQueryContext(new Date(2026, 9, 5).getTime()),
-    statusNamespace: 'status',
     statuses: ['todo', 'in-progress'],
     format: 'emoji',
   };
@@ -376,13 +365,13 @@ suite('Task statuses: the board and the Tasks view', () => {
       column.cards.map((card) => `${titleOf(card.taskId)}${card.details.length && card.details[0].startsWith('Unknown') ? ` (${card.details[0]})` : ''}`),
     ]);
 
-  test('columns go by status: a name or a tag in the settings orders them, and a character or a tag places a card', () => {
+  test('columns go by status: a name in the settings orders them, and a character places a card', () => {
     assert.deepStrictEqual(columns(options), [
-      ['No status', ['plain', 'puzzled (Unknown [?])']],
-      ['Todo', []],
-      ['In progress', ['started', 'tagged']],
+      ['No status', ['puzzled (Unknown [?])']],
+      ['Todo', ['plain', 'tagged']],
+      ['In progress', ['started']],
       ['Blocked', ['stuck']],
-      ['Review', ['reviewing']],
+      ['Waiting', ['waiting']],
       ['Done', ['finished']],
     ]);
   });
@@ -395,14 +384,15 @@ suite('Task statuses: the board and the Tasks view', () => {
   });
 
   test('the Tasks view groups by the same columns, by name', () => {
-    const groups = createAgenda(index, createQueryContext(new Date(2026, 9, 5).getTime()), { upcomingDays: 7, groupBy: 'status', statusNamespace: 'status' });
+    const groups = createAgenda(index, createQueryContext(new Date(2026, 9, 5).getTime()), { upcomingDays: 7, groupBy: 'status' });
     assert.deepStrictEqual(
       groups.map((group) => [group.id, group.label, group.entries.map((entry) => entry.task.title.split(' ')[0])]),
       [
-        ['doing', 'In progress', ['started', 'tagged']],
+        ['todo', 'Todo', ['plain', 'tagged']],
         ['blocked', 'Blocked', ['stuck']],
-        ['review', 'Review', ['reviewing']],
-        ['none', 'No status', ['plain', 'puzzled']],
+        ['in-progress', 'In progress', ['started']],
+        ['waiting', 'Waiting', ['waiting']],
+        ['none', 'No status', ['puzzled']],
       ],
     );
   });
@@ -422,7 +412,7 @@ suite('Task statuses: how a status is drawn', () => {
   test('a page draws a status only when it is neither a plain to do nor done', () => {
     const [plain, started, waiting, dropped, puzzled, done, stuck] = parseMarkdown(
       'note.md',
-      ['- [ ] a', '- [/] b', '- [ ] c #status/waiting', '- [-] d', '- [?] e', '- [x] f', '- [=] g'].join('\n'),
+      ['- [ ] a', '- [/] b', '- [w] c', '- [-] d', '- [?] e', '- [x] f', '- [=] g'].join('\n'),
     ).tasks;
     const draw = (task: Parameters<typeof drawTaskStatus>[0]) => drawTaskStatus(task, DEFAULT_TASK_POLICY);
     assert.strictEqual(draw(plain), undefined);
@@ -445,18 +435,36 @@ suite('Task statuses: moving over, importing, and editing', () => {
       '- [ ] Old #status/done',
       '- [ ] Plain',
     ].join('\n'));
-    const lines = planStatusMove(file.tasks, { statuses: DEFAULT_TASK_STATUSES, namespace: 'status', doneDate: '2026-10-06' });
-    assert.deepStrictEqual(lines.map((line) => [line.group, line.after]), [
-      ['character', '- [/] Draft'],
-      ['stale', '- [x] Ship ✅ 2026-10-01'],
-      ['kept', '- [ ] Legal #status/waiting'],
-      ['kept', '- [ ] Review #status/review'],
-      ['done', '- [x] Old ✅ 2026-10-06'],
+    const legacy = readLegacyStatusTags(undefined, undefined);
+    const lines = planStatusMove(file.tasks, { statuses: DEFAULT_TASK_STATUSES, legacy, doneDate: '2026-10-06' });
+    assert.deepStrictEqual(lines.map((line) => [line.group, line.after, line.known]), [
+      ['character', '- [/] Draft', true],
+      ['stale', '- [x] Ship ✅ 2026-10-01', true],
+      ['character', '- [w] Legal', true],
+      ['kept', '- [ ] Review #status/review', false],
+      ['done', '- [x] Old ✅ 2026-10-06', true],
     ]);
-    assert.deepStrictEqual(countStatusMove(lines), { character: 1, stale: 1, done: 1, kept: 2 });
+    assert.deepStrictEqual(countStatusMove(lines), { character: 2, stale: 1, done: 1, kept: 1 });
   });
 
-  test('a vault\'s Obsidian Tasks statuses import with Deckard\'s tags for the same characters', () => {
+  test('the move reads what each tag meant from the old settings, and keeps a tag the list has no character for', () => {
+    const legacy = readLegacyStatusTags('Stage', [
+      { name: 'Review', type: 'onHold', tag: 'review', symbol: 'r' },
+      { name: 'Waiting', type: 'onHold', tag: 'waiting' },
+      { name: 'Done', type: 'done', tag: 'finished', symbol: 'x' },
+    ]);
+    assert.strictEqual(legacy.namespace, 'stage');
+    assert.deepStrictEqual([...legacy.characters], [['review', 'r'], ['todo', ' '], ['doing', '/'], ['waiting', 'w'], ['someday', 's'], ['blocked', '=']]);
+    const file = parseMarkdown('work.md', ['- [ ] Look #stage/review', '- [ ] Wait #stage/waiting', '- [ ] Plain #stage/todo', '- [ ] Other #status/doing'].join('\n'));
+    const statuses = readTaskStatuses([{ symbol: ' ', name: 'Todo', type: 'todo' }, { symbol: 'r', name: 'Review', type: 'onHold' }]);
+    assert.deepStrictEqual(planStatusMove(file.tasks, { statuses, legacy }).map((line) => [line.group, line.after]), [
+      ['character', '- [r] Look'],
+      ['kept', '- [ ] Wait #stage/waiting'],
+      ['stale', '- [ ] Plain'],
+    ]);
+  });
+
+  test('a vault\'s Obsidian Tasks statuses import as they are, with Waiting and Someday where the vault has neither', () => {
     const imported = importObsidianStatuses({
       statusSettings: {
         coreStatuses: [
@@ -471,9 +479,13 @@ suite('Task statuses: moving over, importing, and editing', () => {
       },
     });
     assert.deepStrictEqual(
-      imported?.map((status) => `${status.symbol ?? '-'}:${status.name}:${status.type}:${status.tag ?? ''}:${status.next ?? ''}`),
-      [' :Todo:todo:todo:x', 'x:Done:done:: ', '/:In Progress:inProgress:doing:x', 'P:Pro:nonTask::C', '-:Waiting:onHold:waiting:', '-:Someday:onHold:someday:', 'X:Done:done:: '],
+      imported?.map((status) => `${status.symbol}:${status.name}:${status.type}:${status.next ?? ''}`),
+      [' :Todo:todo:x', 'x:Done:done: ', '/:In Progress:inProgress:x', 'P:Pro:nonTask:C', 'w:Waiting:onHold: ', 's:Someday:onHold: ', 'X:Done:done: '],
     );
+    const own = importObsidianStatuses({
+      statusSettings: { coreStatuses: [{ symbol: ' ', name: 'Todo', type: 'TODO' }], customStatuses: [{ symbol: 'w', name: 'Win', type: 'TODO' }, { symbol: 'z', name: 'Someday', type: 'ON_HOLD' }] },
+    });
+    assert.deepStrictEqual(own?.map((status) => `${status.symbol}:${status.name}`), [' :Todo', 'w:Win', 'z:Someday', 'x:Done', 'X:Done']);
     assert.strictEqual(importObsidianStatuses({}), undefined);
   });
 
@@ -492,7 +504,7 @@ suite('Task statuses: moving over, importing, and editing', () => {
       checkStatusList(statuses, workflow).map((problem) => `${problem.row} ${problem.severity}: ${problem.text}`);
     assert.deepStrictEqual(problems([{ symbol: '/', name: '', type: 'inProgress' }, { name: 'Loose', type: 'onHold' }]), [
       '0 error: Give it a name.',
-      '1 error: Give it a character, a tag, or both.',
+      '1 error: Give it a character.',
     ]);
     assert.deepStrictEqual(problems([{ symbol: '/', name: 'One', type: 'todo' }, { symbol: '/', name: 'Two', type: 'todo' }]), ['1 error: [/] is already One\'s character.']);
     assert.match(problems([{ symbol: 'o', name: 'Open', type: 'todo' }])[0], /warning: status:open already means every open task/);

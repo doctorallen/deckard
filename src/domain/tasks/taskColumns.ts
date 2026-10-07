@@ -42,9 +42,8 @@ export function isTaskColumnId(value: unknown): value is TaskColumnId {
 const STATUS_COLUMN_NAME = /^[\p{L}\p{N}][\p{L}\p{N}\p{M}_-]*$/u;
 
 /**
- * A namespace as the board takes one, the status tag's as
- * `deckard.board.statusNamespace` allows it, or the one a board is grouped
- * by: the characters of a status, starting with a letter.
+ * A namespace as the board takes one, the one it is grouped by: the
+ * characters of a status column, starting with a letter.
  */
 const BOARD_NAMESPACE = /^\p{L}[\p{L}\p{N}\p{M}_-]*$/u;
 
@@ -56,7 +55,7 @@ export function isStatusColumnName(value: unknown): value is string {
   return typeof value === 'string' && STATUS_COLUMN_NAME.test(value);
 }
 
-/** Whether a value is a namespace the board can take its statuses or its columns from. */
+/** Whether a value is a namespace the board can take its columns from. */
 export function isBoardNamespace(value: unknown): value is string {
   return typeof value === 'string' && BOARD_NAMESPACE.test(value);
 }
@@ -86,15 +85,4 @@ export function checkNewStatusColumn(typed: string, columns: readonly string[]):
     return { error: `${name} is already a column.` };
   }
   return { value: name };
-}
-
-/**
- * A status tag namespace typed into the gear, read as the gear saves it:
- * trimmed and in lower case, or why it cannot be one.
- */
-export function checkStatusNamespace(typed: string): BoardSettingCheck {
-  const name = typed.trim().toLowerCase();
-  return isBoardNamespace(name)
-    ? { value: name }
-    : { error: 'A status tag is letters, digits, - and _, starting with a letter.' };
 }

@@ -21,7 +21,6 @@ import { Task, WorkspaceIndex } from '../domain/model';
 
 const options: TaskBoardOptions = {
   queryContext: createQueryContext(new Date(2026, 8, 13, 9).getTime()),
-  statusNamespace: 'status',
   statuses: ['todo'],
   format: 'emoji',
 };

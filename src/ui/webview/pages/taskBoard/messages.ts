@@ -26,7 +26,6 @@ import type {
   SetBoardStatusesMessage,
   SetBoardParentTagMessage,
   SetBoardShowCancelledMessage,
-  SetBoardStatusNamespaceMessage,
   SetTableColumnsMessage,
   SetTableSortMessage,
   SetTaskLayoutMessage,
@@ -179,10 +178,6 @@ const narrowReorderTasks: Narrower<ReorderTasksMessage> = (value) =>
 const narrowSetBoardStatuses: Narrower<SetBoardStatusesMessage> = (value) =>
   isStatusColumnList(value.statuses) ? { type: 'setBoardStatuses', statuses: [...value.statuses] } : undefined;
 
-/** The statuses' namespace, as the setting allows one. */
-const narrowSetBoardStatusNamespace: Narrower<SetBoardStatusNamespaceMessage> = (value) =>
-  isBoardNamespace(value.namespace) ? { type: 'setBoardStatusNamespace', namespace: value.namespace } : undefined;
-
 /** Whether to draw the Cancelled column. */
 const narrowSetBoardShowCancelled: Narrower<SetBoardShowCancelledMessage> = (value) =>
   typeof value.show === 'boolean' ? { type: 'setBoardShowCancelled', show: value.show } : undefined;
@@ -226,7 +221,6 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   setTaskSort: narrowSetTaskSort,
   reorderTasks: narrowReorderTasks,
   setBoardStatuses: narrowSetBoardStatuses,
-  setBoardStatusNamespace: narrowSetBoardStatusNamespace,
   setBoardShowCancelled: narrowSetBoardShowCancelled,
   setBoardParentTag: narrowSetBoardParentTag,
 };

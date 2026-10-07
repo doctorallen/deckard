@@ -419,7 +419,7 @@ export async function pickAgendaGrouping(
   }
   let picked: string | undefined;
   if (chosen.id === 'tag') {
-    picked = index ? await pickTagNamespace(agenda, index, current === 'tag' ? namespace : undefined) : undefined;
+    picked = index ? await pickTagNamespace(index, current === 'tag' ? namespace : undefined) : undefined;
     if (!picked) {
       return undefined;
     }
@@ -464,11 +464,10 @@ function describeCurrentGrouping(
 
 /** Asks which namespace to group by, busiest first; nothing when none is in use. */
 export async function pickTagNamespace(
-  agenda: Pick<AgendaService<AgendaGroup>, 'readStatusNamespace'>,
   index: WorkspaceIndex,
   current?: string,
 ): Promise<string | undefined> {
-  const namespaces = listTaskNamespaces(index, [agenda.readStatusNamespace()]);
+  const namespaces = listTaskNamespaces(index);
   if (namespaces.length === 0) {
     void vscode.window.showInformationMessage(
       'No open task carries a namespaced tag, such as #context/phone, yet. Write one on a task, or on the heading above it, to group by it.',

@@ -1,5 +1,5 @@
 import { formatProgressCount } from '../../domain/tasks/progressCount';
-import { countTaskProgress, isCancelledTask, nameTaskStatus, readTaskStatus, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
+import { countTaskProgress, isCancelledTask, nameTaskStatus } from '../../domain/tasks/taskStatuses';
 import type { TagOverviewSortMode, TaskSortMode, TaskStatusType } from '../../domain/model';
 import { getFileName } from '../../shared/paths';
 import { type DateFormats, formatDisplayDate } from '../../domain/markdown/dateFormat';
@@ -381,12 +381,10 @@ export function isQueryBlockLine(
 
 /**
  * What a block is read in besides its own options: the settings and moment
- * its query is evaluated in, and the namespace its task rows read a status in.
+ * its query is evaluated in.
  */
 export interface QueryBlockReading {
   queryContext: QueryContext;
-  /** The namespace of the status tags, from `deckard.board.statusNamespace`; `status` unless given. */
-  statusNamespace?: string;
 }
 
 /**
@@ -418,7 +416,6 @@ export function getQueryBlockSnapshot(
     new Date(reading.queryContext.now).toDateString(),
     queryText,
     options,
-    reading.statusNamespace ?? 'status',
   ]);
   let snapshot = snapshots.get(key);
   if (!snapshot) {
@@ -438,7 +435,6 @@ export function createQueryBlockSnapshot(
   options: QueryBlockOptions,
   reading: QueryBlockReading,
 ): QueryBlockSnapshot {
-  const statusNamespace = reading.statusNamespace ?? 'status';
   const query = queryText.trim();
   const optionMessages = options.warnings.map(
     (text): QueryBlockMessage => ({ severity: 'warning', text }),
@@ -488,7 +484,7 @@ export function createQueryBlockSnapshot(
     ...results.files.map((file) => createFileItem(file, index, table)),
   ].sort(createNoteComparator(options.sort, options.direction));
   const tasks = results.tasks
-    .map((task) => createTaskItem(task, index, { statuses: reading.queryContext.taskPolicy.statuses, namespace: statusNamespace }))
+    .map((task) => createTaskItem(task, index))
     .sort(createTaskComparator(options.sort, options.direction));
 
   return {
@@ -641,20 +637,16 @@ export function namespaceValues(item: Pick<QueryBlockItem, 'noteTags'>, namespac
   });
 }
 
-/**
- * A matched task as a row, with its status's name: its checkbox's, or the
- * one its own line's `#<namespace>/` tag names, as everything else reads it.
- */
+/** A matched task as a row, with its status's name: its checkbox's. */
 function createTaskItem(
   task: Task,
   index: WorkspaceIndex,
-  statusReading: { statuses: readonly TaskStatusDefinition[]; namespace: string },
 ): QueryBlockItem {
   const section = task.sectionId
     ? index.sections.get(task.sectionId)
     : undefined;
   // A done task's box says it is done; a status is named for an open or a cancelled one.
-  const status = task.completed ? undefined : nameTaskStatus(task, statusReading.statuses, statusReading.namespace);
+  const status = task.completed ? undefined : nameTaskStatus(task);
   return {
     id: task.id,
     title: stripTrailingTags(task.title) || task.title.trim(),
@@ -664,7 +656,7 @@ function createTaskItem(
     line: task.lineNumber,
     completed: task.completed,
     ...(isCancelledTask(task) ? { cancelled: true } : {}),
-    ...(readTaskStatus(task, statusReading.statuses, statusReading.namespace).type === 'inProgress' ? { statusType: 'inProgress' as const } : {}),
+    ...(task.status.type === 'inProgress' ? { statusType: 'inProgress' as const } : {}),
     dueAt: task.dueAt,
     dueText: task.dueText,
     scheduledAt: task.scheduledAt,

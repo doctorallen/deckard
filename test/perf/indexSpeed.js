@@ -436,7 +436,7 @@ function timeTaskBoardSnapshot(index, now) {
   }).reader.value;
   // The host's options when nothing is configured: deckard.board.statuses,
   // its namespace, and the emoji task format.
-  const options = { queryContext: createQueryContext(now), statusNamespace: 'status', statuses: ['todo', 'doing', 'waiting'], format: 'emoji', limits: {} };
+  const options = { queryContext: createQueryContext(now), statuses: ['todo', 'in-progress', 'waiting'], format: 'emoji', limits: {} };
   const log = captureLog();
   setTimingLog(log);
   const timings = [0, 1, 2, 3, 4].map(() => {

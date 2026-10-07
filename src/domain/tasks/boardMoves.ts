@@ -6,19 +6,16 @@ import { parseMarkdown, readPerson, TAG_WORD_CHARACTERS } from '../markdown/pars
 import { Task, TaskPriority } from '../model';
 import { QueryContext } from '../query/queryContext';
 import { needsNewDate } from './taskPolicy';
-import { isOpenTask, readStatusColumnKey, statusForColumnKey, UNKNOWN_STATUS_NAME } from './taskStatuses';
-import { setTaskStatus, setTaskStatusTag, type StatusWriteMode } from './statusWrites';
-
-export { setTaskStatusTag } from './statusWrites';
-import { isStatusColumnName } from './taskColumns';
+import { isOpenTask, statusForColumnKey } from './taskStatuses';
+import { setTaskStatus } from './statusWrites';
 import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskFields';
-import { appendToTaskText, setTaskAssignee, setTaskDate, setTaskLineCompletion, setTaskLineMark, setTaskPriority } from '../markdown/taskLineEdits';
+import { appendToTaskText, setTaskAssignee, setTaskDate, setTaskLineCompletion, setTaskPriority } from '../markdown/taskLineEdits';
 
 /**
  * What dropping a task on a board column means for its line.
  *
  * A column stands for what a task already says about itself, so a move is an
- * ordinary edit to the task line: a status tag, a priority, a due date, the
+ * ordinary edit to the task line: a status's character, a priority, a due date, the
  * person it is for, or a tag of one namespace. The Task Board's drop, the
  * Tasks view's drop on a group, and capturing into a column all read the
  * edit from here, so the three agree on what a column means.
@@ -35,12 +32,8 @@ export type TaskMove =
 export interface TaskMoveOptions {
   /** The moment and task policy the due bands are drawn against. */
   queryContext: Pick<QueryContext, 'now' | 'taskPolicy'> & Partial<Pick<QueryContext, 'dateFormats'>>;
-  /** Namespace that holds a task's status, `status` for `#status/doing`. */
-  statusNamespace: string;
   /** Format for metadata written on a task that has none yet. */
   format: TaskMetadataFormat;
-  /** How a status with both a character and a tag is written (`deckard.tasks.writeStatusAs`); `match` by default. */
-  writeAs?: StatusWriteMode;
   /** `deckard.tasks.addCancelledDate`: whether a drop on Cancelled writes ❌; true by default. */
   addCancelledDate?: boolean;
 }
@@ -59,14 +52,6 @@ const PRIORITIES: ReadonlySet<string> = new Set([
   'low',
   'lowest',
 ]);
-
-/**
- * True for a status that can be written as the value of a tag: the rule of
- * a board's status columns, which the gear and the host check too.
- */
-export function isValidStatusName(value: string): boolean {
-  return isStatusColumnName(value);
-}
 
 /** One move being resolved: the task, the column's value, and the settings. */
 interface MoveRequest {
@@ -120,42 +105,23 @@ export function resolveTaskMove(
 }
 
 /**
- * A status column: the status its key stands for, written as any status
- * is; No status, a plain `[ ]` with no status tag; or a tag no status
- * stands for, written as that tag in an empty box, as the board always has.
+ * A status column: the status its key stands for, written as its
+ * character; No status, a plain `[ ]`. A key no status stands for is
+ * refused, since the board it came from is out of date.
  */
-function moveToStatus({ task, value, options, reopen }: MoveRequest): TaskMove {
-  if (value && !isValidStatusName(value)) {
-    return refuseMove(`"${value}" cannot be written as a status tag.`);
-  }
+function moveToStatus({ task, value, options }: MoveRequest): TaskMove {
   const statuses = options.queryContext.taskPolicy.statuses;
-  if (isOpenTask(task) && (readStatusColumnKey(task, statuses, options.statusNamespace) ?? '') === value && task.status.name !== UNKNOWN_STATUS_NAME) {
-    return { kind: 'unchanged' };
-  }
   const status = value ? statusForColumnKey(statuses, value) : statuses.find((candidate) => candidate.symbol === ' ');
-  if (status) {
-    return {
-      kind: 'edit',
-      label: value ? status.name : 'No status',
-      edit: (line) => setTaskStatus(line, task.checkboxColumn, {
-        to: status,
-        namespace: options.statusNamespace,
-        // No status is a plain box, whatever the line wrote before.
-        writeAs: value ? options.writeAs ?? 'match' : 'checkbox',
-        preferredFormat: options.format,
-      }),
-    };
+  if (!status) {
+    return refuseMove(`No status in the "Tasks: Statuses" setting is called ${formatStatusLabel(value)}. Refresh the board and try again.`);
+  }
+  if (isOpenTask(task) && task.status.symbol === status.symbol) {
+    return { kind: 'unchanged' };
   }
   return {
     kind: 'edit',
-    label: formatStatusLabel(value),
-    edit: (line) =>
-      setTaskStatusTag(
-        setTaskLineMark(reopen(line), task.checkboxColumn, { symbol: ' ', closed: undefined }),
-        task.checkboxColumn,
-        options.statusNamespace,
-        value,
-      ),
+    label: status.name,
+    edit: (line) => setTaskStatus(line, task.checkboxColumn, { to: status, preferredFormat: options.format }),
   };
 }
 
@@ -164,7 +130,7 @@ function moveToCancelled(task: Task, options: TaskMoveOptions): TaskMove {
   if (task.status.type === 'cancelled') {
     return { kind: 'unchanged' };
   }
-  const status = options.queryContext.taskPolicy.statuses.find((candidate) => candidate.type === 'cancelled' && candidate.symbol !== undefined);
+  const status = options.queryContext.taskPolicy.statuses.find((candidate) => candidate.type === 'cancelled');
   if (!status) {
     return refuseMove('No status in the "Tasks: Statuses" setting is of the cancelled type.');
   }
@@ -173,8 +139,6 @@ function moveToCancelled(task: Task, options: TaskMoveOptions): TaskMove {
     label: status.name,
     edit: (line) => setTaskStatus(line, task.checkboxColumn, {
       to: status,
-      namespace: options.statusNamespace,
-      writeAs: 'checkbox',
       ...(options.addCancelledDate === false ? {} : { cancelledDate: formatIsoDate(options.queryContext.now) }),
       preferredFormat: options.format,
     }),

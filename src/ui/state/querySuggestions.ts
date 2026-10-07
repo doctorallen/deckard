@@ -6,7 +6,7 @@ import { collectQueryTagKeys, quoteValue, toBuilderTree } from '../../domain/que
 import { FIELD_ALIASES, parseQuery } from '../../domain/query/queryParser';
 import { ParsedQuery, QUERY_FIELD_OPERATORS, QUERY_FIELDS, QUERY_PRIORITY_VALUES, QUERY_RESERVED_STATUS_VALUES } from '../../domain/query/queryTypes';
 import { DEFAULT_TASK_POLICY, type TaskPolicy } from '../../domain/tasks/taskPolicy';
-import { normalizeStatusName, readTaskStatus, UNKNOWN_STATUS_NAME } from '../../domain/tasks/taskStatuses';
+import { normalizeStatusName, UNKNOWN_STATUS_NAME } from '../../domain/tasks/taskStatuses';
 import {
   formatMonthName,
   formatShortDay,
@@ -369,11 +369,11 @@ const TASK_SUGGESTIONS: QuerySuggestion[] = [
  * characters no status names that its tasks use, each with how many open
  * tasks have it, and then open, done, and any.
  */
-function suggestStatuses(index: WorkspaceIndex, policy: Pick<TaskPolicy, 'statuses' | 'statusNamespace'>): QuerySuggestion[] {
+function suggestStatuses(index: WorkspaceIndex, policy: Pick<TaskPolicy, 'statuses'>): QuerySuggestion[] {
   const counts = new Map<string, number>();
   const unknown = new Set<string>();
   index.tasks.forEach((task) => {
-    const status = readTaskStatus(task, policy.statuses, policy.statusNamespace);
+    const status = task.status;
     const slug = normalizeStatusName(status.name).replace(/ /g, '-');
     counts.set(slug, (counts.get(slug) ?? 0) + 1);
     if (status.name === UNKNOWN_STATUS_NAME) {
@@ -392,7 +392,7 @@ function suggestStatuses(index: WorkspaceIndex, policy: Pick<TaskPolicy, 'status
       named.set(slug, {
         value: slug,
         label: status.name,
-        detail: `${status.symbol === undefined ? `#${policy.statusNamespace}/${status.tag ?? ''}` : `[${status.symbol}]`}${count ? ` · ${pluralize(count, 'task')}` : ''}`,
+        detail: `[${status.symbol}]${count ? ` · ${pluralize(count, 'task')}` : ''}`,
       });
     });
   const characters = [...unknown].sort().map((symbol) => ({

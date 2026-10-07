@@ -77,7 +77,7 @@ export interface Task {
   dependsOn?: string[];
   lineNumber: number;
   checkboxColumn: number;
-  /** Its checkbox's status; a `#status/…` tag on a ` ` box is read on top of this (taskStatuses.ts). */
+  /** Its checkbox's status, by the character in its box (taskStatuses.ts). */
   status: TaskStatus;
   sourceLineText: string;
   createdAt?: number;

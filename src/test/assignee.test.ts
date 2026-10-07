@@ -162,7 +162,6 @@ suite('Task assignees', () => {
       options: {
         queryContext: createQueryContext(Date.now()),
         statuses: [],
-        statusNamespace: 'status',
         format: 'emoji',
       },
     });
@@ -189,7 +188,6 @@ suite('Task assignees', () => {
     const options = {
       queryContext: createQueryContext(Date.now()),
       statuses: [],
-      statusNamespace: 'status',
       format: 'emoji' as const,
     };
     const byLine = [...index.tasks.values()].sort(

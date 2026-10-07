@@ -267,12 +267,12 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
  * column and four near-empty ones. Say so, and offer the grouping that works
  * for any task, before the reader takes the board for broken.
  */
-function StatusHint({ hint, namespace }: { readonly hint: { withoutStatus: number; open: number }; readonly namespace: string }) {
+function StatusHint({ hint }: { readonly hint: { withoutStatus: number; open: number } }) {
   return (
     <p class="board-hint">
-      {`${hint.withoutStatus} of ${hint.open} open tasks have no status. Write a `}
-      <code>{`#${namespace}/todo`}</code>
-      {' tag on a task, or drag a card into a column, to give it one. '}
+      {`${hint.withoutStatus} of ${hint.open} open tasks have no status. Write a character in a task's box, as `}
+      <code>[/]</code>
+      {', or drag a card into a column, to give it one. '}
       <button type="button" data-action="set-board-group" data-group="due">Group by due date</button>
     </p>
   );
@@ -296,7 +296,7 @@ export function TaskBoard({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
   }
   return (
     <>
-      {snapshot.statusHint ? <StatusHint key="hint" hint={snapshot.statusHint} namespace={(snapshot.settings && snapshot.settings.statusNamespace) || 'status'} /> : null}
+      {snapshot.statusHint ? <StatusHint key="hint" hint={snapshot.statusHint} /> : null}
       <div key={`board-${board.generation}`} class="board task-board" role="group" aria-label="Task board">
         {snapshot.columns.map((column) => <BoardColumn key={column.id} column={column} cards={column.cards} columns={snapshot.columns} />)}
       </div>

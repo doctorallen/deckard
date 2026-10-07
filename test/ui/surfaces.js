@@ -55,7 +55,7 @@ function createIndex(withSteps = false) {
   const long = 'Chase the replicant through the neon market and file the report before the rain';
   const lines = ['# Tasks #project/atlas', ''];
   for (let i = 1; i <= 40; i += 1) {
-    lines.push(`- [ ] ${i === 1 ? long : `Board task ${i}`} 📅 ${fixtureDue(i)} #status/doing`);
+    lines.push(`- [/] ${i === 1 ? long : `Board task ${i}`} 📅 ${fixtureDue(i)}`);
     // The board's cards: the long first task has steps, the next of them
     // too long for a column, so its line must ellipsize, not widen the card.
     if (i === 1 && withSteps) {
@@ -340,7 +340,7 @@ function createStatusBoardSurface(preferences) {
         index: statusIndex(),
         preferences: preferences.reader.value,
         search: { query: '' },
-        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'waiting', 'blocked'], statusNamespace: 'status', format: 'emoji', showCancelled: true },
+        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'in-progress', 'waiting', 'blocked'], format: 'emoji', showCancelled: true },
         tagTitleDisplayMode: 'inline',
       }),
       scrollers: ['html', '.board-cards'],
@@ -365,7 +365,7 @@ function createParentTagBoardSurface(preferences) {
     '- [ ] Book the flights',
     '## Antenna array #project/atlas',
     '- [/] Calibrate the receivers',
-    '- [ ] Hear back from legal #status/waiting',
+    '- [w] Hear back from legal',
     '### Cabling',
     '- [ ] Order the connectors',
     '## Vendors #team/ops',
@@ -380,7 +380,7 @@ function createParentTagBoardSurface(preferences) {
       index,
       preferences: preferences.reader.value,
       search: { query: '' },
-      options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'waiting', 'blocked'], statusNamespace: 'status', format: 'emoji', parentTag: true },
+      options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'in-progress', 'waiting', 'blocked'], format: 'emoji', parentTag: true },
       tagTitleDisplayMode: 'inline',
     }),
     scrollers: ['html', '.board-cards'],
@@ -395,7 +395,7 @@ function statusIndex() {
     '# Statuses',
     '- [ ] Draft the brief',
     '- [/] Calibrate the receivers',
-    '- [ ] Hear back from legal #status/waiting',
+    '- [w] Hear back from legal',
     '- [=] Wait for the vendor\'s quote',
     '- [?] Ask about the second lens',
     '- [x] Book the room ✅ 2026-09-24',
@@ -422,7 +422,7 @@ function createBoardSurfaces(boardIndex, preferences) {
         index: boardIndex,
         preferences: preferences.reader.value,
         search: { query: '' },
-        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
+        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'in-progress'], format: 'emoji' },
         tagTitleDisplayMode: 'inline',
       }),
       scrollers: ['.board-cards'],
@@ -439,7 +439,7 @@ function createBoardSurfaces(boardIndex, preferences) {
         index: boardIndex,
         preferences: { ...preferences.reader.value, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'project' },
         search: { query: '' },
-        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
+        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'in-progress'], format: 'emoji' },
         tagTitleDisplayMode: 'inline',
       }),
       scrollers: ['html', '.board-cards'],
@@ -456,7 +456,7 @@ function createBoardSurfaces(boardIndex, preferences) {
         index: boardIndex,
         preferences: preferences.reader.value,
         search: { query: '' },
-        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
+        options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'in-progress'], format: 'emoji' },
         tagTitleDisplayMode: 'inline',
       }),
       scrollers: ['html', '.board-cards'],
@@ -476,7 +476,7 @@ function createBoardSurfaces(boardIndex, preferences) {
           index: boardIndex,
           preferences: preferences.reader.value,
           search: { query: '#project/atlas' },
-          options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'doing', 'done'], statusNamespace: 'status', format: 'emoji' },
+          options: { queryContext: createQueryContext(NOW), statuses: ['todo', 'in-progress'], format: 'emoji' },
           tagTitleDisplayMode: 'inline',
         }),
         tasksViewMode: { listed: false },
@@ -827,16 +827,16 @@ function createNotePageSurfaces() {
  */
 function createTaskStatusesSurfaces() {
   const statuses = [
-    { symbol: ' ', name: 'Todo', type: 'todo', tag: 'todo', next: 'x' },
-    { symbol: '/', name: 'In progress', type: 'inProgress', tag: 'doing', next: 'x' },
+    { symbol: ' ', name: 'Todo', type: 'todo', next: 'x' },
+    { symbol: '/', name: 'In progress', type: 'inProgress', next: 'x' },
     { symbol: 'x', name: 'Done', type: 'done', next: ' ' },
     { symbol: 'X', name: 'Done', type: 'done', next: ' ' },
     { symbol: '-', name: 'Cancelled', type: 'cancelled', next: ' ' },
-    { name: 'Waiting', type: 'onHold', tag: 'waiting' },
-    { name: 'Someday', type: 'onHold', tag: 'someday' },
-    { symbol: '=', name: 'Blocked', type: 'onHold', tag: 'blocked', icon: 'blocked', next: ' ' },
+    { symbol: 'w', name: 'Waiting', type: 'onHold', next: ' ' },
+    { symbol: 's', name: 'Someday', type: 'onHold', next: ' ' },
+    { symbol: '=', name: 'Blocked', type: 'onHold', icon: 'blocked', next: ' ' },
   ];
-  const snapshot = (checkboxClick) => ({ statuses, checkboxClick, namespace: 'status', found: [{ symbol: '?', count: 3 }], canImport: true, target: 'user' });
+  const snapshot = (checkboxClick) => ({ statuses, checkboxClick, found: [{ symbol: '?', count: 3 }], canImport: true, target: 'user' });
   return [
     {
       page: 'taskStatuses',
@@ -910,8 +910,7 @@ function createDatedBoardSurface(boardIndex, preferences) {
       search: { query: '' },
       options: {
         queryContext: createQueryContext(NOW, { dateFormats: { date: DATED.dateFormat, short: DATED.shortDateFormat, locale: 'en', weekStart: 0 } }),
-        statuses: ['todo', 'doing', 'done'],
-        statusNamespace: 'status',
+        statuses: ['todo', 'in-progress'],
         format: 'emoji',
       },
       tagTitleDisplayMode: 'inline',

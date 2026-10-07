@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import type { IndexReader } from '../../core/workspace/indexReader';
 import { formatIsoDate } from '../../domain/markdown/calendar';
 import { countStatusMove, importObsidianStatuses, planStatusMove, type StatusMoveGroup, type StatusMoveLine } from '../../domain/tasks/statusMigration';
-import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
+import { readLegacyStatusTags } from '../../domain/tasks/legacyStatusTags';
 import type { TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
 import { pluralize } from '../../shared/text';
 import { resolveSourceUri } from './navigation';
@@ -36,8 +36,9 @@ const GROUP_LABELS: Readonly<Record<Exclude<StatusMoveGroup, 'kept'>, { label: s
 /** What the move is about to do, from the index as it is now. */
 function planFromIndex(indexer: Pick<IndexReader, 'getSnapshot'>, doneDate: string | undefined): { lines: StatusMoveLine[]; statuses: readonly TaskStatusDefinition[] } {
   const statuses = readTaskStatusOptions();
-  const namespace = readStatusNamespace(vscode.workspace.getConfiguration('deckard'));
-  const lines = planStatusMove(indexer.getSnapshot().tasks.values(), { statuses, namespace, ...(doneDate ? { doneDate } : {}) });
+  const configuration = vscode.workspace.getConfiguration('deckard');
+  const legacy = readLegacyStatusTags(configuration.get<unknown>('board.statusNamespace'), configuration.get<unknown>('tasks.statuses'));
+  const lines = planStatusMove(indexer.getSnapshot().tasks.values(), { statuses, legacy, ...(doneDate ? { doneDate } : {}) });
   return { lines, statuses };
 }
 
@@ -125,7 +126,7 @@ async function buildMoveEdit(moved: readonly StatusMoveLine[]): Promise<{ edit: 
 
 /** What the move left as tags, and why. */
 function describeKept(kept: number): string {
-  return `${pluralize(kept, 'task keeps its tag', 'tasks keep their tags')}: Waiting and Someday, and any tag no status names, have no character.`;
+  return `${pluralize(kept, 'task keeps its tag', 'tasks keep their tags')}: no status has a character for ${kept === 1 ? 'it' : 'them'} yet.`;
 }
 
 /** The first `data.json` Obsidian Tasks keeps in a workspace folder or its notes folder, read. */
@@ -182,8 +183,7 @@ export interface StatusOfferOptions {
  * The first scan's offers, each made once per workspace: to import a
  * vault's statuses where Obsidian Tasks keeps some and the workspace names
  * none of its own; otherwise to move status tags into checkboxes where any
- * task's tag has a character to move into, or to keep writing tags, which
- * sets `deckard.tasks.writeStatusAs` to `tag` for the workspace.
+ * task's tag has a character to move into.
  */
 export async function offerStatusMigrationOnce(
   workspaceState: vscode.Memento,
@@ -210,13 +210,11 @@ export async function offerStatusMigrationOnce(
   }
   await workspaceState.update(STATUS_MOVE_OFFERED, true);
   const chosen = await show(
-    `${pluralize(movable, 'task writes its status as a tag', 'tasks write their status as a tag')}, such as #status/doing, that a checkbox can say, as - [/]. Move them into their boxes, or keep writing tags?`,
+    `${pluralize(movable, 'task keeps its status in a #status tag', 'tasks keep their status in a #status tag')}, which Deckard no longer reads.`,
     'Preview the Move',
-    'Keep Tags',
+    'Later',
   );
   if (chosen === 'Preview the Move') {
     await run('deckard.moveStatusTagsIntoCheckboxes');
-  } else if (chosen === 'Keep Tags') {
-    await writeSetting('tasks.writeStatusAs', 'tag', vscode.ConfigurationTarget.Workspace);
   }
 }

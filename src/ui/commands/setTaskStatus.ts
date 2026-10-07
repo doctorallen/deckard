@@ -2,8 +2,6 @@ import * as vscode from 'vscode';
 
 import type { IndexReader } from '../../core/workspace/indexReader';
 import type { Task } from '../../domain/model';
-import { readTaskStatus } from '../../domain/tasks/taskStatuses';
-import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
 import { isTaskLine } from '../../domain/markdown/taskDraft';
 import { setTaskStatusTo, TaskWrites } from './taskActions';
 import { createStatusPicks, readDraftStatusReading } from './taskEditor';
@@ -28,7 +26,7 @@ export async function setTaskStatusCommand(
   }
   const scope = vscode.window.activeTextEditor?.document.uri;
   const reading = readDraftStatusReading(scope);
-  const current = readTaskStatus(task, reading.statuses, readStatusNamespace(vscode.workspace.getConfiguration('deckard', scope)));
+  const current = task.status;
   const chosen = await vscode.window.showQuickPick(createStatusPicks(reading.statuses, current.name), {
     title: `Set the status of "${task.title}"`,
     placeHolder: `Now ${current.name}`,

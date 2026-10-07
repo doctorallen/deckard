@@ -1,5 +1,4 @@
 import { Task, TaskSortMode, WorkspaceIndex } from '../domain/model';
-import { readStatusWriteMode, type StatusWriteMode } from '../domain/tasks/statusWrites';
 import { QueryContext } from '../domain/query/queryContext';
 import {
   AgendaGroupBy,
@@ -13,7 +12,7 @@ import {
 import { TaskMove } from '../domain/tasks/boardMoves';
 import { countLoad, RescheduleContext } from '../domain/tasks/reschedule';
 import { quoteTitle, readMetadataFormat } from '../domain/tasks/taskLines';
-import { readBoardStatuses, readStatusNamespace } from '../domain/tasks/taskPolicy';
+import { readBoardStatuses } from '../domain/tasks/taskPolicy';
 import type { Configuration } from '../ports/configuration';
 import { TaskMetadataFormat } from '../domain/markdown/taskFields';
 
@@ -39,7 +38,6 @@ export interface AgendaBuild {
   tasks?: Iterable<Task>;
   upcomingDays: number;
   groupBy?: AgendaGroupBy;
-  statusNamespace?: string;
   groupNamespace?: string;
   taskOrder?: readonly string[];
   taskSortMode?: TaskSortMode;
@@ -51,9 +49,7 @@ export interface AgendaBuild {
 export interface BoardMoveOptions {
   queryContext: QueryContext;
   statuses: readonly string[];
-  statusNamespace: string;
   format: TaskMetadataFormat;
-  writeAs?: StatusWriteMode;
   addCancelledDate?: boolean;
 }
 
@@ -173,11 +169,6 @@ export class AgendaService<G extends AgendaGroupLike> {
     return readAgendaQuery(this.settings());
   }
 
-  /** The namespace a task's status is written in. */
-  public readStatusNamespace(): string {
-    return readStatusNamespace(this.settings());
-  }
-
   /**
    * The view for `index`: its groups, badge, and status, built at one
    * moment and one reading of the settings, so the list and its badge agree
@@ -195,7 +186,6 @@ export class AgendaService<G extends AgendaGroupLike> {
       tasks: selected.tasks,
       upcomingDays: days,
       groupBy,
-      statusNamespace: readStatusNamespace(settings),
       groupNamespace: readAgendaGroupNamespace(settings, model.isNamespaceName),
       taskOrder,
       taskSortMode: readAgendaSort(settings),
@@ -358,9 +348,7 @@ export class AgendaService<G extends AgendaGroupLike> {
     return {
       queryContext,
       statuses: readBoardStatuses(configuration),
-      statusNamespace: readStatusNamespace(configuration),
       format: readMetadataFormat(configuration),
-      writeAs: readStatusWriteMode(configuration.get<unknown>('tasks.writeStatusAs')),
       addCancelledDate: configuration.get<boolean>('tasks.addCancelledDate', true),
     };
   }

@@ -14,9 +14,8 @@ import {
   parseTaskDraft,
   TaskDraft,
 } from '../../domain/markdown/taskDraft';
-import { readLineStatus, readStatusWriteMode, setTaskStatus, type StatusWriteMode } from '../../domain/tasks/statusWrites';
+import { readLineStatus, setTaskStatus } from '../../domain/tasks/statusWrites';
 import { DEFAULT_TASK_STATUSES, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
-import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
 import { readTaskStatusOptions } from './parseSettings';
 import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
 import { isMarkdownFile } from '../../core/workspace/scanner';
@@ -82,11 +81,9 @@ const REPEAT_RULES: readonly string[] = [
   'every year',
 ];
 
-/** The statuses a draft's status is read and written with, and how. */
+/** The statuses a draft's status is read and written with. */
 export interface DraftStatusReading {
   statuses: readonly TaskStatusDefinition[];
-  namespace: string;
-  writeAs: StatusWriteMode;
   /** `deckard.tasks.addCancelledDate`; cancelling writes a ❌ date unless it is false. */
   addCancelledDate: boolean;
 }
@@ -94,8 +91,6 @@ export interface DraftStatusReading {
 /** Deckard's own statuses, as a draft is read when no settings are given. */
 const DEFAULT_STATUS_READING: DraftStatusReading = {
   statuses: DEFAULT_TASK_STATUSES,
-  namespace: 'status',
-  writeAs: 'match',
   addCancelledDate: true,
 };
 
@@ -104,15 +99,13 @@ export function readDraftStatusReading(scope?: vscode.Uri): DraftStatusReading {
   const configuration = vscode.workspace.getConfiguration('deckard', scope);
   return {
     statuses: readTaskStatusOptions(scope),
-    namespace: readStatusNamespace(configuration),
-    writeAs: readStatusWriteMode(configuration.get<unknown>('tasks.writeStatusAs')),
     addCancelledDate: configuration.get<boolean>('tasks.addCancelledDate', true),
   };
 }
 
-/** A draft's status's name: its box's, or the one its status tag stands for. */
+/** A draft's status's name: its box's. */
 function nameDraftStatus(draft: TaskDraft, reading: DraftStatusReading): string {
-  return readLineStatus(formatTaskDraft(draft), draftCheckboxColumn(draft), reading.statuses, reading.namespace).name;
+  return readLineStatus(formatTaskDraft(draft), draftCheckboxColumn(draft), reading.statuses).name;
 }
 
 /** The rows of the editor, as the pick shows them for a draft, its dates in the reader's `formats`. */
@@ -273,14 +266,12 @@ export interface DraftStatusWrite {
 
 /**
  * The draft a status makes: its line written as setTaskStatus writes any
- * status, character or tag, with the dates its type keeps, and read back.
+ * status, its character with the dates its type keeps, and read back.
  */
 export function setDraftStatus(draft: TaskDraft, to: TaskStatusDefinition, { now, addDoneDate, reading }: DraftStatusWrite): TaskDraft {
   const date = formatIsoDate(now);
   const line = setTaskStatus(formatTaskDraft(draft), draftCheckboxColumn(draft), {
     to,
-    namespace: reading.namespace,
-    writeAs: reading.writeAs,
     ...(addDoneDate ? { doneDate: date } : {}),
     ...(reading.addCancelledDate ? { cancelledDate: date } : {}),
     preferredFormat: draft.format,
@@ -492,7 +483,7 @@ export interface StatusPick extends vscode.QuickPickItem {
 
 /**
  * Every status a task can have, in the order the settings list them: its
- * name, how it is written, and the current one marked. A `nonTask` status
+ * name, its character, and the current one marked. A `nonTask` status
  * is not offered, since a task given it would stop being a task.
  */
 export function createStatusPicks(statuses: readonly TaskStatusDefinition[], current: string): StatusPick[] {
@@ -500,7 +491,7 @@ export function createStatusPicks(statuses: readonly TaskStatusDefinition[], cur
     .filter((status) => status.type !== 'nonTask')
     .map((status) => ({
       label: `${status.name === current ? '$(check) ' : ''}${status.name}`,
-      description: [status.symbol === undefined ? '' : `[${status.symbol}]`, status.tag === undefined ? '' : `#…/${status.tag}`].filter(Boolean).join(' · '),
+      description: `[${status.symbol}]`,
       detail: STATUS_TYPE_WORDS[status.type],
       status,
     }));

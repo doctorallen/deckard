@@ -34,8 +34,6 @@ export interface QueryBlockPreviewSource {
   getIndex(): WorkspaceIndex | undefined;
   /** Called whenever a block renders, so the host knows a preview reads the index. */
   onDidRender?(): void;
-  /** The namespace of status tags, from `deckard.board.statusNamespace`. */
-  getStatusNamespace?(): string;
   /** The settings a block is evaluated in, for a render made at `now`. */
   getQueryContext(now: number): QueryContext;
   /**
@@ -73,7 +71,6 @@ export function addQueryBlockRenderer(
     return renderQueryBlockHtml(token.content, blockOptions, source.getIndex(), {
       queryContext: source.getQueryContext(Date.now()),
       sourceLine: token.map?.[0],
-      statusNamespace: source.getStatusNamespace?.(),
       ...(source.getTaskHref ? { taskHref: (item: QueryBlockItem) => source.getTaskHref?.(item) } : {}),
     });
   };
@@ -89,8 +86,6 @@ export interface QueryBlockRendering {
    * scrolling in step with the editor.
    */
   sourceLine?: number;
-  /** The namespace of status tags; `status` unless given. */
-  statusNamespace?: string;
   /** The link a task's checkbox opens; the box does nothing without one. */
   taskHref?: (item: QueryBlockItem) => string | undefined;
 }
@@ -119,7 +114,6 @@ export function renderQueryBlockHtml(
 
   const snapshot = getQueryBlockSnapshot(index, queryText, options, {
     queryContext,
-    statusNamespace: rendering.statusNamespace ?? 'status',
   });
   return [
     open,

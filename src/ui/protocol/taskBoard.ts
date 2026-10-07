@@ -220,7 +220,6 @@ export interface TaskTableRow {
 /** The `deckard.board` settings, as the Task Board's view options show them. */
 export interface TaskBoardSettings {
   statuses: string[];
-  statusNamespace: string;
   /**
    * Every status column the board draws, in its order: the listed ones,
    * then any other status an open task carries. The gear lists these, so a
@@ -331,12 +330,6 @@ export interface SetBoardParentTagMessage {
 export interface SetBoardShowCancelledMessage {
   type: 'setBoardShowCancelled';
   show: boolean;
-}
-
-/** Chooses the namespace whose tags are the board's statuses. */
-export interface SetBoardStatusNamespaceMessage {
-  type: 'setBoardStatusNamespace';
-  namespace: string;
 }
 
 /**
@@ -457,7 +450,6 @@ export interface TaskBoardPageToHost {
   setTableColumns: SetTableColumnsMessage;
   reorderTasks: ReorderTasksMessage;
   setBoardStatuses: SetBoardStatusesMessage;
-  setBoardStatusNamespace: SetBoardStatusNamespaceMessage;
   setBoardShowCancelled: SetBoardShowCancelledMessage;
   setBoardParentTag: SetBoardParentTagMessage;
 }

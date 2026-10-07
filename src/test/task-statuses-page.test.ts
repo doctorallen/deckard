@@ -18,12 +18,11 @@ suite('Edit Task Statuses page', () => {
 
   const SNAPSHOT: TaskStatusesSnapshot = {
     statuses: [
-      { symbol: ' ', name: 'Todo', type: 'todo', tag: 'todo', next: 'x' },
-      { symbol: '/', name: 'In progress', type: 'inProgress', tag: 'doing', next: 'x' },
+      { symbol: ' ', name: 'Todo', type: 'todo', next: 'x' },
+      { symbol: '/', name: 'In progress', type: 'inProgress', next: 'x' },
       { symbol: 'x', name: 'Done', type: 'done', next: ' ' },
     ],
     checkboxClick: 'done',
-    namespace: 'status',
     found: [{ symbol: '?', count: 3 }],
     canImport: true,
     target: 'user',

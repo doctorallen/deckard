@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 
-import { readStatusWriteMode, setTaskStatus, type StatusWriteMode } from '../../domain/tasks/statusWrites';
+import { setTaskStatus } from '../../domain/tasks/statusWrites';
 import type { TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
-import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
 import {
   extractTags,
   getEntityNamespaceAliases,
@@ -259,8 +258,6 @@ class BulkTally {
       format: readTaskMetadataFormat(configuration),
       addDoneDate: configuration.get<boolean>('tasks.addDoneDate', true),
       addCancelledDate: configuration.get<boolean>('tasks.addCancelledDate', true),
-      statusNamespace: readStatusNamespace(configuration),
-      writeStatusAs: readStatusWriteMode(configuration.get<unknown>('tasks.writeStatusAs')),
       entityNamespaceAliases: getEntityNamespaceAliases(
         configuration.get<unknown>('entityNamespaceAliases', {}),
       ),
@@ -302,8 +299,6 @@ interface RewriteOptions {
   format: 'emoji' | 'dataview';
   addDoneDate: boolean;
   addCancelledDate: boolean;
-  statusNamespace: string;
-  writeStatusAs: StatusWriteMode;
   entityNamespaceAliases: Record<string, string>;
   personMarker: string;
 }
@@ -367,8 +362,6 @@ function writeStatus(task: Task, status: TaskStatusDefinition, line: string, opt
   const date = formatIsoDate(now);
   const text = setTaskStatus(line, task.checkboxColumn, {
     to: status,
-    namespace: options.statusNamespace,
-    writeAs: options.writeStatusAs,
     ...(options.addDoneDate ? { doneDate: date } : {}),
     ...(options.addCancelledDate ? { cancelledDate: date } : {}),
     preferredFormat: options.format,

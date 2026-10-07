@@ -49,7 +49,6 @@ import type { PageChrome } from '../../components';
 import type { ThemePreview } from '../../themePreview';
 import { narrowSidebarNotesMessage } from './messages';
 import { RelatedNotesRankingOptions } from '../../../../domain/ranking/relatedNotesContext';
-import { readStatusNamespace } from '../../../../domain/tasks/taskPolicy';
 import { normalizeTagTitleDisplayMode } from '../../../state/entryCards';
 
 /** How long cursor moves must pause before the sidebar ranks a new entry. */
@@ -613,8 +612,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     if (event.affectsConfiguration('deckard.pages') || event.affectsConfiguration('deckard.agenda.query')) {
       this.refreshPages();
     }
-    // The ranking reads settings it does not redraw for, such as the board's
-    // status namespace, so any of Deckard's means the state may be out of date.
+    // The ranking reads settings it does not redraw for, such as the date
+    // format, so any of Deckard's means the state may be out of date.
     if (event.affectsConfiguration('deckard')) {
       this.forgetCurrent();
     }
@@ -885,10 +884,6 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       associationMinimumSupport: configuration.get<number>('relatedNotesAssociationMinimumSupport', 1),
       recencyHalfLifeDays: configuration.get<number>('relatedNotesRecencyHalfLifeDays', 0),
       hidePeriodicNotes: this.sidebar.preferences.reader.value.hideDailyNotes === true,
-      // The board's status is how a task moves, not what a note is about.
-      excludedTagNamespaces: [
-        readStatusNamespace(vscode.workspace.getConfiguration('deckard')),
-      ],
       dateFormats: readDateFormats(),
     };
   }

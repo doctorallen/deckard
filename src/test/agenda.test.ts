@@ -229,7 +229,7 @@ suite('Agenda', () => {
         id: 'due-today',
         dueAt: at(9, 13),
         assignee: '@dana',
-        associationTagGroups: [[{ key: '#status/doing', label: '#status/doing' }]],
+        status: { symbol: '/', name: 'In progress', type: 'inProgress' },
       }),
       createTask({ id: 'upcoming', dueAt: at(9, 18), assignee: '@dana' }),
       createTask({ id: 'undated' }),
@@ -249,10 +249,9 @@ suite('Agenda', () => {
       'a group is marked the way its tasks are, and the unmarked one is last',
     );
     assert.deepStrictEqual(grouped('status'), [
-      // The busiest group first, and the tasks carrying no status last. A
-      // #status/doing tag is the In progress status, by its name.
+      // The busiest group first: a plain box is Todo.
+      ['Todo', ['overdue', 'upcoming', 'undated']],
       ['In progress', ['due-today']],
-      ['No status', ['overdue', 'upcoming', 'undated']],
     ]);
     assert.deepStrictEqual(grouped('assignee'), [
       ['@dana', ['due-today', 'upcoming']],
@@ -282,7 +281,7 @@ suite('Agenda', () => {
   test('knows which groups a dropped task can join', () => {
     assert.strictEqual(groupColumnId('priority:high', 'priority'), 'priority:high');
     assert.strictEqual(groupColumnId('priority:none', 'priority'), 'priority:');
-    assert.strictEqual(groupColumnId('doing', 'status'), 'status:doing');
+    assert.strictEqual(groupColumnId('in-progress', 'status'), 'status:in-progress');
     assert.strictEqual(groupColumnId('none', 'status'), 'status:');
     assert.strictEqual(groupColumnId('today', 'due'), 'due:today');
     // Overdue and Upcoming cover a range of days, so neither names one edit.

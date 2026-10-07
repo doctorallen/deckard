@@ -77,7 +77,7 @@ export interface TableTask {
   priority?: TaskPriority;
   /** The person's tag as written, such as `@dana`. */
   assignee?: string;
-  /** The `#status/…` name, without the namespace. */
+  /** Its status's name; none for a plain to do. */
   status?: string;
   /** Tag labels, as written. */
   tags?: readonly string[];

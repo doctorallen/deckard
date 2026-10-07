@@ -52,13 +52,10 @@ suite('Task Board messages', () => {
       undefined,
       'a status that cannot be a tag is refused',
     );
-    assert.deepStrictEqual(
-      narrowTaskBoardMessage({ type: 'setBoardStatusNamespace', namespace: 'stage' }),
-      { type: 'setBoardStatusNamespace', namespace: 'stage' },
-    );
     assert.strictEqual(
-      narrowTaskBoardMessage({ type: 'setBoardStatusNamespace', namespace: '1stage' }),
+      narrowTaskBoardMessage({ type: 'setBoardStatusNamespace', namespace: 'stage' }),
       undefined,
+      'the status tag namespace is gone',
     );
     assert.deepStrictEqual(
       narrowTaskBoardMessage({ type: 'moveTask', taskId: 'a', column: 'status:doing' }),

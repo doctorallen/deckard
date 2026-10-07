@@ -44,7 +44,7 @@ suite('Dates in the reader\'s format', () => {
         index,
         preferences: { ...store.reader.value, taskBoardLayout: 'board' },
         search: { query: '' },
-        options: { queryContext: context, statuses: ['todo', 'doing'], statusNamespace: 'status', format: 'emoji', showDone: true } as never,
+        options: { queryContext: context, statuses: ['todo', 'doing'], format: 'emoji', showDone: true } as never,
         tagTitleDisplayMode: 'inline',
       });
     } finally {

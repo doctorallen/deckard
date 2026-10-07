@@ -25,9 +25,8 @@ import type { EditApplier, HistoryWriter, NoteText, TextRange } from '../ports/e
 import type { ResourceUri } from '../ports/uri';
 import { createNextOccurrence, setTaskLineCompletion, writeCompletion } from '../domain/markdown/taskLineEdits';
 import { formatIsoDate } from '../domain/markdown/calendar';
-import { readStatusNamespace } from '../domain/tasks/taskPolicy';
-import { nextStatus, readStatusWriteMode, setTaskStatus, type StatusWriteMode } from '../domain/tasks/statusWrites';
-import { readTaskStatus, readTaskStatusSettings, type TaskStatusDefinition } from '../domain/tasks/taskStatuses';
+import { nextStatus, setTaskStatus } from '../domain/tasks/statusWrites';
+import { readTaskStatusSettings, type TaskStatusDefinition } from '../domain/tasks/taskStatuses';
 
 /** One of the two statuses every list has, ` ` Todo or `x` Done, by its character. */
 function coreStatus(statuses: readonly TaskStatusDefinition[], symbol: ' ' | 'x'): TaskStatusDefinition {
@@ -225,15 +224,14 @@ export class TaskService<U extends ResourceUri, H = unknown> {
    * Obsidian Tasks metadata in step: a done date is added on completion and
    * removed on reopening, and completing a task with a repeat rule writes its
    * next occurrence on the line above, where Tasks puts it. A task reopened
-   * is `[ ]`, whatever status it had: its status tag goes too.
+   * is `[ ]`, whatever status it had.
    */
   public toggle(task: Task, completed: boolean): Promise<LineUpdate<U, Completion>> {
-    return this.writeStatus(task, (statuses) => (completed ? coreStatus(statuses, 'x') : coreStatus(statuses, ' ')), completed ? undefined : 'checkbox');
+    return this.writeStatus(task, (statuses) => (completed ? coreStatus(statuses, 'x') : coreStatus(statuses, ' ')));
   }
 
   /**
-   * Sets a task's status, as `deckard.tasks.writeStatusAs` says to write
-   * it, with the dates its type keeps: a change to done is a completion,
+   * Sets a task's status, as its character, with the dates its type keeps: a change to done is a completion,
    * next occurrence and all, and a change to cancelled writes ❌.
    */
   public setStatus(task: Task, to: TaskStatusDefinition): Promise<LineUpdate<U, Completion>> {
@@ -252,14 +250,13 @@ export class TaskService<U extends ResourceUri, H = unknown> {
       return undefined;
     }
     const statuses = readTaskStatusSettings(configuration);
-    return nextStatus(readTaskStatus(task, statuses, readStatusNamespace(configuration)), statuses);
+    return nextStatus(task.status, statuses);
   }
 
   /** Writes the status `pick` chooses from the note's statuses, and completes the task when it becomes done. */
   private writeStatus(
     task: Task,
     pick: (statuses: readonly TaskStatusDefinition[]) => TaskStatusDefinition,
-    writeAs?: StatusWriteMode,
   ): Promise<LineUpdate<U, Completion>> {
     return this.rewrite<Completion>(task, (line, { uri, eol, lines, lineIndex }) => {
       const now = this.options.clock.now();
@@ -268,8 +265,6 @@ export class TaskService<U extends ResourceUri, H = unknown> {
       const to = pick(statuses);
       const replacement = setTaskStatus(line, task.checkboxColumn, {
         to,
-        namespace: readStatusNamespace(configuration),
-        writeAs: writeAs ?? readStatusWriteMode(configuration.get<unknown>('tasks.writeStatusAs')),
         ...(configuration.get<boolean>('tasks.addDoneDate', true) ? { doneDate: formatIsoDate(now) } : {}),
         ...(configuration.get<boolean>('tasks.addCancelledDate', true) ? { cancelledDate: formatIsoDate(now) } : {}),
         preferredFormat: readMetadataFormat(configuration),
@@ -479,7 +474,6 @@ export class TaskService<U extends ResourceUri, H = unknown> {
       eol: request.eol,
       documentLines: request.documentLines,
       statuses: readTaskStatusSettings(configuration),
-      statusNamespace: readStatusNamespace(configuration),
     });
     if (result.lines.length === 0) {
       return { kind: 'none' };

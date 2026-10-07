@@ -5,7 +5,6 @@ import type { IndexReader, IndexUpdates } from '../../../../core/workspace/index
 import { findFencedLines } from '../../../../domain/markdown/lineShapes';
 import { checkStatusList } from '../../../../domain/tasks/statusChecks';
 import { findStatusRenames, renameStatusInQuery, type StatusRename } from '../../../../domain/tasks/statusMigration';
-import { readStatusNamespace } from '../../../../domain/tasks/taskPolicy';
 import { readTaskStatuses, readTaskStatusSettings, UNKNOWN_STATUS_NAME } from '../../../../domain/tasks/taskStatuses';
 import { pluralize } from '../../../../shared/text';
 import { resolveSourceUri } from '../../../commands/navigation';
@@ -75,18 +74,17 @@ export class TaskStatusesController implements PageController<TaskStatusesSnapsh
     return {
       statuses: readTaskStatusSettings(configuration).map((status) => ({ ...status })),
       checkboxClick: configuration.get<string>('tasks.checkboxClick', 'done') === 'workflow' ? 'workflow' : 'done',
-      namespace: readStatusNamespace(configuration),
       found: [...counts].map(([symbol, count]) => ({ symbol, count })).sort((left, right) => right.count - left.count || left.symbol.localeCompare(right.symbol)),
       canImport: true,
       target: configuration.inspect('tasks.statuses')?.workspaceValue === undefined ? 'user' : 'workspace',
     };
   }
 
-  /** Redraws when the statuses or the status settings change, and when the notes do. */
+  /** Redraws when the task settings change, and when the notes do. */
   public subscribe(page: PageContext): vscode.Disposable[] {
     return [
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.tasks') || event.affectsConfiguration('deckard.board.statusNamespace')) {
+        if (event.affectsConfiguration('deckard.tasks')) {
           page.refresh();
         }
       }),

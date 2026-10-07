@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 
 import { isMarkdownFile } from '../../core/workspace/scanner';
-import { readStatusNamespace } from '../../domain/tasks/taskPolicy';
 import { WorkspaceIndex } from '../../domain/model';
 import { toPlainMarkdown } from '../state/plainMarkdown';
 import { readQueryContext } from './queryContext';
@@ -28,7 +27,6 @@ export async function copyAsPlainMarkdownCommand(indexer: { getSnapshot(): Works
     {
       index: indexer.getSnapshot(),
       queryContext: readQueryContext(),
-      statusNamespace: readStatusNamespace(vscode.workspace.getConfiguration('deckard')),
     },
     whole,
   );

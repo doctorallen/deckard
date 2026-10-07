@@ -8,8 +8,6 @@ import type { TagReference, Task, WorkspaceIndex } from '../model';
 
 /** Which tags a parent tag may not be, since the card already says them. */
 export interface ParentTagRules {
-  /** The namespace of status tags, `status`: a status says nothing of what a task is part of. */
-  statusNamespace: string;
   /** A namespace whose tags the board's columns already name, when it is grouped by one. */
   groupNamespace?: string;
 }
@@ -22,15 +20,14 @@ function isInNamespace(key: string, namespace: string): boolean {
 /**
  * The tag a task is under, nearest first: the first tag written on the
  * heading it is under, else on each heading above that, else on its note's
- * front matter, leaving out a tag its own line writes, a status tag, and a
- * tag of the namespace the board is grouped by. Undefined when no tag is
+ * front matter, leaving out a tag its own line writes and a tag of the
+ * namespace the board is grouped by. Undefined when no tag is
  * left.
  */
-export function findParentTag(index: WorkspaceIndex, task: Task, rules: ParentTagRules): TagReference | undefined {
+export function findParentTag(index: WorkspaceIndex, task: Task, rules: ParentTagRules = {}): TagReference | undefined {
   const own = new Set((task.associationTagGroups?.[0] ?? []).map((tag) => tag.key.toLowerCase()));
   const usable = (tag: TagReference): boolean =>
     !own.has(tag.key.toLowerCase()) &&
-    !isInNamespace(tag.key, rules.statusNamespace) &&
     !(rules.groupNamespace !== undefined && isInNamespace(tag.key, rules.groupNamespace));
   for (let section = task.sectionId ? index.sections.get(task.sectionId) : undefined; section; section = section.parentSectionId ? index.sections.get(section.parentSectionId) : undefined) {
     const found = (section.headingTags ?? []).find(usable);

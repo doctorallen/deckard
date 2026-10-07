@@ -55,7 +55,7 @@ export const AGENDA_GROUPINGS: readonly {
     detail: 'Overdue, Today, and Upcoming',
   },
   { id: 'priority', label: 'Priority', detail: 'Highest to lowest' },
-  { id: 'status', label: 'Status', detail: 'The #status/… tag on each task' },
+  { id: 'status', label: 'Status', detail: "The status in each task's box, as [/] is In progress" },
   { id: 'assignee', label: 'Person', detail: 'Who each task is for' },
   {
     id: 'tag',
@@ -118,7 +118,6 @@ export interface AgendaOptions {
   /** How many days ahead Upcoming reaches; a date past that is Later. */
   upcomingDays: number;
   groupBy?: AgendaGroupBy;
-  statusNamespace?: string;
   /** The namespace whose tags are the groups when `groupBy` is `tag`. */
   groupNamespace?: string;
   /**
@@ -260,7 +259,7 @@ type Regrouper = (
 const REGROUPERS = new Map<AgendaGroupBy, Regrouper>([
   ['priority', (entries, _index, _options, order) => groupByPriority(entries, order)],
   ['status', (entries, _index, options, order) =>
-    groupByStatus(entries, { statuses: options.taskPolicy.statuses, namespace: options.statusNamespace ?? 'status' }, order)],
+    groupByStatus(entries, options.taskPolicy.statuses, order)],
   ['tag', (entries, index, options, order) =>
     groupByTag(entries, index, options.groupNamespace ?? 'project', order)],
 ]);
@@ -452,19 +451,18 @@ function groupByPriority(
 }
 
 /**
- * Each task's status, its checkbox's or its line's status tag's, busiest
- * status first, by the key the board's column for it has, so a drop on a
- * group writes what a drop on that column does; a plain `[ ]` with no tag,
- * and a character no status names, are No status.
+ * Each task's status, its checkbox's, busiest status first, by the key the
+ * board's column for it has, so a drop on a group writes what a drop on
+ * that column does; a character no status names is No status.
  */
 function groupByStatus(
   entries: readonly AgendaEntry[],
-  reading: { statuses: TaskPolicy['statuses']; namespace: string },
+  statuses: TaskPolicy['statuses'],
   order: (left: AgendaEntry, right: AgendaEntry) => number,
 ): AgendaGroup[] {
-  const statusOf = (entry: AgendaEntry): string => readStatusColumnKey(entry.task, reading.statuses, reading.namespace) ?? '';
+  const statusOf = (entry: AgendaEntry): string => readStatusColumnKey(entry.task, statuses) ?? '';
   const labelOf = (key: string): string =>
-    key ? statusForColumnKey(reading.statuses, key)?.name ?? capitalize(key.replace(/[-_]+/g, ' ')) : 'No status';
+    key ? statusForColumnKey(statuses, key)?.name ?? capitalize(key.replace(/[-_]+/g, ' ')) : 'No status';
   return collect(entries, statusOf, labelOf, order);
 }
 

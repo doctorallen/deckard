@@ -2830,7 +2830,7 @@
               "minimum": 1
             },
             "default": {},
-            "description": "Work-in-progress limits for board columns, by status, such as { \"doing\": 3 }, or by column, such as { \"priority:high\": 5 }. A column over its limit shows its count against it, 5 / 3, with a neutral outline. A drop is never refused.",
+            "description": "Work-in-progress limits for board columns, by status, its name with a hyphen for a space, such as { \"in-progress\": 3 }, or by column, such as { \"priority:high\": 5 }. A column over its limit shows its count against it, 5 / 3, with a neutral outline. A drop is never refused.",
             "order": 11
           },
           "deckard.board.statuses": {
@@ -2859,13 +2859,6 @@
             "description": "Show each task's nearest parent tag above its title on the Task board: the tag on the nearest tagged heading above the task, or on its note's front matter.",
             "order": 12
           },
-          "deckard.board.statusNamespace": {
-            "type": "string",
-            "default": "status",
-            "pattern": "^\\p{L}[\\p{L}\\p{N}\\p{M}_-]*$",
-            "description": "Tag namespace that holds a task's status on the task board, so the default reads #status/doing.",
-            "order": 12
-          },
           "deckard.tasks.statuses": {
             "type": "array",
             "items": {
@@ -2875,7 +2868,7 @@
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 2,
-                  "description": "The character between the brackets, as [/]. Leave it out for a status written only as a tag, such as Waiting."
+                  "description": "The character between the brackets, as [/]."
                 },
                 "name": {
                   "type": "string",
@@ -2901,11 +2894,6 @@
                     "Not a task: the line stays text, as a pro and con list's."
                   ]
                 },
-                "tag": {
-                  "type": "string",
-                  "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N}\\p{M}_-]*$",
-                  "description": "The #status/… tag that stands for it, written without the namespace: doing for #status/doing."
-                },
                 "next": {
                   "type": "string",
                   "minLength": 1,
@@ -2926,6 +2914,7 @@
                 }
               },
               "required": [
+                "symbol",
                 "name",
                 "type"
               ]
@@ -2935,14 +2924,12 @@
                 "symbol": " ",
                 "name": "Todo",
                 "type": "todo",
-                "tag": "todo",
                 "next": "x"
               },
               {
                 "symbol": "/",
                 "name": "In progress",
                 "type": "inProgress",
-                "tag": "doing",
                 "next": "x"
               },
               {
@@ -2964,25 +2951,26 @@
                 "next": " "
               },
               {
+                "symbol": "w",
                 "name": "Waiting",
                 "type": "onHold",
-                "tag": "waiting"
+                "next": " "
               },
               {
+                "symbol": "s",
                 "name": "Someday",
                 "type": "onHold",
-                "tag": "someday"
+                "next": " "
               },
               {
                 "symbol": "=",
                 "name": "Blocked",
                 "type": "onHold",
-                "tag": "blocked",
                 "icon": "blocked",
                 "next": " "
               }
             ],
-            "markdownDescription": "What each checkbox character means, as Obsidian Tasks' statuses do: `- [/]` in progress, `- [-]` cancelled, `- [=]` blocked. Each has a `name`, a `type` (`todo`, `inProgress`, `onHold`, `done`, `cancelled`, or `nonTask`), and, optionally, the `#status/…` `tag` that stands for it. A character no status names is a task to do, called Unknown. `[ ]` and `[x]` are always Todo and Done.",
+            "markdownDescription": "What each checkbox character means, as Obsidian Tasks' statuses do: `- [/]` in progress, `- [w]` waiting, `- [s]` someday, `- [=]` blocked, `- [-]` cancelled. Each has its `symbol`, a `name`, and a `type` (`todo`, `inProgress`, `onHold`, `done`, `cancelled`, or `nonTask`). A task's status is its box's character alone: a `#status/…` tag is a tag like any other. A character no status names is a task to do, called Unknown. `[ ]` and `[x]` are always Todo and Done.",
             "order": 12
           },
           "deckard.tasks.checkboxClick": {
@@ -3000,43 +2988,12 @@
             "markdownDescription": "What a click on a task's box does, in a page, the Markdown preview, and the Tasks view. **Deckard: Toggle Task Done** always goes to done and back. Set other statuses with **Deckard: Set Task Status…** or the Task board.",
             "order": 12
           },
-          "deckard.tasks.writeStatusAs": {
-            "type": "string",
-            "scope": "resource",
-            "enum": [
-              "match",
-              "checkbox",
-              "tag"
-            ],
-            "enumDescriptions": [
-              "As the line already writes it: as its tag when the line has a status tag, as its character when it doesn't.",
-              "Always as its character, as [/], taking the status tag away.",
-              "Always as its #status/… tag, in an empty box."
-            ],
-            "default": "match",
-            "markdownDescription": "How Deckard writes a status that has both a character and a tag, as In progress has `[/]` and `#status/doing`. A status with only a tag, such as Waiting, is always its tag; done and cancelled are always their characters.",
-            "order": 12
-          },
           "deckard.tasks.addCancelledDate": {
             "type": "boolean",
             "scope": "resource",
             "default": true,
             "description": "Add a cancelled date (❌ or [cancelled:: …]) when Deckard cancels a task. Reopening the task removes it.",
             "order": 0
-          },
-          "deckard.tasks.onHoldStatuses": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N}\\p{M}_-]*$"
-            },
-            "default": [
-              "waiting",
-              "someday"
-            ],
-            "description": "Statuses that put a task on hold: is:available leaves out a task whose #status/… tag is one of these. Write them without the namespace, as in deckard.board.statuses.",
-            "markdownDeprecationMessage": "Give the status the `onHold` type in `#deckard.tasks.statuses#` instead. Each tag listed here is still read as an on-hold status.",
-            "order": 13
           },
           "deckard.tasks.suggestSteps": {
             "type": "boolean",

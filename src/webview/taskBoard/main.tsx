@@ -7,7 +7,7 @@
  */
 import type { StateMessage } from '../../ui/protocol/messaging';
 import type { SavedToTasksViewMessage, TaskBoardMessage, TaskBoardSnapshot, ToggleRefusedMessage } from '../../ui/protocol/taskBoard';
-import { checkNewStatusColumn, checkStatusNamespace } from '../../domain/tasks/taskColumns';
+import { checkNewStatusColumn } from '../../domain/tasks/taskColumns';
 import { type ActionMenuGroup, closeActionMenu, openActionMenu } from '../shared/actionMenu';
 import { HelpButton } from '../shared/buttons';
 import { Eyebrow } from '../shared/eyebrow';
@@ -52,7 +52,7 @@ function post(message: TaskBoardMessage): void {
 }
 
 /** What is being typed into the gear's fields, kept across draws, and what was wrong with the last one saved. */
-let drafts: SettingsDrafts = { status: '', namespace: undefined, error: '' };
+let drafts: SettingsDrafts = { status: '', error: '' };
 
 /** The snapshot the host sent last, which the search box reads as it is told of it. */
 let latest: TaskBoardSnapshot | undefined;
@@ -431,25 +431,6 @@ function addStatus(snapshot: TaskBoardSnapshot): void {
   setStatuses([...names, checked.value]);
 }
 
-/** Saves the status tag typed in the gear, or says why it cannot be one. */
-function saveNamespace(snapshot: TaskBoardSnapshot): void {
-  if (drafts.namespace === undefined) {
-    return;
-  }
-  const checked = checkStatusNamespace(drafts.namespace);
-  if (checked.error !== undefined) {
-    drafts = { ...drafts, error: checked.error };
-    redraw();
-    return;
-  }
-  drafts = { ...drafts, error: '', namespace: undefined };
-  if (checked.value === snapshot.settings.statusNamespace) {
-    redraw();
-  } else {
-    post({ type: 'setBoardStatusNamespace', namespace: checked.value });
-  }
-}
-
 /** Removes a status column from the gear, offering Undo. */
 function removeStatus(snapshot: TaskBoardSnapshot, status: string | undefined): void {
   const statuses = statusColumnNames(snapshot);
@@ -575,9 +556,6 @@ document.addEventListener('submit', (event) => {
   if (snapshot && form.dataset.form === 'add-status') {
     addStatus(snapshot);
   }
-  if (snapshot && form.dataset.form === 'status-namespace') {
-    saveNamespace(snapshot);
-  }
 });
 
 document.addEventListener('keydown', (event) => {
@@ -628,9 +606,6 @@ document.addEventListener('input', (event) => {
   const target = event.target as HTMLInputElement;
   if (target.dataset.action === 'status-draft') {
     drafts = { ...drafts, status: target.value };
-  }
-  if (target.dataset.action === 'namespace-draft') {
-    drafts = { ...drafts, namespace: target.value };
   }
 });
 

@@ -34,8 +34,6 @@ export interface PlainMarkdownContext {
   index: WorkspaceIndex;
   /** The moment and settings a query block's results are read at. */
   queryContext: QueryContext;
-  /** The namespace of status tags; `status` unless given. */
-  statusNamespace?: string;
 }
 
 /**
@@ -160,7 +158,6 @@ function writeEmbed(target: string, documentSource: string, context: PlainMarkdo
 export function writeQueryBlock(query: string, options: QueryBlockOptions, context: PlainMarkdownContext): string {
   const snapshot = getQueryBlockSnapshot(context.index, query, options, {
     queryContext: context.queryContext,
-    statusNamespace: context.statusNamespace ?? 'status',
   });
   if (snapshot.hasError) {
     return `\`${query.trim()}\``;

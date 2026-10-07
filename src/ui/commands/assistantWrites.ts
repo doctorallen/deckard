@@ -11,9 +11,9 @@ import { resolveSourceUri } from './navigation';
 import { completeDraft, readDraftStatusReading, setDraftStatus, writeEditedTask, type DraftStatusReading } from './taskEditor';
 import { DEFAULT_TASK_STATUSES, normalizeStatusName, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
 
-/** Deckard's own statuses, written as the line already writes them. */
+/** Deckard's own statuses. */
 function readDefaultStatusReading(): DraftStatusReading {
-  return { statuses: DEFAULT_TASK_STATUSES, namespace: 'status', writeAs: 'match', addCancelledDate: true };
+  return { statuses: DEFAULT_TASK_STATUSES, addCancelledDate: true };
 }
 import { readTaskMetadataFormat } from './taskActions';
 import { WorkspaceWriteHistory } from './workspaceWrites';

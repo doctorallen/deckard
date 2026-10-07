@@ -25,12 +25,12 @@ first is done.
 
 ## Relay receivers #project/ghostline-relay
 
-- [ ] Calibrate the three receivers #status/doing 👤 #person/ren-kade 🆔 calibrate
-- [ ] Run the passive-ping comparison #status/todo 👤 #person/ren-kade ⛔ calibrate
-- [ ] Hear back from Praxis Loom on audio retention #status/waiting #contact/praxis-loom
-- [ ] Review the receiver contract with counsel #status/todo 👤 #person/juno-hale
-- [ ] Ask Leena to audit the activation log #status/todo [assignee:: #person/leena-sato]
-- [ ] Try a second vendor for the lens coating #status/someday
+- [/] Calibrate the three receivers 👤 #person/ren-kade 🆔 calibrate
+- [ ] Run the passive-ping comparison 👤 #person/ren-kade ⛔ calibrate
+- [w] Hear back from Praxis Loom on audio retention #contact/praxis-loom
+- [ ] Review the receiver contract with counsel 👤 #person/juno-hale
+- [ ] Ask Leena to audit the activation log [assignee:: #person/leena-sato]
+- [s] Try a second vendor for the lens coating
 - [/] Go over the shell-camera frames with #person/ivo-chen
 - [-] Book a second shell camera for the north exits ❌ {{date-2}}
 
