@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.4.0 - 2026-10-06
+
+### Highlights
+
+- A task's status is its checkbox character, `[w]` Waiting and `[s]` Someday, and the board's columns are your status list.
+- **Add Task** works anywhere and replaces Capture, board cards rank by drag, and dates follow a format of your own.
+- Help is the guide, Deckard's pages sit at the top of Context, and 48 settings gave way to one way of doing each thing.
+
 ### Added
 
 - **Parent tags on the Task board.** **Show the tag each task is under**,
