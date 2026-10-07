@@ -719,6 +719,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.chooseDateFormat",
+        "title": "Choose Date Format…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.enableZenMode",
         "title": "Enter Zen",
         "category": "Deckard",
@@ -2143,7 +2148,7 @@
             "type": "string",
             "default": "YYYY-MM-DD",
             "scope": "application",
-            "markdownDescription": "How Deckard writes a date for you to read: on pages, in views, in messages, and in the task editor. Written with the tokens Obsidian's daily notes use, such as `YYYY-MM-DD`, `DD/MM/YYYY`, `D MMM YYYY`, or `ddd, MMM D, YYYY`; `L` and `LL` are your display language's own forms, and text in `[brackets]` is written as it is. Dates written into notes, file names, and searches stay `YYYY-MM-DD`. Empty, or a format with no date in it, reads as `YYYY-MM-DD`. Your own choice, the same in every workspace.",
+            "markdownDescription": "How Deckard writes a date for you to read: on pages, in views, in messages, and in the task editor. Written with the tokens Obsidian's daily notes use, such as `YYYY-MM-DD`, `DD/MM/YYYY`, `D MMM YYYY`, or `ddd, MMM D, YYYY`; `L` and `LL` are your display language's own forms, and text in `[brackets]` is written as it is. Dates written into notes, file names, and searches stay `YYYY-MM-DD`. Empty, or a format with no date in it, reads as `YYYY-MM-DD`. [Choose Date Format…](command:deckard.chooseDateFormat) shows each with today's date. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.display.shortDateFormat": {

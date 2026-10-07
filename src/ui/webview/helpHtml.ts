@@ -94,6 +94,7 @@ const COMMAND_NOTES: Readonly<Record<string, string>> = {
   'deckard.outline.filterByTag': 'Shows only the Outline headings that carry a tag, or a tag under it.',
   'deckard.outline.clearTagFilter': 'Shows every heading in the Outline again.',
   'deckard.chooseTheme': 'Previews each theme on the open pages as you move through the list.',
+  'deckard.chooseDateFormat': 'Shows today in each format; Custom… says it back as you type.',
 };
 
 /**
