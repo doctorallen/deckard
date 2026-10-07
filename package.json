@@ -626,7 +626,7 @@
       },
       {
         "command": "deckard.showEntryRelatedNotesDebug",
-        "title": "Show Related Notes Ranking",
+        "title": "Open Related Notes Ranking",
         "category": "Deckard"
       },
       {

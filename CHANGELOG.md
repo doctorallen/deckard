@@ -24,7 +24,7 @@
 - **Sort the Tasks view.** **Sort Tasks By…**, in the view's title,
   orders each group by rank, by when its tasks were created or updated, or
   by title, either way, and the view keeps the choice.
-- **Show Related Notes Ranking.** `Deckard: Show Related Notes Ranking`,
+- **Open Related Notes Ranking.** `Deckard: Open Related Notes Ranking`,
   in the palette for a Markdown note, shows how Related Notes ranks for
   the tagged entry the cursor is in: each tag's weight and where it came
   from, the associations, links, and shared words, score by score. It was
@@ -151,7 +151,7 @@
 - **Deprecated settings, now gone.** `deckard.zenMode`, which
   `deckard.display.level` replaced; `deckard.parseInlineTags`, which
   `deckard.noteBoundaries` replaced; and `deckard.developerMode`, whose
-  ranking breakdown is `Deckard: Show Related Notes Ranking`.
+  ranking breakdown is `Deckard: Open Related Notes Ranking`.
 - **Settings collapsed into another.** `deckard.display.fileAndLine` into
   `deckard.display.cardDetails`; `deckard.dailyNoteTemplate`,
   `deckard.weeklyNoteTemplate`, and `deckard.monthlyNoteTemplate` into

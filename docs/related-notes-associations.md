@@ -2,7 +2,7 @@
 
 This document explains how Deckard decides that one note entry is related to
 another. It is a technical reference for the Related Notes sidebar and the
-**Related Notes Ranking** page (`Deckard: Show Related Notes Ranking`). The implementation is intentionally local and
+**Related Notes Ranking** page (`Deckard: Open Related Notes Ranking`). The implementation is intentionally local and
 deterministic: Markdown is indexed on the user's machine and the ranking
 calculation runs locally.
 

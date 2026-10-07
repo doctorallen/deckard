@@ -53,7 +53,7 @@ reworked in another plan and are not touched here.
 | `statusBar` | `true` | The task status bar item is always contributed; VS Code's own status bar menu hides it |
 | `showWhatsNew` | `true` | What's New always shows after an update |
 | `tasks.assigneeFromPersonTag` | `false` | Only a written assignee field assigns a task; the parse cache key no longer carries it |
-| `developerMode` | removed | The hover's ranking link goes; `Deckard: Show Related Notes Ranking` is in the palette for a Markdown editor and shows the ranking for the entry under the cursor |
+| `developerMode` | removed | The hover's ranking link goes; `Deckard: Open Related Notes Ranking` is in the palette for a Markdown editor and shows the ranking for the entry under the cursor |
 
 ## B. Collapsed
 

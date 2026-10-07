@@ -52,7 +52,7 @@ Tagged headings highlight their section; tagged lines and tasks highlight their 
 
 ### Understand a score
 
-Each result has a three-step rail for a strong, moderate, or weak relation. Select it, or use the keyboard, to see the exact score, signals, and weights. For the full calculation, put the cursor in a tagged entry and run `Deckard: Show Related Notes Ranking`, which shows where each tag came from, heading paths, daily-note context, association support and prevalence, link evidence, lexical terms, recency, and specificity.
+Each result has a three-step rail for a strong, moderate, or weak relation. Select it, or use the keyboard, to see the exact score, signals, and weights. For the full calculation, put the cursor in a tagged entry and run `Deckard: Open Related Notes Ranking`, which shows where each tag came from, heading paths, daily-note context, association support and prevalence, link evidence, lexical terms, recency, and specificity.
 
 ### Refine a search from the sidebar
 
