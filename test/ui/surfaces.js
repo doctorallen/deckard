@@ -276,7 +276,9 @@ function createReferenceSurfaces(index, files) {
       page: 'notesGraph',
       viewport: [1100, 800],
       snapshot: () => ({ ...graph, focus: { local: false, depth: 1, skipPeriodic: false, workspaceNodeCount: graph.nodes.length } }),
-      css: 'canvas { visibility: hidden !important; } #layout-probe { display: none !important; }',
+      // The canvas, and the note that says the layout is still settling,
+      // are drawn at whatever moment Chrome is read, so neither is compared.
+      css: 'canvas { visibility: hidden !important; } #sim-note, #layout-probe { display: none !important; }',
       scrollers: ['html'],
       clippers: [],
       hovered: ['button'],

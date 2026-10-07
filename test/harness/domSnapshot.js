@@ -117,6 +117,11 @@ function normalizedAttribute(element, attribute, options) {
   if (options.stateful && (name === 'value' || name === 'checked' || name === 'selected')) {
     return undefined;
   }
+  // The Notes Graph says "Simulating…" until its layout settles, which a
+  // loaded CI runner reaches later than the moment Chrome is read at.
+  if (options.captured && name === 'hidden' && element.id === 'sim-note') {
+    return undefined;
+  }
   let value = attribute.value;
   if (name === 'class') {
     value = value.split(WHITESPACE).filter(Boolean).sort().join(' ');
