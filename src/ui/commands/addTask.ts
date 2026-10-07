@@ -126,12 +126,20 @@ export async function addTaskCommand(
   return writeElsewhere(context, target, withSourceLink(indentLines(text), seed?.link, edited.format));
 }
 
+/**
+ * A path as Deckard writes paths, with `/`: VS Code gives a note outside
+ * the workspace folders by its full path, with backslashes on Windows.
+ */
+function slashPath(path: string): string {
+  return process.platform === 'win32' ? path.split('\\').join('/') : path;
+}
+
 /** The note in `editor` as a place for the task, at its cursor's line. */
 function targetHere(editor: vscode.TextEditor, seeded: boolean): Extract<AddTarget, { kind: 'here' }> {
   const anchor = editor.document.lineAt(editor.selection.active.line);
   return {
     kind: 'here',
-    path: vscode.workspace.asRelativePath(editor.document.uri, false),
+    path: slashPath(vscode.workspace.asRelativePath(editor.document.uri, false)),
     editor,
     anchor,
     placement: placeTaskHere(anchor.text, { isTask: isTaskLine(anchor.text), seeded }),

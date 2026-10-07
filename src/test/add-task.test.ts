@@ -155,8 +155,9 @@ suite('Add Task', () => {
   });
 
   /** A note written to the temporary folder, and its path. */
+  // Written with `/`, as an index keeps its paths, on Windows too.
   const note = (name: string, text: string): string => {
-    const file = join(directory, name);
+    const file = join(directory, name).split('\\').join('/');
     writeFileSync(file, text);
     return file;
   };
