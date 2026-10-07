@@ -98,14 +98,14 @@ export interface CalendarSnapshot {
   needsNewDateBefore?: string;
   weeks: CalendarWeek[];
   /**
-   * Saturday and Sunday are left out of the grid, from
-   * `deckard.calendar.showWeekends`. The weeks still hold them, for their
-   * notes and for a step that lands on one.
+   * Saturday and Sunday are left out of the grid, as the Calendar's menu or
+   * the page's gear chose. The weeks still hold them, for their notes and
+   * for a step that lands on one.
    */
   hideWeekends?: boolean;
   /** The page's chosen day is in the Related Notes sidebar, so the page draws no panel of its own. */
   dayInSidebar?: boolean;
-  /** Whether the chosen day is shown below the month, from `deckard.calendar.dayPanel`. */
+  /** Whether the chosen day is shown below the month, as the Calendar's menu chose. */
   dayPanel?: boolean;
   /** The day chosen, YYYY-MM-DD: today until another is. */
   selectedDate?: string;

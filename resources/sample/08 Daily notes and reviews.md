@@ -51,9 +51,10 @@ others**, which lists what the `is:waiting` search finds.
    and the lines they came from become `[>]`. The message offers **Undo**.
 4. Open the **Calendar** in the Deckard sidebar. A dot marks each day with a
    daily note, a number counts the tasks due that day, and an outlined number
-   counts the tasks scheduled. This sample turns on the **day panel**: select
-   a day and the panel under the month lists its note, its tasks, and the
-   notes created that day. Double-click a day to open its note.
+   counts the tasks scheduled. Choose **Open Day Panel** from the Calendar's
+   `…` menu, then select a day: the panel under the month lists its note,
+   its tasks, and the notes created that day. Double-click a day to open its
+   note.
 5. Select the mark beside a week in the Calendar, or run **Deckard: Open
    Weekly Note**, and read the review it writes. Run **Deckard: Write a
    Review** later to bring it up to date.

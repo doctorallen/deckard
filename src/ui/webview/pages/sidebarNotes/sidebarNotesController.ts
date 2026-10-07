@@ -31,7 +31,7 @@ import { readLinkStyle } from '../../../commands/linkMaintenancePorts';
 import { formatNoteLink } from '../../../../domain/markdown/wikiLinks';
 import type { WorkspaceWriteHistory } from '../../../commands/workspaceWrites';
 import { listContextPages } from '../../../state/contextPages';
-import { listDeckardPages } from '../../../state/deckardPages';
+import { isDeckardPageId, listDeckardPages } from '../../../state/deckardPages';
 import { createEntryScope, findTaggedEntry } from '../../../state/entryScope';
 import { collectNoteLinks, createLinksSearchQuery } from '../../../state/noteLinks';
 import { createSidebarSnapshot, EntryRelatedNotesDiagnostic } from '../../../state/relatedNotesRanking';
@@ -211,9 +211,16 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     }
     disposables.push(activeSearch.onDidChange(() => this.refresh()), ...this.followEditor());
     // The ranking reads the preferences, and not every write to them redraws
-    // the sidebar, so any write means the state last posted may be out of date.
+    // the sidebar, so any write means the state last posted may be out of
+    // date. The pages at the top are kept there too, and drawn again.
     const { reader } = this.sidebar.preferences;
-    disposables.push(reader.onDidChange(() => this.forgetCurrent()), reader.onDidRecordVisit(() => this.forgetCurrent()));
+    disposables.push(
+      reader.onDidChange(() => {
+        this.forgetCurrent();
+        this.refreshPages();
+      }),
+      reader.onDidRecordVisit(() => this.forgetCurrent()),
+    );
     disposables.push(
       // The theme or zen changing reloads the page, and the state is sent
       // again at once rather than when the page asks.
@@ -439,7 +446,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
    */
   private buildPages(): ContextPages {
     const { indexer } = this.sidebar;
-    return listContextPages(listDeckardPages(readPageFacts(indexer)), vscode.workspace.getConfiguration('deckard'), readPageInFront(indexer));
+    return listContextPages(listDeckardPages(readPageFacts(indexer)), this.sidebar.preferences.reader.value, readPageInFront(indexer));
   }
 
   /**
@@ -565,6 +572,13 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
         await display.setRelatedNotesPreviewLines(message.lines);
         this.refresh();
       },
+      // The pages at the top are drawn again from the preferences' change.
+      setPagesStyle: (message: SidebarNotesPageToHost['setPagesStyle']) => display.setContextPagesStyle(message.style),
+      setPageShown: async (message: SidebarNotesPageToHost['setPageShown']) => {
+        if (isDeckardPageId(message.page)) {
+          await display.setContextPageShown(message.page, message.shown);
+        }
+      },
       // Home's widgets are Home's to add, and to reset.
       homeAddWidget: (message: SidebarNotesPageToHost['homeAddWidget']) => {
         this.sidebar.activeHome?.active?.addWidget(message.value);
@@ -605,8 +619,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
 
   /** Draws the pages again for a setting they read, and forgets a state a setting may have changed. */
   private onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent): void {
-    // The pages at the top: which, how, and Home's count of what is due.
-    if (event.affectsConfiguration('deckard.pages') || event.affectsConfiguration('deckard.agenda.query')) {
+    // The pages at the top: Home's count of what is due.
+    if (event.affectsConfiguration('deckard.agenda.query')) {
       this.refreshPages();
     }
     // The ranking reads settings it does not redraw for, such as the date

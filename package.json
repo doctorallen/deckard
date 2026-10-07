@@ -1370,22 +1370,22 @@
         },
         {
           "command": "deckard.calendar.openDayPanel",
-          "when": "view == deckard.calendar && !config.deckard.calendar.dayPanel",
+          "when": "view == deckard.calendar && !deckard.calendarDayPanel",
           "group": "1_calendar@1"
         },
         {
           "command": "deckard.calendar.closeDayPanel",
-          "when": "view == deckard.calendar && config.deckard.calendar.dayPanel",
+          "when": "view == deckard.calendar && deckard.calendarDayPanel",
           "group": "1_calendar@1"
         },
         {
           "command": "deckard.calendar.hideWeekends",
-          "when": "view == deckard.calendar && config.deckard.calendar.showWeekends",
+          "when": "view == deckard.calendar && deckard.calendarWeekends",
           "group": "1_calendar@3"
         },
         {
           "command": "deckard.calendar.includeWeekends",
-          "when": "view == deckard.calendar && !config.deckard.calendar.showWeekends",
+          "when": "view == deckard.calendar && !deckard.calendarWeekends",
           "group": "1_calendar@3"
         }
       ],
@@ -1869,7 +1869,7 @@
               "Each theme's decoration and the lines that teach turned off, and tags drawn as text, at the usual spacing.",
               "Also compact spacing, flat cards, no counts beside names, and dates as how far off."
             ],
-            "description": "How much every Deckard page draws: Full, Quiet, or Zen. Every Display setting but the page width follows it while it is Auto. Your own choice, the same in every workspace.",
+            "description": "How much every Deckard page draws: Full, Quiet, or Zen. Every Display setting follows it while it is Auto. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.display.themeStyling": {
@@ -1974,70 +1974,6 @@
             "description": "Whether pages draw the counts beside names. Your own choice, the same in every workspace.",
             "order": 2
           },
-          "deckard.pages.style": {
-            "type": "string",
-            "enum": [
-              "list",
-              "icons"
-            ],
-            "default": "list",
-            "scope": "application",
-            "enumDescriptions": [
-              "Each page as a row with its name and what is worth knowing about it now.",
-              "Each page as its icon alone, in one row, named on hover."
-            ],
-            "description": "How Deckard's pages are drawn at the top of the Context view. Your own choice, the same in every workspace."
-          },
-          "deckard.pages.shown": {
-            "type": "object",
-            "properties": {
-              "home": {
-                "type": "boolean",
-                "description": "Home."
-              },
-              "board": {
-                "type": "boolean",
-                "description": "Task Board."
-              },
-              "calendar": {
-                "type": "boolean",
-                "description": "Calendar."
-              },
-              "today": {
-                "type": "boolean",
-                "description": "Today's note."
-              },
-              "graph": {
-                "type": "boolean",
-                "description": "Notes Graph."
-              },
-              "find": {
-                "type": "boolean",
-                "description": "Find in Notes."
-              },
-              "stats": {
-                "type": "boolean",
-                "description": "Stats."
-              },
-              "help": {
-                "type": "boolean",
-                "description": "Help."
-              }
-            },
-            "additionalProperties": false,
-            "default": {
-              "home": true,
-              "board": true,
-              "calendar": true,
-              "today": true,
-              "graph": true,
-              "find": true,
-              "stats": true,
-              "help": true
-            },
-            "scope": "application",
-            "description": "Which pages the top of the Context view shows, in its order. Go to… still lists every page. Your own choice, the same in every workspace."
-          },
           "deckard.display.cardDetails": {
             "type": "object",
             "properties": {
@@ -2097,21 +2033,6 @@
             "markdownDescription": "How Deckard writes a day of this year where there is little room: the Tasks view's day headings, the Pages view, the calendar's day title, search completions, and Linked from. A day in another year is written in `#deckard.display.dateFormat#`. The same tokens, such as `ddd, D MMM` or `D/M`. Empty, or a format with no date in it, reads as `ddd, MMM D`. Your own choice, the same in every workspace.",
             "order": 2
           },
-          "deckard.display.pageWidth": {
-            "type": "string",
-            "enum": [
-              "limited",
-              "full"
-            ],
-            "default": "limited",
-            "scope": "application",
-            "enumDescriptions": [
-              "Each page keeps to a column at most 1000px wide, in the middle of its panel.",
-              "Each page uses its panel's full width, for a wide monitor or a board of many columns."
-            ],
-            "description": "How wide Deckard's pages draw: Home, search and tag pages, the note page, Stats, and Help. The Task Board and the Calendar always use their full width. Your own choice, the same in every workspace.",
-            "order": 2
-          },
           "deckard.dashboard.openOnStartup": {
             "type": "boolean",
             "default": false,
@@ -2148,20 +2069,6 @@
             "scope": "window",
             "order": 8,
             "markdownDescription": "The search whose dated tasks the calendar file holds, such as `is:open is:mine` or `#project/atlas is:open`. Empty is every open task."
-          },
-          "deckard.calendar.dayPanel": {
-            "type": "boolean",
-            "default": false,
-            "scope": "window",
-            "markdownDescription": "Show the chosen day under the Calendar: its daily note, the tasks due or scheduled that day, and the notes created that day. A click then chooses a day; a double-click or Enter opens its note. When off, a click opens the day's note straight away.",
-            "order": 7
-          },
-          "deckard.calendar.showWeekends": {
-            "type": "boolean",
-            "default": true,
-            "scope": "window",
-            "markdownDescription": "Draw Saturday and Sunday in the Calendar and on the calendar page. Turned off, a week is its five working days; a task due on a weekend is still in the Tasks view and on the board.",
-            "order": 7
           },
           "deckard.periodicNotes.folder": {
             "type": "string",
@@ -2486,57 +2393,6 @@
             "description": "A time of day, such as 09:00, at which Deckard says how many tasks are due. Empty means no reminder.",
             "order": 6
           },
-          "deckard.agenda.groupBy": {
-            "type": "string",
-            "enum": [
-              "due",
-              "priority",
-              "status",
-              "assignee",
-              "tag"
-            ],
-            "enumDescriptions": [
-              "Overdue, Today, and Upcoming.",
-              "Highest to lowest, with the tasks carrying no priority between.",
-              "The #status/… tag written on each task.",
-              "Who each task is for: the first person named on its line.",
-              "The tags in one namespace, such as #project/… or #context/…: deckard.agenda.groupNamespace says which."
-            ],
-            "default": "due",
-            "description": "What the Tasks view's groups are. The group control in its title sets the same thing.",
-            "order": 7
-          },
-          "deckard.agenda.sort": {
-            "type": "string",
-            "enum": [
-              "rank",
-              "created",
-              "createdOldest",
-              "updated",
-              "updatedOldest",
-              "alphabetical",
-              "alphabeticalReverse"
-            ],
-            "enumDescriptions": [
-              "The order you dragged tasks into; tasks you haven't placed follow in each group's own order.",
-              "Newest created first: a task's ➕ date, else its note's.",
-              "Oldest created first.",
-              "The task whose note changed most recently first.",
-              "The task whose note changed longest ago first.",
-              "By title, A to Z.",
-              "By title, Z to A."
-            ],
-            "default": "rank",
-            "markdownDescription": "How each of the Tasks view's groups orders its tasks. Within a tie, a group keeps its own order: by date or priority. Dragging a task onto another ranks it only when this is `rank`. The sort control in the view's title sets the same thing.",
-            "order": 7
-          },
-          "deckard.agenda.groupNamespace": {
-            "type": "string",
-            "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
-            "default": "project",
-            "markdownDescription": "The tag namespace the Tasks view groups by when `#deckard.agenda.groupBy#` is `tag`, so `context` gives a group each to `#context/phone`, `#context/computer`, and the rest. A tag a task inherits from a heading or its note's front matter counts.",
-            "order": 8
-          },
           "deckard.agenda.query": {
             "type": "string",
             "default": "",
@@ -2552,12 +2408,6 @@
             "default": {},
             "description": "Work-in-progress limits for board columns, by status, its name with a hyphen for a space, such as { \"in-progress\": 3 }, or by column, such as { \"priority:high\": 5 }. A column over its limit shows its count against it, 5 / 3, with a neutral outline. A drop is never refused.",
             "order": 11
-          },
-          "deckard.board.parentTag": {
-            "type": "boolean",
-            "default": false,
-            "description": "Show each task's nearest parent tag above its title on the Task board: the tag on the nearest tagged heading above the task, or on its note's front matter.",
-            "order": 12
           },
           "deckard.tasks.statuses": {
             "type": "array",
@@ -2699,14 +2549,7 @@
       },
       {
         "title": "Outline",
-        "properties": {
-          "deckard.outline.followCursor": {
-            "type": "boolean",
-            "default": true,
-            "description": "Select the Deckard Outline heading that contains the editor cursor.",
-            "order": 1
-          }
-        },
+        "properties": {},
         "order": 5
       },
       {

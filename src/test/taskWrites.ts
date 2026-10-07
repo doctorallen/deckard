@@ -14,7 +14,6 @@ import { Task } from '../domain/model';
 import { AgendaService } from '../services/agendaService';
 import { AgendaContextKeys } from '../ui/commands/agendaActions';
 import { readQueryContext } from '../ui/commands/queryContext';
-import { writeSetting } from '../ui/commands/settings';
 import { AgendaGroup, createAgenda, selectAgendaTasks, selectOverdueTasks } from '../ui/state/agendaState';
 import { isNamespaceName } from '../ui/state/tagGrouping';
 import { resolveTaskMove } from '../ui/state/taskBoardState';
@@ -23,6 +22,7 @@ import { countDueTasks } from '../ui/views/taskStatusBar';
 import { getCaptureInsertion } from '../domain/capture/captureLines';
 import { FakeHistory, FakeNotes } from './fakeNotes';
 import { FakeSettings } from './fakeWorkspace';
+import type { AgendaViewChoices } from '../domain/tasks/agendaGroups';
 
 /**
  * Task writes over `history`, carrying ranks to `keepRank`, which drops them
@@ -92,6 +92,7 @@ export function createFakeTaskWrites(notes: FakeNotes): TaskWrites {
 export function createAgendaTreeServices(
   getTask: (taskId: string) => Task | undefined,
   writes: TaskWrites = createTaskWrites(),
+  choices: AgendaViewChoices = {},
 ): AgendaTreeServices {
   return {
     agenda: new AgendaService<AgendaGroup>({
@@ -113,7 +114,11 @@ export function createAgendaTreeServices(
         resolveMove: resolveTaskMove,
         isNamespaceName,
       },
-      writeSetting: (key, value) => writeSetting(key, value, vscode.ConfigurationTarget.Global),
+      preferences: {
+        value: choices,
+        setAgendaGrouping: async () => undefined,
+        setAgendaSort: async () => undefined,
+      },
     }),
     writes,
     contextKeys: new AgendaContextKeys(),

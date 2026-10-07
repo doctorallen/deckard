@@ -26,7 +26,6 @@ import {
   captureIntoColumn,
   moveTaskToColumn,
   readTaskBoardOptions,
-  updateTaskBoardSetting,
 } from '../../../commands/taskBoardActions';
 import { breakIntoStepsCommand } from '../../../commands/taskSteps';
 import { countStatusTagsLeft, describeStatusTagsLeft } from '../../../commands/statusMove';
@@ -334,14 +333,16 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     const agendaListsThisSearch = listed === normalizeAgendaQuery(this.query);
     const index = this.board.indexer.getSnapshot();
     const tagsLeft = countStatusTagsLeft(index);
+    const preferences = this.board.preferences.reader.value;
     return {
       ...createTaskBoard({
         index,
-        preferences: this.board.preferences.reader.value,
+        preferences,
         search: { query: this.query, invalidQuery: this.invalidQuery },
         options: {
           ...readTaskBoardOptions(readQueryContext()),
           shownColumns: this.shownColumns,
+          parentTag: preferences.boardParentTag === true,
         },
       }),
       refineInSidebar: this.board.activeSearch.isRefineInSidebar(this.board.source),
@@ -447,7 +448,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       editTaskStatuses: (message) =>
         vscode.commands.executeCommand('deckard.editTaskStatuses', message.newStatus ? { newStatus: {} } : undefined),
       moveStatusTags: () => vscode.commands.executeCommand('deckard.moveStatusTagsIntoCheckboxes'),
-      setBoardParentTag: (message) => updateTaskBoardSetting('parentTag', message.show),
+      setBoardParentTag: (message) => taskLayout.setBoardParentTag(message.show),
     };
   }
 

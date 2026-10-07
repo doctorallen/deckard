@@ -3,8 +3,9 @@ import * as vscode from 'vscode';
 import { Debouncer } from '../../shared/debounce';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { measure } from '../../shared/timing';
-import { settingTarget, writeSetting } from '../commands/settings';
 import type { IndexReader, IndexUpdates } from '../../core/workspace/indexReader';
+import type { PreferencesReader } from '../../core/storage/preferencesRepository';
+import { readViewChoice } from '../../core/storage/preferencesViewChoices';
 import {
   buildOutline,
   collectOutlineTags,
@@ -22,8 +23,6 @@ import type { ActiveNotePage } from '../webview/activeNotePage';
 import { reportFailure } from '../commands/notify';
 import { speakRow } from './spokenRow';
 
-/** Context key backing the follow-cursor toggle in the view title. */
-export const outlineFollowCursorContextKey = 'deckard.outlineFollowCursor';
 /** Context key for whether the Outline shows only the headings with a tag. */
 export const outlineFilteredContextKey = 'deckard.outlineFiltered';
 
@@ -33,11 +32,8 @@ const unreadableMessage = 'Deckard could not read this file.';
 const rebuildDelayMs = 200;
 const followCursorDelayMs = 100;
 
-/** The settings that change what the Outline shows, so a change rebuilds it. */
-const OUTLINE_SETTINGS = [
-  'deckard.outline',
-  'deckard.entityNamespaceAliases',
-];
+/** The setting that changes what the Outline shows, so a change rebuilds it. */
+const OUTLINE_SETTING = 'deckard.entityNamespaceAliases';
 
 /**
  * Shows the active Markdown file's headings as a tree the reader can pull into
@@ -75,12 +71,31 @@ export class OutlineTreeProvider
   /** The note page's note, while the Outline lists it rather than an editor's. */
   private notePageFile: string | undefined;
 
+  /** Whether the Outline follows the cursor, as its title's buttons last left it. */
+  private following: boolean;
+
   /**
    * Starts listening at once to the active editor, its text, its saves and
-   * cursor, the index, and the Outline's settings.
+   * cursor, the index, the setting that changes what it shows, and the
+   * preferences, which say whether it follows the cursor.
    */
-  public constructor(private readonly indexer: IndexReader<vscode.Uri> & IndexUpdates) {
+  public constructor(
+    private readonly indexer: IndexReader<vscode.Uri> & IndexUpdates,
+    preferences: Pick<PreferencesReader, 'value' | 'onDidChange'>,
+  ) {
+    this.following = readViewChoice(preferences.value, 'outlineFollowCursor');
     this.disposables.push(this.changeEmitter);
+    // Turned on, the Outline selects the heading the cursor is in at once.
+    this.disposables.push(
+      preferences.onDidChange((value) => {
+        const following = readViewChoice(value, 'outlineFollowCursor');
+        if (following === this.following) {
+          return;
+        }
+        this.following = following;
+        void this.followCursor();
+      }),
+    );
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor(() => this.rebuildNow()),
     );
@@ -109,11 +124,9 @@ export class OutlineTreeProvider
     this.disposables.push(indexer.onDidUpdate(() => this.scheduleRebuild()));
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (!OUTLINE_SETTINGS.some((section) => event.affectsConfiguration(section))) {
-          return;
+        if (event.affectsConfiguration(OUTLINE_SETTING)) {
+          this.rebuildNow();
         }
-        void syncOutlineFollowCursorContext();
-        this.rebuildNow();
       }),
     );
   }
@@ -326,7 +339,7 @@ export class OutlineTreeProvider
   /** Selects the heading the note page was opened at, as following the cursor does in an editor. */
   private async revealPageLine(line: number | undefined): Promise<void> {
     const node = line ? findOutlineNodeAt(this.roots, line) : undefined;
-    if (!node || !this.view?.visible || !isOutlineFollowCursorEnabled()) {
+    if (!node || !this.view?.visible || !this.following) {
       return;
     }
     try {
@@ -375,7 +388,7 @@ export class OutlineTreeProvider
       !this.view?.visible ||
       !editor ||
       !this.documentUri ||
-      !isOutlineFollowCursorEnabled() ||
+      !this.following ||
       editor.document.uri.toString() !== this.documentUri.toString()
     ) {
       return;
@@ -400,39 +413,6 @@ export class OutlineTreeProvider
     }
   }
 
-}
-
-/**
- * Reads the follow-cursor setting that both the view and its toggle share.
- */
-export function isOutlineFollowCursorEnabled(): boolean {
-  return vscode.workspace
-    .getConfiguration('deckard')
-    .get<boolean>('outline.followCursor', true);
-}
-
-/**
- * Publishes the setting as a context key so the title shows the current state.
- */
-export async function syncOutlineFollowCursorContext(): Promise<void> {
-  await vscode.commands.executeCommand(
-    'setContext',
-    outlineFollowCursorContextKey,
-    isOutlineFollowCursorEnabled(),
-  );
-}
-
-/**
- * Turns following on or off where the value in force is set: the
- * workspace's settings when they set it, else the user's. It was always
- * written to the user's, so in a workspace that set it the toggle wrote,
- * nothing changed, and the title kept offering the same button.
- */
-export async function setOutlineFollowCursor(enabled: boolean): Promise<void> {
-  const written = await writeSetting('outline.followCursor', enabled, settingTarget('outline.followCursor'));
-  if (written) {
-    await syncOutlineFollowCursorContext();
-  }
 }
 
 /**

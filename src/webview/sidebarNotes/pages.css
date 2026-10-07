@@ -4,13 +4,20 @@
  * page.css imports this.
  */
 
-.context-pages {
+.context-pages-band {
   position: sticky;
   top: 0;
   /* Over the raised cards that scroll under it; a menu opened over it still wins. */
   z-index: var(--z-dropdown);
-  display: grid;
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
   margin: 0 0 var(--space-3);
+}
+.context-pages {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 2px;
   border: 1px solid var(--line);
   background: var(--panel);
@@ -42,4 +49,8 @@
 .pages-row:hover:where(:not(:disabled)), .pages-icon:hover:where(:not(:disabled)),
 .pages-row:focus-visible, .pages-icon:focus-visible { border-color: var(--line-strong); background: var(--hover-bg); color: var(--hover-fg); transform: none; }
 .pages-row:hover:where(:not(:disabled)) .pages-description, .pages-row:focus-visible .pages-description { color: inherit; }
-.pages-empty { margin: 0 0 var(--space-3); color: var(--muted); font-size: var(--text-sm); }
+.pages-empty { flex: 1 1 auto; margin: 0; color: var(--muted); font-size: var(--text-sm); }
+/* The gear's page list: one pressed button a page, a column of them. */
+.pages-choices { display: grid; gap: 2px; }
+.pages-choices button { justify-content: flex-start; text-align: left; }
+.pages-choices button[aria-pressed="true"] { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }

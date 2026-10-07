@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import type { DisplayService } from '../../core/storage/preferencesDisplay';
+import type { PreferencesReader } from '../../core/storage/preferencesRepository';
 import { DEFAULT_DATE_FORMAT, DEFAULT_DATE_LOCALE, DEFAULT_SHORT_DATE_FORMAT, type DateFormats, usesLocaleWeeks } from '../../domain/markdown/dateFormat';
 import { DATE_FORMAT_SETTINGS, readDateFormats } from './datePrompt';
 import { writeSetting } from './settings';
@@ -7,11 +9,13 @@ import { changedScaleSettings, resolveDisplayLevel, resolveScaleValues, SCALE_SE
 
 /**
  * Display, read from the settings and written from the gear: the step
- * (`deckard.display.level`), the three settings it moves, and how cards and
- * tags are drawn. Each is personal, an application setting, so a
- * workspace's settings never decide how someone else's pages look; each is
- * written to the user's settings. What the values come to is
- * ui/state/displayLevel.ts's.
+ * (`deckard.display.level`), the settings it moves, and how cards and tags
+ * are drawn. Each is personal, an application setting, so a workspace's
+ * settings never decide how someone else's pages look; each is written to
+ * the user's settings. What the values come to is ui/state/displayLevel.ts's.
+ *
+ * The page width is the gear's own, kept in the preferences, the same in
+ * every workspace.
  */
 
 /** The setting each choice is kept in, under `deckard.`, and its values. */
@@ -24,11 +28,54 @@ export const DISPLAY_SETTINGS = {
   tags: { key: 'display.tags', values: ['auto', 'chips', 'text'] },
   counts: { key: 'display.counts', values: ['auto', 'shown', 'hidden'] },
   dates: { key: 'display.dates', values: ['auto', 'both', 'relative', 'date'] },
-  pageWidth: { key: 'display.pageWidth', values: ['limited', 'full'] },
 } as const;
 
 /** One of the display choices, by its setting's name. */
 export type DisplaySetting = keyof typeof DISPLAY_SETTINGS;
+
+/** How wide every page is drawn: limited to a column, or as wide as its panel. */
+export type PageWidth = 'limited' | 'full';
+
+/** Where the page width is kept, and what changes it. */
+export interface PageWidthPreferences {
+  readonly reader: Pick<PreferencesReader, 'value' | 'onDidChange'>;
+  readonly display: Pick<DisplayService, 'setPageWidth'>;
+}
+
+/** The page width as the preferences last said, and where a new one is kept. */
+let pageWidth: PageWidth = 'limited';
+let pageWidthStore: PageWidthPreferences['display'] | undefined;
+const pageWidthChanged = new vscode.EventEmitter<void>();
+
+/** Fires when the page width changes, which every page's chrome is drawn with. */
+export const onDidChangePageWidth: vscode.Event<void> = pageWidthChanged.event;
+
+/** Limited until the gear chooses Full. */
+function pageWidthOf(value: { readonly pageWidth?: 'full' }): PageWidth {
+  return value.pageWidth === 'full' ? 'full' : 'limited';
+}
+
+/**
+ * Starts reading the page width from the preferences, once, at activation,
+ * and fires onDidChangePageWidth whenever a change to them changes it.
+ */
+export function startPageWidth(preferences: PageWidthPreferences): vscode.Disposable {
+  pageWidthStore = preferences.display;
+  pageWidth = pageWidthOf(preferences.reader.value);
+  return preferences.reader.onDidChange((value) => {
+    const next = pageWidthOf(value);
+    if (next === pageWidth) {
+      return;
+    }
+    pageWidth = next;
+    pageWidthChanged.fire();
+  });
+}
+
+/** The page width every page is drawn at now. */
+export function readPageWidth(): PageWidth {
+  return pageWidth;
+}
 
 /** The step in force: `deckard.display.level` when the reader has set it, else Full. */
 export function readDisplayLevel(): DisplayLevel {
@@ -67,7 +114,7 @@ export function readDisplayChoices(previewed?: DisplayLevel): DisplayChoices {
     ...(scale.counts === 'hidden' ? { counts: 'hidden' as const } : {}),
     ...readDetailChoices(deckard),
     ...(scale.dates === 'both' ? {} : { dates: scale.dates }),
-    ...(deckard.get<string>(DISPLAY_SETTINGS.pageWidth.key) === 'full' ? { width: 'full' as const } : {}),
+    ...(readPageWidth() === 'full' ? { width: 'full' as const } : {}),
     ...dateFormatChoices(readDateFormats()),
   };
 }
@@ -131,11 +178,17 @@ export async function customizeDisplay(): Promise<void> {
 }
 
 /**
- * Sets one choice from a page's gear, in the user's settings. Each page
- * redraws from its own configuration listener, so there is nothing to
- * refresh here.
+ * Sets one choice from a page's gear: a Display setting in the user's
+ * settings, or the page width in the preferences. Each page redraws from
+ * its own listener for either, so there is nothing to refresh here.
  */
-export async function setDisplayChoice(setting: DisplaySetting, value: string): Promise<void> {
+export async function setDisplayChoice(setting: DisplaySetting | 'pageWidth', value: string): Promise<void> {
+  if (setting === 'pageWidth') {
+    if (value === 'limited' || value === 'full') {
+      await pageWidthStore?.setPageWidth(value);
+    }
+    return;
+  }
   const known: readonly string[] = DISPLAY_SETTINGS[setting].values;
   if (known.includes(value)) {
     await writeSetting(DISPLAY_SETTINGS[setting].key, value, vscode.ConfigurationTarget.Global);

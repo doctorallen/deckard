@@ -12,7 +12,6 @@ import {
   quoteTaskTitle,
   updateTaskLine,
 } from './taskActions';
-import { writeSetting } from './settings';
 import { captureToToday } from './capture';
 import { appendTagToLine } from './bulkEdit';
 import { readQueryContext } from './queryContext';
@@ -30,26 +29,7 @@ export function readTaskBoardOptions(queryContext: QueryContext): TaskBoardOptio
     queryContext,
     format: readTaskMetadataFormat(configuration),
     limits: readBoardLimits(configuration.get<unknown>('board.limits', {})),
-    parentTag: configuration.get<boolean>('board.parentTag', false) === true,
   };
-}
-
-/**
- * Writes one of the `deckard.board` settings from the Task Board's view
- * options, where the reader already chose it. The value goes where it is
- * already set, so a workspace that sets its own columns keeps them there.
- */
-export async function updateTaskBoardSetting(
-  key: 'parentTag',
-  value: boolean,
-): Promise<void> {
-  const configuration = vscode.workspace.getConfiguration('deckard');
-  const current = configuration.inspect(`board.${key}`);
-  const target =
-    current?.workspaceValue === undefined
-      ? vscode.ConfigurationTarget.Global
-      : vscode.ConfigurationTarget.Workspace;
-  await writeSetting(`board.${key}`, value, target, configuration);
 }
 
 /**

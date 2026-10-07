@@ -2,6 +2,7 @@ import { Task, TaskSortMode, WorkspaceIndex } from '../domain/model';
 import { QueryContext } from '../domain/query/queryContext';
 import {
   AgendaGroupBy,
+  AgendaViewChoices,
   groupColumnId,
   readAgendaGroupNamespace,
   readAgendaGrouping,
@@ -19,7 +20,7 @@ import { TaskMetadataFormat } from '../domain/markdown/taskFields';
  * The Tasks view's decisions: what it lists and how it is grouped, which of
  * its groups a dropped task can join and with what edit, which checkbox
  * changes are real, what is overdue, how full a day is when tasks are
- * rescheduled, and which settings a new grouping writes.
+ * rescheduled, and what a new grouping or sort keeps.
  *
  * The view draws what this builds and says what it returns; the writes it
  * decides on go through the task commands, which offer each one's Undo.
@@ -81,6 +82,19 @@ export interface AgendaIndex {
   readonly ready: PromiseLike<void>;
 }
 
+/**
+ * Where the Tasks view keeps how it is grouped and sorted: the preferences,
+ * where its Group and Sort buttons write.
+ */
+export interface AgendaViewPreferences {
+  /** The preferences as they stand. */
+  readonly value: AgendaViewChoices;
+  /** Keeps a grouping, with the namespace a tag grouping uses. */
+  setAgendaGrouping(groupBy: AgendaGroupBy, namespace?: string): PromiseLike<void>;
+  /** Keeps how each group orders its tasks. */
+  setAgendaSort(sort: TaskSortMode): PromiseLike<void>;
+}
+
 /** What the agenda service reads and writes through. */
 export interface AgendaServiceOptions<G extends AgendaGroupLike> {
   /** The `deckard` settings. */
@@ -89,8 +103,8 @@ export interface AgendaServiceOptions<G extends AgendaGroupLike> {
   /** The settings and moment a piece of work is done in, read as it starts. */
   readQueryContext(): QueryContext;
   model: AgendaModel<G>;
-  /** Writes a `deckard` setting where the value in force is set; whether it was. */
-  writeSetting(key: string, value: unknown): PromiseLike<boolean>;
+  /** How the view is grouped and sorted, and where a new choice is kept. */
+  preferences: AgendaViewPreferences;
 }
 
 /**
@@ -130,37 +144,37 @@ export type GroupMoveResult =
   | { kind: 'no-edit' }
   | { kind: 'moved'; moved: number; refused: string[] };
 
-/** What choosing a grouping wrote: the grouping now in force, nothing, or a refused write. */
+/** What choosing a grouping kept: the grouping now in force, or nothing. */
 export type GroupingChange =
   | { kind: 'grouped'; groupBy: AgendaGroupBy }
-  | { kind: 'unchanged' }
-  | { kind: 'unwritten' };
+  | { kind: 'unchanged' };
 
 /**
- * The Tasks view's decisions, over the index and the settings. Made once,
+ * The Tasks view's decisions, over the index, the settings, and the
+ * preferences. Made once,
  * where the extension starts; see the module comment.
  */
 export class AgendaService<G extends AgendaGroupLike> {
   /** A service over the index, settings, and view model `options` name. */
   public constructor(private readonly options: AgendaServiceOptions<G>) {}
 
-  /** How the view is grouped, from the settings as they are now. */
+  /** How the view is grouped, from the preferences as they are now. */
   public readGrouping(): { groupBy: AgendaGroupBy; groupNamespace: string } {
-    const settings = this.settings();
+    const choices = this.options.preferences.value;
     return {
-      groupBy: readAgendaGrouping(settings),
-      groupNamespace: readAgendaGroupNamespace(settings, this.options.model.isNamespaceName),
+      groupBy: readAgendaGrouping(choices),
+      groupNamespace: readAgendaGroupNamespace(choices, this.options.model.isNamespaceName),
     };
   }
 
-  /** How each group orders its tasks, from `deckard.agenda.sort`. */
+  /** How each group orders its tasks, from the preferences. */
   public readSort(): TaskSortMode {
-    return readAgendaSort(this.settings());
+    return readAgendaSort(this.options.preferences.value);
   }
 
-  /** Writes how each group orders its tasks; false when the setting could not be written. */
-  public async setSort(mode: TaskSortMode): Promise<boolean> {
-    return await this.options.writeSetting('agenda.sort', mode);
+  /** Keeps how each group orders its tasks. */
+  public async setSort(mode: TaskSortMode): Promise<void> {
+    await this.options.preferences.setAgendaSort(mode);
   }
 
   /** What the view lists, from `deckard.agenda.query`. */
@@ -176,8 +190,9 @@ export class AgendaService<G extends AgendaGroupLike> {
    */
   public buildView(index: WorkspaceIndex, taskOrder: readonly string[], statusOrder: readonly string[] = []): AgendaView<G> {
     const settings = this.settings();
+    const choices = this.options.preferences.value;
     const days = UPCOMING_DAYS;
-    const groupBy = readAgendaGrouping(settings);
+    const groupBy = readAgendaGrouping(choices);
     const query = readAgendaQuery(settings);
     const context = this.options.readQueryContext();
     const { model } = this.options;
@@ -186,10 +201,10 @@ export class AgendaService<G extends AgendaGroupLike> {
       tasks: selected.tasks,
       upcomingDays: days,
       groupBy,
-      groupNamespace: readAgendaGroupNamespace(settings, model.isNamespaceName),
+      groupNamespace: readAgendaGroupNamespace(choices, model.isNamespaceName),
       statusOrder,
       taskOrder,
-      taskSortMode: readAgendaSort(settings),
+      taskSortMode: readAgendaSort(choices),
       doneToday: true,
       upcomingByDay: true,
     });
@@ -314,9 +329,9 @@ export class AgendaService<G extends AgendaGroupLike> {
   }
 
   /**
-   * Writes a new grouping where the setting is kept. A tag grouping writes
-   * its namespace first, then the grouping unless it is already by tag;
-   * choosing the grouping already in force writes nothing.
+   * Keeps a new grouping in the preferences. A tag grouping keeps its
+   * namespace with it, even when the view is already by tag; choosing any
+   * other grouping already in force keeps nothing.
    */
   public async setGrouping(change: {
     chosen: AgendaGroupBy;
@@ -324,19 +339,11 @@ export class AgendaService<G extends AgendaGroupLike> {
     namespace?: string;
   }): Promise<GroupingChange> {
     const { chosen, current, namespace } = change;
-    const write = this.options.writeSetting;
-    if (chosen === 'tag') {
-      if (!(await write('agenda.groupNamespace', namespace))) {
-        return { kind: 'unwritten' };
-      }
-      return current === 'tag' || (await write('agenda.groupBy', 'tag'))
-        ? { kind: 'grouped', groupBy: 'tag' }
-        : { kind: 'unwritten' };
-    }
-    if (chosen === current) {
+    if (chosen !== 'tag' && chosen === current) {
       return { kind: 'unchanged' };
     }
-    return (await write('agenda.groupBy', chosen)) ? { kind: 'grouped', groupBy: chosen } : { kind: 'unwritten' };
+    await this.options.preferences.setAgendaGrouping(chosen, chosen === 'tag' ? namespace : undefined);
+    return { kind: 'grouped', groupBy: chosen };
   }
 
   /**

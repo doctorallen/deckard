@@ -6,9 +6,10 @@
 // while a missing one is only offered, never created unasked.
 const assert = require('assert');
 const vscode = require('vscode');
-const { mountWebview } = require('./support.js');
+const { createGlobalState, mountWebview } = require('./support.js');
 const modules = require('../harness/modules.js');
 const { CalendarView } = modules.calendar;
+const { createPreferences } = modules.preferenceServices;
 const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexState;
 const { formatLocalDate, getPeriodicNote } = modules.periodicNotes;
@@ -43,8 +44,8 @@ const openedTags = [];
 /** Lets the host finish handling a message the page posted. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
-/** Mounts the calendar's page against the real host. */
-async function openCalendar() {
+/** Mounts the calendar's page against the real host, over `preferences`, empty unless given. */
+async function openCalendar(preferences = createPreferences(createGlobalState())) {
   opened.length = 0;
   const index = createIndex();
   const updates = new vscode.EventEmitter();
@@ -59,6 +60,7 @@ async function openCalendar() {
     themePreview: new ThemePreview(),
     extensionUri: vscode.Uri.file('/ext'),
     openTag: (tagKey) => openedTags.push(tagKey),
+    preferences,
   });
   const host = vscode._test.createWebviewView();
   // The page's messages reach the real host, as they do in VS Code.
@@ -187,56 +189,47 @@ test('with weeks starting on Monday, the header and every row start on Monday', 
   }
 });
 
-test('with the day panel on, a click chooses a day and opens nothing, and the panel follows the setting', async () => {
-  const configuration = vscode.workspace.getConfiguration('deckard');
-  await configuration.update('calendar.dayPanel', true);
-  try {
-    const { host, view, day } = await openCalendar();
-    assert.ok(view.find('.day-panel'), 'the panel is drawn under the month');
-    assert.match(view.find('#day-title').textContent, /· Today$/);
-    assert.ok(view.find('.day-note'), "today's daily note is offered");
-    const other = view
-      .findAll('[data-action="open-day"]')
-      .find((button) => !button.querySelector('.note-dot') && button.getAttribute('data-date') !== today);
-    // Read before the click: a day in another month moves the calendar to
-    // it, and the page may draw another day into the same button.
-    const chosen = other.getAttribute('data-date');
-    const asked = vscode._test.shown.info.length;
-    view.click(other);
-    await new Promise((resolve) => setTimeout(resolve, 160));
-    await settle();
-    assert.deepStrictEqual(opened, [], 'a click opens nothing');
-    assert.strictEqual(vscode._test.shown.info.length, asked, 'and asks nothing');
-    const posted = view.posted.filter((message) => message.type === 'selectDay');
-    assert.strictEqual(posted[posted.length - 1].date, chosen);
-    assert.strictEqual(day(chosen).classList.contains('selected'), true, 'the host draws it chosen');
+test('with the day panel on, a click chooses a day and opens nothing, and the panel follows the preferences', async () => {
+  const preferences = createPreferences(createGlobalState());
+  await preferences.display.setViewChoice('calendarDayPanel', true);
+  const { host, view, day } = await openCalendar(preferences);
+  assert.ok(view.find('.day-panel'), 'the panel is drawn under the month');
+  assert.match(view.find('#day-title').textContent, /· Today$/);
+  assert.ok(view.find('.day-note'), "today's daily note is offered");
+  const other = view
+    .findAll('[data-action="open-day"]')
+    .find((button) => !button.querySelector('.note-dot') && button.getAttribute('data-date') !== today);
+  // Read before the click: a day in another month moves the calendar to
+  // it, and the page may draw another day into the same button.
+  const chosen = other.getAttribute('data-date');
+  const asked = vscode._test.shown.info.length;
+  view.click(other);
+  await new Promise((resolve) => setTimeout(resolve, 160));
+  await settle();
+  assert.deepStrictEqual(opened, [], 'a click opens nothing');
+  assert.strictEqual(vscode._test.shown.info.length, asked, 'and asks nothing');
+  const posted = view.posted.filter((message) => message.type === 'selectDay');
+  assert.strictEqual(posted[posted.length - 1].date, chosen);
+  assert.strictEqual(day(chosen).classList.contains('selected'), true, 'the host draws it chosen');
 
-    const html = host.webview.html;
-    await configuration.update('calendar.dayPanel', false);
-    await settle();
-    assert.strictEqual(host.webview.html, html, 'no reload');
-    assert.strictEqual(view.findAll('.day-panel').length, 0, 'the panel goes');
-  } finally {
-    await configuration.update('calendar.dayPanel', undefined);
-  }
+  const html = host.webview.html;
+  await preferences.display.setViewChoice('calendarDayPanel', false);
+  await settle();
+  assert.strictEqual(host.webview.html, html, 'no reload');
+  assert.strictEqual(view.findAll('.day-panel').length, 0, 'the panel goes');
 });
 
 
 test('with the weekends hidden, a month step keeps the chosen day\'s place on a weekday', async () => {
-  const configuration = vscode.workspace.getConfiguration('deckard');
-  await configuration.update('calendar.dayPanel', true);
-  await configuration.update('calendar.showWeekends', false);
-  try {
-    const { calendar, view, monthButton } = await openCalendar();
-    // October 10th, 2026 is a Saturday, which is not drawn.
-    await calendar.controller.handle({ type: 'selectDay', date: '2026-09-10' });
-    await settle();
-    view.click(monthButton('Next month'));
-    await settle();
-    assert.strictEqual(calendar.controller.selectedDate, '2026-10-12', 'on to Monday');
-    assert.strictEqual(view.find('.calendar-grid .day.selected').getAttribute('data-date'), '2026-10-12', 'which is drawn chosen');
-  } finally {
-    await configuration.update('calendar.dayPanel', undefined);
-    await configuration.update('calendar.showWeekends', undefined);
-  }
+  const preferences = createPreferences(createGlobalState());
+  await preferences.display.setViewChoice('calendarDayPanel', true);
+  await preferences.display.setViewChoice('calendarWeekends', false);
+  const { calendar, view, monthButton } = await openCalendar(preferences);
+  // October 10th, 2026 is a Saturday, which is not drawn.
+  await calendar.controller.handle({ type: 'selectDay', date: '2026-09-10' });
+  await settle();
+  view.click(monthButton('Next month'));
+  await settle();
+  assert.strictEqual(calendar.controller.selectedDate, '2026-10-12', 'on to Monday');
+  assert.strictEqual(view.find('.calendar-grid .day.selected').getAttribute('data-date'), '2026-10-12', 'which is drawn chosen');
 });

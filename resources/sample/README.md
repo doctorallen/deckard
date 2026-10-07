@@ -81,7 +81,6 @@ so your own settings cannot hide its notes or change what it says:
   leaves a `[>]` line behind.
 - `deckard.periodicNote.reviewSections` adds a **Waiting on others** section
   to reviews.
-- `deckard.calendar.dayPanel` shows the chosen day under the Calendar.
 
 The sample is kept in VS Code's storage for Deckard. Change anything you
 like: running **Deckard: Create a Sample Workspace** again replaces it with a

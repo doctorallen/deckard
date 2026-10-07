@@ -6,8 +6,9 @@
  * The page in front is drawn pressed. They are one toolbar, one Tab stop:
  * the arrow keys move between them, and Home and End go to either end.
  */
-import type { ContextPage, ContextPages } from '../../ui/protocol/sidebarNotes';
+import type { ContextPage, ContextPageChoice, ContextPages } from '../../ui/protocol/sidebarNotes';
 import { PAGE_ICONS } from '../shared/pageIcons';
+import { ViewOptionChoices, ViewOptions } from '../shared/viewOptions';
 
 /** Every page's button, which the toolbar's keys move between. */
 const PAGE_BUTTON = '.context-pages [data-action="go-to-page"]';
@@ -56,28 +57,64 @@ function PageButton({ page, current }: { readonly page: ContextPage; readonly cu
   );
 }
 
+/** A pressed button for each page, which keeps it at the top of Context or leaves it out. */
+function PageChoices({ choices }: { readonly choices: readonly ContextPageChoice[] }) {
+  return (
+    <div class="pages-choices" role="group" aria-label="Pages kept">
+      {choices.map((choice) => (
+        <button type="button" class={choice.shown ? 'active' : ''} data-action="set-page-shown" data-page={choice.id} aria-pressed={choice.shown}>
+          {choice.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** The gear beside the pages: draw them as a list or as icons, and which to keep. */
+function PagesOptions({ pages }: { readonly pages: ContextPages }) {
+  return (
+    <ViewOptions
+      name="pages"
+      label="Pages: how they look, and which"
+      groups={[
+        { label: 'Look', content: <ViewOptionChoices action="set-pages-style" choices={[['list', 'List'], ['icons', 'Icons']]} selected={pages.style} label="How the pages look" /> },
+        ...(pages.choices ? [{ label: 'Pages', stacked: true, content: <PageChoices choices={pages.choices} /> }] : []),
+      ]}
+    />
+  );
+}
+
 /**
  * The pages kept, as rows or icons, or a line saying where to choose them
- * when none is; nothing before the host has said which.
+ * when none is, with the gear that chooses them beside; nothing before the
+ * host has said which.
  */
 export function ContextPagesBar({ pages }: { readonly pages: ContextPages | undefined }) {
   if (!pages) {
     return null;
   }
   if (!pages.pages.length) {
-    return <p class="pages-empty">No pages chosen. Tick them in Settings, under Deckard › Pages: Shown.</p>;
+    return (
+      <div class="context-pages-band">
+        <p class="pages-empty">No pages chosen. Choose them from the gear.</p>
+        <PagesOptions pages={pages} />
+      </div>
+    );
   }
   const icons = pages.style === 'icons';
   return (
-    <div
-      class={icons ? 'context-pages is-icons' : 'context-pages'}
-      role="toolbar"
-      aria-label="Deckard pages"
-      aria-orientation={icons ? 'horizontal' : 'vertical'}
-    >
-      {pages.pages.map((page) => (icons
-        ? <PageButton page={page} current={page.id === pages.current} />
-        : <PageRow page={page} current={page.id === pages.current} />))}
+    <div class="context-pages-band">
+      <div
+        class={icons ? 'context-pages is-icons' : 'context-pages'}
+        role="toolbar"
+        aria-label="Deckard pages"
+        aria-orientation={icons ? 'horizontal' : 'vertical'}
+      >
+        {pages.pages.map((page) => (icons
+          ? <PageButton page={page} current={page.id === pages.current} />
+          : <PageRow page={page} current={page.id === pages.current} />))}
+      </div>
+      <PagesOptions pages={pages} />
     </div>
   );
 }

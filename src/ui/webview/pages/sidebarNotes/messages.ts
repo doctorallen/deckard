@@ -14,6 +14,8 @@ import type {
   LinkMentionMessage,
   RefineActiveSearchMessage,
   SetHideDailyNotesMessage,
+  SetPageShownMessage,
+  SetPagesStyleMessage,
   SetRelatedNotesPreviewLinesMessage,
   SetRelatedNotesSortMessage,
   SidebarNotesPageToHost,
@@ -80,6 +82,18 @@ const narrowSetRelatedNotesPreviewLines: Narrower<SetRelatedNotesPreviewLinesMes
 const narrowSetHideDailyNotes: Narrower<SetHideDailyNotesMessage> = (value) =>
   typeof value.hide === 'boolean' ? { type: 'setHideDailyNotes', hide: value.hide } : undefined;
 
+/** The pages' gear: draw them as a list or as icons, and nothing else. */
+const narrowSetPagesStyle: Narrower<SetPagesStyleMessage> = (value) =>
+  (value.style === 'list' || value.style === 'icons') && Object.keys(value).length === 2
+    ? { type: 'setPagesStyle', style: value.style }
+    : undefined;
+
+/** The pages' gear: a page by a short lowercase id, kept or left out; the host knows which are pages. */
+const narrowSetPageShown: Narrower<SetPageShownMessage> = (value) =>
+  typeof value.page === 'string' && /^[a-z]{1,20}$/.test(value.page) && typeof value.shown === 'boolean' && Object.keys(value).length === 3
+    ? { type: 'setPageShown', page: value.page, shown: value.shown }
+    : undefined;
+
 /** Insert link on a related note: the note, by its first line. */
 const narrowInsertLink: Narrower<InsertLinkMessage> = (value) =>
   isSourceLocation(value)
@@ -145,6 +159,8 @@ export const SIDEBAR_NOTES_MESSAGES: NarrowingTable<SidebarNotesPageToHost> = {
   homeResetWidgets: onlyType('homeResetWidgets'),
   calendarDay: narrowCalendarDay,
   goToPage: narrowGoToPage,
+  setPagesStyle: narrowSetPagesStyle,
+  setPageShown: narrowSetPageShown,
 };
 
 /** A message from the Related Notes sidebar, narrowed by its table, or undefined. */

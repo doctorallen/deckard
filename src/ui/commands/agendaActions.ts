@@ -394,9 +394,8 @@ export class AgendaContextKeys {
 }
 
 /**
- * Asks how to group the Agenda, and keeps the answer where the setting is,
- * so the panel and the settings say the same thing. Which settings that
- * writes is the agenda service's; this asks and returns the grouping now in
+ * Asks how to group the Agenda, and keeps the answer in the preferences,
+ * through the agenda service; this asks and returns the grouping now in
  * force, or undefined when nothing changed.
  */
 export async function pickAgendaGrouping(
@@ -429,8 +428,8 @@ export async function pickAgendaGrouping(
 
 /**
  * Asks how each of the Agenda's groups orders its tasks, and keeps the
- * answer in `deckard.agenda.sort`. Returns the sort now in force, or
- * undefined when nothing changed.
+ * answer in the preferences. Returns the sort now in force, or undefined
+ * when nothing changed.
  */
 export async function pickAgendaSort(agenda: Pick<AgendaService<AgendaGroup>, 'readSort' | 'setSort'>): Promise<TaskSortMode | undefined> {
   const current = agenda.readSort();
@@ -446,7 +445,8 @@ export async function pickAgendaSort(agenda: Pick<AgendaService<AgendaGroup>, 'r
   if (!chosen || chosen.mode === current) {
     return undefined;
   }
-  return (await agenda.setSort(chosen.mode)) ? chosen.mode : undefined;
+  await agenda.setSort(chosen.mode);
+  return chosen.mode;
 }
 
 /** What the picker says beside the grouping in force. */

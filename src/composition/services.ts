@@ -15,6 +15,7 @@ import { UsageService } from '../core/storage/preferencesUsage';
 import { SearchStore } from '../core/storage/searchStore';
 import { reportError, setTimingLog } from '../shared/timing';
 import { tidyAfterUpdate } from './tidyPreferences';
+import { carryMovedSettingsOnce } from './movedSettings';
 import { createWorkspaceIndex } from '../core/workspace/indexer';
 import type { IndexRoles } from '../core/workspace/indexReader';
 import { WorkspaceScanner } from '../core/workspace/scanner';
@@ -94,7 +95,9 @@ import { countUnknownStatuses, noticeUnknownStatusesOnce } from '../ui/commands/
 import { offerStatusMigrationOnce } from '../ui/commands/statusMove';
 import { openSettingAction, settingLabel } from '../ui/commands/notify';
 import { PreferenceSnapshots } from '../core/storage/preferenceSnapshots';
-import { OutlineTreeProvider, syncOutlineFollowCursorContext } from '../ui/views/outlineTree';
+import { OutlineTreeProvider } from '../ui/views/outlineTree';
+import { publishViewChoices } from '../ui/commands/toggles/viewChoiceContext';
+import { startPageWidth } from '../ui/commands/displaySettings';
 import { QueryBlocks } from '../ui/preview/queryBlocks';
 import { AgendaTreeProvider } from '../ui/views/agendaTree';
 import { countDueTasks, TaskStatusBar } from '../ui/views/taskStatusBar';
@@ -105,7 +108,6 @@ import { AgendaService } from '../services/agendaService';
 import { WhatsNew } from '../ui/commands/whatsNew';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { TryNextLedger } from '../ui/commands/tryNext';
-import { settingTarget, writeSetting } from '../ui/commands/settings';
 import { DisposalOrder } from './disposalOrder';
 import { findUnlinkedMentions } from '../domain/search/mentions';
 import { evaluateSearchPage } from '../ui/state/searchPageState';
@@ -274,7 +276,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
   syncWalkthroughContext(context, core.indexer);
   createEditorContexts(context, core, preferences);
   const assistance = createLinksAndAssistance(context, core, preferences);
-  const calendar = createCalendar(context, core, writes, search);
+  const calendar = createCalendar(context, { core, preferences, writes, search });
   const home = createHome(context, {
     core,
     preferences,
@@ -295,7 +297,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
   tidyPreferencesOnUpdate(context, core.indexer, preferences);
   registerViews(context, { sidebarNotes: sidebar.sidebarNotes, calendar: calendar.calendar, outline: trees.outline, agenda: trees.agenda });
   const pages = listPages(built);
-  const sectionFocus = createLateContexts(context, core, pages);
+  const sectionFocus = createLateContexts(context, core, pages, preferences);
   return {
     log,
     whatsNew,
@@ -523,6 +525,11 @@ function createPreferences(context: vscode.ExtensionContext, core: Core): Prefer
   const tagRenames = new TagRenames(repository);
   const maintenance = new PreferencesMaintenance(repository);
   void repository.initialize();
+  // The settings that moved into the views' preferences, carried once,
+  // before any view is built from them.
+  void carryMovedSettingsOnce(repository, { global: context.globalState, workspace: context.workspaceState }).catch(
+    (error: unknown) => reportError('Could not carry the moved settings into the preferences', error),
+  );
   // What Move to… ranks destinations by and records a heading in, wherever
   // it is run from.
   const move = { reader: repository, usage };
@@ -828,14 +835,27 @@ function createLinksAndAssistance(context: vscode.ExtensionContext, core: Core, 
  */
 function createCalendar(
   context: vscode.ExtensionContext,
-  core: Core,
-  writes: Omit<Writes, 'capture'>,
-  search: ReturnType<typeof createSearch>,
+  { core, preferences, writes, search }: {
+    core: Core;
+    preferences: PreferenceParts;
+    writes: Omit<Writes, 'capture'>;
+    search: ReturnType<typeof createSearch>;
+  },
 ) {
   const { indexer } = core;
   const { themePreview, searchPanels } = search;
   const openTag = (tagKey: string) => searchPanels.show(tagKey);
-  const calendar = new CalendarView({ indexer, writes: writes.tasks, themePreview, extensionUri: context.extensionUri, openTag });
+  // Whether the day panel shows and weekends are drawn, which the
+  // Calendar's menu and the page's gear keep.
+  const calendarPreferences = { reader: preferences.repository, display: preferences.display };
+  const calendar = new CalendarView({
+    indexer,
+    writes: writes.tasks,
+    themePreview,
+    extensionUri: context.extensionUri,
+    openTag,
+    preferences: calendarPreferences,
+  });
   const activeCalendar = new ActiveCalendar();
   const activeHome = new ActiveHome();
   context.subscriptions.push(activeCalendar, activeHome);
@@ -846,6 +866,7 @@ function createCalendar(
     themePreview,
     activeCalendar,
     openTag,
+    preferences: calendarPreferences,
   });
   context.subscriptions.push(calendarPage);
   return { calendar, activeCalendar, activeHome, calendarPage };
@@ -1003,7 +1024,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
 /** The Outline, the query blocks, the Tasks view and its service, the status bar, and capture. */
 function createTreesAndCapture(context: vscode.ExtensionContext, core: Core, preferences: PreferenceParts, writes: Omit<Writes, 'capture'>) {
   const { indexer } = core;
-  const outline = new OutlineTreeProvider(indexer);
+  const outline = new OutlineTreeProvider(indexer, preferences.repository);
   // A query block's checkboxes link to Deckard's URI handler, which ticks them.
   const queryBlocks = new QueryBlocks(indexer, {
     base: `${vscode.env.uriScheme}://${context.extension.id}`,
@@ -1023,8 +1044,14 @@ function createTreesAndCapture(context: vscode.ExtensionContext, core: Core, pre
       resolveMove: resolveTaskMove,
       isNamespaceName,
     },
-    // Where the grouping in force is set, so a workspace's own is the one changed.
-    writeSetting: (key, value) => writeSetting(key, value, settingTarget(key)),
+    // How the view is grouped and sorted, which its Group and Sort buttons keep.
+    preferences: {
+      get value() {
+        return preferences.repository.current;
+      },
+      setAgendaGrouping: (groupBy, namespace) => preferences.taskLayout.setAgendaGrouping(groupBy, namespace),
+      setAgendaSort: (sort) => preferences.taskLayout.setAgendaSort(sort),
+    },
   });
   const agenda = new AgendaTreeProvider(
     indexer,
@@ -1168,8 +1195,12 @@ function registerViews(context: vscode.ExtensionContext, views: Omit<Views, 'tas
  * code action. Each was made where it was registered; only the commands
  * around them moved out, to the features.
  */
-function createLateContexts(context: vscode.ExtensionContext, core: Core, pages: Pages): SectionFocus {
-  void syncOutlineFollowCursorContext();
+function createLateContexts(context: vscode.ExtensionContext, core: Core, pages: Pages, preferences: PreferenceParts): SectionFocus {
+  // The Calendar's day panel and weekends, and the Outline following the
+  // cursor, as context keys their menus and titles read.
+  context.subscriptions.push(publishViewChoices(preferences.repository));
+  // Every page's width, which its gear keeps in the preferences.
+  context.subscriptions.push(startPageWidth({ reader: preferences.repository, display: preferences.display }));
   context.subscriptions.push(startZenMode(context.globalState));
   // Which note a section is focused in, which leaving it clears.
   const sectionFocus = new SectionFocus();

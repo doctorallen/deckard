@@ -3,7 +3,7 @@
  * ranked notes, what links to the note being read, the states the sidebar
  * can be in, and the messages it sends.
  */
-import type { RelatedNotesSortMode } from '../../domain/model/preferences';
+import type { ContextPagesStyle, RelatedNotesSortMode } from '../../domain/model/preferences';
 import type { RankedNote, SuggestedTag } from '../../domain/model/relatedNotes';
 import type { TagReference } from '../../domain/model/tags';
 import type { CalendarDayDetail, CalendarMessage } from './calendar';
@@ -22,6 +22,7 @@ import type {
 } from './shared';
 
 export type { RankedNote, SuggestedTag } from '../../domain/model/relatedNotes';
+export type { ContextPagesStyle };
 
 /** A line in another note that links to, or names, the note being read. */
 export interface NoteLinkEntry {
@@ -252,8 +253,6 @@ export interface CalendarDayMessage {
   message: CalendarMessage;
 }
 
-/** How Context draws Deckard's pages at its top: labeled rows, or one row of their icons. */
-export type ContextPagesStyle = 'list' | 'icons';
 
 /** One page as Context draws it at its top. */
 export interface ContextPage {
@@ -266,15 +265,38 @@ export interface ContextPage {
   detail: string;
 }
 
+/** A page the gear over the pages offers to tick: its id, its name, and whether it is kept. */
+export interface ContextPageChoice {
+  id: string;
+  label: string;
+  shown: boolean;
+}
+
 /**
  * The pages Context draws at its top: the ones the reader keeps there, in
- * order, how, and which of them is in front, drawn pressed.
+ * order, how, and which of them is in front, drawn pressed; and every page,
+ * which the gear beside them offers to keep or leave out.
  */
 export interface ContextPages {
   style: ContextPagesStyle;
   pages: ContextPage[];
+  /** Every page, in order, with whether it is kept. */
+  choices?: ContextPageChoice[];
   /** The page in front, such as `board` while the Task Board is. */
   current?: string;
+}
+
+/** The gear over the pages: draw them as a list or as icons. */
+export interface SetPagesStyleMessage {
+  type: 'setPagesStyle';
+  style: ContextPagesStyle;
+}
+
+/** The gear over the pages: keep a page at the top of Context, or leave it out. */
+export interface SetPageShownMessage {
+  type: 'setPageShown';
+  page: string;
+  shown: boolean;
 }
 
 /**
@@ -315,6 +337,8 @@ export interface SidebarNotesPageToHost {
   homeResetWidgets: HomeResetWidgetsMessage;
   calendarDay: CalendarDayMessage;
   goToPage: GoToPageMessage;
+  setPagesStyle: SetPagesStyleMessage;
+  setPageShown: SetPageShownMessage;
 }
 
 /** What the host sends the Related Notes sidebar, by type. */

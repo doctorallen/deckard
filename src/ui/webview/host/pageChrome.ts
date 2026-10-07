@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import { getDeckardTheme } from '../themes';
 import type { ThemePreview } from '../themePreview';
-import { affectsDisplayChoices, readDisplayChoices, readDisplayLevel } from '../../commands/displaySettings';
+import { affectsDisplayChoices, onDidChangePageWidth, readDisplayChoices, readDisplayLevel } from '../../commands/displaySettings';
 import type { PageChrome } from '../components';
 import type { DisplayLevel } from '../../state/displayLevel';
 
@@ -27,9 +27,9 @@ export function affectsPageChrome(event: vscode.ConfigurationChangeEvent): boole
 
 /**
  * Calls back when a page has to be drawn again in another look: the theme or
- * zen setting changed, or Choose Theme… is previewing a theme on
- * `themePreview`. A page that redraws on this needs no configuration
- * listener of its own for it.
+ * a Display setting changed, the gear chose another page width, or Choose
+ * Theme… is previewing a theme on `themePreview`. A page that redraws on
+ * this needs no listener of its own for it.
  */
 export function onDidChangePageChrome(
   listener: () => void,
@@ -41,5 +41,6 @@ export function onDidChangePageChrome(
     }
   });
   const preview = themePreview.onDidChange(listener);
-  return { dispose: () => { configuration.dispose(); preview.dispose(); } };
+  const width = onDidChangePageWidth(listener);
+  return { dispose: () => { configuration.dispose(); preview.dispose(); width.dispose(); } };
 }

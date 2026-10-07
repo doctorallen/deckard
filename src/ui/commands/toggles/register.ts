@@ -1,21 +1,20 @@
 import * as vscode from 'vscode';
 
 import type { Services } from '../../../composition/services';
-import { setOutlineFollowCursor } from '../../views/outlineTree';
 import { registerCommand } from '../runCommand';
-import { settingTarget, writeSetting } from '../settings';
-import { listToggleCommands, SETTING_TOGGLES, ToggleCommand } from './settingToggles';
+import { listToggleCommands, VIEW_TOGGLES } from './viewToggles';
 
 /**
- * The paired commands that turn one setting on and off, one registration
- * per row of SETTING_TOGGLES: the Calendar's day panel and weekends, and
- * the Outline following the cursor; and Zen's, which move Display's step.
+ * The paired commands that turn one view choice on and off, one
+ * registration per row of VIEW_TOGGLES: the Calendar's day panel and
+ * weekends, and the Outline following the cursor, each kept in the
+ * preferences; and Zen's, which move Display's step.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
-  const { pageCommands } = services;
+  const { pageCommands, preferences } = services;
   context.subscriptions.push(
-    ...listToggleCommands(SETTING_TOGGLES).map((command) =>
-      registerCommand(command.id, () => writeToggle(command)),
+    ...listToggleCommands(VIEW_TOGGLES).map((command) =>
+      registerCommand(command.id, () => preferences.display.setViewChoice(command.choice, command.value)),
     ),
     // Zen's own setter moves Display's step to Zen or back to the step the
     // reader was on, and sets the context key that picks which command the
@@ -25,17 +24,4 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     // The Zen button's command: into Zen, or back to the step the reader was on.
     registerCommand('deckard.toggleZen', () => pageCommands.toggleZenMode()),
   );
-}
-
-/**
- * Writes one toggle's value where its target says. The `outline` target is
- * the Outline's own setter, which also sets the context key its title reads.
- */
-function writeToggle(command: ToggleCommand): Promise<unknown> {
-  switch (command.target) {
-    case 'where-set':
-      return writeSetting(command.setting, command.value, settingTarget(command.setting));
-    case 'outline':
-      return setOutlineFollowCursor(command.value);
-  }
 }

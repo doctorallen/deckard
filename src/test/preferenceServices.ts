@@ -45,3 +45,28 @@ export function createPreferences(
     maintenance: new PreferencesMaintenance(repository),
   };
 }
+
+/** A store kept in memory, empty until something is written to it. */
+export class MemoryStore implements KeyValueStore {
+  private readonly values = new Map<string, unknown>();
+
+  /** The value stored under `key`, or `defaultValue` when there is none. */
+  public get<T>(key: string, defaultValue?: T): T | undefined {
+    return this.values.has(key) ? (this.values.get(key) as T) : defaultValue;
+  }
+
+  /** Stores `value` under `key`; undefined removes it. */
+  public update(key: string, value: unknown): Promise<void> {
+    if (value === undefined) {
+      this.values.delete(key);
+    } else {
+      this.values.set(key, value);
+    }
+    return Promise.resolve();
+  }
+}
+
+/** The whole set over a store of its own in memory, as a suite with nothing kept yet. */
+export function createMemoryPreferences(): TestPreferences {
+  return createPreferences(new MemoryStore());
+}

@@ -1,5 +1,8 @@
 import * as vscode from 'vscode';
 
+import type { DisplayService } from '../../../../core/storage/preferencesDisplay';
+import type { PreferencesReader } from '../../../../core/storage/preferencesRepository';
+import { readViewChoice } from '../../../../core/storage/preferencesViewChoices';
 import { isOpenTask } from '../../../../domain/tasks/taskStatuses';
 import { openNoteAt } from '../../../commands/noteOpening';
 import { sameShownDayIn } from '../../../../domain/markdown/calendar';
@@ -39,10 +42,21 @@ export interface CalendarIndex {
   getSnapshot(): WorkspaceIndex;
 }
 
+/**
+ * Where the calendars keep their day panel and weekends: the preferences,
+ * which the sidebar Calendar's menu and the page's gear write.
+ */
+export interface CalendarPreferences {
+  readonly reader: Pick<PreferencesReader, 'value' | 'onDidChange'>;
+  readonly display: Pick<DisplayService, 'setViewChoice'>;
+}
+
 /** What a calendar's controller asks of the view or page that shows it. */
 export interface CalendarControllerHost {
   /** Whether the day panel is showing, and so a new month keeps a chosen day. */
   dayPanel: () => boolean;
+  /** Whether Saturday and Sunday are drawn. */
+  showWeekends: () => boolean;
   /** Draws the calendar again, after its month or day changed. */
   refresh: () => void;
   /**
@@ -82,7 +96,7 @@ export class CalendarController {
       createCalendar(this.indexer.getSnapshot(), this.month, readQueryContext(), {
         dayPanel: this.host.dayPanel(),
         selectedDate: this.selectedDate,
-        showWeekends: readShowWeekends(),
+        showWeekends: this.host.showWeekends(),
         ...options,
       }),
     );
@@ -171,7 +185,7 @@ export class CalendarController {
     // from another. With the weekends hidden it is a weekday, as a step on
     // the page lands, since a hidden day can be neither seen nor focused.
     if (from !== undefined) {
-      this.selectedDate = from.slice(0, 7) === month ? from : sameShownDayIn(from, month, !readShowWeekends());
+      this.selectedDate = from.slice(0, 7) === month ? from : sameShownDayIn(from, month, !this.host.showWeekends());
     }
     if (this.selectedDate === today) {
       this.selectedDate = undefined;
@@ -265,14 +279,24 @@ export class CalendarController {
   }
 }
 
-/** `deckard.calendar.showWeekends`: whether Saturday and Sunday are drawn. */
-export function readShowWeekends(): boolean {
-  return vscode.workspace.getConfiguration('deckard').get<boolean>('calendar.showWeekends', true) !== false;
-}
-
-/** `deckard.calendar.dayPanel`: whether the chosen day shows below the month. */
-export function readDayPanel(): boolean {
-  return vscode.workspace.getConfiguration('deckard').get<boolean>('calendar.dayPanel', false) === true;
+/**
+ * Calls back when the preferences change whether the day panel shows or
+ * whether weekends are drawn, and not for any other change.
+ */
+export function onDidChangeCalendarChoices(reader: CalendarPreferences['reader'], listener: () => void): vscode.Disposable {
+  const read = (): string => {
+    const value = reader.value;
+    return `${readViewChoice(value, 'calendarDayPanel')} ${readViewChoice(value, 'calendarWeekends')}`;
+  };
+  let last = read();
+  return reader.onDidChange(() => {
+    const now = read();
+    if (now === last) {
+      return;
+    }
+    last = now;
+    listener();
+  });
 }
 
 /** What the sidebar Calendar is drawn from, and what it writes through. */
@@ -288,6 +312,8 @@ export interface CalendarViewControllerOptions {
   openTag: (tagKey: string) => unknown;
   /** The extension's folder, which the page's style sheets are under. */
   extensionUri: vscode.Uri;
+  /** Whether the day panel shows and weekends are drawn. */
+  preferences: CalendarPreferences;
 }
 
 /**
@@ -322,10 +348,12 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
   /** The month and the day the sidebar shows, apart from the page's. */
   public readonly calendar: CalendarController;
 
-  /** Starts on this month, with the day panel as `deckard.calendar.dayPanel` says. */
+  /** Starts on this month, with the day panel as the reader left it. */
   public constructor(private readonly view: CalendarViewControllerOptions) {
+    const { reader } = view.preferences;
     this.calendar = new CalendarController(view.indexer, view.writes, {
-      dayPanel: readDayPanel,
+      dayPanel: () => readViewChoice(reader.value, 'calendarDayPanel'),
+      showWeekends: () => readViewChoice(reader.value, 'calendarWeekends'),
       refresh: view.refresh,
       openTag: view.openTag,
       // A move the day panel asked for that could not be made is said, as
@@ -348,15 +376,17 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
     return this.calendar.snapshot();
   }
 
-  /** Redraws when today may have moved, and when a calendar setting changes. */
+  /**
+   * Redraws when today may have moved, when a calendar setting changes, and
+   * when the day panel or the weekends are turned on or off.
+   */
   public subscribe(page: PageContext): vscode.Disposable[] {
     return [
       onDidFocusWindow(() => page.refresh()),
+      onDidChangeCalendarChoices(this.view.preferences.reader, () => page.refresh()),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.calendar.weekStart') ||
-          event.affectsConfiguration('deckard.calendar.dayPanel') ||
-          event.affectsConfiguration('deckard.calendar.showWeekends') ||
           event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
         ) {
           page.refresh();

@@ -5,7 +5,7 @@ import type { CalendarPageToHost, CalendarSnapshot } from '../protocol/calendar'
 import type { TaskWrites } from '../commands/taskActions';
 import { ViewAdapter } from './host/viewAdapter';
 import { WebviewHost } from './host/webviewHost';
-import { CalendarController, CalendarViewController } from './pages/calendar/calendarController';
+import { CalendarController, type CalendarPreferences, CalendarViewController } from './pages/calendar/calendarController';
 import type { ThemePreview } from './themePreview';
 
 /** The index the sidebar Calendar is drawn from and redraws on. */
@@ -27,6 +27,8 @@ export interface CalendarViewOptions {
   extensionUri: vscode.Uri;
   /** Opens a tag's page, as a tag in a task's title in the day panel asks. */
   openTag: (tagKey: string) => unknown;
+  /** Whether the day panel shows and weekends are drawn. */
+  preferences: CalendarPreferences;
 }
 
 /**
@@ -52,6 +54,7 @@ export class CalendarView implements vscode.WebviewViewProvider, vscode.Disposab
       post: (message) => this.page.host.post(message),
       openTag: options.openTag,
       extensionUri,
+      preferences: options.preferences,
     });
     this.controller = controller.calendar;
     this.page = new ViewAdapter(new WebviewHost(controller, { indexer, themePreview }), extensionUri);

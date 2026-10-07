@@ -14,10 +14,6 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.dailyNote.rollover": "off",
 	"deckard.templatesFolder": "templates",
 	"deckard.noteBoundaries": "line",
-	"deckard.outline.followCursor": true,
-	"deckard.agenda.groupBy": "due",
-	"deckard.agenda.groupNamespace": "project",
-	"deckard.agenda.sort": "rank",
 	"deckard.agenda.query": "",
 	"deckard.tasks.metadataFormat": "emoji",
 	"deckard.tasks.suggestSteps": true,
@@ -58,36 +54,27 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.parked.folders` | `{}` | Glob patterns of folders and notes to park, written like `deckard.exclude`. A parked note stays searchable with `is:parked` but is left out of to-do lists. `deckard.exclude` wins. |
 | `deckard.parked.tags` | `["parked"]` | Tags that park a note (in front matter), a heading and everything under it, or a task. Sub-tags park too, so `project/old` parks `#project/old/phase-1`. |
 | `deckard.theme` | `corpo` | The style for Deckard's pages: `corpo`, which follows your VS Code theme, or `replicant`, `oblivion`, `lcars`, `synthwave`, `tomcat`, `fellowship`, and `cooper`. |
-| `deckard.display.level` | `full` | How much every page draws: `full`, `quiet` (each theme's decoration and the helper lines off, tags as text), or `zen` (also compact spacing, flat cards, no counts, dates as how far off). Every setting below but the page width follows it while it is `auto`. Yours alone, the same in every workspace. See [Display](themes-and-zen.md#display). |
+| `deckard.display.level` | `full` | How much every page draws: `full`, `quiet` (each theme's decoration and the helper lines off, tags as text), or `zen` (also compact spacing, flat cards, no counts, dates as how far off). Every setting below follows it while it is `auto`; the page width is the gear's own row. Yours alone, the same in every workspace. See [Display](themes-and-zen.md#display). |
 | `deckard.display.themeStyling` | `auto` | `styled` keeps each theme's grid, corners, glow, codes, and display headings; `plain` draws thin frames and sentence-case headings. `auto`: plain from Quiet. |
 | `deckard.display.helpText` | `auto` | `shown` or `hidden`: the lines that teach, such as the search hint and Home's key bar. A search that fails to parse always says so. `auto`: hidden from Quiet. |
 | `deckard.display.tags` | `auto` | Where tags are listed on their own: framed `chips`, or plain `text`; a tag in a title is always text. `auto`: text from Quiet. |
 | `deckard.display.density` | `auto` | `comfortable` or `compact` spacing on every page. `auto`: compact at Zen. |
 | `deckard.display.cardFrames` | `auto` | `raised` cards, or `flat` rows parted by a divider. `auto`: flat at Zen. |
 | `deckard.display.counts` | `auto` | `shown` or `hidden`: the number beside a name, such as a widget's total or a column's tasks. A screen reader still reads each, and figures that are the point, such as Home's Due today, always show. `auto`: hidden at Zen. |
-| `deckard.pages.style` | `list` | How Deckard's pages are drawn at the top of the Context view: as rows with what is worth knowing about each now (`list`), or as one row of their icons, named on hover (`icons`). |
-| `deckard.pages.shown` | every page | Which pages the top of the Context view keeps, in its order; tick them in Settings. Go to… still lists every page. |
 | `deckard.display.cardDetails` | file and line | Which details an entry shows while the pointer is on it or it has focus: `fileAndLine` (where it is written, and the headings above it), and its `created` and `updated` dates, on a line of their own under where it is written, such as *Created 2026-09-12*, on search cards, task rows, board cards, and Related Notes. Tick them in Settings; untick all three to draw none, which a screen reader still reads. A task's created date is its own `➕` date when it has one, else its note's; its updated date is its note's. |
 | `deckard.display.dates` | `auto` | How a due date is written: `both` ("Overdue 2 days · 2026-10-02"), `relative` ("Overdue 2 days"), or `date` ("Overdue · 2026-10-02"). An overdue date always says Overdue. `auto`: relative at Zen. |
 | `deckard.display.dateFormat` | `YYYY-MM-DD` | How Deckard writes a date for you to read, on pages, in views, in messages, and in the task editor, in the tokens Obsidian's daily notes use: `DD/MM/YYYY`, `D MMM YYYY`, `ddd, MMM D, YYYY`, or `L` and `LL`, your display language's own. Text in `[brackets]` is written as it is. Dates written into notes, file names, and searches stay `YYYY-MM-DD`. Empty, or a format with no date in it, reads as the default. `Deckard: Choose Date Format…` shows each with today's date. See [Dates](themes-and-zen.md#dates). |
 | `deckard.display.shortDateFormat` | `ddd, MMM D` | How a day of this year is written where there is little room: the Tasks view's day headings, the Pages view, the calendar's day title, search completions, and Linked from. A day in another year is written in `deckard.display.dateFormat`. |
-| `deckard.display.pageWidth` | `limited` | How wide pages draw: `limited` to a column at most 1000px wide, or `full`, the panel's full width. In a page's gear, under Theme; the steps never change it. The Task Board and the Calendar always use their full width. |
 | `deckard.dashboard.openOnStartup` | `false` | Opens the Dashboard when VS Code starts in a workspace where Deckard has indexed notes. |
 | `deckard.periodicNotes.folder` | `""` | The folder inside the notes folder that new daily, weekly, and monthly notes go in, such as `journal/{yyyy}` (`{mm}` is the month). Notes already elsewhere are still found. |
 | `deckard.calendar.weekStart` | `sunday` | The day a week starts on: `sunday`, `monday`, or `locale` (VS Code's display language). It sets the Calendar, weekly notes and reviews, `this-week`, `last-week`, and `next-week`, and typed dates such as *next week*. |
 | `deckard.calendar.exportFile` | `""` | A calendar file (`.ics`) Deckard keeps up to date with your dated tasks, for a calendar app to subscribe to. A relative path is in the first workspace folder. See [Tasks in your calendar app](daily-notes.md#tasks-in-your-calendar-app). |
 | `deckard.calendar.exportQuery` | `is:open` | The search whose dated tasks the calendar file holds. |
-| `deckard.calendar.showWeekends` | `true` | Draws Saturday and Sunday in the Calendar and on the calendar page. Off, a week is its five working days; a task due on a weekend is still in the Tasks view and on the board. |
-| `deckard.calendar.dayPanel` | `false` | Shows the chosen day's daily note, tasks, and new notes under the Calendar. A click then chooses a day; a double-click or Enter opens its note. Set from **Open Day Panel** and **Close Day Panel** in the Calendar's `…` menu. |
 | `deckard.periodicNote.reviewSections` | `[]` | Sections of your own at the end of a review, each `{ "title": …, "query": … }`. See [Writing a review](daily-notes.md#writing-a-review). |
 | `deckard.periodicNote.review` | `true` | Writes a review into a newly created weekly or monthly note. See [Writing a review](daily-notes.md#writing-a-review). |
 | `deckard.dailyNote.rollover` | `off` | What a new daily note does with the last one's unfinished tasks: `off`, `move`, or `migrate` (`copy` is its older name). See [Carrying unfinished tasks forward](daily-notes.md#carrying-unfinished-tasks-forward). |
 | `deckard.templatesFolder` | `templates` | The folder of [note templates](notes-and-links.md#templates), relative to the workspace folder. Not indexed. `Daily.md`, `Weekly.md`, and `Monthly.md` here are what new [periodic notes](daily-notes.md#templates) start from. Empty turns templates off. |
 | `deckard.noteBoundaries` | `line` | Where one note ends and the next begins; see [Markdown format](notes-and-links.md#markdown-format). `line`, `heading`, or `marked`. |
-| `deckard.outline.followCursor` | `true` | Selects the Outline heading containing the editor cursor. The eye control in the Outline title switches it. |
-| `deckard.agenda.groupBy` | `due` | What the [Tasks view's](tasks.md#tasks-view) groups are: `due`, `priority`, `status`, `assignee`, or `tag`. The group control in its title sets it too. |
-| `deckard.agenda.sort` | `rank` | How each of the Tasks view's groups orders its tasks: `rank`, `created`, `createdOldest`, `updated`, `updatedOldest`, `alphabetical`, or `alphabeticalReverse`. The sort control in its title sets it too. |
-| `deckard.agenda.groupNamespace` | `project` | The tag namespace the Tasks view groups by when `deckard.agenda.groupBy` is `tag`, such as `context` for `#context/phone`. Inherited tags count. |
 | `deckard.agenda.query` | Empty | A [query](search.md#query-language) limiting the open tasks in the Tasks view, Home's agenda, and the status bar, such as `is:mine`. Empty means every open task. |
 | `deckard.tasks.metadataFormat` | `emoji` | The Tasks format Deckard writes for a task with no metadata yet: `emoji` (📅 2026-09-20) or `dataview` ([due:: 2026-09-20]). Existing tasks keep theirs; Deckard reads both. |
 | `deckard.board.limits` | `{}` | Work-in-progress limits for board columns, by status, its name with a hyphen for a space, such as `{ "in-progress": 3 }`, or by column id, such as `{ "priority:high": 5 }`. An over-limit column says so. |
@@ -97,7 +84,6 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.me` | Empty | Who you are in your notes, such as `@ren-kade`, so `is:mine` finds the tasks that name you. See [Who a task is for](tasks.md#who-a-task-is-for). |
 | `deckard.tasks.needsNewDateAfterDays` | `30` | How many days past its due date an open task stays in Overdue. After that it moves to **Needs a new date** and leaves the status bar's count. `0` keeps every overdue task in Overdue. |
 | `deckard.taskReminderTime` | Empty | A time of day, such as `09:00`, from which Deckard says how many tasks are due, once a day. Empty means no reminder. |
-| `deckard.board.parentTag` | `false` | Shows each task's nearest parent tag above its title on the Task board's cards and list rows. The board's gear turns it on and off. |
 | `deckard.editor.preset` | `full` | What Deckard draws in the editor, as one choice: `full`, everything; `tasks`, task hints and problem reports without link counts, mention lenses, or breadcrumbs; `writing`, the / menu, hover previews, and problem reports only. A `deckard.editor.*` setting you change yourself wins over it. `Deckard: Choose Editor Preset…` sets it. |
 | `deckard.editor.referenceCounts` | `true` | Shows backlink, heading-reference, and open-task counts above a note's lines. |
 | `deckard.editor.hoverPreviews` | `true` | Previews a `[[Wiki link]]`'s target and summarizes a tag's entries on hover. |

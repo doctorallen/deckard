@@ -110,7 +110,7 @@ export interface TaskBoardOptions {
    * refused.
    */
   limits?: Readonly<Record<string, number>>;
-  /** Whether each card and row shows its task's nearest parent tag (`deckard.board.parentTag`). */
+  /** Whether each card and row shows its task's nearest parent tag, as the board's gear keeps it. */
   parentTag?: boolean;
 }
 

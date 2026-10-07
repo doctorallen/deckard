@@ -290,6 +290,8 @@ const LINK_ACTIONS: ReadonlyArray<readonly [string, (element: HTMLElement, event
   ['set-hide-daily', (choice) => send({ type: 'setHideDailyNotes', hide: choice.dataset.value === 'hide' })],
   ['add-suggested-tag', (add) => send({ type: 'addSuggestedTag', tagKey: String(add.dataset.suggestedTag) })],
   ['set-preview-lines', (choice) => send({ type: 'setRelatedNotesPreviewLines', lines: Number(choice.dataset.value) as 0 | 1 | 2 })],
+  ['set-pages-style', (choice) => send({ type: 'setPagesStyle', style: choice.dataset.value === 'icons' ? 'icons' : 'list' })],
+  ['set-page-shown', (choice) => send({ type: 'setPageShown', page: String(choice.dataset.page), shown: choice.getAttribute('aria-pressed') !== 'true' })],
   ['open-links-search', () => send({ type: 'openLinksSearch' })],
   ['link-all-mentions', () => send({ type: 'linkAllMentions' })],
 ];

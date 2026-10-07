@@ -32,6 +32,15 @@ export const TASK_SORT_MODES = [
 /** One of TASK_SORT_MODES. */
 export type TaskSortMode = (typeof TASK_SORT_MODES)[number];
 
+/** What the Tasks view's groups are: when a task is wanted, or what it carries. */
+export type AgendaGroupBy = 'due' | 'priority' | 'status' | 'assignee' | 'tag';
+
+/** Every grouping, in the order the picker offers them. */
+export const AGENDA_GROUP_BYS: readonly AgendaGroupBy[] = ['due', 'priority', 'status', 'assignee', 'tag'];
+
+/** Deckard's pages at the top of Context: labeled rows, or one row of icons. */
+export type ContextPagesStyle = 'list' | 'icons';
+
 /** How many columns a Dashboard or search page lays a list out in. */
 export type DashboardColumnCount = 1 | 2 | 3 | 4;
 
@@ -221,6 +230,27 @@ export interface PersistedPreferences {
   taskBoardColumnOrder?: string[];
   /** The statuses the board draws no column for, by name; Cancelled when unset. */
   taskBoardHiddenColumns?: string[];
+  /** Each card and row on the Task Board shows its task's nearest parent tag; stored only when on. */
+  boardParentTag?: true;
+
+  /** What the Tasks view groups by, when not by due date. */
+  agendaGroupBy?: Exclude<AgendaGroupBy, 'due'>;
+  /** The namespace the Tasks view groups by tag in, lowercased, when not `project`. */
+  agendaGroupNamespace?: string;
+  /** How each of the Tasks view's groups orders its tasks, when not by rank. */
+  agendaSort?: Exclude<TaskSortMode, 'rank'>;
+  /** The sidebar Calendar shows the chosen day under the month; stored only when on. */
+  calendarDayPanel?: true;
+  /** Both calendars leave Saturday and Sunday out; stored only when they do. */
+  calendarHideWeekends?: true;
+  /** The Outline leaves the cursor alone; stored only when it does. */
+  outlineFollowCursorOff?: true;
+  /** Every page as wide as its panel; stored only when it is. */
+  pageWidth?: 'full';
+  /** Deckard's pages at the top of Context as one row of icons; stored only when they are. */
+  contextPagesStyle?: 'icons';
+  /** The pages left out of the top of Context, by id, in no order; stored only when one is. */
+  contextPagesHidden?: string[];
 
   /** The widgets on the Dashboard's Home, in order. */
   dashboardWidgets: DashboardWidgetConfig[];

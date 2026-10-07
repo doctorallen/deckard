@@ -171,16 +171,13 @@ suite('Grouping tasks by a tag namespace', () => {
 
   test('the Tasks view draws a task in two groups as two items, and drags it with its group', async () => {
     const index = indexOf({ 'a.md': NOTE });
-    const configuration = vscode.workspace.getConfiguration('deckard');
-    await configuration.update('agenda.groupBy', 'tag', vscode.ConfigurationTarget.Global);
-    await configuration.update('agenda.groupNamespace', 'context', vscode.ConfigurationTarget.Global);
     const updates = new vscode.EventEmitter<WorkspaceIndex>();
     const provider = new AgendaTreeProvider(
       {
         onDidUpdate: updates.event,
         getTask: (taskId) => index.tasks.get(taskId),
       },
-      createAgendaTreeServices((taskId) => index.tasks.get(taskId)),
+      createAgendaTreeServices((taskId) => index.tasks.get(taskId), undefined, { agendaGroupBy: 'tag', agendaGroupNamespace: 'context' }),
     );
     try {
       updates.fire(index);
@@ -202,8 +199,6 @@ suite('Grouping tasks by a tag namespace', () => {
     } finally {
       provider.dispose();
       updates.dispose();
-      await configuration.update('agenda.groupBy', undefined, vscode.ConfigurationTarget.Global);
-      await configuration.update('agenda.groupNamespace', undefined, vscode.ConfigurationTarget.Global);
     }
   });
 });

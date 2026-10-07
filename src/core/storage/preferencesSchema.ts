@@ -11,6 +11,8 @@ import { HOME_WIDGET_LIMIT, isWatchableNamespace, isWidgetKind, WIDGET_ENTRY_COU
 import { legacyIdOf } from '../../domain/markdown/parser';
 import { isBoardNamespace, isTaskColumnId } from '../../domain/tasks/taskColumns';
 import {
+  AGENDA_GROUP_BYS,
+  AgendaGroupBy,
   DashboardColumnCount,
   DashboardViewState,
   DashboardWidgetConfig,
@@ -68,6 +70,7 @@ export const WORKSPACE_PREFERENCE_KEYS = [
   'pinnedNotes',
   'dashboardWidgets',
   'dashboardViewState',
+  'agendaGroupNamespace',
 ] as const satisfies readonly (keyof PersistedPreferences)[];
 
 /** Everything except the workspace's share: what stays machine-wide. */
@@ -265,6 +268,7 @@ export function normalizePreferences(
     savedFilters: normalizeSavedFilters(source.savedFilters),
     ...normalizeTaskBoard(source),
     ...normalizeWorkspaceMemory(source),
+    ...normalizeViewChoices(source),
   };
 }
 
@@ -375,6 +379,45 @@ function normalizeTaskBoard(
     ...(namespace ? { taskBoardGroupNamespace: namespace } : {}),
     ...(order ? { taskBoardColumnOrder: order } : {}),
     ...(hidden ? { taskBoardHiddenColumns: hidden } : {}),
+    ...(source.boardParentTag === true ? { boardParentTag: true as const } : {}),
+  };
+}
+
+/**
+ * The choices the views keep for themselves, each only when it isn't the
+ * default, and only a value the view offers: how the Tasks view is grouped
+ * and sorted, the Calendar's day panel and weekends, the Outline following
+ * the cursor, the page width, and the pages at the top of Context.
+ */
+function normalizeViewChoices(
+  source: Partial<PersistedPreferences>,
+): Pick<
+  PersistedPreferences,
+  | 'agendaGroupBy'
+  | 'agendaGroupNamespace'
+  | 'agendaSort'
+  | 'calendarDayPanel'
+  | 'calendarHideWeekends'
+  | 'outlineFollowCursorOff'
+  | 'pageWidth'
+  | 'contextPagesStyle'
+  | 'contextPagesHidden'
+> {
+  const groupBy = oneOf<AgendaGroupBy>(source.agendaGroupBy, AGENDA_GROUP_BYS, 'due');
+  const sort = oneOf(source.agendaSort, TASK_SORT_MODES, 'rank');
+  const stored = source.agendaGroupNamespace;
+  const namespace = isBoardNamespace(stored) ? stored.toLowerCase() : undefined;
+  const hidden = uniqueStrings(source.contextPagesHidden);
+  return {
+    ...(groupBy === 'due' ? {} : { agendaGroupBy: groupBy }),
+    ...(namespace && namespace !== 'project' ? { agendaGroupNamespace: namespace } : {}),
+    ...(sort === 'rank' ? {} : { agendaSort: sort }),
+    ...(source.calendarDayPanel === true ? { calendarDayPanel: true as const } : {}),
+    ...(source.calendarHideWeekends === true ? { calendarHideWeekends: true as const } : {}),
+    ...(source.outlineFollowCursorOff === true ? { outlineFollowCursorOff: true as const } : {}),
+    ...(source.pageWidth === 'full' ? { pageWidth: 'full' as const } : {}),
+    ...(source.contextPagesStyle === 'icons' ? { contextPagesStyle: 'icons' as const } : {}),
+    ...(hidden.length ? { contextPagesHidden: hidden } : {}),
   };
 }
 
@@ -894,6 +937,7 @@ export function clonePreferences(value: PersistedPreferences): PersistedPreferen
     dashboardWidgets: cloneWidgets(value.dashboardWidgets),
     ...(value.findChoices ? { findChoices: value.findChoices.map((choice) => ({ ...choice })) } : {}),
     ...(value.recentHeadings ? { recentHeadings: value.recentHeadings.map((pin) => ({ ...pin })) } : {}),
+    ...(value.contextPagesHidden ? { contextPagesHidden: [...value.contextPagesHidden] } : {}),
   };
 }
 

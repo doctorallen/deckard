@@ -6,11 +6,6 @@ import { listDeckardPages, type PageFacts } from '../ui/state/deckardPages';
 import { openWebviewPage, type WebviewPage } from './webviewPage';
 import { renderPage } from './pages';
 
-/** A settings section holding `values`, as `deckard` reads. */
-function settings(values: Record<string, unknown>) {
-  return { get: <T>(key: string): T | undefined => values[key] as T | undefined };
-}
-
 /** A Sunday in October with three due today and two overdue. */
 const FACTS: PageFacts = {
   dueToday: 3,
@@ -161,8 +156,27 @@ suite('Context: the pages at its top', () => {
 
   test('with no page kept, it says where to choose them', () => {
     const shown = open({ style: 'list', pages: [] });
-    assert.match(shown.text('.pages-empty') ?? '', /Settings/);
+    assert.match(shown.text('.pages-empty') ?? '', /gear/);
     assert.strictEqual(shown.findAll('.context-pages').length, 0);
+    assert.strictEqual(shown.findAll('.view-options[data-options="pages"]').length, 1, 'and the gear is there');
+  });
+
+  test('its gear sets the look and the pages kept', () => {
+    const shown = open({
+      style: 'list',
+      pages: PAGES,
+      choices: [
+        { id: 'home', label: 'Home', shown: true },
+        { id: 'stats', label: 'Stats', shown: false },
+      ],
+    });
+    shown.click('.view-options[data-options="pages"] [data-action="set-pages-style"][data-value="icons"]');
+    assert.deepStrictEqual(shown.lastPosted('setPagesStyle'), { type: 'setPagesStyle', style: 'icons' });
+    shown.click('.view-options[data-options="pages"] [data-action="set-page-shown"][data-page="stats"]');
+    assert.deepStrictEqual(shown.lastPosted('setPageShown'), { type: 'setPageShown', page: 'stats', shown: true });
+    shown.click('.view-options[data-options="pages"] [data-action="set-page-shown"][data-page="home"]');
+    assert.deepStrictEqual(shown.lastPosted('setPageShown'), { type: 'setPageShown', page: 'home', shown: false });
+    assert.strictEqual(shown.find('.view-options[data-options="pages"] summary').getAttribute('aria-label'), 'Pages: how they look, and which');
   });
 
   test('a state that carries no pages draws none', () => {
@@ -171,26 +185,29 @@ suite('Context: the pages at its top', () => {
   });
 
   test('draws only the pages kept, in the page list\'s order', () => {
-    const pages = listContextPages(listDeckardPages(FACTS), settings({ 'pages.style': 'icons', 'pages.shown': { graph: false, stats: false, help: false } }), 'calendar');
+    const pages = listContextPages(listDeckardPages(FACTS), { contextPagesStyle: 'icons', contextPagesHidden: ['graph', 'stats', 'help'] }, 'calendar');
     const shown = open(pages);
     assert.deepStrictEqual(shown.findAll('.pages-icon').map((icon) => icon.getAttribute('data-page')), ['home', 'board', 'calendar', 'today', 'find']);
     assert.strictEqual(shown.find('[aria-current="page"]').getAttribute('data-page'), 'calendar');
   });
 
-  test('reads its look and the pages kept from the settings, a page kept unless unticked', () => {
-    assert.strictEqual(readPagesStyle(settings({})), 'list');
-    assert.strictEqual(readPagesStyle(settings({ 'pages.style': 'icons' })), 'icons');
-    assert.strictEqual(readPagesStyle(settings({ 'pages.style': 'grid' })), 'list');
-    assert.strictEqual(isPageShown(settings({}), 'stats'), true);
-    assert.strictEqual(isPageShown(settings({ 'pages.shown': { stats: false } }), 'stats'), false);
-    assert.strictEqual(isPageShown(settings({ 'pages.shown': { stats: false } }), 'home'), true);
+  test('reads its look and the pages kept from the preferences, a page kept unless left out', () => {
+    assert.strictEqual(readPagesStyle({}), 'list');
+    assert.strictEqual(readPagesStyle({ contextPagesStyle: 'icons' }), 'icons');
+    assert.strictEqual(isPageShown({}, 'stats'), true);
+    assert.strictEqual(isPageShown({ contextPagesHidden: ['stats'] }, 'stats'), false);
+    assert.strictEqual(isPageShown({ contextPagesHidden: ['stats'] }, 'home'), true);
+    const choices = listContextPages(listDeckardPages(FACTS), { contextPagesHidden: ['stats'] }).choices ?? [];
+    assert.deepStrictEqual(choices.map((choice) => `${choice.id} ${choice.shown}`), [
+      'home true', 'board true', 'calendar true', 'today true', 'graph true', 'find true', 'stats false', 'help true',
+    ], 'every page, for the gear to tick');
   });
 
   test('names the page in front only when it is one of the pages kept', () => {
-    const kept = listContextPages(listDeckardPages(FACTS), settings({}), 'board');
+    const kept = listContextPages(listDeckardPages(FACTS), {}, 'board');
     assert.strictEqual(kept.current, 'board');
     assert.deepStrictEqual(kept.pages[0], { id: 'home', label: 'Home', description: '3 tasks due today', detail: 'What is due today, what slipped, and the widgets you arrange' });
-    const unticked = listContextPages(listDeckardPages(FACTS), settings({ 'pages.shown': { board: false } }), 'board');
+    const unticked = listContextPages(listDeckardPages(FACTS), { contextPagesHidden: ['board'] }, 'board');
     assert.strictEqual(unticked.current, undefined);
     assert.ok(!unticked.pages.some((one) => one.id === 'board'));
   });

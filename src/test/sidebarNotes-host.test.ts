@@ -19,6 +19,7 @@ import { ThemePreview } from '../ui/webview/themePreview';
 import { withConfigurationEvents } from './configurationEvents';
 import { FakeSurface, recordSurface } from './fakeWebview';
 import { captureTimingLog } from './timingLog';
+import { setTimingLog } from '../shared/timing';
 import { createPreferences } from './preferenceServices';
 import { pageWebview, REPOSITORY_ROOT } from './pageWebview';
 import { indexKeyOf } from './indexKeys';
@@ -764,37 +765,34 @@ suite('Related Notes controller', () => {
 
   test('sends the pages again when the reader chooses another look for them, without ranking again', async () => {
     await closeEditors();
-    const workspace = vscode.workspace as unknown as Record<string, unknown>;
-    const original = vscode.workspace.getConfiguration;
-    let style = 'list';
-    // The settings as the reader changed them: only the pages' look differs.
-    workspace.getConfiguration = (section?: string) => {
-      const configuration = original(section);
-      if (section !== 'deckard') {
-        return configuration;
-      }
-      return {
-        ...configuration,
-        get: (key: string, fallback?: unknown) => (key === 'pages.style' ? style : configuration.get(key, fallback)),
-      } as vscode.WorkspaceConfiguration;
-    };
-    const { result: page, fire } = withConfigurationEvents(() => openController());
+    const page = openController();
     try {
       page.host.attach(page.surface);
       await settle();
       const sent = page.states().length;
       const last = page.states()[sent - 1];
-      fire('deckard.pages.style');
+      await page.preferences.display.setContextPagesStyle('list');
       assert.strictEqual(page.states().length, sent, 'the same pages are not sent again');
-      style = 'icons';
-      const lines = captureTimingLog(() => fire('deckard.pages.style'));
+      const lines: string[] = [];
+      const keep = (message: string): void => void lines.push(message);
+      setTimingLog({ logLevel: 2, trace: keep, debug: keep, info: keep });
+      try {
+        await page.send({ type: 'setPagesStyle', style: 'icons' });
+      } finally {
+        setTimingLog(undefined);
+      }
+      assert.strictEqual(page.preferences.repository.current.contextPagesStyle, 'icons', 'kept in the preferences');
       assert.strictEqual(page.states().length, sent + 1);
       const again = page.states()[sent];
       assert.strictEqual(again.pages?.style, 'icons');
       assert.deepStrictEqual({ ...again, pages: undefined }, { ...last, pages: undefined }, 'the rest as it was');
       assert.deepStrictEqual(lines.filter((line) => line.startsWith('Related Notes:')), [], 'nothing ranked again');
+      await page.send({ type: 'setPageShown', page: 'stats', shown: false });
+      assert.deepStrictEqual(page.preferences.repository.current.contextPagesHidden, ['stats']);
+      const latest = page.states()[page.states().length - 1];
+      assert.ok(!latest.pages?.pages.some((one) => one.id === 'stats'), 'Stats is left out');
+      assert.strictEqual(latest.pages?.choices?.find((choice) => choice.id === 'stats')?.shown, false, 'and the gear says so');
     } finally {
-      workspace.getConfiguration = original;
       page.dispose();
     }
   });

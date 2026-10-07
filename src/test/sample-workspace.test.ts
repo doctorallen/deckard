@@ -148,7 +148,6 @@ suite('Sample workspace', () => {
     const settings = JSON.parse(files.get('.vscode/settings.json') ?? '{}') as Record<string, unknown>;
     assert.strictEqual(settings['deckard.notesFolder'], '');
     assert.strictEqual(settings['deckard.me'], '#person/juno-hale');
-    assert.strictEqual(settings['deckard.calendar.dayPanel'], true);
     assert.strictEqual(settings['deckard.dailyNote.rollover'], 'migrate');
     assert.deepStrictEqual(settings['deckard.board.limits'], { 'in-progress': 2 });
     assert.deepStrictEqual(settings['deckard.periodicNote.reviewSections'], [

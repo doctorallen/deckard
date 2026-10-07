@@ -3,8 +3,8 @@
  * whether it has a daily note and how many open tasks are due, scheduled,
  * and repeating. Every day, every week, and the month title asks the host
  * to open its note; the host decides what exists and what to create. With
- * `deckard.calendar.dayPanel` on, a click chooses a day for the panel
- * under the month, and a double-click or Enter opens it.
+ * the day panel open, from the view's menu, a click chooses a day for the
+ * panel under the month, and a double-click or Enter opens it.
  */
 import type { CalendarDay, CalendarMoveRefusedMessage, CalendarSnapshot, CalendarWeek } from '../../ui/protocol/calendar';
 import { dispatchAction, onHostMessage, readEmbeddedState } from '../shared/page';

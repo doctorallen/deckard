@@ -412,7 +412,11 @@ export class AgendaTreeProvider
       `The Tasks view is sorted by ${TASK_SORT_LABELS[sort]}, so a task dragged onto another stays where that sort puts it. Sort by rank to put tasks in your own order.`,
       'Sort by Rank',
     );
-    return choice === 'Sort by Rank' && (await this.services.agenda.setSort('rank'));
+    if (choice !== 'Sort by Rank') {
+      return false;
+    }
+    await this.services.agenda.setSort('rank');
+    return true;
   }
 
   /** Puts the dragged tasks in front of the one they were dropped on. */

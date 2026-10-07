@@ -6,7 +6,7 @@ import type {
   CalendarPagePageToHost,
   CalendarSnapshot,
 } from '../../../protocol/calendar';
-import { settingTarget, writeSetting } from '../../../commands/settings';
+import { readViewChoice } from '../../../../core/storage/preferencesViewChoices';
 import type { TaskWrites } from '../../../commands/taskActions';
 import type { ActiveCalendar, CalendarDaySource } from '../../activeCalendar';
 import { getCalendarHtml } from '../../calendarHtml';
@@ -17,8 +17,9 @@ import {
   CalendarController,
   CalendarIndex,
   calendarHandlers,
+  CalendarPreferences,
+  onDidChangeCalendarChoices,
   onDidFocusWindow,
-  readShowWeekends,
 } from '../calendar/calendarController';
 import { narrowCalendarPageMessage } from './messages';
 
@@ -39,6 +40,8 @@ export interface CalendarPageControllerOptions {
   openTag: (tagKey: string) => unknown;
   /** The extension's folder, which the page's style sheets are under. */
   extensionUri: vscode.Uri;
+  /** Whether weekends are drawn, which the page's gear sets. */
+  preferences: CalendarPreferences;
 }
 
 /**
@@ -82,8 +85,10 @@ export class CalendarPageController implements PageController<CalendarSnapshot, 
   /** Starts on this month, with the day panel always on. */
   public constructor(private readonly calendarPage: CalendarPageControllerOptions) {
     // The page always shows the chosen day: it has the room.
+    const { reader, display } = calendarPage.preferences;
     this.calendar = new CalendarController(calendarPage.indexer, calendarPage.writes, {
       dayPanel: () => true,
+      showWeekends: () => readViewChoice(reader.value, 'calendarWeekends'),
       refresh: calendarPage.refresh,
       openTag: calendarPage.openTag,
       refused: (taskId, requestId) => {
@@ -94,8 +99,8 @@ export class CalendarPageController implements PageController<CalendarSnapshot, 
     this.handlers = {
       ...calendarHandlers(this.calendar),
       setShowWeekends: async (message) => {
-        if (message.show !== readShowWeekends()) {
-          await writeSetting('calendar.showWeekends', message.show, settingTarget('calendar.showWeekends'));
+        if (message.show !== readViewChoice(reader.value, 'calendarWeekends')) {
+          await display.setViewChoice('calendarWeekends', message.show);
         }
       },
       setZenMode: setZenMode(),
@@ -144,10 +149,10 @@ export class CalendarPageController implements PageController<CalendarSnapshot, 
       // The day moving to or from the sidebar redraws the page with or
       // without its own panel.
       ...(activeCalendar ? [activeCalendar.onDidChangeSidebarVisibility(() => page.refresh())] : []),
+      onDidChangeCalendarChoices(this.calendarPage.preferences.reader, () => page.refresh()),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.calendar.weekStart') ||
-          event.affectsConfiguration('deckard.calendar.showWeekends') ||
           event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
         ) {
           page.refresh();
