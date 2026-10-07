@@ -215,7 +215,7 @@ export interface TagOverviewHub {
   properties: FrontmatterProperty[];
   /** Other notes that also describe the tag. */
   otherFilePaths: string[];
-  /** Whether the hub starts open, from `deckard.tagOverview.hubNoteExpanded`. */
+  /** Whether the hub starts open: unless the reader last folded one. */
   expanded?: boolean;
   /**
    * The body as the note page draws it: query blocks with their results,
