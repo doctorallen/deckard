@@ -45,11 +45,9 @@ In a code repository, Deckard's editor features apply only to notes: a README ou
 
 `Deckard: Reindex Workspace` reads and parses every note again. A rescan after a settings change rereads only the notes whose size or saved time changed.
 
-## Help
+## Reading this guide
 
-Run `Deckard: Open Help`, or select **Help** at the top of the Context view. Help is this guide inside VS Code: its pages are down the side, grouped and ordered as [the guide's contents](README.md) list them, with the page being read marked, and **Changelog** at the end lists what is new in recent releases. A command the guide names, such as `Deckard: Find in Notes`, is a button in Help that runs it. One that acts on the note in the editor, such as `Deckard: Edit Task`, is named for you to run from a note. VS Code's find (Cmd+F on macOS, Ctrl+F elsewhere) searches the page shown.
-
-![Deckard Help, with the guide's pages down the side.](../images/help.png)
+This guide is Deckard's Help. `Deckard: Open Help`, **Help** at the top of the Context view, or the **?** on any Deckard page opens it inside VS Code, at the page about where you were. Its pages are down the side, in the order [the contents](README.md) give them, with the page you are reading marked, and **Changelog** at the end lists what is new in recent releases. Read inside VS Code, a command the guide names, such as `Deckard: Find in Notes`, is a button that runs it; one that acts on a note, such as `Deckard: Edit Task`, is run from that note. VS Code's find (Cmd+F on macOS, Ctrl+F elsewhere) searches the page shown.
 
 ---
 
