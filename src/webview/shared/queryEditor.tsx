@@ -13,6 +13,7 @@
 import { type ComponentChild, type ComponentChildren, createRef, render } from 'preact';
 
 import type { QueryFacet, QueryTermChip, QueryViewState } from '../../ui/protocol/query';
+import { EmptyState } from './emptyState';
 import { FacetValue, facetValuesShown } from './facets';
 import {
   buildQueryFromTree,
@@ -409,7 +410,7 @@ function BuilderGroup({ group, path, depth, context }: { readonly group: EditorG
         ? <div class="query-builder-item has-group">{joiner}<BuilderGroup group={item} path={itemPath} depth={depth + 1} context={context} /></div>
         : <BuilderRow row={item} path={itemPath} joiner={joiner} context={context} />;
     })
-    : <p class="query-builder-note">This group is empty. Add a condition to start it.</p>;
+    : <EmptyState class="query-builder-note" state="This group is empty." teach="Add a condition to start it." />;
   return (
     <div class={className} data-group-path={at}>
       <BuilderGroupHead group={group} at={at} depth={depth} />

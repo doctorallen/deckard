@@ -4,6 +4,7 @@
  */
 import type { DashboardTag } from '../../ui/protocol/dashboard';
 import { formatKeyWords } from '../../domain/markdown/tagKeys';
+import { EmptyState } from '../shared/emptyState';
 import { SortIcon } from '../shared/strokeIcons';
 import { FilterIcon } from './icons';
 import type { DashboardDraw } from './model';
@@ -126,13 +127,9 @@ function TagLists({ snapshot, view, filter, generation }: TagsTabProps) {
     return null;
   }
   if (!filter.shown.length) {
-    return (
-      <div class="empty">
-        {snapshot.tags.length
-          ? 'No tags match your search.'
-          : 'No tags indexed yet. Write a tag such as #project/atlas on a heading or a task, and it appears here.'}
-      </div>
-    );
+    return snapshot.tags.length
+      ? <EmptyState as="div" state="No tags match your search." />
+      : <EmptyState as="div" state="No tags indexed yet." teach="Write a tag such as #project/atlas on a heading or a task, and it appears here." />;
   }
   const draggable = snapshot.tagSortMode === 'custom';
   const favorites = filter.shown.filter((tag) => tag.isFavorite);

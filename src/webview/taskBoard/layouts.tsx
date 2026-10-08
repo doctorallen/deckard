@@ -7,6 +7,7 @@ import { describeBox, statusBoxProps } from '../shared/taskBox';
 import { TASK_SORT_LABELS } from '../../domain/model/sortOrders';
 import type { TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
 import { IconButton } from '../shared/buttons';
+import { EmptyState } from '../shared/emptyState';
 import { Inline } from '../shared/inline';
 import { EllipsisIcon, SortIcon } from '../shared/strokeIcons';
 import { plainTitle, TaskListRow } from '../shared/taskRow';
@@ -31,6 +32,13 @@ export function canRank(snapshot: TaskBoardSnapshot | undefined): boolean {
   return Boolean(snapshot) && snapshot?.layout === 'list' && snapshot.taskSortMode === 'rank';
 }
 
+/** What the list or the table says with no tasks: that none match, or none are written yet, and how to write one. */
+function NoTasks({ snapshot, teach }: { readonly snapshot: TaskBoardSnapshot; readonly teach: string }) {
+  return snapshot.taskCount
+    ? <EmptyState as="div" state="No tasks match this search." />
+    : <EmptyState as="div" state="No tasks yet." teach={teach} />;
+}
+
 /** The searched tasks as a ranked list, each row with the menu a card has. */
 export function TaskList({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   const tasks = snapshot.tasks || [];
@@ -46,13 +54,7 @@ export function TaskList({ snapshot }: { readonly snapshot: TaskBoardSnapshot })
             trailing={<RowMenuButton taskId={item.task.id} title={plainTitle(item.titleTokens) || item.task.title} />}
           />
         ))
-        : (
-          <div class="empty">
-            {snapshot.taskCount
-              ? 'No tasks match this search.'
-              : 'No tasks yet. Write "- [ ] something" in a note, or choose Add task. The character in a task\'s box, as [/] for In progress, puts it in a column.'}
-          </div>
-        )}
+        : <NoTasks snapshot={snapshot} teach={'Write "- [ ] something" in a note, or choose Add task. The character in a task\'s box, as [/] for In progress, puts it in a column.'} />}
     </div>
   );
 }
@@ -64,7 +66,7 @@ export function TaskList({ snapshot }: { readonly snapshot: TaskBoardSnapshot })
 export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   const table = snapshot.table;
   if (!table || table.rows.length === 0) {
-    return <div key="empty" class="empty">{snapshot.taskCount ? 'No tasks match this search.' : 'No tasks yet. Write "- [ ] something" in a note, or choose Add task.'}</div>;
+    return <NoTasks key="empty" snapshot={snapshot} teach={'Write "- [ ] something" in a note, or choose Add task.'} />;
   }
   const sort = table.sort;
   // The title is the column the reader cannot leave out, wherever the

@@ -36,7 +36,7 @@ How much a page draws is a scale of three steps. Pick one with **Display** in a 
 | **Dates** (`dates`) | Both | Both | Both |
 
 - **Theme styling**: *styled* keeps each theme's grid, corners, glow, codes, and display headings; *plain* draws thin frames and sentence-case headings, two sizes kept. DECKARD ▾ stays either way.
-- **Help text**: the lines that teach, such as the search box's line of syntax, the builder's paragraph, Refine's line on Alt- and Shift-click, the Graph's *Open a note to draw the graph around it.*, why Context lists a result, and an empty board column's line on dragging. What a line says is there stays: *No tasks.*, where Task Statuses saves, every count, and a search that fails to parse.
+- **Help text**: the lines that teach, such as the search box's line of syntax, the builder's paragraph, Refine's line on Alt- and Shift-click, the Graph's *Open a note to draw the graph around it.*, why Context lists a result, and an empty board column's line on dragging. What a line says is there stays: an empty place keeps its state, such as *No tasks.* or *No tags indexed yet.*, and loses only how to fill it; where Task Statuses saves, every count, and a search that fails to parse stay too.
 - **Tags**: where tags are listed on their own, such as a note card's tags and Refine, framed *chips* or plain *text* in the theme's tag color, its `#` or `@` kept. A tag inside a task's title is always text.
 - **Density**: *comfortable* or *compact* spacing.
 - **Cards**: *raised* cards, or *flat* rows parted by a divider, which lift onto the card surface under the pointer or keyboard focus.

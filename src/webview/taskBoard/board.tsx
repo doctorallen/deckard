@@ -11,6 +11,7 @@ import type { CardDetailParts, TaskBoardCard, TaskBoardColumn, TaskBoardSettings
 import type { ActionMenuGroup, ActionMenuItem } from '../shared/actionMenu';
 import { IconButton } from '../shared/buttons';
 import { DueText } from '../shared/dueText';
+import { EmptyState } from '../shared/emptyState';
 import { EllipsisIcon } from '../shared/strokeIcons';
 import { formatSourceLocation, HeadingPathSteps, plainTitle, PriorityBadge, TaskDetails, trimHeadingPath } from '../shared/taskRow';
 import { ParentTag } from '../shared/tagButton';
@@ -308,7 +309,9 @@ function ColumnCards({ column, cards, columns }: { readonly column: TaskBoardCol
   if (!cards.length) {
     return (
       <div class="board-cards">
-        <p class="board-empty">{column.droppable ? ['No tasks.', <span class="help-text">{' Drag a card here, or move one with its ⋯ menu.'}</span>] : 'No tasks'}</p>
+        {column.droppable
+          ? <EmptyState class="board-empty" state="No tasks." teach="Drag a card here, or move one with its ⋯ menu." />
+          : <EmptyState class="board-empty" state="No tasks" />}
       </div>
     );
   }

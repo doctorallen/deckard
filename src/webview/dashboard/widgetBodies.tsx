@@ -6,6 +6,7 @@ import type { ComponentChild } from 'preact';
 
 import { QUICK_ADD_MAX_LENGTH, widgetNamespace } from '../../domain/dashboard/widgetCatalog';
 import type { DashboardWidget, DashboardWidgetKind } from '../../ui/protocol/dashboard';
+import { EmptyState } from '../shared/emptyState';
 import type { HomeContext } from './homeContext';
 import {
   EmptyLine,
@@ -28,7 +29,7 @@ export interface WidgetBodyProps {
 function TryNextBody({ widget }: WidgetBodyProps) {
   const next = widget.tryNext;
   if (!next) {
-    return <p class="empty">Nothing to suggest yet. A suggestion appears here when your notes are ready for one.</p>;
+    return <EmptyState state="Nothing to suggest yet." teach="A suggestion appears here when your notes are ready for one." />;
   }
   return (
     <>
@@ -90,13 +91,13 @@ function AgendaBody({ widget }: WidgetBodyProps) {
 function SavedSearchesBody({ widget }: WidgetBodyProps) {
   return widget.savedFilters && widget.savedFilters.length
     ? <SavedFilterList filters={widget.savedFilters} />
-    : <OpenSearchPageLine text="Save a search from a search page to keep it here. " />;
+    : <OpenSearchPageLine text="Save a search from a search page to keep it here." />;
 }
 
 /** The searches run lately, each opening its search page. */
 function RecentSearchesBody({ widget }: WidgetBodyProps) {
   if (!widget.queries || !widget.queries.length) {
-    return <OpenSearchPageLine text="The searches you run show up here. " />;
+    return <OpenSearchPageLine text="The searches you run show up here." />;
   }
   return (
     <div class="home-list">
@@ -241,7 +242,7 @@ function PinnedNotesBody({ widget }: WidgetBodyProps) {
 /** What one saved search finds: its notes and its open tasks, or its tasks alone for one saved on the Task Board. */
 function SavedQueryBody({ widget }: WidgetBodyProps) {
   if (widget.missing) {
-    return <p class="home-widget-empty">{'This saved search was removed. '}<button type="button" data-action="customize-home">Pick another</button></p>;
+    return <EmptyState class="home-widget-empty" state="This saved search was removed." action={<button type="button" data-action="customize-home">Pick another</button>} />;
   }
   // A search saved on the Task Board finds tasks alone.
   if (widget.savedPage === 'taskBoard') {

@@ -8,6 +8,7 @@ import type { ComponentChild, ComponentChildren } from 'preact';
 
 import type { DashboardSavedFilter, DashboardWidgetNote, DashboardWidgetTag, DashboardWidgetTagPair } from '../../ui/protocol/dashboard';
 import type { DashboardTask } from '../../ui/protocol/shared';
+import { EmptyState } from '../shared/emptyState';
 import { ProgressBar } from '../shared/progressBar';
 import { TagLabel } from '../shared/tagLabel';
 import { TaskListRow } from '../shared/taskRow';
@@ -59,12 +60,12 @@ function WithRowAction({ row, action }: { readonly row: ComponentChild; readonly
 
 /** What a widget says when its list is empty. */
 export function EmptyLine({ text }: { readonly text: string }) {
-  return <p class="home-widget-empty">{text || null}</p>;
+  return <EmptyState class="home-widget-empty" state={text} />;
 }
 
 /** The searches a page lists, or a line with a way to a search page when there are none. */
 export function OpenSearchPageLine({ text }: { readonly text: string }) {
-  return <p class="home-widget-empty">{text}<button type="button" data-action="open-search-page">Open a search page</button></p>;
+  return <EmptyState class="home-widget-empty" state={text} action={<button type="button" data-action="open-search-page">Open a search page</button>} />;
 }
 
 /** Tags that open their page; `actionFor` adds a button beside a tag. */

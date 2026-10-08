@@ -12,6 +12,7 @@ import type { ComponentChild } from 'preact';
 import type { StateMessage } from '../../ui/protocol/messaging';
 import type { SidebarMessage, SidebarNotesPageState, SidebarNotesSnapshot } from '../../ui/protocol/sidebarNotes';
 import { DayPanel, focusCreatedNote, installDayPanel } from '../shared/calendar/dayPanel';
+import { EmptyState } from '../shared/emptyState';
 import { Loading } from '../shared/loading';
 import { installMenuKeys } from '../shared/menuKeys';
 import { markWords, type Unmark } from '../shared/markWords';
@@ -61,9 +62,9 @@ function NoteList({ snapshot, display }: { readonly snapshot: SidebarNotesSnapsh
   );
 }
 
-/** Says why the sidebar lists nothing, for the states that are only that. */
-function Empty({ words }: { readonly words: string }) {
-  return <div class="empty">{words}</div>;
+/** Says why the sidebar lists nothing, for the states that are only that, and how to change it. */
+function Empty({ words, teach }: { readonly words: string; readonly teach?: string }) {
+  return <EmptyState as="div" state={words} teach={teach} />;
 }
 
 /** What a state draws in place of the related notes, given its snapshot and how cards are shown. */
@@ -76,7 +77,7 @@ const OWN_CONTENT: Partial<Record<SidebarNotesSnapshot['state'], OwnContent>> = 
   refine: (snapshot) => (snapshot.refine ? <Refine refine={snapshot.refine} expanded={choices.expandedRefine} /> : null),
   graph: (snapshot) => <GraphConnections graph={snapshot.graph as NonNullable<SidebarNotesSnapshot['graph']>} />,
   loading: (snapshot) => <Loading label={describeIndexing(snapshot.progress)} immediate />,
-  notIndexed: () => <Empty words="This note is not indexed yet. Save it inside the notes folder to see related entries." />,
+  notIndexed: () => <Empty words="This note is not indexed yet." teach="Save it inside the notes folder to see related entries." />,
   noMarkdown: () => <Empty words="Open a Markdown note to see related entries." />,
   noTags: (snapshot, display) => <NoTags similar={snapshot.similar} display={display} />,
   noMatches: () => <Empty words="No other notes share its tags." />,

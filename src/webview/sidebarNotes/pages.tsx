@@ -7,6 +7,7 @@
  * the arrow keys move between them, and Home and End go to either end.
  */
 import type { ContextPage, ContextPageChoice, ContextPages } from '../../ui/protocol/sidebarNotes';
+import { EmptyState } from '../shared/emptyState';
 import { PAGE_ICONS } from '../shared/pageIcons';
 import { ViewOptionChoices, ViewOptions } from '../shared/viewOptions';
 
@@ -96,7 +97,7 @@ export function ContextPagesBar({ pages }: { readonly pages: ContextPages | unde
   if (!pages.pages.length) {
     return (
       <div class="context-pages-band">
-        <p class="pages-empty">No pages chosen. Choose them from the gear.</p>
+        <EmptyState class="pages-empty" state="No pages chosen." teach="Choose them from the gear." />
         <PagesOptions pages={pages} />
       </div>
     );

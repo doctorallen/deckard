@@ -51,6 +51,12 @@
   dragging, and Task Statuses' *What each checkbox character means.* What
   a line says is there still shows: *No tasks.*, where Task Statuses saves,
   and Home's *Updated to Deckard* line with its buttons.
+- **An empty place says it is empty, even in Zen.** Where an empty list
+  said what was there and how to fill it in one sentence, such as *No tags
+  indexed yet. Write a tag…*, the two are drawn apart, so Zen keeps *No
+  tags indexed yet.* and hides only how to fill it: in board columns, the
+  Task board's list and table, Home's widgets and Tags tab, Context, its
+  pages band, the builder's empty group and Stats' Most viewed.
 
 ### Fixed
 

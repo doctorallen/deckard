@@ -5,6 +5,7 @@
  */
 import type { DashboardSavedFilter, DashboardWidget, DashboardWidgetConfig } from '../../ui/protocol/dashboard';
 import { HOME_WIDGET_LIMIT, WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
+import { EmptyState } from '../shared/emptyState';
 import { Loading } from '../shared/loading';
 import type { HomeContext } from './homeContext';
 import type { DashboardDraw } from './model';
@@ -108,7 +109,7 @@ function GetStarted() {
 /** Home's widgets in their grid, keyed by how many times a drag changed it, or a way to add some. */
 function WidgetGrid({ widgets, home, generation }: { readonly widgets: readonly DashboardWidget[]; readonly home: HomeContext; readonly generation: number }) {
   if (!widgets.length) {
-    return <div class="empty">{'Home has no widgets. '}<button type="button" data-action="customize-home">Customize</button></div>;
+    return <EmptyState as="div" state="Home has no widgets." action={<button type="button" data-action="customize-home">Customize</button>} />;
   }
   return (
     <div key={`grid-${generation}`} class="home-grid">

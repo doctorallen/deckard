@@ -120,6 +120,7 @@ Every page with Preact starts from these, in `src/webview/shared/`.
 | `metric.tsx` | `<Metric label value query hint code trend>`, one `.metric` tile, a button that opens `query` when there is one; `trend` (`{ points, change, note? }`) adds the twelve-week line and the change in words under the value, the change in the tile's `aria-label`, and `note` to its tip. `<Sparkline points>`: an inline SVG line, 20px high, min to max, a flat run as a midline, the last point in `--accent`, each point carrying a `<title>`, `aria-hidden`. `describeChange(change)`: "+9 in the last 7 days", "−3 in the last 7 days" (U+2212), or "No change in the last 7 days", muted, never green or red, since a rise is not always good news |
 | `inline.tsx` | `<Inline tokens>`: a title's `InlineToken[]` drawn as `markdown-it`'s elements and text nodes. Nothing is parsed as HTML |
 | `loading.tsx` | `<Loading label immediate>`, the `.loading` line (**Loading** below) |
+| `emptyState.tsx` | `<EmptyState state teach action class as>`: what an empty place says. `state`, such as "No tasks.", always shows; `teach`, how to fill the place, follows in a `.help-text` span, which Zen's help step hides; `action` is at most one next step, drawn last. `class` is the place's own (`empty` when omitted) and `as` draws a `div` in place of a `p`. Each place keeps its own words: a sentence that said both is split where the state ends |
 
 The parts the task, search, and Home pages share are in `shared/` too, each
 named for what it draws:
