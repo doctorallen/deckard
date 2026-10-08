@@ -32,8 +32,8 @@ How much a page draws is a scale of three steps. Pick one with **Display** in a 
 | **Tags** (`tags`) | Chips | Text | Text |
 | **Density** (`density`) | Comfortable | Comfortable | Compact |
 | **Cards** (`cardFrames`) | Raised | Raised | Flat |
-| **Counts** (`counts`) | Shown | Shown | Hidden |
-| **Dates** (`dates`) | Both | Both | How far off |
+| **Counts** (`counts`) | Shown | Shown | Shown |
+| **Dates** (`dates`) | Both | Both | Both |
 
 - **Theme styling**: *styled* keeps each theme's grid, corners, glow, codes, and display headings; *plain* draws thin frames and sentence-case headings, two sizes kept. DECKARD ▾ stays either way.
 - **Help text**: the lines that teach, such as the search box's line of syntax and Home's key bar. A search that fails to parse always says so.
@@ -79,8 +79,8 @@ What Deckard writes into your notes stays `YYYY-MM-DD`: task dates such as `📅
 
 Zen is Display's last step, one click away from any page: the Zen button in a page's title bar, `Deckard: Toggle Zen`, or `Deckard: Enter Zen` and `Deckard: Leave Zen`. Leaving goes back to the step you were on, or to Full.
 
-- **Hidden:** decorative labels, the grid backdrop, the eyebrow's trail, the search box's line of syntax, and counts beside names; cards are flat, tags are text, and a due date says how far off it is.
-- **Kept:** every button, filter, checkbox, and tag, and a task's due date, priority, and overdue marker.
+- **Hidden:** decorative labels, the grid backdrop, the eyebrow's trail, and the search box's line of syntax; cards are flat and tags are text.
+- **Kept:** every button, filter, checkbox, and tag, every count beside a name, and a task's due date written in full, with its priority and overdue marker. Zen never hides data; to leave counts out, or write dates only one way, set **Counts** or **Dates** yourself.
 
 ---
 

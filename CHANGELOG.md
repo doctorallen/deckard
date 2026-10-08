@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Changed
+
+- **Zen never hides data.** Zen used to leave out the counts beside names
+  and write a due date only as how far off it is. It now shows every
+  count, and writes a due date both ways, "Overdue 2 days · 2026-10-02",
+  as Full and Quiet do. **Counts** and **Dates** in Settings still leave
+  them out or write a date one way, at any step.
+
 ## 2.4.0 - 2026-10-06
 
 ### Highlights

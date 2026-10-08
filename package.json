@@ -1852,7 +1852,7 @@
             "enumDescriptions": [
               "Deckard as it ships: each theme's decoration, display headings, every helper line, raised cards, tag chips, counts, and dates written both ways.",
               "Each theme's decoration and the lines that teach turned off, and tags drawn as text, at the usual spacing.",
-              "Also compact spacing, flat cards, no counts beside names, and dates as how far off."
+              "Also compact spacing and flat cards. Counts and dates still show."
             ],
             "description": "How much every Deckard page draws: Full, Quiet, or Zen. Every Display setting follows it while it is Auto. Your own choice, the same in every workspace.",
             "order": 2
@@ -1952,7 +1952,7 @@
             "default": "auto",
             "scope": "application",
             "enumDescriptions": [
-              "Follows Display: shown at Full and Quiet, hidden at Zen.",
+              "Follows Display: shown at every step.",
               "The number beside each name: a widget's total, a group's count, a column's tasks, a tab's results.",
               "Those numbers left out of sight. A screen reader still reads each one, and figures that are the point, such as Home's Due today, always show."
             ],
@@ -1996,7 +1996,7 @@
             "default": "auto",
             "scope": "application",
             "enumDescriptions": [
-              "Follows Display: both at Full and Quiet, how far off at Zen.",
+              "Follows Display: both at every step.",
               "How far off and the date: \"Overdue 2 days · 2026-10-02\".",
               "Only how far off: \"Overdue 2 days\". A date over a month away still shows.",
               "The date with its state: \"Overdue · 2026-10-02\"."

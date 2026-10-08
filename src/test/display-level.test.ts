@@ -22,7 +22,7 @@ suite('Display: the scale', () => {
       (Object.keys(STEP_VALUES.full) as (keyof typeof STEP_VALUES.full)[]).filter((key) => STEP_VALUES[level][key] !== STEP_VALUES.full[key]);
     assert.deepStrictEqual(turnedDown('full'), []);
     assert.deepStrictEqual(turnedDown('quiet'), ['themeStyling', 'helpText', 'tags']);
-    assert.deepStrictEqual(turnedDown('zen'), ['themeStyling', 'helpText', 'density', 'cardFrames', 'tags', 'counts', 'dates']);
+    assert.deepStrictEqual(turnedDown('zen'), ['themeStyling', 'helpText', 'density', 'cardFrames', 'tags']);
     for (const key of turnedDown('quiet')) {
       assert.strictEqual(STEP_VALUES.zen[key], STEP_VALUES.quiet[key], `Zen keeps what Quiet turned down: ${key}`);
     }
@@ -38,11 +38,18 @@ suite('Display: the scale', () => {
       assert.strictEqual(resolveScaleValues(level, { density: 'compact' }).density, 'compact');
       assert.strictEqual(resolveScaleValues(level, { helpText: 'shown' }).helpText, 'shown');
     }
-    assert.deepStrictEqual(resolveScaleValues('zen', { themeStyling: 'styled', counts: 'shown' }), {
+    assert.deepStrictEqual(resolveScaleValues('zen', { themeStyling: 'styled', counts: 'hidden' }), {
       ...STEP_VALUES.zen,
       themeStyling: 'styled',
-      counts: 'shown',
+      counts: 'hidden',
     });
+  });
+
+  test('no step hides data: counts and full dates show at every step', () => {
+    for (const level of DISPLAY_LEVELS) {
+      assert.strictEqual(STEP_VALUES[level].counts, 'shown', `${level} shows counts`);
+      assert.strictEqual(STEP_VALUES[level].dates, 'both', `${level} shows the date beside how far off`);
+    }
   });
 
   test('a value a setting doesn\'t have follows the step', () => {

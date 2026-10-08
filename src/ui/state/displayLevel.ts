@@ -4,9 +4,10 @@
  * on their own. A setting left at `auto` follows the step; any other value
  * is the reader's and wins whatever the step. Full is Deckard as it ships;
  * Quiet takes off each theme's decoration and the lines that teach, and
- * draws tags as text, at today's spacing; Zen also tightens the spacing,
- * draws cards flat, and leaves out counts and the date beside how far off
- * a task is due. An entry's details, its file and line among them, show on
+ * draws tags as text, at today's spacing; Zen also tightens the spacing
+ * and draws cards flat. No step hides data: counts, and the date beside
+ * how far off a task is due, show at every step unless the reader sets
+ * them off. An entry's details, its file and line among them, show on
  * hover at every step; `deckard.display.cardDetails` says which.
  */
 
@@ -51,7 +52,7 @@ export const STEP_VALUES: Readonly<Record<DisplayLevel, ScaleValues>> = {
   },
   zen: {
     themeStyling: 'plain', helpText: 'hidden', density: 'compact',
-    cardFrames: 'flat', tags: 'text', counts: 'hidden', dates: 'relative',
+    cardFrames: 'flat', tags: 'text', counts: 'shown', dates: 'both',
   },
 };
 

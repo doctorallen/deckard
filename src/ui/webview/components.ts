@@ -17,7 +17,7 @@ export type { DisplayChoices };
 /** Zen's values, for a page given only the zen flag, as the test harness gives it. */
 const ZEN_DISPLAY: DisplayChoices = {
   level: 'zen', styling: 'plain', help: 'hidden', density: 'compact',
-  cards: 'flat', tags: 'text', counts: 'hidden', dates: 'relative',
+  cards: 'flat', tags: 'text',
 };
 
 /**
