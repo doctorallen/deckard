@@ -677,7 +677,7 @@ function createEditorProviders(context: vscode.ExtensionContext, core: Core, pre
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer).register();
   context.subscriptions.push(new SlashMenuProvider(indexer).register());
   context.subscriptions.push(new StatusSuggestionsProvider((uri) => indexer.isNotesFile(uri)).register());
-  const taskEditorActions = new TaskEditorActions();
+  const taskEditorActions = new TaskEditorActions((uri) => indexer.isNotesFile(uri));
   const taskLineContext = new TaskLineContext();
   return { tagDecorations, pins, tagSuggestions, taskMetadataSuggestions, taskEditorActions, taskLineContext };
 }

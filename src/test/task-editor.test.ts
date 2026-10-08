@@ -205,8 +205,8 @@ suite('Task editor', () => {
     assert.strictEqual(appendTag('', '@dana'), '@dana');
   });
 
-  test('offers the editor on a task line, and on no other line', () => {
-    const actions = new TaskEditorActions();
+  test('offers the editor on a task line of a note, and on no other line', () => {
+    const actions = new TaskEditorActions((uri) => uri.path.startsWith('/notes/'));
     try {
       const document = {
         uri: vscode.Uri.file('/notes/atlas.md'),
@@ -221,6 +221,8 @@ suite('Task editor', () => {
         ['Edit task…', 'Break into steps…'],
       );
       assert.deepStrictEqual(actions.provideCodeActions(document, at(1)), []);
+      const readme = { ...document, uri: vscode.Uri.file('/code/README.md') } as unknown as vscode.TextDocument;
+      assert.deepStrictEqual(actions.provideCodeActions(readme, at(0)), [], 'a Markdown file outside the notes');
     } finally {
       actions.dispose();
     }

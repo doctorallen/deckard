@@ -20,22 +20,14 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.me": "",
 	"deckard.taskReminderTime": "",
 	"deckard.editor.preset": "full",
-	"deckard.editor.referenceCounts": true,
 	"deckard.editor.hoverPreviews": true,
 	"deckard.editor.linkDiagnostics": true,
-	"deckard.editor.taskDependencies": true,
-	"deckard.editor.dailyNoteActions": true,
 	"deckard.editor.linkProblems": true,
 	"deckard.editor.embedProblems": true,
-	"deckard.editor.unlinkedMentions": true,
 	"deckard.links.style": "wiki",
-	"deckard.editor.hubProgress": true,
 	"deckard.editor.slashMenu": true,
-	"deckard.editor.breadcrumbs": true,
 	"deckard.openNotesIn": "editor",
-	"deckard.editor.stepProgress": true,
 	"deckard.editor.dimTaskMetadata": true,
-	"deckard.editor.taskDueHints": true,
 	"deckard.editor.repeatDiagnostics": true,
 	"deckard.assistantTools": true,
 	"deckard.mcpServer.enabled": false,
@@ -84,24 +76,24 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.me` | Empty | Who you are in your notes, such as `@ren-kade`, so `is:mine` finds the tasks that name you. See [Who a task is for](tasks.md#who-a-task-is-for). |
 | `deckard.tasks.needsNewDateAfterDays` | `30` | How many days past its due date an open task stays in Overdue. After that it moves to **Needs a new date** and leaves the status bar's count. `0` keeps every overdue task in Overdue. |
 | `deckard.taskReminderTime` | Empty | A time of day, such as `09:00`, from which Deckard says how many tasks are due, once a day. Empty means no reminder. |
-| `deckard.editor.preset` | `full` | What Deckard draws in the editor, as one choice: `full`, everything; `tasks`, task hints and problem reports without link counts, mention lenses, or breadcrumbs; `writing`, the / menu, hover previews, and problem reports only. A `deckard.editor.*` setting you change yourself wins over it. `Deckard: Choose Editor Preset…` sets it. |
-| `deckard.editor.referenceCounts` | `true` | Shows backlink, heading-reference, and open-task counts above a note's lines. |
-| `deckard.editor.hoverPreviews` | `true` | Previews a `[[Wiki link]]`'s target and summarizes a tag's entries on hover. |
-| `deckard.editor.linkDiagnostics` | `true` | Marks a `[[Wiki link]]` that opens no note and offers to create a missing one. |
-| `deckard.editor.taskDependencies` | `true` | Shows, above a task with `⛔` or `🆔`, the open tasks it waits on and holds up. See [Editor assistance](notes-and-links.md#editor-assistance). |
-| `deckard.editor.dailyNoteActions` | `true` | Shows neighboring daily notes above a daily note, and on today's, unfinished tasks to carry in. |
-| `deckard.editor.linkProblems` | `true` | Counts a note's `[[Wiki links]]` that open no note on its first line, with an action to create them. |
-| `deckard.editor.embedProblems` | `true` | Says above a broken `![[embed]]` which heading or `^marker` it is missing. |
-| `deckard.editor.unlinkedMentions` | `true` | Counts, on a note's first line, notes that name it without a link, with an action to link them. |
+| `deckard.editor.preset` | `full` | What Deckard draws in the editor, as one choice: `full`, everything; `tasks`, task hints and problem reports without link counts, mention lenses, or breadcrumbs; `writing`, the / menu, hover previews, faint task details, and reports of broken links, embeds, and repeat rules. Each `deckard.editor.*` switch below follows it while unset; one you set yourself overrides it. `Deckard: Choose Editor Preset…` sets it. |
+| `deckard.editor.referenceCounts` | Unset | Shows backlink, heading-reference, and open-task counts above a note's lines. Unset, it follows the preset: on in Full, off in Tasks and Writing. |
+| `deckard.editor.hoverPreviews` | `true` | Previews a `[[Wiki link]]`'s target and summarizes a tag's entries on hover. Unset, it follows the preset, and every preset turns it on. |
+| `deckard.editor.linkDiagnostics` | `true` | Marks a `[[Wiki link]]` that opens no note and offers to create a missing one. Unset, it follows the preset, and every preset turns it on. |
+| `deckard.editor.taskDependencies` | Unset | Shows, above a task with `⛔` or `🆔`, the open tasks it waits on and holds up. See [Editor assistance](notes-and-links.md#editor-assistance). Unset, it follows the preset: on in Full and Tasks, off in Writing. |
+| `deckard.editor.dailyNoteActions` | Unset | Shows neighboring daily notes above a daily note, and on today's, unfinished tasks to carry in. Unset, it follows the preset: on in Full and Tasks, off in Writing. |
+| `deckard.editor.linkProblems` | `true` | Counts a note's `[[Wiki links]]` that open no note on its first line, with an action to create them. Unset, it follows the preset, and every preset turns it on. |
+| `deckard.editor.embedProblems` | `true` | Says above a broken `![[embed]]` which heading or `^marker` it is missing. Unset, it follows the preset, and every preset turns it on. |
+| `deckard.editor.unlinkedMentions` | Unset | Counts, on a note's first line, notes that name it without a link, with an action to link them. Unset, it follows the preset: on in Full, off in Tasks and Writing. |
 | `deckard.links.style` | `wiki` | How a link made from a mention is written: `[[Atlas]]`, or `markdown` for `[Atlas](projects/Atlas.md)`, which GitHub and MkDocs render. Both kinds are read either way. |
-| `deckard.editor.hubProgress` | `true` | Says, on a hub note's first line, how far along the tasks of the tag it describes are. |
+| `deckard.editor.hubProgress` | Unset | Says, on a hub note's first line, how far along the tasks of the tag it describes are. Unset, it follows the preset: on in Full and Tasks, off in Writing. |
 | `deckard.openNotesIn` | `editor` | Where a note or task opens from Deckard: `editor`, at its line, or `page`, on the [note page](notes-and-links.md#reading-a-note-as-a-page). Shift-click, or Shift+Enter, opens it the other way. |
-| `deckard.editor.stepProgress` | `true` | Shows, above a task with steps, a bar of how many are done and the next one. |
-| `deckard.editor.breadcrumbs` | `true` | Shows, on a note's first line, where it sits under its [hub notes](search-pages.md#the-hubs-view). |
-| `deckard.editor.slashMenu` | `true` | Offers, after a `/` alone at the start of a line, blocks and templates to write there. |
-| `deckard.editor.dimTaskMetadata` | `true` | Draws a task's dates, priority, repeat rule, ids, and person, and a line's `^block-id`, fainter than its words. An overdue date takes the `deckard.overdueForeground` color instead. |
-| `deckard.editor.taskDueHints` | `true` | Says after an open task's line when it is **overdue 5 days**, **due today**, or **needs a new date**. |
-| `deckard.editor.repeatDiagnostics` | `true` | Marks an unreadable 🔁 repeat rule on an open task, with quick fixes. |
+| `deckard.editor.stepProgress` | Unset | Shows, above a task with steps, a bar of how many are done and the next one. Unset, it follows the preset: on in Full and Tasks, off in Writing. |
+| `deckard.editor.breadcrumbs` | Unset | Shows, on a note's first line, where it sits under its [hub notes](search-pages.md#the-hubs-view). Unset, it follows the preset: on in Full, off in Tasks and Writing. |
+| `deckard.editor.slashMenu` | `true` | Offers, after a `/` alone at the start of a line, blocks and templates to write there. Unset, it follows the preset, and every preset turns it on. |
+| `deckard.editor.dimTaskMetadata` | `true` | Draws a task's dates, priority, repeat rule, ids, and person, and a line's `^block-id`, fainter than its words. An overdue date takes the `deckard.overdueForeground` color instead. Unset, it follows the preset, and every preset turns it on. |
+| `deckard.editor.taskDueHints` | Unset | Says after an open task's line when it is **overdue 5 days**, **due today**, or **needs a new date**. Unset, it follows the preset: on in Full and Tasks, off in Writing. |
+| `deckard.editor.repeatDiagnostics` | `true` | Marks an unreadable 🔁 repeat rule on an open task, with quick fixes. Unset, it follows the preset, and every preset turns it on. |
 | `deckard.assistantTools` | `true` | Lets AI assistants in VS Code, such as Copilot in agent mode, search notes and tasks, list tags, add a task to a note, and change an existing task, after you allow the first call each session. Nothing is written until you approve the line in the refactor preview. See [AI assistants](ai-assistants.md#ai-assistants). |
 | `deckard.mcpServer.enabled` | `false` | Runs an MCP server on 127.0.0.1 with the same tools, writes included, for clients that carry its token. Nothing is written until you approve the line in the refactor preview. See [Claude Code and other MCP clients](ai-assistants.md#claude-code-and-other-mcp-clients). |
 | `deckard.mcpServer.port` | `39217` | The port the MCP server listens on, on 127.0.0.1. |

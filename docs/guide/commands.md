@@ -73,7 +73,7 @@
 | **Deckard: List Actions in Find** | <kbd>Cmd</kbd>+<kbd>.</kbd> (<kbd>Ctrl</kbd>+<kbd>.</kbd> elsewhere) in Find: lists everything the highlighted result can do. |
 | **Deckard: Open Search Page** | Opens a search page, ready for a search. |
 | **Deckard: Open Search Page…** | Opens a search page on a search, such as `#project/atlas AND is:open`; with nothing typed, a page of every note. |
-| **Deckard: Link Current Heading to Entity** | Adds a person, project, topic, organization, or meeting tag to the current heading. |
+| **Deckard: Link Current Heading to Entity** | Adds a person, project, topic, organization, or meeting tag to the current heading. Also **Tag Heading with a Person or Project…** in the editor's Refactor… menu, on a note's heading that carries no such tag. |
 | **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |
 | **Deckard: Rename Tag** | Searches indexed tags and replaces the selected tag in its source notes. |
 | **Deckard: Merge Tag…** | Merges one tag into an existing one, after a preview. |

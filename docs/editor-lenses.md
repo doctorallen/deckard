@@ -8,7 +8,8 @@ report. Several commands Deckard already has — carrying tasks forward, creatin
 a linked note, linking a mention — answer a question the reader only has while
 looking at a particular line, and today they are reached from the palette.
 
-Five lenses bring what the index already knows to the line it is about:
+Eight groups of lenses bring what the index already knows to the line it is
+about:
 
 | Lens | Where | Says | Selecting it |
 | --- | --- | --- | --- |
@@ -19,6 +20,9 @@ Five lenses bring what the index already knows to the line it is about:
 | Embeds | An `![[Note#Heading]]` line | **Embed: Atlas has no heading "Decision"** | Opens the note it names |
 | Unlinked mentions | First line of a note | **Mentioned in 3 notes without a link** | Lists them in the references peek |
 | | | **Link 5 mentions** | Links them, through the refactor preview |
+| Step progress | A task with steps | **███░░░░░░░ Steps 1/3 done (33%) · next: Pack the rain shells** | Goes to the next open step |
+| Breadcrumbs | First line of a note a hub holds | **Projects › Atlas › Vendor review** | Opens the note above it |
+| Hub progress | First line of a hub note | **Progress: 2/6 done (33%) · 1 overdue · next due in 3 days** | Opens the tag's page |
 
 ## Constraints
 
@@ -30,8 +34,12 @@ nothing left in earlier notes offers nothing to carry in, and a daily note
 with no neighbor on one side has no arrow on that side. This is the same rule
 `editorReferences.ts` already follows for the Related Notes lens.
 
-**Each group has its own setting**, all `true` by default, in the Editor
-settings beside `deckard.editor.referenceCounts`:
+**Each group has its own setting**, in the Editor settings beside
+`deckard.editor.referenceCounts`. Left unset, each follows
+`deckard.editor.preset`: Full draws every group; Tasks leaves out unlinked
+mentions and breadcrumbs; Writing draws only link problems and embeds. A
+switch set by hand, at any scope, overrides the preset
+(`src/domain/editor/editorPresets.ts`):
 
 - `deckard.editor.taskDependencies`
 - `deckard.editor.dailyNoteActions`
@@ -111,6 +119,10 @@ kept when linking one: `atlas` becomes `[[atlas]]`, which opens `Atlas.md`
 because links match names without regard to case. The link is one
 `applyWorkspaceWrite()`, so it is previewed by `deckard.previewWorkspaceWrites`
 and taken back by `Deckard: Undo Last Change`.
+
+The lens gives the count and the bulk action. The fuller view is the Context
+sidebar's **Mentioned without a link** group, which lists each mention with
+its own **Link**, and **Link all**.
 
 ## Testing
 

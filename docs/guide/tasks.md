@@ -57,7 +57,7 @@ The fields are `due`, `scheduled`, `start`, `created`, `completion`, `cancelled`
 
 ### Editing a whole task
 
-**Deckard: Edit Task** (on a task line) or **Deckard: Add Task** (elsewhere), on the same shortcut, opens the line's fields, headed by the line as it will be written. A non-task line's text becomes the description. Edit Task is also **Edit task…** on the lightbulb. Add Task works from anywhere, and writes a new task where its **Note** row says; see [Adding a task](#adding-a-task).
+**Deckard: Edit Task** (on a task line) or **Deckard: Add Task** (elsewhere), on the same shortcut, opens the line's fields, headed by the line as it will be written. A non-task line's text becomes the description. Edit Task is also **Edit task…** on the lightbulb, in a note. Add Task works from anywhere, and writes a new task where its **Note** row says; see [Adding a task](#adding-a-task).
 
 | Field | What it takes |
 | --- | --- |

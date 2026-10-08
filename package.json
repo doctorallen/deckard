@@ -2206,66 +2206,62 @@
             "enumDescriptions": [
               "Everything Deckard draws in the editor: counts, hints, previews, and lenses.",
               "What helps with tasks, and what reports a problem; no link counts, mention lenses, or breadcrumbs.",
-              "A quiet page for writing: the / menu, hover previews, and problem reports only."
+              "A quiet page for writing: the / menu, hover previews, faint task details, and reports of broken links, embeds, and repeat rules. No link counts, mention lenses, breadcrumbs, daily-note links, task hints, dependencies, step bars, or hub progress."
             ],
             "default": "full",
-            "description": "What Deckard draws in the editor, as one choice. A deckard.editor.* setting you change yourself wins over it.",
+            "description": "What Deckard draws in the editor, as one choice. Each deckard.editor.* switch left unset follows it; one you set yourself overrides it.",
             "order": 0
           },
           "deckard.editor.referenceCounts": {
             "type": "boolean",
             "scope": "resource",
-            "default": true,
-            "description": "Show, above the lines of a Markdown note, how many notes link to it, how many links name each heading, how many open tasks sit under each heading, and how many related entries Related Notes finds for each tagged heading.",
+            "description": "Show, above the lines of a Markdown note, how many notes link to it, how many links name each heading, how many open tasks sit under each heading, and how many related entries Related Notes finds for each tagged heading. Left unset, it follows the editor preset: on in Full, off in Tasks and Writing. Set it here to override the preset.",
             "order": 1
           },
           "deckard.editor.hoverPreviews": {
             "type": "boolean",
             "scope": "resource",
             "default": true,
-            "description": "Preview the note or section a [[Wiki link]] points at when hovering it, and summarize a tag's entries when hovering the tag.",
+            "description": "Preview the note or section a [[Wiki link]] points at when hovering it, and summarize a tag's entries when hovering the tag. Left unset, it follows the editor preset, and every preset turns it on. Set it here to override the preset.",
             "order": 2
           },
           "deckard.editor.linkDiagnostics": {
             "type": "boolean",
             "scope": "resource",
             "default": true,
-            "description": "Mark a [[Wiki link]] that opens no note, because no note has its name or several do, and offer to create a missing note.",
+            "description": "Mark a [[Wiki link]] that opens no note, because no note has its name or several do, and offer to create a missing note. Left unset, it follows the editor preset, and every preset turns it on. Set it here to override the preset.",
             "order": 3
           },
           "deckard.editor.taskDependencies": {
             "type": "boolean",
             "scope": "resource",
-            "default": true,
-            "description": "Show, above a task with ⛔ or 🆔, how many open tasks it waits on and how many it holds up, and name a ⛔ id no task carries. A task with nothing open on either side shows nothing.",
+            "description": "Show, above a task with ⛔ or 🆔, how many open tasks it waits on and how many it holds up, and name a ⛔ id no task carries. A task with nothing open on either side shows nothing. Left unset, it follows the editor preset: on in Full and Tasks, off in Writing. Set it here to override the preset.",
             "order": 6
           },
           "deckard.editor.dailyNoteActions": {
             "type": "boolean",
             "scope": "resource",
-            "default": true,
-            "description": "Show, above a daily note, links to the daily notes before and after it, and on today's note an action that carries in the unfinished tasks earlier daily notes still hold.",
+            "description": "Show, above a daily note, links to the daily notes before and after it, and on today's note an action that carries in the unfinished tasks earlier daily notes still hold. Left unset, it follows the editor preset: on in Full and Tasks, off in Writing. Set it here to override the preset.",
             "order": 7
           },
           "deckard.editor.linkProblems": {
             "type": "boolean",
             "scope": "resource",
             "default": true,
-            "description": "Show, on a note's first line, how many of its [[Wiki links]] open no note, and an action that creates the notes the missing ones name. A note whose links all open a note shows nothing.",
+            "description": "Show, on a note's first line, how many of its [[Wiki links]] open no note, and an action that creates the notes the missing ones name. A note whose links all open a note shows nothing. Left unset, it follows the editor preset, and every preset turns it on. Set it here to override the preset.",
             "order": 8
           },
           "deckard.editor.embedProblems": {
             "type": "boolean",
             "scope": "resource",
             "default": true,
-            "description": "Show, above an ![[embed]] the Markdown preview cannot draw, which heading or ^marker went missing, and open the note it names. An embed that draws shows nothing.",
+            "description": "Show, above an ![[embed]] the Markdown preview cannot draw, which heading or ^marker went missing, and open the note it names. An embed that draws shows nothing. Left unset, it follows the editor preset, and every preset turns it on. Set it here to override the preset.",
             "order": 9
           },
           "deckard.editor.unlinkedMentions": {
             "type": "boolean",
             "scope": "resource",
-            "default": true,
-            "description": "Show, on a note's first line, how many other notes write its title or an alias as plain text without linking to it, and an action that links them. A note no other note names shows nothing.",
+            "description": "Show, on a note's first line, how many other notes write its title or an alias as plain text without linking to it, and an action that links them. A note no other note names shows nothing. Left unset, it follows the editor preset: on in Full, off in Tasks and Writing. Set it here to override the preset.",
             "order": 10
           },
           "deckard.links.style": {
@@ -2286,49 +2282,45 @@
             "type": "boolean",
             "scope": "resource",
             "default": true,
-            "description": "Offer, after a / typed alone at the start of a line in a note, what to write there: a task, a heading, a link or an embed, today's note, a query block, a table of notes or tasks, or one of your templates.",
+            "description": "Offer, after a / typed alone at the start of a line in a note, what to write there: a task, a heading, a link or an embed, today's note, a query block, a table of notes or tasks, or one of your templates. Left unset, it follows the editor preset, and every preset turns it on. Set it here to override the preset.",
             "order": 10
           },
           "deckard.editor.stepProgress": {
             "type": "boolean",
             "scope": "resource",
-            "default": true,
-            "description": "Show, above a task with steps, a bar of how many of its steps are done and which is next; selecting it goes to the next open step.",
+            "description": "Show, above a task with steps, a bar of how many of its steps are done and which is next; selecting it goes to the next open step. Left unset, it follows the editor preset: on in Full and Tasks, off in Writing. Set it here to override the preset.",
             "order": 10
           },
           "deckard.editor.breadcrumbs": {
             "type": "boolean",
             "scope": "resource",
-            "default": true,
-            "description": "Show, on a note's first line, where it sits under its hub notes, such as Projects › Atlas › Vendor review, as the Hubs view files it; selecting it opens the note above. A note no hub holds shows nothing.",
+            "description": "Show, on a note's first line, where it sits under its hub notes, such as Projects › Atlas › Vendor review, as the Hubs view files it; selecting it opens the note above. A note no hub holds shows nothing. Left unset, it follows the editor preset: on in Full, off in Tasks and Writing. Set it here to override the preset.",
             "order": 10
           },
           "deckard.editor.hubProgress": {
             "type": "boolean",
             "scope": "resource",
-            "default": true,
-            "description": "Show, on a hub note's first line, how far along the tasks of the tag it describes are: how many are done, how many are overdue, and when the next is due. A tag with no task shows nothing.",
+            "description": "Show, on a hub note's first line, how far along the tasks of the tag it describes are: how many are done, how many are overdue, and when the next is due. A tag with no task shows nothing. Left unset, it follows the editor preset: on in Full and Tasks, off in Writing. Set it here to override the preset.",
             "order": 10
           },
           "deckard.editor.dimTaskMetadata": {
             "type": "boolean",
             "default": true,
             "scope": "resource",
-            "description": "Draw a task's dates, priority, repeat rule, ids, and person, and a line's ^block id, fainter than its words, so the sentence reads first. An overdue date is never dimmed.",
+            "description": "Draw a task's dates, priority, repeat rule, ids, and person, and a line's ^block id, fainter than its words, so the sentence reads first. An overdue date is never dimmed. Left unset, it follows the editor preset, and every preset turns it on. Set it here to override the preset.",
             "order": 11
           },
           "deckard.editor.taskDueHints": {
             "type": "boolean",
-            "default": true,
             "scope": "resource",
-            "description": "Say after an open task's line when it is overdue, due today, or needs a new date, such as \"overdue 5 days\".",
+            "description": "Say after an open task's line when it is overdue, due today, or needs a new date, such as \"overdue 5 days\". Left unset, it follows the editor preset: on in Full and Tasks, off in Writing. Set it here to override the preset.",
             "order": 12
           },
           "deckard.editor.repeatDiagnostics": {
             "type": "boolean",
             "default": true,
             "scope": "resource",
-            "description": "Mark a 🔁 repeat rule Deckard cannot read, since completing that task would not start the next one, and offer the nearest rule it can read.",
+            "description": "Mark a 🔁 repeat rule Deckard cannot read, since completing that task would not start the next one, and offer the nearest rule it can read. Left unset, it follows the editor preset, and every preset turns it on. Set it here to override the preset.",
             "order": 13
           }
         },

@@ -16,6 +16,16 @@
   palette lists **Unpark Folder…** while `deckard.parked.folders` parks a
   folder by name, and **Unpark Tag…** while `deckard.parked.tags` names a
   tag, so neither shows with nothing to unpark.
+- **Editor switches say they override the preset.** Each of the 15
+  `deckard.editor.*` switches says which presets turn it on, and that a
+  value you set overrides the preset. A switch some preset turns off no
+  longer shows as on in Settings while you leave it unset; one every
+  preset turns on still shows as on.
+- **Tag Heading with a Person or Project… is a refactor.** It was offered
+  as a quick fix, so a lightbulb lit on every plain heading. It is in the
+  editor's Refactor… menu now, under one title.
+- **Edit task… and Break into steps… only in notes.** The editor offers
+  them on a task line of a note, and no longer in other Markdown files.
 
 ### Fixed
 
@@ -23,6 +33,10 @@
   The guide says to run it to turn the MCP server on, but the palette
   listed it only once the server was already on. It is listed now while
   `deckard.assistantTools` is on, and still offers to turn the server on.
+- **The Writing preset says what it draws.** Settings said Writing kept
+  the / menu, hover previews and problem reports only, but it also keeps
+  faint task details. Settings, Choose Editor Preset… and the guide now
+  name each part it keeps and each it leaves out.
 
 ## 2.4.0 - 2026-10-06
 

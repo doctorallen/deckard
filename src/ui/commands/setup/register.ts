@@ -77,7 +77,7 @@ async function chooseEditorPreset(): Promise<void> {
   const choices = [
     { label: 'Full', detail: 'Everything: link counts, task hints, breadcrumbs, mention lenses, previews.', value: 'full' },
     { label: 'Tasks', detail: 'Task hints, steps, dependencies, and problem reports; no link counts or breadcrumbs.', value: 'tasks' },
-    { label: 'Writing', detail: 'A quiet page: the / menu, hover previews, and broken links and rules only.', value: 'writing' },
+    { label: 'Writing', detail: 'A quiet page: the / menu, hover previews, faint task details, and broken links, embeds, and rules.', value: 'writing' },
   ].map((choice) => ({ ...choice, description: choice.value === current ? 'current' : '' }));
   const picked = await vscode.window.showQuickPick(choices, {
     title: 'What Deckard draws in the editor',

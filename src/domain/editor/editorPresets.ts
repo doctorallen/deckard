@@ -4,7 +4,9 @@
  *
  * Each `deckard.editor.*` switch still works, and one set by hand, at any
  * scope, wins over the preset; the preset decides only the switches left
- * alone.
+ * alone. So that Settings never shows a switch as on while the preset turns
+ * it off, a switch some preset turns off has no default in the manifest,
+ * and only its value set by hand is read (ui/providers/editorToggles.ts).
  */
 
 /** Every `deckard.editor.*` switch a preset decides, by the name after `deckard.editor.`. */
@@ -32,7 +34,8 @@ export type EditorToggle = (typeof EDITOR_TOGGLES)[number];
 /**
  * `full`, everything, as Deckard has always drawn it; `tasks`, what helps
  * with tasks and what reports a problem; `writing`, a quiet page that still
- * reports a broken link or rule and keeps the / menu and hover previews.
+ * reports a broken link, embed or rule and keeps the / menu, hover previews
+ * and faint task details.
  */
 export type EditorPreset = 'full' | 'tasks' | 'writing';
 
