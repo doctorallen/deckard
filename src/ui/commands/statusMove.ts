@@ -29,13 +29,16 @@ import type { WorkspaceWriteHistory } from './workspaceWrites';
 /**
  * Moving status tags into checkboxes, and importing a vault's statuses from
  * Obsidian Tasks: two commands; the first scan's offer of the import, made
- * once per workspace; the notice, made each session while a task line
- * still carries a status tag the move knows; and the old board settings,
- * moved once.
+ * once per workspace; the notice that a task line still carries a status
+ * tag the move knows, also made once per workspace, since the Task board
+ * and the Tasks view keep saying so; and the old board settings, moved
+ * once.
  */
 
 /** The workspace-state key that records the import was offered. */
 export const STATUS_IMPORT_OFFERED = 'deckard.statusImportOffered';
+/** The workspace-state key that records the notice of status tags left was given. */
+export const STATUS_MOVE_NOTICED = 'deckard.statusMoveNoticed';
 /** The workspace-state key that records the old board settings were moved into the gear's choices. */
 export const STATUS_SETTINGS_MOVED = 'deckard.statusSettingsMoved';
 
@@ -337,14 +340,17 @@ export async function moveBoardSettingsOnce(workspaceState: vscode.Memento, boar
  * The first scan's offers: the old board settings moved, once per
  * workspace; then, once per workspace, to import a vault's statuses where
  * Obsidian Tasks keeps some and the workspace names none of its own;
- * otherwise, each session while any task line carries a status tag the
- * move knows, the notice that offers to preview the move.
+ * otherwise, once per workspace while any task line carries a status tag
+ * the move knows, the notice that offers to preview the move. It was made
+ * every session, the same toast at each start, while the board and the
+ * Tasks view already said it where the tasks are.
+ * @returns Whether either was said, so the first index's other notices wait for another activation.
  */
 export async function offerStatusMigrationOnce(
   workspaceState: vscode.Memento,
   indexer: Pick<IndexReader, 'getSnapshot'>,
   options: StatusOfferOptions = {},
-): Promise<void> {
+): Promise<boolean> {
   const show = options.show ?? ((message, ...buttons) => vscode.window.showInformationMessage(message, ...buttons));
   const run = options.run ?? ((command) => vscode.commands.executeCommand(command));
   const hasObsidian = options.hasObsidianStatuses ?? (async () => importObsidianStatuses(await readObsidianTasksSettings()) !== undefined);
@@ -357,12 +363,17 @@ export async function offerStatusMigrationOnce(
     if ((await show('This workspace is an Obsidian vault with task statuses of its own. Import them, so Deckard reads each character as Obsidian Tasks does?', 'Import Statuses')) === 'Import Statuses') {
       await run('deckard.importObsidianStatuses');
     }
-    return;
+    return true;
+  }
+  if (workspaceState.get<boolean>(STATUS_MOVE_NOTICED) === true) {
+    return false;
   }
   const left = countStatusTagsLeft(indexer.getSnapshot());
   if (left.count === 0) {
-    return;
+    return false;
   }
+  // Written before the message, so a reload while it is up does not say it twice.
+  await workspaceState.update(STATUS_MOVE_NOTICED, true);
   const chosen = await show(
     `${pluralize(left.count, 'task keeps its status in a', 'tasks keep their status in a')} #${left.namespace} tag, which Deckard no longer reads.`,
     'Preview the Move',
@@ -371,4 +382,5 @@ export async function offerStatusMigrationOnce(
   if (chosen === 'Preview the Move') {
     await run('deckard.moveStatusTagsIntoCheckboxes');
   }
+  return true;
 }

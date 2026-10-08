@@ -12,6 +12,8 @@ Three figures sit above Home: **Due today** and **Overdue**, as the [Tasks view]
 
 **What's new:** after an update that adds features, Home shows *Updated to Deckard 1.23.* once, with **What's new** and **Dismiss**.
 
+**An empty workspace:** with no notes yet, Home shows **Create today's note**, **Create a work sample**, and **Check my setup** in place of its widgets, which would each say they had nothing to show. Customizing still draws the widgets.
+
 **Widgets.** A new Home starts with Try next, the search box, the Tasks view, recently opened notes, favorite tags, and saved searches. In the Tasks view widget, the **Overdue** heading is red, and each row under it says so as a task row does anywhere, such as *Overdue 20 days · 2026-09-01*, in red. **Customize Home**, beside the Home and Tags tabs, adds, removes, resizes, and reorders widgets.
 
 A widget that leads somewhere makes its title the link, with a **›** after it: select **Tasks view 53 ›** to open the Tasks view. A widget that leads nowhere, such as Quick add, has a plain title, and so does every widget while Home is being customized.

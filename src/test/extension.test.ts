@@ -307,8 +307,8 @@ suite('Extension Test Suite', () => {
     for (const step of steps) {
       for (const match of step.description.matchAll(/\(command:([\w.]+)/g)) {
         const id = match[1];
-        // Deckard's own links name a contributed command or view; another,
-        // such as extension.open for Esper Themes, is one VS Code registers.
+        // Deckard's own links name a contributed command or view; any other
+        // is one VS Code registers.
         const known = id.startsWith('deckard.')
           ? commands.has(id) || views.has(id)
           : registered.has(id);

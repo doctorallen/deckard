@@ -9,7 +9,6 @@ What Deckard reads, stores, and sends, in one place, for anyone who has to appro
   - [Suggest steps](ai-assistants.md#suggest-steps) sends one task's words to a VS Code language model, such as GitHub Copilot's, the first time behind VS Code's consent dialog. `deckard.tasks.suggestSteps` set to `false` hides it.
   - The [AI assistant tools](ai-assistants.md) answer searches from an assistant you run in VS Code; the assistant may send what it gets to its own model service. `deckard.assistantTools` set to `false` turns them off.
 - **The MCP server** is off by default (`deckard.mcpServer.enabled`). Turned on, it listens on `127.0.0.1` only, at `deckard.mcpServer.port` (39217), every request needs a token kept in VS Code's secret storage, and requests from web pages on other sites are refused. `Deckard: Reset MCP Server Token` breaks every copied setup.
-- **Esper Themes**, suggested once, is installed by VS Code from the Marketplace, and only if you select **Install**.
 
 ## Where it runs
 

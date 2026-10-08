@@ -485,6 +485,12 @@ suite('Dashboard behavior', () => {
     assert.ok(page.find('.home-start [data-view="sampleWorkspace"]'));
     // Creating today's note is the one thing an empty Home commits.
     assert.deepStrictEqual(page.findAll('.primary').map((button) => button.getAttribute('data-action')), ['open-daily-note']);
+    // Get Started takes the grid's place: no widget says it has nothing to show.
+    assert.strictEqual(page.document.querySelector('.home-grid'), null);
+    // Customizing draws the grid it arranges, and puts Get Started away.
+    page.click('[data-action="customize-home"]');
+    assert.ok(page.find('.home-grid'));
+    assert.strictEqual(page.document.querySelector('.home-start'), null);
   });
 
   test('Try next draws one card, or nothing at all', () => {

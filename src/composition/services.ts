@@ -89,11 +89,11 @@ import { SearchPanels } from '../ui/webview/searchPage';
 import { setZenMode, startZenMode, toggleZenMode } from '../ui/webview/zenMode';
 import { getSampleStorageUri, SAMPLE_FOLDER_NAMES, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
 import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/firstIndex';
-import { suggestEsperThemesOnce } from '../ui/commands/esperThemes';
 import { initWriteTarget, isPausedHere, looksLikeCodeRepository, onDidChangePaused, readNotesFolder } from '../ui/commands/writeTarget';
 import { ScopeStatusBar } from '../ui/views/scopeStatusBar';
 import { countUnknownStatuses, noticeUnknownStatusesOnce } from '../ui/commands/otherCheckboxes';
 import { offerStatusMigrationOnce } from '../ui/commands/statusMove';
+import { type FirstRunNotice, sayOneNotice } from '../ui/commands/firstRunNotices';
 import { openSettingAction, settingLabel } from '../ui/commands/notify';
 import { PreferenceSnapshots } from '../core/storage/preferenceSnapshots';
 import { OutlineTreeProvider } from '../ui/views/outlineTree';
@@ -259,21 +259,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
   const writes = createWrites(core, preferences);
   const search = createSearch(context, core, preferences, writes);
   const editor = createEditorProviders(context, core, preferences);
-  offerExcludeHint(context, core.indexer, newWorkspace);
-  // Once per machine, and once per workspace, after the first index has had
-  // its say; never in a test run, where a message arriving mid-test would
-  // land in what a test records.
-  if (context.extensionMode !== vscode.ExtensionMode.Test) {
-    void core.indexer.ready
-      .then(() => suggestEsperThemesOnce(context.globalState))
-      .catch((error: unknown) => reportError('Could not suggest Esper Themes', error));
-    void core.indexer.ready
-      .then(() => noticeUnknownStatusesOnce(context.workspaceState, countUnknownStatuses(core.indexer.getSnapshot())))
-      .catch((error: unknown) => reportError('Could not count the tasks whose status Deckard does not know', error));
-    void core.indexer.ready
-      .then(() => offerStatusMigrationOnce(context.workspaceState, core.indexer, { board: { reader: preferences.repository, taskLayout: preferences.taskLayout } }))
-      .catch((error: unknown) => reportError('Could not offer to move status tags into checkboxes', error));
-  }
+  offerFirstRunNotices(context, { core, preferences }, newWorkspace);
   syncWalkthroughContext(context, core.indexer);
   createEditorContexts(context, core, preferences);
   const assistance = createLinksAndAssistance(context, core, preferences);
@@ -693,52 +679,94 @@ async function readsWholeRepository(): Promise<boolean> {
 }
 
 /**
+ * What the first index has to say, one notice to an activation, in this
+ * order: the offer to import a vault's statuses, or to move status tags into
+ * checkboxes; then what the first index read, or, for a very large
+ * workspace, how to leave folders out; then the tasks whose status Deckard
+ * doesn't know. They used to arrive together. Only the second is said in a
+ * test run, as before: a message arriving mid-test would land in what a test
+ * records.
+ */
+function offerFirstRunNotices(
+  context: vscode.ExtensionContext,
+  { core, preferences }: { core: Core; preferences: PreferenceParts },
+  newWorkspace: boolean,
+): void {
+  const testRun = context.extensionMode === vscode.ExtensionMode.Test;
+  const notices: FirstRunNotice[] = [
+    ...(testRun
+      ? []
+      : [{
+          say: () => offerStatusMigrationOnce(context.workspaceState, core.indexer, { board: { reader: preferences.repository, taskLayout: preferences.taskLayout } }),
+          failure: 'Could not offer to move status tags into checkboxes',
+        }]),
+    { say: () => offerExcludeHint(context, core.indexer, newWorkspace), failure: 'Could not say what the first index read' },
+    ...(testRun
+      ? []
+      : [{
+          say: () => noticeUnknownStatusesOnce(context.workspaceState, countUnknownStatuses(core.indexer.getSnapshot())),
+          failure: 'Could not count the tasks whose status Deckard does not know',
+        }]),
+  ];
+  void core.indexer.ready
+    .then(() => sayOneNotice(notices))
+    .catch((error: unknown) => reportError('Could not say what the first index found', error));
+}
+
+/**
  * A workspace's first index says what it read, once; a very large one is
  * worth one word about leaving folders out, said once, and only when nothing
  * is left out yet.
+ * @returns Whether either was said.
  */
-function offerExcludeHint(
+async function offerExcludeHint(
   context: vscode.ExtensionContext,
   indexer: IndexRoles<vscode.Uri>,
   newWorkspace: boolean,
-): void {
-  void indexer.ready.then(async () => {
-    const notes = indexer.getSnapshot().files.size;
-    const exclude = vscode.workspace.getConfiguration('deckard').get<Record<string, unknown>>('exclude', {});
-    const storage = getSampleStorageUri(context.globalStorageUri);
-    const samples = SAMPLE_FOLDER_NAMES.map((name) => vscode.Uri.joinPath(storage, name).toString());
-    const summarized = await summarizeFirstIndex(
-      context,
-      indexer.getSnapshot(),
-      {
-        newToDeckard: newWorkspace,
-        hasFolder: (vscode.workspace.workspaceFolders ?? []).length > 0,
-        isSample: (vscode.workspace.workspaceFolders ?? []).some((folder) => samples.includes(folder.uri.toString())),
-      },
-      {
-        excludeHintShownKey: EXCLUDE_HINT_SHOWN,
-        excludeIsEmpty: Object.keys(exclude ?? {}).length === 0,
-        wholeRepository: await readsWholeRepository(),
-      },
-    );
-    if (
-      summarized ||
-      notes < LARGE_WORKSPACE_NOTES ||
-      Object.keys(exclude ?? {}).length > 0 ||
-      context.workspaceState.get<boolean>(EXCLUDE_HINT_SHOWN)
-    ) {
-      return;
-    }
-    await context.workspaceState.update(EXCLUDE_HINT_SHOWN, true);
-    const open = openSettingAction('exclude');
-    const choice = await vscode.window.showInformationMessage(
+): Promise<boolean> {
+  const notes = indexer.getSnapshot().files.size;
+  const exclude = vscode.workspace.getConfiguration('deckard').get<Record<string, unknown>>('exclude', {});
+  const storage = getSampleStorageUri(context.globalStorageUri);
+  const samples = SAMPLE_FOLDER_NAMES.map((name) => vscode.Uri.joinPath(storage, name).toString());
+  const summarized = await summarizeFirstIndex(
+    context,
+    indexer.getSnapshot(),
+    {
+      newToDeckard: newWorkspace,
+      hasFolder: (vscode.workspace.workspaceFolders ?? []).length > 0,
+      isSample: (vscode.workspace.workspaceFolders ?? []).some((folder) => samples.includes(folder.uri.toString())),
+    },
+    {
+      excludeHintShownKey: EXCLUDE_HINT_SHOWN,
+      excludeIsEmpty: Object.keys(exclude ?? {}).length === 0,
+      wholeRepository: await readsWholeRepository(),
+    },
+  );
+  if (summarized) {
+    return true;
+  }
+  if (
+    notes < LARGE_WORKSPACE_NOTES ||
+    Object.keys(exclude ?? {}).length > 0 ||
+    context.workspaceState.get<boolean>(EXCLUDE_HINT_SHOWN)
+  ) {
+    return false;
+  }
+  await context.workspaceState.update(EXCLUDE_HINT_SHOWN, true);
+  const open = openSettingAction('exclude');
+  // Not awaited: the answer comes whenever the reader gives it, and the
+  // other notices only need to know one was said.
+  void vscode.window
+    .showInformationMessage(
       `Deckard read ${notes.toLocaleString('en-US')} files. If some folders hold Markdown you do not want in the index, such as exported docs or dependencies, the "${settingLabel('exclude')}" setting leaves them out and makes every scan faster.`,
       open.title,
-    );
-    if (choice === open.title) {
-      await open.run();
-    }
-  });
+    )
+    .then(async (choice) => {
+      if (choice === open.title) {
+        await open.run();
+      }
+    });
+  return true;
 }
 
 /**

@@ -90,8 +90,9 @@ export function shouldSummarize(gate: FirstIndexGate): boolean {
 /**
  * Says what the first index found, when it should. The flag is written
  * before the message, and by an empty first index too, so the summary never
- * arrives later in the middle of work. Returns whether the exclude hint was
- * said with it.
+ * arrives later in the middle of work. A very large workspace hears the
+ * exclude hint in the same message, which then is not said on its own.
+ * @returns Whether the summary was said.
  */
 export async function summarizeFirstIndex(
   context: Pick<vscode.ExtensionContext, 'workspaceState'>,
@@ -140,5 +141,5 @@ export async function summarizeFirstIndex(
       await pauseHere();
     }
   });
-  return large;
+  return true;
 }

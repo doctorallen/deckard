@@ -103,6 +103,27 @@
   underlined under the pointer, and the button is gone. A widget that
   leads nowhere keeps a plain title, as every widget does while Home is
   being customized, and the link stays under Zen with its count.
+- **An empty workspace's Home is Get Started alone.** With no notes yet,
+  Home drew **Create today's note** above a grid of widgets that each said
+  it had nothing to show. Get Started takes the grid's place now; the
+  widgets come back with the first note, or while you customize Home.
+- **One notice at a time after the first index.** Up to four notices
+  could arrive together once a workspace was first read. Deckard now says
+  one each time it starts, in this order: the offer to import a vault's
+  statuses or to move status tags into checkboxes, then what the first
+  index read (or, in a very large workspace, how to leave folders out),
+  then tasks whose status Deckard doesn't know. One left unsaid waits for
+  a later start.
+- **The status-tag notice is said once in a workspace.** While task lines
+  still carried a status tag, every start of VS Code said so again. It is
+  said once now, and the Task board and the Tasks view keep saying it
+  where the tasks are.
+
+### Removed
+
+- **The Esper Themes suggestion.** Deckard no longer suggests installing
+  Esper Themes after its first index. The themes are still in the
+  Marketplace, and the guide's Themes and Zen page still names them.
 
 ### Fixed
 

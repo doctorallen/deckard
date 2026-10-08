@@ -132,11 +132,14 @@ function HomeContent(props: HomePanelProps) {
   if (!snapshot.widgets) {
     return <Loading label="Loading Home…" />;
   }
+  // Get Started takes the grid's place, not a place above it: every widget
+  // of a workspace with no notes would only say it had nothing to show.
+  // Customizing still draws the grid, which is what is being arranged.
+  const drawsGrid = snapshot.totalNoteCount > 0 || view.editingHome;
   return (
     <>
       {view.editingHome ? <EditBar choices={props.choices} full={isHomeFull(snapshot.widgetConfig || [])} /> : <HintBar snapshot={snapshot} view={view} />}
-      {snapshot.totalNoteCount === 0 && !view.editingHome ? <GetStarted /> : null}
-      <WidgetGrid widgets={snapshot.widgets} home={props.home} generation={props.generation} />
+      {drawsGrid ? <WidgetGrid widgets={snapshot.widgets} home={props.home} generation={props.generation} /> : <GetStarted />}
     </>
   );
 }
