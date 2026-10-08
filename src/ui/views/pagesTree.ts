@@ -18,7 +18,7 @@ import { countNotes } from '../../domain/index/noteEntryIndex';
 /** What the hints are drawn from, as the index and the settings are now. */
 export function readPageFacts(indexer: Pick<IndexReader, 'getSnapshot'>, now: Date = new Date()): PageFacts {
   const index = indexer.getSnapshot();
-  const agendaQuery = vscode.workspace.getConfiguration('deckard').get<string>('agenda.query', '');
+  const agendaQuery = vscode.workspace.getConfiguration('deckard').get<string>('tasks.viewQuery', '');
   const context = readQueryContext(now.getTime());
   const glance = createTaskGlance(index, agendaQuery, context);
   const today = formatLocalDate(now);

@@ -40,12 +40,12 @@ export function readAgendaGroupNamespace(
 }
 
 /**
- * What the Agenda lists, from `deckard.agenda.query`; empty is every open
+ * What the Agenda lists, from `deckard.tasks.viewQuery`; empty is every open
  * task, and so is a value that is not text, as a hand-edited settings.json
  * can hold.
  */
 export function readAgendaQuery(settings: SettingsReader): string {
-  const value = settings.get<unknown>('agenda.query', '');
+  const value = settings.get<unknown>('tasks.viewQuery', '');
   return typeof value === 'string' ? value : '';
 }
 

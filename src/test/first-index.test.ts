@@ -87,7 +87,7 @@ suite('First index summary', () => {
       assert.strictEqual(await summarizeFirstIndex(large, buildWorkspaceIndex(files), gate, options), true);
       assert.strictEqual(large.workspaceState.get('hint'), true, 'the exclude hint is not said again');
       assert.match(String(shown[0][0]), /^Deckard read 3,000 notes\. If some folders hold Markdown you do not want read, the "Exclude" setting leaves them out\.$/);
-      assert.deepStrictEqual(shown[0].slice(1), ['Open Dashboard', 'Get Started', 'Leave Folders Out…']);
+      assert.deepStrictEqual(shown[0].slice(1), ['Open Home', 'Get Started', 'Leave Folders Out…']);
     } finally {
       window.showInformationMessage = original;
     }

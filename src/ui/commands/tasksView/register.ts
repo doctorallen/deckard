@@ -34,7 +34,7 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.exportTaskCalendar', () => exportTaskCalendarCommand(indexer)),
     new TaskCalendarFile(indexer).start(),
     registerCommand('deckard.clearAgendaQuery', async () => {
-      if (await clearSetting('agenda.query', '')) {
+      if (await clearSetting('tasks.viewQuery', '')) {
         void vscode.window.showInformationMessage('The Tasks view lists every open task again.');
       }
     }),

@@ -324,7 +324,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   /** The board for the search as it stands, with what the sidebar and the Tasks view say of it. */
   private createSnapshot(): TaskBoardSnapshot {
     const configuration = (): vscode.WorkspaceConfiguration => vscode.workspace.getConfiguration('deckard');
-    const listed = normalizeAgendaQuery(configuration().get<string>('agenda.query', ''));
+    const listed = normalizeAgendaQuery(configuration().get<string>('tasks.viewQuery', ''));
     const agendaListsThisSearch = listed === normalizeAgendaQuery(this.query);
     const index = this.board.indexer.getSnapshot();
     const tagsLeft = countStatusTagsLeft(index);
@@ -583,7 +583,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
    */
   private async useSearchForAgenda(page: PageContext): Promise<void> {
     const configuration = vscode.workspace.getConfiguration('deckard');
-    const listed = normalizeAgendaQuery(configuration.get<string>('agenda.query', ''));
+    const listed = normalizeAgendaQuery(configuration.get<string>('tasks.viewQuery', ''));
     // Pressed a second time, the switch gives the Tasks view back its own
     // list of every open task; when that is what it lists, it does nothing.
     const again = listed === normalizeAgendaQuery(this.query);
@@ -592,7 +592,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     }
     if (again) {
       // The value goes where it is already set, as the board's own settings do.
-      if (await writeSetting('agenda.query', '', settingTarget('agenda.query', configuration), configuration)) {
+      if (await writeSetting('tasks.viewQuery', '', settingTarget('tasks.viewQuery', configuration), configuration)) {
         void vscode.window.showInformationMessage('The Tasks view lists every open task again.');
         page.refresh();
       }
@@ -624,7 +624,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     // What the view lists already is not written again: a write of the
     // empty default would set it where it was not set.
     const saved =
-      normalizeAgendaQuery(configuration.get<string>('agenda.query', '')) === query
+      normalizeAgendaQuery(configuration.get<string>('tasks.viewQuery', '')) === query
         ? this.confirmTasksViewSearch(query)
         : await this.listInTasksView(query, configuration);
     page.refresh();
@@ -647,8 +647,8 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     configuration: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration('deckard'),
   ): Promise<boolean> {
     // The value goes where it is already set, as the board's own settings do.
-    const target = settingTarget('agenda.query', configuration);
-    if (!(await writeSetting('agenda.query', query, target, configuration))) {
+    const target = settingTarget('tasks.viewQuery', configuration);
+    if (!(await writeSetting('tasks.viewQuery', query, target, configuration))) {
       return false;
     }
     return this.confirmTasksViewSearch(query);

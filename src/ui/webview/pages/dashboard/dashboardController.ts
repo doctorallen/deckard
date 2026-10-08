@@ -231,7 +231,7 @@ export class DashboardController implements PageController<DashboardPageState, D
         page.refresh();
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.agenda')) {
+        if (event.affectsConfiguration('deckard.agenda') || event.affectsConfiguration('deckard.tasks.viewQuery')) {
           page.refresh();
         }
       }),

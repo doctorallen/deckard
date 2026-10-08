@@ -607,7 +607,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
   /** Draws the pages again for a setting they read, and forgets a state a setting may have changed. */
   private onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent): void {
     // The pages at the top: Home's count of what is due.
-    if (event.affectsConfiguration('deckard.agenda.query')) {
+    if (event.affectsConfiguration('deckard.tasks.viewQuery')) {
       this.refreshPages();
     }
     // The ranking reads settings it does not redraw for, such as the date

@@ -65,11 +65,11 @@ function DashboardOptions({ snapshot, view }: DashboardDraw) {
   );
 }
 
-/** The Dashboard's name and the tab shown, the tiles, and the gear after them. */
+/** The page's one name, Home, whichever tab is shown; the tiles, and the gear after them. */
 export function PageHeader(props: DashboardDraw) {
   return (
     <header>
-      <div><Eyebrow trail="WORKSPACE INDEX" /><h1>{`Dashboard: ${props.view.mode === 'home' ? 'Home' : 'Tags'}`}</h1></div>
+      <div><Eyebrow trail="WORKSPACE INDEX" /><h1>Home</h1></div>
       <div class="dashboard-header-actions"><TaskTiles glance={props.snapshot.taskGlance} /><DashboardOptions {...props} /></div>
     </header>
   );
@@ -95,7 +95,7 @@ export function ModeTabs({ view, filter }: { readonly view: DashboardDraw['view'
   const home = view.mode === 'home';
   return (
     <div class="dashboard-tabs-row">
-      <div class="segmented dashboard-tabs" role="tablist" aria-label="Dashboard mode">
+      <div class="segmented dashboard-tabs" role="tablist" aria-label="Home tabs">
         <button id="home-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="home" aria-selected={home} aria-controls="home-panel" tabIndex={home ? 0 : -1}>Home</button>
         <button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected={!home} aria-controls="browse-panel" tabIndex={home ? -1 : 0}>
           Tags

@@ -18,7 +18,7 @@ export function getDashboardHtml(
     webview,
     extensionUri,
     page: 'dashboard',
-    title: 'Deckard Dashboard',
+    title: 'Deckard Home',
     nonce: createNonce(),
     theme: chrome.theme,
     zen: chrome.zen,

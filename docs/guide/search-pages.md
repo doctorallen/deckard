@@ -1,10 +1,8 @@
-# Search pages and tag overviews
-
-## Search pages
+# Search pages
 
 Every search opens a **search page** in its own tab; a tag's overview is the search page for that tag. Open one by Cmd/Ctrl-clicking a tag in the editor, selecting a tag anywhere Deckard shows one, searching from Home or [Find](search.md#find), or running `Deckard: Open Search Page…` or `Deckard: Open a Tag's Search Page…`. A search already open comes forward. Parked notes and tasks are listed last, marked **Parked**.
 
-![Deckard Tag Overview showing matching notes, active tasks, and display controls.](../images/tag-overview.png)
+![A tag's search page showing matching notes, active tasks, and display controls.](../images/tag-overview.png)
 
 - **One tag is its overview.** The page's title is the tag or the entity it names, with its [hub note](#hub-notes) above the entries.
 - **Anything more is a search.** Add another tag, words, or a condition such as `is:open`, and the title says **Search**; the [search box](search.md#the-search-box) and **Builder** show every filter. The box's **×** returns to the original tag.
@@ -23,11 +21,11 @@ Every search opens a **search page** in its own tab; a tag's overview is the sea
 
 Opening a tag's page or a section records access for the access sort.
 
-### Taking a search's results out
+## Taking a search's results out
 
 **Export**, beside **Bulk edit** on a search page and beside **Save** on the Task Board, copies or saves everything the search found as a Markdown table, a Markdown list of links, or CSV. With a search, it first offers **Copy as live query block**, which copies the search and its sort as a [query block](query-blocks.md#query-blocks). Nothing else leaves the machine.
 
-### Editing a search's results
+## Editing a search's results
 
 **Bulk edit**, beside a results pane's heading, makes one edit to everything the search found. Refine the search until the results are the ones you mean, then:
 
@@ -44,7 +42,7 @@ Opening a tag's page or a section records access for the access sort.
 - It applies to the whole search, not the page on screen. A page with no search of its own (every note) edits only the results shown.
 - To move notes into a folder, use the Explorer; Deckard [carries their links along](organizing.md#renaming-notes-and-headings).
 
-### Hub notes
+## Hub notes
 
 A hub note describes a tag and opens at the top of its overview. Add `describes:` to the note's front matter:
 
@@ -71,7 +69,7 @@ Migration of billing onto the new ledger.
 - **Untagged mentions.** For a tag name of three letters or more, the top of **Refine** says how many entries write it as a plain word: *12 entries mention "atlas" without the tag.* **Show them** runs `text = atlas -#project/atlas`, without the hub, so **Bulk edit → Add a tag** can tag them. `@dana` counts "dana" the same way.
 - **Hub links.** The page also lists entries and tasks that link to the hub note without the tag, marked *Links the hub note*, with a line under the hub: *Also listing 5 entries that link to Atlas plan without the tag.* Counts, tabs, pages, Bulk edit, and Export include them.
 
-### The Hubs view
+## The Hubs view
 
 The **Hubs** view in the Deckard sidebar is a tree of your projects, people, and other topics, each with the notes about it filed underneath, like pages under pages in Notion's sidebar. A topic appears once it has a [hub note](#hub-notes). It starts collapsed; expand it, or drag it where you like.
 
@@ -95,14 +93,14 @@ HUBS
 - Select a hub to open its tag's search page, with the hub note on top and everything the tag finds under it; the hub's **Open Hub Note** button opens the note itself, in the editor or on the note page as `deckard.openNotesIn` says, and its right-click menu offers the other way. Select any other note to open it. A hub shows how far along its tag's tasks are.
 - **Breadcrumbs.** A note's first line says where it sits, such as **Projects › Atlas › Ledger migration › Cutover plan**, and opens the note above it. `deckard.editor.breadcrumbs` turns them off.
 
-### Merging tags
+## Merging tags
 
 Rename a tag to one that exists, or run `Deckard: Merge Tag…` and pick the tag to keep. Deckard shows how many entries each tag has, how many have both, and the kept tag's new total, and asks first: renaming back cannot separate them.
 
 - Where both tags sit on the same heading, task line, or front-matter list, the old one is removed. Inside a sentence it is replaced.
-- Favorites, access counts, Dashboard tag selections, and saved searches move to the kept tag, as they do on a plain rename.
+- Favorites, access counts, Home's tag selections, and saved searches move to the kept tag, as they do on a plain rename.
 
-### Previewing and undoing a write
+## Previewing and undoing a write
 
 Renaming a tag, merging tags, and renaming a heading rewrite notes you never opened.
 

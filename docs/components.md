@@ -842,7 +842,7 @@ from the suggestion it made, never from what the page posts.
 
 The header's `.metrics` are three `<Metric>` buttons (`.metric-open`) —
 Overdue, Due today, and Open — each opening the search it counts, scoped by
-`deckard.agenda.query`; Stats draws its figures with the same component.
+`deckard.tasks.viewQuery`; Stats draws its figures with the same component.
 
 The Tasks view widget ends with a `.home-widget-footer` line: what was done
 today, and how many tasks need a new date as a `.text-button` that opens

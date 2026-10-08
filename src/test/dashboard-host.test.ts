@@ -179,7 +179,7 @@ suite('Dashboard host', () => {
     const { result: home, fire } = withConfigurationEvents(() => openHome());
     try {
       const events = recordSurface(home.surface);
-      fire('deckard.theme', 'deckard.agenda.query');
+      fire('deckard.theme', 'deckard.tasks.viewQuery');
       assert.deepStrictEqual(events, ['html', 'post state', 'post state']);
     } finally {
       home.dispose();

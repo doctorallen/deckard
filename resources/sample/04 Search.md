@@ -289,7 +289,7 @@ task = open
 5. Search `is:open no:due #team/wardens`, select **Bulk edit** over the tasks,
    choose **Set a due date**, and type `friday`. Every task gets the date in
    one change that **Deckard: Undo Last Change** takes back.
-6. Set `deckard.agenda.query` to `is:mine` in this folder's settings. The
+6. Set `deckard.tasks.viewQuery` to `is:mine` in this folder's settings. The
    Tasks view and the status bar now count only your tasks. Clear it again
    with **Deckard: Clear the Tasks View's Search**.
 

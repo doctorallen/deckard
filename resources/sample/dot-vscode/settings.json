@@ -1,7 +1,7 @@
 {
   "deckard.notesFolder": "",
   "deckard.templatesFolder": "templates",
-  "deckard.agenda.query": "",
+  "deckard.tasks.viewQuery": "",
   "deckard.me": "#person/juno-hale",
   "deckard.board.limits": { "in-progress": 2 },
   "deckard.tasks.needsNewDateAfterDays": 30,

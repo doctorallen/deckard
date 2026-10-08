@@ -13,13 +13,13 @@ In every theme, red means overdue or high priority, and nothing else.
 
 | **Corpo** | **Corpo, in a light VS Code theme** | |
 | --- | --- | --- |
-| <img src="../images/dashboard-corpo.png" alt="Corpo theme Dashboard in a dark VS Code theme." width="220"> | <img src="../images/dashboard-corpo-light.png" alt="Corpo theme Dashboard in a light VS Code theme." width="220"> | |
+| <img src="../images/dashboard-corpo.png" alt="Corpo theme Home in a dark VS Code theme." width="220"> | <img src="../images/dashboard-corpo-light.png" alt="Corpo theme Home in a light VS Code theme." width="220"> | |
 | **Replicant** | **Oblivion** | **LCARS** |
-| <img src="../images/dashboard-replicant.png" alt="Replicant theme Dashboard." width="220"> | <img src="../images/dashboard-oblivion.png" alt="Oblivion theme Dashboard." width="220"> | <img src="../images/dashboard-lcars.png" alt="LCARS theme Dashboard." width="220"> |
+| <img src="../images/dashboard-replicant.png" alt="Replicant theme Home." width="220"> | <img src="../images/dashboard-oblivion.png" alt="Oblivion theme Home." width="220"> | <img src="../images/dashboard-lcars.png" alt="LCARS theme Home." width="220"> |
 | **Tomcat** | **Fellowship** | **Synthwave** |
-| <img src="../images/dashboard-tomcat.png" alt="Tomcat theme Dashboard." width="220"> | <img src="../images/dashboard-fellowship.png" alt="Fellowship theme Dashboard." width="220"> | <img src="../images/dashboard-synthwave.png" alt="Synthwave theme Dashboard." width="220"> |
+| <img src="../images/dashboard-tomcat.png" alt="Tomcat theme Home." width="220"> | <img src="../images/dashboard-fellowship.png" alt="Fellowship theme Home." width="220"> | <img src="../images/dashboard-synthwave.png" alt="Synthwave theme Home." width="220"> |
 | **Cooper** | | |
-| <img src="../images/dashboard-cooper.png" alt="Cooper theme Dashboard." width="220"> | | |
+| <img src="../images/dashboard-cooper.png" alt="Cooper theme Home." width="220"> | | |
 
 ## Display
 
@@ -58,7 +58,7 @@ The rest of Moment's tokens work too: `Qo`, `Mo`, `do`, `wo`, and `Wo` ordinals,
 
 Text in `[brackets]` is written as it is, so `[Week] W` writes *Week 40*; any other character is written as it is too. Names are English, as the rest of Deckard is, and `L` and `LL` follow VS Code's display language. A format that is empty, or writes no part of a date, reads as `YYYY-MM-DD`.
 
-Where a day has little room, as the Tasks view's day headings, the Pages view, the calendar's day title, search completions, and Linked from, it's written in `deckard.display.shortDateFormat`, `ddd, MMM D` unless you set another, such as `ddd D MMM`. A day in another year is written in the full format, so a short format needs no year. Where Deckard names the weekday beside a date, as the task editor's *Friday 2026-09-25*, it leaves the weekday out when your format writes one.
+Where a day has little room, as the Tasks view's day headings, Today's note in Context and **Go to…**, the calendar's day title, search completions, and Linked from, it's written in `deckard.display.shortDateFormat`, `ddd, MMM D` unless you set another, such as `ddd D MMM`. A day in another year is written in the full format, so a short format needs no year. Where Deckard names the weekday beside a date, as the task editor's *Friday 2026-09-25*, it leaves the weekday out when your format writes one.
 
 What Deckard writes into your notes stays `YYYY-MM-DD`: task dates such as `📅 2026-10-02`, daily note names, reviews, inserted links, searches such as `due = 2026-10-02`, exports, and what the AI assistant's tools give and take. A numeric date typed into a date box is read day first when your format writes the day first, as `DD/MM/YYYY` does.
 

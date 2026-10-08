@@ -54,8 +54,8 @@ export function AccessList({ name, items, empty, hint, isTag, shown, showAll }: 
 
 /** The three most-viewed lists: their name, title, noun, row tip, and whether rows are tags. */
 const VIEW_LISTS: ReadonlyArray<readonly ['tagViews' | 'entityViews' | 'sectionViews', string, string, string, boolean]> = [
-  ['tagViews', 'Most viewed tags', 'tags', 'Open tag overview', true],
-  ['entityViews', 'Most viewed canonical tags', 'canonical tags', 'Open tag overview', false],
+  ['tagViews', 'Most viewed tags', 'tags', 'Open its search page', true],
+  ['entityViews', 'Most viewed canonical tags', 'canonical tags', 'Open its search page', false],
   ['sectionViews', 'Most viewed note entries', 'note entries', 'Open note entry', false],
 ];
 

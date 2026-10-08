@@ -461,7 +461,7 @@ test('hands its search to the Tasks view, and says when the view has it', async 
   await delay(10);
   assert.deepStrictEqual(
     vscode._test.configurationUpdates.map((update) => [update.name, update.value]),
-    [['deckard.agenda.query', 'is:mine']],
+    [['deckard.tasks.viewQuery', 'is:mine']],
     "the search is written as the view's own",
   );
   assert.strictEqual(vscode._test.configurationUpdates[0].target, vscode.ConfigurationTarget.Global);
@@ -473,7 +473,7 @@ test('hands its search to the Tasks view, and says when the view has it', async 
   await delay(10);
   assert.deepStrictEqual(
     vscode._test.configurationUpdates.map((update) => [update.name, update.value]),
-    [['deckard.agenda.query', 'is:mine'], ['deckard.agenda.query', '']],
+    [['deckard.tasks.viewQuery', 'is:mine'], ['deckard.tasks.viewQuery', '']],
   );
   assert.ok(vscode._test.shown.info.includes('The Tasks view lists every open task again.'));
   assert.strictEqual(button().getAttribute('aria-pressed'), 'false');
@@ -481,7 +481,7 @@ test('hands its search to the Tasks view, and says when the view has it', async 
 
 test('opened from the Tasks view\'s search icon, it edits what the view lists and saves what the box shows to it', async () => {
   // The workspace's search is the one in force, so the save goes there.
-  vscode._test.workspaceSettings.set('deckard.agenda.query', '#project/beta');
+  vscode._test.workspaceSettings.set('deckard.tasks.viewQuery', '#project/beta');
   try {
     const { view, board } = await openBoard(undefined, undefined, (opened) => opened.editTasksViewSearch('#project/beta'));
     const strip = () => view.find('.tasks-view-strip');
@@ -500,7 +500,7 @@ test('opened from the Tasks view\'s search icon, it edits what the view lists an
     await delay(10);
     assert.deepStrictEqual(
       vscode._test.configurationUpdates.map((update) => [update.name, update.value, update.target]),
-      [['deckard.agenda.query', '#project/atlas', vscode.ConfigurationTarget.Workspace]],
+      [['deckard.tasks.viewQuery', '#project/atlas', vscode.ConfigurationTarget.Workspace]],
       'typed and never run, it is written where the search in force is set',
     );
     assert.ok(vscode._test.shown.info.includes('The Tasks view lists "#project/atlas" now.'));
@@ -523,7 +523,7 @@ test('opened from the Tasks view\'s search icon, it edits what the view lists an
     assert.strictEqual(view.find('[data-action="save-to-tasks-view"]'), null);
     assert.strictEqual(view.find('[data-action="save-board-search"]').textContent, 'Save');
     assert.strictEqual(vscode._test.configurationUpdates.length, 1, 'Cancel writes nothing');
-    assert.strictEqual(vscode._test.workspaceSettings.get('deckard.agenda.query'), '#project/atlas');
+    assert.strictEqual(vscode._test.workspaceSettings.get('deckard.tasks.viewQuery'), '#project/atlas');
 
     // Opened any other way, the board is a plain one.
     await board.editTasksViewSearch('#project/atlas');

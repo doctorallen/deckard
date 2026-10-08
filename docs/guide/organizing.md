@@ -30,8 +30,8 @@ A note, heading, or task is **parked** when it is in a parked folder or a search
 | --- | --- |
 | The Tasks view, its badge, the status bar and reminder, the Task board, Home's task widgets, the calendar, rollover, a review's still-open list, Gone quiet, Related Notes, the Notes Graph (until **Show parked**), tag completion, and Stats' unlinked notes | Search pages, Home's saved-search widget, Find, `[[` completion, Linked from, query blocks, and the AI tools |
 
-- A task list shows parked tasks only when its search mentions `is:parked`: set `deckard.agenda.query` to `is:parked`, or search the board for `is:open is:parked`. `is:parked` finds everything parked; `-is:parked` everything else.
-- To keep a status such as Someday out of the Tasks view, set `deckard.agenda.query` to `-status:someday`.
+- A task list shows parked tasks only when its search mentions `is:parked`: set `deckard.tasks.viewQuery` to `is:parked`, or search the board for `is:open is:parked`. `is:parked` finds everything parked; `-is:parked` everything else.
+- To keep a status such as Someday out of the Tasks view, set `deckard.tasks.viewQuery` to `-status:someday`.
 - Use `deckard.exclude` for files that are not notes, such as build output: excluded files are not read or found. It wins when both match.
 
 ---

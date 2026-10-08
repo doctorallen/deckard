@@ -60,7 +60,7 @@ export class DashboardPanel implements vscode.Disposable {
     this.host = new WebviewHost(this.controller, { indexer: options.indexer, themePreview: options.themePreview });
     this.page = new PanelAdapter(this.host, {
       viewType: 'deckard.dashboard',
-      title: 'Deckard Dashboard',
+      title: 'Deckard Home',
       extensionUri: options.extensionUri,
       icon: ['resources', 'deckard.svg'],
     });

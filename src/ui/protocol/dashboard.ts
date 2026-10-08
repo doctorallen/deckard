@@ -95,7 +95,7 @@ export interface DashboardSnapshot {
   totalTaskCount: number;
   /**
    * Home's three tiles: the Tasks view's Overdue and Today counts and every
-   * open task, of what `deckard.agenda.query` lists, each with the search
+   * open task, of what `deckard.tasks.viewQuery` lists, each with the search
    * it opens, so a tile's number and its search agree.
    */
   taskGlance?: TaskGlance;
@@ -182,7 +182,7 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   needsNewDate?: number;
   /** Tasks completed today, said under the Tasks view widget's list. */
   doneToday?: number;
-  /** The search that lists them, scoped by `deckard.agenda.query`. */
+  /** The search that lists them, scoped by `deckard.tasks.viewQuery`. */
   needsNewDateQuery?: string;
   stats?: Array<{ label: string; value: number }>;
   /** A saved-search widget's search. */

@@ -26,7 +26,7 @@ Run `Deckard: Open Task Board`, or select **Task Board** at the top of the Conte
 The search icon in the [Tasks view](tasks.md#tasks-view)'s title opens the board on the view's search, with **Editing what the Tasks view lists** and **Cancel** above the search box.
 
 - Change the search, then select **Save to Tasks view**. The view lists what the box shows, whether or not Enter has run it, and the board runs it too. A notice says what the view lists now, such as **The Tasks view lists "#project/atlas" now.**
-- The board's own `is:open` is left out, as the view lists only open tasks; `is:open` alone lists every open task. The search is written to `deckard.agenda.query` in the workspace's settings when the workspace sets it, and in your user settings otherwise, as **List in Tasks view** writes it.
+- The board's own `is:open` is left out, as the view lists only open tasks; `is:open` alone lists every open task. The search is written to `deckard.tasks.viewQuery` in the workspace's settings when the workspace sets it, and in your user settings otherwise, as **List in Tasks view** writes it.
 - A search that does not parse is not saved: the box shows its error.
 - While the view lists the search in the box, **Save to Tasks view** is held and says so; change the search to save again. The board stays open, so you can go on refining.
 - **Save as search** keeps the search as a named saved search, as **Save** does on any board.

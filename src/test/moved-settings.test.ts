@@ -109,6 +109,22 @@ suite('Moved settings', () => {
     assert.deepStrictEqual(carryRenamedSettings(reading({ 'display.level': { globalValue: 'zen' } }), { user: false, workspace: true }).writes, [], 'the user\'s were carried already');
   });
 
+  test('the Tasks view\'s search takes its new name in each scope it was set in, an empty one too', () => {
+    const values: Record<string, ScopedValues> = { 'agenda.query': { globalValue: 'is:mine', workspaceValue: '' } };
+    assert.deepStrictEqual(carryRenamedSettings((key) => values[key], { user: true, workspace: true }), {
+      writes: [
+        { key: 'tasks.viewQuery', value: 'is:mine', scope: 'user' },
+        { key: 'tasks.viewQuery', value: '', scope: 'workspace' },
+      ],
+      notices: ['Agenda: Query is Tasks: View Query now'],
+    });
+    assert.deepStrictEqual(
+      carryRenamedSettings((key) => values[key], { user: false, workspace: true }).writes,
+      [{ key: 'tasks.viewQuery', value: '', scope: 'workspace' }],
+      'a new workspace on a machine carried already carries its own',
+    );
+  });
+
   test('carries the renamed settings once, and says so in one notice', async () => {
     const values: Record<string, ScopedValues> = { 'display.level': { globalValue: 'quiet' }, 'display.density': { globalValue: 'compact' } };
     const written: RenamedSettingWrite[] = [];

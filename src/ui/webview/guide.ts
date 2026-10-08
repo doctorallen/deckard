@@ -18,7 +18,7 @@ export const GUIDE_PAGES: Readonly<Record<string, string>> = {
   tasks: 'Tasks',
   'task-board': 'Task board',
   search: 'Search',
-  'search-pages': 'Search pages and tag overviews',
+  'search-pages': 'Search pages',
   'query-blocks': 'Query blocks',
   'home-and-stats': 'Home and Stats',
   connections: 'Related notes, the graph, and the outline',

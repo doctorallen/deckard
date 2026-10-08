@@ -23,8 +23,8 @@ Each [GitHub release](https://github.com/doctorallen/deckard/releases) also carr
 
 1. Open a folder or workspace in VS Code.
 2. Open any Markdown note in the workspace, or [restrict indexing to a folder](settings.md#settings).
-3. Run `Deckard: Open Dashboard` from the Command Palette.
-4. Select the Deckard icon in the Activity Bar. The **Context** view lists Deckard's pages at its top; under them, it shows what links to the note you are editing and its related notes.
+3. Run `Deckard: Open Home` from the Command Palette.
+4. Select the Deckard icon in the Activity Bar. The **Context** view shows Deckard's pages as a row of icons at its top; under them, it shows what links to the note you are editing and its related notes.
 
 ### Finding your way
 

@@ -47,7 +47,7 @@ export interface DashboardWidgetOptions {
    * its dates read, and how old its entries are.
    */
   queryContext: QueryContext;
-  /** What the agenda widget lists, from `deckard.agenda.query`. */
+  /** What the agenda widget lists, from `deckard.tasks.viewQuery`. */
   agendaQuery?: string;
   /** The note last open in an editor, which Home can rank by and pin. */
   sourceNotePath?: string;

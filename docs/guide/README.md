@@ -19,14 +19,14 @@ Everything Deckard does, one topic to a page. The [README](../../README.md) is t
 ## Finding
 
 - [Search](search.md): Find in Notes, the search box, Refine, and the query language.
-- [Search pages and tag overviews](search-pages.md): a tag's page, hub notes, taking results out, editing them all at once, merging tags, and undoing a write.
+- [Search pages](search-pages.md): a tag's page, hub notes, taking results out, editing them all at once, merging tags, and undoing a write.
 - [Query blocks](query-blocks.md): a live list of a search's results inside a note.
 - [Related notes, the graph, and the outline](connections.md): what makes a note related, the Notes Graph, and the Outline.
 
 ## Seeing the whole
 
 - [Task board](task-board.md): tasks as columns by status, priority, due date, person, or tag, or as a list or table.
-- [Home and Stats](home-and-stats.md): the Dashboard's figures and widgets, the Tags tab, and Stats.
+- [Home and Stats](home-and-stats.md): Home's figures and widgets, the Tags tab, and Stats.
 - [AI assistants](ai-assistants.md): Suggest steps, and Deckard's tools for Copilot, Claude Code, and other MCP clients.
 
 ## Reference

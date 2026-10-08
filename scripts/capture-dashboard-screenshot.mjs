@@ -62,7 +62,7 @@ const viewConfiguration = {
     output: 'docs/images/dashboard.png',
     title: 'Dashboard',
     renderedAssertion:
-      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Dashboard' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app > header h1'))",
+      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Home' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app > header h1'))",
   },
   'notes-graph': {
     command: 'deckard.showNotesGraph',

@@ -4,12 +4,12 @@
 
 # Deckard
 
-**A local-first second brain for the Markdown notes already in your VS Code workspace.** Write `#tags`, `@people`, `[[links]]`, and `- [ ] tasks` the way you always have; Deckard connects them into one index and gives you a Dashboard, a Task board, search pages, a notes graph, and a sidebar of related notes — without changing how your notes are written or sending them anywhere.
+**A local-first second brain for the Markdown notes already in your VS Code workspace.** Write `#tags`, `@people`, `[[links]]`, and `- [ ] tasks` the way you always have; Deckard connects them into one index and gives you Home, a Task board, search pages, a notes graph, and a sidebar of related notes — without changing how your notes are written or sending them anywhere.
 
 **[Read the guide](https://deckard.esperinnovations.com)** · [Getting started](https://deckard.esperinnovations.com/getting-started.html) · [Install from the Marketplace](https://marketplace.visualstudio.com/items?itemName=esperinnovations.deckard-notes) · [Changelog](CHANGELOG.md)
 
 <p align="center">
-	<img src="docs/images/dashboard.png" alt="Deckard's Dashboard: overdue, due today, and open tasks, and a Home of widgets." width="820">
+	<img src="docs/images/dashboard.png" alt="Deckard's Home: overdue, due today, and open tasks, and a Home of widgets." width="820">
 </p>
 
 ## Why Deckard
@@ -62,17 +62,17 @@ Pick one with `Deckard: Choose Theme…` or **Theme** in any page's gear; moving
 
 | **Corpo** | **Corpo, in a light VS Code theme** | **Cooper** |
 | --- | --- | --- |
-| <img src="docs/images/dashboard-corpo.png" alt="Corpo theme Dashboard in a dark VS Code theme." width="260"> | <img src="docs/images/dashboard-corpo-light.png" alt="Corpo theme Dashboard in a light VS Code theme." width="260"> | <img src="docs/images/dashboard-cooper.png" alt="Cooper theme Dashboard." width="260"> |
+| <img src="docs/images/dashboard-corpo.png" alt="Corpo theme Home in a dark VS Code theme." width="260"> | <img src="docs/images/dashboard-corpo-light.png" alt="Corpo theme Home in a light VS Code theme." width="260"> | <img src="docs/images/dashboard-cooper.png" alt="Cooper theme Home." width="260"> |
 | **Replicant** | **Oblivion** | **LCARS** |
-| <img src="docs/images/dashboard-replicant.png" alt="Replicant theme Dashboard." width="260"> | <img src="docs/images/dashboard-oblivion.png" alt="Oblivion theme Dashboard." width="260"> | <img src="docs/images/dashboard-lcars.png" alt="LCARS theme Dashboard." width="260"> |
+| <img src="docs/images/dashboard-replicant.png" alt="Replicant theme Home." width="260"> | <img src="docs/images/dashboard-oblivion.png" alt="Oblivion theme Home." width="260"> | <img src="docs/images/dashboard-lcars.png" alt="LCARS theme Home." width="260"> |
 | **Tomcat** | **Fellowship** | **Synthwave** |
-| <img src="docs/images/dashboard-tomcat.png" alt="Tomcat theme Dashboard." width="260"> | <img src="docs/images/dashboard-fellowship.png" alt="Fellowship theme Dashboard." width="260"> | <img src="docs/images/dashboard-synthwave.png" alt="Synthwave theme Dashboard." width="260"> |
+| <img src="docs/images/dashboard-tomcat.png" alt="Tomcat theme Home." width="260"> | <img src="docs/images/dashboard-fellowship.png" alt="Fellowship theme Home." width="260"> | <img src="docs/images/dashboard-synthwave.png" alt="Synthwave theme Home." width="260"> |
 
 ## Quick start
 
 1. Install [Deckard from the Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=esperinnovations.deckard-notes): search for **Deckard** in the Extensions view, or run `code --install-extension esperinnovations.deckard-notes`. Deckard needs VS Code 1.134.0 or newer.
 2. Run **`Deckard: Get Started`** for a walkthrough of six steps you check off as you go, in your own notes or in a sample workspace it offers to make.
-3. Run **`Deckard: Open Dashboard`**, and select the Deckard icon in the Activity Bar for Context (related notes and more), the Tasks view, the Outline, and the calendar.
+3. Run **`Deckard: Open Home`**, and select the Deckard icon in the Activity Bar for Context (related notes and more), the Tasks view, the Outline, and the calendar.
 4. Press the **?** on any Deckard page, or run `Deckard: Open Help`, to read the [guide](docs/guide/README.md) inside VS Code, its pages down the side.
 
 A note is written the way you already write:

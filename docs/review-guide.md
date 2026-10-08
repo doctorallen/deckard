@@ -335,7 +335,7 @@ Open it with **Deckard: Open Task Board**.
   Undo. Afterward, a message says how full that day is now.
 - [ ] **Right-click menu.** A task's menu has **Break into Steps…** and
   **Move to…**, for one task or several selected.
-- [ ] **Empty search.** Set `deckard.agenda.query` to something that matches
+- [ ] **Empty search.** Set `deckard.tasks.viewQuery` to something that matches
   nothing. *Look for:* the view names the search and offers **Show every open
   task**. **Deckard: Clear the Tasks View's Search** is in the view's `…`
   menu.

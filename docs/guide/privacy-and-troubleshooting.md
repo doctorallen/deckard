@@ -33,7 +33,7 @@ What names your notes belongs to the folder it describes, so opening another pro
 - **Something is not there:** run `Deckard: Check My Setup`. It checks the notes folder, excluded files, unreadable notes, and whether `deckard.me` matches anyone.
 - **A note is missing from every search:** open `Deckard: Open Stats`, which lists notes the index could not read, with the reason.
 - **Opened during first indexing:** pages open at once and show progress, such as *Indexing this workspace: 412 of 3,760 notes read…*.
-- **The Dashboard is empty:** make sure a workspace is open, its Markdown files are within the configured scope, and they use the Markdown patterns shown above.
+- **Home is empty:** make sure a workspace is open, its Markdown files are within the configured scope, and they use the Markdown patterns shown above.
 - **Related Notes shows no results:** open a saved Markdown note containing a tag, then check that another saved note uses the same tag.
 - **A task is missing from the Tasks view:** it may be parked. Search `is:parked`.
 - **A task or section is missing:** confirm the task is an unordered checklist item, the heading is an ATX heading such as `## Heading`, and `deckard.noteBoundaries` is `line` for a tagged line that is not a heading to be an entry of its own.

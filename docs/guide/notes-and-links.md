@@ -107,7 +107,7 @@ Met with @alex-smith about [[Q3 planning]].
 
 - `#project/atlas`, `#topic/leadership`, `#org/acme`, and `#meeting/q3-planning` appear as entity hubs.
 - Any other namespaced tag, such as `#management/performance`, creates a namespace and appears as `Management: Performance`.
-- Unnamespaced tags such as `#follow-up` work too. All tags appear in the Dashboard's **Tags** catalog.
+- Unnamespaced tags such as `#follow-up` work too. All tags appear in Home's **Tags** tab.
 - A tag's name is letters and digits of any language, `_`, and `-`, so `#café` and `#日本` are tags. A tag starts a word: the `#` in `café#latte` or in a web address such as `https://example.com/#install` is not one.
 - `@alex` and `#alex` are different tags.
 - Namespace aliases map a custom namespace to any built-in or custom namespace. You can change the people marker; `@name` then becomes a lightweight tag.
@@ -127,7 +127,7 @@ topics:
 
 `Deckard: Move Inline Tags to Front Matter` moves the note's explicit tags into plural front-matter fields, merging existing values and keeping other YAML. Use it only for tags that belong to the whole note.
 
-**Renaming tags.** Run `Deckard: Rename Tag`, right-click a tag on the Dashboard, a search page, or Related Notes and choose **Rename tag**, or hover a tag in the editor and choose **Rename**. It renames the tag everywhere it is written, leaving ordinary words and fenced code alone. Renaming to an existing tag merges the two; see [Merging tags](search-pages.md#merging-tags). Enter a complete tag such as `#management/new-name`, or only a name to keep the marker and namespace. The box starts from the old name and previews the result, such as *Merges into #project/atlas (42 entries).*
+**Renaming tags.** Run `Deckard: Rename Tag`, right-click a tag on Home, a search page, or Related Notes and choose **Rename tag**, or hover a tag in the editor and choose **Rename**. It renames the tag everywhere it is written, leaving ordinary words and fenced code alone. Renaming to an existing tag merges the two; see [Merging tags](search-pages.md#merging-tags). Enter a complete tag such as `#management/new-name`, or only a name to keep the marker and namespace. The box starts from the old name and previews the result, such as *Merges into #project/atlas (42 entries).*
 
 **Syntax rules:**
 

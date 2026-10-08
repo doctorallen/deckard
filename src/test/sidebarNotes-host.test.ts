@@ -412,7 +412,7 @@ suite('Related Notes controller', () => {
       page.host.attach(page.surface);
       await settle();
       const events = recordSurface(page.surface);
-      fire('deckard.theme', 'deckard.agenda.query');
+      fire('deckard.theme', 'deckard.tasks.viewQuery');
       assert.deepStrictEqual(events, ['html', 'post state']);
     } finally {
       page.dispose();

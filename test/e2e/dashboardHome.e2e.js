@@ -176,7 +176,8 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
       ['home', 'browse'],
     );
     assert.strictEqual(view.find('[data-dashboard-mode="home"]').getAttribute('aria-selected'), 'true');
-    assert.strictEqual(view.find('h1').textContent, 'Dashboard: Home');
+    assert.strictEqual(view.find('h1').textContent, 'Home');
+    assert.strictEqual(panel.title, 'Deckard Home', 'the tab is named for the page');
     // Home starts with its default widgets.
     assert.deepStrictEqual(
       view.findAll('.home-widget').map((widget) => widget.dataset.widgetId),
@@ -366,7 +367,8 @@ test('Home\'s search box opens a search page, and its links lead on', async () =
   view.click(view.find('.home-widget[data-widget-id="tasks"] [data-action="open-task-board"]'));
   view.click(view.find('.home-widget[data-widget-id="favoriteTags"] [data-action="set-dashboard-mode"]'));
   assert.deepStrictEqual(navigation.opened.slice(1), ['board is:open']);
-  assert.strictEqual(view.find('h1').textContent, 'Dashboard: Tags', 'All tags goes to the Tags tab');
+  assert.strictEqual(view.find('[data-dashboard-mode="browse"]').getAttribute('aria-selected'), 'true', 'All tags goes to the Tags tab');
+  assert.strictEqual(view.find('h1').textContent, 'Home', 'Tags is a tab of Home, whose name stays');
 });
 
 test('a saved search offers to show its results on Home, once', async () => {

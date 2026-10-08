@@ -105,7 +105,10 @@ export interface RenamedSettings {
 /**
  * The settings that became another setting in the release that collapsed
  * them. Display's step and its seven settings became Zen alone: Quiet and
- * Zen both come to Zen on, and Full, the default, writes nothing.
+ * Zen both come to Zen on, and Full, the default, writes nothing. The
+ * Tasks view's search took the Tasks view's name, in the scope it was set
+ * in; an empty one is carried too, since a workspace's empty search
+ * overrides the user's.
  */
 export const RENAMED_SETTINGS: readonly RenamedSettings[] = [
   {
@@ -114,6 +117,12 @@ export const RENAMED_SETTINGS: readonly RenamedSettings[] = [
     userOnly: true,
     carry: (values) => (values['display.level'] === 'quiet' || values['display.level'] === 'zen' ? true : undefined),
     notice: 'Display is one Zen switch now, in each page\'s gear',
+  },
+  {
+    from: ['agenda.query'],
+    to: 'tasks.viewQuery',
+    carry: (values) => (typeof values['agenda.query'] === 'string' ? values['agenda.query'] : undefined),
+    notice: 'Agenda: Query is Tasks: View Query now',
   },
 ];
 

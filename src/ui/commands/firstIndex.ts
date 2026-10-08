@@ -125,13 +125,13 @@ export async function summarizeFirstIndex(
     await context.workspaceState.update(options.excludeHintShownKey, true);
   }
   const buttons = [
-    'Open Dashboard',
+    'Open Home',
     'Get Started',
     ...(large ? ['Leave Folders Out…'] : []),
     ...(options.wholeRepository ? [NOT_NOTES] : []),
   ];
   void vscode.window.showInformationMessage(text, ...buttons).then(async (choice) => {
-    if (choice === 'Open Dashboard') {
+    if (choice === 'Open Home') {
       await vscode.commands.executeCommand('deckard.showDashboard');
     } else if (choice === 'Get Started') {
       await vscode.commands.executeCommand('deckard.openWalkthrough');

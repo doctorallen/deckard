@@ -133,6 +133,17 @@
   **List** in the gear beside them brings the rows back. If you chose
   **Icons** before, nothing changes; if you chose **List**, choose it once
   more.
+- **Home has one name.** The palette's **Open Dashboard** is **Deckard:
+  Open Home**, Home's tab reads *Deckard Home*, and its heading reads
+  *Home* on both of its tabs, Home and Tags. The first index's notice
+  offers **Open Home**, Find's last row says it opens a search page, and
+  Help's *Search pages and tag overviews* is *Search pages*. With nothing
+  due today, Home's hint in Context and Go to… says so.
+- **The Tasks view's search is `deckard.tasks.viewQuery`.** It was
+  `deckard.agenda.query`, *Agenda: Query* in Settings. A search you set
+  there is carried over once, in the user's or the workspace's settings
+  where you set it, and the notice that says Display moved says this
+  too.
 
 ### Removed
 

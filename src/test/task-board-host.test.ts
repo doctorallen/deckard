@@ -118,14 +118,14 @@ async function recordOpens(run: () => Promise<void>): Promise<string[]> {
   return opened;
 }
 
-/** What a stand-in `deckard.agenda.query` holds at each level a reader sets it. */
+/** What a stand-in `deckard.tasks.viewQuery` holds at each level a reader sets it. */
 interface AgendaQueryLevels {
   user?: string;
   workspace?: string;
 }
 
 /**
- * Runs `run` with `deckard.agenda.query` read from and written to `levels`
+ * Runs `run` with `deckard.tasks.viewQuery` read from and written to `levels`
  * rather than the settings, and with the information messages recorded
  * rather than shown. Every other setting is read as it is. Returns what was
  * written, as `[key, value, target]`, and the messages, in order.
@@ -145,7 +145,7 @@ async function withAgendaQuery(
     if (section !== 'deckard') {
       return real;
     }
-    const isQuery = (key: string) => key === 'agenda.query';
+    const isQuery = (key: string) => key === 'tasks.viewQuery';
     return {
       ...real,
       has: (key: string) => (isQuery(key) ? true : real.has(key)),
@@ -153,7 +153,7 @@ async function withAgendaQuery(
         isQuery(key) ? (levels.workspace ?? levels.user ?? fallback) : real.get(key, fallback),
       inspect: (key: string) =>
         isQuery(key)
-          ? { key: 'deckard.agenda.query', defaultValue: '', globalValue: levels.user, workspaceValue: levels.workspace }
+          ? { key: 'deckard.tasks.viewQuery', defaultValue: '', globalValue: levels.user, workspaceValue: levels.workspace }
           : real.inspect(key),
       update: async (key: string, value: unknown, target: vscode.ConfigurationTarget) => {
         if (!isQuery(key)) {
@@ -435,7 +435,7 @@ suite('Task Board host', () => {
           await board.send({ type: 'saveToTasksView', query: 'is:open AND #project/atlas' });
         });
         const name = JSON.stringify(levels);
-        assert.deepStrictEqual(writes, [['agenda.query', '#project/atlas', target]], `${name}: without the board's own is:open, as the gear's switch writes it`);
+        assert.deepStrictEqual(writes, [['tasks.viewQuery', '#project/atlas', target]], `${name}: without the board's own is:open, as the gear's switch writes it`);
         assert.deepStrictEqual(shown, ['The Tasks view lists "#project/atlas" now.'], name);
         assert.deepStrictEqual(board.surface.webview.postedOf('savedToTasksView'), [{ type: 'savedToTasksView', query: '#project/atlas' }], `${name}: the page is told, to say so`);
         const last = board.states().at(-1)?.data;
@@ -455,7 +455,7 @@ suite('Task Board host', () => {
         await board.send({ type: 'saveToTasksView', query: 'is:open' });
         await board.send({ type: 'saveToTasksView', query: 'is:open AND (' });
       });
-      assert.deepStrictEqual(writes, [['agenda.query', '', vscode.ConfigurationTarget.Global]]);
+      assert.deepStrictEqual(writes, [['tasks.viewQuery', '', vscode.ConfigurationTarget.Global]]);
       assert.deepStrictEqual(shown, ['The Tasks view lists every open task now.']);
       assert.deepStrictEqual(board.surface.webview.postedOf('savedToTasksView'), [{ type: 'savedToTasksView', query: '' }]);
       const last = board.states().at(-1)?.data as { query: { text: string; pending?: string }; tasksViewMode?: unknown } | undefined;

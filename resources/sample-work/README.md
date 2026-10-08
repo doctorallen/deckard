@@ -47,7 +47,7 @@ Keys are written both ways: <kbd>Ctrl</kbd> on Windows and Linux,
 - **Find anything.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd>
   (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd>) and type
   `flags`, then `#project/checkout-v2 is:open`.
-- **Open Home.** `Deckard: Open Dashboard`: what is due today, what
+- **Open Home.** `Deckard: Open Home`: what is due today, what
   slipped, and what got done this week.
 - **Write a note from a template.** `Deckard: New Note from Template`,
   then **One-on-one**.

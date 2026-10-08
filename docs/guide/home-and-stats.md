@@ -1,14 +1,14 @@
 # Home and Stats
 
-## Dashboard
+## Home
 
-Run `Deckard: Open Dashboard` to open the **Home** and **Tags** tabs. Left/Right Arrow switches tabs. Searches open [search pages](search-pages.md#search-pages), and tasks have the [Task board](task-board.md#task-board).
+Run `Deckard: Open Home`, or select **Home** at the top of the Context view or in **DECKARD ▾**, to open Home, with its **Home** and **Tags** tabs. Left/Right Arrow switches tabs. Searches open [search pages](search-pages.md#search-pages), and tasks have the [Task board](task-board.md#task-board).
 
-![Deckard Dashboard showing workspace totals, saved searches, and active tasks.](../images/dashboard.png)
+![Deckard Home showing workspace totals, saved searches, and active tasks.](../images/dashboard.png)
 
-### Home
+### The Home tab
 
-Three figures sit above Home: **Due today** and **Overdue**, as the [Tasks view](tasks.md#tasks-view) counts them, and **Done this week**, every task finished since the week began. Each opens a search for what it counts; the first two are scoped by `deckard.agenda.query` when that is set. Open tasks and the other workspace totals are on [Stats](#stats).
+Three figures sit above Home: **Due today** and **Overdue**, as the [Tasks view](tasks.md#tasks-view) counts them, and **Done this week**, every task finished since the week began. Each opens a search for what it counts; the first two are scoped by `deckard.tasks.viewQuery` when that is set. Open tasks and the other workspace totals are on [Stats](#stats).
 
 **What's new:** after an update that adds features, Home shows *Updated to Deckard 1.23.* once, with **What's new** and **Dismiss**.
 
@@ -66,7 +66,7 @@ Each offers **Undo**. If the heading is gone, the pin stays on its note and says
 
 The arrangement is kept in VS Code's preferences, not your notes.
 
-### Tags
+### The Tags tab
 
 - **Tags** lists namespaced and unnamespaced tags together, each named by what follows its namespace, so `#project/alpha/notes` reads *alpha/notes*. Search them, by the tag as written or as its row shows it, narrow with **Namespace** (a person's `@` tag counts as **Person**) or to tags without one, and sort alphabetically, by entry count, by most accessed, or by custom rank. The heart on a tag makes it a favorite, and favorites come first whatever the sort. In Rank mode, drag a row, use its context menu's **Move to top** and **Move to bottom**, or press <kbd>Alt</kbd>+<kbd>Up</kbd> or <kbd>Alt</kbd>+<kbd>Down</kbd>, which move a tag within favorites or the rest; drag it across to favorite or unfavorite it. Display order does not change your files.
 - **Searches are kept** between visits. While one narrows the list, a line such as *Showing 3 of 42 tags matching “vendor”* offers **Clear search**, which also clears **Namespace**.

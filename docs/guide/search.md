@@ -121,4 +121,4 @@ Fields:
 
 ---
 
-← [Task board](task-board.md) · [All topics](README.md) · [Search pages and tag overviews](search-pages.md) →
+← [Task board](task-board.md) · [All topics](README.md) · [Search pages](search-pages.md) →

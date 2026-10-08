@@ -67,7 +67,7 @@ The page shows one Refine line while the sidebar holds the options, and its full
 
 ## Notes Graph
 
-Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard icon in the Context view. Notes and tasks are dots sized by everything each is joined to, grouped into communities by links, headings, and tags. The graph is read-only, and control choices persist per panel.
+Run `Deckard: Open Notes Graph`, or select **Notes Graph** in the row of page icons at the top of the Context view. Notes and tasks are dots sized by everything each is joined to, grouped into communities by links, headings, and tags. The graph is read-only, and control choices persist per panel.
 
 ![Deckard Notes Graph showing clustered note, task, and tag connections.](../images/notes-graph.png)
 

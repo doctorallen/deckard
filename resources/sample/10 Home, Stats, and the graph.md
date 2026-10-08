@@ -5,7 +5,7 @@ tour of them, and of the settings that change how they look.
 
 ## Home
 
-**Deckard: Open Dashboard** opens Home. The three figures at the top are
+**Deckard: Open Home** opens Home. The three figures at the top are
 **Overdue**, **Due today**, and **Open**, and each opens the search for what
 it counts. Under them, **Try next** suggests one thing your notes are ready
 for: in this sample, merging the misspelled tag from the Tags note.

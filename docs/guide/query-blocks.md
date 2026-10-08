@@ -40,4 +40,4 @@ tag = #project/* AND is:note
 
 ---
 
-← [Search pages and tag overviews](search-pages.md) · [All topics](README.md) · [Home and Stats](home-and-stats.md) →
+← [Search pages](search-pages.md) · [All topics](README.md) · [Home and Stats](home-and-stats.md) →
