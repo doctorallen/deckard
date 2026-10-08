@@ -7,7 +7,7 @@ suite('Display choices on the page body', () => {
     assert.strictEqual(getPageTailCss({ theme: 'cooper', zen: false }).bodyAttribute, '');
     assert.strictEqual(
       getPageTailCss({ theme: 'cooper', zen: true }).bodyAttribute,
-      ' class="zen" data-styling="plain" data-help="hidden" data-density="compact" data-cards="flat" data-tags="text"',
+      ' class="zen" data-styling="plain" data-help="hidden" data-density="compact" data-cards="flat" data-tags="text" data-controls="quiet"',
       'zen with no choices given draws what Zen turns on',
     );
     assert.strictEqual(

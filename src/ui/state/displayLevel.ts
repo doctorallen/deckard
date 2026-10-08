@@ -1,7 +1,9 @@
 /**
  * Display: how a page is drawn. Zen is one switch (`deckard.display.zen`):
  * on, it takes off each theme's decoration and the lines that teach,
- * tightens the spacing, and draws cards flat and tags as text. It never
+ * tightens the spacing, draws cards flat and tags as text, and quiets the
+ * tools under each page's bar until their area is pointed at or tabbed
+ * into (shared/reveal.css). It never
  * hides data: every count, and the date beside how far off a task is due,
  * show with Zen on or off. An entry's details, its file and line among
  * them, show on hover either way; `deckard.display.cardDetails` says which.
@@ -14,13 +16,15 @@ export const ZEN_CHOICES = {
   density: 'compact',
   cards: 'flat',
   tags: 'text',
+  controls: 'quiet',
 } as const;
 
 /**
  * How a page is drawn, each value named only when it isn't the default:
  * plain theme styling, help text hidden, compact density, flat rows rather
- * than raised cards, and tags as text rather than chips, which Zen turns on
- * together; an entry's details never drawn; and pages as wide as their
+ * than raised cards, tags as text rather than chips, and the tools under
+ * a page's bar drawn only when their area is pointed at or tabbed into
+ * (`quiet`), which Zen turns on together; an entry's details never drawn; and pages as wide as their
  * panel (`full`).
  */
 export interface DisplayChoices {
@@ -29,6 +33,7 @@ export interface DisplayChoices {
   readonly density?: 'compact';
   readonly cards?: 'flat';
   readonly tags?: 'text';
+  readonly controls?: 'quiet';
   /** `never` when Card details ticks nothing, so an entry's details stay folded on hover too. */
   readonly fileAndLine?: 'never';
   /** The details an entry shows besides, or in place of, its file and line, when not the file and line alone: "fileAndLine created". */

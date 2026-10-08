@@ -80,20 +80,26 @@ function Pagination({ kind, paging, pageSizes }: { readonly kind: ResultKind; re
 
 /**
  * Bulk edit, beside the heading it acts on, as a small quiet button; Export
- * is rare and output only, so it is in ⋯. Nothing for no results.
+ * is rare and output only, so it is in ⋯. Nothing for no results. Zen shows
+ * it while the heading is pointed at or holds focus.
  */
 function BulkEdit({ kind, count }: { readonly kind: ResultKind; readonly count: number }) {
   if (!count) {
     return null;
   }
   const edit = kind === 'tasks' ? 'Bulk edit these tasks' : 'Bulk edit these notes';
-  return <button type="button" class="edit-results" data-action="edit-results" data-kind={kind} data-tip={`${edit}: complete them, date them, or tag them`} aria-label={edit}>Bulk edit</button>;
+  return <button type="button" class="edit-results" data-action="edit-results" data-kind={kind} data-tip={`${edit}: complete them, date them, or tag them`} aria-label={edit} data-zen-reveal="">Bulk edit</button>;
 }
 
-/** How the notes are ordered: a compact select beside the list it orders, A-Z unless the reader picks another. */
+/**
+ * How the notes are ordered: a compact select beside the list it orders,
+ * A-Z unless the reader picks another. Zen quiets it at A-Z, and keeps it
+ * drawn while another order is chosen.
+ */
 function NoteSort({ mode }: { readonly mode: SearchPageSnapshot['sortMode'] }) {
+  const chosen = (mode || 'alphabetical') !== 'alphabetical';
   return (
-    <label class="control-label result-sort">
+    <label class="control-label result-sort" data-zen-reveal="" data-reveal-keep={chosen ? '' : undefined}>
       {'Sort:'}
       <select data-action="set-sort" aria-label="Sort notes">
         {Object.entries(NOTE_SORT_LABELS).map(([value, text]) => <option value={value} selected={(mode || 'alphabetical') === value}>{text}</option>)}
@@ -146,7 +152,7 @@ function PaneHeader({ kind, view }: { readonly kind: ResultKind; readonly view: 
   const count = resultCounts(view.snapshot)[kind];
   const heading = kind === 'notes' ? 'Notes' : 'Tasks';
   return (
-    <div class="overview-pane-header">
+    <div class="overview-pane-header" data-zen-region="">
       <h2 id={`${kind}-heading`} class="overview-pane-heading">
         {/* One text node before the count, as the template wrote it: Chrome lays out a node's edge apart. */}
         {[`${heading} (`, <span data-search-count={kind}>{count}</span>, ')']}

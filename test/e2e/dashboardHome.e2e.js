@@ -897,7 +897,7 @@ test('the gear\'s Zen checkbox turns Zen on through the host, and the page carri
 
     // A page drawn while the setting is on carries the marker the sheet needs.
     const { panel: second, view: secondView } = await openDashboard();
-    assert.ok(second.webview.html.includes('<body class="zen" data-styling="plain" data-help="hidden" data-density="compact" data-cards="flat" data-tags="text">'), 'zen marks the body with what Zen turns on');
+    assert.ok(second.webview.html.includes('<body class="zen" data-styling="plain" data-help="hidden" data-density="compact" data-cards="flat" data-tags="text" data-controls="quiet">'), 'zen marks the body with what Zen turns on');
 
     // Nothing was taken off the page to achieve it.
     assert.ok(secondView.find('.eyebrow'), 'the eyebrow is still drawn');

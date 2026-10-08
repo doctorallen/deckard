@@ -94,12 +94,13 @@ function TabSearchMark({ query, filter }: { readonly query: string; readonly fil
 /**
  * Home and Tags, one tab stop between them, each naming the panel it
  * shows, and on Home a quiet Customize at the right, the visible way to
- * arrange it, beside ⋯'s Customize Home….
+ * arrange it, beside ⋯'s Customize Home…, which Zen shows while the row is
+ * pointed at or holds focus.
  */
 export function ModeTabs({ view, filter }: { readonly view: DashboardDraw['view']; readonly filter: TagFilter }) {
   const home = view.mode === 'home';
   return (
-    <div class="dashboard-tabs-row">
+    <div class="dashboard-tabs-row" data-zen-region="">
       <div class="segmented dashboard-tabs" role="tablist" aria-label="Home tabs">
         <button id="home-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="home" aria-selected={home} aria-controls="home-panel" tabIndex={home ? 0 : -1}>Home</button>
         <button id="browse-tab" role="tab" data-action="set-dashboard-mode" data-dashboard-mode="browse" aria-selected={!home} aria-controls="browse-panel" tabIndex={home ? -1 : 0}>
@@ -108,7 +109,7 @@ export function ModeTabs({ view, filter }: { readonly view: DashboardDraw['view'
         </button>
       </div>
       {home && !view.editingHome
-        ? <button type="button" class="dashboard-customize" data-action="customize-home" data-tip="Add, arrange, size and remove Home's widgets">Customize</button>
+        ? <button type="button" class="dashboard-customize" data-action="customize-home" data-tip="Add, arrange, size and remove Home's widgets" data-zen-reveal="">Customize</button>
         : null}
     </div>
   );

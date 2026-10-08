@@ -104,25 +104,34 @@ export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot
   );
 }
 
-/** Under the search box while the table is shown: what it is sorted by, and the way back. */
+/**
+ * Under the search box while the table is shown: what it is sorted by, and
+ * the way back. Zen quiets it in Rank order, and keeps it drawn while a
+ * column sorts the table, since a drag ranks nothing then.
+ */
 export function TableSortNote({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   const sort = snapshot.table && snapshot.table.sort;
   if (!sort) {
-    return <span class="control-label">Rank order · choose a column to sort by it</span>;
+    return <span class="control-label" data-zen-reveal="">Rank order · choose a column to sort by it</span>;
   }
   const column = snapshot.table?.columns.find((candidate) => candidate.id === sort.column)?.label || sort.column;
   return (
     <>
-      <span class="control-label">{`Sorted by ${column.toLowerCase()}${sort.direction === 'desc' ? ', last first' : ''}`}</span>
-      <button type="button" data-action="set-table-sort" data-tip="Back to the order you ranked">Sort by rank</button>
+      <span class="control-label" data-zen-reveal="" data-reveal-keep="">{`Sorted by ${column.toLowerCase()}${sort.direction === 'desc' ? ', last first' : ''}`}</span>
+      <button type="button" data-action="set-table-sort" data-tip="Back to the order you ranked" data-zen-reveal="" data-reveal-keep="">Sort by rank</button>
     </>
   );
 }
 
-/** Under the search box while the board is shown: how cards are ordered within each column. */
+/**
+ * Under the search box while the board is shown: how cards are ordered
+ * within each column. Zen keeps it drawn while it isn't Rank, since a drag
+ * ranks nothing then.
+ */
 export function SortControl({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
+  const ranked = (snapshot.taskSortMode || 'rank') === 'rank';
   return (
-    <label class="control-label">
+    <label class="control-label" data-zen-reveal="" data-reveal-keep={ranked ? undefined : ''}>
       Sort:
       <span class="control-icon">
         <select data-action="set-task-sort" aria-label="Sort tasks">
@@ -142,7 +151,7 @@ export function SortControl({ snapshot }: { readonly snapshot: TaskBoardSnapshot
  */
 export function LayoutSwitch({ layout }: { readonly layout: TaskBoardSnapshot['layout'] }) {
   return (
-    <div class="segmented task-layout" role="group" aria-label="Task layout">
+    <div class="segmented task-layout" role="group" aria-label="Task layout" data-zen-reveal="">
       {([['board', 'Board', 'Tasks as columns of cards'], ['table', 'Table', 'Tasks as rows, with the columns you choose']] as const).map(([value, label, tip]) => {
         const active = value === layout;
         return <button key={value} type="button" class={active ? 'active' : undefined} data-action="set-task-layout" data-value={value} aria-pressed={active} data-tip={tip}>{label}</button>;
@@ -154,10 +163,11 @@ export function LayoutSwitch({ layout }: { readonly layout: TaskBoardSnapshot['l
 /**
  * Can start now: one press narrows the search to is:available, what is not
  * blocked, has started, and is not waiting or someday; a second goes back.
+ * Zen keeps it drawn while it is pressed, since it is narrowing the tasks.
  */
 export function AvailableToggle({ pressed }: { readonly pressed: boolean }) {
   return (
-    <button type="button" class={pressed ? 'board-available active' : 'board-available'} data-action="toggle-available" aria-pressed={pressed} data-tip="Leave out blocked, not-yet-started, and waiting or someday tasks (is:available)">
+    <button type="button" class={pressed ? 'board-available active' : 'board-available'} data-action="toggle-available" aria-pressed={pressed} data-zen-reveal="" data-reveal-keep={pressed ? '' : undefined} data-tip="Leave out blocked, not-yet-started, and waiting or someday tasks (is:available)">
       Can start now
     </button>
   );

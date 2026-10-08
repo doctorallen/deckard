@@ -246,6 +246,7 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
       data-limit={limit === undefined ? undefined : String(limit)}
       data-label={column.label}
       data-symbol={column.symbol}
+      data-zen-region=""
       aria-label={described.name}
     >
       <div class="board-column-head">
@@ -259,7 +260,8 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
         </h2>
         {/* A column that takes a drop takes a new task the same way, from
             its head: the one way to add a task into a column in one step,
-            since the board has no key for it. Done takes none. */}
+            since the board has no key for it. Done takes none. Zen shows
+            it while the column is pointed at or holds focus. */}
         {column.droppable && column.id !== 'done'
           ? (
             <IconButton
@@ -268,7 +270,7 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
               className="board-add"
               label={`Add a task to ${column.label}`}
               icon={<PlusIcon />}
-              attributes={{ 'data-column-id': column.id }}
+              attributes={{ 'data-column-id': column.id, 'data-zen-reveal': '' }}
             />
           )
           : null}
@@ -334,6 +336,8 @@ const GROUPINGS = [['status', 'Status'], ['priority', 'Priority'], ['due', 'Due 
  * The Group select above the board: Status, Priority, Due date, Person, the
  * tag namespace the board is grouped by, if any, and Tag…, which opens a
  * menu of the namespaces in use, as the five buttons it replaces did.
+ * Zen quiets it whatever it is set to, since the column heads already
+ * name the grouping.
  */
 export function GroupSelect({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   const namespace = snapshot.groupNamespace;
@@ -344,7 +348,7 @@ export function GroupSelect({ snapshot }: { readonly snapshot: TaskBoardSnapshot
     current = 'status';
   }
   return (
-    <label class="control-label">
+    <label class="control-label" data-zen-reveal="">
       Group:
       <select
         class="task-board-group"

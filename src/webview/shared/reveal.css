@@ -19,3 +19,26 @@
 @media (hover: hover) {
   [data-reveal-region]:not(:hover, :focus-within, [data-reveal-keep]) [data-reveal]:not(:focus-visible, [aria-expanded="true"], [data-reveal-keep]) { opacity: 0; }
 }
+
+/*
+ * Zen (plan 29, R22) quiets the tools under a page's bar the same way, in
+ * regions of its own, which act only while the body is marked
+ * `data-controls="quiet"`: a tool marked `data-zen-reveal` is drawn at no
+ * opacity until its `data-zen-region` is pointed at or holds focus. The
+ * regions are the Task board's search card and each of its columns, a
+ * search page's results heading, Home's tab row, Context's band and its
+ * Related heading, and each week row of a calendar. The page's bar, the
+ * search field, content switches, links that carry data and the page's
+ * own job are never marked, and a tool whose value is shaping the page is
+ * marked `data-reveal-keep` and stays drawn.
+ *
+ * Typing a search does not count as focus in the region, so the tools
+ * beside the field stay quiet while it is used; each still shows on its
+ * own keyboard focus. An open disclosure, such as a gear's menu, stays
+ * shown. A segmented group is one target, so it never shows one segment
+ * alone. Zen regions never nest, since a target hides while any region
+ * around it is at rest.
+ */
+@media (hover: hover) {
+  body[data-controls=quiet] [data-zen-region]:not(:hover, :focus-within:not(:has(.query-input:focus)), [data-reveal-keep]) [data-zen-reveal]:not(:focus-visible, [aria-expanded="true"], [open], [data-reveal-keep]) { opacity: 0; }
+}

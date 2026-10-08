@@ -167,6 +167,19 @@
   alone; the Zen button in a page's title bar stays. Deckard's Zen quiets
   Deckard's pages, and VS Code's own Zen Mode (⌘K Z) hides the workbench;
   the two combine.
+- **Zen quiets a page's tools where they stand.** With Zen on, each
+  page's bar, its search field, Notes | Tasks, Home | Tags, Month | Week,
+  every link that carries a count, and anything that is filtering or
+  ordering the page stay drawn. The rest shows when you point at or tab
+  into its area: the Task board's **Board | Table**, **Group**, **Sort**
+  and **Can start now** from its search box, and each column's **+** from
+  its column; a search page's **Sort** and **Bulk edit** from the results
+  heading; Home's **Customize** from its tab row; Context's gears and its
+  Related **Sort** from their headings; and a calendar's week marks from
+  their week. Typing a search doesn't show them. A **Sort** that isn't at
+  its default, **Can start now** while pressed and a week mark whose week
+  has a note stay drawn. Nothing leaves the page, the Tab order or what a
+  screen reader reads, and on a touch screen everything is drawn.
 - **The Calendar view starts collapsed.** In a new install the sidebar's
   Calendar starts collapsed, as Hubs does, leaving the room to Context,
   Outline and Tasks. Where it is already open, it stays as you left it.

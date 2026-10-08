@@ -657,6 +657,29 @@ after the theme, so no theme draws a control back at rest. A card's ⋯ stays
 right-click; a table row's stays a Tab stop. Add no new row menus: a new
 row action takes this rule rather than a rule of its own.
 
+Zen adds regions of its own to the same rule (plan 29, R22), which act only
+while the body carries `data-controls="quiet"`. A tool under the page's bar
+carries `data-zen-reveal`, and the area it belongs to `data-zen-region`:
+
+| Region | Tools quieted |
+| --- | --- |
+| `.query-workspace` (the search box) | The Task board's Board \| Table, Group, Sort and Can start now |
+| `.board-column` | Its `.board-add` + |
+| `.overview-tabs-row`, `.overview-pane-header` | A search page's Sort and Bulk edit |
+| `.dashboard-tabs-row` | Home's Customize |
+| `.context-pages-band`, `.related-notes-controls` | Context's gears and its Related Sort |
+| A week's `.calendar-row` | Its `.week-label` mark |
+
+A region's `:focus-within` doesn't count while focus is in its
+`.query-input`, so typing a search shows nothing; an open disclosure
+(`[open]`) stays shown. A segmented group takes the mark on its
+`.segmented`, never on one segment. The renderer adds `data-reveal-keep`
+to a tool whose value is shaping the page: a Sort that isn't at its
+default, Can start now while pressed, a table sorted by a column, and a
+week mark with a note. Zen regions never nest. The page's bar, the search
+field and its glyphs, content switches, links that carry data and the
+page's own job carry no mark.
+
 ### Card details
 
 `provenance.css` and `<DetailsLine parts>` (`detailsLine.tsx`) draw what

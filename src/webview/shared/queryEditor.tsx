@@ -640,9 +640,11 @@ class SearchBox implements QueryEditor {
     // Builder is joined to the start of the field, and pressed while the
     // builder is open under it. The field ends in two glyphs: × empties
     // the search, drawn only while there is something to clear, and → runs
-    // it, as Enter does.
+    // it, as Enter does. Under Zen, the box is the region the tools in its
+    // status line show from (shared/reveal.css); the field, its glyphs and
+    // Builder are never quieted.
     return (
-      <section class={searchInFlight ? 'query-workspace is-searching' : 'query-workspace'} data-has-text={hasText ? '' : undefined} aria-label={label}>
+      <section class={searchInFlight ? 'query-workspace is-searching' : 'query-workspace'} data-has-text={hasText ? '' : undefined} data-zen-region="" aria-label={label}>
         <div class="query-bar-row">
           <div class="query-field-group">
             <button class={this.builderOpen ? 'query-builder-toggle active' : 'query-builder-toggle'} data-action="toggle-builder" aria-expanded={this.builderOpen} data-tip="Build the search one condition at a time"><HammerIcon />Builder</button>

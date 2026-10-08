@@ -66,8 +66,9 @@ const HAMMER = '<svg class="toolbar-icon query-builder-icon" viewBox="0 0 16 16"
  * in × (drawn only while Clear could act) and →; Builder joined to the
  * start of the field, pressed rather than renamed while open; the builder
  * under the field; the / key's part of the hint in a span of its own; and
- * the hint and the builder's paragraph marked .help-text (R9). Everything
- * else is held to the recording as it was.
+ * the hint and the builder's paragraph marked .help-text (R9); and the box
+ * the region Zen shows its status line's tools from (R22). Everything else
+ * is held to the recording as it was.
  */
 function asDrawnSinceTemplate(page: WebviewPage, recorded: string): string {
   const holder = page.document.createElement('div');
@@ -78,6 +79,7 @@ function asDrawnSinceTemplate(page: WebviewPage, recorded: string): string {
     return made.firstElementChild as Element;
   };
   for (const workspace of holder.querySelectorAll('.query-workspace')) {
+    workspace.setAttribute('data-zen-region', '');
     const row = workspace.querySelector(':scope > .query-bar-row') as Element;
     const shell = row.querySelector(':scope > .query-bar-shell') as Element;
     const clear = row.querySelector(':scope > [data-action="clear-query"]') as Element;

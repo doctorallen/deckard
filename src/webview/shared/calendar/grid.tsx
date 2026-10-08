@@ -24,14 +24,15 @@ export function WeekdayRow({ snapshot }: { readonly snapshot: CalendarSnapshot }
 /**
  * The week beside its row, as a mark rather than a number: a week note is
  * named for the days it holds, so a number would say nothing the row does
- * not. What it opens is in its tip.
+ * not. What it opens is in its tip. Zen shows a mark while its row is
+ * pointed at or holds focus, and keeps one drawn whose week has a note.
  */
 export function WeekRail({ week }: { readonly week: CalendarWeek }) {
   const days = `${formatPageDay(week.days[0].date)} to ${formatPageDay(week.days[6].date)}`;
   const label = `${week.notePath ? "Open this week's note, " : "Start this week's note, "}${days}`;
   return (
     <span class="calendar-cell" role="rowheader">
-      <button type="button" class={week.notePath ? 'week-label has-note' : 'week-label'} data-action="open-week" data-date={week.date} data-tip={label} aria-label={label}>
+      <button type="button" class={week.notePath ? 'week-label has-note' : 'week-label'} data-action="open-week" data-date={week.date} data-tip={label} aria-label={label} data-zen-reveal="" data-reveal-keep={week.notePath ? '' : undefined}>
         <CalendarIcon />
       </button>
     </span>
@@ -63,7 +64,7 @@ export function CalendarGrid(props: CalendarGridProps) {
     >
       <WeekdayRow snapshot={snapshot} />
       {props.weeks.map((week) => (
-        <div class="calendar-row" role="row">
+        <div class="calendar-row" role="row" data-zen-region="">
           <WeekRail week={week} />
           {props.days(week)}
         </div>

@@ -100,6 +100,8 @@ export interface ViewOptionsProps {
   readonly icon?: ComponentChildren;
   /** Classes after `view-options`. */
   readonly className?: string;
+  /** Any other attributes the disclosure carries, by name, such as Zen's `data-zen-reveal`. */
+  readonly attributes?: Readonly<Record<string, string | undefined>>;
 }
 
 /**
@@ -108,10 +110,10 @@ export interface ViewOptionsProps {
  * it, so each is kept open or closed on its own, and labels it for what it
  * sets.
  */
-export function ViewOptions({ groups, sections, name, label = 'View options', icon, className }: ViewOptionsProps) {
+export function ViewOptions({ groups, sections, name, label = 'View options', icon, className, attributes }: ViewOptionsProps) {
   const wasOpen = Boolean(document.querySelector(name ? `.view-options[data-options="${name}"][open]` : '.view-options:not([data-options])[open]'));
   return (
-    <details class={className ? `view-options ${className}` : 'view-options'} open={wasOpen} data-options={name}>
+    <details class={className ? `view-options ${className}` : 'view-options'} open={wasOpen} data-options={name} {...attributes}>
       <summary aria-label={label} data-tip={label}>{icon ?? <SettingsIcon />}</summary>
       <div class="view-options-menu popover is-dropdown">
         {(groups || []).map((group) => <GroupRow group={group} />)}

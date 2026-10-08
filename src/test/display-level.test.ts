@@ -3,8 +3,8 @@ import * as assert from 'assert';
 import { ZEN_CHOICES } from '../ui/state/displayLevel';
 
 suite('Display: Zen', () => {
-  test('Zen turns on plain styling, no help text, compact spacing, flat cards, and tags as text', () => {
-    assert.deepStrictEqual(ZEN_CHOICES, { styling: 'plain', help: 'hidden', density: 'compact', cards: 'flat', tags: 'text' });
+  test('Zen turns on plain styling, no help text, compact spacing, flat cards, tags as text, and quiet controls', () => {
+    assert.deepStrictEqual(ZEN_CHOICES, { styling: 'plain', help: 'hidden', density: 'compact', cards: 'flat', tags: 'text', controls: 'quiet' });
   });
 
   test('Zen hides no data: it has no say over counts or dates', () => {

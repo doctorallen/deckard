@@ -93,6 +93,7 @@ function bodyMarkers(chrome: PageChrome): string {
     display.density === 'compact' ? ' data-density="compact"' : '',
     display.cards === 'flat' ? ' data-cards="flat"' : '',
     display.tags === 'text' ? ' data-tags="text"' : '',
+    display.controls === 'quiet' ? ' data-controls="quiet"' : '',
     detailMarkers(display),
     display.width === 'full' ? ' data-width="full"' : '',
     dateMarkers(display),

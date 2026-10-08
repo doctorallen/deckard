@@ -92,20 +92,23 @@ const SORT_MODES: ReadonlyArray<readonly [NonNullable<SidebarNotesSnapshot['rela
 /**
  * The Related notes heading, with a compact Sort at it and the gear: how
  * many lines of each excerpt, and whether daily notes are listed. The
- * heading is drawn once there are related notes.
+ * heading is drawn once there are related notes. Zen shows Sort and the
+ * gear while the heading is pointed at or holds focus, and keeps Sort
+ * drawn while it isn't Relevance.
  */
 export function RelatedNotesControls({ snapshot, heading }: { readonly snapshot: SidebarNotesSnapshot; readonly heading: boolean }) {
   const mode = snapshot.relatedNotesSortMode;
   return (
-    <div class="related-notes-controls">
+    <div class="related-notes-controls" data-zen-region="">
       {heading ? <span class="section-label">Related notes</span> : null}
-      <label class="related-notes-sort-control">
+      <label class="related-notes-sort-control" data-zen-reveal="" data-reveal-keep={(mode || 'tags') === 'tags' ? undefined : ''}>
         {'Sort:'}
         <select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes">
           {SORT_MODES.map(([value, text]) => <option value={value} selected={mode === value}>{text}</option>)}
         </select>
       </label>
       <ViewOptions
+        attributes={{ 'data-zen-reveal': '' }}
         groups={[
           {
             label: 'Preview',
