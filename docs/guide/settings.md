@@ -1,6 +1,8 @@
 # Settings
 
-Open **Settings** and search for `Deckard`, or add these options to your workspace settings:
+Open **Settings** and search for `Deckard`. Deckard's settings start with **Start here**, the four most set first: `deckard.notesFolder`, `deckard.theme`, `deckard.me`, and `deckard.periodicNotes.folder`. **General**, **Tags and People**, **Editor**, **Tasks**, and **AI Assistants** follow.
+
+Or add these options to your workspace settings:
 
 ```json
 {
@@ -20,15 +22,8 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.me": "",
 	"deckard.taskReminderTime": "",
 	"deckard.editor.preset": "full",
-	"deckard.editor.hoverPreviews": true,
-	"deckard.editor.linkDiagnostics": true,
-	"deckard.editor.linkProblems": true,
-	"deckard.editor.embedProblems": true,
 	"deckard.links.style": "wiki",
-	"deckard.editor.slashMenu": true,
 	"deckard.openNotesIn": "editor",
-	"deckard.editor.dimTaskMetadata": true,
-	"deckard.editor.repeatDiagnostics": true,
 	"deckard.assistantTools": true,
 	"deckard.mcpServer.enabled": false,
 	"deckard.mcpServer.port": 39217,

@@ -1,6 +1,6 @@
 # Search pages
 
-Every search opens a **search page** in its own tab; a tag's overview is the search page for that tag. Open one by Cmd/Ctrl-clicking a tag in the editor, selecting a tag anywhere Deckard shows one, searching from Home or [Find](search.md#find), or running `Deckard: Open Search Page…` or `Deckard: Open a Tag's Search Page…`. A search already open comes forward. Parked notes and tasks are listed last, marked **Parked**.
+Every search opens a **search page** in its own tab; a tag's overview is the search page for that tag. Open one by Cmd/Ctrl-clicking a tag in the editor, selecting a tag anywhere Deckard shows one, searching from Home or [Find](search.md#find), or running `Deckard: Open Search Page…`. A search already open comes forward. Parked notes and tasks are listed last, marked **Parked**.
 
 ![A tag's search page showing matching notes, active tasks, and display controls.](../images/tag-overview.png)
 
@@ -95,7 +95,7 @@ HUBS
 
 ## Merging tags
 
-Rename a tag to one that exists, or run `Deckard: Merge Tag…` and pick the tag to keep. Deckard shows how many entries each tag has, how many have both, and the kept tag's new total, and asks first: renaming back cannot separate them.
+Rename a tag to one that exists, or select **Merge** beside a lookalike or a tag used once in [Stats](home-and-stats.md#stats). Deckard shows how many entries each tag has, how many have both, and the kept tag's new total, and asks first: renaming back cannot separate them.
 
 - Where both tags sit on the same heading, task line, or front-matter list, the old one is removed. Inside a sentence it is replaced.
 - Favorites, access counts, Home's tag selections, and saved searches move to the kept tag, as they do on a plain rename.

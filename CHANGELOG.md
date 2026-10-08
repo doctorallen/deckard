@@ -9,8 +9,24 @@
   no lenses, decorations, hover previews, / menu, or problem reports. A
   `deckard.editor.*` switch you set yourself still draws its part, so Off
   plus one switch draws that one thing.
+- **Manage Favorites, Pins, and Searches….** One palette row lists
+  **Tidy…**, **Export…**, **Import…** and **Restore from a Copy…**, each
+  running the command it always ran. The four no longer show as rows of
+  their own in every palette browse.
 
 ### Changed
+
+- **The palette leaves out what another door does.** Merge Tag… (renaming
+  onto a tag that exists already merges), Open Notes Graph Around This Note
+  (in Note Actions…), Insert Query Block… (the / menu's Query block),
+  Import Statuses from Obsidian Tasks (a button on Edit Task Statuses…),
+  Open Daily Note for Date… (type the day in Find), Open a Tag's Search
+  Page…, Link Current Heading to Entity (the Refactor… menu's Tag Heading
+  with a Person or Project…) and Open Related Notes Ranking are out of the
+  palette. Each still runs from its door, a key you bind, or a link.
+- **Settings start here.** Deckard's settings open on **Start here**: the
+  notes folder, the theme, `deckard.me`, and the periodic notes folder.
+  The empty Related Notes and Outline sections are gone.
 
 - **One problems lens on a note's first line.** The four lenses for a
   note's problems, **N links open no note**, **Create N missing notes**,

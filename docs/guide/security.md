@@ -21,7 +21,7 @@ What Deckard reads, stores, and sends, in one place, for anyone who has to appro
 | What | Where | How to remove it |
 | --- | --- | --- |
 | A search cache, `deckard-search.sqlite`: note words and each note as last read | VS Code's storage for the workspace, outside your folder; see [Local cache](privacy-and-troubleshooting.md#source-safety-and-persistence) | Delete it; Deckard reads the notes again on its next start |
-| Favorites, pins, saved searches, Home's widgets, view counts, and whether Deckard is paused here | VS Code's workspace and global state | `Deckard: Export Favorites, Pins, and Searches` shows what is kept; VS Code keeps it with its own state |
+| Favorites, pins, saved searches, Home's widgets, view counts, and whether Deckard is paused here | VS Code's workspace and global state | **Export…** in `Deckard: Manage Favorites, Pins, and Searches…` shows what is kept; VS Code keeps it with its own state |
 | The MCP server's token | VS Code's secret storage | `Deckard: Reset MCP Server Token` |
 | Your notes | Your files, as plain Markdown | Deckard writes them only as [What Deckard writes](what-deckard-writes.md) lists |
 

@@ -195,7 +195,7 @@ Deckard used to read a `#status/…` tag on an empty box as a status. It no long
 
 While task lines still carry such tags, the Task board and the Tasks view say how many, and a scan says so once in each workspace, with **Preview the Move** and **Later**. The old board settings move once: `deckard.board.statuses`' order becomes the board's column order, `deckard.board.showCancelled` shows Cancelled, and `deckard.board.limits` keys such as `doing` become `in-progress`.
 
-`Deckard: Import Statuses from Obsidian Tasks` reads `.obsidian/plugins/obsidian-tasks-plugin/data.json` and writes the vault's statuses to the workspace's `deckard.tasks.statuses`, with Waiting `[w]` and Someday `[s]` added when the vault has no status of either name or character. In an Obsidian vault with statuses of its own, when the workspace names none, the first scan offers it, once.
+**Import from Obsidian Tasks**, on the page [Edit Task Statuses…](#editing-the-statuses) opens, reads `.obsidian/plugins/obsidian-tasks-plugin/data.json` and writes the vault's statuses to the workspace's `deckard.tasks.statuses`, with Waiting `[w]` and Someday `[s]` added when the vault has no status of either name or character. In an Obsidian vault with statuses of its own, when the workspace names none, the first scan offers it, once.
 
 ### Editing the statuses
 

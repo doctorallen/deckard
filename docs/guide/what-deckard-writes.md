@@ -10,7 +10,7 @@ Every change Deckard makes to your files, what starts it, and the setting that c
 | A repeating task's next occurrence, on a new line beside it | Completing a repeating task | The task's own repeat rule |
 | A task's dates, priority, status character, assignee, or steps | The task editor, a board drag or card menu, the Tasks view's drops, Reschedule All… | `deckard.tasks.metadataFormat` for a task with no metadata yet |
 | A new task at the cursor, or at the end of today's note or another, or under a heading | `Deckard: Add Task`, the Task Board's **Add task** or a column's **+ Add task**, Find's **Add “…” to today's note**, Home's **Quick add** | Asks first in a code repository with no notes folder; see [Getting started](getting-started.md#get-started) |
-| A tag added, renamed, or merged on every line that carries it | Rename Tag, Merge Tag…, a search page's edit, **Add a tag** | Shown first when it reaches several notes |
+| A tag added, renamed, or merged on every line that carries it | Rename Tag, **Merge** in Stats, a search page's edit, **Add a tag** | Shown first when it reaches several notes |
 | `[[links]]` rewritten to a renamed note or heading | Renaming a note in the Explorer, or `Deckard: Rename Heading` | |
 | A mention turned into a link | **Link mentions** on a note's first line, or **Link** in the Context view | `deckard.links.style`: `[[Name]]` or `[Name](path.md)` |
 | A section moved out to a new note, leaving a link | `Deckard: Extract Heading` | |
@@ -31,7 +31,7 @@ Every change Deckard makes to your files, what starts it, and the setting that c
 | A hub note for a tag | **Create hub note** on a tag's page, or `Deckard: Create Hub Note for Tag…` | A template named after the tag's namespace |
 | A note a link names | **Create note** on a `[[link]]` that opens none, or **Create missing notes** from the problems lens above the note | |
 | A calendar file of your dated tasks | `Deckard: Export Tasks as Calendar…`, or kept up to date as tasks change (*automatic*, once set) | `deckard.calendar.exportFile`, empty by default |
-| A JSON copy of favorites, pins, and searches | `Deckard: Export Favorites, Pins, and Searches` | |
+| A JSON copy of favorites, pins, and searches | **Export…** in `Deckard: Manage Favorites, Pins, and Searches…` | |
 | A sample workspace | `Deckard: Create a Work Sample` or `Deckard: Create the Story Tour`, in Deckard's own storage, not your folder | |
 
 ## In your settings

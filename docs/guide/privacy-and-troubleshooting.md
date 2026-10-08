@@ -8,7 +8,7 @@ Markdown files remain the source of truth. Deckard changes note content only whe
 - extract a tagged heading, or rename a note, tag, or heading;
 - carry unfinished tasks forward, or write a review into a periodic note;
 - [edit a search's results](search-pages.md#editing-a-searchs-results);
-- approve an entity tag from `Deckard: Link Current Heading to Entity`.
+- approve an entity tag from **Tag Heading with a Person or Project…** in the editor's Refactor… menu.
 
 Before a task edit or extraction, Deckard checks the source is unchanged since it was indexed. A rename or merge that reaches more than one note is [shown before it is written](search-pages.md#previewing-and-undoing-a-write), and `Deckard: Undo Last Change` takes the last one back.
 
@@ -23,9 +23,9 @@ Before a task edit or extraction, Deckard checks the source is unchanged since i
 
 What names your notes belongs to the folder it describes, so opening another project cannot disturb it. Upgrading from 1.18 or earlier hands what was stored machine-wide to the first workspace you open.
 
-**Favorites, pins, and saved searches** are never deleted on their own. When their tag or note is gone, `Deckard: Tidy Favorites, Pins, and Saved Searches` lists them and asks before removing them. Only what Deckard works out for itself, view counts and access order, is cleaned up automatically.
+**Favorites, pins, and saved searches** are never deleted on their own. When their tag or note is gone, **Tidy…** in `Deckard: Manage Favorites, Pins, and Searches…` lists them and asks before removing them. Only what Deckard works out for itself, view counts and access order, is cleaned up automatically.
 
-**Copies:** a moment after each change, Deckard writes a copy of what this workspace remembers into the workspace's storage, and keeps the last twenty. `Deckard: Restore Favorites, Pins, and Searches from a Copy` offers them newest first and takes one back. `Deckard: Export Favorites, Pins, and Searches` writes a JSON file that `Deckard: Import Favorites, Pins, and Searches` reads back. Import and Restore write a copy of what is there before they replace it, so either can be taken back with Restore; a window with no folder open keeps no copies, and says so before it replaces anything.
+**Copies:** a moment after each change, Deckard writes a copy of what this workspace remembers into the workspace's storage, and keeps the last twenty. **Restore from a Copy…**, in `Deckard: Manage Favorites, Pins, and Searches…`, offers them newest first and takes one back. **Export…** there writes a JSON file that **Import…** reads back. Import and Restore write a copy of what is there before they replace it, so either can be taken back with Restore; a window with no folder open keeps no copies, and says so before it replaces anything.
 
 ## Limitations and troubleshooting
 

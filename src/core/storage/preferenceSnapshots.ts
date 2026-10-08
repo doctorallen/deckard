@@ -28,7 +28,8 @@ interface SnapshotSource {
  * Deckard once had a bug that emptied favorites, pins and view counts, and
  * the only reason the data came back is that someone could reconstruct it.
  * A store that is never copied is a store that one bad write can end. These
- * copies are what `Deckard: Restore Favorites, Pins, and Searches` offers.
+ * copies are what Restore from a Copy…, in `Deckard: Manage Favorites, Pins,
+ * and Searches…`, offers.
  *
  * A window with no folder open has no storage of its own, and nothing to
  * remember about a workspace, so it writes nothing.

@@ -5,7 +5,6 @@
 | **Deckard: Open Home** | Opens Home, with workspace totals, your widgets, and the Tags tab. It was called Open Dashboard; type *home*. |
 | **Deckard: Go to…** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> elsewhere, or **Go to…** at the foot of the menu **DECKARD ▾** drops at the top of any page. Lists every page, as the top of the Context view does, and opens the one you choose; see [Finding your way](getting-started.md#finding-your-way). |
 | **Deckard: Open Notes Graph** | Opens a map of every note, task, and tag connection. |
-| **Deckard: Open Notes Graph Around This Note** | Opens the Notes Graph one hop out from the note in the editor, without changing its default scope. |
 | **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, due date, person, or any tag namespace. |
 | **Deckard: Open Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Calendar** | Opens the calendar across the editor, each day listing its tasks; see [Calendar](daily-notes.md#calendar). |
@@ -26,16 +25,12 @@
 | **Deckard: Park Note** | [Parks](organizing.md#parking-notes) the note in the editor, or notes chosen in the Explorer, by adding `parked` to its front-matter tags. **Deckard: Unpark Note** reverses it. |
 | **Deckard: Park Folder…** | Parks a folder by adding it to `deckard.parked.folders`; also on a folder's **Deckard** menu in the Explorer. **Deckard: Unpark Folder…** reverses it; the palette lists it while a folder is parked by name. |
 | **Deckard: Park Tag…** | Parks everything a tag finds by adding it to `deckard.parked.tags`; also on a tag's menu. **Deckard: Unpark Tag…** reverses it; the palette lists it while `deckard.parked.tags` names a tag. |
-| **Deckard: Tidy Favorites, Pins, and Saved Searches** | Lists favorites, pins, and tag-set searches that point at nothing, and removes them if you confirm. |
+| **Deckard: Manage Favorites, Pins, and Searches…** | Lists the upkeep of what Deckard remembers about this workspace: **Tidy…** removes favorites, pins, and tag-set searches that point at nothing, if you confirm; **Export…** writes it all to a JSON file; **Import…** reads one back and, after asking, replaces it; **Restore from a Copy…** takes back one of Deckard's automatic copies, after asking. |
 | **Deckard: Export Tasks as Calendar…** | Writes your dated tasks to a calendar file to import into a calendar app; see [Tasks in your calendar app](daily-notes.md#tasks-in-your-calendar-app). |
-| **Deckard: Export Favorites, Pins, and Searches** | Writes what Deckard remembers about this workspace to a JSON file. |
-| **Deckard: Import Favorites, Pins, and Searches** | Reads one back and, after asking, replaces what this workspace remembers. |
-| **Deckard: Restore Favorites, Pins, and Searches from a Copy** | Restores one of Deckard's automatic copies, after asking. |
 | **Deckard: Check My Setup** | Writes a Markdown report of your resolved settings, what the last scan found and kept out, what the index holds, and whether `deckard.me` names anyone, with fixes. |
 | **Deckard: Create a Work Sample** | Writes a week of a team lead's notes, dated from today, into Deckard's storage and opens it. Run again, it offers a fresh copy. |
 | **Deckard: Create the Story Tour** | Writes the longer tour of Deckard, a note for each part, the same way. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
-| **Deckard: Open Daily Note for Date…** | Opens the daily note for a day in plain words, such as `last friday` or `oct 3`, creating it if needed. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
 | **Deckard: Note Actions…** | The Deckard button in a note's title bar: lists actions for the cursor's position, such as completing, editing, or adding a task, opening Related Notes or the Notes Graph, moving the line, and pinning to Home. |
 | **Deckard: Open Weekly Note** | Creates or opens this week's note, `week-2026-09-13-2026-09-19.md`, with [its review](daily-notes.md#writing-a-review) written in. |
@@ -48,7 +43,6 @@
 | **Deckard: Set Task Status…** | Sets any status on the task on the cursor's line; also on the editor's right-click menu and a task's menu in the Tasks view; see [Task statuses](tasks.md#task-statuses). |
 | **Deckard: Edit Task Statuses…** | Opens a page to edit `deckard.tasks.statuses`: each status's character, name, type, and icon; see [Editing the statuses](tasks.md#editing-the-statuses). |
 | **Deckard: Move Status Tags into Checkboxes…** | Writes each `#status/…` tag, which Deckard no longer reads as a status, as the character of the status it meant, such as `- [ ] Draft #status/doing` to `- [/] Draft`, and searches that name one by the status, after a preview; see [Moving status tags into checkboxes](tasks.md#moving-status-tags-into-checkboxes). |
-| **Deckard: Import Statuses from Obsidian Tasks** | Reads the vault's Obsidian Tasks statuses into the workspace's `deckard.tasks.statuses`. |
 | **Deckard: Roll Unfinished Tasks Forward** | Carries the last daily note's unfinished tasks into today's, creating it if needed. |
 | **Deckard: Reschedule Overdue Tasks…** | Dates the overdue tasks at once, saying how full each day is; see [Tasks view](tasks.md#tasks-view). |
 | **Deckard: Edit What the Tasks View Lists…** | Opens the Task Board on what the Tasks view lists, to change it and keep it with **Save to Tasks view**; see [Editing what the Tasks view lists](task-board.md#editing-what-the-tasks-view-lists). |
@@ -64,27 +58,36 @@
 | **Deckard: Open Note as Page** | The unicorn button in a note's title bar: opens the note in the editor on a page of its own, its links, tags, tasks, and query blocks working; see [Reading a note as a page](notes-and-links.md#reading-a-note-as-a-page). |
 | **Deckard: Copy as Plain Markdown** | Copies the note, or the selection, with its embeds, query results, and links written out; see [Copying a note for elsewhere](notes-and-links.md#copying-a-note-for-elsewhere). |
 | **Deckard: Extract Heading** | Moves a heading section into a newly named note and leaves a `[[link]]` to it. |
-| **Deckard: Open a Tag's Search Page…** | Opens a tag's search page, asking which tag when none is supplied. |
-| **Deckard: Insert Query Block…** | Writes a live [query block](query-blocks.md#query-blocks) at the cursor. |
 | **Deckard: Find in Notes** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> elsewhere. Searches notes, tasks, tags, and saved searches as you type; see [Find](search.md#find). |
 | **Deckard: Open Beside in Find** | <kbd>Cmd</kbd>+<kbd>Enter</kbd> (<kbd>Ctrl</kbd>+<kbd>Enter</kbd> elsewhere) in Find: opens the highlighted result beside the editor, keeping Find open. |
 | **Deckard: Insert a Link from Find** | <kbd>Alt</kbd>+<kbd>Enter</kbd> in Find: links the highlighted result where the cursor was. |
 | **Deckard: List Actions in Find** | <kbd>Cmd</kbd>+<kbd>.</kbd> (<kbd>Ctrl</kbd>+<kbd>.</kbd> elsewhere) in Find: lists everything the highlighted result can do. |
 | **Deckard: Open Search Page** | Opens a search page, ready for a search. |
 | **Deckard: Open Search Page…** | Opens a search page on a search, such as `#project/atlas AND is:open`; with nothing typed, a page of every note. |
-| **Deckard: Link Current Heading to Entity** | Adds a person, project, topic, organization, or meeting tag to the current heading. Also **Tag Heading with a Person or Project…** in the editor's Refactor… menu, on a note's heading that carries no such tag. |
 | **Deckard: Move Inline Tags to Front Matter** | Moves explicit tags from the active note into merged note-level front matter. |
 | **Deckard: Rename Tag** | Searches indexed tags and replaces the selected tag in its source notes. |
-| **Deckard: Merge Tag…** | Merges one tag into an existing one, after a preview. |
 | **Deckard: Rename Heading** | Renames the heading the cursor is in and rewrites every `[[Note#Heading]]` link that named it. |
 | **Deckard: Undo Last Change** | Reverts Deckard's last workspace-wide write, such as a tag rename or merge. |
-| **Deckard: Open Related Notes Ranking** | Shows how Related Notes ranks for the tagged entry the cursor is in, piece by piece; see [Related notes](connections.md). |
 | **Deckard: Follow Cursor in Outline** | Selects the Outline heading containing the editor cursor. The Outline title has the same control. |
 | **Deckard: Stop Following Cursor in Outline** | Leaves the Outline selection where you put it. |
 | **Deckard: Focus Section** | Folds the rest of the note away from the current section or Outline heading. |
 | **Deckard: Unfold All Sections** | Unfolds the note again after Focus Section. |
 | **Deckard: Filter Outline by Tag…** | Shows only Outline headings carrying a tag, or a tag under it. |
 | **Deckard: Clear Outline Tag Filter** | Shows every heading in the Outline again. |
+
+## Not in the palette
+
+These commands do what they did, from where you meet the job; the palette leaves them out, since another door does the same:
+
+- **Merge Tag…**: rename a tag to one that already exists, which merges them after a preview, or use **Merge** in Stats.
+- **Open Notes Graph Around This Note**: **Deckard: Note Actions…**, from the Deckard button in a note's title bar.
+- **Insert Query Block…**: **Query block** in the [/ menu](notes-and-links.md#editor-assistance), or **Copy as live query block** in a search page's **Export**.
+- **Import Statuses from Obsidian Tasks**: **Import from Obsidian Tasks** on the page **Deckard: Edit Task Statuses…** opens.
+- **Open Daily Note for Date…**: type a day in [Find](search.md#find), such as `last friday`.
+- **Open a Tag's Search Page…**: select a tag anywhere Deckard shows one, or type it in Find.
+- **Link Current Heading to Entity**: **Tag Heading with a Person or Project…** in the editor's Refactor… menu, on a note's heading that carries no such tag.
+- **Open Related Notes Ranking**: a page for tuning Related Notes; bind a key to it in Keyboard Shortcuts, then press it with the cursor in a tagged entry.
+- **Tidy**, **Export**, **Import**, and **Restore** for favorites, pins, and searches: rows of **Deckard: Manage Favorites, Pins, and Searches…**.
 
 ---
 

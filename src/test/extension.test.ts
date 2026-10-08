@@ -217,6 +217,7 @@ suite('Extension Test Suite', () => {
         'deckard.enableZenMode',
         'deckard.disableZenMode',
         'deckard.toggleZen',
+        'deckard.managePreferences',
         'deckard.tidyPreferences',
         'deckard.exportTaskCalendar',
         'deckard.exportPreferences',

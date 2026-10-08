@@ -5,7 +5,7 @@
 Run `Deckard: Create Daily Note`, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on Windows and Linux), or use the button in the Context view. Deckard creates or opens a note named with the local date, such as `2026-08-30.md`.
 
 - `Deckard: Open Previous Daily Note` and `Deckard: Open Next Daily Note` step to the nearest daily note before or after the current one. From another note they start from today.
-- `Deckard: Open Daily Note for Date…` lists yesterday, today, tomorrow, and your seven newest daily notes, or takes a day [in plain words](tasks.md#dates-in-plain-words), such as `last friday` or `2026-10-02`; a missing note is created from the template. [Find](search.md#find) does the same when you type only a day.
+- [Find](search.md#find) opens the daily note for a day typed [in plain words](tasks.md#dates-in-plain-words), such as `last friday` or `2026-10-02`, when you type only a day; a missing note is created from the template.
 - `Deckard: Open Weekly Note` and `Deckard: Open Monthly Note` create or open `week-2026-09-13-2026-09-19.md` and `month-september-2026.md`. A week runs Sunday to Saturday, or from the day `deckard.calendar.weekStart` names.
 - A new note starts from its [template](#templates).
 - [Add Task](tasks.md#adding-a-task) (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>) with no note open writes into today's note, creating it if needed, and its title names the note before anything is written.
