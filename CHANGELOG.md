@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.5.0 - 2026-10-08
+
+### Highlights
+
+- One bar on every page: one filled button for what it commits, and one **⋯** for the gear, the **?**, Save, and Export.
+- **Zen** is one switch that keeps every count and date, and quiets a page's tools until you point at or tab into them.
+- **Builder** joins the search box, the Task board is **Board** or **Table**, and six Home widgets and the List layout give way.
+
 ### Added
 
 - **An Off editor preset.** `Deckard: Choose Editor Preset…` and
@@ -325,6 +333,24 @@
   graph's Relationships group held are in the guide's Notes Graph section
   now.
 
+### Fixed
+
+- **The calendar page's keys no longer list /.** Its key sheet offered
+  **/** to go to the search box, which the page doesn't have. **/** is
+  listed only on a page with a search box.
+- **Help's title is its largest heading under Zen.** Under Zen and Quiet,
+  Help drew *Changelog* smaller than the releases under it. Its title now
+  stays over its sections, and its sections over what is under them, at
+  every step.
+- **Copy MCP Server Setup is in the palette before the server is on.**
+  The guide says to run it to turn the MCP server on, but the palette
+  listed it only once the server was already on. It is listed now while
+  `deckard.assistantTools` is on, and still offers to turn the server on.
+- **The Writing preset says what it draws.** Settings said Writing kept
+  the / menu, hover previews and problem reports only, but it also keeps
+  faint task details. Settings, Choose Editor Preset… and the guide now
+  name each part it keeps and each it leaves out.
+
 ### Removed
 
 - **The Task board's List layout.** The table, which ranks in Rank order,
@@ -370,24 +396,6 @@
   team lead's notes, which Get Started and the walkthrough offer. A tour
   you made before stays where it was. The extension is smaller by the
   tour's notes, which are kept with Deckard's tests.
-
-### Fixed
-
-- **The calendar page's keys no longer list /.** Its key sheet offered
-  **/** to go to the search box, which the page doesn't have. **/** is
-  listed only on a page with a search box.
-- **Help's title is its largest heading under Zen.** Under Zen and Quiet,
-  Help drew *Changelog* smaller than the releases under it. Its title now
-  stays over its sections, and its sections over what is under them, at
-  every step.
-- **Copy MCP Server Setup is in the palette before the server is on.**
-  The guide says to run it to turn the MCP server on, but the palette
-  listed it only once the server was already on. It is listed now while
-  `deckard.assistantTools` is on, and still offers to turn the server on.
-- **The Writing preset says what it draws.** Settings said Writing kept
-  the / menu, hover previews and problem reports only, but it also keeps
-  faint task details. Settings, Choose Editor Preset… and the guide now
-  name each part it keeps and each it leaves out.
 
 ## 2.4.0 - 2026-10-06
 
