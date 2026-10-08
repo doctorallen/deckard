@@ -150,7 +150,7 @@ topics:
 
 ## Editor assistance
 
-**Presets.** `Deckard: Choose Editor Preset…` sets how much of what follows Deckard draws: **Full**, all of it; **Tasks**, the task hints and problem reports, without link counts, mention lenses, or breadcrumbs; **Writing**, the / menu, hover previews, faint task details, and reports of broken links, embeds, and repeat rules. Each `deckard.editor.*` setting below follows the preset while you leave it unset; one you set yourself, on or off, overrides it.
+**Presets.** `Deckard: Choose Editor Preset…` sets how much of what follows Deckard draws: **Full**, all of it; **Tasks**, the task hints and problem reports, without link counts, mention lenses, or breadcrumbs; **Writing**, the / menu, hover previews, faint task details, and reports of broken links, embeds, and repeat rules; **Off**, none of it. Each `deckard.editor.*` setting below follows the preset while you leave it unset; one you set yourself, on or off, overrides it.
 
 - **Title bar:** Deckard's button opens **Deckard: Note Actions…**, and the unicorn beside it opens the note as a page. A daily note also has **‹** and **›** for the previous and next daily notes. Right-click the title bar to hide any of them.
 - **Right-click in a note** for a **Deckard** submenu: the task on the line (Toggle Task Done, Edit Task, Set Task Status…, Break into Steps…), Add Task, the heading (Rename Heading, Extract Heading), Move to…, and Pin or Unpin.

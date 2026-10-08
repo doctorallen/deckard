@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- **An Off editor preset.** `Deckard: Choose Editor Preset…` and
+  `deckard.editor.preset` offer **Off**, which draws nothing in the editor:
+  no lenses, decorations, hover previews, / menu, or problem reports. A
+  `deckard.editor.*` switch you set yourself still draws its part, so Off
+  plus one switch draws that one thing.
+
 ### Changed
 
 - **Zen never hides data.** Zen used to leave out the counts beside names
@@ -26,9 +34,8 @@
   tag, so neither shows with nothing to unpark.
 - **Editor switches say they override the preset.** Each of the 15
   `deckard.editor.*` switches says which presets turn it on, and that a
-  value you set overrides the preset. A switch some preset turns off no
-  longer shows as on in Settings while you leave it unset; one every
-  preset turns on still shows as on.
+  value you set overrides the preset. Since Off turns every one off, no
+  switch shows as on in Settings while you leave it unset.
 - **Tag Heading with a Person or Project… is a refactor.** It was offered
   as a quick fix, so a lightbulb lit on every plain heading. It is in the
   editor's Refactor… menu now, under one title.

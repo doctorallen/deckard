@@ -37,7 +37,8 @@ with no neighbor on one side has no arrow on that side. This is the same rule
 **Each group has its own setting**, in the Editor settings beside
 `deckard.editor.referenceCounts`. Left unset, each follows
 `deckard.editor.preset`: Full draws every group; Tasks leaves out unlinked
-mentions and breadcrumbs; Writing draws only link problems and embeds. A
+mentions and breadcrumbs; Writing draws only link problems and embeds; Off
+draws none. A
 switch set by hand, at any scope, overrides the preset
 (`src/domain/editor/editorPresets.ts`):
 
