@@ -1,4 +1,4 @@
-// Notes for the index equivalence tests: the sample workspace, the repo's own
+// Notes for the index equivalence tests: the sample corpus, the repo's own
 // development notes, a hand-written corpus of the index's edge cases, and a
 // seeded generator of random notes and random edits to them.
 import * as fs from 'fs';
@@ -8,7 +8,7 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { resolveSampleTokens, sampleFileName } from '../domain/notes/sampleNotes';
 import { ParsedFile } from '../domain/model';
 
-/** The repository's root, which the sample workspace and the development notes are read from. */
+/** The repository's root, which the sample corpus and the development notes are read from. */
 const repositoryRoot = path.join(__dirname, '..', '..');
 
 /** A seeded random source, so a failing run can be repeated exactly. */
@@ -39,13 +39,17 @@ export function parseNotes(notes: ReadonlyArray<[string, string]>): ParsedFile[]
 }
 
 /**
- * The sample workspace Deckard installs, with its dates filled in from one
- * fixed day and its daily notes named as installed. The templates folder is
- * left out, as the scanner leaves it out.
+ * The sample corpus, with its dates filled in from `day`, a fixed one unless
+ * given, and its daily notes named as a sample's are. The templates folder
+ * and its settings are left out, as the scanner leaves them out.
+ *
+ * It was Deckard's Story Tour, a sample workspace with a note for every
+ * part of Deckard, until the Work Sample became the one sample. It is kept
+ * as a test fixture, outside the VSIX, since it uses every query field and
+ * state, and the index's equivalence tests read it.
  */
-export function sampleNotes(): Array<[string, string]> {
-  const root = path.join(repositoryRoot, 'resources', 'sample');
-  const day = new Date(2026, 8, 20);
+export function sampleNotes(day = new Date(2026, 8, 20)): Array<[string, string]> {
+  const root = path.join(repositoryRoot, 'test', 'fixtures', 'sample-corpus');
   const notes: Array<[string, string]> = [];
   const walk = (folder: string, prefix: string): void => {
     for (const name of fs.readdirSync(folder).sort()) {

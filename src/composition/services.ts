@@ -436,7 +436,7 @@ function createLedgers(context: vscode.ExtensionContext) {
   const tryNext = new TryNextLedger(context.workspaceState);
   context.subscriptions.push(tryNext);
   void whatsNew.onActivate();
-  // A sample opened from Create a Work Sample or the Story Tour shows its README once.
+  // A sample opened from Create a Work Sample shows its README once.
   void showSampleReadmeOnce(context);
   // One log for the whole extension. Its level, set from the Output panel,
   // decides how much of Deckard's timing it keeps.

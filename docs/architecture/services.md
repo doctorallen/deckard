@@ -107,7 +107,7 @@ A feature is a `(context, services) => void | Promise<void>` in `src/ui/commands
 
 | Feature | Module | Commands |
 | --- | --- | --- |
-| Setup and diagnostics | `setup` | Show Log, Check Setup, the sample workspace, Choose Theme…, the walkthrough, Reindex Workspace |
+| Setup and diagnostics | `setup` | Show Log, Check Setup, the Work Sample, Choose Theme…, the walkthrough, Reindex Workspace |
 | The Tasks view | `tasksView` | The Tasks view's menus (`registerAgendaCommands`), its grouping, and its search, edited on the Task Board or cleared; Export Tasks as Calendar…, and the calendar file it keeps up to date |
 | The Outline and sections | `outline` | Revealing a heading, a heading's tags, Focus Section, Unfold All Sections, the Outline's tag filter |
 | Settings toggles | `toggles` | The ten commands in `SETTING_TOGGLES`, one registration loop |

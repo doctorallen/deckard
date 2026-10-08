@@ -230,6 +230,11 @@
   thickness** and **Label fade zoom** are gone. Each is fixed at the
   default it had, so a graph you never tuned looks as it did. Display
   keeps **Node size**, **Links per note** and **Headings**.
+- **The Story Tour.** `Deckard: Create the Story Tour` is gone, so there
+  is one sample to start from: `Deckard: Create a Work Sample`, a week of a
+  team lead's notes, which Get Started and the walkthrough offer. A tour
+  you made before stays where it was. The extension is smaller by the
+  tour's notes, which are kept with Deckard's tests.
 
 ### Fixed
 

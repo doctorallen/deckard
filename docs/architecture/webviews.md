@@ -321,7 +321,7 @@ The date steps both calendars take are `domain/markdown/calendar.ts`'s (D1): `sh
 
 ### The task and search parts
 
-*As built in Phase 6 steps 4.4 and 4.5, with the Task Board and the search page.* Lane A's pages share these, each held to the template it replaced, through the recording step 7 kept of it: `src/test/webview-tasks.test.ts` draws the task parts; `src/test/webview-query-editor.test.ts` runs the search box through the clicks, keys, and typing the template was driven through, and requires at each step the DOM, the searches, and the focus the template's recording holds; and `src/test/webview-search.test.ts` draws every note excerpt of the sample workspace, the development notes, and the fixtures from its tokens and through `markdown-it`, and opens the tag menu the template opened.
+*As built in Phase 6 steps 4.4 and 4.5, with the Task Board and the search page.* Lane A's pages share these, each held to the template it replaced, through the recording step 7 kept of it: `src/test/webview-tasks.test.ts` draws the task parts; `src/test/webview-query-editor.test.ts` runs the search box through the clicks, keys, and typing the template was driven through, and requires at each step the DOM, the searches, and the focus the template's recording holds; and `src/test/webview-search.test.ts` draws every note excerpt of the sample corpus, the development notes, and the fixtures from its tokens and through `markdown-it`, and opens the tag menu the template opened.
 
 | Module | What a page uses |
 | --- | --- |

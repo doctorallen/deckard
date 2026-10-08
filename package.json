@@ -133,7 +133,6 @@
             "completionEvents": [
               "onCommand:deckard.createDailyNote",
               "onCommand:deckard.createWorkSample",
-              "onCommand:deckard.createSampleWorkspace",
               "onContext:deckard.hasNotes"
             ]
           },
@@ -758,11 +757,6 @@
       {
         "command": "deckard.checkSetup",
         "title": "Check My Setup",
-        "category": "Deckard"
-      },
-      {
-        "command": "deckard.createSampleWorkspace",
-        "title": "Create the Story Tour",
         "category": "Deckard"
       },
       {

@@ -224,7 +224,6 @@ suite('Extension Test Suite', () => {
         'deckard.importPreferences',
         'deckard.restorePreferences',
         'deckard.checkSetup',
-        'deckard.createSampleWorkspace',
         'deckard.createWorkSample',
         'deckard.agenda.editTask',
         'deckard.agenda.breakIntoSteps',

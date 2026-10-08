@@ -52,5 +52,4 @@ Keys are written both ways: <kbd>Ctrl</kbd> on Windows and Linux,
 - **Write a note from a template.** `Deckard: New Note from Template`,
   then **One-on-one**.
 
-`Deckard: Create the Story Tour` makes the longer tour, a note for every
-part of Deckard, if you want the rest.
+`Deckard: Open Help` covers the rest.
