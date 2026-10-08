@@ -48,18 +48,20 @@ export function chosenWeek(state: DrawnCalendarPage): CalendarWeek | undefined {
     || snapshot.weeks.find((week) => week.days.some((day) => day.inMonth));
 }
 
-/** The layout's two choices, in the header and in the gear. */
+/**
+ * The layout's two choices, drawn once, in the header: the gear drew them
+ * again, two controls for one choice. The m and w keys choose them too.
+ */
 function LayoutChoices({ layout }: { readonly layout: CalendarLayout }) {
   return <ViewOptionChoices action="set-calendar-layout" choices={[['month', 'Month'], ['week', 'Week']]} selected={layout} label="Calendar layout" />;
 }
 
-/** The gear: the layout, weekends, the theme, and zen. */
+/** The gear: weekends, the theme, and zen. */
 function PageViewOptions({ state }: { readonly state: DrawnCalendarPage }) {
   const snapshot = state.snapshot;
   return (
     <ViewOptions
       groups={[
-        { label: 'Layout', content: <LayoutChoices layout={state.layout} /> },
         {
           label: 'Weekends',
           content: <ViewOptionChoices action="set-show-weekends" choices={[['on', 'Shown'], ['off', 'Hidden']]} selected={snapshot.hideWeekends ? 'off' : 'on'} label="Weekends" />,

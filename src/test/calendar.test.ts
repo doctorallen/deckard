@@ -326,7 +326,7 @@ suite('Calendar', () => {
     }
   });
 
-  test('the page draws again as its template did: a layout chosen in the gear closes it, and a snapshot folds Done and drops a drag\'s marks', () => {
+  test('the page draws again as its template did: the layout is chosen in the header alone, and a snapshot folds Done and drops a drag\'s marks', () => {
     const now = new Date(2026, 8, 13, 10);
     const done = buildWorkspaceIndex(new Map([
       ['notes/a.md', note('notes/a.md', '- [ ] Call Ren 📅 2026-09-13\n- [x] Filed 📅 2026-09-12 ✅ 2026-09-13\n')],
@@ -334,11 +334,9 @@ suite('Calendar', () => {
     const snapshot = createCalendar(done, '2026-09', createQueryContext(now.getTime()), { dayPanel: true, layout: 'page' });
     const page = openWebviewPage(renderPage('calendarPage'), snapshot);
     try {
-      const gear = page.find('.view-options') as HTMLDetailsElement;
-      gear.open = true;
-      page.click('.view-options [data-action="set-calendar-layout"][data-value="week"]');
+      assert.strictEqual(page.findAll('.view-options [data-action="set-calendar-layout"]').length, 0, 'the gear does not draw Month and Week again');
+      page.click('.calendar-page-actions [data-action="set-calendar-layout"][data-value="week"]');
       assert.ok(page.find('.calendar-page-body').classList.contains('is-week'));
-      assert.strictEqual((page.find('.view-options') as HTMLDetailsElement).open, false, 'the gear the layout was chosen in closes');
 
       (page.find('.day-panel details.day-group') as HTMLDetailsElement).open = true;
       const chip = page.find('.cal-chip[data-kind="due"]');

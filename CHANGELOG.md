@@ -77,6 +77,10 @@
   table row's **⋯** is still a Tab stop. An empty board column says *Drag
   a card here, or right-click one.*, and the board's key sheet lists
   Shift+F10.
+- **The calendar page draws Month and Week once.** Its gear drew the
+  header's **Month | Week** again as **Layout**. The gear keeps
+  **Weekends**, the theme and Display, and **m** and **w** still switch
+  the layout.
 
 ### Fixed
 

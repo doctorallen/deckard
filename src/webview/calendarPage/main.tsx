@@ -108,16 +108,7 @@ function goToday(): void {
 /** The page's controls, by their `data-action`, after those both calendars draw. */
 const ACTIONS: Readonly<Record<string, ActionHandler>> = {
   ...session.actions,
-  'set-calendar-layout': (element) => {
-    const gear = element.closest<HTMLDetailsElement>('.view-options');
-    setLayout(element.getAttribute('data-value'));
-    // The template drew the page again under the click, so the gear the
-    // click was in was gone and the new one closed: a layout chosen in the
-    // gear closes it.
-    if (gear) {
-      gear.open = false;
-    }
-  },
+  'set-calendar-layout': (element) => setLayout(element.getAttribute('data-value')),
   'set-show-weekends': (element) => sendPage({ type: 'setShowWeekends', show: element.getAttribute('data-value') === 'on' }),
   'step-calendar': (element) => step(Number(element.getAttribute('data-by'))),
   'go-today': goToday,
