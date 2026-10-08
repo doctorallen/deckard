@@ -603,6 +603,8 @@ function createCalendarSurfaces() {
       snapshot: () => createCalendar(createCalendarIndex(), '2026-09', createQueryContext(NOW)),
       scrollers: ['html'],
       clippers: ['.day'],
+      // A day, which opens its daily note when chosen.
+      hovered: ['.day'],
       zenHovered: ZEN_REGIONS.calendar,
     },
     {
@@ -615,6 +617,7 @@ function createCalendarSurfaces() {
       }),
       scrollers: ['html'],
       clippers: ['.day'],
+      hovered: ['.day'],
     },
     {
       // Related Notes showing the calendar page's chosen day, under the
