@@ -30,7 +30,7 @@ How much a page draws is one switch, **Zen**, the same on every page; see [Zen](
 - **Compact spacing**, and **flat cards**: rows parted by a divider, which lift onto the card surface under the pointer or keyboard focus.
 - **Tags as text**: where tags are listed on their own, such as a note card's tags and Refine, each is plain text in the theme's tag color, its `#` or `@` kept, rather than a framed chip. A tag inside a task's title is always text.
 
-Zen never hides data. Every count beside a name, such as a widget's total, a group's count, a board column's tasks, or a tab's results, shows with Zen on or off, and a due date is written in full, "Overdue 2 days · 2026-10-02". Zen changes no color, and removes no button or filter. In every theme the flat cards' divider reaches 3:1 against the page and the tag color 4.5:1, which a test checks on each change.
+Zen never hides data. Every count beside a name, such as a widget's total, a group's count, a board column's tasks, or a tab's results, shows with Zen on or off, and a due date is written in full, "Overdue 2 days · 2026-10-02". Zen changes no color, and removes no button or filter; a tool it quiets stays where it was (see [Zen](#zen)). In every theme the flat cards' divider reaches 3:1 against the page and the tag color 4.5:1, which a test checks on each change.
 
 **Page width**, under **Appearance** in **⋯** on Home, a search page, and the note page, keeps pages *Limited* to a column at most 1000px wide, or makes them *Full*, the panel's full width, for a wide monitor. Zen never changes it, and every page keeps the width you chose last. The other pages always use the panel's full width, or set their own, so their **⋯** has no Page width row.
 
@@ -67,7 +67,11 @@ What Deckard writes into your notes stays `YYYY-MM-DD`: task dates such as `📅
 Zen is one checkbox, **Zen** under **Appearance** in any page's **⋯**, and one command, `Deckard: Toggle Zen`; the Zen button in a page's title bar turns it on or off too. The setting is `deckard.display.zen`.
 
 - **Hidden:** decorative labels, the grid backdrop, the eyebrow's trail, and every line that teaches, such as the search box's line of syntax; cards are flat and tags are text.
-- **Kept:** every button, filter, checkbox, and tag, every count beside a name, and a task's due date written in full, with its priority and overdue marker. Zen never hides data.
+- **Drawn:** the page's bar, the search field and anything that is filtering the page, with every count and date. Point at or tab into an area to see the rest.
+- **Shown where it stands:** the rest of a page's tools are drawn when you point at or tab into their area, such as the Task board's **Board | Table**, **Group**, **Sort** and **Can start now** from its search box, a column's **+** from its column, a search page's **Sort** and **Bulk edit** from the results heading, Home's **Customize** from its tabs, Context's gears and **Sort** from their headings, and a calendar's week marks from their week. Typing a search doesn't show them. A **Sort** that isn't at its default, **Can start now** while it is pressed, and a week mark whose week has a note stay drawn. On a touch screen everything is drawn.
+- **Folded:** [Refine](search.md#refine)'s values, under **Refine**, and the Notes Graph's **Focus** and **Filters**, as Display already is; each heading says what it is doing, such as **Refine · 2 set**. Select a heading to unfold it.
+
+Zen never removes a control or moves one into **⋯**: every button, filter, checkbox, and tag stays in its place, in the Tab order, and in what a screen reader reads.
 
 Deckard's Zen quiets Deckard's pages; VS Code's Zen Mode (`⌘K Z`, or `Ctrl+K Z`) hides the workbench around them, and the two combine.
 
