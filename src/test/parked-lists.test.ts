@@ -6,7 +6,7 @@ import { createCalendar } from '../ui/state/calendarState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import { listPeopleRecency, listQuietTags } from '../ui/state/peopleRecency';
 import { summarizeReview } from '../ui/state/reviewState';
-import { createTaskBoard } from '../ui/state/taskBoardState';
+import { createTaskBoard, searchBoardTasks } from '../ui/state/taskBoardState';
 import { countDueTasks } from '../ui/views/taskStatusBar';
 import { indexWithParking } from './parkedFixture';
 import { createQueryContext } from '../domain/query/queryContext';
@@ -73,17 +73,18 @@ suite('Parked tasks leave the lists of things to do', () => {
   test('the board leaves them out, and offers Parked with how many it left out', () => {
     const index = workspace();
     const options = { queryContext: createQueryContext(now), statuses: [], format: 'emoji' as const };
-    const board = createTaskBoard({ index, preferences: defaults({ taskBoardLayout: 'list' }), search: { query: 'is:open' }, options });
-    assert.deepStrictEqual(titles((board.tasks ?? []).map((item) => item.task)), ['Call', 'Carry me', 'Pay rent']);
+    const searched = (query: string) => searchBoardTasks({ index, preferences: defaults({}), search: { query }, options });
+    const board = createTaskBoard({ index, preferences: defaults({ taskBoardLayout: 'table' }), search: { query: 'is:open' }, options });
+    assert.deepStrictEqual(titles(searched('is:open')), ['Call', 'Carry me', 'Pay rent']);
     const parked = board.query.facets.find((facet) => facet.id === 'parked');
     assert.deepStrictEqual(parked?.values, [{ label: 'Parked', clause: 'is:parked', count: 3 }]);
     const asked = createTaskBoard({
       index,
-      preferences: defaults({ taskBoardLayout: 'list' }),
+      preferences: defaults({ taskBoardLayout: 'table' }),
       search: { query: 'is:open is:parked' },
       options,
     });
-    assert.deepStrictEqual(titles((asked.tasks ?? []).map((item) => item.task)), ['Ask', 'Leave me', 'Old overdue']);
+    assert.deepStrictEqual(titles(searched('is:open is:parked')), ['Ask', 'Leave me', 'Old overdue']);
     assert.ok(!asked.query.facets.some((facet) => facet.id === 'parked'));
   });
 

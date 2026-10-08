@@ -349,8 +349,7 @@ Any group of joined buttons uses this, rather than each page restyling
 
 ```html
 <div class="segmented" role="group" aria-label="Task layout">
-  <button class="active">List</button>
-  <button>Board</button>
+  <button class="active">Board</button>
   <button>Table</button>
 </div>
 ```
@@ -587,18 +586,18 @@ without their cards.
 
 | Piece | What it is |
 | --- | --- |
-| `.board` | The horizontally scrolling row of `.board-column`s, each with a `.board-column-title`, `.board-count`, and `.board-cards`. `.board-count` reads `40 / 3 · 38 overdue`: the cards shown, the column's limit when `deckard.board.limits` sets one, and how many are overdue, counted from the cards the page shows. |
+| `.board` | The horizontally scrolling row of `.board-column`s, at least 200px each so the default columns, Done included, fit a 1400px window; each has a `.board-column-head` (its `.board-column-title` with `.board-count`, then the column's `.board-add`, a `+` icon button named **Add a task to Todo**, which Done lacks) and `.board-cards`. `.board-count` reads `40 / 3 · 38 overdue`: the cards shown, the column's limit when `deckard.board.limits` sets one, and how many are overdue, counted from the cards the page shows. |
 | `.board-column.over-limit` | Over its limit: a neutral dashed `--line-strong` outline, never red, since a limit is a note and not an error. |
 | `.overdue.quiet` | An overdue card's date when most of its column is overdue and it is not in the longest-overdue third (`card.overdueTone`): `--muted` text after a 6px `--danger` dot, drawn as a border so it is not a background behind the text, the word still "overdue". |
 | `.board-column` | Capped at the viewport's height, with `grid-template-rows: auto minmax(0, 1fr)` so the cards row may shrink; an auto row would size to its cards and the column would clip them with nothing to scroll. |
 | `.board-cards` | The scroller: `overflow-y: auto` with `overflow-x: hidden` said outright, since `overflow-y` alone computes the other axis to `auto` and a theme's hover slide would then put a scrollbar under the column. A hovered board card keeps `transform: none` for the same reason. |
 | `.board-card` | A `.task` card with a checkbox, inline-tag title, `.board-details`, and a corner `.board-move` menu, shown by the reveal rule (below). Each detail span is an `inline-block`: one unit to the line, breaking inside itself only when wider than the column. |
 | `.board-steps` | A card whose task has steps: one `.source` line under the details, `.board-steps-label` (`2 of 5 steps`) then `.board-steps-next` (` · next: Draft the email`); the line is one line with an ellipsis, so in a narrow column the next step gives way first. Host-worded by `describeStepParts()` in `domain/markdown/taskSteps.ts` as `card.steps`; the card's `aria-label` gains the label. Muted like the details, so no color of its own. |
-| `<TaskBoard snapshot>` (`board.tsx`) | Draws the host's board, each card with `BoardCard`. Words typed in the search box hide the cards, list rows, and table rows that do not show every word, file and line included, as they are typed and after every draw; `followShownCards()` (`boardMoves.ts`) then counts each column again from the cards left, and moves the Tab stop to the first of them when the words hid it. |
-| `<GroupSwitch snapshot>` (`board.tsx`) | The Status / Priority / Due date / Person / Tag… `.segmented` switch. **Tag…** (`data-action="pick-board-namespace"`) opens a menu of the namespaces open tasks carry and, grouped by one, reads `#context`, pressed; with none in use it is `aria-disabled` and says why. |
-| `installBoardMoves(options)` (`boardMoves.ts`) | Wires a card's keys (Enter opens it, Ctrl or Cmd+Enter beside the board), its move menu, its checkbox, opening it, dragging it between columns (a card's drag carries `application/x-deckard-card` and no plain text, so a field it is dropped on takes nothing, and a column takes no other drag; any drop or new drag lets go of a card a redraw cut short), and the group switch's Tag… menu, once per page, on the document. It posts, through `options.post`, `openSource`, `toggleTask`, `moveTask` (with `from`, the column the card was in), and `setBoardGroup` (with `namespace` for `tag`). A card is keyed by column and task, `boardCardKey(columnId, taskId)`, and carries `data-card-column`, since a task with two tags in the grouped namespace is two cards; `cardColumn` is one of `PLACE_KEYS`, so focus comes back to the same copy. |
+| `<TaskBoard snapshot>` (`board.tsx`) | Draws the host's board, each card with `BoardCard`. Words typed in the search box hide the cards and table rows that do not show every word, file and line included, as they are typed and after every draw; `followShownCards()` (`boardMoves.ts`) then counts each column again from the cards left, and moves the Tab stop to the first of them when the words hid it. |
+| `<GroupSelect snapshot>` (`board.tsx`) | The **Group** select: Status, Priority, Due date, Person, the namespace the board is grouped by (`#context`) when it is, and **Tag…** (`value="pick-namespace"`), which puts the select back on the grouping in force and opens a menu of the namespaces open tasks carry; with no other namespace in use, Tag… is disabled. `<LayoutSwitch layout>` (`layouts.tsx`) is the **Board \| Table** `.segmented` pair beside it on the search box's status row. |
+| `installBoardMoves(options)` (`boardMoves.ts`) | Wires a card's keys (Enter opens it, Ctrl or Cmd+Enter beside the board), its move menu, its checkbox, opening it, dragging it between columns (a card's drag carries `application/x-deckard-card` and no plain text, so a field it is dropped on takes nothing, and a column takes no other drag; any drop or new drag lets go of a card a redraw cut short), and the Group select, with its Tag… menu, once per page, on the document. It posts, through `options.post`, `openSource`, `toggleTask`, `moveTask` (with `from`, the column the card was in), and `setBoardGroup` (with `namespace` for `tag`). A card is keyed by column and task, `boardCardKey(columnId, taskId)`, and carries `data-card-column`, since a task with two tags in the grouped namespace is two cards; `cardColumn` is one of `PLACE_KEYS`, so focus comes back to the same copy. |
 | `.board-card` on screen | Every card is drawn. An open column draws its first 100 cards (`columnLimit`), Done its 20; `showColumnRest` with a column id adds it to the host's `shownColumns` until the grouping or the search changes. |
-| `.board-card.is-pending` | A card moved on the page and not yet written: every move — a drop, `[` `]`, `t` `m`, `0`–`5`, the ⋯ menu — puts it at the top of its new column at once, recounts both columns from the cards and the column's `data-hidden-count` and `data-limit`, keeps focus on it, and marks it `is-pending` with `aria-busy` (70% opacity). `x` or the checkbox marks the card `completed` at once the same way, so a second `x` reopens it. An edit rewrites the task's line and so gives it a new id: a card's next edit, made before the host's next state, shows at once and is sent once that state is drawn, to the card written where its task is, with the new id; one the state shows is already made sends nothing. A move to a column the grouping does not draw marks it where it is. The next state replaces the board. A move the host could not write is followed by a `moveRefused` message, which the page says as "… was not moved." A completion or reopening it could not write, from a card, a row, or the table, is followed by `toggleRefused`, said as "… was not completed." or "… was not reopened." |
+| `.board-card.is-pending` | A card moved on the page and not yet written: every move — a drop, `[` `]`, `t` `m`, `0`–`5`, the ⋯ menu — puts it at the top of its new column at once, recounts both columns from the cards and the column's `data-hidden-count` and `data-limit`, keeps focus on it, and marks it `is-pending` with `aria-busy` (70% opacity). `x` or the checkbox marks the card `completed` at once the same way, so a second `x` reopens it. An edit rewrites the task's line and so gives it a new id: a card's next edit, made before the host's next state, shows at once and is sent once that state is drawn, to the card written where its task is, with the new id; one the state shows is already made sends nothing. A move to a column the grouping does not draw marks it where it is. The next state replaces the board. A move the host could not write is followed by a `moveRefused` message, which the page says as "… was not moved." A completion or reopening it could not write, from a card or a table row, is followed by `toggleRefused`, said as "… was not completed." or "… was not reopened." |
 
 The card menu ends with a **Note** group holding **Move to…** (`move-to`),
 which posts `{ type: 'moveTaskTo', taskId }`; the host runs Move to… on the
@@ -611,14 +610,13 @@ act on a board card as well.
 ### Task list
 
 `taskList.css` and the components below draw a list of tasks: the Dashboard's
-search results, a search page's tasks, the calendar's day, and the Task
-Board's list layout.
+search results, a search page's tasks, and the calendar's day.
 
 | Piece | What it is |
 | --- | --- |
 | `.task-list`, `.task-row` | The grid of rows, each a `.row` with a checkbox, title, a `.task-meta` line of due date and facts, and under it the `.entry-details` line of file and line, heading, and dates (**Card details** below). |
 | `<TaskListRow item draggable leading trailing entry afterSource>` | One row from a `DashboardTask`. Its due date is the host's `dueLabel`, `Overdue 15 days · 2026-09-08`, worded by `describeDueDate()` in `domain/markdown/dueWording.ts` so every list, the board, the table, and query blocks say it the same way. `draggable` marks a row that can be ranked. A parked task (`item.parked`) says **Parked** first in its meta line. A task with steps has a `.task-detail.task-steps` span after Repeats, the host's `stepsLabel` (`2 of 5 steps · next: Draft the email`). `trailing` is drawn after the words, such as the calendar panel's **Tomorrow** button, and `leading` in place of the checkbox, for a row that cannot be completed from there. Its checkbox posts through `data-action="toggle-task"`. |
-| `installRankedRows(options)` | Ranks rows by dragging them, with a ghost and a placeholder, or by **Move to top** and **Move to bottom** on their context menu. `options.kinds` names each kind of row by selector and dataset key; the page supplies `canRank`, `reorder`, `move`, and any more menu actions. A drag never starts on a control inside a row, such as a button, field, or a `<summary>`, so the control keeps its click. The Dashboard ranks tags, entities, and Home's widgets with it, the Task Board its tasks. |
+| `installRankedRows(options)` | Ranks rows by dragging them, with a ghost and a placeholder, or by **Move to top** and **Move to bottom** on their context menu. `options.kinds` names each kind of row by selector and dataset key; the page supplies `canRank`, `reorder`, `move`, and any more menu actions. A drag never starts on a control inside a row, such as a button, field, or a `<summary>`, so the control keeps its click. The Dashboard ranks tags, entities, and Home's widgets with it, the Task Board its table's rows in Rank order and its status columns. A table row's ghost is a one-row table of its own, its cells as wide as the row's. |
 | `rankKeys(keys, key, target, before)`, `moveKeyToEdge(keys, key, toTop)` | The new order a drag or a menu choice asks for. |
 
 ### Result table
@@ -626,8 +624,9 @@ Board's list layout.
 `.result-table` in `taskList.css` styles the Task Board's table layout:
 `th` holds a `button[data-action="set-table-sort"]` that fills the cell,
 `.is-sorted` marks the sorted column, `.result-row` rows carry the same
-`data-task-id`, `data-file-path`, and `data-line` a `.task-row` does so the
-page's open and toggle handlers serve both, and `td.is-overdue` and
+`data-task-id`, `data-file-path`, and `data-line` a `.task-row` does, and
+in Rank order, with no header sort, `.is-draggable` and are ranked as the
+`tableRow` kind of `installRankedRows`, and `td.is-overdue` and
 `td.is-muted` are the two states a cell can be in. The host makes the rows
 and cells with the column model in `src/ui/state/resultTable.ts`, which a
 query block's `view=table` shares, so the page only draws them.
@@ -637,8 +636,8 @@ query block's `view=table` shares, so the page only draws them.
 
 `reveal.css` draws a row's own action only on that row under the pointer or
 with focus in it: the calendar day panel's `.day-move` (**Tomorrow**, or
-**Next day** on a later day), a board card's `.board-move` ⋯, and a list or
-table row's ⋯ (`RowMenuButton`). The control carries `data-reveal`, and the
+**Next day** on a later day), a board card's `.board-move` ⋯, and a table
+row's ⋯ (`RowMenuButton`). The control carries `data-reveal`, and the
 row, card, or table row it acts on carries `data-reveal-region`:
 `TaskListRow`, `BoardCard`, and each `.result-row` mark themselves.
 

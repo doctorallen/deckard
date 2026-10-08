@@ -12,7 +12,6 @@ header { align-items: flex-start; }
 .board-view-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
 .board-area { margin-top: 12px; }
 .board-area [hidden] { display: none; }
-.task-list .empty { margin-top: 0; }
 /* Above the search box while the board edits what the Tasks view lists: the
    search notice's look, with what to do next said more quietly. */
 .tasks-view-strip > span { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }

@@ -1,7 +1,7 @@
 /**
  * Rows a reader ranks by dragging them, or from their context menu: Move
  * up, Move down, and to either end, so any place in the order is reachable
- * without dragging (WCAG 2.5.7). The Task Board's ranked list and table
+ * without dragging (WCAG 2.5.7). The Task Board's table, in Rank order,
  * and its status columns use them, as do Home's tags and widgets.
  *
  * Listeners sit on the document, so a page may draw its rows freely. A

@@ -25,7 +25,7 @@ Everything Deckard does, one topic to a page. The [README](../../README.md) is t
 
 ## Seeing the whole
 
-- [Task board](task-board.md): tasks as columns by status, priority, due date, person, or tag, or as a list or table.
+- [Task board](task-board.md): tasks as columns by status, priority, due date, person, or tag, or as a table.
 - [Home and Stats](home-and-stats.md): Home's figures and widgets, the Tags tab, and Stats.
 - [AI assistants](ai-assistants.md): Suggest steps, and Deckard's tools for Copilot, Claude Code, and other MCP clients.
 

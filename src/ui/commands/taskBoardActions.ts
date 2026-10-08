@@ -64,7 +64,7 @@ export async function moveTaskToColumn(
 }
 
 /**
- * The task a board column's + Add task starts Add Task on: an empty task
+ * The task a board column's + starts Add Task on: an empty task
  * with the edit the column stands for made to it, so it opens already in
  * the column, its status, priority, due date, person, or tag filled in.
  * A column that names no edit for a new task, such as Done, starts an

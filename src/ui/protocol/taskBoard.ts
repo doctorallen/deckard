@@ -16,7 +16,6 @@ import type { DueParts } from '../../domain/model/tasks';
 import type { Correlated, IndexingMessage, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
-  DashboardTask,
   ExportResultsMessage,
   GoToPageMessage,
   ListGoToMessage,
@@ -139,13 +138,11 @@ export interface TaskBoardSnapshot extends TaskBoardLayout {
   /** The search narrowing the tasks, as every search box shows one. */
   query: QueryViewState;
   layout: TaskLayout;
-  /** The searched tasks as a list, present when `layout` is `list`. */
-  tasks?: DashboardTask[];
   /** The searched tasks as rows and columns, present when `layout` is `table`. */
   table?: TaskTable;
   /**
-   * What each listed task's ⋯ menu checks, by task id, present when `layout`
-   * is `list` or `table`: the menu a board card has, for a row.
+   * What each table row's ⋯ menu checks, by task id, present when `layout`
+   * is `table`: the menu a board card has, for a row.
    */
   taskMenus?: Record<string, TaskMenuState>;
   /** How many searched tasks are open and how many are done. */
@@ -269,7 +266,7 @@ export interface SetTableColumnsMessage {
   columns: TaskColumnId[];
 }
 
-/** Chooses whether the Task Board shows a list, a board, or a table. */
+/** Chooses whether the Task Board shows a board or a table. */
 export interface SetTaskLayoutMessage {
   type: 'setTaskLayout';
   layout: TaskLayout;
@@ -431,7 +428,7 @@ export interface AddTaskMessage {
   type: 'addTask';
 }
 
-/** A column's + Add task: Add Task, the task started in that column. */
+/** A column's +: Add Task, the task started in that column. */
 export interface AddTaskToColumnMessage {
   type: 'addTaskToColumn';
   column: string;

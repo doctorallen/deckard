@@ -42,7 +42,7 @@ import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import { tokenizeInline } from '../../domain/markdown/inline';
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
-import { createDashboardTask, createTaskComparator, sortTasks, withDrawnStatus } from './entryCards';
+import { createTaskComparator, sortTasks, withDrawnStatus } from './entryCards';
 import { createQueryViewState } from './querySuggestions';
 import { compareTasksByColumn, createTaskCells, DEFAULT_TASK_COLUMNS, getTaskColumn, TableTask } from './resultTable';
 import { buildSearchFacets } from '../../domain/search/facets';
@@ -154,7 +154,7 @@ export interface TaskBoardRequest {
 
 /**
  * Builds the Task Board page: the tasks its search finds, as columns or as a
- * list, with the same search box state every search page shows. Only tasks
+ * table, with the same search box state every search page shows. Only tasks
  * are searched, so the box counts and refines tasks alone.
  */
 export function createTaskBoard({
@@ -206,20 +206,12 @@ export function createTaskBoard({
       queryContext: options.queryContext,
     }),
     layout,
-    // Both layouts show what the search found. The board page used to keep
-    // an All/Open/Done switch beside the search box, which only the list
-    // obeyed; a search says the same thing, for both, in one place.
-    tasks:
-      layout === 'list'
-        ? sortTasks(tasks, preferences.taskOrder, preferences.taskSortMode)
-            .map((task) => ({ ...createDashboardTask(task, index.sections, options.queryContext), ...withParentTag(index, task, options, undefined) }))
-        : undefined,
     table:
       layout === 'table'
         ? createTaskTable(tasks, preferences, options)
         : undefined,
     taskMenus:
-      layout === 'board' ? undefined : createTaskMenus(tasks, options),
+      layout === 'table' ? createTaskMenus(tasks, options) : undefined,
     taskCounts: {
       all: tasks.length,
       active: tasks.filter(isOpenTask).length,
@@ -236,9 +228,18 @@ export function createTaskBoard({
 }
 
 /**
+ * Every task the board's search finds, steps folded onto their tasks, in
+ * the board's Sort: what Export writes, whatever the layout shows.
+ */
+export function searchBoardTasks({ index, preferences, search, options }: TaskBoardRequest): Task[] {
+  const tasks = foldSteps(selectTasks(index, search.query, options.queryContext).tasks);
+  return sortTasks(tasks, preferences.taskOrder, preferences.taskSortMode);
+}
+
+/**
  * The searched tasks as a table: the columns chosen, or the defaults, and the
- * rows in the sort chosen, or in the rank order the list has. The cells come
- * from the shared column model, so a query block's table and this one agree.
+ * rows in the sort chosen, or in the rank order. The cells come from the
+ * shared column model, so a query block's table and this one agree.
  */
 export function createTaskTable(
   tasks: readonly Task[],

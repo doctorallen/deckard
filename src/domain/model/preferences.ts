@@ -305,8 +305,8 @@ export interface PinnedNote {
 /** How the task board arranges its columns. */
 export type TaskBoardGroupBy = 'status' | 'priority' | 'due' | 'assignee' | 'tag';
 
-/** Whether the Task Board shows its tasks as a list or as columns. */
-export type TaskLayout = 'list' | 'board' | 'table';
+/** Whether the Task Board shows its tasks as columns or as a table. */
+export type TaskLayout = 'board' | 'table';
 
 /**
  * A table of tasks: the query's results as rows, its fields as columns. The

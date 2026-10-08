@@ -160,7 +160,7 @@ suite('Preferences store', () => {
     await store.display.setDashboardColumns('notes', 2);
     await store.display.setDashboardColumns('tags', 4);
     await store.homeWidgets.setDashboardMode('browse');
-    await store.taskLayout.setTaskBoardLayout('list');
+    await store.taskLayout.setTaskBoardLayout('table');
     await store.taskLayout.setTaskBoardGroup('due');
     await store.homeWidgets.setDashboardSearch('tags', 'atlas');
     await store.usage.recordSectionAccess('section-1');
@@ -183,7 +183,7 @@ suite('Preferences store', () => {
       mode: 'browse',
       tagSearchQuery: 'atlas',
     });
-    assert.strictEqual(store.reader.value.taskBoardLayout, 'list');
+    assert.strictEqual(store.reader.value.taskBoardLayout, 'table');
     assert.strictEqual(store.reader.value.taskBoardGroup, 'due');
     // Every grouping the board offers survives being read back.
     await store.taskLayout.setTaskBoardGroup('assignee');

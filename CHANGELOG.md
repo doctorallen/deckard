@@ -21,9 +21,21 @@
 
 - **The Task board's table ranks.** In Rank order, with no header sorting
   it, drag a table row, right-click it for Move up, Move down, Move to top
-  and Move to bottom, or press Alt+↑ and Alt+↓, as on the ranked list.
+  and Move to bottom, or press Alt+↑ and Alt+↓, as the list's rows were.
   While a header sorts the table, rows don't move; **Sort by rank** goes
   back.
+- **The Task board is Board or Table.** **Board | Table** sits under the
+  search box, beside **Group**, **Sort** and **Can start now**, where the
+  gear's Layout row was. A board you kept as a list opens as the table,
+  which ranks every task in one order as the list did.
+- **Group is one select.** The board's five grouping buttons are one
+  **Group** select: Status, Priority, Due date, Person and **Tag…**, which
+  still opens a menu of the namespaces your open tasks use.
+- **A column's + is an icon in its title.** Each column but Done ends its
+  title with a small **+**, **Add a task to In progress**, in place of the
+  **+ Add task** button under it, and starts Add Task in that column as
+  before. Columns are a little narrower, so Done fits beside the others in
+  a 1400-pixel window.
 - **The palette leaves out what another door does.** Merge Tag… (renaming
   onto a tag that exists already merges), Open Notes Graph Around This Note
   (in Note Actions…), Insert Query Block… (the / menu's Query block),
@@ -199,6 +211,8 @@
 
 ### Removed
 
+- **The Task board's List layout.** The table, which ranks in Rank order,
+  takes its place, and the gear's Layout row goes with it.
 - **Choose Display… and the Display settings.** `Deckard: Choose
   Display…`, the gear's Full, Quiet and Zen buttons with their *N changed ·
   Reset · Customize…* line, and `deckard.display.level`, `themeStyling`,

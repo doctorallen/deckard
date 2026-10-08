@@ -95,7 +95,7 @@ const narrowMoveTask: Narrower<MoveTaskMessage> = (value) => {
   };
 };
 
-/** A column's + Add task: a non-empty column, and nothing else. */
+/** A column's +: a non-empty column, and nothing else. */
 const narrowAddTaskToColumn: Narrower<AddTaskToColumnMessage> = (value) =>
   typeof value.column === 'string' && value.column.length > 0 && Object.keys(value).length === 2
     ? { type: 'addTaskToColumn', column: value.column }
@@ -142,9 +142,9 @@ const narrowSaveToTasksView: Narrower<SaveToTasksViewMessage> = (value) =>
     ? { type: 'saveToTasksView', query: value.query }
     : undefined;
 
-/** A list, a board, or a table. */
+/** A board or a table. */
 const narrowSetTaskLayout: Narrower<SetTaskLayoutMessage> = (value) =>
-  value.layout === 'list' || value.layout === 'board' || value.layout === 'table'
+  value.layout === 'board' || value.layout === 'table'
     ? { type: 'setTaskLayout', layout: value.layout }
     : undefined;
 

@@ -24,12 +24,13 @@ suite('Task Board messages', () => {
     assert.strictEqual(narrowTaskBoardMessage({ type: 'setTableColumns', columns: ['due', 7] }), undefined);
   });
 
-  test('accepts the Task Board’s layout, list, and settings messages', () => {
+  test('accepts the Task Board’s layout, ranking, and settings messages', () => {
     assert.deepStrictEqual(
-      narrowTaskBoardMessage({ type: 'setTaskLayout', layout: 'list' }),
-      { type: 'setTaskLayout', layout: 'list' },
+      narrowTaskBoardMessage({ type: 'setTaskLayout', layout: 'board' }),
+      { type: 'setTaskLayout', layout: 'board' },
     );
     assert.strictEqual(narrowTaskBoardMessage({ type: 'setTaskLayout', layout: 'grid' }), undefined);
+    assert.strictEqual(narrowTaskBoardMessage({ type: 'setTaskLayout', layout: 'list' }), undefined, 'the list layout is gone');
     assert.strictEqual(
       narrowTaskBoardMessage({ type: 'setTaskFilter', filter: 'completed' }),
       undefined,

@@ -1,6 +1,6 @@
 /**
  * The board: the searched tasks as columns of cards, each card with its
- * checkbox and the menu that edits it, and the switch that groups them.
+ * checkbox and the menu that edits it, and the select that groups them.
  */
 import { isBoxChecked, speakBoxStatus, StatusIcon, statusBoxProps } from '../shared/taskBox';
 import { speakProgressText } from '../../domain/tasks/progressCount';
@@ -12,7 +12,7 @@ import type { ActionMenuGroup, ActionMenuItem } from '../shared/actionMenu';
 import { IconButton } from '../shared/buttons';
 import { DueText } from '../shared/dueText';
 import { EmptyState } from '../shared/emptyState';
-import { EllipsisIcon } from '../shared/strokeIcons';
+import { EllipsisIcon, PlusIcon } from '../shared/strokeIcons';
 import { formatSourceLocation, plainTitle, PriorityBadge, TaskDetails, trimHeadingPath } from '../shared/taskRow';
 import { ParentTag } from '../shared/tagButton';
 import { TaskTitle } from '../shared/taskTitle';
@@ -219,7 +219,7 @@ interface ColumnProps {
   readonly columns: readonly TaskBoardColumn[];
 }
 
-/** One column: its title and counts, + Add task, its cards, Show N more, and why it takes no card. */
+/** One column: its title and counts with its +, its cards, Show N more, and why it takes no card. */
 function BoardColumn({ column, cards, columns }: ColumnProps) {
   const count = cards.length + column.hiddenCount;
   // Done and Overdue itself need no count of the overdue. The page counts
@@ -248,18 +248,31 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
       data-symbol={column.symbol}
       aria-label={described.name}
     >
-      <h2 class="board-column-title">
-        <span class="board-column-label">
-          {column.label}
-          {/* The status's character, said once, in the column's name. */}
-          {column.symbol === undefined ? null : <span key="symbol" class="board-column-symbol" aria-hidden="true">{`[${column.symbol}]`}</span>}
-        </span>
-        <span class="board-count">{described.count}</span>
-      </h2>
-      {/* A column that takes a drop takes a new task the same way, from under its title. */}
-      {column.droppable && column.id !== 'done'
-        ? <button key="add" type="button" class="board-add" data-action="board-add-task" data-column-id={column.id} data-tip={`Add a task already in ${column.label}`}>+ Add task</button>
-        : null}
+      <div class="board-column-head">
+        <h2 class="board-column-title">
+          <span class="board-column-label">
+            {column.label}
+            {/* The status's character, said once, in the column's name. */}
+            {column.symbol === undefined ? null : <span key="symbol" class="board-column-symbol" aria-hidden="true">{`[${column.symbol}]`}</span>}
+          </span>
+          <span class="board-count">{described.count}</span>
+        </h2>
+        {/* A column that takes a drop takes a new task the same way, from
+            its head: the one way to add a task into a column in one step,
+            since the board has no key for it. Done takes none. */}
+        {column.droppable && column.id !== 'done'
+          ? (
+            <IconButton
+              key="add"
+              action="board-add-task"
+              className="board-add"
+              label={`Add a task to ${column.label}`}
+              icon={<PlusIcon />}
+              attributes={{ 'data-column-id': column.id }}
+            />
+          )
+          : null}
+      </div>
       <ColumnCards key="cards" column={column} cards={cards} columns={columns} />
       {column.hiddenCount ? <p key="more" class="board-more"><button data-action="show-column-rest" data-column-id={column.id}>{`Show ${column.hiddenCount} more`}</button></p> : null}
       {/* One that does not take a drop says so while a card is dragged, and where to go instead. */}
@@ -314,37 +327,37 @@ function ColumnCards({ column, cards, columns }: { readonly column: TaskBoardCol
   );
 }
 
-/** The Status, Priority, Due date, Person, and Tag… switch above the board. */
-export function GroupSwitch({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
-  const groupBy = snapshot.groupBy;
+/** The groupings the Group select offers before Tag…, by the value each sends. */
+const GROUPINGS = [['status', 'Status'], ['priority', 'Priority'], ['due', 'Due date'], ['assignee', 'Person']] as const;
+
+/**
+ * The Group select above the board: Status, Priority, Due date, Person, the
+ * tag namespace the board is grouped by, if any, and Tag…, which opens a
+ * menu of the namespaces in use, as the five buttons it replaces did.
+ */
+export function GroupSelect({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   const namespace = snapshot.groupNamespace;
-  const namespaces = snapshot.tagNamespaces || [];
-  const byTag = groupBy === 'tag' && Boolean(namespace);
-  const none = namespaces.length === 0 && !byTag;
-  let tip: string | undefined;
-  if (!none) {
-    tip = byTag ? `Grouped by #${namespace}/… tags. Choose another namespace` : 'Group by the tags in one namespace, such as #project/… or #context/…';
+  const byTag = snapshot.groupBy === 'tag' && Boolean(namespace);
+  const others = (snapshot.tagNamespaces || []).filter((candidate) => candidate.name !== namespace);
+  let current: string = byTag ? 'tag' : snapshot.groupBy;
+  if (!byTag && current === 'tag') {
+    current = 'status';
   }
   return (
-    <div class="segmented task-board-group" role="group" aria-label="Group tasks by">
-      {([['status', 'Status'], ['priority', 'Priority'], ['due', 'Due date'], ['assignee', 'Person']] as const).map(([value, label]) => {
-        const active = value === groupBy;
-        return <button type="button" class={active ? 'active' : ''} data-action="set-board-group" data-group={value} aria-pressed={active}>{label}</button>;
-      })}
-      {/* Tag… is a menu of the namespaces in use, and names the one chosen. */}
-      <button
-        type="button"
-        class={byTag ? 'active' : ''}
-        data-action="pick-board-namespace"
-        aria-haspopup="menu"
-        aria-expanded="false"
-        aria-pressed={byTag}
-        aria-disabled={none ? 'true' : undefined}
-        data-tip-disabled={none ? 'No open task carries a namespaced tag such as #context/phone yet' : undefined}
-        data-tip={tip}
+    <label class="control-label">
+      Group:
+      <select
+        class="task-board-group"
+        data-action="set-board-group"
+        data-current={current}
+        aria-label="Group tasks by"
+        data-tip="Group the columns by status, priority, due date, person, or the tags of one namespace, such as #project/… or #context/…"
       >
-        {byTag ? `#${namespace}` : 'Tag…'}
-      </button>
-    </div>
+        {GROUPINGS.map(([value, label]) => <option key={value} value={value} selected={current === value}>{label}</option>)}
+        {byTag ? <option key="tag" value="tag" selected={true}>{`#${namespace}`}</option> : null}
+        {/* Tag… is a menu of the namespaces in use, but the one chosen. */}
+        <option key="pick" value="pick-namespace" disabled={others.length === 0}>Tag…</option>
+      </select>
+    </label>
   );
 }

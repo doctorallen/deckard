@@ -272,12 +272,12 @@ test('a card\'s menu has a Note group with Move to…, which asks the host', asy
   }
 });
 
-test('a list row and a table row have the card\'s menu, which checks where the task is', async () => {
+test('a table row has the card\'s menu, which checks where the task is', async () => {
   const { view, panel } = await openBoard(async (store) => {
-    await store.taskLayout.setTaskBoardLayout('list');
+    await store.taskLayout.setTaskBoardLayout('table');
   });
-  const row = view.find('.task-list .task-row[data-task-id="audit"]');
-  assert.ok(row, 'the board opened as a list');
+  const row = view.find('.result-table .result-row[data-task-id="audit"]');
+  assert.ok(row, 'the board opened as a table');
   view.click(row.querySelector('[data-action="task-row-menu"]'));
   assert.strictEqual(
     view.find('#action-menu [data-menu-value="priority:"]').getAttribute('aria-checked'),
@@ -289,10 +289,9 @@ test('a list row and a table row have the card\'s menu, which checks where the t
   assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'moveTask', taskId: 'audit', column: 'due:today', requestId: 1 });
   assert.strictEqual(view.find('#action-menu').hidden, true, 'the menu closes on a choice');
 
-  view.click(view.find('[data-action="set-task-layout"][data-value="table"]'));
   await delay(10);
   const tableRow = view.find('.result-table .result-row[data-task-id="room"]');
-  assert.ok(tableRow, 'the board is a table');
+  assert.ok(tableRow, 'another row');
   const deliver = panel._onWebviewMessage;
   panel._onWebviewMessage = () => undefined;
   try {
@@ -364,7 +363,8 @@ test('a card says how far along its steps are, and a plain step rides on it', as
 test('a column that takes a card takes a new task, and a menu offers any date', async () => {
   const { view } = await openBoard();
   const add = view.find('[data-action="board-add-task"]');
-  assert.ok(add, 'a column that takes a drop has + Add task');
+  assert.ok(add, 'a column that takes a drop has its +');
+  assert.strictEqual(add.getAttribute('aria-label'), `Add a task to ${add.closest('.board-column').dataset.label}`);
   vscode._test.executedCommands.length = 0;
   view.click(add);
   assert.deepStrictEqual(view.posted[view.posted.length - 1], { type: 'addTaskToColumn', column: add.dataset.columnId });
@@ -611,27 +611,25 @@ test('a search that does not parse keeps the board and says why', async () => {
   assert.deepStrictEqual(cards(), ['audit', 'call'], 'the last search still applies');
 });
 
-test('the gear switches between columns and a list, and stays open', async () => {
+test('Board | Table switches the layout, and the table ranks while in Rank order', async () => {
   const { view, preferences } = await openBoard();
-  const gear = view.find('.view-options');
-  assert.ok(gear, 'the board has the shared gear');
-  assert.ok(view.find('.view-options summary .settings-icon'));
-  // A browser reflects an open menu in its open attribute.
-  view.find('.view-options').setAttribute('open', '');
+  assert.strictEqual(view.find('.view-options [data-action="set-task-layout"]'), null, 'the gear no longer holds the layout');
+  assert.ok(view.find('.query-status select[data-action="set-board-group"]'), 'the board groups from one select');
 
-  view.click(view.find('[data-action="set-task-layout"][data-value="list"]'));
+  view.click(view.find('.query-status [data-action="set-task-layout"][data-value="table"]'));
   await delay(10);
-  assert.strictEqual(preferences.reader.value.taskBoardLayout, 'list');
-  assert.strictEqual(view.find('.view-options').open, true, 'the menu stays open for another choice');
-  view.find('.view-options').setAttribute('open', '');
+  assert.strictEqual(preferences.reader.value.taskBoardLayout, 'table');
   assert.strictEqual(view.find('.task-board'), null);
-  // The list starts on open tasks, with the counts of each filter.
-  assert.deepStrictEqual(
-    view.findAll('.task-list .task-row').map((row) => row.dataset.taskId).sort(),
-    ['audit', 'call', 'room'],
-  );
-  assert.ok(view.find('[data-action="set-task-sort"]'), 'the list can be sorted');
-  assert.ok(view.find('.task-list .task-row.is-draggable'), 'ranked rows can be dragged');
+  const rows = () => view.findAll('.result-table .result-row').map((row) => row.dataset.taskId);
+  assert.deepStrictEqual(rows().slice().sort(), ['audit', 'call', 'room'], 'the open tasks the search found');
+  assert.ok(view.find('.result-table .result-row.is-draggable'), 'in Rank order, rows can be dragged');
+
+  // Alt+Down ranks a row one place down, whatever the board's Sort.
+  const before = rows();
+  view.fire('keydown', view.find(`.result-table .result-row[data-task-id="${before[0]}"]`), { key: 'ArrowDown', altKey: true });
+  await delay(10);
+  assert.deepStrictEqual(preferences.reader.value.taskOrder.slice(0, 2), [before[1], before[0]], 'the rank is kept');
+  assert.deepStrictEqual(rows().slice(0, 2), [before[1], before[0]], 'and the table draws it');
 
   // There is no All/Open/Done switch here: the board's search is its filter,
   // so finished tasks are asked for the same way as anything else.
@@ -642,28 +640,23 @@ test('the gear switches between columns and a list, and stays open', async () =>
   view.type(bar(), 'is:done');
   view.keydown(bar(), 'Enter');
   await delay(10);
-  assert.deepStrictEqual(view.findAll('.task-list .task-row').map((row) => row.dataset.taskId), ['ship']);
-  view.find('.view-options').setAttribute('open', '');
+  assert.deepStrictEqual(rows(), ['ship']);
 
-  view.change(view.find('[data-action="set-task-sort"]'), 'created');
+  // A header sort holds the rows where it puts them.
+  view.click(view.find('[data-action="set-table-sort"][data-value="due"]'));
   await delay(10);
-  assert.strictEqual(preferences.reader.value.taskSortMode, 'created');
-  assert.strictEqual(view.find('.task-list .task-row.is-draggable'), null, 'a date sort is not dragged');
+  assert.strictEqual(view.find('.result-table .result-row.is-draggable'), null, 'a header sort is not dragged');
+  assert.ok(view.findAll('[data-action="set-table-sort"]').find((button) => !button.dataset.value), 'Sort by rank is the way back');
 
-  // A click outside the menu closes it.
-  view.click(view.find('h1'));
-  assert.strictEqual(view.find('.view-options').open, false);
-
-  view.click(view.find('[data-action="set-task-layout"][data-value="board"]'));
+  view.click(view.find('.query-status [data-action="set-task-layout"][data-value="board"]'));
   await delay(10);
   assert.ok(view.find('.task-board'), 'the board is back');
   assert.ok(view.find('[data-action="set-board-group"]'), 'with its grouping');
 });
 
-test('the gear turns the board into a table, whose headers sort and whose columns are chosen', async () => {
+test('Table turns the board into a table, whose headers sort and whose columns are chosen', async () => {
   const { view, preferences } = await openBoard();
-  view.find('.view-options').setAttribute('open', '');
-  view.click(view.find('[data-action="set-task-layout"][data-value="table"]'));
+  view.click(view.find('.query-status [data-action="set-task-layout"][data-value="table"]'));
   await delay(10);
   assert.strictEqual(preferences.reader.value.taskBoardLayout, 'table');
   assert.ok(view.find('.result-table'), 'the tasks are a table now');

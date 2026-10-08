@@ -1,7 +1,7 @@
 /**
- * The Task Board's other two layouts, a ranked list and a table, the
- * controls under its search box and in its gear, and what it draws while it
- * edits what the Tasks view lists.
+ * The Task Board's other layout, a table, the controls under its search box
+ * and in its gear, and what it draws while it edits what the Tasks view
+ * lists.
  */
 import { describeBox, statusBoxProps } from '../shared/taskBox';
 import { TASK_SORT_LABELS } from '../../domain/model/sortOrders';
@@ -10,10 +10,10 @@ import { IconButton } from '../shared/buttons';
 import { EmptyState } from '../shared/emptyState';
 import { Inline } from '../shared/inline';
 import { EllipsisIcon, SortIcon } from '../shared/strokeIcons';
-import { plainTitle, TaskListRow } from '../shared/taskRow';
+import { plainTitle } from '../shared/taskRow';
 import { board } from './model';
 
-/** A list or table row's ⋯, which opens the menu a board card has. */
+/** A table row's ⋯, which opens the menu a board card has. */
 function RowMenuButton({ taskId, title }: { readonly taskId: string; readonly title: string }) {
   return (
     <IconButton
@@ -28,45 +28,18 @@ function RowMenuButton({ taskId, title }: { readonly taskId: string; readonly ti
 }
 
 /**
- * Whether the list or the table can be ranked now: a list ordered by rank,
- * or a table in Rank order, with no header sorting it, as the board ranks
- * only while sorted by Rank.
+ * Whether the table can be ranked now: it is in Rank order, with no header
+ * sorting it, as the board ranks only while sorted by Rank.
  */
 export function canRank(snapshot: TaskBoardSnapshot | undefined): boolean {
-  if (!snapshot) {
-    return false;
-  }
-  if (snapshot.layout === 'table') {
-    return Boolean(snapshot.table) && !snapshot.table?.sort;
-  }
-  return snapshot.layout === 'list' && snapshot.taskSortMode === 'rank';
+  return snapshot?.layout === 'table' && Boolean(snapshot.table) && !snapshot.table?.sort;
 }
 
-/** What the list or the table says with no tasks: that none match, or none are written yet, and how to write one. */
+/** What the table says with no tasks: that none match, or none are written yet, and how to write one. */
 function NoTasks({ snapshot, teach }: { readonly snapshot: TaskBoardSnapshot; readonly teach: string }) {
   return snapshot.taskCount
     ? <EmptyState as="div" state="No tasks match this search." />
     : <EmptyState as="div" state="No tasks yet." teach={teach} />;
-}
-
-/** The searched tasks as a ranked list, each row with the menu a card has. */
-export function TaskList({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
-  const tasks = snapshot.tasks || [];
-  const draggable = canRank(snapshot);
-  return (
-    <div key={`list-${board.generation}`} class="task-list">
-      {tasks.length
-        ? tasks.map((item) => (
-          <TaskListRow
-            key={item.task.id}
-            item={item}
-            draggable={draggable}
-            trailing={<RowMenuButton taskId={item.task.id} title={plainTitle(item.titleTokens) || item.task.title} />}
-          />
-        ))
-        : <NoTasks snapshot={snapshot} teach={'Write "- [ ] something" in a note, or choose Add task. The character in a task\'s box, as [/] for In progress, puts it in a column.'} />}
-    </div>
-  );
 }
 
 /**
@@ -82,7 +55,7 @@ export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot
   // The title is the column the reader cannot leave out, wherever the
   // columns put it; the checkbox and the menu are named by it.
   const titleAt = table.columns.findIndex((column) => column.id === 'title');
-  // In Rank order a row is ranked by dragging it, as a ranked list's is.
+  // In Rank order a row is ranked by dragging it.
   const draggable = canRank(snapshot);
   return (
     <table key={`table-${board.generation}`} class="result-table" aria-label="Tasks">
@@ -109,7 +82,9 @@ export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot
       </thead>
       <tbody>
         {table.rows.map((row) => {
-          const title = row.cells[titleAt] ? row.cells[titleAt].text : '';
+          // Named by the title as it reads, not its Markdown.
+          const titleCell = row.cells[titleAt];
+          const title = titleCell ? (titleCell.tokens && plainTitle(titleCell.tokens)) || titleCell.text : '';
           return (
             <tr key={row.taskId} class={['result-row', row.completed ? 'completed' : '', row.status?.type === 'cancelled' ? 'cancelled' : '', draggable ? 'is-draggable' : ''].filter(Boolean).join(' ')} tabIndex={0} data-reveal-region="" data-task-id={row.taskId} data-file-path={row.filePath} data-line={row.line}>
               <td class="result-check"><input type="checkbox" data-action="toggle-task" data-task-id={row.taskId} {...statusBoxProps(row.completed, row.status)} aria-label={describeBox(title, row.status)} /></td>
@@ -143,7 +118,7 @@ export function TableSortNote({ snapshot }: { readonly snapshot: TaskBoardSnapsh
   );
 }
 
-/** Under the search box while the list or the board is shown: how tasks are ordered, in a list or within each column. */
+/** Under the search box while the board is shown: how cards are ordered within each column. */
 export function SortControl({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   return (
     <label class="control-label">
@@ -157,6 +132,21 @@ export function SortControl({ snapshot }: { readonly snapshot: TaskBoardSnapshot
         <SortIcon />
       </span>
     </label>
+  );
+}
+
+/**
+ * Board | Table, under the search box: the board's columns of cards, or the
+ * table, whose rows rank in Rank order.
+ */
+export function LayoutSwitch({ layout }: { readonly layout: TaskBoardSnapshot['layout'] }) {
+  return (
+    <div class="segmented task-layout" role="group" aria-label="Task layout">
+      {([['board', 'Board', 'Tasks as columns of cards'], ['table', 'Table', 'Tasks as rows, with the columns you choose']] as const).map(([value, label, tip]) => {
+        const active = value === layout;
+        return <button key={value} type="button" class={active ? 'active' : undefined} data-action="set-task-layout" data-value={value} aria-pressed={active} data-tip={tip}>{label}</button>;
+      })}
+    </div>
   );
 }
 

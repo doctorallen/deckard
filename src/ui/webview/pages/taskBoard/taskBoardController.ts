@@ -29,8 +29,8 @@ import { normalizeAgendaQuery } from '../../../state/agendaState';
 import { rankShown } from '../../../../domain/tasks/taskRank';
 import { DEFAULT_HIDDEN_COLUMNS } from '../../../../domain/tasks/statusColumns';
 import { normalizeStatusName } from '../../../../domain/tasks/taskStatuses';
-import { formatQueryBlock, queryBlockSortOf, QueryBlockWriteOptions } from '../../../state/queryBlockState';
-import { createTaskBoard } from '../../../state/taskBoardState';
+import { formatQueryBlock, QueryBlockWriteOptions } from '../../../state/queryBlockState';
+import { createTaskBoard, searchBoardTasks } from '../../../state/taskBoardState';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import {
@@ -421,8 +421,8 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       setTableColumns: (message) => taskLayout.setTaskTableColumns(message.columns),
       reorderTasks: async (message) => {
         const index = this.board.indexer.getSnapshot();
-        // The board and the list rank under the Rank sort, and the table
-        // in Rank order, with no header sorting it.
+        // The board ranks under the Rank sort, and the table in Rank order,
+        // with no header sorting it.
         const preferences = reader.value;
         const tableRanked = preferences.taskBoardLayout === 'table' && !preferences.taskTableSort;
         if (preferences.taskSortMode === 'rank' || tableRanked) {
@@ -557,21 +557,17 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   }
 
   /**
-   * Exports every task the search found, whatever the layout shows: the
-   * list layout with no Done limit is the board as a plain list.
+   * Exports every task the search found, whatever the layout shows, with
+   * no Done limit, in the board's Sort.
    */
   private async exportTasks(): Promise<void> {
-    const index = this.board.indexer.getSnapshot();
-    const board = createTaskBoard({
-      index,
-      preferences: { ...this.board.preferences.reader.value, taskBoardLayout: 'list' },
-      search: { query: this.query, invalidQuery: this.invalidQuery },
-      options: { ...readTaskBoardOptions(readQueryContext()), doneLimit: Number.MAX_SAFE_INTEGER },
+    const tasks = searchBoardTasks({
+      index: this.board.indexer.getSnapshot(),
+      preferences: this.board.preferences.reader.value,
+      search: { query: this.query },
+      options: readTaskBoardOptions(readQueryContext()),
     });
-    const plan = this.board.exports.fromResults('tasks', {
-      tasks: (board.tasks ?? []).map((item) => item.task),
-      sections: [],
-    });
+    const plan = this.board.exports.fromResults('tasks', { tasks, sections: [] });
     // The live block keeps the board's layout, sort, and columns.
     const search = this.query.trim();
     await presentExport(
@@ -669,9 +665,9 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   }
 
   /**
-   * How the board is laid out, as a query block's options: a list sorted by
-   * date keeps that sort, a table its columns and sorted column, and the
-   * board's columns have no block of their own.
+   * How the board is laid out, as a query block's options: a table keeps
+   * its columns and sorted column, and the board's columns have no block of
+   * their own.
    */
   private queryBlockOptions(): QueryBlockWriteOptions {
     const preferences = this.board.preferences.reader.value;
@@ -683,7 +679,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         ...(sort ? { sort: sort.column, direction: sort.direction } : {}),
       };
     }
-    return preferences.taskBoardLayout === 'list' ? queryBlockSortOf(preferences.taskSortMode, 'tasks') : {};
+    return {};
   }
 
   /**

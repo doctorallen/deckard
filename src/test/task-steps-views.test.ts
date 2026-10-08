@@ -6,7 +6,7 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { createPreferences } from './preferenceServices';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createAgenda } from '../ui/state/agendaState';
-import { createTaskBoard, TaskBoardOptions } from '../ui/state/taskBoardState';
+import { createTaskBoard, searchBoardTasks, TaskBoardOptions } from '../ui/state/taskBoardState';
 import { AgendaNode, AgendaTreeProvider } from '../ui/views/agendaTree';
 import { openWebviewPage, shownText } from './webviewPage';
 import { renderPage } from './pages';
@@ -86,11 +86,10 @@ suite('Steps in the views', () => {
     ]);
     const plan = cards.find((card) => card.title === 'Plan the offsite');
     assert.deepStrictEqual(plan?.steps, { label: 'Steps 1/4 done (25%)', next: 'Draft the email' });
-    const list = createTaskBoard({ index, preferences: preferencesWith({ taskBoardLayout: 'list' }), search: { query: 'is:open' }, options });
-    assert.strictEqual(list.tasks?.length, 4);
-    assert.strictEqual(list.taskCounts.all, 4);
+    assert.strictEqual(searchBoardTasks({ index, preferences: preferencesWith({}), search: { query: 'is:open' }, options }).length, 4, 'and Export');
     const table = createTaskBoard({ index, preferences: preferencesWith({ taskBoardLayout: 'table' }), search: { query: 'is:open' }, options });
     assert.strictEqual(table.table?.rows.length, 4);
+    assert.strictEqual(table.taskCounts.all, 4);
   });
 
   test('a search page does not fold: it lists what it found, and rows say how far along', () => {

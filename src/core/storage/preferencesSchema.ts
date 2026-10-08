@@ -148,7 +148,7 @@ const COLUMN_COUNTS: readonly DashboardColumnCount[] = [1, 2, 3, 4];
 const TAG_OVERVIEW_LAYOUTS: readonly TagOverviewLayout[] = ['tabs', 'split'];
 const SEARCH_PREVIEWS: readonly SearchPreview[] = ['none', 'lines', 'full'];
 const RELATED_NOTES_SORT_MODES: readonly RelatedNotesSortMode[] = ['newest', 'oldest', 'tags', 'access'];
-const TASK_LAYOUTS: readonly TaskLayout[] = ['list', 'board', 'table'];
+const TASK_LAYOUTS: readonly TaskLayout[] = ['board', 'table'];
 const WIDGET_WIDTHS: readonly DashboardWidgetWidth[] = ['half', 'full'];
 
 /**
@@ -373,7 +373,9 @@ function normalizeTaskBoard(
   const order = normalizeStatusNames(source.taskBoardColumnOrder);
   const hidden = normalizeStatusNames(source.taskBoardHiddenColumns);
   return {
-    taskBoardLayout: oneOf(source.taskBoardLayout, TASK_LAYOUTS, 'board'),
+    // The list layout is gone; the table, which ranks in Rank order as the
+    // list did, takes its place.
+    taskBoardLayout: (source.taskBoardLayout as unknown) === 'list' ? 'table' : oneOf(source.taskBoardLayout, TASK_LAYOUTS, 'board'),
     taskTableColumns: normalizeTableColumns(source.taskTableColumns),
     taskTableSort: normalizeTableSort(source.taskTableSort),
     taskBoardGroup: oneOf(source.taskBoardGroup, namespace ? BOARD_GROUPS : BOARD_GROUPS_WITHOUT_TAG, 'status'),

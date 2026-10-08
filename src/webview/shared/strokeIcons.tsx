@@ -36,6 +36,15 @@ export function EllipsisIcon() {
   );
 }
 
+/** A plus: a control that adds an entry where it stands. */
+export function PlusIcon() {
+  return (
+    <StrokeIcon>
+      <path d="M8 3.5v9M3.5 8h9" />
+    </StrokeIcon>
+  );
+}
+
 /** A check: a menu's single choice, where the entry is now. */
 export function CheckIcon() {
   return (

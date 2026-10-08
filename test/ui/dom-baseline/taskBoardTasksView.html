@@ -70,35 +70,6 @@
           ><div
               class="view-options-group"
             ><span
-              >Layout</span
-              ><div
-                aria-label="Task layout"
-                class="segmented view-options-choices"
-                role="group"
-              ><button
-                  aria-pressed="false"
-                  data-action="set-task-layout"
-                  data-value="list"
-                  type="button"
-                >List</button
-                ><button
-                  aria-pressed="true"
-                  class="active"
-                  data-action="set-task-layout"
-                  data-value="board"
-                  type="button"
-                >Board</button
-                ><button
-                  aria-pressed="false"
-                  data-action="set-task-layout"
-                  data-value="table"
-                  type="button"
-                >Table</button
-                ></div
-              ></div
-            ><div
-              class="view-options-group"
-            ><span
               >Tasks view</span
               ><button
                 aria-pressed="false"
@@ -505,43 +476,56 @@
           > Press / to search.</span
           ></span
         ><div
-          aria-label="Group tasks by"
-          class="segmented task-board-group"
+          aria-label="Task layout"
+          class="segmented task-layout"
           role="group"
         ><button
             aria-pressed="true"
             class="active"
-            data-action="set-board-group"
-            data-group="status"
+            data-action="set-task-layout"
+            data-tip="Tasks as columns of cards"
+            data-value="board"
             type="button"
-          >Status</button
+          >Board</button
           ><button
             aria-pressed="false"
-            data-action="set-board-group"
-            data-group="priority"
+            data-action="set-task-layout"
+            data-tip="Tasks as rows, with the columns you choose"
+            data-value="table"
             type="button"
-          >Priority</button
-          ><button
-            aria-pressed="false"
-            data-action="set-board-group"
-            data-group="due"
-            type="button"
-          >Due date</button
-          ><button
-            aria-pressed="false"
-            data-action="set-board-group"
-            data-group="assignee"
-            type="button"
-          >Person</button
-          ><button
-            aria-expanded="false"
-            aria-haspopup="menu"
-            aria-pressed="false"
-            data-action="pick-board-namespace"
-            data-tip="Group by the tags in one namespace, such as #project/… or #context/…"
-            type="button"
-          >Tag…</button
+          >Table</button
           ></div
+        ><label
+          class="control-label"
+        >Group:<select
+            aria-label="Group tasks by"
+            class="task-board-group"
+            data-action="set-board-group"
+            data-current="status"
+            data-dom-value="status"
+            data-tip="Group the columns by status, priority, due date, person, or the tags of one namespace, such as #project/… or #context/…"
+          ><option
+              data-dom-selected="true"
+              data-dom-value="status"
+            >Status</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="priority"
+            >Priority</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="due"
+            >Due date</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="assignee"
+            >Person</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="pick-namespace"
+            >Tag…</option
+            ></select
+          ></label
         ><label
           class="control-label"
         >Sort:<span
@@ -792,26 +776,44 @@
           data-hidden-count="0"
           data-label="Todo"
           data-symbol=" "
-        ><h2
-            class="board-column-title"
-          ><span
-              class="board-column-label"
-            >Todo<span
-                aria-hidden="true"
-                class="board-column-symbol"
-              >[ ]</span
-              ></span
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
             ><span
-              class="board-count"
-            >13</span
-            ></h2
-          ><button
-            class="board-add"
-            data-action="board-add-task"
-            data-column-id="status:todo"
-            data-tip="Add a task already in Todo"
-            type="button"
-          >+ Add task</button
+                class="board-column-label"
+              >Todo<span
+                  aria-hidden="true"
+                  class="board-column-symbol"
+                >[ ]</span
+                ></span
+              ><span
+                class="board-count"
+              >13</span
+              ></h2
+            ><button
+              aria-label="Add a task to Todo"
+              class="board-add icon-button"
+              data-action="board-add-task"
+              data-column-id="status:todo"
+              data-tip="Add a task to Todo"
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><path
+                  d="M8 3.5v9M3.5 8h9"
+                ></path
+                ></svg
+              ></button
+            ></div
           ><div
             aria-label="Todo"
             class="board-cards"
@@ -2030,26 +2032,44 @@
           data-hidden-count="0"
           data-label="In progress"
           data-symbol="/"
-        ><h2
-            class="board-column-title"
-          ><span
-              class="board-column-label"
-            >In progress<span
-                aria-hidden="true"
-                class="board-column-symbol"
-              >[/]</span
-              ></span
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
             ><span
-              class="board-count"
-            >40 · 6 overdue</span
-            ></h2
-          ><button
-            class="board-add"
-            data-action="board-add-task"
-            data-column-id="status:in-progress"
-            data-tip="Add a task already in In progress"
-            type="button"
-          >+ Add task</button
+                class="board-column-label"
+              >In progress<span
+                  aria-hidden="true"
+                  class="board-column-symbol"
+                >[/]</span
+                ></span
+              ><span
+                class="board-count"
+              >40 · 6 overdue</span
+              ></h2
+            ><button
+              aria-label="Add a task to In progress"
+              class="board-add icon-button"
+              data-action="board-add-task"
+              data-column-id="status:in-progress"
+              data-tip="Add a task to In progress"
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><path
+                  d="M8 3.5v9M3.5 8h9"
+                ></path
+                ></svg
+              ></button
+            ></div
           ><div
             aria-label="In progress"
             class="board-cards"
@@ -6319,26 +6339,44 @@
           data-hidden-count="0"
           data-label="Waiting"
           data-symbol="w"
-        ><h2
-            class="board-column-title"
-          ><span
-              class="board-column-label"
-            >Waiting<span
-                aria-hidden="true"
-                class="board-column-symbol"
-              >[w]</span
-              ></span
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
             ><span
-              class="board-count"
-            >0</span
-            ></h2
-          ><button
-            class="board-add"
-            data-action="board-add-task"
-            data-column-id="status:waiting"
-            data-tip="Add a task already in Waiting"
-            type="button"
-          >+ Add task</button
+                class="board-column-label"
+              >Waiting<span
+                  aria-hidden="true"
+                  class="board-column-symbol"
+                >[w]</span
+                ></span
+              ><span
+                class="board-count"
+              >0</span
+              ></h2
+            ><button
+              aria-label="Add a task to Waiting"
+              class="board-add icon-button"
+              data-action="board-add-task"
+              data-column-id="status:waiting"
+              data-tip="Add a task to Waiting"
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><path
+                  d="M8 3.5v9M3.5 8h9"
+                ></path
+                ></svg
+              ></button
+            ></div
           ><div
             class="board-cards"
           ><p
@@ -6357,26 +6395,44 @@
           data-hidden-count="0"
           data-label="Someday"
           data-symbol="s"
-        ><h2
-            class="board-column-title"
-          ><span
-              class="board-column-label"
-            >Someday<span
-                aria-hidden="true"
-                class="board-column-symbol"
-              >[s]</span
-              ></span
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
             ><span
-              class="board-count"
-            >0</span
-            ></h2
-          ><button
-            class="board-add"
-            data-action="board-add-task"
-            data-column-id="status:someday"
-            data-tip="Add a task already in Someday"
-            type="button"
-          >+ Add task</button
+                class="board-column-label"
+              >Someday<span
+                  aria-hidden="true"
+                  class="board-column-symbol"
+                >[s]</span
+                ></span
+              ><span
+                class="board-count"
+              >0</span
+              ></h2
+            ><button
+              aria-label="Add a task to Someday"
+              class="board-add icon-button"
+              data-action="board-add-task"
+              data-column-id="status:someday"
+              data-tip="Add a task to Someday"
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><path
+                  d="M8 3.5v9M3.5 8h9"
+                ></path
+                ></svg
+              ></button
+            ></div
           ><div
             class="board-cards"
           ><p
@@ -6395,26 +6451,44 @@
           data-hidden-count="0"
           data-label="Blocked"
           data-symbol="="
-        ><h2
-            class="board-column-title"
-          ><span
-              class="board-column-label"
-            >Blocked<span
-                aria-hidden="true"
-                class="board-column-symbol"
-              >[=]</span
-              ></span
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
             ><span
-              class="board-count"
-            >0</span
-            ></h2
-          ><button
-            class="board-add"
-            data-action="board-add-task"
-            data-column-id="status:blocked"
-            data-tip="Add a task already in Blocked"
-            type="button"
-          >+ Add task</button
+                class="board-column-label"
+              >Blocked<span
+                  aria-hidden="true"
+                  class="board-column-symbol"
+                >[=]</span
+                ></span
+              ><span
+                class="board-count"
+              >0</span
+              ></h2
+            ><button
+              aria-label="Add a task to Blocked"
+              class="board-add icon-button"
+              data-action="board-add-task"
+              data-column-id="status:blocked"
+              data-tip="Add a task to Blocked"
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><path
+                  d="M8 3.5v9M3.5 8h9"
+                ></path
+                ></svg
+              ></button
+            ></div
           ><div
             class="board-cards"
           ><p
@@ -6433,19 +6507,22 @@
           data-hidden-count="0"
           data-label="Done"
           data-symbol="x"
-        ><h2
-            class="board-column-title"
-          ><span
-              class="board-column-label"
-            >Done<span
-                aria-hidden="true"
-                class="board-column-symbol"
-              >[x]</span
-              ></span
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
             ><span
-              class="board-count"
-            >1</span
-            ></h2
+                class="board-column-label"
+              >Done<span
+                  aria-hidden="true"
+                  class="board-column-symbol"
+                >[x]</span
+                ></span
+              ><span
+                class="board-count"
+              >1</span
+              ></h2
+            ></div
           ><div
             aria-label="Done"
             class="board-cards"

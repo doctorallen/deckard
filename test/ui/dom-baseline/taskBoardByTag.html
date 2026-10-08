@@ -70,35 +70,6 @@
           ><div
               class="view-options-group"
             ><span
-              >Layout</span
-              ><div
-                aria-label="Task layout"
-                class="segmented view-options-choices"
-                role="group"
-              ><button
-                  aria-pressed="false"
-                  data-action="set-task-layout"
-                  data-value="list"
-                  type="button"
-                >List</button
-                ><button
-                  aria-pressed="true"
-                  class="active"
-                  data-action="set-task-layout"
-                  data-value="board"
-                  type="button"
-                >Board</button
-                ><button
-                  aria-pressed="false"
-                  data-action="set-task-layout"
-                  data-value="table"
-                  type="button"
-                >Table</button
-                ></div
-              ></div
-            ><div
-              class="view-options-group"
-            ><span
               >Tasks view</span
               ><button
                 aria-pressed="false"
@@ -468,43 +439,60 @@
           > Press / to search.</span
           ></span
         ><div
-          aria-label="Group tasks by"
-          class="segmented task-board-group"
+          aria-label="Task layout"
+          class="segmented task-layout"
           role="group"
         ><button
-            aria-pressed="false"
-            data-action="set-board-group"
-            data-group="status"
-            type="button"
-          >Status</button
-          ><button
-            aria-pressed="false"
-            data-action="set-board-group"
-            data-group="priority"
-            type="button"
-          >Priority</button
-          ><button
-            aria-pressed="false"
-            data-action="set-board-group"
-            data-group="due"
-            type="button"
-          >Due date</button
-          ><button
-            aria-pressed="false"
-            data-action="set-board-group"
-            data-group="assignee"
-            type="button"
-          >Person</button
-          ><button
-            aria-expanded="false"
-            aria-haspopup="menu"
             aria-pressed="true"
             class="active"
-            data-action="pick-board-namespace"
-            data-tip="Grouped by #project/… tags. Choose another namespace"
+            data-action="set-task-layout"
+            data-tip="Tasks as columns of cards"
+            data-value="board"
             type="button"
-          >#project</button
+          >Board</button
+          ><button
+            aria-pressed="false"
+            data-action="set-task-layout"
+            data-tip="Tasks as rows, with the columns you choose"
+            data-value="table"
+            type="button"
+          >Table</button
           ></div
+        ><label
+          class="control-label"
+        >Group:<select
+            aria-label="Group tasks by"
+            class="task-board-group"
+            data-action="set-board-group"
+            data-current="tag"
+            data-dom-value="tag"
+            data-tip="Group the columns by status, priority, due date, person, or the tags of one namespace, such as #project/… or #context/…"
+          ><option
+              data-dom-selected="false"
+              data-dom-value="status"
+            >Status</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="priority"
+            >Priority</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="due"
+            >Due date</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="assignee"
+            >Person</option
+            ><option
+              data-dom-selected="true"
+              data-dom-value="tag"
+            >#project</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="pick-namespace"
+            >Tag…</option
+            ></select
+          ></label
         ><label
           class="control-label"
         >Sort:<span
@@ -581,22 +569,40 @@
           data-droppable="true"
           data-hidden-count="0"
           data-label="Atlas"
-        ><h2
-            class="board-column-title"
-          ><span
-              class="board-column-label"
-            >Atlas</span
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
             ><span
-              class="board-count"
-            >53 · 6 overdue</span
-            ></h2
-          ><button
-            class="board-add"
-            data-action="board-add-task"
-            data-column-id="tag:project/atlas"
-            data-tip="Add a task already in Atlas"
-            type="button"
-          >+ Add task</button
+                class="board-column-label"
+              >Atlas</span
+              ><span
+                class="board-count"
+              >53 · 6 overdue</span
+              ></h2
+            ><button
+              aria-label="Add a task to Atlas"
+              class="board-add icon-button"
+              data-action="board-add-task"
+              data-column-id="tag:project/atlas"
+              data-tip="Add a task to Atlas"
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><path
+                  d="M8 3.5v9M3.5 8h9"
+                ></path
+                ></svg
+              ></button
+            ></div
           ><div
             aria-label="Atlas"
             class="board-cards"
@@ -6149,22 +6155,40 @@
           data-droppable="true"
           data-hidden-count="0"
           data-label="No project"
-        ><h2
-            class="board-column-title"
-          ><span
-              class="board-column-label"
-            >No project</span
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
             ><span
-              class="board-count"
-            >0</span
-            ></h2
-          ><button
-            class="board-add"
-            data-action="board-add-task"
-            data-column-id="tag:project/"
-            data-tip="Add a task already in No project"
-            type="button"
-          >+ Add task</button
+                class="board-column-label"
+              >No project</span
+              ><span
+                class="board-count"
+              >0</span
+              ></h2
+            ><button
+              aria-label="Add a task to No project"
+              class="board-add icon-button"
+              data-action="board-add-task"
+              data-column-id="tag:project/"
+              data-tip="Add a task to No project"
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><path
+                  d="M8 3.5v9M3.5 8h9"
+                ></path
+                ></svg
+              ></button
+            ></div
           ><div
             class="board-cards"
           ><p
@@ -6182,15 +6206,18 @@
           data-droppable="true"
           data-hidden-count="0"
           data-label="Done"
-        ><h2
-            class="board-column-title"
-          ><span
-              class="board-column-label"
-            >Done</span
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
             ><span
-              class="board-count"
-            >1</span
-            ></h2
+                class="board-column-label"
+              >Done</span
+              ><span
+                class="board-count"
+              >1</span
+              ></h2
+            ></div
           ><div
             aria-label="Done"
             class="board-cards"
