@@ -71,20 +71,18 @@ The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunda
 
 Select a day, the mark beside a week, or the month's name to open its note; Deckard offers to create a missing one. The arrows step through months; **Today** returns.
 
-**The day panel.** Choose **Open Day Panel** from the Calendar's `…` menu to show the chosen day under the month; **Close Day Panel** takes it away, and the Calendar keeps your choice. A click, Space, or arrow keys then choose a day; double-click or Enter opens its note. The panel shows:
+**Repeats.** A repeating task shows a muted **↻** on every later date its rule lands on in the visible weeks, and a **Repeats** group in the calendar page's day panel. These dates are not written; a row opens the task. A `when done` rule shows only its next date.
+
+**Weekends.** **Weekends**, in the calendar page's gear, shows five working days or all seven, on the page and in the Calendar view alike.
+
+**The calendar page.** `Deckard: Open Calendar`, **Calendar** at the top of the Context view, or the button in the Calendar view's title bar, opens the calendar as a page. Each day lists its tasks by name: due, then scheduled (⏳), then repeats (↻, dashed), with **+3 more**. Click a day to choose it; its panel sits beside or under the month, or in the Context sidebar while that is open. Double-click a day, or press Enter on it, to open its note. The panel shows:
 
 - the day's name, such as *Friday, September 25 · Today*, and its daily note, **Open** or **Create**;
 - tasks due, then scheduled, five of each with **Show 7 more**, each with a checkbox and a **Tomorrow** button (**Next day** after tomorrow) that moves its date, with Undo, shown on the row under the pointer or with focus;
 - tasks done that day, folded; uncheck to reopen;
 - notes created that day, apart from daily, weekly, and monthly notes. After five, **Search all 14** opens `created = 2026-09-25`.
 
-**Close Day Panel** brings back one-click opening.
-
-**Repeats.** A repeating task shows a muted **↻** on every later date its rule lands on in the visible weeks, and a **Repeats** group in the day panel. These dates are not written; a row opens the task. A `when done` rule shows only its next date.
-
-**Weekends.** Choose **Hide Weekends** from the `…` menu, or **Weekends** in the calendar page's gear, to show five working days, in the sidebar and on the calendar page. **Include Weekends** brings them back.
-
-**The calendar page.** `Deckard: Open Calendar`, **Calendar** at the top of the Context view, or the button in the Calendar view's title bar, opens the calendar as a page. Each day lists its tasks by name: due, then scheduled (⏳), then repeats (↻, dashed), with **+3 more**. Click a day to choose it; its panel sits beside or under the month, or in the Context sidebar while that is open.
+On the page:
 
 - **Month** and **Week** switch layouts.
 - Drag a due or scheduled task to another day to move its date. Repeats stay put.

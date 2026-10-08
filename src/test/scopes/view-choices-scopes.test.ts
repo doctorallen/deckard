@@ -7,10 +7,9 @@ import { VIEW_CHOICE_CONTEXT_KEYS, VIEW_TOGGLES } from '../../ui/commands/toggle
 import { activateDeckard, isMultiRoot, recordContextKeys, settled } from './scopes';
 
 /**
- * The Calendar's day panel and weekends, and the Outline following the
- * cursor, are kept in the preferences, the same whatever a workspace's
- * settings say. Each pair of commands turns its choice away from its
- * default and back, and the context key the view's title or menu reads
+ * The Outline following the cursor is kept in the preferences, the same
+ * whatever a workspace's settings say. Its pair of commands turns it away
+ * from its default and back, and the context key the view's title reads
  * follows, so the view offers the command that changes something.
  */
 suite(`View choices kept in the preferences (${isMultiRoot() ? 'multi-root' : 'single folder'})`, () => {
@@ -25,7 +24,8 @@ suite(`View choices kept in the preferences (${isMultiRoot() ? 'multi-root' : 's
 
   for (const toggle of VIEW_TOGGLES) {
     test(`${toggle.choice}: its commands turn it from its default and back, and its context key follows`, async () => {
-      const key = VIEW_CHOICE_CONTEXT_KEYS[toggle.choice];
+      const key = VIEW_CHOICE_CONTEXT_KEYS[toggle.choice] ?? '';
+      assert.ok(key, `${toggle.choice} has a context key`);
       const fallback = readViewChoice({}, toggle.choice);
       for (const on of [!fallback, fallback]) {
         await vscode.commands.executeCommand(on ? toggle.enable : toggle.disable);

@@ -876,15 +876,13 @@ function createCalendar(
   const { indexer } = core;
   const { themePreview, searchPanels } = search;
   const openTag = (tagKey: string) => searchPanels.show(tagKey);
-  // Whether the day panel shows and weekends are drawn, which the
-  // Calendar's menu and the page's gear keep.
+  // Whether weekends are drawn, which the calendar page's gear keeps.
   const calendarPreferences = { reader: preferences.repository, display: preferences.display };
   const calendar = new CalendarView({
     indexer,
     writes: writes.tasks,
     themePreview,
     extensionUri: context.extensionUri,
-    openTag,
     preferences: calendarPreferences,
   });
   const activeCalendar = new ActiveCalendar();

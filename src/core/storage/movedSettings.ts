@@ -19,7 +19,6 @@ export const MOVED_SETTINGS = [
   'agenda.groupNamespace',
   'agenda.sort',
   'board.parentTag',
-  'calendar.dayPanel',
   'calendar.showWeekends',
   'display.pageWidth',
   'pages.style',
@@ -47,7 +46,6 @@ const CARRIERS: Readonly<Record<MovedSetting, (value: unknown) => Partial<Persis
       ? { agendaSort: value === 'rank' ? undefined : (value as PersistedPreferences['agendaSort']) }
       : undefined,
   'board.parentTag': (value) => (typeof value === 'boolean' ? { boardParentTag: value ? true : undefined } : undefined),
-  'calendar.dayPanel': (value) => (typeof value === 'boolean' ? { calendarDayPanel: value ? true : undefined } : undefined),
   'calendar.showWeekends': (value) =>
     typeof value === 'boolean' ? { calendarHideWeekends: value ? undefined : true } : undefined,
   'display.pageWidth': (value) =>

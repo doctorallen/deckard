@@ -236,10 +236,6 @@ suite('Extension Test Suite', () => {
         'deckard.agenda.reschedule',
         'deckard.rescheduleOverdue',
         'deckard.agenda.showMore',
-        'deckard.calendar.openDayPanel',
-        'deckard.calendar.closeDayPanel',
-        'deckard.calendar.hideWeekends',
-        'deckard.calendar.includeWeekends',
       ],
     );
     assert.strictEqual(

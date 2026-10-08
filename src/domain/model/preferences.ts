@@ -234,8 +234,6 @@ export interface PersistedPreferences {
   agendaGroupNamespace?: string;
   /** How each of the Tasks view's groups orders its tasks, when not by rank. */
   agendaSort?: Exclude<TaskSortMode, 'rank'>;
-  /** The sidebar Calendar shows the chosen day under the month; stored only when on. */
-  calendarDayPanel?: true;
   /** Both calendars leave Saturday and Sunday out; stored only when they do. */
   calendarHideWeekends?: true;
   /** The Outline leaves the cursor alone; stored only when it does. */

@@ -6,9 +6,8 @@ import { listToggleCommands, VIEW_TOGGLES } from './viewToggles';
 
 /**
  * The paired commands that turn one view choice on and off, one
- * registration per row of VIEW_TOGGLES: the Calendar's day panel and
- * weekends, and the Outline following the cursor, each kept in the
- * preferences; and Zen's, which move Display's step.
+ * registration per row of VIEW_TOGGLES: the Outline following the cursor,
+ * kept in the preferences; and Zen's.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
   const { pageCommands, preferences } = services;

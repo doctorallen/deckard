@@ -210,6 +210,13 @@
   (Stats, and the weekly review, keep the tag upkeep) are no longer
   offered. One of these on your Home is dropped when Home next opens.
   Home offers 14 kinds of widget, from 21.
+- **The Calendar view's day panel and Weekends menu.** The sidebar's
+  Calendar is the month alone: select a day, a week's mark or the month's
+  name to open its note. **Open Day Panel**, **Close Day Panel**, **Hide
+  Weekends** and **Include Weekends** are gone from its `…` menu; the
+  calendar page lists a day's tasks beside the month, and its gear's
+  **Weekends** sets both calendars. Its one title icon opens the calendar
+  page.
 
 ### Fixed
 

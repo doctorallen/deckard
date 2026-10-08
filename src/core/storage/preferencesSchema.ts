@@ -397,7 +397,6 @@ function normalizeViewChoices(
   | 'agendaGroupBy'
   | 'agendaGroupNamespace'
   | 'agendaSort'
-  | 'calendarDayPanel'
   | 'calendarHideWeekends'
   | 'outlineFollowCursorOff'
   | 'pageWidth'
@@ -413,7 +412,6 @@ function normalizeViewChoices(
     ...(groupBy === 'due' ? {} : { agendaGroupBy: groupBy }),
     ...(namespace && namespace !== 'project' ? { agendaGroupNamespace: namespace } : {}),
     ...(sort === 'rank' ? {} : { agendaSort: sort }),
-    ...(source.calendarDayPanel === true ? { calendarDayPanel: true as const } : {}),
     ...(source.calendarHideWeekends === true ? { calendarHideWeekends: true as const } : {}),
     ...(source.outlineFollowCursorOff === true ? { outlineFollowCursorOff: true as const } : {}),
     ...(source.pageWidth === 'full' ? { pageWidth: 'full' as const } : {}),

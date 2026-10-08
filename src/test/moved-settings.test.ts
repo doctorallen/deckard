@@ -12,7 +12,6 @@ suite('Moved settings', () => {
         'agenda.groupNamespace': 'Context',
         'agenda.sort': 'created',
         'board.parentTag': true,
-        'calendar.dayPanel': true,
         'calendar.showWeekends': false,
         'display.pageWidth': 'full',
         'pages.style': 'list',
@@ -24,7 +23,6 @@ suite('Moved settings', () => {
         agendaGroupNamespace: 'context',
         agendaSort: 'created',
         boardParentTag: true,
-        calendarDayPanel: true,
         calendarHideWeekends: true,
         pageWidth: 'full',
         contextPagesStyle: 'list',
@@ -54,7 +52,7 @@ suite('Moved settings', () => {
     const values: Partial<Record<MovedSetting, { globalValue?: unknown; workspaceValue?: unknown }>> = {
       'agenda.groupBy': { globalValue: 'priority', workspaceValue: 'status' },
       'board.parentTag': { globalValue: true },
-      'calendar.dayPanel': { workspaceValue: true },
+      'outline.followCursor': { workspaceValue: false },
     };
     const read = (setting: MovedSetting) => values[setting];
     const preferences = createMemoryPreferences();
@@ -62,7 +60,7 @@ suite('Moved settings', () => {
     await carryMovedSettingsOnce(preferences.repository, memory, read);
     const current = preferences.repository.current;
     assert.deepStrictEqual(
-      [current.agendaGroupBy, current.boardParentTag, current.calendarDayPanel],
+      [current.agendaGroupBy, current.boardParentTag, current.outlineFollowCursorOff],
       ['status', true, true],
     );
     assert.strictEqual(memory.global.get(MOVED_SETTINGS_CARRIED_KEY), true);
@@ -72,7 +70,7 @@ suite('Moved settings', () => {
     const other = createMemoryPreferences();
     await carryMovedSettingsOnce(other.repository, { global: memory.global, workspace: new MemoryStore() }, read);
     assert.deepStrictEqual(
-      [other.repository.current.agendaGroupBy, other.repository.current.boardParentTag, other.repository.current.calendarDayPanel],
+      [other.repository.current.agendaGroupBy, other.repository.current.boardParentTag, other.repository.current.outlineFollowCursorOff],
       ['status', undefined, true],
       'the user\'s were carried already, on this machine',
     );

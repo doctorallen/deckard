@@ -121,15 +121,18 @@ suite('The calendar day panel', () => {
     assert.strictEqual(clampToMonth('2026-09-25', '2026-10'), '2026-10-25');
   });
 
+  // The sidebar Calendar has no day panel; the calendar page always has one.
   const open = (dayPanel: boolean, selectedDate?: string): WebviewPage =>
-    openWebviewPage(
-      renderPage('calendar'),
-      createCalendar(index, '2026-09', createQueryContext(NOW.getTime()), { dayPanel, selectedDate }),
-    );
+    dayPanel
+      ? openWebviewPage(
+        renderPage('calendarPage'),
+        createCalendar(index, '2026-09', createQueryContext(NOW.getTime()), { dayPanel, selectedDate, layout: 'page' }),
+      )
+      : openWebviewPage(renderPage('calendar'), createCalendar(index, '2026-09', createQueryContext(NOW.getTime())));
   const day = (page: WebviewPage, date: string) =>
     page.find(`.calendar-grid .day[data-date="${date}"]`) as HTMLElement;
 
-  test('off, a click opens the day and nothing is drawn below the month', () => {
+  test('in the sidebar, a click opens the day and nothing is drawn below the month', () => {
     const page = open(false);
     try {
       assert.strictEqual(page.findAll('.day-panel').length, 0);
@@ -140,7 +143,7 @@ suite('The calendar day panel', () => {
     }
   });
 
-  test('on, a click chooses the day and opens nothing; a double-click or Enter opens it', async () => {
+  test('on the page, a click chooses the day and opens nothing; a double-click or Enter opens it', async () => {
     const page = open(true);
     try {
       assert.strictEqual(page.text('#day-title'), 'Fri, Sep 25 · Today');
@@ -160,7 +163,7 @@ suite('The calendar day panel', () => {
     }
   });
 
-  test('on, the arrows move the choice with the focus', () => {
+  test('on the page, the arrows move the choice with the focus', () => {
     const page = open(true);
     try {
       day(page, '2026-09-25').focus();
@@ -176,15 +179,14 @@ suite('The calendar day panel', () => {
   test('Today comes back when another day is chosen, and chooses today', () => {
     const today = open(true);
     try {
-      assert.ok(!today.findAll('[data-action="show-month"]').some((button) => button.textContent === 'Today'));
+      assert.strictEqual(today.findAll('[data-action="go-today"]').length, 0);
     } finally {
       today.dispose();
     }
     const page = open(true, '2026-09-22');
     try {
       assert.strictEqual(page.text('#day-title'), 'Tue, Sep 22');
-      const button = page.findAll('[data-action="show-month"]').find((candidate) => candidate.textContent === 'Today') as HTMLElement;
-      button.click();
+      page.click('[data-action="go-today"]');
       assert.deepStrictEqual(page.lastPosted('showMonth'), { type: 'showMonth', month: '2026-09', date: '2026-09-25' });
     } finally {
       page.dispose();
@@ -250,8 +252,8 @@ suite('The calendar day panel lists the day tasks', () => {
 
   const open = (selectedDate: string): WebviewPage =>
     openWebviewPage(
-      renderPage('calendar'),
-      createCalendar(index, '2026-09', createQueryContext(NOW.getTime()), { dayPanel: true, selectedDate }),
+      renderPage('calendarPage'),
+      createCalendar(index, '2026-09', createQueryContext(NOW.getTime()), { dayPanel: true, selectedDate, layout: 'page' }),
     );
 
   test('draws the groups, a checkbox and a Tomorrow button on each row, and Done folded', () => {
@@ -335,8 +337,8 @@ suite('The calendar day panel lists the notes created that day', () => {
 
   test('a row opens its note, and Search all searches the day', () => {
     const page = openWebviewPage(
-      renderPage('calendar'),
-      createCalendar(index, '2026-09', createQueryContext(NOW.getTime()), { dayPanel: true }),
+      renderPage('calendarPage'),
+      createCalendar(index, '2026-09', createQueryContext(NOW.getTime()), { dayPanel: true, layout: 'page' }),
     );
     try {
       page.click('.day-created');

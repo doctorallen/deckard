@@ -1,7 +1,6 @@
 /**
  * The paired commands that turn one view choice on and off, as data: the
- * sidebar Calendar's day panel and weekends, and the Outline following the
- * cursor. Each choice is kept in the preferences
+ * Outline following the cursor. Each choice is kept in the preferences
  * (core/storage/preferencesViewChoices.ts) and published as a context key,
  * which the view's title or menu reads to offer whichever of the pair
  * changes something.
@@ -22,17 +21,15 @@ export interface ViewToggle {
 
 /** Every toggle pair, in the order their commands are registered. */
 export const VIEW_TOGGLES: readonly ViewToggle[] = [
-  // The day panel and the weekends are turned on and off from the
-  // Calendar's own menu.
-  { enable: 'deckard.calendar.openDayPanel', disable: 'deckard.calendar.closeDayPanel', choice: 'calendarDayPanel' },
-  { enable: 'deckard.calendar.includeWeekends', disable: 'deckard.calendar.hideWeekends', choice: 'calendarWeekends' },
+  // The calendars' weekends have no pair: the calendar page's gear sets them.
   { enable: 'deckard.outline.enableFollowCursor', disable: 'deckard.outline.disableFollowCursor', choice: 'outlineFollowCursor' },
 ];
 
-/** The context key each choice is published as, which its view's title or menu reads. */
-export const VIEW_CHOICE_CONTEXT_KEYS: Readonly<Record<ViewChoice, string>> = {
-  calendarDayPanel: 'deckard.calendarDayPanel',
-  calendarWeekends: 'deckard.calendarWeekends',
+/**
+ * The context key each choice with a pair of commands is published as,
+ * which its view's title or menu reads.
+ */
+export const VIEW_CHOICE_CONTEXT_KEYS: Readonly<Partial<Record<ViewChoice, string>>> = {
   outlineFollowCursor: 'deckard.outlineFollowCursor',
 };
 

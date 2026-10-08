@@ -11,7 +11,6 @@ import { NavigationService } from '../../../../services/navigationService';
 import { measure } from '../../../../shared/timing';
 import type {
   CalendarMessage,
-  CalendarMoveRefusedMessage,
   CalendarMoveTaskMessage,
   CalendarPageToHost,
   CalendarShowMonthMessage,
@@ -43,8 +42,8 @@ export interface CalendarIndex {
 }
 
 /**
- * Where the calendars keep their day panel and weekends: the preferences,
- * which the sidebar Calendar's menu and the page's gear write.
+ * Where the calendars keep whether weekends are drawn: the preferences,
+ * which the calendar page's gear writes and both calendars read.
  */
 export interface CalendarPreferences {
   readonly reader: Pick<PreferencesReader, 'value' | 'onDidChange'>;
@@ -64,8 +63,11 @@ export interface CalendarControllerHost {
    * with the move's number when the page gave it one.
    */
   refused?: (taskId: string, requestId: number | undefined) => void;
-  /** Opens a tag's page, by its key in the index, as a tag in a task's title asks. */
-  openTag: (tagKey: string) => unknown;
+  /**
+   * Opens a tag's page, by its key in the index, as a tag in a task's title
+   * in the day panel asks; a calendar with no day panel has none.
+   */
+  openTag?: (tagKey: string) => unknown;
 }
 
 /**
@@ -163,7 +165,7 @@ export class CalendarController {
         // the tag is found as the other pages find a tag a title names.
         const tag = this.navigation.resolveTag(this.indexer.getSnapshot(), message.tagKey, 'lenient');
         if (tag.kind === 'open') {
-          await this.host.openTag(tag.tagKey);
+          await this.host.openTag?.(tag.tagKey);
         }
         return;
       }
@@ -280,14 +282,11 @@ export class CalendarController {
 }
 
 /**
- * Calls back when the preferences change whether the day panel shows or
- * whether weekends are drawn, and not for any other change.
+ * Calls back when the preferences change whether weekends are drawn, and
+ * not for any other change.
  */
 export function onDidChangeCalendarChoices(reader: CalendarPreferences['reader'], listener: () => void): vscode.Disposable {
-  const read = (): string => {
-    const value = reader.value;
-    return `${readViewChoice(value, 'calendarDayPanel')} ${readViewChoice(value, 'calendarWeekends')}`;
-  };
+  const read = (): boolean => readViewChoice(reader.value, 'calendarWeekends');
   let last = read();
   return reader.onDidChange(() => {
     const now = read();
@@ -306,13 +305,9 @@ export interface CalendarViewControllerOptions {
   writes: TaskWrites;
   /** Sends the calendar its snapshot through its host, or marks it stale while hidden. */
   refresh: () => void;
-  /** Sends the calendar one message through its host, while it is drawn. */
-  post: (message: CalendarMoveRefusedMessage) => void;
-  /** Opens a tag's page, as a tag in a task's title in the day panel asks. */
-  openTag: (tagKey: string) => unknown;
   /** The extension's folder, which the page's style sheets are under. */
   extensionUri: vscode.Uri;
-  /** Whether the day panel shows and weekends are drawn. */
+  /** Whether weekends are drawn. */
   preferences: CalendarPreferences;
 }
 
@@ -320,8 +315,9 @@ export interface CalendarViewControllerOptions {
  * The sidebar Calendar, a month in the Deckard sidebar. Each day shows
  * whether it has a daily note and how many open tasks are due; selecting a
  * day, a week, or the month opens its note, and offers to create one that
- * does not exist yet. Its month and day are `calendar`'s, which does what
- * each message asks.
+ * does not exist yet. It has no day panel: a day's tasks are the calendar
+ * page's to list. Its month is `calendar`'s, which does what each message
+ * asks.
  */
 export class CalendarViewController implements PageController<CalendarSnapshot, CalendarPageToHost> {
   public readonly name = 'Calendar';
@@ -348,20 +344,13 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
   /** The month and the day the sidebar shows, apart from the page's. */
   public readonly calendar: CalendarController;
 
-  /** Starts on this month, with the day panel as the reader left it. */
+  /** Starts on this month. */
   public constructor(private readonly view: CalendarViewControllerOptions) {
     const { reader } = view.preferences;
     this.calendar = new CalendarController(view.indexer, view.writes, {
-      dayPanel: () => readViewChoice(reader.value, 'calendarDayPanel'),
+      dayPanel: () => false,
       showWeekends: () => readViewChoice(reader.value, 'calendarWeekends'),
       refresh: view.refresh,
-      openTag: view.openTag,
-      // A move the day panel asked for that could not be made is said, as
-      // on the calendar page, and the panel drawn again as it is.
-      refused: (taskId, requestId) => {
-        view.post({ type: 'moveRefused', taskId, ...(requestId === undefined ? {} : { requestId }) });
-        view.refresh();
-      },
     });
     this.handlers = calendarHandlers(this.calendar);
   }
@@ -378,7 +367,7 @@ export class CalendarViewController implements PageController<CalendarSnapshot, 
 
   /**
    * Redraws when today may have moved, when a calendar setting changes, and
-   * when the day panel or the weekends are turned on or off.
+   * when the weekends are turned on or off.
    */
   public subscribe(page: PageContext): vscode.Disposable[] {
     return [

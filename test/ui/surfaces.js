@@ -561,16 +561,13 @@ function createContextPages(style, current) {
 function createCalendarSurfaces() {
   return [
     {
-      // The calendar in a narrow sidebar with its day panel on: counts that
-      // run to two digits, and rows whose words are longer than the panel.
+      // The calendar in a narrow sidebar: counts that run to two digits.
+      // It has no day panel; the calendar page lists a day's tasks.
       page: 'calendar',
       viewport: [240, 700],
-      snapshot: () => createCalendar(createCalendarIndex(), '2026-09', createQueryContext(NOW), {
-        dayPanel: true,
-      }),
+      snapshot: () => createCalendar(createCalendarIndex(), '2026-09', createQueryContext(NOW)),
       scrollers: ['html'],
-      clippers: ['.day', '.day-panel .task-row'],
-      hovered: ['.day-panel .task-row'],
+      clippers: ['.day'],
     },
     {
       // The sidebar calendar as its five working days.
@@ -578,13 +575,10 @@ function createCalendarSurfaces() {
       page: 'calendar',
       viewport: [240, 700],
       snapshot: () => createCalendar(createCalendarIndex(), '2026-09', createQueryContext(NOW), {
-        dayPanel: true,
         showWeekends: false,
-        selectedDate: '2026-09-24',
       }),
       scrollers: ['html'],
-      clippers: ['.day', '.day-panel .task-row'],
-      hovered: ['.day-panel .task-row'],
+      clippers: ['.day'],
     },
     {
       // Related Notes showing the calendar page's chosen day, under the

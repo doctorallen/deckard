@@ -821,26 +821,6 @@
         "command": "deckard.agenda.showMore",
         "title": "List Every Overdue Task",
         "category": "Deckard"
-      },
-      {
-        "command": "deckard.calendar.openDayPanel",
-        "title": "Open Day Panel",
-        "category": "Deckard"
-      },
-      {
-        "command": "deckard.calendar.closeDayPanel",
-        "title": "Close Day Panel",
-        "category": "Deckard"
-      },
-      {
-        "command": "deckard.calendar.hideWeekends",
-        "title": "Hide Weekends",
-        "category": "Deckard"
-      },
-      {
-        "command": "deckard.calendar.includeWeekends",
-        "title": "Include Weekends",
-        "category": "Deckard"
       }
     ],
     "submenus": [
@@ -1144,22 +1124,6 @@
           "when": "workspaceFolderCount > 0 && deckard.hasParkedTags"
         },
         {
-          "command": "deckard.calendar.openDayPanel",
-          "when": "false"
-        },
-        {
-          "command": "deckard.calendar.closeDayPanel",
-          "when": "false"
-        },
-        {
-          "command": "deckard.calendar.hideWeekends",
-          "when": "false"
-        },
-        {
-          "command": "deckard.calendar.includeWeekends",
-          "when": "false"
-        },
-        {
           "command": "deckard.calendar.openInEditor",
           "when": "false"
         }
@@ -1384,26 +1348,6 @@
           "command": "deckard.calendar.openInEditor",
           "when": "view == deckard.calendar",
           "group": "navigation@1"
-        },
-        {
-          "command": "deckard.calendar.openDayPanel",
-          "when": "view == deckard.calendar && !deckard.calendarDayPanel",
-          "group": "1_calendar@1"
-        },
-        {
-          "command": "deckard.calendar.closeDayPanel",
-          "when": "view == deckard.calendar && deckard.calendarDayPanel",
-          "group": "1_calendar@1"
-        },
-        {
-          "command": "deckard.calendar.hideWeekends",
-          "when": "view == deckard.calendar && deckard.calendarWeekends",
-          "group": "1_calendar@3"
-        },
-        {
-          "command": "deckard.calendar.includeWeekends",
-          "when": "view == deckard.calendar && !deckard.calendarWeekends",
-          "group": "1_calendar@3"
         }
       ],
       "view/item/context": [

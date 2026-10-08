@@ -2,14 +2,11 @@
  * The Calendar view, in the sidebar: a month of weeks, each day saying
  * whether it has a daily note and how many open tasks are due, scheduled,
  * and repeating. Every day, every week, and the month title asks the host
- * to open its note; the host decides what exists and what to create. With
- * the day panel open, from the view's menu, a click chooses a day for the
- * panel under the month, and a double-click or Enter opens it.
+ * to open its note; the host decides what exists and what to create. A
+ * day's tasks are listed on the calendar page, which has the room.
  */
-import type { CalendarDay, CalendarMoveRefusedMessage, CalendarSnapshot, CalendarWeek } from '../../ui/protocol/calendar';
-import { dispatchAction, onHostMessage, readEmbeddedState } from '../shared/page';
-import { announce } from '../shared/status';
-import { DayPanel, installDayPanel } from '../shared/calendar/dayPanel';
+import type { CalendarDay, CalendarSnapshot, CalendarWeek } from '../../ui/protocol/calendar';
+import { dispatchAction, readEmbeddedState } from '../shared/page';
 import { CalendarGrid } from '../shared/calendar/grid';
 import {
   type CalendarState,
@@ -18,19 +15,16 @@ import {
   type DrawnCalendar,
   dueTone,
   isDrawn,
-  markedDate,
   tabStopDate,
-  withGroupShown,
 } from '../shared/calendar/model';
 import { eventElement } from '../shared/calendar/events';
 import { CalendarSession, send } from '../shared/calendar/session';
-import { formatPageDay } from '../shared/dateFormats';
 
 /** The month's title, its note, and the steps to the months either side, and back to today. */
 function CalendarHeader({ state }: { readonly state: DrawnCalendar }) {
   const snapshot = state.snapshot;
   const monthLabel = snapshot.title + (snapshot.notePath ? ', monthly note' : '');
-  const onToday = snapshot.month === snapshot.currentMonth && (!snapshot.dayPanel || state.drawnSelected === snapshot.today);
+  const onToday = snapshot.month === snapshot.currentMonth;
   return (
     <div class="calendar-header">
       <button type="button" data-action="show-month" data-month={snapshot.previousMonth} aria-label="Previous month" data-tip="Previous month">‹</button>
@@ -38,7 +32,7 @@ function CalendarHeader({ state }: { readonly state: DrawnCalendar }) {
       <button type="button" data-action="show-month" data-month={snapshot.nextMonth} aria-label="Next month" data-tip="Next month">›</button>
       {onToday
         ? null
-        : <button type="button" data-action="show-month" data-month={snapshot.currentMonth} data-date={snapshot.dayPanel ? snapshot.today : undefined}>Today</button>}
+        : <button type="button" data-action="show-month" data-month={snapshot.currentMonth}>Today</button>}
     </div>
   );
 }
@@ -47,13 +41,12 @@ function CalendarHeader({ state }: { readonly state: DrawnCalendar }) {
  * A day's tip: which tasks and which headings, not only how many, so the
  * right day is found without opening each.
  */
-function dayTip(snapshot: CalendarSnapshot, day: CalendarDay, label: string): string {
+function dayTip(day: CalendarDay, label: string): string {
   return [label]
     .concat((day.dueTitles || []).map((title) => `☐ ${title}`))
     .concat((day.scheduledTitles || []).map((title) => `⏳ ${title}`))
     .concat((day.repeatTitles || []).map((title) => `↻ ${title}`))
     .concat((day.headings || []).map((heading) => `# ${heading}`))
-    .concat(snapshot.dayPanel ? ['Double-click or Enter opens the daily note.'] : [])
     .join('\n');
 }
 
@@ -99,16 +92,15 @@ interface DayProps {
 function Day({ state, day, tabStop }: DayProps) {
   const snapshot = state.snapshot;
   const tone = dueTone(snapshot, day);
-  const selected = Boolean(snapshot.dayPanel) && day.date === markedDate(state);
   const label = describeDay(day, tone);
   return (
-    <span class="calendar-cell" role="gridcell" aria-selected={snapshot.dayPanel ? selected : undefined}>
+    <span class="calendar-cell" role="gridcell">
       <button
         type="button"
-        class={dayClasses(day, selected)}
+        class={dayClasses(day, false)}
         data-action="open-day"
         data-date={day.date}
-        data-tip={dayTip(snapshot, day, label)}
+        data-tip={dayTip(day, label)}
         aria-label={label}
         aria-current={day.isToday ? 'date' : undefined}
         tabIndex={day.date === tabStop ? 0 : -1}
@@ -121,18 +113,15 @@ function Day({ state, day, tabStop }: DayProps) {
   );
 }
 
-/** The sidebar: the month's header, its grid, and the chosen day under it. */
+/** The sidebar: the month's header and its grid. */
 function CalendarView({ state }: { readonly state: DrawnCalendar }) {
   const snapshot = state.snapshot;
   const tabStop = tabStopDate(state, snapshot.weeks);
   const days = (week: CalendarWeek) => week.days.filter((day) => isDrawn(snapshot, day)).map((day) => <Day state={state} day={day} tabStop={tabStop} />);
-  // The chosen day under the month, with the panel on.
-  const day = snapshot.dayPanel && !snapshot.dayInSidebar ? snapshot.selected : undefined;
   return (
     <>
       <CalendarHeader state={state} />
-      <CalendarGrid snapshot={snapshot} weeks={snapshot.weeks} label={snapshot.title} multiselectable={snapshot.dayPanel ? false : undefined} days={days} />
-      {day ? <DayPanel day={day} shownGroups={state.shownGroups} /> : null}
+      <CalendarGrid snapshot={snapshot} weeks={snapshot.weeks} label={snapshot.title} days={days} />
     </>
   );
 }
@@ -142,34 +131,14 @@ const session = new CalendarSession<CalendarState>({
   view: (state) => <CalendarView state={state as DrawnCalendar} />,
 });
 
-// The listeners, in the order the template script added them: the grid's
-// keys, the controls, the day panel's, and the double-click.
+// The listeners: the grid's keys, then the controls.
 document.addEventListener('keydown', session.onGridKey);
 document.addEventListener('click', (event) => {
   const target = eventElement(event);
-  // The day panel's own controls are installDayPanel's.
-  if (!target || target.closest('.day-panel')) {
-    return;
-  }
-  const control = target.closest<HTMLElement>('[data-action]');
+  const control = target?.closest<HTMLElement>('[data-action]');
   if (!control) {
     return;
   }
   dispatchAction(session.actions, control, event);
-});
-installDayPanel({
-  send,
-  opensTags: true,
-  showGroup: (group) => session.redraw({ shownGroups: withGroupShown(session.store.state.shownGroups, group) }),
-});
-// With the panel on, a click chooses a day and a double-click opens it.
-document.addEventListener('dblclick', session.onDoubleClick);
-// A move the host could not make is said, naming the task and the day
-// when its button in the day panel is still drawn, as the page says it.
-onHostMessage<CalendarMoveRefusedMessage>('moveRefused', (message) => {
-  const button = [...document.querySelectorAll<HTMLElement>('.day-panel [data-action="move-task"]')]
-    .find((move) => move.dataset.taskId === message.taskId);
-  const title = button?.closest('.task-row')?.querySelector('.task-title')?.textContent;
-  announce(button && title ? `"${title}" was not moved to ${formatPageDay(String(button.dataset.date))}.` : 'The task was not moved.');
 });
 send({ type: 'ready' });

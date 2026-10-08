@@ -27,10 +27,6 @@ suite('View toggles', () => {
     assert.deepStrictEqual(
       listToggleCommands(VIEW_TOGGLES).map(({ id, choice, value }) => `${id} ${choice}=${value}`),
       [
-        'deckard.calendar.openDayPanel calendarDayPanel=true',
-        'deckard.calendar.closeDayPanel calendarDayPanel=false',
-        'deckard.calendar.includeWeekends calendarWeekends=true',
-        'deckard.calendar.hideWeekends calendarWeekends=false',
         'deckard.outline.enableFollowCursor outlineFollowCursor=true',
         'deckard.outline.disableFollowCursor outlineFollowCursor=false',
       ],
@@ -44,9 +40,15 @@ suite('View toggles', () => {
     for (const id of ids) {
       assert.ok(commands.has(id), `${id} is contributed`);
     }
-    for (const choice of VIEW_CHOICES) {
-      assert.ok(whens.some((when) => when.includes(VIEW_CHOICE_CONTEXT_KEYS[choice])), `a menu reads ${VIEW_CHOICE_CONTEXT_KEYS[choice]}`);
+    for (const key of Object.values(VIEW_CHOICE_CONTEXT_KEYS)) {
+      assert.ok(whens.some((when) => when.includes(key)), `a menu reads ${key}`);
     }
+    // The weekends are the calendar page's gear's alone, and the sidebar
+    // Calendar has no day panel.
+    for (const removed of ['openDayPanel', 'closeDayPanel', 'hideWeekends', 'includeWeekends']) {
+      assert.ok(!commands.has(`deckard.calendar.${removed}`), `deckard.calendar.${removed} is gone`);
+    }
+    assert.deepStrictEqual(whens.filter((when) => /deckard\.calendar(DayPanel|Weekends)\b/.test(when)), []);
     assert.deepStrictEqual(whens.filter((when) => /config\.deckard\.(calendar|outline)\./.test(when)), [], 'no menu reads a moved setting');
   });
 
@@ -61,8 +63,8 @@ suite('View toggles', () => {
     }
     assert.deepStrictEqual(
       VIEW_CHOICES.map((choice) => readViewChoice({}, choice)),
-      [false, true, true],
-      'the day panel is off, and the weekends and following the cursor on, until chosen',
+      [true, true],
+      'the weekends and following the cursor are on until chosen',
     );
   });
 });
