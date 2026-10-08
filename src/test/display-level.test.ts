@@ -1,73 +1,15 @@
 import * as assert from 'assert';
 
-import {
-  DISPLAY_LEVELS,
-  STEP_VALUES,
-  changedScaleSettings,
-  resolveDisplayLevel,
-  resolveScaleValues,
-  zenToggleTarget,
-} from '../ui/state/displayLevel';
+import { ZEN_CHOICES } from '../ui/state/displayLevel';
 
-suite('Display: the scale', () => {
-  test('the step is the one set, else Full', () => {
-    assert.strictEqual(resolveDisplayLevel('quiet'), 'quiet');
-    assert.strictEqual(resolveDisplayLevel('zen'), 'zen');
-    assert.strictEqual(resolveDisplayLevel(undefined), 'full');
-    assert.strictEqual(resolveDisplayLevel('loud'), 'full', 'an unknown step');
+suite('Display: Zen', () => {
+  test('Zen turns on plain styling, no help text, compact spacing, flat cards, and tags as text', () => {
+    assert.deepStrictEqual(ZEN_CHOICES, { styling: 'plain', help: 'hidden', density: 'compact', cards: 'flat', tags: 'text' });
   });
 
-  test('each step turns its settings down further than the one before', () => {
-    const turnedDown = (level: (typeof DISPLAY_LEVELS)[number]): (keyof typeof STEP_VALUES.full)[] =>
-      (Object.keys(STEP_VALUES.full) as (keyof typeof STEP_VALUES.full)[]).filter((key) => STEP_VALUES[level][key] !== STEP_VALUES.full[key]);
-    assert.deepStrictEqual(turnedDown('full'), []);
-    assert.deepStrictEqual(turnedDown('quiet'), ['themeStyling', 'helpText', 'tags']);
-    assert.deepStrictEqual(turnedDown('zen'), ['themeStyling', 'helpText', 'density', 'cardFrames', 'tags']);
-    for (const key of turnedDown('quiet')) {
-      assert.strictEqual(STEP_VALUES.zen[key], STEP_VALUES.quiet[key], `Zen keeps what Quiet turned down: ${key}`);
-    }
-  });
-
-  test('a setting left at auto follows the step; one set wins at every step', () => {
-    for (const level of DISPLAY_LEVELS) {
-      assert.deepStrictEqual(resolveScaleValues(level, {}), STEP_VALUES[level]);
-      assert.deepStrictEqual(
-        resolveScaleValues(level, { themeStyling: 'auto', helpText: 'auto', density: 'auto' }),
-        STEP_VALUES[level],
-      );
-      assert.strictEqual(resolveScaleValues(level, { density: 'compact' }).density, 'compact');
-      assert.strictEqual(resolveScaleValues(level, { helpText: 'shown' }).helpText, 'shown');
-    }
-    assert.deepStrictEqual(resolveScaleValues('zen', { themeStyling: 'styled', counts: 'hidden' }), {
-      ...STEP_VALUES.zen,
-      themeStyling: 'styled',
-      counts: 'hidden',
-    });
-  });
-
-  test('no step hides data: counts and full dates show at every step', () => {
-    for (const level of DISPLAY_LEVELS) {
-      assert.strictEqual(STEP_VALUES[level].counts, 'shown', `${level} shows counts`);
-      assert.strictEqual(STEP_VALUES[level].dates, 'both', `${level} shows the date beside how far off`);
-    }
-  });
-
-  test('a value a setting doesn\'t have follows the step', () => {
-    assert.strictEqual(resolveScaleValues('full', { density: 'plain' }).density, 'comfortable');
-    assert.strictEqual(resolveScaleValues('zen', { helpText: 3 }).helpText, 'hidden');
-  });
-
-  test('counts as changed only what is set to something other than auto', () => {
-    assert.deepStrictEqual(changedScaleSettings({}), []);
-    assert.deepStrictEqual(changedScaleSettings({ themeStyling: 'auto', density: 'compact', helpText: 'nope' }), ['density']);
-  });
-
-  test('the Zen button goes to Zen, and back to the step the reader came from, or to Full', () => {
-    assert.strictEqual(zenToggleTarget('full', undefined), 'zen');
-    assert.strictEqual(zenToggleTarget('quiet', 'full'), 'zen');
-    assert.strictEqual(zenToggleTarget('zen', 'quiet'), 'quiet');
-    assert.strictEqual(zenToggleTarget('zen', undefined), 'full', 'nothing to go back to');
-    assert.strictEqual(zenToggleTarget('zen', 'zen'), 'full');
-    assert.strictEqual(zenToggleTarget('zen', 'loud'), 'full');
+  test('Zen hides no data: it has no say over counts or dates', () => {
+    const keys: readonly string[] = Object.keys(ZEN_CHOICES);
+    assert.ok(!keys.includes('counts'), 'counts always show');
+    assert.ok(!keys.includes('dates'), 'dates always show in full');
   });
 });

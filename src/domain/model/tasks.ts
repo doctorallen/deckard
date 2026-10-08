@@ -24,10 +24,9 @@ export interface TaskStatus {
 }
 
 /**
- * A due date as the host words it, "overdue 15 days · 2026-09-08", in the
- * parts Display's Dates preference chooses between: the state, which is
- * always drawn so an overdue date always says "overdue"; how far off it is;
- * and the date. A page draws every part from these, never by reading the
+ * A due date as the host words it, "overdue 15 days · 2026-09-08", in its
+ * parts: the state, which is always drawn so an overdue date always says
+ * "overdue"; how far off it is; and the date. A page draws every part from these, never by reading the
  * words, since the date is in the reader's format.
  */
 export interface DueParts {

@@ -13,7 +13,6 @@ import { isObject } from '../../../shared/guards';
 import type { MessageAs, MessageOf, PageMessage } from '../../protocol/messaging';
 import type { OpenWikiLinkMessage } from '../../protocol/notePage';
 import type {
-  DisplayCommandMessage,
   ExportResultsMessage,
   GearDisplaySetting,
   GoToPageMessage,
@@ -125,7 +124,7 @@ export function isSourceLocation(value: Record<string, unknown>): boolean {
 }
 
 /** The Display settings a page's gear sets. */
-const GEAR_DISPLAY_SETTINGS: readonly GearDisplaySetting[] = ['level', 'pageWidth'];
+const GEAR_DISPLAY_SETTINGS: readonly GearDisplaySetting[] = ['pageWidth'];
 
 /** One of the gear's Display rows: which, and a short lowercase value the host checks. */
 export const narrowSetDisplay: Narrower<SetDisplayMessage> = (value) =>
@@ -133,12 +132,8 @@ export const narrowSetDisplay: Narrower<SetDisplayMessage> = (value) =>
     ? { type: 'setDisplay', setting: value.setting as GearDisplaySetting, value: value.value }
     : undefined;
 
-/** One of the gear's Display links: the step's values, or Customize…. */
-export const narrowDisplayCommand: Narrower<DisplayCommandMessage> = (value) =>
-  value.command === 'useStepValues' || value.command === 'customize' ? { type: 'displayCommand', command: value.command } : undefined;
-
 /**
- * The gear's zen row: on or off.
+ * The gear's Zen checkbox: on or off.
  */
 export const narrowSetZenMode: Narrower<SetZenModeMessage> = (value) =>
   typeof value.enabled === 'boolean'

@@ -26,12 +26,32 @@ picks how much frame is drawn. They compose, so zen has to work on all eight
 existing themes.
 
 The reach is: hide decoration, thin the frame, **and** fold per-row metadata
-to hover and focus. The toggle is a global `deckard.zenMode` setting, a row in
-each page's view-options gear, and palette commands — the
-`deckard.outline.followCursor` pattern for the context key, and
-`updateTaskBoardSetting()` (`src/ui/commands/taskBoardActions.ts:52`) for the
-gear half, which is already "gear row → message → `writeSetting` → config
-listener → re-render" end to end.
+to hover and focus.
+
+## The switch
+
+Zen is one boolean, `deckard.display.zen`, an application setting written to
+the user's settings (plan 29, R5). It replaced `deckard.display.level` (Full,
+Quiet, Zen) and the seven `auto` settings the step moved: Theme styling, Help
+text, Density, Cards, Tags, Counts, and Dates. Zen on turns on the first five
+together, as `ZEN_CHOICES` in `src/ui/state/displayLevel.ts` lists them, and
+the last two are gone: counts always show, and a due date is always written
+in full. Display keeps `cardDetails`, `dateFormat`, and `shortDateFormat`.
+
+- **The gear:** every page with a gear draws one **Zen** checkbox,
+  `zenOption()`, ticked from the body's `zen` class; its click posts
+  `setZenMode`, and the host writes the setting.
+- **The palette:** `Deckard: Toggle Zen` alone. `deckard.enableZenMode` and
+  `deckard.disableZenMode` are hidden from it (`when: false`) and stay as the
+  title bar's when-swapped pair at `navigation@90`, on the `deckard.zenMode`
+  context key, since an extension cannot declare a toggled menu item.
+- **The move:** `carryRenamedSettingsOnce` (`src/composition/movedSettings.ts`)
+  reads the old settings once per machine and once per workspace. Quiet and
+  Zen both come to Zen on; Full writes nothing. One notice says Display
+  moved whenever any of the eight was set.
+
+Deckard's Zen quiets Deckard's pages; VS Code's Zen Mode (`⌘K Z`) hides the
+workbench around them, and the two combine.
 
 ## Three constraints that shape the design
 
@@ -273,7 +293,7 @@ class is on `<body>`, the page script reads
 `types.ts` state change and no state-builder change**, only the new
 webview→host message. The row is `zenOption()` in
 `src/webview/shared/viewOptions.tsx`, which each page with a gear puts in its
-`ViewOptions`; the `set-zen-mode` click is handled once, in
+`ViewOptions`; the `set-zen` checkbox's click is handled once, in
 `installViewOptions()` in the same module, which posts `setZenMode` through
 the page's one handle. That is zero per-page handler code.
 

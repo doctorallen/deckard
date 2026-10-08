@@ -49,8 +49,8 @@ suite('Zen mode', () => {
 
   const setZen = async (enabled: boolean): Promise<void> => {
     await configuration().update(
-      'display.level',
-      enabled ? 'zen' : undefined,
+      'display.zen',
+      enabled ? true : undefined,
       vscode.ConfigurationTarget.Global,
     );
   };
@@ -60,7 +60,7 @@ suite('Zen mode', () => {
     store?.repository.dispose();
     store = undefined;
     await configuration().update(
-      'display.level',
+      'display.zen',
       undefined,
       vscode.ConfigurationTarget.Global,
     );
@@ -173,19 +173,20 @@ suite('Zen mode', () => {
     assert.deepStrictEqual(after, before);
   });
 
-  test('offers the gear a Display row that says which step is in force', async () => {
-    const zenStep = '[data-action="set-display"][data-display="level"][data-value="zen"]';
-    assert.strictEqual(dashboard().find(zenStep)?.getAttribute('aria-pressed'), 'false');
+  test('offers the gear a Zen checkbox that says whether Zen is on', async () => {
+    const zenBox = 'input[type="checkbox"][data-action="set-zen"]';
+    assert.strictEqual((dashboard().find(zenBox) as HTMLInputElement).checked, false);
 
     await setZen(true);
-    assert.strictEqual(dashboard().find(zenStep)?.getAttribute('aria-pressed'), 'true', 'Zen mode reads as the Zen step');
+    assert.strictEqual((dashboard().find(zenBox) as HTMLInputElement).checked, true, 'the box is ticked while Zen is on');
   });
 
-  test('every gear offers the theme, then the page width, then Display, and asks the host to choose a theme', () => {
+  test('every gear offers the theme, then the page width, then Zen, and asks the host to choose a theme', () => {
     for (const page of [dashboard(), searchPage()]) {
       const labels = page.findAll('.view-options-group').map((group) => group.children[0].textContent);
       const theme = labels.indexOf('Theme');
-      assert.ok(theme >= 0 && labels[theme + 1] === 'Page width' && labels[theme + 2] === 'Display', labels.join());
+      assert.ok(theme >= 0 && labels[theme + 1] === 'Page width' && labels[theme + 2] === 'Zen', labels.join());
+      assert.ok(!labels.includes('Display'), 'the three steps are gone');
       const button = page.find('[data-action="choose-theme"]');
       assert.strictEqual(button.textContent, 'Corpo…');
       assert.strictEqual(button.getAttribute('aria-label'), 'Theme: Corpo. Choose another');
@@ -196,11 +197,14 @@ suite('Zen mode', () => {
 
   test('posts the reader\'s choice to the host', async () => {
     const page = dashboard();
-    page.click('[data-action="set-display"][data-display="level"][data-value="quiet"]');
-    assert.deepStrictEqual(page.lastPosted('setDisplay'), { type: 'setDisplay', setting: 'level', value: 'quiet' });
+    page.click('[data-action="set-zen"]');
+    assert.deepStrictEqual(page.lastPosted('setZenMode'), { type: 'setZenMode', enabled: true });
 
-    page.click('[data-action="display-command"][data-command="customize"]');
-    assert.deepStrictEqual(page.lastPosted('displayCommand'), { type: 'displayCommand', command: 'customize' });
+    await setZen(true);
+    const zen = dashboard();
+    zen.click('[data-action="set-zen"]');
+    assert.deepStrictEqual(zen.lastPosted('setZenMode'), { type: 'setZenMode', enabled: false }, 'unticked, it turns Zen off');
+    assert.strictEqual(zen.findAll('[data-action="display-command"]').length, 0, 'no Reset or Customize… line');
   });
 
   test('folds provenance and hides ornament, and keeps what carries meaning', () => {

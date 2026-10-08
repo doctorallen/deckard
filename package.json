@@ -704,11 +704,6 @@
         "icon": "$(symbol-color)"
       },
       {
-        "command": "deckard.chooseDisplay",
-        "title": "Choose Display…",
-        "category": "Deckard"
-      },
-      {
         "command": "deckard.chooseDateFormat",
         "title": "Choose Date Format…",
         "category": "Deckard"
@@ -993,11 +988,11 @@
         },
         {
           "command": "deckard.enableZenMode",
-          "when": "!deckard.zenMode"
+          "when": "false"
         },
         {
           "command": "deckard.disableZenMode",
-          "when": "deckard.zenMode"
+          "when": "false"
         },
         {
           "command": "deckard.renameHeading",
@@ -1841,123 +1836,11 @@
             "description": "Visual theme used by Deckard webviews.",
             "order": 1
           },
-          "deckard.display.level": {
-            "type": "string",
-            "enum": [
-              "full",
-              "quiet",
-              "zen"
-            ],
-            "default": "full",
+          "deckard.display.zen": {
+            "type": "boolean",
+            "default": false,
             "scope": "application",
-            "enumDescriptions": [
-              "Deckard as it ships: each theme's decoration, display headings, every helper line, raised cards, tag chips, counts, and dates written both ways.",
-              "Each theme's decoration and the lines that teach turned off, and tags drawn as text, at the usual spacing.",
-              "Also compact spacing and flat cards. Counts and dates still show."
-            ],
-            "description": "How much every Deckard page draws: Full, Quiet, or Zen. Every Display setting follows it while it is Auto. Your own choice, the same in every workspace.",
-            "order": 2
-          },
-          "deckard.display.themeStyling": {
-            "type": "string",
-            "enum": [
-              "auto",
-              "styled",
-              "plain"
-            ],
-            "default": "auto",
-            "scope": "application",
-            "enumDescriptions": [
-              "Follows Display: styled at Full, plain at Quiet and Zen.",
-              "Each theme's decoration and display type: backdrops, glows, cut corners, shadows, metric codes, and headings in capitals.",
-              "The same colors and fonts, without decoration, headings in sentence case, and thinner edges. Corpo is already plain."
-            ],
-            "description": "Each theme's decoration and display type, or the theme drawn plain.",
-            "order": 2
-          },
-          "deckard.display.helpText": {
-            "type": "string",
-            "enum": [
-              "auto",
-              "shown",
-              "hidden"
-            ],
-            "default": "auto",
-            "scope": "application",
-            "enumDescriptions": [
-              "Follows Display: shown at Full, hidden at Quiet and Zen.",
-              "Lines that teach: the search box's syntax line, Refine's hint, and Home's hint bar.",
-              "Those lines hidden. A search's error message always shows."
-            ],
-            "description": "Lines that teach rather than show: the search box's syntax line, Refine's hint, and Home's hint bar.",
-            "order": 2
-          },
-          "deckard.display.density": {
-            "type": "string",
-            "enum": [
-              "auto",
-              "comfortable",
-              "compact"
-            ],
-            "default": "auto",
-            "scope": "application",
-            "enumDescriptions": [
-              "Follows Display: comfortable at Full and Quiet, compact at Zen.",
-              "The usual spacing, and 30px controls.",
-              "Tighter spacing, and 26px controls; never under 24px targets."
-            ],
-            "description": "How much room pages leave between things.",
-            "order": 2
-          },
-          "deckard.display.cardFrames": {
-            "type": "string",
-            "enum": [
-              "auto",
-              "raised",
-              "flat"
-            ],
-            "default": "auto",
-            "scope": "application",
-            "enumDescriptions": [
-              "Follows Display: raised at Full and Quiet, flat at Zen.",
-              "Each card is a raised panel inside its border.",
-              "Rows parted by a divider, lifting onto the card surface under the pointer and keyboard focus."
-            ],
-            "description": "How cards and rows are drawn on every Deckard page. Your own choice, the same in every workspace.",
-            "order": 2
-          },
-          "deckard.display.tags": {
-            "type": "string",
-            "enum": [
-              "auto",
-              "chips",
-              "text"
-            ],
-            "default": "auto",
-            "scope": "application",
-            "enumDescriptions": [
-              "Follows Display: chips at Full, text at Quiet and Zen.",
-              "Each tag in a tag list is a small framed button.",
-              "Each tag is plain text in the theme's tag color, its # or @ kept, underlined under the pointer, with a focus ring from the keyboard."
-            ],
-            "description": "How tags are drawn where they are listed on their own, such as a note card's tags and Refine; a tag inside a title is always text. Either way a tag opens its page. Your own choice, the same in every workspace.",
-            "order": 2
-          },
-          "deckard.display.counts": {
-            "type": "string",
-            "enum": [
-              "auto",
-              "shown",
-              "hidden"
-            ],
-            "default": "auto",
-            "scope": "application",
-            "enumDescriptions": [
-              "Follows Display: shown at every step.",
-              "The number beside each name: a widget's total, a group's count, a column's tasks, a tab's results.",
-              "Those numbers left out of sight. A screen reader still reads each one, and figures that are the point, such as Home's Due today, always show."
-            ],
-            "description": "Whether pages draw the counts beside names. Your own choice, the same in every workspace.",
+            "markdownDescription": "Quiets every Deckard page: each theme's decoration and the lines that teach go, spacing is tighter, cards are flat, and tags are text. Every button, count, and date stays. VS Code's own Zen Mode (`⌘K Z` or `Ctrl+K Z`) hides the workbench instead, and the two combine. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.display.cardDetails": {
@@ -1984,25 +1867,6 @@
             },
             "scope": "application",
             "description": "Which details pages draw on the one line an entry keeps for them, shown while the pointer is on it or it has focus: its file and line, and its created and updated dates. Untick all three to draw none and keep no line; a screen reader still reads the file and line. A task's created date is its own ➕ date when it has one, else its note's; its updated date is its note's. Your own choice, the same in every workspace.",
-            "order": 2
-          },
-          "deckard.display.dates": {
-            "type": "string",
-            "enum": [
-              "auto",
-              "both",
-              "relative",
-              "date"
-            ],
-            "default": "auto",
-            "scope": "application",
-            "enumDescriptions": [
-              "Follows Display: both at every step.",
-              "How far off and the date: \"Overdue 2 days · 2026-10-02\".",
-              "Only how far off: \"Overdue 2 days\". A date over a month away still shows.",
-              "The date with its state: \"Overdue · 2026-10-02\"."
-            ],
-            "description": "How pages write a task's due date. An overdue date always says Overdue, and a screen reader hears the whole date either way. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.display.dateFormat": {

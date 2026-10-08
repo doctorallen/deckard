@@ -15,7 +15,7 @@ import { UsageService } from '../core/storage/preferencesUsage';
 import { SearchStore } from '../core/storage/searchStore';
 import { reportError, setTimingLog } from '../shared/timing';
 import { tidyAfterUpdate } from './tidyPreferences';
-import { carryMovedSettingsOnce } from './movedSettings';
+import { carryMovedSettingsOnce, carryRenamedSettingsOnce } from './movedSettings';
 import { createWorkspaceIndex } from '../core/workspace/indexer';
 import type { IndexRoles } from '../core/workspace/indexReader';
 import { WorkspaceScanner } from '../core/workspace/scanner';
@@ -172,7 +172,7 @@ export interface Pages {
 export interface PageCommands {
   /** What Show Notes Graph keeps of the options it was run with. */
   readNotesGraphOptions: typeof readNotesGraphOptions;
-  /** Goes to Zen, or back to the step the reader was on. */
+  /** Turns Zen on or off. */
   setZenMode: typeof setZenMode;
   /** Into Zen, or back out of it. */
   toggleZenMode: typeof toggleZenMode;
@@ -515,6 +515,10 @@ function createPreferences(context: vscode.ExtensionContext, core: Core): Prefer
   // before any view is built from them.
   void carryMovedSettingsOnce(repository, { global: context.globalState, workspace: context.workspaceState }).catch(
     (error: unknown) => reportError('Could not carry the moved settings into the preferences', error),
+  );
+  // The settings that became another setting, carried once, with one notice.
+  void carryRenamedSettingsOnce({ global: context.globalState, workspace: context.workspaceState }).catch(
+    (error: unknown) => reportError('Could not carry the renamed settings', error),
   );
   // What Move to… ranks destinations by and records a heading in, wherever
   // it is run from.
@@ -1223,7 +1227,7 @@ function createLateContexts(context: vscode.ExtensionContext, core: Core, pages:
   context.subscriptions.push(publishViewChoices(preferences.repository));
   // Every page's width, which its gear keeps in the preferences.
   context.subscriptions.push(startPageWidth({ reader: preferences.repository, display: preferences.display }));
-  context.subscriptions.push(startZenMode(context.globalState));
+  context.subscriptions.push(startZenMode());
   // Which note a section is focused in, which leaving it clears.
   const sectionFocus = new SectionFocus();
   context.subscriptions.push(sectionFocus);

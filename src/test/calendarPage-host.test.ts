@@ -92,7 +92,7 @@ suite('Calendar page host', () => {
     const { result: page, fire } = withConfigurationEvents(() => openPage());
     try {
       const events = recordSurface(page.surface);
-      fire('deckard.display.level', 'deckard.calendar.weekStart');
+      fire('deckard.display.zen', 'deckard.calendar.weekStart');
       assert.deepStrictEqual(events, ['html', 'post state']);
     } finally {
       page.dispose();

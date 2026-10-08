@@ -8,17 +8,12 @@
  */
 
 import { escapeHtml } from '../../shared/html';
-import type { DisplayChoices } from '../state/displayLevel';
+import { ZEN_CHOICES, type DisplayChoices } from '../state/displayLevel';
 import { DeckardTheme } from './themeNames';
 
 export type { DisplayChoices };
 
 
-/** Zen's values, for a page given only the zen flag, as the test harness gives it. */
-const ZEN_DISPLAY: DisplayChoices = {
-  level: 'zen', styling: 'plain', help: 'hidden', density: 'compact',
-  cards: 'flat', tags: 'text',
-};
 
 /**
  * The look a page is written in: the theme its host read, preview and all,
@@ -85,22 +80,19 @@ export function getPageTailCss(chrome: PageChrome): PageTail {
 }
 
 /**
- * The body's markers: the zen class at the Zen step, and one data attribute
+ * The body's markers: the zen class while Zen is on, and one data attribute
  * for each display value that isn't the default. A host always gives the
- * values it resolved; given none, zen stands for Zen's values.
+ * values it resolved; given none, zen stands for what Zen turns on.
  */
 function bodyMarkers(chrome: PageChrome): string {
-  const display = chrome.display ?? (chrome.zen ? ZEN_DISPLAY : {});
+  const display: DisplayChoices = chrome.display ?? (chrome.zen ? ZEN_CHOICES : {});
   return [
     chrome.zen ? ' class="zen"' : '',
-    display.level ? ` data-level="${display.level}"` : '',
-    display.changed ? ` data-changed="${display.changed}"` : '',
     display.styling === 'plain' ? ' data-styling="plain"' : '',
     display.help === 'hidden' ? ' data-help="hidden"' : '',
     display.density === 'compact' ? ' data-density="compact"' : '',
     display.cards === 'flat' ? ' data-cards="flat"' : '',
     display.tags === 'text' ? ' data-tags="text"' : '',
-    display.counts === 'hidden' ? ' data-counts="hidden"' : '',
     detailMarkers(display),
     display.width === 'full' ? ' data-width="full"' : '',
     dateMarkers(display),
@@ -121,12 +113,11 @@ function dateMarkers(display: DisplayChoices): string {
   ].join('');
 }
 
-/** The markers for an entry's details: when they show, which, and how its dates read. */
+/** The markers for an entry's details: when they show, and which. */
 function detailMarkers(display: DisplayChoices): string {
   return [
     display.fileAndLine ? ` data-file-line="${display.fileAndLine}"` : '',
     display.details ? ` data-details="${display.details}"` : '',
-    display.dates ? ` data-dates="${display.dates}"` : '',
   ].join('');
 }
 

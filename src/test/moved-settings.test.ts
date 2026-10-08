@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
-import { carryMovedSettingsOnce, MOVED_SETTINGS_CARRIED_KEY } from '../composition/movedSettings';
-import { carryMovedSettings, type MovedSetting } from '../core/storage/movedSettings';
+import { carryMovedSettingsOnce, carryRenamedSettingsOnce, MOVED_SETTINGS_CARRIED_KEY, RENAMED_SETTINGS_CARRIED_KEY } from '../composition/movedSettings';
+import { carryMovedSettings, carryRenamedSettings, type MovedSetting, type RenamedSettingWrite, type ScopedValues } from '../core/storage/movedSettings';
 import { createMemoryPreferences, MemoryStore } from './preferenceServices';
 
 suite('Moved settings', () => {
@@ -81,5 +81,60 @@ suite('Moved settings', () => {
     await carryMovedSettingsOnce(preferences.repository, memory, () => {
       throw new Error('read again');
     });
+  });
+
+  test('Display\'s step comes to Zen: Quiet and Zen turn it on, Full writes nothing, and only the user\'s counts', () => {
+    const reading = (values: Record<string, ScopedValues>) => (key: string): ScopedValues | undefined => values[key];
+    const both = { user: true, workspace: true };
+    assert.deepStrictEqual(carryRenamedSettings(reading({ 'display.level': { globalValue: 'quiet' } }), both), {
+      writes: [{ key: 'display.zen', value: true, scope: 'user' }],
+      notices: ['Display is one Zen switch now, in each page\'s gear'],
+    });
+    assert.deepStrictEqual(carryRenamedSettings(reading({ 'display.level': { globalValue: 'zen' } }), both).writes, [{ key: 'display.zen', value: true, scope: 'user' }]);
+    assert.deepStrictEqual(
+      carryRenamedSettings(reading({ 'display.level': { globalValue: 'full' }, 'display.counts': { globalValue: 'hidden' } }), both),
+      { writes: [], notices: ['Display is one Zen switch now, in each page\'s gear'] },
+      'Full is Zen off, the default, and the notice still says where Display went',
+    );
+    assert.deepStrictEqual(
+      carryRenamedSettings(reading({ 'display.level': { workspaceValue: 'zen' } }), both),
+      { writes: [], notices: [] },
+      'a workspace cannot set an application setting',
+    );
+    assert.deepStrictEqual(
+      carryRenamedSettings(reading({ 'display.level': { globalValue: 'zen' }, 'display.zen': { globalValue: false } }), both).writes,
+      [],
+      'Zen set already is left as it is',
+    );
+    assert.deepStrictEqual(carryRenamedSettings(reading({ 'display.level': { globalValue: 'zen' } }), { user: false, workspace: true }).writes, [], 'the user\'s were carried already');
+  });
+
+  test('carries the renamed settings once, and says so in one notice', async () => {
+    const values: Record<string, ScopedValues> = { 'display.level': { globalValue: 'quiet' }, 'display.density': { globalValue: 'compact' } };
+    const written: RenamedSettingWrite[] = [];
+    const notices: string[] = [];
+    const ports = {
+      read: (key: string) => values[key],
+      write: async (write: RenamedSettingWrite) => {
+        written.push(write);
+      },
+      notify: (message: string) => notices.push(message),
+    };
+    const memory = { global: new MemoryStore(), workspace: new MemoryStore() };
+    await carryRenamedSettingsOnce(memory, ports);
+    assert.deepStrictEqual(written, [{ key: 'display.zen', value: true, scope: 'user' }]);
+    assert.deepStrictEqual(notices, ['Deckard moved settings you had set. Display is one Zen switch now, in each page\'s gear.']);
+    assert.strictEqual(memory.global.get(RENAMED_SETTINGS_CARRIED_KEY), true);
+    assert.strictEqual(memory.workspace.get(RENAMED_SETTINGS_CARRIED_KEY), true);
+
+    await carryRenamedSettingsOnce(memory, { ...ports, read: () => {
+      throw new Error('read again');
+    } });
+    assert.strictEqual(notices.length, 1, 'one notice');
+
+    // Nothing set, nothing said.
+    const quiet: string[] = [];
+    await carryRenamedSettingsOnce({ global: new MemoryStore(), workspace: new MemoryStore() }, { ...ports, read: () => undefined, notify: (message) => quiet.push(message) });
+    assert.deepStrictEqual(quiet, []);
   });
 });

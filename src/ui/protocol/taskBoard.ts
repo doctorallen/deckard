@@ -24,7 +24,6 @@ import type {
   OpenHelpMessage,
   OpenSourceMessage,
   OpenTagMessage,
-  DisplayCommandMessage,
   SetDisplayMessage,
   SetZenModeMessage,
   SidebarReadyMessage,
@@ -55,7 +54,7 @@ export interface CardDetailParts {
   index: number;
   /** The date the detail writes, at its end. */
   date?: string;
-  /** The due date's parts, for Display's Dates preference. */
+  /** The due date's parts, each drawn in its own element. */
   due?: DueParts;
   /** Overdue, red or quiet by the card's `overdueTone`; due today; or past needing a new date. */
   tone?: 'overdue' | 'today' | 'stale';
@@ -454,7 +453,6 @@ export interface TaskBoardPageToHost {
   exportResults: ExportResultsMessage;
   setZenMode: SetZenModeMessage;
   setDisplay: SetDisplayMessage;
-  displayCommand: DisplayCommandMessage;
   chooseTheme: ChooseThemeMessage;
   openHelp: OpenHelpMessage;
   openGoTo: OpenGoToMessage;

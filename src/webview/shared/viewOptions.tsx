@@ -1,7 +1,7 @@
 /**
  * The gear: a page's view options, in a disclosure that opens a menu of
- * rows, each a label over its choices. The theme, page width, and Display
- * rows are the same on every page that has a gear.
+ * rows, each a label over its choices. The theme, page width, and Zen rows
+ * are the same on every page that has a gear.
  */
 import type { ComponentChildren } from 'preact';
 
@@ -11,6 +11,8 @@ import { post } from './vscode';
 /** One row of the gear's menu: its label, over its choices. */
 export interface ViewOptionGroup {
   readonly label: string;
+  /** The id of the one control the label names, so a click on the label reaches it. */
+  readonly labelFor?: string;
   /** The choices, below the label rather than beside it. */
   readonly stacked?: boolean;
   readonly content: ComponentChildren;
@@ -29,7 +31,7 @@ export function ViewOptions({ groups, name, label = 'View options' }: { readonly
       <div class="view-options-menu popover is-dropdown">
         {groups.map((group) => (
           <div class={group.stacked ? 'view-options-group is-stacked' : 'view-options-group'}>
-            <span>{group.label}</span>
+            {group.labelFor ? <label for={group.labelFor}>{group.label}</label> : <span>{group.label}</span>}
             {group.content}
           </div>
         ))}
@@ -81,49 +83,24 @@ export function ViewOptionChoices(props: ViewOptionChoicesProps) {
   );
 }
 
-/** The scale's steps as the gear names them. */
-const STEP_NAMES = { full: 'Full', quiet: 'Quiet', zen: 'Zen' } as const;
-
 /**
- * The gear's Display row, the same on every page that has a gear: the three
- * steps as pressed buttons beside the label, and under them one line: how
- * many settings the reader set apart from the step, with Reset, which puts
- * the step's own values back, and Customize…, which opens Settings on
- * Display, where every setting the step moves can be set. Read from the
- * body's markers, which the page shell wrote from the settings.
+ * The gear's Zen row, the same on every page that has a gear: one checkbox,
+ * ticked while Zen is on, which the body's zen class says, as the page
+ * shell wrote it from the setting.
  */
-export function displayLevelOption(): ViewOptionGroup {
-  const marked = document.body.dataset.level;
-  const level = marked === 'quiet' || marked === 'zen' ? marked : 'full';
-  const changed = Number(document.body.dataset.changed ?? 0);
-  const name = STEP_NAMES[level];
+export function zenOption(): ViewOptionGroup {
   return {
-    label: 'Display',
+    label: 'Zen',
+    labelFor: 'view-options-zen',
     content: (
-      <div class="view-options-display">
-        <ViewOptionChoices
-          action="set-display"
-          attributes={{ 'data-display': 'level' }}
-          choices={[['full', 'Full'], ['quiet', 'Quiet'], ['zen', 'Zen']]}
-          selected={level}
-          label="Display"
-        />
-        <p class="view-options-changed">
-          {changed > 0 ? `${changed} changed · ` : null}
-          {changed > 0 ? (
-            <button type="button" class="view-options-link" data-action="display-command" data-command="useStepValues" aria-label={`Reset to ${name}'s values`}>Reset</button>
-          ) : null}
-          {changed > 0 ? ' · ' : null}
-          <button type="button" class="view-options-link" data-action="display-command" data-command="customize">Customize…</button>
-        </p>
-      </div>
+      <input type="checkbox" id="view-options-zen" class="view-options-check" data-action="set-zen" checked={document.body.classList.contains('zen')} />
     ),
   };
 }
 
 /**
  * The gear's Page width row: limited to a 1000px column, or the panel's full
- * width. Read from the body's marker, as the Display row is. The Task Board
+ * width. Read from the body's marker, as the Zen row is. The Task Board
  * and the Calendar always use the full width, so their gears leave it out.
  */
 export function pageWidthOption(): ViewOptionGroup {
@@ -163,8 +140,9 @@ export function themeOption(name: string = readThemeName()): ViewOptionGroup {
  * back to the gear. Call once, before the page's own listeners, so a click
  * that redraws the page is seen while its target is still in the menu.
  *
- * The Display and theme rows are handled here rather than by each page: they
- * post through the page's one handle, and the host redraws the page.
+ * The Zen, Page width, and theme rows are handled here rather than by each
+ * page: they post through the page's one handle, and the host redraws the
+ * page.
  */
 export function installViewOptions(): void {
   document.addEventListener('click', (event) => {
@@ -178,9 +156,9 @@ export function installViewOptions(): void {
     if (display && display.dataset.display && display.dataset.value) {
       post({ type: 'setDisplay', setting: display.dataset.display, value: display.dataset.value });
     }
-    const command = closest('[data-action="display-command"]');
-    if (command && command.dataset.command) {
-      post({ type: 'displayCommand', command: command.dataset.command });
+    const zen = closest('[data-action="set-zen"]');
+    if (zen) {
+      post({ type: 'setZenMode', enabled: (zen as HTMLInputElement).checked });
     }
     const inside = closest('.view-options');
     document.querySelectorAll<HTMLDetailsElement>('.view-options[open]').forEach((options) => {

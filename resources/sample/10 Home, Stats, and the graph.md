@@ -69,8 +69,8 @@ and **Show parked** brings back the archive.
 7. Run **Deckard: Choose Theme…** and move through the eight themes with the
    arrow keys. Home and the board change as you go. Enter keeps one, Escape
    puts yours back.
-8. Run **Deckard: Enter Zen Mode**, or use the zen button in any Deckard
-   page's title bar. Labels, grids, and borders go quiet; every button stays.
+8. Run **Deckard: Toggle Zen**, or tick **Zen** in any Deckard page's gear.
+   Labels, grids, and borders go quiet; every button, count, and date stays.
 9. Run **Deckard: Open Help** for the full guide. Every command it names is a
    button that runs it. **Deckard: Check My Setup** writes up what this
    sample's settings resolve to.

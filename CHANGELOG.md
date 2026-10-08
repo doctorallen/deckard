@@ -6,9 +6,17 @@
 
 - **Zen never hides data.** Zen used to leave out the counts beside names
   and write a due date only as how far off it is. It now shows every
-  count, and writes a due date both ways, "Overdue 2 days · 2026-10-02",
-  as Full and Quiet do. **Counts** and **Dates** in Settings still leave
-  them out or write a date one way, at any step.
+  count, and writes a due date both ways, "Overdue 2 days · 2026-10-02".
+- **Zen is one switch.** Display's three steps, Full, Quiet and Zen, and
+  the seven settings they moved are one checkbox now, **Zen**, in every
+  page's gear, and one setting, `deckard.display.zen`. Zen on draws each
+  theme plain, hides the lines that teach, tightens the spacing, and
+  draws cards flat and tags as text; every count and date still shows. If
+  you had chosen Quiet or Zen, Zen is on after the update, and one notice
+  says where Display went. The palette offers **Deckard: Toggle Zen**
+  alone; the Zen button in a page's title bar stays. Deckard's Zen quiets
+  Deckard's pages, and VS Code's own Zen Mode (⌘K Z) hides the workbench;
+  the two combine.
 - **The Calendar view starts collapsed.** In a new install the sidebar's
   Calendar starts collapsed, as Hubs does, leaving the room to Context,
   Outline and Tasks. Where it is already open, it stays as you left it.
@@ -128,6 +136,14 @@
 
 ### Removed
 
+- **Choose Display… and the Display settings.** `Deckard: Choose
+  Display…`, the gear's Full, Quiet and Zen buttons with their *N changed ·
+  Reset · Customize…* line, and `deckard.display.level`, `themeStyling`,
+  `helpText`, `density`, `cardFrames`, `tags`, `counts` and `dates` are
+  gone; **Zen** takes their place. Counts and dates always show now.
+  **Card details** and the two date formats stay. **Enter Zen** and
+  **Leave Zen** are no longer listed in the palette, where **Toggle Zen**
+  does both.
 - **The Esper Themes suggestion.** Deckard no longer suggests installing
   Esper Themes after its first index. The themes are still in the
   Marketplace, and the guide's Themes and Zen page still names them.

@@ -1,7 +1,7 @@
 /*
- * Flat cards and tags as text: two looks a reader turns on for every page
- * (`deckard.display.cardFrames: flat`, `deckard.display.tags: text`), hung
- * on the body's `data-cards` and `data-tags`, which the page shell writes.
+ * Flat cards and tags as text: two looks Zen turns on for every page
+ * (`deckard.display.zen`), hung on the body's `data-cards` and `data-tags`,
+ * which the page shell writes.
  *
  * After card details (provenance.css) and before high contrast, which keeps
  * its own borders and colors.

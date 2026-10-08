@@ -12,7 +12,6 @@ import type {
   OpenGoToMessage,
   OpenHelpMessage,
   OpenTagMessage,
-  DisplayCommandMessage,
   SetDisplayMessage,
   SetZenModeMessage,
   SidebarReadyMessage,
@@ -263,7 +262,6 @@ export interface CalendarPagePageToHost extends CalendarPageToHost {
   setShowWeekends: CalendarSetShowWeekendsMessage;
   setZenMode: SetZenModeMessage;
   setDisplay: SetDisplayMessage;
-  displayCommand: DisplayCommandMessage;
   chooseTheme: ChooseThemeMessage;
   openHelp: OpenHelpMessage;
   openGoTo: OpenGoToMessage;

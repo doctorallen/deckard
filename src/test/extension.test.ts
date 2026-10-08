@@ -73,13 +73,19 @@ suite('Extension Test Suite', () => {
       menus['file/newFile'].map((entry) => entry.command),
       ['deckard.createDailyNote', 'deckard.newNoteFromTemplate'],
     );
-    // Zen is one button on every Deckard page.
+    // Zen is one button on every Deckard page, a when-swapped pair, since
+    // a menu item cannot declare a toggled state; the palette offers Toggle
+    // Zen alone.
     assert.deepStrictEqual(title('deckard.enableZenMode'), [
       ['activeWebviewPanelId =~ /^deckard\\./ && !deckard.zenMode', 'navigation@90'],
     ]);
     assert.deepStrictEqual(title('deckard.disableZenMode'), [
       ['activeWebviewPanelId =~ /^deckard\\./ && deckard.zenMode', 'navigation@90'],
     ]);
+    assert.deepStrictEqual(
+      menus.commandPalette.filter((entry) => /ZenMode$/.test(entry.command ?? '')).map((entry) => [entry.command, entry.when]),
+      [['deckard.enableZenMode', 'false'], ['deckard.disableZenMode', 'false']],
+    );
   });
 
   test('contributes the Deckard commands and settings', () => {
@@ -93,7 +99,7 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 58);
+    assert.strictEqual(Object.keys(settings).length, 51);
     assert.deepStrictEqual(settings['deckard.parked.tags'].default, ['parked']);
     assert.deepStrictEqual(settings['deckard.parked.folders'].default, {});
     assert.deepStrictEqual(settings['deckard.periodicNote.reviewSections'].default, []);
@@ -207,7 +213,6 @@ suite('Extension Test Suite', () => {
         'deckard.outline.filterByTag',
         'deckard.outline.clearTagFilter',
         'deckard.chooseTheme',
-        'deckard.chooseDisplay',
         'deckard.chooseDateFormat',
         'deckard.enableZenMode',
         'deckard.disableZenMode',

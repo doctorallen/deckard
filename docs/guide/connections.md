@@ -88,7 +88,7 @@ Open **Outline** from the Deckard Activity Bar to see the active Markdown file's
 
 - Each heading shows its title, without markers or tags, and its own tags beside it. A heading of only tags shows those tags as its title.
 - Untagged headings are kept for structure. Headings in fenced code blocks are ignored, and `Sprint #3` stays in the title. Underlined `Title`/`===` headings are not shown.
-- **2/5** means two of five tasks under the heading are done, sub-headings included; **↩3** means links in other notes name it three times. Zen hides them.
+- **2/5** means two of five tasks under the heading are done, sub-headings included; **↩3** means links in other notes name it three times.
 - The tree follows the file as you type.
 - Select a heading to jump to it. Right-click a tagged heading for **Open the Tag's Search Page** and **Rename Tag**.
 - The eye control sets whether the Outline follows the cursor; **Collapse all** is beside it.

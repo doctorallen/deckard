@@ -314,7 +314,7 @@ function writeFixture() {
   if (zen) {
     // Display is the reader's own, so Zen is in the user's settings.
     mkdirSync(join(profile, 'User'), { recursive: true });
-    writeFileSync(join(profile, 'User', 'settings.json'), JSON.stringify({ 'deckard.display.level': 'zen' }));
+    writeFileSync(join(profile, 'User', 'settings.json'), JSON.stringify({ 'deckard.display.zen': true }));
   }
   mkdirSync(join(workspace, '.vscode'));
   writeFileSync(

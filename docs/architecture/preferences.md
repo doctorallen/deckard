@@ -82,6 +82,8 @@ Three migrations are written into the code:
 
 The first runs once, at the first start in a workspace, in `PreferencesRepository`. The second runs with each prune, in `PreferencesMaintenance`, and the third inside `normalizePreferences`. Reading also drops the removed Dashboard tabs, drops retired keys, gives Home its default widgets when a blob has none, and reads a pin written as a path as a pin on the whole note. The blob's `version` has stayed 1 throughout.
 
+Two carries move what a reader had set in settings that are gone, once per machine and once per workspace, at activation, in `src/composition/movedSettings.ts`, with the pure mappings in `core/storage/movedSettings.ts`. `carryMovedSettingsOnce` carries ten settings into the preferences (plan 27) and sets `deckard.movedSettingsCarried`. `carryRenamedSettingsOnce` carries settings that became another setting, written in the scope each was found in unless the new one is set there already, and sets `deckard.renamedSettingsCarried`; Display's step and its seven settings became `deckard.display.zen` this way, Quiet and Zen both coming to Zen on (plan 29). When it finds any, one notice names each family that moved. Neither reads the old settings again.
+
 `src/test/preferences-roundtrip.test.ts` pins the format byte for byte. A made-up blob with every field set to something other than its default must read back as itself and write back the same JSON to both stores. Each legacy shape a migration reads is loaded the same way. A walk over every mutator records which store each write reaches, in what order, a digest of its bytes, and which event follows. Its expectations were taken before the split.
 
 ## Pruning

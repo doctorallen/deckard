@@ -118,28 +118,22 @@ suite('The shared page core draws what the template script drew', () => {
     assertSame(drawnBefore('helpButton'), drawnNow(element('HelpButton', {})), 'help');
   });
 
-  test('the gear\'s Display row: the three steps, what the reader changed, and Customize…', () => {
+  test('the gear\'s Zen row: one checkbox, named by its label, ticked while Zen is on', () => {
     const body = core.document.body;
-    const row = (): Element => drawnNow(element('ViewOptions', { groups: [shared().displayLevelOption()] }));
-    const pressed = (drawn: Element): string[] =>
-      Array.from(drawn.querySelectorAll('[data-display="level"]')).map((button) => `${button.textContent}:${button.getAttribute('aria-pressed')}`);
+    const row = (): Element => drawnNow(element('ViewOptions', { groups: [shared().zenOption()] }));
+    const box = (drawn: Element): HTMLInputElement | null => drawn.querySelector<HTMLInputElement>('input[type="checkbox"][data-action="set-zen"]');
 
     let drawn = row();
-    assert.deepStrictEqual(pressed(drawn), ['Full:true', 'Quiet:false', 'Zen:false']);
-    assert.strictEqual(drawn.querySelector('.view-options-changed')?.textContent, 'Customize…', 'nothing changed, nothing to undo');
-    assert.ok(drawn.querySelector('[data-command="customize"]'), 'Customize… is always there');
+    assert.strictEqual(box(drawn)?.checked, false);
+    assert.strictEqual(drawn.querySelector(`label[for="${box(drawn)?.id ?? ''}"]`)?.textContent, 'Zen', 'the row\'s label names the box');
+    assert.strictEqual(drawn.querySelectorAll('[data-display="level"], [data-command]').length, 0, 'no steps and no Reset or Customize…');
 
-    body.dataset.level = 'quiet';
-    body.dataset.changed = '2';
+    body.classList.add('zen');
     try {
       drawn = row();
-      assert.deepStrictEqual(pressed(drawn), ['Full:false', 'Quiet:true', 'Zen:false']);
-      assert.strictEqual(drawn.querySelector('.view-options-changed')?.textContent, '2 changed · Reset · Customize…');
-      assert.strictEqual(drawn.querySelector('[data-command="useStepValues"]')?.getAttribute('aria-label'), "Reset to Quiet's values");
-      assert.ok(drawn.querySelector('[data-command="useStepValues"]'));
+      assert.strictEqual(box(drawn)?.checked, true);
     } finally {
-      delete body.dataset.level;
-      delete body.dataset.changed;
+      body.classList.remove('zen');
     }
   });
 

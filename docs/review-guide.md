@@ -703,8 +703,11 @@ whole section by hand.
   open. Move through the eight themes. *Look for:* each one shown live;
   Enter keeps it; Escape restores the previous theme; nothing is written to
   settings until you keep one.
-- [ ] **Zen from a page's title bar.** On Home, a search page, the board,
-  Stats, Help, or the graph, the title bar button enters and leaves zen.
+- [ ] **Zen from a page's title bar and gear.** On Home, a search page, the
+  board, Stats, Help, or the graph, the title bar button enters and leaves
+  zen; on a page with a gear, the **Zen** checkbox does too. *Look for:* the
+  palette lists **Deckard: Toggle Zen** alone, and every count and due date
+  stays drawn with zen on.
 - [ ] **Cooper stays gold on black.** Switch to Cooper and look at the Stats
   bars. They use `--cyan`, which appears pale blue there. Decide whether
   that is acceptable. **(check by hand)**

@@ -20,11 +20,11 @@ import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { announce } from '../shared/status';
 import { taskTitleOf } from '../shared/taskRow';
 import {
-  displayLevelOption,
   installViewOptions,
   themeOption,
   ViewOptionChoices,
   ViewOptions,
+  zenOption,
 } from '../shared/viewOptions';
 import { keptState, vscodeApi } from '../shared/vscode';
 import { GroupSwitch, TaskBoard, taskCardMoves } from './board';
@@ -163,7 +163,7 @@ function BoardViewOptions({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
         ...(isTable ? [] : [{ label: 'Cards', content: <ParentTagToggle snapshot={snapshot} /> }]),
         { label: 'Status columns', content: <StatusSettings snapshot={snapshot} />, stacked: true },
         themeOption(),
-        displayLevelOption(),
+        zenOption(),
       ]}
     />
   );

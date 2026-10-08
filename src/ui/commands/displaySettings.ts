@@ -4,34 +4,24 @@ import type { DisplayService } from '../../core/storage/preferencesDisplay';
 import type { PreferencesReader } from '../../core/storage/preferencesRepository';
 import { DEFAULT_DATE_FORMAT, DEFAULT_DATE_LOCALE, DEFAULT_SHORT_DATE_FORMAT, type DateFormats, usesLocaleWeeks } from '../../domain/markdown/dateFormat';
 import { DATE_FORMAT_SETTINGS, readDateFormats } from './datePrompt';
-import { writeSetting } from './settings';
-import { changedScaleSettings, resolveDisplayLevel, resolveScaleValues, SCALE_SETTINGS, type DisplayChoices, type DisplayLevel, type ScaleSetting } from '../state/displayLevel';
+import { ZEN_CHOICES, type DisplayChoices } from '../state/displayLevel';
 
 /**
- * Display, read from the settings and written from the gear: the step
- * (`deckard.display.level`), the settings it moves, and how cards and tags
- * are drawn. Each is personal, an application setting, so a workspace's
- * settings never decide how someone else's pages look; each is written to
- * the user's settings. What the values come to is ui/state/displayLevel.ts's.
+ * Display, read from the settings and written from the gear: Zen
+ * (`deckard.display.zen`), and the card details and date formats. Each is
+ * personal, an application setting, so a workspace's settings never decide
+ * how someone else's pages look; each is written to the user's settings.
+ * What Zen turns on is ui/state/displayLevel.ts's.
  *
  * The page width is the gear's own, kept in the preferences, the same in
  * every workspace.
  */
 
-/** The setting each choice is kept in, under `deckard.`, and its values. */
-export const DISPLAY_SETTINGS = {
-  level: { key: 'display.level', values: ['full', 'quiet', 'zen'] },
-  themeStyling: { key: 'display.themeStyling', values: ['auto', 'styled', 'plain'] },
-  helpText: { key: 'display.helpText', values: ['auto', 'shown', 'hidden'] },
-  density: { key: 'display.density', values: ['auto', 'comfortable', 'compact'] },
-  cardFrames: { key: 'display.cardFrames', values: ['auto', 'raised', 'flat'] },
-  tags: { key: 'display.tags', values: ['auto', 'chips', 'text'] },
-  counts: { key: 'display.counts', values: ['auto', 'shown', 'hidden'] },
-  dates: { key: 'display.dates', values: ['auto', 'both', 'relative', 'date'] },
-} as const;
+/** The setting Zen is kept in, under `deckard.`. */
+export const ZEN_SETTING = 'display.zen';
 
-/** One of the display choices, by its setting's name. */
-export type DisplaySetting = keyof typeof DISPLAY_SETTINGS;
+/** The Display setting a page's gear sets besides Zen: the page width. */
+export type DisplaySetting = 'pageWidth';
 
 /** How wide every page is drawn: limited to a column, or as wide as its panel. */
 export type PageWidth = 'limited' | 'full';
@@ -77,43 +67,17 @@ export function readPageWidth(): PageWidth {
   return pageWidth;
 }
 
-/** The step in force: `deckard.display.level` when the reader has set it, else Full. */
-export function readDisplayLevel(): DisplayLevel {
-  return resolveDisplayLevel(vscode.workspace.getConfiguration('deckard').inspect<string>(DISPLAY_SETTINGS.level.key)?.globalValue);
+/** Whether Zen is on: `deckard.display.zen` in the user's settings. */
+export function readZen(): boolean {
+  return vscode.workspace.getConfiguration('deckard').inspect<boolean>(ZEN_SETTING)?.globalValue === true;
 }
 
-/** The scale settings as the reader set them, `auto` or a value of their own. */
-export function readScaleSettings(): Record<ScaleSetting, unknown> {
+/** How pages are drawn now, each value only when it isn't the default. */
+export function readDisplayChoices(): DisplayChoices {
   const deckard = vscode.workspace.getConfiguration('deckard');
-  const set = {} as Record<ScaleSetting, unknown>;
-  for (const key of Object.keys(SCALE_SETTINGS) as ScaleSetting[]) {
-    set[key] = deckard.get(DISPLAY_SETTINGS[key].key);
-  }
-  return set;
-}
-
-/**
- * How pages are drawn now, each value only when it isn't the default.
- * `previewed` is a step Choose Display… is showing on the open pages before
- * anything is written.
- */
-export function readDisplayChoices(previewed?: DisplayLevel): DisplayChoices {
-  const deckard = vscode.workspace.getConfiguration('deckard');
-  const level = previewed ?? readDisplayLevel();
-  const set = readScaleSettings();
-  const scale = resolveScaleValues(level, set);
-  const changed = changedScaleSettings(set).length;
   return {
-    ...(level === 'full' ? {} : { level }),
-    ...(changed ? { changed } : {}),
-    ...(scale.themeStyling === 'plain' ? { styling: 'plain' as const } : {}),
-    ...(scale.helpText === 'hidden' ? { help: 'hidden' as const } : {}),
-    ...(scale.density === 'compact' ? { density: 'compact' as const } : {}),
-    ...(scale.cardFrames === 'flat' ? { cards: 'flat' as const } : {}),
-    ...(scale.tags === 'text' ? { tags: 'text' as const } : {}),
-    ...(scale.counts === 'hidden' ? { counts: 'hidden' as const } : {}),
+    ...(readZen() ? ZEN_CHOICES : {}),
     ...readDetailChoices(deckard),
-    ...(scale.dates === 'both' ? {} : { dates: scale.dates }),
     ...(readPageWidth() === 'full' ? { width: 'full' as const } : {}),
     ...dateFormatChoices(readDateFormats()),
   };
@@ -151,46 +115,22 @@ function readDetailChoices(deckard: vscode.WorkspaceConfiguration): Pick<Display
 }
 
 /**
- * Whether a settings change alters how pages are drawn: a Display setting,
- * the details an entry shows, a date format, or the week start a format's
- * `w` counts from.
+ * Whether a settings change alters how pages are drawn: Zen, the details an
+ * entry shows, a date format, or the week start a format's `w` counts from.
  */
 export function affectsDisplayChoices(event: vscode.ConfigurationChangeEvent): boolean {
   return event.affectsConfiguration('deckard.display.cardDetails')
-    || Object.values(DISPLAY_SETTINGS).some((setting) => event.affectsConfiguration(`deckard.${setting.key}`))
+    || event.affectsConfiguration(`deckard.${ZEN_SETTING}`)
     || Object.values(DATE_FORMAT_SETTINGS).some((key) => event.affectsConfiguration(`deckard.${key}`))
     || event.affectsConfiguration('deckard.calendar.weekStart');
 }
 
 /**
- * Puts the step's own values back: each setting the step moves goes back to
- * Auto, in the user's settings, where every Display setting is written.
+ * Sets the page width from a page's gear, in the preferences. Each page
+ * redraws from its own listener for it, so there is nothing to refresh here.
  */
-export async function useStepValues(): Promise<void> {
-  for (const key of Object.keys(SCALE_SETTINGS) as ScaleSetting[]) {
-    await writeSetting(DISPLAY_SETTINGS[key].key, undefined, vscode.ConfigurationTarget.Global);
-  }
-}
-
-/** Opens Settings on Display's settings, where each one changed shows as Modified with its own Reset. */
-export async function customizeDisplay(): Promise<void> {
-  await vscode.commands.executeCommand('workbench.action.openSettings', 'deckard.display');
-}
-
-/**
- * Sets one choice from a page's gear: a Display setting in the user's
- * settings, or the page width in the preferences. Each page redraws from
- * its own listener for either, so there is nothing to refresh here.
- */
-export async function setDisplayChoice(setting: DisplaySetting | 'pageWidth', value: string): Promise<void> {
-  if (setting === 'pageWidth') {
-    if (value === 'limited' || value === 'full') {
-      await pageWidthStore?.setPageWidth(value);
-    }
-    return;
-  }
-  const known: readonly string[] = DISPLAY_SETTINGS[setting].values;
-  if (known.includes(value)) {
-    await writeSetting(DISPLAY_SETTINGS[setting].key, value, vscode.ConfigurationTarget.Global);
+export async function setDisplayChoice(setting: DisplaySetting, value: string): Promise<void> {
+  if (setting === 'pageWidth' && (value === 'limited' || value === 'full')) {
+    await pageWidthStore?.setPageWidth(value);
   }
 }

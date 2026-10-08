@@ -949,7 +949,7 @@ test('Quick add takes no longer a task than the host adds', async () => {
   assert.match(view.find('.home-quick-add-status').textContent, /Added/);
 });
 
-test('the gear\'s Display row moves the step through the host, and the page carries the markers', async () => {
+test('the gear\'s Zen checkbox turns Zen on through the host, and the page carries the markers', async () => {
   const { view, panel } = await openDashboard();
   try {
     // Off to begin with: the sheet ships either way, the marker does not.
@@ -957,24 +957,24 @@ test('the gear\'s Display row moves the step through the host, and the page carr
     assert.ok(loadPage(panel.webview.html).includes('body[data-density=compact] {'), 'the Display sheet ships');
     assert.ok(!panel.webview.html.includes('<body class="zen"'), 'zen starts off');
 
-    view.click(view.find('[data-action="set-display"][data-display="level"][data-value="zen"]'));
+    view.click(view.find('[data-action="set-zen"]'));
     await delay(20);
 
-    // The page posts intent; the host is what writes Display's step,
-    // globally, so every Deckard surface follows it rather than this page alone.
+    // The page posts intent; the host is what writes Zen, globally, so
+    // every Deckard surface follows it rather than this page alone.
     assert.deepStrictEqual(
-      vscode._test.configurationUpdates.filter((update) => update.name === 'deckard.display.level'),
-      [{ name: 'deckard.display.level', value: 'zen', target: vscode.ConfigurationTarget.Global }],
+      vscode._test.configurationUpdates.filter((update) => update.name === 'deckard.display.zen'),
+      [{ name: 'deckard.display.zen', value: true, target: vscode.ConfigurationTarget.Global }],
     );
 
     // A page drawn while the setting is on carries the marker the sheet needs.
     const { panel: second, view: secondView } = await openDashboard();
-    assert.ok(second.webview.html.includes('<body class="zen" data-level="zen" data-styling="plain" data-help="hidden" data-density="compact" data-cards="flat" data-tags="text">'), 'zen marks the body as Zen draws it');
+    assert.ok(second.webview.html.includes('<body class="zen" data-styling="plain" data-help="hidden" data-density="compact" data-cards="flat" data-tags="text">'), 'zen marks the body with what Zen turns on');
 
     // Nothing was taken off the page to achieve it.
     assert.ok(secondView.find('.eyebrow'), 'the eyebrow is still drawn');
   } finally {
-    vscode._test.settings.delete('deckard.display.level');
+    vscode._test.settings.delete('deckard.display.zen');
     vscode._test.configurationUpdates.length = 0;
     vscode._test.executedCommands.length = 0;
   }
