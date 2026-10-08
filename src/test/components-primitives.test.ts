@@ -16,8 +16,6 @@ import { createQueryContext } from '../domain/query/queryContext';
 import { deckardThemes } from '../ui/webview/themeNames';
 import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 import { createDeckardStatsSnapshot } from '../ui/state/statsState';
-import { createDashboardSnapshot } from '../ui/state/dashboardState';
-import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 
 /**
  * The shared primitives every page draws with: popovers and menus, tips,
@@ -428,38 +426,6 @@ suite('Component primitives', () => {
       assert.match(String(tip(page)?.textContent), /^Open this entry/);
       assert.ok(!overlaps(placed, breakdownBox), `the tip ${JSON.stringify(placed)} covers the breakdown`);
       assert.ok(!overlaps(placed, cardBox), `the tip ${JSON.stringify(placed)} covers the card`);
-    });
-
-    test('a tag pair\'s tip leaves its count, drawn in its row, to be read', () => {
-      // As David saw it: the row's count opened under it on hover, and the
-      // row's tip was drawn over it. The count is drawn beside the tags now,
-      // so the tip goes under the row.
-      const index = buildWorkspaceIndex(new Map(Array.from({ length: 3 }, (_, n) => [
-        `notes/n${n}.md`,
-        parseMarkdown(`notes/n${n}.md`, `# Shift ${n} #person/sable-ortiz #team/harbor\nOn the harbor shift.\n`),
-      ])));
-      store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-      const preferences = {
-        ...store.reader.value,
-        dashboardViewState: { ...store.reader.value.dashboardViewState, mode: 'home' as const },
-        dashboardWidgets: [{ id: 'p', kind: 'tagPairs' as const, width: 'full' as const, count: 10 }],
-      };
-      const queryContext = createQueryContext(Date.now());
-      page = openWebviewPage(renderPage('dashboard'), {
-        ...createDashboardSnapshot({ index, preferences, queryContext }),
-        widgets: createDashboardWidgets(index, preferences, { queryContext }),
-      });
-      const row = page.find('.home-row[data-query="#person/sable-ortiz AND #team/harbor"]') as HTMLElement;
-      const detail = row.querySelector('.home-row-detail') as Element;
-      const rowBox = { left: 10, top: 100, width: 380, height: 28 };
-      // At the row's right, inside it.
-      const detailBox = { left: 300, top: 106, width: 80, height: 16 };
-      layOut(page, new Map([[row, rowBox], [detail, detailBox]]));
-      keyFocus(page, '.home-row[data-query="#person/sable-ortiz AND #team/harbor"]');
-      const placed = tipBox(page);
-      assert.match(String(tip(page)?.textContent), /carry both.*Search for both\.$/);
-      assert.ok(!overlaps(placed, detailBox), `the tip ${JSON.stringify(placed)} covers the count`);
-      assert.ok(!overlaps(placed, rowBox), `the tip ${JSON.stringify(placed)} covers the row`);
     });
 
     test('every card or row that shows more of itself on hover says so to the tip', () => {

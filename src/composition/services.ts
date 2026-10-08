@@ -24,10 +24,9 @@ import { createVscodeProgress } from '../platform/vscodeProgress';
 import { createVscodeWorkspace } from '../platform/vscodeWorkspace';
 import { createVscodeWorkspaceEvents } from '../platform/vscodeWorkspaceEvents';
 import { VIEW_PRIORITY } from '../core/workspace/publishing';
-import { captureToToday, createCaptureNotes } from '../ui/commands/capture';
+import { createCaptureNotes } from '../ui/commands/capture';
 import type { AddTaskContext } from '../ui/commands/addTask';
 import { CaptureService } from '../services/captureService';
-import { createHubNote } from '../ui/commands/hubNote';
 import { createDailyNoteWithRollover, createRolloverService, VscodeRolloverService } from '../ui/commands/rollover';
 import { createReviewService, ReviewWrites } from '../ui/commands/review';
 import { TaskWrites } from '../ui/commands/taskActions';
@@ -942,10 +941,6 @@ function createHome(context: vscode.ExtensionContext, parts: HomeParts) {
       openTaskBoard: (query) => taskBoard.show(query),
       openDailyNote: async () => {
         await createDailyNoteWithRollover(indexer, history, undefined, writes.rollover);
-      },
-      quickAdd: (text) => captureToToday(text),
-      createHubNote: async (tagKey) => {
-        await createHubNote(indexer, tagKey);
       },
       addNextAction: (tagLabel) => captureNextAction(tagLabel),
     },

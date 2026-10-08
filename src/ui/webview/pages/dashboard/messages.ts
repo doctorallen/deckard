@@ -4,14 +4,11 @@
  * a message names against the index and preferences as they are now.
  */
 import type { DashboardMode, DashboardSearchField, TagSortMode } from '../../../../domain/model/preferences';
-import { QUICK_ADD_MAX_LENGTH } from '../../../../domain/dashboard/widgetCatalog';
 import type {
   AddNextActionMessage,
-  CreateTagHubMessage,
   DashboardPageToHost,
   OpenDeckardViewMessage,
   OpenNoteMessage,
-  QuickAddMessage,
   RecordRecentQueryMessage,
   ReorderEntitiesMessage,
   ReorderTagsMessage,
@@ -164,25 +161,11 @@ const narrowOpenTaskBoard: Narrower<OpenTaskBoardMessage> = (value) =>
 /** One of the Deckard views Home links to. */
 const narrowOpenView: Narrower<OpenDeckardViewMessage> = (value) =>
   value.view === 'agenda' ||
-  value.view === 'stats' ||
   value.view === 'sampleWorkspace' ||
   value.view === 'checkSetup' ||
   value.view === 'walkthrough'
     ? { type: 'openView', view: value.view }
     : undefined;
-
-/** A task to add to today's note: one line, with something on it, no longer than its field takes. */
-const narrowQuickAdd: Narrower<QuickAddMessage> = (value) =>
-  typeof value.text === 'string' &&
-  value.text.trim().length > 0 &&
-  value.text.length <= QUICK_ADD_MAX_LENGTH &&
-  !/[\r\n]/.test(value.text)
-    ? { type: 'quickAdd', text: value.text }
-    : undefined;
-
-/** A tag's hub note to make, by any non-empty key. */
-const narrowCreateTagHub: Narrower<CreateTagHubMessage> = (value) =>
-  typeof value.tagKey === 'string' && value.tagKey.length > 0 ? { type: 'createTagHub', tagKey: value.tagKey } : undefined;
 
 /** A tag to capture a next action for. */
 const narrowAddNextAction: Narrower<AddNextActionMessage> = (value) =>
@@ -234,8 +217,6 @@ export const DASHBOARD_MESSAGES: NarrowingTable<DashboardPageToHost> = {
   openTaskBoard: narrowOpenTaskBoard,
   openView: narrowOpenView,
   openDailyNote: onlyType('openDailyNote'),
-  quickAdd: narrowQuickAdd,
-  createTagHub: narrowCreateTagHub,
   addNextAction: narrowAddNextAction,
   openNote: narrowOpenNote,
   pinNote: narrowAs('pinNote', narrowPinNote),

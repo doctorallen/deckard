@@ -39,10 +39,7 @@ function createIndex(): WorkspaceIndex {
   return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
 }
 
-/**
- * Where Home sent the reader, in order; a quick add containing "refused" is
- * not added, and one containing "read-only" fails as a read-only disk would.
- */
+/** Where Home sent the reader, in order. */
 function createNavigation(): DashboardNavigation & { opened: string[] } {
   const opened: string[] = [];
   return {
@@ -51,14 +48,6 @@ function createNavigation(): DashboardNavigation & { opened: string[] } {
     openSearch: (query) => void opened.push(`search ${query}`),
     openTaskBoard: (query) => void opened.push(`board ${query ?? ''}`),
     openDailyNote: () => void opened.push('today'),
-    quickAdd: (text) => {
-      opened.push(`add ${text}`);
-      if (text.includes('read-only')) {
-        throw new Error('EROFS: read-only file system');
-      }
-      return !text.includes('refused');
-    },
-    createHubNote: (tagKey) => void opened.push(`hub ${tagKey}`),
   };
 }
 
@@ -285,34 +274,6 @@ suite('Dashboard host', () => {
     }
   });
 
-  test('answers a quick add with the text it was sent, whether or not it was added', async () => {
-    const home = openHome();
-    try {
-      await home.send({ type: 'quickAdd', text: ' Call Ren ' });
-      await home.send({ type: 'quickAdd', text: 'refused task' });
-      assert.deepStrictEqual(home.navigation.opened, ['add Call Ren', 'add refused task']);
-      assert.deepStrictEqual(home.surface.webview.postedOf('quickAddResult'), [
-        { type: 'quickAddResult', text: ' Call Ren ', added: true },
-        { type: 'quickAddResult', text: 'refused task', added: false },
-      ]);
-    } finally {
-      home.dispose();
-    }
-  });
-
-  test('answers a quick add that fails, so the page gives the task back', async () => {
-    const home = openHome();
-    try {
-      // The failure still reaches the log, as any handler's does.
-      await assert.rejects(home.send({ type: 'quickAdd', text: 'read-only task' }), /read-only/);
-      assert.deepStrictEqual(home.surface.webview.postedOf('quickAddResult'), [
-        { type: 'quickAddResult', text: 'read-only task', added: false },
-      ]);
-    } finally {
-      home.dispose();
-    }
-  });
-
   test('opens an entry and counts its visit, opens a task\'s line, and nothing else', async () => {
     const home = openHome();
     try {
@@ -336,19 +297,16 @@ suite('Dashboard host', () => {
     }
   });
 
-  test('opens a tag the index has, as the reader may have written it, and its hub', async () => {
+  test('opens a tag the index has, as the reader may have written it', async () => {
     const home = openHome();
     try {
       await home.send({ type: 'openTag', tagKey: 'Project/Relay' });
       await home.send({ type: 'openTag', tagKey: '#gone' });
-      await home.send({ type: 'createTagHub', tagKey: '#project/relay' });
-      await home.send({ type: 'createTagHub', tagKey: '#gone' });
       await home.send({ type: 'openSearch', query: ' #project/relay ' });
       await home.send({ type: 'openTaskBoard' });
       await home.send({ type: 'openDailyNote' });
       assert.deepStrictEqual(home.navigation.opened, [
         'tag #project/relay',
-        'hub #project/relay',
         'search #project/relay',
         'board ',
         'today',
@@ -364,7 +322,6 @@ suite('Dashboard host', () => {
     try {
       const calls = await record(async () => {
         await home.send({ type: 'chooseTheme' });
-        await home.send({ type: 'openView', view: 'stats' });
         await home.send({ type: 'openView', view: 'walkthrough' });
         await home.send({ type: 'openWhatsNew' });
         await home.send({ type: 'parkTag', tagKey: '#project/relay' });
@@ -372,7 +329,6 @@ suite('Dashboard host', () => {
       });
       assert.deepStrictEqual(calls, [
         ['deckard.chooseTheme'],
-        ['deckard.showStats'],
         ['deckard.openWalkthrough'],
         ['deckard.openWhatsNew'],
         ['deckard.parkTag', '#project/relay'],
@@ -408,7 +364,7 @@ suite('Dashboard host', () => {
       const calls = await record(async () => {
         await home.send({ type: 'openSource', filePath: '/notes/atlas.md', line: 0 });
         await home.send({ type: 'openTag', tagKey: '' });
-        await home.send({ type: 'quickAdd', text: 'a\nb' });
+        await home.send({ type: 'openView', view: 'stats' });
         await home.send({ type: 'openView', view: 'settings' });
         await home.send({ type: 'setTaskFilter', filter: 'all' });
         await home.send({ type: 'toggleTask', taskId: 'a', completed: 'yes' });

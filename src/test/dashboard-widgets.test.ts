@@ -1,8 +1,6 @@
 import * as assert from 'assert';
 
 import { parseMarkdown } from '../domain/markdown/parser';
-import { evaluateQuery } from '../domain/query/queryEvaluator';
-import { parseQuery } from '../domain/query/queryParser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { normalizeDashboardWidgets } from '../core/storage/preferencesSchema';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
@@ -188,52 +186,24 @@ suite('Dashboard Home widgets', () => {
     assert.strictEqual(recent.total, 3);
   });
 
-  test('gives the search widget its box, and counts the workspace', () => {
-    const [search, stats] = widgets([
-      { id: 's', kind: 'search', width: 'full' },
-      { id: 'w', kind: 'stats', width: 'full' },
-    ]);
+  test('gives the search widget its box', () => {
+    const [search] = widgets([{ id: 's', kind: 'search', width: 'full' }]);
     assert.strictEqual(search.searchState?.text, '');
     assert.deepStrictEqual(
       search.searchState?.suggestions.recent.map((item) => item.value),
       ['is:open', '#risk/vendor', 'ledger'],
     );
-    assert.deepStrictEqual(
-      stats.stats?.map((stat) => [stat.label, stat.value]),
-      [
-        ['Notes', 2],
-        ['Files', 2],
-        ['Open tasks', 3],
-        ['Tasks', 4],
-        ['Tags', 2],
-        ['Namespaced tags', 2],
-      ],
-    );
   });
 
-  test('shows today\'s note, stale tasks, and where Quick add writes', () => {
+  test('shows today\'s note and its open tasks', () => {
     const index = createWorkIndex();
-    const [today, quickAdd, stale] = widgets(
-      [
-        { id: 'd', kind: 'todayNote', width: 'half', count: 5 },
-        { id: 'q', kind: 'quickAdd', width: 'full' },
-        { id: 's', kind: 'staleTasks', width: 'half', count: 5, days: 30 },
-      ],
-      index,
-    );
+    const [today] = widgets([{ id: 'd', kind: 'todayNote', width: 'half', count: 5 }], index);
     assert.deepStrictEqual(today.today, {
       date: '2026-09-16',
       filePath: 'notes/2026-09-16.md',
       openTaskCount: 1,
     });
     assert.deepStrictEqual(today.tasks?.map((entry) => entry.task.lineNumber), [2]);
-    assert.strictEqual(quickAdd.today?.filePath, 'notes/2026-09-16.md');
-    assert.strictEqual(quickAdd.tasks, undefined, 'Quick add lists nothing');
-    assert.deepStrictEqual(
-      stale.tasks?.map((entry) => entry.task.title),
-      ['Forgotten task'],
-      'only the open task in the note left alone for 60 days',
-    );
 
     const [noNote] = createDashboardWidgets(
       index,
@@ -243,9 +213,36 @@ suite('Dashboard Home widgets', () => {
     assert.deepStrictEqual(noNote.today, { date: '2026-09-17', openTaskCount: 0 });
   });
 
-  test('ranks notes related to the last note, and lists pinned notes', () => {
+  test('a stored Stale tasks widget lists what it listed, least recently updated first', () => {
+    // Stale tasks dated a task by its note; a task's updated date is its
+    // note's, so the search it became finds the same tasks.
+    const files = [
+      parseMarkdown('notes/a.md', '# A\n- [ ] Forty days', { createdAt: now - 99 * DAY, updatedAt: now - 40 * DAY }),
+      parseMarkdown('notes/b.md', '# B\n- [ ] Hundred days\n- [x] Done long ago', { createdAt: now - 199 * DAY, updatedAt: now - 100 * DAY }),
+      parseMarkdown('notes/c.md', '# C\n- [ ] Five days', { createdAt: now - 9 * DAY, updatedAt: now - 5 * DAY }),
+      parseMarkdown(
+        'notes/d.md',
+        '---\nupdated: 2026-08-01\n---\n# D\n- [ ] Dated by its front matter',
+        { createdAt: now - 9 * DAY, updatedAt: now - 1 * DAY },
+      ),
+    ];
+    const index = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+    for (const task of index.tasks.values()) {
+      assert.strictEqual(task.updatedAt, index.files.get(task.filePath)?.updatedAt, task.title);
+    }
+    const [stale] = widgets(normalizeDashboardWidgets([{ id: 'stale', kind: 'staleTasks', width: 'half', count: 5, days: 30 }]), index);
+    assert.strictEqual(stale.kind, 'tasks');
+    assert.strictEqual(stale.title, 'Tasks');
+    assert.deepStrictEqual(
+      stale.tasks?.map((entry) => entry.task.title),
+      ['Hundred days', 'Dated by its front matter', 'Forty days'],
+      'open tasks in notes unchanged for 30 days, oldest first, though the board ranks by hand',
+    );
+  });
+
+  test('lists pinned notes', () => {
     const index = createWorkIndex();
-    const [related, pinned] = createDashboardWidgets(
+    const [pinned] = createDashboardWidgets(
       index,
       {
         ...preferences,
@@ -253,23 +250,10 @@ suite('Dashboard Home widgets', () => {
           { filePath: 'notes/hub.md' },
           { filePath: 'notes/gone.md' },
         ],
-        dashboardWidgets: [
-          { id: 'r', kind: 'relatedNotes', width: 'half', count: 5 },
-          { id: 'p', kind: 'pinnedNotes', width: 'half', count: 5 },
-        ],
+        dashboardWidgets: [{ id: 'p', kind: 'pinnedNotes', width: 'half', count: 5 }],
       },
-      {
-        queryContext: createQueryContext(now),
-        sourceNotePath: 'notes/old.md',
-      },
+      { queryContext: createQueryContext(now) },
     );
-    assert.strictEqual(related.sourceNote?.title, 'Old notes');
-    assert.ok(
-      related.notes?.some((note) => note.filePath === 'notes/2026-09-16.md'),
-      'a note sharing its tags is related',
-    );
-    assert.ok(related.notes?.every((note) => note.filePath !== 'notes/old.md'));
-
     assert.deepStrictEqual(pinned.notes, [
       {
         filePath: 'notes/hub.md',
@@ -280,135 +264,6 @@ suite('Dashboard Home widgets', () => {
       },
     ]);
     assert.strictEqual(pinned.total, 1, 'a pinned note that is gone is left out');
-    assert.strictEqual(
-      pinned.sourceNote,
-      undefined,
-      'Home lists pins; it does not offer to make one',
-    );
-
-    const [nothingOpen] = widgets(
-      [{ id: 'r', kind: 'relatedNotes', width: 'half' }],
-      index,
-    );
-    assert.strictEqual(nothingOpen.sourceNote, undefined);
-    assert.deepStrictEqual(nothingOpen.notes, []);
-  });
-
-  test('ranks tag pairs by the entries carrying both, not by one line', () => {
-    // Harbor scopes six check-ins from its heading, so Sable and Harbor are
-    // carried together six times without ever being written on one line.
-    // Courier and the invoice are written side by side once.
-    const files = [
-      parseMarkdown(
-        'notes/harbor.md',
-        [
-          '# Harbor #team/harbor',
-          '## Check-in one #person/sable-ortiz',
-          'Prose.',
-          '## Check-in two #person/sable-ortiz',
-          'Prose.',
-          '## Check-in three #person/sable-ortiz',
-          'Prose.',
-        ].join('\n'),
-      ),
-      parseMarkdown(
-        'notes/courier.md',
-        '# Courier #contact/courier #feature/repair-invoice\nWritten together, once.',
-      ),
-    ];
-    const index = buildWorkspaceIndex(
-      new Map(files.map((file) => [file.filePath, file])),
-    );
-
-    const [pairs] = createDashboardWidgets(
-      index,
-      {
-        ...preferences,
-        dashboardWidgets: [{ id: 'p', kind: 'tagPairs', width: 'full', count: 10 }],
-      },
-      { queryContext: createQueryContext(now) },
-    );
-
-    const listed = pairs.tagPairs ?? [];
-    const first = listed[0];
-    assert.deepStrictEqual(
-      first.tags.map((tag) => tag.key),
-      ['#person/sable-ortiz', '#team/harbor'],
-      'the pair carried by more entries comes first, however it was written',
-    );
-    assert.ok(
-      first.count > 1,
-      'a pair that never shares a line still counts more than once',
-    );
-    const once = listed.find((pair) =>
-      pair.tags.some((tag) => tag.key === '#contact/courier'),
-    );
-    assert.strictEqual(once?.count, 1);
-    assert.ok(
-      listed.indexOf(first) < listed.indexOf(once!),
-      'the once-written pair ranks below it',
-    );
-  });
-
-  test('counts a pair as the search the row opens counts it', () => {
-    const index = createWorkIndex();
-    const [pairs] = createDashboardWidgets(
-      index,
-      {
-        ...preferences,
-        dashboardWidgets: [{ id: 'p', kind: 'tagPairs', width: 'full', count: 20 }],
-      },
-      { queryContext: createQueryContext(now) },
-    );
-
-    // Pressing a row searches for both tags. The number beside it has to be
-    // the number that search then shows, or the row argues with itself.
-    for (const pair of pairs.tagPairs ?? []) {
-      const query = `${pair.tags[0].key} AND ${pair.tags[1].key}`;
-      const results = evaluateQuery(index, parseQuery(query).node, createQueryContext(Date.now()));
-      assert.strictEqual(
-        results.sections.length + results.files.length + results.tasks.length,
-        pair.count,
-        query,
-      );
-    }
-  });
-
-  test('lists tags written together, tags without a hub, and new tags', () => {
-    const index = createWorkIndex();
-    const [pairs, unhubbed, fresh] = createDashboardWidgets(
-      index,
-      {
-        ...preferences,
-        tagFirstSeen: {
-          '#project/atlas': 0,
-          '#risk/vendor': now - 2 * DAY,
-          '#team/harbor': now - 40 * DAY,
-        },
-        dashboardWidgets: [
-          { id: 'p', kind: 'tagPairs', width: 'half', count: 5 },
-          { id: 'u', kind: 'unhubbedTags', width: 'half', count: 5 },
-          { id: 'n', kind: 'newTags', width: 'half', count: 5, days: 14 },
-        ],
-      },
-      { queryContext: createQueryContext(now) },
-    );
-    assert.deepStrictEqual(
-      pairs.tagPairs?.map((pair) => pair.tags.map((tag) => tag.key)),
-      [['#project/atlas', '#risk/vendor']],
-      'each pair is listed once',
-    );
-    assert.ok((pairs.tagPairs?.[0].count ?? 0) > 0);
-    assert.match(pairs.tagPairs?.[0].detail ?? '', /carry both/);
-
-    assert.deepStrictEqual(
-      unhubbed.tags?.map((tag) => tag.key),
-      ['#risk/vendor'],
-      'Atlas has a hub, and Harbor is used too little',
-    );
-
-    assert.deepStrictEqual(fresh.tags?.map((tag) => tag.key), ['#risk/vendor']);
-    assert.match(fresh.tags?.[0].detail ?? '', /^First seen 2 days ago · /);
   });
 });
 

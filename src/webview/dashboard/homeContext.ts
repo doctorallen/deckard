@@ -17,8 +17,6 @@ export interface HomeContext {
   readonly openOptions: string | undefined;
   /** A tasks widget's search being typed in its gear, by widget. */
   readonly queryDrafts: Readonly<Record<string, string>>;
-  /** The task being typed into Quick add, and what became of the last one. */
-  readonly quickAdd: { readonly draft: string; readonly status: string };
   /** Home's search box, the one every search page uses. */
   readonly searchBar: () => ComponentChild;
 }

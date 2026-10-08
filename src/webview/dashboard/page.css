@@ -153,16 +153,8 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-row-with-action { display: flex; align-items: stretch; gap: 4px; min-width: 0; }
 .home-row-with-action > .home-row { flex: 1 1 auto; min-width: 0; }
 .home-row-action { flex: 0 0 auto; min-height: 26px; padding: 2px 8px; text-transform: none; white-space: nowrap; }
-.home-widget-source { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.home-widget-source strong { color: var(--text); font-weight: normal; overflow-wrap: anywhere; }
-.home-tag-pair { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
-.home-tag-pair-join { color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-today-summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
 .home-today-date { color: var(--text); font: var(--text-md) var(--font-mono); }
-.home-quick-add { display: flex; gap: 6px; }
-.home-quick-add input { flex: 1 1 auto; min-width: 0; min-height: 30px; }
-.home-quick-add button { min-height: 30px; padding: 3px 10px; }
-.home-quick-add-status { margin: 6px 0 0; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-widget-group { margin: 12px 0 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-widget-group:first-child { margin-top: 0; }
 /* The Overdue heading carries the red its rows no longer repeat. */
@@ -183,8 +175,6 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget-steps svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .home-widget .query-workspace { margin-top: 0; }
 .home-widget .task-list { --task-columns: 1; }
-.home-widget .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; }
-.home-widget .metric::before { display: none; }
 /* The resting hint is a quiet line, not the dashed frame of edit mode. */
 .home-hint-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--line); color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .home-hint-bar button { min-height: 24px; padding: 2px 8px; font-size: var(--text-xs); }

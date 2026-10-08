@@ -1,12 +1,11 @@
 /**
- * The rows Home's widgets list: tags, notes, searches, saved searches, two
- * tags written together, and tasks, each a control that opens what it
- * names, some with a button of their own beside them.
+ * The rows Home's widgets list: tags, notes, searches, saved searches, and
+ * tasks, each a control that opens what it names, some with a button of their own beside them.
  */
 import { ProgressText } from '../shared/progressText';
 import type { ComponentChild, ComponentChildren } from 'preact';
 
-import type { DashboardSavedFilter, DashboardWidgetNote, DashboardWidgetTag, DashboardWidgetTagPair } from '../../ui/protocol/dashboard';
+import type { DashboardSavedFilter, DashboardWidgetNote, DashboardWidgetTag } from '../../ui/protocol/dashboard';
 import type { DashboardTask } from '../../ui/protocol/shared';
 import { EmptyState } from '../shared/emptyState';
 import { ProgressBar } from '../shared/progressBar';
@@ -128,28 +127,6 @@ export function HomeTasks(props: {
     return <EmptyLine text={empty} />;
   }
   return <div class="task-list">{tasks.map((item) => <TaskListRow key={item.task.id} item={item} />)}</div>;
-}
-
-/** Two tags written together, each pair opening a search for both. */
-export function TagPairs({ pairs }: { readonly pairs: readonly DashboardWidgetTagPair[] | undefined }) {
-  if (!pairs || !pairs.length) {
-    return <EmptyLine text="Two tags carried by the same note or task show up here." />;
-  }
-  return (
-    <div class="home-list">
-      {pairs.map((pair) => {
-        const query = `${pair.tags[0].key} AND ${pair.tags[1].key}`;
-        return (
-          <button key={query} type="button" class="row saved-filter-row home-row" data-action="open-search" data-query={query} data-tip-around="" data-reveal-region="" data-tip={`${pair.detail}. Search for both.`}>
-            <span class="home-row-label">
-              <span class="home-tag-pair"><TagLabel label={pair.tags[0].label} /><span class="home-tag-pair-join">+</span><TagLabel label={pair.tags[1].label} /></span>
-            </span>
-            <span class="home-row-detail is-count">{`${pair.count}× · ${Math.round(pair.overlap * 100)}%`}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 /** What a saved search finds, under its name: its search, or its tags joined by AND. */

@@ -122,17 +122,10 @@ function createNavigation() {
     openDailyNote: () => {
       opened.push('today');
     },
-    quickAdd: (text) => {
-      opened.push(`add ${text}`);
-      return !text.includes('refused');
-    },
-    createHubNote: (tagKey) => {
-      opened.push(`hub ${tagKey}`);
-    },
   };
 }
 
-/** A note in the editor, a note sharing its tags, and a tag with no hub. */
+/** A note to pin, and notes sharing its tags. */
 function createNotesIndex() {
   const note = (filePath, content) =>
     parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
@@ -593,6 +586,15 @@ test('a tasks widget runs the search set in its options', async () => {
     view.findAll('.home-widget[data-widget-id="tasks"] .task-row').map((row) => row.dataset.taskId),
     ['audit'],
   );
+
+  // Its own sort, or the Task Board's, kept as none.
+  const sort = () => view.find('.home-widget[data-widget-id="tasks"] [data-action="set-widget-sort"]');
+  view.change(sort(), 'updatedOldest');
+  await delay(20);
+  assert.strictEqual(preferences.reader.value.dashboardWidgets.find((widget) => widget.id === 'tasks').sort, 'updatedOldest');
+  view.change(sort(), '');
+  await delay(20);
+  assert.strictEqual(preferences.reader.value.dashboardWidgets.find((widget) => widget.id === 'tasks').sort, undefined);
 });
 
 test('the namespace filter narrows the Tags tab and keeps its choice', async () => {
@@ -829,98 +831,34 @@ test('typing a tag search keeps focus and text through a host update', async () 
 
 // ---------------------------------------------------------------------------
 
-test('the new widgets act on notes, tags, and today\'s note', async () => {
-  vscode.window.activeTextEditor = {
-    document: { uri: vscode.Uri.file('notes/current.md'), languageId: 'markdown' },
-    selection: { active: { line: 0 } },
-  };
-  try {
-    const { view, navigation, preferences } = await openDashboard(
-      createNotesIndex(),
-      async (store) => {
-        await store.homeWidgets.setDashboardWidgets([
-          { id: 'today', kind: 'todayNote', width: 'half' },
-          { id: 'add', kind: 'quickAdd', width: 'full' },
-          { id: 'related', kind: 'relatedNotes', width: 'half' },
-          { id: 'pairs', kind: 'tagPairs', width: 'half' },
-          { id: 'hubs', kind: 'unhubbedTags', width: 'half' },
-          { id: 'pins', kind: 'pinnedNotes', width: 'half' },
-          { id: 'stale', kind: 'staleTasks', width: 'half' },
-        ]);
-        // Pinning happens where the note is, so Home is opened with one.
-        await store.pins.pinNote({ filePath: 'notes/current.md' });
-      },
-      {
-        indexerExtras: {
-          isNotesFile: () => true,
-          getFilePath: (uri) => uri.fsPath.replace(/^\//, ''),
-        },
-      },
-    );
-    const widget = (id) => view.find(`.home-widget[data-widget-id="${id}"]`);
+test('the widgets act on today\'s note and on pins', async () => {
+  const { view, navigation, preferences } = await openDashboard(createNotesIndex(), async (store) => {
+    await store.homeWidgets.setDashboardWidgets([
+      { id: 'today', kind: 'todayNote', width: 'half' },
+      { id: 'pins', kind: 'pinnedNotes', width: 'half' },
+    ]);
+    // Pinning happens where the note is, so Home is opened with one.
+    await store.pins.pinNote({ filePath: 'notes/current.md' });
+  });
+  const widget = (id) => view.find(`.home-widget[data-widget-id="${id}"]`);
 
-    // Today's note does not exist yet, so the widget offers to create it.
-    view.click(widget('today').querySelector('[data-action="open-daily-note"]'));
-    await delay(20);
-    assert.deepStrictEqual(navigation.opened, ['today']);
+  // Today's note does not exist yet, so the widget offers to create it.
+  view.click(widget('today').querySelector('[data-action="open-daily-note"]'));
+  await delay(20);
+  assert.deepStrictEqual(navigation.opened, ['today']);
 
-    // Quick add sends the task, clears the field, and says what happened.
-    const field = () => widget('add').querySelector('[data-action="quick-add-draft"]');
-    view.type(field(), 'Call Ren #risk/vendor');
-    view.submit(widget('add').querySelector('form'));
-    await delay(20);
-    assert.strictEqual(navigation.opened[1], 'add Call Ren #risk/vendor');
-    assert.strictEqual(field().value, '');
-    assert.match(widget('add').querySelector('.home-quick-add-status').textContent, /Added/);
-    view.type(field(), 'refused task');
-    view.submit(widget('add').querySelector('form'));
-    await delay(20);
-    assert.strictEqual(field().value, 'refused task', 'a task not added is given back');
-
-    // Related notes follow the note in the editor.
-    assert.match(widget('related').querySelector('.home-widget-source').textContent, /Current work/);
-    const related = [...widget('related').querySelectorAll('[data-action="open-source"]')];
-    assert.deepStrictEqual(
-      related.map((row) => row.dataset.filePath).sort(),
-      ['notes/atlas.md', 'notes/contract.md', 'notes/vendor.md'],
-    );
-
-    // A pair of tags opens a search for both.
-    view.click(widget('pairs').querySelector('[data-action="open-search"]'));
-    await delay(20);
-    assert.strictEqual(navigation.opened[3], 'search #project/atlas AND #risk/vendor');
-
-    // Vendor is used three times and has no hub.
-    const createHub = widget('hubs').querySelector('[data-action="create-tag-hub"]');
-    assert.strictEqual(createHub.dataset.tagKey, '#risk/vendor');
-    view.click(createHub);
-    await delay(20);
-    assert.strictEqual(navigation.opened[4], 'hub #risk/vendor');
-
-    // Home lists what was pinned elsewhere, opens it where the pin was put,
-    // and lets go of it.
-    assert.strictEqual(
-      widget('pins').querySelector('[data-action="pin-note"]'),
-      null,
-      'Home does not pin: it lists the pins',
-    );
-    const pin = widget('pins').querySelector('[data-action="open-source"]');
-    assert.strictEqual(pin.dataset.filePath, 'notes/current.md');
-    view.click(widget('pins').querySelector('[data-action="unpin-note"]'));
-    await delay(20);
-    assert.deepStrictEqual(preferences.reader.value.pinnedNotes, []);
-
-    // A look-back widget chooses its days in its options.
-    view.click(view.find('[data-action="customize-home"]'));
-    view.click(widget('stale').querySelector('[data-action="set-widget-days"][data-value="7"]'));
-    await delay(20);
-    assert.strictEqual(
-      preferences.reader.value.dashboardWidgets.find((entry) => entry.id === 'stale').days,
-      7,
-    );
-  } finally {
-    vscode.window.activeTextEditor = undefined;
-  }
+  // Home lists what was pinned elsewhere, opens it where the pin was put,
+  // and lets go of it.
+  assert.strictEqual(
+    widget('pins').querySelector('[data-action="pin-note"]'),
+    null,
+    'Home does not pin: it lists the pins',
+  );
+  const pin = widget('pins').querySelector('[data-action="open-source"]');
+  assert.strictEqual(pin.dataset.filePath, 'notes/current.md');
+  view.click(widget('pins').querySelector('[data-action="unpin-note"]'));
+  await delay(20);
+  assert.deepStrictEqual(preferences.reader.value.pinnedNotes, []);
 });
 
 test('a full Home offers no widget to add, and says why, rather than drop its last', async () => {
@@ -935,20 +873,6 @@ test('a full Home offers no widget to add, and says why, rather than drop its la
   assert.deepStrictEqual(view.posted.filter((message) => message.type === 'setDashboardWidgets'), []);
   assert.strictEqual(preferences.reader.value.dashboardWidgets.length, 30);
   assert.ok(view.find('.home-widget[data-widget-id="tasks29"]'), 'the last widget is still there');
-});
-
-test('Quick add takes no longer a task than the host adds', async () => {
-  const { view, navigation } = await openDashboard(createIndex(), async (store) => {
-    await store.homeWidgets.setDashboardWidgets([{ id: 'add', kind: 'quickAdd', width: 'full' }]);
-  });
-  const field = () => view.find('[data-action="quick-add-draft"]');
-  assert.ok(field().maxLength > 0, 'the field says how long a task may be');
-  const longest = 'x'.repeat(field().maxLength);
-  view.type(field(), longest);
-  view.submit(view.find('form[data-form="quick-add"]'));
-  await delay(20);
-  assert.deepStrictEqual(navigation.opened, [`add ${longest}`], 'the longest task the field takes is added');
-  assert.match(view.find('.home-quick-add-status').textContent, /Added/);
 });
 
 test('the gear\'s Zen checkbox turns Zen on through the host, and the page carries the markers', async () => {

@@ -344,7 +344,7 @@ The date steps both calendars take are `domain/markdown/calendar.ts`'s (D1): `sh
 
 | Module | What it holds |
 | --- | --- |
-| `main.tsx` | The page as it runs: the store, the listeners in the order the template registered them, arranging Home (adding, removing with Undo, resizing, ranking, and each widget's settings), the tag search told to the host once typing settles, and what the host sends: `state` and `quickAddResult` |
+| `main.tsx` | The page as it runs: the store, the listeners in the order the template registered them, arranging Home (adding, removing with Undo, resizing, ranking, and each widget's settings), the tag search told to the host once typing settles, and what the host sends: `state` |
 | `header.tsx` | The page's name, the three tiles, the gear, and the Home and Tags tabs |
 | `home.tsx` | Home: the bar it is arranged from, the line saying what is new or that it can be arranged, the way in for a workspace with no notes in the grid's place, the grid, and `widgetChoices`, what + Add widget offers |
 | `widgets.tsx`, `widgetBodies.tsx`, `rows.tsx` | One widget in its frame, with its gear and pager; what each kind shows; and the rows they list |

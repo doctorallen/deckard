@@ -16,13 +16,13 @@ Three figures sit above Home: **Due today** and **Overdue**, as the [Tasks view]
 
 **Widgets.** A new Home starts with Try next, the search box, the Tasks view, recently opened notes, favorite tags, and saved searches. In the Tasks view widget, the **Overdue** heading is red, and each row under it says so as a task row does anywhere, such as *Overdue 20 days · 2026-09-01*, in red. **Customize Home**, beside the Home and Tags tabs, adds, removes, resizes, and reorders widgets.
 
-A widget that leads somewhere makes its title the link, with a **›** after it: select **Tasks view 53 ›** to open the Tasks view. A widget that leads nowhere, such as Quick add, has a plain title, and so does every widget while Home is being customized.
+A widget that leads somewhere makes its title the link, with a **›** after it: select **Tasks view 53 ›** to open the Tasks view. A widget that leads nowhere, such as Pinned notes, has a plain title, and so does every widget while Home is being customized.
 
 | Widget | Shows | Leads to |
 |---|---|---|
 | **Try next** | One suggestion, such as a weekly review after five daily notes. **Not now** snoozes it a week; **Do not suggest this** ends it | What it suggests |
 | **Search** | The [search box](search.md#the-search-box); <kbd>Enter</kbd> opens a search page | The search page |
-| **Tasks** | The first tasks a search finds, `is:open` by default | The Task board, on that search |
+| **Tasks** | The first tasks a search finds, `is:open` by default, sorted as the Task board sorts or by its gear's **Sort** | The Task board, on that search |
 | **Tasks view** | Overdue, today's, and upcoming tasks | The Tasks view |
 | **Favorite tags** | Your favorite tags | The Tags tab |
 | **Frequent tags** | The tags you open most, lately | The Tags tab |
@@ -30,17 +30,12 @@ A widget that leads somewhere makes its title the link, with a **›** after it:
 | **Saved search results** | What one saved search finds | Its search page, or the Task board |
 | **Recent searches** | The searches you ran lately | Their search pages |
 | **Recently opened** | Notes you opened from Deckard lately | The notes |
-| **Workspace** | Note, file, task, tag, and entity totals | The Stats page |
 | **Today** | Today's daily note and its open tasks, or **Create today's note** | Today's note |
-| **Quick add** | A field that adds an open task to today's daily note, creating the note if needed | — |
-| **Stale tasks** | Open tasks in notes unchanged for 7, 14, 30, or 90 days, oldest first | The Task board |
-| **Related notes** | [Related notes](connections.md#related-notes) for the last note you had open | That note |
-| **Tags written together** | The tag pairs carried together most; a pair searches for both | The Tags tab |
-| **Tags without a hub** | Tags used at least three times with no [hub note](search-pages.md#hub-notes), each with **Create hub** | The Tags tab |
-| **New tags** | Tags first seen in the last 7, 14, 30, or 90 days, newest first, each with **Rename** | The Tags tab |
 | **Gone quiet** | People, or another namespace, not written about for 30, 60, 90, or 180 days, with what is still open. **Only those with no open tasks** adds **Add next action**, which adds a task with the tag to today's note | The Tags tab |
 | **Progress** | Each project tag with tasks, or another namespace's, with a bar and how far along it is: *2/6 done (33%) · 1 overdue · next due in 3 days*. Unfinished first, overdue ones first among them, then by the next due date | The Tags tab |
 | **Pinned notes** | The notes you pinned, each with **×** to unpin | The note, at the heading you pinned |
+
+**Tasks gone stale:** give a Tasks widget the search `is:open AND updated < 30d` and the sort **Least recently updated**. A task's updated date is its note's. A Stale tasks widget from an earlier version became this widget, with its own days.
 
 **Pinning** pins the entry (a heading and what is under it), not the file:
 
@@ -59,7 +54,7 @@ Each offers **Undo**. If the heading is gone, the pin stays on its note and says
 **Customize:** choose **Customize Home** beside the Home and Tags tabs, or **Customize** in the View options gear. Then:
 
 - Drag a widget, or right-click to move it first or last. Switch it between half and full width.
-- Open its gear for entry count, paging, its search or saved search, or days to look back.
+- Open its gear for entry count, paging, a Tasks widget's search and sort, a saved search, or days to look back.
 - Remove it with **×**, or add more from **+ Add widget**. A new widget goes at the top, and is outlined for a moment. Home holds 30 widgets at most; once full, it says so and adds none until one is removed.
 - <kbd>Escape</kbd> closes a widget's gear.
 - **Reset widgets…** asks, then restores the starting widgets; **Finish** ends customizing.

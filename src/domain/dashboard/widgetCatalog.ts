@@ -13,7 +13,7 @@ export type WidgetDaysChoice = readonly [days: number, text: string];
 
 /** What one kind of widget is, and what it can do. */
 export interface WidgetKind {
-  /** Its name in + Add widget, and in Related Notes' list of widgets to add. */
+  /** Its name in + Add widget. */
   readonly label: string;
   /** What it shows, in + Add widget's tip and in its gear's About row. */
   readonly description: string;
@@ -35,9 +35,6 @@ export interface WidgetKind {
   readonly defaultNamespace?: string;
 }
 
-/** The spans a widget that looks back over weeks offers. */
-const WEEKS: readonly WidgetDaysChoice[] = [[7, '7d'], [14, '14d'], [30, '30d'], [90, '90d']];
-
 /** The spans Gone quiet offers, over months. */
 const MONTHS: readonly WidgetDaysChoice[] = [[30, '30d'], [60, '60d'], [90, '90d'], [180, '180d']];
 
@@ -48,22 +45,15 @@ const MONTHS: readonly WidgetDaysChoice[] = [[30, '30d'], [60, '60d'], [90, '90d
  */
 export const WIDGET_KINDS: Readonly<Record<DashboardWidgetKind, WidgetKind>> = {
   search: { label: 'Search', description: 'A search box that opens a search page', repeatable: false, listed: false },
-  tasks: { label: 'Tasks', description: 'The tasks a search finds, ranked as on the Task Board', repeatable: true, listed: true },
+  tasks: { label: 'Tasks', description: 'The tasks a search finds, sorted as on the Task Board or as its gear says', repeatable: true, listed: true },
   agenda: { label: 'Tasks view', description: 'Overdue, today, and upcoming tasks', repeatable: false, listed: true, pageable: false },
   favoriteTags: { label: 'Favorite tags', description: 'The tags you favorited', repeatable: false, listed: true },
   topTags: { label: 'Frequent tags', description: 'The tags you open most, lately', repeatable: false, listed: true },
   savedSearches: { label: 'Saved searches', description: 'Your saved searches', repeatable: false, listed: false },
   recentSearches: { label: 'Recent searches', description: 'The searches you ran lately', repeatable: false, listed: true },
   recentNotes: { label: 'Recently opened', description: 'The notes you opened lately', repeatable: false, listed: true },
-  stats: { label: 'Workspace', description: 'How many notes, tasks, and tags there are', repeatable: false, listed: false },
   savedQuery: { label: 'Saved search results', description: 'What one saved search finds', repeatable: true, listed: true, pageable: false },
   todayNote: { label: 'Today', description: "Today's daily note and its open tasks", repeatable: false, listed: true },
-  quickAdd: { label: 'Quick add', description: "Add a task to today's daily note", repeatable: false, listed: false },
-  staleTasks: { label: 'Stale tasks', description: 'Open tasks in notes left unchanged for a while', repeatable: false, listed: true, days: WEEKS, defaultDays: 30 },
-  relatedNotes: { label: 'Related notes', description: 'Notes related to the note you had open last', repeatable: false, listed: true },
-  tagPairs: { label: 'Tags written together', description: 'Tags most often carried together, which may want a hub note or one name', repeatable: false, listed: true },
-  unhubbedTags: { label: 'Tags without a hub', description: 'Frequently used tags with no hub note', repeatable: false, listed: true },
-  newTags: { label: 'New tags', description: 'Tags first seen lately, to catch typos early', repeatable: false, listed: true, days: WEEKS, defaultDays: 14 },
   quietPeople: { label: 'Gone quiet', description: 'People, projects, or any namespace you have not written about lately', repeatable: false, listed: true, days: MONTHS, defaultDays: 90, defaultNamespace: 'person' },
   progress: { label: 'Progress', description: 'How far along each project’s tasks are, or any namespace’s', repeatable: false, listed: true, defaultNamespace: 'project' },
   pinnedNotes: { label: 'Pinned notes', description: 'Notes you pin to Home', repeatable: false, listed: true },
@@ -81,12 +71,6 @@ export const WIDGET_ENTRY_COUNTS: readonly number[] = [3, 5, 10, 20];
  * many, and the host keeps no more than this.
  */
 export const HOME_WIDGET_LIMIT = 30;
-
-/**
- * The longest task Quick add sends, which the host accepts: its field takes
- * no more, so a task the host would refuse is never typed.
- */
-export const QUICK_ADD_MAX_LENGTH = 1000;
 
 /**
  * Whether Gone quiet can watch a namespace: a word of letters, digits,

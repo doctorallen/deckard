@@ -104,15 +104,8 @@ export type DashboardWidgetKind =
   | 'savedSearches'
   | 'recentSearches'
   | 'recentNotes'
-  | 'stats'
   | 'savedQuery'
   | 'todayNote'
-  | 'quickAdd'
-  | 'staleTasks'
-  | 'relatedNotes'
-  | 'tagPairs'
-  | 'unhubbedTags'
-  | 'newTags'
   | 'quietPeople'
   | 'progress'
   | 'pinnedNotes'
@@ -138,12 +131,14 @@ export interface DashboardWidgetConfig {
   page?: number;
   /** The search a tasks widget lists. */
   query?: string;
+  /**
+   * How a tasks widget orders what it finds, when not as the Task Board's
+   * Sort does: a Stale tasks widget became one sorted Least recently updated.
+   */
+  sort?: TaskSortMode;
   /** The saved search a saved-search widget shows. */
   filterId?: string;
-  /**
-   * How many days a widget looks back: how long a stale task's note has gone
-   * unchanged, or how recently a new tag was first seen.
-   */
+  /** How many days Gone quiet looks back for a name last written. */
   days?: number;
   /**
    * The namespace Gone quiet watches, `person` by default, or whose tags

@@ -87,11 +87,11 @@ suite('Parked tasks leave the lists of things to do', () => {
     assert.ok(!asked.query.facets.some((facet) => facet.id === 'parked'));
   });
 
-  test('Home leaves them out of Tasks and Stale tasks', () => {
+  test('Home leaves them out of Tasks, and of the search Stale tasks became', () => {
     const index = workspace();
     const configs: DashboardWidgetConfig[] = [
       { id: 't', kind: 'tasks', width: 'half', query: 'is:open' },
-      { id: 's', kind: 'staleTasks', width: 'half', days: 30 },
+      { id: 's', kind: 'tasks', width: 'half', query: 'is:open AND updated < 30d', sort: 'updatedOldest' },
       { id: 'p', kind: 'tasks', width: 'half', query: 'is:parked' },
     ];
     const [tasks, stale, parked] = createDashboardWidgets(index, defaults({ dashboardWidgets: configs }), {

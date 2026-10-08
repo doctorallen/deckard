@@ -7,6 +7,7 @@
 import type { ComponentChild } from 'preact';
 
 import { WIDGET_ENTRY_COUNTS, WIDGET_KINDS, widgetNamespace } from '../../domain/dashboard/widgetCatalog';
+import { TASK_SORT_LABELS } from '../../domain/model/sortOrders';
 import type { DashboardWidget } from '../../ui/protocol/dashboard';
 import { SettingsIcon } from '../shared/icons';
 import { describePageRange } from '../shared/pageSteps';
@@ -38,16 +39,9 @@ const DESTINATIONS: Readonly<Partial<Record<DashboardWidget['kind'], (widget: Da
   agenda: () => ({ action: 'open-view', attributes: { 'data-view': 'agenda' }, place: 'the Tasks view' }),
   favoriteTags: () => ALL_TAGS,
   topTags: () => ALL_TAGS,
-  stats: () => ({ action: 'open-view', attributes: { 'data-view': 'stats' }, place: 'Stats' }),
   todayNote: (widget) => (widget.today && widget.today.filePath ? { action: 'open-daily-note', place: 'today’s note' } : undefined),
-  staleTasks: () => ({ action: 'open-task-board', attributes: { 'data-query': 'is:open' }, place: 'the Task board' }),
-  unhubbedTags: () => ALL_TAGS,
-  newTags: () => ALL_TAGS,
   quietPeople: () => ALL_TAGS,
   progress: () => ALL_TAGS,
-  tagPairs: () => ALL_TAGS,
-  relatedNotes: (widget) =>
-    (widget.sourceNote ? { action: 'open-note', attributes: { 'data-file-path': widget.sourceNote.filePath }, place: widget.sourceNote.title || 'the note' } : undefined),
   savedQuery: (widget) => {
     if (widget.missing) {
       return undefined;
@@ -114,7 +108,7 @@ function listingGroups(widget: DashboardWidget, attributes: Readonly<Record<stri
   }
   if (traits.days) {
     groups.push(
-      <OptionsGroup label={widget.kind === 'newTags' ? 'Seen within' : 'Unchanged for'}>
+      <OptionsGroup label="Unwritten for">
         <ViewOptionChoices action="set-widget-days" choices={traits.days} selected={widget.days || traits.defaultDays} label="Days" attributes={attributes} />
       </OptionsGroup>,
     );
@@ -148,7 +142,7 @@ function quietPeopleGroups(widget: DashboardWidget, attributes: Readonly<Record<
 /** `spellcheck="false"`, written as an attribute in every browser: Chrome's property would read the string as true. */
 const NO_SPELLCHECK: Readonly<Record<string, string>> = { spellCheck: 'false' };
 
-/** The rows a widget's own kind adds to its gear: Gone quiet's, a tasks widget's search, and a saved search's choice. */
+/** The rows a widget's own kind adds to its gear: Gone quiet's, a tasks widget's search and sort, and a saved search's choice. */
 function kindGroups(widget: DashboardWidget, home: HomeContext, attributes: Readonly<Record<string, string>>): ComponentChild[] {
   if (widget.kind === 'quietPeople') {
     return quietPeopleGroups(widget, attributes);
@@ -164,6 +158,12 @@ function kindGroups(widget: DashboardWidget, home: HomeContext, attributes: Read
           <input type="text" data-action="widget-query-draft" {...attributes} value={draft} placeholder="is:open #project/atlas" aria-label="Tasks to list" autocomplete="off" {...NO_SPELLCHECK} />
           <button type="submit">Save</button>
         </form>
+      </OptionsGroup>,
+      <OptionsGroup label="Sort" stacked>
+        <select data-action="set-widget-sort" {...attributes} aria-label="Sort tasks by">
+          <option value="" selected={!widget.sort}>As on the Task Board</option>
+          {Object.entries(TASK_SORT_LABELS).map(([mode, label]) => <option key={mode} value={mode} selected={mode === widget.sort}>{label}</option>)}
+        </select>
       </OptionsGroup>,
     ];
   }
@@ -270,7 +270,7 @@ function countText(widget: DashboardWidget): string | undefined {
   }
   // Each kind lists its own sort of entry, so the shown count is whichever
   // list the widget carries.
-  const list = widget.tasks || widget.tags || widget.notes || widget.queries || widget.savedFilters || widget.tagPairs;
+  const list = widget.tasks || widget.tags || widget.notes || widget.queries || widget.savedFilters;
   const shown = list ? list.length : undefined;
   return !widget.paged && shown !== undefined && shown < widget.total ? `${shown} of ${widget.total}` : String(widget.total);
 }

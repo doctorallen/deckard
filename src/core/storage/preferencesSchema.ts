@@ -33,6 +33,7 @@ import {
   TagSortMode,
   TASK_SORT_MODES,
   TaskBoardGroupBy,
+  TaskSortMode,
   TaskColumnId,
   TaskLayout,
 } from '../../domain/model/preferences';
@@ -569,7 +570,7 @@ function readWidget(
   if (typeof value !== 'object' || value === null) {
     return undefined;
   }
-  const candidate = value as WidgetCandidate;
+  const candidate = migrateRetiredWidget(value as WidgetCandidate);
   const kind = readWidgetKind(candidate);
   if (!kind) {
     return undefined;
@@ -584,6 +585,31 @@ function readWidget(
   applyDays(candidate, widget);
   const rule = WIDGET_OPTION_RULES[kind];
   return !rule || rule(candidate, widget) ? widget : undefined;
+}
+
+/** How many days a Stale tasks widget looked back until the reader said. */
+const STALE_TASKS_DAYS = 30;
+
+/**
+ * A stored widget of a kind Home no longer offers, as the kind that took
+ * its place. Stale tasks became a Tasks widget holding the same search,
+ * open tasks whose note was last updated before its days, sorted Least
+ * recently updated as it was; a task's updated date is its note's, which
+ * Stale tasks read. The other kinds Home stopped offering
+ * (Workspace, Related notes, Quick add, Tags written together, Tags
+ * without a hub, and New tags) have nothing to become, so they are
+ * dropped as any unknown kind is.
+ */
+function migrateRetiredWidget(candidate: WidgetCandidate): WidgetCandidate {
+  if (candidate.kind !== 'staleTasks') {
+    return candidate;
+  }
+  const days =
+    typeof candidate.days === 'number' && Number.isInteger(candidate.days)
+      ? Math.min(DASHBOARD_WIDGET_DAYS_LIMIT, Math.max(1, candidate.days))
+      : STALE_TASKS_DAYS;
+  // Its days stay behind unread, since a Tasks widget has none.
+  return { ...candidate, kind: 'tasks', query: `is:open AND updated < ${days}d`, sort: 'updatedOldest' };
 }
 
 /** A listed widget's count, and its page when it can be paged and is. */
@@ -630,13 +656,16 @@ function applyDays(candidate: WidgetCandidate, widget: DashboardWidgetConfig): v
  */
 type WidgetOptionRule = (candidate: WidgetCandidate, widget: DashboardWidgetConfig) => boolean;
 
-/** The search a tasks widget lists, or open tasks. */
+/** The search a tasks widget lists, or open tasks, and its own sort when it has one. */
 function applyTasksQuery(candidate: WidgetCandidate, widget: DashboardWidgetConfig): boolean {
   widget.query =
     typeof candidate.query === 'string' &&
     candidate.query.length <= DASHBOARD_WIDGET_QUERY_LIMIT
       ? candidate.query.trim()
       : 'is:open';
+  if (TASK_SORT_MODES.includes(candidate.sort as TaskSortMode)) {
+    widget.sort = candidate.sort as TaskSortMode;
+  }
   return true;
 }
 

@@ -13,6 +13,9 @@
   **Tidy…**, **Export…**, **Import…** and **Restore from a Copy…**, each
   running the command it always ran. The four no longer show as rows of
   their own in every palette browse.
+- **A Tasks widget's own Sort.** A Tasks widget on Home sorts as the Task
+  board sorts, or by the **Sort** in its gear: Rank, Newest or Oldest
+  created, Recently or Least recently updated, A-Z or Z-A.
 
 ### Changed
 
@@ -178,6 +181,10 @@
   there is carried over once, in the user's or the workspace's settings
   where you set it, and the notice that says Display moved says this
   too.
+- **Stale tasks is a Tasks widget.** A Stale tasks widget on Home is now
+  a Tasks widget holding the same search, such as
+  `is:open AND updated < 30d` for its 30 days, sorted Least recently
+  updated, so it lists what it listed and you can change its search.
 
 ### Removed
 
@@ -197,6 +204,12 @@
   list as Home's own **+ Add widget**. Context now keeps its pages and asks
   for a note, as it does with any other page in front; **Customize Home**
   offers + Add widget and Reset widgets….
+- **Six Home widgets.** Workspace (Stats and Home's figures count the
+  same), Related notes (in Context), Quick add (`Deckard: Add Task` works
+  anywhere), Tags written together, Tags without a hub and New tags
+  (Stats, and the weekly review, keep the tag upkeep) are no longer
+  offered. One of these on your Home is dropped when Home next opens.
+  Home offers 14 kinds of widget, from 21.
 
 ### Fixed
 

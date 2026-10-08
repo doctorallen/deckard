@@ -135,16 +135,6 @@ export interface DashboardWidgetNote {
   pinKey?: string;
 }
 
-/** Two tags written together, as Home lists them. */
-export interface DashboardWidgetTagPair {
-  tags: [TagReference, TagReference];
-  /** How many times they were written together. */
-  count: number;
-  /** The share of the rarer tag's entries that also carry the other, 0–1. */
-  overlap: number;
-  detail: string;
-}
-
 /** Today's daily note, as Home shows it. */
 export interface DashboardWidgetToday {
   /** Today, as YYYY-MM-DD. */
@@ -184,7 +174,6 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   doneToday?: number;
   /** The search that lists them, scoped by `deckard.tasks.viewQuery`. */
   needsNewDateQuery?: string;
-  stats?: Array<{ label: string; value: number }>;
   /** A saved-search widget's search. */
   savedQuery?: string;
   /** Set when that search was saved on the Task Board, which opens it. */
@@ -197,10 +186,7 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   error?: string;
   /** The search widget's box: its completions and recent searches. */
   searchState?: QueryViewState;
-  tagPairs?: DashboardWidgetTagPair[];
   today?: DashboardWidgetToday;
-  /** The note a related-notes widget ranks by. */
-  sourceNote?: DashboardWidgetNote;
   /** Try next's one suggestion; absent, the widget draws nothing outside Customize. */
   tryNext?: DashboardTryNext;
 }
@@ -274,18 +260,6 @@ export interface OpenDailyNoteMessage {
   type: 'openDailyNote';
 }
 
-/** Adds a task to today's daily note. */
-export interface QuickAddMessage {
-  type: 'quickAdd';
-  text: string;
-}
-
-/** Creates a tag's hub note. */
-export interface CreateTagHubMessage {
-  type: 'createTagHub';
-  tagKey: string;
-}
-
 /** Adds a next action, to today's note, for a tag that has nothing open. */
 export interface AddNextActionMessage {
   type: 'addNextAction';
@@ -314,7 +288,7 @@ export interface WhatsNewMessage {
 /** Opens a Deckard view Home links to. */
 export interface OpenDeckardViewMessage {
   type: 'openView';
-  view: 'agenda' | 'stats' | 'sampleWorkspace' | 'checkSetup' | 'walkthrough';
+  view: 'agenda' | 'sampleWorkspace' | 'checkSetup' | 'walkthrough';
 }
 
 /**
@@ -402,8 +376,6 @@ export interface DashboardPageToHost {
   openTaskBoard: OpenTaskBoardMessage;
   openView: OpenDeckardViewMessage;
   openDailyNote: OpenDailyNoteMessage;
-  quickAdd: QuickAddMessage;
-  createTagHub: CreateTagHubMessage;
   addNextAction: AddNextActionMessage;
   openNote: OpenNoteMessage;
   pinNote: MessageAs<PinNoteMessage, 'pinNote'>;
@@ -421,21 +393,10 @@ export interface DashboardPageState extends DashboardSnapshot {
   parkedTags: string[];
 }
 
-/**
- * The answer to a quick add: the text the page sent, untrimmed, so the page
- * can keep it as a draft when the task was not added.
- */
-export interface QuickAddResultMessage {
-  type: 'quickAddResult';
-  text: string;
-  added: boolean;
-}
-
 /** What the host sends the Dashboard, by type. */
 export interface DashboardHostToPage {
   state: StateMessage<DashboardPageState>;
   indexing: IndexingMessage;
-  quickAddResult: QuickAddResultMessage;
 }
 
 /** Home's tiles: what is overdue, due today, and open, each a search. */

@@ -286,7 +286,7 @@ suite('Dashboard behavior', () => {
     const { page } = open({
       dashboardWidgets: [
         { id: 'a', kind: 'agenda', width: 'half' },
-        { id: 'q', kind: 'quickAdd', width: 'half' },
+        { id: 'q', kind: 'pinnedNotes', width: 'half' },
       ],
     });
     const link = page.find('.home-widget[data-widget-id="a"] h2.home-widget-title > button.home-widget-link');
@@ -295,7 +295,7 @@ suite('Dashboard behavior', () => {
     assert.match(link.textContent ?? '', /^Tasks view \d+›$/);
     assert.strictEqual(link.querySelector('.home-widget-link-mark')?.getAttribute('aria-hidden'), 'true');
     assert.strictEqual(page.document.querySelector('.home-widget-actions'), null, 'no separate button beside the title');
-    assert.strictEqual(page.document.querySelector('.home-widget[data-widget-id="q"] .home-widget-link'), null, 'Quick add leads nowhere');
+    assert.strictEqual(page.document.querySelector('.home-widget[data-widget-id="q"] .home-widget-link'), null, 'Pinned notes leads nowhere');
 
     // While arranging, a press on the title starts a drag.
     page.click('[data-action="customize-home"]');

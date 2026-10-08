@@ -4,7 +4,7 @@
  */
 import type { ComponentChild } from 'preact';
 
-import { QUICK_ADD_MAX_LENGTH, widgetNamespace } from '../../domain/dashboard/widgetCatalog';
+import { widgetNamespace } from '../../domain/dashboard/widgetCatalog';
 import type { DashboardWidget, DashboardWidgetKind } from '../../ui/protocol/dashboard';
 import { EmptyState } from '../shared/emptyState';
 import type { HomeContext } from './homeContext';
@@ -16,7 +16,6 @@ import {
   OpenSearchPageLine,
   RowAction,
   SavedFilterList,
-  TagPairs,
 } from './rows';
 
 /** What a widget's body is drawn from: the widget, and what Home holds besides. */
@@ -110,17 +109,6 @@ function RecentSearchesBody({ widget }: WidgetBodyProps) {
   );
 }
 
-/** How many notes, tasks, and tags there are. */
-function StatsBody({ widget }: WidgetBodyProps) {
-  return (
-    <div class="metrics">
-      {(widget.stats || []).map((stat) => (
-        <div class="metric"><span class="metric-value">{stat.value}</span><span class="metric-label">{stat.label}</span></div>
-      ))}
-    </div>
-  );
-}
-
 /** Today's date, and its note's open tasks, or the offer to create the note. */
 function TodayNoteBody({ widget }: WidgetBodyProps) {
   const today = widget.today;
@@ -134,69 +122,6 @@ function TodayNoteBody({ widget }: WidgetBodyProps) {
     return <>{summary}<EmptyLine text="There is no daily note for today yet." /></>;
   }
   return <>{summary}<HomeTasks tasks={widget.tasks} empty="No open tasks in today’s note." /></>;
-}
-
-/** A field that adds a task to today's note, and what became of the last one. */
-function QuickAddBody({ widget, home }: WidgetBodyProps) {
-  const today = widget.today;
-  const target = today && today.filePath ? `today’s note, ${today.date}` : `a new note for ${(today && today.date) || 'today'}`;
-  return (
-    <>
-      <form class="home-quick-add" data-form="quick-add">
-        <input
-          type="text"
-          data-action="quick-add-draft"
-          value={home.quickAdd.draft}
-          maxLength={QUICK_ADD_MAX_LENGTH}
-          placeholder="Call Ren about the audit #project/atlas 📅 tomorrow"
-          aria-label="Task to add to today’s note"
-          autocomplete="off"
-          {...SPELLCHECK}
-        />
-        <button type="submit">Add</button>
-      </form>
-      <p class="home-quick-add-status" role="status">{home.quickAdd.status || `Adds an open task to ${target}.`}</p>
-    </>
-  );
-}
-
-/** `spellcheck="true"`, written as an attribute, as the template wrote it. */
-const SPELLCHECK: Readonly<Record<string, string>> = { spellCheck: 'true' };
-
-/** The notes related to the note last open, under its name. */
-function RelatedNotesBody({ widget }: WidgetBodyProps) {
-  const source = widget.sourceNote;
-  if (!source) {
-    return <EmptyLine text="Open a note to see the notes related to it." />;
-  }
-  return (
-    <>
-      <div class="home-widget-source"><span>{'Related to '}<strong>{source.title}</strong></span></div>
-      <HomeNotes notes={widget.notes} empty="No notes share its tags." />
-    </>
-  );
-}
-
-/** Tags with no hub note, each with Create hub beside it. */
-function UnhubbedTagsBody({ widget }: WidgetBodyProps) {
-  return (
-    <HomeTags
-      tags={widget.tags}
-      empty="Every frequently used tag has a hub note."
-      actionFor={(tag) => <RowAction action="create-tag-hub" attributes={{ 'data-tag-key': tag.key }} label="Create hub" title={`Create a hub note for ${tag.label}`} />}
-    />
-  );
-}
-
-/** Tags first seen lately, each with Rename beside it. */
-function NewTagsBody({ widget }: WidgetBodyProps) {
-  return (
-    <HomeTags
-      tags={widget.tags}
-      empty={`No tag was first seen in the last ${widget.days || 14} days.`}
-      actionFor={(tag) => <RowAction action="rename-tag" attributes={{ 'data-tag-key': tag.key }} label="Rename" title={`Rename ${tag.label} everywhere`} />}
-    />
-  );
 }
 
 /** Tags of a namespace not written about lately; with nothing open, each offers its next action. */
@@ -269,14 +194,7 @@ const BODIES: Readonly<Record<DashboardWidgetKind, (props: WidgetBodyProps) => C
   savedSearches: SavedSearchesBody,
   recentSearches: RecentSearchesBody,
   recentNotes: ({ widget }) => <HomeNotes notes={widget.notes} empty="The notes you open from Deckard show up here." />,
-  stats: StatsBody,
   todayNote: TodayNoteBody,
-  quickAdd: QuickAddBody,
-  staleTasks: ({ widget }) => <HomeTasks tasks={widget.tasks} empty={`No open task sits in a note left unchanged for ${widget.days || 30} days.`} />,
-  relatedNotes: RelatedNotesBody,
-  tagPairs: ({ widget }) => <TagPairs pairs={widget.tagPairs} />,
-  unhubbedTags: UnhubbedTagsBody,
-  newTags: NewTagsBody,
   quietPeople: QuietPeopleBody,
   progress: ProgressBody,
   pinnedNotes: PinnedNotesBody,
