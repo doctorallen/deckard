@@ -725,9 +725,10 @@ export class ParkingContext implements vscode.Disposable {
       void vscode.commands.executeCommand('setContext', HAS_PARKED_FOLDERS, folders.length > 0);
     }
     const hasTags = this.indexer.getParkedRules().tags.length > 0;
-    if (hasTags !== this.hasTags) {
-      this.hasTags = hasTags;
-      void vscode.commands.executeCommand('setContext', HAS_PARKED_TAGS, hasTags);
+    if (hasTags === this.hasTags) {
+      return;
     }
+    this.hasTags = hasTags;
+    void vscode.commands.executeCommand('setContext', HAS_PARKED_TAGS, hasTags);
   }
 }
