@@ -100,7 +100,9 @@ export interface PageBarProps {
 
 /**
  * The bar: DECKARD ▾ and the title at the left, the page's own controls
- * and ⋯ at the right. Zen draws it as it is, with every control in place.
+ * and ⋯ at the right; a page with neither, such as Task Statuses, whose
+ * every control is the page's own job, draws the left alone. Zen draws it
+ * as it is, with every control in place.
  */
 export function PageBar({ trail, lead, controls, menu, className, leadClass, controlsClass, label = 'Page' }: PageBarProps) {
   return (
@@ -110,10 +112,14 @@ export function PageBar({ trail, lead, controls, menu, className, leadClass, con
         {lead}
       </div>
       {/* Focus moving here keeps words typed in the page's search box, which Save search… saves. */}
-      <div class={controlsClass ? `page-bar-actions ${controlsClass}` : 'page-bar-actions'} role="group" aria-label={label} data-query-keeps-text="">
-        {controls}
-        {menu ? <PageMenu {...menu} /> : null}
-      </div>
+      {controls || menu
+        ? (
+          <div class={controlsClass ? `page-bar-actions ${controlsClass}` : 'page-bar-actions'} role="group" aria-label={label} data-query-keeps-text="">
+            {controls}
+            {menu ? <PageMenu {...menu} /> : null}
+          </div>
+        )
+        : null}
     </header>
   );
 }

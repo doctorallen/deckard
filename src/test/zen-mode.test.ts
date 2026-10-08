@@ -182,7 +182,7 @@ suite('Zen mode', () => {
   });
 
   test('⋯ offers Appearance: the theme, then Zen, then the page width, and asks the host to choose a theme', () => {
-    for (const page of [dashboard()]) {
+    for (const page of [dashboard(), searchPage()]) {
       const labels = page.findAll('.page-menu [aria-label="Appearance"] .view-options-group').map((group) => group.children[0].textContent);
       assert.deepStrictEqual(labels, ['Theme', 'Zen', 'Page width']);
       assert.ok(page.find('.page-menu [aria-label="Appearance"] input[data-action="set-zen"]'), 'the Zen checkbox is in Appearance');

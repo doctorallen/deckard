@@ -103,7 +103,7 @@ suite('The shared page core draws what the template script drew', () => {
     }
   });
 
-  test('an icon button, the help button, and the icons they carry', () => {
+  test('an icon button, and the icons it carries', () => {
     const helpNow = (): unknown => element('HelpIcon', {});
     assertSame(
       drawnBefore('iconButton with every option'),
@@ -114,8 +114,6 @@ suite('The shared page core draws what the template script drew', () => {
       'every option',
     );
     assertSame(drawnBefore('iconButton pressed'), drawnNow(element('IconButton', { label: 'Close', icon: helpNow(), pressed: true })), 'a pressed toggle');
-    assertSame(drawnBefore('helpButton at an anchor'), drawnNow(element('HelpButton', { anchor: 'periodic' })), 'help at an anchor');
-    assertSame(drawnBefore('helpButton'), drawnNow(element('HelpButton', {})), 'help');
   });
 
   test('the gear\'s Zen row: one checkbox, named by its label, ticked while Zen is on', () => {

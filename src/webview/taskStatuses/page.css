@@ -7,6 +7,7 @@
 
 main { max-width: 980px; padding: 16px 20px 32px; }
 header { display: grid; gap: 6px; margin-bottom: 14px; }
+.page-bar-lead { display: grid; gap: 6px; }
 .status-note { margin: 0; color: var(--muted); }
 .status-click { display: grid; gap: 4px; margin: 0 0 14px; padding: 8px 12px; border: 1px solid var(--line); }
 .status-click legend { padding: 0 4px; font-weight: 600; }

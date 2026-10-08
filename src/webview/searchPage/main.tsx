@@ -137,7 +137,7 @@ function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
   const invalid = (snapshot.query.diagnostics || []).some((diagnostic) => diagnostic.severity === 'error');
   return (
     <>
-      <PageHeader snapshot={snapshot} />
+      <PageHeader snapshot={snapshot} hasText={Boolean(editor.currentText().trim())} />
       {editor.bar()}
       {editor.facets(tagRefineLines(snapshot))}
       {/* How far along the tag's tasks are, with Refine, which narrows the same tasks, rather than under the hub. */}
@@ -225,9 +225,6 @@ const editor = createQueryEditor({
   // The Notes and Tasks tabs carry the counts; the strip repeats them in
   // the other layouts, where there are no tabs.
   countElsewhere: () => Boolean(latest && latest.layout === 'tabs'),
-  actions: (hasText) => (
-    <button data-action="save-filter" data-query-needs-text="" data-tip="Keep this search, named, on Home" data-tip-disabled="Type a search to save it" aria-disabled={hasText ? undefined : 'true'}>Save</button>
-  ),
 });
 
 document.addEventListener('toggle', (event) => {
@@ -410,7 +407,6 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
       send({ type: 'setOverviewQuery', query: snapshot.suggestion });
     }
   },
-  'open-help': () => send({ type: 'openHelp' }),
   'history-back': () => send({ type: 'navigateSearchHistory', direction: 'back' }),
   'history-forward': () => send({ type: 'navigateSearchHistory', direction: 'forward' }),
   // What the box holds, words typed and not yet run among it, is what the

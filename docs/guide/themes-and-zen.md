@@ -2,7 +2,7 @@
 
 ## Themes
 
-Run `Deckard: Choose Theme…`, or choose **Theme** in any page's gear. Moving through the list previews each theme on the open pages; Enter keeps it, and Escape goes back. The setting is `deckard.theme`.
+Run `Deckard: Choose Theme…`, or choose **Theme…** under **Appearance** in a page's **⋯**, at its top right. Moving through the list previews each theme on the open pages; Enter keeps it, and Escape goes back. The setting is `deckard.theme`.
 
 - **Corpo**, the default, takes its colors and fonts from your VS Code theme, light or dark.
 - **Replicant**, **Oblivion**, **LCARS**, **Tomcat**, **Fellowship**, **Synthwave**, and **Cooper** are Deckard's film-inspired styles.
@@ -32,7 +32,7 @@ How much a page draws is one switch, **Zen**, the same on every page; see [Zen](
 
 Zen never hides data. Every count beside a name, such as a widget's total, a group's count, a board column's tasks, or a tab's results, shows with Zen on or off, and a due date is written in full, "Overdue 2 days · 2026-10-02". Zen changes no color, and removes no button or filter. In every theme the flat cards' divider reaches 3:1 against the page and the tag color 4.5:1, which a test checks on each change.
 
-**Page width**, its own row in the gear under Theme, keeps pages *Limited* to a column at most 1000px wide, or makes them *Full*, the panel's full width, for a wide monitor. Zen never changes it, and every page keeps the width you chose last. The Task Board and the Calendar always use the panel's full width, so their gears have no Page width row.
+**Page width**, under **Appearance** in **⋯** on Home, a search page, and the note page, keeps pages *Limited* to a column at most 1000px wide, or makes them *Full*, the panel's full width, for a wide monitor. Zen never changes it, and every page keeps the width you chose last. The other pages always use the panel's full width, or set their own, so their **⋯** has no Page width row.
 
 **Card details** (`deckard.display.cardDetails`) says which details an entry shows on the line it keeps for them under its dates, with Zen on or off: where it is written, then its created and updated dates, on one line cut short. The line shows while the pointer is on the entry or it has focus, and always on a touch screen; it keeps its room either way, so nothing moves and nothing is covered. Untick all three for none: no line is kept, and a screen reader still reads where it is written.
 
@@ -64,7 +64,7 @@ What Deckard writes into your notes stays `YYYY-MM-DD`: task dates such as `📅
 
 ## Zen
 
-Zen is one checkbox, **Zen** in any page's gear, and one command, `Deckard: Toggle Zen`; the Zen button in a page's title bar turns it on or off too. The setting is `deckard.display.zen`.
+Zen is one checkbox, **Zen** under **Appearance** in any page's **⋯**, and one command, `Deckard: Toggle Zen`; the Zen button in a page's title bar turns it on or off too. The setting is `deckard.display.zen`.
 
 - **Hidden:** decorative labels, the grid backdrop, the eyebrow's trail, and every line that teaches, such as the search box's line of syntax; cards are flat and tags are text.
 - **Kept:** every button, filter, checkbox, and tag, every count beside a name, and a task's due date written in full, with its priority and overdue marker. Zen never hides data.

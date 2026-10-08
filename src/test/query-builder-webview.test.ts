@@ -633,7 +633,8 @@ suite('Tag overview query builder', () => {
     view.send(createState('#project/atlas', { origin: '#project/atlas' }));
     // No Search or Clear beside the box: → at the field's end runs it, and
     // its × is drawn only while there is more than the page's own tag.
-    assert.deepStrictEqual(view.findAll('.query-bar-row > button').map((button) => button.getAttribute('data-action')), ['save-filter']);
+    assert.deepStrictEqual(view.findAll('.query-bar-row > button').map((button) => button.getAttribute('data-action')), [], 'Save search… is a row of ⋯');
+    assert.ok(view.find('.page-menu [data-action="save-filter"]'));
     const run = view.find('.query-bar-shell [data-action="apply-query"]');
     assert.strictEqual(run.textContent, '→');
     assert.ok(run.getAttribute('aria-label'), 'the glyph has a name');

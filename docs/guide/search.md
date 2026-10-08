@@ -35,7 +35,7 @@ Search pages, Home's search widget, and the Task board (tasks only) share one se
 - Two tags side by side are joined with AND.
 - A parse error shows under the box; the results keep the last search that ran.
 - When nothing matches, **Nothing matched. Search for … instead?** corrects misspelled words, never tags or folders.
-- **Save** stores the search by name. Saved searches appear on Home and the Tags tab and survive tag renames.
+- **Save search…**, in a search page's or the Task board's **⋯**, stores the search by name. Saved searches appear on Home and the Tags tab and survive tag renames.
 
 **Builder** opens under the box, and stays pressed while it is open. It edits the same search as nested rows and groups. Each group matches **all of** or **any of** its rows, and **not** negates a group.
 

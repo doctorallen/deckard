@@ -451,7 +451,7 @@ suite('Search page behavior', () => {
       page.find('.query-facets-count').classList.contains('visually-hidden'),
       'and the Refine strip keeps its live region without drawing the count again',
     );
-    assert.ok(page.find('.view-options [data-action="set-sort"]'), 'Sort sits in the gear with the other view options');
+    assert.ok(page.find('.page-menu [aria-label="View"] [data-action="set-sort"]'), 'Sort sits in ⋯ with the other view options');
   });
 
   test('marks a search box that holds a term, and shows its hint', () => {
@@ -649,8 +649,13 @@ suite('Search page behavior', () => {
     assert.ok(String(page.lastPosted('renameTag')?.tagKey).length > 0);
   });
 
-  test('keeps a search under a name', () => {
+  test('keeps a search under a name, from Save search…, the first row of ⋯', () => {
     const { page } = open(NOTES, '#project/atlas');
+    const save = page.find('.page-menu [aria-label="Page"] .view-options-item');
+    assert.strictEqual(save.getAttribute('data-action'), 'save-filter');
+    assert.strictEqual(save.textContent, 'Save search…');
+    assert.deepStrictEqual(page.findAll('.page-menu .view-options-section').map((section) => section.getAttribute('aria-label')), ['Page', 'View', 'Appearance', 'Help']);
+    assert.strictEqual(page.findAll('.help-button').length, 0, 'Help on this page is a row of ⋯');
 
     page.click('[data-action="save-filter"]');
 

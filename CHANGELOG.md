@@ -28,6 +28,24 @@
   search box, beside **Group**, **Sort** and **Can start now**, where the
   gear's Layout row was. A board you kept as a list opens as the table,
   which ranks every task in one order as the list did.
+- **One bar on every page, and one ⋯ for the gear and the ?.** Every
+  Deckard page draws the same bar: **DECKARD ▾** and the title at the
+  left; at the right at most one filled button, up to three others, and
+  one **⋯** in place of both the gear and the **?** button. Its rows come
+  in one order on every page: the page's own actions, its view, then
+  **Appearance** (**Theme…**, **Zen**, and **Page width** on Home, a
+  search page and the note page), then **Help on this page**, and
+  **Keyboard shortcuts** where the page has keys. Its tip names its first
+  rows. Task Statuses and Help draw the bar with no **⋯**. Zen draws the
+  bar as it is.
+- **A search page's ⋯.** **‹ ›** stays, and **⋯** beside it holds **Save
+  search…**, which was **Save** beside the search box, then **Sort**,
+  **Layout**, **Group by**, **Format**, **Preview** and the columns, then
+  **Theme…**, **Zen** and **Page width**, then **Help on this page**.
+  Words typed and not yet run are still what Save search… keeps.
+- **The note page's ⋯.** **‹ ›** and **Open in Editor**, a plain button,
+  stay; Help and the gear are one **⋯** with **Theme…**, **Zen**, **Page
+  width** and **Help on this page**.
 - **The Task board's bar: Add task, then ⋯.** **Add task** moves from the
   end of the search bar to the top right, beside the task count, as the
   page's one filled button; while the board edits what the Tasks view
@@ -90,7 +108,7 @@
   count, and writes a due date both ways, "Overdue 2 days · 2026-10-02".
 - **Zen is one switch.** Display's three steps, Full, Quiet and Zen, and
   the seven settings they moved are one checkbox now, **Zen**, in every
-  page's gear, and one setting, `deckard.display.zen`. Zen on draws each
+  page's **⋯**, and one setting, `deckard.display.zen`. Zen on draws each
   theme plain, hides the lines that teach, tightens the spacing, and
   draws cards flat and tags as text; every count and date still shows. If
   you had chosen Quiet or Zen, Zen is on after the update, and one notice

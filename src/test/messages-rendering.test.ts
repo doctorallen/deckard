@@ -661,20 +661,9 @@ suite('Webview contracts', () => {
       html.includes('.segmented > .active { position: relative; z-index: var(--z-raised); }'),
       true,
     );
-    assert.strictEqual(
-      html.includes(
-        'header > .toolbar .view-options { position: absolute; top: 0; right: 0; }',
-      ),
-      true,
-    );
-    // A short header is tall enough to hold the gear.
-    assert.strictEqual(html.includes('header > .toolbar { margin-top: 36px; }'), true);
-    assert.strictEqual(
-      html.includes(
-        'header > .toolbar { width: 100%; margin-top: 0; }',
-      ),
-      true,
-    );
+    // ‹ › and ⋯ hold the bar's top-right corner, however tall the title runs.
+    assert.strictEqual(html.includes('header.page-bar { align-items: flex-start; }'), true);
+    assert.strictEqual(html.includes('header > .toolbar'), false, 'no toolbar of its own');
 
     // The page itself, driven. A tag no note describes offers a hub note.
     const index = buildWorkspaceIndex(new Map([

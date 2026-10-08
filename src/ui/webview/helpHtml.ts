@@ -94,8 +94,8 @@ export function getHelpHtml(webview: ShellWebview, extensionUri: ShellUri, optio
     body: `
 <main>
 ${renderContents()}  <article>
-    <header>
-      <p class="eyebrow"><button type="button" class="eyebrow-home" data-go-to="" aria-haspopup="menu" aria-expanded="false" aria-label="Deckard: go to another page">DECKARD ▾</button><span class="eyebrow-trail"> / HELP</span></p>
+    <header class="page-bar">
+      <div class="page-bar-lead"><p class="eyebrow"><button type="button" class="eyebrow-home" data-go-to="" aria-haspopup="menu" aria-expanded="false" aria-label="Deckard: go to another page">DECKARD ▾</button><span class="eyebrow-trail"> / HELP</span></p></div>
     </header>
     <div id="guide-view"></div>
     <section id="${WHATS_NEW}" hidden>

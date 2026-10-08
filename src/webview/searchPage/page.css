@@ -6,10 +6,9 @@
 @import "../shared/noteBlocks.css";
 @import "../shared/queryEditor.css";
 
-/* The gear sits in the header's top-right corner. The margin keeps a short
-   header tall enough to hold it. */
-header > .toolbar { margin-top: 36px; }
-header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
+/* ‹ › and ⋯ sit in the bar's top-right corner, beside DECKARD ▾, however
+   tall the title and the lines under it run. */
+header.page-bar { align-items: flex-start; }
 .overview-tag-link.overview-tag-link {
   min-height: 0;
   margin: 0;
@@ -35,7 +34,7 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
   transform: none;
   box-shadow: none;
 }
-.overview-eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.page-bar-lead > .eyebrow { margin-bottom: 6px; }
 .saved-view-name { margin: 0 0 8px; color: var(--cyan); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
 .saved-view-name-label { color: var(--muted); }
 .overview-tab-panel[hidden] { display: none; }
@@ -140,11 +139,10 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .pagination .page-size select { min-width: 64px; }
 .did-you-mean { margin: 16px 0 0; border-left: 3px solid var(--accent); background: var(--panel); padding: 8px 12px; font-size: var(--text-sm); }
 .did-you-mean button { background: transparent; border: 0; padding: 0; color: var(--text); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
-@media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; margin-top: 0; } .overview-split { grid-template-columns: 1fr; } .cards, .task-list { grid-template-columns: 1fr !important; } }
+@media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } .overview-split { grid-template-columns: 1fr; } .cards, .task-list { grid-template-columns: 1fr !important; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 
-/* The amber rule above the page, and the containing block the gear is
-   positioned against. */
+/* The amber rule above the page. */
 main { border-top: 2px solid var(--amber); }
 header { position: relative; }
 /* Three lines of each result, or of the paragraph its words are in, and

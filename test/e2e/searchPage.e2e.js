@@ -157,7 +157,7 @@ const settle = (milliseconds = 10) =>
 
 // ---------------------------------------------------------------------------
 
-test('the gear\'s Theme row runs Choose Theme', async () => {
+test('⋯\'s Theme row runs Choose Theme', async () => {
   const { view } = await openOverview();
   vscode._test.executedCommands.length = 0;
   view.click(view.find('[data-action="choose-theme"]'));
@@ -165,10 +165,10 @@ test('the gear\'s Theme row runs Choose Theme', async () => {
   assert.ok(vscode._test.executedCommands.some((entry) => entry.command === 'deckard.chooseTheme'));
 });
 
-test('Help opens at Search', async () => {
+test('Help on this page, in ⋯, opens at Search', async () => {
   const { view } = await openSearch('planning');
   vscode._test.executedCommands.length = 0;
-  view.click(view.find('.help-button'));
+  view.click(view.find('.page-menu [data-action="page-help"]'));
   await settle();
   assert.deepStrictEqual(
     vscode._test.executedCommands.filter((entry) => entry.command === 'deckard.showHelp'),
@@ -486,11 +486,11 @@ test('a page size chosen on one search page starts every page from its first pag
   assert.strictEqual(current(otherView), '1', 'the second page of thirty is not the second of fifty');
 });
 
-test('Save keeps the words typed and not yet run, as the box shows them', async () => {
+test('Save search… keeps the words typed and not yet run, as the box shows them', async () => {
   const { view, preferences } = await openOverview();
   const bar = view.find('[data-action="query-input"]');
   view.type(bar, 'planning');
-  // The pointer goes down on Save, inside the box, which keeps what was typed.
+  // The pointer goes down on Save search…, in the page's bar, which keeps what was typed.
   const save = view.find('[data-action="save-filter"]');
   vscode._test.setInputBoxResponse('Atlas planning');
   view.press(save);
@@ -501,7 +501,7 @@ test('Save keeps the words typed and not yet run, as the box shows them', async 
   assert.deepStrictEqual({ name: saved.name, query: saved.query }, { name: 'Atlas planning', query: '#project/atlas AND planning' });
 });
 
-test('Save on a search that does not parse runs it, so the box says why', async () => {
+test('Save search… on a search that does not parse runs it, so the box says why', async () => {
   const { view, preferences } = await openOverview();
   view.type(view.find('[data-action="query-input"]'), 'due <');
   view.press(view.find('[data-action="save-filter"]'));

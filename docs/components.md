@@ -112,10 +112,11 @@ Every page with Preact starts from these, in `src/webview/shared/`.
 | `status.ts` | `announce(text)`, one short thing at a time to a screen reader through `#live-status`; `describeIndexing(progress)`; and `setSearchInFlight(inFlight)` for a page that runs a search |
 | `vscode.ts`, `scroll.ts` | `post(message)`, `vscodeApi()`, and `keptState()` and `keepState(change)` over `setState`; `rememberScroll` and `restoreScroll` |
 | `tip.tsx` | `installTip()`, which `startPage` runs: the one `#deckard-tip` for every page (**Tooltips** below) |
-| `keySheet.tsx` | `installKeySheet(sections)`, `openKeySheet`, and `closeKeySheet`: the `?` sheet of the page's keys |
+| `keySheet.tsx` | `installKeySheet(sections)`, `openKeySheet(sections, opener)`, and `closeKeySheet`: the `?` sheet of the page's keys, which ⋯'s **Keyboard shortcuts** row (`data-action="open-key-sheet"`) opens too, giving focus back to ⋯ |
+| `pageBar.tsx` | **The bar at the top of every page**, `<PageBar trail lead controls menu className leadClass controlsClass label>`: `<header class="page-bar">` with DECKARD ▾ (`<Eyebrow trail>`) and `lead` (the `h1` and anything under it) in `.page-bar-lead`, then, when there is any, a `.page-bar-actions` group of `controls` (at most one `.primary`, then up to three secondaries) and ⋯. `menu` (`{ actions, view, pageWidth, keySheet }`) is ⋯'s rows; a page with no `menu` draws no ⋯. `<PageMenu>` is `<ViewOptions>` with `<EllipsisIcon>` and `class="page-menu"`, its sections in one order, each left out when empty: **Page** (`actions`, `ViewOptionItem` rows), **View** (`view`, the rows a gear held), **Appearance** (Theme…, Zen, and Page width when `pageWidth`), **Help** (Help on this page, `data-action="page-help"`, and Keyboard shortcuts when `keySheet`). `describePageMenu` names ⋯ by its first three rows, its tip and `aria-label`. The actions group carries `data-query-keeps-text`, so words typed in the search box survive focus moving to Save search… |
 | `undoToast.tsx` | `createUndoNotice(redraw)` and `<UndoNotice message action buttonClass>` (**Destructive actions** below) |
-| `viewOptions.tsx` | The gear, `<ViewOptions groups name label>`, from `{ label, labelFor, content, stacked }` rows, `labelFor` making the row's label a `<label>` for its one control, a second gear on a page named so each stays open or closed on its own; a row of choices, `<ViewOptionChoices action choices selected label attributes>`, each button carrying `data-action` and `data-value`; `themeOption()`, the Theme row, one button naming the theme in use, which posts `chooseTheme`; `zenOption()`, the Zen row, one checkbox ticked from the body's `zen` class, which posts `setZenMode`; `pageWidthOption()`, which posts `setDisplay`; and `installViewOptions()`, which closes the gear on a click outside it and on Escape, and posts those three. Call it before the page's own listeners. A gear open before a redraw stays open |
-| `buttons.tsx`, `icons.tsx`, `strokeIcons.tsx` | `<IconButton action label icon tip tipKey className attributes pressed disabledReason>`: an icon-only `.icon-button` whose label is its name and, unless `tip` is given, its tip; `pressed` sets `aria-pressed`; `disabledReason` sets `aria-disabled` and `data-tip-disabled`; it never carries `title`. `<HelpButton anchor>`. The glyphs: `<SettingsIcon>` and `<HelpIcon>`, and the stroked set, `<StrokeIcon>` and the named ones (`<SortIcon>`, `<EllipsisIcon>`, `<CheckIcon>`, …) |
+| `viewOptions.tsx` | The disclosure behind Context's gears and every page's ⋯, `<ViewOptions groups sections name label icon className>`, from `{ label, labelFor, content, stacked }` rows (`groups`), or from `sections` of them (`{ label, heading, rows }`), where a row may instead be a `ViewOptionItem`, `{ action, text, tip, key, pressed, disabledReason, attributes }`: a `.menu-item.view-options-item` that does one thing, with a check while `pressed` is true; `labelFor` making the row's label a `<label>` for its one control, a second gear on a page named so each stays open or closed on its own; a row of choices, `<ViewOptionChoices action choices selected label attributes>`, each button carrying `data-action` and `data-value`; `themeOption()`, the Theme row, one button naming the theme in use, which posts `chooseTheme`; `zenOption()`, the Zen row, one checkbox ticked from the body's `zen` class, which posts `setZenMode`; `pageWidthOption()`, which posts `setDisplay`; and `installViewOptions()`, which closes a menu on a click outside it, on a `.view-options-item`, and on Escape, focusing its summary, and posts those three and `openHelp` for Help on this page. Call it before the page's own listeners. A menu open before a redraw stays open |
+| `buttons.tsx`, `icons.tsx`, `strokeIcons.tsx` | `<IconButton action label icon tip tipKey className attributes pressed disabledReason>`: an icon-only `.icon-button` whose label is its name and, unless `tip` is given, its tip; `pressed` sets `aria-pressed`; `disabledReason` sets `aria-disabled` and `data-tip-disabled`; it never carries `title`. The glyphs: `<SettingsIcon>` and `<HelpIcon>`, and the stroked set, `<StrokeIcon>` and the named ones (`<SortIcon>`, `<EllipsisIcon>`, `<CheckIcon>`, …) |
 | `tagLabel.tsx`, `tagButton.tsx` | `<TagLabel label svg>`, a tag's text with its namespace dimmed, as `<tspan>`s inside SVG with `svg`; `<TagButton tag className>`, a `.tag-open` control that opens the tag; `<TitleWithTags title tags appendMissing>`, a plain title with its tags as controls where they are written, and the missing ones after it unless `appendMissing` is false |
 | `metric.tsx` | `<Metric label value query hint code trend>`, one `.metric` tile, a button that opens `query` when there is one; `trend` (`{ points, change, note? }`) adds the twelve-week line and the change in words under the value, the change in the tile's `aria-label`, and `note` to its tip. `<Sparkline points>`: an inline SVG line, 20px high, min to max, a flat run as a midline, the last point in `--accent`, each point carrying a `<title>`, `aria-hidden`. `describeChange(change)`: "+9 in the last 7 days", "−3 in the last 7 days" (U+2212), or "No change in the last 7 days", muted, never green or red, since a rise is not always good news |
 | `inline.tsx` | `<Inline tokens>`: a title's `InlineToken[]` drawn as `markdown-it`'s elements and text nodes. Nothing is parsed as HTML |
@@ -156,9 +157,10 @@ Related Notes show it; the words and classes both share in `model.ts`; and
 - **Controls post intent through `data-action`.** A component writes the
   `data-action` and `data-*` keys the sheets and the tests read, and the
   page's `listenForActions` table says what each does: a tag button is
-  `data-action="open-tag"`, and each page posts `openTag` for it. Only the
-  gear's Theme and Zen rows post on their own, through `installViewOptions`,
-  since no page acts on them differently.
+  `data-action="open-tag"`, and each page posts `openTag` for it. Only
+  ⋯'s Theme, Zen, Page width and Help on this page rows post on their own,
+  through `installViewOptions`, since no page acts on them differently; the
+  host's `openHelp` handler names the page's own section of the guide.
 - **A floating layer is a layer of the body.** The tip, the key sheet, the
   undo toast, and the menus are appended to the body, outside `#app`, each
   its own render root, so a redraw of the page does not take them away.
@@ -317,7 +319,8 @@ treatment, so a toolbar reads as one row of controls.
 | `.icon-button` | A square icon-only control at `--control-height`. |
 | `.toolbar-icon` | 16px stroked SVG inside a control. `.settings-icon` switches it to filled. Every glyph is a component: `<StrokeIcon className>` in `shared/strokeIcons.tsx` wraps a glyph's paths in the one frame, and the named ones (`<SortIcon>`, `<EllipsisIcon>`, `<ChevronRightIcon>`, …) are ready to draw; `<SettingsIcon>` and `<HelpIcon>` are in `shared/icons.tsx`, the calendar's in `shared/calendar/calendarIcon.tsx`, and the Dashboard's own in its `icons.tsx`. No host builder writes an `<svg>`; `src/test/icons.test.ts` fails one that does, and holds the frame to the paths in `src/ui/webview/icons.ts`. |
 | `.query-facet` | One Refine group: its label above a `.query-facet-values` row, groups a wide step apart, so a group's edge is a shape. |
-| `.view-options` | **The gear every page's view options sit behind**, drawn by `<ViewOptions>`: the `<details>` disclosure and its `.view-options-menu` of `.view-options-group` rows. `.view-options-choices` is a row of small choices inside it, such as List and Board. No theme restyles the gear, so it looks the same on every page. Related Notes has one at the end of its Sort row, holding **Preview** (None, 1 line, 2 lines) and **Daily notes** (Show, Hide). |
+| `.page-bar` | **The bar at the top of every page**, drawn by `<PageBar>`: `.page-bar-lead` (DECKARD ▾ and the title) at the left, `.page-bar-actions` (the primary, the secondaries and ⋯) at the right. Zen draws it as it is. |
+| `.view-options` | **The disclosure a page's ⋯ and Context's gears are**, drawn by `<ViewOptions>`: the `<details>` and its `.view-options-menu` of `.view-options-group` rows, or of `.view-options-section` groups, each under a rule, with an optional `.view-options-heading` and `.view-options-item` rows. `.page-menu` is a page's ⋯. `.view-options-choices` is a row of small choices inside it, such as Limited and Full. No theme restyles it, so it looks the same on every page. Related Notes has a gear at the end of its Sort row, holding **Preview** (None, 1 line, 2 lines) and **Daily notes** (Show, Hide). |
 | `.note-excerpt` | A Related Notes card's preview, in order: title and actions, file and line, heading path, **excerpt**, reason, tags. `--muted` at `--text-xs`, clamped with `-webkit-line-clamp` to `--preview-lines`, which `main[data-preview-lines]` sets; at 0 it is not drawn. The text comes from `readProseLines` / `formatExcerpt` in `src/domain/markdown/proseExcerpt.ts`, the one place Markdown becomes preview text, and starts at the line holding a shared word when there is one. |
 | `.filter-count` | Small muted count inside a filter button. |
 | `.command-link` | **A command named in Help's prose that runs it.** The code chip's look in `--cyan`, underlined under the pointer and on focus. Help builds it with `linkCommandNames()` for every `<code>Deckard: …</code>` whose command needs no note in the editor; the host runs it only when `isRunnableFromHelp()` agrees. |
@@ -435,7 +438,7 @@ widget colors.
 | Class | What it is |
 | --- | --- |
 | `.popover` | A menu positioned `fixed`, at `--z-menu`. |
-| `.popover.is-dropdown` | Attached to a control: the gear's menu, a widget's options, completions. |
+| `.popover.is-dropdown` | Attached to a control: ⋯'s menu, a gear's, a widget's options, completions. |
 | `.popover.is-tip` | A tip: 1px `--line-strong` edge, `--text-xs`, at most 280px. |
 | `.menu-item` | One row of any menu, 28px tall. Its label is a `.menu-label`. |
 | `.menu-check` | The 16px column a checked item's check sits in (see the card menu). |
@@ -460,7 +463,7 @@ shows at once takes the card's menu with it, the new choice checked.
 | Token | Value | For |
 | --- | --- | --- |
 | `--z-raised` | `1` | A chosen segment over its neighbors |
-| `--z-dropdown` | `10` | Attached to a control: the gear's menu, a widget's options, completions |
+| `--z-dropdown` | `10` | Attached to a control: ⋯'s menu, a gear's, a widget's options, completions; the Notes Graph's bar |
 | `--z-menu` | `20` | Context and action menus |
 | `--z-tooltip` | `30` | Tips, the relevance tooltip, the graph's hover card |
 | `--z-modal` | `40` | The `?` key sheet |
@@ -630,7 +633,7 @@ in Rank order, with no header sort, `.is-draggable` and are ranked as the
 `td.is-muted` are the two states a cell can be in. The host makes the rows
 and cells with the column model in `src/ui/state/resultTable.ts`, which a
 query block's `view=table` shares, so the page only draws them.
-`.table-columns` is the gear's column picker.
+`.table-columns` is ⋯'s column picker.
 
 ### Row actions: the reveal rule
 
@@ -943,7 +946,7 @@ first button in its row, and it is never filled at rest.
 | Remove saved search (Home) | VS Code's own modal asks first: the saved search and its widget are gone for good. |
 | Reset widgets (Home, customizing) | Asks inline: **Keep them**, then **Reset widgets** as `button.danger`. |
 | Remove widget × (Home, customizing) | Acts at once; the edit bar says **Removed Tasks view.** with **Undo**, which puts it back at its place with its width and options. Leaving customizing withdraws it. |
-| Remove status column × (board gear) | Acts at once, with **Removed the review column.** and **Undo**. |
+| Remove status column × (board ⋯) | Acts at once, with **Removed the review column.** and **Undo**. |
 | Reset graph | Acts at once, with **Graph reset.** and **Undo**. |
 
 `<UndoNotice message action buttonClass>` draws the `.undo-notice` line;

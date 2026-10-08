@@ -9,7 +9,7 @@
 import { checkStatusList, type StatusProblem } from '../../domain/tasks/statusChecks';
 import type { StateMessage } from '../../ui/protocol/messaging';
 import type { EditedStatus, TaskStatusesSnapshot } from '../../ui/protocol/taskStatuses';
-import { Eyebrow } from '../shared/eyebrow';
+import { PageBar } from '../shared/pageBar';
 import { listenForActions, onHostMessage, readEmbeddedState, startPage } from '../shared/page';
 import { post } from '../shared/vscode';
 
@@ -211,16 +211,18 @@ function TaskStatusesPage({ state }: { readonly state: StatusesState }) {
   const unknown = snapshot.found.filter((found) => !rows.some((status) => status.symbol === found.symbol));
   return (
     <>
-      <header>
-        <div>
-          <Eyebrow trail="TASKS" />
-          <h1>Task Statuses</h1>
-        </div>
-        <p class="status-note">
-          <span class="help-text">{'What each checkbox character means. '}</span>
-          {`Saved to your ${snapshot.target === 'workspace' ? "workspace's" : 'user'} settings.`}
-        </p>
-      </header>
+      <PageBar
+        trail="TASKS"
+        lead={(
+          <>
+            <h1>Task Statuses</h1>
+            <p class="status-note">
+              <span class="help-text">{'What each checkbox character means. '}</span>
+              {`Saved to your ${snapshot.target === 'workspace' ? "workspace's" : 'user'} settings.`}
+            </p>
+          </>
+        )}
+      />
       <fieldset class="status-click">
         <legend>Checking a box</legend>
         <label><input type="radio" name="checkbox-click" data-action="set-checkbox-click" value="done" checked={!workflow} /> Marks it done, whatever its status; unchecking reopens it</label>

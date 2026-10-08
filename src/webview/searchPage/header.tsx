@@ -1,17 +1,17 @@
 /**
  * The top of a search page: what it is about, with its saved name and the
- * offer of a hub note, and its toolbar of history, Help, and the gear.
+ * offer of a hub note, and its bar's ‹ › and ⋯.
  */
 import type { ComponentChildren } from 'preact';
 
 import { NOTE_SORT_LABELS } from '../../domain/model/sortOrders';
 import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { TagReference } from '../../ui/protocol/shared';
-import { HelpButton, IconButton } from '../shared/buttons';
-import { Eyebrow } from '../shared/eyebrow';
+import { IconButton } from '../shared/buttons';
+import { PageBar } from '../shared/pageBar';
 import { LayoutSplitIcon, LayoutTabsIcon, RenderedIcon, SortIcon, SourceIcon } from '../shared/strokeIcons';
 import { TagLabel } from '../shared/tagLabel';
-import { pageWidthOption, themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
+import { type ViewOptionGroup, type ViewOptionItem, ViewOptionChoices } from '../shared/viewOptions';
 
 /** A built-in or user-made namespace and its name in one readable title form: "Project: Atlas". */
 export function formatEntityTitle(kind: string, name: string): string {
@@ -45,7 +45,7 @@ function HistoryButtons({ history }: { readonly history: SearchPageSnapshot['his
   );
 }
 
-/** How the notes are ordered, in the gear: the select alone, its label being the row's. */
+/** How the notes are ordered, in ⋯: the select alone, its label being the row's. */
 function SortControl({ mode }: { readonly mode: SearchPageSnapshot['sortMode'] }) {
   const options = Object.entries(NOTE_SORT_LABELS);
   return (
@@ -68,7 +68,7 @@ interface ToggleChoice {
   readonly icon: ComponentChildren;
 }
 
-/** A pair of icon toggles in the gear, the one in use pressed. */
+/** A pair of icon toggles in ⋯, the one in use pressed. */
 function IconToggles({ action, attribute, current, label, extraClass, choices }: {
   readonly action: string;
   /** The data attribute each toggle carries its value in. */
@@ -110,59 +110,67 @@ function ColumnChoices({ section, selected }: { readonly section: 'notes' | 'tas
   );
 }
 
-/** The gear: sort, layout, grouping, format, preview, columns, theme, and zen. */
-function SearchViewOptions({ snapshot }: { readonly snapshot: SearchPageSnapshot }) {
-  return (
-    <ViewOptions
-      groups={[
-        { label: 'Sort', content: <SortControl mode={snapshot.sortMode} /> },
-        {
-          label: 'Layout',
-          content: (
-            <IconToggles action="set-layout" attribute="data-layout" current={snapshot.layout} label="Content layout" extraClass="layout-toggle-group" choices={[
-              { value: 'tabs', label: 'Tabs layout', tip: 'Tabs: switch between Notes and Tasks', icon: <LayoutTabsIcon /> },
-              { value: 'split', label: 'Side-by-side layout', tip: 'Side by side: Notes 60%, Tasks 40%', icon: <LayoutSplitIcon /> },
-            ]} />
-          ),
-        },
-        {
-          label: 'Group by',
-          content: (
-            <ViewOptionChoices
-              action="set-hierarchy"
-              choices={[['off', 'None', 'None, the results ungrouped'], ['tags', 'Tag', "Tag, under Refine's tags"], ['headings', 'Heading', 'Heading, nested by tagged headings']]}
-              selected={snapshot.hierarchy || 'off'}
-              label="Group the results by"
-            />
-          ),
-        },
-        {
-          label: 'Format',
-          content: (
-            <IconToggles action="set-mode" attribute="data-mode" current={snapshot.renderMode} label="Content format" choices={[
-              { value: 'markdown', label: 'Source view', tip: 'Source: show the original Markdown', icon: <SourceIcon /> },
-              { value: 'html', label: 'Rendered view', tip: 'Rendered: show formatted Markdown', icon: <RenderedIcon /> },
-            ]} />
-          ),
-        },
-        { label: 'Preview', content: <ViewOptionChoices action="set-preview" choices={[['none', 'None'], ['lines', '3 lines'], ['full', 'Full']]} selected={snapshot.preview || 'lines'} label="Result preview" /> },
-        { label: 'Note columns', content: <ColumnChoices section="notes" selected={snapshot.noteColumns} /> },
-        { label: 'Task columns', content: <ColumnChoices section="tasks" selected={snapshot.taskColumns} /> },
-        themeOption(),
-        pageWidthOption(),
-        zenOption(),
-      ]}
-    />
-  );
+/**
+ * Save search…, ⋯'s first row: names the search in the box and keeps it on
+ * Home. Held until there is a search to save, and let go as the reader
+ * types, as every control that needs text is.
+ */
+function saveSearchRow(hasText: boolean): ViewOptionItem {
+  return {
+    action: 'save-filter',
+    text: 'Save search…',
+    tip: 'Keep this search, named, on Home',
+    disabledReason: hasText ? undefined : 'Type a search to save it',
+    attributes: { 'data-query-needs-text': '', 'data-tip-disabled': 'Type a search to save it' },
+  };
+}
+
+/** ⋯'s view rows: sort, layout, grouping, format, preview, and columns, as the gear held them. */
+function searchView(snapshot: SearchPageSnapshot): ViewOptionGroup[] {
+  return [
+    { label: 'Sort', content: <SortControl mode={snapshot.sortMode} /> },
+    {
+      label: 'Layout',
+      content: (
+        <IconToggles action="set-layout" attribute="data-layout" current={snapshot.layout} label="Content layout" extraClass="layout-toggle-group" choices={[
+          { value: 'tabs', label: 'Tabs layout', tip: 'Tabs: switch between Notes and Tasks', icon: <LayoutTabsIcon /> },
+          { value: 'split', label: 'Side-by-side layout', tip: 'Side by side: Notes 60%, Tasks 40%', icon: <LayoutSplitIcon /> },
+        ]} />
+      ),
+    },
+    {
+      label: 'Group by',
+      content: (
+        <ViewOptionChoices
+          action="set-hierarchy"
+          choices={[['off', 'None', 'None, the results ungrouped'], ['tags', 'Tag', "Tag, under Refine's tags"], ['headings', 'Heading', 'Heading, nested by tagged headings']]}
+          selected={snapshot.hierarchy || 'off'}
+          label="Group the results by"
+        />
+      ),
+    },
+    {
+      label: 'Format',
+      content: (
+        <IconToggles action="set-mode" attribute="data-mode" current={snapshot.renderMode} label="Content format" choices={[
+          { value: 'markdown', label: 'Source view', tip: 'Source: show the original Markdown', icon: <SourceIcon /> },
+          { value: 'html', label: 'Rendered view', tip: 'Rendered: show formatted Markdown', icon: <RenderedIcon /> },
+        ]} />
+      ),
+    },
+    { label: 'Preview', content: <ViewOptionChoices action="set-preview" choices={[['none', 'None'], ['lines', '3 lines'], ['full', 'Full']]} selected={snapshot.preview || 'lines'} label="Result preview" /> },
+    { label: 'Note columns', content: <ColumnChoices section="notes" selected={snapshot.noteColumns} /> },
+    { label: 'Task columns', content: <ColumnChoices section="tasks" selected={snapshot.taskColumns} /> },
+  ];
 }
 
 /**
- * The header: one name for the place whatever it searches, a saved
- * search's name, the title (the entity or tag the page is about, as the
- * control that opens it, or Search), the entity's tag under it, and a line
- * offering a hub note when no note describes the tag; then the toolbar.
+ * The bar: one name for the place whatever it searches, a saved search's
+ * name, the title (the entity or tag the page is about, as the control
+ * that opens it, or Search), the entity's tag under it, and a line
+ * offering a hub note when no note describes the tag; then ‹ › and ⋯.
  */
-export function PageHeader({ snapshot }: { readonly snapshot: SearchPageSnapshot }) {
+export function PageHeader({ snapshot, hasText }: { readonly snapshot: SearchPageSnapshot; readonly hasText: boolean }) {
   const entity = snapshot.entity;
   const focus = entity ? { key: entity.key, label: entity.label } : snapshot.tag;
   let title = 'Search';
@@ -173,23 +181,23 @@ export function PageHeader({ snapshot }: { readonly snapshot: SearchPageSnapshot
   }
   const tag = snapshot.tag;
   return (
-    <header>
-      <div>
-        <div class="overview-eyebrow"><Eyebrow trail="SEARCH PAGE" /></div>
-        {snapshot.savedViewName
-          ? <div class="saved-view-name" aria-label={`Saved search: ${snapshot.savedViewName}`}><span class="saved-view-name-label">Saved search:</span>{` ${snapshot.savedViewName}`}</div>
-          : null}
-        <h1 aria-label={title}>{focus ? <OverviewTagLink tag={focus} text={title} /> : title}</h1>
-        {entity && focus ? <div class="entity-meta"><OverviewTagLink tag={focus} text={entity.label} /></div> : null}
-        {tag && !snapshot.hub
-          ? <p class="hub-offer"><button type="button" class="hub-offer-button" data-action="create-hub" data-tip={`Create a note whose describes: front matter names ${tag.label}`}>Create hub note</button></p>
-          : null}
-      </div>
-      <div class="toolbar" role="group" aria-label="View options">
-        <HistoryButtons history={snapshot.history} />
-        <HelpButton anchor="search" />
-        <SearchViewOptions snapshot={snapshot} />
-      </div>
-    </header>
+    <PageBar
+      trail="SEARCH PAGE"
+      label="Search page"
+      lead={(
+        <>
+          {snapshot.savedViewName
+            ? <div class="saved-view-name" aria-label={`Saved search: ${snapshot.savedViewName}`}><span class="saved-view-name-label">Saved search:</span>{` ${snapshot.savedViewName}`}</div>
+            : null}
+          <h1 aria-label={title}>{focus ? <OverviewTagLink tag={focus} text={title} /> : title}</h1>
+          {entity && focus ? <div class="entity-meta"><OverviewTagLink tag={focus} text={entity.label} /></div> : null}
+          {tag && !snapshot.hub
+            ? <p class="hub-offer"><button type="button" class="hub-offer-button" data-action="create-hub" data-tip={`Create a note whose describes: front matter names ${tag.label}`}>Create hub note</button></p>
+            : null}
+        </>
+      )}
+      controls={<HistoryButtons history={snapshot.history} />}
+      menu={{ actions: [saveSearchRow(hasText)], view: searchView(snapshot), pageWidth: true }}
+    />
   );
 }
