@@ -208,7 +208,15 @@ suite('Notes Graph behavior', () => {
 
   test('lays out its controls in the order they are read, each with a tip, and Reset after the zoom', () => {
     const page = open();
-    const controls = page.findAll('input[id], select[id], button[id]');
+    // The bar every page draws comes first: DECKARD ▾, the title, and ⋯.
+    assert.strictEqual(page.find('.page-bar .eyebrow-home').textContent, 'DECKARD ▾');
+    assert.strictEqual(page.text('.page-bar h1'), 'Notes Graph');
+    assert.deepStrictEqual(
+      page.findAll('.page-bar .page-menu .view-options-section').map((section) => section.getAttribute('aria-label')),
+      ['Appearance', 'Help'],
+    );
+    assert.ok(page.find('.page-bar').compareDocumentPosition(page.find('#graph')) & page.window.Node.DOCUMENT_POSITION_FOLLOWING);
+    const controls = page.findAll('input[id], select[id], button[id]').filter((control) => !control.closest('.page-bar'));
     assert.deepStrictEqual(controls.map((control) => control.id), [
       'local-graph', 'local-depth', 'skip-periodic',
       'search', 'show-notes', 'show-tasks', 'show-tags', 'show-orphans', 'only-written-links', 'show-parked',

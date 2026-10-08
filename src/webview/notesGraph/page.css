@@ -12,11 +12,16 @@
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text); font-family: var(--font-display); font-size: var(--text-sm); }
-#graph { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+body { --graph-bar: 64px; margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text); font-family: var(--font-display); font-size: var(--text-sm); }
+/* The bar every page draws, DECKARD ▾ and the title with ⋯, across the
+   top; the canvas and its panels start under it. */
+.graph-bar { position: absolute; z-index: var(--z-dropdown); top: 0; right: 0; left: 0; height: var(--graph-bar); padding: 8px 12px; align-items: center; background: var(--bg-dark); }
+.graph-bar .eyebrow { margin: 0 0 2px; }
+.graph-bar h1 { font-size: var(--text-lg); }
+#graph { position: absolute; top: var(--graph-bar); right: 0; bottom: 0; left: 0; width: 100%; height: calc(100% - var(--graph-bar)); display: block; cursor: grab; touch-action: none; }
 #graph.is-panning { cursor: grabbing; }
 #graph.is-pointing { cursor: pointer; }
-.overlay { position: absolute; z-index: 2; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 4px; width: 240px; max-height: calc(100vh - 70px); overflow-y: auto; }
+.overlay { position: absolute; z-index: 2; top: calc(var(--graph-bar) + 12px); left: 12px; display: flex; flex-direction: column; gap: 4px; width: 240px; max-height: calc(100vh - 70px - var(--graph-bar)); overflow-y: auto; }
 .control-group { border: 1px solid var(--slate-border); background: rgba(13, 16, 23, .94); }
 .control-group summary { padding: 7px 10px; color: var(--cyan-bright); font: 700 var(--text-xs) var(--font-mono); cursor: pointer; list-style: none; user-select: none; }
 .control-group summary::before { content: '▸ '; color: var(--muted); }

@@ -142,10 +142,10 @@ suite('Webview contracts', () => {
       assert.strictEqual(mark.getAttribute('class'), 'tab-search-mark-icon');
       assert.strictEqual(mark.getAttribute('viewBox'), '0 0 16 16');
       assert.strictEqual(mark.querySelector('path')?.getAttribute('d'), 'M2 3h12L9 8v4l-2 1V8L2 3Z');
-      // The gear is the one every page draws, after the totals.
+      // The ⋯ is the one every page draws, after the totals.
       assert.deepStrictEqual(
         [...page.find('.dashboard-header-actions').children].map((child) => child.className),
-        ['metrics', 'view-options'],
+        ['metrics', 'view-options page-menu'],
       );
       // Tags in their own rank are ranked rows: dragged, or moved from their menu.
       const row = page.find('.tag-row[data-tag-key]');

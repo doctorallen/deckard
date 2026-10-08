@@ -79,6 +79,8 @@ export const HELP_SECTIONS: Readonly<Record<string, HelpPlace>> = {
   'query-blocks': { page: 'query-blocks' },
   connections: { page: 'connections' },
   home: { page: 'home-and-stats' },
+  stats: { page: 'home-and-stats', anchor: 'stats' },
+  graph: { page: 'connections', anchor: 'notes-graph' },
   tidy: { page: 'organizing' },
   periodic: { page: 'daily-notes' },
   zen: { page: 'themes-and-zen', anchor: 'display' },

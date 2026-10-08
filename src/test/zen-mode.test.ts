@@ -173,7 +173,7 @@ suite('Zen mode', () => {
     assert.deepStrictEqual(after, before);
   });
 
-  test('offers the gear a Zen checkbox that says whether Zen is on', async () => {
+  test('offers ⋯ a Zen checkbox, in Appearance, that says whether Zen is on', async () => {
     const zenBox = 'input[type="checkbox"][data-action="set-zen"]';
     assert.strictEqual((dashboard().find(zenBox) as HTMLInputElement).checked, false);
 
@@ -181,11 +181,11 @@ suite('Zen mode', () => {
     assert.strictEqual((dashboard().find(zenBox) as HTMLInputElement).checked, true, 'the box is ticked while Zen is on');
   });
 
-  test('every gear offers the theme, then the page width, then Zen, and asks the host to choose a theme', () => {
-    for (const page of [dashboard(), searchPage()]) {
-      const labels = page.findAll('.view-options-group').map((group) => group.children[0].textContent);
-      const theme = labels.indexOf('Theme');
-      assert.ok(theme >= 0 && labels[theme + 1] === 'Page width' && labels[theme + 2] === 'Zen', labels.join());
+  test('⋯ offers Appearance: the theme, then Zen, then the page width, and asks the host to choose a theme', () => {
+    for (const page of [dashboard()]) {
+      const labels = page.findAll('.page-menu [aria-label="Appearance"] .view-options-group').map((group) => group.children[0].textContent);
+      assert.deepStrictEqual(labels, ['Theme', 'Zen', 'Page width']);
+      assert.ok(page.find('.page-menu [aria-label="Appearance"] input[data-action="set-zen"]'), 'the Zen checkbox is in Appearance');
       assert.ok(!labels.includes('Display'), 'the three steps are gone');
       const button = page.find('[data-action="choose-theme"]');
       assert.strictEqual(button.textContent, 'Corpo…');

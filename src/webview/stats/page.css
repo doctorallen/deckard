@@ -8,7 +8,6 @@
 .updated { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; color: var(--muted); font-size: var(--text-xs); }
 .parked-line { margin: var(--space-3) 0 0; color: var(--muted); font-size: var(--text-xs); }
 .parked-line .text-button { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
-.reindex { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); }
 .views { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 24px; }
 .view-panel { border: 2px solid var(--line); background: var(--panel); }
 .view-panel h3 { margin: 0; padding: 12px; border-bottom: 2px solid var(--line); color: var(--cyan); font-size: var(--text-md); font-weight: 650; }

@@ -18,7 +18,11 @@
 .dashboard-header-actions .view-options { order: 2; }
 .saved-filters { padding-top: 16px; }
 .dashboard-tabs-row { display: flex; align-items: center; gap: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--slate-border); }
-.dashboard-customize { margin-left: auto; }
+/* The quiet way to arrange Home, at the right of the tab row: a link
+   rather than a bordered button at the tabs' weight. The doubled class
+   outweighs each theme's button and hover rules. */
+.dashboard-customize.dashboard-customize { min-height: 0; margin-left: auto; padding: 0; border: 0; background: none; box-shadow: none; clip-path: none; color: var(--muted); font: inherit; font-size: var(--text-sm); text-decoration: underline; text-decoration-color: var(--line-strong); cursor: pointer; }
+.dashboard-customize.dashboard-customize:hover:where(:not(:disabled):not([aria-disabled="true"])), .dashboard-customize.dashboard-customize:focus-visible { border: 0; background: none; color: var(--text); text-decoration-color: currentColor; }
 .dashboard-tabs { display: inline-flex; margin-top: 18px; }
 .dashboard-tabs button + button { margin-left: -1px; }
 .dashboard-tabs button[aria-selected="true"] { position: relative; z-index: var(--z-raised); }

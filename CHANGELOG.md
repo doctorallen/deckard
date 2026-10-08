@@ -42,6 +42,18 @@
   replaces the gear and the **?** button, with **Show weekends**, a
   checkbox in place of Weekends' Shown | Hidden, then **Theme…** and
   **Zen**, **Help on this page** and **Keyboard shortcuts**.
+- **Home's ⋯ leads with Customize Home….** The bordered **Customize
+  Home** button beside the Home and Tags tabs is a quiet **Customize**
+  link, and a **⋯** at the top right replaces the gear: **Customize
+  Home…** and **Walkthrough**, then **Tag columns**, **Theme…**, **Zen**
+  and **Page width**, then **Help on this page**, which Home had no way to
+  reach. The gear's **Home: Customize** row is gone.
+- **Stats' Reindex is in ⋯.** *Index last refreshed* stays under the
+  title, and **Reindex** is the first row of a **⋯** at the top right,
+  which also offers **Theme…**, **Zen** and **Help on this page**.
+- **The Notes Graph has the bar every page has.** **DECKARD ▾** and the
+  title run across its top, with a **⋯** holding **Theme…**, **Zen** and
+  **Help on this page**; the canvas and its panels start under it.
 - **Group is one select.** The board's five grouping buttons are one
   **Group** select: Status, Priority, Due date, Person and **Tag…**, which
   still opens a menu of the namespaces your open tasks use.

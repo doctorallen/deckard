@@ -12,8 +12,10 @@ import type {
 import {
   Narrower,
   NarrowingTable,
+  narrowGoToPage,
   narrowOpenSource,
   narrowOpenTag,
+  narrowSetZenMode,
   narrowWith,
   onlyType,
 } from '../../host/narrowing';
@@ -59,6 +61,12 @@ export const NOTES_GRAPH_MESSAGES: NarrowingTable<NotesGraphPageToHost> = {
   setGraphScope: narrowSetGraphScope,
   openTag: narrowOpenTag,
   setGraphFilter: narrowSetGraphFilter,
+  setZenMode: narrowSetZenMode,
+  chooseTheme: onlyType('chooseTheme'),
+  openHelp: onlyType('openHelp'),
+  openGoTo: onlyType('openGoTo'),
+  listGoTo: onlyType('listGoTo'),
+  goToPage: narrowGoToPage,
 };
 
 /** A message from the Notes Graph, narrowed by its table, or undefined. */

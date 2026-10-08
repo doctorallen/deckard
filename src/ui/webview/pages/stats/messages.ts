@@ -19,6 +19,7 @@ import {
   narrowOpenSearch,
   narrowOpenSource,
   narrowOpenTag,
+  narrowSetZenMode,
   narrowWith,
 } from '../../host/narrowing';
 
@@ -94,6 +95,9 @@ export const STATS_MESSAGES: NarrowingTable<StatsPageToHost> = {
   openGoTo: exactlyType('openGoTo'),
   listGoTo: exactlyType('listGoTo'),
   goToPage: narrowGoToPage,
+  setZenMode: narrowSetZenMode,
+  chooseTheme: exactlyType('chooseTheme'),
+  openHelp: exactlyType('openHelp'),
   openTagList: narrowOpenTagList,
   mergeTagInto: narrowMergeTagInto,
   openNotesGraph: narrowOpenNotesGraph,

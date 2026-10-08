@@ -57,7 +57,13 @@ suite('Stats messages', () => {
     assert.deepStrictEqual(narrowStatsMessage({ type: 'openNotesGraph', onlyWrittenLinks: true, extra: 1 }), { type: 'openNotesGraph', onlyWrittenLinks: true });
     assert.deepStrictEqual(narrowStatsMessage({ type: 'openSearch', query: 'link = [[Q4 offsite]]' }), { type: 'openSearch', query: 'link = [[Q4 offsite]]' });
     assert.deepStrictEqual(narrowStatsMessage({ type: 'reindexWorkspace' }), { type: 'reindexWorkspace' });
+    // ⋯'s Appearance and Help rows.
+    assert.deepStrictEqual(narrowStatsMessage({ type: 'chooseTheme' }), { type: 'chooseTheme' });
+    assert.deepStrictEqual(narrowStatsMessage({ type: 'openHelp' }), { type: 'openHelp' });
+    assert.deepStrictEqual(narrowStatsMessage({ type: 'setZenMode', enabled: true }), { type: 'setZenMode', enabled: true });
     for (const message of [
+      { type: 'openHelp', anchor: 'x' },
+      { type: 'setZenMode', enabled: 'yes' },
       { type: 'openTagList' },
       { type: 'openTagList', namespaced: 'yes' },
       { type: 'openNotesGraph' },

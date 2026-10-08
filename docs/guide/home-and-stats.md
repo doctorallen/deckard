@@ -8,7 +8,7 @@ Run `Deckard: Open Home`, or select **Home** at the top of the Context view or i
 
 ### The Home tab
 
-Three figures sit above Home: **Due today** and **Overdue**, as the [Tasks view](tasks.md#tasks-view) counts them, and **Done this week**, every task finished since the week began. Each opens a search for what it counts; the first two are scoped by `deckard.tasks.viewQuery` when that is set. Open tasks and the other workspace totals are on [Stats](#stats).
+Three figures sit at the top right, beside **⋯**: **Due today** and **Overdue**, as the [Tasks view](tasks.md#tasks-view) counts them, and **Done this week**, every task finished since the week began. Each opens a search for what it counts; the first two are scoped by `deckard.tasks.viewQuery` when that is set. Open tasks and the other workspace totals are on [Stats](#stats).
 
 **What's new:** after an update that adds features, Home shows *Updated to Deckard 1.23.* once, with **What's new** and **Dismiss**.
 
@@ -51,7 +51,9 @@ Each offers **Undo**. If the heading is gone, the pin stays on its note and says
 
 **Paging**, in a widget's gear, shows all entries a page at a time, 3, 5, 10, or 20 to a page. The Agenda widget and a saved search's results are not paged.
 
-**Customize:** choose **Customize Home** beside the Home and Tags tabs, or **Customize** in the View options gear. Then:
+**⋯**, at the top right, holds **Customize Home…** and **Walkthrough**, then **Tag columns**, **Theme…**, **Zen** and **Page width**, then **Help on this page**.
+
+**Customize:** choose **Customize** at the right of the Home and Tags tabs, or **Customize Home…** in **⋯**. Then:
 
 - Drag a widget, or right-click to move it first or last. Switch it between half and full width.
 - Open its gear for entry count, paging, a Tasks widget's search and sort, a saved search, or days to look back.
@@ -66,13 +68,13 @@ The arrangement is kept in VS Code's preferences, not your notes.
 - **Tags** lists namespaced and unnamespaced tags together, each named by what follows its namespace, so `#project/alpha/notes` reads *alpha/notes*. Search them, by the tag as written or as its row shows it, narrow with **Namespace** (a person's `@` tag counts as **Person**) or to tags without one, and sort alphabetically, by entry count, by most accessed, or by custom rank. The heart on a tag makes it a favorite, and favorites come first whatever the sort. In Rank mode, drag a row, use its context menu's **Move to top** and **Move to bottom**, or press <kbd>Alt</kbd>+<kbd>Up</kbd> or <kbd>Alt</kbd>+<kbd>Down</kbd>, which move a tag within favorites or the rest; drag it across to favorite or unfavorite it. Display order does not change your files.
 - **Searches are kept** between visits. While one narrows the list, a line such as *Showing 3 of 42 tags matching “vendor”* offers **Clear search**, which also clears **Namespace**.
 - **Saved searches** are listed below the tags. Select one to reopen it where it was saved, or use **Remove**.
-- The View options gear sets one through four tag columns.
+- **Tag columns**, in **⋯**, sets one through four columns.
 - Select a tag to open its [page](search-pages.md#search-pages).
 - Right-click a tag or entity row, or press <kbd>Shift</kbd>+<kbd>F10</kbd> or the menu key, for **Rename tag**. Every right-click menu in Deckard opens from the keyboard this way.
 
 ## Stats
 
-Run `Deckard: Open Stats` to see what needs attention, then totals, then what you open most. A **note** is a headed entry, and a **file** holds one or more of them.
+Run `Deckard: Open Stats` to see what needs attention, then totals, then what you open most. A **note** is a headed entry, and a **file** holds one or more of them. Under the title, *Index last refreshed* says how long ago Deckard last read your notes; **Reindex**, the first row of **⋯** at the top right, reads every note again.
 
 **Needs attention** shows only non-empty lists, each with a count, or one line saying the workspace is in order:
 

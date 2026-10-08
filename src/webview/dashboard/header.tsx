@@ -1,11 +1,11 @@
 /**
  * The top of the Dashboard: its name and the tab shown, the three tiles of
- * what wants doing, the gear, and the Home and Tags tabs.
+ * what wants doing, ⋯, and the Home and Tags tabs.
  */
 import type { TaskGlance } from '../../ui/protocol/dashboard';
-import { Eyebrow } from '../shared/eyebrow';
 import { Metric } from '../shared/metric';
-import { pageWidthOption, themeOption, ViewOptionChoices, ViewOptions, zenOption } from '../shared/viewOptions';
+import { PageBar, type PageMenuOptions } from '../shared/pageBar';
+import { ViewOptionChoices } from '../shared/viewOptions';
 import { TabSearchMarkIcon } from './icons';
 import type { DashboardDraw } from './model';
 import type { TagFilter } from './tagNames';
@@ -30,48 +30,49 @@ function TaskTiles({ glance }: { readonly glance: TaskGlance | undefined }) {
   );
 }
 
-/** The gear: Customize, the tag columns, the walkthrough, the theme, and zen. */
-function DashboardOptions({ snapshot, view }: DashboardDraw) {
+/**
+ * The ⋯'s own actions, Customize Home… (Done customizing while Home is
+ * being arranged) and Walkthrough; then its view row, the Tags tab's
+ * columns.
+ */
+function homeMenu({ snapshot, view }: DashboardDraw): PageMenuOptions {
   const editing = view.editingHome;
-  return (
-    <ViewOptions
-      groups={[
-        {
-          label: 'Home',
-          content: (
-            <button type="button" class={editing ? 'active' : ''} data-action={editing ? 'finish-customizing' : 'customize-home'} aria-pressed={editing}>
-              {editing ? 'Done customizing' : 'Customize'}
-            </button>
-          ),
-        },
-        {
-          label: 'Tag columns',
-          content: (
-            <ViewOptionChoices
-              action="set-columns"
-              choices={[1, 2, 3, 4].map((columns) => [columns, String(columns), `${columns} columns`] as const)}
-              selected={snapshot.tagColumns}
-              label="Tag columns"
-              attributes={{ 'data-section': 'tags' }}
-            />
-          ),
-        },
-        { label: 'Get started', content: <button type="button" data-action="open-view" data-view="walkthrough">Walkthrough</button> },
-        themeOption(),
-        pageWidthOption(),
-        zenOption(),
-      ]}
-    />
-  );
+  return {
+    actions: [
+      editing
+        ? { action: 'finish-customizing', text: 'Done customizing' }
+        : { action: 'customize-home', text: 'Customize Home…', tip: 'Add, arrange, size and remove Home\'s widgets' },
+      { action: 'open-view', text: 'Walkthrough', tip: 'Six steps through Deckard, checked off as you do them', attributes: { 'data-view': 'walkthrough' } },
+    ],
+    view: [
+      {
+        label: 'Tag columns',
+        content: (
+          <ViewOptionChoices
+            action="set-columns"
+            choices={[1, 2, 3, 4].map((columns) => [columns, String(columns), `${columns} columns`] as const)}
+            selected={snapshot.tagColumns}
+            label="Tag columns"
+            attributes={{ 'data-section': 'tags' }}
+          />
+        ),
+      },
+    ],
+    pageWidth: true,
+  };
 }
 
-/** The page's one name, Home, whichever tab is shown; the tiles, and the gear after them. */
+/** The page's one name, Home, whichever tab is shown; the tiles, and ⋯ after them. */
 export function PageHeader(props: DashboardDraw) {
   return (
-    <header>
-      <div><Eyebrow trail="WORKSPACE INDEX" /><h1>Home</h1></div>
-      <div class="dashboard-header-actions"><TaskTiles glance={props.snapshot.taskGlance} /><DashboardOptions {...props} /></div>
-    </header>
+    <PageBar
+      trail="WORKSPACE INDEX"
+      lead={<h1>Home</h1>}
+      label="Home"
+      controlsClass="dashboard-header-actions"
+      controls={<TaskTiles glance={props.snapshot.taskGlance} />}
+      menu={homeMenu(props)}
+    />
   );
 }
 
@@ -90,7 +91,11 @@ function TabSearchMark({ query, filter }: { readonly query: string; readonly fil
   );
 }
 
-/** Home and Tags, one tab stop between them, each naming the panel it shows, and on Home the way to arrange it. */
+/**
+ * Home and Tags, one tab stop between them, each naming the panel it
+ * shows, and on Home a quiet Customize at the right, the visible way to
+ * arrange it, beside ⋯'s Customize Home….
+ */
 export function ModeTabs({ view, filter }: { readonly view: DashboardDraw['view']; readonly filter: TagFilter }) {
   const home = view.mode === 'home';
   return (
@@ -103,7 +108,7 @@ export function ModeTabs({ view, filter }: { readonly view: DashboardDraw['view'
         </button>
       </div>
       {home && !view.editingHome
-        ? <button type="button" class="text-button dashboard-customize" data-action="customize-home">Customize Home</button>
+        ? <button type="button" class="dashboard-customize" data-action="customize-home" data-tip="Add, arrange, size and remove Home's widgets">Customize</button>
         : null}
     </div>
   );

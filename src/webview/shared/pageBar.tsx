@@ -92,6 +92,8 @@ export interface PageBarProps {
   readonly className?: string;
   /** Classes after `page-bar-lead`. */
   readonly leadClass?: string;
+  /** Classes after `page-bar-actions`. */
+  readonly controlsClass?: string;
   /** The right-hand group's name, for a screen reader. */
   readonly label?: string;
 }
@@ -100,7 +102,7 @@ export interface PageBarProps {
  * The bar: DECKARD ▾ and the title at the left, the page's own controls
  * and ⋯ at the right. Zen draws it as it is, with every control in place.
  */
-export function PageBar({ trail, lead, controls, menu, className, leadClass, label = 'Page' }: PageBarProps) {
+export function PageBar({ trail, lead, controls, menu, className, leadClass, controlsClass, label = 'Page' }: PageBarProps) {
   return (
     <header class={className ? `page-bar ${className}` : 'page-bar'}>
       <div class={leadClass ? `page-bar-lead ${leadClass}` : 'page-bar-lead'}>
@@ -108,7 +110,7 @@ export function PageBar({ trail, lead, controls, menu, className, leadClass, lab
         {lead}
       </div>
       {/* Focus moving here keeps words typed in the page's search box, which Save search… saves. */}
-      <div class="page-bar-actions" role="group" aria-label={label} data-query-keeps-text="">
+      <div class={controlsClass ? `page-bar-actions ${controlsClass}` : 'page-bar-actions'} role="group" aria-label={label} data-query-keeps-text="">
         {controls}
         {menu ? <PageMenu {...menu} /> : null}
       </div>

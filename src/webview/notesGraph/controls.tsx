@@ -1,5 +1,6 @@
 /**
- * Everything the Notes Graph draws around its canvas: the control groups,
+ * Everything the Notes Graph draws around its canvas: the bar every page
+ * draws, DECKARD ▾ and its title with ⋯, the control groups,
  * the zoom controls with Reset and its Undo, the legend and status line,
  * the empty-state line, and the tooltip's box. Drawn by Preact into the
  * body, from the reader's settings and what the page last said, as the
@@ -11,6 +12,7 @@
  */
 import type { ComponentChildren, RefObject } from 'preact';
 
+import { PageBar } from '../shared/pageBar';
 import { UndoNotice } from '../shared/undoToast';
 import type { GraphSettings, GraphState } from './model';
 
@@ -101,6 +103,7 @@ export function GraphBody(props: ControlsProps) {
   const { ui, refs } = props;
   return (
     <>
+      <PageBar trail="NOTES GRAPH" className="graph-bar" label="Notes Graph" lead={<h1>Notes Graph</h1>} menu={{}} />
       {' '}
       <canvas
         id="graph"

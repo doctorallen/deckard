@@ -471,14 +471,25 @@ suite('Dashboard behavior', () => {
     assert.strictEqual(changed?.page, 1, 'a different page size is a different list');
   });
 
-  test('keeps Customize Home beside the tabs, arranged or not, and not while arranging', () => {
+  test('keeps a quiet Customize beside the tabs, arranged or not, and not while arranging; ⋯ leads with Customize Home…', () => {
     const { page, snapshot } = open();
-    assert.strictEqual(page.text('.dashboard-customize'), 'Customize Home');
+    assert.strictEqual(page.text('.dashboard-customize'), 'Customize');
+    assert.strictEqual(page.find('.dashboard-tabs-row .dashboard-customize').getAttribute('data-action'), 'customize-home');
+    assert.deepStrictEqual(
+      page.findAll('.page-menu [aria-label="Page"] .view-options-item').map((row) => row.textContent),
+      ['Customize Home…', 'Walkthrough'],
+    );
+    assert.ok(!page.findAll('.view-options-group > span, .view-options-group > label').some((label) => label.textContent === 'Home'), 'no Home: Customize row');
+    assert.deepStrictEqual(page.findAll('.page-menu .view-options-section').map((section) => section.getAttribute('aria-label')), ['Page', 'View', 'Appearance', 'Help']);
+    assert.ok(page.find('.page-menu [aria-label="View"] [data-action="set-columns"][data-section="tags"]'), 'Tag columns is a View row');
+    page.click('.page-menu [data-action="page-help"]');
+    assert.deepStrictEqual(page.lastPosted('openHelp'), { type: 'openHelp' });
     assert.strictEqual(page.document.querySelector('.home-hint-bar'), null, 'no line to put away');
     page.send({ ...snapshot, homeArranged: true });
     assert.ok(page.find('.dashboard-customize'), 'still there once Home is arranged');
     page.click('.dashboard-customize');
     assert.strictEqual(page.document.querySelector('.dashboard-customize'), null, 'arranging has its own Finish');
+    assert.strictEqual(page.text('.page-menu [aria-label="Page"] .view-options-item'), 'Done customizing');
   });
 
   test('an empty workspace is offered today\'s note and the sample tour', () => {

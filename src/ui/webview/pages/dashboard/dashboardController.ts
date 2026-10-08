@@ -29,6 +29,7 @@ import {
   goToPage,
   listGoTo,
   openGoTo,
+  openHelp,
   openSource,
   openTag,
   parkTag,
@@ -284,15 +285,16 @@ export class DashboardController implements PageController<DashboardPageState, D
     }
   }
 
-  /** The gear, a row's line, a task's box, and a tag's menu, as other pages answer them. */
+  /** The ⋯, a row's line, a task's box, and a tag's menu, as other pages answer them. */
   private sharedHandlers(): Handlers<
-    'setZenMode' | 'setDisplay' | 'chooseTheme' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'toggleTask' | 'openTag' | 'renameTag' | 'parkTag' | 'unparkTag'
+    'setZenMode' | 'setDisplay' | 'chooseTheme' | 'openHelp' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'toggleTask' | 'openTag' | 'renameTag' | 'parkTag' | 'unparkTag'
   > {
     const { indexer, navigationService, preferences, navigation, writes } = this.home;
     return {
       setZenMode: setZenMode(),
       setDisplay: setDisplay(),
       chooseTheme: chooseTheme(),
+      openHelp: openHelp('home'),
       openGoTo: openGoTo(),
       listGoTo: listGoTo({ indexer, current: 'home' }),
       goToPage: goToPage(),

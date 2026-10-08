@@ -184,6 +184,7 @@ export const DASHBOARD_MESSAGES: NarrowingTable<DashboardPageToHost> = {
   setZenMode: narrowSetZenMode,
   setDisplay: narrowSetDisplay,
   chooseTheme: onlyType('chooseTheme'),
+  openHelp: onlyType('openHelp'),
   openGoTo: onlyType('openGoTo'),
   listGoTo: onlyType('listGoTo'),
   goToPage: narrowGoToPage,

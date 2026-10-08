@@ -176,8 +176,10 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
       view.findAll('.home-widget').map((widget) => widget.dataset.widgetId),
       ['search', 'agenda', 'recentNotes', 'favoriteTags', 'savedSearches'],
     );
-    const labels = view.findAll('.view-options-group').map((group) => group.children[0].textContent);
-    assert.deepStrictEqual(labels, ['Home', 'Tag columns', 'Get started', 'Theme', 'Page width', 'Display']);
+    const labels = view.findAll('.page-menu .view-options-group').map((group) => group.children[0].textContent);
+    assert.deepStrictEqual(labels, ['Tag columns', 'Theme', 'Zen', 'Page width']);
+    const rows = view.findAll('.page-menu .view-options-item').map((row) => row.textContent);
+    assert.deepStrictEqual(rows, ['Customize Home…', 'Walkthrough', 'Help on this page']);
   }
 });
 

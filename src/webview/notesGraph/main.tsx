@@ -18,7 +18,10 @@ import { createRef, render } from 'preact';
 
 import type { MessageOf } from '../../ui/protocol/messaging';
 import type { NotesGraphHostToPage, NotesGraphWireSnapshot } from '../../ui/protocol/notesGraph';
+import { installGoToMenu } from '../shared/goToMenu';
 import { installTip } from '../shared/tip';
+import { installViewOptions } from '../shared/viewOptions';
+import { post } from '../shared/vscode';
 import type { GraphColors } from './canvas';
 import { type ControlHandlers, type ControlRefs, GraphBody, OPEN_A_NOTE, type SliderKey, type ToggleKey } from './controls';
 import {
@@ -49,6 +52,9 @@ import { readCamera, readKept, readSettings } from './settings';
 import { findNodeIndex, recomputeSearchMatches, recomputeTagMatches, setHoverIndex, setSelectedIndex } from './view';
 
 installTip();
+// The bar's DECKARD ▾ and ⋯, as every other page has them.
+installGoToMenu(post);
+installViewOptions();
 
 /**
  * A type step in pixels, for the canvas. The step is written as a max()

@@ -27,6 +27,7 @@ import type {
   GoToPageMessage,
   ListGoToMessage,
   OpenGoToMessage,
+  OpenHelpMessage,
   OpenSearchMessage,
   OpenSourceMessage,
   OpenTagMessage,
@@ -343,6 +344,7 @@ export interface DashboardPageToHost {
   setZenMode: SetZenModeMessage;
   setDisplay: SetDisplayMessage;
   chooseTheme: ChooseThemeMessage;
+  openHelp: OpenHelpMessage;
   openGoTo: OpenGoToMessage;
   listGoTo: ListGoToMessage;
   goToPage: GoToPageMessage;

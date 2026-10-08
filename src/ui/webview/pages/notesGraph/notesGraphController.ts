@@ -18,7 +18,7 @@ import type {
 import { openNoteAt } from '../../../commands/noteOpening';
 import { NotesGraphKinds, selectShownNodes, toWire } from '../../../state/notesGraphState';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
-import { openSource, openTag } from '../../host/sharedHandlers';
+import { chooseTheme, goToPage, listGoTo, openGoTo, openHelp, openSource, openTag, setZenMode } from '../../host/sharedHandlers';
 import { PanelSurface } from '../../host/surface';
 import { getNotesGraphHtml } from '../../notesGraphHtml';
 import type { PageChrome } from '../../components';
@@ -96,6 +96,13 @@ export class NotesGraphController implements PageController<NotesGraphWireSnapsh
   public constructor(private readonly graph: NotesGraphControllerOptions) {
     const { indexer, navigation } = graph;
     this.handlers = {
+      // DECKARD ▾, and ⋯'s Appearance and Help rows.
+      setZenMode: setZenMode(),
+      chooseTheme: chooseTheme(),
+      openHelp: openHelp('graph'),
+      openGoTo: openGoTo(),
+      listGoTo: listGoTo({ indexer, current: 'graph' }),
+      goToPage: goToPage(),
       openSource: openSource({ indexer, navigation, policy: 'graphNodes' }),
       openTag: openTag({
         indexer,
