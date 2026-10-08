@@ -242,6 +242,7 @@ suite('The guide', () => {
     const doors = [
       'deckard.mergeTag',
       'deckard.showNotesGraphAroundNote',
+      'deckard.openRelatedNotes',
       'deckard.insertQueryBlock',
       'deckard.importObsidianStatuses',
       'deckard.openDailyNoteForDate',
@@ -249,10 +250,12 @@ suite('The guide', () => {
       'deckard.linkCurrentHeading',
       'deckard.showEntryRelatedNotesDebug',
     ];
+    // A bullet names one command, or a few that share a door, ahead of the colon that gives the door.
+    const named = elsewhere.split('\n').filter((line) => line.startsWith('- **') && line.includes('**: ')).map((line) => line.slice(0, line.indexOf('**: ') + 2));
     for (const id of doors) {
       const title = manifest.contributes.commands.find((command) => command.command === id)?.title ?? id;
       assert.ok(hidden.has(id), `the palette leaves out ${title}`);
-      assert.ok(elsewhere.includes(`- **${title}**: `), `${title} is named with its door`);
+      assert.ok(named.some((names) => names.includes(`**${title}**`)), `${title} is named with its door`);
       assert.ok(!table.includes(`**Deckard: ${title}**`), `${title} has no row`);
     }
     for (const id of ['deckard.tidyPreferences', 'deckard.exportPreferences', 'deckard.importPreferences', 'deckard.restorePreferences']) {
