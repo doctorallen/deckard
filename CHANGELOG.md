@@ -9,6 +9,9 @@
   count, and writes a due date both ways, "Overdue 2 days · 2026-10-02",
   as Full and Quiet do. **Counts** and **Dates** in Settings still leave
   them out or write a date one way, at any step.
+- **The Calendar view starts collapsed.** In a new install the sidebar's
+  Calendar starts collapsed, as Hubs does, leaving the room to Context,
+  Outline and Tasks. Where it is already open, it stays as you left it.
 
 ## 2.4.0 - 2026-10-06
 

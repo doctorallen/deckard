@@ -67,7 +67,7 @@ A new daily, weekly, or monthly note starts from a file in the templates folder 
 
 ## Calendar
 
-The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday unless `deckard.calendar.weekStart` or your display language starts them on Monday. Each day shows its date, a dot for a daily note, a count of open tasks due (orange once past, muted once more than 30 days gone), and, outlined, open tasks scheduled (⏳) that day.
+The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday unless `deckard.calendar.weekStart` or your display language starts them on Monday. Each day shows its date, a dot for a daily note, a count of open tasks due (orange once past, muted once more than 30 days gone), and, outlined, open tasks scheduled (⏳) that day. In a new install it starts collapsed; expand it, or drag it where you like.
 
 Select a day, the mark beside a week, or the month's name to open its note; Deckard offers to create a missing one. The arrows step through months; **Today** returns.
 
