@@ -27,9 +27,19 @@ function RowMenuButton({ taskId, title }: { readonly taskId: string; readonly ti
   );
 }
 
-/** Whether the list can be ranked now: it is a list, ordered by rank. */
+/**
+ * Whether the list or the table can be ranked now: a list ordered by rank,
+ * or a table in Rank order, with no header sorting it, as the board ranks
+ * only while sorted by Rank.
+ */
 export function canRank(snapshot: TaskBoardSnapshot | undefined): boolean {
-  return Boolean(snapshot) && snapshot?.layout === 'list' && snapshot.taskSortMode === 'rank';
+  if (!snapshot) {
+    return false;
+  }
+  if (snapshot.layout === 'table') {
+    return Boolean(snapshot.table) && !snapshot.table?.sort;
+  }
+  return snapshot.layout === 'list' && snapshot.taskSortMode === 'rank';
 }
 
 /** What the list or the table says with no tasks: that none match, or none are written yet, and how to write one. */
@@ -72,8 +82,10 @@ export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot
   // The title is the column the reader cannot leave out, wherever the
   // columns put it; the checkbox and the menu are named by it.
   const titleAt = table.columns.findIndex((column) => column.id === 'title');
+  // In Rank order a row is ranked by dragging it, as a ranked list's is.
+  const draggable = canRank(snapshot);
   return (
-    <table key="table" class="result-table" aria-label="Tasks">
+    <table key={`table-${board.generation}`} class="result-table" aria-label="Tasks">
       <thead>
         <tr>
           <th class="result-check" />
@@ -99,7 +111,7 @@ export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot
         {table.rows.map((row) => {
           const title = row.cells[titleAt] ? row.cells[titleAt].text : '';
           return (
-            <tr key={row.taskId} class={['result-row', row.completed ? 'completed' : '', row.status?.type === 'cancelled' ? 'cancelled' : ''].filter(Boolean).join(' ')} tabIndex={0} data-reveal-region="" data-task-id={row.taskId} data-file-path={row.filePath} data-line={row.line}>
+            <tr key={row.taskId} class={['result-row', row.completed ? 'completed' : '', row.status?.type === 'cancelled' ? 'cancelled' : '', draggable ? 'is-draggable' : ''].filter(Boolean).join(' ')} tabIndex={0} data-reveal-region="" data-task-id={row.taskId} data-file-path={row.filePath} data-line={row.line}>
               <td class="result-check"><input type="checkbox" data-action="toggle-task" data-task-id={row.taskId} {...statusBoxProps(row.completed, row.status)} aria-label={describeBox(title, row.status)} /></td>
               {row.cells.map((cell, at) => {
                 const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '', at === titleAt ? 'result-title' : ''].filter(Boolean).join(' ');

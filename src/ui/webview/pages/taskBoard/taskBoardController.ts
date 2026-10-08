@@ -421,8 +421,12 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       setTableColumns: (message) => taskLayout.setTaskTableColumns(message.columns),
       reorderTasks: async (message) => {
         const index = this.board.indexer.getSnapshot();
-        if (reader.value.taskSortMode === 'rank') {
-          await taskLayout.setTaskOrder(rankShown(reader.value.taskOrder, message.taskIds, index.tasks.keys()));
+        // The board and the list rank under the Rank sort, and the table
+        // in Rank order, with no header sorting it.
+        const preferences = reader.value;
+        const tableRanked = preferences.taskBoardLayout === 'table' && !preferences.taskTableSort;
+        if (preferences.taskSortMode === 'rank' || tableRanked) {
+          await taskLayout.setTaskOrder(rankShown(preferences.taskOrder, message.taskIds, index.tasks.keys()));
         }
       },
       setBoardQuery: (message, page) => this.applySearch(message.query, page),

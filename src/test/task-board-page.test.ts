@@ -527,8 +527,8 @@ suite('Task Board page', () => {
     assert.strictEqual(menu.hidden, false, 'and it stays open');
   });
 
-  test('Shift+F10 and the menu key on a table row open its menu, as a right-click does', () => {
-    const shown = show(boardOf(TWO, { taskBoardLayout: 'table' }));
+  test('Shift+F10 and the menu key on a sorted table row open its menu, as a right-click does', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'table', taskTableSort: { column: 'title', direction: 'asc' } }));
     const row = shown.find('.result-row') as HTMLElement;
     row.focus();
     press(shown, row, 'F10', { shiftKey: true });
@@ -536,6 +536,71 @@ suite('Task Board page', () => {
     press(shown, shown.document.activeElement as Element, 'Escape');
     press(shown, row, 'ContextMenu');
     assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'so does the menu key');
+  });
+
+  test('a table in Rank order ranks its rows by Alt+arrows and the rank menu, whatever the board sorts by', () => {
+    const THREE = { 'notes/a.md': '- [ ] One\n- [ ] Two\n- [ ] Three\n' };
+    const board = boardOf(THREE, { taskBoardLayout: 'table', taskSortMode: 'created' });
+    const ids = Object.fromEntries((board.table?.rows ?? []).map((row) => [row.cells[0].text, row.taskId]));
+    const shown = show(board);
+    const row = (title: string) => shown.findAll('.result-table .result-row').find((candidate) => candidate.querySelector('.result-title')?.textContent === title) as HTMLElement;
+    const reordered = () => shown.lastPosted('reorderTasks')?.taskIds;
+    assert.strictEqual(shown.findAll('.result-table .result-row.is-draggable').length, 3, 'every row can be dragged');
+
+    press(shown, row('One'), 'ArrowDown', { altKey: true });
+    assert.deepStrictEqual(reordered(), [ids.Two, ids.One, ids.Three], 'Alt+Down moves a row one place down');
+    assert.strictEqual(shown.text('#live-status'), 'Moved down.');
+
+    row('Three').querySelector('.result-title')?.dispatchEvent(new shown.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    assert.strictEqual((shown.find('#rank-context-menu') as HTMLElement).hidden, false, 'a right-click opens the rank menu');
+    assert.strictEqual(shown.document.getElementById('action-menu')?.hidden ?? true, true, 'and only that menu');
+    assert.deepStrictEqual(shown.findAll('#rank-context-menu button').map((button) => button.textContent), ['Move up', 'Move down', 'Move to top', 'Move to bottom']);
+    (shown.find('#rank-context-menu [data-context-action="top"]') as HTMLElement).click();
+    assert.deepStrictEqual(reordered(), [ids.Three, ids.One, ids.Two], 'Move to top ranks it first');
+  });
+
+  test('a table row dragged in Rank order is ranked where it is dropped, its ghost a table as wide as the row', () => {
+    const THREE = { 'notes/a.md': '- [ ] One\n- [ ] Two\n- [ ] Three\n' };
+    const board = boardOf(THREE, { taskBoardLayout: 'table' });
+    const ids = Object.fromEntries((board.table?.rows ?? []).map((row) => [row.cells[0].text, row.taskId]));
+    const shown = show(board);
+    const row = (title: string) => shown.findAll('.result-table .result-row[data-task-id]').find((candidate) => candidate.querySelector('.result-title')?.textContent === title) as HTMLElement;
+    let under: Element | null = null;
+    Object.defineProperty(shown.document, 'elementFromPoint', { configurable: true, value: () => under });
+    const pointer = (type: string, target: Element, clientY: number) =>
+      target.dispatchEvent(new shown.window.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX: 10, clientY }));
+
+    const three = row('Three');
+    pointer('pointerdown', three.querySelector('.result-title') as Element, 40);
+    under = row('One').querySelector('.result-title');
+    pointer('pointermove', three, 20);
+    const ghost = shown.find('.drag-ghost') as HTMLElement;
+    assert.strictEqual(ghost.tagName, 'TABLE', 'the ghost is a table of its own');
+    assert.ok(ghost.classList.contains('result-table'), 'drawn as the table is');
+    assert.strictEqual(ghost.querySelectorAll('tbody > tr.result-row').length, 1, 'holding one row');
+    assert.ok(Array.from(ghost.querySelectorAll('td')).every((cell) => cell.style.width !== ''), 'its cells as wide as the row\'s');
+    assert.strictEqual(ghost.querySelector('tr')?.hasAttribute('data-task-id'), false, 'and nothing names the row');
+    assert.strictEqual(shown.findAll('.result-table tbody > tr.drag-placeholder').length, 1, 'a placeholder holds its place in the table');
+
+    // jsdom lays nothing out, so every row's middle is at 0: above it is before the row.
+    pointer('pointerup', three, -1);
+    assert.deepStrictEqual(shown.lastPosted('reorderTasks')?.taskIds, [ids.Three, ids.One, ids.Two]);
+    assert.strictEqual(shown.findAll('.drag-ghost, .drag-placeholder').length, 0, 'the ghost and the placeholder go');
+  });
+
+  test('a table sorted by a header ranks nothing, and Sort by rank is the way back', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'table', taskTableSort: { column: 'title', direction: 'asc' } }));
+    const row = shown.find('.result-table .result-row') as HTMLElement;
+    assert.strictEqual(shown.findAll('.result-table .result-row.is-draggable').length, 0, 'no row can be dragged');
+    press(shown, row, 'ArrowDown', { altKey: true });
+    assert.strictEqual(shown.lastPosted('reorderTasks'), undefined, 'Alt+Down moves nothing');
+    row.querySelector('.result-title')?.dispatchEvent(new shown.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    assert.strictEqual(shown.document.getElementById('rank-context-menu')?.hidden ?? true, true, 'a right-click opens no rank menu');
+    assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'but the row\'s own menu');
+    const back = shown.find('[data-action="set-table-sort"]:not([data-value])') as HTMLElement;
+    assert.strictEqual(back.textContent, 'Sort by rank');
+    back.click();
+    assert.deepStrictEqual(shown.lastPosted('setTableSort'), { type: 'setTableSort' }, 'which clears the header sort');
   });
 
   test('Ctrl+Enter or Cmd+Enter on a card opens it beside, as a click with either does', () => {

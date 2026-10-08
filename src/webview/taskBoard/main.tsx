@@ -263,9 +263,13 @@ function shown(): TaskBoardSnapshot | undefined {
   return store.state.snapshot;
 }
 
-/** The ids of the tasks the list shows, in order. */
+/** The ids of the tasks the list or the table shows, in order. */
 function listedTaskIds(): string[] {
-  return (shown()?.tasks || []).map((item) => item.task.id);
+  const snapshot = shown();
+  if (snapshot?.table) {
+    return snapshot.table.rows.map((row) => row.taskId);
+  }
+  return (snapshot?.tasks || []).map((item) => item.task.id);
 }
 
 /** Sends the status columns' new order, by status name. */
@@ -273,11 +277,12 @@ function setColumnOrder(names: string[]): void {
   post({ type: 'setBoardColumnOrder', names });
 }
 
-// A ranked list, and the status columns in the gear, are ordered by
-// dragging their rows, or from their context menu.
+// A ranked list, the table in Rank order, and the status columns in the
+// gear are ordered by dragging their rows, or from their context menu.
 installRankedRows({
   kinds: {
     task: { selector: '.task-list .task-row[data-task-id]', key: 'taskId' },
+    tableRow: { selector: '.result-table tr.result-row[data-task-id]', key: 'taskId' },
     status: { selector: '.board-status[data-status]', key: 'status', edgeLabels: ['Move to first column', 'Move to last column'] },
   },
   canRank: (kind) => (kind === 'status' ? Boolean(shown()) : canRank(shown())),
@@ -490,8 +495,9 @@ document.addEventListener('click', (event) => {
 });
 
 // A right-click on a list or table row opens its ⋯ menu, as on a card. On
-// a ranked list the row's Move to top and Move to bottom menu answered it
-// first, and one menu opens, not two over each other; ⋯ is still its button.
+// a ranked list or table the row's Move up, Move down, and to either end
+// menu answered it first, and one menu opens, not two over each other; ⋯
+// is still its button.
 document.addEventListener('contextmenu', (event) => {
   const element = event.target instanceof Element ? event.target : null;
   const row = rowOf(element);
@@ -637,7 +643,7 @@ const BOARD_KEYS: KeySection = {
     ['Shift+F10, the menu key, or Alt+Enter', 'Open its ⋯ menu'],
   ],
 };
-const LIST_KEYS: KeySection = { title: 'Ranked list', keys: [['Alt+↑, Alt+↓', 'Move a ranked task up or down']] };
-installKeySheet(() => (shown()?.layout === 'list' ? [LIST_KEYS] : [BOARD_KEYS]));
+const LIST_KEYS: KeySection = { title: 'Ranked rows', keys: [['Alt+↑, Alt+↓', 'Move a ranked task up or down']] };
+installKeySheet(() => (shown()?.layout === 'board' ? [BOARD_KEYS] : [LIST_KEYS]));
 
 post({ type: 'ready' });

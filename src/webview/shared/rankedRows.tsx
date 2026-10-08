@@ -1,8 +1,8 @@
 /**
  * Rows a reader ranks by dragging them, or from their context menu: Move
  * up, Move down, and to either end, so any place in the order is reachable
- * without dragging (WCAG 2.5.7). The Task Board's ranked list and its
- * status columns use them, and Home's widgets will.
+ * without dragging (WCAG 2.5.7). The Task Board's ranked list and table
+ * and its status columns use them, as do Home's tags and widgets.
  *
  * Listeners sit on the document, so a page may draw its rows freely. A
  * drag moves a copy of the row, the ghost, a layer of the body outside
@@ -207,12 +207,37 @@ class RankedRows {
     document.querySelectorAll('.is-dragging').forEach((row) => row.classList.remove('is-dragging'));
   }
 
+  /**
+   * The copy of a row that follows the pointer. A table's row is put in a
+   * one-row table of its own, its cells as wide as the row's: a row on its
+   * own outside its table shrank each cell to its words.
+   */
+  private ghostOf(row: HTMLElement): HTMLElement {
+    const copy = row.cloneNode(true) as HTMLElement;
+    this.strip(copy);
+    const table = row.closest('table');
+    if (!(row instanceof HTMLTableRowElement) || !table) {
+      return copy;
+    }
+    Array.from(row.cells).forEach((cell, at) => {
+      const drawn = copy.children[at];
+      if (drawn instanceof HTMLElement) {
+        drawn.style.width = `${cell.getBoundingClientRect().width}px`;
+      }
+    });
+    const ghost = document.createElement('table');
+    ghost.className = table.className;
+    ghost.style.tableLayout = 'fixed';
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.createTBody().appendChild(copy);
+    return ghost;
+  }
+
   /** The drag starts: the ghost follows the pointer, and a placeholder holds the row's place. */
   private begin(event: PointerEvent, drag: Drag): void {
     this.clearPreview();
     const row = drag.row;
-    const ghost = row.cloneNode(true) as HTMLElement;
-    this.strip(ghost);
+    const ghost = this.ghostOf(row);
     ghost.classList.add('drag-ghost');
     const bounds = row.getBoundingClientRect();
     ghost.style.width = `${bounds.width}px`;

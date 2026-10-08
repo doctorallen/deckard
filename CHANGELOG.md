@@ -19,6 +19,11 @@
 
 ### Changed
 
+- **The Task board's table ranks.** In Rank order, with no header sorting
+  it, drag a table row, right-click it for Move up, Move down, Move to top
+  and Move to bottom, or press Alt+↑ and Alt+↓, as on the ranked list.
+  While a header sorts the table, rows don't move; **Sort by rank** goes
+  back.
 - **The palette leaves out what another door does.** Merge Tag… (renaming
   onto a tag that exists already merges), Open Notes Graph Around This Note
   (in Note Actions…), Insert Query Block… (the / menu's Query block),

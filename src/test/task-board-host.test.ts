@@ -263,6 +263,25 @@ suite('Task Board host', () => {
     }
   });
 
+  test('the table ranks in Rank order whatever the board sorts by, and not while a header sorts it', async () => {
+    const board = openBoard();
+    try {
+      const { taskLayout } = board.preferences;
+      const order = [board.taskId('Call Ren'), board.taskId('Send the audit')];
+      await taskLayout.setTaskSortMode('created');
+      await taskLayout.setTaskBoardLayout('table');
+      await board.send({ type: 'reorderTasks', taskIds: order });
+      assert.deepStrictEqual(board.preferences.reader.value.taskOrder, order, 'a table with no header sort ranks');
+
+      await taskLayout.setTaskOrder([]);
+      await taskLayout.setTaskTableSort({ column: 'title', direction: 'asc' });
+      await board.send({ type: 'reorderTasks', taskIds: order });
+      assert.deepStrictEqual(board.preferences.reader.value.taskOrder, [], 'a table sorted by a header does not');
+    } finally {
+      board.dispose();
+    }
+  });
+
   test('opens only a task\'s own line, and only a tag by the key the index holds', async () => {
     const board = openBoard();
     try {
