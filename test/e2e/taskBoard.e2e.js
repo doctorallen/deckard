@@ -456,7 +456,8 @@ test('hands its search to the Tasks view, and says when the view has it', async 
   view.type(bar, 'is:mine');
   view.keydown(bar, 'Enter');
   await delay(10);
-  assert.ok(!button().classList.contains('active'), 'the view does not list this search yet');
+  assert.strictEqual(button().getAttribute('aria-pressed'), 'false', 'the view does not list this search yet');
+  assert.strictEqual(button().querySelector('.menu-check svg'), null, 'so the row draws no check');
 
   view.click(button());
   await delay(10);
@@ -466,7 +467,8 @@ test('hands its search to the Tasks view, and says when the view has it', async 
     "the search is written as the view's own",
   );
   assert.strictEqual(vscode._test.configurationUpdates[0].target, vscode.ConfigurationTarget.Global);
-  assert.ok(button().classList.contains('active'), "lit once the view lists the board's search");
+  assert.strictEqual(button().getAttribute('aria-pressed'), 'true', "checked once the view lists the board's search");
+  assert.ok(button().querySelector('.menu-check svg'), 'and the row draws its check');
   assert.strictEqual(button().getAttribute('aria-disabled'), null);
 
   // Pressed again, the Tasks view lists every open task again.
