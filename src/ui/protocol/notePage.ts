@@ -154,6 +154,12 @@ export interface NotePageSnapshot {
   history: { back: boolean; forward: boolean };
   /** Changes with each note asked for, so the page knows a new one from a redraw. */
   visit: number;
+  /**
+   * What ⋯ offers to do with the note, before Appearance: the rows of the
+   * one note-action table that make sense outside the editor, in its order,
+   * each by its command and title.
+   */
+  actions?: Array<{ command: string; title: string }>;
 }
 
 /** Opens a note: on this page, or, with `opposite`, in the editor. */
@@ -195,6 +201,12 @@ export interface NavigateNoteHistoryMessage {
   direction: 'back' | 'forward';
 }
 
+/** Runs one of ⋯'s note actions on the note shown, by its command. */
+export interface RunNoteActionMessage {
+  type: 'runNoteAction';
+  command: string;
+}
+
 /** What the note page sends, keyed by message type. */
 export interface NotePagePageToHost {
   openNote: OpenNoteMessage;
@@ -204,6 +216,7 @@ export interface NotePagePageToHost {
   toggleTask: ToggleTaskMessage;
   navigateNoteHistory: NavigateNoteHistoryMessage;
   openSearch: OpenSearchMessage;
+  runNoteAction: RunNoteActionMessage;
   openGoTo: OpenGoToMessage;
   listGoTo: ListGoToMessage;
   goToPage: GoToPageMessage;

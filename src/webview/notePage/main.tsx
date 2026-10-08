@@ -16,7 +16,7 @@ import { type ActionHandler, listenForActions, onHostMessage, readEmbeddedState,
 import { PageBar } from '../shared/pageBar';
 import { announce } from '../shared/status';
 import { TagButton } from '../shared/tagButton';
-import { installViewOptions } from '../shared/viewOptions';
+import { installViewOptions, type ViewOptionItem } from '../shared/viewOptions';
 import { keepState, post } from '../shared/vscode';
 import { Blocks } from '../shared/noteBlocks';
 
@@ -46,9 +46,18 @@ function NoteControls({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
   );
 }
 
-/** The bar every page draws: the note's place and title at the left, its controls and ⋯ at the right, which holds Appearance and Help. */
+/**
+ * ⋯'s first rows: what can be done with the note outside the editor, from
+ * the one note-action table that Note Actions and the editor's Deckard
+ * submenu list too, as the host sends them.
+ */
+function noteActionRows(snapshot: NotePageSnapshot): ViewOptionItem[] {
+  return (snapshot.actions ?? []).map((action) => ({ action: 'run-note-action', text: action.title, attributes: { 'data-command': action.command } }));
+}
+
+/** The bar every page draws: the note's place and title at the left, its controls and ⋯ at the right, which holds the note's actions, Appearance and Help. */
 function NoteBar({ snapshot, trail, lead }: { readonly snapshot: NotePageSnapshot; readonly trail: string; readonly lead: ComponentChildren }) {
-  return <PageBar trail={trail} leadClass="note-lead" label="Note" lead={lead} controls={<NoteControls snapshot={snapshot} />} menu={{ pageWidth: true }} />;
+  return <PageBar trail={trail} leadClass="note-lead" label="Note" lead={lead} controls={<NoteControls snapshot={snapshot} />} menu={{ actions: noteActionRows(snapshot), pageWidth: true }} />;
 }
 
 /** Each way up from the note to its hubs, a step that is a note a button that opens it. */
@@ -284,6 +293,7 @@ const ACTIONS: Readonly<Record<string, ActionHandler>> = {
     ...modifiers(event),
   }),
   'open-tag': (element) => send({ type: 'openTag', tagKey: String(element.dataset.tagKey) }),
+  'run-note-action': (element) => send({ type: 'runNoteAction', command: String(element.dataset.command) }),
   // An image shows fitted to the column; selecting it shows it whole, and back.
   'toggle-image-size': (element) => {
     const whole = element.classList.toggle('is-whole');

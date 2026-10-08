@@ -252,6 +252,12 @@
         "icon": "$(type-hierarchy)"
       },
       {
+        "command": "deckard.openRelatedNotes",
+        "title": "Open Related Notes",
+        "category": "Deckard",
+        "icon": "$(references)"
+      },
+      {
         "command": "deckard.showTaskBoard",
         "title": "Open Task Board",
         "category": "Deckard",
@@ -585,7 +591,7 @@
       },
       {
         "command": "deckard.linkCurrentHeading",
-        "title": "Link Current Heading to Entity",
+        "title": "Tag Heading with a Person or Project…",
         "category": "Deckard"
       },
       {
@@ -894,6 +900,10 @@
           "when": "false"
         },
         {
+          "command": "deckard.openRelatedNotes",
+          "when": "false"
+        },
+        {
           "command": "deckard.outline.revealSection",
           "when": "false"
         },
@@ -1125,12 +1135,12 @@
       "editor/title": [
         {
           "command": "deckard.previousDailyNote",
-          "when": "resourceLangId == markdown && deckard.isDailyNote",
+          "when": "resourceLangId == markdown && deckard.isDailyNote && deckard.dailyNoteLensOff",
           "group": "navigation@10"
         },
         {
           "command": "deckard.nextDailyNote",
-          "when": "resourceLangId == markdown && deckard.isDailyNote",
+          "when": "resourceLangId == markdown && deckard.isDailyNote && deckard.dailyNoteLensOff",
           "group": "navigation@11"
         },
         {
@@ -1175,16 +1185,16 @@
         {
           "command": "deckard.setTaskStatus",
           "when": "deckard.onTaskLine",
-          "group": "1_task@2"
+          "group": "1_task@3"
         },
         {
           "command": "deckard.breakIntoSteps",
           "when": "deckard.onTaskLine",
-          "group": "1_task@3"
+          "group": "1_task@4"
         },
         {
           "command": "deckard.addTask",
-          "group": "1_task@4"
+          "group": "1_task@5"
         },
         {
           "command": "deckard.renameHeading",
@@ -1195,40 +1205,56 @@
           "group": "2_heading@2"
         },
         {
-          "command": "deckard.focusSection",
+          "command": "deckard.linkCurrentHeading",
           "group": "2_heading@3"
         },
         {
-          "command": "deckard.moveTo",
-          "group": "3_move@1"
-        },
-        {
-          "command": "deckard.copyAsPlainMarkdown",
-          "group": "3_move@2"
+          "command": "deckard.focusSection",
+          "group": "2_heading@4"
         },
         {
           "command": "deckard.openNotePage",
-          "group": "3_move@3"
+          "group": "3_note@1"
+        },
+        {
+          "command": "deckard.openRelatedNotes",
+          "group": "3_note@2"
+        },
+        {
+          "command": "deckard.showNotesGraphAroundNote",
+          "group": "3_note@3"
+        },
+        {
+          "command": "deckard.moveTo",
+          "group": "3_note@4"
+        },
+        {
+          "command": "deckard.copyAsPlainMarkdown",
+          "group": "3_note@5"
+        },
+        {
+          "command": "deckard.moveTagsToFrontmatter",
+          "group": "3_note@6"
         },
         {
           "command": "deckard.pinNote",
           "when": "!deckard.activeNotePinned",
-          "group": "4_pin@1"
+          "group": "4_keep@1"
         },
         {
           "command": "deckard.unpinNote",
           "when": "deckard.activeNotePinned",
-          "group": "4_pin@2"
+          "group": "4_keep@2"
         },
         {
           "command": "deckard.parkNote",
           "when": "!deckard.activeNoteParked",
-          "group": "4_pin@3"
+          "group": "4_keep@3"
         },
         {
           "command": "deckard.unparkNote",
           "when": "deckard.activeNoteParked",
-          "group": "4_pin@4"
+          "group": "4_keep@4"
         }
       ],
       "explorer/context": [

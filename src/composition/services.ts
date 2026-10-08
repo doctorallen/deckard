@@ -979,6 +979,8 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
   const { repository, display, usage, tagRenames } = parts.preferences;
   const { searchPanels, activeSearch, themePreview } = parts.search;
   const { activeCalendar } = parts.calendar;
+  // Which note is pinned, as the note page's ⋯ pins it: by its first line.
+  const notePins = new PinService({ index: indexer, store: parts.preferences.pins });
   // The note page in front, whose note Related Notes follows.
   const activeNotePage = new ActiveNotePage();
   context.subscriptions.push(activeNotePage);
@@ -1037,6 +1039,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     themePreview,
     activeNotePage,
     onOpenSearch: (query) => searchPanels.showQuery(query),
+    isNotePinned: (filePath) => notePins.isLinePinned(filePath, 1),
   });
   const taskStatuses = new TaskStatusesPanel({ indexer, preferences: repository, history, extensionUri: context.extensionUri, themePreview });
   return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug, notePage, activeNotePage, taskStatuses };

@@ -9,7 +9,9 @@ import type {
   OpenInEditorMessage,
   OpenNoteMessage,
   OpenSearchMessage,
+  RunNoteActionMessage,
 } from '../../../protocol/notePage';
+import { NOTE_ACTIONS } from '../../../commands/noteActionTable';
 import {
   exactlyType,
   MAX_NAME_LENGTH,
@@ -61,6 +63,12 @@ const narrowOpenSearch: Narrower<OpenSearchMessage> = (value) =>
     ? { type: 'openSearch', query: value.query }
     : undefined;
 
+/** One of ⋯'s note actions: a command the table lists for the note page, and no other. */
+const narrowRunNoteAction: Narrower<RunNoteActionMessage> = (value) =>
+  NOTE_ACTIONS.some((action) => action.page && action.command === value.command)
+    ? { type: 'runNoteAction', command: value.command as string }
+    : undefined;
+
 /** Each message the note page may send, and what it must hold. */
 export const NOTE_PAGE_MESSAGES: NarrowingTable<NotePagePageToHost> = {
   openNote: narrowOpenNote,
@@ -77,6 +85,7 @@ export const NOTE_PAGE_MESSAGES: NarrowingTable<NotePagePageToHost> = {
   openHelp: exactlyType('openHelp'),
   navigateNoteHistory: narrowNavigate,
   openSearch: narrowOpenSearch,
+  runNoteAction: narrowRunNoteAction,
 };
 
 /** A message from the note page, narrowed by its table, or undefined. */

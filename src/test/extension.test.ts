@@ -15,16 +15,18 @@ suite('Extension Test Suite', () => {
       extension.packageJSON.contributes.menus;
     const title = (command: string) =>
       menus['editor/title'].filter((entry) => entry.command === command).map((entry) => [entry.when, entry.group]);
+    // The days, only while the daily note's own lens, which has them, is off.
     assert.deepStrictEqual(title('deckard.previousDailyNote'), [
-      ['resourceLangId == markdown && deckard.isDailyNote', 'navigation@10'],
+      ['resourceLangId == markdown && deckard.isDailyNote && deckard.dailyNoteLensOff', 'navigation@10'],
     ]);
     assert.deepStrictEqual(title('deckard.nextDailyNote'), [
-      ['resourceLangId == markdown && deckard.isDailyNote', 'navigation@11'],
+      ['resourceLangId == markdown && deckard.isDailyNote && deckard.dailyNoteLensOff', 'navigation@11'],
     ]);
     assert.deepStrictEqual(title('deckard.noteActions'), [
       ['resourceLangId == markdown && deckard.isNote', 'navigation@12'],
     ]);
-    // A note's context menu has one Deckard submenu, grouped by what it acts on.
+    // A note's context menu has one Deckard submenu, grouped by what it acts
+    // on: the note-action table, which note-action-table.test.ts holds it to.
     assert.deepStrictEqual(menus['editor/context'], [
       { submenu: 'deckard.editor.context', when: 'resourceLangId == markdown && deckard.isNote', group: 'z_deckard@1' },
     ]);
@@ -33,19 +35,23 @@ suite('Extension Test Suite', () => {
       [
         '1_task@1 deckard.toggleTaskDone',
         '1_task@2 deckard.editTask',
-        '1_task@2 deckard.setTaskStatus',
-        '1_task@3 deckard.breakIntoSteps',
-        '1_task@4 deckard.addTask',
+        '1_task@3 deckard.setTaskStatus',
+        '1_task@4 deckard.breakIntoSteps',
+        '1_task@5 deckard.addTask',
         '2_heading@1 deckard.renameHeading',
         '2_heading@2 deckard.extractHeading',
-        '2_heading@3 deckard.focusSection',
-        '3_move@1 deckard.moveTo',
-        '3_move@2 deckard.copyAsPlainMarkdown',
-        '3_move@3 deckard.openNotePage',
-        '4_pin@1 deckard.pinNote',
-        '4_pin@2 deckard.unpinNote',
-        '4_pin@3 deckard.parkNote',
-        '4_pin@4 deckard.unparkNote',
+        '2_heading@3 deckard.linkCurrentHeading',
+        '2_heading@4 deckard.focusSection',
+        '3_note@1 deckard.openNotePage',
+        '3_note@2 deckard.openRelatedNotes',
+        '3_note@3 deckard.showNotesGraphAroundNote',
+        '3_note@4 deckard.moveTo',
+        '3_note@5 deckard.copyAsPlainMarkdown',
+        '3_note@6 deckard.moveTagsToFrontmatter',
+        '4_keep@1 deckard.pinNote',
+        '4_keep@2 deckard.unpinNote',
+        '4_keep@3 deckard.parkNote',
+        '4_keep@4 deckard.unparkNote',
       ],
     );
     // A folder in the Explorer can take a note, or leave Deckard and come back.
@@ -128,6 +134,7 @@ suite('Extension Test Suite', () => {
         'deckard.goTo',
         'deckard.showNotesGraph',
         'deckard.showNotesGraphAroundNote',
+        'deckard.openRelatedNotes',
         'deckard.showTaskBoard',
         'deckard.showCalendar',
         'deckard.calendar.openInEditor',

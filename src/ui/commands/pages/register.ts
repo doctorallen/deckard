@@ -40,7 +40,12 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.showNotesGraph', (options?: unknown) =>
       notesGraph.show(readNotesGraphOptions(options)),
     ),
-    registerCommand('deckard.showNotesGraphAroundNote', async () => {
+    // The note page names its note; the editor's is the active one.
+    registerCommand('deckard.showNotesGraphAroundNote', async (filePath?: unknown) => {
+      if (typeof filePath === 'string' && indexer.getSnapshot().files.has(filePath)) {
+        await notesGraph.showAround(filePath);
+        return;
+      }
       const uri = vscode.window.activeTextEditor?.document.uri;
       if (!uri || !indexer.isNotesFile(uri)) {
         void vscode.window.showInformationMessage('Open a note to draw the graph around it.');

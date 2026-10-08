@@ -31,7 +31,7 @@
 | **Deckard: Create a Work Sample** | Writes a week of a team lead's notes, dated from today, into Deckard's storage and opens it. Run again, it offers a fresh copy. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
-| **Deckard: Note Actions…** | The Deckard button in a note's title bar: lists actions for the cursor's position, such as completing, editing, or adding a task, opening Related Notes or the Notes Graph, moving the line, and pinning to Home. |
+| **Deckard: Note Actions…** | The Deckard button in a note's title bar: lists what the editor's **Deckard** submenu lists, in the same order, for the cursor's position: the task on the line, the heading, the note (open as a page, Related Notes, the Notes Graph, Move to…, copy, tags to front matter), then pin and park. |
 | **Deckard: Open Weekly Note** | Creates or opens this week's note, `week-2026-09-13-2026-09-19.md`, with [its review](daily-notes.md#writing-a-review) written in. |
 | **Deckard: Open Monthly Note** | Creates or opens this month's note, `month-september-2026.md`, with its review written in. |
 | **Deckard: Write a Review** | Writes, or brings up to date, the review in this week's or this month's note. |
@@ -79,12 +79,12 @@
 These commands do what they did, from where you meet the job; the palette leaves them out, since another door does the same:
 
 - **Merge Tag…**: rename a tag to one that already exists, which merges them after a preview, or use **Merge** in Stats.
-- **Open Notes Graph Around This Note**: **Deckard: Note Actions…**, from the Deckard button in a note's title bar.
+- **Open Notes Graph Around This Note** and **Open Related Notes**: **Deckard: Note Actions…**, from the Deckard button in a note's title bar, the editor's **Deckard** submenu, or a note page's **⋯**.
 - **Insert Query Block…**: **Query block** in the [/ menu](notes-and-links.md#editor-assistance), or **Copy as live query block** in a search page's **Export**.
 - **Import Statuses from Obsidian Tasks**: **Import from Obsidian Tasks** on the page **Deckard: Edit Task Statuses…** opens.
 - **Open Daily Note for Date…**: type a day in [Find](search.md#find), such as `last friday`.
 - **Open a Tag's Search Page…**: select a tag anywhere Deckard shows one, or type it in Find.
-- **Link Current Heading to Entity**: **Tag Heading with a Person or Project…** in the editor's Refactor… menu, on a note's heading that carries no such tag.
+- **Tag Heading with a Person or Project…**: the editor's Refactor… menu, on a note's heading that carries no such tag, or the editor's **Deckard** submenu and **Deckard: Note Actions…** under any heading.
 - **Open Related Notes Ranking**: a page for tuning Related Notes; bind a key to it in Keyboard Shortcuts, then press it with the cursor in a tagged entry.
 - **Tidy**, **Export**, **Import**, and **Restore** for favorites, pins, and searches: rows of **Deckard: Manage Favorites, Pins, and Searches…**.
 

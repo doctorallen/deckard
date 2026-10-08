@@ -63,6 +63,23 @@
 - **Context's Sort is compact.** The Related notes sort is a small
   **Sort: Relevance ▾** at the Related notes heading, rather than a select
   as wide as the sidebar.
+- **One list of note actions.** **Deckard: Note Actions…**, the editor's
+  right-click **Deckard** submenu and the note page's **⋯** list the same
+  actions in the same order: the task on the line, then the heading
+  (**Rename Heading**, **Extract Heading**, **Tag Heading with a Person or
+  Project…**, **Focus Section**), then the note (**Open Note as Page**,
+  **Open Related Notes**, **Open Notes Graph Around This Note**, **Move
+  to…**, **Copy as Plain Markdown**, **Move Inline Tags to Front Matter**),
+  then **Pin** or **Unpin** and **Park** or **Unpark**. Each gains the rows
+  it lacked. The note page's **⋯** lists those that work away from the
+  editor: Related Notes, the Notes Graph, Pin and Park. **Link Current
+  Heading to Entity** is called **Tag Heading with a Person or Project…**,
+  as the Refactor… menu called it.
+- **A daily note's ‹ › in the title bar only while its lens is off.** The
+  daily note's lens already steps to the day before and after, so the
+  title bar's **‹** and **›** show only under the **Writing** and **Off**
+  presets, or with `deckard.editor.dailyNoteActions` set off. A daily note
+  under **Full** shows two Deckard buttons in its title bar, not four.
 - **A search page lists its keys.** **?**, or **Keyboard shortcuts** in
   **⋯**, opens the sheet of its keys there too: **/** for the search box,
   **Alt+←** and **Alt+→** through the page's searches, and the menu keys.

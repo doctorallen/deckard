@@ -70,7 +70,7 @@ export class EntityHeadingSuggestions implements vscode.Disposable {
     );
     action.command = {
       command: 'deckard.linkCurrentHeading',
-      title: 'Deckard: Link Current Heading to Entity',
+      title: 'Deckard: Tag Heading with a Person or Project…',
     };
     return [action];
   }
