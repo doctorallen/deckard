@@ -22,7 +22,7 @@ built and loaded, and why; this page says what there is to reuse and how.
 | `src/webview/<page>/main.tsx` | The page's entry: its store, its view, and its listeners. Help's is `main.ts`, a typed module with no Preact |
 | `src/webview/<page>/page.css` | The page's sheet: `base.css`, the component sheets it uses, then its own rules |
 | `src/webview/<page>/*.tsx`, `*.ts` | The page's own components and modules, which no other page draws |
-| `src/webview/shared/` | The shared core: the page store, status and busy marks, tips, the key sheet, the undo toast, the gear, buttons and icons, tags, metrics, inline Markdown; and the parts the task, search, and Home pages share |
+| `src/webview/shared/` | The shared core: the page store, status and busy marks, tips, the key sheet, the undo toast, the page bar and its ⋯, Context's gears, buttons and icons, tags, metrics, inline Markdown; and the parts the task, search, and Home pages share |
 | `src/webview/shared/calendar/` | What the two calendars and Related Notes' day share |
 | `src/webview/shared/*.css`, `shared/themes/`, `shared/calendar/calendar.css` | The sheets every page links, and the component sheets two or more import |
 | `src/ui/protocol/<page>.ts` | The page's snapshot and messages, imported by the page and by its host |
@@ -758,8 +758,8 @@ not have, so a `:hover` nested in an `@media` block is never tested.
 | --- | --- |
 | `zen.css` | The sheet, last in `tail.css`, which every page links whether zen is on or not. |
 | `getPageTailCss({ theme, zen })` | The sheets after the page's own, its theme then `tail.css`, and the body's ` class="zen"` or nothing. `buildPageShell` writes both. In `components.ts`. |
-| `readPageChrome(themePreview)` | The look a page is written in, read now: `getDeckardTheme(preview)`, whether Zen is on and what it turns on, the card details and date formats, and the page width the gear keeps in the preferences. `WebviewHost` calls it each time it sets a page's HTML and passes it to the controller's `html(webview, chrome, state)`. In `host/pageChrome.ts`. |
-| `onDidChangePageChrome(listener, themePreview)` | Calls back when a page must be drawn in another look: `deckard.theme` or a Display setting changed, the gear chose another page width, or Choose Theme… is previewing a theme on the `ThemePreview` (`themePreview.ts`), which `getDeckardTheme(preview)` reads first. `WebviewHost` listens to it for every page, and a page's `onChromeChange` says what it then does ([webviews.md](architecture/webviews.md#what-a-controller-tells-its-host)). In `host/pageChrome.ts`. |
+| `readPageChrome(themePreview)` | The look a page is written in, read now: `getDeckardTheme(preview)`, whether Zen is on and what it turns on, the card details and date formats, and the page width ⋯ keeps in the preferences. `WebviewHost` calls it each time it sets a page's HTML and passes it to the controller's `html(webview, chrome, state)`. In `host/pageChrome.ts`. |
+| `onDidChangePageChrome(listener, themePreview)` | Calls back when a page must be drawn in another look: `deckard.theme` or a Display setting changed, ⋯ chose another page width, or Choose Theme… is previewing a theme on the `ThemePreview` (`themePreview.ts`), which `getDeckardTheme(preview)` reads first. `WebviewHost` listens to it for every page, and a page's `onChromeChange` says what it then does ([webviews.md](architecture/webviews.md#what-a-controller-tells-its-host)). In `host/pageChrome.ts`. |
 | `affectsPageChrome(event)` | Whether a settings change alters how a page is drawn; `onDidChangePageChrome` asks it. In `host/pageChrome.ts`. |
 
 ---
