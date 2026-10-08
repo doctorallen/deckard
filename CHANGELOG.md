@@ -12,6 +12,17 @@
 - **The Calendar view starts collapsed.** In a new install the sidebar's
   Calendar starts collapsed, as Hubs does, leaving the room to Context,
   Outline and Tasks. Where it is already open, it stays as you left it.
+- **Unpark Folder… and Unpark Tag… only when something is parked.** The
+  palette lists **Unpark Folder…** while `deckard.parked.folders` parks a
+  folder by name, and **Unpark Tag…** while `deckard.parked.tags` names a
+  tag, so neither shows with nothing to unpark.
+
+### Fixed
+
+- **Copy MCP Server Setup is in the palette before the server is on.**
+  The guide says to run it to turn the MCP server on, but the palette
+  listed it only once the server was already on. It is listed now while
+  `deckard.assistantTools` is on, and still offers to turn the server on.
 
 ## 2.4.0 - 2026-10-06
 

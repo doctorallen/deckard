@@ -1033,7 +1033,7 @@
         },
         {
           "command": "deckard.copyMcpSetup",
-          "when": "config.deckard.mcpServer.enabled"
+          "when": "config.deckard.assistantTools"
         },
         {
           "command": "deckard.resetMcpToken",
@@ -1101,7 +1101,7 @@
         },
         {
           "command": "deckard.unparkFolder",
-          "when": "workspaceFolderCount > 0"
+          "when": "workspaceFolderCount > 0 && deckard.hasParkedFolders"
         },
         {
           "command": "deckard.parkTag",
@@ -1109,7 +1109,7 @@
         },
         {
           "command": "deckard.unparkTag",
-          "when": "workspaceFolderCount > 0"
+          "when": "workspaceFolderCount > 0 && deckard.hasParkedTags"
         },
         {
           "command": "deckard.calendar.openDayPanel",

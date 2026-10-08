@@ -25,8 +25,8 @@
 | **Deckard: Create Daily Note** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> elsewhere. Creates or opens today's note. |
 | **Deckard: Pin Note to Home** | Pins the note the cursor is in to Home's Pinned notes. **Deckard: Unpin Note from Home** removes it. |
 | **Deckard: Park Note** | [Parks](organizing.md#parking-notes) the note in the editor, or notes chosen in the Explorer, by adding `parked` to its front-matter tags. **Deckard: Unpark Note** reverses it. |
-| **Deckard: Park Folder…** | Parks a folder by adding it to `deckard.parked.folders`; also on a folder's **Deckard** menu in the Explorer. **Deckard: Unpark Folder…** reverses it. |
-| **Deckard: Park Tag…** | Parks everything a tag finds by adding it to `deckard.parked.tags`; also on a tag's menu. **Deckard: Unpark Tag…** reverses it. |
+| **Deckard: Park Folder…** | Parks a folder by adding it to `deckard.parked.folders`; also on a folder's **Deckard** menu in the Explorer. **Deckard: Unpark Folder…** reverses it; the palette lists it while a folder is parked by name. |
+| **Deckard: Park Tag…** | Parks everything a tag finds by adding it to `deckard.parked.tags`; also on a tag's menu. **Deckard: Unpark Tag…** reverses it; the palette lists it while `deckard.parked.tags` names a tag. |
 | **Deckard: Tidy Favorites, Pins, and Saved Searches** | Lists favorites, pins, and tag-set searches that point at nothing, and removes them if you confirm. |
 | **Deckard: Export Tasks as Calendar…** | Writes your dated tasks to a calendar file to import into a calendar app; see [Tasks in your calendar app](daily-notes.md#tasks-in-your-calendar-app). |
 | **Deckard: Export Favorites, Pins, and Searches** | Writes what Deckard remembers about this workspace to a JSON file. |
@@ -59,8 +59,8 @@
 | **Deckard: New Note from Template** | Creates a note from a template in your templates folder. |
 | **Deckard: New Note from Template Here…** | The same, in the folder right-clicked in the Explorer, from its **Deckard** menu. |
 | **Deckard: Exclude from Deckard** | On a folder's **Deckard** menu in the Explorer: leaves the folder out of the index. **Deckard: Include in Deckard** brings a folder left out by name back. |
-| **Deckard: Copy MCP Server Setup** | Copies the command that adds Deckard's [MCP server](ai-assistants.md#claude-code-and-other-mcp-clients) to Claude Code. |
-| **Deckard: Reset MCP Server Token** | Makes a new MCP server token, invalidating copied setups. |
+| **Deckard: Copy MCP Server Setup** | Copies the command that adds Deckard's [MCP server](ai-assistants.md#claude-code-and-other-mcp-clients) to Claude Code, and offers to turn the server on when it is off. Listed while `deckard.assistantTools` is on. |
+| **Deckard: Reset MCP Server Token** | Makes a new MCP server token, invalidating copied setups. Listed while the server is on. |
 | **Deckard: Move to…** | Moves the line, task, or selection under another heading or into a new note, and leaves a link behind. |
 | **Deckard: Open Note as Page** | The unicorn button in a note's title bar: opens the note in the editor on a page of its own, its links, tags, tasks, and query blocks working; see [Reading a note as a page](notes-and-links.md#reading-a-note-as-a-page). |
 | **Deckard: Copy as Plain Markdown** | Copies the note, or the selection, with its embeds, query results, and links written out; see [Copying a note for elsewhere](notes-and-links.md#copying-a-note-for-elsewhere). |
