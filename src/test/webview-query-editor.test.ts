@@ -65,8 +65,9 @@ const HAMMER = '<svg class="toolbar-icon query-builder-icon" viewBox="0 0 16 16"
  * recorded (plan 29, R1): no Search or Clear beside the field, which ends
  * in × (drawn only while Clear could act) and →; Builder joined to the
  * start of the field, pressed rather than renamed while open; the builder
- * under the field; and the / key's part of the hint in a span of its own.
- * Everything else is held to the recording as it was.
+ * under the field; the / key's part of the hint in a span of its own; and
+ * the hint and the builder's paragraph marked .help-text (R9). Everything
+ * else is held to the recording as it was.
  */
 function asDrawnSinceTemplate(page: WebviewPage, recorded: string): string {
   const holder = page.document.createElement('div');
@@ -96,6 +97,12 @@ function asDrawnSinceTemplate(page: WebviewPage, recorded: string): string {
     const hint = status.querySelector(':scope > .query-hint');
     if (hint) {
       hint.innerHTML = 'Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT.<span class="query-hint-key"> Press / to search.</span>';
+      hint.classList.add('help-text');
+    }
+    for (const note of workspace.querySelectorAll('.query-builder-note')) {
+      if (note.textContent?.startsWith('In a new row')) {
+        note.classList.add('help-text');
+      }
     }
     const builder = workspace.querySelector(':scope > .query-builder');
     if (builder) {
