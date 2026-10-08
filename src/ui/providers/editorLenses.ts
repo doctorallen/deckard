@@ -5,12 +5,15 @@ import { pluralize } from '../../shared/text';
 import { measure } from '../../shared/timing';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
+  describeNoteProblems,
   findDailyNoteActions,
   findEmbedProblems,
   findHubProgress,
   findStepProgress,
   findTaskDependencies,
   formatProgressBar,
+  NOTE_PROBLEM_FIXES,
+  NoteProblemFix,
 } from '../state/editorLensState';
 import { readQueryContext } from '../commands/queryContext';
 import { findBreadcrumbs } from '../state/hubTree';
@@ -19,12 +22,13 @@ import { CREATE_MISSING_NOTES_COMMAND } from '../commands/linkHealth';
 import { resolveSourceUri } from '../commands/navigation';
 import { getRolloverMode, ROLLOVER_LOOKBACK_DAYS } from '../commands/rollover';
 import { LINK_MENTIONS_COMMAND } from '../commands/unlinkedMentions';
+import { NoteProblemFixChoice, PICK_NOTE_PROBLEM_FIX_COMMAND } from '../commands/noteProblems';
 import { readEditorToggle } from './editorToggles';
 import { LazyCodeLens, locate, resolveLazyCodeLens } from './codeLenses';
 import { whenPublished } from '../../core/workspace/publishing';
-import { findLinkProblems, findMissingNoteNames } from '../../domain/links/linkProblems';
+import { findLinkProblems, findMissingNoteNames, LinkProblem } from '../../domain/links/linkProblems';
 import { formatLocalDate } from '../../domain/notes/periodicNotes';
-import { findUnlinkedMentions } from '../../domain/search/mentions';
+import { findUnlinkedMentions, UnlinkedMention } from '../../domain/search/mentions';
 import { ParsedFile, Task, WorkspaceIndex } from '../../domain/model';
 import { formatDisplayDay } from '../../domain/markdown/dateFormat';
 import { readDateFormats } from '../commands/datePrompt';
@@ -47,19 +51,27 @@ interface LensContext {
   index: WorkspaceIndex;
   /** Whether the note is in the notes folder Deckard indexes. */
   isNotesFile: boolean;
+  /** The settings below that are on for the note. */
+  shows: ReadonlySet<LensSetting>;
 }
 
-/** One group of lenses, and the `deckard.editor.*` setting that shows it. */
+/** A `deckard.editor.*` setting that shows lenses. */
+type LensSetting =
+  | 'taskDependencies'
+  | 'dailyNoteActions'
+  | 'linkProblems'
+  | 'embedProblems'
+  | 'unlinkedMentions'
+  | 'hubProgress'
+  | 'breadcrumbs'
+  | 'stepProgress';
+
+/**
+ * One group of lenses, and the `deckard.editor.*` settings that show it: any
+ * one of them on shows the group, which draws what each one on allows.
+ */
 interface LensGroup {
-  setting:
-    | 'taskDependencies'
-    | 'dailyNoteActions'
-    | 'linkProblems'
-    | 'embedProblems'
-    | 'unlinkedMentions'
-    | 'hubProgress'
-    | 'breadcrumbs'
-    | 'stepProgress';
+  settings: readonly LensSetting[];
   provide(context: LensContext): LazyCodeLens[];
 }
 
@@ -74,14 +86,13 @@ export class EditorLenses
   private readonly changeEmitter = new vscode.EventEmitter<void>();
   private readonly disposables: vscode.Disposable[] = [this.changeEmitter];
   private readonly groups: readonly LensGroup[] = [
-    { setting: 'taskDependencies', provide: provideTaskDependencyLenses },
-    { setting: 'dailyNoteActions', provide: provideDailyNoteLenses },
-    { setting: 'linkProblems', provide: provideLinkProblemLenses },
-    { setting: 'embedProblems', provide: provideEmbedProblemLenses },
-    { setting: 'unlinkedMentions', provide: provideUnlinkedMentionLenses },
-    { setting: 'hubProgress', provide: provideHubProgressLenses },
-    { setting: 'breadcrumbs', provide: provideBreadcrumbLenses },
-    { setting: 'stepProgress', provide: provideStepProgressLenses },
+    { settings: ['taskDependencies'], provide: provideTaskDependencyLenses },
+    { settings: ['dailyNoteActions'], provide: provideDailyNoteLenses },
+    { settings: ['linkProblems', 'unlinkedMentions'], provide: provideNoteProblemLenses },
+    { settings: ['embedProblems'], provide: provideEmbedProblemLenses },
+    { settings: ['hubProgress'], provide: provideHubProgressLenses },
+    { settings: ['breadcrumbs'], provide: provideBreadcrumbLenses },
+    { settings: ['stepProgress'], provide: provideStepProgressLenses },
   ];
   /** Before the first scan every other note looks empty. */
   private isReady = false;
@@ -127,7 +138,12 @@ export class EditorLenses
     if (!this.isReady || !isMarkdownFile(document.uri)) {
       return [];
     }
-    const groups = this.groups.filter((group) => readEditorToggle(group.setting, document.uri));
+    const shows = new Set(
+      this.groups
+        .flatMap((group) => group.settings)
+        .filter((setting) => readEditorToggle(setting, document.uri)),
+    );
+    const groups = this.groups.filter((group) => group.settings.some((setting) => shows.has(setting)));
     if (groups.length === 0) {
       return [];
     }
@@ -139,6 +155,7 @@ export class EditorLenses
           file: this.indexer.parse(document.uri, document.getText()),
           index: this.indexer.getSnapshot(),
           isNotesFile: this.indexer.isNotesFile(document.uri),
+          shows,
         };
         return groups.flatMap((group) => group.provide(context));
       },
@@ -329,63 +346,125 @@ function provideHubProgressLenses({ file, index }: LensContext): LazyCodeLens[] 
 }
 
 /**
- * On a note's first line: how many of its `[[links]]` open no note, listed in
- * the references peek, and an action that creates the notes the missing ones
- * name. The links are read from the editor, so they follow unsaved edits the
- * way the diagnostics on them do.
+ * On a note's first line: one lens for its problems, such as
+ * "2 missing · 4 unlinked", the `[[links]]` in it that open no note and the
+ * other notes that name it without linking to it. Each kind is counted only
+ * while its own setting is on. With one kind the lens fixes it, and with both
+ * it lists each fix. The links are read from the editor, so they follow
+ * unsaved edits the way the diagnostics on them do.
  */
-function provideLinkProblemLenses({
+function provideNoteProblemLenses({
   document,
   file,
   index,
   isNotesFile,
+  shows,
 }: LensContext): LazyCodeLens[] {
   // Only notes are checked, as the diagnostics check only notes: a Markdown
-  // file outside the notes folder links into notes it is not part of.
+  // file outside the notes folder links into notes it is not part of, and
+  // only a note is what a `[[link]]` to it opens.
   if (!isNotesFile) {
     return [];
   }
-  const problems = findLinkProblems(document.getText(), index, file.filePath);
-  if (problems.length === 0) {
+  const problems = shows.has('linkProblems')
+    ? findLinkProblems(document.getText(), index, file.filePath)
+    : [];
+  const mentions = shows.has('unlinkedMentions') ? findUnlinkedMentions(file, index) : [];
+  const names = findMissingNoteNames(problems);
+  const summary = describeNoteProblems({
+    missing: problems.filter((problem) => problem.kind === 'missing').length,
+    ambiguous: problems.filter((problem) => problem.kind === 'ambiguous').length,
+    creatable: names.length,
+    mentions: mentions.length,
+    mentionNotes: new Set(mentions.map((mention) => mention.filePath)).size,
+  });
+  if (!summary) {
     return [];
   }
   const range = new vscode.Range(0, 0, 0, 0);
-  const lenses = [
-    new LazyCodeLens(range, () => ({
-      title: `${pluralize(problems.length, 'link')} open${problems.length === 1 ? 's' : ''} no note`,
-      tooltip:
-        'Links that name no note, or a name several notes share. Show them in the references view',
-      command: 'editor.action.showReferences',
-      arguments: [
-        document.uri,
-        range.start,
-        problems.map(
-          (problem) =>
-            new vscode.Location(
-              document.uri,
-              new vscode.Range(
-                problem.line,
-                problem.startColumn,
-                problem.line,
-                problem.endColumn,
-              ),
-            ),
-        ),
-      ],
-    })),
+  const fixes = createNoteProblemFixes(document.uri, problems, names, mentions);
+  return [
+    new LazyCodeLens(range, async () => {
+      const { title, tooltip } = summary;
+      if (summary.action !== 'pick') {
+        const { command } = await fixes[summary.action]();
+        return { ...command, title, tooltip };
+      }
+      return {
+        title,
+        tooltip,
+        command: PICK_NOTE_PROBLEM_FIX_COMMAND,
+        arguments: [await Promise.all(summary.fixes.map((fix) => fixes[fix]()))],
+      };
+    }),
   ];
-  const names = findMissingNoteNames(problems);
-  if (names.length > 0) {
-    lenses.push(
-      new LazyCodeLens(range, () => ({
-        title: `Create ${pluralize(names.length, 'missing note')}`,
-        tooltip: `Create ${names.map((name) => `"${name}"`).join(', ')} in your notes folder`,
+}
+
+/**
+ * What each fix the problems lens offers runs, each built only when the lens
+ * can reach it, since finding where the mentions are reads other notes.
+ */
+function createNoteProblemFixes(
+  uri: vscode.Uri,
+  problems: readonly LinkProblem[],
+  names: readonly string[],
+  mentions: readonly UnlinkedMention[],
+): Record<NoteProblemFix, () => Promise<NoteProblemFixChoice>> {
+  // The references view opens at the lens, on the note's first line.
+  const start = new vscode.Position(0, 0);
+  return {
+    showBrokenLinks: async () => ({
+      label: NOTE_PROBLEM_FIXES.showBrokenLinks,
+      detail: `${pluralize(problems.length, 'link')} that open${problems.length === 1 ? 's' : ''} no note, in the references view`,
+      command: {
+        title: NOTE_PROBLEM_FIXES.showBrokenLinks,
+        command: 'editor.action.showReferences',
+        arguments: [
+          uri,
+          start,
+          problems.map(
+            (problem) =>
+              new vscode.Location(
+                uri,
+                new vscode.Range(problem.line, problem.startColumn, problem.line, problem.endColumn),
+              ),
+          ),
+        ],
+      },
+    }),
+    createMissingNotes: async () => ({
+      label: NOTE_PROBLEM_FIXES.createMissingNotes,
+      detail: `${names.map((name) => `"${name}"`).join(', ')}, in your notes folder`,
+      command: {
+        title: NOTE_PROBLEM_FIXES.createMissingNotes,
         command: CREATE_MISSING_NOTES_COMMAND,
-        arguments: [document.uri.toString(), names],
-      })),
-    );
-  }
-  return lenses;
+        arguments: [uri.toString(), names],
+      },
+    }),
+    showMentions: async () => ({
+      label: NOTE_PROBLEM_FIXES.showMentions,
+      detail: 'Where other notes name this one without a link, in the references view',
+      command: {
+        title: NOTE_PROBLEM_FIXES.showMentions,
+        command: 'editor.action.showReferences',
+        arguments: [uri, start, await locate(
+          mentions,
+          (mention) => mention.filePath,
+          (mention) =>
+            new vscode.Range(mention.line, mention.startColumn, mention.line, mention.endColumn),
+        )],
+      },
+    }),
+    linkMentions: async () => ({
+      label: NOTE_PROBLEM_FIXES.linkMentions,
+      detail: `Turn ${mentions.length === 1 ? 'the mention' : `each of the ${mentions.length} mentions`} into a [[link]] to this note`,
+      command: {
+        title: NOTE_PROBLEM_FIXES.linkMentions,
+        command: LINK_MENTIONS_COMMAND,
+        arguments: [uri.toString()],
+      },
+    }),
+  };
 }
 
 /**
@@ -414,48 +493,6 @@ function provideEmbedProblemLenses({
         : { title, command: '' };
     });
   });
-}
-
-/**
- * On a note's first line: how many other notes name it in prose without
- * linking to it, listed in the references peek, and an action that links
- * them. Only notes in the notes folder are looked for, since only they are
- * what a `[[link]]` opens.
- */
-function provideUnlinkedMentionLenses({
-  document,
-  file,
-  index,
-  isNotesFile,
-}: LensContext): LazyCodeLens[] {
-  if (!isNotesFile) {
-    return [];
-  }
-  const mentions = findUnlinkedMentions(file, index);
-  if (mentions.length === 0) {
-    return [];
-  }
-  const range = new vscode.Range(0, 0, 0, 0);
-  const notes = new Set(mentions.map((mention) => mention.filePath)).size;
-  return [
-    new LazyCodeLens(range, async () => ({
-      title: `Mentioned in ${pluralize(notes, 'note')} without a link`,
-      tooltip: 'Show the mentions in the references view',
-      command: 'editor.action.showReferences',
-      arguments: [document.uri, range.start, await locate(
-        mentions,
-        (mention) => mention.filePath,
-        (mention) =>
-          new vscode.Range(mention.line, mention.startColumn, mention.line, mention.endColumn),
-      )],
-    })),
-    new LazyCodeLens(range, () => ({
-      title: `Link ${pluralize(mentions.length, 'mention')}`,
-      tooltip: 'Turn each mention into a [[link]] to this note',
-      command: LINK_MENTIONS_COMMAND,
-      arguments: [document.uri.toString()],
-    })),
-  ];
 }
 
 /** A count that lists tasks in VS Code's references peek. */

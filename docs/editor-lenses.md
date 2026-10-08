@@ -8,18 +8,15 @@ report. Several commands Deckard already has — carrying tasks forward, creatin
 a linked note, linking a mention — answer a question the reader only has while
 looking at a particular line, and today they are reached from the palette.
 
-Eight groups of lenses bring what the index already knows to the line it is
+Seven groups of lenses bring what the index already knows to the line it is
 about:
 
 | Lens | Where | Says | Selecting it |
 | --- | --- | --- | --- |
 | Task dependencies | A task with `⛔` or `🆔` | **Waiting on 2 open tasks**, **Blocks 3 open tasks**, **No task has 🆔 abc** | Lists the tasks in the references peek |
 | Daily notes | First line of a daily note | **Carry in 4 unfinished tasks** (today's note only), **‹ 2026-09-21**, **2026-09-23 ›** | Runs `Deckard: Roll Unfinished Tasks Forward`, or opens the neighboring daily note |
-| Link problems | First line of a note | **2 links open no note** | Lists them in the references peek |
-| | | **Create 2 missing notes** | Creates the notes the missing links name |
+| Problems | First line of a note | **2 missing · 1 ambiguous · 4 unlinked** | With one kind of problem, fixes it; with both, lists each fix |
 | Embeds | An `![[Note#Heading]]` line | **Embed: Atlas has no heading "Decision"** | Opens the note it names |
-| Unlinked mentions | First line of a note | **Mentioned in 3 notes without a link** | Lists them in the references peek |
-| | | **Link 5 mentions** | Links them, through the refactor preview |
 | Step progress | A task with steps | **███░░░░░░░ Steps 1/3 done (33%) · next: Pack the rain shells** | Goes to the next open step |
 | Breadcrumbs | First line of a note a hub holds | **Projects › Atlas › Vendor review** | Opens the note above it |
 | Hub progress | First line of a hub note | **Progress: 2/6 done (33%) · 1 overdue · next due in 3 days** | Opens the tag's page |
@@ -35,7 +32,8 @@ with no neighbor on one side has no arrow on that side. This is the same rule
 `editorReferences.ts` already follows for the Related Notes lens.
 
 **Each group has its own setting**, in the Editor settings beside
-`deckard.editor.referenceCounts`. Left unset, each follows
+`deckard.editor.referenceCounts`; the problems lens has two, one for each kind
+it counts. Left unset, each follows
 `deckard.editor.preset`: Full draws every group; Tasks leaves out unlinked
 mentions and breadcrumbs; Writing draws only link problems and embeds; Off
 draws none. A
@@ -44,9 +42,10 @@ switch set by hand, at any scope, overrides the preset
 
 - `deckard.editor.taskDependencies`
 - `deckard.editor.dailyNoteActions`
-- `deckard.editor.linkProblems`
+- `deckard.editor.linkProblems` and `deckard.editor.unlinkedMentions`, for the
+  problems lens: it counts broken links while the first is on, and unlinked
+  mentions while the second is, and draws nothing with both off
 - `deckard.editor.embedProblems`
-- `deckard.editor.unlinkedMentions`
 - `deckard.editor.hubProgress`
 - `deckard.editor.breadcrumbs`
 - `deckard.editor.stepProgress`
@@ -94,19 +93,37 @@ note — a rollover skips those, and in copy mode they would otherwise keep the
 lens up after every rollover. The arrows use `findAdjacentDailyNote()`, and
 run the existing previous and next commands.
 
-### Link problems
+### Problems
+
+Line 1 keeps what places the note, a breadcrumb or the daily ‹ › with
+**Carry in N** on today's note, hub progress on a hub, and **Linked from N
+notes** as its own lens. Everything wrong with the note shares one lens
+beside them, drawn only when there is something wrong, such as
+**2 missing · 1 ambiguous · 4 unlinked**: links that name no note, links that
+name a note several notes share, and mentions of the note in other notes
+without a link. `describeNoteProblems()` decides what it says and does.
+
+It replaces four lenses: **N links open no note**, **Create N missing
+notes**, **Mentioned in N notes without a link**, and **Link N mentions**.
+With one kind of problem, selecting it does what that kind's own lens did:
+broken links are fixed by creating the missing notes, or, when every broken
+link names a note several share, shown in the references peek; unlinked
+mentions are linked. With both kinds it opens a list of each fix that
+applies: **Show broken links**, **Create missing notes**, **Show unlinked
+mentions**, and **Link mentions**.
 
 `findLinkProblems()` already finds the `[[links]]` that open no note or
 several. The lens counts them from the editor's text, so it follows unsaved
-edits the way the diagnostics do. **Create N missing notes** appears only for
-names no note has; an ambiguous name is not fixed by creating another note.
-An existing note is never overwritten.
+edits the way the diagnostics do. **Create missing notes** is offered only
+for names no note has; an ambiguous name is not fixed by creating another
+note. An existing note is never overwritten. The diagnostic on each link,
+and its **Create note** quick fix, stay.
 
 ### Embeds
 
 `resolveEmbed()` is what the preview draws. The lens appears when it draws a
 message instead of a note, with that message as the lens title — except a
-note name that opens no note, which the link-problem lens and the diagnostics
+note name that opens no note, which the problems lens and the diagnostics
 already mark. Selecting it opens the note the embed names, where the heading
 or `^marker` went missing.
 
@@ -121,14 +138,16 @@ because links match names without regard to case. The link is one
 `applyWorkspaceWrite()`, so it is previewed by `deckard.previewWorkspaceWrites`
 and taken back by `Deckard: Undo Last Change`.
 
-The lens gives the count and the bulk action. The fuller view is the Context
-sidebar's **Mentioned without a link** group, which lists each mention with
-its own **Link**, and **Link all**.
+The problems lens gives the count and the bulk action. The fuller view is the
+Context sidebar's **Mentioned without a link** group, which lists each
+mention with its own **Link**, and **Link all**.
 
 ## Testing
 
 Each group's state function has unit tests in `editor-lenses.test.ts`,
-including the cases where nothing is shown. `extension.test.ts` asks VS Code
+including the cases where nothing is shown; what the problems lens says and
+does, with one kind of problem and with two, is tested in
+`note-problems-lens.test.ts`, which runs without VS Code. `extension.test.ts` asks VS Code
 for a note's lenses through `vscode.executeCodeLensProvider`, as the existing
 reference-count test does. All four suites run before each commit.
 

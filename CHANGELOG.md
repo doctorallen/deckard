@@ -12,6 +12,17 @@
 
 ### Changed
 
+- **One problems lens on a note's first line.** The four lenses for a
+  note's problems, **N links open no note**, **Create N missing notes**,
+  **Mentioned in N notes without a link** and **Link N mentions**, are one
+  lens now, drawn only when something is wrong, such as
+  **2 missing · 4 unlinked**. With one kind of problem, selecting it creates
+  the missing notes or links the mentions, as the old lens did; with both,
+  it lists each fix: Show broken links, Create missing notes, Show unlinked
+  mentions, and Link mentions. `deckard.editor.linkProblems` and
+  `deckard.editor.unlinkedMentions` still decide which kinds it counts.
+  **Linked from N notes**, the daily ‹ ›, breadcrumbs and hub progress keep
+  their own lenses, and a missing link keeps its **Create note** quick fix.
 - **Zen never hides data.** Zen used to leave out the counts beside names
   and write a due date only as how far off it is. It now shows every
   count, and writes a due date both ways, "Overdue 2 days · 2026-10-02".

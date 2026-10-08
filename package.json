@@ -2111,7 +2111,7 @@
           "deckard.editor.linkProblems": {
             "type": "boolean",
             "scope": "resource",
-            "description": "Show, on a note's first line, how many of its [[Wiki links]] open no note, and an action that creates the notes the missing ones name. A note whose links all open a note shows nothing. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
+            "description": "Count, in the problems lens on a note's first line, the [[Wiki links]] in it that open no note; selecting the lens creates the notes the missing ones name, or lists each fix when the note has unlinked mentions too. A note whose links all open a note adds nothing to it. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
             "order": 8
           },
           "deckard.editor.embedProblems": {
@@ -2123,7 +2123,7 @@
           "deckard.editor.unlinkedMentions": {
             "type": "boolean",
             "scope": "resource",
-            "description": "Show, on a note's first line, how many other notes write its title or an alias as plain text without linking to it, and an action that links them. A note no other note names shows nothing. Left unset, it follows the editor preset: on in Full, off in Tasks, Writing and Off. Set it here to override the preset.",
+            "description": "Count, in the problems lens on a note's first line, the places other notes write its title or an alias as plain text without linking to it; selecting the lens links them, or lists each fix when the note has broken links too. A note no other note names adds nothing to it. Left unset, it follows the editor preset: on in Full, off in Tasks, Writing and Off. Set it here to override the preset.",
             "order": 10
           },
           "deckard.links.style": {

@@ -29,7 +29,7 @@ Every change Deckard makes to your files, what starts it, and the setting that c
 | A note from a template | `Deckard: New Note from Template` | `deckard.templatesFolder` |
 | Three starter templates | **Create Starter Templates**, offered when the templates folder is empty | |
 | A hub note for a tag | **Create hub note** on a tag's page, or `Deckard: Create Hub Note for Tag…` | A template named after the tag's namespace |
-| A note a link names | **Create note** on a `[[link]]` that opens none, or **Create missing notes** above the note | |
+| A note a link names | **Create note** on a `[[link]]` that opens none, or **Create missing notes** from the problems lens above the note | |
 | A calendar file of your dated tasks | `Deckard: Export Tasks as Calendar…`, or kept up to date as tasks change (*automatic*, once set) | `deckard.calendar.exportFile`, empty by default |
 | A JSON copy of favorites, pins, and searches | `Deckard: Export Favorites, Pins, and Searches` | |
 | A sample workspace | `Deckard: Create a Work Sample` or `Deckard: Create the Story Tour`, in Deckard's own storage, not your folder | |
