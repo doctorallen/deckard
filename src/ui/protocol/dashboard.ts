@@ -27,6 +27,7 @@ import type {
   GoToPageMessage,
   ListGoToMessage,
   OpenGoToMessage,
+  OpenHelpMessage,
   OpenSearchMessage,
   OpenSourceMessage,
   OpenTagMessage,
@@ -35,7 +36,6 @@ import type {
   PinNoteMessage,
   RenameTagMessage,
   ResultPaging,
-  DisplayCommandMessage,
   SetDisplayMessage,
   SetZenModeMessage,
   TagOverviewCard,
@@ -96,7 +96,7 @@ export interface DashboardSnapshot {
   totalTaskCount: number;
   /**
    * Home's three tiles: the Tasks view's Overdue and Today counts and every
-   * open task, of what `deckard.agenda.query` lists, each with the search
+   * open task, of what `deckard.tasks.viewQuery` lists, each with the search
    * it opens, so a tile's number and its search agree.
    */
   taskGlance?: TaskGlance;
@@ -136,16 +136,6 @@ export interface DashboardWidgetNote {
   pinKey?: string;
 }
 
-/** Two tags written together, as Home lists them. */
-export interface DashboardWidgetTagPair {
-  tags: [TagReference, TagReference];
-  /** How many times they were written together. */
-  count: number;
-  /** The share of the rarer tag's entries that also carry the other, 0–1. */
-  overlap: number;
-  detail: string;
-}
-
 /** Today's daily note, as Home shows it. */
 export interface DashboardWidgetToday {
   /** Today, as YYYY-MM-DD. */
@@ -183,9 +173,8 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   needsNewDate?: number;
   /** Tasks completed today, said under the Tasks view widget's list. */
   doneToday?: number;
-  /** The search that lists them, scoped by `deckard.agenda.query`. */
+  /** The search that lists them, scoped by `deckard.tasks.viewQuery`. */
   needsNewDateQuery?: string;
-  stats?: Array<{ label: string; value: number }>;
   /** A saved-search widget's search. */
   savedQuery?: string;
   /** Set when that search was saved on the Task Board, which opens it. */
@@ -198,10 +187,7 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   error?: string;
   /** The search widget's box: its completions and recent searches. */
   searchState?: QueryViewState;
-  tagPairs?: DashboardWidgetTagPair[];
   today?: DashboardWidgetToday;
-  /** The note a related-notes widget ranks by. */
-  sourceNote?: DashboardWidgetNote;
   /** Try next's one suggestion; absent, the widget draws nothing outside Customize. */
   tryNext?: DashboardTryNext;
 }
@@ -270,27 +256,9 @@ export interface ResetDashboardWidgetsMessage {
   type: 'resetDashboardWidgets';
 }
 
-/** What Home's + Add widget offers, for Related Notes to offer too. */
-export interface DashboardWidgetChoicesMessage {
-  type: 'widgetChoices';
-  choices: { value: string; label: string; description?: string }[];
-}
-
 /** Opens today's daily note, creating it when it does not exist yet. */
 export interface OpenDailyNoteMessage {
   type: 'openDailyNote';
-}
-
-/** Adds a task to today's daily note. */
-export interface QuickAddMessage {
-  type: 'quickAdd';
-  text: string;
-}
-
-/** Creates a tag's hub note. */
-export interface CreateTagHubMessage {
-  type: 'createTagHub';
-  tagKey: string;
 }
 
 /** Adds a next action, to today's note, for a tag that has nothing open. */
@@ -321,7 +289,7 @@ export interface WhatsNewMessage {
 /** Opens a Deckard view Home links to. */
 export interface OpenDeckardViewMessage {
   type: 'openView';
-  view: 'agenda' | 'stats' | 'sampleWorkspace' | 'checkSetup' | 'walkthrough';
+  view: 'agenda' | 'sampleWorkspace' | 'checkSetup' | 'walkthrough';
 }
 
 /**
@@ -375,8 +343,8 @@ export interface RecordRecentQueryMessage {
 export interface DashboardPageToHost {
   setZenMode: SetZenModeMessage;
   setDisplay: SetDisplayMessage;
-  displayCommand: DisplayCommandMessage;
   chooseTheme: ChooseThemeMessage;
+  openHelp: OpenHelpMessage;
   openGoTo: OpenGoToMessage;
   listGoTo: ListGoToMessage;
   goToPage: GoToPageMessage;
@@ -401,7 +369,6 @@ export interface DashboardPageToHost {
   recordRecentQuery: RecordRecentQueryMessage;
   setDashboardWidgets: SetDashboardWidgetsMessage;
   resetDashboardWidgets: ResetDashboardWidgetsMessage;
-  widgetChoices: DashboardWidgetChoicesMessage;
   openWhatsNew: MessageAs<WhatsNewMessage, 'openWhatsNew'>;
   dismissWhatsNew: MessageAs<WhatsNewMessage, 'dismissWhatsNew'>;
   runTryNext: MessageAs<TryNextMessage, 'runTryNext'>;
@@ -411,8 +378,6 @@ export interface DashboardPageToHost {
   openTaskBoard: OpenTaskBoardMessage;
   openView: OpenDeckardViewMessage;
   openDailyNote: OpenDailyNoteMessage;
-  quickAdd: QuickAddMessage;
-  createTagHub: CreateTagHubMessage;
   addNextAction: AddNextActionMessage;
   openNote: OpenNoteMessage;
   pinNote: MessageAs<PinNoteMessage, 'pinNote'>;
@@ -430,29 +395,10 @@ export interface DashboardPageState extends DashboardSnapshot {
   parkedTags: string[];
 }
 
-/** A widget chosen in Related Notes, which Home adds while customizing. */
-export interface AddWidgetMessage {
-  type: 'addWidget';
-  /** The widget's kind, as + Add widget names it. */
-  value: string;
-}
-
-/**
- * The answer to a quick add: the text the page sent, untrimmed, so the page
- * can keep it as a draft when the task was not added.
- */
-export interface QuickAddResultMessage {
-  type: 'quickAddResult';
-  text: string;
-  added: boolean;
-}
-
 /** What the host sends the Dashboard, by type. */
 export interface DashboardHostToPage {
   state: StateMessage<DashboardPageState>;
   indexing: IndexingMessage;
-  addWidget: AddWidgetMessage;
-  quickAddResult: QuickAddResultMessage;
 }
 
 /** Home's tiles: what is overdue, due today, and open, each a search. */

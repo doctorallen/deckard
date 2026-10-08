@@ -28,10 +28,6 @@ export interface DashboardView {
   openWidgetOptions: string | undefined;
   /** A tasks widget's search being typed in its options, by widget. */
   widgetQueryDrafts: Record<string, string>;
-  /** The task being typed into Quick add. */
-  quickAddDraft: string;
-  /** What became of the last task Quick add sent. */
-  quickAddStatus: string;
 }
 
 /** The snapshot as the page draws it: the host's, with the tag columns the page settled on. */

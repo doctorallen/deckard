@@ -24,7 +24,7 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.editTask', () =>
       editTaskCommand(indexer),
     ),
-    // A board column's + Add task passes its column; the palette, nothing.
+    // A board column's + passes its column; the palette, nothing.
     registerCommand('deckard.addTask', async (argument?: unknown) => {
       const start = readAddTaskArgument(argument);
       return start && addTaskCommand(services.writes.addTask, start);

@@ -3,8 +3,8 @@
  * and how much is parked.
  */
 import type { DeckardStatsSnapshot, StatsTrend } from '../../ui/protocol/stats';
-import { Eyebrow } from '../shared/eyebrow';
 import { Metric, type MetricTrend } from '../shared/metric';
+import { PageBar } from '../shared/pageBar';
 import { counted } from './model';
 
 /** A moment ago, in words. */
@@ -26,25 +26,28 @@ export function describeAge(milliseconds: number): string {
 }
 
 /**
- * The page's title, and when the index was last refreshed: how long ago, in
- * words, as due dates are, with the exact time on hover. "9/20/2026,
- * 7:58:24 PM" asked a reader to subtract it from now. Reindex reads every
- * note again.
+ * The page's bar: its title, and when the index was last refreshed: how
+ * long ago, in words, as due dates are, with the exact time on hover.
+ * "9/20/2026, 7:58:24 PM" asked a reader to subtract it from now. Reindex,
+ * which reads every note again, is the first row of ⋯.
  */
 export function StatsHeader({ updatedAt, builtAt }: { readonly updatedAt: number; readonly builtAt: number }) {
   return (
-    <header>
-      <div>
-        <Eyebrow trail="STATS" />
-        <h1>Workspace Stats</h1>
-      </div>
-      <p class="updated">
-        {updatedAt
-          ? ['Index last refreshed: ', <span title={new Date(updatedAt).toLocaleString()}>{describeAge(builtAt - updatedAt)}</span>, ' ']
-          : 'Index last refreshed: Not indexed yet '}
-        <button type="button" class="reindex" data-action="reindex" data-tip="Read every note again">Reindex</button>
-      </p>
-    </header>
+    <PageBar
+      trail="STATS"
+      label="Stats"
+      lead={(
+        <>
+          <h1>Workspace Stats</h1>
+          <p class="updated">
+            {updatedAt
+              ? ['Index last refreshed: ', <span title={new Date(updatedAt).toLocaleString()}>{describeAge(builtAt - updatedAt)}</span>]
+              : 'Index last refreshed: Not indexed yet'}
+          </p>
+        </>
+      )}
+      menu={{ actions: [{ action: 'reindex', text: 'Reindex', tip: 'Read every note again' }] }}
+    />
   );
 }
 

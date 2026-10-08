@@ -103,7 +103,7 @@ suite('The shared page core draws what the template script drew', () => {
     }
   });
 
-  test('an icon button, the help button, and the icons they carry', () => {
+  test('an icon button, and the icons it carries', () => {
     const helpNow = (): unknown => element('HelpIcon', {});
     assertSame(
       drawnBefore('iconButton with every option'),
@@ -114,32 +114,24 @@ suite('The shared page core draws what the template script drew', () => {
       'every option',
     );
     assertSame(drawnBefore('iconButton pressed'), drawnNow(element('IconButton', { label: 'Close', icon: helpNow(), pressed: true })), 'a pressed toggle');
-    assertSame(drawnBefore('helpButton at an anchor'), drawnNow(element('HelpButton', { anchor: 'periodic' })), 'help at an anchor');
-    assertSame(drawnBefore('helpButton'), drawnNow(element('HelpButton', {})), 'help');
   });
 
-  test('the gear\'s Display row: the three steps, what the reader changed, and Customize…', () => {
+  test('the gear\'s Zen row: one checkbox, named by its label, ticked while Zen is on', () => {
     const body = core.document.body;
-    const row = (): Element => drawnNow(element('ViewOptions', { groups: [shared().displayLevelOption()] }));
-    const pressed = (drawn: Element): string[] =>
-      Array.from(drawn.querySelectorAll('[data-display="level"]')).map((button) => `${button.textContent}:${button.getAttribute('aria-pressed')}`);
+    const row = (): Element => drawnNow(element('ViewOptions', { groups: [shared().zenOption()] }));
+    const box = (drawn: Element): HTMLInputElement | null => drawn.querySelector<HTMLInputElement>('input[type="checkbox"][data-action="set-zen"]');
 
     let drawn = row();
-    assert.deepStrictEqual(pressed(drawn), ['Full:true', 'Quiet:false', 'Zen:false']);
-    assert.strictEqual(drawn.querySelector('.view-options-changed')?.textContent, 'Customize…', 'nothing changed, nothing to undo');
-    assert.ok(drawn.querySelector('[data-command="customize"]'), 'Customize… is always there');
+    assert.strictEqual(box(drawn)?.checked, false);
+    assert.strictEqual(drawn.querySelector(`label[for="${box(drawn)?.id ?? ''}"]`)?.textContent, 'Zen', 'the row\'s label names the box');
+    assert.strictEqual(drawn.querySelectorAll('[data-display="level"], [data-command]').length, 0, 'no steps and no Reset or Customize…');
 
-    body.dataset.level = 'quiet';
-    body.dataset.changed = '2';
+    body.classList.add('zen');
     try {
       drawn = row();
-      assert.deepStrictEqual(pressed(drawn), ['Full:false', 'Quiet:true', 'Zen:false']);
-      assert.strictEqual(drawn.querySelector('.view-options-changed')?.textContent, '2 changed · Reset · Customize…');
-      assert.strictEqual(drawn.querySelector('[data-command="useStepValues"]')?.getAttribute('aria-label'), "Reset to Quiet's values");
-      assert.ok(drawn.querySelector('[data-command="useStepValues"]'));
+      assert.strictEqual(box(drawn)?.checked, true);
     } finally {
-      delete body.dataset.level;
-      delete body.dataset.changed;
+      body.classList.remove('zen');
     }
   });
 
@@ -172,6 +164,10 @@ suite('The shared page core draws what the template script drew', () => {
     const opener = core.document.createElement('button');
     opener.id = 'opener';
     core.document.body.appendChild(opener);
+    // A page with a search box, which / goes to.
+    const box = core.document.createElement('input');
+    box.setAttribute('data-action', 'query-input');
+    core.document.body.appendChild(box);
     opener.focus();
     shared().openKeySheet(sections);
     assertSame(layerBefore('keySheet'), layerNow('.key-sheet'), 'the sheet');
@@ -180,6 +176,13 @@ suite('The shared page core draws what the template script drew', () => {
     shared().closeKeySheet();
     assert.strictEqual(core.findAll('.key-sheet').length, 0);
     assert.strictEqual(core.document.activeElement?.id, 'opener');
+
+    // A page with no search box, such as the calendar page, lists no /.
+    box.remove();
+    shared().openKeySheet(sections);
+    assert.deepStrictEqual(core.findAll('.key-sheet kbd').map((key) => key.textContent), ['j', 'k', 'Shift+F10, or the menu key', 'Esc', '?']);
+    shared().closeKeySheet();
+    opener.remove();
   });
 
   test('an offer of Undo is drawn in its toast, focused, and taken back with its payload', () => {

@@ -1,35 +1,28 @@
 /**
- * The Task Board page: tasks as a Kanban board, a list, or a table,
- * narrowed by the search box every search page shares, with its view
- * options and status columns in the gear. A card moved between columns
+ * The Task Board page: tasks as a Kanban board or a table, narrowed by the
+ * search box every search page shares, with Add task in its bar and its
+ * saving, exporting, view options and status columns in its ⋯. A card moved between columns
  * moves at once and is written by the host, whose next state confirms it
  * or puts the card back.
  */
 import type { StateMessage } from '../../ui/protocol/messaging';
 import type { SavedToTasksViewMessage, TaskBoardMessage, TaskBoardSnapshot, ToggleRefusedMessage } from '../../ui/protocol/taskBoard';
 import { type ActionMenuGroup, closeActionMenu, openActionMenu } from '../shared/actionMenu';
-import { HelpButton } from '../shared/buttons';
-import { Eyebrow } from '../shared/eyebrow';
 import { installKeySheet, type KeySection } from '../shared/keySheet';
 import { installMenuKeys } from '../shared/menuKeys';
 import { openSourceMessage } from '../shared/openSource';
 import { onHostMessage, startPage } from '../shared/page';
+import { PageBar } from '../shared/pageBar';
 import { closeRankMenu, installRankedRows, moveKeyToEdge, rankKeys } from '../shared/rankedRows';
 import { createQueryEditor, refineModeOf } from '../shared/queryEditor';
 import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { announce } from '../shared/status';
 import { taskTitleOf } from '../shared/taskRow';
-import {
-  displayLevelOption,
-  installViewOptions,
-  themeOption,
-  ViewOptionChoices,
-  ViewOptions,
-} from '../shared/viewOptions';
+import { installViewOptions, type ViewOptionGroup, type ViewOptionItem } from '../shared/viewOptions';
 import { keptState, vscodeApi } from '../shared/vscode';
-import { GroupSwitch, TaskBoard, taskCardMoves } from './board';
+import { GroupSelect, TaskBoard, taskCardMoves } from './board';
 import { type BoardScroll, editRow, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll, sendHeldEdits, settleRefusedEdit } from './boardMoves';
-import { AgendaToggle, AvailableToggle, canRank, ColumnPicker, ResultTable, SaveSearchButton, SortControl, syncSaveToTasksView, TableSortNote, TaskList, TasksViewActions, TasksViewStrip } from './layouts';
+import { agendaRow, AvailableToggle, canRank, ColumnPicker, LayoutSwitch, ResultTable, saveSearchRow, SaveToTasksViewButton, SortControl, syncSaveToTasksView, TableSortNote, TasksViewStrip } from './layouts';
 import { board, type BoardPageState, type DrawnBoard, lingerRemaining } from './model';
 import { statusColumnNames, StatusSettings } from './statusSettings';
 
@@ -58,7 +51,7 @@ let scrolledTo = { x: 0, y: 0 };
 /** Where the board and its columns were scrolled when a draw began, put back after it. */
 let boardScrolledTo: BoardScroll | undefined;
 
-/** Set by Cancel until the plain board is drawn, which focus then goes to: its Save, in Save to Tasks view's place. */
+/** Set by Cancel until the plain board is drawn, which focus then goes to: its Add task, in Save to Tasks view's place. */
 let focusSaveAfterLeaving = false;
 
 // What every page shares comes first, as the template's component script
@@ -78,13 +71,6 @@ const store = startPage<BoardPageState>({
 });
 installMenuKeys();
 
-document.addEventListener('click', (event) => {
-  const target = event.target instanceof Element ? event.target : null;
-  if (target && target.closest('[data-action="open-help"]')) {
-    post({ type: 'openHelp' });
-  }
-});
-
 /** The Task Board searches tasks alone, with the box every search page uses. */
 const editor = createQueryEditor({
   getState: () => latest?.query,
@@ -101,17 +87,6 @@ const editor = createQueryEditor({
   label: 'Search tasks',
   resultKinds: ['tasks'],
   refineElsewhere: () => Boolean(latest && latest.refineInSidebar),
-  // Saving sits with the search it saves; the saved search reopens here.
-  // Opened to edit what the Tasks view lists, saving to the view comes first.
-  // Add task ends the row, the one control there that is not about the search.
-  actions: (hasText) => (
-    <>
-      {latest?.tasksViewMode ? <TasksViewActions listed={tasksViewListsBox()} hasText={hasText} /> : <SaveSearchButton label="Save" hasText={hasText} />}
-      <button data-action="export-tasks" data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export tasks</button>
-      <button data-action="add-task" data-tip="Write a new task in the task editor, into today's note or another you choose">Add task</button>
-    </>
-  ),
-  ownPrimary: () => Boolean(latest?.tasksViewMode),
 });
 
 /**
@@ -123,52 +98,73 @@ function tasksViewListsBox(): boolean {
   return Boolean(mode && mode.listed && editor.currentText().trim() === (latest?.query.text || '').trim());
 }
 
-/** After Cancel, puts focus on the plain board's Save once it is drawn, so it is not lost with the strip. */
+/** After Cancel, puts focus on the plain board's Add task once it is drawn, so it is not lost with the strip. */
 function focusSaveOnceLeft(): void {
   if (!focusSaveAfterLeaving || shown()?.tasksViewMode) {
     return;
   }
   focusSaveAfterLeaving = false;
-  document.querySelector<HTMLElement>('[data-action="save-board-search"]')?.focus();
+  document.querySelector<HTMLElement>('[data-action="add-task"]')?.focus();
 }
 
 /**
- * Hides the list's rows, the board's cards, and the table's rows that do
- * not have every plain word being typed, by what each shows, file and line
- * included, and keeps the board's counts and its Tab stop with the cards
- * left. One check for every layout, run as the words are typed and after
- * every draw: the board used to be drawn by a check of its own that left
- * out the file's name, so a card the words showed vanished at the next
- * draw, and a column counted cards the words had hidden.
+ * Hides the board's cards and the table's rows that do not have every
+ * plain word being typed, by what each shows, file and line included, and
+ * keeps the board's counts and its Tab stop with the cards left. One check
+ * for both layouts, run as the words are typed and after every draw: the
+ * board used to be drawn by a check of its own that left out the file's
+ * name, so a card the words showed vanished at the next draw, and a column
+ * counted cards the words had hidden.
  */
 function filterTaskEntries(): void {
   const words = editor.previewWords(editor.currentText());
-  document.querySelectorAll<HTMLElement>('.task-list .task-row, .task-board .board-card, .result-table .result-row').forEach((entry) => {
+  document.querySelectorAll<HTMLElement>('.task-board .board-card, .result-table .result-row').forEach((entry) => {
     const text = String(entry.textContent).toLowerCase();
     entry.hidden = !words.every((word) => text.includes(word));
   });
   followShownCards();
 }
 
-/** The gear: layout, the Tasks view, the table's columns, the status columns, theme, and zen. */
-function BoardViewOptions({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
+/**
+ * The ⋯'s own actions: Save search…, which keeps what the box shows whether
+ * or not Enter ran it, List in Tasks view, and Export tasks….
+ */
+function boardActions(snapshot: TaskBoardSnapshot): ViewOptionItem[] {
+  return [
+    saveSearchRow(Boolean(editor.currentText().trim())),
+    agendaRow(snapshot),
+    { action: 'export-tasks', text: 'Export tasks…', tip: 'Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file' },
+  ];
+}
+
+/** The ⋯'s view rows: the cards' parent tag or the table's columns, then the status columns. */
+function boardView(snapshot: TaskBoardSnapshot): ViewOptionGroup[] {
   const isTable = snapshot.layout === 'table';
+  return [
+    ...(isTable ? [] : [{ label: 'Cards', content: <ParentTagToggle snapshot={snapshot} /> }]),
+    { label: 'Status columns', content: <StatusSettings snapshot={snapshot} />, stacked: true },
+    ...(isTable ? [{ label: 'Columns', content: <ColumnPicker snapshot={snapshot} />, stacked: true }] : []),
+  ];
+}
+
+/**
+ * The bar's right side: the count, then the one filled control, Add task,
+ * unless the board is editing what the Tasks view lists: then Save to Tasks
+ * view is, and Add task is drawn plain after it.
+ */
+function BoardControls({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
+  const shown = snapshot.taskCount;
+  const editing = Boolean(snapshot.tasksViewMode);
   return (
-    <ViewOptions
-      groups={[
-        { label: 'Layout', content: <ViewOptionChoices action="set-task-layout" choices={[['list', 'List'], ['board', 'Board'], ['table', 'Table']]} selected={snapshot.layout} label="Task layout" /> },
-        { label: 'Tasks view', content: <AgendaToggle snapshot={snapshot} /> },
-        ...(isTable ? [{ label: 'Columns', content: <ColumnPicker snapshot={snapshot} />, stacked: true }] : []),
-        ...(isTable ? [] : [{ label: 'Cards', content: <ParentTagToggle snapshot={snapshot} /> }]),
-        { label: 'Status columns', content: <StatusSettings snapshot={snapshot} />, stacked: true },
-        themeOption(),
-        displayLevelOption(),
-      ]}
-    />
+    <>
+      <span class="board-total">{`${shown}${shown === 1 ? ' task' : ' tasks'}`}</span>
+      {editing ? <SaveToTasksViewButton listed={tasksViewListsBox()} /> : null}
+      <button type="button" class={editing ? undefined : 'primary'} data-action="add-task" data-tip="Write a new task in the task editor, into today's note or another you choose">Add task</button>
+    </>
   );
 }
 
-/** The gear's switch for the tag each card and row is under. */
+/** The switch, in ⋯'s view rows, for the tag each card is under. */
 function ParentTagToggle({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   return (
     <label class="board-settings-row">
@@ -178,17 +174,15 @@ function ParentTagToggle({ snapshot }: { readonly snapshot: TaskBoardSnapshot })
   );
 }
 
-/** What the search box's status line holds: the list's sort, the table's, or the board's grouping and sort, then Can start now. */
+/**
+ * What the search box's status line holds: Board | Table, then the board's
+ * Group and Sort or the table's sort, then Can start now.
+ */
 function StatusControls({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
-  let control;
-  if (snapshot.layout === 'list') {
-    control = <SortControl snapshot={snapshot} />;
-  } else if (snapshot.layout === 'table') {
-    control = <TableSortNote snapshot={snapshot} />;
-  } else {
-    control = <><GroupSwitch snapshot={snapshot} /><SortControl snapshot={snapshot} /></>;
-  }
-  return <>{control}<AvailableToggle pressed={Boolean(snapshot.availableOnly)} /></>;
+  const control = snapshot.layout === 'table'
+    ? <TableSortNote snapshot={snapshot} />
+    : <><GroupSelect snapshot={snapshot} /><SortControl snapshot={snapshot} /></>;
+  return <><LayoutSwitch layout={snapshot.layout} />{control}<AvailableToggle pressed={Boolean(snapshot.availableOnly)} /></>;
 }
 
 /**
@@ -207,29 +201,21 @@ function StatusTagsStrip({ text }: { readonly text: string }) {
 
 /** The searched tasks, as the layout shows them. */
 function BoardContent({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
-  if (snapshot.layout === 'list') {
-    return <TaskList snapshot={snapshot} />;
-  }
-  if (snapshot.layout === 'table') {
-    return <ResultTable snapshot={snapshot} />;
-  }
-  return <TaskBoard snapshot={snapshot} />;
+  return snapshot.layout === 'table' ? <ResultTable snapshot={snapshot} /> : <TaskBoard snapshot={snapshot} />;
 }
 
 /** The whole page: its header, the search box with its Refine row, and the tasks. */
 function BoardPage({ state }: { readonly state: DrawnBoard }) {
   const snapshot = state.snapshot;
-  const shown = snapshot.taskCount;
   return (
     <>
-      <header>
-        <div><Eyebrow trail="TASK BOARD" /><h1>Task Board</h1></div>
-        <div class="board-header-actions">
-          <span class="board-total">{`${shown}${shown === 1 ? ' task' : ' tasks'}`}</span>
-          <HelpButton anchor="task-views" />
-          <BoardViewOptions snapshot={snapshot} />
-        </div>
-      </header>
+      <PageBar
+        trail="TASK BOARD"
+        lead={<h1>Task Board</h1>}
+        label="Task Board"
+        controls={<BoardControls snapshot={snapshot} />}
+        menu={{ actions: boardActions(snapshot), view: boardView(snapshot), keySheet: true }}
+      />
       {snapshot.tasksViewMode ? <TasksViewStrip /> : null}
       {snapshot.statusTagsLeft ? <StatusTagsStrip key="status-tags" text={snapshot.statusTagsLeft} /> : null}
       {editor.bar(<StatusControls snapshot={snapshot} />)}
@@ -262,9 +248,9 @@ function shown(): TaskBoardSnapshot | undefined {
   return store.state.snapshot;
 }
 
-/** The ids of the tasks the list shows, in order. */
+/** The ids of the tasks the table shows, in order. */
 function listedTaskIds(): string[] {
-  return (shown()?.tasks || []).map((item) => item.task.id);
+  return (shown()?.table?.rows || []).map((row) => row.taskId);
 }
 
 /** Sends the status columns' new order, by status name. */
@@ -272,11 +258,11 @@ function setColumnOrder(names: string[]): void {
   post({ type: 'setBoardColumnOrder', names });
 }
 
-// A ranked list, and the status columns in the gear, are ordered by
-// dragging their rows, or from their context menu.
+// The table in Rank order, and the status columns in ⋯, are ordered
+// by dragging their rows, or from their context menu.
 installRankedRows({
   kinds: {
-    task: { selector: '.task-list .task-row[data-task-id]', key: 'taskId' },
+    tableRow: { selector: '.result-table tr.result-row[data-task-id]', key: 'taskId' },
     status: { selector: '.board-status[data-status]', key: 'status', edgeLabels: ['Move to first column', 'Move to last column'] },
   },
   canRank: (kind) => (kind === 'status' ? Boolean(shown()) : canRank(shown())),
@@ -333,7 +319,7 @@ installBoardMoves({
 });
 installViewOptions();
 
-/** A list or table row's menu groups, from what the host says its task has now, or undefined with none. */
+/** A table row's menu groups, from what the host says its task has now, or undefined with none. */
 function rowMoves(row: HTMLElement): ActionMenuGroup[] | undefined {
   const snapshot = shown();
   const menu = snapshot && snapshot.taskMenus && snapshot.taskMenus[String(row.dataset.taskId)];
@@ -348,14 +334,14 @@ function rowAlreadyHas(row: HTMLElement, value: string): boolean {
 }
 
 /**
- * A list or table row's menu: the board card's status, priority, due,
+ * A table row's menu: the board card's status, priority, due,
  * steps, done, and Move to…, from what the host says the task has now. The
  * row is drawn again when the note is written, so nothing moves at once,
  * and a choice made before then waits for it, by which time the task may
  * have what was chosen.
  */
 function openRowMenu(opener: HTMLElement): boolean {
-  const row = opener.closest<HTMLElement>('.task-row, .result-row');
+  const row = opener.closest<HTMLElement>('.result-row');
   const groups = row ? rowMoves(row) : undefined;
   if (!row || !groups) {
     return false;
@@ -379,12 +365,12 @@ function openRowMenu(opener: HTMLElement): boolean {
 }
 
 /**
- * Completes or reopens a list or table row's task from its checkbox. Held
+ * Completes or reopens a table row's task from its checkbox. Held
  * behind the task's last edit, the task may be so already by the time it
  * goes; otherwise its box, which the host's draw set, shows it again.
  */
 function toggleRow(box: HTMLInputElement): void {
-  const row = box.closest<HTMLElement>('.task-row, .result-row');
+  const row = box.closest<HTMLElement>('.result-row');
   const completed = box.checked;
   announce(`${completed ? 'Completed ' : 'Reopened '}${taskTitleOf(box)}.`);
   if (!row) {
@@ -450,9 +436,9 @@ function refineByTag(target: HTMLElement, event: MouseEvent): void {
   }
 }
 
-/** The row an event happened in, in the list or the table. */
+/** The table row an event happened in. */
 function rowOf(target: Element | null): HTMLElement | null {
-  return target ? target.closest<HTMLElement>('.task-list .task-row, .result-table .result-row') : null;
+  return target ? target.closest<HTMLElement>('.result-table .result-row') : null;
 }
 
 document.addEventListener('mousedown', (event) => {
@@ -488,9 +474,10 @@ document.addEventListener('click', (event) => {
   }
 });
 
-// A right-click on a list or table row opens its ⋯ menu, as on a card. On
-// a ranked list the row's Move to top and Move to bottom menu answered it
-// first, and one menu opens, not two over each other; ⋯ is still its button.
+// A right-click on a table row opens its ⋯ menu, as on a card. On a
+// ranked table the row's Move up, Move down, and to either end menu
+// answered it first, and one menu opens, not two over each other; ⋯ is
+// still its button.
 document.addEventListener('contextmenu', (event) => {
   const element = event.target instanceof Element ? event.target : null;
   const row = rowOf(element);
@@ -588,10 +575,10 @@ onHostMessage<{ type: 'moveRefused'; taskId: string }>('moveRefused', (message) 
   settleRefusedEdit(String(message.taskId));
   announce(`${card ? taskTitleOf(card) : 'The task'} was not moved.`);
 });
-// So is a completion or reopening it could not write, from a card, a row,
-// or the table.
+// So is a completion or reopening it could not write, from a card or a
+// table row.
 onHostMessage<ToggleRefusedMessage>('toggleRefused', (message) => {
-  const entry = Array.from(document.querySelectorAll<HTMLElement>('.board-card, .task-row, .result-row')).find((candidate) => candidate.dataset.taskId === String(message.taskId));
+  const entry = Array.from(document.querySelectorAll<HTMLElement>('.board-card, .result-row')).find((candidate) => candidate.dataset.taskId === String(message.taskId));
   settleRefusedEdit(String(message.taskId));
   announce(`${entry ? taskTitleOf(entry) : 'The task'} was not ${message.completed ? 'completed' : 'reopened'}.`);
 });
@@ -617,7 +604,7 @@ onHostMessage<StateMessage<TaskBoardSnapshot>>('state', (message) => {
   }
 });
 
-/** The keys a focused card answers, or a ranked list's, which the ? sheet lists. */
+/** The keys a focused card answers, or a ranked table row, which the ? sheet lists. */
 const BOARD_KEYS: KeySection = {
   title: 'A focused card',
   keys: [
@@ -633,9 +620,10 @@ const BOARD_KEYS: KeySection = {
     ['[ ]', 'Move it to the column on the left or right'],
     ['e', 'Edit the whole task'],
     ['s', 'Break it into steps'],
+    ['Shift+F10, the menu key, or Alt+Enter', 'Open its ⋯ menu'],
   ],
 };
-const LIST_KEYS: KeySection = { title: 'Ranked list', keys: [['Alt+↑, Alt+↓', 'Move a ranked task up or down']] };
-installKeySheet(() => (shown()?.layout === 'list' ? [LIST_KEYS] : [BOARD_KEYS]));
+const TABLE_KEYS: KeySection = { title: 'A table row, in Rank order', keys: [['Alt+↑, Alt+↓', 'Move a ranked task up or down']] };
+installKeySheet(() => (shown()?.layout === 'table' ? [TABLE_KEYS] : [BOARD_KEYS]));
 
 post({ type: 'ready' });

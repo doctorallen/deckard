@@ -6,13 +6,16 @@ import type { TagMergeCandidate } from '../../domain/model/tags';
 import type { UnreadableNote } from '../../domain/model/workspaceIndex';
 import type { IndexingMessage, MessageOf, StateMessage } from './messaging';
 import type {
+  ChooseThemeMessage,
   GoToPageMessage,
   ListGoToMessage,
   MergeTagsMessage,
   OpenGoToMessage,
+  OpenHelpMessage,
   OpenSearchMessage,
   OpenSourceMessage,
   OpenTagMessage,
+  SetZenModeMessage,
 } from './shared';
 
 export type { TagMergeCandidate } from '../../domain/model/tags';
@@ -207,6 +210,9 @@ export interface StatsPageToHost {
   openGoTo: OpenGoToMessage;
   listGoTo: ListGoToMessage;
   goToPage: GoToPageMessage;
+  setZenMode: SetZenModeMessage;
+  chooseTheme: ChooseThemeMessage;
+  openHelp: OpenHelpMessage;
 }
 
 /** What the host sends the Stats page, by type. */

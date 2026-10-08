@@ -49,8 +49,6 @@ const view: DashboardView = {
   ...readKeptView(),
   openWidgetOptions: undefined,
   widgetQueryDrafts: {},
-  quickAddDraft: '',
-  quickAddStatus: '',
 };
 
 /**
@@ -89,7 +87,6 @@ function homeContext(snapshot: DashboardPageState): HomeContext {
     savedFilters: snapshot.savedFilters,
     openOptions: view.openWidgetOptions,
     queryDrafts: view.widgetQueryDrafts,
-    quickAdd: { draft: view.quickAddDraft, status: view.quickAddStatus },
     searchBar: () => editor.bar(),
   };
 }
@@ -172,15 +169,13 @@ function saveView(): void {
 
 /**
  * Draws the page again without taking the reader's place: the caret in a
- * field being typed in, or what had focus. First it tells the host what
- * + Add widget offers, when that changed, settles the tag columns, puts back
- * what the last draw's new widget changed, and closes the rank menu, as each
- * of the template's draws did.
+ * field being typed in, or what had focus. First it settles the tag
+ * columns, puts back what the last draw's new widget changed, and closes
+ * the rank menu, as each of the template's draws did.
  */
 function redraw(change: Partial<DashboardStore> = {}): void {
   const snapshot = change.snapshot ?? shown();
   if (snapshot) {
-    sendWidgetChoices(snapshot);
     const columns = view.tagColumns ?? snapshot.tagColumns ?? 2;
     view.tagColumns = columns;
     snapshot.tagColumns = columns;
@@ -375,7 +370,7 @@ function addWidget(value: string): void {
   const widget: DashboardWidgetConfig = {
     id: mintWidgetId(kind),
     kind,
-    width: kind === 'search' || kind === 'stats' || kind === 'quickAdd' ? 'full' : 'half',
+    width: kind === 'search' ? 'full' : 'half',
   };
   if (traits.listed) {
     widget.count = 5;
@@ -463,25 +458,6 @@ function revealNewWidget(): void {
       newWidget = undefined;
     }
   }, Math.max(0, newWidget.until - Date.now()));
-}
-
-/** The last list of what + Add widget offers that the host was told, as JSON. */
-let sentChoices = '';
-
-/**
- * Tells the host what can be added, when that has changed, so Related Notes
- * can offer it too. It is worked out from Home's settings, which every
- * snapshot carries, so a Dashboard opened on the Tags tab, sent no widgets
- * yet, tells it as well.
- */
-function sendWidgetChoices(snapshot: DashboardPageState): void {
-  const choices = widgetChoices(widgetConfig(snapshot), snapshot.savedFilters);
-  const key = JSON.stringify(choices);
-  if (key === sentChoices) {
-    return;
-  }
-  sentChoices = key;
-  send({ type: 'widgetChoices', choices });
 }
 
 /** Removes a widget at once, with Undo for 8 seconds: it goes back where it was, with its width and its options. */
@@ -694,7 +670,6 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, event: MouseEvent) 
   'set-widget-count': (target) => updateWidget(target.dataset.widgetId, { count: Number(target.dataset.value), page: 1 }),
   'set-widget-days': (target) => updateWidget(target.dataset.widgetId, { days: Number(target.dataset.value) }),
   'open-daily-note': () => send({ type: 'openDailyNote' }),
-  'create-tag-hub': (target) => send({ type: 'createTagHub', tagKey: data(target, 'tagKey') }),
   'add-next-action': (target) => send({ type: 'addNextAction', tagKey: data(target, 'tagKey') }),
   'rename-tag': (target) => send({ type: 'renameTag', tagKey: data(target, 'tagKey') }),
   'open-note': (target, event) => send({ type: 'openNote', filePath: data(target, 'filePath'), ...(event?.shiftKey ? { opposite: true } : {}) }),
@@ -776,26 +751,9 @@ document.addEventListener('focusin', (event) => {
   editor.handleFocusIn(event);
 });
 
-/** Sends the task typed into Quick add: the field is cleared at once, and the host gives the text back if it could not add it. */
-function submitQuickAdd(): void {
-  const text = view.quickAddDraft.trim();
-  if (!text) {
-    return;
-  }
-  view.quickAddDraft = '';
-  view.quickAddStatus = 'Adding…';
-  send({ type: 'quickAdd', text });
-  redraw();
-}
-
 document.addEventListener('submit', (event) => {
   const element = event.target instanceof Element ? event.target : null;
   if (!element) {
-    return;
-  }
-  if (element.closest('[data-form="quick-add"]')) {
-    event.preventDefault();
-    submitQuickAdd();
     return;
   }
   const form = element.closest<HTMLElement>('[data-form="widget-query"]');
@@ -887,6 +845,8 @@ const CHANGES: Readonly<Record<string, (target: HTMLInputElement) => void>> = {
     }
   },
   'set-widget-filter': (target) => updateWidget(target.dataset.widgetId, { filterId: target.value }),
+  // No sort is the Task Board's, kept as none, so it follows the board.
+  'set-widget-sort': (target) => updateWidget(target.dataset.widgetId, { sort: target.value ? (target.value as DashboardWidgetConfig['sort']) : undefined, page: 1 }),
   'set-widget-namespace': (target) => {
     // A widget's own default is kept as no namespace, as the host keeps it.
     const kind = widgetKindOf(target.dataset.widgetId);
@@ -926,42 +886,12 @@ document.addEventListener('input', (event) => {
     scheduleSearch(view.browseQuery);
     redraw();
   }
-  if (action === 'quick-add-draft') {
-    view.quickAddDraft = target.value;
-  }
   if (action === 'widget-query-draft') {
     view.widgetQueryDrafts[String(target.dataset.widgetId)] = target.value;
   }
 });
 
 // ----- What the host sends ---------------------------------------------------
-
-// A widget chosen in Related Notes: Home is shown, goes into customizing,
-// and adds it. On the Tags tab the new widget would be added out of sight.
-onHostMessage<{ type: 'addWidget'; value: unknown }>('addWidget', (message) => {
-  if (typeof message.value !== 'string') {
-    return;
-  }
-  if (view.mode !== 'home') {
-    setDashboardMode('home', false);
-  }
-  if (!view.editingHome) {
-    setEditingHome(true);
-  }
-  addWidget(message.value);
-});
-
-onHostMessage<{ type: 'quickAddResult'; text: string; added: boolean }>('quickAddResult', (message) => {
-  if (message.added) {
-    view.quickAddStatus = `Added “${message.text}”.`;
-  } else {
-    view.quickAddStatus = 'Could not add the task.';
-    if (!view.quickAddDraft) {
-      view.quickAddDraft = message.text;
-    }
-  }
-  redraw();
-});
 
 /**
  * Takes the host's next snapshot: its parked tags, its tag columns, the tab

@@ -1,11 +1,9 @@
 <body
   class="zen"
   data-cards="flat"
-  data-counts="hidden"
-  data-dates="relative"
+  data-controls="quiet"
   data-density="compact"
   data-help="hidden"
-  data-level="zen"
   data-styling="plain"
   data-tags="text"
 > <main
@@ -14,6 +12,7 @@
     id="app"
   ><div
       class="context-pages-band"
+      data-zen-region=""
     ><div
         aria-label="Deckard pages"
         aria-orientation="vertical"
@@ -231,6 +230,7 @@
       ><details
         class="view-options"
         data-options="pages"
+        data-zen-reveal=""
       ><summary
           aria-label="Pages: how they look, and which"
           data-tip="Pages: how they look, and which"
@@ -438,9 +438,14 @@
       ></details
     ><div
       class="related-notes-controls"
+      data-zen-region=""
     ><span
+        class="section-label"
+      >Related notes</span
+      ><label
         class="related-notes-sort-control"
-      ><select
+        data-zen-reveal=""
+      >Sort:<select
           aria-label="Sort related notes"
           class="related-notes-sort"
           data-action="set-related-notes-sort"
@@ -462,23 +467,10 @@
             data-dom-value="access"
           >Most accessed</option
           ></select
-        ><svg
-          aria-hidden="true"
-          class="related-notes-sort-icon"
-          fill="none"
-          focusable="false"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.5"
-          viewBox="0 0 16 16"
-        ><path
-            d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"
-          ></path
-          ></svg
-        ></span
+        ></label
       ><details
         class="view-options"
+        data-zen-reveal=""
       ><summary
           aria-label="View options"
           data-tip="View options"
@@ -561,15 +553,13 @@
           ></div
         ></details
       ></div
-    ><span
-      class="section-label"
-    >Related notes</span
     ><div
       class="note-list"
     ><article
         class="note"
         data-file-path="notes/note-0.md"
         data-line="1"
+        data-reveal-region=""
         data-terms="note atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -699,21 +689,26 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-0 / line 1</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-0 / line 1</span
+          ></div
         ><p
           class="note-excerpt"
         >Mentions and the <mark
           >Atlas</mark
           > project, entry 0.</p
         ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: note, atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-1.md"
         data-line="1"
+        data-reveal-region=""
         data-terms="note atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -843,21 +838,26 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-1 / line 1</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-1 / line 1</span
+          ></div
         ><p
           class="note-excerpt"
         >Mentions and the <mark
           >Atlas</mark
           > project, entry 1.</p
         ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: note, atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-10.md"
         data-line="1"
+        data-reveal-region=""
         data-terms="note atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -987,21 +987,26 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-10 / line 1</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-10 / line 1</span
+          ></div
         ><p
           class="note-excerpt"
         >Mentions and the <mark
           >Atlas</mark
           > project, entry 10.</p
         ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: note, atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-11.md"
         data-line="1"
+        data-reveal-region=""
         data-terms="note atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -1131,21 +1136,26 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-11 / line 1</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-11 / line 1</span
+          ></div
         ><p
           class="note-excerpt"
         >Mentions and the <mark
           >Atlas</mark
           > project, entry 11.</p
         ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: note, atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-2.md"
         data-line="1"
+        data-reveal-region=""
         data-terms="note atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -1275,21 +1285,26 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-2 / line 1</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-2 / line 1</span
+          ></div
         ><p
           class="note-excerpt"
         >Mentions and the <mark
           >Atlas</mark
           > project, entry 2.</p
         ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: note, atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-3.md"
         data-line="1"
+        data-reveal-region=""
         data-terms="note atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -1419,21 +1434,26 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-3 / line 1</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-3 / line 1</span
+          ></div
         ><p
           class="note-excerpt"
         >Mentions and the <mark
           >Atlas</mark
           > project, entry 3.</p
         ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: note, atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-4.md"
         data-line="1"
+        data-reveal-region=""
         data-terms="note atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -1563,21 +1583,26 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-4 / line 1</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-4 / line 1</span
+          ></div
         ><p
           class="note-excerpt"
         >Mentions and the <mark
           >Atlas</mark
           > project, entry 4.</p
         ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: note, atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-5.md"
         data-line="1"
+        data-reveal-region=""
         data-terms="note atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -1707,21 +1732,26 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-5 / line 1</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-5 / line 1</span
+          ></div
         ><p
           class="note-excerpt"
         >Mentions and the <mark
           >Atlas</mark
           > project, entry 5.</p
         ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: note, atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-6.md"
         data-line="1"
+        data-reveal-region=""
         data-terms="note atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -1851,21 +1881,26 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-6 / line 1</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-6 / line 1</span
+          ></div
         ><p
           class="note-excerpt"
         >Mentions and the <mark
           >Atlas</mark
           > project, entry 6.</p
         ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: note, atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-7.md"
         data-line="1"
+        data-reveal-region=""
         data-terms="note atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -1995,21 +2030,26 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-7 / line 1</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-7 / line 1</span
+          ></div
         ><p
           class="note-excerpt"
         >Mentions and the <mark
           >Atlas</mark
           > project, entry 7.</p
         ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: note, atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-8.md"
         data-line="1"
+        data-reveal-region=""
         data-terms="note atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -2139,21 +2179,26 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-8 / line 1</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-8 / line 1</span
+          ></div
         ><p
           class="note-excerpt"
         >Mentions and the <mark
           >Atlas</mark
           > project, entry 8.</p
         ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: note, atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-9.md"
         data-line="1"
+        data-reveal-region=""
         data-terms="note atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -2283,21 +2328,26 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-9 / line 1</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-9 / line 1</span
+          ></div
         ><p
           class="note-excerpt"
         >Mentions and the <mark
           >Atlas</mark
           > project, entry 9.</p
         ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: note, atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/tasks.md"
         data-line="1"
+        data-reveal-region=""
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
         tabindex="0"
@@ -2401,8 +2451,12 @@
             ></div
           ></div
         ><div
-          class="source"
-        >tasks / line 1</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >tasks / line 1</span
+          ></div
         ><p
           class="note-excerpt"
         >Chase the replicant through the neon market and file the report before the rain Board task 2 Board task 3 Board task 4 Board task 5 Board task 6 Board task 7 Board task 8 Board task 9 Board task 10 Board task 11 Board task 12 Board task 13…</p
@@ -2411,6 +2465,7 @@
         class="note"
         data-file-path="notes/note-0.md"
         data-line="2"
+        data-reveal-region=""
         data-terms="atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -2515,19 +2570,28 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-0 / line 2</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-0 / line 2</span
+          ><span
+            aria-hidden="true"
+            class="entry-details-joiner"
+          > · </span
+          ><span
+            class="heading-path source"
+          >Related note 0</span
+          ></div
         ><div
-          class="heading-path source"
-        >Related note 0</div
-        ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-1.md"
         data-line="2"
+        data-reveal-region=""
         data-terms="atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -2632,19 +2696,28 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-1 / line 2</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-1 / line 2</span
+          ><span
+            aria-hidden="true"
+            class="entry-details-joiner"
+          > · </span
+          ><span
+            class="heading-path source"
+          >Related note 1</span
+          ></div
         ><div
-          class="heading-path source"
-        >Related note 1</div
-        ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-10.md"
         data-line="2"
+        data-reveal-region=""
         data-terms="atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -2749,19 +2822,28 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-10 / line 2</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-10 / line 2</span
+          ><span
+            aria-hidden="true"
+            class="entry-details-joiner"
+          > · </span
+          ><span
+            class="heading-path source"
+          >Related note 10</span
+          ></div
         ><div
-          class="heading-path source"
-        >Related note 10</div
-        ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-11.md"
         data-line="2"
+        data-reveal-region=""
         data-terms="atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -2866,19 +2948,28 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-11 / line 2</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-11 / line 2</span
+          ><span
+            aria-hidden="true"
+            class="entry-details-joiner"
+          > · </span
+          ><span
+            class="heading-path source"
+          >Related note 11</span
+          ></div
         ><div
-          class="heading-path source"
-        >Related note 11</div
-        ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-2.md"
         data-line="2"
+        data-reveal-region=""
         data-terms="atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -2983,19 +3074,28 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-2 / line 2</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-2 / line 2</span
+          ><span
+            aria-hidden="true"
+            class="entry-details-joiner"
+          > · </span
+          ><span
+            class="heading-path source"
+          >Related note 2</span
+          ></div
         ><div
-          class="heading-path source"
-        >Related note 2</div
-        ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-3.md"
         data-line="2"
+        data-reveal-region=""
         data-terms="atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -3100,19 +3200,28 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-3 / line 2</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-3 / line 2</span
+          ><span
+            aria-hidden="true"
+            class="entry-details-joiner"
+          > · </span
+          ><span
+            class="heading-path source"
+          >Related note 3</span
+          ></div
         ><div
-          class="heading-path source"
-        >Related note 3</div
-        ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-4.md"
         data-line="2"
+        data-reveal-region=""
         data-terms="atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -3217,19 +3326,28 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-4 / line 2</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-4 / line 2</span
+          ><span
+            aria-hidden="true"
+            class="entry-details-joiner"
+          > · </span
+          ><span
+            class="heading-path source"
+          >Related note 4</span
+          ></div
         ><div
-          class="heading-path source"
-        >Related note 4</div
-        ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-5.md"
         data-line="2"
+        data-reveal-region=""
         data-terms="atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -3334,19 +3452,28 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-5 / line 2</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-5 / line 2</span
+          ><span
+            aria-hidden="true"
+            class="entry-details-joiner"
+          > · </span
+          ><span
+            class="heading-path source"
+          >Related note 5</span
+          ></div
         ><div
-          class="heading-path source"
-        >Related note 5</div
-        ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-6.md"
         data-line="2"
+        data-reveal-region=""
         data-terms="atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -3451,19 +3578,28 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-6 / line 2</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-6 / line 2</span
+          ><span
+            aria-hidden="true"
+            class="entry-details-joiner"
+          > · </span
+          ><span
+            class="heading-path source"
+          >Related note 6</span
+          ></div
         ><div
-          class="heading-path source"
-        >Related note 6</div
-        ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-7.md"
         data-line="2"
+        data-reveal-region=""
         data-terms="atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -3568,19 +3704,28 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-7 / line 2</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-7 / line 2</span
+          ><span
+            aria-hidden="true"
+            class="entry-details-joiner"
+          > · </span
+          ><span
+            class="heading-path source"
+          >Related note 7</span
+          ></div
         ><div
-          class="heading-path source"
-        >Related note 7</div
-        ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-8.md"
         data-line="2"
+        data-reveal-region=""
         data-terms="atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -3685,19 +3830,28 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-8 / line 2</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-8 / line 2</span
+          ><span
+            aria-hidden="true"
+            class="entry-details-joiner"
+          > · </span
+          ><span
+            class="heading-path source"
+          >Related note 8</span
+          ></div
         ><div
-          class="heading-path source"
-        >Related note 8</div
-        ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: atlas</div
         ></article
       ><article
         class="note"
         data-file-path="notes/note-9.md"
         data-line="2"
+        data-reveal-region=""
         data-terms="atlas"
         data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading."
         data-tip-around=""
@@ -3802,13 +3956,21 @@
             ></div
           ></div
         ><div
-          class="source"
-        >note-9 / line 2</div
+          class="entry-details"
+          data-reveal=""
+        ><span
+            class="source"
+          >note-9 / line 2</span
+          ><span
+            aria-hidden="true"
+            class="entry-details-joiner"
+          > · </span
+          ><span
+            class="heading-path source"
+          >Related note 9</span
+          ></div
         ><div
-          class="heading-path source"
-        >Related note 9</div
-        ><div
-          class="relevance-reason"
+          class="help-text relevance-reason"
         >Similar terms: atlas</div
         ></article
       ></div

@@ -304,23 +304,23 @@ suite('Dashboard state', () => {
     const preferences = {
       ...defaultPreferences,
       taskOrder: [tasks[2].id, tasks[0].id, tasks[1].id],
-      taskBoardLayout: 'list' as const,
+      taskBoardLayout: 'table' as const,
     };
     const board = createTaskBoard({ index, preferences, search: { query: '' }, options: boardOptions });
+    const titles = (shown: typeof board) => shown.table?.rows.map((row) => tasks.find((task) => task.id === row.taskId)?.title);
 
     assert.strictEqual(createDashboardSnapshot({ index, preferences, queryContext: createQueryContext(Date.now()) }).totalTaskCount, 3);
     assert.deepStrictEqual(board.taskCounts, { all: 3, active: 2, completed: 1 });
-    assert.deepStrictEqual(board.columns, [], 'a list lays out no columns');
+    assert.deepStrictEqual(board.columns, [], 'a table lays out no columns');
     assert.deepStrictEqual(
-      board.tasks?.map((item) => item.task.title),
+      titles(board),
       ['third', 'first', 'second'],
-      'the list shows every task the search found, ranked as the reader ranked them',
+      'the table shows every task the search found, ranked as the reader ranked them',
     );
     // What the board searches for is what narrows it now; the filter the
     // page used to keep was obeyed by the list alone.
     assert.deepStrictEqual(
-      createTaskBoard({ index, preferences, search: { query: 'is:open' }, options: boardOptions })
-        .tasks?.map((item) => item.task.title),
+      titles(createTaskBoard({ index, preferences, search: { query: 'is:open' }, options: boardOptions })),
       ['third', 'first'],
     );
   });

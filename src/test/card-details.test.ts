@@ -44,12 +44,23 @@ suite('Card details', () => {
     assert.strictEqual(open({}).text('.card .source'), 'atlas / line 1');
   });
 
-  test('adds the created and updated dates on a line of their own, under where it is written', () => {
+  test('adds the created and updated dates after where it is written, all on the one line kept for them', () => {
     const shown = open({ details: 'fileAndLine created updated' });
     assert.deepStrictEqual(shown.findAll('.card .source').map((line) => line.textContent), [
       'atlas / line 1',
       `Created ${formatIsoDate(CREATED)} · Updated ${formatIsoDate(UPDATED)}`,
     ]);
+    const lines = shown.findAll('.card .entry-details');
+    assert.strictEqual(lines.length, 1, 'one line');
+    assert.strictEqual(lines[0].textContent, `atlas / line 1 · Created ${formatIsoDate(CREATED)} · Updated ${formatIsoDate(UPDATED)}`);
+    assert.strictEqual(lines[0].getAttribute('data-reveal'), '', 'shown on hover and focus');
+    assert.strictEqual(shown.find('.card').getAttribute('data-reveal-region'), '', 'the card is what reveals it');
+  });
+
+  test('keeps the file and line for a screen reader with nothing ticked', () => {
+    // The body says never, and the sheet folds the line out of sight and
+    // keeps no room for it (provenance.css).
+    assert.strictEqual(open({ fileAndLine: 'never' }).text('.card .entry-details'), 'atlas / line 1');
   });
 
   test('shows the created date alone, without the file and line or the headings above, when only it is ticked', () => {
@@ -80,6 +91,7 @@ suite('Card details on tasks', () => {
     const snapshot = createSearchPageSnapshot(index, store.reader.value, '#project/atlas', { queryContext: createQueryContext(Date.now()) });
     page = openWebviewPage(renderPage('searchPage', { chrome: { theme: 'cooper', zen: false, display: { details: 'fileAndLine created' } } }), snapshot);
     assert.deepStrictEqual(page.findAll('.task-row .task-source').map((line) => line.textContent), ['atlas / line 2', 'Atlas', 'Created 2026-09-12'], 'where it is written, the heading above it, then its dates');
+    assert.strictEqual(page.text('.task-row .entry-details'), 'atlas / line 2 · Atlas · Created 2026-09-12', 'on one line, under the task\'s facts');
   });
 
   test('a task with no detail ticked that it has draws no details line', () => {
@@ -88,6 +100,7 @@ suite('Card details on tasks', () => {
     const snapshot = createSearchPageSnapshot(index, store.reader.value, '#project/atlas', { queryContext: createQueryContext(Date.now()) });
     page = openWebviewPage(renderPage('searchPage', { chrome: { theme: 'cooper', zen: false, display: { details: 'created' } } }), snapshot);
     assert.strictEqual(page.findAll('.task-row .task-source').length, 0);
+    assert.strictEqual(page.findAll('.task-row .entry-details').length, 0, 'no line is kept');
   });
 });
 
@@ -127,6 +140,7 @@ suite('Card details in Related Notes', () => {
       'atlas / line 12',
       `Created ${formatIsoDate(CREATED)}`,
     ], 'where it is written, then its dates');
+    assert.strictEqual(page.findAll('.note .entry-details').length, 1, 'on one line');
     page.dispose();
     page = openWebviewPage(renderPage('sidebarNotes', { chrome: { theme: 'cooper', zen: false, display: { details: 'created' } } }), snapshot);
     assert.strictEqual(page.text('.note .source'), `Created ${formatIsoDate(CREATED)}`, 'without its file and line, or the headings above it');

@@ -7,6 +7,7 @@
  * the arrow keys move between them, and Home and End go to either end.
  */
 import type { ContextPage, ContextPageChoice, ContextPages } from '../../ui/protocol/sidebarNotes';
+import { EmptyState } from '../shared/emptyState';
 import { PAGE_ICONS } from '../shared/pageIcons';
 import { ViewOptionChoices, ViewOptions } from '../shared/viewOptions';
 
@@ -70,12 +71,17 @@ function PageChoices({ choices }: { readonly choices: readonly ContextPageChoice
   );
 }
 
-/** The gear beside the pages: draw them as a list or as icons, and which to keep. */
+/**
+ * The gear beside the pages: draw them as a list or as icons, and which to
+ * keep. Zen shows it while the band is pointed at or holds focus, and keeps
+ * it drawn while no page is chosen, since it is the way to choose one.
+ */
 function PagesOptions({ pages }: { readonly pages: ContextPages }) {
   return (
     <ViewOptions
       name="pages"
       label="Pages: how they look, and which"
+      attributes={{ 'data-zen-reveal': '', 'data-reveal-keep': pages.pages.length ? undefined : '' }}
       groups={[
         { label: 'Look', content: <ViewOptionChoices action="set-pages-style" choices={[['list', 'List'], ['icons', 'Icons']]} selected={pages.style} label="How the pages look" /> },
         ...(pages.choices ? [{ label: 'Pages', stacked: true, content: <PageChoices choices={pages.choices} /> }] : []),
@@ -95,15 +101,15 @@ export function ContextPagesBar({ pages }: { readonly pages: ContextPages | unde
   }
   if (!pages.pages.length) {
     return (
-      <div class="context-pages-band">
-        <p class="pages-empty">No pages chosen. Choose them from the gear.</p>
+      <div class="context-pages-band" data-zen-region="">
+        <EmptyState class="pages-empty" state="No pages chosen." teach="Choose them from the gear." />
         <PagesOptions pages={pages} />
       </div>
     );
   }
   const icons = pages.style === 'icons';
   return (
-    <div class="context-pages-band">
+    <div class="context-pages-band" data-zen-region="">
       <div
         class={icons ? 'context-pages is-icons' : 'context-pages'}
         role="toolbar"

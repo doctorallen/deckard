@@ -17,6 +17,7 @@ const CHECK_DELAY_MS = 300;
 /** The settings a change to which checks every open document again. */
 const RECHECK_SETTINGS = [
   'deckard.editor.repeatDiagnostics',
+  'deckard.editor.preset',
   'deckard.notesFolder',
   'deckard.exclude',
 ];

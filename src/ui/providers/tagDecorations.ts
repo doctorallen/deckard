@@ -209,7 +209,7 @@ export class EditorTagDecorations implements vscode.Disposable {
             range,
             createTagOverviewUri(span.key),
           );
-          link.tooltip = `Open ${span.label} tag overview`;
+          link.tooltip = `Open the ${span.label} search page`;
           return link;
         });
       },

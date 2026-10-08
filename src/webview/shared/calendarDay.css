@@ -2,9 +2,8 @@
  * A chosen day of the calendar: its daily note, the tasks due, scheduled,
  * repeating, and done that day, and the notes created on it.
  *
- * The calendar page draws it beside the month, the sidebar Calendar under
- * it, and Related Notes in its own pane while the calendar page is the
- * active editor. Each page's sheet imports this one, and the page injects
+ * The calendar page draws it beside the month, and Related Notes in its
+ * own pane while the calendar page is the active editor. Each page's sheet imports this one, and the page injects
  * the script (src/ui/webview/calendarDay.ts).
  */
 

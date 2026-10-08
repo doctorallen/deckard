@@ -579,13 +579,13 @@ class BoardMoves {
   }
 
   /** The Tag… menu: the namespaces in use, but the one the board is grouped by. */
-  private pickNamespace(button: HTMLElement): void {
+  private pickNamespace(opener: HTMLElement): void {
     const { offered, current } = this.options.namespaces();
     const choices = offered.filter((namespace) => namespace.name !== current);
     if (!choices.length) {
       return;
     }
-    openActionMenu(button, [{
+    openActionMenu(opener, [{
       label: 'Group by tag namespace',
       items: choices.map((namespace) => ({ value: namespace.name, label: `#${namespace.name} · ${namespace.openTasks} open ${namespace.openTasks === 1 ? 'task' : 'tasks'}` })),
     }], (name) => this.post({ type: 'setBoardGroup', groupBy: 'tag', namespace: name }));
@@ -594,16 +594,6 @@ class BoardMoves {
   private onClick(event: MouseEvent): void {
     const target = event.target instanceof Element ? event.target : null;
     const closest = (selector: string): HTMLElement | null => (target ? target.closest<HTMLElement>(selector) : null);
-    const group = closest('[data-action="set-board-group"]');
-    if (group) {
-      this.post({ type: 'setBoardGroup', groupBy: group.dataset.group as never });
-      return;
-    }
-    const namespaceButton = closest('[data-action="pick-board-namespace"]');
-    if (namespaceButton) {
-      this.pickNamespace(namespaceButton);
-      return;
-    }
     const menuButton = closest('[data-action="board-menu"]');
     if (menuButton) {
       const card = boardCard(menuButton);
@@ -628,6 +618,22 @@ class BoardMoves {
     const card = boardCard(target);
     if (card) {
       this.openCard(card, event);
+    }
+  }
+
+  /**
+   * A choice in the Group select: a grouping, sent; or Tag…, which puts the
+   * select back on the grouping in force and opens the menu of namespaces,
+   * whose choice is sent.
+   */
+  private chooseGroup(select: HTMLSelectElement): void {
+    if (select.value === 'pick-namespace') {
+      select.value = String(select.dataset.current);
+      this.pickNamespace(select);
+      return;
+    }
+    if (select.value !== 'tag') {
+      this.post({ type: 'setBoardGroup', groupBy: select.value as never });
     }
   }
 
@@ -703,6 +709,10 @@ class BoardMoves {
       board.tabStop = cardKeyOf(card as HTMLElement);
     });
     document.addEventListener('change', (event) => {
+      if (event.target instanceof HTMLSelectElement && event.target.dataset.action === 'set-board-group') {
+        this.chooseGroup(event.target);
+        return;
+      }
       const card = boardCard(event.target);
       const target = event.target as HTMLInputElement;
       if (card && target.dataset.action === 'board-toggle-task') {

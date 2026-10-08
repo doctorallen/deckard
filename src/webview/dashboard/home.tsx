@@ -5,6 +5,7 @@
  */
 import type { DashboardSavedFilter, DashboardWidget, DashboardWidgetConfig } from '../../ui/protocol/dashboard';
 import { HOME_WIDGET_LIMIT, WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
+import { EmptyState } from '../shared/emptyState';
 import { Loading } from '../shared/loading';
 import type { HomeContext } from './homeContext';
 import type { DashboardDraw } from './model';
@@ -26,9 +27,9 @@ export function isHomeFull(widgets: readonly DashboardWidgetConfig[]): boolean {
 }
 
 /**
- * What + Add widget offers, which Related Notes offers too while Home is in
- * front: every kind Home may hold another of, then a saved search's widget
- * for each saved search, as `savedQuery:<id>`. A full Home offers nothing.
+ * What + Add widget offers: every kind Home may hold another of, then a
+ * saved search's widget for each saved search, as `savedQuery:<id>`. A full
+ * Home offers nothing.
  */
 export function widgetChoices(widgets: readonly DashboardWidgetConfig[], savedFilters: readonly DashboardSavedFilter[]): WidgetChoice[] {
   if (isHomeFull(widgets)) {
@@ -60,7 +61,7 @@ function EditBar({ choices, full }: { readonly choices: readonly WidgetChoice[];
         <AddWidget choices={choices} full={full} />
         {/* The host asks first, in VS Code's own modal: a reset cannot be undone. */}
         <button type="button" data-action="reset-widgets" data-tip="Put back the widgets Home started with">Reset widgets…</button>
-        <button type="button" class="active" data-action="finish-customizing">Finish</button>
+        <button type="button" data-action="finish-customizing">Finish</button>
       </div>
     </div>
   );
@@ -95,9 +96,9 @@ function GetStarted() {
   return (
     <section class="home-start" aria-label="Get started">
       <h2>No notes here yet</h2>
-      <p>Deckard reads every saved Markdown file in this workspace. Start with today’s note, or open a work sample: a week of a team lead’s notes to try everything on.</p>
+      <p class="help-text">Deckard reads every saved Markdown file in this workspace. Start with today’s note, or open a work sample: a week of a team lead’s notes to try everything on.</p>
       <div class="home-start-actions">
-        <button type="button" class="active" data-action="open-daily-note">Create today’s note</button>
+        <button type="button" class="primary" data-action="open-daily-note">Create today’s note</button>
         <button type="button" data-action="open-view" data-view="sampleWorkspace">Create a work sample</button>
         <button type="button" data-action="open-view" data-view="checkSetup">Check my setup</button>
       </div>
@@ -108,7 +109,7 @@ function GetStarted() {
 /** Home's widgets in their grid, keyed by how many times a drag changed it, or a way to add some. */
 function WidgetGrid({ widgets, home, generation }: { readonly widgets: readonly DashboardWidget[]; readonly home: HomeContext; readonly generation: number }) {
   if (!widgets.length) {
-    return <div class="empty">{'Home has no widgets. '}<button type="button" data-action="customize-home">Customize</button></div>;
+    return <EmptyState as="div" state="Home has no widgets." action={<button type="button" data-action="customize-home">Customize</button>} />;
   }
   return (
     <div key={`grid-${generation}`} class="home-grid">
@@ -131,11 +132,14 @@ function HomeContent(props: HomePanelProps) {
   if (!snapshot.widgets) {
     return <Loading label="Loading Home…" />;
   }
+  // Get Started takes the grid's place, not a place above it: every widget
+  // of a workspace with no notes would only say it had nothing to show.
+  // Customizing still draws the grid, which is what is being arranged.
+  const drawsGrid = snapshot.totalNoteCount > 0 || view.editingHome;
   return (
     <>
       {view.editingHome ? <EditBar choices={props.choices} full={isHomeFull(snapshot.widgetConfig || [])} /> : <HintBar snapshot={snapshot} view={view} />}
-      {snapshot.totalNoteCount === 0 && !view.editingHome ? <GetStarted /> : null}
-      <WidgetGrid widgets={snapshot.widgets} home={props.home} generation={props.generation} />
+      {drawsGrid ? <WidgetGrid widgets={snapshot.widgets} home={props.home} generation={props.generation} /> : <GetStarted />}
     </>
   );
 }

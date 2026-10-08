@@ -78,13 +78,13 @@ suite('Parent tags', () => {
     assert.strictEqual(cards({ ...options, parentTag: true }, 'tag', 'project')?.parentTag?.key, '#area/work');
   });
 
-  test('list rows carry the parent tag too, and the settings say whether it shows', () => {
+  test('the settings say whether the parent tag shows', () => {
     const store = createPreferences({ get: () => undefined, keys: () => [], update: async () => undefined } as never);
-    const preferences = { ...store.reader.value, taskBoardLayout: 'list' as const };
+    const preferences = { ...store.reader.value, taskBoardLayout: 'board' as const };
     store.repository.dispose();
-    const listed = createTaskBoard({ index, preferences, search: { query: '' }, options: { ...options, parentTag: true } });
-    assert.strictEqual(listed.settings.parentTag, true);
-    const row = listed.tasks?.find((item) => item.task.id === taskNamed('headline').id);
-    assert.strictEqual(row?.parentTag?.key, '#project/atlas');
+    const shown = createTaskBoard({ index, preferences, search: { query: '' }, options: { ...options, parentTag: true } });
+    assert.strictEqual(shown.settings.parentTag, true);
+    const card = shown.columns.flatMap((column) => column.cards).find((candidate) => candidate.taskId === taskNamed('headline').id);
+    assert.strictEqual(card?.parentTag?.key, '#project/atlas');
   });
 });

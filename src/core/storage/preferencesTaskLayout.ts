@@ -52,7 +52,7 @@ export class TaskLayoutService {
   }
 
   /**
-   * Shows the Task Board's tasks as a list or as columns.
+   * Shows the Task Board's tasks as columns or as a table.
    */
   public async setTaskBoardLayout(taskBoardLayout: TaskLayout): Promise<void> {
     await this.repository.update({ taskBoardLayout });

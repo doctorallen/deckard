@@ -15,16 +15,18 @@ suite('Extension Test Suite', () => {
       extension.packageJSON.contributes.menus;
     const title = (command: string) =>
       menus['editor/title'].filter((entry) => entry.command === command).map((entry) => [entry.when, entry.group]);
+    // The days, only while the daily note's own lens, which has them, is off.
     assert.deepStrictEqual(title('deckard.previousDailyNote'), [
-      ['resourceLangId == markdown && deckard.isDailyNote', 'navigation@10'],
+      ['resourceLangId == markdown && deckard.isDailyNote && deckard.dailyNoteLensOff', 'navigation@10'],
     ]);
     assert.deepStrictEqual(title('deckard.nextDailyNote'), [
-      ['resourceLangId == markdown && deckard.isDailyNote', 'navigation@11'],
+      ['resourceLangId == markdown && deckard.isDailyNote && deckard.dailyNoteLensOff', 'navigation@11'],
     ]);
     assert.deepStrictEqual(title('deckard.noteActions'), [
       ['resourceLangId == markdown && deckard.isNote', 'navigation@12'],
     ]);
-    // A note's context menu has one Deckard submenu, grouped by what it acts on.
+    // A note's context menu has one Deckard submenu, grouped by what it acts
+    // on: the note-action table, which note-action-table.test.ts holds it to.
     assert.deepStrictEqual(menus['editor/context'], [
       { submenu: 'deckard.editor.context', when: 'resourceLangId == markdown && deckard.isNote', group: 'z_deckard@1' },
     ]);
@@ -33,19 +35,23 @@ suite('Extension Test Suite', () => {
       [
         '1_task@1 deckard.toggleTaskDone',
         '1_task@2 deckard.editTask',
-        '1_task@2 deckard.setTaskStatus',
-        '1_task@3 deckard.breakIntoSteps',
-        '1_task@4 deckard.addTask',
+        '1_task@3 deckard.setTaskStatus',
+        '1_task@4 deckard.breakIntoSteps',
+        '1_task@5 deckard.addTask',
         '2_heading@1 deckard.renameHeading',
         '2_heading@2 deckard.extractHeading',
-        '2_heading@3 deckard.focusSection',
-        '3_move@1 deckard.moveTo',
-        '3_move@2 deckard.copyAsPlainMarkdown',
-        '3_move@3 deckard.openNotePage',
-        '4_pin@1 deckard.pinNote',
-        '4_pin@2 deckard.unpinNote',
-        '4_pin@3 deckard.parkNote',
-        '4_pin@4 deckard.unparkNote',
+        '2_heading@3 deckard.linkCurrentHeading',
+        '2_heading@4 deckard.focusSection',
+        '3_note@1 deckard.openNotePage',
+        '3_note@2 deckard.openRelatedNotes',
+        '3_note@3 deckard.showNotesGraphAroundNote',
+        '3_note@4 deckard.moveTo',
+        '3_note@5 deckard.copyAsPlainMarkdown',
+        '3_note@6 deckard.moveTagsToFrontmatter',
+        '4_keep@1 deckard.pinNote',
+        '4_keep@2 deckard.unpinNote',
+        '4_keep@3 deckard.parkNote',
+        '4_keep@4 deckard.unparkNote',
       ],
     );
     // A folder in the Explorer can take a note, or leave Deckard and come back.
@@ -73,13 +79,19 @@ suite('Extension Test Suite', () => {
       menus['file/newFile'].map((entry) => entry.command),
       ['deckard.createDailyNote', 'deckard.newNoteFromTemplate'],
     );
-    // Zen is one button on every Deckard page.
+    // Zen is one button on every Deckard page, a when-swapped pair, since
+    // a menu item cannot declare a toggled state; the palette offers Toggle
+    // Zen alone.
     assert.deepStrictEqual(title('deckard.enableZenMode'), [
       ['activeWebviewPanelId =~ /^deckard\\./ && !deckard.zenMode', 'navigation@90'],
     ]);
     assert.deepStrictEqual(title('deckard.disableZenMode'), [
       ['activeWebviewPanelId =~ /^deckard\\./ && deckard.zenMode', 'navigation@90'],
     ]);
+    assert.deepStrictEqual(
+      menus.commandPalette.filter((entry) => /ZenMode$/.test(entry.command ?? '')).map((entry) => [entry.command, entry.when]),
+      [['deckard.enableZenMode', 'false'], ['deckard.disableZenMode', 'false']],
+    );
   });
 
   test('contributes the Deckard commands and settings', () => {
@@ -93,7 +105,7 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 58);
+    assert.strictEqual(Object.keys(settings).length, 51);
     assert.deepStrictEqual(settings['deckard.parked.tags'].default, ['parked']);
     assert.deepStrictEqual(settings['deckard.parked.folders'].default, {});
     assert.deepStrictEqual(settings['deckard.periodicNote.reviewSections'].default, []);
@@ -122,6 +134,7 @@ suite('Extension Test Suite', () => {
         'deckard.goTo',
         'deckard.showNotesGraph',
         'deckard.showNotesGraphAroundNote',
+        'deckard.openRelatedNotes',
         'deckard.showTaskBoard',
         'deckard.showCalendar',
         'deckard.calendar.openInEditor',
@@ -207,18 +220,17 @@ suite('Extension Test Suite', () => {
         'deckard.outline.filterByTag',
         'deckard.outline.clearTagFilter',
         'deckard.chooseTheme',
-        'deckard.chooseDisplay',
         'deckard.chooseDateFormat',
         'deckard.enableZenMode',
         'deckard.disableZenMode',
         'deckard.toggleZen',
+        'deckard.managePreferences',
         'deckard.tidyPreferences',
         'deckard.exportTaskCalendar',
         'deckard.exportPreferences',
         'deckard.importPreferences',
         'deckard.restorePreferences',
         'deckard.checkSetup',
-        'deckard.createSampleWorkspace',
         'deckard.createWorkSample',
         'deckard.agenda.editTask',
         'deckard.agenda.breakIntoSteps',
@@ -230,10 +242,6 @@ suite('Extension Test Suite', () => {
         'deckard.agenda.reschedule',
         'deckard.rescheduleOverdue',
         'deckard.agenda.showMore',
-        'deckard.calendar.openDayPanel',
-        'deckard.calendar.closeDayPanel',
-        'deckard.calendar.hideWeekends',
-        'deckard.calendar.includeWeekends',
       ],
     );
     assert.strictEqual(
@@ -307,8 +315,8 @@ suite('Extension Test Suite', () => {
     for (const step of steps) {
       for (const match of step.description.matchAll(/\(command:([\w.]+)/g)) {
         const id = match[1];
-        // Deckard's own links name a contributed command or view; another,
-        // such as extension.open for Esper Themes, is one VS Code registers.
+        // Deckard's own links name a contributed command or view; any other
+        // is one VS Code registers.
         const known = id.startsWith('deckard.')
           ? commands.has(id) || views.has(id)
           : registered.has(id);

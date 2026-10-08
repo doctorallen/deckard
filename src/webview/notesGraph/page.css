@@ -12,11 +12,16 @@
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
-body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text); font-family: var(--font-display); font-size: var(--text-sm); }
-#graph { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+body { --graph-bar: 64px; margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text); font-family: var(--font-display); font-size: var(--text-sm); }
+/* The bar every page draws, DECKARD ▾ and the title with ⋯, across the
+   top; the canvas and its panels start under it. */
+.graph-bar { position: absolute; z-index: var(--z-dropdown); top: 0; right: 0; left: 0; height: var(--graph-bar); padding: 8px 12px; align-items: center; background: var(--bg-dark); }
+.graph-bar .eyebrow { margin: 0 0 2px; }
+.graph-bar h1 { font-size: var(--text-lg); }
+#graph { position: absolute; top: var(--graph-bar); right: 0; bottom: 0; left: 0; width: 100%; height: calc(100% - var(--graph-bar)); display: block; cursor: grab; touch-action: none; }
 #graph.is-panning { cursor: grabbing; }
 #graph.is-pointing { cursor: pointer; }
-.overlay { position: absolute; z-index: 2; top: 12px; left: 12px; display: flex; flex-direction: column; gap: 4px; width: 240px; max-height: calc(100vh - 70px); overflow-y: auto; }
+.overlay { position: absolute; z-index: 2; top: calc(var(--graph-bar) + 12px); left: 12px; display: flex; flex-direction: column; gap: 4px; width: 240px; max-height: calc(100vh - 70px - var(--graph-bar)); overflow-y: auto; }
 .control-group { border: 1px solid var(--slate-border); background: rgba(13, 16, 23, .94); }
 .control-group summary { padding: 7px 10px; color: var(--cyan-bright); font: 700 var(--text-xs) var(--font-mono); cursor: pointer; list-style: none; user-select: none; }
 .control-group summary::before { content: '▸ '; color: var(--muted); }
@@ -28,10 +33,8 @@ body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--tex
 .control-row output { color: var(--toxic-green); font: var(--text-xs) var(--font-mono); }
 .control-row .slider-line { display: flex; align-items: center; gap: 8px; }
 .slider-end { flex: none; color: var(--muted); font: var(--text-xs) var(--font-mono); }
-.control-group.advanced { border: 0; background: transparent; }
 .control-row .control-label { color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .graph-segmented button { flex: 1; min-height: 24px; padding: 2px 6px; font: var(--text-xs) var(--font-mono); }
-.control-group.advanced > summary { padding: 4px 0; color: var(--muted); }
 input[type='range'] { flex: 1; min-width: 0; accent-color: var(--amber-bright); }
 input[type='checkbox'] { accent-color: var(--amber-bright); }
 .toggle-row { display: flex; align-items: center; gap: 7px; color: var(--text); font: var(--text-xs) var(--font-mono); cursor: pointer; }
@@ -46,7 +49,6 @@ input[type='search']::-webkit-search-cancel-button { cursor: pointer; }
 .tag-list .toggle-row:hover { background: var(--panel-raised); }
 .tag-list .tag-count { margin-left: auto; color: var(--muted); }
 .tag-list-note { color: var(--muted); font: var(--text-xs) var(--font-mono); padding: 2px 4px; }
-.relationship-note { margin: 0; color: var(--muted); font: var(--text-xs)/1.45 var(--font-mono); }
 .clear-tags { align-self: flex-start; border: 1px solid var(--slate-border); background: var(--panel-deep); color: var(--text); padding: 4px 8px; font: var(--text-xs) var(--font-mono); cursor: pointer; }
 .clear-tags:hover, .clear-tags:focus-visible { border-color: var(--amber-bright); background: var(--hover-bg); color: var(--hover-fg); }
 .graph-zoom-controls { position: absolute; z-index: 2; right: 12px; bottom: 34px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }

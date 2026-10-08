@@ -36,14 +36,15 @@ export interface UnknownStatusesOptions {
  * Says how many tasks use a status Deckard doesn't know, the first time a
  * workspace has any. The flag is written before the message, so it is said
  * only once.
+ * @returns Whether it was said.
  */
 export async function noticeUnknownStatusesOnce(
   workspaceState: vscode.Memento,
   unknown: { count: number; symbols: readonly string[] },
   options: UnknownStatusesOptions = {},
-): Promise<void> {
+): Promise<boolean> {
   if (unknown.count === 0 || workspaceState.get<boolean>(UNKNOWN_STATUSES_NOTICED) === true) {
-    return;
+    return false;
   }
   await workspaceState.update(UNKNOWN_STATUSES_NOTICED, true);
   const show = options.show ?? ((message, ...buttons) => vscode.window.showInformationMessage(message, ...buttons));
@@ -54,4 +55,5 @@ export async function noticeUnknownStatusesOnce(
   } else if (chosen === OPEN_STATS_BUTTON) {
     await run('deckard.showStats');
   }
+  return true;
 }

@@ -11,6 +11,7 @@ import { createSourceParser, findEmbedLines, resolveEmbed } from '../../domain/n
 import { collectTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
 import type { QueryContext } from '../../domain/query/queryContext';
 import { ParsedFile, Task, WorkspaceIndex } from '../../domain/model';
+import { pluralize } from '../../shared/text';
 
 /**
  * What the editor's action lenses decide, apart from VS Code. Each function
@@ -312,4 +313,115 @@ export function formatProgressBar(done: number, total: number, width = 10): stri
     filled = width - 1;
   }
   return '█'.repeat(filled) + '░'.repeat(width - filled);
+}
+
+/**
+ * A fix the problems lens offers: the four lenses it replaced, each now one
+ * row of its list.
+ */
+export type NoteProblemFix = 'showBrokenLinks' | 'createMissingNotes' | 'showMentions' | 'linkMentions';
+
+/** Each fix as the problems lens's list names it, in the order it lists them. */
+export const NOTE_PROBLEM_FIXES: Readonly<Record<NoteProblemFix, string>> = {
+  showBrokenLinks: 'Show broken links',
+  createMissingNotes: 'Create missing notes',
+  showMentions: 'Show unlinked mentions',
+  linkMentions: 'Link mentions',
+};
+
+/** What the problems lens counts on a note's first line. */
+export interface NoteProblemCounts {
+  /** Links that name no note, and links that name a note several share. */
+  missing: number;
+  ambiguous: number;
+  /** The names among the missing links a note could be created for. */
+  creatable: number;
+  /** Mentions of the note written without a link, and the notes they are in. */
+  mentions: number;
+  mentionNotes: number;
+}
+
+/** The problems lens: what it says, and what selecting it does. */
+export interface NoteProblems {
+  /** Such as "2 missing · 4 unlinked". */
+  title: string;
+  /** Each count in words, and what selecting the lens does. */
+  tooltip: string;
+  /** The fixes that apply, in the order the list names them. */
+  fixes: NoteProblemFix[];
+  /**
+   * The fix selecting the lens runs, when the note has one kind of problem,
+   * broken links or unlinked mentions; `pick`, a list of the fixes, when it
+   * has both.
+   */
+  action: NoteProblemFix | 'pick';
+}
+
+/**
+ * The one lens a note's link problems and unlinked mentions share on its
+ * first line, or nothing for a note with neither. With one kind of problem
+ * it does what that kind's own lens did: creates the missing notes, or, when
+ * every broken link names a note several share, shows them; or links the
+ * mentions. With both, it lists each fix.
+ */
+export function describeNoteProblems(counts: NoteProblemCounts): NoteProblems | undefined {
+  const broken = counts.missing + counts.ambiguous;
+  const hasLinks = broken > 0;
+  const hasMentions = counts.mentions > 0;
+  if (!hasLinks && !hasMentions) {
+    return undefined;
+  }
+  const parts: string[] = [];
+  const said: string[] = [];
+  if (counts.missing > 0) {
+    parts.push(`${counts.missing} missing`);
+    said.push(`${pluralize(counts.missing, 'link names', 'links name')} no note`);
+  }
+  if (counts.ambiguous > 0) {
+    parts.push(`${counts.ambiguous} ambiguous`);
+    said.push(`${pluralize(counts.ambiguous, 'link names', 'links name')} a note several notes share`);
+  }
+  if (hasMentions) {
+    parts.push(`${counts.mentions} unlinked`);
+    said.push(`${pluralize(counts.mentionNotes, 'note mentions', 'notes mention')} this one without a link`);
+  }
+  const fixes: NoteProblemFix[] = [];
+  if (hasLinks) {
+    fixes.push('showBrokenLinks');
+    if (counts.creatable > 0) {
+      fixes.push('createMissingNotes');
+    }
+  }
+  if (hasMentions) {
+    fixes.push('showMentions', 'linkMentions');
+  }
+  const action = chooseNoteProblemAction(hasLinks, hasMentions, counts.creatable);
+  const does: Record<NoteProblems['action'], string> = {
+    pick: 'Select to choose a fix',
+    showBrokenLinks: 'Select to show them in the references view',
+    createMissingNotes: `Select to create ${counts.creatable === 1 ? 'the missing note' : `the ${counts.creatable} missing notes`} in your notes folder`,
+    showMentions: 'Select to show the mentions in the references view',
+    linkMentions: 'Select to turn each mention into a [[link]] to this note',
+  };
+  return {
+    title: parts.join(' · '),
+    tooltip: `${said.join('; ')}. ${does[action]}`,
+    fixes,
+    action,
+  };
+}
+
+/**
+ * What selecting the problems lens does: a list with both kinds of problem;
+ * with mentions alone, linking them; with broken links alone, creating the
+ * missing notes, or showing the links when no name can be created.
+ */
+function chooseNoteProblemAction(hasLinks: boolean, hasMentions: boolean, creatable: number): NoteProblems['action'] {
+  if (hasLinks && hasMentions) {
+    return 'pick';
+  }
+  if (hasMentions) {
+    return 'linkMentions';
+  }
+  return creatable > 0 ? 'createMissingNotes' : 'showBrokenLinks';
 }

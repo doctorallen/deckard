@@ -14,7 +14,7 @@ suite('Settings writes', () => {
     assert.ok(
       isUnregisteredSettingError(
         new Error(
-          'Unable to write to User Settings because deckard.agenda.query is not a registered configuration.',
+          'Unable to write to User Settings because deckard.tasks.viewQuery is not a registered configuration.',
         ),
       ),
     );
@@ -25,39 +25,39 @@ suite('Settings writes', () => {
   test('writes through, and reports success', async () => {
     const written: unknown[] = [];
     const ok = await writeSetting(
-      'agenda.query',
+      'tasks.viewQuery',
       'is:open',
       vscode.ConfigurationTarget.Global,
       { update: async (...args: unknown[]) => void written.push(args) },
     );
     assert.strictEqual(ok, true);
     assert.deepStrictEqual(written, [
-      ['agenda.query', 'is:open', vscode.ConfigurationTarget.Global],
+      ['tasks.viewQuery', 'is:open', vscode.ConfigurationTarget.Global],
     ]);
   });
 
   test('turns an unregistered setting into a sentence, and says it did not write', async () => {
     const ok = await writeSetting(
-      'agenda.query',
+      'tasks.viewQuery',
       'is:open',
       vscode.ConfigurationTarget.Global,
       {
         update: async () => {
           throw new Error(
-            'Unable to write to User Settings because deckard.agenda.query is not a registered configuration.',
+            'Unable to write to User Settings because deckard.tasks.viewQuery is not a registered configuration.',
           );
         },
       },
     );
     assert.strictEqual(ok, false);
-    assert.match(describeUnregisteredSetting('agenda.query'), /Quit and reopen VS Code/);
-    assert.match(describeUnregisteredSetting('agenda.query'), /"Agenda: Query" setting/);
-    assert.doesNotMatch(describeUnregisteredSetting('agenda.query'), /deckard\.agenda/);
+    assert.match(describeUnregisteredSetting('tasks.viewQuery'), /Quit and reopen VS Code/);
+    assert.match(describeUnregisteredSetting('tasks.viewQuery'), /"Tasks: View Query" setting/);
+    assert.doesNotMatch(describeUnregisteredSetting('tasks.viewQuery'), /deckard\.tasks/);
   });
 
   test('lets any other failure through as it was', async () => {
     await assert.rejects(
-      writeSetting('agenda.query', 'is:open', vscode.ConfigurationTarget.Global, {
+      writeSetting('tasks.viewQuery', 'is:open', vscode.ConfigurationTarget.Global, {
         update: async () => {
           throw new Error('EACCES: permission denied');
         },
@@ -69,19 +69,19 @@ suite('Settings writes', () => {
   test('clears where the value in force is set, and keeps a user value from showing through', async () => {
     const cleared = async (inspected: Record<string, unknown>) => {
       const written: unknown[] = [];
-      await clearSetting('agenda.query', '', {
-        inspect: () => ({ key: 'deckard.agenda.query', ...inspected }) as never,
+      await clearSetting('tasks.viewQuery', '', {
+        inspect: () => ({ key: 'deckard.tasks.viewQuery', ...inspected }) as never,
         update: async (...args: unknown[]) => void written.push(args),
       });
       return written;
     };
     const { Global, Workspace } = vscode.ConfigurationTarget;
-    assert.deepStrictEqual(await cleared({ globalValue: '#a' }), [['agenda.query', undefined, Global]]);
-    assert.deepStrictEqual(await cleared({ workspaceValue: '#a' }), [['agenda.query', undefined, Workspace]]);
-    assert.deepStrictEqual(await cleared({ globalValue: '', workspaceValue: '#a' }), [['agenda.query', undefined, Workspace]]);
+    assert.deepStrictEqual(await cleared({ globalValue: '#a' }), [['tasks.viewQuery', undefined, Global]]);
+    assert.deepStrictEqual(await cleared({ workspaceValue: '#a' }), [['tasks.viewQuery', undefined, Workspace]]);
+    assert.deepStrictEqual(await cleared({ globalValue: '', workspaceValue: '#a' }), [['tasks.viewQuery', undefined, Workspace]]);
     assert.deepStrictEqual(
       await cleared({ globalValue: '#b', workspaceValue: '#a' }),
-      [['agenda.query', '', Workspace]],
+      [['tasks.viewQuery', '', Workspace]],
       "the user's search would show through, so the workspace keeps an empty one",
     );
   });

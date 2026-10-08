@@ -1,17 +1,17 @@
 <body
   class="zen"
   data-cards="flat"
-  data-counts="hidden"
-  data-dates="relative"
+  data-controls="quiet"
   data-density="compact"
   data-help="hidden"
-  data-level="zen"
   data-styling="plain"
   data-tags="text"
 > <main
     id="app"
   ><header
+      class="page-bar"
     ><div
+        class="page-bar-lead"
       ><p
           class="eyebrow"
         ><button
@@ -28,10 +28,13 @@
           ></p
         ><h1
         >Task Statuses</h1
+        ><p
+          class="status-note"
+        ><span
+            class="help-text"
+          >What each checkbox character means. </span
+          >Saved to your user settings.</p
         ></div
-      ><p
-        class="status-note"
-      >What each checkbox character means. Saved to your user settings.</p
       ></header
     ><fieldset
       class="status-click"
@@ -730,7 +733,7 @@
         type="button"
       >Revert</button
       ><button
-        class="is-primary"
+        class="primary"
         data-action="save"
         disabled=""
         type="button"

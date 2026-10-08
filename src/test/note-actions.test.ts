@@ -3,41 +3,46 @@ import * as assert from 'assert';
 import { buildNoteActionItems, hasHeadingAbove, NoteActionState } from '../ui/commands/noteActions';
 import { isDailyNoteText, readTopHeadings } from '../ui/commands/activeNoteContext';
 
-const target = { uri: 'file:///notes/atlas.md', line: 4 };
-
+/** The rows Note Actions lists where the cursor is, a separator as `—`. */
 function labels(state: Partial<NoteActionState>): string[] {
-  return buildNoteActionItems(
-    { onTaskLine: false, pinned: false, inTaggedEntry: false, underHeading: false, ...state },
-    target,
-  ).map((item) => `${item.label}${item.detail ? ` — ${item.detail}` : ''}`);
+  return buildNoteActionItems({ onTaskLine: false, pinned: false, parked: false, inTaggedEntry: false, underHeading: false, ...state })
+    .map((item) => (item.command ? `${item.label}${item.detail ? ` — ${item.detail}` : ''}` : '—'));
 }
 
 suite('Note Actions', () => {
-  test('lists the task first on a task line', () => {
+  test('lists the task first on a task line, then the note, then keeping it', () => {
     assert.deepStrictEqual(labels({ onTaskLine: true }), [
       '$(check) Toggle Task Done',
-      '$(edit) Edit Task…',
+      '$(edit) Edit Task',
+      '$(circle-large-outline) Set Task Status…',
+      '$(list-ordered) Break into Steps…',
+      '$(add) Add Task',
+      '—',
+      '$(preview) Open Note as Page',
       '$(references) Open Related Notes',
       '$(type-hierarchy) Open Notes Graph Around This Note',
       '$(arrow-right) Move to…',
+      '$(copy) Copy as Plain Markdown',
+      '$(tag) Move Inline Tags to Front Matter',
+      '—',
       '$(pin) Pin Note to Home',
+      '$(archive) Park Note',
     ]);
   });
 
-  test('offers Add Task elsewhere, and Unpin on a pinned note', () => {
-    assert.deepStrictEqual(labels({ pinned: true }), [
-      '$(add) Add Task…',
-      '$(references) Open Related Notes',
-      '$(type-hierarchy) Open Notes Graph Around This Note',
-      '$(arrow-right) Move to…',
-      '$(pinned) Unpin Note from Home',
-    ]);
+  test('offers Add Task elsewhere, and Unpin and Unpark on a pinned, parked note', () => {
+    assert.deepStrictEqual(labels({ pinned: true, parked: true }).slice(0, 2), ['$(add) Add Task', '—']);
+    assert.deepStrictEqual(labels({ pinned: true, parked: true }).slice(-2), ['$(pinned) Unpin Note from Home', '$(inbox) Unpark Note']);
   });
 
-  test('offers Focus Section under a heading', () => {
-    assert.deepStrictEqual(labels({ underHeading: true }).slice(-2), [
+  test('offers the heading\'s actions under a heading', () => {
+    assert.deepStrictEqual(labels({ underHeading: true }).slice(1, 7), [
+      '—',
+      '$(symbol-text) Rename Heading',
+      '$(export) Extract Heading',
+      '$(person) Tag Heading with a Person or Project…',
       '$(target) Focus Section',
-      '$(pin) Pin Note to Home',
+      '—',
     ]);
   });
 
@@ -55,20 +60,12 @@ suite('Note Actions', () => {
     assert.strictEqual(above(frontMatter, 2), false, 'inside the front matter');
   });
 
-  test('opens Related Notes for the heading only inside a tagged entry', () => {
-    const [, related] = buildNoteActionItems(
-      { onTaskLine: false, pinned: false, inTaggedEntry: true, underHeading: true },
-      target,
-    );
-    assert.strictEqual(related.detail, 'For the heading the cursor is in');
-    assert.strictEqual(related.command, 'deckard.showEntryRelatedNotes');
-    assert.deepStrictEqual(related.args, [target.uri, target.line]);
-    const [, plain] = buildNoteActionItems(
-      { onTaskLine: false, pinned: false, inTaggedEntry: false, underHeading: true },
-      target,
-    );
-    assert.strictEqual(plain.command, 'deckard.relatedNotes.focus');
-    assert.strictEqual(plain.detail, undefined);
+  test('says Related Notes is for the heading only inside a tagged entry', () => {
+    const related = (inTaggedEntry: boolean) => buildNoteActionItems(
+      { onTaskLine: false, pinned: false, parked: false, inTaggedEntry, underHeading: true },
+    ).find((item) => item.command === 'deckard.openRelatedNotes');
+    assert.strictEqual(related(true)?.detail, 'For the heading the cursor is in');
+    assert.strictEqual(related(false)?.detail, undefined);
   });
 });
 

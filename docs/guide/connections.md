@@ -2,13 +2,13 @@
 
 ## Related Notes
 
-Related notes are listed in the **Context** view in the Deckard sidebar, under Deckard's pages, which lead the view in every state. The same view shows a search's Refine, a graph node's connections, the calendar page's chosen day, or Home's widgets while one of those is in front.
+Related notes are listed in the **Context** view in the Deckard sidebar, under Deckard's pages, which lead the view in every state as a row of icons. The same view shows a search's Refine, a graph node's connections, or the calendar page's chosen day while one of those is in front. With Home or another page in front, it keeps its row of pages and says *Open a Markdown note to see related entries.*; to add a widget to Home, customize Home and use its own **+ Add widget**.
 
 Open the **Context** view from the Deckard Activity Bar while editing a saved Markdown note; its **Related notes** list suggests note entries that may concern the same work, each showing its first line with shared words marked.
 
 ![Deckard Related Notes sidebar showing ranked note entries and matching tags.](../images/related-notes.png)
 
-- **Sort by**: **Relevance**, **Newest**, **Oldest**, or **Most accessed**. The gear beside it sets **Preview** (None, 1 line, or 2 lines) and **Daily notes** (Show or Hide).
+- **Sort**, at the Related notes heading: **Relevance**, **Newest**, **Oldest**, or **Most accessed**. The gear beside it sets **Preview** (None, 1 line, or 2 lines) and **Daily notes** (Show or Hide).
 - Select a result to open its matching line, or a tag to open its page.
 - Each result shows its heading path and main reason for matching; daily notes also show their date, as in `2026-09-10 > Project Atlas > Check-in`. A nested child heading with the same tags as its parent comes first. Results show 50 at a time; **Show more** adds 50.
 - **Link button.** Beside each score, it writes a `[[Note#Heading]]` link to that entry at your cursor, replacing any selection. It names the heading without its tags, or the note alone when the heading repeats the note's title. A tagged line or task is linked through the heading above it. When two notes share the name, Deckard writes the link and says which notes it could mean.
@@ -52,11 +52,11 @@ Tagged headings highlight their section; tagged lines and tasks highlight their 
 
 ### Understand a score
 
-Each result has a three-step rail for a strong, moderate, or weak relation. Select it, or use the keyboard, to see the exact score, signals, and weights. For the full calculation, put the cursor in a tagged entry and run `Deckard: Open Related Notes Ranking`, which shows where each tag came from, heading paths, daily-note context, association support and prevalence, link evidence, lexical terms, recency, and specificity.
+Each result has a three-step rail for a strong, moderate, or weak relation. Select it, or use the keyboard, to see the exact score, signals, and weights. For the full calculation there is **Open Related Notes Ranking**, a page for tuning Related Notes that the palette leaves out: bind a key to it in Keyboard Shortcuts and press it with the cursor in a tagged entry. It shows where each tag came from, heading paths, daily-note context, association support and prevalence, link evidence, lexical terms, recency, and specificity.
 
 ### Refine a search from the sidebar
 
-While a [search page](search-pages.md#search-pages) or the Task board is active, the Context sidebar shows that search's [Refine](search.md#refine) options instead. The page keeps its search, terms, and counts; remove terms in its search box. Related tags are listed by how many results carry them, each with a three-step rail; hover for **In 6 of 13 results.** and how often the tags were written together or shared a heading.
+While a [search page](search-pages.md#search-pages) or the Task board is active, the Context sidebar shows that search's [Refine](search.md#refine) options instead. The page keeps its search, terms, and counts, and draws no Refine of its own; remove terms in its search box. Related tags are listed by how many results carry them, each with a three-step rail; hover for **In 6 of 13 results.** and how often the tags were written together or shared a heading.
 
 - Select a value to add it to the search.
 - <kbd>Alt</kbd>-select it to leave those results out.
@@ -67,7 +67,7 @@ The page shows one Refine line while the sidebar holds the options, and its full
 
 ## Notes Graph
 
-Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard icon in the Context view. Notes and tasks are dots sized by everything each is joined to, grouped into communities by links, headings, and tags. The graph is read-only, and control choices persist per panel.
+Run `Deckard: Open Notes Graph`, or select **Notes Graph** in the row of page icons at the top of the Context view. **DECKARD ▾** at its top left goes to any other page, and **⋯** at its top right holds **Theme…**, **Zen** and **Help on this page**. Notes and tasks are dots sized by everything each is joined to, grouped into communities by links, headings, and tags. The graph is read-only, and control choices persist per panel.
 
 ![Deckard Notes Graph showing clustered note, task, and tag connections.](../images/notes-graph.png)
 
@@ -76,9 +76,16 @@ Run `Deckard: Open Notes Graph`, or select the graph icon next to the Dashboard 
 - **Focus.** With a note open, the graph starts around it, one hop out, and follows the editor. Clear **Around this note** for the whole graph. **Hops out** sets the reach, one to three hops: one hop is the note, its tags, and the notes it links to; two adds what those touch, including tags usually written with yours. The line beneath names the note and counts the nodes on screen. **Pass through daily notes**, on by default, hides daily, weekly, and monthly notes but still counts them as a hop. The tag checklist narrows to the neighborhood's tags.
 - **Labels.** At rest, the best-connected notes are named; zooming in names the rest. Groups of four or more are named after their most distinctive tags (`atlas · design`), or their best-connected note. Click a group name, or choose it from **Group**, to pick it out; the rest dim.
 - **Lines**: solid for a wiki link you wrote, dashed for a heading and its sub-heading, dotted for a shared tag, dash-dot for a path through a daily note in a focused graph. The status line has a legend. **Only links I wrote** draws every wiki link and nothing else, and counts links and notes with none.
-- **Filters** search titles and paths, restrict to selected tags, and toggle notes, tasks, tag nodes (off by default), and orphans. Parked notes and tasks, and tags only they carry, stay hidden until **Show parked** is on. **Clear filters** clears tag filters and the picked group.
-- **Display** sets node size, link thickness, and **Label fade zoom**. **Headings**: **By zoom** (default) draws a multi-heading file as one dot until you zoom past **Label fade zoom**; **Always** draws every heading; **Never** every file. **Links per note** runs from **Fewer** to **More**. **Advanced** holds **Favor rare tags**, **Links between groups**, and **Show every link**. **Reset graph settings** restores controls, clears filters, and reframes; **Undo** beside it reverses that for a few seconds.
-- **Forces** sets cluster centering, cluster cohesion, community spacing, repel strength, link strength, and link distance, live.
+- **Filters** search titles and paths, restrict to selected tags, and toggle notes, tasks, tag nodes (off by default), and orphans. Parked notes and tasks, and tags only they carry, stay hidden until **Show parked** is on. **Clear filters**, shown while a tag or a group is picked, clears the tag filters and the picked group. While any filter is away from how a graph starts, its heading says how many, such as **Filters · 2 set**, and **Focus** reads **Focus · around this note** while the graph is drawn around the note. With [Zen](themes-and-zen.md#zen) on, Focus and Filters start folded, as Display does.
+- **Display**, folded to begin with, sets **Node size** and **Links per note**, which runs from **Fewer** to **More**. **Headings**: **By zoom** (default) draws a multi-heading file as one dot until you zoom in far enough that every note is named; **Always** draws every heading; **Never** every file. **Reset graph** restores controls, clears filters, and reframes; **Undo** beside it reverses that for a few seconds.
+
+**How the graph groups notes.** The graph uses prevalence-aware groups: direct wiki links and headings seed strong groups, while tag membership is discounted when a tag is too rare or too widespread. Hidden tags act as virtual anchors rather than high-mass particles, and each node keeps only its strongest local connections. The layout's forces are fixed, so every graph is laid out alike.
+
+Each group is named after the tags its notes carry more than the rest of the workspace does.
+
+**Links per note** sets that local budget. The status line reports the strong links kept against all indexed links; **Connected nodes** in the sidebar still uses the complete graph.
+
+Selecting a node highlights its direct neighbors and lists those same note, task, and tag nodes in the sidebar. Related notes are ranked for Markdown notes only.
 
 ## Outline
 
@@ -88,10 +95,11 @@ Open **Outline** from the Deckard Activity Bar to see the active Markdown file's
 
 - Each heading shows its title, without markers or tags, and its own tags beside it. A heading of only tags shows those tags as its title.
 - Untagged headings are kept for structure. Headings in fenced code blocks are ignored, and `Sprint #3` stays in the title. Underlined `Title`/`===` headings are not shown.
-- **2/5** means two of five tasks under the heading are done, sub-headings included; **↩3** means links in other notes name it three times. Zen hides them.
+- **2/5** means two of five tasks under the heading are done, sub-headings included; **↩3** means links in other notes name it three times.
 - The tree follows the file as you type.
 - Select a heading to jump to it. Right-click a tagged heading for **Open the Tag's Search Page** and **Rename Tag**.
-- The eye control sets whether the Outline follows the cursor; **Collapse all** is beside it.
+- The title holds **Filter Outline by Tag…** and **Collapse All**, and **Unfold All Sections** while a section is focused. Its **⋯** menu holds **Follow Cursor in Outline**, or **Stop Following Cursor in Outline** while it follows.
+- With no Markdown note open, the Outline says *Open a Markdown note to see its headings.*
 - **Focus Section**, the target button on a heading (also in the editor's **Deckard** submenu and Note Actions), folds the rest of the note away. **Unfold All Sections** or moving to another note ends it. It needs `editor.folding` on.
 - **Filter Outline by Tag…**, in the view title or a tagged heading's context menu, shows only headings with that tag or a tag under it (`#project` keeps `#project/atlas`), plus their parents. It stays until **Clear Outline Tag Filter**.
 

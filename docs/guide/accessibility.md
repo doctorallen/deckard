@@ -17,10 +17,11 @@ Deckard is built to be used with a keyboard, a screen reader, high contrast, and
 | --- | --- |
 | Anywhere | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> Find, <kbd>…</kbd>+<kbd>N</kbd> Add Task, <kbd>…</kbd>+<kbd>D</kbd> today's note, <kbd>…</kbd>+<kbd>P</kbd> Go to… any page (<kbd>Cmd</kbd> for <kbd>Ctrl</kbd> on macOS) |
 | Any right-click menu | <kbd>Shift</kbd>+<kbd>F10</kbd>, the context-menu key, or <kbd>Alt</kbd>+<kbd>Enter</kbd> opens it on what has focus; arrows move, <kbd>Enter</kbd> chooses, <kbd>Escape</kbd> closes |
-| Task board | One Tab stop; arrows move between cards and columns; on a card, **x** done, **t**/**m** due today or tomorrow, **d** a date, **f** who it is for, **1**–**5** priority, **[** and **]** the next column, **e** edit, **?** every key. See [Task board: Keyboard](task-board.md#keyboard) |
+| Task board | One Tab stop; arrows move between cards and columns; on a card, **x** done, **t**/**m** due today or tomorrow, **d** a date, **f** who it is for, **1**–**5** priority, **[** and **]** the next column, **e** edit, <kbd>Shift</kbd>+<kbd>F10</kbd> its **⋯** menu, **?** every key. See [Task board: Keyboard](task-board.md#keyboard) |
 | A card's **⋯** menu | Each item shows its one-key shortcut |
 | Deckard's pages, atop Context | One Tab stop, a toolbar named *Deckard pages*; <kbd>Down</kbd> and <kbd>Up</kbd> move through the list, <kbd>Right</kbd> and <kbd>Left</kbd> through the icons, <kbd>Home</kbd> and <kbd>End</kbd> to either end, <kbd>Enter</kbd> opens. The page in front is read as the current page |
 | **DECKARD ▾** atop a page | <kbd>Enter</kbd> or <kbd>Space</kbd> drops the menu of pages; arrows move, <kbd>Enter</kbd> goes, <kbd>Escape</kbd> closes it and returns to DECKARD |
+| **⋯** atop a page | <kbd>Enter</kbd> or <kbd>Space</kbd> opens it; <kbd>Tab</kbd> moves through its rows; <kbd>Escape</kbd> closes it and returns to **⋯**. On the Task board, the calendar page and a search page, <kbd>?</kbd> or **Keyboard shortcuts** in it lists the page's keys |
 | Notes Graph | Tab to the graph, arrows select a dot, <kbd>Enter</kbd> opens it, <kbd>Alt</kbd>+<kbd>Enter</kbd> beside the graph, <kbd>Escape</kbd> clears |
 | Home and Tags tabs | <kbd>Left</kbd> and <kbd>Right</kbd> switch tabs |
 | Ranked tags | <kbd>Alt</kbd>+<kbd>Up</kbd> and <kbd>Alt</kbd>+<kbd>Down</kbd> move a tag |
@@ -36,7 +37,7 @@ Every command is in the Command Palette under **Deckard:**, and each can be give
 - **Zoom:** pages reflow with VS Code's zoom (`window.zoomLevel`) and at narrow widths; the calendar page and Help fold to one column.
 - **Focus is its own mark.** The focused entry has the focus ring and opens its *file / line* below it, pushing the next entry down rather than covering it; while you use the keyboard, an entry under a resting pointer stays as it is.
 - **Motion:** with your system's reduce-motion setting on, pages hold still: no animated transitions or smooth scrolling.
-- **Display** turns decoration and helper text down on any page, Quiet or Zen, and **Counts**, **Card details**, and **Dates** choose what a page writes, every hidden part still read aloud; see [Themes and Display](themes-and-zen.md#display).
+- **Zen** turns decoration and helper text down on every page, and keeps every count and date; **Card details** chooses what an entry's details line writes, every folded part still read aloud; see [Themes and Display](themes-and-zen.md#display).
 
 Something that does not work as described here is a bug; please [report it](https://github.com/doctorallen/deckard/issues).
 

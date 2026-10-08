@@ -43,7 +43,7 @@ suite('Deckard pages: the top of Context and Go to…', () => {
 
   test('a quiet day says what each page is instead', () => {
     const pages = listDeckardPages({ ...FACTS, dueToday: 0, overdue: 0, todayNoteExists: true });
-    assert.deepStrictEqual(pages.slice(0, 4).map((page) => page.description), ['Dashboard', 'Tasks as columns', 'October 2026', 'Sun, Oct 4']);
+    assert.deepStrictEqual(pages.slice(0, 4).map((page) => page.description), ['Nothing due today', 'Tasks as columns', 'October 2026', 'Sun, Oct 4']);
   });
 
   test('a page id from a page\'s menu is one of the pages, and nothing else', () => {

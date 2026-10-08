@@ -24,7 +24,7 @@ Ties go to what you open most and most recently: a note counts once per heading 
 
 ### The search box
 
-Search pages, Home's search widget, and the Task board (tasks only) share one search box. Press <kbd>/</kbd> to type in it. **Builder** sits beside it.
+Search pages, Home's search widget, and the Task board (tasks only) share one search box. Press <kbd>/</kbd> to type in it, and <kbd>Enter</kbd> or the **→** at its end to run the search. The **×** beside it clears the search, and shows only when there is something to clear: on a tag's page, more than the tag. **Builder** is joined to the start of the box.
 
 ![A search page searching #project/meridian-vault is:open, with each term as a chip, Refine counts, and the matching tasks.](../images/notes-search.png)
 
@@ -35,9 +35,9 @@ Search pages, Home's search widget, and the Task board (tasks only) share one se
 - Two tags side by side are joined with AND.
 - A parse error shows under the box; the results keep the last search that ran.
 - When nothing matches, **Nothing matched. Search for … instead?** corrects misspelled words, never tags or folders.
-- **Save** stores the search by name. Saved searches appear on Home and the Tags tab and survive tag renames.
+- **Save search…**, in a search page's or the Task board's **⋯**, stores the search by name. Saved searches appear on Home and the Tags tab and survive tag renames.
 
-**Builder** edits the same search as nested rows and groups. Each group matches **all of** or **any of** its rows, and **not** negates a group.
+**Builder** opens under the box, and stays pressed while it is open. It edits the same search as nested rows and groups. Each group matches **all of** or **any of** its rows, and **not** negates a group.
 
 - **Add condition**: type a tag, word, or value such as `open`, then choose a completion or press <kbd>Enter</kbd>; the row fills in its field and operator.
 - <kbd>Enter</kbd> opens the next row, <kbd>Backspace</kbd> in an empty row removes it, and <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>Cmd</kbd>+<kbd>Enter</kbd> on macOS) adds a group joined the other way.
@@ -53,7 +53,9 @@ Search pages, Home's search widget, and the Task board (tasks only) share one se
 - <kbd>Shift</kbd>-select to add it with **OR** to the value before it, such as open *or* done tasks.
 - <kbd>Enter</kbd>, <kbd>Alt</kbd>+<kbd>Enter</kbd>, and <kbd>Shift</kbd>+<kbd>Enter</kbd> do the same from the keyboard. Hover a value to see what each writes.
 
-Refine writes ordinary query text, so the result can be saved, copied into a query block, or edited in the builder. A search of one tag, or tags joined by AND, lists related **Tags** instead, each with a three-step rail for its share of results (**in 6 of 13 results**). While the Context sidebar is open, Refine is [shown there](connections.md#refine-a-search-from-the-sidebar).
+Refine's values fold under its heading: select **Refine** to fold or unfold them. It starts unfolded, or folded with [Zen](themes-and-zen.md#zen) on, and stays as you leave it while you search. While the search holds values Refine offers, the heading says how many, such as **Refine · 2 set**. The count of results and a tag page's lines about its other spellings and untagged mentions are never folded.
+
+Refine writes ordinary query text, so the result can be saved, copied into a query block, or edited in the builder. A search of one tag, or tags joined by AND, lists related **Tags** instead, each with a three-step rail for its share of results (**in 6 of 13 results**). While the Context sidebar is open, Refine is [shown there](connections.md#refine-a-search-from-the-sidebar), and the page draws none of its own. A tag page's lines about its other spellings and untagged mentions stay under the search box, as do **Drop** and **Clear** when a search matched nothing.
 
 ### Query language
 
@@ -121,4 +123,4 @@ Fields:
 
 ---
 
-← [Task board](task-board.md) · [All topics](README.md) · [Search pages and tag overviews](search-pages.md) →
+← [Task board](task-board.md) · [All topics](README.md) · [Search pages](search-pages.md) →

@@ -37,9 +37,12 @@ class MemoryMemento implements vscode.Memento {
 }
 
 /**
- * Zen mode's promise is that it takes nothing away. The check that matters is
- * not that the eyebrow is gone — it is that the set of controls a reader can
- * reach is the same with zen on as with it off.
+ * Zen's switch: the setting, the body's marker, ⋯'s checkbox, and the sheet
+ * Zen's looks hang on. Zen's promise, that it takes nothing away and leaves
+ * every control reachable where it stands, is held by 'Zen keeps every
+ * control on the page' and the rest of Zen's contract in
+ * zen-controls.test.ts, which draw each page with Zen on and off without
+ * VS Code, so they run with the unit suites.
  */
 suite('Zen mode', () => {
   const pages: WebviewPage[] = [];
@@ -49,8 +52,8 @@ suite('Zen mode', () => {
 
   const setZen = async (enabled: boolean): Promise<void> => {
     await configuration().update(
-      'display.level',
-      enabled ? 'zen' : undefined,
+      'display.zen',
+      enabled ? true : undefined,
       vscode.ConfigurationTarget.Global,
     );
   };
@@ -60,7 +63,7 @@ suite('Zen mode', () => {
     store?.repository.dispose();
     store = undefined;
     await configuration().update(
-      'display.level',
+      'display.zen',
       undefined,
       vscode.ConfigurationTarget.Global,
     );
@@ -114,21 +117,6 @@ suite('Zen mode', () => {
     return page;
   };
 
-  /** Everything a reader can act on, as the page draws it. */
-  const controls = (page: WebviewPage): string[] =>
-    page
-      .findAll('button, input, select, a, summary, [data-action], [tabindex]')
-      .map((element) =>
-        [
-          element.tagName.toLowerCase(),
-          element.getAttribute('data-action') ?? '',
-          element.getAttribute('data-value') ?? '',
-          element.getAttribute('type') ?? '',
-          (element.textContent ?? '').trim().slice(0, 40),
-        ].join('|'),
-      )
-      .sort();
-
   test('reads the setting, and is off until it is asked for', async () => {
     assert.strictEqual(isZenModeEnabled(), false);
     await setZen(true);
@@ -156,36 +144,20 @@ suite('Zen mode', () => {
     assert.ok(pageSheets(on).includes('body[data-density=compact] {'), 'the sheet ships when zen is on');
   });
 
-  test('takes no control away from the Dashboard', async () => {
-    const before = controls(dashboard());
-    await setZen(true);
-    const after = controls(dashboard());
-
-    assert.deepStrictEqual(after, before);
-    assert.ok(before.length > 10, 'the page drew something to compare');
-  });
-
-  test('takes no control away from a search page', async () => {
-    const before = controls(searchPage());
-    await setZen(true);
-    const after = controls(searchPage());
-
-    assert.deepStrictEqual(after, before);
-  });
-
-  test('offers the gear a Display row that says which step is in force', async () => {
-    const zenStep = '[data-action="set-display"][data-display="level"][data-value="zen"]';
-    assert.strictEqual(dashboard().find(zenStep)?.getAttribute('aria-pressed'), 'false');
+  test('offers ⋯ a Zen checkbox, in Appearance, that says whether Zen is on', async () => {
+    const zenBox = 'input[type="checkbox"][data-action="set-zen"]';
+    assert.strictEqual((dashboard().find(zenBox) as HTMLInputElement).checked, false);
 
     await setZen(true);
-    assert.strictEqual(dashboard().find(zenStep)?.getAttribute('aria-pressed'), 'true', 'Zen mode reads as the Zen step');
+    assert.strictEqual((dashboard().find(zenBox) as HTMLInputElement).checked, true, 'the box is ticked while Zen is on');
   });
 
-  test('every gear offers the theme, then the page width, then Display, and asks the host to choose a theme', () => {
+  test('⋯ offers Appearance: the theme, then Zen, then the page width, and asks the host to choose a theme', () => {
     for (const page of [dashboard(), searchPage()]) {
-      const labels = page.findAll('.view-options-group').map((group) => group.children[0].textContent);
-      const theme = labels.indexOf('Theme');
-      assert.ok(theme >= 0 && labels[theme + 1] === 'Page width' && labels[theme + 2] === 'Display', labels.join());
+      const labels = page.findAll('.page-menu [aria-label="Appearance"] .view-options-group').map((group) => group.children[0].textContent);
+      assert.deepStrictEqual(labels, ['Theme', 'Zen', 'Page width']);
+      assert.ok(page.find('.page-menu [aria-label="Appearance"] input[data-action="set-zen"]'), 'the Zen checkbox is in Appearance');
+      assert.ok(!labels.includes('Display'), 'the three steps are gone');
       const button = page.find('[data-action="choose-theme"]');
       assert.strictEqual(button.textContent, 'Corpo…');
       assert.strictEqual(button.getAttribute('aria-label'), 'Theme: Corpo. Choose another');
@@ -196,11 +168,14 @@ suite('Zen mode', () => {
 
   test('posts the reader\'s choice to the host', async () => {
     const page = dashboard();
-    page.click('[data-action="set-display"][data-display="level"][data-value="quiet"]');
-    assert.deepStrictEqual(page.lastPosted('setDisplay'), { type: 'setDisplay', setting: 'level', value: 'quiet' });
+    page.click('[data-action="set-zen"]');
+    assert.deepStrictEqual(page.lastPosted('setZenMode'), { type: 'setZenMode', enabled: true });
 
-    page.click('[data-action="display-command"][data-command="customize"]');
-    assert.deepStrictEqual(page.lastPosted('displayCommand'), { type: 'displayCommand', command: 'customize' });
+    await setZen(true);
+    const zen = dashboard();
+    zen.click('[data-action="set-zen"]');
+    assert.deepStrictEqual(zen.lastPosted('setZenMode'), { type: 'setZenMode', enabled: false }, 'unticked, it turns Zen off');
+    assert.strictEqual(zen.findAll('[data-action="display-command"]').length, 0, 'no Reset or Customize… line');
   });
 
   test('folds provenance and hides ornament, and keeps what carries meaning', () => {
@@ -209,7 +184,7 @@ suite('Zen mode', () => {
     // Ornament goes.
     assert.match(sheet, /body\[data-styling=plain\] \.eyebrow-trail,/);
     assert.match(sheet, /body\[data-styling=plain\] \.metric::before \{/);
-    assert.match(sheet, /body\[data-help=hidden\] \.query-hint,/);
+    assert.match(sheet, /body\[data-help=hidden\] \.help-text \{ display: none; \}/);
 
     // DECKARD ▾ is the way to every other page, and stays.
     assert.ok(!/\.eyebrow-home/.test(sheet.replace(':not(:has(.eyebrow-home))', '')), 'DECKARD ▾ is never hidden');
@@ -228,18 +203,22 @@ suite('Zen mode', () => {
 
   });
 
-  test('folds where an entry is written, in and out of zen, without leaving the tree', () => {
+  test('keeps a line for card details, in and out of zen, without leaving the tree', () => {
     const sheet = readSheet('shared/provenance.css');
+    const reveal = readSheet('shared/reveal.css');
 
-    // Folded off-screen rather than out of the tree, so it is still
-    // announced, still found by find-in-page, and comes back on focus.
-    assert.match(sheet, /\.task-row \.task-source,/);
+    // One line, cut short, revealed by opacity alone, so it takes its room
+    // at rest and nothing moves when it shows.
+    assert.match(sheet, /\.entry-details \{[^}]*white-space: nowrap;[^}]*text-overflow: ellipsis;/);
+    assert.match(reveal, /\[data-reveal\][^{]*\{ opacity: 0; \}/);
+    assert.ok(!/::after/.test(sheet), 'nothing is laid over the next entry');
+    // With nothing ticked it is folded off-screen rather than out of the
+    // tree, so a screen reader still reads where the entry is written.
+    assert.match(sheet, /body\[data-file-line=never\] \.entry-details,/);
     assert.match(sheet, /clip-path: inset\(50%\)/);
-    assert.match(sheet, /\.task-row:focus-within \.task-source/);
-    assert.ok(
-      !/\.task-source[^{]*\{[^}]*display: none/.test(sheet),
-      'provenance must not leave the accessibility tree',
-    );
+    for (const rules of [sheet, reveal]) {
+      assert.ok(!/display: none|visibility: hidden/.test(rules), 'card details and row actions never leave the accessibility tree');
+    }
     assert.ok(!/body\.zen/.test(sheet), 'it is the same with zen off');
     assert.ok(
       !/\.board-details/.test(sheet),

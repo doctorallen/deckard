@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 
 import { createPreferences } from './preferenceServices';
-import { DEFAULT_DASHBOARD_WIDGETS, isDefaultHomeLayout, pinKey } from '../core/storage/preferencesSchema';
+import { DEFAULT_DASHBOARD_WIDGETS, isDefaultHomeLayout, normalizeDashboardWidgets, pinKey } from '../core/storage/preferencesSchema';
 
 class MemoryMemento {
   private readonly values = new Map<string, unknown>();
@@ -160,7 +160,7 @@ suite('Preferences store', () => {
     await store.display.setDashboardColumns('notes', 2);
     await store.display.setDashboardColumns('tags', 4);
     await store.homeWidgets.setDashboardMode('browse');
-    await store.taskLayout.setTaskBoardLayout('list');
+    await store.taskLayout.setTaskBoardLayout('table');
     await store.taskLayout.setTaskBoardGroup('due');
     await store.homeWidgets.setDashboardSearch('tags', 'atlas');
     await store.usage.recordSectionAccess('section-1');
@@ -183,7 +183,7 @@ suite('Preferences store', () => {
       mode: 'browse',
       tagSearchQuery: 'atlas',
     });
-    assert.strictEqual(store.reader.value.taskBoardLayout, 'list');
+    assert.strictEqual(store.reader.value.taskBoardLayout, 'table');
     assert.strictEqual(store.reader.value.taskBoardGroup, 'due');
     // Every grouping the board offers survives being read back.
     await store.taskLayout.setTaskBoardGroup('assignee');
@@ -290,17 +290,17 @@ suite('Preferences store', () => {
       { id: 'a', kind: 'agenda', width: 'half' },
       { id: 'b', kind: 'search', width: 'wide' as 'half' },
       { id: 'c', kind: 'search', width: 'half' },
-      { id: 'd', kind: 'mystery' as 'stats', width: 'half' },
+      { id: 'd', kind: 'mystery' as 'search', width: 'half' },
       { id: 'e', kind: 'savedQuery', width: 'half' },
       { id: 'f', kind: 'savedQuery', width: 'half', filterId: 'saved' },
-      { id: 'g', kind: 'stats', width: 'half', count: 3, query: 'x' },
+      { id: 'g', kind: 'pinnedNotes', width: 'half', count: 3, query: 'x' },
     ]);
 
     assert.deepStrictEqual(store.reader.value.dashboardWidgets, [
       { id: 'a', kind: 'tasks', width: 'full', count: 20, query: 'is:open' },
       { id: 'b', kind: 'search', width: 'half' },
       { id: 'f', kind: 'savedQuery', width: 'half', count: 5, filterId: 'saved' },
-      { id: 'g', kind: 'stats', width: 'half' },
+      { id: 'g', kind: 'pinnedNotes', width: 'half', count: 3 },
     ]);
 
     await store.homeWidgets.resetDashboardWidgets();
@@ -339,16 +339,51 @@ suite('Preferences store', () => {
   test('keeps each look-back widget\'s days within bounds', async () => {
     const store = createPreferences(new MemoryMemento());
     await store.homeWidgets.setDashboardWidgets([
-      { id: 's', kind: 'staleTasks', width: 'half', days: 9999 },
-      { id: 'n', kind: 'newTags', width: 'half' },
-      { id: 'q', kind: 'quickAdd', width: 'full', days: 3, count: 4 },
+      { id: 'q', kind: 'quietPeople', width: 'half', days: 9999 },
+      { id: 'p', kind: 'progress', width: 'full', days: 3, count: 4 },
     ]);
     assert.deepStrictEqual(store.reader.value.dashboardWidgets, [
-      { id: 's', kind: 'staleTasks', width: 'half', count: 5, days: 365 },
-      { id: 'n', kind: 'newTags', width: 'half', count: 5, days: 14 },
-      { id: 'q', kind: 'quickAdd', width: 'full' },
+      { id: 'q', kind: 'quietPeople', width: 'half', count: 5, days: 365 },
+      { id: 'p', kind: 'progress', width: 'full', count: 4 },
     ]);
     store.repository.dispose();
+  });
+
+  test('keeps a tasks widget\'s own sort, and only a sort there is', async () => {
+    const store = createPreferences(new MemoryMemento());
+    await store.homeWidgets.setDashboardWidgets([
+      { id: 'a', kind: 'tasks', width: 'half', sort: 'updatedOldest' },
+      { id: 'b', kind: 'tasks', width: 'half', sort: 'sideways' as 'rank' },
+      { id: 'c', kind: 'agenda', width: 'half', sort: 'created' },
+    ]);
+    assert.deepStrictEqual(store.reader.value.dashboardWidgets, [
+      { id: 'a', kind: 'tasks', width: 'half', count: 5, query: 'is:open', sort: 'updatedOldest' },
+      { id: 'b', kind: 'tasks', width: 'half', count: 5, query: 'is:open' },
+      { id: 'c', kind: 'agenda', width: 'half', count: 5 },
+    ]);
+    store.repository.dispose();
+  });
+
+  test('reads a stored Stale tasks widget as the Tasks widget that took its place, and drops the kinds Home no longer offers', () => {
+    // Widgets stored before Home's catalog went from 21 kinds to 14.
+    const stored: unknown[] = [
+      { id: 'staleTasks', kind: 'staleTasks', width: 'half', count: 10, days: 14 },
+      { id: 'w', kind: 'stats', width: 'full' },
+      { id: 'r', kind: 'relatedNotes', width: 'half', count: 5 },
+      { id: 'q', kind: 'quickAdd', width: 'full' },
+      { id: 'p', kind: 'tagPairs', width: 'half', count: 5 },
+      { id: 'u', kind: 'unhubbedTags', width: 'half', count: 5 },
+      { id: 'n', kind: 'newTags', width: 'half', count: 5, days: 14 },
+      { id: 'old', kind: 'staleTasks', width: 'full' },
+      { id: 'a', kind: 'agenda', width: 'half', count: 5 },
+    ];
+    assert.deepStrictEqual(normalizeDashboardWidgets(stored), [
+      { id: 'staleTasks', kind: 'tasks', width: 'half', count: 10, query: 'is:open AND updated < 14d', sort: 'updatedOldest' },
+      // A Tasks widget may repeat, so a second Stale tasks is kept too, at
+      // the days it looked back by default.
+      { id: 'old', kind: 'tasks', width: 'full', count: 5, query: 'is:open AND updated < 30d', sort: 'updatedOldest' },
+      { id: 'a', kind: 'agenda', width: 'half', count: 5 },
+    ]);
   });
 
   test('knows every tag of the first index, and when each later tag was first seen', async () => {

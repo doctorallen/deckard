@@ -142,10 +142,7 @@ suite('Related Notes messages', () => {
     }
   });
 
-  test('accepts what Home\'s Customize and the calendar\'s day ask, and nothing malformed', () => {
-    assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'homeAddWidget', value: 'calendar' }), { type: 'homeAddWidget', value: 'calendar' });
-    assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'homeAddWidget', value: '' }), { type: 'homeAddWidget', value: '' });
-    assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'homeResetWidgets', extra: 1 }), { type: 'homeResetWidgets' });
+  test('accepts what the calendar\'s day asks, and nothing malformed', () => {
     assert.deepStrictEqual(
       narrowSidebarNotesMessage({ type: 'calendarDay', message: { type: 'openDay', date: '2026-09-24', extra: 1 } }),
       { type: 'calendarDay', message: { type: 'openDay', date: '2026-09-24' } },
@@ -155,8 +152,8 @@ suite('Related Notes messages', () => {
       { type: 'calendarDay', message: { type: 'toggleTask', taskId: 'a', completed: true } },
     );
     for (const message of [
-      { type: 'homeAddWidget' },
-      { type: 'homeAddWidget', value: 3 },
+      { type: 'homeAddWidget', value: 'calendar' },
+      { type: 'homeResetWidgets' },
       { type: 'calendarDay' },
       { type: 'calendarDay', message: { type: 'openDay', date: 'Thursday' } },
       { type: 'calendarDay', message: { type: 'selectDay', date: '2026-09-24', extra: 1 } },

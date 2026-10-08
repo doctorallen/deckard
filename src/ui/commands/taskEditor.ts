@@ -905,8 +905,11 @@ export class TaskLineContext implements vscode.Disposable {
 export class TaskEditorActions implements vscode.Disposable {
   private readonly registration: vscode.Disposable;
 
-  /** Registers for every Markdown file at once; dispose takes the offer away. */
-  public constructor() {
+  /**
+   * Registers for every Markdown file at once; dispose takes the offer away.
+   * `isNotesFile` says which files are notes, where alone it is offered.
+   */
+  public constructor(private readonly isNotesFile: (uri: vscode.Uri) => boolean = () => true) {
     this.registration = vscode.languages.registerCodeActionsProvider(
       { pattern: '**/*.md' },
       {
@@ -923,15 +926,18 @@ export class TaskEditorActions implements vscode.Disposable {
   }
 
   /**
-   * Edit task… and Break into steps… on a task line of a Markdown note;
-   * nothing on any other line.
+   * Edit task… and Break into steps… on a task line of a note; nothing on
+   * any other line, or in a Markdown file outside the notes.
    */
   public provideCodeActions(
     document: vscode.TextDocument,
     range: vscode.Range | vscode.Selection,
   ): vscode.CodeAction[] {
+    if (!isMarkdownFile(document.uri) || !this.isNotesFile(document.uri)) {
+      return [];
+    }
     const line = document.lineAt(range.start.line).text;
-    if (!isMarkdownFile(document.uri) || !isTaskLine(line)) {
+    if (!isTaskLine(line)) {
       return [];
     }
     const action = new vscode.CodeAction(

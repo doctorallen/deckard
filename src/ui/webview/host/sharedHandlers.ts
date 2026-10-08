@@ -19,7 +19,6 @@ import type { NavigationService, SourcePolicy, TagPolicy } from '../../../servic
 import type { MessageHandler } from './pageController';
 import type {
   ChooseThemeMessage,
-  DisplayCommandMessage,
   GoToPageMessage,
   ListGoToMessage,
   OpenGoToMessage,
@@ -36,7 +35,7 @@ import type {
 import { openNoteAt } from '../../commands/noteOpening';
 import { renameIndexedTag, TagWrites } from '../../commands/renameTag';
 import { clickTask, TaskWrites } from '../../commands/taskActions';
-import { customizeDisplay, setDisplayChoice, useStepValues } from '../../commands/displaySettings';
+import { setDisplayChoice } from '../../commands/displaySettings';
 import { setZenMode as writeZenMode } from '../zenMode';
 import { DECKARD_PAGE_COMMANDS, DeckardPageId, isDeckardPageId } from '../../state/deckardPages';
 import { describeGoToMenu } from '../../views/pagesTree';
@@ -46,17 +45,12 @@ export function chooseTheme(): MessageHandler<ChooseThemeMessage> {
   return () => vscode.commands.executeCommand('deckard.chooseTheme');
 }
 
-/** The gear's Cards and Tags rows, written to the user's settings. */
+/** The gear's Page width row, kept in the preferences. */
 export function setDisplay(): MessageHandler<SetDisplayMessage> {
   return (message) => setDisplayChoice(message.setting, message.value);
 }
 
-/** The gear's Display links: the step's own values back, or Settings filtered to Display. */
-export function displayCommand(): MessageHandler<DisplayCommandMessage> {
-  return (message) => (message.command === 'useStepValues' ? useStepValues() : customizeDisplay());
-}
-
-/** The gear's zen row, written where the setting is set. */
+/** The gear's Zen checkbox, written to the user's settings. */
 export function setZenMode(): MessageHandler<SetZenModeMessage> {
   return (message) => writeZenMode(message.enabled);
 }

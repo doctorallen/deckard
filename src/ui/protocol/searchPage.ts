@@ -31,7 +31,6 @@ import type {
   PinNoteMessage,
   RenameTagMessage,
   ResultPaging,
-  DisplayCommandMessage,
   SetDisplayMessage,
   SetZenModeMessage,
   TagOverviewCard,
@@ -368,7 +367,6 @@ export interface SearchPagePageToHost {
   exportResults: ExportResultsMessage;
   setZenMode: SetZenModeMessage;
   setDisplay: SetDisplayMessage;
-  displayCommand: DisplayCommandMessage;
   chooseTheme: ChooseThemeMessage;
   pinNote: MessageAs<PinNoteMessage, 'pinNote'>;
   unpinNote: MessageAs<PinNoteMessage, 'unpinNote'>;

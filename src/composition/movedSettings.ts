@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { carryMovedSettings, MOVED_SETTINGS, type MovedSetting } from '../core/storage/movedSettings';
+import { carryMovedSettings, carryRenamedSettings, MOVED_SETTINGS, type MovedSetting, type RenamedSettingWrite, type ScopedValues } from '../core/storage/movedSettings';
 import type { PreferencesRepository } from '../core/storage/preferencesRepository';
 import type { KeyValueStore } from '../ports/keyValueStore';
 
@@ -50,4 +50,49 @@ export async function carryMovedSettingsOnce(
   }
   await memory.global.update(MOVED_SETTINGS_CARRIED_KEY, true);
   await memory.workspace.update(MOVED_SETTINGS_CARRIED_KEY, true);
+}
+
+/** Set in each store once the renamed settings it holds have been carried. */
+export const RENAMED_SETTINGS_CARRIED_KEY = 'deckard.renamedSettingsCarried';
+
+/** Where the renamed settings are read, written, and announced: VS Code's settings and a notice, or a test's. */
+export interface RenamedSettingsPorts {
+  readonly read: (key: string) => ScopedValues | undefined;
+  readonly write: (write: RenamedSettingWrite) => PromiseLike<void>;
+  readonly notify: (message: string) => void;
+}
+
+/** VS Code's settings, written where each value was found, and an information message. */
+const vscodeRenamedSettingsPorts: RenamedSettingsPorts = {
+  read: (key) => vscode.workspace.getConfiguration('deckard').inspect(key),
+  write: ({ key, value, scope }) =>
+    vscode.workspace.getConfiguration('deckard').update(key, value, scope === 'user' ? vscode.ConfigurationTarget.Global : vscode.ConfigurationTarget.Workspace),
+  notify: (message) => void vscode.window.showInformationMessage(message),
+};
+
+/**
+ * Carries the values a reader had set for the settings that became another
+ * setting, once: the user's once per machine, and the workspace's once per
+ * workspace, each written in the scope it was found in. When any was found,
+ * one notice names each family that moved; the old settings are never read
+ * again, and removing them from settings.json is the reader's.
+ */
+export async function carryRenamedSettingsOnce(
+  memory: CarryMemory,
+  ports: RenamedSettingsPorts = vscodeRenamedSettingsPorts,
+): Promise<void> {
+  const user = memory.global.get<boolean>(RENAMED_SETTINGS_CARRIED_KEY) !== true;
+  const workspace = memory.workspace.get<boolean>(RENAMED_SETTINGS_CARRIED_KEY) !== true;
+  if (!user && !workspace) {
+    return;
+  }
+  const { writes, notices } = carryRenamedSettings(ports.read, { user, workspace });
+  for (const write of writes) {
+    await ports.write(write);
+  }
+  await memory.global.update(RENAMED_SETTINGS_CARRIED_KEY, true);
+  await memory.workspace.update(RENAMED_SETTINGS_CARRIED_KEY, true);
+  if (notices.length > 0) {
+    ports.notify(`Deckard moved settings you had set. ${notices.join('. ')}.`);
+  }
 }

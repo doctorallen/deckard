@@ -13,6 +13,7 @@
 import { type ComponentChild, type ComponentChildren, createRef, render } from 'preact';
 
 import type { QueryFacet, QueryTermChip, QueryViewState } from '../../ui/protocol/query';
+import { EmptyState } from './emptyState';
 import { FacetValue, facetValuesShown } from './facets';
 import {
   buildQueryFromTree,
@@ -45,6 +46,7 @@ import {
   valueContext,
 } from './queryText';
 import { setSearchInFlight } from './status';
+import { HammerIcon } from './strokeIcons';
 
 /** What a page tells its search box. */
 export interface QueryEditorOptions {
@@ -63,8 +65,9 @@ export interface QueryEditorOptions {
   /** What the box searches, for assistive technology. */
   readonly label?: string;
   /**
-   * What Clear leaves in the box, such as the page's own tag on a tag
-   * overview. Empty unless given; Clear is held while the box holds only this.
+   * What clearing leaves in the box, such as the page's own tag on a tag
+   * overview. Empty unless given; the field's × is drawn only while the box
+   * holds more than this.
    */
   readonly clearedText?: () => string;
   /** What the search can find: notes and tasks unless a page lists only one. */
@@ -80,12 +83,6 @@ export interface QueryEditorOptions {
    * pointer while a search is typed.
    */
   readonly actions?: (hasText: boolean) => ComponentChildren;
-  /**
-   * True while one of `actions` is the bar's filled button, marked
-   * `query-primary`, so Search is drawn as the others are: one filled
-   * control to a page.
-   */
-  readonly ownPrimary?: () => boolean;
 }
 
 /** How a value is added to a search: AND, AND NOT, or OR beside the facet's chosen value. */
@@ -413,7 +410,7 @@ function BuilderGroup({ group, path, depth, context }: { readonly group: EditorG
         ? <div class="query-builder-item has-group">{joiner}<BuilderGroup group={item} path={itemPath} depth={depth + 1} context={context} /></div>
         : <BuilderRow row={item} path={itemPath} joiner={joiner} context={context} />;
     })
-    : <p class="query-builder-note">This group is empty. Add a condition to start it.</p>;
+    : <EmptyState class="query-builder-note" state="This group is empty." teach="Add a condition to start it." />;
   return (
     <div class={className} data-group-path={at}>
       <BuilderGroupHead group={group} at={at} depth={depth} />
@@ -531,12 +528,15 @@ class SearchBox implements QueryEditor {
 
   /**
    * Text typed and not added as a term is let go when the search box loses
-   * focus, as a multi-select does; moving to the box's own buttons keeps it.
+   * focus, as a multi-select does; moving to the box's own buttons keeps it,
+   * and so does moving to the page's bar (`data-query-keeps-text`), whose
+   * Save search… in ⋯ and Save to Tasks view save what the box shows.
    */
   private listen(): void {
+    const keeps = '.query-workspace, [data-query-keeps-text]';
     document.addEventListener('mousedown', (event) => {
       const target = targetOf(event);
-      this.pointerInWorkspace = Boolean(target && target.closest('.query-workspace'));
+      this.pointerInWorkspace = Boolean(target && target.closest(keeps));
     }, true);
     document.addEventListener('mouseup', () => {
       setTimeout(() => {
@@ -552,7 +552,7 @@ class SearchBox implements QueryEditor {
         return;
       }
       const next = event.relatedTarget as Element | null;
-      if (this.pointerInWorkspace || (next && next.closest && next.closest('.query-workspace'))) {
+      if (this.pointerInWorkspace || (next && next.closest && next.closest(keeps))) {
         return;
       }
       this.closeSuggestions();
@@ -624,11 +624,6 @@ class SearchBox implements QueryEditor {
     return <TermChips terms={terms} join={query.termsJoin || 'and'} />;
   }
 
-  /** Search's class: filled, unless the page's own action is the filled one now. */
-  private searchClass(): string | undefined {
-    return this.options.ownPrimary?.() ? undefined : 'query-apply';
-  }
-
   public bar(statusControls?: ComponentChildren): ComponentChild {
     const value = this.currentText();
     const hasText = Boolean(String(value).trim());
@@ -637,42 +632,52 @@ class SearchBox implements QueryEditor {
     const terms = this.chips();
     const label = this.options.label || 'Search';
     const invalid = error === undefined ? '' : ' invalid';
+    // The / key's part of the hint says nothing once the field has focus,
+    // so it is left out then (queryEditor.css).
     const status = error === undefined
-      ? <span key="hint" class="query-hint">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span>
+      ? <span key="hint" class="query-hint help-text">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT.<span class="query-hint-key"> Press / to search.</span></span>
       : <span key="error" class="query-error" role="alert">{error}</span>;
+    // Builder is joined to the start of the field, and pressed while the
+    // builder is open under it. The field ends in two glyphs: × empties
+    // the search, drawn only while there is something to clear, and → runs
+    // it, as Enter does. Under Zen, the box is the region the tools in its
+    // status line show from (shared/reveal.css); the field, its glyphs and
+    // Builder are never quieted.
     return (
-      <section class={searchInFlight ? 'query-workspace is-searching' : 'query-workspace'} data-has-text={hasText ? '' : undefined} aria-label={label}>
+      <section class={searchInFlight ? 'query-workspace is-searching' : 'query-workspace'} data-has-text={hasText ? '' : undefined} data-zen-region="" aria-label={label}>
         <div class="query-bar-row">
-          <span class={`query-input-shell query-bar-shell${invalid}`} data-query-text={value}>
-            {terms}
-            <input
-              ref={this.barInput}
-              class={`query-input${invalid}`}
-              type="text"
-              data-action="query-input"
-              data-suggest-key="query"
-              {...NO_SPELLCHECK}
-              autocomplete="off"
-              role="combobox"
-              aria-expanded="false"
-              aria-autocomplete="list"
-              aria-controls="suggestions-query"
-              aria-label={terms ? `${label}: add a term` : label}
-              placeholder={terms ? '' : this.placeholder()}
-              value={this.entry}
-            />
-            <SuggestionBox suggestKey="query" />
-          </span>
-          <button class={this.searchClass()} data-action="apply-query" data-tip="Run this search">Search</button>
-          <button data-action="clear-query" data-query-clears="" data-tip="Clear the search" data-tip-disabled={this.clearReason()} aria-disabled={this.canClear(value) ? undefined : 'true'}>Clear</button>
+          <div class="query-field-group">
+            <button class={this.builderOpen ? 'query-builder-toggle active' : 'query-builder-toggle'} data-action="toggle-builder" aria-expanded={this.builderOpen} data-tip="Build the search one condition at a time"><HammerIcon />Builder</button>
+            <span class={`query-input-shell query-bar-shell${invalid}`} data-query-text={value}>
+              {terms}
+              <input
+                ref={this.barInput}
+                class={`query-input${invalid}`}
+                type="text"
+                data-action="query-input"
+                data-suggest-key="query"
+                {...NO_SPELLCHECK}
+                autocomplete="off"
+                role="combobox"
+                aria-expanded="false"
+                aria-autocomplete="list"
+                aria-controls="suggestions-query"
+                aria-label={terms ? `${label}: add a term` : label}
+                placeholder={terms ? '' : this.placeholder()}
+                value={this.entry}
+              />
+              <button class="query-field-glyph query-clear" data-action="clear-query" aria-label="Clear the search" data-tip="Clear the search" hidden={!this.canClear(value)}>×</button>
+              <button class="query-field-glyph query-run" data-action="apply-query" aria-label="Search" data-tip="Run this search" data-tip-key="Enter">→</button>
+              <SuggestionBox suggestKey="query" />
+            </span>
+          </div>
           {this.options.actions ? this.options.actions(hasText) : null}
         </div>
+        {this.builder()}
         <div class="query-status">
-          <button class="query-builder-toggle" data-action="toggle-builder" aria-expanded={this.builderOpen} data-tip="Build the search one condition at a time">{this.builderOpen ? 'Hide builder' : 'Builder'}</button>
           {status}
           {statusControls}
         </div>
-        {this.builder()}
       </section>
     );
   }
@@ -686,7 +691,7 @@ class SearchBox implements QueryEditor {
     return (
       <div class="query-builder">
         <BuilderGroup group={this.builderTree()} path={[]} depth={0} context={context} />
-        <p class="query-builder-note">In a new row, type a tag, a word, or a value such as open. Enter adds another row, Backspace in an empty row removes it, and Ctrl or Cmd+Enter adds a group beside the row. A group matches all of its rows or any of them, and not turns it around.</p>
+        <p class="query-builder-note help-text">In a new row, type a tag, a word, or a value such as open. Enter adds another row, Backspace in an empty row removes it, and Ctrl or Cmd+Enter adds a group beside the row. A group matches all of its rows or any of them, and not turns it around.</p>
       </div>
     );
   }
@@ -723,14 +728,18 @@ class SearchBox implements QueryEditor {
     return <><span class="query-facets-empty">Nothing matched.</span><span class="query-recovery">{drop}{clear}</span></>;
   }
 
-  /** How many of each kind of result the applied search matches. */
-  private matchCount(): ComponentChild {
+  /**
+   * How many of each kind of result the applied search matches. Kept for a
+   * screen reader alone where the page shows the counts itself: in its
+   * tabs, or, with Refine in the sidebar, in its headings and bar.
+   */
+  private matchCount(hidden = false): ComponentChild {
     if (!this.appliedText().trim()) {
       return null;
     }
     const counts = this.query().matchCounts || { notes: 0, tasks: 0 };
     const nouns = { notes: ['note', 'notes'], tasks: ['task', 'tasks'] };
-    const elsewhere = this.options.countElsewhere && this.options.countElsewhere();
+    const elsewhere = hidden || (this.options.countElsewhere && this.options.countElsewhere());
     const said = (this.options.resultKinds || ['notes', 'tasks']).map((kind) => {
       const count = counts[kind] || 0;
       return `${count} ${nouns[kind][count === 1 ? 0 : 1]}`;
@@ -752,7 +761,27 @@ class SearchBox implements QueryEditor {
     );
   }
 
+  /**
+   * How many of Refine's values the applied search holds, each once, though
+   * a tag is applied in Tags and in Related alike, and past the page's own:
+   * its tag, on a tag page, is not something Refine set.
+   */
+  private refinedCount(facets: readonly QueryFacet[]): number {
+    const own = this.clearedText();
+    const set = new Set(facets.flatMap((facet) => facet.applied || []).map((clause) => clause.toLowerCase()));
+    return [...set].filter((clause) => !namesClause(own, clause)).length;
+  }
+
+  /**
+   * Refine: the page's lead lines and the match count, always drawn, and
+   * the facets in a fold whose summary says how many of them are set. The
+   * fold is open to begin with, and closed under Zen, which a reader opens
+   * by its summary (plan 29, R23); a draw keeps it as the reader left it.
+   */
   public facets(lead?: ComponentChild): ComponentChild {
+    if (this.options.refineElsewhere && this.options.refineElsewhere()) {
+      return this.facetsElsewhere(lead);
+    }
     const facets = this.query().facets || [];
     const count = this.matchCount();
     const recovery = this.matchedNothing() ? this.recovery() : null;
@@ -761,28 +790,55 @@ class SearchBox implements QueryEditor {
     }
     const top = lead ? <div class="query-facets-lead">{lead}</div> : null;
     const nothingLeft = <span class="query-facets-empty">Nothing left to narrow by.</span>;
-    if (this.options.refineElsewhere && this.options.refineElsewhere()) {
-      // The sidebar still says where Refine went; a search that matched
-      // nothing has nothing to narrow, so it offers the way back instead.
-      const note = facets.length ? <span class="query-facets-empty">In the Context sidebar.</span> : (recovery || nothingLeft);
+    if (!facets.length) {
+      // Nothing to fold: what is left is a state line and the ways out.
       return (
-        <section class="query-facets is-elsewhere" aria-label="Refine these results">
+        <section class="query-facets" aria-label="Refine these results">
           {top}
-          <div class="query-facets-groups"><span class="query-facets-heading">Refine</span>{note}</div>
+          <div class="query-facets-groups">
+            <span class="query-facets-heading">Refine</span>
+            {recovery || nothingLeft}
+          </div>
           {count}
         </section>
       );
     }
+    const set = this.refinedCount(facets);
+    const shown = document.querySelector<HTMLDetailsElement>('.query-facets-fold');
+    const open = shown ? shown.open : !document.body.classList.contains('zen');
     return (
       <section class="query-facets" aria-label="Refine these results">
         {top}
-        <div class="query-facets-groups">
-          <span class="query-facets-heading">Refine</span>
-          {facets.length ? null : (recovery || nothingLeft)}
-          {facets.map((facet) => this.facet(facet))}
-        </div>
+        <details class="query-facets-fold" open={open}>
+          <summary class="query-facets-heading">{set ? `Refine · ${set} set` : 'Refine'}</summary>
+          <div class="query-facets-groups">
+            {facets.map((facet) => this.facet(facet))}
+          </div>
+        </details>
         {count}
       </section>
+    );
+  }
+
+  /**
+   * With Refine in the Context sidebar, the page draws no Refine of its own,
+   * not even a line saying where it went: the reader can see it there. What
+   * the sidebar does not show stays, as plain lines under the search box:
+   * the page's lead lines, such as a tag's look-alikes, and the ways out of
+   * a search that matched nothing. The count stays for a screen reader.
+   */
+  private facetsElsewhere(lead?: ComponentChild): ComponentChild {
+    const count = this.matchCount(true);
+    const recovery = this.matchedNothing() ? this.recovery() : null;
+    if (!lead && !recovery) {
+      return count;
+    }
+    return (
+      <div class="query-facets-elsewhere">
+        {lead ? <div class="query-facets-lead-plain">{lead}</div> : null}
+        {recovery ? <p class="query-facets-recovery">{recovery}</p> : null}
+        {count}
+      </div>
     );
   }
 
@@ -817,6 +873,7 @@ class SearchBox implements QueryEditor {
     };
     document.querySelectorAll('[data-query-needs-text]').forEach((button) => enable(button, hasText));
     document.querySelectorAll('[data-query-clears]').forEach((button) => enable(button, this.canClear(text)));
+    this.showClear(this.canClear(text));
     document.querySelectorAll('.query-bar-shell').forEach((shell) => shell.setAttribute('data-query-text', String(text || '')));
   }
 
@@ -856,7 +913,15 @@ class SearchBox implements QueryEditor {
       hold(button, !this.canClear(text));
       button.setAttribute('data-tip-disabled', this.clearReason());
     });
+    this.showClear(this.canClear(text));
     document.querySelectorAll('.query-bar-shell').forEach((shell) => shell.setAttribute('data-query-text', text));
+  }
+
+  /** Draws the field's × while there is something for it to clear, and takes it away when not. */
+  private showClear(shown: boolean): void {
+    document.querySelectorAll<HTMLElement>('.query-clear').forEach((button) => {
+      button.hidden = !shown;
+    });
   }
 
   /**
@@ -1498,7 +1563,14 @@ class SearchBox implements QueryEditor {
       this.closeSuggestions();
       this.run(this.currentText());
     },
-    'clear-query': () => this.clearSearch(),
+    'clear-query': (target) => {
+      this.clearSearch();
+      // The field's × goes once there is nothing to clear, so the caret
+      // goes back into the field rather than to the page.
+      if (target.classList.contains('query-clear')) {
+        this.restoreBarFocus(undefined);
+      }
+    },
     'query-suggestion': (target) => this.acceptSuggestion(Number(target.dataset.suggestionIndex)),
     'remove-term': (target) => {
       this.closeSuggestions();

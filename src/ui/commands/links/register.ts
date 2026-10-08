@@ -10,12 +10,14 @@ import {
   createMissingNotes,
 } from '../linkHealth';
 import { renameHeadingCommand } from '../linkMaintenance';
+import { PICK_NOTE_PROBLEM_FIX_COMMAND, pickNoteProblemFix } from '../noteProblems';
 import { LINK_MENTIONS_COMMAND, linkMentions } from '../unlinkedMentions';
 import { registerCommand } from '../runCommand';
 
 /**
- * Links: the notes a link names, linking mentions, extracting and linking a
- * heading, and renaming a heading with the links to it.
+ * Links: the notes a link names, linking mentions, the problems lens's list
+ * of fixes, extracting and linking a heading, and renaming a heading with
+ * the links to it.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
   const { indexer, history } = services;
@@ -43,6 +45,9 @@ export function register(context: vscode.ExtensionContext, services: Services): 
         typeof documentUri === 'string'
           ? linkMentions(indexer, history, vscode.Uri.parse(documentUri), links)
           : undefined,
+    ),
+    registerCommand(PICK_NOTE_PROBLEM_FIX_COMMAND, (choices: unknown) =>
+      pickNoteProblemFix(choices),
     ),
     registerCommand('deckard.extractHeading', () =>
       extractHeadingCommand(indexer, linkNotes),

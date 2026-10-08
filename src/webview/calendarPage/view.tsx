@@ -1,11 +1,10 @@
 /**
- * What the calendar page draws: its header, with the steps, the layouts,
- * Help, and the gear; then the month, or the chosen day's week, of days
+ * What the calendar page draws: its bar, with the steps, the layouts, and
+ * ⋯; then the month, or the chosen day's week, of days
  * large enough to list their tasks by name; and the chosen day's panel
  * beside it, unless Related Notes is showing the day.
  */
 import type { CalendarDay, CalendarEntry, CalendarSnapshot, CalendarWeek } from '../../ui/protocol/calendar';
-import { HelpButton } from '../shared/buttons';
 import { DayPanel } from '../shared/calendar/dayPanel';
 import { CalendarGrid } from '../shared/calendar/grid';
 import {
@@ -18,8 +17,8 @@ import {
   markedDate,
   tabStopDate,
 } from '../shared/calendar/model';
-import { Eyebrow } from '../shared/eyebrow';
-import { displayLevelOption, themeOption, ViewOptionChoices, ViewOptions } from '../shared/viewOptions';
+import { PageBar } from '../shared/pageBar';
+import { type ViewOptionGroup, ViewOptionChoices } from '../shared/viewOptions';
 import { formatPageDay } from '../shared/dateFormats';
 
 /** The page's layout: a month of weeks, or the chosen day's week. */
@@ -48,27 +47,21 @@ export function chosenWeek(state: DrawnCalendarPage): CalendarWeek | undefined {
     || snapshot.weeks.find((week) => week.days.some((day) => day.inMonth));
 }
 
-/** The layout's two choices, in the header and in the gear. */
+/**
+ * The layout's two choices, drawn once, in the bar: the gear drew them
+ * again, two controls for one choice. The m and w keys choose them too.
+ */
 function LayoutChoices({ layout }: { readonly layout: CalendarLayout }) {
   return <ViewOptionChoices action="set-calendar-layout" choices={[['month', 'Month'], ['week', 'Week']]} selected={layout} label="Calendar layout" />;
 }
 
-/** The gear: the layout, weekends, the theme, and zen. */
-function PageViewOptions({ state }: { readonly state: DrawnCalendarPage }) {
-  const snapshot = state.snapshot;
-  return (
-    <ViewOptions
-      groups={[
-        { label: 'Layout', content: <LayoutChoices layout={state.layout} /> },
-        {
-          label: 'Weekends',
-          content: <ViewOptionChoices action="set-show-weekends" choices={[['on', 'Shown'], ['off', 'Hidden']]} selected={snapshot.hideWeekends ? 'off' : 'on'} label="Weekends" />,
-        },
-        themeOption(),
-        displayLevelOption(),
-      ]}
-    />
-  );
+/** The ⋯'s view row: Show weekends, ticked while the week has seven days. */
+function weekendsOption(snapshot: CalendarSnapshot): ViewOptionGroup {
+  return {
+    label: 'Show weekends',
+    labelFor: 'calendar-show-weekends',
+    content: <input type="checkbox" id="calendar-show-weekends" class="view-options-check" data-action="set-show-weekends" checked={!snapshot.hideWeekends} />,
+  };
 }
 
 /** What the header and the grid are drawn with: the week shown, if one is, and its title. */
@@ -78,7 +71,10 @@ interface Shown {
   readonly title: string;
 }
 
-/** The page's header: its title, which opens the month's note, and its controls. */
+/**
+ * The page's bar: its title, which opens the month's note, then ‹ Today ›,
+ * Month | Week, and ⋯.
+ */
 function PageHeader({ state, shown }: { readonly state: DrawnCalendarPage; readonly shown: Shown }) {
   const snapshot = state.snapshot;
   const monthLabel = snapshot.title + (snapshot.notePath ? ', monthly note' : '');
@@ -89,20 +85,21 @@ function PageHeader({ state, shown }: { readonly state: DrawnCalendarPage; reado
   const onToday = state.drawnSelected === snapshot.today &&
     (shown.week ? shown.week.days.some((day) => day.date === snapshot.today) : snapshot.month === snapshot.currentMonth);
   return (
-    <header class="calendar-page-header">
-      <div>
-        <Eyebrow trail="CALENDAR" />
-        <h1><button type="button" class="calendar-title" data-action="open-month" data-tip={monthLabel} aria-label={titleLabel}>{shown.title}</button></h1>
-      </div>
-      <div class="calendar-page-actions" role="group" aria-label="Calendar">
-        <button type="button" data-action="step-calendar" data-by="-1" aria-label={`Previous ${step}`} data-tip={`Previous ${step} ([)`}>‹</button>
-        {onToday ? null : <button type="button" data-action="go-today" data-tip="Today (t)">Today</button>}
-        <button type="button" data-action="step-calendar" data-by="1" aria-label={`Next ${step}`} data-tip={`Next ${step} (])`}>›</button>
-        <LayoutChoices layout={state.layout} />
-        <HelpButton anchor="periodic" />
-        <PageViewOptions state={state} />
-      </div>
-    </header>
+    <PageBar
+      trail="CALENDAR"
+      className="calendar-page-header"
+      label="Calendar"
+      lead={<h1><button type="button" class="calendar-title" data-action="open-month" data-tip={monthLabel} aria-label={titleLabel}>{shown.title}</button></h1>}
+      controls={(
+        <>
+          <button type="button" data-action="step-calendar" data-by="-1" aria-label={`Previous ${step}`} data-tip={`Previous ${step} ([)`}>‹</button>
+          {onToday ? null : <button type="button" data-action="go-today" data-tip="Today (t)">Today</button>}
+          <button type="button" data-action="step-calendar" data-by="1" aria-label={`Next ${step}`} data-tip={`Next ${step} (])`}>›</button>
+          <LayoutChoices layout={state.layout} />
+        </>
+      )}
+      menu={{ view: [weekendsOption(snapshot)], keySheet: true }}
+    />
   );
 }
 

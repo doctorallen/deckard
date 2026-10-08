@@ -70,7 +70,7 @@ export function listDeckardPages(facts: PageFacts): DeckardPage[] {
       id: 'home',
       label: 'Home',
       command: DECKARD_PAGE_COMMANDS.home,
-      description: facts.dueToday > 0 ? `${count(facts.dueToday, 'task', 'tasks')} due today` : 'Dashboard',
+      description: facts.dueToday > 0 ? `${count(facts.dueToday, 'task', 'tasks')} due today` : 'Nothing due today',
       detail: 'What is due today, what slipped, and the widgets you arrange',
     },
     {

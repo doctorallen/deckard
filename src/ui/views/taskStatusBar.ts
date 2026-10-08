@@ -26,7 +26,7 @@ export interface DueTaskCounts {
 export function countDueTasks(
   index: WorkspaceIndex,
   context: QueryContext,
-  /** `deckard.agenda.query`, so the count is of what the Tasks view lists. */
+  /** `deckard.tasks.viewQuery`, so the count is of what the Tasks view lists. */
   query = '',
 ): DueTaskCounts {
   const groups = createAgenda(index, context, {
@@ -212,7 +212,7 @@ export class TaskStatusBar implements vscode.Disposable {
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
-          event.affectsConfiguration('deckard.agenda.query') ||
+          event.affectsConfiguration('deckard.tasks.viewQuery') ||
           event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
         ) {
           this.refresh();

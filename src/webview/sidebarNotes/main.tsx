@@ -12,6 +12,7 @@ import type { ComponentChild } from 'preact';
 import type { StateMessage } from '../../ui/protocol/messaging';
 import type { SidebarMessage, SidebarNotesPageState, SidebarNotesSnapshot } from '../../ui/protocol/sidebarNotes';
 import { DayPanel, focusCreatedNote, installDayPanel } from '../shared/calendar/dayPanel';
+import { EmptyState } from '../shared/emptyState';
 import { Loading } from '../shared/loading';
 import { installMenuKeys } from '../shared/menuKeys';
 import { markWords, type Unmark } from '../shared/markWords';
@@ -21,7 +22,7 @@ import { closeTagContextMenu, hasTagContextMenu, isTagContextMenuOpen, openTagCo
 import { installViewOptions } from '../shared/viewOptions';
 import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { keepState, keptState, post, vscodeApi } from '../shared/vscode';
-import { type CardDisplay, CustomizeHome, GraphConnections, NoTags, RankedNoteCards, Similar } from './cards';
+import { type CardDisplay, GraphConnections, NoTags, RankedNoteCards, Similar } from './cards';
 import { Context, RelatedNotesControls } from './context';
 import { Links } from './links';
 import { choicesToKeep, isPageInFront, NOTE_PAGE_SIZE, noteListKey, previewLines, readChoices, type SidebarChoices, type SidebarStore } from './model';
@@ -61,9 +62,9 @@ function NoteList({ snapshot, display }: { readonly snapshot: SidebarNotesSnapsh
   );
 }
 
-/** Says why the sidebar lists nothing, for the states that are only that. */
-function Empty({ words }: { readonly words: string }) {
-  return <div class="empty">{words}</div>;
+/** Says why the sidebar lists nothing, for the states that are only that, and how to change it. */
+function Empty({ words, teach }: { readonly words: string; readonly teach?: string }) {
+  return <EmptyState as="div" state={words} teach={teach} />;
 }
 
 /** What a state draws in place of the related notes, given its snapshot and how cards are shown. */
@@ -71,12 +72,11 @@ type OwnContent = (snapshot: SidebarNotesSnapshot, display: CardDisplay) => Comp
 
 /** The states that draw something of their own in place of the related notes, and what each draws. */
 const OWN_CONTENT: Partial<Record<SidebarNotesSnapshot['state'], OwnContent>> = {
-  customizeHome: (snapshot) => <CustomizeHome widgets={snapshot.homeWidgets || []} />,
   calendarDay: (snapshot) => (snapshot.calendarDay ? <DayPanel day={snapshot.calendarDay} shownGroups={choices.shownGroups} /> : null),
   refine: (snapshot) => (snapshot.refine ? <Refine refine={snapshot.refine} expanded={choices.expandedRefine} /> : null),
   graph: (snapshot) => <GraphConnections graph={snapshot.graph as NonNullable<SidebarNotesSnapshot['graph']>} />,
   loading: (snapshot) => <Loading label={describeIndexing(snapshot.progress)} immediate />,
-  notIndexed: () => <Empty words="This note is not indexed yet. Save it inside the notes folder to see related entries." />,
+  notIndexed: () => <Empty words="This note is not indexed yet." teach="Save it inside the notes folder to see related entries." />,
   noMarkdown: () => <Empty words="Open a Markdown note to see related entries." />,
   noTags: (snapshot, display) => <NoTags similar={snapshot.similar} display={display} />,
   noMatches: () => <Empty words="No other notes share its tags." />,
@@ -91,8 +91,8 @@ function Content({ snapshot }: { readonly snapshot: SidebarNotesSnapshot }) {
 
 /**
  * The heading over what the sidebar lists: the graph's, or, for the related
- * notes, their sort and gear, and the label once there are any. A page in
- * front otherwise heads its own part.
+ * notes, the label once there are any, with their Sort and gear at it. A
+ * page in front otherwise heads its own part.
  */
 function SectionHeading({ snapshot }: { readonly snapshot: SidebarNotesSnapshot }) {
   if (snapshot.state === 'graph') {
@@ -101,12 +101,11 @@ function SectionHeading({ snapshot }: { readonly snapshot: SidebarNotesSnapshot 
   if (isPageInFront(snapshot)) {
     return null;
   }
-  return (
-    <>
-      {snapshot.relatedNotesSortMode ? <RelatedNotesControls snapshot={snapshot} /> : null}
-      {snapshot.state === 'ready' ? <span class="section-label">Related notes</span> : null}
-    </>
-  );
+  const heading = snapshot.state === 'ready';
+  if (snapshot.relatedNotesSortMode) {
+    return <RelatedNotesControls snapshot={snapshot} heading={heading} />;
+  }
+  return heading ? <span class="section-label">Related notes</span> : null;
 }
 
 /**
@@ -243,18 +242,6 @@ function eventTarget(event: Event): Element | null {
   return event.target instanceof Element ? event.target : null;
 }
 
-// Home's widgets, while Home is in front: each is Home's to add, and to reset.
-document.addEventListener('click', (event) => {
-  const target = eventTarget(event);
-  const add = target ? target.closest<HTMLElement>('[data-action="home-add-widget"]') : null;
-  if (add) {
-    send({ type: 'homeAddWidget', value: String(add.dataset.value) });
-    return;
-  }
-  if (target && target.closest('[data-action="home-reset-widgets"]')) {
-    send({ type: 'homeResetWidgets' });
-  }
-});
 // The context and Links groups stay as the reader left them across draws.
 document.addEventListener('toggle', (event) => {
   const target = event.target as HTMLDetailsElement | null;

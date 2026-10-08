@@ -36,7 +36,6 @@ import {
   openTag,
   parkTag,
   renameTag,
-  displayCommand,
   setDisplay,
   setZenMode,
   toggleTask,
@@ -158,7 +157,6 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     this.handlers = {
       setZenMode: setZenMode(),
       setDisplay: setDisplay(),
-      displayCommand: displayCommand(),
       chooseTheme: chooseTheme(),
       setOverviewQuery: (message, page) => this.applyQuery(page, message.query, message.remember !== false),
       clearOverviewQuery: (_message, page) => this.applyQuery(page, this.originQuery, false),

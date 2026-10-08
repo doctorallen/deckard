@@ -142,9 +142,9 @@ export class DisplayService {
     await this.repository.update({ pageWidth: width === 'full' ? 'full' : undefined });
   }
 
-  /** Draws Deckard's pages at the top of Context as labeled rows, or as one row of icons. */
+  /** Draws Deckard's pages at the top of Context as one row of icons, or as labeled rows. */
   public async setContextPagesStyle(style: ContextPagesStyle): Promise<void> {
-    await this.repository.update({ contextPagesStyle: style === 'icons' ? 'icons' : undefined });
+    await this.repository.update({ contextPagesStyle: style === 'list' ? 'list' : undefined });
   }
 
   /** Keeps one of Deckard's pages at the top of Context, or leaves it out. */

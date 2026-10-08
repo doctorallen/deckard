@@ -25,9 +25,7 @@ export interface CalendarViewOptions {
   themePreview: ThemePreview;
   /** The extension's folder, which the calendar's style sheets are under. */
   extensionUri: vscode.Uri;
-  /** Opens a tag's page, as a tag in a task's title in the day panel asks. */
-  openTag: (tagKey: string) => unknown;
-  /** Whether the day panel shows and weekends are drawn. */
+  /** Whether weekends are drawn. */
   preferences: CalendarPreferences;
 }
 
@@ -51,8 +49,6 @@ export class CalendarView implements vscode.WebviewViewProvider, vscode.Disposab
       indexer,
       writes: options.writes,
       refresh: () => this.page.host.refresh(),
-      post: (message) => this.page.host.post(message),
-      openTag: options.openTag,
       extensionUri,
       preferences: options.preferences,
     });

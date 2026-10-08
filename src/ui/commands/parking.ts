@@ -651,17 +651,24 @@ async function reportUnparkedTag(commands: ParkingCommands, result: UnparkTagRes
 }
 
 export const ACTIVE_NOTE_PARKED = 'deckard.activeNoteParked';
+/** Whether `deckard.parked.folders` parks a folder by name, which Unpark Folder… can pick. */
+export const HAS_PARKED_FOLDERS = 'deckard.hasParkedFolders';
+/** Whether `deckard.parked.tags` names a tag, which Unpark Tag… can pick. */
+export const HAS_PARKED_TAGS = 'deckard.hasParkedTags';
 
 /**
  * Keeps the context keys the menus read in step: whether the note in front is
  * parked, which notes a front-matter tag parks, and which folders
- * `deckard.parked.folders` names, so each menu offers Park or Unpark, not both.
+ * `deckard.parked.folders` names, so each menu offers Park or Unpark, not both;
+ * and whether any folder or tag is parked at all, so the palette offers
+ * Unpark Folder… and Unpark Tag… only when there is one to unpark.
  */
 export class ParkingContext implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private active: boolean | undefined;
   private notes = '';
-  private folders = '';
+  private folders: string | undefined;
+  private hasTags: boolean | undefined;
 
   /** Starts in step with the note in front, and follows the editor, the index, and the settings. */
   public constructor(private readonly indexer: ParkingIndex) {
@@ -712,10 +719,16 @@ export class ParkingContext implements vscode.Disposable {
       (root, relative) => path.join(root, ...relative.split('/')),
     );
     const foldersKey = folders.join('\n');
-    if (foldersKey === this.folders) {
+    if (foldersKey !== this.folders) {
+      this.folders = foldersKey;
+      void vscode.commands.executeCommand('setContext', 'deckard.parkedFolders', folders);
+      void vscode.commands.executeCommand('setContext', HAS_PARKED_FOLDERS, folders.length > 0);
+    }
+    const hasTags = this.indexer.getParkedRules().tags.length > 0;
+    if (hasTags === this.hasTags) {
       return;
     }
-    this.folders = foldersKey;
-    void vscode.commands.executeCommand('setContext', 'deckard.parkedFolders', folders);
+    this.hasTags = hasTags;
+    void vscode.commands.executeCommand('setContext', HAS_PARKED_TAGS, hasTags);
   }
 }

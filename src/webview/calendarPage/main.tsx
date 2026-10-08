@@ -108,23 +108,13 @@ function goToday(): void {
 /** The page's controls, by their `data-action`, after those both calendars draw. */
 const ACTIONS: Readonly<Record<string, ActionHandler>> = {
   ...session.actions,
-  'set-calendar-layout': (element) => {
-    const gear = element.closest<HTMLDetailsElement>('.view-options');
-    setLayout(element.getAttribute('data-value'));
-    // The template drew the page again under the click, so the gear the
-    // click was in was gone and the new one closed: a layout chosen in the
-    // gear closes it.
-    if (gear) {
-      gear.open = false;
-    }
-  },
-  'set-show-weekends': (element) => sendPage({ type: 'setShowWeekends', show: element.getAttribute('data-value') === 'on' }),
+  'set-calendar-layout': (element) => setLayout(element.getAttribute('data-value')),
+  'set-show-weekends': (element) => sendPage({ type: 'setShowWeekends', show: (element as HTMLInputElement).checked }),
   'step-calendar': (element) => step(Number(element.getAttribute('data-by'))),
   'go-today': goToday,
-  'open-help': () => sendPage({ type: 'openHelp' }),
 };
 
-/** The page's own keys, away from a field and the gear. */
+/** The page's own keys, away from a field and ⋯. */
 const KEYS: Readonly<Record<string, () => void>> = {
   t: goToday,
   '[': () => step(-1),
@@ -134,7 +124,7 @@ const KEYS: Readonly<Record<string, () => void>> = {
 };
 
 // The listeners, in the order the template script added them: the grid's
-// keys, the controls, the day panel's, the double-click, the gear, the
+// keys, the controls, the day panel's, the double-click, ⋯, the
 // page's keys, the key sheet, and the drag.
 document.addEventListener('keydown', session.onGridKey);
 document.addEventListener('click', (event) => {

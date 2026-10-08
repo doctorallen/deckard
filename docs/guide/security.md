@@ -9,7 +9,6 @@ What Deckard reads, stores, and sends, in one place, for anyone who has to appro
   - [Suggest steps](ai-assistants.md#suggest-steps) sends one task's words to a VS Code language model, such as GitHub Copilot's, the first time behind VS Code's consent dialog. `deckard.tasks.suggestSteps` set to `false` hides it.
   - The [AI assistant tools](ai-assistants.md) answer searches from an assistant you run in VS Code; the assistant may send what it gets to its own model service. `deckard.assistantTools` set to `false` turns them off.
 - **The MCP server** is off by default (`deckard.mcpServer.enabled`). Turned on, it listens on `127.0.0.1` only, at `deckard.mcpServer.port` (39217), every request needs a token kept in VS Code's secret storage, and requests from web pages on other sites are refused. `Deckard: Reset MCP Server Token` breaks every copied setup.
-- **Esper Themes**, suggested once, is installed by VS Code from the Marketplace, and only if you select **Install**.
 
 ## Where it runs
 
@@ -22,7 +21,7 @@ What Deckard reads, stores, and sends, in one place, for anyone who has to appro
 | What | Where | How to remove it |
 | --- | --- | --- |
 | A search cache, `deckard-search.sqlite`: note words and each note as last read | VS Code's storage for the workspace, outside your folder; see [Local cache](privacy-and-troubleshooting.md#source-safety-and-persistence) | Delete it; Deckard reads the notes again on its next start |
-| Favorites, pins, saved searches, Home's widgets, view counts, and whether Deckard is paused here | VS Code's workspace and global state | `Deckard: Export Favorites, Pins, and Searches` shows what is kept; VS Code keeps it with its own state |
+| Favorites, pins, saved searches, Home's widgets, view counts, and whether Deckard is paused here | VS Code's workspace and global state | **Export…** in `Deckard: Manage Favorites, Pins, and Searches…` shows what is kept; VS Code keeps it with its own state |
 | The MCP server's token | VS Code's secret storage | `Deckard: Reset MCP Server Token` |
 | Your notes | Your files, as plain Markdown | Deckard writes them only as [What Deckard writes](what-deckard-writes.md) lists |
 

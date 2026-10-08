@@ -16,8 +16,6 @@ import { createQueryContext } from '../domain/query/queryContext';
 import { deckardThemes } from '../ui/webview/themeNames';
 import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 import { createDeckardStatsSnapshot } from '../ui/state/statsState';
-import { createDashboardSnapshot } from '../ui/state/dashboardState';
-import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 
 /**
  * The shared primitives every page draws with: popovers and menus, tips,
@@ -112,16 +110,16 @@ suite('Component primitives', () => {
       assert.ok(unguarded('.toolbar button:hover'), 'and a bare hover is caught');
     });
 
-    test('Save and Clear hold their place while they cannot act, and say why', () => {
+    test('Save holds its place while it cannot act, and says why; the field\'s × waits for something to clear', () => {
       const board = openBoard();
       const save = board.find('[data-action="save-board-search"]') as HTMLButtonElement;
       const clear = board.find('[data-action="clear-query"]') as HTMLButtonElement;
-      for (const button of [save, clear]) {
-        assert.strictEqual(button.getAttribute('aria-disabled'), 'true');
-        assert.strictEqual(button.hasAttribute('disabled'), false);
-        assert.ok(button.tabIndex >= 0, 'still in the Tab order');
-        assert.ok(button.getAttribute('data-tip-disabled'));
-      }
+      assert.strictEqual(save.getAttribute('aria-disabled'), 'true');
+      assert.strictEqual(save.hasAttribute('disabled'), false);
+      assert.ok(save.tabIndex >= 0, 'still in the Tab order');
+      assert.ok(save.getAttribute('data-tip-disabled'));
+      assert.ok(clear.closest('.query-bar-shell'), 'the × is in the field');
+      assert.strictEqual(clear.hidden, true, 'and not drawn with nothing to clear');
       board.click('[data-action="save-board-search"]');
       assert.strictEqual(board.lastPosted('saveBoardSearch'), undefined, 'a click does nothing');
       keyFocus(board, '[data-action="save-board-search"]');
@@ -131,6 +129,7 @@ suite('Component primitives', () => {
       input.dispatchEvent(new board.window.Event('input', { bubbles: true }));
       assert.strictEqual(save.getAttribute('aria-disabled'), null, 'typing enables it in place');
       assert.strictEqual(board.find('[data-action="save-board-search"]'), save, 'without a redraw');
+      assert.strictEqual(clear.hidden, false, 'and draws the × in place');
     });
   });
 
@@ -320,15 +319,17 @@ suite('Component primitives', () => {
 
     test('a tip that says more than the name describes its control', () => {
       const search = openSearch();
+      // The field's → is named Search, and says it runs the search, as Enter does.
       const apply = keyFocus(search, '[data-action="apply-query"]');
-      assert.strictEqual(tip(search)?.textContent, 'Run this search');
+      assert.strictEqual(tip(search)?.firstChild?.textContent, 'Run this search');
+      assert.strictEqual(tip(search)?.querySelector('kbd')?.textContent, 'Enter');
       assert.ok(String(apply.getAttribute('aria-describedby')).includes('deckard-tip'));
     });
 
     test('the Notes Graph, which takes only the tip script, shows its tips too', () => {
       page = openWebviewPage(renderPage('notesGraph'));
-      keyFocus(page, '#link-distance');
-      assert.match(String(tip(page)?.textContent), /length of visible links/);
+      keyFocus(page, '#link-density');
+      assert.match(String(tip(page)?.textContent), /strongest links are drawn/);
     });
 
     test('no control on any page carries a native title', () => {
@@ -358,6 +359,24 @@ suite('Component primitives', () => {
         assert.strictEqual(found, undefined, `${surface} (as drawn): ${found?.outerHTML.slice(0, 120)}`);
       });
       assert.ok(read >= 22, `every surface's drawn DOM is read (${read})`);
+    });
+
+    test('a drawn page fills at most one control, and only one that commits something', () => {
+      // Plan 29, R2: .primary, the --chosen fill, is the page's one primary
+      // action. Navigation, a suggestion, or the search box's own controls
+      // are never filled.
+      const commits = new Set(['add-task', 'save-to-tasks-view', 'save', 'create-day', 'open-daily-note']);
+      let filled = 0;
+      const read = readGoldens((surface, body) => {
+        const primaries = [...body.querySelectorAll('.primary')];
+        assert.ok(primaries.length <= 1, `${surface}: ${primaries.length} filled controls`);
+        for (const primary of primaries) {
+          filled += 1;
+          assert.ok(commits.has(String(primary.getAttribute('data-action'))), `${surface}: ${primary.outerHTML.slice(0, 120)}`);
+        }
+        assert.deepStrictEqual([...body.querySelectorAll('.query-primary, .is-primary, .query-apply')], [], `${surface}: no other idiom for primary`);
+      });
+      assert.ok(read >= 22 && filled >= 10, `every surface's drawn DOM is read (${read} surfaces, ${filled} filled)`);
     });
 
     /** A box in the window, and whether two share any of it. */
@@ -409,41 +428,11 @@ suite('Component primitives', () => {
       assert.ok(!overlaps(placed, cardBox), `the tip ${JSON.stringify(placed)} covers the card`);
     });
 
-    test('a tag pair\'s tip leaves the count it folds under its row to be read', () => {
-      // As David saw it: the row's count opens under it on hover, in the
-      // row's frame carried down, and the row's tip was drawn over it.
-      const index = buildWorkspaceIndex(new Map(Array.from({ length: 3 }, (_, n) => [
-        `notes/n${n}.md`,
-        parseMarkdown(`notes/n${n}.md`, `# Shift ${n} #person/sable-ortiz #team/harbor\nOn the harbor shift.\n`),
-      ])));
-      store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-      const preferences = {
-        ...store.reader.value,
-        dashboardViewState: { ...store.reader.value.dashboardViewState, mode: 'home' as const },
-        dashboardWidgets: [{ id: 'p', kind: 'tagPairs' as const, width: 'full' as const, count: 10 }],
-      };
-      const queryContext = createQueryContext(Date.now());
-      page = openWebviewPage(renderPage('dashboard'), {
-        ...createDashboardSnapshot({ index, preferences, queryContext }),
-        widgets: createDashboardWidgets(index, preferences, { queryContext }),
-      });
-      const row = page.find('.home-row[data-query="#person/sable-ortiz AND #team/harbor"]') as HTMLElement;
-      const detail = row.querySelector('.home-row-detail') as Element;
-      const rowBox = { left: 10, top: 100, width: 380, height: 28 };
-      // Folded under the row, a line of 16 px, 2 px past its foot.
-      const detailBox = { left: 20, top: 130, width: 360, height: 16 };
-      layOut(page, new Map([[row, rowBox], [detail, detailBox]]));
-      keyFocus(page, '.home-row[data-query="#person/sable-ortiz AND #team/harbor"]');
-      const placed = tipBox(page);
-      assert.match(String(tip(page)?.textContent), /carry both.*Search for both\.$/);
-      assert.ok(!overlaps(placed, detailBox), `the tip ${JSON.stringify(placed)} covers the count`);
-      assert.ok(!overlaps(placed, rowBox), `the tip ${JSON.stringify(placed)} covers the row`);
-    });
-
     test('every card or row that shows more of itself on hover says so to the tip', () => {
-      // provenance.css folds a line under each of these, and a saved
-      // search's criteria open under its row; the tip keeps off them only
-      // where the card says it shows them (data-tip-around).
+      // Each of these shows more of itself on hover: a card's details on its
+      // line, a panel its score opens, and a saved search's criteria under
+      // its row; the tip keeps off them only where the card says it shows
+      // them (data-tip-around).
       const opening = '.note, .card, .task-row, .home-row, .tag-row, .board-card, .saved-filter-row';
       let seen = 0;
       const read = readGoldens((surface, body) => {
@@ -493,15 +482,14 @@ suite('Component primitives', () => {
 
   suite('popovers and menus (9e)', () => {
     test('no sheet stacks by a number of its own, outside the named exceptions', () => {
-      // Provenance lifts an entry over the next (Decision 5), and the graph
+      // The sidebar lifts a card over the next for the panel its score opens,
+      // a saved search's criteria open over the row below it, and the graph
       // lays its overlays over its canvas; everything else uses the scale.
+      // Card details lift nothing: they keep a line of their own.
       const allowed = [
-        /^\.board-card:hover, \.board-card:focus-within$/,
         /^\.note:hover, \.note:focus-within$/,
         /^\.saved-filter-row/,
-        /^\.card:hover, \.card:focus-within/,
-        /::after$/,
-        /\.source|\.task-source|\.home-row-detail|\.tag-count|\.saved-filter-tags/,
+        /\.saved-filter-tags/,
         /^\.overlay$|^\.graph-zoom-controls$|^\.status-line$|^\.empty-state$/,
       ];
       for (const [name, render] of pages) {
@@ -532,7 +520,7 @@ suite('Component primitives', () => {
       assert.ok(search.findAll('#tag-context-menu button').every((item) => item.classList.contains('menu-item')));
     });
 
-    test('the gear\'s menu and the completions drop down from their control', () => {
+    test('⋯\'s menu and the completions drop down from their control', () => {
       const board = openBoard();
       assert.ok(board.find('.view-options-menu').classList.contains('is-dropdown'));
       assert.ok(board.find('#suggestions-query').classList.contains('popover'));

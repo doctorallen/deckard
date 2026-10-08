@@ -282,6 +282,27 @@ suite('Dashboard behavior', () => {
     );
   });
 
+  test('a widget that leads somewhere makes its title the link, and only while Home is at rest', () => {
+    const { page } = open({
+      dashboardWidgets: [
+        { id: 'a', kind: 'agenda', width: 'half' },
+        { id: 'q', kind: 'pinnedNotes', width: 'half' },
+      ],
+    });
+    const link = page.find('.home-widget[data-widget-id="a"] h2.home-widget-title > button.home-widget-link');
+    assert.strictEqual(link.getAttribute('data-action'), 'open-view');
+    assert.strictEqual(link.getAttribute('data-view'), 'agenda');
+    assert.match(link.textContent ?? '', /^Tasks view \d+›$/);
+    assert.strictEqual(link.querySelector('.home-widget-link-mark')?.getAttribute('aria-hidden'), 'true');
+    assert.strictEqual(page.document.querySelector('.home-widget-actions'), null, 'no separate button beside the title');
+    assert.strictEqual(page.document.querySelector('.home-widget[data-widget-id="q"] .home-widget-link'), null, 'Pinned notes leads nowhere');
+
+    // While arranging, a press on the title starts a drag.
+    page.click('[data-action="customize-home"]');
+    assert.strictEqual(page.document.querySelector('.home-widget-link'), null);
+    assert.ok(page.find('.home-widget[data-widget-id="a"] .home-widget-actions'), 'the controls keep the header');
+  });
+
   test('shows a widget its first few entries until paging is turned on', () => {
     const { page } = open({
       dashboardWidgets: [
@@ -357,15 +378,18 @@ suite('Dashboard behavior', () => {
     assert.strictEqual(page.findAll('.home-reset-confirm').length, 0, 'no inline confirmation');
   });
 
-  test('tells the host what + Add widget offers, and adds one the host sends, customizing first', () => {
+  test('+ Add widget adds one first, after Try next, and the host is not told what it offers', () => {
     const { page } = open();
-    const choices = page.lastPosted('widgetChoices')?.choices as Array<{ value: string }>;
-    assert.ok(choices.some((choice) => choice.value === 'topTags'), 'the list the select offers');
-    page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'addWidget', value: 'topTags' } }));
-    assert.ok(page.find('.home-edit-bar'), 'Home is customizing');
+    page.click('[data-action="customize-home"]');
+    const select = page.find('select[data-action="add-widget"]') as HTMLSelectElement;
+    assert.ok([...select.options].some((option) => option.value === 'topTags'), 'the list the select offers');
+    select.value = 'topTags';
+    select.dispatchEvent(new page.window.Event('change', { bubbles: true }));
     const widgets = page.lastPosted('setDashboardWidgets')?.widgets as Array<{ kind: string }>;
     const at = widgets[0].kind === 'tryNext' ? 1 : 0;
     assert.strictEqual(widgets[at].kind, 'topTags', 'added first, after Try next, where it is seen');
+    // Context no longer lists Home's widgets, so the page keeps its list to itself.
+    assert.strictEqual(page.lastPosted('widgetChoices'), undefined);
   });
 
   test('turns paging on for a widget', () => {
@@ -447,14 +471,25 @@ suite('Dashboard behavior', () => {
     assert.strictEqual(changed?.page, 1, 'a different page size is a different list');
   });
 
-  test('keeps Customize Home beside the tabs, arranged or not, and not while arranging', () => {
+  test('keeps a quiet Customize beside the tabs, arranged or not, and not while arranging; ⋯ leads with Customize Home…', () => {
     const { page, snapshot } = open();
-    assert.strictEqual(page.text('.dashboard-customize'), 'Customize Home');
+    assert.strictEqual(page.text('.dashboard-customize'), 'Customize');
+    assert.strictEqual(page.find('.dashboard-tabs-row .dashboard-customize').getAttribute('data-action'), 'customize-home');
+    assert.deepStrictEqual(
+      page.findAll('.page-menu [aria-label="Page"] .view-options-item').map((row) => row.textContent),
+      ['Customize Home…', 'Walkthrough'],
+    );
+    assert.ok(!page.findAll('.view-options-group > span, .view-options-group > label').some((label) => label.textContent === 'Home'), 'no Home: Customize row');
+    assert.deepStrictEqual(page.findAll('.page-menu .view-options-section').map((section) => section.getAttribute('aria-label')), ['Page', 'View', 'Appearance', 'Help']);
+    assert.ok(page.find('.page-menu [aria-label="View"] [data-action="set-columns"][data-section="tags"]'), 'Tag columns is a View row');
+    page.click('.page-menu [data-action="page-help"]');
+    assert.deepStrictEqual(page.lastPosted('openHelp'), { type: 'openHelp' });
     assert.strictEqual(page.document.querySelector('.home-hint-bar'), null, 'no line to put away');
     page.send({ ...snapshot, homeArranged: true });
     assert.ok(page.find('.dashboard-customize'), 'still there once Home is arranged');
     page.click('.dashboard-customize');
     assert.strictEqual(page.document.querySelector('.dashboard-customize'), null, 'arranging has its own Finish');
+    assert.strictEqual(page.text('.page-menu [aria-label="Page"] .view-options-item'), 'Done customizing');
   });
 
   test('an empty workspace is offered today\'s note and the sample tour', () => {
@@ -462,6 +497,14 @@ suite('Dashboard behavior', () => {
     page.send({ ...snapshot, totalNoteCount: 0 });
     assert.match(page.text('.home-start p') ?? '', /work sample/);
     assert.ok(page.find('.home-start [data-view="sampleWorkspace"]'));
+    // Creating today's note is the one thing an empty Home commits.
+    assert.deepStrictEqual(page.findAll('.primary').map((button) => button.getAttribute('data-action')), ['open-daily-note']);
+    // Get Started takes the grid's place: no widget says it has nothing to show.
+    assert.strictEqual(page.document.querySelector('.home-grid'), null);
+    // Customizing draws the grid it arranges, and puts Get Started away.
+    page.click('[data-action="customize-home"]');
+    assert.ok(page.find('.home-grid'));
+    assert.strictEqual(page.document.querySelector('.home-start'), null);
   });
 
   test('Try next draws one card, or nothing at all', () => {
@@ -477,6 +520,8 @@ suite('Dashboard behavior', () => {
       page.findAll('.try-next-actions button').map((button) => button.textContent),
       ['Open Task board', 'Not now', 'Do not suggest this'],
     );
+    // A suggestion leads somewhere; it commits nothing, so nothing is filled.
+    assert.deepStrictEqual(page.findAll('.primary, .try-next-actions .active'), []);
     page.click('[data-action="run-try-next"]');
     assert.deepStrictEqual(page.lastPosted('runTryNext'), { type: 'runTryNext', key: 'taskBoard' });
     page.click('[data-action="snooze-try-next"]');

@@ -87,7 +87,7 @@ suite('Agenda service', () => {
     assert.strictEqual(view.status, undefined);
     assert.deepStrictEqual([view.query, view.filtered, view.querySet], ['', false, false]);
 
-    const searched = setup({ 'deckard.agenda.query': 'status:in-progress' });
+    const searched = setup({ 'deckard.tasks.viewQuery': 'status:in-progress' });
     const narrowed = searched.service.buildView(searched.index, []);
     assert.deepStrictEqual(narrowed.groups.map((group) => group.id), ['today']);
     assert.deepStrictEqual([narrowed.filtered, narrowed.querySet], [true, true]);
@@ -96,7 +96,7 @@ suite('Agenda service', () => {
   test('says when nothing is open, and when the search cannot be read', () => {
     const empty = setup({}, '- [x] Done ✅ 2026-09-25');
     assert.deepStrictEqual(empty.service.buildView(empty.index, []).status, { kind: 'empty', query: '' });
-    const broken = setup({ 'deckard.agenda.query': 'due:(' });
+    const broken = setup({ 'deckard.tasks.viewQuery': 'due:(' });
     const view = broken.service.buildView(broken.index, []);
     assert.strictEqual(view.status?.kind, 'unreadable');
     assert.deepStrictEqual([view.filtered, view.querySet], [false, true]);
@@ -105,7 +105,7 @@ suite('Agenda service', () => {
   test('reads a search that is not text as no search, as the setting\'s default', () => {
     // A hand-edited settings.json can hold a number, null, or a list here.
     for (const query of [42, null, ['tag:#atlas']]) {
-      const odd = setup({ 'deckard.agenda.query': query });
+      const odd = setup({ 'deckard.tasks.viewQuery': query });
       const view = odd.service.buildView(odd.index, []);
       assert.deepStrictEqual(view.groups.map((group) => group.id), ['overdue', 'today', 'upcoming:2026-09-28', 'donetoday'], String(query));
       assert.deepStrictEqual([view.query, view.filtered, view.querySet], ['', false, false], String(query));

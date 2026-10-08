@@ -2,6 +2,401 @@
 
 ## Unreleased
 
+## 2.5.0 - 2026-10-08
+
+### Highlights
+
+- One bar on every page: one filled button for what it commits, and one **⋯** for the gear, the **?**, Save, and Export.
+- **Zen** is one switch that keeps every count and date, and quiets a page's tools until you point at or tab into them.
+- **Builder** joins the search box, the Task board is **Board** or **Table**, and six Home widgets and the List layout give way.
+
+### Added
+
+- **An Off editor preset.** `Deckard: Choose Editor Preset…` and
+  `deckard.editor.preset` offer **Off**, which draws nothing in the editor:
+  no lenses, decorations, hover previews, / menu, or problem reports. A
+  `deckard.editor.*` switch you set yourself still draws its part, so Off
+  plus one switch draws that one thing.
+- **Manage Favorites, Pins, and Searches….** One palette row lists
+  **Tidy…**, **Export…**, **Import…** and **Restore from a Copy…**, each
+  running the command it always ran. The four no longer show as rows of
+  their own in every palette browse.
+- **A Tasks widget's own Sort.** A Tasks widget on Home sorts as the Task
+  board sorts, or by the **Sort** in its gear: Rank, Newest or Oldest
+  created, Recently or Least recently updated, A-Z or Z-A.
+
+### Changed
+
+- **The Task board's table ranks.** In Rank order, with no header sorting
+  it, drag a table row, right-click it for Move up, Move down, Move to top
+  and Move to bottom, or press Alt+↑ and Alt+↓, as the list's rows were.
+  While a header sorts the table, rows don't move; **Sort by rank** goes
+  back.
+- **The Task board is Board or Table.** **Board | Table** sits under the
+  search box, beside **Group**, **Sort** and **Can start now**, where the
+  gear's Layout row was. A board you kept as a list opens as the table,
+  which ranks every task in one order as the list did.
+- **One bar on every page, and one ⋯ for the gear and the ?.** Every
+  Deckard page draws the same bar: **DECKARD ▾** and the title at the
+  left; at the right at most one filled button, up to three others, and
+  one **⋯** in place of both the gear and the **?** button. Its rows come
+  in one order on every page: the page's own actions, its view, then
+  **Appearance** (**Theme…**, **Zen**, and **Page width** on Home, a
+  search page and the note page), then **Help on this page**, and
+  **Keyboard shortcuts** where the page has keys. Its tip names its first
+  rows. Task Statuses and Help draw the bar with no **⋯**. Zen draws the
+  bar as it is.
+- **A search page's ⋯.** **‹ ›** stays, and **⋯** beside it holds **Save
+  search…**, which was **Save** beside the search box, then **Export
+  notes…** and **Export tasks…** while the search found notes or tasks
+  (they were **Export** buttons beside each pane), then **Layout**,
+  **Group by**, **Format**, **Preview** and the columns, then **Theme…**,
+  **Zen** and **Page width**, then **Help on this page** and **Keyboard
+  shortcuts**. Words typed and not yet run are still what Save search…
+  keeps.
+- **A search page's Sort is beside the notes.** **Sort: A-Z ▾** sits on
+  the results row beside **Notes | Tasks** while the notes are shown, or
+  at the Notes heading side by side, rather than in the gear. **Bulk
+  edit** stays beside the results it acts on, as a small quiet button.
+- **Create hub note is a link.** A tag page with no hub note offers
+  **Create hub note** as a text link under its title, rather than a
+  bordered button. Zen leaves it drawn, since it also says the tag has no
+  hub.
+- **No Refine on the page while the Context sidebar shows it.** A search
+  page and the Task board draw no Refine box, and no *In the Context
+  sidebar* line, while the sidebar shows their Refine. A tag page's lines
+  about its other spellings and untagged mentions stay, as a plain line
+  under the search box, and so do **Drop** and **Clear** when a search
+  matched nothing.
+- **Context's Sort is compact.** The Related notes sort is a small
+  **Sort: Relevance ▾** at the Related notes heading, rather than a select
+  as wide as the sidebar.
+- **One list of note actions.** **Deckard: Note Actions…**, the editor's
+  right-click **Deckard** submenu and the note page's **⋯** list the same
+  actions in the same order: the task on the line, then the heading
+  (**Rename Heading**, **Extract Heading**, **Tag Heading with a Person or
+  Project…**, **Focus Section**), then the note (**Open Note as Page**,
+  **Open Related Notes**, **Open Notes Graph Around This Note**, **Move
+  to…**, **Copy as Plain Markdown**, **Move Inline Tags to Front Matter**),
+  then **Pin** or **Unpin** and **Park** or **Unpark**. Each gains the rows
+  it lacked. The note page's **⋯** lists those that work away from the
+  editor: Related Notes, the Notes Graph, Pin and Park. **Link Current
+  Heading to Entity** is called **Tag Heading with a Person or Project…**,
+  as the Refactor… menu called it.
+- **A daily note's ‹ › in the title bar only while its lens is off.** The
+  daily note's lens already steps to the day before and after, so the
+  title bar's **‹** and **›** show only under the **Writing** and **Off**
+  presets, or with `deckard.editor.dailyNoteActions` set off. A daily note
+  under **Full** shows two Deckard buttons in its title bar, not four.
+- **Two icons in the Tasks view's and the Outline's titles.** The Tasks
+  view's title keeps **Group by** and **Open Task Board**; **Edit What the
+  Tasks View Lists…** and **Sort Tasks By…** move to its **⋯** menu, beside
+  **Clear the Tasks View's Search**. The Outline's title keeps **Filter
+  Outline by Tag…** and **Collapse All**, with **Unfold All Sections**
+  while a section is focused; **Follow Cursor in Outline** (or **Stop
+  Following Cursor in Outline**) moves to its **⋯** menu.
+- **Shorter welcomes.** An empty Outline says *Open a Markdown note to see
+  its headings.*, with no buttons. An empty Hubs view says *A hub note
+  gathers a project's or person's notes.*, with **Create Hub Note for
+  Tag…**.
+- **A search page lists its keys.** **?**, or **Keyboard shortcuts** in
+  **⋯**, opens the sheet of its keys there too: **/** for the search box,
+  **Alt+←** and **Alt+→** through the page's searches, and the menu keys.
+- **The note page's ⋯.** **‹ ›** and **Open in Editor**, a plain button,
+  stay; Help and the gear are one **⋯** with **Theme…**, **Zen**, **Page
+  width** and **Help on this page**.
+- **The Task board's bar: Add task, then ⋯.** **Add task** moves from the
+  end of the search bar to the top right, beside the task count, as the
+  page's one filled button; while the board edits what the Tasks view
+  lists, **Save to Tasks view** takes its place and Add task goes plain.
+  A **⋯** replaces the gear and the **?** button. Its first rows are
+  **Save search…** (the bar's Save), **List in Tasks view**, checked while
+  the view lists the search, and **Export tasks…**; then the view's
+  **Cards**, **Status columns** and the table's **Columns**; then
+  **Theme…** and **Zen**; then **Help on this page** and **Keyboard
+  shortcuts**. The search bar holds the search alone.
+- **The calendar page's bar: ‹ Today ›, Month | Week, ⋯.** A **⋯**
+  replaces the gear and the **?** button, with **Show weekends**, a
+  checkbox in place of Weekends' Shown | Hidden, then **Theme…** and
+  **Zen**, **Help on this page** and **Keyboard shortcuts**.
+- **Home's ⋯ leads with Customize Home….** The bordered **Customize
+  Home** button beside the Home and Tags tabs is a quiet **Customize**
+  link, and a **⋯** at the top right replaces the gear: **Customize
+  Home…** and **Walkthrough**, then **Tag columns**, **Theme…**, **Zen**
+  and **Page width**, then **Help on this page**, which Home had no way to
+  reach. The gear's **Home: Customize** row is gone.
+- **Stats' Reindex is in ⋯.** *Index last refreshed* stays under the
+  title, and **Reindex** is the first row of a **⋯** at the top right,
+  which also offers **Theme…**, **Zen** and **Help on this page**.
+- **The Notes Graph has the bar every page has.** **DECKARD ▾** and the
+  title run across its top, with a **⋯** holding **Theme…**, **Zen** and
+  **Help on this page**; the canvas and its panels start under it.
+- **Group is one select.** The board's five grouping buttons are one
+  **Group** select: Status, Priority, Due date, Person and **Tag…**, which
+  still opens a menu of the namespaces your open tasks use.
+- **A column's + is an icon in its title.** Each column but Done ends its
+  title with a small **+**, **Add a task to In progress**, in place of the
+  **+ Add task** button under it, and starts Add Task in that column as
+  before. Columns are a little narrower, so Done fits beside the others in
+  a 1400-pixel window.
+- **The palette leaves out what another door does.** Merge Tag… (renaming
+  onto a tag that exists already merges), Open Notes Graph Around This Note
+  (in Note Actions…), Insert Query Block… (the / menu's Query block),
+  Import Statuses from Obsidian Tasks (a button on Edit Task Statuses…),
+  Open Daily Note for Date… (type the day in Find), Open a Tag's Search
+  Page…, Link Current Heading to Entity (the Refactor… menu's Tag Heading
+  with a Person or Project…) and Open Related Notes Ranking are out of the
+  palette. Each still runs from its door, a key you bind, or a link.
+- **Settings start here.** Deckard's settings open on **Start here**: the
+  notes folder, the theme, `deckard.me`, and the periodic notes folder.
+  The empty Related Notes and Outline sections are gone.
+
+- **One problems lens on a note's first line.** The four lenses for a
+  note's problems, **N links open no note**, **Create N missing notes**,
+  **Mentioned in N notes without a link** and **Link N mentions**, are one
+  lens now, drawn only when something is wrong, such as
+  **2 missing · 4 unlinked**. With one kind of problem, selecting it creates
+  the missing notes or links the mentions, as the old lens did; with both,
+  it lists each fix: Show broken links, Create missing notes, Show unlinked
+  mentions, and Link mentions. `deckard.editor.linkProblems` and
+  `deckard.editor.unlinkedMentions` still decide which kinds it counts.
+  **Linked from N notes**, the daily ‹ ›, breadcrumbs and hub progress keep
+  their own lenses, and a missing link keeps its **Create note** quick fix.
+- **Zen never hides data.** Zen used to leave out the counts beside names
+  and write a due date only as how far off it is. It now shows every
+  count, and writes a due date both ways, "Overdue 2 days · 2026-10-02".
+- **Zen is one switch.** Display's three steps, Full, Quiet and Zen, and
+  the seven settings they moved are one checkbox now, **Zen**, in every
+  page's **⋯**, and one setting, `deckard.display.zen`. Zen on draws each
+  theme plain, hides the lines that teach, tightens the spacing, and
+  draws cards flat and tags as text; every count and date still shows. If
+  you had chosen Quiet or Zen, Zen is on after the update, and one notice
+  says where Display went. The palette offers **Deckard: Toggle Zen**
+  alone; the Zen button in a page's title bar stays. Deckard's Zen quiets
+  Deckard's pages, and VS Code's own Zen Mode (⌘K Z) hides the workbench;
+  the two combine.
+- **Zen quiets a page's tools where they stand.** With Zen on, each
+  page's bar, its search field, Notes | Tasks, Home | Tags, Month | Week,
+  every link that carries a count, and anything that is filtering or
+  ordering the page stay drawn. The rest shows when you point at or tab
+  into its area: the Task board's **Board | Table**, **Group**, **Sort**
+  and **Can start now** from its search box, and each column's **+** from
+  its column; a search page's **Sort** and **Bulk edit** from the results
+  heading; Home's **Customize** from its tab row; Context's gears and its
+  Related **Sort** from their headings; and a calendar's week marks from
+  their week. Typing a search doesn't show them. A **Sort** that isn't at
+  its default, **Can start now** while pressed and a week mark whose week
+  has a note stay drawn. Nothing leaves the page, the Tab order or what a
+  screen reader reads, and on a touch screen everything is drawn.
+- **Refine folds.** A search page's and the Task board's **Refine** folds
+  its values under its heading, which reads **Refine · 2 set** while the
+  search holds values it offers. It starts unfolded, or folded with Zen
+  on, and stays as you leave it while you search. The count of results
+  and a tag page's lines about its other spellings stay outside the fold.
+- **The Notes Graph's Focus and Filters fold under Zen.** With Zen on, they
+  start folded, as Display does. **Filters · 2 set** says how many filters
+  are away from how a graph starts, and **Focus · around this note** says
+  the graph is drawn around the note.
+- **The Calendar view starts collapsed.** In a new install the sidebar's
+  Calendar starts collapsed, as Hubs does, leaving the room to Context,
+  Outline and Tasks. Where it is already open, it stays as you left it.
+- **Unpark Folder… and Unpark Tag… only when something is parked.** The
+  palette lists **Unpark Folder…** while `deckard.parked.folders` parks a
+  folder by name, and **Unpark Tag…** while `deckard.parked.tags` names a
+  tag, so neither shows with nothing to unpark.
+- **Editor switches say they override the preset.** Each of the 15
+  `deckard.editor.*` switches says which presets turn it on, and that a
+  value you set overrides the preset. Since Off turns every one off, no
+  switch shows as on in Settings while you leave it unset.
+- **Tag Heading with a Person or Project… is a refactor.** It was offered
+  as a quick fix, so a lightbulb lit on every plain heading. It is in the
+  editor's Refactor… menu now, under one title.
+- **Edit task… and Break into steps… only in notes.** The editor offers
+  them on a task line of a note, and no longer in other Markdown files.
+- **The search box has no Search or Clear button.** On search pages,
+  Home's search widget and the Task board, Enter or the **→** at the end of
+  the box runs the search, and an **×** beside it clears it, shown only
+  when there is something to clear: on a tag's page, more than the tag.
+  The filled Search button was the loudest control on each page.
+  **Builder** is joined to the start of the box, with a hammer, stays
+  pressed while it is open rather than turning into Hide builder, and
+  opens the builder right under the box.
+- **One filled button to a page, for what it commits.** The filled look
+  now marks only a page's one primary action: **Add task** on the Task
+  board (or **Save to Tasks view** while it edits what the Tasks view
+  lists), **Save** in Task Statuses, the Calendar day panel's **Create**
+  while the day has no daily note, and Get Started's **Create today's
+  note** in an empty workspace. Try next's suggestion and Customize Home's
+  **Finish** are plain buttons now. In Corpo the primary takes VS Code's
+  own button colors; in Fellowship it has a darker edge.
+
+- **Zen hides every line that teaches, and only those.** Help text used to
+  hide the search box's line of syntax, Refine's line and Home's update
+  line, and missed the rest. It now hides each line that teaches, such as
+  the builder's paragraph, the Graph's *Open a note to draw the graph
+  around it.*, why Context lists a result, an empty board column's line on
+  dragging, and Task Statuses' *What each checkbox character means.* What
+  a line says is there still shows: *No tasks.*, where Task Statuses saves,
+  and Home's *Updated to Deckard* line with its buttons.
+- **An empty place says it is empty, even in Zen.** Where an empty list
+  said what was there and how to fill it in one sentence, such as *No tags
+  indexed yet. Write a tag…*, the two are drawn apart, so Zen keeps *No
+  tags indexed yet.* and hides only how to fill it: in board columns, the
+  Task board's list and table, Home's widgets and Tags tab, Context, its
+  pages band, the builder's empty group and Stats' Most viewed.
+- **Your notes' words are never set in capitals.** Cooper, Oblivion,
+  Synthwave and Tomcat upper-cased and letter-spaced some of your own text
+  with their buttons and headings: a note's title and headings, embed
+  titles, a table's header, query results, Linked from and the tag a search
+  page is about. These read as written now, in every theme and at every
+  step; each theme keeps its capitals on its own buttons, headings and card
+  titles.
+- **Zen's plain type is plain everywhere.** Under Zen and Quiet, buttons,
+  tabs and widget titles lose their capitals and letter-spacing too, as
+  headings already did, in every theme.
+- **A row's own button shows when you reach the row.** The Calendar day
+  panel's **Tomorrow** (**Next day** on a later day), a board card's **⋯**
+  and a table or list row's **⋯** were drawn on every row, ten down a day
+  and fifty down a full board. Each now shows on the row under the pointer
+  or with focus, and while its menu is open, and always on a touch screen.
+  Nothing moves when it shows, and each keeps its keys: right-click a
+  card, or press Shift+F10, the menu key or Alt+Enter, for its menu, and a
+  table row's **⋯** is still a Tab stop. An empty board column says *Drag
+  a card here, or right-click one.*, and the board's key sheet lists
+  Shift+F10.
+- **The calendar page draws Month and Week once.** Its gear drew the
+  header's **Month | Week** again as **Layout**. **m** and **w** still
+  switch the layout.
+- **Card details have a line of their own.** An entry's file and line,
+  and its created and updated dates when ticked, were laid over the next
+  row on hover, hiding its title and due date on Home, the Task board and
+  search results. While any detail is ticked in **Card details**, each task
+  row, board card, search card, Context card and Home note row keeps one
+  line for them under its dates, shown when you point at or focus the row,
+  and always on a touch screen, so nothing moves and nothing is covered.
+  They read on one line, cut short: *atlas / line 4 · Created
+  2026-09-12*. With none ticked no line is kept, and a screen reader still
+  reads the file and line. Escape no longer puts the line away, since it
+  covers nothing.
+- **Counts beside names show without hovering.** A tag's count in the Tags
+  tab, and a count on Home's rows such as *4 notes · 2 tasks*, showed only
+  under the pointer, folded under the row. They are drawn beside the name
+  now. **Counts** in Settings still leaves them out.
+- **A Home widget's title is its link.** A widget that leads somewhere,
+  such as the Tasks view, Tasks, a tag list, a saved search's results or
+  Today, drew its title in the link color beside a separate bordered
+  button, *Tasks view →*. The title is the link now, *Tasks view 53 ›*,
+  underlined under the pointer, and the button is gone. A widget that
+  leads nowhere keeps a plain title, as every widget does while Home is
+  being customized, and the link stays under Zen with its count.
+- **An empty workspace's Home is Get Started alone.** With no notes yet,
+  Home drew **Create today's note** above a grid of widgets that each said
+  it had nothing to show. Get Started takes the grid's place now; the
+  widgets come back with the first note, or while you customize Home.
+- **One notice at a time after the first index.** Up to four notices
+  could arrive together once a workspace was first read. Deckard now says
+  one each time it starts, in this order: the offer to import a vault's
+  statuses or to move status tags into checkboxes, then what the first
+  index read (or, in a very large workspace, how to leave folders out),
+  then tasks whose status Deckard doesn't know. One left unsaid waits for
+  a later start.
+- **The status-tag notice is said once in a workspace.** While task lines
+  still carried a status tag, every start of VS Code said so again. It is
+  said once now, and the Task board and the Tasks view keep saying it
+  where the tasks are.
+- **Context's pages are a row of icons.** Deckard's pages at the top of
+  Context were eight labeled rows, about a third of a short sidebar, with
+  their hints cut short. They are one row of icons now; point at one, or
+  Tab to it, for its name and hint, such as *Home: 3 tasks due today*.
+  **List** in the gear beside them brings the rows back. If you chose
+  **Icons** before, nothing changes; if you chose **List**, choose it once
+  more.
+- **Home has one name.** The palette's **Open Dashboard** is **Deckard:
+  Open Home**, Home's tab reads *Deckard Home*, and its heading reads
+  *Home* on both of its tabs, Home and Tags. The first index's notice
+  offers **Open Home**, Find's last row says it opens a search page, and
+  Help's *Search pages and tag overviews* is *Search pages*. With nothing
+  due today, Home's hint in Context and Go to… says so.
+- **The Tasks view's search is `deckard.tasks.viewQuery`.** It was
+  `deckard.agenda.query`, *Agenda: Query* in Settings. A search you set
+  there is carried over once, in the user's or the workspace's settings
+  where you set it, and the notice that says Display moved says this
+  too.
+- **Stale tasks is a Tasks widget.** A Stale tasks widget on Home is now
+  a Tasks widget holding the same search, such as
+  `is:open AND updated < 30d` for its 30 days, sorted Least recently
+  updated, so it lists what it listed and you can change its search.
+- **Clear filters shows only while a filter is set.** In the Notes
+  Graph's Filters, **Clear filters** appears once a tag or a group is
+  picked, and goes when there is nothing to clear.
+- **How the Notes Graph groups notes is in Help.** The four paragraphs the
+  graph's Relationships group held are in the guide's Notes Graph section
+  now.
+
+### Fixed
+
+- **The calendar page's keys no longer list /.** Its key sheet offered
+  **/** to go to the search box, which the page doesn't have. **/** is
+  listed only on a page with a search box.
+- **Help's title is its largest heading under Zen.** Under Zen and Quiet,
+  Help drew *Changelog* smaller than the releases under it. Its title now
+  stays over its sections, and its sections over what is under them, at
+  every step.
+- **Copy MCP Server Setup is in the palette before the server is on.**
+  The guide says to run it to turn the MCP server on, but the palette
+  listed it only once the server was already on. It is listed now while
+  `deckard.assistantTools` is on, and still offers to turn the server on.
+- **The Writing preset says what it draws.** Settings said Writing kept
+  the / menu, hover previews and problem reports only, but it also keeps
+  faint task details. Settings, Choose Editor Preset… and the guide now
+  name each part it keeps and each it leaves out.
+
+### Removed
+
+- **The Task board's List layout.** The table, which ranks in Rank order,
+  takes its place, and the gear's Layout row goes with it.
+- **Choose Display… and the Display settings.** `Deckard: Choose
+  Display…`, the gear's Full, Quiet and Zen buttons with their *N changed ·
+  Reset · Customize…* line, and `deckard.display.level`, `themeStyling`,
+  `helpText`, `density`, `cardFrames`, `tags`, `counts` and `dates` are
+  gone; **Zen** takes their place. Counts and dates always show now.
+  **Card details** and the two date formats stay. **Enter Zen** and
+  **Leave Zen** are no longer listed in the palette, where **Toggle Zen**
+  does both.
+- **The Esper Themes suggestion.** Deckard no longer suggests installing
+  Esper Themes after its first index. The themes are still in the
+  Marketplace, and the guide's Themes and Zen page still names them.
+- **Context's list of Home's widgets.** With Home in front, Context
+  listed the widgets Home could add, with **Reset widgets…**, the same
+  list as Home's own **+ Add widget**. Context now keeps its pages and asks
+  for a note, as it does with any other page in front; **Customize Home**
+  offers + Add widget and Reset widgets….
+- **Six Home widgets.** Workspace (Stats and Home's figures count the
+  same), Related notes (in Context), Quick add (`Deckard: Add Task` works
+  anywhere), Tags written together, Tags without a hub and New tags
+  (Stats, and the weekly review, keep the tag upkeep) are no longer
+  offered. One of these on your Home is dropped when Home next opens.
+  Home offers 14 kinds of widget, from 21.
+- **The Calendar view's day panel and Weekends menu.** The sidebar's
+  Calendar is the month alone: select a day, a week's mark or the month's
+  name to open its note. **Open Day Panel**, **Close Day Panel**, **Hide
+  Weekends** and **Include Weekends** are gone from its `…` menu; the
+  calendar page lists a day's tasks beside the month, and **Show
+  weekends** in its **⋯** sets both calendars. Its one title icon opens the calendar
+  page.
+- **The Notes Graph's physics tuning.** The **Forces** group (cluster
+  centering, cluster cohesion, community spacing, repel strength, link
+  strength and link distance), the **Advanced** group (Favor rare tags,
+  Links between groups and Show every link), and Display's **Link
+  thickness** and **Label fade zoom** are gone. Each is fixed at the
+  default it had, so a graph you never tuned looks as it did. Display
+  keeps **Node size**, **Links per note** and **Headings**.
+- **The Story Tour.** `Deckard: Create the Story Tour` is gone, so there
+  is one sample to start from: `Deckard: Create a Work Sample`, a week of a
+  team lead's notes, which Get Started and the walkthrough offer. A tour
+  you made before stays where it was. The extension is smaller by the
+  tour's notes, which are kept with Deckard's tests.
+
 ## 2.4.0 - 2026-10-06
 
 ### Highlights

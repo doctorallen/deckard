@@ -15,6 +15,13 @@
 .query-input:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
 .query-input.invalid { border-color: #FF5555; }
 .query-input-shell { position: relative; flex: 1 1 240px; min-width: 0; display: flex; }
+/* Builder joined to the start of the field, as one control: the two share
+   the edge between them and the row's height (the joining itself is in
+   controlEdge.css, after the themes that draw buttons their own way). */
+.query-field-group { display: flex; flex: 1 1 240px; align-items: stretch; min-width: 0; }
+.query-field-group > .query-input-shell { flex: 1 1 auto; }
+.query-builder-toggle { display: inline-flex; flex: none; align-items: center; gap: 6px; margin: 0; white-space: nowrap; }
+.query-builder-toggle .query-builder-icon { flex: none; width: 14px; height: 14px; }
 /*
  * The search box is a field of chips, as a multi-select is: each term of the
  * search is a chip with a remove icon, joined by AND, and the text field after
@@ -46,6 +53,16 @@
 .query-chip-remove { display: inline-grid; flex: 0 0 auto; width: 16px; height: 16px; place-items: center; border-radius: 50%; background: color-mix(in srgb, currentColor 22%, transparent); color: inherit; font-size: var(--text-sm); line-height: 1; }
 .query-bar-shell .query-chip:hover, .query-bar-shell .query-chip:focus-visible { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); transform: none; }
 .query-bar-shell .query-chip:hover .query-chip-remove, .query-bar-shell .query-chip:focus-visible .query-chip-remove { background: var(--amber); color: var(--panel-deep); }
+/* The field's own glyphs at its end: × empties the search, drawn only while
+   there is something to clear, and → runs it, as Enter does. They hold the
+   field's right end whatever its chips wrap to, in room kept for both, so
+   the field does not shift when × comes and goes. Each reads as part of
+   the field, whatever a theme does to buttons. */
+.query-field-group > .query-bar-shell { padding-right: 58px; }
+.query-bar-shell .query-field-glyph { position: absolute; top: 50%; right: 4px; display: inline-grid; place-items: center; width: 24px; min-width: 0; height: 24px; min-height: 0; margin: -12px 0 0; border: 1px solid transparent; border-radius: 3px; background: none; color: var(--text); padding: 0; font: var(--text-sm) var(--font-mono); line-height: 1; letter-spacing: normal; text-transform: none; box-shadow: none; clip-path: none; transform: none; }
+.query-bar-shell .query-clear { right: 30px; }
+.query-bar-shell .query-field-glyph[hidden] { display: none; }
+.query-bar-shell .query-field-glyph:hover:where(:not(:disabled):not([aria-disabled="true"])), .query-bar-shell .query-field-glyph:focus-visible { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 12%, transparent); color: var(--amber); box-shadow: none; transform: none; }
 .query-chip-join, .query-op { color: var(--amber); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; }
 .query-op { font-size: inherit; }
 .query-paren { color: var(--muted); }
@@ -60,15 +77,9 @@
 .query-suggestions .query-suggestion-detail { flex: 0 0 auto; color: var(--muted); font-size: var(--text-xs); white-space: nowrap; }
 .query-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 0 10px 10px; color: var(--muted); font-size: var(--text-xs); }
 .query-status > .query-hint, .query-status > .query-error { flex: 1 1 auto; }
-/* Search is the bar's primary action in every theme; hover and focus keep
-   the theme's own look. A page whose own action is the one the reader came
-   for, such as the Task Board's Save to Tasks view, marks it query-primary
-   and draws Search plain. */
-/* One filled control per page: the one the reader most likely wants. A
-   chosen segment is drawn another way (see button.active), so filled means
-   "do this" and nothing else. */
-.query-bar-row .query-apply, .query-bar-row .query-apply:not(:hover):not(:focus-visible), .query-bar-row .query-primary, .query-bar-row .query-primary:not(:hover):not(:focus-visible) { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
-.query-bar-row .query-apply:hover, .query-bar-row .query-apply:focus-visible, .query-bar-row .query-primary:hover, .query-bar-row .query-primary:focus-visible { border-color: var(--amber-bright); background: var(--chosen-bg); color: var(--chosen-fg); filter: brightness(1.08); }
+/* The / key's part of the hint, which says nothing while the field it
+   would focus already has focus. */
+.query-workspace:has(.query-input:focus) .query-hint-key { display: none; }
 /* A line above a search, or the list it narrows, that says what the reader
    is looking at, with a way out: the Tags tab's kept search, and the Task
    Board editing what the Tasks view lists. */
@@ -116,6 +127,11 @@
    word in the run. */
 .query-facets-lead { display: grid; gap: var(--space-1); grid-column: 1 / -1; padding-bottom: var(--space-2); border-bottom: 1px dashed var(--line); }
 .query-facets-groups { display: flex; flex-wrap: wrap; align-items: start; gap: var(--space-3) var(--space-5); }
+/* The facets fold under Refine's summary: open to begin with, closed under
+   Zen. The lead lines and the count stay outside the fold, always drawn. */
+.query-facets-fold { min-width: 0; }
+.query-facets-fold > summary { width: fit-content; cursor: pointer; }
+.query-facets-fold[open] > summary { margin-bottom: var(--space-2); }
 .query-facets-count { align-self: center; color: var(--muted); font-size: var(--text-xs); line-height: 26px; white-space: nowrap; }
 .query-facets-empty { color: var(--muted); font-size: var(--text-xs); }
 /* A value and its two other modes read as one control. The modes stay out of
@@ -135,4 +151,7 @@
 /* The rest of a facet's values, or fewer: words, the height of a value. */
 .query-facet-more.query-facet-more { min-height: 26px; margin: 0; border: 0; background: transparent; color: var(--muted); padding: 3px 6px; font-size: var(--text-xs); text-transform: none; text-decoration: underline 1px transparent; box-shadow: none; clip-path: none; transform: none; }
 .query-facet-more.query-facet-more:hover, .query-facet-more.query-facet-more:focus-visible { background: transparent; color: var(--text); text-decoration-color: var(--accent); }
-.query-facets.is-elsewhere { padding-block: 6px; }
+/* With Refine in the sidebar: the lines the sidebar does not show, plain, with no box around them. */
+.query-facets-elsewhere { display: grid; gap: var(--space-1); margin: var(--space-3) 0; }
+.query-facets-recovery { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; }
+.query-facets-lead-plain { display: grid; gap: var(--space-1); }

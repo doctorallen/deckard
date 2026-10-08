@@ -62,7 +62,7 @@ const viewConfiguration = {
     output: 'docs/images/dashboard.png',
     title: 'Dashboard',
     renderedAssertion:
-      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Dashboard' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app > header h1'))",
+      "document.querySelector('iframe')?.contentDocument?.title === 'Deckard Home' && Boolean(document.querySelector('iframe')?.contentDocument?.querySelector('#app > header h1'))",
   },
   'notes-graph': {
     command: 'deckard.showNotesGraph',
@@ -314,7 +314,7 @@ function writeFixture() {
   if (zen) {
     // Display is the reader's own, so Zen is in the user's settings.
     mkdirSync(join(profile, 'User'), { recursive: true });
-    writeFileSync(join(profile, 'User', 'settings.json'), JSON.stringify({ 'deckard.display.level': 'zen' }));
+    writeFileSync(join(profile, 'User', 'settings.json'), JSON.stringify({ 'deckard.display.zen': true }));
   }
   mkdirSync(join(workspace, '.vscode'));
   writeFileSync(

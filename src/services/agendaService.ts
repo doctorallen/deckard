@@ -177,7 +177,7 @@ export class AgendaService<G extends AgendaGroupLike> {
     await this.options.preferences.setAgendaSort(mode);
   }
 
-  /** What the view lists, from `deckard.agenda.query`. */
+  /** What the view lists, from `deckard.tasks.viewQuery`. */
   public readQuery(): string {
     return readAgendaQuery(this.settings());
   }

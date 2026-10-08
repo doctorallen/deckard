@@ -10,9 +10,14 @@ import type { DeckardPage, DeckardPageId } from './deckardPages';
 /** The preferences the pages at the top of Context are kept in. */
 export type ContextPagesPreferences = Pick<PersistedPreferences, 'contextPagesStyle' | 'contextPagesHidden'>;
 
-/** How Context draws its pages: the list unless the reader chose icons. */
+/**
+ * How Context draws its pages: the row of icons unless the reader chose the
+ * list. The labeled rows took about 210 px of a sidebar at the top of every
+ * state, and cut their hints short; each icon names its page and its hint
+ * on hover and to a screen reader.
+ */
 export function readPagesStyle(preferences: ContextPagesPreferences): ContextPagesStyle {
-  return preferences.contextPagesStyle === 'icons' ? 'icons' : 'list';
+  return preferences.contextPagesStyle === 'list' ? 'list' : 'icons';
 }
 
 /** Whether Context keeps a page: every page the reader has not left out. */

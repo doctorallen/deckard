@@ -366,7 +366,7 @@ export async function rescheduleTasks(
 
 /**
  * The open tasks the Tasks view lists as overdue on the context's today, as
- * `deckard.agenda.query` selects them. The status bar's hover lists these.
+ * `deckard.tasks.viewQuery` selects them. The status bar's hover lists these.
  */
 export function listOverdueTasks(index: WorkspaceIndex, context: QueryContext): Task[] {
   return selectOverdueTasks(index, context, {
@@ -375,7 +375,7 @@ export function listOverdueTasks(index: WorkspaceIndex, context: QueryContext): 
   });
 }
 
-/** What the Agenda lists, from `deckard.agenda.query`; empty is every open task. */
+/** What the Agenda lists, from `deckard.tasks.viewQuery`; empty is every open task. */
 export function getAgendaQuery(): string {
   return readAgendaQuery(vscode.workspace.getConfiguration('deckard'));
 }

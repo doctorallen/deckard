@@ -104,15 +104,8 @@ export type DashboardWidgetKind =
   | 'savedSearches'
   | 'recentSearches'
   | 'recentNotes'
-  | 'stats'
   | 'savedQuery'
   | 'todayNote'
-  | 'quickAdd'
-  | 'staleTasks'
-  | 'relatedNotes'
-  | 'tagPairs'
-  | 'unhubbedTags'
-  | 'newTags'
   | 'quietPeople'
   | 'progress'
   | 'pinnedNotes'
@@ -138,12 +131,14 @@ export interface DashboardWidgetConfig {
   page?: number;
   /** The search a tasks widget lists. */
   query?: string;
+  /**
+   * How a tasks widget orders what it finds, when not as the Task Board's
+   * Sort does: a Stale tasks widget became one sorted Least recently updated.
+   */
+  sort?: TaskSortMode;
   /** The saved search a saved-search widget shows. */
   filterId?: string;
-  /**
-   * How many days a widget looks back: how long a stale task's note has gone
-   * unchanged, or how recently a new tag was first seen.
-   */
+  /** How many days Gone quiet looks back for a name last written. */
   days?: number;
   /**
    * The namespace Gone quiet watches, `person` by default, or whose tags
@@ -239,16 +234,18 @@ export interface PersistedPreferences {
   agendaGroupNamespace?: string;
   /** How each of the Tasks view's groups orders its tasks, when not by rank. */
   agendaSort?: Exclude<TaskSortMode, 'rank'>;
-  /** The sidebar Calendar shows the chosen day under the month; stored only when on. */
-  calendarDayPanel?: true;
   /** Both calendars leave Saturday and Sunday out; stored only when they do. */
   calendarHideWeekends?: true;
   /** The Outline leaves the cursor alone; stored only when it does. */
   outlineFollowCursorOff?: true;
   /** Every page as wide as its panel; stored only when it is. */
   pageWidth?: 'full';
-  /** Deckard's pages at the top of Context as one row of icons; stored only when they are. */
-  contextPagesStyle?: 'icons';
+  /**
+   * Deckard's pages at the top of Context as labeled rows; stored only when
+   * they are. The row of icons is the default: it was 'icons', stored only
+   * then, while the rows were.
+   */
+  contextPagesStyle?: 'list';
   /** The pages left out of the top of Context, by id, in no order; stored only when one is. */
   contextPagesHidden?: string[];
 
@@ -308,8 +305,8 @@ export interface PinnedNote {
 /** How the task board arranges its columns. */
 export type TaskBoardGroupBy = 'status' | 'priority' | 'due' | 'assignee' | 'tag';
 
-/** Whether the Task Board shows its tasks as a list or as columns. */
-export type TaskLayout = 'list' | 'board' | 'table';
+/** Whether the Task Board shows its tasks as columns or as a table. */
+export type TaskLayout = 'board' | 'table';
 
 /**
  * A table of tasks: the query's results as rows, its fields as columns. The

@@ -9,12 +9,19 @@ import { formatKeyWords, readTagNamespace } from '../domain/markdown/tagKeys';
  * one by it, and the parser and the Tags tab read a key's namespace alike.
  */
 suite('Widget catalog', () => {
-  test('lists every kind, in the order + Add widget offers them', () => {
+  test('lists every kind, fourteen, in the order + Add widget offers them', () => {
     assert.deepStrictEqual(Object.keys(WIDGET_KINDS), [
       'search', 'tasks', 'agenda', 'favoriteTags', 'topTags', 'savedSearches', 'recentSearches', 'recentNotes',
-      'stats', 'savedQuery', 'todayNote', 'quickAdd', 'staleTasks', 'relatedNotes', 'tagPairs', 'unhubbedTags',
-      'newTags', 'quietPeople', 'progress', 'pinnedNotes', 'tryNext',
+      'savedQuery', 'todayNote', 'quietPeople', 'progress', 'pinnedNotes', 'tryNext',
     ]);
+  });
+
+  test('offers none of the kinds that repeated another place, nor Stale tasks', () => {
+    // Workspace is Stats; Related notes is Context; Add Task works anywhere;
+    // Stats keeps the tag upkeep; and a Tasks widget's search is Stale tasks.
+    for (const kind of ['stats', 'relatedNotes', 'quickAdd', 'tagPairs', 'unhubbedTags', 'newTags', 'staleTasks']) {
+      assert.strictEqual(isWidgetKind(kind), false, kind);
+    }
   });
 
   test('says what the host keeps of each kind: one or many, listed, and paged', () => {
@@ -25,7 +32,7 @@ suite('Widget catalog', () => {
     const unlisted = Object.keys(traits).filter((kind) => !traits[kind][1]);
     const unpaged = Object.keys(traits).filter((kind) => traits[kind][1] && !traits[kind][2]);
     assert.deepStrictEqual(repeatable, ['tasks', 'savedQuery']);
-    assert.deepStrictEqual(unlisted, ['search', 'savedSearches', 'stats', 'quickAdd', 'tryNext']);
+    assert.deepStrictEqual(unlisted, ['search', 'savedSearches', 'tryNext']);
     assert.deepStrictEqual(unpaged, ['agenda', 'savedQuery']);
   });
 
@@ -34,8 +41,6 @@ suite('Widget catalog', () => {
       .filter(([, entry]) => entry.defaultDays !== undefined)
       .map(([kind, entry]) => [kind, entry.defaultDays, (entry.days ?? []).map(([days]) => days)]);
     assert.deepStrictEqual(lookingBack, [
-      ['staleTasks', 30, [7, 14, 30, 90]],
-      ['newTags', 14, [7, 14, 30, 90]],
       ['quietPeople', 90, [30, 60, 90, 180]],
     ]);
   });

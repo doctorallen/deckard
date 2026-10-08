@@ -1,5 +1,6 @@
 /**
- * Everything the Notes Graph draws around its canvas: the control groups,
+ * Everything the Notes Graph draws around its canvas: the bar every page
+ * draws, DECKARD ▾ and its title with ⋯, the control groups,
  * the zoom controls with Reset and its Undo, the legend and status line,
  * the empty-state line, and the tooltip's box. Drawn by Preact into the
  * body, from the reader's settings and what the page last said, as the
@@ -11,8 +12,17 @@
  */
 import type { ComponentChildren, RefObject } from 'preact';
 
+import { PageBar } from '../shared/pageBar';
 import { UndoNotice } from '../shared/undoToast';
 import type { GraphSettings, GraphState } from './model';
+import { DEFAULT_SETTINGS } from './settings';
+
+/**
+ * What Focus says before a note is open: how to use it, so Zen's help step
+ * puts it away. Around a note, the line names it and counts its nodes, and
+ * stays.
+ */
+export const OPEN_A_NOTE = 'Open a note to draw the graph around it.';
 
 /** What the page last said in its controls, beside the settings. */
 export interface ControlsState {
@@ -52,11 +62,9 @@ export interface ControlRefs {
 }
 
 /** A setting a checkbox turns on and off. */
-export type ToggleKey = 'showNotes' | 'showTasks' | 'showTags' | 'showOrphans' | 'showParked' | 'onlyWrittenLinks' | 'showAllLinks';
+export type ToggleKey = 'showNotes' | 'showTasks' | 'showTags' | 'showOrphans' | 'showParked' | 'onlyWrittenLinks';
 /** A setting a slider sets. */
-export type SliderKey =
-  | 'nodeSize' | 'linkThickness' | 'linkDensity' | 'tagSpecificity' | 'bridgeStrength' | 'labelThreshold'
-  | 'centerStrength' | 'clusterCohesion' | 'communitySpacing' | 'repelStrength' | 'linkStrength' | 'linkDistance';
+export type SliderKey = 'nodeSize' | 'linkDensity';
 
 /** What each control does, which the page supplies. */
 export interface ControlHandlers {
@@ -88,8 +96,6 @@ export interface ControlsProps {
 
 /** The legend's words for its sliders' fifths. */
 const FEWEST_TO_MOST = 'fewest,fewer,about half,more,most';
-/** The legend's words for Favor rare tags. */
-const LEAST_TO_MOST = 'least,less,about half,more,most';
 /** How many tags the list draws before it says how many more there are. */
 const MAXIMUM_TAG_ROWS = 200;
 
@@ -98,6 +104,7 @@ export function GraphBody(props: ControlsProps) {
   const { ui, refs } = props;
   return (
     <>
+      <PageBar trail="NOTES GRAPH" className="graph-bar" label="Notes Graph" lead={<h1>Notes Graph</h1>} menu={{}} />
       {' '}
       <canvas
         id="graph"
@@ -122,10 +129,6 @@ export function GraphBody(props: ControlsProps) {
         {' '}
         <DisplayGroup {...props} />
         {' '}
-        <ForcesGroup {...props} />
-        {' '}
-        <RelationshipsGroup />
-        {' '}
       </div>
       {' '}
       <ZoomControls {...props} />
@@ -137,17 +140,23 @@ export function GraphBody(props: ControlsProps) {
   );
 }
 
-/** A folding group of controls, open or closed to begin with. */
-function ControlGroup({ title, open, extraClass, children }: {
+/**
+ * A folding group of controls, open or closed to begin with, then as the
+ * reader left it across a draw. Its summary says, after the title, what
+ * the group is doing to the graph while it is closed over it.
+ */
+function ControlGroup({ title, open, note, children }: {
   readonly title: string;
   readonly open?: boolean;
-  readonly extraClass?: string;
+  /** What the summary says after the title, such as "2 set". */
+  readonly note?: string;
   readonly children: ComponentChildren;
 }) {
+  const shown = document.querySelector<HTMLDetailsElement>(`.control-group[data-group="${title}"]`);
   return (
-    <details class={extraClass ? `control-group ${extraClass}` : 'control-group'} open={open}>
+    <details class="control-group" data-group={title} open={shown ? shown.open : open}>
       {' '}
-      <summary>{title}</summary>
+      <summary>{note ? `${title} · ${note}` : title}</summary>
       {' '}
       <div class="control-body">{children}</div>
       {' '}
@@ -237,11 +246,31 @@ function SettingSlider({ props, spec }: { readonly props: ControlsProps; readonl
   );
 }
 
+/**
+ * Whether the page is drawn in Zen, under which Focus and Filters start
+ * closed, as Display always does, each summary saying what it is doing.
+ */
+function zen(): boolean {
+  return document.body.classList.contains('zen');
+}
+
+/**
+ * How many filters are away from how a new graph starts: each switch, each
+ * tag picked, the group picked and the search.
+ */
+export function filtersSet(settings: GraphSettings): number {
+  const switches: ToggleKey[] = ['showNotes', 'showTasks', 'showTags', 'showOrphans', 'onlyWrittenLinks', 'showParked'];
+  return switches.filter((key) => Boolean(settings[key]) !== DEFAULT_SETTINGS[key]).length
+    + settings.selectedTags.length
+    + (settings.group ? 1 : 0)
+    + (String(settings.search || '').trim() ? 1 : 0);
+}
+
 /** Focus: the graph around the note in the editor, how far out, and whether daily notes are passed through. */
 function FocusGroup({ ui, on }: ControlsProps) {
   const { focus } = ui;
   return (
-    <ControlGroup title="Focus" open>
+    <ControlGroup title="Focus" open={!zen()} note={focus.local ? 'around this note' : undefined}>
       {' '}
       <Toggle id="local-graph" tip="Draw only the note open in the editor and what it is connected to." label="Around this note" checked={focus.local} onChange={on.scope} />
       {' '}
@@ -258,7 +287,7 @@ function FocusGroup({ ui, on }: ControlsProps) {
         {' Pass through daily notes'}
       </label>
       {' '}
-      <p class="focus-note" id="focus-note">{focus.note}</p>
+      <p class={focus.note === OPEN_A_NOTE ? 'focus-note help-text' : 'focus-note'} id="focus-note">{focus.note}</p>
       {' '}
     </ControlGroup>
   );
@@ -268,7 +297,7 @@ function FocusGroup({ ui, on }: ControlsProps) {
 function FiltersGroup(props: ControlsProps) {
   const { on, refs } = props;
   return (
-    <ControlGroup title="Filters" open>
+    <ControlGroup title="Filters" open={!zen()} note={filtersSet(props.settings) ? `${filtersSet(props.settings)} set` : undefined}>
       {' '}
       <input class="graph-search" id="search" type="search" placeholder="Search notes…" aria-label="Search graph nodes" data-tip="Filter note, task, and tag titles and file paths." ref={refs.search} onInput={on.searchInput} />
       {' '}
@@ -290,7 +319,10 @@ function FiltersGroup(props: ControlsProps) {
       {' '}
       <GroupRow {...props} />
       {' '}
-      <button class="clear-tags" id="clear-tags" type="button" data-tip="Remove the tag filters and the group picked out." onClick={on.clearTags}>Clear filters</button>
+      {/* Only while there is a filter to clear: a button that does nothing is noise. */}
+      {props.settings.selectedTags.length > 0 || props.settings.group
+        ? <button class="clear-tags" id="clear-tags" type="button" data-tip="Remove the tag filters and the group picked out." onClick={on.clearTags}>Clear filters</button>
+        : null}
       {' '}
     </ControlGroup>
   );
@@ -363,30 +395,16 @@ function GroupRow({ ui, graph, on }: ControlsProps) {
   );
 }
 
-/** Display: how nodes, links, labels, and headings are drawn, with the rarer choices under Advanced. */
+/** Display: how big nodes are, how many links each note draws, and when headings are drawn. */
 function DisplayGroup(props: ControlsProps) {
   return (
     <ControlGroup title="Display">
       {' '}
       <SettingSlider props={props} spec={{ id: 'node-size', setting: 'nodeSize', label: 'Node size', tip: 'Scale node circles; larger nodes make highly connected items easier to spot.', min: '0.5', max: '3', step: '0.1', decimals: 1 }} />
       {' '}
-      <SettingSlider props={props} spec={{ id: 'link-thickness', setting: 'linkThickness', label: 'Link thickness', tip: 'Scale the width of visible edges.', min: '0.5', max: '3', step: '0.1', decimals: 1 }} />
-      {' '}
       <SettingSlider props={props} spec={{ id: 'link-density', setting: 'linkDensity', label: 'Links per note', tip: 'How many of each note\'s strongest links are drawn. Fewer is easier to read. The sidebar\'s connections do not change.', min: '0.15', max: '1', step: '0.05', words: { low: 'Fewer', high: 'More', list: FEWEST_TO_MOST } }} />
       {' '}
-      <SettingSlider props={props} spec={{ id: 'label-threshold', setting: 'labelThreshold', label: 'Label fade zoom', tip: 'Set the zoom level where node labels begin to appear; higher values keep labels hidden longer.', min: '0.5', max: '4', step: '0.1', decimals: 1 }} />
-      {' '}
       <HeadingsChoice {...props} />
-      {' '}
-      <ControlGroup title="Advanced" extraClass="advanced">
-        {' '}
-        <SettingSlider props={props} spec={{ id: 'tag-specificity', setting: 'tagSpecificity', label: 'Favor rare tags', tip: 'How much more a tag on a few notes counts than a tag on nearly every note, when choosing which links to draw.', min: '0', max: '1', step: '0.05', words: { low: 'Less', high: 'More', list: LEAST_TO_MOST } }} />
-        {' '}
-        <SettingSlider props={props} spec={{ id: 'bridge-strength', setting: 'bridgeStrength', label: 'Links between groups', tip: 'How strongly a note\'s other tags pull it toward other groups.', min: '0', max: '1', step: '0.05', words: { low: 'Fewer', high: 'More', list: FEWEST_TO_MOST } }} />
-        {' '}
-        <SettingToggle props={props} id="show-all-links" setting="showAllLinks" tip="Draw every link rather than each note's strongest. Busy on a large workspace." label="Show every link" />
-        {' '}
-      </ControlGroup>
       {' '}
     </ControlGroup>
   );
@@ -412,49 +430,11 @@ function HeadingsChoice(props: ControlsProps) {
     <div class="control-row">
       <span class="control-label" id="headings-label">Headings</span>
       <div class="segmented graph-segmented" role="group" aria-labelledby="headings-label">
-        <HeadingsButton props={props} value="zoom" tip="Zoomed out, draw each file as one node; zoomed in past Label fade zoom, draw its headings." label="By zoom" />
+        <HeadingsButton props={props} value="zoom" tip="Zoomed out, draw each file as one node; zoomed in far enough that every note is named, draw its headings." label="By zoom" />
         <HeadingsButton props={props} value="always" tip="Draw every heading as a node of its own, at every zoom." label="Always" />
         <HeadingsButton props={props} value="never" tip="Draw each file as one node, at every zoom." label="Never" />
       </div>
     </div>
-  );
-}
-
-/** Forces: how the simulation pulls and pushes. */
-function ForcesGroup(props: ControlsProps) {
-  return (
-    <ControlGroup title="Forces">
-      {' '}
-      <SettingSlider props={props} spec={{ id: 'center-strength', setting: 'centerStrength', label: 'Cluster centering', tip: 'Pull community anchors gently toward the center of the viewport.', min: '0', max: '1', step: '0.05', decimals: 2 }} />
-      {' '}
-      <SettingSlider props={props} spec={{ id: 'cluster-cohesion', setting: 'clusterCohesion', label: 'Cluster cohesion', tip: 'Strengthen or weaken the pull from notes and tasks toward their detected community anchor.', min: '0.5', max: '3', step: '0.1', decimals: 1 }} />
-      {' '}
-      <SettingSlider props={props} spec={{ id: 'community-spacing', setting: 'communitySpacing', label: 'Community spacing', tip: 'Increase or reduce the distance between detected communities; changing it recomputes the layout framing.', min: '0.6', max: '2.5', step: '0.1', decimals: 1 }} />
-      {' '}
-      <SettingSlider props={props} spec={{ id: 'repel-strength', setting: 'repelStrength', label: 'Repel strength', tip: 'Increase or reduce node-to-node repulsion; higher values spread crowded nodes apart.', min: '50', max: '2000', step: '25', decimals: 0 }} />
-      {' '}
-      <SettingSlider props={props} spec={{ id: 'link-strength', setting: 'linkStrength', label: 'Link strength', tip: 'Increase or reduce the spring force along visible links.', min: '0', max: '2', step: '0.05', decimals: 2 }} />
-      {' '}
-      <SettingSlider props={props} spec={{ id: 'link-distance', setting: 'linkDistance', label: 'Link distance', tip: 'Set the target length of visible links; larger values spread connected nodes farther apart.', min: '10', max: '200', step: '5', decimals: 0 }} />
-      {' '}
-    </ControlGroup>
-  );
-}
-
-/** Relationships: how the graph groups notes and chooses what to draw, in words. */
-function RelationshipsGroup() {
-  return (
-    <ControlGroup title="Relationships">
-      {' '}
-      <p class="relationship-note">The graph uses prevalence-aware groups: direct Wiki links and headings seed strong groups, while tag membership is discounted when a tag is too rare or too widespread. Hidden tags act as virtual anchors rather than high-mass particles, and each node keeps only its strongest local connections.</p>
-      {' '}
-      <p class="relationship-note">Each group is named after the tags its notes carry more than the rest of the workspace does.</p>
-      {' '}
-      <p class="relationship-note">Links per note controls that local budget. The status line reports strong links retained versus all indexed links; Connected Nodes in the sidebar still uses the complete graph.</p>
-      {' '}
-      <p class="relationship-note">Selecting a node highlights its direct graph neighbors and lists those same note, task, and tag nodes in the sidebar. Related Notes ranking remains exclusive to Markdown pages.</p>
-      {' '}
-    </ControlGroup>
   );
 }
 

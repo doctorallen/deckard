@@ -232,19 +232,8 @@ suite('Webview saved state', () => {
       group: '#project',
       search: 'lift',
       nodeSize: 2,
-      linkThickness: 1.5,
       linkDensity: 0.5,
-      tagSpecificity: 0.5,
-      bridgeStrength: 0.5,
-      showAllLinks: true,
       headings: 'never',
-      labelThreshold: 2,
-      centerStrength: 0.6,
-      clusterCohesion: 2,
-      communitySpacing: 2,
-      repelStrength: 500,
-      linkStrength: 1.5,
-      linkDistance: 100,
       camera: { x: 12, y: -8, k: 2.5 },
     };
     const TOGGLES: Record<string, keyof typeof SAVED> = {
@@ -254,21 +243,10 @@ suite('Webview saved state', () => {
       'show-orphans': 'showOrphans',
       'show-parked': 'showParked',
       'only-written-links': 'onlyWrittenLinks',
-      'show-all-links': 'showAllLinks',
     };
     const SLIDERS: Record<string, keyof typeof SAVED> = {
       'node-size': 'nodeSize',
-      'link-thickness': 'linkThickness',
       'link-density': 'linkDensity',
-      'tag-specificity': 'tagSpecificity',
-      'bridge-strength': 'bridgeStrength',
-      'label-threshold': 'labelThreshold',
-      'center-strength': 'centerStrength',
-      'cluster-cohesion': 'clusterCohesion',
-      'community-spacing': 'communitySpacing',
-      'repel-strength': 'repelStrength',
-      'link-strength': 'linkStrength',
-      'link-distance': 'linkDistance',
     };
     /** Asks the page to keep its settings without changing one: Never, chosen again. */
     const persist = (target: WebviewPage) => target.click('[data-headings="never"]');
@@ -282,7 +260,12 @@ suite('Webview saved state', () => {
         assert.strictEqual((page.find(`#${id}`) as HTMLInputElement).value, String(SAVED[key]), id);
       }
       assert.strictEqual(page.text('#node-size-out'), '2.0');
-      assert.strictEqual(page.text('#repel-strength-out'), '500');
+      // The layout is fixed: no control tunes its forces or its links.
+      for (const id of ['link-thickness', 'label-threshold', 'tag-specificity', 'bridge-strength', 'show-all-links', 'center-strength', 'cluster-cohesion', 'community-spacing', 'repel-strength', 'link-strength', 'link-distance']) {
+        assert.strictEqual(page.document.getElementById(id), null, id);
+      }
+      // Six switches, a tag, a group and a search, each away from how a graph starts.
+      assert.deepStrictEqual(page.findAll('.control-group > summary').map((summary) => summary.textContent), ['Focus', 'Filters · 9 set', 'Display']);
       assert.strictEqual(page.find('[data-headings][aria-pressed="true"]').getAttribute('data-headings'), 'never');
       assert.strictEqual((page.find('#search') as HTMLInputElement).value, 'lift');
     });
@@ -299,7 +282,7 @@ suite('Webview saved state', () => {
       const kept = page.savedState() as Record<string, unknown>;
       assert.strictEqual(kept.nodeSize, '2');
       assert.strictEqual(kept.group, 7);
-      assert.strictEqual(kept.linkDistance, 32, 'a key it was not given is its default');
+      assert.strictEqual(kept.linkDensity, 0.3, 'a key it was not given is its default');
       assert.deepStrictEqual(kept.camera, { x: 0, y: 0, k: 1 }, 'no camera is the default camera');
     });
 
@@ -323,7 +306,7 @@ suite('Webview saved state', () => {
     test('reads anything but a record of settings as nothing kept', () => {
       for (const saved of [undefined, null, false, 'graph', 7, true, []]) {
         const kept = keptFrom(saved);
-        assert.strictEqual(kept.linkDistance, 32, JSON.stringify(saved));
+        assert.strictEqual(kept.linkDensity, 0.3, JSON.stringify(saved));
         assert.strictEqual(kept.showNotes, true, JSON.stringify(saved));
         assert.deepStrictEqual(kept.camera, { x: 0, y: 0, k: 1 }, JSON.stringify(saved));
       }
@@ -348,14 +331,23 @@ suite('Webview saved state', () => {
     });
 
     test('keeps only the settings it knows, in the order of its defaults, then the camera', () => {
-      const kept = keptFrom({ retired: true, camera: { x: 1, y: 2, k: 3 }, linkDistance: 50 });
+      // A layout value an older page kept is let go: the layout is fixed.
+      const kept = keptFrom({ retired: true, camera: { x: 1, y: 2, k: 3 }, linkDistance: 50, repelStrength: 500 });
       assert.deepStrictEqual(Object.keys(kept), [
         'showNotes', 'showTasks', 'showTags', 'showOrphans', 'showParked', 'onlyWrittenLinks', 'selectedTags', 'group',
-        'search', 'nodeSize', 'linkThickness', 'linkDensity', 'tagSpecificity', 'bridgeStrength', 'showAllLinks',
-        'headings', 'labelThreshold', 'centerStrength', 'clusterCohesion', 'communitySpacing', 'repelStrength',
-        'linkStrength', 'linkDistance', 'camera',
+        'search', 'nodeSize', 'linkDensity', 'headings', 'camera',
       ]);
-      assert.strictEqual(kept.linkDistance, 50);
+    });
+
+    test('shows Clear filters only while a tag or a group is picked', () => {
+      page = openWebviewPage(renderPage('notesGraph'), undefined, { savedState: { selectedTags: [], group: '' } });
+      assert.strictEqual(page.document.getElementById('clear-tags'), null, 'nothing to clear');
+      page.dispose();
+      page = openWebviewPage(renderPage('notesGraph'), undefined, { savedState: { selectedTags: ['#project/atlas'] } });
+      assert.ok(page.document.getElementById('clear-tags'), 'a tag is picked');
+      page.dispose();
+      page = openWebviewPage(renderPage('notesGraph'), undefined, { savedState: { group: '#project' } });
+      assert.ok(page.document.getElementById('clear-tags'), 'a group is picked');
     });
   });
 

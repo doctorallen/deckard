@@ -17,7 +17,7 @@ export class EntityHeadingSuggestions implements vscode.Disposable {
   ) {}
 
   /**
-   * Registers the quick fix for Markdown files. Returns the provider, so the
+   * Registers the refactor for Markdown files. Returns the provider, so the
    * composition root can build and register it in one expression.
    */
   public register(): this {
@@ -28,13 +28,13 @@ export class EntityHeadingSuggestions implements vscode.Disposable {
           provideCodeActions: (document, range) =>
             this.provideCodeActions(document, range),
         },
-        { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] },
+        { providedCodeActionKinds: [vscode.CodeActionKind.Refactor] },
       ),
     );
     return this;
   }
 
-  /** Unregisters the quick fix. */
+  /** Unregisters the refactor. */
   public dispose(): void {
     this.registrations.forEach((registration) => registration.dispose());
   }
@@ -61,13 +61,16 @@ export class EntityHeadingSuggestions implements vscode.Disposable {
       return [];
     }
 
+    // A refactor, not a quick fix: nothing is wrong with the heading, so
+    // VS Code lists it under Refactor… rather than lighting a bulb on every
+    // plain heading.
     const action = new vscode.CodeAction(
-      'Tag this heading with a person or project…',
-      vscode.CodeActionKind.QuickFix,
+      'Tag Heading with a Person or Project…',
+      vscode.CodeActionKind.Refactor,
     );
     action.command = {
       command: 'deckard.linkCurrentHeading',
-      title: 'Deckard: Link Current Heading to Entity',
+      title: 'Deckard: Tag Heading with a Person or Project…',
     };
     return [action];
   }

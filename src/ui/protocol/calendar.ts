@@ -12,7 +12,6 @@ import type {
   OpenGoToMessage,
   OpenHelpMessage,
   OpenTagMessage,
-  DisplayCommandMessage,
   SetDisplayMessage,
   SetZenModeMessage,
   SidebarReadyMessage,
@@ -98,14 +97,14 @@ export interface CalendarSnapshot {
   needsNewDateBefore?: string;
   weeks: CalendarWeek[];
   /**
-   * Saturday and Sunday are left out of the grid, as the Calendar's menu or
-   * the page's gear chose. The weeks still hold them, for their notes and
+   * Saturday and Sunday are left out of the grid, as the calendar page's
+   * gear chose. The weeks still hold them, for their notes and
    * for a step that lands on one.
    */
   hideWeekends?: boolean;
   /** The page's chosen day is in the Related Notes sidebar, so the page draws no panel of its own. */
   dayInSidebar?: boolean;
-  /** Whether the chosen day is shown below the month, as the Calendar's menu chose. */
+  /** Whether the chosen day is shown: on the calendar page, and never in the sidebar Calendar. */
   dayPanel?: boolean;
   /** The day chosen, YYYY-MM-DD: today until another is. */
   selectedDate?: string;
@@ -251,8 +250,6 @@ export interface CalendarPageToHost {
 /** What the host sends the sidebar Calendar, by type. */
 export interface CalendarHostToPage {
   state: StateMessage<CalendarSnapshot>;
-  /** A task the day panel asked to move that was not moved. */
-  moveRefused: CalendarMoveRefusedMessage;
 }
 
 /**
@@ -263,7 +260,6 @@ export interface CalendarPagePageToHost extends CalendarPageToHost {
   setShowWeekends: CalendarSetShowWeekendsMessage;
   setZenMode: SetZenModeMessage;
   setDisplay: SetDisplayMessage;
-  displayCommand: DisplayCommandMessage;
   chooseTheme: ChooseThemeMessage;
   openHelp: OpenHelpMessage;
   openGoTo: OpenGoToMessage;

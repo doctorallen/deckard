@@ -265,19 +265,19 @@ suite('Task board', () => {
     assert.ok(tagged.query.facets.every((facet) => facet.values.every((value) => value.count < 4)));
   });
 
-  test('lists the searched tasks when shown as a list, with the settings it edits', () => {
+  test('tables the searched tasks, with the settings it edits', () => {
     const listed = createTaskBoard({
       index: createIndex(),
-      preferences: preferencesWith({ taskBoardLayout: 'list' }),
+      preferences: preferencesWith({ taskBoardLayout: 'table' }),
       search: { query: 'is:done' },
       options,
     });
-    assert.strictEqual(listed.layout, 'list');
+    assert.strictEqual(listed.layout, 'table');
     assert.deepStrictEqual(listed.columns, []);
     assert.deepStrictEqual(
-      listed.tasks?.map((item) => item.task.id).sort(),
+      listed.table?.rows.map((row) => row.taskId).sort(),
       ['file', 'ship'],
-      'the list shows what the search found, with no filter of its own',
+      'the table shows what the search found, with no filter of its own',
     );
     assert.deepStrictEqual(listed.taskCounts, { all: 2, active: 0, completed: 2 });
     assert.deepStrictEqual(listed.settings, {
@@ -296,7 +296,7 @@ suite('Task board', () => {
     const hidden = createTaskBoard({ index: createIndex(), preferences: preferencesWith({ taskBoardHiddenColumns: ['Waiting'] }), search: { query: '' }, options });
     assert.deepStrictEqual(hidden.settings.columns[2], { id: 'status:waiting', name: 'Waiting', symbol: 'w', shown: false, openTasks: 1 }, 'a hidden status still counts its open tasks');
     assert.strictEqual(hidden.taskCount, 6, 'and the board\'s total counts them');
-    assert.strictEqual(board(createIndex(), 'status', '', options).tasks, undefined);
+    assert.strictEqual(board(createIndex(), 'status', '', options).table, undefined);
   });
 
   test('shows the searched tasks as a table, sorted by a column when asked', () => {
@@ -307,7 +307,6 @@ suite('Task board', () => {
       options,
     });
     assert.strictEqual(tabled.layout, 'table');
-    assert.strictEqual(tabled.tasks, undefined, 'the list is not sent as well');
     assert.deepStrictEqual(
       tabled.table?.columns.map((column) => column.id),
       ['title', 'due', 'priority', 'assignee', 'note'],

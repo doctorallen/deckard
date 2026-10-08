@@ -3,6 +3,7 @@
  * or side by side, each kind a page at a time, or, with the hierarchy on,
  * grouped under the tags Refine offers.
  */
+import { NOTE_SORT_LABELS } from '../../domain/model/sortOrders';
 import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { DashboardTask } from '../../ui/protocol/shared';
 import { ResultGroups } from './groups';
@@ -78,21 +79,45 @@ function Pagination({ kind, paging, pageSizes }: { readonly kind: ResultKind; re
 }
 
 /**
- * Bulk Edit and Export, beside the heading they act on rather than out with
- * the controls that change how the pane is shown; nothing for no results.
+ * Bulk edit, beside the heading it acts on, as a small quiet button; Export
+ * is rare and output only, so it is in ⋯. Nothing for no results. Zen shows
+ * it while the heading is pointed at or holds focus.
  */
-function PaneActions({ kind, count }: { readonly kind: ResultKind; readonly count: number }) {
+function BulkEdit({ kind, count }: { readonly kind: ResultKind; readonly count: number }) {
   if (!count) {
     return null;
   }
   const edit = kind === 'tasks' ? 'Bulk edit these tasks' : 'Bulk edit these notes';
-  const exported = kind === 'tasks' ? 'Export these tasks' : 'Export these notes';
+  return <button type="button" class="edit-results" data-action="edit-results" data-kind={kind} data-tip={`${edit}: complete them, date them, or tag them`} aria-label={edit} data-zen-reveal="">Bulk edit</button>;
+}
+
+/**
+ * How the notes are ordered: a compact select beside the list it orders,
+ * A-Z unless the reader picks another. Zen quiets it at A-Z, and keeps it
+ * drawn while another order is chosen.
+ */
+function NoteSort({ mode }: { readonly mode: SearchPageSnapshot['sortMode'] }) {
+  const chosen = (mode || 'alphabetical') !== 'alphabetical';
+  return (
+    <label class="control-label result-sort" data-zen-reveal="" data-reveal-keep={chosen ? '' : undefined}>
+      {'Sort:'}
+      <select data-action="set-sort" aria-label="Sort notes">
+        {Object.entries(NOTE_SORT_LABELS).map(([value, text]) => <option value={value} selected={(mode || 'alphabetical') === value}>{text}</option>)}
+      </select>
+    </label>
+  );
+}
+
+/** What sits at the end of a pane's heading: the notes' Sort, while there are notes, then Bulk edit. */
+function PaneActions({ kind, view }: { readonly kind: ResultKind; readonly view: ResultsView }) {
+  const count = resultCounts(view.snapshot)[kind];
+  if (!count) {
+    return null;
+  }
   return (
     <div class="overview-pane-actions">
-      <button type="button" class="edit-results" data-action="edit-results" data-kind={kind} data-tip={`${edit}: complete them, date them, or tag them`} aria-label={edit}>Bulk edit</button>
-      <button type="button" class="edit-results" data-action="export-results" data-kind={kind} data-tip={`${exported} as a Markdown table, a list, or CSV: copy, or save to a file`} aria-label={exported}>
-        {kind === 'tasks' ? 'Export tasks' : 'Export notes'}
-      </button>
+      {kind === 'notes' ? <NoteSort mode={view.snapshot.sortMode} /> : null}
+      <BulkEdit kind={kind} count={count} />
     </div>
   );
 }
@@ -116,7 +141,7 @@ function OtherResults({ kind, view }: { readonly kind: ResultKind; readonly view
 }
 
 /**
- * A pane's heading, with its count and its Bulk edit and Export, in the
+ * A pane's heading, with its count, the notes' Sort and its Bulk edit, in the
  * side-by-side layout, where there are no tabs to carry them; with tabs, the
  * tab names the pane and the tab row holds the actions.
  */
@@ -127,12 +152,12 @@ function PaneHeader({ kind, view }: { readonly kind: ResultKind; readonly view: 
   const count = resultCounts(view.snapshot)[kind];
   const heading = kind === 'notes' ? 'Notes' : 'Tasks';
   return (
-    <div class="overview-pane-header">
+    <div class="overview-pane-header" data-zen-region="">
       <h2 id={`${kind}-heading`} class="overview-pane-heading">
         {/* One text node before the count, as the template wrote it: Chrome lays out a node's edge apart. */}
         {[`${heading} (`, <span data-search-count={kind}>{count}</span>, ')']}
       </h2>
-      <PaneActions kind={kind} count={count} />
+      <PaneActions kind={kind} view={view} />
     </div>
   );
 }
@@ -246,7 +271,7 @@ export function Results({ view }: { readonly view: ResultsView }) {
         tabs={[{ id: 'notes', label: 'Notes', count: counts.notes }, { id: 'tasks', label: 'Tasks', count: counts.tasks }]}
         active={view.activeTab}
         label="Search results"
-        actions={<PaneActions kind={view.activeTab} count={counts[view.activeTab]} />}
+        actions={<PaneActions kind={view.activeTab} view={view} />}
       />
       <div class="overview-tab-panel" {...resultPanelAttributes('notes')} hidden={view.activeTab !== 'notes'}><NotesPane view={view} /></div>
       <div class="overview-tab-panel" {...resultPanelAttributes('tasks')} hidden={view.activeTab !== 'tasks'}><TasksPane view={view} /></div>

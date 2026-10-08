@@ -98,7 +98,7 @@ test('a chip opens its task, and a day chooses the panel', async () => {
 
 test('the Week layout draws one row, and ] steps a week through the host', async () => {
   const { view } = await openPage();
-  view.click(view.find('.calendar-page-actions [data-action="set-calendar-layout"][data-value="week"]'));
+  view.click(view.find('.page-bar-actions [data-action="set-calendar-layout"][data-value="week"]'));
   assert.strictEqual(view.findAll('.calendar-grid .day-cell').length, 7);
   assert.ok(view.find('.calendar-page-body.is-week'));
   view.keydown(view.document.body, ']');
@@ -115,7 +115,7 @@ test('opened on the sidebar\'s next month with no day chosen there, the page cho
   const { panel, view } = await openPage(nextMonth);
   const chosen = panel._toWebview.filter((message) => message.type === 'state').pop().data.selectedDate;
   assert.strictEqual(chosen.slice(0, 7), nextMonth, 'the chosen day is one of the month shown');
-  view.click(view.find('.calendar-page-actions [data-action="set-calendar-layout"][data-value="week"]'));
+  view.click(view.find('.page-bar-actions [data-action="set-calendar-layout"][data-value="week"]'));
   assert.ok(view.find(`.calendar-grid .day[data-date="${chosen}"]`), 'and its week is drawn');
   view.click(view.find('[data-action="step-calendar"][data-by="1"]'));
   const [year, month, day] = chosen.split('-').map(Number);
@@ -154,13 +154,14 @@ test('a task dragged to another day asks the host to move it, and a refusal is s
   assert.strictEqual(view.find('#live-status').textContent, `"Call Ren" was not moved to ${tomorrow}.`);
 });
 
-test('the gear hides the weekends, kept in the preferences, and the month is drawn without them', async () => {
+test('Show weekends, in ⋯, hides the weekends, kept in the preferences, and the month is drawn without them', async () => {
   const { view, preferences } = await openPage();
-  view.find('.view-options').setAttribute('open', '');
-  view.click(view.find('.view-options [data-action="set-show-weekends"][data-value="off"]'));
+  view.find('.page-menu').setAttribute('open', '');
+  assert.strictEqual(view.find('.page-menu [data-action="set-show-weekends"]').checked, true);
+  view.click(view.find('.page-menu [data-action="set-show-weekends"]'));
   await settle();
   assert.strictEqual(preferences.repository.current.calendarHideWeekends, true);
-  assert.ok(view.find('.view-options [data-action="set-show-weekends"][data-value="off"][aria-pressed="true"]'), 'the gear says so');
+  assert.strictEqual(view.find('.page-menu [data-action="set-show-weekends"]').checked, false, '⋯ says so');
 });
 
 test('with Related Notes open, the chosen day is there and the month takes the width', async () => {

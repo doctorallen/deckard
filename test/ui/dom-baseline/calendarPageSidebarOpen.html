@@ -1,0 +1,1349 @@
+<body
+> <main
+    id="app"
+  ><header
+      class="calendar-page-header page-bar"
+    ><div
+        class="page-bar-lead"
+      ><p
+          class="eyebrow"
+        ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label="Deckard: go to another page"
+            class="eyebrow-home"
+            data-go-to=""
+            type="button"
+          >DECKARD ▾</button
+          ><span
+            class="eyebrow-trail"
+          > / CALENDAR</span
+          ></p
+        ><h1
+        ><button
+            aria-label="September 2026"
+            class="calendar-title"
+            data-action="open-month"
+            data-tip="September 2026"
+            type="button"
+          >September 2026</button
+          ></h1
+        ></div
+      ><div
+        aria-label="Calendar"
+        class="page-bar-actions"
+        data-query-keeps-text=""
+        role="group"
+      ><button
+          aria-label="Previous month"
+          data-action="step-calendar"
+          data-by="-1"
+          data-tip="Previous month ([)"
+          type="button"
+        >‹</button
+        ><button
+          data-action="go-today"
+          data-tip="Today (t)"
+          type="button"
+        >Today</button
+        ><button
+          aria-label="Next month"
+          data-action="step-calendar"
+          data-by="1"
+          data-tip="Next month (])"
+          type="button"
+        >›</button
+        ><div
+          aria-label="Calendar layout"
+          class="segmented view-options-choices"
+          role="group"
+        ><button
+            aria-pressed="true"
+            class="active"
+            data-action="set-calendar-layout"
+            data-value="month"
+            type="button"
+          >Month</button
+          ><button
+            aria-pressed="false"
+            data-action="set-calendar-layout"
+            data-value="week"
+            type="button"
+          >Week</button
+          ></div
+        ><details
+          class="page-menu view-options"
+        ><summary
+            aria-label="More: Show weekends, Theme, Zen, and more"
+            data-tip="More: Show weekends, Theme, Zen, and more"
+          ><svg
+              aria-hidden="true"
+              class="toolbar-icon"
+              fill="none"
+              focusable="false"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><circle
+                cx="3.5"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ><circle
+                cx="8"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ><circle
+                cx="12.5"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ></svg
+            ></summary
+          ><div
+            class="is-dropdown popover view-options-menu"
+          ><div
+              aria-label="View"
+              class="view-options-section"
+              role="group"
+            ><div
+                aria-hidden="true"
+                class="view-options-heading"
+              >View</div
+              ><div
+                class="view-options-group"
+              ><label
+                  for="calendar-show-weekends"
+                >Show weekends</label
+                ><input
+                  class="view-options-check"
+                  data-action="set-show-weekends"
+                  data-dom-checked="true"
+                  data-dom-value="on"
+                  id="calendar-show-weekends"
+                  type="checkbox"
+                ></div
+              ></div
+            ><div
+              aria-label="Appearance"
+              class="view-options-section"
+              role="group"
+            ><div
+                aria-hidden="true"
+                class="view-options-heading"
+              >Appearance</div
+              ><div
+                class="view-options-group"
+              ><span
+                >Theme</span
+                ><button
+                  aria-label="Theme: Replicant. Choose another"
+                  class="theme-choice"
+                  data-action="choose-theme"
+                  type="button"
+                >Replicant…</button
+                ></div
+              ><div
+                class="view-options-group"
+              ><label
+                  for="view-options-zen"
+                >Zen</label
+                ><input
+                  class="view-options-check"
+                  data-action="set-zen"
+                  data-dom-checked="false"
+                  data-dom-value="on"
+                  id="view-options-zen"
+                  type="checkbox"
+                ></div
+              ></div
+            ><div
+              aria-label="Help"
+              class="view-options-section"
+              role="group"
+            ><button
+                class="menu-item view-options-item"
+                data-action="page-help"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Help on this page</span
+                ></button
+              ><button
+                aria-keyshortcuts="?"
+                class="menu-item view-options-item"
+                data-action="open-key-sheet"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Keyboard shortcuts</span
+                ><kbd
+                  aria-hidden="true"
+                  class="menu-key"
+                >?</kbd
+                ></button
+              ></div
+            ></div
+          ></details
+        ></div
+      ></header
+    ><div
+      class="calendar-page-body day-in-sidebar"
+    ><div
+        aria-label="September 2026"
+        aria-multiselectable="false"
+        class="calendar-grid"
+        role="grid"
+      ><div
+          class="calendar-row"
+          role="row"
+        ><span
+            aria-label="Week"
+            class="weekday"
+            role="columnheader"
+          ></span
+          ><span
+            class="weekday"
+            role="columnheader"
+          >Sun</span
+          ><span
+            class="weekday"
+            role="columnheader"
+          >Mon</span
+          ><span
+            class="weekday"
+            role="columnheader"
+          >Tue</span
+          ><span
+            class="weekday"
+            role="columnheader"
+          >Wed</span
+          ><span
+            class="weekday"
+            role="columnheader"
+          >Thu</span
+          ><span
+            class="weekday"
+            role="columnheader"
+          >Fri</span
+          ><span
+            class="weekday"
+            role="columnheader"
+          >Sat</span
+          ></div
+        ><div
+          class="calendar-row"
+          data-zen-region=""
+          role="row"
+        ><span
+            class="calendar-cell"
+            role="rowheader"
+          ><button
+              aria-label="Start this week's note, 2026-08-30 to 2026-09-05"
+              class="week-label"
+              data-action="open-week"
+              data-date="2026-08-30"
+              data-tip="Start this week's note, 2026-08-30 to 2026-09-05"
+              data-zen-reveal=""
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><rect
+                  height="9"
+                  rx="1"
+                  width="11"
+                  x="2.5"
+                  y="3.5"
+                ></rect
+                ><path
+                  d="M2.5 6.5h11M6 3.5v3M10 3.5v3"
+                ></path
+                ></svg
+              ></button
+            ></span
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-08-30"
+            role="gridcell"
+          ><button
+              aria-label="2026-08-30"
+              class="day outside"
+              data-action="open-day"
+              data-date="2026-08-30"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >30</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-08-31"
+            role="gridcell"
+          ><button
+              aria-label="2026-08-31"
+              class="day outside"
+              data-action="open-day"
+              data-date="2026-08-31"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >31</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-01"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-01"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-01"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >1</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-02"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-02"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-02"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >2</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-03"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-03"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-03"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >3</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-04"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-04"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-04"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >4</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-05"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-05"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-05"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >5</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ></div
+        ><div
+          class="calendar-row"
+          data-zen-region=""
+          role="row"
+        ><span
+            class="calendar-cell"
+            role="rowheader"
+          ><button
+              aria-label="Start this week's note, 2026-09-06 to 2026-09-12"
+              class="week-label"
+              data-action="open-week"
+              data-date="2026-09-06"
+              data-tip="Start this week's note, 2026-09-06 to 2026-09-12"
+              data-zen-reveal=""
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><rect
+                  height="9"
+                  rx="1"
+                  width="11"
+                  x="2.5"
+                  y="3.5"
+                ></rect
+                ><path
+                  d="M2.5 6.5h11M6 3.5v3M10 3.5v3"
+                ></path
+                ></svg
+              ></button
+            ></span
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-06"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-06"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-06"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >6</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-07"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-07"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-07"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >7</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-08"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-08"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-08"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >8</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-09"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-09"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-09"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >9</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-10"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-10"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-10"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >10</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-11"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-11"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-11"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >11</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-12"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-12"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-12"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >12</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ></div
+        ><div
+          class="calendar-row"
+          data-zen-region=""
+          role="row"
+        ><span
+            class="calendar-cell"
+            role="rowheader"
+          ><button
+              aria-label="Start this week's note, 2026-09-13 to 2026-09-19"
+              class="week-label"
+              data-action="open-week"
+              data-date="2026-09-13"
+              data-tip="Start this week's note, 2026-09-13 to 2026-09-19"
+              data-zen-reveal=""
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><rect
+                  height="9"
+                  rx="1"
+                  width="11"
+                  x="2.5"
+                  y="3.5"
+                ></rect
+                ><path
+                  d="M2.5 6.5h11M6 3.5v3M10 3.5v3"
+                ></path
+                ></svg
+              ></button
+            ></span
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-13"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-13"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-13"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >13</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-14"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-14"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-14"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >14</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-15"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-15"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-15"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >15</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-16"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-16"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-16"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >16</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-17"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-17"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-17"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >17</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-18"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-18"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-18"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >18</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-19"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-19"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-19"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >19</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ></div
+        ><div
+          class="calendar-row"
+          data-zen-region=""
+          role="row"
+        ><span
+            class="calendar-cell"
+            role="rowheader"
+          ><button
+              aria-label="Start this week's note, 2026-09-20 to 2026-09-26"
+              class="week-label"
+              data-action="open-week"
+              data-date="2026-09-20"
+              data-tip="Start this week's note, 2026-09-20 to 2026-09-26"
+              data-zen-reveal=""
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><rect
+                  height="9"
+                  rx="1"
+                  width="11"
+                  x="2.5"
+                  y="3.5"
+                ></rect
+                ><path
+                  d="M2.5 6.5h11M6 3.5v3M10 3.5v3"
+                ></path
+                ></svg
+              ></button
+            ></span
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-20"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-20"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-20"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >20</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-21"
+            role="gridcell"
+          ><button
+              aria-current="date"
+              aria-label="2026-09-21, today, daily note, 8 due, 1 scheduled"
+              class="day today"
+              data-action="open-day"
+              data-date="2026-09-21"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >21</span
+              ></button
+            ><button
+              class="cal-note text-button"
+              data-action="open-note"
+              data-file-path="notes/2026-09-21.md"
+              data-tip="Open the daily note"
+              type="button"
+            >Daily note</button
+            ><div
+              class="cal-chips"
+            ><div
+                class="cal-chip kind-due"
+                data-kind="due"
+                data-task-id="task-jzg5th-d950iw"
+                data-tip="Chase the replicant through the neon market and file the report 1, due. Drag it to another day to move it."
+                draggable="true"
+              ><span
+                  aria-hidden="true"
+                ></span
+                >Chase the replicant through the neon market and file the report 1</div
+              ><div
+                class="cal-chip kind-due"
+                data-kind="due"
+                data-task-id="task-yv0ea1-1bgrec2"
+                data-tip="Chase the replicant through the neon market and file the report 2, due. Drag it to another day to move it."
+                draggable="true"
+              ><span
+                  aria-hidden="true"
+                ></span
+                >Chase the replicant through the neon market and file the report 2</div
+              ><div
+                class="cal-chip kind-due"
+                data-kind="due"
+                data-task-id="task-iocwef-6ylfhs"
+                data-tip="Chase the replicant through the neon market and file the report 3, due. Drag it to another day to move it."
+                draggable="true"
+              ><span
+                  aria-hidden="true"
+                ></span
+                >Chase the replicant through the neon market and file the report 3</div
+              ><div
+                class="cal-chip kind-due"
+                data-kind="due"
+                data-task-id="task-2hpeit-e0s1cm"
+                data-tip="Chase the replicant through the neon market and file the report 4, due. Drag it to another day to move it."
+                draggable="true"
+              ><span
+                  aria-hidden="true"
+                ></span
+                >Chase the replicant through the neon market and file the report 4</div
+              ></div
+            ><button
+              class="cal-more text-button"
+              data-action="open-day"
+              data-date="2026-09-21"
+              type="button"
+            >+5 more</button
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-22"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-22, 1 due, 1 repeat"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-22"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >22</span
+              ></button
+            ><div
+              class="cal-chips"
+            ><div
+                class="cal-chip kind-due"
+                data-kind="due"
+                data-task-id="task-s3owmf-1n9kpdk"
+                data-tip="Water the plants on the balcony and the ones by the window, due. Drag it to another day to move it."
+                draggable="true"
+              ><span
+                  aria-hidden="true"
+                ></span
+                >Water the plants on the balcony and the ones by the window</div
+              ><div
+                class="cal-chip kind-repeat"
+                data-kind="repeat"
+                data-task-id="task-tf7fqs-12gulyj"
+                data-tip="Stand-up, repeats. Its later dates follow its rule."
+              ><span
+                  aria-hidden="true"
+                >↻ </span
+                >Stand-up</div
+              ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-23"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-23, 1 repeat"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-23"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >23</span
+              ></button
+            ><div
+              class="cal-chips"
+            ><div
+                class="cal-chip kind-repeat"
+                data-kind="repeat"
+                data-task-id="task-tf7fqs-12gulyj"
+                data-tip="Stand-up, repeats. Its later dates follow its rule."
+              ><span
+                  aria-hidden="true"
+                >↻ </span
+                >Stand-up</div
+              ></div
+            ></div
+          ><div
+            aria-selected="true"
+            class="calendar-cell day-cell is-selected"
+            data-drop-date="2026-09-24"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-24, 12 due, 11 scheduled, 1 repeat"
+              class="day selected"
+              data-action="open-day"
+              data-date="2026-09-24"
+              tabindex="0"
+              type="button"
+            ><span
+                class="day-number"
+              >24</span
+              ></button
+            ><div
+              class="cal-chips"
+            ><div
+                class="cal-chip kind-due"
+                data-kind="due"
+                data-task-id="task-w88epw-1yefygp"
+                data-tip="Busy 0, due. Drag it to another day to move it."
+                draggable="true"
+              ><span
+                  aria-hidden="true"
+                ></span
+                >Busy 0</div
+              ><div
+                class="cal-chip kind-due"
+                data-kind="due"
+                data-task-id="task-u113do-shm86z"
+                data-tip="Busy 1, due. Drag it to another day to move it."
+                draggable="true"
+              ><span
+                  aria-hidden="true"
+                ></span
+                >Busy 1</div
+              ><div
+                class="cal-chip kind-due"
+                data-kind="due"
+                data-task-id="task-46wpq0-xq0f4b"
+                data-tip="Busy 10, due. Drag it to another day to move it."
+                draggable="true"
+              ><span
+                  aria-hidden="true"
+                ></span
+                >Busy 10</div
+              ><div
+                class="cal-chip kind-due"
+                data-kind="due"
+                data-task-id="task-lbjneu-c5t3qr"
+                data-tip="Busy 11, due. Drag it to another day to move it."
+                draggable="true"
+              ><span
+                  aria-hidden="true"
+                ></span
+                >Busy 11</div
+              ></div
+            ><button
+              class="cal-more text-button"
+              data-action="open-day"
+              data-date="2026-09-24"
+              type="button"
+            >+20 more</button
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-25"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-25, 1 repeat"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-25"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >25</span
+              ></button
+            ><div
+              class="cal-chips"
+            ><div
+                class="cal-chip kind-repeat"
+                data-kind="repeat"
+                data-task-id="task-tf7fqs-12gulyj"
+                data-tip="Stand-up, repeats. Its later dates follow its rule."
+              ><span
+                  aria-hidden="true"
+                >↻ </span
+                >Stand-up</div
+              ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-26"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-26"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-26"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >26</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ></div
+        ><div
+          class="calendar-row"
+          data-zen-region=""
+          role="row"
+        ><span
+            class="calendar-cell"
+            role="rowheader"
+          ><button
+              aria-label="Start this week's note, 2026-09-27 to 2026-10-03"
+              class="week-label"
+              data-action="open-week"
+              data-date="2026-09-27"
+              data-tip="Start this week's note, 2026-09-27 to 2026-10-03"
+              data-zen-reveal=""
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><rect
+                  height="9"
+                  rx="1"
+                  width="11"
+                  x="2.5"
+                  y="3.5"
+                ></rect
+                ><path
+                  d="M2.5 6.5h11M6 3.5v3M10 3.5v3"
+                ></path
+                ></svg
+              ></button
+            ></span
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-27"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-27"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-27"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >27</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-28"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-28, 1 due, 1 repeat"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-28"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >28</span
+              ></button
+            ><div
+              class="cal-chips"
+            ><div
+                class="cal-chip kind-due"
+                data-kind="due"
+                data-task-id="task-cmz61l-ic8zw6"
+                data-tip="Pay rent, due. Drag it to another day to move it."
+                draggable="true"
+              ><span
+                  aria-hidden="true"
+                ></span
+                >Pay rent</div
+              ><div
+                class="cal-chip kind-repeat"
+                data-kind="repeat"
+                data-task-id="task-tf7fqs-12gulyj"
+                data-tip="Stand-up, repeats. Its later dates follow its rule."
+              ><span
+                  aria-hidden="true"
+                >↻ </span
+                >Stand-up</div
+              ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-29"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-29, 2 repeats"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-29"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >29</span
+              ></button
+            ><div
+              class="cal-chips"
+            ><div
+                class="cal-chip kind-repeat"
+                data-kind="repeat"
+                data-task-id="task-tf7fqs-12gulyj"
+                data-tip="Stand-up, repeats. Its later dates follow its rule."
+              ><span
+                  aria-hidden="true"
+                >↻ </span
+                >Stand-up</div
+              ><div
+                class="cal-chip kind-repeat"
+                data-kind="repeat"
+                data-task-id="task-s3owmf-1n9kpdk"
+                data-tip="Water the plants on the balcony and the ones by the window, repeats. Its later dates follow its rule."
+              ><span
+                  aria-hidden="true"
+                >↻ </span
+                >Water the plants on the balcony and the ones by the window</div
+              ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-09-30"
+            role="gridcell"
+          ><button
+              aria-label="2026-09-30, 1 repeat"
+              class="day"
+              data-action="open-day"
+              data-date="2026-09-30"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >30</span
+              ></button
+            ><div
+              class="cal-chips"
+            ><div
+                class="cal-chip kind-repeat"
+                data-kind="repeat"
+                data-task-id="task-tf7fqs-12gulyj"
+                data-tip="Stand-up, repeats. Its later dates follow its rule."
+              ><span
+                  aria-hidden="true"
+                >↻ </span
+                >Stand-up</div
+              ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-10-01"
+            role="gridcell"
+          ><button
+              aria-label="2026-10-01, 1 repeat"
+              class="day outside"
+              data-action="open-day"
+              data-date="2026-10-01"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >1</span
+              ></button
+            ><div
+              class="cal-chips"
+            ><div
+                class="cal-chip kind-repeat"
+                data-kind="repeat"
+                data-task-id="task-tf7fqs-12gulyj"
+                data-tip="Stand-up, repeats. Its later dates follow its rule."
+              ><span
+                  aria-hidden="true"
+                >↻ </span
+                >Stand-up</div
+              ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-10-02"
+            role="gridcell"
+          ><button
+              aria-label="2026-10-02, 1 repeat"
+              class="day outside"
+              data-action="open-day"
+              data-date="2026-10-02"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >2</span
+              ></button
+            ><div
+              class="cal-chips"
+            ><div
+                class="cal-chip kind-repeat"
+                data-kind="repeat"
+                data-task-id="task-tf7fqs-12gulyj"
+                data-tip="Stand-up, repeats. Its later dates follow its rule."
+              ><span
+                  aria-hidden="true"
+                >↻ </span
+                >Stand-up</div
+              ></div
+            ></div
+          ><div
+            aria-selected="false"
+            class="calendar-cell day-cell"
+            data-drop-date="2026-10-03"
+            role="gridcell"
+          ><button
+              aria-label="2026-10-03"
+              class="day outside"
+              data-action="open-day"
+              data-date="2026-10-03"
+              tabindex="-1"
+              type="button"
+            ><span
+                class="day-number"
+              >3</span
+              ></button
+            ><div
+              class="cal-chips"
+            ></div
+            ></div
+          ></div
+        ></div
+      ></div
+    ></main
+  > <div
+    aria-live="polite"
+    class="visually-hidden"
+    id="live-status"
+    role="status"
+  ></div
+  > </body
+>

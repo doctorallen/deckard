@@ -4,17 +4,16 @@ import type { Services } from '../../../composition/services';
 import type { IndexRoles } from '../../../core/workspace/indexReader';
 import { checkSetup } from '../checkSetup';
 import { chooseDateFormat } from '../chooseDateFormat';
-import { chooseDisplay } from '../chooseDisplay';
 import { chooseTheme, createChooseThemeDeps } from '../chooseTheme';
-import { createSampleWorkspace } from '../sampleWorkspace';
+import { createWorkSample } from '../sampleWorkspace';
 import { registerCommand } from '../runCommand';
 import { chooseScope, pauseHere, resumeHere } from '../writeTarget';
 import { readEditorPreset } from '../../../domain/editor/editorPresets';
 
 /**
- * Setup and diagnostics: Show Log, Check Setup, the sample workspace, Choose
- * Theme…, Choose Display…, Choose Date Format…, the walkthrough, Reindex
- * Workspace, and pausing Deckard in a workspace.
+ * Setup and diagnostics: Show Log, Check Setup, the Work Sample, Choose
+ * Theme…, Choose Date Format…, the walkthrough, Reindex Workspace, and
+ * pausing Deckard in a workspace.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
   const { log, indexer, scanner, themePreview } = services;
@@ -23,16 +22,10 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.checkSetup', () =>
       checkSetup(indexer, scanner),
     ),
-    registerCommand('deckard.createSampleWorkspace', () =>
-      createSampleWorkspace(context, 'story'),
-    ),
-    registerCommand('deckard.createWorkSample', () =>
-      createSampleWorkspace(context, 'work'),
-    ),
+    registerCommand('deckard.createWorkSample', () => createWorkSample(context)),
     registerCommand('deckard.chooseTheme', () =>
       chooseTheme(context.extension.packageJSON.contributes, createChooseThemeDeps(themePreview)),
     ),
-    registerCommand('deckard.chooseDisplay', () => chooseDisplay(themePreview)),
     registerCommand('deckard.chooseDateFormat', () => chooseDateFormat()),
     registerCommand('deckard.openWalkthrough', () =>
       vscode.commands.executeCommand(
@@ -77,7 +70,8 @@ async function chooseEditorPreset(): Promise<void> {
   const choices = [
     { label: 'Full', detail: 'Everything: link counts, task hints, breadcrumbs, mention lenses, previews.', value: 'full' },
     { label: 'Tasks', detail: 'Task hints, steps, dependencies, and problem reports; no link counts or breadcrumbs.', value: 'tasks' },
-    { label: 'Writing', detail: 'A quiet page: the / menu, hover previews, and broken links and rules only.', value: 'writing' },
+    { label: 'Writing', detail: 'A quiet page: the / menu, hover previews, faint task details, and broken links, embeds, and rules.', value: 'writing' },
+    { label: 'Off', detail: 'Nothing: no lenses, decorations, previews, / menu, or problem reports.', value: 'off' },
   ].map((choice) => ({ ...choice, description: choice.value === current ? 'current' : '' }));
   const picked = await vscode.window.showQuickPick(choices, {
     title: 'What Deckard draws in the editor',

@@ -12,6 +12,14 @@ import type {
   NotesGraphSnapshot,
 } from '../../domain/model/graph';
 import type { MessageOf, StateMessage } from './messaging';
+import type {
+  ChooseThemeMessage,
+  GoToPageMessage,
+  ListGoToMessage,
+  OpenGoToMessage,
+  OpenHelpMessage,
+  SetZenModeMessage,
+} from './shared';
 
 export type { NotesGraphEdgeType, NotesGraphNode } from '../../domain/model/graph';
 
@@ -132,6 +140,12 @@ export interface NotesGraphPageToHost {
   clearSelection: NotesGraphClearSelectionMessage;
   setGraphScope: NotesGraphSetScopeMessage;
   setGraphFilter: NotesGraphSetFilterMessage;
+  setZenMode: SetZenModeMessage;
+  chooseTheme: ChooseThemeMessage;
+  openHelp: OpenHelpMessage;
+  openGoTo: OpenGoToMessage;
+  listGoTo: ListGoToMessage;
+  goToPage: GoToPageMessage;
 }
 
 /** What the host sends the notes graph page, by type. */

@@ -5,15 +5,18 @@ import { createPinForLine } from '../../domain/notes/pins';
 import { WorkspaceIndex } from '../../domain/model';
 import { pinKey } from '../../core/storage/preferencesSchema';
 import { findHeadingLineAbove } from './focusSection';
+import { NOTE_ACTIONS, noteActionApplies } from './noteActionTable';
 import { readIndexAsEdited } from './pinNote';
 
 /** Where the cursor is, which decides what a note's actions are. */
 export interface NoteActionState {
   onTaskLine: boolean;
   pinned: boolean;
+  /** The note is parked, so Unpark is offered rather than Park. */
+  parked: boolean;
   /** The cursor is in a heading or a line that carries a tag. */
   inTaggedEntry: boolean;
-  /** The cursor is under a heading, which Focus Section folds around. */
+  /** The cursor is under a heading, which the heading's actions act on. */
   underHeading: boolean;
 }
 
@@ -24,46 +27,29 @@ export interface NoteActionItem extends vscode.QuickPickItem {
 }
 
 /**
- * The actions a note offers where the cursor is, in the order they are
- * listed: the task first, since a task line is the most specific place to
- * be, then the note's neighbors, then Home.
+ * The actions a note offers where the cursor is, from the one table the
+ * editor's Deckard submenu and the note page's ⋯ list too, in its order:
+ * the task, the heading, the note, then keeping it on Home or parking it.
+ * A separator ends each group, as in the submenu.
  */
-export function buildNoteActionItems(
-  state: NoteActionState,
-  target: { uri: string; line: number },
-): NoteActionItem[] {
+export function buildNoteActionItems(state: NoteActionState): NoteActionItem[] {
   const items: NoteActionItem[] = [];
-  if (state.onTaskLine) {
-    items.push(
-      { label: '$(check) Toggle Task Done', command: 'deckard.toggleTaskDone' },
-      { label: '$(edit) Edit Task…', command: 'deckard.editTask' },
-    );
-  } else {
-    items.push({ label: '$(add) Add Task…', command: 'deckard.addTask' });
+  let group: string | undefined;
+  for (const action of NOTE_ACTIONS) {
+    if (!noteActionApplies(action.when, state)) {
+      continue;
+    }
+    if (group !== undefined && action.group !== group) {
+      items.push({ label: '', kind: vscode.QuickPickItemKind.Separator, command: '' });
+    }
+    group = action.group;
+    items.push({
+      label: `$(${action.icon}) ${action.title}`,
+      command: action.command,
+      // Related Notes is for the heading the cursor is in, inside a tagged entry.
+      ...(action.command === 'deckard.openRelatedNotes' && state.inTaggedEntry ? { detail: 'For the heading the cursor is in' } : {}),
+    });
   }
-  items.push(
-    state.inTaggedEntry
-      ? {
-          label: '$(references) Open Related Notes',
-          detail: 'For the heading the cursor is in',
-          command: 'deckard.showEntryRelatedNotes',
-          args: [target.uri, target.line],
-        }
-      : { label: '$(references) Open Related Notes', command: 'deckard.relatedNotes.focus' },
-    {
-      label: '$(type-hierarchy) Open Notes Graph Around This Note',
-      command: 'deckard.showNotesGraphAroundNote',
-    },
-    { label: '$(arrow-right) Move to…', command: 'deckard.moveTo' },
-  );
-  if (state.underHeading) {
-    items.push({ label: '$(target) Focus Section', command: 'deckard.focusSection' });
-  }
-  items.push(
-    state.pinned
-      ? { label: '$(pinned) Unpin Note from Home', command: 'deckard.unpinNote' }
-      : { label: '$(pin) Pin Note to Home', command: 'deckard.pinNote' },
-  );
   return items;
 }
 
@@ -94,6 +80,7 @@ export function readNoteActionState(
   return {
     onTaskLine: isTaskLine(editor.document.lineAt(line).text),
     pinned: pin !== undefined && deps.preferences.isPinned(pinKey(pin)),
+    parked: index.parked?.files.has(filePath) ?? false,
     inTaggedEntry: containing.some((section) => section.tags.length > 0),
     underHeading:
       containing.some((section) => !section.isInline) ||
@@ -123,11 +110,7 @@ export async function noteActionsCommand(deps: NoteActionDeps): Promise<void> {
     void vscode.window.showInformationMessage('Open a note to act on it.');
     return;
   }
-  const state = readNoteActionState(deps, editor);
-  const items = buildNoteActionItems(state, {
-    uri: editor.document.uri.toString(),
-    line: editor.selection.active.line + 1,
-  });
+  const items = buildNoteActionItems(readNoteActionState(deps, editor));
   const name = editor.document.uri.path.split('/').pop()?.replace(/\.md$/i, '') ?? 'Note';
   const chosen = await vscode.window.showQuickPick(items, {
     title: name,
@@ -136,4 +119,19 @@ export async function noteActionsCommand(deps: NoteActionDeps): Promise<void> {
   if (chosen) {
     await vscode.commands.executeCommand(chosen.command, ...(chosen.args ?? []));
   }
+}
+
+/**
+ * Open Related Notes, as Note Actions, the editor's submenu and the note
+ * page's ⋯ list it: for the heading the cursor is in, inside a tagged
+ * entry; otherwise the Context view, which follows the note in front, an
+ * editor's or a note page's.
+ */
+export async function openRelatedNotesCommand(deps: NoteActionDeps): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (editor && readNoteActionState(deps, editor).inTaggedEntry) {
+    await vscode.commands.executeCommand('deckard.showEntryRelatedNotes', editor.document.uri.toString(), editor.selection.active.line + 1);
+    return;
+  }
+  await vscode.commands.executeCommand('deckard.relatedNotes.focus');
 }

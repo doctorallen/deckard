@@ -6,7 +6,9 @@
 .board {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(250px, 1fr);
+  /* Narrow enough that the default columns, Done included, fit a 1400px
+     window side by side; at 250px Done was cut off. */
+  grid-auto-columns: minmax(200px, 1fr);
   align-items: start;
   gap: var(--space-3);
   padding-bottom: var(--space-3);
@@ -50,10 +52,10 @@
    auto row sizes to its cards however tall they are, so the column clipped
    them at its max-height and the cards below could not be reached at all. */
 .board-column { max-height: calc(100vh - 220px); overflow: hidden; grid-template-rows: auto minmax(0, 1fr); }
-/* + Add task sits under the title, in a row of its own, so the cards keep
-   the row that shrinks. */
-.board-column:has(> .board-add) { grid-template-rows: auto auto minmax(0, 1fr); }
-.board-column-title { padding-bottom: var(--space-2); }
+/* A column's head: its title and count, then its +, so the cards keep the
+   row that shrinks. */
+.board-column-head { display: flex; align-items: center; gap: var(--space-1); padding-bottom: var(--space-2); }
+.board-column-head .board-column-title { flex: 1 1 auto; min-width: 0; }
 /* overflow-y alone would compute overflow-x to auto, and then anything that
    reaches past the right edge — a theme's hover nudge, a focus outline — puts
    a horizontal scrollbar under a column that has nothing to scroll sideways. */
@@ -66,9 +68,6 @@
   overflow-y: auto;
 }
 .board-card { position: relative; }
-/* The last card's frame carries down past the column's scroller; this
-   leaves it room, as an extra card's height would. */
-.board-cards::after { content: ''; display: block; height: 44px; }
 /* Themes slide a row right on hover, which reads well across a wide list and
    badly in a column this narrow: the card had nowhere to go but out. It keeps
    the border and ground the same hover gives every other surface. Written to
@@ -125,16 +124,18 @@
    light, in a theme whose hover ground is a fill. */
 .board-move:hover, .board-move:focus-visible, .board-move[aria-expanded="true"] { border-color: var(--amber); color: var(--hover-fg); }
 .board-move:focus-visible, .board-move[aria-expanded="true"] { background: var(--hover-bg); }
-/* The same ⋯ on a list row, clear of the title, and in a table's last cell. */
-.task-row:has(> .row-menu) { padding-right: var(--space-6); }
+/* The same ⋯ in a table's last cell. */
 .result-table .row-menu { position: static; }
 .result-table .result-menu { width: 36px; }
 .board-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); color: var(--muted); font-size: var(--text-sm); }
 .board-hint button { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
 .board-empty { margin: 0; padding: var(--space-3); border: 1px dashed var(--line); color: var(--muted); font-size: var(--text-sm); text-align: center; }
 .board-more { margin: 0; color: var(--muted); font-size: var(--text-xs); }
-/* A column's + Add task, which starts Add Task in that column. */
-.board-add { justify-self: start; min-height: 24px; padding: 2px var(--space-2); border-style: dashed; background: transparent; color: var(--muted); font-size: var(--text-xs); }
+/* A column's +, a small icon at the end of its head, which starts Add Task
+   in that column. Quiet until hovered or focused, as the card ⋯ is. */
+.board-column-head > .board-add { flex: none; width: 24px; min-height: 24px; border-color: transparent; background: transparent; color: var(--muted); }
+/* Hovered or focused, it sits on the hover ground with the hover ink, as any control does. */
+.board-column-head > .board-add:hover, .board-column-head > .board-add:focus-visible { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
 /* While a card is held, a column that will not take it fades its cards and
    says why, rather than letting the drop fail without a word. */
 .board-refuses { display: none; margin: 0; color: var(--muted); font-size: var(--text-xs); }

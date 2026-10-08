@@ -1,0 +1,4474 @@
+<body
+  class="zen"
+  data-details="fileAndLine created updated"
+> <main
+    id="app"
+  ><header
+      class="page-bar"
+    ><div
+        class="page-bar-lead"
+      ><p
+          class="eyebrow"
+        ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label="Deckard: go to another page"
+            class="eyebrow-home"
+            data-go-to=""
+            type="button"
+          >DECKARD ▾</button
+          ><span
+            class="eyebrow-trail"
+          > / TASK BOARD</span
+          ></p
+        ><h1
+        >Task Board</h1
+        ></div
+      ><div
+        aria-label="Task Board"
+        class="page-bar-actions"
+        data-query-keeps-text=""
+        role="group"
+      ><span
+          class="board-total"
+        >33 tasks</span
+        ><button
+          class="primary"
+          data-action="add-task"
+          data-tip="Write a new task in the task editor, into today's note or another you choose"
+          type="button"
+        >Add task</button
+        ><details
+          class="page-menu view-options"
+        ><summary
+            aria-label="More: Save search, List in Tasks view, Export tasks, and more"
+            data-tip="More: Save search, List in Tasks view, Export tasks, and more"
+          ><svg
+              aria-hidden="true"
+              class="toolbar-icon"
+              fill="none"
+              focusable="false"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><circle
+                cx="3.5"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ><circle
+                cx="8"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ><circle
+                cx="12.5"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ></svg
+            ></summary
+          ><div
+            class="is-dropdown popover view-options-menu"
+          ><div
+              aria-label="Page"
+              class="view-options-section"
+              role="group"
+            ><button
+                aria-disabled="true"
+                class="menu-item view-options-item"
+                data-action="save-board-search"
+                data-query-needs-text=""
+                data-tip="Keep this search, named, on Home; it reopens on the Task Board"
+                data-tip-disabled="Type a search to save it"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Save search…</span
+                ></button
+              ><button
+                aria-pressed="false"
+                class="menu-item view-options-item"
+                data-action="use-for-agenda"
+                data-tip="Make the Tasks view list this search"
+                type="button"
+              ><span
+                  aria-hidden="true"
+                  class="menu-check"
+                ></span
+                ><span
+                  class="menu-label"
+                >List in Tasks view</span
+                ></button
+              ><button
+                class="menu-item view-options-item"
+                data-action="export-tasks"
+                data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Export tasks…</span
+                ></button
+              ></div
+            ><div
+              aria-label="View"
+              class="view-options-section"
+              role="group"
+            ><div
+                aria-hidden="true"
+                class="view-options-heading"
+              >View</div
+              ><div
+                class="view-options-group"
+              ><span
+                >Cards</span
+                ><label
+                  class="board-settings-row"
+                ><input
+                    data-action="show-parent-tag"
+                    data-dom-checked="false"
+                    data-dom-value="on"
+                    type="checkbox"
+                  ><span
+                  >Show the tag each task is under</span
+                  ></label
+                ></div
+              ><div
+                class="is-stacked view-options-group"
+              ><span
+                >Status columns</span
+                ><div
+                  class="board-settings"
+                ><p
+                    class="board-settings-note help-text"
+                  >Columns when grouped by Status, one per status in your list. Tick one to show it, drag to set the order. Done is always a column; a character no status names gets one of its own.</p
+                  ><ul
+                    aria-label="Status columns"
+                    class="board-status-list"
+                  ><li
+                      class="board-status is-draggable"
+                      data-status="Todo"
+                      data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                      tabindex="0"
+                    ><span
+                        aria-hidden="true"
+                        class="board-status-grip"
+                      >⠿</span
+                      ><label
+                        class="board-status-tick"
+                      ><input
+                          aria-label="Show Todo [ ] as a column"
+                          data-action="show-status-column"
+                          data-dom-checked="true"
+                          data-dom-value="on"
+                          data-name="Todo"
+                          type="checkbox"
+                        ><span
+                          aria-hidden="true"
+                          class="board-status-box"
+                        >[ ]</span
+                        ><span
+                          class="board-status-name"
+                        >Todo</span
+                        ></label
+                      ><span
+                        class="board-status-count"
+                        data-tip="Open tasks with this status, in the whole workspace"
+                      >32 open</span
+                      ></li
+                    ><li
+                      class="board-status is-draggable"
+                      data-status="In progress"
+                      data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                      tabindex="0"
+                    ><span
+                        aria-hidden="true"
+                        class="board-status-grip"
+                      >⠿</span
+                      ><label
+                        class="board-status-tick"
+                      ><input
+                          aria-label="Show In progress [/] as a column"
+                          data-action="show-status-column"
+                          data-dom-checked="true"
+                          data-dom-value="on"
+                          data-name="In progress"
+                          type="checkbox"
+                        ><span
+                          aria-hidden="true"
+                          class="board-status-box"
+                        >[/]</span
+                        ><span
+                          class="board-status-name"
+                        >In progress</span
+                        ></label
+                      ></li
+                    ><li
+                      class="board-status is-draggable"
+                      data-status="Waiting"
+                      data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                      tabindex="0"
+                    ><span
+                        aria-hidden="true"
+                        class="board-status-grip"
+                      >⠿</span
+                      ><label
+                        class="board-status-tick"
+                      ><input
+                          aria-label="Show Waiting [w] as a column"
+                          data-action="show-status-column"
+                          data-dom-checked="true"
+                          data-dom-value="on"
+                          data-name="Waiting"
+                          type="checkbox"
+                        ><span
+                          aria-hidden="true"
+                          class="board-status-box"
+                        >[w]</span
+                        ><span
+                          class="board-status-name"
+                        >Waiting</span
+                        ></label
+                      ></li
+                    ><li
+                      class="board-status is-draggable"
+                      data-status="Someday"
+                      data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                      tabindex="0"
+                    ><span
+                        aria-hidden="true"
+                        class="board-status-grip"
+                      >⠿</span
+                      ><label
+                        class="board-status-tick"
+                      ><input
+                          aria-label="Show Someday [s] as a column"
+                          data-action="show-status-column"
+                          data-dom-checked="true"
+                          data-dom-value="on"
+                          data-name="Someday"
+                          type="checkbox"
+                        ><span
+                          aria-hidden="true"
+                          class="board-status-box"
+                        >[s]</span
+                        ><span
+                          class="board-status-name"
+                        >Someday</span
+                        ></label
+                      ></li
+                    ><li
+                      class="board-status is-draggable"
+                      data-status="Blocked"
+                      data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                      tabindex="0"
+                    ><span
+                        aria-hidden="true"
+                        class="board-status-grip"
+                      >⠿</span
+                      ><label
+                        class="board-status-tick"
+                      ><input
+                          aria-label="Show Blocked [=] as a column"
+                          data-action="show-status-column"
+                          data-dom-checked="true"
+                          data-dom-value="on"
+                          data-name="Blocked"
+                          type="checkbox"
+                        ><span
+                          aria-hidden="true"
+                          class="board-status-box"
+                        >[=]</span
+                        ><span
+                          class="board-status-name"
+                        >Blocked</span
+                        ></label
+                      ></li
+                    ><li
+                      class="board-status"
+                      data-tip="Done is always a column, after every open status"
+                    ><span
+                        aria-hidden="true"
+                        class="board-status-grip"
+                      ></span
+                      ><label
+                        class="board-status-tick"
+                      ><input
+                          aria-label="Show Done [x] as a column"
+                          data-action="show-status-column"
+                          data-dom-checked="true"
+                          data-dom-value="on"
+                          data-name="Done"
+                          disabled=""
+                          type="checkbox"
+                        ><span
+                          aria-hidden="true"
+                          class="board-status-box"
+                        >[x]</span
+                        ><span
+                          class="board-status-name"
+                        >Done</span
+                        ></label
+                      ></li
+                    ><li
+                      class="board-status"
+                      data-tip="Cancelled comes after Done when it is shown"
+                    ><span
+                        aria-hidden="true"
+                        class="board-status-grip"
+                      ></span
+                      ><label
+                        class="board-status-tick"
+                      ><input
+                          aria-label="Show Cancelled [-] as a column"
+                          data-action="show-status-column"
+                          data-dom-checked="false"
+                          data-dom-value="on"
+                          data-name="Cancelled"
+                          type="checkbox"
+                        ><span
+                          aria-hidden="true"
+                          class="board-status-box"
+                        >[-]</span
+                        ><span
+                          class="board-status-name"
+                        >Cancelled</span
+                        ></label
+                      ></li
+                    ></ul
+                  ><div
+                    class="board-settings-row"
+                  ><button
+                      data-action="new-task-status"
+                      data-tip="Add a status to the list, with its character"
+                      type="button"
+                    >New status…</button
+                    ><button
+                      data-action="edit-task-statuses"
+                      data-tip="Open Edit Task Statuses"
+                      type="button"
+                    >Edit statuses…</button
+                    ></div
+                  ></div
+                ></div
+              ></div
+            ><div
+              aria-label="Appearance"
+              class="view-options-section"
+              role="group"
+            ><div
+                aria-hidden="true"
+                class="view-options-heading"
+              >Appearance</div
+              ><div
+                class="view-options-group"
+              ><span
+                >Theme</span
+                ><button
+                  aria-label="Theme: Replicant. Choose another"
+                  class="theme-choice"
+                  data-action="choose-theme"
+                  type="button"
+                >Replicant…</button
+                ></div
+              ><div
+                class="view-options-group"
+              ><label
+                  for="view-options-zen"
+                >Zen</label
+                ><input
+                  class="view-options-check"
+                  data-action="set-zen"
+                  data-dom-checked="true"
+                  data-dom-value="on"
+                  id="view-options-zen"
+                  type="checkbox"
+                ></div
+              ></div
+            ><div
+              aria-label="Help"
+              class="view-options-section"
+              role="group"
+            ><button
+                class="menu-item view-options-item"
+                data-action="page-help"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Help on this page</span
+                ></button
+              ><button
+                aria-keyshortcuts="?"
+                class="menu-item view-options-item"
+                data-action="open-key-sheet"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Keyboard shortcuts</span
+                ><kbd
+                  aria-hidden="true"
+                  class="menu-key"
+                >?</kbd
+                ></button
+              ></div
+            ></div
+          ></details
+        ></div
+      ></header
+    ><section
+      aria-label="Search tasks"
+      class="query-workspace"
+      data-zen-region=""
+    ><div
+        class="query-bar-row"
+      ><div
+          class="query-field-group"
+        ><button
+            aria-expanded="false"
+            class="query-builder-toggle"
+            data-action="toggle-builder"
+            data-tip="Build the search one condition at a time"
+          ><svg
+              aria-hidden="true"
+              class="query-builder-icon toolbar-icon"
+              fill="none"
+              focusable="false"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><path
+                d="M2.5 13.5 9.3 6.7"
+              ></path
+              ><path
+                d="M9.1 1.9 14.1 6.9 11.9 9.1 6.9 4.1Z"
+              ></path
+              ></svg
+            >Builder</button
+          ><span
+            class="query-bar-shell query-input-shell"
+            data-query-text=""
+          ><input
+              aria-autocomplete="list"
+              aria-controls="suggestions-query"
+              aria-expanded="false"
+              aria-label="Search tasks"
+              autocomplete="off"
+              class="query-input"
+              data-action="query-input"
+              data-dom-value=""
+              data-suggest-key="query"
+              placeholder="Search tasks: words, #tags, is:open, has:due, due < 7d, priority >= high…"
+              role="combobox"
+              spellcheck="false"
+              type="text"
+            ><button
+              aria-label="Clear the search"
+              class="query-clear query-field-glyph"
+              data-action="clear-query"
+              data-tip="Clear the search"
+              hidden=""
+            >×</button
+            ><button
+              aria-label="Search"
+              class="query-field-glyph query-run"
+              data-action="apply-query"
+              data-tip="Run this search"
+              data-tip-key="Enter"
+            >→</button
+            ><div
+              aria-label="Suggestions"
+              class="is-dropdown popover query-suggestions"
+              data-suggestions="query"
+              hidden=""
+              id="suggestions-query"
+              role="listbox"
+            ></div
+            ></span
+          ></div
+        ></div
+      ><div
+        class="query-status"
+      ><span
+          class="help-text query-hint"
+        >Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT.<span
+            class="query-hint-key"
+          > Press / to search.</span
+          ></span
+        ><div
+          aria-label="Task layout"
+          class="segmented task-layout"
+          data-zen-reveal=""
+          role="group"
+        ><button
+            aria-pressed="true"
+            class="active"
+            data-action="set-task-layout"
+            data-tip="Tasks as columns of cards"
+            data-value="board"
+            type="button"
+          >Board</button
+          ><button
+            aria-pressed="false"
+            data-action="set-task-layout"
+            data-tip="Tasks as rows, with the columns you choose"
+            data-value="table"
+            type="button"
+          >Table</button
+          ></div
+        ><label
+          class="control-label"
+          data-zen-reveal=""
+        >Group:<select
+            aria-label="Group tasks by"
+            class="task-board-group"
+            data-action="set-board-group"
+            data-current="status"
+            data-dom-value="status"
+            data-tip="Group the columns by status, priority, due date, person, or the tags of one namespace, such as #project/… or #context/…"
+          ><option
+              data-dom-selected="true"
+              data-dom-value="status"
+            >Status</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="priority"
+            >Priority</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="due"
+            >Due date</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="assignee"
+            >Person</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="pick-namespace"
+              disabled=""
+            >Tag…</option
+            ></select
+          ></label
+        ><label
+          class="control-label"
+          data-zen-reveal=""
+        >Sort:<span
+            class="control-icon"
+          ><select
+              aria-label="Sort tasks"
+              data-action="set-task-sort"
+              data-dom-value="rank"
+            ><option
+                data-dom-selected="true"
+                data-dom-value="rank"
+              >Rank</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="created"
+              >Newest created</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="createdOldest"
+              >Oldest created</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="updated"
+              >Recently updated</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="updatedOldest"
+              >Least recently updated</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="alphabetical"
+              >A-Z</option
+              ><option
+                data-dom-selected="false"
+                data-dom-value="alphabeticalReverse"
+              >Z-A</option
+              ></select
+            ><svg
+              aria-hidden="true"
+              class="control-icon-svg"
+              fill="none"
+              focusable="false"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><path
+                d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"
+              ></path
+              ></svg
+            ></span
+          ></label
+        ><button
+          aria-pressed="false"
+          class="board-available"
+          data-action="toggle-available"
+          data-tip="Leave out blocked, not-yet-started, and waiting or someday tasks (is:available)"
+          data-zen-reveal=""
+          type="button"
+        >Can start now</button
+        ></div
+      ></section
+    ><section
+      aria-label="Tasks"
+      class="board-area"
+    ><div
+        aria-label="Task board"
+        class="board task-board"
+        role="group"
+      ><section
+          aria-label="Todo [ ], 32 tasks"
+          class="board-column"
+          data-column-id="status:todo"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="Todo"
+          data-symbol=" "
+          data-zen-region=""
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
+            ><span
+                class="board-column-label"
+              >Todo<span
+                  aria-hidden="true"
+                  class="board-column-symbol"
+                >[ ]</span
+                ></span
+              ><span
+                class="board-count"
+              >32</span
+              ></h2
+            ><button
+              aria-label="Add a task to Todo"
+              class="board-add icon-button"
+              data-action="board-add-task"
+              data-column-id="status:todo"
+              data-tip="Add a task to Todo"
+              data-zen-reveal=""
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><path
+                  d="M8 3.5v9M3.5 8h9"
+                ></path
+                ></svg
+              ></button
+            ></div
+          ><div
+            aria-label="Todo"
+            class="board-cards"
+            role="list"
+          ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Renew the lease, Todo, was due 2026-08-03"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="33"
+              data-reveal-region=""
+              data-task-id="task-oea66q-1srha0j"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="0"
+            ><input
+                aria-label="Complete Renew the lease"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Renew the lease</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="stale"
+                  >was due <span
+                      class="board-date"
+                    >2026-08-03</span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 33</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Renew the lease: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Chase the replicant through the neon market and file the report 1, Todo, due today · 2026-09-21"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="2"
+              data-reveal-region=""
+              data-task-id="task-jzg5th-d950iw"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Chase the replicant through the neon market and file the report 1"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Chase the replicant through the neon market and file the report 1</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="due-today"
+                  ><span
+                      class="due-relative due-text"
+                    >due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 2</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Chase the replicant through the neon market and file the report 1: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Chase the replicant through the neon market and file the report 2, Todo, due today · 2026-09-21"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="3"
+              data-reveal-region=""
+              data-task-id="task-yv0ea1-1bgrec2"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Chase the replicant through the neon market and file the report 2"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Chase the replicant through the neon market and file the report 2</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="due-today"
+                  ><span
+                      class="due-relative due-text"
+                    >due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 3</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Chase the replicant through the neon market and file the report 2: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Chase the replicant through the neon market and file the report 3, Todo, due today · 2026-09-21"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="4"
+              data-reveal-region=""
+              data-task-id="task-iocwef-6ylfhs"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Chase the replicant through the neon market and file the report 3"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Chase the replicant through the neon market and file the report 3</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="due-today"
+                  ><span
+                      class="due-relative due-text"
+                    >due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 4</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Chase the replicant through the neon market and file the report 3: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Chase the replicant through the neon market and file the report 4, Todo, due today · 2026-09-21"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="5"
+              data-reveal-region=""
+              data-task-id="task-2hpeit-e0s1cm"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Chase the replicant through the neon market and file the report 4"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Chase the replicant through the neon market and file the report 4</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="due-today"
+                  ><span
+                      class="due-relative due-text"
+                    >due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 5</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Chase the replicant through the neon market and file the report 4: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Chase the replicant through the neon market and file the report 5, Todo, due today · 2026-09-21"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="6"
+              data-reveal-region=""
+              data-task-id="task-doy3ct-gd6zg0"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Chase the replicant through the neon market and file the report 5"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Chase the replicant through the neon market and file the report 5</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="due-today"
+                  ><span
+                      class="due-relative due-text"
+                    >due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 6</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Chase the replicant through the neon market and file the report 5: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Chase the replicant through the neon market and file the report 6, Todo, due today · 2026-09-21"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="7"
+              data-reveal-region=""
+              data-task-id="task-tvll8f-1is36a2"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Chase the replicant through the neon market and file the report 6"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Chase the replicant through the neon market and file the report 6</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="due-today"
+                  ><span
+                      class="due-relative due-text"
+                    >due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 7</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Chase the replicant through the neon market and file the report 6: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Chase the replicant through the neon market and file the report 7, Todo, due today · 2026-09-21"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="8"
+              data-reveal-region=""
+              data-task-id="task-oyuyv3-grhc88"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Chase the replicant through the neon market and file the report 7"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Chase the replicant through the neon market and file the report 7</div
+                ><p
+                  class="board-details source"
+                ><span
+                    class="due-today"
+                  ><span
+                      class="due-relative due-text"
+                    >due today<span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-21</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 8</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Chase the replicant through the neon market and file the report 7: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Busy 0, Todo, due in 3 days · 2026-09-24"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="10"
+              data-reveal-region=""
+              data-task-id="task-w88epw-1yefygp"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Busy 0"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Busy 0</div
+                ><p
+                  class="board-details source"
+                ><span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-24</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 10</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Busy 0: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Busy 1, Todo, due in 3 days · 2026-09-24"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="11"
+              data-reveal-region=""
+              data-task-id="task-u113do-shm86z"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Busy 1"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Busy 1</div
+                ><p
+                  class="board-details source"
+                ><span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-24</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 11</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Busy 1: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Busy 2, Todo, due in 3 days · 2026-09-24"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="12"
+              data-reveal-region=""
+              data-task-id="task-l96ji4-16uvxzx"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Busy 2"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Busy 2</div
+                ><p
+                  class="board-details source"
+                ><span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-24</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 12</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Busy 2: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Busy 3, Todo, due in 3 days · 2026-09-24"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="13"
+              data-reveal-region=""
+              data-task-id="task-chbzmk-1o7b4ob"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Busy 3"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Busy 3</div
+                ><p
+                  class="board-details source"
+                ><span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-24</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 13</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Busy 3: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Busy 4, Todo, due in 3 days · 2026-09-24"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="14"
+              data-reveal-region=""
+              data-task-id="task-3phfr0-opwzgx"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Busy 4"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Busy 4</div
+                ><p
+                  class="board-details source"
+                ><span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-24</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 14</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Busy 4: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Busy 5, Todo, due in 3 days · 2026-09-24"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="15"
+              data-reveal-region=""
+              data-task-id="task-52d44k-1c3ltln"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Busy 5"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Busy 5</div
+                ><p
+                  class="board-details source"
+                ><span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-24</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 15</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Busy 5: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Busy 6, Todo, due in 3 days · 2026-09-24"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="16"
+              data-reveal-region=""
+              data-task-id="task-du7o04-mrwoa5"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Busy 6"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Busy 6</div
+                ><p
+                  class="board-details source"
+                ><span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-24</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 16</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Busy 6: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Busy 7, Todo, due in 3 days · 2026-09-24"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="17"
+              data-reveal-region=""
+              data-task-id="task-mm27vo-vt78zv"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Busy 7"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Busy 7</div
+                ><p
+                  class="board-details source"
+                ><span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-24</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 17</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Busy 7: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Busy 8, Todo, due in 3 days · 2026-09-24"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="18"
+              data-reveal-region=""
+              data-task-id="task-vdwrr8-9tk4o9"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Busy 8"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Busy 8</div
+                ><p
+                  class="board-details source"
+                ><span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-24</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 18</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Busy 8: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Busy 9, Todo, due in 3 days · 2026-09-24"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="19"
+              data-reveal-region=""
+              data-task-id="task-uvcqcc-1vg0j63"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Busy 9"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Busy 9</div
+                ><p
+                  class="board-details source"
+                ><span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-24</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 19</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Busy 9: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Busy 10, Todo, due in 3 days · 2026-09-24"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="20"
+              data-reveal-region=""
+              data-task-id="task-46wpq0-xq0f4b"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Busy 10"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Busy 10</div
+                ><p
+                  class="board-details source"
+                ><span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-24</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 20</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Busy 10: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Busy 11, Todo, due in 3 days · 2026-09-24"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="21"
+              data-reveal-region=""
+              data-task-id="task-lbjneu-c5t3qr"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Busy 11"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Busy 11</div
+                ><p
+                  class="board-details source"
+                ><span
+                  ><span
+                      class="due-relative due-text"
+                    >due<span
+                        class="due-distance"
+                      > in 3 days</span
+                      ><span
+                        class="due-on"
+                      ><span
+                          class="due-sep"
+                        > · </span
+                        ><span
+                          class="board-date"
+                        >2026-09-24</span
+                        ></span
+                      ></span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Busy 11: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Draft the brief for the whole of the Atlas programme, Todo"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="9"
+              data-reveal-region=""
+              data-task-id="task-xrn49-1g7mhlo"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Draft the brief for the whole of the Atlas programme"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Draft the brief for the whole of the Atlas programme</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >scheduled <span
+                      class="board-date"
+                    >2026-09-21</span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 9</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Draft the brief for the whole of the Atlas programme: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Planned 0, Todo"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="22"
+              data-reveal-region=""
+              data-task-id="task-8oecgd-1ttsals"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Planned 0"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Planned 0</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >scheduled <span
+                      class="board-date"
+                    >2026-09-24</span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 22</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Planned 0: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Planned 1, Todo"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="23"
+              data-reveal-region=""
+              data-task-id="task-i5aeq7-121190"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Planned 1"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Planned 1</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >scheduled <span
+                      class="board-date"
+                    >2026-09-24</span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 23</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Planned 1: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Planned 2, Todo"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="24"
+              data-reveal-region=""
+              data-task-id="task-rm6h01-i6xfeg"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Planned 2"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Planned 2</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >scheduled <span
+                      class="board-date"
+                    >2026-09-24</span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 24</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Planned 2: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Planned 3, Todo"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="25"
+              data-reveal-region=""
+              data-task-id="task-xy1ip9-1anz2tg"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Planned 3"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Planned 3</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >scheduled <span
+                      class="board-date"
+                    >2026-09-24</span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 25</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Planned 3: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Planned 4, Todo"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="26"
+              data-reveal-region=""
+              data-task-id="task-oh5gff-1d273m0"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Planned 4"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Planned 4</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >scheduled <span
+                      class="board-date"
+                    >2026-09-24</span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 26</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Planned 4: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Planned 5, Todo"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="27"
+              data-reveal-region=""
+              data-task-id="task-f09e5l-rhm3o4"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Planned 5"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Planned 5</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >scheduled <span
+                      class="board-date"
+                    >2026-09-24</span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 27</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Planned 5: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Planned 6, Todo"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="28"
+              data-reveal-region=""
+              data-task-id="task-5jdbvr-1yopx2o"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Planned 6"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Planned 6</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >scheduled <span
+                      class="board-date"
+                    >2026-09-24</span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 28</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Planned 6: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Planned 7, Todo"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="29"
+              data-reveal-region=""
+              data-task-id="task-3xiqe3-xstatg"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Planned 7"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Planned 7</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >scheduled <span
+                      class="board-date"
+                    >2026-09-24</span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 29</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Planned 7: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Planned 8, Todo"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="30"
+              data-reveal-region=""
+              data-task-id="task-ycxbqm-13x2b9d"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Planned 8"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Planned 8</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >scheduled <span
+                      class="board-date"
+                    >2026-09-24</span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 30</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Planned 8: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Planned 9, Todo"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="31"
+              data-reveal-region=""
+              data-task-id="task-ow19gs-1ovlgi5"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Planned 9"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Planned 9</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >scheduled <span
+                      class="board-date"
+                    >2026-09-24</span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 31</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Planned 9: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Planned 10, Todo"
+              class="board-card task"
+              data-card-column="status:todo"
+              data-file-path="notes/2026-09-21.md"
+              data-line="32"
+              data-reveal-region=""
+              data-task-id="task-m8clil-e0pdom"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Complete Planned 10"
+                data-action="board-toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-tip="Complete this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Planned 10</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >scheduled <span
+                      class="board-date"
+                    >2026-09-24</span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 32</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Planned 10: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ></div
+          ></section
+        ><section
+          aria-label="In progress [/], 0 tasks"
+          class="board-column"
+          data-column-id="status:in-progress"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="In progress"
+          data-symbol="/"
+          data-zen-region=""
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
+            ><span
+                class="board-column-label"
+              >In progress<span
+                  aria-hidden="true"
+                  class="board-column-symbol"
+                >[/]</span
+                ></span
+              ><span
+                class="board-count"
+              >0</span
+              ></h2
+            ><button
+              aria-label="Add a task to In progress"
+              class="board-add icon-button"
+              data-action="board-add-task"
+              data-column-id="status:in-progress"
+              data-tip="Add a task to In progress"
+              data-zen-reveal=""
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><path
+                  d="M8 3.5v9M3.5 8h9"
+                ></path
+                ></svg
+              ></button
+            ></div
+          ><div
+            class="board-cards"
+          ><p
+              class="board-empty"
+            >No tasks.<span
+                class="help-text"
+              > Drag a card here, or right-click one.</span
+              ></p
+            ></div
+          ></section
+        ><section
+          aria-label="Waiting [w], 0 tasks"
+          class="board-column"
+          data-column-id="status:waiting"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="Waiting"
+          data-symbol="w"
+          data-zen-region=""
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
+            ><span
+                class="board-column-label"
+              >Waiting<span
+                  aria-hidden="true"
+                  class="board-column-symbol"
+                >[w]</span
+                ></span
+              ><span
+                class="board-count"
+              >0</span
+              ></h2
+            ><button
+              aria-label="Add a task to Waiting"
+              class="board-add icon-button"
+              data-action="board-add-task"
+              data-column-id="status:waiting"
+              data-tip="Add a task to Waiting"
+              data-zen-reveal=""
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><path
+                  d="M8 3.5v9M3.5 8h9"
+                ></path
+                ></svg
+              ></button
+            ></div
+          ><div
+            class="board-cards"
+          ><p
+              class="board-empty"
+            >No tasks.<span
+                class="help-text"
+              > Drag a card here, or right-click one.</span
+              ></p
+            ></div
+          ></section
+        ><section
+          aria-label="Someday [s], 0 tasks"
+          class="board-column"
+          data-column-id="status:someday"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="Someday"
+          data-symbol="s"
+          data-zen-region=""
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
+            ><span
+                class="board-column-label"
+              >Someday<span
+                  aria-hidden="true"
+                  class="board-column-symbol"
+                >[s]</span
+                ></span
+              ><span
+                class="board-count"
+              >0</span
+              ></h2
+            ><button
+              aria-label="Add a task to Someday"
+              class="board-add icon-button"
+              data-action="board-add-task"
+              data-column-id="status:someday"
+              data-tip="Add a task to Someday"
+              data-zen-reveal=""
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><path
+                  d="M8 3.5v9M3.5 8h9"
+                ></path
+                ></svg
+              ></button
+            ></div
+          ><div
+            class="board-cards"
+          ><p
+              class="board-empty"
+            >No tasks.<span
+                class="help-text"
+              > Drag a card here, or right-click one.</span
+              ></p
+            ></div
+          ></section
+        ><section
+          aria-label="Blocked [=], 0 tasks"
+          class="board-column"
+          data-column-id="status:blocked"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="Blocked"
+          data-symbol="="
+          data-zen-region=""
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
+            ><span
+                class="board-column-label"
+              >Blocked<span
+                  aria-hidden="true"
+                  class="board-column-symbol"
+                >[=]</span
+                ></span
+              ><span
+                class="board-count"
+              >0</span
+              ></h2
+            ><button
+              aria-label="Add a task to Blocked"
+              class="board-add icon-button"
+              data-action="board-add-task"
+              data-column-id="status:blocked"
+              data-tip="Add a task to Blocked"
+              data-zen-reveal=""
+              type="button"
+            ><svg
+                aria-hidden="true"
+                class="toolbar-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                viewBox="0 0 16 16"
+              ><path
+                  d="M8 3.5v9M3.5 8h9"
+                ></path
+                ></svg
+              ></button
+            ></div
+          ><div
+            class="board-cards"
+          ><p
+              class="board-empty"
+            >No tasks.<span
+                class="help-text"
+              > Drag a card here, or right-click one.</span
+              ></p
+            ></div
+          ></section
+        ><section
+          aria-label="Done [x], 1 task"
+          class="board-column"
+          data-column-id="done"
+          data-droppable="true"
+          data-hidden-count="0"
+          data-label="Done"
+          data-symbol="x"
+          data-zen-region=""
+        ><div
+            class="board-column-head"
+          ><h2
+              class="board-column-title"
+            ><span
+                class="board-column-label"
+              >Done<span
+                  aria-hidden="true"
+                  class="board-column-symbol"
+                >[x]</span
+                ></span
+              ><span
+                class="board-count"
+              >1</span
+              ></h2
+            ></div
+          ><div
+            aria-label="Done"
+            class="board-cards"
+            role="list"
+          ><article
+              aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+              aria-label="Filed the report, Done"
+              class="board-card completed task"
+              data-card-column="done"
+              data-file-path="notes/2026-09-21.md"
+              data-line="34"
+              data-reveal-region=""
+              data-task-id="task-49njiy-sqpzin"
+              data-tip-around=""
+              draggable="true"
+              role="listitem"
+              tabindex="-1"
+            ><input
+                aria-label="Reopen Filed the report"
+                data-action="board-toggle-task"
+                data-dom-checked="true"
+                data-dom-value="on"
+                data-tip="Reopen this task"
+                tabindex="-1"
+                type="checkbox"
+              ><div
+                class="task-summary"
+              ><div
+                  class="task-title"
+                >Filed the report</div
+                ><p
+                  class="board-details source"
+                ><span
+                  >done <span
+                      class="board-date"
+                    >2026-09-21</span
+                    ></span
+                  ></p
+                ><div
+                  class="entry-details"
+                  data-reveal=""
+                ><span
+                    class="task-source"
+                  >2026-09-21 / line 34</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="heading-path task-source"
+                  >2026-09-21</span
+                  ><span
+                    aria-hidden="true"
+                    class="entry-details-joiner"
+                  > · </span
+                  ><span
+                    class="entry-dates task-source"
+                  >Created 2026-09-21 · Updated 2026-09-21</span
+                  ></div
+                ><button
+                  aria-expanded="false"
+                  aria-haspopup="menu"
+                  aria-label="Change Filed the report: status, priority, or due date"
+                  class="board-move icon-button"
+                  data-action="board-menu"
+                  data-reveal=""
+                  data-tip="Change this task"
+                  tabindex="-1"
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></div
+              ></article
+            ></div
+          ></section
+        ></div
+      ></section
+    ></main
+  > <div
+    aria-live="polite"
+    class="visually-hidden"
+    id="live-status"
+    role="status"
+  ></div
+  > </body
+>

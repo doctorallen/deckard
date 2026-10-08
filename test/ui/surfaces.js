@@ -9,7 +9,9 @@
 // `[event, selector]` pairs a reader's actions dispatch, such as opening a
 // menu; `css` of its own, such as the Notes Graph's hidden canvas; and
 // `pageOptions` its page is rendered with, such as the entry the debug page
-// diagnoses.
+// diagnoses. `zenHovered` names a surface's Zen regions (shared/reveal.css),
+// each hovered as well in a Zen pass, so a tool Zen quiets is measured as
+// it shows.
 const path = require('node:path');
 const { readFileSync } = require('node:fs');
 // pages.js puts the vscode stand-in in place, which the modules below need.
@@ -127,12 +129,27 @@ function createCalendarPageIndex() {
 
 const NOW = new Date(2026, 8, 21, 12).getTime();
 
+/**
+ * The regions Zen shows a page's quiet tools from, by page (plan 29, R22):
+ * hovered as well as a surface's own row in a Zen pass.
+ */
+const ZEN_REGIONS = {
+  dashboard: ['.dashboard-tabs-row[data-zen-region]'],
+  taskBoard: ['.query-workspace[data-zen-region]', '.board-column[data-zen-region]'],
+  searchPage: ['.overview-tabs-row[data-zen-region]', '.overview-pane-header[data-zen-region]'],
+  calendar: ['.calendar-row[data-zen-region]'],
+  calendarPage: ['.calendar-row[data-zen-region]'],
+  sidebarNotes: ['.context-pages-band[data-zen-region]', '.related-notes-controls[data-zen-region]'],
+};
+
 /** Flat cards and tags as text: the looks a reader turns on, drawn on a few surfaces. */
 const LOOKS = { cards: 'flat', tags: 'text' };
 
-/** Display's preferences, each away from its default: what a page writes, drawn on Home and the board. */
-const WRITTEN_HOME = { counts: 'hidden', fileAndLine: 'never', dates: 'date' };
-const WRITTEN_BOARD = { counts: 'hidden', dates: 'relative' };
+/** Card details with none ticked, drawn on Home: no details line on any row. */
+const WRITTEN_HOME = { fileAndLine: 'never' };
+/** Card details, every one ticked, and none: a line kept under each card for all three, and no line at all. */
+const ALL_DETAILS = { details: 'fileAndLine created updated' };
+const NO_DETAILS = { fileAndLine: 'never' };
 /** A date format of the reader's own, full and short, as the body carries it. */
 const DATED = { dateFormat: 'ddd D MMMM YYYY', shortDateFormat: 'ddd D MMM' };
 
@@ -181,10 +198,10 @@ function createDashboardSurfaces(index, preferences) {
     hovered,
   });
   return [
-    dashboard('dashboardHome', 'home', { hovered: ['.home-widget .row', '.home-widget'] }),
+    { ...dashboard('dashboardHome', 'home', { hovered: ['.home-widget .row', '.home-widget'] }), zenHovered: ZEN_REGIONS.dashboard },
     // Flat cards and tags as text, the two looks a reader turns on.
     { ...dashboard('dashboardHomeLooks', 'home', { hovered: ['.home-widget .row', '.home-widget'] }), display: LOOKS },
-    // Counts hidden, file and line never, dates as the date with its state.
+    // No card details ticked: no details line under any row.
     { ...dashboard('dashboardHomeWritten', 'home', { hovered: ['.home-widget .row', '.home-widget'] }), display: WRITTEN_HOME },
     dashboard('dashboardTags', 'browse', { hovered: ['.tag-row', '.row'] }),
     dashboard('dashboardArranging', 'home', {
@@ -271,14 +288,13 @@ function createReferenceSurfaces(index, files) {
     {
       // The simulation settles differently from run to run, so the canvas
       // is hidden and only the controls around it are compared; the canvas
-      // is held to its recorded calls instead. With the canvas hidden, the
-      // probe's report would show through where it was, so it goes too.
+      // is held to its recorded calls instead.
       page: 'notesGraph',
       viewport: [1100, 800],
       snapshot: () => ({ ...graph, focus: { local: false, depth: 1, skipPeriodic: false, workspaceNodeCount: graph.nodes.length } }),
       // The canvas, and the note that says the layout is still settling,
       // are drawn at whatever moment Chrome is read, so neither is compared.
-      css: 'canvas { visibility: hidden !important; } #sim-note, #layout-probe { display: none !important; }',
+      css: 'canvas { visibility: hidden !important; } #sim-note { display: none !important; }',
       scrollers: ['html'],
       clippers: [],
       hovered: ['button'],
@@ -321,6 +337,25 @@ function createMenuSurfaces(surfaces) {
       drive: [['click', '.board-card [data-action="board-menu"]']],
       hovered: ['#action-menu .menu-item'],
     },
+  ];
+}
+
+/**
+ * The three pages that hand part of themselves to the Context sidebar while
+ * it is open, drawn so: a search page and the Task Board with Refine in the
+ * sidebar, and the calendar page with its chosen day there, the month at
+ * the full width.
+ *
+ * @param {object[]} surfaces The surfaces already made, whose snapshots these reuse.
+ * @returns {object[]} The three pages with the sidebar open.
+ */
+function createSidebarOpenSurfaces(surfaces) {
+  const of = (name) => surfaces.find((surface) => (surface.name || surface.page) === name);
+  const withSidebar = (surface, name, change) => ({ ...surface, name, snapshot: () => ({ ...surface.snapshot(), ...change }) });
+  return [
+    withSidebar(of('searchPage'), 'searchPageSidebarOpen', { refineInSidebar: true }),
+    withSidebar(of('taskBoard'), 'taskBoardSidebarOpen', { refineInSidebar: true }),
+    withSidebar(of('calendarPage'), 'calendarPageSidebarOpen', { dayInSidebar: true }),
   ];
 }
 
@@ -405,13 +440,80 @@ function statusIndex() {
 }
 
 /**
- * The Task Board, by status, grouped by a tag namespace, and opened from the
- * Tasks view's search icon to edit what the view lists. Only the board's
- * surfaces carry steps, so no other page's pixels move with them.
+ * The Task Board drawn to show what a hovered card or row reveals: as a
+ * table, whose rows' ⋯ shows on hover, and with every card detail and with
+ * none, a line kept under each card for all three or no line at all.
+ *
+ * @param {object} boardIndex The workspace the other board surfaces draw.
+ * @param {object} preferences The preference services, whose reader holds what is stored.
+ * @returns {object[]} The table, all details, and no details surfaces.
+ */
+function createRevealBoardSurfaces(boardIndex, preferences) {
+  return [
+    {
+      // The board as a table: a hovered row shows its ⋯, which is drawn at
+      // no opacity until its row is under the pointer (shared/reveal.css).
+      name: 'taskBoardTable',
+      page: 'taskBoard',
+      viewport: [900, 700],
+      snapshot: () => createTaskBoard({
+        index: boardIndex,
+        preferences: { ...preferences.reader.value, taskBoardLayout: 'table' },
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['tbody tr'],
+    },
+    {
+      // Card details all ticked: the file and line, the headings above, and
+      // the created and updated dates on the one line each card keeps for
+      // them, cut short with an ellipsis, shown on the hovered card. Drawn
+      // from the calendar's notes, whose tasks have both dates.
+      name: 'taskBoardDetails',
+      page: 'taskBoard',
+      display: ALL_DETAILS,
+      viewport: [900, 700],
+      snapshot: () => createTaskBoard({
+        index: createCalendarIndex(),
+        preferences: preferences.reader.value,
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
+      }),
+      scrollers: ['html', '.board-cards'],
+      clippers: ['.board-column'],
+      hovered: ['.board-card'],
+    },
+    {
+      // Card details all unticked: no line is kept, so the cards are as
+      // compact as they are without details, and hovering one moves nothing.
+      name: 'taskBoardNoDetails',
+      page: 'taskBoard',
+      display: NO_DETAILS,
+      viewport: [900, 700],
+      snapshot: () => createTaskBoard({
+        index: boardIndex,
+        preferences: preferences.reader.value,
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
+      }),
+      scrollers: ['html', '.board-cards'],
+      clippers: ['.board-column'],
+      hovered: ['.board-card'],
+    },
+  ];
+}
+
+/**
+ * The Task Board, by status, grouped by a tag namespace, and opened from
+ * the Tasks view's search icon to edit what the view lists.
+ * Only the board's surfaces carry steps, so no other page's pixels move
+ * with them.
  *
  * @param {object} boardIndex The workspace, with steps on the first task.
  * @param {object} preferences The preference services, whose reader holds what is stored.
- * @returns {object[]} The three board surfaces.
+ * @returns {object[]} The four board surfaces.
  */
 function createBoardSurfaces(boardIndex, preferences) {
   return [
@@ -427,6 +529,7 @@ function createBoardSurfaces(boardIndex, preferences) {
       scrollers: ['.board-cards'],
       clippers: ['.board-column'],
       hovered: ['.board-card'],
+      zenHovered: ZEN_REGIONS.taskBoard,
     },
     {
       // Grouped by a tag namespace, the switch has five segments: it must
@@ -437,22 +540,6 @@ function createBoardSurfaces(boardIndex, preferences) {
       snapshot: () => createTaskBoard({
         index: boardIndex,
         preferences: { ...preferences.reader.value, taskBoardGroup: 'tag', taskBoardGroupNamespace: 'project' },
-        search: { query: '' },
-        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
-      }),
-      scrollers: ['html', '.board-cards'],
-      clippers: ['.board-column'],
-      hovered: ['.board-card'],
-    },
-    {
-      // Counts hidden, file and line under every card, dates as how far off.
-      name: 'taskBoardWritten',
-      page: 'taskBoard',
-      display: WRITTEN_BOARD,
-      viewport: [900, 700],
-      snapshot: () => createTaskBoard({
-        index: boardIndex,
-        preferences: preferences.reader.value,
         search: { query: '' },
         options: { queryContext: createQueryContext(NOW), format: 'emoji' },
       }),
@@ -479,7 +566,7 @@ function createBoardSurfaces(boardIndex, preferences) {
       }),
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
-      hovered: ['.query-bar-row .query-primary'],
+      hovered: ['.page-bar-actions .primary'],
     },
   ];
 }
@@ -509,16 +596,16 @@ function createContextPages(style, current) {
 function createCalendarSurfaces() {
   return [
     {
-      // The calendar in a narrow sidebar with its day panel on: counts that
-      // run to two digits, and rows whose words are longer than the panel.
+      // The calendar in a narrow sidebar: counts that run to two digits.
+      // It has no day panel; the calendar page lists a day's tasks.
       page: 'calendar',
       viewport: [240, 700],
-      snapshot: () => createCalendar(createCalendarIndex(), '2026-09', createQueryContext(NOW), {
-        dayPanel: true,
-      }),
+      snapshot: () => createCalendar(createCalendarIndex(), '2026-09', createQueryContext(NOW)),
       scrollers: ['html'],
-      clippers: ['.day', '.day-panel .task-row'],
-      hovered: ['.day-panel .task-row'],
+      clippers: ['.day'],
+      // A day, which opens its daily note when chosen.
+      hovered: ['.day'],
+      zenHovered: ZEN_REGIONS.calendar,
     },
     {
       // The sidebar calendar as its five working days.
@@ -526,13 +613,11 @@ function createCalendarSurfaces() {
       page: 'calendar',
       viewport: [240, 700],
       snapshot: () => createCalendar(createCalendarIndex(), '2026-09', createQueryContext(NOW), {
-        dayPanel: true,
         showWeekends: false,
-        selectedDate: '2026-09-24',
       }),
       scrollers: ['html'],
-      clippers: ['.day', '.day-panel .task-row'],
-      hovered: ['.day-panel .task-row'],
+      clippers: ['.day'],
+      hovered: ['.day'],
     },
     {
       // Related Notes showing the calendar page's chosen day, under the
@@ -567,6 +652,7 @@ function createCalendarSurfaces() {
       scrollers: ['html'],
       clippers: ['.cal-chip', '.day-panel .task-row'],
       hovered: ['.cal-chip'],
+      zenHovered: ZEN_REGIONS.calendarPage,
     },
     {
       // The page under 900px: the day panel moves under the month.
@@ -585,12 +671,11 @@ function createCalendarSurfaces() {
 }
 
 /**
- * Related Notes for a tagged note, and for a note with no tags, and the
- * sidebar's Customize Home.
+ * Related Notes for a tagged note, and for a note with no tags.
  *
  * @param {object} index The workspace.
  * @param {Map<string, object>} files The parsed notes, by path.
- * @returns {object[]} The two Related Notes surfaces and Customize Home.
+ * @returns {object[]} The two Related Notes surfaces.
  */
 function createRelatedNotesSurfaces(index, files) {
   return [
@@ -610,6 +695,7 @@ function createRelatedNotesSurfaces(index, files) {
       scrollers: ['html'],
       clippers: [],
       hovered: ['.note'],
+      zenHovered: ZEN_REGIONS.sidebarNotes,
     },
     {
       // A note with no tags: the tags similar notes use, each a full-width
@@ -638,28 +724,6 @@ function createRelatedNotesSurfaces(index, files) {
       clippers: [],
       hovered: ['.note'],
     },
-    {
-      // Customize Home in the sidebar: each widget to add is a button with
-      // its description under its name, on the button's own fill, under
-      // the pages as rows, Home pressed.
-      name: 'sidebarNotesCustomizeHome',
-      page: 'sidebarNotes',
-      viewport: [240, 700],
-      snapshot: () => ({
-        pages: createContextPages('list', 'home'),
-        activeTags: [],
-        notes: [],
-        state: 'customizeHome',
-        homeWidgets: [
-          { value: 'tasks', label: 'Tasks', description: 'The tasks a search finds, ranked as on the Task Board' },
-          { value: 'topTags', label: 'Frequent tags', description: 'The tags you open most, lately' },
-          { value: 'todayNote', label: 'Today', description: "Today's daily note and its open tasks" },
-        ],
-      }),
-      scrollers: ['html'],
-      clippers: [],
-      hovered: ['.home-widget-choice'],
-    },
   ];
 }
 
@@ -672,11 +736,11 @@ function createRelatedNotesSurfaces(index, files) {
  */
 function createSummarySurfaces(index, preferences) {
   return [
-    // Zen folds each card's file and line away and reveals it on hover, so a
-    // hovered result is the one row that grows. The search page is where that
-    // reveal sits inside a .card-header rather than at the end of the row.
-    // Without zen it is drawn too, so its cards' tags, their three lines, and
-    // the hub line are measured in every theme.
+    // Each card keeps a line for its file and line under its title and
+    // reveals it on hover, so a hovered result grows by nothing. The search
+    // page is where that line sits inside a .card-header rather than at the
+    // end of the row. Without zen it is drawn too, so its cards' tags, their
+    // lines, and the hub line are measured in every theme.
     {
       // Stats: what needs attention first, then the totals, then what is
       // viewed most, with every panel's rows at full width.
@@ -704,6 +768,7 @@ function createSummarySurfaces(index, preferences) {
       scrollers: ['html'],
       clippers: [],
       hovered: ['.card'],
+      zenHovered: ZEN_REGIONS.searchPage,
     },
     {
       name: 'searchPageLooks',
@@ -872,6 +937,7 @@ function createSurfaces() {
   const preferences = createPreferences(createGlobalState());
   const surfaces = [
     ...createBoardSurfaces(boardIndex, preferences),
+    ...createRevealBoardSurfaces(boardIndex, preferences),
     createStatusBoardSurface(preferences),
     createParentTagBoardSurface(preferences),
     createDatedBoardSurface(boardIndex, preferences),
@@ -886,6 +952,7 @@ function createSurfaces() {
     ...createDashboardSurfaces(index, preferences.reader.value),
     ...createReferenceSurfaces(index, files),
     ...createMenuSurfaces(surfaces),
+    ...createSidebarOpenSurfaces(surfaces),
   ];
 }
 

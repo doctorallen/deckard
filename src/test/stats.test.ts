@@ -53,6 +53,24 @@ suite('Stats: notes that could not be read', () => {
     }
   });
 
+  test('Reindex is the first row of ⋯, before Theme…, Zen and Help on this page', () => {
+    const page = openWebviewPage(renderPage('stats'), createDeckardStatsSnapshot(index(), preferences(), [], Date.now()));
+    try {
+      assert.strictEqual(page.findAll('.updated button').length, 0, 'the line says when, and nothing more');
+      assert.deepStrictEqual(page.findAll('.page-menu .view-options-section').map((section) => section.getAttribute('aria-label')), ['Page', 'Appearance', 'Help']);
+      assert.strictEqual(page.text('.page-menu [aria-label="Page"] .view-options-item'), 'Reindex');
+      assert.strictEqual(page.findAll('.page-menu [data-action="set-display"]').length, 0, 'no Page width on Stats');
+      page.click('.page-menu [data-action="reindex"]');
+      assert.deepStrictEqual(page.lastPosted('reindexWorkspace'), { type: 'reindexWorkspace' });
+      page.click('.page-menu [data-action="choose-theme"]');
+      assert.deepStrictEqual(page.lastPosted('chooseTheme'), { type: 'chooseTheme' });
+      page.click('.page-menu [data-action="page-help"]');
+      assert.deepStrictEqual(page.lastPosted('openHelp'), { type: 'openHelp' });
+    } finally {
+      page.dispose();
+    }
+  });
+
   test('every tile opens a search Deckard can read', () => {
     const page = openWebviewPage(renderPage('stats'), createDeckardStatsSnapshot(index(), preferences(), [], Date.now()));
     try {

@@ -200,8 +200,8 @@ suite('Calendar', () => {
       sidebar.dispose();
     }
     const panel = openWebviewPage(
-      renderPage('calendar'),
-      createCalendar(index, '2026-09', createQueryContext(now), { showWeekends: false, dayPanel: true }),
+      renderPage('calendarPage'),
+      createCalendar(index, '2026-09', createQueryContext(now), { showWeekends: false, dayPanel: true, layout: 'page' }),
     );
     try {
       key(panel, '2026-09-10', 'PageDown');
@@ -215,8 +215,8 @@ suite('Calendar', () => {
 
   test('End past the grid asks for the next month with no day, not with one an earlier step left waiting', () => {
     const now = new Date(2026, 8, 13, 10).getTime();
-    const september = createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true });
-    const page = openWebviewPage(renderPage('calendar'), september);
+    const september = createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true, layout: 'page' });
+    const page = openWebviewPage(renderPage('calendarPage'), september);
     try {
       const day = (date: string) => page.find(`.calendar-grid .day[data-date="${date}"]`) as HTMLElement;
       const key = (date: string, name: string) => {
@@ -234,7 +234,7 @@ suite('Calendar', () => {
       day('2026-10-03').remove();
       key('2026-09-27', 'End');
       assert.deepStrictEqual(page.lastPosted('showMonth'), { type: 'showMonth', month: '2026-10' }, 'the host keeps the chosen day\'s place');
-      page.send(createCalendar(index, '2026-10', createQueryContext(now), { dayPanel: true }));
+      page.send(createCalendar(index, '2026-10', createQueryContext(now), { dayPanel: true, layout: 'page' }));
       assert.notStrictEqual((page.document.activeElement as HTMLElement | null)?.dataset.date, '2026-10-07', 'and the old step is not focused');
     } finally {
       page.dispose();
@@ -283,12 +283,20 @@ suite('Calendar', () => {
     assert.deepStrictEqual(shown.selected?.repeats?.map((item) => item.task.title), ['Water the plants']);
     assert.deepStrictEqual(shown.selected?.due, [], 'a repeat is not due');
 
-    const page = openWebviewPage(renderPage('calendar'), shown);
+    const sidebar = openWebviewPage(renderPage('calendar'), createCalendar(repeating, '2026-09', createQueryContext(now.getTime())));
     try {
-      const cell = page.find('.calendar-grid .day[data-date="2026-09-22"]');
+      const cell = sidebar.find('.calendar-grid .day[data-date="2026-09-22"]');
       assert.strictEqual(cell.querySelector('.repeat-count')?.textContent, '↻');
       assert.match(cell.getAttribute('aria-label') ?? '', /1 repeat$/);
       assert.match(cell.getAttribute('data-tip') ?? '', /↻ Water the plants/);
+    } finally {
+      sidebar.dispose();
+    }
+    const page = openWebviewPage(
+      renderPage('calendarPage'),
+      createCalendar(repeating, '2026-09', createQueryContext(now.getTime()), { dayPanel: true, layout: 'page', selectedDate: '2026-09-22' }),
+    );
+    try {
       const row = page.find('.day-panel [aria-label="Repeats"] .task-row');
       assert.strictEqual(row.querySelector('input[type="checkbox"]'), null, 'a later date is not completed from here');
       (row.querySelector('.task-title') as HTMLElement).click();
@@ -319,14 +327,17 @@ suite('Calendar', () => {
     );
     try {
       assert.strictEqual(page.findAll('.day-cell[data-drop-date="2026-09-12"]').length, 0);
-      page.click('.view-options [data-action="set-show-weekends"][data-value="on"]');
+      const weekends = page.find('.page-menu [aria-label="View"] input[data-action="set-show-weekends"]') as HTMLInputElement;
+      assert.strictEqual(weekends.checked, false, 'Show weekends, a View row of ⋯, unticked');
+      assert.strictEqual(page.find('label[for="calendar-show-weekends"]').textContent, 'Show weekends');
+      page.click('.view-options [data-action="set-show-weekends"]');
       assert.deepStrictEqual(page.lastPosted('setShowWeekends'), { type: 'setShowWeekends', show: true });
     } finally {
       page.dispose();
     }
   });
 
-  test('the page draws again as its template did: a layout chosen in the gear closes it, and a snapshot folds Done and drops a drag\'s marks', () => {
+  test('the page draws again as its template did: the layout is chosen in the header alone, and a snapshot folds Done and drops a drag\'s marks', () => {
     const now = new Date(2026, 8, 13, 10);
     const done = buildWorkspaceIndex(new Map([
       ['notes/a.md', note('notes/a.md', '- [ ] Call Ren 📅 2026-09-13\n- [x] Filed 📅 2026-09-12 ✅ 2026-09-13\n')],
@@ -334,11 +345,20 @@ suite('Calendar', () => {
     const snapshot = createCalendar(done, '2026-09', createQueryContext(now.getTime()), { dayPanel: true, layout: 'page' });
     const page = openWebviewPage(renderPage('calendarPage'), snapshot);
     try {
-      const gear = page.find('.view-options') as HTMLDetailsElement;
-      gear.open = true;
-      page.click('.view-options [data-action="set-calendar-layout"][data-value="week"]');
+      assert.strictEqual(page.findAll('.view-options [data-action="set-calendar-layout"]').length, 0, '⋯ does not draw Month and Week again');
+      assert.deepStrictEqual(
+        page.findAll('.page-bar-actions > button, .page-bar-actions > .segmented, .page-bar-actions > .page-menu').map((element) => element.getAttribute('data-action') || element.className),
+        ['step-calendar', 'step-calendar', 'segmented view-options-choices', 'view-options page-menu'],
+        '‹ ›, with Today between them away from today, Month | Week, then ⋯',
+      );
+      assert.strictEqual(page.findAll('.help-button').length, 0, 'Help is a row of ⋯');
+      page.document.body.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }));
+      assert.ok(page.findAll('.key-sheet kbd').some((key) => key.textContent === 't'), 'the calendar\'s keys');
+      assert.ok(!page.findAll('.key-sheet kbd').some((key) => key.textContent === '/'), 'and no /, with no search box to go to');
+      page.click('[data-action="close-key-sheet"]');
+      assert.strictEqual(page.findAll('.key-sheet').length, 0);
+      page.click('.page-bar-actions [data-action="set-calendar-layout"][data-value="week"]');
       assert.ok(page.find('.calendar-page-body').classList.contains('is-week'));
-      assert.strictEqual((page.find('.view-options') as HTMLDetailsElement).open, false, 'the gear the layout was chosen in closes');
 
       (page.find('.day-panel details.day-group') as HTMLDetailsElement).open = true;
       const chip = page.find('.cal-chip[data-kind="due"]');
@@ -396,7 +416,7 @@ suite('Calendar', () => {
     const page = openWebviewPage(renderPage('calendarPage'), snapshot, { clock: true });
     try {
       assert.strictEqual(page.savedState(), undefined, 'nothing is kept until the reader chooses');
-      page.click('.calendar-page-actions [data-action="set-calendar-layout"][data-value="week"]');
+      page.click('.page-bar-actions [data-action="set-calendar-layout"][data-value="week"]');
       assert.deepStrictEqual(page.savedState(), { layout: 'week' });
       page.window.dispatchEvent(new page.window.Event('scroll'));
       page.clock!.advance(250);
@@ -430,19 +450,6 @@ suite('Calendar', () => {
     } finally {
       page.dispose();
     }
-    const sidebar = openWebviewPage(renderPage('calendar'), createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true }), { clock: true });
-    try {
-      sidebar.click('.calendar-grid .day[data-date="2026-09-15"]');
-      sidebar.click('[data-action="show-month"][data-month="2026-10"]');
-      pause(sidebar);
-      assert.deepStrictEqual(
-        steps(sidebar),
-        [{ type: 'selectDay', date: '2026-09-15' }, { type: 'showMonth', month: '2026-10' }],
-        'the step names no day, so the host is told the chosen one first, and steps from it',
-      );
-    } finally {
-      sidebar.dispose();
-    }
   });
 
   test('the Week layout steps on from the week it draws, and offers Today, when the chosen day is in another month', () => {
@@ -462,11 +469,11 @@ suite('Calendar', () => {
     }
   });
 
-  test('a tag in a day panel task opens the tag, in the sidebar and on the page', () => {
+  test('a tag in a day panel task opens the tag', () => {
     const now = new Date(2026, 8, 13, 10).getTime();
     const tagged = note('notes/a.md', '# A\n- [ ] Call Ren #project/atlas 📅 2026-09-13\n');
     const taggedIndex = buildWorkspaceIndex(new Map([[tagged.filePath, tagged]]));
-    for (const [id, layout] of [['calendar', 'sidebar'], ['calendarPage', 'page']] as const) {
+    for (const [id, layout] of [['calendarPage', 'page']] as const) {
       const page = openWebviewPage(renderPage(id), createCalendar(taggedIndex, '2026-09', createQueryContext(now), { dayPanel: true, layout }));
       try {
         const before = page.posted.length;
@@ -478,7 +485,7 @@ suite('Calendar', () => {
     }
   });
 
-  test('without the day panel, a double-click on a day opens its note once', () => {
+  test('in the sidebar, a double-click on a day opens its note once, and no day panel is drawn', () => {
     const page = openWebviewPage(renderPage('calendar'), calendar);
     try {
       const day = page.find('.calendar-grid .day[data-date="2026-09-14"]');
@@ -487,6 +494,8 @@ suite('Calendar', () => {
       }
       day.dispatchEvent(new page.window.MouseEvent('dblclick', { bubbles: true, detail: 2 }));
       assert.deepStrictEqual(page.posted.filter((message) => message.type === 'openDay'), [{ type: 'openDay', date: '2026-09-14' }]);
+      assert.strictEqual(page.document.querySelector('.day-panel'), null);
+      assert.strictEqual(page.document.querySelector('[aria-selected]'), null, 'no day is chosen in a grid that chooses none');
     } finally {
       page.dispose();
     }
@@ -517,18 +526,16 @@ suite('Calendar', () => {
 
   test('the sidebar\'s Today hands the focus to today when it goes', () => {
     const now = new Date(2026, 8, 13, 10).getTime();
-    for (const dayPanel of [false, true]) {
-      const page = openWebviewPage(renderPage('calendar'), createCalendar(index, '2026-12', createQueryContext(now), { dayPanel }));
-      try {
-        const today = page.findAll('[data-action="show-month"]').find((button) => button.textContent === 'Today') as HTMLElement;
-        today.focus();
-        today.click();
-        assert.deepStrictEqual(page.lastPosted('showMonth'), dayPanel ? { type: 'showMonth', month: '2026-09', date: '2026-09-13' } : { type: 'showMonth', month: '2026-09' });
-        page.send(createCalendar(index, '2026-09', createQueryContext(now), { dayPanel }));
-        assert.strictEqual((page.document.activeElement as HTMLElement).dataset.date, '2026-09-13', `panel ${dayPanel ? 'on' : 'off'}: on today, not dropped to the page`);
-      } finally {
-        page.dispose();
-      }
+    const page = openWebviewPage(renderPage('calendar'), createCalendar(index, '2026-12', createQueryContext(now)));
+    try {
+      const today = page.findAll('[data-action="show-month"]').find((button) => button.textContent === 'Today') as HTMLElement;
+      today.focus();
+      today.click();
+      assert.deepStrictEqual(page.lastPosted('showMonth'), { type: 'showMonth', month: '2026-09' });
+      page.send(createCalendar(index, '2026-09', createQueryContext(now)));
+      assert.strictEqual((page.document.activeElement as HTMLElement).dataset.date, '2026-09-13', 'on today, not dropped to the page');
+    } finally {
+      page.dispose();
     }
   });
 
@@ -536,7 +543,7 @@ suite('Calendar', () => {
     const now = new Date(2026, 8, 13, 10).getTime();
     const busy = note('notes/busy.md', Array.from({ length: 8 }, (_, number) => `- [ ] Task ${number} 📅 2026-09-13`).join('\n'));
     const busyIndex = buildWorkspaceIndex(new Map([[busy.filePath, busy]]));
-    for (const [id, layout] of [['calendar', 'sidebar'], ['calendarPage', 'page']] as const) {
+    for (const [id, layout] of [['calendarPage', 'page']] as const) {
       const page = openWebviewPage(renderPage(id), createCalendar(busyIndex, '2026-09', createQueryContext(now), { dayPanel: true, layout }));
       try {
         const more = page.find('.day-panel [data-action="show-group"][data-group="due"]') as HTMLElement;
@@ -559,7 +566,7 @@ suite('Calendar', () => {
       const title = page.find('.calendar-title');
       assert.strictEqual(title.textContent, '2026-09-13 to 2026-09-19');
       assert.strictEqual(title.getAttribute('aria-label'), '2026-09-13 to 2026-09-19, September 2026, monthly note', 'its name begins with what it shows');
-      page.click('.calendar-page-actions [data-action="set-calendar-layout"][data-value="month"]');
+      page.click('.page-bar-actions [data-action="set-calendar-layout"][data-value="month"]');
       assert.strictEqual(page.find('.calendar-title').getAttribute('aria-label'), 'September 2026, monthly note');
     } finally {
       page.dispose();
@@ -568,35 +575,19 @@ suite('Calendar', () => {
 
   test('Create in the day panel hands the focus to Open when the daily note appears', () => {
     const now = new Date(2026, 8, 13, 10).getTime();
-    const page = openWebviewPage(renderPage('calendar'), createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true }));
+    const page = openWebviewPage(renderPage('calendarPage'), createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true, layout: 'page' }));
     try {
       const create = page.find('.day-panel [data-action="create-day"]') as HTMLElement;
       create.focus();
       create.click();
       assert.deepStrictEqual(page.lastPosted('createDay'), { type: 'createDay', date: '2026-09-13' });
       // A save elsewhere draws the panel again before the note is written.
-      page.send(createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true }));
+      page.send(createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true, layout: 'page' }));
       assert.strictEqual(page.document.activeElement, page.find('.day-panel [data-action="create-day"]'), 'Create keeps the focus until the note appears');
       const daily = note('notes/2026-09-13.md', '# 2026-09-13');
       const withNote = buildWorkspaceIndex(new Map([...files, daily].map((file) => [file.filePath, file])));
-      page.send(createCalendar(withNote, '2026-09', createQueryContext(now), { dayPanel: true }));
+      page.send(createCalendar(withNote, '2026-09', createQueryContext(now), { dayPanel: true, layout: 'page' }));
       assert.strictEqual(page.document.activeElement, page.find('.day-panel .day-note'), 'on Open, not dropped to the page');
-    } finally {
-      page.dispose();
-    }
-  });
-
-  test('the sidebar says a move from its day panel was not made, naming the task', () => {
-    const now = new Date(2026, 8, 13, 10).getTime();
-    const page = openWebviewPage(renderPage('calendar'), createCalendar(index, '2026-09', createQueryContext(now), { dayPanel: true, selectedDate: '2026-09-12' }));
-    try {
-      const move = page.find('.day-panel [data-action="move-task"]') as HTMLElement;
-      const refuse = (taskId: string) =>
-        page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'moveRefused', taskId } }));
-      refuse(String(move.dataset.taskId));
-      assert.strictEqual(page.text('#live-status'), `"Call Ren" was not moved to ${String(move.dataset.date)}.`);
-      refuse('gone');
-      assert.strictEqual(page.text('#live-status'), 'The task was not moved.');
     } finally {
       page.dispose();
     }

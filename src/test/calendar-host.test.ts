@@ -27,7 +27,6 @@ const thisMonth = today.slice(0, 7);
  */
 function openCalendar(options: { scanning?: boolean } = {}) {
   const files = [parseMarkdown(`/notes/${today}.md`, `# ${today}\n- [ ] Call Ren 📅 ${today}\n`)];
-  const openedTags: string[] = [];
   let index: WorkspaceIndex = buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
   const updates = new vscode.EventEmitter<void>();
   const progress = new vscode.EventEmitter<void>();
@@ -45,8 +44,6 @@ function openCalendar(options: { scanning?: boolean } = {}) {
     indexer,
     writes: createTaskWrites(),
     refresh: () => host?.refresh(),
-    post: (message) => host?.post(message),
-    openTag: (tagKey) => openedTags.push(tagKey),
     extensionUri: vscode.Uri.file(REPOSITORY_ROOT),
     preferences,
   });
@@ -61,7 +58,6 @@ function openCalendar(options: { scanning?: boolean } = {}) {
     surface,
     themePreview,
     states,
-    openedTags,
     send: (message: unknown) => surface.webview.send(message),
     updateIndex: (next: WorkspaceIndex) => {
       index = next;
@@ -189,30 +185,14 @@ suite('Calendar host', () => {
     }
   });
 
-  test('a tag in a day\'s task opens the tag the index has, written with or without its #', async () => {
-    const { host, openedTags, send, updateIndex } = openCalendar();
+  test('has no day panel: a day\'s tag and a move are the calendar page\'s', async () => {
+    const { host, controller, surface, send } = openCalendar();
     try {
-      const tagged = parseMarkdown(`/notes/${today}.md`, `# ${today}\n- [ ] Call Ren #project/atlas 📅 ${today}\n`);
-      updateIndex(buildWorkspaceIndex(new Map([[tagged.filePath, tagged]])));
-      await send({ type: 'openTag', tagKey: '#project/atlas' });
-      await send({ type: 'openTag', tagKey: 'project/atlas' });
-      await send({ type: 'openTag', tagKey: '#project/gone' });
-      assert.deepStrictEqual(openedTags, ['#project/atlas', '#project/atlas'], 'a tag the index no longer has opens nothing');
-    } finally {
-      host.dispose();
-    }
-  });
-
-  test('a move the day panel asked for that could not be made is said, and the calendar drawn again', async () => {
-    const { host, surface, send } = openCalendar();
-    try {
+      assert.strictEqual(controller.buildSnapshot().dayPanel, undefined, 'the month alone');
       surface.webview.posted.length = 0;
+      await send({ type: 'openTag', tagKey: '#project/atlas' });
       await send({ type: 'moveTask', taskId: 'gone', field: 'due', date: today });
-      assert.deepStrictEqual(surface.webview.posted[0], { type: 'moveRefused', taskId: 'gone' });
-      assert.deepStrictEqual(
-        surface.webview.posted.map((message) => (message as { type: string }).type),
-        ['moveRefused', 'state'],
-      );
+      assert.deepStrictEqual(surface.webview.posted, [], 'nothing is refused to a panel it does not draw');
     } finally {
       host.dispose();
     }

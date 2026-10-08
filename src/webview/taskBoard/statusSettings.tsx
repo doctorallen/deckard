@@ -1,5 +1,5 @@
 /**
- * The gear's status columns: the status list as the board shows it, a row
+ * The ⋯'s status columns: the status list as the board shows it, a row
  * per status, ticked to draw its column and dragged into order, with its
  * box and how many open tasks have it; and the way to the list itself.
  */
@@ -65,7 +65,7 @@ function StatusRow({ column }: { readonly column: BoardStatusColumn }) {
 export function StatusSettings({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   return (
     <div class="board-settings">
-      <p class="board-settings-note">Columns when grouped by Status, one per status in your list. Tick one to show it, drag to set the order. Done is always a column; a character no status names gets one of its own.</p>
+      <p class="board-settings-note help-text">Columns when grouped by Status, one per status in your list. Tick one to show it, drag to set the order. Done is always a column; a character no status names gets one of its own.</p>
       <ul key={`statuses-${board.generation}`} class="board-status-list" aria-label="Status columns">
         {snapshot.settings.columns.map((column) => <StatusRow key={column.id} column={column} />)}
       </ul>

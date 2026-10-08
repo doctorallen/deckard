@@ -1,6 +1,8 @@
 # Settings
 
-Open **Settings** and search for `Deckard`, or add these options to your workspace settings:
+Open **Settings** and search for `Deckard`. Deckard's settings start with **Start here**, the four most set first: `deckard.notesFolder`, `deckard.theme`, `deckard.me`, and `deckard.periodicNotes.folder`. **General**, **Tags and People**, **Editor**, **Tasks**, and **AI Assistants** follow.
+
+Or add these options to your workspace settings:
 
 ```json
 {
@@ -14,29 +16,14 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 	"deckard.dailyNote.rollover": "off",
 	"deckard.templatesFolder": "templates",
 	"deckard.noteBoundaries": "line",
-	"deckard.agenda.query": "",
+	"deckard.tasks.viewQuery": "",
 	"deckard.tasks.metadataFormat": "emoji",
 	"deckard.tasks.suggestSteps": true,
 	"deckard.me": "",
 	"deckard.taskReminderTime": "",
 	"deckard.editor.preset": "full",
-	"deckard.editor.referenceCounts": true,
-	"deckard.editor.hoverPreviews": true,
-	"deckard.editor.linkDiagnostics": true,
-	"deckard.editor.taskDependencies": true,
-	"deckard.editor.dailyNoteActions": true,
-	"deckard.editor.linkProblems": true,
-	"deckard.editor.embedProblems": true,
-	"deckard.editor.unlinkedMentions": true,
 	"deckard.links.style": "wiki",
-	"deckard.editor.hubProgress": true,
-	"deckard.editor.slashMenu": true,
-	"deckard.editor.breadcrumbs": true,
 	"deckard.openNotesIn": "editor",
-	"deckard.editor.stepProgress": true,
-	"deckard.editor.dimTaskMetadata": true,
-	"deckard.editor.taskDueHints": true,
-	"deckard.editor.repeatDiagnostics": true,
 	"deckard.assistantTools": true,
 	"deckard.mcpServer.enabled": false,
 	"deckard.mcpServer.port": 39217,
@@ -54,18 +41,11 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.parked.folders` | `{}` | Glob patterns of folders and notes to park, written like `deckard.exclude`. A parked note stays searchable with `is:parked` but is left out of to-do lists. `deckard.exclude` wins. |
 | `deckard.parked.tags` | `["parked"]` | Tags that park a note (in front matter), a heading and everything under it, or a task. Sub-tags park too, so `project/old` parks `#project/old/phase-1`. |
 | `deckard.theme` | `corpo` | The style for Deckard's pages: `corpo`, which follows your VS Code theme, or `replicant`, `oblivion`, `lcars`, `synthwave`, `tomcat`, `fellowship`, and `cooper`. |
-| `deckard.display.level` | `full` | How much every page draws: `full`, `quiet` (each theme's decoration and the helper lines off, tags as text), or `zen` (also compact spacing, flat cards, no counts, dates as how far off). Every setting below follows it while it is `auto`; the page width is the gear's own row. Yours alone, the same in every workspace. See [Display](themes-and-zen.md#display). |
-| `deckard.display.themeStyling` | `auto` | `styled` keeps each theme's grid, corners, glow, codes, and display headings; `plain` draws thin frames and sentence-case headings. `auto`: plain from Quiet. |
-| `deckard.display.helpText` | `auto` | `shown` or `hidden`: the lines that teach, such as the search hint and Home's key bar. A search that fails to parse always says so. `auto`: hidden from Quiet. |
-| `deckard.display.tags` | `auto` | Where tags are listed on their own: framed `chips`, or plain `text`; a tag in a title is always text. `auto`: text from Quiet. |
-| `deckard.display.density` | `auto` | `comfortable` or `compact` spacing on every page. `auto`: compact at Zen. |
-| `deckard.display.cardFrames` | `auto` | `raised` cards, or `flat` rows parted by a divider. `auto`: flat at Zen. |
-| `deckard.display.counts` | `auto` | `shown` or `hidden`: the number beside a name, such as a widget's total or a column's tasks. A screen reader still reads each, and figures that are the point, such as Home's Due today, always show. `auto`: hidden at Zen. |
-| `deckard.display.cardDetails` | file and line | Which details an entry shows while the pointer is on it or it has focus: `fileAndLine` (where it is written, and the headings above it), and its `created` and `updated` dates, on a line of their own under where it is written, such as *Created 2026-09-12*, on search cards, task rows, board cards, and Related Notes. Tick them in Settings; untick all three to draw none, which a screen reader still reads. A task's created date is its own `➕` date when it has one, else its note's; its updated date is its note's. |
-| `deckard.display.dates` | `auto` | How a due date is written: `both` ("Overdue 2 days · 2026-10-02"), `relative` ("Overdue 2 days"), or `date` ("Overdue · 2026-10-02"). An overdue date always says Overdue. `auto`: relative at Zen. |
+| `deckard.display.zen` | `false` | Quiets every Deckard page: each theme's decoration and the lines that teach go, spacing is tighter, cards are flat, and tags are text. Every button, count, and date stays. The **Zen** checkbox in a page's **⋯** and `Deckard: Toggle Zen` set it. Yours alone, the same in every workspace. See [Zen](themes-and-zen.md#zen). |
+| `deckard.display.cardDetails` | file and line | Which details an entry shows on the one line it keeps for them under its dates, shown while the pointer is on it or it has focus: `fileAndLine` (where it is written, and the headings above it), then its `created` and `updated` dates, such as *atlas / line 4 · Created 2026-09-12*, on search cards, task rows, board cards, Home's note rows, and Related Notes. Tick them in Settings; untick all three to draw none and keep no line, which a screen reader still reads. A task's created date is its own `➕` date when it has one, else its note's; its updated date is its note's. |
 | `deckard.display.dateFormat` | `YYYY-MM-DD` | How Deckard writes a date for you to read, on pages, in views, in messages, and in the task editor, in the tokens Obsidian's daily notes use: `DD/MM/YYYY`, `D MMM YYYY`, `ddd, MMM D, YYYY`, or `L` and `LL`, your display language's own. Text in `[brackets]` is written as it is. Dates written into notes, file names, and searches stay `YYYY-MM-DD`. Empty, or a format with no date in it, reads as the default. `Deckard: Choose Date Format…` shows each with today's date. See [Dates](themes-and-zen.md#dates). |
-| `deckard.display.shortDateFormat` | `ddd, MMM D` | How a day of this year is written where there is little room: the Tasks view's day headings, the Pages view, the calendar's day title, search completions, and Linked from. A day in another year is written in `deckard.display.dateFormat`. |
-| `deckard.dashboard.openOnStartup` | `false` | Opens the Dashboard when VS Code starts in a workspace where Deckard has indexed notes. |
+| `deckard.display.shortDateFormat` | `ddd, MMM D` | How a day of this year is written where there is little room: the Tasks view's day headings, Today's note in Context and Go to…, the calendar's day title, search completions, and Linked from. A day in another year is written in `deckard.display.dateFormat`. |
+| `deckard.dashboard.openOnStartup` | `false` | Opens Home when VS Code starts in a workspace where Deckard has indexed notes. |
 | `deckard.periodicNotes.folder` | `""` | The folder inside the notes folder that new daily, weekly, and monthly notes go in, such as `journal/{yyyy}` (`{mm}` is the month). Notes already elsewhere are still found. |
 | `deckard.calendar.weekStart` | `sunday` | The day a week starts on: `sunday`, `monday`, or `locale` (VS Code's display language). It sets the Calendar, weekly notes and reviews, `this-week`, `last-week`, and `next-week`, and typed dates such as *next week*. |
 | `deckard.calendar.exportFile` | `""` | A calendar file (`.ics`) Deckard keeps up to date with your dated tasks, for a calendar app to subscribe to. A relative path is in the first workspace folder. See [Tasks in your calendar app](daily-notes.md#tasks-in-your-calendar-app). |
@@ -75,7 +55,7 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.dailyNote.rollover` | `off` | What a new daily note does with the last one's unfinished tasks: `off`, `move`, or `migrate` (`copy` is its older name). See [Carrying unfinished tasks forward](daily-notes.md#carrying-unfinished-tasks-forward). |
 | `deckard.templatesFolder` | `templates` | The folder of [note templates](notes-and-links.md#templates), relative to the workspace folder. Not indexed. `Daily.md`, `Weekly.md`, and `Monthly.md` here are what new [periodic notes](daily-notes.md#templates) start from. Empty turns templates off. |
 | `deckard.noteBoundaries` | `line` | Where one note ends and the next begins; see [Markdown format](notes-and-links.md#markdown-format). `line`, `heading`, or `marked`. |
-| `deckard.agenda.query` | Empty | A [query](search.md#query-language) limiting the open tasks in the Tasks view, Home's agenda, and the status bar, such as `is:mine`. Empty means every open task. |
+| `deckard.tasks.viewQuery` | Empty | A [query](search.md#query-language) limiting the open tasks in the Tasks view, Home's agenda, and the status bar, such as `is:mine`. Empty means every open task. It was `deckard.agenda.query`; a search you set there is carried over once. |
 | `deckard.tasks.metadataFormat` | `emoji` | The Tasks format Deckard writes for a task with no metadata yet: `emoji` (📅 2026-09-20) or `dataview` ([due:: 2026-09-20]). Existing tasks keep theirs; Deckard reads both. |
 | `deckard.board.limits` | `{}` | Work-in-progress limits for board columns, by status, its name with a hyphen for a space, such as `{ "in-progress": 3 }`, or by column id, such as `{ "priority:high": 5 }`. An over-limit column says so. |
 | `deckard.tasks.statuses` | Todo, In progress, Done, Cancelled, Waiting, Someday, Blocked | What each checkbox character means: `[/]` in progress, `[w]` waiting, `[s]` someday, `[=]` blocked, `[-]` cancelled. Each status has its character, a name, and a type (to do, in progress, on hold, done, cancelled, or not a task). A task's status is its character alone. A character no status names is a task to do, called Unknown. |
@@ -84,24 +64,24 @@ Open **Settings** and search for `Deckard`, or add these options to your workspa
 | `deckard.me` | Empty | Who you are in your notes, such as `@ren-kade`, so `is:mine` finds the tasks that name you. See [Who a task is for](tasks.md#who-a-task-is-for). |
 | `deckard.tasks.needsNewDateAfterDays` | `30` | How many days past its due date an open task stays in Overdue. After that it moves to **Needs a new date** and leaves the status bar's count. `0` keeps every overdue task in Overdue. |
 | `deckard.taskReminderTime` | Empty | A time of day, such as `09:00`, from which Deckard says how many tasks are due, once a day. Empty means no reminder. |
-| `deckard.editor.preset` | `full` | What Deckard draws in the editor, as one choice: `full`, everything; `tasks`, task hints and problem reports without link counts, mention lenses, or breadcrumbs; `writing`, the / menu, hover previews, and problem reports only. A `deckard.editor.*` setting you change yourself wins over it. `Deckard: Choose Editor Preset…` sets it. |
-| `deckard.editor.referenceCounts` | `true` | Shows backlink, heading-reference, and open-task counts above a note's lines. |
-| `deckard.editor.hoverPreviews` | `true` | Previews a `[[Wiki link]]`'s target and summarizes a tag's entries on hover. |
-| `deckard.editor.linkDiagnostics` | `true` | Marks a `[[Wiki link]]` that opens no note and offers to create a missing one. |
-| `deckard.editor.taskDependencies` | `true` | Shows, above a task with `⛔` or `🆔`, the open tasks it waits on and holds up. See [Editor assistance](notes-and-links.md#editor-assistance). |
-| `deckard.editor.dailyNoteActions` | `true` | Shows neighboring daily notes above a daily note, and on today's, unfinished tasks to carry in. |
-| `deckard.editor.linkProblems` | `true` | Counts a note's `[[Wiki links]]` that open no note on its first line, with an action to create them. |
-| `deckard.editor.embedProblems` | `true` | Says above a broken `![[embed]]` which heading or `^marker` it is missing. |
-| `deckard.editor.unlinkedMentions` | `true` | Counts, on a note's first line, notes that name it without a link, with an action to link them. |
+| `deckard.editor.preset` | `full` | What Deckard draws in the editor, as one choice: `full`, everything; `tasks`, task hints and problem reports without link counts, mention lenses, or breadcrumbs; `writing`, the / menu, hover previews, faint task details, and reports of broken links, embeds, and repeat rules; `off`, nothing: no lenses, decorations, previews, / menu, or problem reports. Each `deckard.editor.*` switch below follows it while unset; one you set yourself overrides it. `Deckard: Choose Editor Preset…` sets it. |
+| `deckard.editor.referenceCounts` | Unset | Shows backlink, heading-reference, and open-task counts above a note's lines. Unset, it follows the preset: on in Full, off in Tasks, Writing, and Off. |
+| `deckard.editor.hoverPreviews` | Unset | Previews a `[[Wiki link]]`'s target and summarizes a tag's entries on hover. Unset, it follows the preset: on in Full, Tasks, and Writing, off in Off. |
+| `deckard.editor.linkDiagnostics` | Unset | Marks a `[[Wiki link]]` that opens no note and offers to create a missing one. Unset, it follows the preset: on in Full, Tasks, and Writing, off in Off. |
+| `deckard.editor.taskDependencies` | Unset | Shows, above a task with `⛔` or `🆔`, the open tasks it waits on and holds up. See [Editor assistance](notes-and-links.md#editor-assistance). Unset, it follows the preset: on in Full and Tasks, off in Writing and Off. |
+| `deckard.editor.dailyNoteActions` | Unset | Shows neighboring daily notes above a daily note, and on today's, unfinished tasks to carry in. Unset, it follows the preset: on in Full and Tasks, off in Writing and Off. |
+| `deckard.editor.linkProblems` | Unset | Counts a note's `[[Wiki links]]` that open no note in the problems lens on its first line, which creates the missing notes. Unset, it follows the preset: on in Full, Tasks, and Writing, off in Off. |
+| `deckard.editor.embedProblems` | Unset | Says above a broken `![[embed]]` which heading or `^marker` it is missing. Unset, it follows the preset: on in Full, Tasks, and Writing, off in Off. |
+| `deckard.editor.unlinkedMentions` | Unset | Counts, in the problems lens on a note's first line, mentions of it in other notes without a link, which it links. Unset, it follows the preset: on in Full, off in Tasks, Writing, and Off. |
 | `deckard.links.style` | `wiki` | How a link made from a mention is written: `[[Atlas]]`, or `markdown` for `[Atlas](projects/Atlas.md)`, which GitHub and MkDocs render. Both kinds are read either way. |
-| `deckard.editor.hubProgress` | `true` | Says, on a hub note's first line, how far along the tasks of the tag it describes are. |
+| `deckard.editor.hubProgress` | Unset | Says, on a hub note's first line, how far along the tasks of the tag it describes are. Unset, it follows the preset: on in Full and Tasks, off in Writing and Off. |
 | `deckard.openNotesIn` | `editor` | Where a note or task opens from Deckard: `editor`, at its line, or `page`, on the [note page](notes-and-links.md#reading-a-note-as-a-page). Shift-click, or Shift+Enter, opens it the other way. |
-| `deckard.editor.stepProgress` | `true` | Shows, above a task with steps, a bar of how many are done and the next one. |
-| `deckard.editor.breadcrumbs` | `true` | Shows, on a note's first line, where it sits under its [hub notes](search-pages.md#the-hubs-view). |
-| `deckard.editor.slashMenu` | `true` | Offers, after a `/` alone at the start of a line, blocks and templates to write there. |
-| `deckard.editor.dimTaskMetadata` | `true` | Draws a task's dates, priority, repeat rule, ids, and person, and a line's `^block-id`, fainter than its words. An overdue date takes the `deckard.overdueForeground` color instead. |
-| `deckard.editor.taskDueHints` | `true` | Says after an open task's line when it is **overdue 5 days**, **due today**, or **needs a new date**. |
-| `deckard.editor.repeatDiagnostics` | `true` | Marks an unreadable 🔁 repeat rule on an open task, with quick fixes. |
+| `deckard.editor.stepProgress` | Unset | Shows, above a task with steps, a bar of how many are done and the next one. Unset, it follows the preset: on in Full and Tasks, off in Writing and Off. |
+| `deckard.editor.breadcrumbs` | Unset | Shows, on a note's first line, where it sits under its [hub notes](search-pages.md#the-hubs-view). Unset, it follows the preset: on in Full, off in Tasks, Writing, and Off. |
+| `deckard.editor.slashMenu` | Unset | Offers, after a `/` alone at the start of a line, blocks and templates to write there. Unset, it follows the preset: on in Full, Tasks, and Writing, off in Off. |
+| `deckard.editor.dimTaskMetadata` | Unset | Draws a task's dates, priority, repeat rule, ids, and person, and a line's `^block-id`, fainter than its words. An overdue date takes the `deckard.overdueForeground` color instead. Unset, it follows the preset: on in Full, Tasks, and Writing, off in Off. |
+| `deckard.editor.taskDueHints` | Unset | Says after an open task's line when it is **overdue 5 days**, **due today**, or **needs a new date**. Unset, it follows the preset: on in Full and Tasks, off in Writing and Off. |
+| `deckard.editor.repeatDiagnostics` | Unset | Marks an unreadable 🔁 repeat rule on an open task, with quick fixes. Unset, it follows the preset: on in Full, Tasks, and Writing, off in Off. |
 | `deckard.assistantTools` | `true` | Lets AI assistants in VS Code, such as Copilot in agent mode, search notes and tasks, list tags, add a task to a note, and change an existing task, after you allow the first call each session. Nothing is written until you approve the line in the refactor preview. See [AI assistants](ai-assistants.md#ai-assistants). |
 | `deckard.mcpServer.enabled` | `false` | Runs an MCP server on 127.0.0.1 with the same tools, writes included, for clients that carry its token. Nothing is written until you approve the line in the refactor preview. See [Claude Code and other MCP clients](ai-assistants.md#claude-code-and-other-mcp-clients). |
 | `deckard.mcpServer.port` | `39217` | The port the MCP server listens on, on 127.0.0.1. |

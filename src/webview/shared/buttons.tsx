@@ -1,7 +1,5 @@
 import type { ComponentChildren } from 'preact';
 
-import { HelpIcon } from './icons';
-
 /** An icon-only button: what it does, what it shows, and how it says so. */
 export interface IconButtonProps {
   /** The `data-action` its click runs. */
@@ -42,23 +40,5 @@ export function IconButton(props: IconButtonProps) {
     >
       {props.icon}
     </button>
-  );
-}
-
-/**
- * The way to Help from any page, opened at `anchor` when one is given. Help
- * was reachable only from one icon in the Related Notes sidebar, or the
- * command palette, so the pages a reader gets stuck on offered no route to
- * it.
- */
-export function HelpButton({ anchor }: { readonly anchor?: string }) {
-  return (
-    <IconButton
-      action="open-help"
-      className="help-button"
-      label="Open Help"
-      icon={<HelpIcon />}
-      attributes={anchor ? { 'data-help-anchor': anchor } : undefined}
-    />
   );
 }

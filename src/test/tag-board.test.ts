@@ -97,12 +97,26 @@ suite('The Task board grouped by a tag namespace', () => {
       return page;
     };
 
-    test('Tag… opens a menu of namespaces, and a choice groups by it', () => {
+    /** The Group select, and what it does when `value` is chosen in it. */
+    const group = (view: WebviewPage) => view.find('select[data-action="set-board-group"]') as HTMLSelectElement;
+    const choose = (view: WebviewPage, value: string): void => {
+      const select = group(view);
+      select.value = value;
+      select.dispatchEvent(new view.window.Event('change', { bubbles: true }));
+    };
+
+    test('Tag… in the Group select opens a menu of namespaces, and a choice groups by it', () => {
       const view = open({ taskBoardGroup: 'status' });
-      const button = view.find('[data-action="pick-board-namespace"]');
-      assert.strictEqual(button.textContent, 'Tag…');
-      assert.strictEqual(button.getAttribute('aria-pressed'), 'false');
-      view.click('[data-action="pick-board-namespace"]');
+      assert.deepStrictEqual(
+        Array.from(group(view).options).map((option) => option.textContent),
+        ['Status', 'Priority', 'Due date', 'Person', 'Tag…'],
+        'one select keeps the five choices',
+      );
+      assert.strictEqual(group(view).value, 'status');
+      choose(view, 'priority');
+      assert.deepStrictEqual(view.lastPosted('setBoardGroup'), { type: 'setBoardGroup', groupBy: 'priority' });
+      choose(view, 'pick-namespace');
+      assert.strictEqual(group(view).value, 'status', 'the select stays on the grouping in force');
       assert.deepStrictEqual(view.findAll('#action-menu .menu-heading').map((heading) => heading.textContent), ['Group by tag namespace']);
       assert.deepStrictEqual(
         view.findAll('#action-menu [data-menu-value] .menu-label').map((item) => item.textContent),
@@ -112,11 +126,12 @@ suite('The Task board grouped by a tag namespace', () => {
       assert.deepStrictEqual(view.lastPosted('setBoardGroup'), { type: 'setBoardGroup', groupBy: 'tag', namespace: 'context' });
     });
 
-    test('grouped by a namespace, the switch names it, and pressed', () => {
+    test('grouped by a namespace, the Group select names it, and Tag… offers the others', () => {
       const view = open({ taskBoardGroup: 'tag', taskBoardGroupNamespace: 'context' });
-      const button = view.find('[data-action="pick-board-namespace"]');
-      assert.strictEqual(button.textContent, '#context');
-      assert.strictEqual(button.getAttribute('aria-pressed'), 'true');
+      const chosen = group(view).selectedOptions[0];
+      assert.strictEqual(chosen.textContent, '#context');
+      choose(view, 'pick-namespace');
+      assert.deepStrictEqual(view.findAll('#action-menu [data-menu-value] .menu-label').map((item) => item.textContent), ['#project · 4 open tasks']);
     });
 
     test('a task in two columns is two cards, each moved from its own column, and one Tab stop', () => {

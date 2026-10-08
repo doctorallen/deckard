@@ -130,7 +130,7 @@ export const AGENDA_TASK_MIME = 'application/vnd.code.tree.deckard.agenda';
  * by when they are wanted, by priority, by status, or by who they are for.
  *
  * The tasks are the same whichever grouping is chosen — the open ones
- * `deckard.agenda.query` finds, or every open one — so switching changes the
+ * `deckard.tasks.viewQuery` finds, or every open one — so switching changes the
  * axis rather than the list.
  *
  * Checking a task's box completes it through the same source-safe edit the

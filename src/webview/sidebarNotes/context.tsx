@@ -4,7 +4,6 @@
  * notes, how they are sorted and the gear.
  */
 import type { SidebarNotesSnapshot, SidebarTag } from '../../ui/protocol/sidebarNotes';
-import { SortIcon } from '../shared/strokeIcons';
 import { ViewOptionChoices, ViewOptions } from '../shared/viewOptions';
 import { SelectedGraphNode } from './cards';
 import { ACTIVE_TAG_PAGE_SIZE, previewLines } from './model';
@@ -60,9 +59,6 @@ export function Context({ snapshot, open, showEveryActiveTag }: ContextProps) {
   if (snapshot.state === 'refine') {
     return null;
   }
-  if (snapshot.state === 'customizeHome') {
-    return <PageInFront label="Home" name="Customize" />;
-  }
   if (snapshot.state === 'calendarDay') {
     return <PageInFront label="Calendar" name="The chosen day" />;
   }
@@ -94,20 +90,25 @@ const SORT_MODES: ReadonlyArray<readonly [NonNullable<SidebarNotesSnapshot['rela
 ];
 
 /**
- * How the related notes are sorted, and the gear: how many lines of each
- * excerpt, and whether daily notes are listed.
+ * The Related notes heading, with a compact Sort at it and the gear: how
+ * many lines of each excerpt, and whether daily notes are listed. The
+ * heading is drawn once there are related notes. Zen shows Sort and the
+ * gear while the heading is pointed at or holds focus, and keeps Sort
+ * drawn while it isn't Relevance.
  */
-export function RelatedNotesControls({ snapshot }: { readonly snapshot: SidebarNotesSnapshot }) {
+export function RelatedNotesControls({ snapshot, heading }: { readonly snapshot: SidebarNotesSnapshot; readonly heading: boolean }) {
   const mode = snapshot.relatedNotesSortMode;
   return (
-    <div class="related-notes-controls">
-      <span class="related-notes-sort-control">
+    <div class="related-notes-controls" data-zen-region="">
+      {heading ? <span class="section-label">Related notes</span> : null}
+      <label class="related-notes-sort-control" data-zen-reveal="" data-reveal-keep={(mode || 'tags') === 'tags' ? undefined : ''}>
+        {'Sort:'}
         <select class="related-notes-sort" data-action="set-related-notes-sort" aria-label="Sort related notes">
           {SORT_MODES.map(([value, text]) => <option value={value} selected={mode === value}>{text}</option>)}
         </select>
-        <SortIcon className="related-notes-sort-icon" />
-      </span>
+      </label>
       <ViewOptions
+        attributes={{ 'data-zen-reveal': '' }}
         groups={[
           {
             label: 'Preview',

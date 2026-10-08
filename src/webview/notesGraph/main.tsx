@@ -18,9 +18,12 @@ import { createRef, render } from 'preact';
 
 import type { MessageOf } from '../../ui/protocol/messaging';
 import type { NotesGraphHostToPage, NotesGraphWireSnapshot } from '../../ui/protocol/notesGraph';
+import { installGoToMenu } from '../shared/goToMenu';
 import { installTip } from '../shared/tip';
+import { installViewOptions } from '../shared/viewOptions';
+import { post } from '../shared/vscode';
 import type { GraphColors } from './canvas';
-import { type ControlHandlers, type ControlRefs, GraphBody, type SliderKey, type ToggleKey } from './controls';
+import { type ControlHandlers, type ControlRefs, GraphBody, OPEN_A_NOTE, type SliderKey, type ToggleKey } from './controls';
 import {
   clearResetUndo,
   dismissResetUndo,
@@ -31,7 +34,6 @@ import {
   hideTooltip,
   keep,
   rebuildView,
-  reheat,
   renderTagList,
   resetGraphSettings,
   resizeCanvas,
@@ -50,6 +52,9 @@ import { readCamera, readKept, readSettings } from './settings';
 import { findNodeIndex, recomputeSearchMatches, recomputeTagMatches, setHoverIndex, setSelectedIndex } from './view';
 
 installTip();
+// The bar's DECKARD ▾ and ⋯, as every other page has them.
+installGoToMenu(post);
+installViewOptions();
 
 /**
  * A type step in pixels, for the canvas. The step is written as a max()
@@ -117,23 +122,10 @@ function readLook(): GraphLook {
 /** How long typing in a search box waits before the graph or the list follows it. */
 const TYPING_MS = 150;
 
-/** What each slider does once its setting changes: draw again, rebuild, heat the graph, or lay it out afresh. */
+/** What each slider does once its setting changes: draw again, or rebuild. */
 const SLIDER_EFFECTS: Readonly<Record<SliderKey, (page: GraphPage) => void>> = {
   nodeSize: scheduleFrame,
-  linkThickness: scheduleFrame,
   linkDensity: (page) => rebuildView(page),
-  tagSpecificity: (page) => rebuildView(page),
-  bridgeStrength: (page) => rebuildView(page),
-  labelThreshold: scheduleFrame,
-  centerStrength: (page) => reheat(page, 0.5),
-  clusterCohesion: (page) => reheat(page, 0.5),
-  communitySpacing: (page) => {
-    page.state.hasFramed = false;
-    rebuildView(page, true);
-  },
-  repelStrength: (page) => reheat(page, 0.5),
-  linkStrength: (page) => reheat(page, 0.5),
-  linkDistance: (page) => reheat(page, 0.5),
 };
 
 /**
@@ -223,12 +215,18 @@ function filterHandlers(page: GraphPage): Pick<ControlHandlers, 'searchInput' | 
       scheduleFrame(page);
     },
     clearTags: () => {
+      // Clear filters goes once nothing is filtered, so the focus it had
+      // goes to the tag list's filter rather than falling to the page.
+      const hadFocus = document.activeElement?.id === 'clear-tags';
       page.settings.selectedTags = [];
       page.state.tagNotice = '';
       keep(page);
       recomputeTagMatches(page.state, page.settings);
       renderTagList(page);
       setGroup(page, '');
+      if (hadFocus) {
+        (page.refs.tagSearch.current as HTMLInputElement).focus();
+      }
     },
     groupChange: (event) => setGroup(page, (event.currentTarget as HTMLSelectElement).value),
   };
@@ -293,7 +291,7 @@ function createPage(): GraphPage {
     needsDraw: true,
     frameQueued: false,
     ui: {
-      focus: { local: false, skipPeriodic: true, skipDisabled: false, depth: '1', note: 'Open a note to draw the graph around it.' },
+      focus: { local: false, skipPeriodic: true, skipDisabled: false, depth: '1', note: OPEN_A_NOTE },
       tagList: null,
       groupValue: undefined,
       status: { text: '', joinedShown: false },

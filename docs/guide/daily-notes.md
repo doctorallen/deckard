@@ -5,7 +5,7 @@
 Run `Deckard: Create Daily Note`, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on Windows and Linux), or use the button in the Context view. Deckard creates or opens a note named with the local date, such as `2026-08-30.md`.
 
 - `Deckard: Open Previous Daily Note` and `Deckard: Open Next Daily Note` step to the nearest daily note before or after the current one. From another note they start from today.
-- `Deckard: Open Daily Note for Date…` lists yesterday, today, tomorrow, and your seven newest daily notes, or takes a day [in plain words](tasks.md#dates-in-plain-words), such as `last friday` or `2026-10-02`; a missing note is created from the template. [Find](search.md#find) does the same when you type only a day.
+- [Find](search.md#find) opens the daily note for a day typed [in plain words](tasks.md#dates-in-plain-words), such as `last friday` or `2026-10-02`, when you type only a day; a missing note is created from the template.
 - `Deckard: Open Weekly Note` and `Deckard: Open Monthly Note` create or open `week-2026-09-13-2026-09-19.md` and `month-september-2026.md`. A week runs Sunday to Saturday, or from the day `deckard.calendar.weekStart` names.
 - A new note starts from its [template](#templates).
 - [Add Task](tasks.md#adding-a-task) (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>) with no note open writes into today's note, creating it if needed, and its title names the note before anything is written.
@@ -67,26 +67,24 @@ A new daily, weekly, or monthly note starts from a file in the templates folder 
 
 ## Calendar
 
-The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday unless `deckard.calendar.weekStart` or your display language starts them on Monday. Each day shows its date, a dot for a daily note, a count of open tasks due (orange once past, muted once more than 30 days gone), and, outlined, open tasks scheduled (⏳) that day.
+The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday unless `deckard.calendar.weekStart` or your display language starts them on Monday. Each day shows its date, a dot for a daily note, a count of open tasks due (orange once past, muted once more than 30 days gone), and, outlined, open tasks scheduled (⏳) that day. In a new install it starts collapsed; expand it, or drag it where you like.
 
 Select a day, the mark beside a week, or the month's name to open its note; Deckard offers to create a missing one. The arrows step through months; **Today** returns.
 
-**The day panel.** Choose **Open Day Panel** from the Calendar's `…` menu to show the chosen day under the month; **Close Day Panel** takes it away, and the Calendar keeps your choice. A click, Space, or arrow keys then choose a day; double-click or Enter opens its note. The panel shows:
+**Repeats.** A repeating task shows a muted **↻** on every later date its rule lands on in the visible weeks, and a **Repeats** group in the calendar page's day panel. These dates are not written; a row opens the task. A `when done` rule shows only its next date.
+
+**Weekends.** **Show weekends**, in the calendar page's **⋯**, shows all seven days; clear it for five working days, on the page and in the Calendar view alike.
+
+**The calendar page.** `Deckard: Open Calendar`, **Calendar** at the top of the Context view, or the button in the Calendar view's title bar, opens the calendar as a page. Each day lists its tasks by name: due, then scheduled (⏳), then repeats (↻, dashed), with **+3 more**. Click a day to choose it; its panel sits beside or under the month, or in the Context sidebar while that is open. Double-click a day, or press Enter on it, to open its note. The panel shows:
 
 - the day's name, such as *Friday, September 25 · Today*, and its daily note, **Open** or **Create**;
-- tasks due, then scheduled, five of each with **Show 7 more**, each with a checkbox and a **Tomorrow** button (**Next day** after tomorrow) that moves its date, with Undo;
+- tasks due, then scheduled, five of each with **Show 7 more**, each with a checkbox and a **Tomorrow** button (**Next day** after tomorrow) that moves its date, with Undo, shown on the row under the pointer or with focus;
 - tasks done that day, folded; uncheck to reopen;
 - notes created that day, apart from daily, weekly, and monthly notes. After five, **Search all 14** opens `created = 2026-09-25`.
 
-**Close Day Panel** brings back one-click opening.
+On the page:
 
-**Repeats.** A repeating task shows a muted **↻** on every later date its rule lands on in the visible weeks, and a **Repeats** group in the day panel. These dates are not written; a row opens the task. A `when done` rule shows only its next date.
-
-**Weekends.** Choose **Hide Weekends** from the `…` menu, or **Weekends** in the calendar page's gear, to show five working days, in the sidebar and on the calendar page. **Include Weekends** brings them back.
-
-**The calendar page.** `Deckard: Open Calendar`, **Calendar** at the top of the Context view, or the button in the Calendar view's title bar, opens the calendar as a page. Each day lists its tasks by name: due, then scheduled (⏳), then repeats (↻, dashed), with **+3 more**. Click a day to choose it; its panel sits beside or under the month, or in the Context sidebar while that is open.
-
-- **Month** and **Week** switch layouts.
+- The top right reads **‹ Today ›**, **Month | Week**, and **⋯**: the arrows step, **Today** returns, and **Month** and **Week** switch layouts. **⋯** holds **Show weekends**, **Theme…** and **Zen**, **Help on this page**, and **Keyboard shortcuts**.
 - Drag a due or scheduled task to another day to move its date. Repeats stay put.
 - Keys: `[` and `]` step, `t` returns to today, `m` and `w` switch the layout, `?` lists the keys.
 

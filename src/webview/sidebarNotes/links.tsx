@@ -35,7 +35,7 @@ function LinkRow({ entry, view, extra, withTitle }: LinkRowProps) {
   return (
     <li class="link-row">
       <div class="link-line">
-        <button type="button" class="link-open" data-action="open-link" data-file-path={entry.filePath} data-line={entry.line} data-tip="Open this line. Cmd/Ctrl-click to open it beside the note.">
+        <button type="button" class="link-open note-text" data-action="open-link" data-file-path={entry.filePath} data-line={entry.line} data-tip="Open this line. Cmd/Ctrl-click to open it beside the note.">
           {withTitle ? <span class="link-note">{entry.title}</span> : null}
           {entry.headingPath && entry.headingPath.length ? <span class="link-path">{entry.headingPath.join(' › ')}</span> : null}
           <span class="link-context">{entry.text}</span>
@@ -61,7 +61,7 @@ function LinkGroup({ group, view }: { readonly group: NoteLinkGroup; readonly vi
   return (
     <section class="link-group" aria-label={group.title}>
       <div class="link-group-head">
-        <button type="button" class="link-group-open" data-action="open-link" data-file-path={group.filePath} data-line={first ? first.line : 1} data-tip={`Open ${group.title} at its first link here`}>{group.title}</button>
+        <button type="button" class="link-group-open note-text" data-action="open-link" data-file-path={group.filePath} data-line={first ? first.line : 1} data-tip={`Open ${group.title} at its first link here`}>{group.title}</button>
         {meta ? <span class="link-group-meta">{meta}</span> : null}
       </div>
       <ul class="link-list">{group.entries.map((entry) => <LinkRow entry={entry} view={view} />)}</ul>

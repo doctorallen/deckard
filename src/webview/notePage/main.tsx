@@ -5,16 +5,18 @@
  * the editor, and Cmd/Ctrl with Shift opens it there beside; a note opened
  * on this page replaces the one shown.
  */
+import type { ComponentChildren } from 'preact';
+
 import type { NoteBreadcrumb, NotePageMessage, NotePageSnapshot, NoteProperty } from '../../ui/protocol/notePage';
 import type { StateMessage } from '../../ui/protocol/messaging';
-import { HelpButton, IconButton } from '../shared/buttons';
-import { Eyebrow } from '../shared/eyebrow';
+import { IconButton } from '../shared/buttons';
 import { ProgressBar } from '../shared/progressBar';
 import { ProgressWords } from '../shared/progressWords';
 import { type ActionHandler, listenForActions, onHostMessage, readEmbeddedState, startPage } from '../shared/page';
+import { PageBar } from '../shared/pageBar';
 import { announce } from '../shared/status';
 import { TagButton } from '../shared/tagButton';
-import { displayLevelOption, installViewOptions, pageWidthOption, themeOption, ViewOptions } from '../shared/viewOptions';
+import { installViewOptions, type ViewOptionItem } from '../shared/viewOptions';
 import { keepState, post } from '../shared/vscode';
 import { Blocks } from '../shared/noteBlocks';
 
@@ -29,21 +31,33 @@ interface NotePageState {
 }
 
 /**
- * Back, Forward, Open in Editor, Help, and the gear, at the right of the
- * header, where every page keeps its own.
+ * The bar's secondaries, Back, Forward and Open in Editor, a plain button
+ * since it goes somewhere rather than commits anything; ⋯ follows them.
  */
-function Toolbar({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
+function NoteControls({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
   return (
-    <div class="toolbar" role="group" aria-label="Note">
+    <>
       <span class="history-buttons" role="group" aria-label="Note history">
         <IconButton action="history-back" label="Back to the note before" icon="‹" disabledReason={snapshot.history.back ? '' : 'No note before this one'} />
         <IconButton action="history-forward" label="Forward to the next note" icon="›" disabledReason={snapshot.history.forward ? '' : 'No note after this one'} />
       </span>
       <button type="button" data-action="open-in-editor" disabled={snapshot.missing} data-tip="Open this note in the editor · Cmd/Ctrl-click: beside">Open in Editor</button>
-      <HelpButton anchor="links" />
-      <ViewOptions groups={[themeOption(), pageWidthOption(), displayLevelOption()]} />
-    </div>
+    </>
   );
+}
+
+/**
+ * ⋯'s first rows: what can be done with the note outside the editor, from
+ * the one note-action table that Note Actions and the editor's Deckard
+ * submenu list too, as the host sends them.
+ */
+function noteActionRows(snapshot: NotePageSnapshot): ViewOptionItem[] {
+  return (snapshot.actions ?? []).map((action) => ({ action: 'run-note-action', text: action.title, attributes: { 'data-command': action.command } }));
+}
+
+/** The bar every page draws: the note's place and title at the left, its controls and ⋯ at the right, which holds the note's actions, Appearance and Help. */
+function NoteBar({ snapshot, trail, lead }: { readonly snapshot: NotePageSnapshot; readonly trail: string; readonly lead: ComponentChildren }) {
+  return <PageBar trail={trail} leadClass="note-lead" label="Note" lead={lead} controls={<NoteControls snapshot={snapshot} />} menu={{ actions: noteActionRows(snapshot), pageWidth: true }} />;
 }
 
 /** Each way up from the note to its hubs, a step that is a note a button that opens it. */
@@ -146,11 +160,11 @@ function LinkedFrom({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
       <ul>
         {snapshot.backlinks.map((link) => (
           <li class="note-backlink">
-            <button type="button" class="note-backlink-title" data-action="open-note" data-file-path={link.filePath}>{link.title}</button>
+            <button type="button" class="note-backlink-title note-text" data-action="open-note" data-file-path={link.filePath}>{link.title}</button>
             {link.count > link.lines.length ? <span class="note-backlink-more">{` ${link.count} lines`}</span> : null}
             <ul class="note-backlink-lines">
               {link.lines.map((line) => (
-                <li><button type="button" class="note-backlink-line" data-action="open-note" data-file-path={link.filePath} data-line={line.line}>{line.text}</button></li>
+                <li><button type="button" class="note-backlink-line note-text" data-action="open-note" data-file-path={link.filePath} data-line={line.line}>{line.text}</button></li>
               ))}
             </ul>
           </li>
@@ -165,27 +179,26 @@ function NotePage({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
   if (snapshot.missing) {
     return (
       <>
-        <header>
-          <div class="note-lead"><Eyebrow trail="NOTE" /><h1>{snapshot.title}</h1></div>
-          <Toolbar snapshot={snapshot} />
-        </header>
+        <NoteBar snapshot={snapshot} trail="NOTE" lead={<h1 class="note-text">{snapshot.title}</h1>} />
         <p class="note-missing">Deckard has no note at {snapshot.filePath} now. It may have been moved, renamed, or deleted.</p>
       </>
     );
   }
   return (
     <>
-      <header>
-        <div class="note-lead">
-          <Eyebrow trail={snapshot.folder ? `NOTE / ${snapshot.folder.toUpperCase()}` : 'NOTE'} />
-          <h1>{snapshot.title}</h1>
-          <Breadcrumbs crumbs={snapshot.breadcrumbs} />
-          {snapshot.hub ? <HubLine hub={snapshot.hub} /> : null}
-          {snapshot.taskProgress ? <TaskLine progress={snapshot.taskProgress} /> : null}
-          <Properties properties={snapshot.properties} />
-        </div>
-        <Toolbar snapshot={snapshot} />
-      </header>
+      <NoteBar
+        snapshot={snapshot}
+        trail={snapshot.folder ? `NOTE / ${snapshot.folder.toUpperCase()}` : 'NOTE'}
+        lead={(
+          <>
+            <h1 class="note-text">{snapshot.title}</h1>
+            <Breadcrumbs crumbs={snapshot.breadcrumbs} />
+            {snapshot.hub ? <HubLine hub={snapshot.hub} /> : null}
+            {snapshot.taskProgress ? <TaskLine progress={snapshot.taskProgress} /> : null}
+            <Properties properties={snapshot.properties} />
+          </>
+        )}
+      />
       <article class="note-body" aria-label={snapshot.title}>
         {snapshot.blocks.length
           ? <Blocks blocks={snapshot.blocks} context={{ tags: snapshot.tags }} />
@@ -265,7 +278,6 @@ function modifiers(event: MouseEvent | KeyboardEvent): { opposite?: true; beside
 const ACTIONS: Readonly<Record<string, ActionHandler>> = {
   'history-back': () => send({ type: 'navigateNoteHistory', direction: 'back' }),
   'history-forward': () => send({ type: 'navigateNoteHistory', direction: 'forward' }),
-  'open-help': () => send({ type: 'openHelp' }),
   'open-in-editor': (_element, event) => {
     const line = lineInView();
     send({ type: 'openInEditor', ...(line ? { line } : {}), ...(event.metaKey || event.ctrlKey ? { beside: true } : {}) });
@@ -281,6 +293,7 @@ const ACTIONS: Readonly<Record<string, ActionHandler>> = {
     ...modifiers(event),
   }),
   'open-tag': (element) => send({ type: 'openTag', tagKey: String(element.dataset.tagKey) }),
+  'run-note-action': (element) => send({ type: 'runNoteAction', command: String(element.dataset.command) }),
   // An image shows fitted to the column; selecting it shows it whole, and back.
   'toggle-image-size': (element) => {
     const whole = element.classList.toggle('is-whole');

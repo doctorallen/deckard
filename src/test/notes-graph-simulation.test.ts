@@ -69,7 +69,7 @@ interface GraphModules {
 
 const graph = loadGraphModules<GraphModules>(['model', 'simulation', 'canvas']);
 
-/** The settings a new page starts with. */
+/** The settings a new page starts with, and the fixed layout. */
 const DEFAULTS = {
   showNotes: true, showTasks: true, showTags: false, showOrphans: true, showParked: false, onlyWrittenLinks: false,
   selectedTags: [], group: '', search: '', nodeSize: 1, linkThickness: 1, linkDensity: 0.3, tagSpecificity: 0.9,
@@ -372,7 +372,7 @@ suite('Notes Graph canvas', () => {
     assert.strictEqual(setting(calls, 'font', calls.findIndex((call) => call.op === 'strokeText')), '700 12px Mono');
   });
 
-  test('zoomed in past Label fade zoom, each node big enough is named, cut to 28 characters', () => {
+  test('zoomed in past the zoom where every note is named, each node big enough is named, cut to 28 characters', () => {
     const long = 'A title far too long to be drawn in full under its node';
     const state = layout([node(long), node('short')], [], [[0, 0], [60, 0]]);
     state.nodes[0].degree = 100;

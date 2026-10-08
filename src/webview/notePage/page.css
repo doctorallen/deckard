@@ -5,13 +5,13 @@
 @import "../shared/base.css";
 @import "../shared/noteBlocks.css";
 
-/* The header, as every page draws it: what the note is called, where it
-   sits, and its properties at the left, its toolbar at the right. */
-/* A note's header runs tall, with its progress and properties, so its
-   toolbar sits at the top, beside the title, as the Task Board's does. */
+/* The bar, as every page draws it: what the note is called, where it
+   sits, and its properties at the left, its controls and ⋯ at the right. */
+/* A note's bar runs tall, with its progress and properties, so its
+   controls sit at the top, beside the title, as the Task Board's do. */
 header { align-items: flex-start; }
 .note-lead { display: grid; align-content: start; gap: var(--space-2); min-width: 0; }
-header > .toolbar { flex: 0 0 auto; flex-wrap: nowrap; }
+header > .page-bar-actions { flex: 0 0 auto; flex-wrap: nowrap; }
 .note-breadcrumbs { display: grid; gap: 2px; }
 .note-breadcrumb { margin: 0; color: var(--muted); font-size: var(--text-sm); }
 .note-crumb { min-height: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; }

@@ -6,6 +6,7 @@ import type { Task } from '../../../../domain/model';
 import type { NavigationService } from '../../../../services/navigationService';
 import type { NotePagePageToHost, NotePageSnapshot } from '../../../protocol/notePage';
 import { openResultAt } from '../../../commands/navigation';
+import { NOTE_ACTIONS, notePageActions } from '../../../commands/noteActionTable';
 import { readQueryContext } from '../../../commands/queryContext';
 import type { TaskWrites } from '../../../commands/taskActions';
 import { findHubTagKey } from '../../../state/hubTree';
@@ -21,7 +22,6 @@ import {
   openGoTo,
   openHelp,
   openTag,
-  displayCommand,
   setDisplay,
   setZenMode,
   toggleTask,
@@ -48,6 +48,8 @@ export interface NotePageControllerOptions {
   activeNotePage?: ActiveNotePage;
   /** Opens a search on a search page of its own. */
   onOpenSearch?: (query: string) => void | Promise<void>;
+  /** Whether a note is pinned to Home, so ⋯ offers Pin or Unpin. */
+  isNotePinned?: (filePath: string) => boolean;
 }
 
 /** How many notes Back holds, so a long reading leaves a bounded trail. */
@@ -87,7 +89,6 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
       goToPage: goToPage(),
       setZenMode: setZenMode(),
       setDisplay: setDisplay(),
-      displayCommand: displayCommand(),
       chooseTheme: chooseTheme(),
       openHelp: openHelp('links'),
       openNote: (message, page) => this.open(page, { filePath: message.filePath, line: message.line }, message),
@@ -97,6 +98,7 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
       toggleTask: toggleTask({ writes: notes.writes, findTask: (taskId): Task | undefined => indexer.getSnapshot().tasks.get(taskId) }),
       navigateNoteHistory: (message, page) => this.step(page, message.direction),
       openSearch: (message) => this.openSearch(message.query),
+      runNoteAction: (message, page) => this.runNoteAction(page, message.command),
     };
   }
 
@@ -138,7 +140,46 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
       history: { back: this.back.length > 0, forward: this.forward.length > 0 },
       visit: this.visit,
     });
-    return this.withImages(snapshot, this.current.filePath);
+    return this.withImages(this.withActions(snapshot), this.current.filePath);
+  }
+
+  /**
+   * The snapshot with ⋯'s note actions: the rows of the one note-action
+   * table that make sense outside the editor, as the note is now pinned
+   * and parked. A missing note has none.
+   */
+  private withActions(snapshot: NotePageSnapshot): NotePageSnapshot {
+    if (snapshot.missing) {
+      return snapshot;
+    }
+    const filePath = snapshot.filePath;
+    const actions = notePageActions({
+      pinned: this.notes.isNotePinned?.(filePath) ?? false,
+      parked: this.notes.indexer.getSnapshot().parked?.files.has(filePath) ?? false,
+    });
+    return { ...snapshot, actions: actions.map((action) => ({ command: action.command, title: action.title })) };
+  }
+
+  /**
+   * Runs one of ⋯'s note actions on the note shown, by its command, with
+   * what the command needs to name the note rather than the editor's, then
+   * draws again, so Pin reads Unpin.
+   */
+  private async runNoteAction(page: PageContext, command: string): Promise<void> {
+    const action = NOTE_ACTIONS.find((candidate) => candidate.page && candidate.command === command);
+    const filePath = this.current?.filePath;
+    const uri = filePath ? this.notes.indexer.getUri(filePath) : undefined;
+    if (!action || !filePath || !uri) {
+      return;
+    }
+    const args: Record<NonNullable<typeof action.page>, unknown[]> = {
+      none: [],
+      filePath: [filePath],
+      uri: [uri],
+      uriText: [uri.toString(), 1],
+    };
+    await vscode.commands.executeCommand(action.command, ...args[action.page ?? 'none']);
+    page.refresh();
   }
 
   /**

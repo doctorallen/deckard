@@ -10,3 +10,11 @@
  */
 
 :is(select, input[type="text"], input[type="search"], .query-bar-shell):not(:hover):not(:focus):not(:focus-within):not([data-has-query]):not(.invalid):not(:disabled) { border-color: var(--control-line); }
+
+/* Builder joined to the start of the search field, as one control: no gap,
+   one edge between the two (the field's), square where they meet, and
+   drawn in the field's resting edge until hovered, focused or pressed.
+   Here, after the themes, since each draws its buttons its own way. */
+.query-field-group > .query-builder-toggle { margin: 0; border-right-width: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; clip-path: none; }
+.query-field-group > .query-builder-toggle:not(:hover):not(:focus-visible):not(.active) { border-color: var(--control-line); }
+.query-field-group > .query-bar-shell { margin: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }

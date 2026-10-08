@@ -10,7 +10,6 @@ import type { WorkspaceIndex } from '../../../../domain/model';
 import type { QueryContext } from '../../../../domain/query/queryContext';
 import type { NavigationService } from '../../../../services/navigationService';
 import type {
-  DashboardHostToPage,
   DashboardPageState,
   DashboardPageToHost,
   DashboardSnapshot,
@@ -23,7 +22,6 @@ import type { WhatsNew } from '../../../commands/whatsNew';
 import { createDashboardSnapshot, getSavedFilterQuery, mergeOrder } from '../../../state/dashboardState';
 import { createDashboardWidgets } from '../../../state/dashboardWidgets';
 import type { TryNextSuggestion } from '../../../state/tryNext';
-import type { ActiveHome, HomeSource, HomeWidgetChoice } from '../../activeHome';
 import { getDashboardHtml } from '../../dashboardHtml';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import {
@@ -31,11 +29,11 @@ import {
   goToPage,
   listGoTo,
   openGoTo,
+  openHelp,
   openSource,
   openTag,
   parkTag,
   renameTag,
-  displayCommand,
   setDisplay,
   setZenMode,
   toggleTask,
@@ -43,7 +41,6 @@ import {
 import type { PageChrome } from '../../components';
 import { narrowDashboardMessage } from './messages';
 import { isDefaultHomeLayout } from '../../../../core/storage/preferencesSchema';
-import { readDateFormats } from '../../../commands/datePrompt';
 
 /** Today, as a day number, so a rollover is one comparison. */
 function startOfToday(): number {
@@ -58,9 +55,6 @@ export interface DashboardNavigation {
   openTaskBoard(query?: string): void | Promise<void>;
   /** Opens today's daily note, creating it first when needed. */
   openDailyNote(): void | Promise<void>;
-  /** Adds a task to today's daily note; true when it was added. */
-  quickAdd(text: string): boolean | Promise<boolean>;
-  createHubNote(tagKey: string): void | Promise<void>;
   /** Asks for a next action for a tag, and captures it to today's note. */
   addNextAction?(tagLabel: string): void | Promise<unknown>;
 }
@@ -90,8 +84,6 @@ export interface DashboardControllerOptions {
   writes: TaskWrites;
   /** What a row's line or tag may open. */
   navigationService: NavigationService;
-  /** What Related Notes is handed while Home is in front: the Dashboard's panel. */
-  source: HomeSource;
 }
 
 /** Some of Home's handlers, by the types they answer. */
@@ -117,14 +109,8 @@ export class DashboardController implements PageController<DashboardPageState, D
   };
   public readonly narrow = narrowDashboardMessage;
   public readonly handlers: MessageHandlers<DashboardPageToHost>;
-  /** Where Home says it is in front, so Related Notes can offer its widgets. */
-  public activeHome?: ActiveHome;
-  /** The widgets + Add widget offers, as the page last listed them. */
-  private widgetChoices: HomeWidgetChoice[] = [];
   private dashboardMode: DashboardMode;
   private dashboardTagColumns: DashboardColumnCount;
-  /** The note last open in an editor, which Home's widgets can follow. */
-  private sourceNotePath: string | undefined;
   /** The day the widgets were built for: Today goes stale when it turns. */
   private publishedOn = startOfToday();
   /**
@@ -146,11 +132,6 @@ export class DashboardController implements PageController<DashboardPageState, D
       ...this.widgetHandlers(),
       ...this.tryNextHandlers(),
     };
-  }
-
-  /** The widgets + Add widget offers, as the page last listed them. */
-  public getWidgetChoices(): HomeWidgetChoice[] {
-    return this.widgetChoices;
   }
 
   /** The page's template, in the reader's theme, with the heart icons it loads from the extension. */
@@ -198,10 +179,9 @@ export class DashboardController implements PageController<DashboardPageState, D
 
   /**
    * What else redraws Home besides the index and its theme: What's new and
-   * Try next changing, the note in the editor changing while a widget
-   * follows it, a visit while Recently opened is shown, the preferences,
-   * and the agenda's settings, which it draws from. The host listens to the theme and zen
-   * first, so an edit that changes the theme and the agenda at once resets
+   * Try next changing, a visit while Recently opened is shown, the
+   * preferences, and the agenda's settings, which it draws from. The host
+   * listens to the theme and zen first, so an edit that changes the theme and the agenda at once resets
    * the page's HTML before either sends it a snapshot, as it always did.
    */
   public subscribe(page: PageContext): vscode.Disposable[] {
@@ -213,15 +193,7 @@ export class DashboardController implements PageController<DashboardPageState, D
     if (tryNext) {
       disposables.push(tryNext.onDidChange(() => page.refresh()));
     }
-    this.followEditor(vscode.window.activeTextEditor);
     disposables.push(
-      vscode.window.onDidChangeActiveTextEditor((editor) => {
-        const previous = this.sourceNotePath;
-        this.followEditor(editor);
-        if (this.sourceNotePath !== previous && this.followsSourceNote()) {
-          page.refresh();
-        }
-      }),
       // A visit is kept quietly; only Home's Recently opened shows it.
       preferences.reader.onDidRecordVisit(() => {
         if (
@@ -244,7 +216,7 @@ export class DashboardController implements PageController<DashboardPageState, D
         page.refresh();
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.agenda')) {
+        if (event.affectsConfiguration('deckard.agenda') || event.affectsConfiguration('deckard.tasks.viewQuery')) {
           page.refresh();
         }
       }),
@@ -269,37 +241,6 @@ export class DashboardController implements PageController<DashboardPageState, D
    */
   public isOutOfDate(): boolean {
     return this.publishedOn !== startOfToday();
-  }
-
-  /** A panel that opens in front makes Home the active source. */
-  public onDidAttach(page: PageContext): void {
-    if (page.surface?.active) {
-      this.activeHome?.setActive(this.home.source);
-    }
-  }
-
-  /** Home is the active source while its panel is in front, and only then. */
-  public onDidChangeViewState(page: PageContext): void {
-    if (page.surface?.active) {
-      this.activeHome?.setActive(this.home.source);
-    } else {
-      this.activeHome?.release(this.home.source);
-    }
-  }
-
-  /** A closed panel is no longer in front. */
-  public onDidDetach(): void {
-    this.activeHome?.release(this.home.source);
-  }
-
-  /**
-   * Home disposed of is no longer in front. The host drops the panel's
-   * listeners before it closes the panel, so onDidDetach never hears that
-   * close, and Home used to stay the active source, with Related Notes
-   * offering widgets for a page that was gone.
-   */
-  public dispose(): void {
-    this.activeHome?.release(this.home.source);
   }
 
   /**
@@ -330,7 +271,7 @@ export class DashboardController implements PageController<DashboardPageState, D
    * Puts back the widgets Home starts with, after a modal confirmation: it
    * discards an arrangement, which cannot be taken back.
    */
-  public async resetWidgets(): Promise<void> {
+  private async resetWidgets(): Promise<void> {
     const choice = await vscode.window.showWarningMessage(
       'Reset Home to its default widgets?',
       {
@@ -344,16 +285,16 @@ export class DashboardController implements PageController<DashboardPageState, D
     }
   }
 
-  /** The gear, a row's line, a task's box, and a tag's menu, as other pages answer them. */
+  /** The ⋯, a row's line, a task's box, and a tag's menu, as other pages answer them. */
   private sharedHandlers(): Handlers<
-    'setZenMode' | 'setDisplay' | 'displayCommand' | 'chooseTheme' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'toggleTask' | 'openTag' | 'renameTag' | 'parkTag' | 'unparkTag'
+    'setZenMode' | 'setDisplay' | 'chooseTheme' | 'openHelp' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'toggleTask' | 'openTag' | 'renameTag' | 'parkTag' | 'unparkTag'
   > {
     const { indexer, navigationService, preferences, navigation, writes } = this.home;
     return {
       setZenMode: setZenMode(),
       setDisplay: setDisplay(),
-      displayCommand: displayCommand(),
       chooseTheme: chooseTheme(),
+      openHelp: openHelp('home'),
       openGoTo: openGoTo(),
       listGoTo: listGoTo({ indexer, current: 'home' }),
       goToPage: goToPage(),
@@ -387,7 +328,6 @@ export class DashboardController implements PageController<DashboardPageState, D
     | 'setDashboardColumns'
     | 'reorderTags'
     | 'reorderEntities'
-    | 'createTagHub'
     | 'addNextAction'
   > {
     const { indexer, preferences, navigation } = this.home;
@@ -421,15 +361,6 @@ export class DashboardController implements PageController<DashboardPageState, D
           await preferences.favorites.setEntityAccessOrder(
             mergeOrder(message.entityKeys, indexer.getSnapshot().entities.keys()),
           );
-        }
-      },
-      // A tag that has a hub already opens it instead.
-      createTagHub: async (message) => {
-        const index = indexer.getSnapshot();
-        if (index.tags.get(message.tagKey)?.hubFilePaths?.length) {
-          await navigation.openTag(message.tagKey);
-        } else if (index.tags.has(message.tagKey)) {
-          await navigation.createHubNote(message.tagKey);
         }
       },
       addNextAction: async (message) => {
@@ -471,12 +402,10 @@ export class DashboardController implements PageController<DashboardPageState, D
   private widgetHandlers(): Handlers<
     | 'setDashboardWidgets'
     | 'resetDashboardWidgets'
-    | 'widgetChoices'
     | 'openWhatsNew'
     | 'dismissWhatsNew'
     | 'openView'
     | 'openDailyNote'
-    | 'quickAdd'
     | 'openNote'
     | 'pinNote'
     | 'unpinNote'
@@ -493,35 +422,18 @@ export class DashboardController implements PageController<DashboardPageState, D
           ),
         ),
       resetDashboardWidgets: () => this.resetWidgets(),
-      widgetChoices: (message) => {
-        this.widgetChoices = message.choices;
-        this.activeHome?.notifyChanged(this.home.source);
-      },
       openWhatsNew: () => vscode.commands.executeCommand('deckard.openWhatsNew'),
       dismissWhatsNew: () => this.home.whatsNew?.clear(),
       openView: (message) =>
         vscode.commands.executeCommand(
           {
             agenda: 'deckard.agenda.focus',
-            stats: 'deckard.showStats',
             sampleWorkspace: 'deckard.createWorkSample',
             checkSetup: 'deckard.checkSetup',
             walkthrough: 'deckard.openWalkthrough',
           }[message.view],
         ),
       openDailyNote: () => navigation.openDailyNote(),
-      // The page holds the task as "Adding…" until it is answered, so a
-      // capture that fails, such as on a read-only disk, still answers, and
-      // the page gives the text back.
-      quickAdd: async (message, page) => {
-        let added = false;
-        try {
-          added = await navigation.quickAdd(message.text.trim());
-        } finally {
-          const result: DashboardHostToPage['quickAddResult'] = { type: 'quickAddResult', text: message.text, added };
-          page.post(result);
-        }
-      },
       openNote: async (message) => {
         if (indexer.getSnapshot().files.has(message.filePath)) {
           await openNoteAt(message.filePath, 1, { pin: true, opposite: message.opposite === true });
@@ -610,41 +522,8 @@ export class DashboardController implements PageController<DashboardPageState, D
     return createDashboardWidgets(index, viewPreferences, {
       queryContext,
       agendaQuery: readAgendaQuery(configuration),
-      sourceNotePath: this.getSourceNotePath(),
       ...(tryNext ? { tryNext } : {}),
-      relatedNotesRanking: { dateFormats: readDateFormats() },
     });
-  }
-
-  /** Remembers a note's editor; other editors, and none, leave it as it was. */
-  private followEditor(editor: vscode.TextEditor | undefined): void {
-    const uri = editor?.document.uri;
-    // A test's indexer may not tell notes apart; then no editor is followed.
-    if (uri && this.home.indexer.isNotesFile?.(uri)) {
-      this.sourceNotePath = this.home.indexer.getFilePath(uri);
-    }
-  }
-
-  /** Whether a widget on Home shows something about the last note. */
-  private followsSourceNote(): boolean {
-    return this.home.preferences.reader.value.dashboardWidgets.some(
-      (widget) => widget.kind === 'relatedNotes' || widget.kind === 'pinnedNotes',
-    );
-  }
-
-  /**
-   * The note last open in an editor, or else the note last opened from
-   * Deckard.
-   */
-  private getSourceNotePath(): string | undefined {
-    if (this.sourceNotePath) {
-      return this.sourceNotePath;
-    }
-    const index = this.home.indexer.getSnapshot();
-    const [latest] = Object.entries(this.home.preferences.reader.value.sectionAccessTimes ?? {})
-      .filter(([sectionId]) => index.sections.has(sectionId))
-      .sort((left, right) => right[1] - left[1]);
-    return latest ? index.sections.get(latest[0])?.filePath : undefined;
   }
 
   /**

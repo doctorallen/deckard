@@ -1,0 +1,44 @@
+/*
+ * One reveal rule for a row's own actions: the calendar day panel's
+ * Tomorrow or Next day, a board card's ⋯, and a list or table row's ⋯.
+ *
+ * Each was drawn on every row at every step, ten Next day buttons down a day
+ * and fifty ⋯ down a full board, though right-click and the menu keys
+ * already open the same menu. A control marked `data-reveal` is drawn at no
+ * opacity while the pointer is off its `data-reveal-region` and focus is
+ * outside it, and shows on the region's hover or focus, on its own keyboard
+ * focus, and while the menu it opens is open, as Context's link button does
+ * (sidebarNotes/notes.css). A region or control marked `data-reveal-keep`
+ * keeps it shown, and so does a screen with no pointer that hovers.
+ *
+ * Opacity only: never display or visibility, so each control keeps its
+ * place, its Tab stop and its name for a screen reader, and nothing moves
+ * when it shows. It comes after the theme, so no theme draws one back.
+ */
+
+@media (hover: hover) {
+  [data-reveal-region]:not(:hover, :focus-within, [data-reveal-keep]) [data-reveal]:not(:focus-visible, [aria-expanded="true"], [data-reveal-keep]) { opacity: 0; }
+}
+
+/*
+ * Zen (plan 29, R22) quiets the tools under a page's bar the same way, in
+ * regions of its own, which act only while the body is marked
+ * `data-controls="quiet"`: a tool marked `data-zen-reveal` is drawn at no
+ * opacity until its `data-zen-region` is pointed at or holds focus. The
+ * regions are the Task board's search card and each of its columns, a
+ * search page's results heading, Home's tab row, Context's band and its
+ * Related heading, and each week row of a calendar. The page's bar, the
+ * search field, content switches, links that carry data and the page's
+ * own job are never marked, and a tool whose value is shaping the page is
+ * marked `data-reveal-keep` and stays drawn.
+ *
+ * Typing a search does not count as focus in the region, so the tools
+ * beside the field stay quiet while it is used; each still shows on its
+ * own keyboard focus. An open disclosure, such as a gear's menu, stays
+ * shown. A segmented group is one target, so it never shows one segment
+ * alone. Zen regions never nest, since a target hides while any region
+ * around it is at rest.
+ */
+@media (hover: hover) {
+  body[data-controls=quiet] [data-zen-region]:not(:hover, :focus-within:not(:has(.query-input:focus)), [data-reveal-keep]) [data-zen-reveal]:not(:focus-visible, [aria-expanded="true"], [open], [data-reveal-keep]) { opacity: 0; }
+}

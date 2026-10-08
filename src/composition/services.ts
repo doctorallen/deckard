@@ -15,7 +15,7 @@ import { UsageService } from '../core/storage/preferencesUsage';
 import { SearchStore } from '../core/storage/searchStore';
 import { reportError, setTimingLog } from '../shared/timing';
 import { tidyAfterUpdate } from './tidyPreferences';
-import { carryMovedSettingsOnce } from './movedSettings';
+import { carryMovedSettingsOnce, carryRenamedSettingsOnce } from './movedSettings';
 import { createWorkspaceIndex } from '../core/workspace/indexer';
 import type { IndexRoles } from '../core/workspace/indexReader';
 import { WorkspaceScanner } from '../core/workspace/scanner';
@@ -24,10 +24,9 @@ import { createVscodeProgress } from '../platform/vscodeProgress';
 import { createVscodeWorkspace } from '../platform/vscodeWorkspace';
 import { createVscodeWorkspaceEvents } from '../platform/vscodeWorkspaceEvents';
 import { VIEW_PRIORITY } from '../core/workspace/publishing';
-import { captureToToday, createCaptureNotes } from '../ui/commands/capture';
+import { createCaptureNotes } from '../ui/commands/capture';
 import type { AddTaskContext } from '../ui/commands/addTask';
 import { CaptureService } from '../services/captureService';
-import { createHubNote } from '../ui/commands/hubNote';
 import { createDailyNoteWithRollover, createRolloverService, VscodeRolloverService } from '../ui/commands/rollover';
 import { createReviewService, ReviewWrites } from '../ui/commands/review';
 import { TaskWrites } from '../ui/commands/taskActions';
@@ -52,7 +51,6 @@ import { CalendarView } from '../ui/webview/calendar';
 import { CalendarPanel } from '../ui/webview/calendarPage';
 import { ActiveCalendar } from '../ui/webview/activeCalendar';
 import { ActiveNotePage } from '../ui/webview/activeNotePage';
-import { ActiveHome } from '../ui/webview/activeHome';
 import { readManifestTools } from '../core/mcp/mcpProtocol';
 import { DeckardMcpServer } from '../ui/commands/mcpServer';
 import { ActivePinContext } from '../ui/commands/pinNote';
@@ -89,11 +87,11 @@ import { SearchPanels } from '../ui/webview/searchPage';
 import { setZenMode, startZenMode, toggleZenMode } from '../ui/webview/zenMode';
 import { getSampleStorageUri, SAMPLE_FOLDER_NAMES, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
 import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/firstIndex';
-import { suggestEsperThemesOnce } from '../ui/commands/esperThemes';
 import { initWriteTarget, isPausedHere, looksLikeCodeRepository, onDidChangePaused, readNotesFolder } from '../ui/commands/writeTarget';
 import { ScopeStatusBar } from '../ui/views/scopeStatusBar';
 import { countUnknownStatuses, noticeUnknownStatusesOnce } from '../ui/commands/otherCheckboxes';
 import { offerStatusMigrationOnce } from '../ui/commands/statusMove';
+import { type FirstRunNotice, sayOneNotice } from '../ui/commands/firstRunNotices';
 import { openSettingAction, settingLabel } from '../ui/commands/notify';
 import { PreferenceSnapshots } from '../core/storage/preferenceSnapshots';
 import { OutlineTreeProvider } from '../ui/views/outlineTree';
@@ -173,7 +171,7 @@ export interface Pages {
 export interface PageCommands {
   /** What Show Notes Graph keeps of the options it was run with. */
   readNotesGraphOptions: typeof readNotesGraphOptions;
-  /** Goes to Zen, or back to the step the reader was on. */
+  /** Turns Zen on or off. */
   setZenMode: typeof setZenMode;
   /** Into Zen, or back out of it. */
   toggleZenMode: typeof toggleZenMode;
@@ -259,21 +257,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
   const writes = createWrites(core, preferences);
   const search = createSearch(context, core, preferences, writes);
   const editor = createEditorProviders(context, core, preferences);
-  offerExcludeHint(context, core.indexer, newWorkspace);
-  // Once per machine, and once per workspace, after the first index has had
-  // its say; never in a test run, where a message arriving mid-test would
-  // land in what a test records.
-  if (context.extensionMode !== vscode.ExtensionMode.Test) {
-    void core.indexer.ready
-      .then(() => suggestEsperThemesOnce(context.globalState))
-      .catch((error: unknown) => reportError('Could not suggest Esper Themes', error));
-    void core.indexer.ready
-      .then(() => noticeUnknownStatusesOnce(context.workspaceState, countUnknownStatuses(core.indexer.getSnapshot())))
-      .catch((error: unknown) => reportError('Could not count the tasks whose status Deckard does not know', error));
-    void core.indexer.ready
-      .then(() => offerStatusMigrationOnce(context.workspaceState, core.indexer, { board: { reader: preferences.repository, taskLayout: preferences.taskLayout } }))
-      .catch((error: unknown) => reportError('Could not offer to move status tags into checkboxes', error));
-  }
+  offerFirstRunNotices(context, { core, preferences }, newWorkspace);
   syncWalkthroughContext(context, core.indexer);
   createEditorContexts(context, core, preferences);
   const assistance = createLinksAndAssistance(context, core, preferences);
@@ -288,7 +272,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     whatsNew,
     tryNext,
   });
-  const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, dashboard: home.dashboard, whatsNew, writes });
+  const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, whatsNew, writes });
   const trees = createTreesAndAddTask(context, core, preferences, writes);
   // With the note page in front, the Outline lists its note's headings.
   trees.outline.followNotePage(sidebar.activeNotePage);
@@ -452,7 +436,7 @@ function createLedgers(context: vscode.ExtensionContext) {
   const tryNext = new TryNextLedger(context.workspaceState);
   context.subscriptions.push(tryNext);
   void whatsNew.onActivate();
-  // A sample opened from Create a Work Sample or the Story Tour shows its README once.
+  // A sample opened from Create a Work Sample shows its README once.
   void showSampleReadmeOnce(context);
   // One log for the whole extension. Its level, set from the Output panel,
   // decides how much of Deckard's timing it keeps.
@@ -530,6 +514,10 @@ function createPreferences(context: vscode.ExtensionContext, core: Core): Prefer
   // before any view is built from them.
   void carryMovedSettingsOnce(repository, { global: context.globalState, workspace: context.workspaceState }).catch(
     (error: unknown) => reportError('Could not carry the moved settings into the preferences', error),
+  );
+  // The settings that became another setting, carried once, with one notice.
+  void carryRenamedSettingsOnce({ global: context.globalState, workspace: context.workspaceState }).catch(
+    (error: unknown) => reportError('Could not carry the renamed settings', error),
   );
   // What Move to… ranks destinations by and records a heading in, wherever
   // it is run from.
@@ -677,7 +665,7 @@ function createEditorProviders(context: vscode.ExtensionContext, core: Core, pre
   const taskMetadataSuggestions = new TaskMetadataCompletionProvider(indexer).register();
   context.subscriptions.push(new SlashMenuProvider(indexer).register());
   context.subscriptions.push(new StatusSuggestionsProvider((uri) => indexer.isNotesFile(uri)).register());
-  const taskEditorActions = new TaskEditorActions();
+  const taskEditorActions = new TaskEditorActions((uri) => indexer.isNotesFile(uri));
   const taskLineContext = new TaskLineContext();
   return { tagDecorations, pins, tagSuggestions, taskMetadataSuggestions, taskEditorActions, taskLineContext };
 }
@@ -693,52 +681,94 @@ async function readsWholeRepository(): Promise<boolean> {
 }
 
 /**
+ * What the first index has to say, one notice to an activation, in this
+ * order: the offer to import a vault's statuses, or to move status tags into
+ * checkboxes; then what the first index read, or, for a very large
+ * workspace, how to leave folders out; then the tasks whose status Deckard
+ * doesn't know. They used to arrive together. Only the second is said in a
+ * test run, as before: a message arriving mid-test would land in what a test
+ * records.
+ */
+function offerFirstRunNotices(
+  context: vscode.ExtensionContext,
+  { core, preferences }: { core: Core; preferences: PreferenceParts },
+  newWorkspace: boolean,
+): void {
+  const testRun = context.extensionMode === vscode.ExtensionMode.Test;
+  const notices: FirstRunNotice[] = [
+    ...(testRun
+      ? []
+      : [{
+          say: () => offerStatusMigrationOnce(context.workspaceState, core.indexer, { board: { reader: preferences.repository, taskLayout: preferences.taskLayout } }),
+          failure: 'Could not offer to move status tags into checkboxes',
+        }]),
+    { say: () => offerExcludeHint(context, core.indexer, newWorkspace), failure: 'Could not say what the first index read' },
+    ...(testRun
+      ? []
+      : [{
+          say: () => noticeUnknownStatusesOnce(context.workspaceState, countUnknownStatuses(core.indexer.getSnapshot())),
+          failure: 'Could not count the tasks whose status Deckard does not know',
+        }]),
+  ];
+  void core.indexer.ready
+    .then(() => sayOneNotice(notices))
+    .catch((error: unknown) => reportError('Could not say what the first index found', error));
+}
+
+/**
  * A workspace's first index says what it read, once; a very large one is
  * worth one word about leaving folders out, said once, and only when nothing
  * is left out yet.
+ * @returns Whether either was said.
  */
-function offerExcludeHint(
+async function offerExcludeHint(
   context: vscode.ExtensionContext,
   indexer: IndexRoles<vscode.Uri>,
   newWorkspace: boolean,
-): void {
-  void indexer.ready.then(async () => {
-    const notes = indexer.getSnapshot().files.size;
-    const exclude = vscode.workspace.getConfiguration('deckard').get<Record<string, unknown>>('exclude', {});
-    const storage = getSampleStorageUri(context.globalStorageUri);
-    const samples = SAMPLE_FOLDER_NAMES.map((name) => vscode.Uri.joinPath(storage, name).toString());
-    const summarized = await summarizeFirstIndex(
-      context,
-      indexer.getSnapshot(),
-      {
-        newToDeckard: newWorkspace,
-        hasFolder: (vscode.workspace.workspaceFolders ?? []).length > 0,
-        isSample: (vscode.workspace.workspaceFolders ?? []).some((folder) => samples.includes(folder.uri.toString())),
-      },
-      {
-        excludeHintShownKey: EXCLUDE_HINT_SHOWN,
-        excludeIsEmpty: Object.keys(exclude ?? {}).length === 0,
-        wholeRepository: await readsWholeRepository(),
-      },
-    );
-    if (
-      summarized ||
-      notes < LARGE_WORKSPACE_NOTES ||
-      Object.keys(exclude ?? {}).length > 0 ||
-      context.workspaceState.get<boolean>(EXCLUDE_HINT_SHOWN)
-    ) {
-      return;
-    }
-    await context.workspaceState.update(EXCLUDE_HINT_SHOWN, true);
-    const open = openSettingAction('exclude');
-    const choice = await vscode.window.showInformationMessage(
+): Promise<boolean> {
+  const notes = indexer.getSnapshot().files.size;
+  const exclude = vscode.workspace.getConfiguration('deckard').get<Record<string, unknown>>('exclude', {});
+  const storage = getSampleStorageUri(context.globalStorageUri);
+  const samples = SAMPLE_FOLDER_NAMES.map((name) => vscode.Uri.joinPath(storage, name).toString());
+  const summarized = await summarizeFirstIndex(
+    context,
+    indexer.getSnapshot(),
+    {
+      newToDeckard: newWorkspace,
+      hasFolder: (vscode.workspace.workspaceFolders ?? []).length > 0,
+      isSample: (vscode.workspace.workspaceFolders ?? []).some((folder) => samples.includes(folder.uri.toString())),
+    },
+    {
+      excludeHintShownKey: EXCLUDE_HINT_SHOWN,
+      excludeIsEmpty: Object.keys(exclude ?? {}).length === 0,
+      wholeRepository: await readsWholeRepository(),
+    },
+  );
+  if (summarized) {
+    return true;
+  }
+  if (
+    notes < LARGE_WORKSPACE_NOTES ||
+    Object.keys(exclude ?? {}).length > 0 ||
+    context.workspaceState.get<boolean>(EXCLUDE_HINT_SHOWN)
+  ) {
+    return false;
+  }
+  await context.workspaceState.update(EXCLUDE_HINT_SHOWN, true);
+  const open = openSettingAction('exclude');
+  // Not awaited: the answer comes whenever the reader gives it, and the
+  // other notices only need to know one was said.
+  void vscode.window
+    .showInformationMessage(
       `Deckard read ${notes.toLocaleString('en-US')} files. If some folders hold Markdown you do not want in the index, such as exported docs or dependencies, the "${settingLabel('exclude')}" setting leaves them out and makes every scan faster.`,
       open.title,
-    );
-    if (choice === open.title) {
-      await open.run();
-    }
-  });
+    )
+    .then(async (choice) => {
+      if (choice === open.title) {
+        await open.run();
+      }
+    });
+  return true;
 }
 
 /**
@@ -846,20 +876,17 @@ function createCalendar(
   const { indexer } = core;
   const { themePreview, searchPanels } = search;
   const openTag = (tagKey: string) => searchPanels.show(tagKey);
-  // Whether the day panel shows and weekends are drawn, which the
-  // Calendar's menu and the page's gear keep.
+  // Whether weekends are drawn, which the calendar page's gear keeps.
   const calendarPreferences = { reader: preferences.repository, display: preferences.display };
   const calendar = new CalendarView({
     indexer,
     writes: writes.tasks,
     themePreview,
     extensionUri: context.extensionUri,
-    openTag,
     preferences: calendarPreferences,
   });
   const activeCalendar = new ActiveCalendar();
-  const activeHome = new ActiveHome();
-  context.subscriptions.push(activeCalendar, activeHome);
+  context.subscriptions.push(activeCalendar);
   const calendarPage = new CalendarPanel({
     indexer,
     extensionUri: context.extensionUri,
@@ -870,7 +897,7 @@ function createCalendar(
     preferences: calendarPreferences,
   });
   context.subscriptions.push(calendarPage);
-  return { calendar, activeCalendar, activeHome, calendarPage };
+  return { calendar, activeCalendar, calendarPage };
 }
 
 /** What {@link createHome} builds the Task Board, Home, and Find from. */
@@ -913,10 +940,6 @@ function createHome(context: vscode.ExtensionContext, parts: HomeParts) {
       openDailyNote: async () => {
         await createDailyNoteWithRollover(indexer, history, undefined, writes.rollover);
       },
-      quickAdd: (text) => captureToToday(text),
-      createHubNote: async (tagKey) => {
-        await createHubNote(indexer, tagKey);
-      },
       addNextAction: (tagLabel) => captureNextAction(tagLabel),
     },
     whatsNew,
@@ -946,7 +969,6 @@ interface SidebarParts {
   preferences: PreferenceParts;
   search: ReturnType<typeof createSearch>;
   calendar: ReturnType<typeof createCalendar>;
-  dashboard: DashboardPanel;
   whatsNew: WhatsNew;
   writes: Omit<Writes, 'addTask'>;
 }
@@ -956,7 +978,9 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
   const { indexer, history } = parts.core;
   const { repository, display, usage, tagRenames } = parts.preferences;
   const { searchPanels, activeSearch, themePreview } = parts.search;
-  const { activeCalendar, activeHome } = parts.calendar;
+  const { activeCalendar } = parts.calendar;
+  // Which note is pinned, as the note page's ⋯ pins it: by its first line.
+  const notePins = new PinService({ index: indexer, store: parts.preferences.pins });
   // The note page in front, whose note Related Notes follows.
   const activeNotePage = new ActiveNotePage();
   context.subscriptions.push(activeNotePage);
@@ -968,12 +992,10 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     extensionVersion: context.extension.packageJSON.version,
     extensionUri: context.extensionUri,
     activeCalendar,
-    activeHome,
     activeNotePage,
     history,
     themePreview,
   });
-  parts.dashboard.activeHome = activeHome;
   const stats = new StatsPanel({
     indexer,
     preferences: { reader: repository, usage },
@@ -1017,6 +1039,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     themePreview,
     activeNotePage,
     onOpenSearch: (query) => searchPanels.showQuery(query),
+    isNotePinned: (filePath) => notePins.isLinePinned(filePath, 1),
   });
   const taskStatuses = new TaskStatusesPanel({ indexer, preferences: repository, history, extensionUri: context.extensionUri, themePreview });
   return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug, notePage, activeNotePage, taskStatuses };
@@ -1200,7 +1223,7 @@ function createLateContexts(context: vscode.ExtensionContext, core: Core, pages:
   context.subscriptions.push(publishViewChoices(preferences.repository));
   // Every page's width, which its gear keeps in the preferences.
   context.subscriptions.push(startPageWidth({ reader: preferences.repository, display: preferences.display }));
-  context.subscriptions.push(startZenMode(context.globalState));
+  context.subscriptions.push(startZenMode());
   // Which note a section is focused in, which leaving it clears.
   const sectionFocus = new SectionFocus();
   context.subscriptions.push(sectionFocus);

@@ -2,327 +2,243 @@
 
 ## Why
 
-Deckard's webviews carry a lot of furniture. On the Home dashboard, before a
-single note is read, the first screen spends itself on an eyebrow
-(`DECKARD / WORKSPACE INDEX`), three metric tiles wearing invented telemetry
-codes (`SYS.TAG // 1982-AZ`), a dotted grid backdrop, a bordered row reading
-"Home is yours to arrange.", a section label saying `SEARCH` above an obvious
-search box, and a permanent line of query syntax under it. Every task row then
-repeats its file name, heading, and line number in full. The Search page
-states its result count four times — in the tab, in the pane heading, in the
-filter switch, and in Refine.
+Deckard's pages carry a lot of frame. Before a single note is read, Home
+spends its first screen on an eyebrow, metric tiles wearing invented
+telemetry codes, a grid backdrop, and a line of query syntax under the search
+box; the Task board stands up twenty-odd controls above its first card; and
+a search page draws ten Refine chips before its first result. None of it is
+broken, and most of it earns its place in the first week. It stops earning
+it once the shape of the app is known, and what is left is a frame competing
+with the notes.
 
-None of it is broken, and most of it earns its place in the first week. It
-stops earning it once the shape of the app is known, and what is left is a
-frame competing with the notes.
+Zen turns the frame down without taking anything away. It is three layers
+(plan 29, "Zen"):
 
-Zen mode turns the frame down without taking anything away: decoration is
-hidden, border weight and type treatment are thinned, and per-row provenance
-folds to hover and focus so lists get shorter. Every button, filter, count,
-and tag stays where it was and keeps working.
+1. **Visual.** Decoration is hidden, the lines that teach are hidden, the
+   spacing is compact, cards are flat and tags are text.
+2. **Data never hides.** Every count, date and state line is drawn, with
+   Zen on or off.
+3. **Controls are quieted in place.** The page's bar, the search field and
+   whatever is shaping the page stay drawn. The rest of a page's tools are
+   drawn at no opacity and show where they stand when their area is pointed
+   at or tabbed into, and Refine and the Notes Graph's Focus and Filters
+   start folded.
 
-This is deliberately **not** a ninth theme. A theme picks the palette; zen
-picks how much frame is drawn. They compose, so zen has to work on all eight
-existing themes.
+Zen is not a ninth theme. A theme picks the palette; Zen picks how much frame
+is drawn. They compose, so Zen works on all eight themes, and it declares no
+color.
 
-The reach is: hide decoration, thin the frame, **and** fold per-row metadata
-to hover and focus. The toggle is a global `deckard.zenMode` setting, a row in
-each page's view-options gear, and palette commands — the
-`deckard.outline.followCursor` pattern for the context key, and
-`updateTaskBoardSetting()` (`src/ui/commands/taskBoardActions.ts:52`) for the
-gear half, which is already "gear row → message → `writeSetting` → config
-listener → re-render" end to end.
+## The switch
 
-## Three constraints that shape the design
+Zen is one boolean, `deckard.display.zen`, an application setting written to
+the user's settings (plan 29, R5). It replaced `deckard.display.level` (Full,
+Quiet, Zen) and the seven `auto` settings the step moved.
 
-**1. Hiding must not hide things from screen readers.** "Without removing
-functionality" includes assistive technology. `components.ts:167` already
-defines `.visually-hidden` (off-screen, still announced), and its comment
-already makes the point that `display: none` would stop a node being
-announced. So zen has two hiding verbs:
+- **Pages:** every page's **⋯** draws one **Zen** checkbox under
+  Appearance, `zenOption()` in `src/webview/shared/viewOptions.tsx`, ticked
+  from the body's `zen` class. Its click posts `setZenMode`, and the host
+  writes the setting.
+- **The palette:** `Deckard: Toggle Zen` alone. `deckard.enableZenMode` and
+  `deckard.disableZenMode` are hidden from it (`when: false`) and stay as
+  the title bar's when-swapped pair at `navigation@90`, on the
+  `deckard.zenMode` context key, since an extension cannot declare a
+  toggled menu item.
+- **The move:** `carryRenamedSettingsOnce`
+  (`src/composition/movedSettings.ts`) reads the old settings once per
+  machine and once per workspace. Quiet and Zen both come to Zen on; Full
+  writes nothing. One notice says Display moved whenever any of the eight
+  was set.
 
-- `display: none` for pure ornament nothing refers to — `.eyebrow`, the
-  `data-code` HUD labels, the grid backdrop.
-- The visually-hidden idiom for anything a reader may still want — the folded
-  provenance below, and any node carrying an accessible name. The Search
-  page's `<h2 id="tasks-heading">` is the `aria-labelledby` target of its
-  `<section>` (`searchPageHtml.ts:353-354`); dropping it outright would leave
-  the results pane unnamed.
+A change to the setting draws every open page anew from its host
+(`affectsPageChrome` in `src/ui/webview/host/pageChrome.ts`), so a page
+never switches in place: it starts in the new state, folds and all.
 
-**2. `.task-meta` is not all chrome.** `renderTaskListRow`
-(`components.ts:1039-1060`) packs two different things into one line:
+Deckard's Zen quiets Deckard's pages; VS Code's Zen Mode (`⌘K Z`) hides the
+workbench around them, and the two combine.
 
-```js
-'<div class="task-meta">' + dueDate + scheduled + priority + recurrence
-  + '<span>' + fileName + '</span>'
-  + (sectionHeading ? '<span>' + sectionHeading + '</span>' : '')
-  + '<span>line ' + lineNumber + '</span>'
-```
+## How Zen reaches a page
 
-The first four are classed (`.due-date`, `.task-detail`) and are the *point*
-of a task row — a due date is not noise. The last three are bare `<span>`s and
-are provenance. Only the provenance folds, so those three spans need
-`class="task-source"`, rather than a `:not(.due-date):not(.task-detail)`
-selector that would silently start hiding any detail added later.
+There is no Zen sheet and no `getZenCss()`. Every page links the same tail
+after its theme (`src/webview/shared/tail.css`, named by `getPageTailCss()`
+in `src/ui/webview/components.ts`), and every rule Zen turns on is in it,
+scoped under a marker on `<body>`. The page shell writes the markers from
+the display choices its host resolved: `ZEN_CHOICES` in
+`src/ui/state/displayLevel.ts`.
 
-**3. `.source` does not mean the same thing everywhere.** On cards and sidebar
-notes it is file and line. On the task board, `<p class="source board-details">`
-(`components.ts:870`) carries **due dates and overdue state** — and
-`renderTaskBoardCard` prefixes the word "overdue" precisely so the information
-does not depend on color:
+| Marker | What it turns on | Sheet |
+| --- | --- | --- |
+| `data-styling="plain"` | No ornament, plain type, thin frames | `display.css` |
+| `data-help="hidden"` | `.help-text` lines hidden | `display.css` |
+| `data-density="compact"` | The denser spacing scale | `display.css` |
+| `data-cards="flat"` | Rows parted by a divider | `displayLooks.css` |
+| `data-tags="text"` | Tags as text in the tag color | `displayLooks.css` |
+| `data-controls="quiet"` | Zen's reveal regions (layer 3) | `reveal.css` |
 
-```js
-// Color alone carried this before, which says nothing to a reader who
-// cannot see it, or on a board grouped by anything but due date.
-```
+`body.zen` is a marker only (`bodyMarkers` in `components.ts`): no sheet
+hangs a rule on it. Page scripts read it where they need to know whether
+Zen is on: ⋯'s checkbox, and where a fold starts.
 
-Folding `.board-details` at rest would undo that. **Zen excludes
-`.board-details` from the fold.** This is the one place the
-"decorative, duplicated" rationale fails, and a blanket `.source` rule would
-have walked straight into it.
+Every marked rule ships whether or not its marker is set, which pays twice:
 
-## How the zen stylesheet reaches a page
-
-Each of the nine `*Html.ts` files builds its whole document as one template
-literal and interpolates its own `<style>`, in the order documented in
-[components.md](components.md): **base → page rules → theme**. Zen appends a
-fourth layer.
-
-**Ship `getZenCss()` unconditionally, scope every rule under `body.zen`, and
-gate only the class on `<body>`.** This is not the obvious choice — the repo's
-own precedent is that only the *selected* theme's text is emitted — but two
-test surfaces make it decisively better:
-
-- **`verifyWebviews.js` matches layout contracts by exact selector string.**
-  `effectiveValue()` does `selectors.includes(selector)` on the comma-split
-  rule head (`verifyWebviews.js:71`), so `body.zen .metric` simply is not
-  `.metric`. Every contract — `['.metric', 'clip-path', 'polygon']`, the
-  `main` accent borders, the sidebar's `12px` padding — is untouched **by
-  construction**. Bare-selector zen rules would flip all of them the moment
-  zen was ever rendered in that check.
+- **`verifyWebviews.js` matches layout contracts by exact selector string**,
+  so `body[data-styling=plain] .metric` simply is not `.metric`, and no
+  contract can flip when Zen is rendered.
 - **`checkContrast.js` reads every declared rule**, whether or not the page
-  renders a matching element, and harvests custom properties only from
-  selectors containing `:root`. So always-shipped `body.zen` rules get
-  contrast coverage across all eight themes for free, with no second render
-  pass, and `body.zen { --edge: … }` stays invisible to its token map.
+  renders a match, so the marked rules get contrast coverage in all eight
+  themes with no second pass.
 
-It also keeps the `:root` count at two (`verifyWebviews.js:148-149` fails
-above two, and base plus theme already use both), makes zen's rules legible
-as zen's in view-source, and leaves room for a live
-`document.body.classList.toggle('zen', …)` later with no re-architecture.
+Position still matters. LCARS' `.metric:nth-child(3n + 2)::before` ties
+with `body[data-styling=plain] .metric::before` on specificity, so
+`display.css` must come after the theme; it is the tail's last sheet, and
+`verifyWebviews.js` fails any page whose sheets don't end with it.
 
-The cost, stated plainly: roughly 2 KB of inert CSS in the off state. Next to
-a 73 KB `dashboardHtml.ts` that is noise.
+**`display.css` declares no `color`, `background`, `background-color`, or
+`border-color`** (`background-image: none` is allowed, since four themes
+paint their own backdrop onto `body`). Under that rule the contrast matrix
+cannot move.
 
-Cascade position still matters and is not replaced by the specificity
-tiebreak. LCARS' `.metric:nth-child(3n + 2)::before` ties with
-`body.zen .metric::before`, so **position decides it** — zen must still come
-after the theme sheet.
+## What Zen changes
 
-**One hard constraint: `getZenCss()` declares no `color`, `background`,
-`background-color`, or `border-color`.** (`background-image: none` is allowed,
-and is needed: the `--grid-line` token clears only the base sheet's grid, and
-four themes paint their own backdrop onto `body` in their own colors.) Only `display`, the visually-hidden
-properties, `padding`, `margin`, `gap`, `font-size`, `text-transform`,
-`transform`, the three sizing tokens, and `--grid-line: transparent`. Under
-that constraint the contrast matrix provably cannot move, which is what lets
-the contrast suite stay a single pass.
+### Layer 1: visual
 
-## What zen changes
+- **Ornament hidden:** an eyebrow's trail (DECKARD ▾ stays, since it is the
+  way to every other page), the metric codes, and the grid backdrop.
+- **Plain type:** no `text-transform` or `letter-spacing` on chrome. The
+  `h1` shrinks rather than going, since on a search page it is the subject
+  being searched and the page's only landmark. The reader's own note text
+  is never transformed, at any step.
+- **Help text hidden:** every line marked `.help-text` (plan 29, R9), which
+  is never a control or anything holding one. `.query-error` shares the
+  hint's slot and never carries the class, or a search that failed to parse
+  would look like an empty one.
+- **Compact spacing**, flat cards, tags as text.
 
-**Decoration hidden** — `.eyebrow`; the `.metric::before` `data-code` HUD
-labels (`dashboardHtml.ts:37`); `--grid-line: transparent`; the Refine
-instructional paragraph; `.home-hint-bar`.
+### Layer 2: data never hides
 
-Three need care rather than a blanket rule:
+Counts stay ('54 tasks', '40 · 6 overdue', facet counts and tab counts),
+dates are written in full ('overdue 5 days · 2026-09-16'), and state lines
+such as 'No tasks.' are drawn through the shared `EmptyState`. A board
+card's `.board-details` carries the due date and the word "overdue" and is
+never folded.
 
-- **`h1` is shrunk, not hidden.** On the Dashboard it restates the tab title,
-  but on the Search page it is the search *subject* — the tag or entity being
-  searched (`searchPageHtml.ts:390`). Hiding it globally would delete real
-  content there, and would leave every page without its only `h1` landmark.
-  Zen takes it to 14px with `text-transform: none`.
-- **Hide `.query-hint`, never `.query-error`.** They are the two branches of
-  the same slot (`components.ts:1627`) and share the `.query-status` parent.
-  A hidden parse error would leave a failed search looking like an empty one.
-  The hint is also not wholly duplicated by the placeholder: `AND, OR, NOT`
-  and `Press / to search` appear only in the hint, and the placeholder is
-  replaced by chips once a term is entered. Hiding it is a real trade,
-  justified by Help carrying the full query reference — worth saying so in the
-  README line.
-- **The Search pane heading folds only in the Tabs layout.** `renderResultTabs`
-  is the `else` branch of the split/tabs ternary (`searchPageHtml.ts:358`), so
-  `Tasks (N)` collides with `<h2>Tasks (N)</h2>` only when
-  `state.layout === 'tabs'`. In Split layout the heading is the only one there.
+### Layer 3: controls are quieted in place
 
-Home's `.home-hint-bar` contains the **Customize** button, so hiding the bar
-does remove a control from the page — but Customize is also the gear's "Home"
-row, so nothing becomes unreachable. Worth calling out in the commit, since it
-is the one place zen touches a button. Outside zen the bar is no longer
-permanent either: it is drawn only while Home still holds the widgets it
-started with, and goes for good once Home has been arranged or the reader
-chooses **Dismiss**.
+Never quieted:
 
-**Frame thinned** — `--edge: 2px → 1px`; `--control-height: 30px → 26px`;
-`text-transform: none` and `letter-spacing: normal`; `clip-path: none` and
-`box-shadow: none` on the surfaces.
+- the page bar: DECKARD ▾, the title, the one `.primary`, its secondaries
+  and ⋯, identical with Zen on and off;
+- the query field with its attached Builder, its → and its chips;
+- content switches: Notes | Tasks, Home | Tags, Month | Week;
+- links that carry data: progress links, Home tiles, widget title links,
+  'Show N more', and Create hub note;
+- the page's own job: the Calendar day panel's Create or Open, the Graph's
+  zoom, Fit graph and Reset graph, Context's page icons, and everything on
+  Task Statuses and Stats.
 
-**Metadata folded** — `.task-source` and `.source` (excluding
-`.board-details`) hidden at rest with the visually-hidden idiom, revealed on
-`:hover` **and `:focus-within`** of the containing row.
+Everything else under the bar takes the shared reveal rule
+(`src/webview/shared/reveal.css`), in regions that act only under
+`data-controls="quiet"`: a tool carries `data-zen-reveal`, and its area
+`data-zen-region`.
 
-## The hover and reflow question
+| Region | Tools |
+| --- | --- |
+| The search box (`.query-workspace`) | The Task board's Board \| Table, Group, Sort and Can start now |
+| Each `.board-column` | Its + |
+| A search page's results heading (`.overview-tabs-row`, `.overview-pane-header`) | Sort and Bulk edit |
+| Home's `.dashboard-tabs-row` | Customize |
+| Context's `.context-pages-band` and `.related-notes-controls` | The two gears, and the Related Sort |
+| Each week's `.calendar-row`, on the page and in the sidebar | The week mark |
 
-Revealing a hidden line on hover makes rows grow, and `test/ui/checkLayout.js`
-forces every `:hover` rule on and fails on sideways overflow in a declared
-scroller or unscrollable clipped height in a declared clipper.
+A tool whose current value is shaping the page is marked
+`data-reveal-keep` by its renderer and stays drawn: Can start now while
+pressed, a board Sort that isn't Rank (ranking works only under Rank, so a
+hidden Sort would leave drags that do nothing unexplained), a table sorted
+by a column, a search page's Sort when it isn't A-Z, Context's Related Sort
+when it isn't Relevance, the band's gear while no page is chosen, and a
+week mark whose week has a note.
 
-Zen uses **the visually-hidden idiom plus a reveal on
-`:hover`/`:focus-within`** — the same pattern `.is-dragging` already uses:
+A segmented group is one target: the attribute is on the `.segmented`,
+never on one segment, and no `[aria-pressed=true]` override is used, since
+it would draw a lone chosen segment.
 
-```css
-body.zen .task-row .task-source,
-body.zen .card .source,
-body.zen .note .source {
-  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
-}
-body.zen .task-row:hover .task-source, body.zen .task-row:focus-within .task-source,
-body.zen .card:hover .source,          body.zen .card:focus-within .source,
-body.zen .note:hover .source,          body.zen .note:focus-within .source {
-  position: static; width: auto; height: auto; overflow: visible; clip-path: none;
-}
-```
+Folded in place:
 
-This gives the same density as `display: none` while keeping the text in the
-DOM, in the accessibility tree, and in find-in-page. Only sighted mouse
-selection at rest is affected. `display: none` would have taken all three
-away; reserving the height wins no density at all; and a `title` tooltip
-flattens `.due-date.overdue` and `.task-detail.priority-highest` into an
-unstyled string and collides with the `title` board cards already carry.
+- **Refine** is a `<details>` (`details.query-facets-fold`) at every step,
+  open at Full and closed under Zen, so Full and Zen draw the same
+  controls. Its summary reads 'Refine', with '· N set' while the search
+  holds N of its values past the page's own. Only the facet groups are in
+  the fold: the lead lines and the match count stay outside it. The Task
+  board shares `facets()`, so its Refine folds the same way. With the
+  Context sidebar holding Refine, the page draws none, so there is nothing
+  to fold.
+- **The Notes Graph's Focus and Filters** start closed under Zen, as
+  Display always does. 'Filters · N set' counts the filters away from a new
+  graph's, and 'Focus · around this note' says the graph is local.
+- A fold is kept as the reader left it across a draw, read from the DOM, as
+  ⋯ keeps its menu. A Zen toggle draws the page anew, so it starts at the
+  new state's default. No state is persisted for it.
 
-The layout suite passes on all eight themes: growth is downward and vertical only,
-`.board-cards` is `overflow-x: hidden` so a taller card cannot widen it, and
-`.board-column`'s `grid-template-rows: auto minmax(0, 1fr)` keeps the cards
-row the thing that scrolls. Reflow jitter is not a concern either, because the
-folded line sits at the *bottom* of its row: a hovered row grows downward, its
-top edge does not move, and the pointer never loses the row it is on.
+## What Zen hides, and how it comes back
 
-Three guardrails, which are the actual failure modes:
+Zen never removes a control from the DOM, the Tab order or the
+accessibility tree, never moves one into ⋯, and never hides one with
+`display: none` or `visibility: hidden`. What it does hide comes back where
+it stands:
 
-1. **Never `white-space: nowrap` on the revealed line.** `.source` has
-   `overflow-wrap: anywhere`; a single-line meta run in the 240px sidebar
-   would blow `html`'s `scrollW` and fail the scroller assertion.
-2. **Zen must kill the theme's hover slide** —
-   `body.zen .row:hover, body.zen .card:hover, body.zen .note:hover, body.zen .task:hover { transform: none; }`.
-   Several themes add `translateX(3px)`, which today fits only because the
-   sidebar's `main` has 12px of padding to absorb it. Thinning that padding
-   without removing the slide pushes a hovered row past the edge. It is also
-   the right zen aesthetic, and it needs zen to sit after the theme to win.
-3. **Zen's `:hover` rules must be at stylesheet top level, never inside
-   `@media`.** `checkLayout.js` walks `sheet.cssRules` and reads
-   `rule.selectorText`; a `CSSMediaRule` has none, so a nested `:hover` rule
-   is silently never forced and the reveal would go untested.
+| Hidden at rest | How it comes back |
+| --- | --- |
+| A tool in a Zen region | **Pointer:** the region's `:hover`. **Keyboard:** the region's `:focus-within`, or the tool's own `:focus-visible`; Tab lands on every one. An open menu (`[aria-expanded=true]`) or disclosure (`[open]`) stays shown. **Touch:** the rule is inside `@media (hover: hover)`, so a screen that doesn't hover draws everything |
+| A row's own action: Tomorrow or Next day, the board card ⋯, a table row's ⋯ | The same rule at every step (R11), on the row. The board card ⋯ is the one `tabindex="-1"` control; it opens with Shift+F10, the menu key, Alt+Enter and right-click on its card |
+| Refine's facets, Focus and Filters | Their summary, always drawn, which says what the fold is doing |
+| A `.help-text` line | Help on this page; it is never a control or a state |
+| Ornament | Nothing: it said nothing |
 
-## Spacing
+Typing doesn't reveal. A region's `:focus-within` doesn't count while focus
+is in its `.query-input` (`:not(:has(.query-input:focus))`), so searching on
+the Task board keeps it at six controls: DECKARD ▾, Add task, ⋯, Builder,
+the field and →. Zen regions never nest, since a tool hides while any region
+around it is at rest.
 
-There are **no spacing tokens** — every padding and gap is a literal, in
-`components.ts` and again in each page's override block. Zen restates roughly
-a dozen `body.zen`-prefixed rules rather than introducing a `--space-*` scale
-first. Tokens would mean touching every literal in `components.ts`, all nine
-pages, and all eight themes, in a diff with no behavioral change, while
-`verifyWebviews`' contracts assert literal values that would have to become
-token-aware.
-
-The set: `main` (24→14px, and the sidebar's 12→8px), `header` padding-bottom,
-`.card` (14→9px), `.task` and `.task-row` (10→7px, gap 8→6px), `.cards`
-(gap 12→8px), `.metrics` (gap 10→6px), `.metric` (12→8px), `.task-list`
-(gap 7→4px), `.board-column` (10→7px), `.board-cards` (gap 8→5px),
-`.task-summary` (gap 7→4px).
-
-**Cost:** those literals now live in two places, and nothing makes a future
-padding change in `components.ts` propagate to zen. Two cheap mitigations:
-keep the whole zen spacing block contiguous and commented ("mirrors the
-literals in `getSurfaceCss`/`getTaskListCss`"), and cover zen in the layout
-suite so a divergence shows up as a measurement rather than as something a
-reviewer has to notice.
-
-## Who needs what
-
-| | stylesheet | `body.zen` | config listener | gear row | message |
-|---|---|---|---|---|---|
-| dashboard, searchPage, taskBoard | ✓ | ✓ | has theme branch | **✓** | **✓** |
-| sidebarNotes, stats, calendar, help, notesGraph | ✓ | ✓ | has theme branch | — | — |
-| relatedNotesDebug | ✓ | ✓ | none (one-shot) | — | — |
-
-The gear row goes on exactly the three pages that call `installViewOptions()`
-(`dashboardHtml.ts:941`, `searchPageHtml.ts:406`, `taskBoardHtml.ts:348`).
-Help and the Notes Graph get the stylesheet only — Help has an eyebrow and an
-`h1` but no gear, and the graph overrides `body`/`main` wholesale and has no
-header at all. Neither should grow a gear for this; the palette commands are
-the reachable toggle everywhere else, which is what the context key is for.
-
-Three shared helpers in `components.ts` cut the per-file duplication:
-
-1. **`getPageTailCss()`** — returns theme CSS plus zen CSS. Replaces the nine
-   `${getDeckardThemeCss(getDeckardTheme())}` call sites one-for-one, so
-   "zen comes after the theme" becomes a single fact in code rather than a
-   convention repeated nine times.
-2. **`zenBodyAttribute()`** — `' class="zen"'` or `''`; nine `<body>` tags
-   become `<body${zenBodyAttribute()}>`.
-3. **`affectsPageChrome(event)`** — `deckard.theme || deckard.zenMode`. The
-   eight hosts replace one condition rather than each growing a second `||`.
-
-**The `body.zen` choice pays off a second time in the gear.** Because the
-class is on `<body>`, the page script reads
-`document.body.classList.contains('zen')` directly — so there is **no
-`types.ts` state change and no state-builder change**, only the new
-webview→host message. The row is `zenOption()` in
-`src/webview/shared/viewOptions.tsx`, which each page with a gear puts in its
-`ViewOptions`; the `set-zen-mode` click is handled once, in
-`installViewOptions()` in the same module, which posts `setZenMode` through
-the page's one handle. That is zero per-page handler code.
+Collapsing toolbars behind ⋯ was considered and rejected: it would put
+frequently used filters two clicks away, which crosses from "less noise" into
+"less usable".
 
 ## What the suites cover
 
-Zen is CSS plus one class, which makes it easy to break quietly. Four things
-hold it in place, and each exists because of a specific way it could go wrong.
+Zen is CSS and markers, which makes it easy to break quietly.
 
-**`src/test/zen-mode.test.ts` proves nothing was removed.** It renders the
-Dashboard and a search page twice, once with zen and once without, and
-compares the full set of controls — every button, input, select, link,
-`[data-action]` and focusable element, by tag, action, value and text. The two
-lists must be identical. That is the feature's promise stated as an assertion,
-and it is what stops zen drifting into feature-removal. The same suite asserts
-the sheet declares no color, that `.query-error` and `.board-details` are
-absent from it, and that provenance folds off-screen rather than with
-`display: none`.
+**`src/test/zen-controls.test.ts`** draws Home, a search page, the Task
+board as a board and as a table, the calendar page, the sidebar Calendar,
+Context and the Notes Graph with Zen on and off, without VS Code, so it runs
+with the unit suites:
 
-**`verifyWebviews.js` holds the cascade.** Every page's style block must end
-with the zen sheet, byte for byte as `getZenCss()` emits it. Reordering
-`getPageTailCss()` so zen precedes the theme fails all nine pages, which is
-the point: LCARS' `.metric:nth-child(3n + 2)::before` ties with
-`body.zen .metric::before` on specificity, so only position decides it.
+- **Zen keeps every control on the page:** the set of controls (every
+  button, input, select, link, summary, `[data-action]` and focusable
+  element, by tag, action, value, type and words) is identical.
+- **Sheets:** no rule Zen turns on sets `display: none` or
+  `visibility: hidden` on a button, input, select, link, summary or
+  `[data-action]`, in any page's sheets or any theme. Every rule that draws
+  a `[data-reveal]` or `[data-zen-reveal]` at no opacity names its region
+  and shows on its `:hover`, `:focus-within`, `:focus-visible`,
+  `[data-reveal-keep]` and `[aria-expanded="true"]`, and sits in
+  `@media (hover: hover)`.
+- **Rendered pages:** every reveal target is inside its region, none sits on
+  a `.segmented` member, none is `tabindex="-1"` but the board card ⋯, and
+  no control is drawn with no box under Zen that is drawn at Full, by the
+  page's computed styles.
+- What each page quiets and keeps: the Task board's six controls at rest,
+  the kept Sorts and Can start now, the week marks, the folds and their
+  summaries.
 
-**`checkLayout.js` holds the hover reveal**, the one genuinely uncertain part.
-Every surface runs twice, zen and not, across all eight themes — 40 passes.
-The reveal survives: a hovered row grows downward inside a scroller that was
-already `overflow-x: hidden`, so nothing overflows sideways and nothing is
-clipped beyond reach. The search page is a zen-only surface because its
-`.source` sits inside a `.card-header` rather than at the end of a row.
+**`src/test/zen-mode.test.ts`** (under VS Code) holds the switch: the
+setting, the body's marker, ⋯'s checkbox and what it posts, and that
+`display.css` declares no color.
 
-**`checkContrast.js` needs no zen pass.** It reads every declared rule whether
-or not the page renders a match, so the always-shipped `body.zen` rules are
-covered by the existing eight-theme run. The expected delta is zero new
-signatures; one appearing means a color reached `getZenCss()`, and the fix is
-the rule, not the baseline.
+**`verifyWebviews.js`** holds the cascade: every page's sheets end with
+`display.css`.
 
-`src/test/extension.test.ts` counts settings and commands exactly, so it had
-to be updated in the same change — 48 settings became 49, and the ordered
-command list gained the two zen commands. The e2e suite gained a
-`commands.executeCommand` stub so a host that sets a context key can be
-tested at all.
-
-## Not in scope
-
-Collapsing toolbars behind the gear was considered and rejected: it would put
-frequently used filters two clicks away, which crosses from "less noise" into
-"less usable". Spacing tokens are deferred, as above.
+**`checkLayout.js`** lays out every surface with Zen off and on, in all
+eight themes. In a Zen pass it hovers the surface's Zen regions
+(`zenHovered` in `test/ui/surfaces.js`) with its row. **`checkContrast.js`**
+needs no Zen pass, since it reads every marked rule; a new signature there
+means a color reached `display.css`, and the fix is the rule.

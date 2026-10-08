@@ -48,6 +48,9 @@
 .result-table th.is-sorted button:hover:where(:not(:disabled):not([aria-disabled="true"])), .result-table th.is-sorted button:focus-visible { color: var(--hover-fg); }
 .result-table .result-check { width: 24px; padding-right: 0; }
 .result-table .result-row { cursor: pointer; }
+/* In Rank order a row is dragged to rank it. */
+.result-table .result-row.is-draggable { cursor: grab; }
+.result-table .result-row.is-draggable:active { cursor: grabbing; }
 /* A hovered row shows it by its rule, as .row does; a ground under every cell would fail the muted ones. */
 .result-table .result-row:hover td { border-bottom-color: var(--amber); }
 .result-table .result-row:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: -1px; }

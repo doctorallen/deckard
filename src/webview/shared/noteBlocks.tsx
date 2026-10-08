@@ -148,7 +148,7 @@ function QueryRow({ row }: { readonly row: NoteQueryRow }) {
     <li class={row.task?.completed ? 'note-query-row is-done' : 'note-query-row'}>
       {row.task ? <TaskBox task={row.task} label={row.title} /> : null}
       <div class="note-query-body">
-        <button type="button" class="note-query-title" data-action="open-note" data-file-path={row.filePath} data-line={row.line}>{row.title}</button>
+        <button type="button" class="note-query-title note-text" data-action="open-note" data-file-path={row.filePath} data-line={row.line}>{row.title}</button>
         {row.detail ? <span class="note-query-detail">{row.detail}</span> : null}
       </div>
     </li>
@@ -169,7 +169,7 @@ function QueryTable({ head, rows }: { readonly head: readonly string[]; readonly
             <tr class={row.task?.completed ? 'is-done' : undefined}>
               <td>
                 {row.task ? <TaskBox task={row.task} label={row.title} /> : null}
-                <button type="button" class="note-query-title" data-action="open-note" data-file-path={row.filePath} data-line={row.line}>{row.title}</button>
+                <button type="button" class="note-query-title note-text" data-action="open-note" data-file-path={row.filePath} data-line={row.line}>{row.title}</button>
               </td>
               {(row.cells ?? []).map((cell) => <td>{cell}</td>)}
             </tr>
@@ -216,8 +216,8 @@ function Embed({ block, context }: { readonly block: NoteEmbedBlock; readonly co
     <section class={block.missing ? 'note-embed is-missing' : 'note-embed'} {...at(block.line, context)} aria-label={`Embedded: ${block.title}`}>
       <header class="note-embed-header">
         {source
-          ? <button type="button" class="note-embed-title" data-action="open-note" data-file-path={source.filePath} data-line={source.line}>{block.title}</button>
-          : <span class="note-embed-title">{block.title}</span>}
+          ? <button type="button" class="note-embed-title note-text" data-action="open-note" data-file-path={source.filePath} data-line={source.line}>{block.title}</button>
+          : <span class="note-embed-title note-text">{block.title}</span>}
       </header>
       {block.missing ? <p class="note-embed-missing">{block.missing}</p> : null}
       {block.blocks ? <Blocks blocks={block.blocks} context={{ tags: block.tags ?? context.tags, filePath: source?.filePath ?? context.filePath }} /> : null}
@@ -231,7 +231,7 @@ function Table({ rows, line, context }: { readonly rows: readonly (readonly (rea
   return (
     <div class="note-table-scroll" {...at(line, context)}>
       <table class="note-table">
-        {header ? <thead><tr>{header.map((cell) => <th scope="col"><InlineTokens tokens={cell} context={context} /></th>)}</tr></thead> : null}
+        {header ? <thead><tr>{header.map((cell) => <th scope="col" class="note-text"><InlineTokens tokens={cell} context={context} /></th>)}</tr></thead> : null}
         <tbody>{body.map((row) => <tr>{row.map((cell) => <td><InlineTokens tokens={cell} context={context} /></td>)}</tr>)}</tbody>
       </table>
     </div>
@@ -245,7 +245,7 @@ function Block({ block, context }: { readonly block: NoteBlock; readonly context
       return <p {...at(block.line, context)}><InlineTokens tokens={block.children} context={context} /></p>;
     case 'heading': {
       const Heading = `h${Math.min(6, block.level + 1)}` as 'h2';
-      return <Heading class="note-heading" {...at(block.line, context)}><InlineTokens tokens={block.children} context={context} /></Heading>;
+      return <Heading class="note-heading note-text" {...at(block.line, context)}><InlineTokens tokens={block.children} context={context} /></Heading>;
     }
     case 'list': {
       const items = block.items.map((item) => <ListItem item={item} context={context} />);

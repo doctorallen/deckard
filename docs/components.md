@@ -22,7 +22,7 @@ built and loaded, and why; this page says what there is to reuse and how.
 | `src/webview/<page>/main.tsx` | The page's entry: its store, its view, and its listeners. Help's is `main.ts`, a typed module with no Preact |
 | `src/webview/<page>/page.css` | The page's sheet: `base.css`, the component sheets it uses, then its own rules |
 | `src/webview/<page>/*.tsx`, `*.ts` | The page's own components and modules, which no other page draws |
-| `src/webview/shared/` | The shared core: the page store, status and busy marks, tips, the key sheet, the undo toast, the gear, buttons and icons, tags, metrics, inline Markdown; and the parts the task, search, and Home pages share |
+| `src/webview/shared/` | The shared core: the page store, status and busy marks, tips, the key sheet, the undo toast, the page bar and its ⋯, Context's gears, buttons and icons, tags, metrics, inline Markdown; and the parts the task, search, and Home pages share |
 | `src/webview/shared/calendar/` | What the two calendars and Related Notes' day share |
 | `src/webview/shared/*.css`, `shared/themes/`, `shared/calendar/calendar.css` | The sheets every page links, and the component sheets two or more import |
 | `src/ui/protocol/<page>.ts` | The page's snapshot and messages, imported by the page and by its host |
@@ -80,8 +80,8 @@ onHostMessage<StateMessage<DeckardStatsSnapshot>>('state', (message) => store.up
 ```
 
 Cascade order matters and is always the same: **base sheet → page rules →
-theme sheet → control edges → provenance → high contrast → card tags → zen
-sheet.** A page overrides a component by restating the rule after the
+theme sheet → control edges → provenance → reveal → high contrast → card
+tags → zen sheet.** A page overrides a component by restating the rule after the
 `@import` of `base.css`; a theme overrides tokens for everyone; card tags come
 after every theme so no theme's button rule reaches them; zen comes last
 because what it takes away is largely what a theme adds. The shell links the
@@ -107,19 +107,21 @@ Every page with Preact starts from these, in `src/webview/shared/`.
 
 | Module | What a page uses |
 | --- | --- |
-| `page.ts` | `startPage({ initial, ready, view, afterDraw })`, the page's one store: `store.update(change)` draws the whole page before it returns ([decision 0014](architecture/decisions/0014-pages-render-synchronously-from-one-store.md)). Until `ready` holds, the shell's loading line stays. `startPage` first installs what every page shares: the indexing line, the busy mark, the guard that stops a click on an `aria-disabled` control, Escape putting the provenance line away, and tips. `readEmbeddedState()` reads the snapshot the shell carried. `listenForActions(root, actions, otherwise)` is the one delegated click listener, and `dispatchAction` runs the handler a `data-action` names, from a key as from a click. `onHostMessage(type, handler)` takes one kind of host message |
+| `page.ts` | `startPage({ initial, ready, view, afterDraw })`, the page's one store: `store.update(change)` draws the whole page before it returns ([decision 0014](architecture/decisions/0014-pages-render-synchronously-from-one-store.md)). Until `ready` holds, the shell's loading line stays. `startPage` first installs what every page shares: the indexing line, the busy mark, the guard that stops a click on an `aria-disabled` control, and tips. `readEmbeddedState()` reads the snapshot the shell carried. `listenForActions(root, actions, otherwise)` is the one delegated click listener, and `dispatchAction` runs the handler a `data-action` names, from a key as from a click. `onHostMessage(type, handler)` takes one kind of host message |
 | `place.ts` | `readPlace` and `restorePlace`, which the store calls around each draw, so focus goes back only when the draw took away the element that had it, found again by its `data-*` keys (task, card column, tag, widget, column, status, file, line, action, value, kind, section, date) |
 | `status.ts` | `announce(text)`, one short thing at a time to a screen reader through `#live-status`; `describeIndexing(progress)`; and `setSearchInFlight(inFlight)` for a page that runs a search |
 | `vscode.ts`, `scroll.ts` | `post(message)`, `vscodeApi()`, and `keptState()` and `keepState(change)` over `setState`; `rememberScroll` and `restoreScroll` |
 | `tip.tsx` | `installTip()`, which `startPage` runs: the one `#deckard-tip` for every page (**Tooltips** below) |
-| `keySheet.tsx` | `installKeySheet(sections)`, `openKeySheet`, and `closeKeySheet`: the `?` sheet of the page's keys |
+| `keySheet.tsx` | `installKeySheet(sections)`, `openKeySheet(sections, opener)`, and `closeKeySheet`: the `?` sheet of the page's keys, which ⋯'s **Keyboard shortcuts** row (`data-action="open-key-sheet"`) opens too, giving focus back to ⋯ |
+| `pageBar.tsx` | **The bar at the top of every page**, `<PageBar trail lead controls menu className leadClass controlsClass label>`: `<header class="page-bar">` with DECKARD ▾ (`<Eyebrow trail>`) and `lead` (the `h1` and anything under it) in `.page-bar-lead`, then, when there is any, a `.page-bar-actions` group of `controls` (at most one `.primary`, then up to three secondaries) and ⋯. `menu` (`{ actions, view, pageWidth, keySheet }`) is ⋯'s rows; a page with no `menu` draws no ⋯. `<PageMenu>` is `<ViewOptions>` with `<EllipsisIcon>` and `class="page-menu"`, its sections in one order, each left out when empty: **Page** (`actions`, `ViewOptionItem` rows), **View** (`view`, the rows a gear held), **Appearance** (Theme…, Zen, and Page width when `pageWidth`), **Help** (Help on this page, `data-action="page-help"`, and Keyboard shortcuts when `keySheet`). `describePageMenu` names ⋯ by its first three rows, its tip and `aria-label`. The actions group carries `data-query-keeps-text`, so words typed in the search box survive focus moving to Save search… |
 | `undoToast.tsx` | `createUndoNotice(redraw)` and `<UndoNotice message action buttonClass>` (**Destructive actions** below) |
-| `viewOptions.tsx` | The gear, `<ViewOptions groups name label>`, from `{ label, content, stacked }` rows, a second gear on a page named so each stays open or closed on its own; a row of choices, `<ViewOptionChoices action choices selected label attributes>`, each button carrying `data-action` and `data-value`; `themeOption()`, the Theme row, one button naming the theme in use, which posts `chooseTheme`; `zenOption()`, the Zen row, which reads the body's class and posts `setZenMode`; and `installViewOptions()`, which closes the gear on a click outside it and on Escape, and posts those two. Call it before the page's own listeners. A gear open before a redraw stays open |
-| `buttons.tsx`, `icons.tsx`, `strokeIcons.tsx` | `<IconButton action label icon tip tipKey className attributes pressed disabledReason>`: an icon-only `.icon-button` whose label is its name and, unless `tip` is given, its tip; `pressed` sets `aria-pressed`; `disabledReason` sets `aria-disabled` and `data-tip-disabled`; it never carries `title`. `<HelpButton anchor>`. The glyphs: `<SettingsIcon>` and `<HelpIcon>`, and the stroked set, `<StrokeIcon>` and the named ones (`<SortIcon>`, `<EllipsisIcon>`, `<CheckIcon>`, …) |
+| `viewOptions.tsx` | The disclosure behind Context's gears and every page's ⋯, `<ViewOptions groups sections name label icon className>`, from `{ label, labelFor, content, stacked }` rows (`groups`), or from `sections` of them (`{ label, heading, rows }`), where a row may instead be a `ViewOptionItem`, `{ action, text, tip, key, pressed, disabledReason, attributes }`: a `.menu-item.view-options-item` that does one thing, with a check while `pressed` is true; `labelFor` making the row's label a `<label>` for its one control, a second gear on a page named so each stays open or closed on its own; a row of choices, `<ViewOptionChoices action choices selected label attributes>`, each button carrying `data-action` and `data-value`; `themeOption()`, the Theme row, one button naming the theme in use, which posts `chooseTheme`; `zenOption()`, the Zen row, one checkbox ticked from the body's `zen` class, which posts `setZenMode`; `pageWidthOption()`, which posts `setDisplay`; and `installViewOptions()`, which closes a menu on a click outside it, on a `.view-options-item`, and on Escape, focusing its summary, and posts those three and `openHelp` for Help on this page. Call it before the page's own listeners. A menu open before a redraw stays open |
+| `buttons.tsx`, `icons.tsx`, `strokeIcons.tsx` | `<IconButton action label icon tip tipKey className attributes pressed disabledReason>`: an icon-only `.icon-button` whose label is its name and, unless `tip` is given, its tip; `pressed` sets `aria-pressed`; `disabledReason` sets `aria-disabled` and `data-tip-disabled`; it never carries `title`. The glyphs: `<SettingsIcon>` and `<HelpIcon>`, and the stroked set, `<StrokeIcon>` and the named ones (`<SortIcon>`, `<EllipsisIcon>`, `<CheckIcon>`, …) |
 | `tagLabel.tsx`, `tagButton.tsx` | `<TagLabel label svg>`, a tag's text with its namespace dimmed, as `<tspan>`s inside SVG with `svg`; `<TagButton tag className>`, a `.tag-open` control that opens the tag; `<TitleWithTags title tags appendMissing>`, a plain title with its tags as controls where they are written, and the missing ones after it unless `appendMissing` is false |
 | `metric.tsx` | `<Metric label value query hint code trend>`, one `.metric` tile, a button that opens `query` when there is one; `trend` (`{ points, change, note? }`) adds the twelve-week line and the change in words under the value, the change in the tile's `aria-label`, and `note` to its tip. `<Sparkline points>`: an inline SVG line, 20px high, min to max, a flat run as a midline, the last point in `--accent`, each point carrying a `<title>`, `aria-hidden`. `describeChange(change)`: "+9 in the last 7 days", "−3 in the last 7 days" (U+2212), or "No change in the last 7 days", muted, never green or red, since a rise is not always good news |
 | `inline.tsx` | `<Inline tokens>`: a title's `InlineToken[]` drawn as `markdown-it`'s elements and text nodes. Nothing is parsed as HTML |
 | `loading.tsx` | `<Loading label immediate>`, the `.loading` line (**Loading** below) |
+| `emptyState.tsx` | `<EmptyState state teach action class as>`: what an empty place says. `state`, such as "No tasks.", always shows; `teach`, how to fill the place, follows in a `.help-text` span, which Zen's help step hides; `action` is at most one next step, drawn last. `class` is the place's own (`empty` when omitted) and `as` draws a `div` in place of a `p`. Each place keeps its own words: a sentence that said both is split where the state ends |
 
 The parts the task, search, and Home pages share are in `shared/` too, each
 named for what it draws:
@@ -155,9 +157,10 @@ Related Notes show it; the words and classes both share in `model.ts`; and
 - **Controls post intent through `data-action`.** A component writes the
   `data-action` and `data-*` keys the sheets and the tests read, and the
   page's `listenForActions` table says what each does: a tag button is
-  `data-action="open-tag"`, and each page posts `openTag` for it. Only the
-  gear's Theme and Zen rows post on their own, through `installViewOptions`,
-  since no page acts on them differently.
+  `data-action="open-tag"`, and each page posts `openTag` for it. Only
+  ⋯'s Theme, Zen, Page width and Help on this page rows post on their own,
+  through `installViewOptions`, since no page acts on them differently; the
+  host's `openHelp` handler names the page's own section of the guide.
 - **A floating layer is a layer of the body.** The tip, the key sheet, the
   undo toast, and the menus are appended to the body, outside `#app`, each
   its own render root, so a redraw of the page does not take them away.
@@ -252,8 +255,8 @@ re-declare the same names.
 overdue and only overdue, and a theme that wants another mapping
 re-declares the meaning tokens rather than every rule. A negated search
 term is a dashed, struck chip in the muted color, not a red one. The one
-filled control on a page is the primary action (`.query-apply`, or a
-page's own `.query-primary`); a chosen segment is marked, not filled.
+filled control on a page is its primary action, `.primary` (see
+**The primary action** below); a chosen segment is marked, not filled.
 
 **Paired tokens are not synonyms.** `--amber` and `--amber-bright` share a
 default, but themes pull them apart — Synthwave makes `--amber` pink and
@@ -291,6 +294,11 @@ the notes graph does exactly that to go full-bleed.
 | `.eyebrow` | The small amber label above a title, e.g. `DECKARD / SEARCH`. |
 | `.lead` | Introductory paragraph, muted, capped at 680px. |
 | `.source` | File and line beneath a card title. Muted, 11px. |
+| `.note-text` | Words the reader's note wrote: a note's title and headings, a table header it wrote, a query block's titles, an embed's title, Linked from's lines, and the tag a search page is about. No theme or step upper-cases or letter-spaces them (`body .note-text`, which outranks a theme's `h1` and `button` rules). Card titles are left to the theme. |
+
+Under plain type (`body[data-styling=plain]`, which Zen turns on) every element,
+chrome included, reads as written: `text-transform: none` and
+`letter-spacing: normal`, at the `!important` strength Corpo's own rule has.
 
 To make an element read as data rather than prose, add it to a page-local
 `font-family: var(--font-mono)` rule; do not restate the whole type scale.
@@ -311,7 +319,8 @@ treatment, so a toolbar reads as one row of controls.
 | `.icon-button` | A square icon-only control at `--control-height`. |
 | `.toolbar-icon` | 16px stroked SVG inside a control. `.settings-icon` switches it to filled. Every glyph is a component: `<StrokeIcon className>` in `shared/strokeIcons.tsx` wraps a glyph's paths in the one frame, and the named ones (`<SortIcon>`, `<EllipsisIcon>`, `<ChevronRightIcon>`, …) are ready to draw; `<SettingsIcon>` and `<HelpIcon>` are in `shared/icons.tsx`, the calendar's in `shared/calendar/calendarIcon.tsx`, and the Dashboard's own in its `icons.tsx`. No host builder writes an `<svg>`; `src/test/icons.test.ts` fails one that does, and holds the frame to the paths in `src/ui/webview/icons.ts`. |
 | `.query-facet` | One Refine group: its label above a `.query-facet-values` row, groups a wide step apart, so a group's edge is a shape. |
-| `.view-options` | **The gear every page's view options sit behind**, drawn by `<ViewOptions>`: the `<details>` disclosure and its `.view-options-menu` of `.view-options-group` rows. `.view-options-choices` is a row of small choices inside it, such as List and Board. No theme restyles the gear, so it looks the same on every page. Related Notes has one at the end of its Sort row, holding **Preview** (None, 1 line, 2 lines) and **Daily notes** (Show, Hide). |
+| `.page-bar` | **The bar at the top of every page**, drawn by `<PageBar>`: `.page-bar-lead` (DECKARD ▾ and the title) at the left, `.page-bar-actions` (the primary, the secondaries and ⋯) at the right. Zen draws it as it is. |
+| `.view-options` | **The disclosure a page's ⋯ and Context's gears are**, drawn by `<ViewOptions>`: the `<details>` and its `.view-options-menu` of `.view-options-group` rows, or of `.view-options-section` groups, each under a rule, with an optional `.view-options-heading` and `.view-options-item` rows. `.page-menu` is a page's ⋯. `.view-options-choices` is a row of small choices inside it, such as Limited and Full. No theme restyles it, so it looks the same on every page. Related Notes has a gear at the end of its Sort row, holding **Preview** (None, 1 line, 2 lines) and **Daily notes** (Show, Hide). |
 | `.note-excerpt` | A Related Notes card's preview, in order: title and actions, file and line, heading path, **excerpt**, reason, tags. `--muted` at `--text-xs`, clamped with `-webkit-line-clamp` to `--preview-lines`, which `main[data-preview-lines]` sets; at 0 it is not drawn. The text comes from `readProseLines` / `formatExcerpt` in `src/domain/markdown/proseExcerpt.ts`, the one place Markdown becomes preview text, and starts at the line holding a shared word when there is one. |
 | `.filter-count` | Small muted count inside a filter button. |
 | `.command-link` | **A command named in Help's prose that runs it.** The code chip's look in `--cyan`, underlined under the pointer and on focus. Help builds it with `linkCommandNames()` for every `<code>Deckard: …</code>` whose command needs no note in the editor; the host runs it only when `isRunnableFromHelp()` agrees. |
@@ -325,7 +334,7 @@ a page, or a theme, carries the zero-weight guard `ENABLED`
 one that does not. At rest both kinds are drawn at half opacity.
 
 - **`aria-disabled="true"` with `data-tip-disabled`** for a control that
-  holds its place in a bar: Save, Clear, Back, and Forward. It stays in the
+  holds its place in a bar: Save, Back, and Forward. It stays in the
   Tab order, focus shows its reason as the tip, and one capture-phase click
   listener, which `startPage` installs, swallows its click, so no page
   handler checks. The query editor's `syncTextButtons` flips `aria-disabled` in
@@ -343,8 +352,7 @@ Any group of joined buttons uses this, rather than each page restyling
 
 ```html
 <div class="segmented" role="group" aria-label="Task layout">
-  <button class="active">List</button>
-  <button>Board</button>
+  <button class="active">Board</button>
   <button>Table</button>
 </div>
 ```
@@ -430,7 +438,7 @@ widget colors.
 | Class | What it is |
 | --- | --- |
 | `.popover` | A menu positioned `fixed`, at `--z-menu`. |
-| `.popover.is-dropdown` | Attached to a control: the gear's menu, a widget's options, completions. |
+| `.popover.is-dropdown` | Attached to a control: ⋯'s menu, a gear's, a widget's options, completions. |
 | `.popover.is-tip` | A tip: 1px `--line-strong` edge, `--text-xs`, at most 280px. |
 | `.menu-item` | One row of any menu, 28px tall. Its label is a `.menu-label`. |
 | `.menu-check` | The 16px column a checked item's check sits in (see the card menu). |
@@ -455,7 +463,7 @@ shows at once takes the card's menu with it, the new choice checked.
 | Token | Value | For |
 | --- | --- | --- |
 | `--z-raised` | `1` | A chosen segment over its neighbors |
-| `--z-dropdown` | `10` | Attached to a control: the gear's menu, a widget's options, completions |
+| `--z-dropdown` | `10` | Attached to a control: ⋯'s menu, a gear's, a widget's options, completions; the Notes Graph's bar |
 | `--z-menu` | `20` | Context and action menus |
 | `--z-tooltip` | `30` | Tips, the relevance tooltip, the graph's hover card |
 | `--z-modal` | `40` | The `?` key sheet |
@@ -515,9 +523,10 @@ says no more than the control's accessible name.
 tip (**The shared core** above).
 
 Three things keep numbers of their own, and
-`src/test/components-primitives.test.ts` lists them: the provenance lift
-(`z-index: 1/2`, Decision 5), the sidebar's `.note:hover { z-index: 20 }`,
-and the Notes Graph's overlay layers over its canvas.
+`src/test/components-primitives.test.ts` lists them: a saved search's
+criteria over the row below (`z-index: 2`), the sidebar's
+`.note:hover { z-index: 20 }`, and the Notes Graph's overlay layers over its
+canvas.
 
 ---
 
@@ -580,18 +589,18 @@ without their cards.
 
 | Piece | What it is |
 | --- | --- |
-| `.board` | The horizontally scrolling row of `.board-column`s, each with a `.board-column-title`, `.board-count`, and `.board-cards`. `.board-count` reads `40 / 3 · 38 overdue`: the cards shown, the column's limit when `deckard.board.limits` sets one, and how many are overdue, counted from the cards the page shows. |
+| `.board` | The horizontally scrolling row of `.board-column`s, at least 200px each so the default columns, Done included, fit a 1400px window; each has a `.board-column-head` (its `.board-column-title` with `.board-count`, then the column's `.board-add`, a `+` icon button named **Add a task to Todo**, which Done lacks) and `.board-cards`. `.board-count` reads `40 / 3 · 38 overdue`: the cards shown, the column's limit when `deckard.board.limits` sets one, and how many are overdue, counted from the cards the page shows. |
 | `.board-column.over-limit` | Over its limit: a neutral dashed `--line-strong` outline, never red, since a limit is a note and not an error. |
 | `.overdue.quiet` | An overdue card's date when most of its column is overdue and it is not in the longest-overdue third (`card.overdueTone`): `--muted` text after a 6px `--danger` dot, drawn as a border so it is not a background behind the text, the word still "overdue". |
 | `.board-column` | Capped at the viewport's height, with `grid-template-rows: auto minmax(0, 1fr)` so the cards row may shrink; an auto row would size to its cards and the column would clip them with nothing to scroll. |
 | `.board-cards` | The scroller: `overflow-y: auto` with `overflow-x: hidden` said outright, since `overflow-y` alone computes the other axis to `auto` and a theme's hover slide would then put a scrollbar under the column. A hovered board card keeps `transform: none` for the same reason. |
-| `.board-card` | A `.task` card with a checkbox, inline-tag title, `.board-details`, and a corner `.board-move` menu. Each detail span is an `inline-block`: one unit to the line, breaking inside itself only when wider than the column. |
+| `.board-card` | A `.task` card with a checkbox, inline-tag title, `.board-details`, and a corner `.board-move` menu, shown by the reveal rule (below). Each detail span is an `inline-block`: one unit to the line, breaking inside itself only when wider than the column. |
 | `.board-steps` | A card whose task has steps: one `.source` line under the details, `.board-steps-label` (`2 of 5 steps`) then `.board-steps-next` (` · next: Draft the email`); the line is one line with an ellipsis, so in a narrow column the next step gives way first. Host-worded by `describeStepParts()` in `domain/markdown/taskSteps.ts` as `card.steps`; the card's `aria-label` gains the label. Muted like the details, so no color of its own. |
-| `<TaskBoard snapshot>` (`board.tsx`) | Draws the host's board, each card with `BoardCard`. Words typed in the search box hide the cards, list rows, and table rows that do not show every word, file and line included, as they are typed and after every draw; `followShownCards()` (`boardMoves.ts`) then counts each column again from the cards left, and moves the Tab stop to the first of them when the words hid it. |
-| `<GroupSwitch snapshot>` (`board.tsx`) | The Status / Priority / Due date / Person / Tag… `.segmented` switch. **Tag…** (`data-action="pick-board-namespace"`) opens a menu of the namespaces open tasks carry and, grouped by one, reads `#context`, pressed; with none in use it is `aria-disabled` and says why. |
-| `installBoardMoves(options)` (`boardMoves.ts`) | Wires a card's keys (Enter opens it, Ctrl or Cmd+Enter beside the board), its move menu, its checkbox, opening it, dragging it between columns (a card's drag carries `application/x-deckard-card` and no plain text, so a field it is dropped on takes nothing, and a column takes no other drag; any drop or new drag lets go of a card a redraw cut short), and the group switch's Tag… menu, once per page, on the document. It posts, through `options.post`, `openSource`, `toggleTask`, `moveTask` (with `from`, the column the card was in), and `setBoardGroup` (with `namespace` for `tag`). A card is keyed by column and task, `boardCardKey(columnId, taskId)`, and carries `data-card-column`, since a task with two tags in the grouped namespace is two cards; `cardColumn` is one of `PLACE_KEYS`, so focus comes back to the same copy. |
+| `<TaskBoard snapshot>` (`board.tsx`) | Draws the host's board, each card with `BoardCard`. Words typed in the search box hide the cards and table rows that do not show every word, file and line included, as they are typed and after every draw; `followShownCards()` (`boardMoves.ts`) then counts each column again from the cards left, and moves the Tab stop to the first of them when the words hid it. |
+| `<GroupSelect snapshot>` (`board.tsx`) | The **Group** select: Status, Priority, Due date, Person, the namespace the board is grouped by (`#context`) when it is, and **Tag…** (`value="pick-namespace"`), which puts the select back on the grouping in force and opens a menu of the namespaces open tasks carry; with no other namespace in use, Tag… is disabled. `<LayoutSwitch layout>` (`layouts.tsx`) is the **Board \| Table** `.segmented` pair beside it on the search box's status row. |
+| `installBoardMoves(options)` (`boardMoves.ts`) | Wires a card's keys (Enter opens it, Ctrl or Cmd+Enter beside the board), its move menu, its checkbox, opening it, dragging it between columns (a card's drag carries `application/x-deckard-card` and no plain text, so a field it is dropped on takes nothing, and a column takes no other drag; any drop or new drag lets go of a card a redraw cut short), and the Group select, with its Tag… menu, once per page, on the document. It posts, through `options.post`, `openSource`, `toggleTask`, `moveTask` (with `from`, the column the card was in), and `setBoardGroup` (with `namespace` for `tag`). A card is keyed by column and task, `boardCardKey(columnId, taskId)`, and carries `data-card-column`, since a task with two tags in the grouped namespace is two cards; `cardColumn` is one of `PLACE_KEYS`, so focus comes back to the same copy. |
 | `.board-card` on screen | Every card is drawn. An open column draws its first 100 cards (`columnLimit`), Done its 20; `showColumnRest` with a column id adds it to the host's `shownColumns` until the grouping or the search changes. |
-| `.board-card.is-pending` | A card moved on the page and not yet written: every move — a drop, `[` `]`, `t` `m`, `0`–`5`, the ⋯ menu — puts it at the top of its new column at once, recounts both columns from the cards and the column's `data-hidden-count` and `data-limit`, keeps focus on it, and marks it `is-pending` with `aria-busy` (70% opacity). `x` or the checkbox marks the card `completed` at once the same way, so a second `x` reopens it. An edit rewrites the task's line and so gives it a new id: a card's next edit, made before the host's next state, shows at once and is sent once that state is drawn, to the card written where its task is, with the new id; one the state shows is already made sends nothing. A move to a column the grouping does not draw marks it where it is. The next state replaces the board. A move the host could not write is followed by a `moveRefused` message, which the page says as "… was not moved." A completion or reopening it could not write, from a card, a row, or the table, is followed by `toggleRefused`, said as "… was not completed." or "… was not reopened." |
+| `.board-card.is-pending` | A card moved on the page and not yet written: every move — a drop, `[` `]`, `t` `m`, `0`–`5`, the ⋯ menu — puts it at the top of its new column at once, recounts both columns from the cards and the column's `data-hidden-count` and `data-limit`, keeps focus on it, and marks it `is-pending` with `aria-busy` (70% opacity). `x` or the checkbox marks the card `completed` at once the same way, so a second `x` reopens it. An edit rewrites the task's line and so gives it a new id: a card's next edit, made before the host's next state, shows at once and is sent once that state is drawn, to the card written where its task is, with the new id; one the state shows is already made sends nothing. A move to a column the grouping does not draw marks it where it is. The next state replaces the board. A move the host could not write is followed by a `moveRefused` message, which the page says as "… was not moved." A completion or reopening it could not write, from a card or a table row, is followed by `toggleRefused`, said as "… was not completed." or "… was not reopened." |
 
 The card menu ends with a **Note** group holding **Move to…** (`move-to`),
 which posts `{ type: 'moveTaskTo', taskId }`; the host runs Move to… on the
@@ -604,14 +613,13 @@ act on a board card as well.
 ### Task list
 
 `taskList.css` and the components below draw a list of tasks: the Dashboard's
-search results, a search page's tasks, the calendar's day, and the Task
-Board's list layout.
+search results, a search page's tasks, and the calendar's day.
 
 | Piece | What it is |
 | --- | --- |
-| `.task-list`, `.task-row` | The grid of rows, each a `.row` with a checkbox, title, and `.task-meta` line of due date, details, file, heading, and line. |
+| `.task-list`, `.task-row` | The grid of rows, each a `.row` with a checkbox, title, a `.task-meta` line of due date and facts, and under it the `.entry-details` line of file and line, heading, and dates (**Card details** below). |
 | `<TaskListRow item draggable leading trailing entry afterSource>` | One row from a `DashboardTask`. Its due date is the host's `dueLabel`, `Overdue 15 days · 2026-09-08`, worded by `describeDueDate()` in `domain/markdown/dueWording.ts` so every list, the board, the table, and query blocks say it the same way. `draggable` marks a row that can be ranked. A parked task (`item.parked`) says **Parked** first in its meta line. A task with steps has a `.task-detail.task-steps` span after Repeats, the host's `stepsLabel` (`2 of 5 steps · next: Draft the email`). `trailing` is drawn after the words, such as the calendar panel's **Tomorrow** button, and `leading` in place of the checkbox, for a row that cannot be completed from there. Its checkbox posts through `data-action="toggle-task"`. |
-| `installRankedRows(options)` | Ranks rows by dragging them, with a ghost and a placeholder, or by **Move to top** and **Move to bottom** on their context menu. `options.kinds` names each kind of row by selector and dataset key; the page supplies `canRank`, `reorder`, `move`, and any more menu actions. A drag never starts on a control inside a row, such as a button, field, or a `<summary>`, so the control keeps its click. The Dashboard ranks tags, entities, and Home's widgets with it, the Task Board its tasks. |
+| `installRankedRows(options)` | Ranks rows by dragging them, with a ghost and a placeholder, or by **Move to top** and **Move to bottom** on their context menu. `options.kinds` names each kind of row by selector and dataset key; the page supplies `canRank`, `reorder`, `move`, and any more menu actions. A drag never starts on a control inside a row, such as a button, field, or a `<summary>`, so the control keeps its click. The Dashboard ranks tags, entities, and Home's widgets with it, the Task Board its table's rows in Rank order and its status columns. A table row's ghost is a one-row table of its own, its cells as wide as the row's. |
 | `rankKeys(keys, key, target, before)`, `moveKeyToEdge(keys, key, toTop)` | The new order a drag or a menu choice asks for. |
 
 ### Result table
@@ -619,12 +627,79 @@ Board's list layout.
 `.result-table` in `taskList.css` styles the Task Board's table layout:
 `th` holds a `button[data-action="set-table-sort"]` that fills the cell,
 `.is-sorted` marks the sorted column, `.result-row` rows carry the same
-`data-task-id`, `data-file-path`, and `data-line` a `.task-row` does so the
-page's open and toggle handlers serve both, and `td.is-overdue` and
+`data-task-id`, `data-file-path`, and `data-line` a `.task-row` does, and
+in Rank order, with no header sort, `.is-draggable` and are ranked as the
+`tableRow` kind of `installRankedRows`, and `td.is-overdue` and
 `td.is-muted` are the two states a cell can be in. The host makes the rows
 and cells with the column model in `src/ui/state/resultTable.ts`, which a
 query block's `view=table` shares, so the page only draws them.
-`.table-columns` is the gear's column picker.
+`.table-columns` is ⋯'s column picker.
+
+### Row actions: the reveal rule
+
+`reveal.css` draws a row's own action only on that row under the pointer or
+with focus in it: the calendar day panel's `.day-move` (**Tomorrow**, or
+**Next day** on a later day), a board card's `.board-move` ⋯, and a table
+row's ⋯ (`RowMenuButton`). The control carries `data-reveal`, and the
+row, card, or table row it acts on carries `data-reveal-region`:
+`TaskListRow`, `BoardCard`, and each `.result-row` mark themselves.
+
+| State | Drawn |
+| --- | --- |
+| At rest | `opacity: 0`, in its place, in the Tab order and the accessibility tree |
+| Region `:hover` or `:focus-within`, its own `:focus-visible`, `[aria-expanded="true"]` | Shown |
+| `[data-reveal-keep]` on the control or the region, or `@media (hover: none)` | Always shown |
+
+Opacity only, never `display` or `visibility`, so nothing moves when a
+control shows and a screen reader always finds it. The rule is in the tail,
+after the theme, so no theme draws a control back at rest. A card's ⋯ stays
+`tabindex="-1"` and opens with Shift+F10, the menu key, Alt+Enter and
+right-click; a table row's stays a Tab stop. Add no new row menus: a new
+row action takes this rule rather than a rule of its own.
+
+Zen adds regions of its own to the same rule (plan 29, R22), which act only
+while the body carries `data-controls="quiet"`. A tool under the page's bar
+carries `data-zen-reveal`, and the area it belongs to `data-zen-region`:
+
+| Region | Tools quieted |
+| --- | --- |
+| `.query-workspace` (the search box) | The Task board's Board \| Table, Group, Sort and Can start now |
+| `.board-column` | Its `.board-add` + |
+| `.overview-tabs-row`, `.overview-pane-header` | A search page's Sort and Bulk edit |
+| `.dashboard-tabs-row` | Home's Customize |
+| `.context-pages-band`, `.related-notes-controls` | Context's gears and its Related Sort |
+| A week's `.calendar-row` | Its `.week-label` mark |
+
+A region's `:focus-within` doesn't count while focus is in its
+`.query-input`, so typing a search shows nothing; an open disclosure
+(`[open]`) stays shown. A segmented group takes the mark on its
+`.segmented`, never on one segment. The renderer adds `data-reveal-keep`
+to a tool whose value is shaping the page: a Sort that isn't at its
+default, Can start now while pressed, a table sorted by a column, and a
+week mark with a note. Zen regions never nest. The page's bar, the search
+field and its glyphs, content switches, links that carry data and the
+page's own job carry no mark.
+
+### Card details
+
+`provenance.css` and `<DetailsLine parts>` (`detailsLine.tsx`) draw what
+`deckard.display.cardDetails` ticks: where an entry is written, the headings
+above it, and its created and updated dates. A task row, board card, search
+card and Context card draws them as one `.entry-details` line under its date
+line, its parts in that order joined by an `aria-hidden` dot, one line cut
+short with an ellipsis. The line carries `data-reveal` and its entry
+`data-reveal-region`, so it is drawn at no opacity until the entry is
+hovered or holds focus (the reveal rule above), and always on a screen that
+does not hover. It takes its room at rest: nothing moves when it shows, and
+nothing is laid over the next entry. A Home row that names a note keeps its
+file on a line of its own the same way.
+
+With nothing ticked the body carries `data-file-line="never"`: no room is
+kept, and the line is folded off-screen, never `display: none`, so a screen
+reader still reads the file and line. A count beside a name, on a Home row
+or a tag row, is not a card detail; it is drawn in place, and Counts decides
+it. A board card's `.board-details` carry its due date and "overdue", and are
+always drawn.
 
 ### `.row`
 
@@ -646,9 +721,8 @@ saved-view rows. `npm run test:ui` fails if one of those renders without it.
 
 ## Zen mode
 
-`zen.css`. Deckard's own chrome, turned down: decoration hidden, the frame
-thinned, and each row's file and line folded away until the row is hovered or
-focused. It is not a ninth theme — a theme picks the palette, zen picks how
+`zen.css`. Deckard's own chrome, turned down: decoration hidden and the frame
+thinned. It is not a ninth theme — a theme picks the palette, zen picks how
 much frame is drawn, and the two compose.
 
 **Every rule is scoped under `body.zen`, and the sheet ships whether or not
@@ -685,9 +759,11 @@ Two things look like chrome and are not:
 - `.query-error` shares its slot with `.query-hint`. Outside zen the hint
   already rests while the box is idle and empty, through
   `.query-workspace:not(:focus-within):not([data-has-text])`, and comes back
-  on focus or once a term is written. Zen hides it outright. The hint goes; the error
-  never does, or a search that failed to parse reads as one that found
-  nothing.
+  on focus or once a term is written. The hint is a `.help-text`, the one
+  class Display's help step hides (`body[data-help=hidden] .help-text`), as
+  every line that teaches is. The hint goes; the error never does, or a
+  search that failed to parse reads as one that found nothing. The class is
+  never on a control or on anything that holds one.
 - `.board-details` is a `.source`, but it carries the due date and the word
   "overdue". It does not fold. Only `.card .source`, `.note .source`, and the
   `.task-source` spans in `<TaskListRow>` do.
@@ -705,8 +781,8 @@ not have, so a `:hover` nested in an `@media` block is never tested.
 | --- | --- |
 | `zen.css` | The sheet, last in `tail.css`, which every page links whether zen is on or not. |
 | `getPageTailCss({ theme, zen })` | The sheets after the page's own, its theme then `tail.css`, and the body's ` class="zen"` or nothing. `buildPageShell` writes both. In `components.ts`. |
-| `readPageChrome(themePreview)` | The look a page is written in, read now: `getDeckardTheme(preview)`, the Display step and settings, and the page width the gear keeps in the preferences. `WebviewHost` calls it each time it sets a page's HTML and passes it to the controller's `html(webview, chrome, state)`. In `host/pageChrome.ts`. |
-| `onDidChangePageChrome(listener, themePreview)` | Calls back when a page must be drawn in another look: `deckard.theme` or a Display setting changed, the gear chose another page width, or Choose Theme… is previewing a theme on the `ThemePreview` (`themePreview.ts`), which `getDeckardTheme(preview)` reads first. `WebviewHost` listens to it for every page, and a page's `onChromeChange` says what it then does ([webviews.md](architecture/webviews.md#what-a-controller-tells-its-host)). In `host/pageChrome.ts`. |
+| `readPageChrome(themePreview)` | The look a page is written in, read now: `getDeckardTheme(preview)`, whether Zen is on and what it turns on, the card details and date formats, and the page width ⋯ keeps in the preferences. `WebviewHost` calls it each time it sets a page's HTML and passes it to the controller's `html(webview, chrome, state)`. In `host/pageChrome.ts`. |
+| `onDidChangePageChrome(listener, themePreview)` | Calls back when a page must be drawn in another look: `deckard.theme` or a Display setting changed, ⋯ chose another page width, or Choose Theme… is previewing a theme on the `ThemePreview` (`themePreview.ts`), which `getDeckardTheme(preview)` reads first. `WebviewHost` listens to it for every page, and a page's `onChromeChange` says what it then does ([webviews.md](architecture/webviews.md#what-a-controller-tells-its-host)). In `host/pageChrome.ts`. |
 | `affectsPageChrome(event)` | Whether a settings change alters how a page is drawn; `onDidChangePageChrome` asks it. In `host/pageChrome.ts`. |
 
 ---
@@ -722,14 +798,26 @@ removable terms, and **Refine**. A page creates it with
 and `afterRender()` and of each host state with `receive()`, and passes its
 events through the `handle*` methods. `options.resultKinds` names
 what the page can find, such as `['tasks']` on the Task Board, so the result
-count names only those. `options.refineElsewhere()` returns true while the
-Related Notes sidebar shows the page's Refine options, and `facets()`
-then draws a single line in their place. `options.actions(hasText)` draws
-the page's own buttons after Clear, such as the Task Board's Save; one that
-needs text carries `data-query-needs-text`. Search is the bar's filled
-button (`.query-apply`) unless `options.ownPrimary()` returns true: then a
-page's own button marked `.query-primary` is, and Search is drawn as the
-others are, as on the Task Board while it edits what the Tasks view lists.
+count names only those. Otherwise `facets()` draws the lead lines and the
+count in `section.query-facets`, and the facets in a `details.query-facets-fold`
+whose summary reads **Refine**, with **· N set** while the search holds N of
+its values past the page's own: open to begin with, closed under Zen, and
+kept as the reader left it across a draw. `options.refineElsewhere()` returns true while the
+Context sidebar shows the page's Refine options, and `facets()` then
+draws no Refine at all: only the page's lead lines (`facets(lead)`, such as
+a tag page's look-alikes) and the ways out of a search that matched
+nothing, as plain lines in `.query-facets-elsewhere`, with the count kept
+for a screen reader. `options.actions(hasText)` draws
+the page's own buttons after the field, such as the Task Board's Save; one
+that needs text carries `data-query-needs-text`. The bar has no Search or
+Clear button. **Builder** (`.query-builder-toggle`, with `<HammerIcon>`) is
+joined to the start of the field in a `.query-field-group`, carries
+`aria-expanded`, and is drawn pressed (`.active`) while the builder is open
+under the field; `controlEdge.css` joins the two after the themes. The field
+ends in two `.query-field-glyph` buttons: `.query-clear` (×), drawn only
+while `canClear()` holds, which `syncTextButtons` keeps in place as a search
+is typed, and `.query-run` (→), which runs the search as Enter does. None of
+them is filled.
 `.search-notice`, in the same sheet, is the line above a search that says
 what the reader is looking at, with a way out: the Tags tab's kept search,
 and the Task Board's Tasks view strip.
@@ -786,7 +874,7 @@ from the suggestion it made, never from what the page posts.
 
 The header's `.metrics` are three `<Metric>` buttons (`.metric-open`) —
 Overdue, Due today, and Open — each opening the search it counts, scoped by
-`deckard.agenda.query`; Stats draws its figures with the same component.
+`deckard.tasks.viewQuery`; Stats draws its figures with the same component.
 
 The Tasks view widget ends with a `.home-widget-footer` line: what was done
 today, and how many tasks need a new date as a `.text-button` that opens
@@ -852,6 +940,28 @@ Buttons, menu items, and command titles follow one table, and
   non-focusable span, such as the priority badge, and a select's `<option>`
   may keep one.
 
+### The primary action
+
+**At most one filled control to a page, and only for an action that commits
+something.** `button.primary` in `shared/control.css` fills a button with the
+`--chosen-bg` / `--chosen-fg` pair, with a hover and focus of its own: VS
+Code's own button colors in Corpo, gold in Cooper, and in Fellowship a
+darker 1px edge, since its gold fill barely parts from the parchment. These
+are the only ones:
+
+| Page | The primary |
+| --- | --- |
+| Task Board | **Add task**; while the board edits what the Tasks view lists, **Save to Tasks view**, and Add task goes plain |
+| Task Statuses | **Save** |
+| Calendar day panel | **Create**, while the day has no daily note (**Open** is plain) |
+| Home, in a workspace with no notes | Get Started's **Create today's note** |
+
+Nothing else is filled: not navigation, not Try next's suggestion, not the
+search box's own controls, and not a button borrowing `.active`, which
+marks a chosen segment or a pressed toggle. `components-primitives.test.ts`
+reads every surface's drawn DOM and fails a page with two, or with one on
+another action.
+
 ### Destructive actions
 
 **Undo what can be undone; confirm only what cannot.** An action whose
@@ -866,7 +976,7 @@ first button in its row, and it is never filled at rest.
 | Remove saved search (Home) | VS Code's own modal asks first: the saved search and its widget are gone for good. |
 | Reset widgets (Home, customizing) | Asks inline: **Keep them**, then **Reset widgets** as `button.danger`. |
 | Remove widget × (Home, customizing) | Acts at once; the edit bar says **Removed Tasks view.** with **Undo**, which puts it back at its place with its width and options. Leaving customizing withdraws it. |
-| Remove status column × (board gear) | Acts at once, with **Removed the review column.** and **Undo**. |
+| Remove status column × (board ⋯) | Acts at once, with **Removed the review column.** and **Undo**. |
 | Reset graph | Acts at once, with **Graph reset.** and **Undo**. |
 
 `<UndoNotice message action buttonClass>` draws the `.undo-notice` line;
@@ -958,11 +1068,10 @@ It needs Chrome (`CHROME_PATH`, or the usual names) and skips itself without
 one; CI has it.
 
 Every surface runs twice, once with zen and once without
-(`LAYOUT_ONLY=cooper+zen:sidebarNotes` picks one out), because zen is the only
-thing here that makes a row grow under the pointer: it folds the file and line
-away and gives them back on hover. The search page is a zen-only surface,
-since that reveal sits inside a `.card-header` rather than at the end of a
-row.
+(`LAYOUT_ONLY=cooper+zen:sidebarNotes` picks one out). Nothing grows under the
+pointer: a row's card details keep their line at rest and are revealed in
+place (**Card details** below), and `taskBoardDetails` and
+`taskBoardNoDetails` draw the board with every detail ticked and with none.
 
 ### A page that paints
 

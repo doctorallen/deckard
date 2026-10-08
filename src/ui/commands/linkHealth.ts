@@ -157,7 +157,10 @@ export class LinkHealth implements vscode.Disposable {
         this.diagnostics.delete(document.uri);
       }),
       vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('deckard.editor.linkDiagnostics')) {
+        if (
+          event.affectsConfiguration('deckard.editor.linkDiagnostics') ||
+          event.affectsConfiguration('deckard.editor.preset')
+        ) {
           this.checkOpenNotes();
         }
       }),

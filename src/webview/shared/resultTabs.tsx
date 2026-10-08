@@ -36,11 +36,11 @@ export function ResultTabs({ tabs, active, label, actions }: {
   readonly tabs: readonly ResultTab[];
   readonly active: string;
   readonly label: string;
-  /** What acts on the tab shown, such as Bulk edit and Export, at the row's end. */
+  /** What acts on the tab shown, such as Sort and Bulk edit, at the row's end; the row is the region Zen shows them from. */
   readonly actions?: ComponentChildren;
 }) {
   return (
-    <div class="overview-tabs-row">
+    <div class="overview-tabs-row" data-zen-region="">
       <div class="segmented overview-tabs" role="tablist" aria-label={label}>
         {tabs.map((tab) => {
           const selected = tab.id === active;

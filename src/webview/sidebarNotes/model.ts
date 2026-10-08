@@ -45,7 +45,7 @@ export const ACTIVE_TAG_PAGE_SIZE = 4;
  * context, its sort and gear, nor what links to it.
  */
 export function isPageInFront(snapshot: SidebarNotesSnapshot): boolean {
-  return snapshot.state === 'graph' || snapshot.state === 'refine' || snapshot.state === 'calendarDay' || snapshot.state === 'customizeHome';
+  return snapshot.state === 'graph' || snapshot.state === 'refine' || snapshot.state === 'calendarDay';
 }
 
 /** Which list the sidebar shows: a different one starts its Show more count over. */

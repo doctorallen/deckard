@@ -66,8 +66,8 @@ suite('Task title parity', () => {
     return { ...store.reader.value, ...changes };
   };
 
-  test('the Task Board, as a board, a list, and a table', () => {
-    for (const layout of ['board', 'list', 'table'] as const) {
+  test('the Task Board, as a board and a table', () => {
+    for (const layout of ['board', 'table'] as const) {
       const board = createTaskBoard({ index: index(), preferences: preferences({ taskBoardLayout: layout, taskTableColumns: ['title'] }), search: { query: '' }, options });
       const page = open(renderPage('taskBoard'), board);
       const selector = layout === 'table' ? '.result-table .result-title' : '.task-title';

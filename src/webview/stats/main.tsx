@@ -8,6 +8,7 @@ import type { StateMessage } from '../../ui/protocol/messaging';
 import type { DeckardStatsSnapshot, OpenTagListMessage, StatsMessage, StatsUsedOnceTag } from '../../ui/protocol/stats';
 import { type ActionHandler, listenForActions, onHostMessage, readEmbeddedState, startPage } from '../shared/page';
 import { rememberScroll, restoreScroll } from '../shared/scroll';
+import { installViewOptions } from '../shared/viewOptions';
 import { keepState, keptState, post, vscodeApi } from '../shared/vscode';
 import { AttentionSection } from './attention';
 import { type DrawnStats, ROW_LISTS, type RowList, type StatsState } from './model';
@@ -72,6 +73,9 @@ const store = startPage<StatsState>({
     restoreScroll(keptState());
   },
 });
+
+// ⋯'s menu, and its Appearance and Help rows.
+installViewOptions();
 
 /** Draws the page with a choice changed, and keeps the choices for the next time it is drawn. */
 function choose(change: Partial<Choices>): void {

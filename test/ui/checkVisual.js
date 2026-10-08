@@ -182,6 +182,11 @@ function compareShot({ label, surfaceName, name, shot }, drawn, baseline, { tall
   }
 }
 
+// The layout probe still runs, so the page is driven and hovered as the
+// layout check drives it, but the report it writes into the page is not part
+// of what the reader sees, and a short page would show it under its content.
+const HIDE_PROBE = '#layout-probe { display: none !important; }';
+
 /**
  * Draws one surface and compares it with its baseline, or records the
  * baseline when updating or when there is none, saying which to `log`.
@@ -190,7 +195,7 @@ async function drawSurface(surface, { label, theme, zen, rendered }, tally, log)
   const surfaceName = surface.name || surface.page;
   const name = `${label}-${surfaceName}`;
   const file = path.join(dir, `${name}.html`);
-  writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface));
+  writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface, undefined, { css: HIDE_PROBE }));
   const shot = path.join(dir, `${name}.png`);
   const baseline = path.join(BASELINES, `${name}.png`);
   let drawn;

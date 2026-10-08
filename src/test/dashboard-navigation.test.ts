@@ -63,13 +63,6 @@ function createNavigation(): DashboardNavigation & { opened: string[] } {
     openDailyNote: async () => {
       opened.push('today');
     },
-    quickAdd: async (text) => {
-      opened.push(`add ${text}`);
-      return true;
-    },
-    createHubNote: async (tagKey) => {
-      opened.push(`hub ${tagKey}`);
-    },
   };
 }
 
@@ -95,7 +88,6 @@ function openHome(options: Pick<DashboardPanelOptions, 'indexer' | 'preferences'
     extensionUri: vscode.Uri.file(process.cwd()),
     writes: createTaskWrites(),
     navigationService: new NavigationService(),
-    source: { getWidgetChoices: () => [], addWidget: () => undefined, resetWidgets: async () => undefined },
   });
   const host = new WebviewHost(controller, { indexer: options.indexer, themePreview: new ThemePreview() });
   const surface = new FakeSurface();

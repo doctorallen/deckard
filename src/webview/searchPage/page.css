@@ -6,10 +6,9 @@
 @import "../shared/noteBlocks.css";
 @import "../shared/queryEditor.css";
 
-/* The gear sits in the header's top-right corner. The margin keeps a short
-   header tall enough to hold it. */
-header > .toolbar { margin-top: 36px; }
-header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
+/* ‹ › and ⋯ sit in the bar's top-right corner, beside DECKARD ▾, however
+   tall the title and the lines under it run. */
+header.page-bar { align-items: flex-start; }
 .overview-tag-link.overview-tag-link {
   min-height: 0;
   margin: 0;
@@ -35,17 +34,21 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
   transform: none;
   box-shadow: none;
 }
-.overview-eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.page-bar-lead > .eyebrow { margin-bottom: 6px; }
 .saved-view-name { margin: 0 0 8px; color: var(--cyan); font: var(--text-xs) var(--vscode-editor-font-family, ui-monospace, monospace); overflow-wrap: anywhere; }
 .saved-view-name-label { color: var(--muted); }
 .overview-tab-panel[hidden] { display: none; }
 .overview-split { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; margin-top: 20px; }
 .overview-pane { min-width: 0; }
 .overview-pane-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-/* Bulk Edit and Export sit together at the right, after the heading. */
-.overview-pane-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; margin-left: auto; }
+/* The notes' Sort and Bulk edit sit together at the right, after the heading or the tabs. */
+.overview-pane-actions { display: flex; flex: 0 0 auto; align-items: center; gap: var(--space-3); margin-left: auto; }
+/* Sort: a compact native select, its label the word before it. */
+.result-sort select { min-height: 24px; padding: 1px 6px; font-size: var(--text-xs); }
 .overview-pane-heading { margin: 0; color: var(--text); font-size: var(--text-lg); font-weight: 650; }
 .edit-results { flex: 0 0 auto; min-height: 24px; padding: 2px 10px; font-size: var(--text-xs); }
+/* Bulk edit is quiet: words in the heading's own color until it is reached. */
+.edit-results.edit-results:where(:not(:hover):not(:focus-visible)) { border-color: transparent; background: transparent; box-shadow: none; color: var(--muted); }
 .overview-pane .cards, .overview-pane .task-list { margin-top: 12px; }
 /* Group by: a group per tag Refine offers, or per tagged heading, each under
    a rule, its name, what it holds, and how far along its tasks are on one
@@ -98,10 +101,11 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 .hub { margin-top: 20px; padding: 14px; border: var(--edge) solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
 .hub-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-/* A tag with no hub note offers one in a line under its title, as the
-   theme's own button: drawn as caption text, readers took it for a caption
-   and never pressed it. */
+/* A tag with no hub note offers one in a line under its title, as an
+   underlined text link: an offer, and a sign that the tag has no hub. */
 .hub-offer { margin: var(--space-2) 0 0; }
+.hub-offer-link.hub-offer-link { min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; clip-path: none; color: var(--muted); font: inherit; font-size: var(--text-sm); text-decoration: underline; text-decoration-color: var(--cyan); text-transform: none; cursor: pointer; }
+.hub-offer-link.hub-offer-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .hub-offer-link.hub-offer-link:focus-visible { border: 0; background: none; color: var(--text); text-decoration-color: currentColor; transform: none; }
 .hub > summary { cursor: pointer; list-style: none; }
 .hub > summary::-webkit-details-marker { display: none; }
 .hub > summary:focus-visible { outline: var(--edge) solid var(--focus); outline-offset: 2px; }
@@ -140,11 +144,10 @@ header > .toolbar .view-options { position: absolute; top: 0; right: 0; }
 .pagination .page-size select { min-width: 64px; }
 .did-you-mean { margin: 16px 0 0; border-left: 3px solid var(--accent); background: var(--panel); padding: 8px 12px; font-size: var(--text-sm); }
 .did-you-mean button { background: transparent; border: 0; padding: 0; color: var(--text); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
-@media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } header > .toolbar { width: 100%; margin-top: 0; } .overview-split { grid-template-columns: 1fr; } .cards, .task-list { grid-template-columns: 1fr !important; } }
+@media (max-width: 700px) { main { padding: 16px; } header { align-items: start; flex-direction: column; } .overview-split { grid-template-columns: 1fr; } .cards, .task-list { grid-template-columns: 1fr !important; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 
-/* The amber rule above the page, and the containing block the gear is
-   positioned against. */
+/* The amber rule above the page. */
 main { border-top: 2px solid var(--amber); }
 header { position: relative; }
 /* Three lines of each result, or of the paragraph its words are in, and

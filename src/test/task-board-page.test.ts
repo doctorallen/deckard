@@ -116,28 +116,22 @@ suite('Task Board page', () => {
       new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n- [ ] Send the proposal 📅 2026-09-11 🔺 ⏳ 2026-09-22 🔁 every month on the 15th\n')]]),
     );
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    for (const layout of ['board', 'list'] as const) {
-      const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: layout }, search: { query: '' }, options });
-      page?.dispose();
-      page = openWebviewPage(renderPage('taskBoard'), board);
-      const badge = page.find('.priority-badge.priority-highest');
-      assert.strictEqual(badge.querySelector('.priority-mark')?.textContent, '↑↑', `${layout}: the arrow says how far from the middle`);
-      assert.match(badge.textContent ?? '', /Highest/);
-      const details = page.text(layout === 'board' ? '.board-details' : '.task-meta') ?? '';
-      // Where the task is written folds under a card as under a row: the file
-      // and line, then the headings above it.
-      assert.deepStrictEqual(
-        page.findAll(layout === 'board' ? '.board-card .task-source' : '.task-row .task-source').map((span) => span.textContent),
-        ['atlas / line 2', 'Atlas'],
-        `${layout}: the two provenance lines`,
-      );
-      assert.ok(!/atlas\.md/.test(details), `${layout}: the file name is not a detail`);
-      assert.ok(!/PRIORITY|SCHEDULED|REPEATS/.test(details), `${layout}: the details read as written`);
-      if (layout === 'list') {
-        assert.match(details, /Scheduled 2026-09-22/);
-        assert.match(details, /Repeats every month on the 15th/);
-      }
-    }
+    const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board' }, search: { query: '' }, options });
+    page = openWebviewPage(renderPage('taskBoard'), board);
+    const badge = page.find('.priority-badge.priority-highest');
+    assert.strictEqual(badge.querySelector('.priority-mark')?.textContent, '↑↑', 'the arrow says how far from the middle');
+    assert.match(badge.textContent ?? '', /Highest/);
+    const details = page.text('.board-details') ?? '';
+    // Where the task is written is on the line a card keeps for its
+    // details, as a row's is: the file and line, then the headings above it.
+    assert.deepStrictEqual(
+      page.findAll('.board-card .task-source').map((span) => span.textContent),
+      ['atlas / line 2', 'Atlas'],
+      'the two parts of the details line',
+    );
+    assert.strictEqual(page.findAll('.board-card .entry-details').length, 1, 'on one line');
+    assert.ok(!/atlas\.md/.test(details), 'the file name is not a detail');
+    assert.ok(!/PRIORITY|SCHEDULED|REPEATS/.test(details), 'the details read as written');
   });
 
   test('a card\'s menu checks what the task is now, and shows the key for each choice', () => {
@@ -167,7 +161,7 @@ suite('Task Board page', () => {
     assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, column: 'priority:high', from: 'status:todo', requestId: 1 });
   });
 
-  test('List in Tasks view sits in the gear, and says when there is nothing to change', () => {
+  test('List in Tasks view sits in ⋯, and says when there is nothing to change', () => {
     const index = buildWorkspaceIndex(new Map([['notes/a.md', parseMarkdown('notes/a.md', '- [ ] One')]]));
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board' }, search: { query: 'is:mine' }, options });
@@ -184,6 +178,24 @@ suite('Task Board page', () => {
     page.send({ ...board, agendaListsThisSearch: true, agendaQueryIsDefault: true });
     assert.strictEqual(toggle().getAttribute('aria-disabled'), 'true');
     assert.strictEqual(toggle().getAttribute('data-tip-disabled'), 'The Tasks view lists every open task, as this search does.');
+  });
+
+  test('Board | Table sits in the status row, ⋯ has no Layout, and Group is one select', () => {
+    const shown = show(boardOf(TWO));
+    const segment = shown.findAll('.query-status .segmented [data-action="set-task-layout"]');
+    assert.deepStrictEqual(segment.map((button) => [button.textContent, button.getAttribute('aria-pressed')]), [['Board', 'true'], ['Table', 'false']]);
+    assert.strictEqual(shown.findAll('.view-options [data-action="set-task-layout"]').length, 0, '⋯ does not hold the layout');
+    assert.ok(!shown.findAll('.view-options-group > span').some((label) => label.textContent === 'Layout'));
+    shown.click('.query-status [data-action="set-task-layout"][data-value="table"]');
+    assert.deepStrictEqual(shown.lastPosted('setTaskLayout'), { type: 'setTaskLayout', layout: 'table' });
+    assert.deepStrictEqual(shown.findAll('.query-status select').map((select) => select.getAttribute('data-action')), ['set-board-group', 'set-task-sort'], 'Group and Sort, both selects');
+    assert.strictEqual(shown.findAll('.query-status [data-action="set-board-group"] option[value="pick-namespace"]')[0]?.hasAttribute('disabled'), true, 'Tag… waits for a namespace in use');
+    assert.ok(shown.find('.query-status [data-action="toggle-available"]'), 'Can start now stays');
+    shown.dispose();
+
+    const table = show(boardOf(TWO, { taskBoardLayout: 'table' }));
+    assert.deepStrictEqual(table.findAll('.query-status [data-action="set-task-layout"]').map((button) => button.getAttribute('aria-pressed')), ['false', 'true']);
+    assert.strictEqual(table.findAll('.query-status select').length, 0, 'the table groups and sorts by its own headers');
   });
 
   test('a card moved from the keyboard moves at once, and says so if it could not be written', () => {
@@ -204,23 +216,6 @@ suite('Task Board page', () => {
 
     page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'moveRefused', taskId, requestId: 1 } }));
     assert.match(page.text('#live-status') ?? '', /Send the proposal was not moved\./);
-  });
-
-  test('checking a task in the list says which task it completed, and reopened', () => {
-    const index = buildWorkspaceIndex(
-      new Map([['notes/atlas.md', parseMarkdown('notes/atlas.md', '# Atlas #project/atlas\n- [ ] Send the proposal 📅 2026-09-21\n')]]),
-    );
-    store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
-    const list = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'list' }, search: { query: '' }, options });
-    page = openWebviewPage(renderPage('taskBoard'), list);
-    const box = page.find('.task-row input[data-action="toggle-task"]') as HTMLInputElement;
-
-    box.checked = true;
-    box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
-    assert.strictEqual(page.text('#live-status'), 'Completed Send the proposal.');
-    box.checked = false;
-    box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
-    assert.strictEqual(page.text('#live-status'), 'Reopened Send the proposal.');
   });
 
   test('checking a task in the table names it by its title column, wherever that column is', () => {
@@ -465,7 +460,7 @@ suite('Task Board page', () => {
 
     const table = show(boardOf(files, { taskBoardLayout: 'table' }));
     type(table, 'beta');
-    assert.strictEqual(table.findAll('.result-row').filter((row) => !(row as HTMLElement).hidden).length, 1, 'the table narrows as the list does');
+    assert.strictEqual(table.findAll('.result-row').filter((row) => !(row as HTMLElement).hidden).length, 1, 'the table narrows too');
   });
 
   test('the board drawn again after a move keeps where each column and the board were scrolled', () => {
@@ -483,18 +478,18 @@ suite('Task Board page', () => {
     assert.strictEqual(shown.find('.task-board').scrollLeft, 120);
   });
 
-  test('Alt+Enter on a list row opens its menu and leaves its note closed', () => {
-    const shown = show(boardOf(TWO, { taskBoardLayout: 'list', taskSortMode: 'created' }));
-    const row = shown.find('.task-list .task-row') as HTMLElement;
+  test('Alt+Enter on a sorted table row opens its menu and leaves its note closed', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'table', taskTableSort: { column: 'title', direction: 'asc' } }));
+    const row = shown.find('.result-table .result-row') as HTMLElement;
     row.focus();
     press(shown, row, 'Enter', { altKey: true });
     assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'the menu opens');
     assert.strictEqual(shown.lastPosted('openSource'), undefined, 'and the note does not');
   });
 
-  test('a right-click on a ranked list row opens one menu', () => {
-    const shown = show(boardOf(TWO, { taskBoardLayout: 'list', taskSortMode: 'rank' }));
-    const title = shown.find('.task-list .task-row .task-title');
+  test('a right-click on a ranked table row opens one menu', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'table' }));
+    const title = shown.find('.result-table .result-row .result-title');
     title.dispatchEvent(new shown.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
     const open = ['rank-context-menu', 'action-menu'].filter((id) => {
       const menu = shown.document.getElementById(id);
@@ -503,9 +498,9 @@ suite('Task Board page', () => {
     assert.strictEqual(open.length, 1, `open: ${open.join(', ')}`);
   });
 
-  test('the arrows, Home, and End walk a ranked list row\'s menu, as they walk every menu', () => {
-    const shown = show(boardOf(TWO, { taskBoardLayout: 'list', taskSortMode: 'rank' }));
-    const row = shown.find('.task-list .task-row') as HTMLElement;
+  test('the arrows, Home, and End walk a ranked table row\'s menu, as they walk every menu', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'table' }));
+    const row = shown.find('.result-table .result-row') as HTMLElement;
     row.focus();
     press(shown, row, 'F10', { shiftKey: true });
     const menu = shown.find('#rank-context-menu') as HTMLElement;
@@ -526,8 +521,8 @@ suite('Task Board page', () => {
     assert.strictEqual(menu.hidden, false, 'and it stays open');
   });
 
-  test('Shift+F10 and the menu key on a table row open its menu, as a right-click does', () => {
-    const shown = show(boardOf(TWO, { taskBoardLayout: 'table' }));
+  test('Shift+F10 and the menu key on a sorted table row open its menu, as a right-click does', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'table', taskTableSort: { column: 'title', direction: 'asc' } }));
     const row = shown.find('.result-row') as HTMLElement;
     row.focus();
     press(shown, row, 'F10', { shiftKey: true });
@@ -535,6 +530,71 @@ suite('Task Board page', () => {
     press(shown, shown.document.activeElement as Element, 'Escape');
     press(shown, row, 'ContextMenu');
     assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'so does the menu key');
+  });
+
+  test('a table in Rank order ranks its rows by Alt+arrows and the rank menu, whatever the board sorts by', () => {
+    const THREE = { 'notes/a.md': '- [ ] One\n- [ ] Two\n- [ ] Three\n' };
+    const board = boardOf(THREE, { taskBoardLayout: 'table', taskSortMode: 'created' });
+    const ids = Object.fromEntries((board.table?.rows ?? []).map((row) => [row.cells[0].text, row.taskId]));
+    const shown = show(board);
+    const row = (title: string) => shown.findAll('.result-table .result-row').find((candidate) => candidate.querySelector('.result-title')?.textContent === title) as HTMLElement;
+    const reordered = () => shown.lastPosted('reorderTasks')?.taskIds;
+    assert.strictEqual(shown.findAll('.result-table .result-row.is-draggable').length, 3, 'every row can be dragged');
+
+    press(shown, row('One'), 'ArrowDown', { altKey: true });
+    assert.deepStrictEqual(reordered(), [ids.Two, ids.One, ids.Three], 'Alt+Down moves a row one place down');
+    assert.strictEqual(shown.text('#live-status'), 'Moved down.');
+
+    row('Three').querySelector('.result-title')?.dispatchEvent(new shown.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    assert.strictEqual((shown.find('#rank-context-menu') as HTMLElement).hidden, false, 'a right-click opens the rank menu');
+    assert.strictEqual(shown.document.getElementById('action-menu')?.hidden ?? true, true, 'and only that menu');
+    assert.deepStrictEqual(shown.findAll('#rank-context-menu button').map((button) => button.textContent), ['Move up', 'Move down', 'Move to top', 'Move to bottom']);
+    (shown.find('#rank-context-menu [data-context-action="top"]') as HTMLElement).click();
+    assert.deepStrictEqual(reordered(), [ids.Three, ids.One, ids.Two], 'Move to top ranks it first');
+  });
+
+  test('a table row dragged in Rank order is ranked where it is dropped, its ghost a table as wide as the row', () => {
+    const THREE = { 'notes/a.md': '- [ ] One\n- [ ] Two\n- [ ] Three\n' };
+    const board = boardOf(THREE, { taskBoardLayout: 'table' });
+    const ids = Object.fromEntries((board.table?.rows ?? []).map((row) => [row.cells[0].text, row.taskId]));
+    const shown = show(board);
+    const row = (title: string) => shown.findAll('.result-table .result-row[data-task-id]').find((candidate) => candidate.querySelector('.result-title')?.textContent === title) as HTMLElement;
+    let under: Element | null = null;
+    Object.defineProperty(shown.document, 'elementFromPoint', { configurable: true, value: () => under });
+    const pointer = (type: string, target: Element, clientY: number) =>
+      target.dispatchEvent(new shown.window.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX: 10, clientY }));
+
+    const three = row('Three');
+    pointer('pointerdown', three.querySelector('.result-title') as Element, 40);
+    under = row('One').querySelector('.result-title');
+    pointer('pointermove', three, 20);
+    const ghost = shown.find('.drag-ghost') as HTMLElement;
+    assert.strictEqual(ghost.tagName, 'TABLE', 'the ghost is a table of its own');
+    assert.ok(ghost.classList.contains('result-table'), 'drawn as the table is');
+    assert.strictEqual(ghost.querySelectorAll('tbody > tr.result-row').length, 1, 'holding one row');
+    assert.ok(Array.from(ghost.querySelectorAll('td')).every((cell) => cell.style.width !== ''), 'its cells as wide as the row\'s');
+    assert.strictEqual(ghost.querySelector('tr')?.hasAttribute('data-task-id'), false, 'and nothing names the row');
+    assert.strictEqual(shown.findAll('.result-table tbody > tr.drag-placeholder').length, 1, 'a placeholder holds its place in the table');
+
+    // jsdom lays nothing out, so every row's middle is at 0: above it is before the row.
+    pointer('pointerup', three, -1);
+    assert.deepStrictEqual(shown.lastPosted('reorderTasks')?.taskIds, [ids.Three, ids.One, ids.Two]);
+    assert.strictEqual(shown.findAll('.drag-ghost, .drag-placeholder').length, 0, 'the ghost and the placeholder go');
+  });
+
+  test('a table sorted by a header ranks nothing, and Sort by rank is the way back', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'table', taskTableSort: { column: 'title', direction: 'asc' } }));
+    const row = shown.find('.result-table .result-row') as HTMLElement;
+    assert.strictEqual(shown.findAll('.result-table .result-row.is-draggable').length, 0, 'no row can be dragged');
+    press(shown, row, 'ArrowDown', { altKey: true });
+    assert.strictEqual(shown.lastPosted('reorderTasks'), undefined, 'Alt+Down moves nothing');
+    row.querySelector('.result-title')?.dispatchEvent(new shown.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+    assert.strictEqual(shown.document.getElementById('rank-context-menu')?.hidden ?? true, true, 'a right-click opens no rank menu');
+    assert.strictEqual((shown.find('#action-menu') as HTMLElement).hidden, false, 'but the row\'s own menu');
+    const back = shown.find('[data-action="set-table-sort"]:not([data-value])') as HTMLElement;
+    assert.strictEqual(back.textContent, 'Sort by rank');
+    back.click();
+    assert.deepStrictEqual(shown.lastPosted('setTableSort'), { type: 'setTableSort' }, 'which clears the header sort');
   });
 
   test('Ctrl+Enter or Cmd+Enter on a card opens it beside, as a click with either does', () => {
@@ -587,7 +647,7 @@ suite('Task Board page', () => {
     }
   });
 
-  test('the gear lists every status, ticked to show its column, and opens the status list', () => {
+  test('⋯ lists every status, ticked to show its column, and opens the status list', () => {
     const shown = show(boardOf({ 'notes/a.md': '- [ ] Alpha\n- [s] Later\n- [s] Much later\n' }, { taskBoardHiddenColumns: ['Someday'] }));
     (shown.find('details.view-options') as HTMLDetailsElement).open = true;
     const rows = shown.findAll('.board-status').map((row) => [
@@ -653,12 +713,12 @@ suite('Task Board page', () => {
     assert.deepStrictEqual(group('More statuses'), ['Someday', 'Cancelled']);
   });
 
-  test('a list row\'s and a card\'s controls are named by the title as it reads, not its Markdown', () => {
+  test('a table row\'s and a card\'s controls are named by the title as it reads, not its Markdown', () => {
     const files = { 'notes/a.md': '- [ ] Send **the** [proposal](https://x.example/p)\n' };
-    const list = show(boardOf(files, { taskBoardLayout: 'list' }));
-    assert.strictEqual(list.find('.task-row [data-action="task-row-menu"]').getAttribute('aria-label'), 'Change Send the proposal: status, priority, or due date');
-    assert.strictEqual(list.find('.task-row [data-action="toggle-task"]').getAttribute('aria-label'), 'Toggle Send the proposal');
-    list.dispose();
+    const table = show(boardOf(files, { taskBoardLayout: 'table' }));
+    assert.strictEqual(table.find('.result-row [data-action="task-row-menu"]').getAttribute('aria-label'), 'Change Send the proposal: status, priority, or due date');
+    assert.strictEqual(table.find('.result-row [data-action="toggle-task"]').getAttribute('aria-label'), 'Toggle Send the proposal');
+    table.dispose();
 
     const cards = show(boardOf(files));
     assert.strictEqual(cards.find('.board-card [data-action="board-menu"]').getAttribute('aria-label'), 'Change Send the proposal: status, priority, or due date');
@@ -713,51 +773,47 @@ suite('Task Board page', () => {
     assert.deepStrictEqual(moves().slice(2).map(({ taskId, column }) => ({ taskId, column })), [{ taskId: beta?.taskId, column: 'status:in-progress' }]);
   });
 
-  test('a list or table row\'s second edit before the host answers its first waits, and goes with the task\'s new id', () => {
-    for (const layout of ['list', 'table']) {
-      const shown = show(boardOf(TWO, { taskBoardLayout: layout, taskSortMode: 'created' }));
-      const rowTitled = (title: string): HTMLElement => {
-        const row = shown.findAll('.task-row, .result-row').find((candidate) => candidate.textContent?.includes(title));
-        assert.ok(row, `${layout}: a row titled ${title}`);
-        return row as HTMLElement;
-      };
-      const sent = (type: string) => shown.posted.filter((message) => message.type === type);
-      const choose = (value: string): void => {
-        (rowTitled('Beta').querySelector('[data-action="task-row-menu"]') as HTMLElement).click();
-        shown.click(`#action-menu [data-menu-value="${value}"]`);
-      };
-      const firstId = rowTitled('Beta').dataset.taskId;
+  test('a table row\'s second edit before the host answers its first waits, and goes with the task\'s new id', () => {
+    const shown = show(boardOf(TWO, { taskBoardLayout: 'table', taskSortMode: 'created' }));
+    const rowTitled = (title: string): HTMLElement => {
+      const row = shown.findAll('.result-row').find((candidate) => candidate.textContent?.includes(title));
+      assert.ok(row, `a row titled ${title}`);
+      return row as HTMLElement;
+    };
+    const sent = (type: string) => shown.posted.filter((message) => message.type === type);
+    const choose = (value: string): void => {
+      (rowTitled('Beta').querySelector('[data-action="task-row-menu"]') as HTMLElement).click();
+      shown.click(`#action-menu [data-menu-value="${value}"]`);
+    };
+    const firstId = rowTitled('Beta').dataset.taskId;
 
-      choose('priority:high');
-      choose('status:in-progress');
-      const box = rowTitled('Beta').querySelector('input[data-action="toggle-task"]') as HTMLInputElement;
-      box.checked = true;
-      box.dispatchEvent(new shown.window.Event('change', { bubbles: true }));
-      assert.deepStrictEqual(sent('moveTask').map(({ taskId, column }) => ({ taskId, column })), [{ taskId: firstId, column: 'priority:high' }],
-        `${layout}: the second is not sent with the id the first is about to change`);
-      assert.strictEqual(sent('toggleTask').length, 0, `${layout}: nor is the completion`);
-      assert.strictEqual(shown.text('#live-status'), 'Completed Beta.', `${layout}: though it is said at once`);
+    choose('priority:high');
+    choose('status:in-progress');
+    const box = rowTitled('Beta').querySelector('input[data-action="toggle-task"]') as HTMLInputElement;
+    box.checked = true;
+    box.dispatchEvent(new shown.window.Event('change', { bubbles: true }));
+    assert.deepStrictEqual(sent('moveTask').map(({ taskId, column }) => ({ taskId, column })), [{ taskId: firstId, column: 'priority:high' }],
+      'the second is not sent with the id the first is about to change');
+    assert.strictEqual(sent('toggleTask').length, 0, 'nor is the completion');
+    assert.strictEqual(shown.text('#live-status'), 'Completed Beta.', 'though it is said at once');
 
-      // The first is written, and the task's line and id changed. The next
-      // edit goes with the new id, one at a time.
-      const high = boardOf({ 'notes/a.md': '- [ ] Alpha\n- [ ] Beta ⏫\n' }, { taskBoardLayout: layout, taskSortMode: 'created' });
-      shown.send(high);
-      const highId = rowTitled('Beta').dataset.taskId;
-      assert.notStrictEqual(highId, firstId);
-      assert.deepStrictEqual(sent('moveTask').slice(1).map(({ taskId, column }) => ({ taskId, column })), [{ taskId: highId, column: 'status:in-progress' }], layout);
-      assert.strictEqual(sent('toggleTask').length, 0, `${layout}: the completion waits on the status`);
+    // The first is written, and the task's line and id changed. The next
+    // edit goes with the new id, one at a time.
+    const high = boardOf({ 'notes/a.md': '- [ ] Alpha\n- [ ] Beta ⏫\n' }, { taskBoardLayout: 'table', taskSortMode: 'created' });
+    shown.send(high);
+    const highId = rowTitled('Beta').dataset.taskId;
+    assert.notStrictEqual(highId, firstId);
+    assert.deepStrictEqual(sent('moveTask').slice(1).map(({ taskId, column }) => ({ taskId, column })), [{ taskId: highId, column: 'status:in-progress' }]);
+    assert.strictEqual(sent('toggleTask').length, 0, 'the completion waits on the status');
 
-      shown.send(boardOf({ 'notes/a.md': '- [ ] Alpha\n- [/] Beta ⏫\n' }, { taskBoardLayout: layout, taskSortMode: 'created' }));
-      assert.deepStrictEqual(sent('toggleTask').map(({ taskId, completed }) => ({ taskId, completed })), [{ taskId: highId, completed: true }], layout);
-      assert.strictEqual((rowTitled('Beta').querySelector('input[data-action="toggle-task"]') as HTMLInputElement).checked, true, `${layout}: its box shows it`);
+    shown.send(boardOf({ 'notes/a.md': '- [ ] Alpha\n- [/] Beta ⏫\n' }, { taskBoardLayout: 'table', taskSortMode: 'created' }));
+    assert.deepStrictEqual(sent('toggleTask').map(({ taskId, completed }) => ({ taskId, completed })), [{ taskId: highId, completed: true }]);
+    assert.strictEqual((rowTitled('Beta').querySelector('input[data-action="toggle-task"]') as HTMLInputElement).checked, true, 'its box shows it');
 
-      // A refusal leaves the id as it was, so the next edit goes at once.
-      shown.window.dispatchEvent(new shown.window.MessageEvent('message', { data: { type: 'toggleRefused', taskId: highId, completed: true } }));
-      choose('priority:low');
-      assert.deepStrictEqual(sent('moveTask').slice(2).map(({ taskId, column }) => ({ taskId, column })), [{ taskId: highId, column: 'priority:low' }], layout);
-      page?.dispose();
-      page = undefined;
-    }
+    // A refusal leaves the id as it was, so the next edit goes at once.
+    shown.window.dispatchEvent(new shown.window.MessageEvent('message', { data: { type: 'toggleRefused', taskId: highId, completed: true } }));
+    choose('priority:low');
+    assert.deepStrictEqual(sent('moveTask').slice(2).map(({ taskId, column }) => ({ taskId, column })), [{ taskId: highId, column: 'priority:low' }]);
   });
   /** Types `words` into the search box without running them, as a reader does. */
   const typeWords = (shown: WebviewPage, words: string): void => {
@@ -767,33 +823,49 @@ suite('Task Board page', () => {
     box.dispatchEvent(new shown.window.Event('input', { bubbles: true }));
   };
 
-  /** The search bar's own buttons, after the box and its terms, in the order Tab reaches them. */
+  /** The page bar's buttons, then ⋯'s own actions, by what each does. */
   const barButtons = (shown: WebviewPage) =>
-    shown.findAll('.query-bar-row > button').map((button) => button.getAttribute('data-action'));
+    shown.findAll('.page-bar-actions > button').map((button) => button.getAttribute('data-action'));
+  const menuActions = (shown: WebviewPage) =>
+    shown.findAll('.page-menu [role="group"][aria-label="Page"] .view-options-item').map((row) => row.getAttribute('data-action'));
 
-  test('Add task ends the search bar and runs Add Task; a column’s + Add task starts it in the column', () => {
+  test('Add task is the bar\'s one filled button and runs Add Task; a column’s + starts it in the column', () => {
     const shown = show(boardOf(TWO, { taskBoardGroup: 'status' }));
-    const add = shown.find('.query-bar-row > [data-action="add-task"]');
+    assert.deepStrictEqual(shown.findAll('.query-bar-row > button'), [], 'the search bar is the search alone');
+    const add = shown.find('.page-bar-actions > [data-action="add-task"]');
     assert.strictEqual(add.textContent, 'Add task');
     assert.ok(add.getAttribute('data-tip'), 'its tip says where the task goes');
-    assert.ok(!add.classList.contains('query-primary'), 'Search keeps the one filled button');
-    shown.click('.query-bar-row > [data-action="add-task"]');
+    assert.ok(add.classList.contains('primary'), 'the board\'s one filled button');
+    assert.strictEqual(shown.findAll('.primary').length, 1);
+    assert.strictEqual(shown.text('.page-bar-actions .board-total'), '2 tasks', 'the count stays as text');
+    shown.click('.page-bar-actions > [data-action="add-task"]');
     assert.deepStrictEqual(shown.lastPosted('addTask'), { type: 'addTask' });
 
-    const column = shown.find('.board-column[data-column-id="status:in-progress"] [data-action="board-add-task"]');
-    assert.strictEqual(column.textContent, '+ Add task');
-    assert.strictEqual(column.getAttribute('data-tip'), 'Add a task already in In progress');
+    const column = shown.find('.board-column[data-column-id="status:in-progress"] .board-column-head > [data-action="board-add-task"]');
+    assert.ok(column.classList.contains('icon-button'), 'a small icon in the column\'s head');
+    assert.strictEqual(column.getAttribute('aria-label'), 'Add a task to In progress');
+    assert.strictEqual(column.getAttribute('data-tip'), 'Add a task to In progress');
     shown.click('.board-column[data-column-id="status:in-progress"] [data-action="board-add-task"]');
     assert.deepStrictEqual(shown.lastPosted('addTaskToColumn'), { type: 'addTaskToColumn', column: 'status:in-progress' });
     assert.strictEqual(shown.findAll('.board-column[data-column-id="done"] [data-action="board-add-task"]').length, 0, 'Done takes no new task');
   });
 
-  test('a plain board has no Tasks view strip, and keeps its Save and its filled Search', () => {
+  test('a plain board has no Tasks view strip, and keeps Save search… in ⋯, with Export tasks… and its view', () => {
     const shown = show(boardOf(TWO, {}, 'is:open'));
     assert.deepStrictEqual(shown.findAll('.tasks-view-strip'), []);
-    assert.deepStrictEqual(barButtons(shown), ['apply-query', 'clear-query', 'save-board-search', 'export-tasks', 'add-task']);
-    assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save');
-    assert.ok(shown.find('[data-action="apply-query"]').classList.contains('query-apply'), 'Search is the filled button');
+    assert.deepStrictEqual(barButtons(shown), ['add-task']);
+    assert.deepStrictEqual(menuActions(shown), ['save-board-search', 'use-for-agenda', 'export-tasks']);
+    assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save search…');
+    assert.strictEqual(shown.text('[data-action="export-tasks"]'), 'Export tasks…');
+    const sections = shown.findAll('.page-menu .view-options-section').map((section) => section.getAttribute('aria-label'));
+    assert.deepStrictEqual(sections, ['Page', 'View', 'Appearance', 'Help']);
+    assert.deepStrictEqual(shown.findAll('.page-menu [aria-label="Help"] .view-options-item').map((row) => row.textContent), ['Help on this page', 'Keyboard shortcuts?']);
+    assert.strictEqual(shown.find('.page-menu summary').getAttribute('aria-label'), 'More: Save search, List in Tasks view, Export tasks, and more', 'named by its first rows');
+    assert.strictEqual(shown.findAll('.help-button').length, 0, 'Help is a row of ⋯');
+    shown.click('[data-action="export-tasks"]');
+    assert.deepStrictEqual(shown.lastPosted('exportResults'), { type: 'exportResults', kind: 'tasks' });
+    shown.click('[data-action="page-help"]');
+    assert.deepStrictEqual(shown.lastPosted('openHelp'), { type: 'openHelp' });
     assert.strictEqual(shown.savedState() && (shown.savedState() as Record<string, unknown>).tasksViewMode, undefined);
   });
 
@@ -809,15 +881,16 @@ suite('Task Board page', () => {
     assert.strictEqual(cancel?.textContent, 'Cancel');
     assert.ok(cancel?.getAttribute('data-tip'), 'its tip says what Cancel keeps');
 
-    assert.deepStrictEqual(barButtons(shown), ['apply-query', 'clear-query', 'save-to-tasks-view', 'save-board-search', 'export-tasks', 'add-task'], 'Save to Tasks view first, then Save as search');
+    assert.deepStrictEqual(barButtons(shown), ['save-to-tasks-view', 'add-task'], 'Save to Tasks view first, then Add task');
+    assert.deepStrictEqual(menuActions(shown), ['save-board-search', 'use-for-agenda', 'export-tasks']);
     const save = () => shown.find('[data-action="save-to-tasks-view"]');
     assert.strictEqual(save().textContent, 'Save to Tasks view');
-    assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save as search');
-    assert.ok(save().classList.contains('query-primary'), 'Save to Tasks view is the filled button');
-    assert.ok(!shown.find('[data-action="apply-query"]').classList.contains('query-apply'), 'and Search is not, one filled button to a page');
+    assert.strictEqual(shown.findAll('.primary').length, 1);
+    assert.ok(save().classList.contains('primary'), 'Save to Tasks view is the filled button');
+    assert.ok(!shown.find('[data-action="add-task"]').classList.contains('primary'), 'and Add task goes plain, one filled button to a page');
     assert.strictEqual(save().getAttribute('aria-disabled'), null);
     assert.ok(save().getAttribute('data-tip'));
-    assert.deepStrictEqual(shown.findAll('.tasks-view-strip [title], .query-bar-row [title]'), [], 'tips, not native titles');
+    assert.deepStrictEqual(shown.findAll('.tasks-view-strip [title], .page-bar [title]'), [], 'tips, not native titles');
 
     // Typed and never run, as Save keeps it. A click focuses the button, as
     // in Chrome, and the words typed stay in the box.
@@ -844,7 +917,7 @@ suite('Task Board page', () => {
     assert.strictEqual(save().getAttribute('aria-disabled'), 'true', 'and the box as the view lists it cannot');
   });
 
-  test('Cancel asks the host to leave the mode, and the plain board it sends has its Save back, focused', () => {
+  test('Cancel asks the host to leave the mode, and the plain board it sends has Add task back as its primary, focused', () => {
     const board = boardOf(TWO, {}, 'is:open');
     const shown = show({ ...board, tasksViewMode: { listed: true } });
     assert.deepStrictEqual(shown.savedState(), { query: 'is:open', tasksViewMode: true }, 'kept for a reload while it lives');
@@ -852,8 +925,8 @@ suite('Task Board page', () => {
     assert.deepStrictEqual(shown.lastPosted('leaveTasksViewMode'), { type: 'leaveTasksViewMode' });
     shown.send(board);
     assert.deepStrictEqual(shown.findAll('.tasks-view-strip'), []);
-    assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save');
-    assert.strictEqual(shown.document.activeElement, shown.find('[data-action="save-board-search"]'), 'focus is not lost with Cancel');
+    assert.ok(shown.find('[data-action="add-task"]').classList.contains('primary'));
+    assert.strictEqual(shown.document.activeElement, shown.find('[data-action="add-task"]'), 'focus is not lost with Cancel');
     assert.deepStrictEqual(shown.savedState(), { query: 'is:open' });
   });
 });

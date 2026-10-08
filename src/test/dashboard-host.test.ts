@@ -6,7 +6,6 @@ import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import type { WorkspaceIndex } from '../domain/model';
 import { NavigationService } from '../services/navigationService';
-import { ActiveHome, HomeSource } from '../ui/webview/activeHome';
 import { WebviewHost } from '../ui/webview/host/webviewHost';
 import {
   DashboardController,
@@ -40,10 +39,7 @@ function createIndex(): WorkspaceIndex {
   return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
 }
 
-/**
- * Where Home sent the reader, in order; a quick add containing "refused" is
- * not added, and one containing "read-only" fails as a read-only disk would.
- */
+/** Where Home sent the reader, in order. */
 function createNavigation(): DashboardNavigation & { opened: string[] } {
   const opened: string[] = [];
   return {
@@ -52,14 +48,6 @@ function createNavigation(): DashboardNavigation & { opened: string[] } {
     openSearch: (query) => void opened.push(`search ${query}`),
     openTaskBoard: (query) => void opened.push(`board ${query ?? ''}`),
     openDailyNote: () => void opened.push('today'),
-    quickAdd: (text) => {
-      opened.push(`add ${text}`);
-      if (text.includes('read-only')) {
-        throw new Error('EROFS: read-only file system');
-      }
-      return !text.includes('refused');
-    },
-    createHubNote: (tagKey) => void opened.push(`hub ${tagKey}`),
   };
 }
 
@@ -98,8 +86,6 @@ function openHome(scan: { hasIndexed: boolean } = { hasIndexed: true }) {
   const preferences = createPreferences(createStore() as never);
   const navigation = createNavigation();
   const ledger = createLedger();
-  const source: HomeSource = { getWidgetChoices: () => [], addWidget: () => undefined, resetWidgets: async () => undefined };
-  const activeHome = new ActiveHome();
   const controller = new DashboardController({
     indexer,
     preferences,
@@ -108,9 +94,7 @@ function openHome(scan: { hasIndexed: boolean } = { hasIndexed: true }) {
     tryNext: ledger,
     writes: createTaskWrites(),
     navigationService: new NavigationService(),
-    source,
   });
-  controller.activeHome = activeHome;
   const host = new WebviewHost(controller, { indexer, themePreview: new ThemePreview() });
   const surface = new FakeSurface();
   host.attach(surface);
@@ -122,8 +106,6 @@ function openHome(scan: { hasIndexed: boolean } = { hasIndexed: true }) {
     preferences,
     navigation,
     ledger,
-    source,
-    activeHome,
     entry: [...index.sections.keys()][0],
     send: (message: unknown) => surface.webview.send(message),
     states: () => surface.webview.postedOf<State>('state'),
@@ -133,7 +115,6 @@ function openHome(scan: { hasIndexed: boolean } = { hasIndexed: true }) {
     },
     dispose: () => {
       host.dispose();
-      activeHome.dispose();
     },
   };
 }
@@ -187,7 +168,7 @@ suite('Dashboard host', () => {
     const { result: home, fire } = withConfigurationEvents(() => openHome());
     try {
       const events = recordSurface(home.surface);
-      fire('deckard.theme', 'deckard.agenda.query');
+      fire('deckard.theme', 'deckard.tasks.viewQuery');
       assert.deepStrictEqual(events, ['html', 'post state', 'post state']);
     } finally {
       home.dispose();
@@ -293,71 +274,6 @@ suite('Dashboard host', () => {
     }
   });
 
-  test('answers a quick add with the text it was sent, whether or not it was added', async () => {
-    const home = openHome();
-    try {
-      await home.send({ type: 'quickAdd', text: ' Call Ren ' });
-      await home.send({ type: 'quickAdd', text: 'refused task' });
-      assert.deepStrictEqual(home.navigation.opened, ['add Call Ren', 'add refused task']);
-      assert.deepStrictEqual(home.surface.webview.postedOf('quickAddResult'), [
-        { type: 'quickAddResult', text: ' Call Ren ', added: true },
-        { type: 'quickAddResult', text: 'refused task', added: false },
-      ]);
-    } finally {
-      home.dispose();
-    }
-  });
-
-  test('answers a quick add that fails, so the page gives the task back', async () => {
-    const home = openHome();
-    try {
-      // The failure still reaches the log, as any handler's does.
-      await assert.rejects(home.send({ type: 'quickAdd', text: 'read-only task' }), /read-only/);
-      assert.deepStrictEqual(home.surface.webview.postedOf('quickAddResult'), [
-        { type: 'quickAddResult', text: 'read-only task', added: false },
-      ]);
-    } finally {
-      home.dispose();
-    }
-  });
-
-  test('is the active source while its panel is in front, and not once disposed of', () => {
-    const home = openHome();
-    try {
-      assert.strictEqual(home.activeHome.active, home.source, 'a panel opened in front');
-      home.surface.setVisible(false);
-      assert.strictEqual(home.activeHome.active, undefined);
-      home.surface.setVisible(true);
-      assert.strictEqual(home.activeHome.active, home.source);
-      home.surface.dispose();
-      assert.strictEqual(home.activeHome.active, undefined, 'a closed panel is not in front');
-
-      const reopened = new FakeSurface();
-      home.host.attach(reopened);
-      assert.strictEqual(home.activeHome.active, home.source);
-      home.host.dispose();
-      // Disposing of Home stops its panel's listeners before closing it, so
-      // the close is never heard; disposing releases it instead.
-      assert.strictEqual(home.activeHome.active, undefined, 'a disposed Home is not in front');
-      assert.strictEqual(reopened.closed, true);
-    } finally {
-      home.dispose();
-    }
-  });
-
-  test('keeps the widgets + Add widget offers, and tells Related Notes', async () => {
-    const home = openHome();
-    let changes = 0;
-    home.activeHome.onDidChange(() => (changes += 1));
-    try {
-      await home.send({ type: 'widgetChoices', choices: [{ value: 'stats', label: 'Stats', description: '' }] });
-      assert.deepStrictEqual(home.controller.getWidgetChoices(), [{ value: 'stats', label: 'Stats' }]);
-      assert.strictEqual(changes, 1);
-    } finally {
-      home.dispose();
-    }
-  });
-
   test('opens an entry and counts its visit, opens a task\'s line, and nothing else', async () => {
     const home = openHome();
     try {
@@ -381,19 +297,16 @@ suite('Dashboard host', () => {
     }
   });
 
-  test('opens a tag the index has, as the reader may have written it, and its hub', async () => {
+  test('opens a tag the index has, as the reader may have written it', async () => {
     const home = openHome();
     try {
       await home.send({ type: 'openTag', tagKey: 'Project/Relay' });
       await home.send({ type: 'openTag', tagKey: '#gone' });
-      await home.send({ type: 'createTagHub', tagKey: '#project/relay' });
-      await home.send({ type: 'createTagHub', tagKey: '#gone' });
       await home.send({ type: 'openSearch', query: ' #project/relay ' });
       await home.send({ type: 'openTaskBoard' });
       await home.send({ type: 'openDailyNote' });
       assert.deepStrictEqual(home.navigation.opened, [
         'tag #project/relay',
-        'hub #project/relay',
         'search #project/relay',
         'board ',
         'today',
@@ -409,7 +322,6 @@ suite('Dashboard host', () => {
     try {
       const calls = await record(async () => {
         await home.send({ type: 'chooseTheme' });
-        await home.send({ type: 'openView', view: 'stats' });
         await home.send({ type: 'openView', view: 'walkthrough' });
         await home.send({ type: 'openWhatsNew' });
         await home.send({ type: 'parkTag', tagKey: '#project/relay' });
@@ -417,7 +329,6 @@ suite('Dashboard host', () => {
       });
       assert.deepStrictEqual(calls, [
         ['deckard.chooseTheme'],
-        ['deckard.showStats'],
         ['deckard.openWalkthrough'],
         ['deckard.openWhatsNew'],
         ['deckard.parkTag', '#project/relay'],
@@ -453,7 +364,7 @@ suite('Dashboard host', () => {
       const calls = await record(async () => {
         await home.send({ type: 'openSource', filePath: '/notes/atlas.md', line: 0 });
         await home.send({ type: 'openTag', tagKey: '' });
-        await home.send({ type: 'quickAdd', text: 'a\nb' });
+        await home.send({ type: 'openView', view: 'stats' });
         await home.send({ type: 'openView', view: 'settings' });
         await home.send({ type: 'setTaskFilter', filter: 'all' });
         await home.send({ type: 'toggleTask', taskId: 'a', completed: 'yes' });

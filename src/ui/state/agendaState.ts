@@ -148,7 +148,7 @@ export interface AgendaOptions {
 }
 
 /**
- * A search as `deckard.agenda.query` keeps it. The Agenda is of open tasks
+ * A search as `deckard.tasks.viewQuery` keeps it. The Agenda is of open tasks
  * whatever the query says, so the Task Board's `is:open` — the search it
  * opens on — is the empty query, and `is:open AND …` is the rest.
  */
@@ -161,7 +161,7 @@ export function normalizeAgendaQuery(query: string): string {
 }
 
 /**
- * The tasks `deckard.agenda.query` chooses: every task for an empty query,
+ * The tasks `deckard.tasks.viewQuery` chooses: every task for an empty query,
  * and every task, with the reason, for one that does not parse — a broken
  * setting should not empty the view. The query is evaluated in `context`.
  */

@@ -36,6 +36,15 @@ export function EllipsisIcon() {
   );
 }
 
+/** A plus: a control that adds an entry where it stands. */
+export function PlusIcon() {
+  return (
+    <StrokeIcon>
+      <path d="M8 3.5v9M3.5 8h9" />
+    </StrokeIcon>
+  );
+}
+
 /** A check: a menu's single choice, where the entry is now. */
 export function CheckIcon() {
   return (
@@ -129,6 +138,16 @@ export function LinkIcon() {
     <StrokeIcon>
       <path d="M6.5 9.5a2.5 2.5 0 0 0 3.5 0l2-2a2.47 2.47 0 0 0-3.5-3.5l-.8.8" />
       <path d="M9.5 6.5a2.5 2.5 0 0 0-3.5 0l-2 2a2.47 2.47 0 0 0 3.5 3.5l.8-.8" />
+    </StrokeIcon>
+  );
+}
+
+/** A hammer: Builder, which builds a search one condition at a time. */
+export function HammerIcon() {
+  return (
+    <StrokeIcon className="toolbar-icon query-builder-icon">
+      <path d="M2.5 13.5 9.3 6.7" />
+      <path d="M9.1 1.9 14.1 6.9 11.9 9.1 6.9 4.1Z" />
     </StrokeIcon>
   );
 }

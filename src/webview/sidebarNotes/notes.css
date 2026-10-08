@@ -57,8 +57,13 @@ body .note:hover { transform: none; }
 .icon-button { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 5px; color: var(--text); }
 .icon-button svg { width: 16px; height: 16px; display: block; fill: currentColor; }
 .icon-button svg.outline-icon { fill: none; stroke: currentColor; }
-.related-notes-controls { display: flex; align-items: stretch; gap: 6px; margin-top: 10px; }
-.related-notes-sort-control { position: relative; display: block; flex: 1 1 auto; min-width: 0; }
+.related-notes-controls { display: flex; align-items: center; gap: 6px; margin: 10px 0 6px; }
+.related-notes-controls > .section-label { flex: 1 1 auto; min-width: 0; margin: 0; }
+/* Sort: a compact select at the Related notes heading, its label the word before it. */
+.related-notes-sort-control { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: var(--muted); font-size: var(--text-xs); white-space: nowrap; }
+/* In the narrowest sidebar the select gives way, so the gear after it stays in the pane. */
+.related-notes-sort-control { flex: 0 1 auto; min-width: 0; }
+.related-notes-sort { min-width: 0; max-width: 100%; text-overflow: ellipsis; }
 /* The gear's menu opens under it, inside a sidebar only as wide as the pane. */
 .related-notes-controls .view-options-menu { min-width: 0; width: max-content; max-width: calc(100vw - 24px); }
 /* A result's first lines, clamped to the Preview the gear sets. */
@@ -70,13 +75,7 @@ main[data-preview-lines="2"] { --preview-lines: 2; }
 .suggested-tag-add { flex: 0 0 auto; min-height: 30px; padding: 2px var(--space-2); font-size: var(--text-xs); }
 .similar-hint { margin: 0 0 6px; color: var(--muted); font-size: var(--text-xs); }
 .note-excerpt { display: -webkit-box; margin: 2px 0 0; overflow: hidden; color: var(--muted); font-size: var(--text-xs); line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: var(--preview-lines); overflow-wrap: anywhere; }
-select.related-notes-sort { width: 100%; min-height: 30px; margin: 0; border: 2px solid var(--line); background: var(--panel-deep); color: var(--text); padding-left: 29px; font: inherit; }
-.related-notes-sort-icon { position: absolute; top: 50%; left: 8px; width: 14px; height: 14px; pointer-events: none; color: currentColor; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transform: translateY(-50%); }
-/* The sort control takes the shared control hover, border and all: its own
-   amber border and amber text were both out of step with every other hover,
-   and unreadable on a theme whose hover background is light. The icon sits
-   over the control, so it follows the same text color. */
-select.related-notes-sort:hover:where(:not(:disabled):not([aria-disabled="true"])) ~ .related-notes-sort-icon { color: var(--hover-fg); }
+select.related-notes-sort { min-height: 24px; margin: 0; padding: 1px 4px; border: 1px solid var(--line); background: var(--panel-deep); color: var(--text); font-size: var(--text-xs); }
 .active-tag-list { display: grid; gap: 3px; margin-top: 8px; }
 button:hover:where(:not(:disabled):not([aria-disabled="true"])) { border-color: var(--amber); color: var(--amber); background: var(--panel-raised); }
 button:focus-visible, .note:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

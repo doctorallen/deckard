@@ -1,67 +1,55 @@
 import * as vscode from 'vscode';
 
 import { writeSetting } from '../commands/settings';
-import { zenToggleTarget } from '../state/displayLevel';
-import { DISPLAY_SETTINGS, readDisplayLevel } from '../commands/displaySettings';
+import { readZen, ZEN_SETTING } from '../commands/displaySettings';
 
-/** The context key the palette's and title bar's Zen commands are gated on. */
+/** The context key the title bar's Enter and Leave Zen pair is gated on. */
 export const zenModeContextKey = 'deckard.zenMode';
 
-/** The step the reader was on before the Zen button took them to Zen. */
-const BEFORE_ZEN_KEY = 'deckard.display.beforeZen';
-
-/** Where the Zen button keeps the step to go back to: the machine's own store. */
-let memory: vscode.Memento | undefined;
-
-/** Whether pages are drawn at the Zen step, as `deckard.display.level` says. */
+/** Whether pages are drawn in Zen, as `deckard.display.zen` says. */
 export function isZenModeEnabled(): boolean {
-  return readDisplayLevel() === 'zen';
+  return readZen();
 }
 
 /**
- * Publishes whether Zen is on as a context key, so the palette and the
- * title bar offer whichever of Enter and Leave would change anything.
+ * Publishes whether Zen is on as a context key, so the title bar offers
+ * whichever of Enter and Leave would change anything.
  */
 export async function syncZenModeContext(): Promise<void> {
   await vscode.commands.executeCommand('setContext', zenModeContextKey, isZenModeEnabled());
 }
 
 /**
- * Starts Zen at activation: keeps the context key in step with the step
+ * Starts Zen at activation: keeps the context key in step with the setting
  * however it changes, from the gear, a command, settings.json, or another
  * window.
  */
-export function startZenMode(global: vscode.Memento): vscode.Disposable {
-  memory = global;
+export function startZenMode(): vscode.Disposable {
   void syncZenModeContext();
   return vscode.workspace.onDidChangeConfiguration((event) => {
-    if (event.affectsConfiguration(`deckard.${DISPLAY_SETTINGS.level.key}`)) {
+    if (event.affectsConfiguration(`deckard.${ZEN_SETTING}`)) {
       void syncZenModeContext();
     }
   });
 }
 
 /**
- * Goes to Zen, or back from it to the step the reader was on, or to Full
- * when there is none, in the user's settings, as every Display setting is.
- * Each page redraws from its own configuration listener.
+ * Turns Zen on or off in the user's settings, as every Display setting is
+ * written; off takes the setting out rather than writing its default. Each
+ * page redraws from its own configuration listener.
  */
 export async function setZenMode(enabled: boolean): Promise<void> {
-  const current = readDisplayLevel();
-  if (enabled === (current === 'zen')) {
+  if (enabled === isZenModeEnabled()) {
     await syncZenModeContext();
     return;
   }
-  const before = memory?.get<string>(BEFORE_ZEN_KEY);
-  const target = zenToggleTarget(current, before);
-  if (!(await writeSetting(DISPLAY_SETTINGS.level.key, target, vscode.ConfigurationTarget.Global))) {
+  if (!(await writeSetting(ZEN_SETTING, enabled ? true : undefined, vscode.ConfigurationTarget.Global))) {
     return;
   }
-  await memory?.update(BEFORE_ZEN_KEY, enabled ? current : undefined);
   await syncZenModeContext();
 }
 
-/** The Zen button and `Deckard: Toggle Zen`: into Zen, or back out of it. */
+/** The Zen checkbox's counterpart in the palette, `Deckard: Toggle Zen`. */
 export function toggleZenMode(): Promise<void> {
   return setZenMode(!isZenModeEnabled());
 }

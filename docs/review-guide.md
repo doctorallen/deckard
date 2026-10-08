@@ -199,8 +199,9 @@ Open one with **Deckard: Open Search Page**, a Home figure, or a tag's
 - [ ] **Loading waits.** A fast page shows nothing while loading. A slow one
   says *Loading search…* after 0.4 s, and a search still running after a
   second shows a thin bar under the box.
-- [ ] **Buttons that cannot act yet.** Tab to Save, Clear, Back, or Forward
-  on an empty page. *Look for:* each stays focusable, explains why it cannot
+- [ ] **Buttons that cannot act yet.** Tab to Save, Back, or Forward
+  on an empty page; the search box's × shows only once there is something
+  to clear. *Look for:* each stays focusable, explains why it cannot
   act (*Type a search to save it*), and does not light up on hover.
 - [ ] **Tips on focus.** Tab through the buttons. *Look for:* each tip shows
   on keyboard focus. Back and Forward name Alt+← and Alt+→, and Escape hides
@@ -334,7 +335,7 @@ Open it with **Deckard: Open Task Board**.
   Undo. Afterward, a message says how full that day is now.
 - [ ] **Right-click menu.** A task's menu has **Break into Steps…** and
   **Move to…**, for one task or several selected.
-- [ ] **Empty search.** Set `deckard.agenda.query` to something that matches
+- [ ] **Empty search.** Set `deckard.tasks.viewQuery` to something that matches
   nothing. *Look for:* the view names the search and offers **Show every open
   task**. **Deckard: Clear the Tasks View's Search** is in the view's `…`
   menu.
@@ -702,8 +703,11 @@ whole section by hand.
   open. Move through the eight themes. *Look for:* each one shown live;
   Enter keeps it; Escape restores the previous theme; nothing is written to
   settings until you keep one.
-- [ ] **Zen from a page's title bar.** On Home, a search page, the board,
-  Stats, Help, or the graph, the title bar button enters and leaves zen.
+- [ ] **Zen from a page's title bar and gear.** On Home, a search page, the
+  board, Stats, Help, or the graph, the title bar button enters and leaves
+  zen; on a page with a gear, the **Zen** checkbox does too. *Look for:* the
+  palette lists **Deckard: Toggle Zen** alone, and every count and due date
+  stays drawn with zen on.
 - [ ] **Cooper stays gold on black.** Switch to Cooper and look at the Stats
   bars. They use `--cyan`, which appears pale blue there. Decide whether
   that is acceptable. **(check by hand)**

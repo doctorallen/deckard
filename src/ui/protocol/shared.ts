@@ -249,27 +249,17 @@ export interface ChooseThemeMessage {
   type: 'chooseTheme';
 }
 
-/** One of the Display settings a page's gear sets: the step and the page width. */
-export type GearDisplaySetting = 'level' | 'pageWidth';
+/** The Display setting a page's gear sets besides Zen: the page width. */
+export type GearDisplaySetting = 'pageWidth';
 
-/**
- * The gear's Display row asking the host for one of its two links: put the
- * step's own values back on the settings it moves, or open Settings filtered
- * to Display.
- */
-export interface DisplayCommandMessage {
-  type: 'displayCommand';
-  command: 'useStepValues' | 'customize';
-}
-
-/** The gear's Cards or Tags row: how cards or tags are drawn on every page. */
+/** The gear's Page width row: how wide every page is drawn. */
 export interface SetDisplayMessage {
   type: 'setDisplay';
   setting: GearDisplaySetting;
   value: string;
 }
 
-/** The gear's zen row, on every page that has a gear. */
+/** The gear's Zen checkbox, on every page that has a gear. */
 export interface SetZenModeMessage {
   type: 'setZenMode';
   enabled: boolean;

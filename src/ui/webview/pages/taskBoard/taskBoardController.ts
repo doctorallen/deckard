@@ -29,8 +29,8 @@ import { normalizeAgendaQuery } from '../../../state/agendaState';
 import { rankShown } from '../../../../domain/tasks/taskRank';
 import { DEFAULT_HIDDEN_COLUMNS } from '../../../../domain/tasks/statusColumns';
 import { normalizeStatusName } from '../../../../domain/tasks/taskStatuses';
-import { formatQueryBlock, queryBlockSortOf, QueryBlockWriteOptions } from '../../../state/queryBlockState';
-import { createTaskBoard } from '../../../state/taskBoardState';
+import { formatQueryBlock, QueryBlockWriteOptions } from '../../../state/queryBlockState';
+import { createTaskBoard, searchBoardTasks } from '../../../state/taskBoardState';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import {
@@ -42,7 +42,6 @@ import {
   openSource,
   openTag,
   ready,
-  displayCommand,
   setDisplay,
   setZenMode,
 } from '../../host/sharedHandlers';
@@ -325,7 +324,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   /** The board for the search as it stands, with what the sidebar and the Tasks view say of it. */
   private createSnapshot(): TaskBoardSnapshot {
     const configuration = (): vscode.WorkspaceConfiguration => vscode.workspace.getConfiguration('deckard');
-    const listed = normalizeAgendaQuery(configuration().get<string>('agenda.query', ''));
+    const listed = normalizeAgendaQuery(configuration().get<string>('tasks.viewQuery', ''));
     const agendaListsThisSearch = listed === normalizeAgendaQuery(this.query);
     const index = this.board.indexer.getSnapshot();
     const tagsLeft = countStatusTagsLeft(index);
@@ -352,12 +351,11 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   }
 
   /** The gear's theme, zen, and help, the page asking for its state, and a card's line and tags. */
-  private pageHandlers(): Pick<Handlers, 'setZenMode' | 'setDisplay' | 'displayCommand' | 'chooseTheme' | 'ready' | 'openHelp' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'openTag'> {
+  private pageHandlers(): Pick<Handlers, 'setZenMode' | 'setDisplay' | 'chooseTheme' | 'ready' | 'openHelp' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'openTag'> {
     const { indexer, navigation } = this.board;
     return {
       setZenMode: setZenMode(),
       setDisplay: setDisplay(),
-      displayCommand: displayCommand(),
       chooseTheme: chooseTheme(),
       ready: ready(),
       // Help opens at its Tasks view and Task board section, not its top.
@@ -423,8 +421,12 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       setTableColumns: (message) => taskLayout.setTaskTableColumns(message.columns),
       reorderTasks: async (message) => {
         const index = this.board.indexer.getSnapshot();
-        if (reader.value.taskSortMode === 'rank') {
-          await taskLayout.setTaskOrder(rankShown(reader.value.taskOrder, message.taskIds, index.tasks.keys()));
+        // The board ranks under the Rank sort, and the table in Rank order,
+        // with no header sorting it.
+        const preferences = reader.value;
+        const tableRanked = preferences.taskBoardLayout === 'table' && !preferences.taskTableSort;
+        if (preferences.taskSortMode === 'rank' || tableRanked) {
+          await taskLayout.setTaskOrder(rankShown(preferences.taskOrder, message.taskIds, index.tasks.keys()));
         }
       },
       setBoardQuery: (message, page) => this.applySearch(message.query, page),
@@ -555,21 +557,17 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   }
 
   /**
-   * Exports every task the search found, whatever the layout shows: the
-   * list layout with no Done limit is the board as a plain list.
+   * Exports every task the search found, whatever the layout shows, with
+   * no Done limit, in the board's Sort.
    */
   private async exportTasks(): Promise<void> {
-    const index = this.board.indexer.getSnapshot();
-    const board = createTaskBoard({
-      index,
-      preferences: { ...this.board.preferences.reader.value, taskBoardLayout: 'list' },
-      search: { query: this.query, invalidQuery: this.invalidQuery },
-      options: { ...readTaskBoardOptions(readQueryContext()), doneLimit: Number.MAX_SAFE_INTEGER },
+    const tasks = searchBoardTasks({
+      index: this.board.indexer.getSnapshot(),
+      preferences: this.board.preferences.reader.value,
+      search: { query: this.query },
+      options: readTaskBoardOptions(readQueryContext()),
     });
-    const plan = this.board.exports.fromResults('tasks', {
-      tasks: (board.tasks ?? []).map((item) => item.task),
-      sections: [],
-    });
+    const plan = this.board.exports.fromResults('tasks', { tasks, sections: [] });
     // The live block keeps the board's layout, sort, and columns.
     const search = this.query.trim();
     await presentExport(
@@ -585,7 +583,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
    */
   private async useSearchForAgenda(page: PageContext): Promise<void> {
     const configuration = vscode.workspace.getConfiguration('deckard');
-    const listed = normalizeAgendaQuery(configuration.get<string>('agenda.query', ''));
+    const listed = normalizeAgendaQuery(configuration.get<string>('tasks.viewQuery', ''));
     // Pressed a second time, the switch gives the Tasks view back its own
     // list of every open task; when that is what it lists, it does nothing.
     const again = listed === normalizeAgendaQuery(this.query);
@@ -594,7 +592,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     }
     if (again) {
       // The value goes where it is already set, as the board's own settings do.
-      if (await writeSetting('agenda.query', '', settingTarget('agenda.query', configuration), configuration)) {
+      if (await writeSetting('tasks.viewQuery', '', settingTarget('tasks.viewQuery', configuration), configuration)) {
         void vscode.window.showInformationMessage('The Tasks view lists every open task again.');
         page.refresh();
       }
@@ -626,7 +624,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     // What the view lists already is not written again: a write of the
     // empty default would set it where it was not set.
     const saved =
-      normalizeAgendaQuery(configuration.get<string>('agenda.query', '')) === query
+      normalizeAgendaQuery(configuration.get<string>('tasks.viewQuery', '')) === query
         ? this.confirmTasksViewSearch(query)
         : await this.listInTasksView(query, configuration);
     page.refresh();
@@ -649,8 +647,8 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     configuration: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration('deckard'),
   ): Promise<boolean> {
     // The value goes where it is already set, as the board's own settings do.
-    const target = settingTarget('agenda.query', configuration);
-    if (!(await writeSetting('agenda.query', query, target, configuration))) {
+    const target = settingTarget('tasks.viewQuery', configuration);
+    if (!(await writeSetting('tasks.viewQuery', query, target, configuration))) {
       return false;
     }
     return this.confirmTasksViewSearch(query);
@@ -667,9 +665,9 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   }
 
   /**
-   * How the board is laid out, as a query block's options: a list sorted by
-   * date keeps that sort, a table its columns and sorted column, and the
-   * board's columns have no block of their own.
+   * How the board is laid out, as a query block's options: a table keeps
+   * its columns and sorted column, and the board's columns have no block of
+   * their own.
    */
   private queryBlockOptions(): QueryBlockWriteOptions {
     const preferences = this.board.preferences.reader.value;
@@ -681,7 +679,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         ...(sort ? { sort: sort.column, direction: sort.direction } : {}),
       };
     }
-    return preferences.taskBoardLayout === 'list' ? queryBlockSortOf(preferences.taskSortMode, 'tasks') : {};
+    return {};
   }
 
   /**

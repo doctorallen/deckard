@@ -8,32 +8,24 @@ import { resolveSampleTokens, sampleFileName } from '../../domain/notes/sampleNo
  * Somewhere to start.
  *
  * The walkthrough says what a tag and a hub note are; it cannot show one
- * being found. The sample is a tour you read and do: a README that says the
- * order, then a note per topic that explains what it holds, holds it, and
- * says what to try. It is written into Deckard's own storage, dated from the
- * day it is made so its tasks are overdue, due today, and due later as the
- * notes say, and opened, with the README shown once the window has reloaded.
+ * being found. The Work Sample is a week of a team lead's notes, with a
+ * README that says what to try. It is written into Deckard's own storage,
+ * dated from the day it is made so its tasks are overdue, due today, and
+ * due later as the notes say, and opened, with the README shown once the
+ * window has reloaded. It is the one sample: the Story Tour, a note for
+ * every part of Deckard, competed with it for a first look, and went.
  */
 
-/** The story tour's folder, inside Deckard's global storage. */
-export const SAMPLE_FOLDER_NAME = 'deckard-sample';
-/** The work sample's folder, beside it. */
+/** The work sample's folder, inside Deckard's global storage. */
 export const WORK_SAMPLE_FOLDER_NAME = 'deckard-work-sample';
 
-/**
- * Which sample: `work`, a week of a team lead's notes, the one Get Started
- * offers; or `story`, the tour with a note for every part of Deckard.
- */
-export type SampleKind = 'work' | 'story';
+/** The sample's shipped folder, inside resources/. */
+const SAMPLE_SOURCE = 'sample-work';
+/** What the sample is called where Deckard asks about it. */
+const SAMPLE_NAME = 'work sample';
 
-/** Each sample's shipped folder, inside resources/, and the folder it is written to. */
-const SAMPLES: Readonly<Record<SampleKind, { source: string; folder: string; name: string }>> = {
-  work: { source: 'sample-work', folder: WORK_SAMPLE_FOLDER_NAME, name: 'work sample' },
-  story: { source: 'sample', folder: SAMPLE_FOLDER_NAME, name: 'story tour' },
-};
-
-/** Both samples' folders, which the first index does not summarize: their READMEs take that moment. */
-export const SAMPLE_FOLDER_NAMES: readonly string[] = [SAMPLE_FOLDER_NAME, WORK_SAMPLE_FOLDER_NAME];
+/** The sample's folder, which the first index does not summarize: its README takes that moment. */
+export const SAMPLE_FOLDER_NAMES: readonly string[] = [WORK_SAMPLE_FOLDER_NAME];
 /** The sample to show the README of, once it opens after the reload. */
 export const SAMPLE_README_KEY = 'deckard.openSampleReadme';
 
@@ -68,9 +60,9 @@ export function getSampleStorageUri(globalStorageUri: vscode.Uri): vscode.Uri {
     : globalStorageUri;
 }
 
-/** Where a shipped sample lives, inside the installed extension; the story tour by default. */
-export function getSampleSourceUri(extensionUri: vscode.Uri, kind: SampleKind = 'story'): vscode.Uri {
-  return vscode.Uri.joinPath(extensionUri, 'resources', SAMPLES[kind].source);
+/** Where the shipped sample lives, inside the installed extension. */
+export function getSampleSourceUri(extensionUri: vscode.Uri): vscode.Uri {
+  return vscode.Uri.joinPath(extensionUri, 'resources', SAMPLE_SOURCE);
 }
 
 /** The templates folder, which Deckard does not index, so its files are not notes. */
@@ -85,12 +77,10 @@ export interface InstallSampleOptions {
   fs?: SampleFileAccess;
   /** Replace a sample already there rather than refuse. */
   replace?: boolean;
-  /** Which sample; the story tour by default. */
-  kind?: SampleKind;
 }
 
 /**
- * Writes the sample into `storageUri/deckard-sample`, dated from `today`.
+ * Writes the sample into `storageUri/deckard-work-sample`, dated from `today`.
  * Refuses, rather than merging, when it is already there, unless told to
  * replace it. Returns where it went and how many notes it holds: every
  * Markdown file but the README and the templates.
@@ -101,9 +91,8 @@ export async function installSample({
   today,
   fs = vscode.workspace.fs,
   replace,
-  kind = 'story',
 }: InstallSampleOptions): Promise<{ target: vscode.Uri; notes: number }> {
-  const target = vscode.Uri.joinPath(storageUri, SAMPLES[kind].folder);
+  const target = vscode.Uri.joinPath(storageUri, WORK_SAMPLE_FOLDER_NAME);
   if (await fileExists(target, fs)) {
     if (!replace) {
       throw new SampleFolderExistsError(target);
@@ -127,7 +116,7 @@ export async function installSample({
       }
     }
   };
-  await copy(getSampleSourceUri(extensionUri, kind), target, '');
+  await copy(getSampleSourceUri(extensionUri), target, '');
   return { target, notes };
 }
 
@@ -167,24 +156,23 @@ export async function showSampleReadmeOnce(context: vscode.ExtensionContext): Pr
 }
 
 /**
- * Deckard: Create a Work Sample, and Create the Story Tour. Writes the
- * sample into Deckard's storage, asking first when one is there already,
- * then opens it, asking where when this window has a folder open.
- * Cancelling any question stops there; a sample that cannot be written is
- * reported, and nothing opens.
+ * Deckard: Create a Work Sample. Writes the sample into Deckard's storage,
+ * asking first when one is there already, then opens it, asking where when
+ * this window has a folder open. Cancelling any question stops there; a
+ * sample that cannot be written is reported, and nothing opens.
  */
-export async function createSampleWorkspace(context: vscode.ExtensionContext, kind: SampleKind = 'work'): Promise<void> {
+export async function createWorkSample(context: vscode.ExtensionContext): Promise<void> {
   const storage = getSampleStorageUri(context.globalStorageUri);
-  const target = vscode.Uri.joinPath(storage, SAMPLES[kind].folder);
+  const target = vscode.Uri.joinPath(storage, WORK_SAMPLE_FOLDER_NAME);
   const replace = await askToReplace(target);
   if (replace === undefined) {
     return;
   }
-  const installed = await installIfNeeded({ context, storage, target, replace, kind });
+  const installed = await installIfNeeded({ context, storage, target, replace });
   if (!installed) {
     return;
   }
-  const forceNewWindow = await askWhereToOpen(installed.notes, SAMPLES[kind].name);
+  const forceNewWindow = await askWhereToOpen(installed.notes, SAMPLE_NAME);
   if (forceNewWindow === undefined) {
     return;
   }
@@ -218,7 +206,6 @@ interface InstallRequest {
   storage: vscode.Uri;
   target: vscode.Uri;
   replace: boolean;
-  kind: SampleKind;
 }
 
 /**
@@ -231,7 +218,6 @@ async function installIfNeeded({
   storage,
   target,
   replace,
-  kind,
 }: InstallRequest): Promise<{ notes: number | undefined } | undefined> {
   // Looked at again rather than reusing askToReplace's answer: when the
   // folder was not there, nothing was asked, and it is checked as it is now.
@@ -245,7 +231,6 @@ async function installIfNeeded({
       today: new Date(),
       fs: vscode.workspace.fs,
       replace,
-      kind,
     });
     return { notes };
   } catch (error) {

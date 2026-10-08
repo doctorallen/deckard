@@ -28,7 +28,7 @@ import { ParsedFile } from '../domain/model';
  */
 suite('Index equivalence', () => {
   const corpora: Array<[string, () => ParsedFile[]]> = [
-    ['the sample workspace', () => parseNotes(sampleNotes())],
+    ['the sample corpus', () => parseNotes(sampleNotes())],
     ['the development notes', () => parseNotes(developmentNotes())],
     ['the edge cases', () => parseNotes(edgeCaseNotes())],
     ['random notes, seed 1', () => parseNotes(randomNotes(1, 80))],

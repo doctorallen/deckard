@@ -1,13 +1,13 @@
 /**
- * The rows Home's widgets list: tags, notes, searches, saved searches, two
- * tags written together, and tasks, each a control that opens what it
- * names, some with a button of their own beside them.
+ * The rows Home's widgets list: tags, notes, searches, saved searches, and
+ * tasks, each a control that opens what it names, some with a button of their own beside them.
  */
 import { ProgressText } from '../shared/progressText';
 import type { ComponentChild, ComponentChildren } from 'preact';
 
-import type { DashboardSavedFilter, DashboardWidgetNote, DashboardWidgetTag, DashboardWidgetTagPair } from '../../ui/protocol/dashboard';
+import type { DashboardSavedFilter, DashboardWidgetNote, DashboardWidgetTag } from '../../ui/protocol/dashboard';
 import type { DashboardTask } from '../../ui/protocol/shared';
+import { EmptyState } from '../shared/emptyState';
 import { ProgressBar } from '../shared/progressBar';
 import { TagLabel } from '../shared/tagLabel';
 import { TaskListRow } from '../shared/taskRow';
@@ -27,13 +27,17 @@ interface HomeRowProps {
   readonly progress?: { readonly done: number; readonly total: number };
 }
 
-/** A row that opens something: a tag, a search, or a note. */
+/**
+ * A row that opens something: a tag, a search, or a note. A count is drawn
+ * beside the label; a note's file is a card detail, on the line the row
+ * keeps for it under the label, shown on hover and focus (reveal.css).
+ */
 export function HomeRow({ action, attributes, label, detail, detailKind, progress }: HomeRowProps) {
   return (
-    <button type="button" class={progress ? 'row saved-filter-row home-row has-progress' : 'row saved-filter-row home-row'} data-action={action} data-tip-around="" {...attributes}>
+    <button type="button" class={progress ? 'row saved-filter-row home-row has-progress' : 'row saved-filter-row home-row'} data-action={action} data-tip-around="" data-reveal-region="" {...attributes}>
       <span class="home-row-label">{label}</span>
       {progress ? <ProgressBar done={progress.done} total={progress.total} /> : null}
-      {detail ? <span class={`home-row-detail is-${detailKind}`}><ProgressText text={detail} /></span> : null}
+      {detail ? <span class={`home-row-detail is-${detailKind}`} data-reveal={detailKind === 'file' ? '' : undefined}><ProgressText text={detail} /></span> : null}
     </button>
   );
 }
@@ -59,12 +63,12 @@ function WithRowAction({ row, action }: { readonly row: ComponentChild; readonly
 
 /** What a widget says when its list is empty. */
 export function EmptyLine({ text }: { readonly text: string }) {
-  return <p class="home-widget-empty">{text || null}</p>;
+  return <EmptyState class="home-widget-empty" state={text} />;
 }
 
 /** The searches a page lists, or a line with a way to a search page when there are none. */
 export function OpenSearchPageLine({ text }: { readonly text: string }) {
-  return <p class="home-widget-empty">{text}<button type="button" data-action="open-search-page">Open a search page</button></p>;
+  return <EmptyState class="home-widget-empty" state={text} action={<button type="button" data-action="open-search-page">Open a search page</button>} />;
 }
 
 /** Tags that open their page; `actionFor` adds a button beside a tag. */
@@ -123,28 +127,6 @@ export function HomeTasks(props: {
     return <EmptyLine text={empty} />;
   }
   return <div class="task-list">{tasks.map((item) => <TaskListRow key={item.task.id} item={item} />)}</div>;
-}
-
-/** Two tags written together, each pair opening a search for both. */
-export function TagPairs({ pairs }: { readonly pairs: readonly DashboardWidgetTagPair[] | undefined }) {
-  if (!pairs || !pairs.length) {
-    return <EmptyLine text="Two tags carried by the same note or task show up here." />;
-  }
-  return (
-    <div class="home-list">
-      {pairs.map((pair) => {
-        const query = `${pair.tags[0].key} AND ${pair.tags[1].key}`;
-        return (
-          <button key={query} type="button" class="row saved-filter-row home-row" data-action="open-search" data-query={query} data-tip-around="" data-tip={`${pair.detail}. Search for both.`}>
-            <span class="home-row-label">
-              <span class="home-tag-pair"><TagLabel label={pair.tags[0].label} /><span class="home-tag-pair-join">+</span><TagLabel label={pair.tags[1].label} /></span>
-            </span>
-            <span class="home-row-detail is-count">{`${pair.count}× · ${Math.round(pair.overlap * 100)}%`}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 /** What a saved search finds, under its name: its search, or its tags joined by AND. */

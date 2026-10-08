@@ -26,13 +26,11 @@ suite('Dashboard messages', () => {
       [{ type: 'toggleTask', taskId: 'task-1', completed: 'yes' }, undefined],
       [{ type: 'openSource', filePath: 'notes/a.md', line: 0 }, undefined],
       [{ type: 'unknown' }, undefined],
-      // Home's widgets: a quick-add task is one line of text.
-      [{ type: 'quickAdd', text: 'Call Ren', extra: 1 }, { type: 'quickAdd', text: 'Call Ren' }],
-      [{ type: 'quickAdd', text: '  ' }, undefined],
-      [{ type: 'quickAdd', text: 'a\nb' }, undefined],
+      // Quick add and its hub button left Home with their widgets.
+      [{ type: 'quickAdd', text: 'Call Ren' }, undefined],
+      [{ type: 'createTagHub', tagKey: '#a' }, undefined],
       [{ type: 'unpinNote', filePath: 'notes/a.md' }, { type: 'unpinNote', filePath: 'notes/a.md' }],
       [{ type: 'pinNote', filePath: 7 }, undefined],
-      [{ type: 'createTagHub', tagKey: '' }, undefined],
       [{ type: 'openDailyNote' }, { type: 'openDailyNote' }],
       [{ type: 'setTagSort', mode: 'custom' }, { type: 'setTagSort', mode: 'custom' }],
       // Tasks are chosen on the Task Board now, not with a Dashboard tag picker.
@@ -172,9 +170,8 @@ suite('Dashboard messages', () => {
       [{ type: 'openTaskBoard', query: 3 }, undefined],
       [{ type: 'setDashboardWidgets', widgets: Array.from({ length: 61 }, () => ({})) }, undefined],
       [{ type: 'openView', view: 'walkthrough' }, { type: 'openView', view: 'walkthrough' }],
-      [{ type: 'quickAdd', text: 'x'.repeat(1001) }, undefined],
-      [{ type: 'quickAdd', text: ' Call Ren ' }, { type: 'quickAdd', text: ' Call Ren ' }],
-      [{ type: 'createTagHub', tagKey: '#a' }, { type: 'createTagHub', tagKey: '#a' }],
+      // Stats is reached from DECKARD ▾; no widget on Home opens it now.
+      [{ type: 'openView', view: 'stats' }, undefined],
       [{ type: 'addNextAction', tagKey: '#a' }, { type: 'addNextAction', tagKey: '#a' }],
       [{ type: 'addNextAction', tagKey: 'x'.repeat(201) }, undefined],
       [{ type: 'openNote', filePath: '' }, undefined],
@@ -194,30 +191,6 @@ suite('Dashboard messages', () => {
       [{ type: 'runTryNext', key: '' }, undefined],
       [{ type: 'runTryNext', key: 'x'.repeat(1001) }, undefined],
       [{ type: 'retireTryNext' }, undefined],
-    ]);
-  });
-
-  test('takes what + Add widget offers, each choice as a value and a label', () => {
-    check([
-      [
-        {
-          type: 'widgetChoices',
-          choices: [
-            { value: 'tasks', label: 'Tasks', description: 'Open tasks', extra: 1 },
-            { value: 'stats', label: 'Stats', description: '' },
-          ],
-        },
-        {
-          type: 'widgetChoices',
-          choices: [
-            { value: 'tasks', label: 'Tasks', description: 'Open tasks' },
-            { value: 'stats', label: 'Stats' },
-          ],
-        },
-      ],
-      [{ type: 'widgetChoices', choices: [{ value: 'tasks' }] }, undefined],
-      [{ type: 'widgetChoices', choices: [{ value: 'tasks', label: 'Tasks', description: 1 }] }, undefined],
-      [{ type: 'widgetChoices', choices: Array.from({ length: 201 }, () => ({ value: 'a', label: 'A' })) }, undefined],
     ]);
   });
 });

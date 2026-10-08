@@ -3,6 +3,8 @@
  * where it is written, and its body, as Markdown source or drawn from its
  * block tokens.
  */
+import type { ComponentChild } from 'preact';
+
 import type { BlockToken } from '../../ui/protocol/inline';
 import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { TagOverviewCard } from '../../ui/protocol/shared';
@@ -10,7 +12,7 @@ import { BlockExcerpt } from './blockExcerpt';
 import { TitleWithTags } from './tagButton';
 import { formatSourceLocation, HeadingPathSteps, ParkedLabel, trimHeadingPath } from './taskRow';
 import { describeLocation, readEntryDetails } from './entryDetails';
-import { EntryDates } from './entryDates';
+import { DetailsLine, entryDatesPart } from './detailsLine';
 
 /** How a page draws its cards: the Format, Preview, and tag rows of its gear. */
 export interface CardDisplay {
@@ -134,21 +136,21 @@ function CardTitle({ card }: { readonly card: TagOverviewCard }) {
 }
 
 /**
- * The line under a card's title, carried down under the pointer: where it
- * is written, when Card details ticks it, and that the card is listed
- * because it links the hub. Nothing when neither has anything to say.
+ * The first part of the line kept under a card's title for its details:
+ * where it is written, when Card details ticks it, and that the card is
+ * listed because it links the hub. Nothing when neither has anything to say.
  */
-function CardDetails({ card, fileName }: { readonly card: TagOverviewCard; readonly fileName: string }) {
+function cardPlacePart(card: TagOverviewCard, fileName: string): ComponentChild {
   const line = describeLocation({ location: formatSourceLocation(fileName, card.startLine) });
   const via = card.via === 'hubLink';
   if (!line && !via) {
     return null;
   }
   return (
-    <div class="source">
+    <span key="source" class="source">
       {`${line}${via && line ? ' ' : ''}`}
       {via ? <span class="card-via">Links the hub note</span> : null}
-    </div>
+    </span>
   );
 }
 
@@ -165,6 +167,7 @@ export function SearchCard({ card, position, display, opened }: SearchCardProps)
       class="card"
       tabIndex={0}
       data-tip-around=""
+      data-reveal-region=""
       data-search-entry="notes"
       data-search-text={searchTextOf(card, fileName)}
       data-file-path={card.filePath}
@@ -174,9 +177,13 @@ export function SearchCard({ card, position, display, opened }: SearchCardProps)
     >
       <div class="card-header">
         <CardTitle card={card} />
-        <CardDetails card={card} fileName={fileName} />
-        {steps.length && readEntryDetails().has('fileAndLine') ? <div key="path" class="source heading-path"><HeadingPathSteps steps={steps} /></div> : null}
-        <EntryDates facts={{ location: '', createdAt: card.createdAt, updatedAt: card.updatedAt }} className="source" />
+        <DetailsLine
+          parts={[
+            cardPlacePart(card, fileName),
+            steps.length && readEntryDetails().has('fileAndLine') ? <span key="path" class="source heading-path"><HeadingPathSteps steps={steps} /></span> : null,
+            entryDatesPart({ location: '', createdAt: card.createdAt, updatedAt: card.updatedAt }, 'source'),
+          ]}
+        />
       </div>
       <CardBody card={card} position={position} display={display} opened={opened} />
     </article>

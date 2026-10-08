@@ -29,9 +29,13 @@ function createIndex() {
     task('room', 'Book the review room', 2),
     task('call', 'Call Ren', 3),
   ];
+  // One note, so Home draws its widgets: a workspace without notes gets
+  // Get Started in the grid's place.
+  const plan = parseMarkdown('notes/plan.md', '# Plan', { createdAt: 1, updatedAt: 2 }, {});
+  const notes = buildWorkspaceIndex(new Map([[plan.filePath, plan]]));
   return {
-    files: new Map(),
-    sections: new Map(),
+    files: notes.files,
+    sections: notes.sections,
     tasks: new Map(tasks.map((entry) => [entry.id, entry])),
     tags: new Map(),
     entities: new Map(),
@@ -122,17 +126,10 @@ function createNavigation() {
     openDailyNote: () => {
       opened.push('today');
     },
-    quickAdd: (text) => {
-      opened.push(`add ${text}`);
-      return !text.includes('refused');
-    },
-    createHubNote: (tagKey) => {
-      opened.push(`hub ${tagKey}`);
-    },
   };
 }
 
-/** A note in the editor, a note sharing its tags, and a tag with no hub. */
+/** A note to pin, and notes sharing its tags. */
 function createNotesIndex() {
   const note = (filePath, content) =>
     parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, {});
@@ -176,14 +173,17 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
       ['home', 'browse'],
     );
     assert.strictEqual(view.find('[data-dashboard-mode="home"]').getAttribute('aria-selected'), 'true');
-    assert.strictEqual(view.find('h1').textContent, 'Dashboard: Home');
+    assert.strictEqual(view.find('h1').textContent, 'Home');
+    assert.strictEqual(panel.title, 'Deckard Home', 'the tab is named for the page');
     // Home starts with its default widgets.
     assert.deepStrictEqual(
       view.findAll('.home-widget').map((widget) => widget.dataset.widgetId),
       ['search', 'agenda', 'recentNotes', 'favoriteTags', 'savedSearches'],
     );
-    const labels = view.findAll('.view-options-group').map((group) => group.children[0].textContent);
-    assert.deepStrictEqual(labels, ['Home', 'Tag columns', 'Get started', 'Theme', 'Page width', 'Display']);
+    const labels = view.findAll('.page-menu .view-options-group').map((group) => group.children[0].textContent);
+    assert.deepStrictEqual(labels, ['Tag columns', 'Theme', 'Zen', 'Page width']);
+    const rows = view.findAll('.page-menu .view-options-item').map((row) => row.textContent);
+    assert.deepStrictEqual(rows, ['Customize Home…', 'Walkthrough', 'Help on this page']);
   }
 });
 
@@ -277,17 +277,6 @@ test('only Home is sent its widgets', async () => {
   );
 });
 
-test('a Dashboard opened on the Tags tab tells Related Notes what Home can add', async () => {
-  const { view } = await openDashboard(createIndex(), (preferences) =>
-    preferences.homeWidgets.setDashboardMode('browse'),
-  );
-  const sent = view.posted.filter((message) => message.type === 'widgetChoices');
-  assert.strictEqual(sent.length, 1, 'told once, before Home is shown');
-  const offered = sent[0].choices.map((choice) => choice.value);
-  assert.ok(offered.includes('stats'), 'a widget Home does not hold is offered');
-  assert.ok(!offered.includes('search'), 'one it holds, that cannot repeat, is not');
-});
-
 test('every page size a paged widget offers is the size Home keeps', async () => {
   const { view, preferences } = await openDashboard(createIndex(), async (store) => {
     await store.homeWidgets.setDashboardWidgets([{ id: 'paged', kind: 'tasks', width: 'half', count: 5, paged: true, page: 1, query: 'is:open' }]);
@@ -358,20 +347,6 @@ test('a widget added is announced by its name alone', async () => {
   assert.strictEqual(view.find('#live-status').textContent, 'Added Recently opened to the top of Home.');
 });
 
-test('a widget Related Notes adds while the Tags tab shows is added on Home, in view', async () => {
-  const { view, panel, preferences } = await openDashboard(createIndex(), (store) =>
-    store.homeWidgets.setDashboardMode('browse'),
-  );
-  panel._deliver({ type: 'addWidget', value: 'stats' });
-  await delay(20);
-  assert.strictEqual(view.find('#home-panel').hidden, false, 'Home is shown');
-  assert.ok(view.find('.home-edit-bar'), 'being customized');
-  assert.strictEqual(preferences.reader.value.dashboardViewState.mode, 'home');
-  const added = view.find('.home-widget[data-widget-id^="stats-"]');
-  assert.ok(added, 'with the new widget drawn');
-  assert.strictEqual(view.document.activeElement, added, 'and focused');
-});
-
 test('Home\'s search box opens a search page, and its links lead on', async () => {
   const { view, navigation, preferences } = await openDashboard();
   const bar = view.find('.home-widget[data-widget-id="search"] [data-action="query-input"]');
@@ -391,7 +366,8 @@ test('Home\'s search box opens a search page, and its links lead on', async () =
   view.click(view.find('.home-widget[data-widget-id="tasks"] [data-action="open-task-board"]'));
   view.click(view.find('.home-widget[data-widget-id="favoriteTags"] [data-action="set-dashboard-mode"]'));
   assert.deepStrictEqual(navigation.opened.slice(1), ['board is:open']);
-  assert.strictEqual(view.find('h1').textContent, 'Dashboard: Tags', 'All tags goes to the Tags tab');
+  assert.strictEqual(view.find('[data-dashboard-mode="browse"]').getAttribute('aria-selected'), 'true', 'All tags goes to the Tags tab');
+  assert.strictEqual(view.find('h1').textContent, 'Home', 'Tags is a tab of Home, whose name stays');
 });
 
 test('a saved search offers to show its results on Home, once', async () => {
@@ -616,6 +592,15 @@ test('a tasks widget runs the search set in its options', async () => {
     view.findAll('.home-widget[data-widget-id="tasks"] .task-row').map((row) => row.dataset.taskId),
     ['audit'],
   );
+
+  // Its own sort, or the Task Board's, kept as none.
+  const sort = () => view.find('.home-widget[data-widget-id="tasks"] [data-action="set-widget-sort"]');
+  view.change(sort(), 'updatedOldest');
+  await delay(20);
+  assert.strictEqual(preferences.reader.value.dashboardWidgets.find((widget) => widget.id === 'tasks').sort, 'updatedOldest');
+  view.change(sort(), '');
+  await delay(20);
+  assert.strictEqual(preferences.reader.value.dashboardWidgets.find((widget) => widget.id === 'tasks').sort, undefined);
 });
 
 test('the namespace filter narrows the Tags tab and keeps its choice', async () => {
@@ -852,136 +837,51 @@ test('typing a tag search keeps focus and text through a host update', async () 
 
 // ---------------------------------------------------------------------------
 
-test('the new widgets act on notes, tags, and today\'s note', async () => {
-  vscode.window.activeTextEditor = {
-    document: { uri: vscode.Uri.file('notes/current.md'), languageId: 'markdown' },
-    selection: { active: { line: 0 } },
-  };
-  try {
-    const { view, navigation, preferences } = await openDashboard(
-      createNotesIndex(),
-      async (store) => {
-        await store.homeWidgets.setDashboardWidgets([
-          { id: 'today', kind: 'todayNote', width: 'half' },
-          { id: 'add', kind: 'quickAdd', width: 'full' },
-          { id: 'related', kind: 'relatedNotes', width: 'half' },
-          { id: 'pairs', kind: 'tagPairs', width: 'half' },
-          { id: 'hubs', kind: 'unhubbedTags', width: 'half' },
-          { id: 'pins', kind: 'pinnedNotes', width: 'half' },
-          { id: 'stale', kind: 'staleTasks', width: 'half' },
-        ]);
-        // Pinning happens where the note is, so Home is opened with one.
-        await store.pins.pinNote({ filePath: 'notes/current.md' });
-      },
-      {
-        indexerExtras: {
-          isNotesFile: () => true,
-          getFilePath: (uri) => uri.fsPath.replace(/^\//, ''),
-        },
-      },
-    );
-    const widget = (id) => view.find(`.home-widget[data-widget-id="${id}"]`);
+test('the widgets act on today\'s note and on pins', async () => {
+  const { view, navigation, preferences } = await openDashboard(createNotesIndex(), async (store) => {
+    await store.homeWidgets.setDashboardWidgets([
+      { id: 'today', kind: 'todayNote', width: 'half' },
+      { id: 'pins', kind: 'pinnedNotes', width: 'half' },
+    ]);
+    // Pinning happens where the note is, so Home is opened with one.
+    await store.pins.pinNote({ filePath: 'notes/current.md' });
+  });
+  const widget = (id) => view.find(`.home-widget[data-widget-id="${id}"]`);
 
-    // Today's note does not exist yet, so the widget offers to create it.
-    view.click(widget('today').querySelector('[data-action="open-daily-note"]'));
-    await delay(20);
-    assert.deepStrictEqual(navigation.opened, ['today']);
+  // Today's note does not exist yet, so the widget offers to create it.
+  view.click(widget('today').querySelector('[data-action="open-daily-note"]'));
+  await delay(20);
+  assert.deepStrictEqual(navigation.opened, ['today']);
 
-    // Quick add sends the task, clears the field, and says what happened.
-    const field = () => widget('add').querySelector('[data-action="quick-add-draft"]');
-    view.type(field(), 'Call Ren #risk/vendor');
-    view.submit(widget('add').querySelector('form'));
-    await delay(20);
-    assert.strictEqual(navigation.opened[1], 'add Call Ren #risk/vendor');
-    assert.strictEqual(field().value, '');
-    assert.match(widget('add').querySelector('.home-quick-add-status').textContent, /Added/);
-    view.type(field(), 'refused task');
-    view.submit(widget('add').querySelector('form'));
-    await delay(20);
-    assert.strictEqual(field().value, 'refused task', 'a task not added is given back');
-
-    // Related notes follow the note in the editor.
-    assert.match(widget('related').querySelector('.home-widget-source').textContent, /Current work/);
-    const related = [...widget('related').querySelectorAll('[data-action="open-source"]')];
-    assert.deepStrictEqual(
-      related.map((row) => row.dataset.filePath).sort(),
-      ['notes/atlas.md', 'notes/contract.md', 'notes/vendor.md'],
-    );
-
-    // A pair of tags opens a search for both.
-    view.click(widget('pairs').querySelector('[data-action="open-search"]'));
-    await delay(20);
-    assert.strictEqual(navigation.opened[3], 'search #project/atlas AND #risk/vendor');
-
-    // Vendor is used three times and has no hub.
-    const createHub = widget('hubs').querySelector('[data-action="create-tag-hub"]');
-    assert.strictEqual(createHub.dataset.tagKey, '#risk/vendor');
-    view.click(createHub);
-    await delay(20);
-    assert.strictEqual(navigation.opened[4], 'hub #risk/vendor');
-
-    // Home lists what was pinned elsewhere, opens it where the pin was put,
-    // and lets go of it.
-    assert.strictEqual(
-      widget('pins').querySelector('[data-action="pin-note"]'),
-      null,
-      'Home does not pin: it lists the pins',
-    );
-    const pin = widget('pins').querySelector('[data-action="open-source"]');
-    assert.strictEqual(pin.dataset.filePath, 'notes/current.md');
-    view.click(widget('pins').querySelector('[data-action="unpin-note"]'));
-    await delay(20);
-    assert.deepStrictEqual(preferences.reader.value.pinnedNotes, []);
-
-    // A look-back widget chooses its days in its options.
-    view.click(view.find('[data-action="customize-home"]'));
-    view.click(widget('stale').querySelector('[data-action="set-widget-days"][data-value="7"]'));
-    await delay(20);
-    assert.strictEqual(
-      preferences.reader.value.dashboardWidgets.find((entry) => entry.id === 'stale').days,
-      7,
-    );
-  } finally {
-    vscode.window.activeTextEditor = undefined;
-  }
+  // Home lists what was pinned elsewhere, opens it where the pin was put,
+  // and lets go of it.
+  assert.strictEqual(
+    widget('pins').querySelector('[data-action="pin-note"]'),
+    null,
+    'Home does not pin: it lists the pins',
+  );
+  const pin = widget('pins').querySelector('[data-action="open-source"]');
+  assert.strictEqual(pin.dataset.filePath, 'notes/current.md');
+  view.click(widget('pins').querySelector('[data-action="unpin-note"]'));
+  await delay(20);
+  assert.deepStrictEqual(preferences.reader.value.pinnedNotes, []);
 });
 
 test('a full Home offers no widget to add, and says why, rather than drop its last', async () => {
   const widgets = Array.from({ length: 30 }, (_, at) => ({ id: `tasks${at}`, kind: 'tasks', width: 'half', count: 3, query: 'is:open' }));
-  const { view, panel, preferences } = await openDashboard(createIndex(), async (store) => {
+  const { view, preferences } = await openDashboard(createIndex(), async (store) => {
     await store.homeWidgets.setDashboardWidgets(widgets);
   });
-  const choices = view.posted.filter((message) => message.type === 'widgetChoices');
-  assert.deepStrictEqual(choices[choices.length - 1].choices, [], 'Related Notes is offered nothing to add');
 
   view.click(view.find('[data-action="customize-home"]'));
   assert.strictEqual(view.find('[data-action="add-widget"]').disabled, true);
   assert.match(view.find('.home-edit-bar').textContent, /Home is full: it holds 30 widgets at most\. Remove one to add another\./);
-
-  // Related Notes may still ask, from a list it was sent before.
-  panel._deliver({ type: 'addWidget', value: 'stats' });
-  await delay(20);
   assert.deepStrictEqual(view.posted.filter((message) => message.type === 'setDashboardWidgets'), []);
-  assert.strictEqual(view.find('#live-status').textContent, 'Home is full: it holds 30 widgets at most. Remove one to add another.');
   assert.strictEqual(preferences.reader.value.dashboardWidgets.length, 30);
   assert.ok(view.find('.home-widget[data-widget-id="tasks29"]'), 'the last widget is still there');
 });
 
-test('Quick add takes no longer a task than the host adds', async () => {
-  const { view, navigation } = await openDashboard(createIndex(), async (store) => {
-    await store.homeWidgets.setDashboardWidgets([{ id: 'add', kind: 'quickAdd', width: 'full' }]);
-  });
-  const field = () => view.find('[data-action="quick-add-draft"]');
-  assert.ok(field().maxLength > 0, 'the field says how long a task may be');
-  const longest = 'x'.repeat(field().maxLength);
-  view.type(field(), longest);
-  view.submit(view.find('form[data-form="quick-add"]'));
-  await delay(20);
-  assert.deepStrictEqual(navigation.opened, [`add ${longest}`], 'the longest task the field takes is added');
-  assert.match(view.find('.home-quick-add-status').textContent, /Added/);
-});
-
-test('the gear\'s Display row moves the step through the host, and the page carries the markers', async () => {
+test('the gear\'s Zen checkbox turns Zen on through the host, and the page carries the markers', async () => {
   const { view, panel } = await openDashboard();
   try {
     // Off to begin with: the sheet ships either way, the marker does not.
@@ -989,24 +889,24 @@ test('the gear\'s Display row moves the step through the host, and the page carr
     assert.ok(loadPage(panel.webview.html).includes('body[data-density=compact] {'), 'the Display sheet ships');
     assert.ok(!panel.webview.html.includes('<body class="zen"'), 'zen starts off');
 
-    view.click(view.find('[data-action="set-display"][data-display="level"][data-value="zen"]'));
+    view.click(view.find('[data-action="set-zen"]'));
     await delay(20);
 
-    // The page posts intent; the host is what writes Display's step,
-    // globally, so every Deckard surface follows it rather than this page alone.
+    // The page posts intent; the host is what writes Zen, globally, so
+    // every Deckard surface follows it rather than this page alone.
     assert.deepStrictEqual(
-      vscode._test.configurationUpdates.filter((update) => update.name === 'deckard.display.level'),
-      [{ name: 'deckard.display.level', value: 'zen', target: vscode.ConfigurationTarget.Global }],
+      vscode._test.configurationUpdates.filter((update) => update.name === 'deckard.display.zen'),
+      [{ name: 'deckard.display.zen', value: true, target: vscode.ConfigurationTarget.Global }],
     );
 
     // A page drawn while the setting is on carries the marker the sheet needs.
     const { panel: second, view: secondView } = await openDashboard();
-    assert.ok(second.webview.html.includes('<body class="zen" data-level="zen" data-styling="plain" data-help="hidden" data-density="compact" data-cards="flat" data-tags="text" data-counts="hidden" data-dates="relative">'), 'zen marks the body as Zen draws it');
+    assert.ok(second.webview.html.includes('<body class="zen" data-styling="plain" data-help="hidden" data-density="compact" data-cards="flat" data-tags="text" data-controls="quiet">'), 'zen marks the body with what Zen turns on');
 
     // Nothing was taken off the page to achieve it.
     assert.ok(secondView.find('.eyebrow'), 'the eyebrow is still drawn');
   } finally {
-    vscode._test.settings.delete('deckard.display.level');
+    vscode._test.settings.delete('deckard.display.zen');
     vscode._test.configurationUpdates.length = 0;
     vscode._test.executedCommands.length = 0;
   }

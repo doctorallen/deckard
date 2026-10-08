@@ -115,10 +115,13 @@ suite('Webview contracts', () => {
       ),
       true,
     );
-    // A row's readout, a file name or a count, folds under the row under the
-    // pointer as an entry's provenance does, and stays in the tree.
-    assert.ok(html.includes('.home-row .home-row-detail,\n.tag-row .tag-count {'));
-    assert.ok(html.includes('.home-row:hover .home-row-detail, .home-row:focus-within .home-row-detail,'));
+    // A Home row's file keeps a line of its own under the label, as a card's
+    // details do, and folds only when file and line are not ticked; a count
+    // beside a name is drawn at rest. Neither leaves the accessibility tree.
+    assert.ok(html.includes('.home-row .home-row-detail.is-file {\n  flex: 1 0 100%;'));
+    assert.ok(html.includes('body[data-details]:not([data-details~=fileAndLine]) .home-row .home-row-detail.is-file {'));
+    assert.ok(!/\.home-row-detail\.is-count[^{]*\{/.test(html), 'a Home count is never folded');
+    assert.ok(!/\.tag-row \.tag-count[^{]*\{[^}]*clip-path/.test(html), 'a tag count is never folded');
     assert.ok(!/\.home-row-detail[^{]*\{[^}]*display: none/.test(html), 'a readout never leaves the accessibility tree');
     // A saved search reads by its name; its criteria open under the pointer.
     assert.ok(html.includes('.saved-filter-row .saved-filter-tags { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }'));
@@ -142,10 +145,10 @@ suite('Webview contracts', () => {
       assert.strictEqual(mark.getAttribute('class'), 'tab-search-mark-icon');
       assert.strictEqual(mark.getAttribute('viewBox'), '0 0 16 16');
       assert.strictEqual(mark.querySelector('path')?.getAttribute('d'), 'M2 3h12L9 8v4l-2 1V8L2 3Z');
-      // The gear is the one every page draws, after the totals.
+      // The ⋯ is the one every page draws, after the totals.
       assert.deepStrictEqual(
         [...page.find('.dashboard-header-actions').children].map((child) => child.className),
-        ['metrics', 'view-options'],
+        ['metrics', 'view-options page-menu'],
       );
       // Tags in their own rank are ranked rows: dragged, or moved from their menu.
       const row = page.find('.tag-row[data-tag-key]');
@@ -661,20 +664,9 @@ suite('Webview contracts', () => {
       html.includes('.segmented > .active { position: relative; z-index: var(--z-raised); }'),
       true,
     );
-    assert.strictEqual(
-      html.includes(
-        'header > .toolbar .view-options { position: absolute; top: 0; right: 0; }',
-      ),
-      true,
-    );
-    // A short header is tall enough to hold the gear.
-    assert.strictEqual(html.includes('header > .toolbar { margin-top: 36px; }'), true);
-    assert.strictEqual(
-      html.includes(
-        'header > .toolbar { width: 100%; margin-top: 0; }',
-      ),
-      true,
-    );
+    // ‹ › and ⋯ hold the bar's top-right corner, however tall the title runs.
+    assert.strictEqual(html.includes('header.page-bar { align-items: flex-start; }'), true);
+    assert.strictEqual(html.includes('header > .toolbar'), false, 'no toolbar of its own');
 
     // The page itself, driven. A tag no note describes offers a hub note.
     const index = buildWorkspaceIndex(new Map([
@@ -691,12 +683,12 @@ suite('Webview contracts', () => {
       const tabs = page.findAll('[role="tab"][data-action="set-result-tab"]');
       assert.deepStrictEqual(tabs.map((tab) => tab.textContent), ['Notes (1)', 'Tasks (2)']);
       assert.deepStrictEqual(tabs.map((tab) => tab.getAttribute('data-tab')), ['notes', 'tasks']);
-      // Clear returns the page to the search it was opened with, so it is
-      // held while the box holds only that.
-      assert.strictEqual(page.find('[data-action="clear-query"]').getAttribute('aria-disabled'), 'true');
-      // While the sidebar shows this search's Refine, the page says so in its place.
+      // Clearing returns the page to the search it was opened with, so the
+      // field's × is not drawn while the box holds only that.
+      assert.strictEqual((page.find('[data-action="clear-query"]') as HTMLElement).hidden, true);
+      // While the sidebar shows this search's Refine, the page draws none.
       page.send({ ...snapshot, originQuery: '#risk/vendor', refineInSidebar: true });
-      assert.match(page.text('.query-facets') ?? '', /In the Context sidebar\./);
+      assert.strictEqual(page.findAll('.query-facets').length, 0);
       // Side by side, there are no tabs, and each pane's heading counts it.
       page.send({ ...snapshot, layout: 'split' });
       assert.strictEqual(page.findAll('[role="tab"]').length, 0);

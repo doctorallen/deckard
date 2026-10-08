@@ -4,6 +4,7 @@ import { Debouncer } from '../../shared/debounce';
 import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
 import { findFencedLines } from '../../domain/markdown/lineShapes';
 import { findDailyNoteDate } from '../../domain/markdown/parser';
+import { readEditorToggle } from '../providers/editorToggles';
 
 /** What the context needs to know about the index. */
 export interface ActiveNoteIndex {
@@ -48,7 +49,10 @@ export function isDailyNoteText(filePath: string, lines: readonly string[]): boo
 /**
  * Keeps `deckard.isNote` and `deckard.isDailyNote` in step with the active
  * editor, so the title bar offers Deckard's button on a note and the arrows
- * between days on a daily note, and nowhere else.
+ * between days on a daily note, and nowhere else; and
+ * `deckard.dailyNoteLensOff`, so the arrows are offered only while the
+ * daily note's own lens, which has them, is not drawn: under the Writing
+ * and Off presets, or with `deckard.editor.dailyNoteActions` set off.
  *
  * A daily note is read by the rule the index uses — a date as the file name,
  * or in the first heading — from the editor's own text, so a note gains its
@@ -105,6 +109,7 @@ export class ActiveNoteContext implements vscode.Disposable {
       );
     this.update('deckard.isNote', isNote);
     this.update('deckard.isDailyNote', isDaily);
+    this.update('deckard.dailyNoteLensOff', !readEditorToggle('dailyNoteActions', document?.uri));
   }
 
   /** Re-reads the active note once typing in it pauses, not on every keystroke. */

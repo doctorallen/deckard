@@ -1,10 +1,9 @@
 /*
- * Display: Deckard's own chrome, turned down a step at a time, in place of
- * zen mode (docs/implementation/22-display.md). The page shell marks the
- * body with what Display resolved: `data-styling="plain"` for Theme styling,
- * `data-help="hidden"` for Help text, and `data-density="compact"` for
- * Density. Quiet sets the first two; Zen all three, and draws a page as zen
- * mode did, with DECKARD ▾ kept.
+ * Display: Deckard's own chrome, turned down by Zen (docs/zen-mode.md). The
+ * page shell marks the body with what Zen turns on: `data-styling="plain"`
+ * for plain styling, `data-help="hidden"` for the lines that teach, and
+ * `data-density="compact"` for the tighter spacing, with DECKARD ▾ kept.
+ * Counts and dates are never hidden, so nothing here reaches them.
  *
  * Every rule is scoped under one of those markers, and the sheet ships
  * whether or not any is set: only the markers are conditional. The layout
@@ -37,21 +36,18 @@ body[data-styling=plain] { --edge: 1px; --grid-line: transparent; background-ima
 body[data-styling=plain] .eyebrow-trail,
 body[data-styling=plain] .eyebrow:not(:has(.eyebrow-home)),
 body[data-styling=plain] .metric::before { display: none; }
-body[data-styling=plain] .eyebrow { letter-spacing: .08em; }
-/* Sentence case, two sizes kept: the page title shrinks, never hidden, since
-   on a search page the h1 is the subject being searched and the page's one
-   landmark; a section or widget name stays a size above its rows. */
-body[data-styling=plain] h1 { font-size: var(--text-lg); letter-spacing: normal; text-transform: none; }
-body[data-styling=plain] h2, body[data-styling=plain] h3, body[data-styling=plain] .metric-label { letter-spacing: normal; text-transform: none; }
+/* Plain type: nothing upper-cased or letter-spaced, chrome included:
+   headings, buttons, segmented tabs and widget titles, at the strength
+   Corpo's own rule has, so no theme's capitals outrank it. */
+body[data-styling=plain] * { text-transform: none !important; letter-spacing: normal !important; }
+/* Two sizes kept: the page title shrinks, never hidden, since on a search
+   page the h1 is the subject being searched and the page's one landmark; a
+   section or widget name stays a size above its rows. */
+body[data-styling=plain] h1 { font-size: var(--text-lg); }
 body[data-styling=plain] .metric, body[data-styling=plain] .card, body[data-styling=plain] .note, body[data-styling=plain] .task,
 body[data-styling=plain] .tag-row, body[data-styling=plain] .task-row, body[data-styling=plain] .note-row, body[data-styling=plain] .entity-row,
 body[data-styling=plain] .saved-filter-row, body[data-styling=plain] .stat-row, body[data-styling=plain] .empty,
 body[data-styling=plain] .view-panel, body[data-styling=plain] .board-column { clip-path: none; box-shadow: none; }
-/* Under the pointer the frame reaches down to take in where the entry is
-   written (provenance.css); a plain frame has no corners to keep. */
-body[data-styling=plain] .card:hover, body[data-styling=plain] .card:focus-within, body[data-styling=plain] .note:hover,
-body[data-styling=plain] .note:focus-within, body[data-styling=plain] .task-row:hover,
-body[data-styling=plain] .task-row:focus-within { clip-path: none; }
 /* Rows that slide 3px under the pointer hold still. */
 body[data-styling=plain] .row:hover, body[data-styling=plain] .card:hover, body[data-styling=plain] .note:hover,
 body[data-styling=plain] .task:hover, body[data-styling=plain] .task-row:hover, body[data-styling=plain] .note-row:hover,
@@ -60,65 +56,18 @@ body[data-styling=plain] .saved-filter-row:hover, body[data-styling=plain] .stat
 
 /* ---- Help text: hidden -------------------------------------------------- */
 
-/* Lines that teach rather than show. The query hint goes; the parse error
-   that shares its slot does not, or a failed search reads as an empty one. */
-body[data-help=hidden] .query-hint,
-body[data-help=hidden] .refine-hint,
-body[data-help=hidden] .home-hint-bar { display: none; }
+/* Lines that teach rather than show, each marked .help-text where it is
+   drawn. The class is never on a control, on anything holding one, or on
+   the parse error that shares the query hint's slot, or a failed search
+   would read as an empty one; a state line such as "No tasks." keeps its
+   own element beside the line that teaches. */
+body[data-help=hidden] .help-text { display: none; }
 
 /* ---- Density: compact --------------------------------------------------- */
 
 /* A denser scale, not a second set of rules: the steps shrink, and every
    card, row, column, and margin in the shared sheets follows. */
 body[data-density=compact] { --control-height: 26px; --space-1: 3px; --space-2: 6px; --space-3: 8px; --space-4: 12px; --space-5: 14px; --space-6: 24px; }
-/* The carried-down file and line follows the tighter padding. */
-body[data-density=compact] .card { --inset: 9px; }
-body[data-density=compact] .task-row { --inset: 7px; }
-
-/* ---- Preferences: what is written, which the steps never move ----------- */
-
-/* Each is folded out of sight rather than out of the page: off-screen text a
-   screen reader still reads, as provenance.css folds an entry's file and
-   line. The page writes every part, so nothing here hides meaning. */
-
-/* Counts: hidden. The number beside a name, out of sight under the pointer
-   and focus too, as a tag row's count and a Home row's count are. Figures
-   that are the point, such as Home's tiles and a calendar day's counts, are
-   not counts beside names and stay. */
-body[data-counts=hidden] .tag-count,
-body[data-counts=hidden] .board-count,
-body[data-counts=hidden] .board-total,
-body[data-counts=hidden] .display-count,
-body[data-counts=hidden] .query-facet-count,
-body[data-counts=hidden] .refine-count,
-body[data-counts=hidden] .links-count,
-body[data-counts=hidden] .section-counts,
-/* Dates: only how far off, or only the date with its state. "Overdue" is the
-   state, never the distance, so an overdue date always says so; a date
-   beyond a month, which has no distance, keeps its date. */
-body[data-counts=hidden] .home-row:hover .home-row-detail.is-count,
-body[data-counts=hidden] .home-row:focus-within .home-row-detail.is-count,
-body[data-counts=hidden] .tag-row:hover .tag-count,
-body[data-counts=hidden] .tag-row:focus-within .tag-count,
-body[data-dates=relative] .due-relative .due-on,
-body[data-dates=date] .due-distance {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-/* With its count hidden, a tag row or a Home row of counts has nothing to
-   carry down under the pointer, and focus makes no room for it. */
-body[data-counts=hidden] .tag-row:hover::after, body[data-counts=hidden] .tag-row:focus-within::after,
-body[data-counts=hidden] .home-row:has(.is-count):hover::after,
-body[data-counts=hidden] .home-row:has(.is-count):focus-within::after { content: none; }
-body[data-counts=hidden] .tag-row:focus-within,
-body[data-counts=hidden] .home-row:has(.is-count):focus-within { margin-bottom: 0; }
 
 /* ---- Page width: full --------------------------------------------------- */
 

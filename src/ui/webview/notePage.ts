@@ -22,6 +22,8 @@ export interface NotePagePanelOptions {
   activeNotePage?: ActiveNotePage;
   /** Opens a search on a search page of its own. */
   onOpenSearch?: (query: string) => void | Promise<void>;
+  /** Whether a note is pinned to Home, so the page's ⋯ offers Pin or Unpin. */
+  isNotePinned?: (filePath: string) => boolean;
 }
 
 /** Where the note page is shown: beside the editor, or in a group, the active one unless named. */
@@ -99,6 +101,7 @@ export class NotePagePanel implements vscode.Disposable {
       extensionUri: options.extensionUri,
       activeNotePage: options.activeNotePage,
       onOpenSearch: options.onOpenSearch,
+      isNotePinned: options.isNotePinned,
     });
     const page = new PanelAdapter(
       new WebviewHost(controller, { indexer: options.indexer, themePreview: options.themePreview }),

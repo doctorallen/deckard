@@ -57,7 +57,7 @@ The fields are `due`, `scheduled`, `start`, `created`, `completion`, `cancelled`
 
 ### Editing a whole task
 
-**Deckard: Edit Task** (on a task line) or **Deckard: Add Task** (elsewhere), on the same shortcut, opens the line's fields, headed by the line as it will be written. A non-task line's text becomes the description. Edit Task is also **Edit task…** on the lightbulb. Add Task works from anywhere, and writes a new task where its **Note** row says; see [Adding a task](#adding-a-task).
+**Deckard: Edit Task** (on a task line) or **Deckard: Add Task** (elsewhere), on the same shortcut, opens the line's fields, headed by the line as it will be written. A non-task line's text becomes the description. Edit Task is also **Edit task…** on the lightbulb, in a note. Add Task works from anywhere, and writes a new task where its **Note** row says; see [Adding a task](#adding-a-task).
 
 | Field | What it takes |
 | --- | --- |
@@ -193,9 +193,9 @@ Deckard used to read a `#status/…` tag on an empty box as a status. It no long
 - Query blocks that name a status tag search by the status instead, `status:in-progress` for `#status/doing`, in the same preview. Saved searches and Home's widgets follow when you say so.
 - Every change shows in groups in the [refactor preview](search-pages.md#previewing-and-undoing-a-write), and is one change Undo takes back.
 
-While task lines still carry such tags, the first scan of each session says how many, with **Preview the Move** and **Later**, and the Task board and the Tasks view say so too. The old board settings move once: `deckard.board.statuses`' order becomes the board's column order, `deckard.board.showCancelled` shows Cancelled, and `deckard.board.limits` keys such as `doing` become `in-progress`.
+While task lines still carry such tags, the Task board and the Tasks view say how many, and a scan says so once in each workspace, with **Preview the Move** and **Later**. The old board settings move once: `deckard.board.statuses`' order becomes the board's column order, `deckard.board.showCancelled` shows Cancelled, and `deckard.board.limits` keys such as `doing` become `in-progress`.
 
-`Deckard: Import Statuses from Obsidian Tasks` reads `.obsidian/plugins/obsidian-tasks-plugin/data.json` and writes the vault's statuses to the workspace's `deckard.tasks.statuses`, with Waiting `[w]` and Someday `[s]` added when the vault has no status of either name or character. In an Obsidian vault with statuses of its own, when the workspace names none, the first scan offers it, once.
+**Import from Obsidian Tasks**, on the page [Edit Task Statuses…](#editing-the-statuses) opens, reads `.obsidian/plugins/obsidian-tasks-plugin/data.json` and writes the vault's statuses to the workspace's `deckard.tasks.statuses`, with Waiting `[w]` and Someday `[s]` added when the vault has no status of either name or character. In an Obsidian vault with statuses of its own, when the workspace names none, the first scan offers it, once.
 
 ### Editing the statuses
 
@@ -210,7 +210,7 @@ While task lines still carry such tags, the first scan of each session says how 
 
 ## Tasks view
 
-Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when they are wanted. Parked tasks are left out unless `deckard.agenda.query` says `is:parked`.
+Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when they are wanted. Parked tasks are left out unless `deckard.tasks.viewQuery` says `is:parked`.
 
 ![Deckard's Tasks view grouping open tasks into Overdue, Today, and Upcoming beside a note with dated tasks.](../images/agenda.png)
 
@@ -221,9 +221,9 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
 - **Done today**: finished today, by ✅ date. Uncheck to reopen; drop a task here to complete it.
 - **Needs a new date**: more than 30 days past due, left out of Overdue, the badge, and the status bar. Date them with the calendar button or **Reschedule All…**. `deckard.tasks.needsNewDateAfterDays` sets the days; `0` turns this off. `is:overdue` still finds them.
 
-**What it lists.** Set `deckard.agenda.query` to any [query](search.md#query-language), such as `is:mine`, `#project/atlas`, or `has:due OR has:scheduled OR has:start`. Home's agenda widget and the [status bar](#status-bar-and-reminders) count the same list. The search icon in the title opens the search on the [Task board](task-board.md#editing-what-the-tasks-view-lists): change it there, then select **Save to Tasks view**, which keeps what the box shows. **List in Tasks view**, in the board's gear, makes the view list any board's search. **Show every open task** or **Clear the Tasks View's Search** (in the `…` menu and palette) clears it.
+**What it lists.** Set `deckard.tasks.viewQuery` to any [query](search.md#query-language), such as `is:mine`, `#project/atlas`, or `has:due OR has:scheduled OR has:start`. Home's agenda widget and the [status bar](#status-bar-and-reminders) count the same list. **Edit What the Tasks View Lists…**, in the title's **⋯** menu, opens the search on the [Task board](task-board.md#editing-what-the-tasks-view-lists): change it there, then select **Save to Tasks view**, which keeps what the box shows. **List in Tasks view**, in the board's gear, makes the view list any board's search. **Show every open task** or **Clear the Tasks View's Search** (in the same **⋯** menu and the palette) clears it.
 
-**Group by**, in the title, chooses **Due status** (the groups above), **Priority**, **Status**, **Person**, or **Tag namespace…**; the view keeps your choice. **Sort by**, beside it, orders each group: **Rank** (the default), **Newest created**, **Oldest created**, **Recently updated**, **Least recently updated**, **A-Z**, or **Z-A**; the view keeps that too. A tie keeps the group's own order, by date or priority.
+**Group by**, in the title beside **Open Task Board**, chooses **Due status** (the groups above), **Priority**, **Status**, **Person**, or **Tag namespace…**; the view keeps your choice. **Sort Tasks By…**, in the title's **⋯** menu, orders each group: **Rank** (the default), **Newest created**, **Oldest created**, **Recently updated**, **Least recently updated**, **A-Z**, or **Z-A**; the view keeps that too. A tie keeps the group's own order, by date or priority.
 
 - **Tag namespace** groups by tags in one namespace, such as `#project/…`, busiest first, **No project** last. Inherited tags count. The namespace is kept with the workspace.
 - **Priority** runs highest to lowest, **No priority** last.
@@ -256,8 +256,8 @@ Run `Deckard: Add Task` from anywhere: <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt<
 - **Note**, the first row, is where the task goes. In a Markdown note, it is that note, at the cursor: a blank line becomes the task, a line of plain words becomes the task with those words, and on a task the new one goes on the line below. With no note open, or another kind of file, it is today's daily note, created from your template if needed, with the task after its last list item or text. Choose the row for **This note**, **Today's note**, **Another note…** (the notes changed last first), or **Under a heading…**, which picks a heading in any note, starting with the five used last, and writes the task under the heading's own lines, above any nested heading.
 - **Quick add.** Words at the end of the **Description** fill the task's fields, in any order: a day (`today`, `friday`, `next monday`, `in 3 days`, `oct 3`; or after `on`, `by`, or `due`, a short day such as `fri`, `+2w`, a date, or `10/3`), a priority (`p1` to `p4`, or `!!!`, `!!`, `!`), a repeat rule (`every week`, `daily`), and who it is for (`for @dana`). `@dana to …` at the start hands the task to Dana too; a person mentioned anywhere else stays a mention. `Call Ren friday p2` becomes `- [ ] Call Ren ⏫ 📅 2026-10-02`, and the box says what it read as you type. **Keep the words as written**, the button in the box's title, reads nothing.
 - **From a selection.** Select up to 120 characters on one line and Add Task starts from them. Written into another note, the task links back to the heading they were under: `- [ ] Call Ren [[2026-09-22#Weekly review]] 📅 2026-10-02`. In the note they were selected in, it goes on the line below them.
-- On the [Task board](task-board.md#task-board), **Add task** in the search bar runs Add Task, and a column's **+ Add task** starts it with that column's status, priority, date, person, or tag.
-- [Find](search.md) offers **Add “…” to today's note** for words that match nothing, and Home's **Quick add** writes a line to today's note, each read as Quick add reads it.
+- On the [Task board](task-board.md#task-board), **Add task** in the search bar runs Add Task, and a column's **+** starts it with that column's status, priority, date, person, or tag.
+- [Find](search.md) offers **Add “…” to today's note** for words that match nothing, read as Quick add reads it.
 - Unsaved changes in an open note are kept. A task written into another note saves it; one written into the note you are in waits for you to save it, as your own typing does.
 
 ---

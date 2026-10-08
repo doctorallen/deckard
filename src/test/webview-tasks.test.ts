@@ -170,11 +170,26 @@ suite('The shared task parts draw what the template script drew', () => {
       for (const [how, now] of options) {
         const drawn = drawnNow(element('TaskListRow', { item, ...now }));
         // The row now tells the tip to keep off the line it folds under it
-        // (data-tip-around), which the template's row never did: that is
-        // checked here, and the rest is held to the recording.
+        // (data-tip-around), and is the region its own actions show in
+        // (data-reveal-region), which the template's row never did: those
+        // are checked here, and the rest is held to the recording.
         const row = drawn.querySelector('.task-row') as Element;
         assert.strictEqual(row.getAttribute('data-tip-around'), '', `${what}, ${how}: the row keeps the tip off what it shows`);
+        assert.strictEqual(row.getAttribute('data-reveal-region'), '', `${what}, ${how}: the row shows its own actions on hover and focus`);
         row.removeAttribute('data-tip-around');
+        row.removeAttribute('data-reveal-region');
+        // Its card details are on a line of their own under its facts, kept
+        // for them and shown on hover (detailsLine.tsx), where the template
+        // ran them on in the facts' line: that line is checked here, and its
+        // parts are put back where the recording has them.
+        const details = row.querySelector('.entry-details');
+        if (details) {
+          assert.strictEqual(details.getAttribute('data-reveal'), '', `${what}, ${how}: the details show on hover and focus`);
+          assert.strictEqual(details.previousElementSibling?.className, 'task-meta', `${what}, ${how}: the details line is under the facts`);
+          details.querySelectorAll('.entry-details-joiner').forEach((joiner) => joiner.remove());
+          (details.previousElementSibling as Element).append(...Array.from(details.childNodes));
+          details.remove();
+        }
         assertSame(`task row ${what}, ${how}`, drawn, `${what}, ${how}`);
       }
     }

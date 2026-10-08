@@ -1,6 +1,6 @@
 # Query blocks
 
-Put a Deckard query in a `deckard` code fence to keep a live list in a note. `Deckard: Insert Query Block…` writes one from a saved or recent search, and **Copy as live query block** in a search page's or the Task Board's **Export** copies the current search as one:
+Put a Deckard query in a `deckard` code fence to keep a live list in a note. **Query block** in the [/ menu](notes-and-links.md#editor-assistance) writes one, and **Copy as live query block** in a search page's or the Task Board's **Export** copies the current search as one:
 
 ````markdown
 ```deckard sort=updated limit=10
@@ -40,4 +40,4 @@ tag = #project/* AND is:note
 
 ---
 
-← [Search pages and tag overviews](search-pages.md) · [All topics](README.md) · [Home and Stats](home-and-stats.md) →
+← [Search pages](search-pages.md) · [All topics](README.md) · [Home and Stats](home-and-stats.md) →

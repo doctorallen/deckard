@@ -53,7 +53,7 @@ export interface QuickFindActions {
 
 interface QuickFindPickItem extends vscode.QuickPickItem {
   item?: QuickFindItem;
-  /** The row that opens the whole search on the Dashboard. */
+  /** The row that opens the whole search on a search page. */
   showAll?: boolean;
   /** The row that runs the corrected spelling. */
   suggestion?: string;
@@ -902,7 +902,7 @@ function trailingRows(
   if (value.trim() && total > 0) {
     items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
     items.push({
-      label: `$(list-flat) Show all ${total} ${total === 1 ? 'result' : 'results'} on the Dashboard`,
+      label: `$(list-flat) Show all ${total} ${total === 1 ? 'result' : 'results'} on a search page`,
       alwaysShow: true,
       showAll: true,
     });

@@ -6,6 +6,8 @@ import { createQueryContext } from '../domain/query/queryContext';
 import { createNotePageSnapshot, describeTagKind } from '../ui/state/notePageState';
 import { NoteBlock } from '../ui/protocol/notePage';
 import { WorkspaceIndex } from '../domain/model';
+import { renderPage } from './pages';
+import { openWebviewPage } from './webviewPage';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
 
@@ -82,6 +84,23 @@ suite('The note page', () => {
       'embed@27',
       'table@29',
     ]);
+  });
+
+  test('draws the bar every page draws: ‹ ›, Open in Editor, plain, and ⋯ with Appearance and Help', () => {
+    const view = openWebviewPage(renderPage('notePage'), page);
+    try {
+      assert.strictEqual(view.find('.page-bar .eyebrow-trail').textContent, ' / NOTE / HUBS');
+      const open = view.find('.page-bar-actions > [data-action="open-in-editor"]');
+      assert.ok(!open.classList.contains('primary'), 'it goes somewhere, and commits nothing');
+      assert.strictEqual(view.findAll('.primary').length, 0);
+      assert.deepStrictEqual(view.findAll('.page-menu .view-options-section').map((section) => section.getAttribute('aria-label')), ['Appearance', 'Help']);
+      assert.deepStrictEqual(view.findAll('.page-menu .view-options-group').map((group) => group.children[0].textContent), ['Theme', 'Zen', 'Page width']);
+      assert.strictEqual(view.findAll('.help-button').length, 0, 'Help on this page is a row of ⋯');
+      view.click('.page-menu [data-action="page-help"]');
+      assert.deepStrictEqual(view.lastPosted('openHelp'), { type: 'openHelp' });
+    } finally {
+      view.dispose();
+    }
   });
 
   test('gives each task its box, and a step its own', () => {

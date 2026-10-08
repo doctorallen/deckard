@@ -3,6 +3,7 @@
  * canonical tags, and note entries, and the notes nothing links to.
  */
 import type { StatsAccessItem, StatsNoteItem } from '../../ui/protocol/stats';
+import { EmptyState } from '../shared/emptyState';
 import { TagLabel } from '../shared/tagLabel';
 import type { DrawnStats, RowList } from './model';
 
@@ -53,21 +54,23 @@ export function AccessList({ name, items, empty, hint, isTag, shown, showAll }: 
 
 /** The three most-viewed lists: their name, title, noun, row tip, and whether rows are tags. */
 const VIEW_LISTS: ReadonlyArray<readonly ['tagViews' | 'entityViews' | 'sectionViews', string, string, string, boolean]> = [
-  ['tagViews', 'Most viewed tags', 'tags', 'Open tag overview', true],
-  ['entityViews', 'Most viewed canonical tags', 'canonical tags', 'Open tag overview', false],
+  ['tagViews', 'Most viewed tags', 'tags', 'Open its search page', true],
+  ['entityViews', 'Most viewed canonical tags', 'canonical tags', 'Open its search page', false],
   ['sectionViews', 'Most viewed note entries', 'note entries', 'Open note entry', false],
 ];
 
-/** Says which lists have no views yet, and how views are counted. */
+/** How views are counted, said after the lists that have none yet. */
+const VIEWS_COUNTED = "Views are counted when you open a tag's page or a note entry from a search page.";
+
+/** Says which lists have no views yet. */
 function describeUnviewed(empty: readonly string[]): string {
-  const reason = "Views are counted when you open a tag's page or a note entry from a search page.";
   if (empty.length === VIEW_LISTS.length) {
-    return `Nothing viewed yet. ${reason}`;
+    return 'Nothing viewed yet.';
   }
   if (!empty.length) {
     return '';
   }
-  return `Nothing viewed yet among ${empty.length === 2 ? `${empty[0]} and ${empty[1]}` : empty[0]}. ${reason}`;
+  return `Nothing viewed yet among ${empty.length === 2 ? `${empty[0]} and ${empty[1]}` : empty[0]}.`;
 }
 
 /**
@@ -94,7 +97,7 @@ export function ViewsSection({ state }: { readonly state: DrawnStats }) {
     <section class="stats-section" aria-labelledby="views-heading">
       <h2 id="views-heading">Most viewed</h2>
       {panels.length ? <div class="views">{panels}</div> : null}
-      {emptyLine ? <p class="views-empty">{emptyLine}</p> : null}
+      {emptyLine ? <EmptyState class="views-empty" state={emptyLine} teach={VIEWS_COUNTED} /> : null}
     </section>
   );
 }

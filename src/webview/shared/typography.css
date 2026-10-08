@@ -13,3 +13,11 @@ h3 { margin: 0; color: var(--text); font-size: var(--text-md); font-weight: 650;
 .eyebrow-home.eyebrow-home:hover { background: var(--hover-bg); color: var(--hover-fg); }
 .lead { margin: 10px 0 0; max-width: 680px; color: var(--muted); }
 .source { margin-top: 5px; color: var(--muted); font-size: var(--text-xs); overflow-wrap: anywhere; }
+/* The reader's own words read as written, in every theme and at every step:
+   a note's title and headings, a table header the note wrote, a query
+   block's titles, an embed's title, Linked from's lines, and the tag a
+   search page is about. `.note-text` marks the element that holds them; the
+   chrome around it keeps its theme. `body` puts it above a theme's `h1` and
+   `button` rules wherever the sheets are linked. Card titles are not marked:
+   a theme's capitals there are its look. */
+body .note-text, body .note-text * { text-transform: none; letter-spacing: normal; }

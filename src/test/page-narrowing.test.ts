@@ -15,7 +15,6 @@ import {
   narrowParkTag,
   narrowPinNote,
   narrowRenameTag,
-  narrowDisplayCommand,
   narrowSetDisplay,
   narrowSetZenMode,
   narrowToggleTask,
@@ -97,26 +96,15 @@ suite('Page message narrowing', () => {
     ]);
   });
 
-  test('the gear\'s Display rows: which setting, and a short lowercase value', () => {
+  test('the gear\'s Page width row: the setting, and a short lowercase value', () => {
     const display = narrowWith<{ setDisplay: ReturnType<typeof narrowSetDisplay> }>({ setDisplay: narrowSetDisplay });
     check(display, [
       [{ type: 'setDisplay', setting: 'pageWidth', value: 'full', extra: 1 }, { type: 'setDisplay', setting: 'pageWidth', value: 'full' }],
       [{ type: 'setDisplay', setting: 'cardFrames', value: 'flat' }, undefined],
-      [{ type: 'setDisplay', setting: 'level', value: 'quiet' }, { type: 'setDisplay', setting: 'level', value: 'quiet' }],
-      [{ type: 'setDisplay', setting: 'density', value: 'compact' }, undefined],
+      [{ type: 'setDisplay', setting: 'level', value: 'quiet' }, undefined],
       [{ type: 'setDisplay', setting: 'theme', value: 'cooper' }, undefined],
-      [{ type: 'setDisplay', setting: 'level', value: 'Zen' }, undefined],
-      [{ type: 'setDisplay', setting: 'level' }, undefined],
-    ]);
-  });
-
-  test('the gear\'s Display links: the step\'s values, or Customize…', () => {
-    const command = narrowWith<{ displayCommand: ReturnType<typeof narrowDisplayCommand> }>({ displayCommand: narrowDisplayCommand });
-    check(command, [
-      [{ type: 'displayCommand', command: 'useStepValues', extra: 1 }, { type: 'displayCommand', command: 'useStepValues' }],
-      [{ type: 'displayCommand', command: 'customize' }, { type: 'displayCommand', command: 'customize' }],
-      [{ type: 'displayCommand', command: 'reset' }, undefined],
-      [{ type: 'displayCommand' }, undefined],
+      [{ type: 'setDisplay', setting: 'pageWidth', value: 'Full' }, undefined],
+      [{ type: 'setDisplay', setting: 'pageWidth' }, undefined],
     ]);
   });
 

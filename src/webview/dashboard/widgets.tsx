@@ -1,11 +1,13 @@
 /**
- * One widget on Home, in its frame: its title and count, where it leads or,
- * while Home is arranged, its width, its gear, and Remove; then what it
- * shows, and, for a paged widget, its pager.
+ * One widget on Home, in its frame: its title and count, as the link to
+ * where it leads when it leads anywhere, and, while Home is arranged, its
+ * width, its gear, and Remove; then what it shows, and, for a paged
+ * widget, its pager.
  */
 import type { ComponentChild } from 'preact';
 
 import { WIDGET_ENTRY_COUNTS, WIDGET_KINDS, widgetNamespace } from '../../domain/dashboard/widgetCatalog';
+import { TASK_SORT_LABELS } from '../../domain/model/sortOrders';
 import type { DashboardWidget } from '../../ui/protocol/dashboard';
 import { SettingsIcon } from '../shared/icons';
 import { describePageRange } from '../shared/pageSteps';
@@ -21,46 +23,61 @@ interface WidgetProps {
   readonly home: HomeContext;
 }
 
-/** Where a widget leads: a button that opens a page, a view, or the Tags tab. */
-function OpenLink({ action, attributes, label }: { readonly action: string; readonly attributes?: Attributes; readonly label: string }) {
-  return <button type="button" class="home-open" data-action={action} {...attributes}>{`${label} →`}</button>;
+/** Where a widget leads: the message its title sends, with what it names, and the page or place it opens. */
+interface Destination {
+  readonly action: string;
+  readonly attributes?: Attributes;
+  readonly place: string;
 }
 
 /** The Tags tab, where every tag a widget lists a few of is. */
-function allTags(): ComponentChild {
-  return <OpenLink action="set-dashboard-mode" attributes={{ 'data-dashboard-mode': 'browse' }} label="All tags" />;
-}
+const ALL_TAGS: Destination = { action: 'set-dashboard-mode', attributes: { 'data-dashboard-mode': 'browse' }, place: 'every tag, on the Tags tab' };
 
-/** Where each kind of widget leads, when it leads anywhere. */
-const OPEN_LINKS: Readonly<Partial<Record<DashboardWidget['kind'], (widget: DashboardWidget) => ComponentChild>>> = {
-  tasks: (widget) => <OpenLink action="open-task-board" attributes={{ 'data-query': widget.query || '' }} label="Task Board" />,
-  agenda: () => <OpenLink action="open-view" attributes={{ 'data-view': 'agenda' }} label="Tasks view" />,
-  favoriteTags: allTags,
-  topTags: allTags,
-  stats: () => <OpenLink action="open-view" attributes={{ 'data-view': 'stats' }} label="Stats" />,
-  todayNote: (widget) => (widget.today && widget.today.filePath ? <OpenLink action="open-daily-note" label="Open" /> : null),
-  staleTasks: () => <OpenLink action="open-task-board" attributes={{ 'data-query': 'is:open' }} label="Task Board" />,
-  unhubbedTags: allTags,
-  newTags: allTags,
-  quietPeople: allTags,
-  progress: allTags,
-  tagPairs: allTags,
-  relatedNotes: (widget) =>
-    (widget.sourceNote ? <OpenLink action="open-note" attributes={{ 'data-file-path': widget.sourceNote.filePath }} label="Open note" /> : null),
+/** Where each kind of widget leads, when it leads anywhere: undefined for one that leads nowhere as it stands. */
+const DESTINATIONS: Readonly<Partial<Record<DashboardWidget['kind'], (widget: DashboardWidget) => Destination | undefined>>> = {
+  tasks: (widget) => ({ action: 'open-task-board', attributes: { 'data-query': widget.query || '' }, place: 'the Task board' }),
+  agenda: () => ({ action: 'open-view', attributes: { 'data-view': 'agenda' }, place: 'the Tasks view' }),
+  favoriteTags: () => ALL_TAGS,
+  topTags: () => ALL_TAGS,
+  todayNote: (widget) => (widget.today && widget.today.filePath ? { action: 'open-daily-note', place: 'today’s note' } : undefined),
+  quietPeople: () => ALL_TAGS,
+  progress: () => ALL_TAGS,
   savedQuery: (widget) => {
     if (widget.missing) {
-      return null;
+      return undefined;
     }
     return widget.savedPage === 'taskBoard'
-      ? <OpenLink action="open-task-board" attributes={{ 'data-query': widget.savedQuery || '' }} label="Task Board" />
-      : <OpenLink action="open-search" attributes={{ 'data-query': widget.savedQuery || '' }} label="Open" />;
+      ? { action: 'open-task-board', attributes: { 'data-query': widget.savedQuery || '' }, place: 'the Task board' }
+      : { action: 'open-search', attributes: { 'data-query': widget.savedQuery || '' }, place: 'a search page' };
   },
 };
 
 /** Where a widget leads, when it leads anywhere. */
-function WidgetOpen({ widget }: { readonly widget: DashboardWidget }) {
-  const link = Object.hasOwn(OPEN_LINKS, widget.kind) ? OPEN_LINKS[widget.kind] : undefined;
-  return link ? <>{link(widget)}</> : null;
+function destinationOf(widget: DashboardWidget): Destination | undefined {
+  const lead = Object.hasOwn(DESTINATIONS, widget.kind) ? DESTINATIONS[widget.kind] : undefined;
+  return lead ? lead(widget) : undefined;
+}
+
+/**
+ * A widget's title, with its count. A widget that leads somewhere makes
+ * its title the link, with a › after it: a separate bordered button beside
+ * a heading drawn in the link color read as two ways to the same place, one
+ * of which did nothing. While Home is arranged the title is plain, since a
+ * press on it starts a drag.
+ */
+function WidgetTitle({ widget, home, count }: WidgetProps & { readonly count: string | undefined }) {
+  const name = count === undefined ? widget.title : <>{`${widget.title} `}<span class="tag-count">{count}</span></>;
+  const destination = home.editing ? undefined : destinationOf(widget);
+  return (
+    <h2 class="home-widget-title">
+      {home.editing ? <span class="home-widget-grip" aria-hidden="true">⠿</span> : null}
+      {destination ? (
+        <button type="button" class="home-widget-link" data-action={destination.action} {...destination.attributes} data-tip={`Open ${destination.place}`}>
+          {name}<span class="home-widget-link-mark" aria-hidden="true">›</span>
+        </button>
+      ) : name}
+    </h2>
+  );
 }
 
 /** One row of a widget's gear: its label, over or beside its choices. */
@@ -91,7 +108,7 @@ function listingGroups(widget: DashboardWidget, attributes: Readonly<Record<stri
   }
   if (traits.days) {
     groups.push(
-      <OptionsGroup label={widget.kind === 'newTags' ? 'Seen within' : 'Unchanged for'}>
+      <OptionsGroup label="Unwritten for">
         <ViewOptionChoices action="set-widget-days" choices={traits.days} selected={widget.days || traits.defaultDays} label="Days" attributes={attributes} />
       </OptionsGroup>,
     );
@@ -125,7 +142,7 @@ function quietPeopleGroups(widget: DashboardWidget, attributes: Readonly<Record<
 /** `spellcheck="false"`, written as an attribute in every browser: Chrome's property would read the string as true. */
 const NO_SPELLCHECK: Readonly<Record<string, string>> = { spellCheck: 'false' };
 
-/** The rows a widget's own kind adds to its gear: Gone quiet's, a tasks widget's search, and a saved search's choice. */
+/** The rows a widget's own kind adds to its gear: Gone quiet's, a tasks widget's search and sort, and a saved search's choice. */
 function kindGroups(widget: DashboardWidget, home: HomeContext, attributes: Readonly<Record<string, string>>): ComponentChild[] {
   if (widget.kind === 'quietPeople') {
     return quietPeopleGroups(widget, attributes);
@@ -141,6 +158,12 @@ function kindGroups(widget: DashboardWidget, home: HomeContext, attributes: Read
           <input type="text" data-action="widget-query-draft" {...attributes} value={draft} placeholder="is:open #project/atlas" aria-label="Tasks to list" autocomplete="off" {...NO_SPELLCHECK} />
           <button type="submit">Save</button>
         </form>
+      </OptionsGroup>,
+      <OptionsGroup label="Sort" stacked>
+        <select data-action="set-widget-sort" {...attributes} aria-label="Sort tasks by">
+          <option value="" selected={!widget.sort}>As on the Task Board</option>
+          {Object.entries(TASK_SORT_LABELS).map(([mode, label]) => <option key={mode} value={mode} selected={mode === widget.sort}>{label}</option>)}
+        </select>
       </OptionsGroup>,
     ];
   }
@@ -247,7 +270,7 @@ function countText(widget: DashboardWidget): string | undefined {
   }
   // Each kind lists its own sort of entry, so the shown count is whichever
   // list the widget carries.
-  const list = widget.tasks || widget.tags || widget.notes || widget.queries || widget.savedFilters || widget.tagPairs;
+  const list = widget.tasks || widget.tags || widget.notes || widget.queries || widget.savedFilters;
   const shown = list ? list.length : undefined;
   return !widget.paged && shown !== undefined && shown < widget.total ? `${shown} of ${widget.total}` : String(widget.total);
 }
@@ -277,12 +300,8 @@ export function HomeWidget({ widget, home }: WidgetProps) {
       aria-label={widget.title}
     >
       <div class="home-widget-header">
-        <h2 class="home-widget-title">
-          {home.editing ? <span class="home-widget-grip" aria-hidden="true">⠿</span> : null}
-          {count === undefined ? widget.title : `${widget.title} `}
-          {count === undefined ? null : <span class="tag-count">{count}</span>}
-        </h2>
-        <div class="home-widget-actions">{home.editing ? <ArrangingActions widget={widget} home={home} /> : <WidgetOpen widget={widget} />}</div>
+        <WidgetTitle widget={widget} home={home} count={count} />
+        {home.editing ? <div class="home-widget-actions"><ArrangingActions widget={widget} home={home} /></div> : null}
       </div>
       <WidgetBody widget={widget} home={home} />
       <WidgetPaging widget={widget} home={home} />
