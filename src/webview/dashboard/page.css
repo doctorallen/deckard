@@ -126,7 +126,16 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-widget-title { margin: 0; color: var(--amber); font-size: var(--text-md); font-weight: 600; }
 .home-widget-grip { margin-right: 6px; color: var(--muted); }
 .home-widget-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
-.home-open { min-height: 26px; padding: 3px 8px; text-transform: none; }
+/* A widget that leads somewhere: its title is the link, drawn as the
+   heading it is in every theme rather than as a button, with a › after it,
+   underlined under the pointer and ringed on focus. */
+.home-widget-title > .home-widget-link,
+.home-widget-title > .home-widget-link:hover:where(:not(:disabled)) { min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; clip-path: none; color: inherit; filter: none; font: inherit; letter-spacing: inherit; text-align: left; text-transform: inherit; transform: none; }
+.home-widget-title > .home-widget-link:hover:where(:not(:disabled)), .home-widget-title > .home-widget-link:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+/* Each theme's focus ring, set off from the text, which a ring drawn inside
+   a control with no padding would cross. */
+.home-widget-title > .home-widget-link:focus-visible { outline-offset: 2px; }
+.home-widget-link-mark { margin-left: 6px; }
 .home-remove { min-height: 26px; padding: 3px 8px; text-transform: none; }
 .home-list { display: grid; gap: 6px; }
 /* A row on Home is a button, but it is painted by the row rules, so it reads

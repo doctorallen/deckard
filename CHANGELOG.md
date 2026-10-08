@@ -96,6 +96,13 @@
   tab, and a count on Home's rows such as *4 notes · 2 tasks*, showed only
   under the pointer, folded under the row. They are drawn beside the name
   now. **Counts** in Settings still leaves them out.
+- **A Home widget's title is its link.** A widget that leads somewhere,
+  such as the Tasks view, Tasks, a tag list, a saved search's results or
+  Today, drew its title in the link color beside a separate bordered
+  button, *Tasks view →*. The title is the link now, *Tasks view 53 ›*,
+  underlined under the pointer, and the button is gone. A widget that
+  leads nowhere keeps a plain title, as every widget does while Home is
+  being customized, and the link stays under Zen with its count.
 
 ### Fixed
 

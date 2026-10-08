@@ -1,7 +1,8 @@
 /**
- * One widget on Home, in its frame: its title and count, where it leads or,
- * while Home is arranged, its width, its gear, and Remove; then what it
- * shows, and, for a paged widget, its pager.
+ * One widget on Home, in its frame: its title and count, as the link to
+ * where it leads when it leads anywhere, and, while Home is arranged, its
+ * width, its gear, and Remove; then what it shows, and, for a paged
+ * widget, its pager.
  */
 import type { ComponentChild } from 'preact';
 
@@ -21,46 +22,68 @@ interface WidgetProps {
   readonly home: HomeContext;
 }
 
-/** Where a widget leads: a button that opens a page, a view, or the Tags tab. */
-function OpenLink({ action, attributes, label }: { readonly action: string; readonly attributes?: Attributes; readonly label: string }) {
-  return <button type="button" class="home-open" data-action={action} {...attributes}>{`${label} →`}</button>;
+/** Where a widget leads: the message its title sends, with what it names, and the page or place it opens. */
+interface Destination {
+  readonly action: string;
+  readonly attributes?: Attributes;
+  readonly place: string;
 }
 
 /** The Tags tab, where every tag a widget lists a few of is. */
-function allTags(): ComponentChild {
-  return <OpenLink action="set-dashboard-mode" attributes={{ 'data-dashboard-mode': 'browse' }} label="All tags" />;
-}
+const ALL_TAGS: Destination = { action: 'set-dashboard-mode', attributes: { 'data-dashboard-mode': 'browse' }, place: 'every tag, on the Tags tab' };
 
-/** Where each kind of widget leads, when it leads anywhere. */
-const OPEN_LINKS: Readonly<Partial<Record<DashboardWidget['kind'], (widget: DashboardWidget) => ComponentChild>>> = {
-  tasks: (widget) => <OpenLink action="open-task-board" attributes={{ 'data-query': widget.query || '' }} label="Task Board" />,
-  agenda: () => <OpenLink action="open-view" attributes={{ 'data-view': 'agenda' }} label="Tasks view" />,
-  favoriteTags: allTags,
-  topTags: allTags,
-  stats: () => <OpenLink action="open-view" attributes={{ 'data-view': 'stats' }} label="Stats" />,
-  todayNote: (widget) => (widget.today && widget.today.filePath ? <OpenLink action="open-daily-note" label="Open" /> : null),
-  staleTasks: () => <OpenLink action="open-task-board" attributes={{ 'data-query': 'is:open' }} label="Task Board" />,
-  unhubbedTags: allTags,
-  newTags: allTags,
-  quietPeople: allTags,
-  progress: allTags,
-  tagPairs: allTags,
+/** Where each kind of widget leads, when it leads anywhere: undefined for one that leads nowhere as it stands. */
+const DESTINATIONS: Readonly<Partial<Record<DashboardWidget['kind'], (widget: DashboardWidget) => Destination | undefined>>> = {
+  tasks: (widget) => ({ action: 'open-task-board', attributes: { 'data-query': widget.query || '' }, place: 'the Task board' }),
+  agenda: () => ({ action: 'open-view', attributes: { 'data-view': 'agenda' }, place: 'the Tasks view' }),
+  favoriteTags: () => ALL_TAGS,
+  topTags: () => ALL_TAGS,
+  stats: () => ({ action: 'open-view', attributes: { 'data-view': 'stats' }, place: 'Stats' }),
+  todayNote: (widget) => (widget.today && widget.today.filePath ? { action: 'open-daily-note', place: 'today’s note' } : undefined),
+  staleTasks: () => ({ action: 'open-task-board', attributes: { 'data-query': 'is:open' }, place: 'the Task board' }),
+  unhubbedTags: () => ALL_TAGS,
+  newTags: () => ALL_TAGS,
+  quietPeople: () => ALL_TAGS,
+  progress: () => ALL_TAGS,
+  tagPairs: () => ALL_TAGS,
   relatedNotes: (widget) =>
-    (widget.sourceNote ? <OpenLink action="open-note" attributes={{ 'data-file-path': widget.sourceNote.filePath }} label="Open note" /> : null),
+    (widget.sourceNote ? { action: 'open-note', attributes: { 'data-file-path': widget.sourceNote.filePath }, place: widget.sourceNote.title || 'the note' } : undefined),
   savedQuery: (widget) => {
     if (widget.missing) {
-      return null;
+      return undefined;
     }
     return widget.savedPage === 'taskBoard'
-      ? <OpenLink action="open-task-board" attributes={{ 'data-query': widget.savedQuery || '' }} label="Task Board" />
-      : <OpenLink action="open-search" attributes={{ 'data-query': widget.savedQuery || '' }} label="Open" />;
+      ? { action: 'open-task-board', attributes: { 'data-query': widget.savedQuery || '' }, place: 'the Task board' }
+      : { action: 'open-search', attributes: { 'data-query': widget.savedQuery || '' }, place: 'a search page' };
   },
 };
 
 /** Where a widget leads, when it leads anywhere. */
-function WidgetOpen({ widget }: { readonly widget: DashboardWidget }) {
-  const link = Object.hasOwn(OPEN_LINKS, widget.kind) ? OPEN_LINKS[widget.kind] : undefined;
-  return link ? <>{link(widget)}</> : null;
+function destinationOf(widget: DashboardWidget): Destination | undefined {
+  const lead = Object.hasOwn(DESTINATIONS, widget.kind) ? DESTINATIONS[widget.kind] : undefined;
+  return lead ? lead(widget) : undefined;
+}
+
+/**
+ * A widget's title, with its count. A widget that leads somewhere makes
+ * its title the link, with a › after it: a separate bordered button beside
+ * a heading drawn in the link color read as two ways to the same place, one
+ * of which did nothing. While Home is arranged the title is plain, since a
+ * press on it starts a drag.
+ */
+function WidgetTitle({ widget, home, count }: WidgetProps & { readonly count: string | undefined }) {
+  const name = count === undefined ? widget.title : <>{`${widget.title} `}<span class="tag-count">{count}</span></>;
+  const destination = home.editing ? undefined : destinationOf(widget);
+  return (
+    <h2 class="home-widget-title">
+      {home.editing ? <span class="home-widget-grip" aria-hidden="true">⠿</span> : null}
+      {destination ? (
+        <button type="button" class="home-widget-link" data-action={destination.action} {...destination.attributes} data-tip={`Open ${destination.place}`}>
+          {name}<span class="home-widget-link-mark" aria-hidden="true">›</span>
+        </button>
+      ) : name}
+    </h2>
+  );
 }
 
 /** One row of a widget's gear: its label, over or beside its choices. */
@@ -277,12 +300,8 @@ export function HomeWidget({ widget, home }: WidgetProps) {
       aria-label={widget.title}
     >
       <div class="home-widget-header">
-        <h2 class="home-widget-title">
-          {home.editing ? <span class="home-widget-grip" aria-hidden="true">⠿</span> : null}
-          {count === undefined ? widget.title : `${widget.title} `}
-          {count === undefined ? null : <span class="tag-count">{count}</span>}
-        </h2>
-        <div class="home-widget-actions">{home.editing ? <ArrangingActions widget={widget} home={home} /> : <WidgetOpen widget={widget} />}</div>
+        <WidgetTitle widget={widget} home={home} count={count} />
+        {home.editing ? <div class="home-widget-actions"><ArrangingActions widget={widget} home={home} /></div> : null}
       </div>
       <WidgetBody widget={widget} home={home} />
       <WidgetPaging widget={widget} home={home} />

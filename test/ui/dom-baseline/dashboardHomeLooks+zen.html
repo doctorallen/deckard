@@ -293,9 +293,6 @@
           ><h2
               class="home-widget-title"
             >Search</h2
-            ><div
-              class="home-widget-actions"
-            ></div
             ></div
           ><section
             aria-label="Search notes and tasks"
@@ -388,19 +385,21 @@
             class="home-widget-header"
           ><h2
               class="home-widget-title"
-            >Tasks view <span
-                class="tag-count"
-              >53</span
-              ></h2
-            ><div
-              class="home-widget-actions"
             ><button
-                class="home-open"
+                class="home-widget-link"
                 data-action="open-view"
+                data-tip="Open the Tasks view"
                 data-view="agenda"
                 type="button"
-              >Tasks view →</button
-              ></div
+              >Tasks view <span
+                  class="tag-count"
+                >53</span
+                ><span
+                  aria-hidden="true"
+                  class="home-widget-link-mark"
+                >›</span
+                ></button
+              ></h2
             ></div
           ><h3
             class="home-widget-group overdue"
@@ -1871,9 +1870,6 @@
                 class="tag-count"
               >0</span
               ></h2
-            ><div
-              class="home-widget-actions"
-            ></div
             ></div
           ><p
             class="home-widget-empty"
@@ -1887,19 +1883,21 @@
             class="home-widget-header"
           ><h2
               class="home-widget-title"
-            >Favorite tags <span
-                class="tag-count"
-              >0</span
-              ></h2
-            ><div
-              class="home-widget-actions"
             ><button
-                class="home-open"
+                class="home-widget-link"
                 data-action="set-dashboard-mode"
                 data-dashboard-mode="browse"
+                data-tip="Open every tag, on the Tags tab"
                 type="button"
-              >All tags →</button
-              ></div
+              >Favorite tags <span
+                  class="tag-count"
+                >0</span
+                ><span
+                  aria-hidden="true"
+                  class="home-widget-link-mark"
+                >›</span
+                ></button
+              ></h2
             ></div
           ><p
             class="home-widget-empty"
@@ -1914,9 +1912,6 @@
           ><h2
               class="home-widget-title"
             >Saved searches</h2
-            ><div
-              class="home-widget-actions"
-            ></div
             ></div
           ><p
             class="home-widget-empty"

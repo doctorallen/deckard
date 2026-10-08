@@ -282,6 +282,27 @@ suite('Dashboard behavior', () => {
     );
   });
 
+  test('a widget that leads somewhere makes its title the link, and only while Home is at rest', () => {
+    const { page } = open({
+      dashboardWidgets: [
+        { id: 'a', kind: 'agenda', width: 'half' },
+        { id: 'q', kind: 'quickAdd', width: 'half' },
+      ],
+    });
+    const link = page.find('.home-widget[data-widget-id="a"] h2.home-widget-title > button.home-widget-link');
+    assert.strictEqual(link.getAttribute('data-action'), 'open-view');
+    assert.strictEqual(link.getAttribute('data-view'), 'agenda');
+    assert.match(link.textContent ?? '', /^Tasks view \d+›$/);
+    assert.strictEqual(link.querySelector('.home-widget-link-mark')?.getAttribute('aria-hidden'), 'true');
+    assert.strictEqual(page.document.querySelector('.home-widget-actions'), null, 'no separate button beside the title');
+    assert.strictEqual(page.document.querySelector('.home-widget[data-widget-id="q"] .home-widget-link'), null, 'Quick add leads nowhere');
+
+    // While arranging, a press on the title starts a drag.
+    page.click('[data-action="customize-home"]');
+    assert.strictEqual(page.document.querySelector('.home-widget-link'), null);
+    assert.ok(page.find('.home-widget[data-widget-id="a"] .home-widget-actions'), 'the controls keep the header');
+  });
+
   test('shows a widget its first few entries until paging is turned on', () => {
     const { page } = open({
       dashboardWidgets: [
