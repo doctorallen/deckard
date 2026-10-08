@@ -41,8 +41,12 @@
 - **A search page's ⋯.** **‹ ›** stays, and **⋯** beside it holds **Save
   search…**, which was **Save** beside the search box, then **Sort**,
   **Layout**, **Group by**, **Format**, **Preview** and the columns, then
-  **Theme…**, **Zen** and **Page width**, then **Help on this page**.
-  Words typed and not yet run are still what Save search… keeps.
+  **Theme…**, **Zen** and **Page width**, then **Help on this page** and
+  **Keyboard shortcuts**. Words typed and not yet run are still what Save
+  search… keeps.
+- **A search page lists its keys.** **?**, or **Keyboard shortcuts** in
+  **⋯**, opens the sheet of its keys there too: **/** for the search box,
+  **Alt+←** and **Alt+→** through the page's searches, and the menu keys.
 - **The note page's ⋯.** **‹ ›** and **Open in Editor**, a plain button,
   stay; Help and the gear are one **⋯** with **Theme…**, **Zen**, **Page
   width** and **Help on this page**.
@@ -300,6 +304,9 @@
 
 ### Fixed
 
+- **The calendar page's keys no longer list /.** Its key sheet offered
+  **/** to go to the search box, which the page doesn't have. **/** is
+  listed only on a page with a search box.
 - **Help's title is its largest heading under Zen.** Under Zen and Quiet,
   Help drew *Changelog* smaller than the releases under it. Its title now
   stays over its sections, and its sections over what is under them, at

@@ -14,10 +14,10 @@ Every search opens a **search page** in its own tab; a tag's overview is the sea
 - Each result shows three lines, or the paragraph holding the searched words after a muted **…**. **Show all** opens the rest. **Preview**, in **⋯**, chooses **None**, **3 lines**, or **Full**.
 - Searched words are marked, and each result's header shows its file, line, and headings (folded in zen mode).
 - **Paging.** Results show a page at a time with **Previous**, **Next**, page numbers, and the range (*271–300 of 3,760*). Notes and tasks page separately. **Per page** chooses 10, 30, 50, 100, or 200, starts at 30, and is remembered. Counts and Refine cover the whole search.
-- **⋯**, at the top right, holds **Save search…**; the view: **Sort**, **Tabs** or **Side by side**, **Group by** none, tag, or heading, rendered or Markdown source (**Format** → Source, remembered), and one to four columns for notes and for tasks; **Theme…**, **Zen** and **Page width**; and **Help on this page**.
+- **⋯**, at the top right, holds **Save search…**; the view: **Sort**, **Tabs** or **Side by side**, **Group by** none, tag, or heading, rendered or Markdown source (**Format** → Source, remembered), and one to four columns for notes and for tasks; **Theme…**, **Zen** and **Page width**; and **Help on this page** and **Keyboard shortcuts**.
 - **Save search…**, the first row of **⋯**, keeps the search in the box, whether or not Enter has run it, then offers **Show Results on Home** (a widget of its results) or **Open Home**. A saved search of tags follows them when they are renamed. Until there is a search to save, it stays in place, and says so when focused.
 - **Opening results.** Select an entry to jump to its heading. A click opens a preview tab, reused by the next result; a double-click keeps the tab; Cmd/Ctrl-click opens it beside the page. This also holds on the Task board, Home, Stats, and the Notes Graph, where Alt-click opens beside it.
-- **‹** and **›** beside **⋯**, <kbd>Alt</kbd>+<kbd>←</kbd> and <kbd>Alt</kbd>+<kbd>→</kbd>, or the mouse's back and forward buttons move through the page's searches.
+- **‹** and **›** beside **⋯**, <kbd>Alt</kbd>+<kbd>←</kbd> and <kbd>Alt</kbd>+<kbd>→</kbd>, or the mouse's back and forward buttons move through the page's searches. <kbd>?</kbd>, or **Keyboard shortcuts** in **⋯**, lists the page's keys.
 
 Opening a tag's page or a section records access for the access sort.
 

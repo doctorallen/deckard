@@ -197,7 +197,7 @@ export function PageHeader({ snapshot, hasText }: { readonly snapshot: SearchPag
         </>
       )}
       controls={<HistoryButtons history={snapshot.history} />}
-      menu={{ actions: [saveSearchRow(hasText)], view: searchView(snapshot), pageWidth: true }}
+      menu={{ actions: [saveSearchRow(hasText)], view: searchView(snapshot), pageWidth: true, keySheet: true }}
     />
   );
 }

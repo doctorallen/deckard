@@ -352,6 +352,11 @@ suite('Calendar', () => {
         '‹ ›, with Today between them away from today, Month | Week, then ⋯',
       );
       assert.strictEqual(page.findAll('.help-button').length, 0, 'Help is a row of ⋯');
+      page.document.body.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }));
+      assert.ok(page.findAll('.key-sheet kbd').some((key) => key.textContent === 't'), 'the calendar\'s keys');
+      assert.ok(!page.findAll('.key-sheet kbd').some((key) => key.textContent === '/'), 'and no /, with no search box to go to');
+      page.click('[data-action="close-key-sheet"]');
+      assert.strictEqual(page.findAll('.key-sheet').length, 0);
       page.click('.page-bar-actions [data-action="set-calendar-layout"][data-value="week"]');
       assert.ok(page.find('.calendar-page-body').classList.contains('is-week'));
 

@@ -14,16 +14,22 @@ export interface KeySection {
   readonly keys: ReadonlyArray<readonly [key: string, does: string]>;
 }
 
-/** The keys every page shares, listed last. */
-const SHARED_KEYS: KeySection = {
-  title: 'Everywhere',
-  keys: [
-    ['/', 'Go to the search box'],
-    ['Shift+F10, or the menu key', 'Open the menu of what has focus'],
-    ['Esc', 'Close a menu or this sheet'],
-    ['?', 'Show these keys'],
-  ],
-};
+/**
+ * The keys every page shares, listed last: `/` only on a page with a search
+ * box, since the Calendar listed it with no box to go to.
+ */
+function sharedKeys(): KeySection {
+  const search = document.querySelector('[data-action="query-input"]') ? [['/', 'Go to the search box'] as const] : [];
+  return {
+    title: 'Everywhere',
+    keys: [
+      ...search,
+      ['Shift+F10, or the menu key', 'Open the menu of what has focus'],
+      ['Esc', 'Close a menu or this sheet'],
+      ['?', 'Show these keys'],
+    ],
+  };
+}
 
 /** The open sheet, and what had focus before it opened. */
 const sheet: { element?: HTMLElement; opener?: Element | null } = {};
@@ -78,7 +84,7 @@ export function openKeySheet(sections: readonly KeySection[], opener: Element | 
   element.setAttribute('role', 'dialog');
   element.setAttribute('aria-modal', 'true');
   element.setAttribute('aria-labelledby', 'key-sheet-title');
-  render(<KeySheetPanel sections={[...sections, SHARED_KEYS]} />, element);
+  render(<KeySheetPanel sections={[...sections, sharedKeys()]} />, element);
   document.body.appendChild(element);
   sheet.element = element;
   element.querySelector<HTMLElement>('[data-action="close-key-sheet"]')?.focus();

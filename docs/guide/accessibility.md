@@ -21,6 +21,7 @@ Deckard is built to be used with a keyboard, a screen reader, high contrast, and
 | A card's **⋯** menu | Each item shows its one-key shortcut |
 | Deckard's pages, atop Context | One Tab stop, a toolbar named *Deckard pages*; <kbd>Down</kbd> and <kbd>Up</kbd> move through the list, <kbd>Right</kbd> and <kbd>Left</kbd> through the icons, <kbd>Home</kbd> and <kbd>End</kbd> to either end, <kbd>Enter</kbd> opens. The page in front is read as the current page |
 | **DECKARD ▾** atop a page | <kbd>Enter</kbd> or <kbd>Space</kbd> drops the menu of pages; arrows move, <kbd>Enter</kbd> goes, <kbd>Escape</kbd> closes it and returns to DECKARD |
+| **⋯** atop a page | <kbd>Enter</kbd> or <kbd>Space</kbd> opens it; <kbd>Tab</kbd> moves through its rows; <kbd>Escape</kbd> closes it and returns to **⋯**. On the Task board, the calendar page and a search page, <kbd>?</kbd> or **Keyboard shortcuts** in it lists the page's keys |
 | Notes Graph | Tab to the graph, arrows select a dot, <kbd>Enter</kbd> opens it, <kbd>Alt</kbd>+<kbd>Enter</kbd> beside the graph, <kbd>Escape</kbd> clears |
 | Home and Tags tabs | <kbd>Left</kbd> and <kbd>Right</kbd> switch tabs |
 | Ranked tags | <kbd>Alt</kbd>+<kbd>Up</kbd> and <kbd>Alt</kbd>+<kbd>Down</kbd> move a tag |

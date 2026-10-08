@@ -164,6 +164,10 @@ suite('The shared page core draws what the template script drew', () => {
     const opener = core.document.createElement('button');
     opener.id = 'opener';
     core.document.body.appendChild(opener);
+    // A page with a search box, which / goes to.
+    const box = core.document.createElement('input');
+    box.setAttribute('data-action', 'query-input');
+    core.document.body.appendChild(box);
     opener.focus();
     shared().openKeySheet(sections);
     assertSame(layerBefore('keySheet'), layerNow('.key-sheet'), 'the sheet');
@@ -172,6 +176,13 @@ suite('The shared page core draws what the template script drew', () => {
     shared().closeKeySheet();
     assert.strictEqual(core.findAll('.key-sheet').length, 0);
     assert.strictEqual(core.document.activeElement?.id, 'opener');
+
+    // A page with no search box, such as the calendar page, lists no /.
+    box.remove();
+    shared().openKeySheet(sections);
+    assert.deepStrictEqual(core.findAll('.key-sheet kbd').map((key) => key.textContent), ['j', 'k', 'Shift+F10, or the menu key', 'Esc', '?']);
+    shared().closeKeySheet();
+    opener.remove();
   });
 
   test('an offer of Undo is drawn in its toast, focused, and taken back with its payload', () => {

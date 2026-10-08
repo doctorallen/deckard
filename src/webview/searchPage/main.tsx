@@ -17,6 +17,7 @@ import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { announce } from '../shared/status';
 import { closeTagContextMenu, hasTagContextMenu, isTagContextMenuOpen, openContextMenu, openTagContextMenu, setParkedTags, tagContextKey } from '../shared/tagMenu';
 import { taskTitleOf } from '../shared/taskRow';
+import { installKeySheet } from '../shared/keySheet';
 import { installViewOptions } from '../shared/viewOptions';
 import { vscodeApi } from '../shared/vscode';
 import { PageHeader } from './header';
@@ -464,6 +465,12 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
 };
 
 installViewOptions();
+// The page's own keys, on ?, or Keyboard shortcuts in ⋯: / and the menu
+// keys every page with a search box shares, and the history's.
+installKeySheet([{
+  title: 'Search page',
+  keys: [['Alt+←, Alt+→', 'Back to the search before, or forward to the one after']],
+}]);
 rememberScroll(kept, (value) => vscodeApi().setState(value));
 
 document.addEventListener('mousedown', (event) => {

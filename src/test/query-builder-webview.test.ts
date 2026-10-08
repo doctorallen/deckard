@@ -628,6 +628,27 @@ suite('Tag overview query builder', () => {
     assert.strictEqual(view.findAll('.query-error').length, 0);
   });
 
+  test('answers ? with its keys, / among them, and Keyboard shortcuts in ⋯ opens the same sheet', () => {
+    const view = mountTagOverview();
+    view.send(createState('#project/atlas', { origin: '#project/atlas' }));
+    const menu = view.find('.page-menu summary') as HTMLElement;
+    assert.strictEqual(view.key(menu, '?'), true, 'the page took it');
+    assert.deepStrictEqual(view.findAll('.key-sheet h3').map((heading) => heading.textContent), ['Search page', 'Everywhere']);
+    assert.deepStrictEqual(
+      view.findAll('.key-sheet kbd').map((key) => key.textContent),
+      ['Alt+←, Alt+→', '/', 'Shift+F10, or the menu key', 'Esc', '?'],
+    );
+    view.key(view.find('[data-action="close-key-sheet"]'), 'Escape');
+    assert.strictEqual(view.findAll('.key-sheet').length, 0);
+
+    const row = view.find('.page-menu [aria-label="Help"] [data-action="open-key-sheet"]');
+    assert.strictEqual(row.textContent, 'Keyboard shortcuts?');
+    view.click({ action: 'open-key-sheet' });
+    assert.strictEqual(view.findAll('.key-sheet').length, 1, 'from ⋯ too');
+    view.key(view.find('[data-action="close-key-sheet"]'), 'Escape');
+    assert.strictEqual(view.findAll('.page-menu summary:focus').length, 1, 'focus goes back to ⋯, not into its closed menu');
+  });
+
   test('keeps the bar in place while a search is typed', () => {
     const view = mountTagOverview();
     view.send(createState('#project/atlas', { origin: '#project/atlas' }));
