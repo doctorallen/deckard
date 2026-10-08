@@ -5,12 +5,10 @@
  */
 import type { DashboardMode, DashboardSearchField, TagSortMode } from '../../../../domain/model/preferences';
 import { QUICK_ADD_MAX_LENGTH } from '../../../../domain/dashboard/widgetCatalog';
-import { isObject } from '../../../../shared/guards';
 import type {
   AddNextActionMessage,
   CreateTagHubMessage,
   DashboardPageToHost,
-  DashboardWidgetChoicesMessage,
   OpenDeckardViewMessage,
   OpenNoteMessage,
   QuickAddMessage,
@@ -53,8 +51,6 @@ import { normalizeDashboardWidgets } from '../../../../core/storage/preferencesS
 /** More widgets than Home keeps are refused rather than cut short. */
 const MAX_DASHBOARD_WIDGETS = 60;
 
-/** The most widgets + Add widget may offer. */
-const MAX_WIDGET_CHOICES = 200;
 
 /** The longest Try next key the page may send back. */
 const MAX_TRY_NEXT_KEY_LENGTH = 1000;
@@ -152,27 +148,6 @@ const narrowSetDashboardWidgets: Narrower<SetDashboardWidgetsMessage> = (value) 
     ? { type: 'setDashboardWidgets', widgets: normalizeDashboardWidgets(value.widgets) }
     : undefined;
 
-/** What + Add widget offers, each choice with a value and a label. */
-const narrowWidgetChoices: Narrower<DashboardWidgetChoicesMessage> = (value) =>
-  Array.isArray(value.choices) &&
-  value.choices.length <= MAX_WIDGET_CHOICES &&
-  value.choices.every(
-    (choice) =>
-      isObject(choice) &&
-      typeof choice.value === 'string' &&
-      typeof choice.label === 'string' &&
-      (choice.description === undefined || typeof choice.description === 'string'),
-  )
-    ? {
-        type: 'widgetChoices',
-        choices: (value.choices as Array<Record<string, string>>).map((choice) => ({
-          value: choice.value,
-          label: choice.label,
-          ...(choice.description ? { description: choice.description } : {}),
-        })),
-      }
-    : undefined;
-
 /** Try next's suggestion, named by the key the host gave it. */
 function narrowTryNext<T extends TryNextMessage['type']>(type: T): Narrower<TryNextMessage & { type: T }> {
   return (value) =>
@@ -252,7 +227,6 @@ export const DASHBOARD_MESSAGES: NarrowingTable<DashboardPageToHost> = {
   recordRecentQuery: narrowRecordRecentQuery,
   setDashboardWidgets: narrowSetDashboardWidgets,
   resetDashboardWidgets: onlyType('resetDashboardWidgets'),
-  widgetChoices: narrowWidgetChoices,
   openWhatsNew: onlyType('openWhatsNew'),
   dismissWhatsNew: onlyType('dismissWhatsNew'),
   runTryNext: narrowTryNext('runTryNext'),

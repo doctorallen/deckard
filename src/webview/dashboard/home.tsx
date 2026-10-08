@@ -27,9 +27,9 @@ export function isHomeFull(widgets: readonly DashboardWidgetConfig[]): boolean {
 }
 
 /**
- * What + Add widget offers, which Related Notes offers too while Home is in
- * front: every kind Home may hold another of, then a saved search's widget
- * for each saved search, as `savedQuery:<id>`. A full Home offers nothing.
+ * What + Add widget offers: every kind Home may hold another of, then a
+ * saved search's widget for each saved search, as `savedQuery:<id>`. A full
+ * Home offers nothing.
  */
 export function widgetChoices(widgets: readonly DashboardWidgetConfig[], savedFilters: readonly DashboardSavedFilter[]): WidgetChoice[] {
   if (isHomeFull(widgets)) {

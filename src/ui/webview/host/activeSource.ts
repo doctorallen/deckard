@@ -3,18 +3,15 @@ import * as vscode from 'vscode';
 /**
  * Knows which page of one kind is the active editor, and whether the
  * Related Notes sidebar is open to show what that page offers there: the
- * search page's or Task Board's Refine options, the calendar page's chosen
- * day, or Home's widgets.
+ * search page's or Task Board's Refine options, or the calendar page's
+ * chosen day.
  *
  * A page makes itself the active source when its panel comes to the front
  * and releases itself when it leaves. The sidebar reads the active source
  * from here, and a page asks here whether the sidebar is showing its part,
  * so it can give that part's room to the rest of the page.
  *
- * It is the one shape of what were `ActiveSearch`, `ActiveCalendar`, and
- * `ActiveHome`. A source that has nothing to show in the sidebar never
- * hears `onDidChangeSidebarVisibility`, because nothing tells it the sidebar
- * is open.
+ * It is the one shape of what were `ActiveSearch` and `ActiveCalendar`.
  */
 export class ActiveSource<T> implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];

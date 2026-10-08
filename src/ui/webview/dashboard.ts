@@ -2,11 +2,10 @@ import * as vscode from 'vscode';
 
 import type { IndexControl, IndexReader, IndexScanStatus, IndexUpdates } from '../../core/workspace/indexReader';
 import { NavigationService } from '../../services/navigationService';
-import type { DashboardHostToPage, DashboardPageState, DashboardPageToHost } from '../protocol/dashboard';
+import type { DashboardPageState, DashboardPageToHost } from '../protocol/dashboard';
 import type { TaskWrites } from '../commands/taskActions';
 import type { TryNextLedger } from '../commands/tryNext';
 import type { WhatsNew } from '../commands/whatsNew';
-import type { ActiveHome, HomeSource, HomeWidgetChoice } from './activeHome';
 import { PanelAdapter } from './host/panelAdapter';
 import { WebviewHost } from './host/webviewHost';
 import {
@@ -33,14 +32,13 @@ export interface DashboardPanelOptions {
 }
 
 /**
- * Home and the Tags tab, in one panel: the name the extension, its
- * serializer, and Related Notes know the Dashboard by.
+ * Home and the Tags tab, in one panel: the name the extension and its
+ * serializer know the Dashboard by.
  *
  * The page is `DashboardController`, run by a `WebviewHost` in a
- * `PanelAdapter`. This class is also what Related Notes is handed while
- * Home is in front, to list and add Home's widgets.
+ * `PanelAdapter`.
  */
-export class DashboardPanel implements HomeSource, vscode.Disposable {
+export class DashboardPanel implements vscode.Disposable {
   private readonly controller: DashboardController;
   private readonly host: WebviewHost<DashboardPageState, DashboardPageToHost>;
   private readonly page: PanelAdapter<DashboardPageState, DashboardPageToHost>;
@@ -58,7 +56,6 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
       tryNext: options.tryNext,
       writes: options.writes,
       navigationService: new NavigationService(),
-      source: this,
     });
     this.host = new WebviewHost(this.controller, { indexer: options.indexer, themePreview: options.themePreview });
     this.page = new PanelAdapter(this.host, {
@@ -67,16 +64,6 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
       extensionUri: options.extensionUri,
       icon: ['resources', 'deckard.svg'],
     });
-  }
-
-  /** Where Home says it is in front, so Related Notes can offer its widgets. */
-  public get activeHome(): ActiveHome | undefined {
-    return this.controller.activeHome;
-  }
-
-  /** Set by the composition root once the sidebar's sources exist. */
-  public set activeHome(activeHome: ActiveHome | undefined) {
-    this.controller.activeHome = activeHome;
   }
 
   /**
@@ -115,30 +102,8 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
     return this.page.restore(panel);
   }
 
-  /**
-   * Closes the dashboard, if it is open, and stops every listener. Home is
-   * no longer the active source.
-   */
+  /** Closes the dashboard, if it is open, and stops every listener. */
   public dispose(): void {
     this.page.dispose();
-  }
-
-  /** The widgets + Add widget offers, as the page last listed them. */
-  public getWidgetChoices(): HomeWidgetChoice[] {
-    return this.controller.getWidgetChoices();
-  }
-
-  /** Adds a widget from the sidebar: Home goes into customizing first. */
-  public addWidget(value: string): void {
-    const message: DashboardHostToPage['addWidget'] = { type: 'addWidget', value };
-    this.host.post(message);
-  }
-
-  /**
-   * Puts back the widgets Home starts with, after a modal confirmation: it
-   * discards an arrangement, which cannot be taken back.
-   */
-  public resetWidgets(): Promise<void> {
-    return this.controller.resetWidgets();
   }
 }

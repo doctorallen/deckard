@@ -172,15 +172,13 @@ function saveView(): void {
 
 /**
  * Draws the page again without taking the reader's place: the caret in a
- * field being typed in, or what had focus. First it tells the host what
- * + Add widget offers, when that changed, settles the tag columns, puts back
- * what the last draw's new widget changed, and closes the rank menu, as each
- * of the template's draws did.
+ * field being typed in, or what had focus. First it settles the tag
+ * columns, puts back what the last draw's new widget changed, and closes
+ * the rank menu, as each of the template's draws did.
  */
 function redraw(change: Partial<DashboardStore> = {}): void {
   const snapshot = change.snapshot ?? shown();
   if (snapshot) {
-    sendWidgetChoices(snapshot);
     const columns = view.tagColumns ?? snapshot.tagColumns ?? 2;
     view.tagColumns = columns;
     snapshot.tagColumns = columns;
@@ -463,25 +461,6 @@ function revealNewWidget(): void {
       newWidget = undefined;
     }
   }, Math.max(0, newWidget.until - Date.now()));
-}
-
-/** The last list of what + Add widget offers that the host was told, as JSON. */
-let sentChoices = '';
-
-/**
- * Tells the host what can be added, when that has changed, so Related Notes
- * can offer it too. It is worked out from Home's settings, which every
- * snapshot carries, so a Dashboard opened on the Tags tab, sent no widgets
- * yet, tells it as well.
- */
-function sendWidgetChoices(snapshot: DashboardPageState): void {
-  const choices = widgetChoices(widgetConfig(snapshot), snapshot.savedFilters);
-  const key = JSON.stringify(choices);
-  if (key === sentChoices) {
-    return;
-  }
-  sentChoices = key;
-  send({ type: 'widgetChoices', choices });
 }
 
 /** Removes a widget at once, with Undo for 8 seconds: it goes back where it was, with its width and its options. */
@@ -935,21 +914,6 @@ document.addEventListener('input', (event) => {
 });
 
 // ----- What the host sends ---------------------------------------------------
-
-// A widget chosen in Related Notes: Home is shown, goes into customizing,
-// and adds it. On the Tags tab the new widget would be added out of sight.
-onHostMessage<{ type: 'addWidget'; value: unknown }>('addWidget', (message) => {
-  if (typeof message.value !== 'string') {
-    return;
-  }
-  if (view.mode !== 'home') {
-    setDashboardMode('home', false);
-  }
-  if (!view.editingHome) {
-    setEditingHome(true);
-  }
-  addWidget(message.value);
-});
 
 onHostMessage<{ type: 'quickAddResult'; text: string; added: boolean }>('quickAddResult', (message) => {
   if (message.added) {

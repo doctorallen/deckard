@@ -60,9 +60,6 @@ export function Context({ snapshot, open, showEveryActiveTag }: ContextProps) {
   if (snapshot.state === 'refine') {
     return null;
   }
-  if (snapshot.state === 'customizeHome') {
-    return <PageInFront label="Home" name="Customize" />;
-  }
   if (snapshot.state === 'calendarDay') {
     return <PageInFront label="Calendar" name="The chosen day" />;
   }

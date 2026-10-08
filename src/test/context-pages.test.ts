@@ -87,7 +87,6 @@ suite('Context: the pages at its top', () => {
 
   test('lead every state Context is in: a page in front, and a note with nothing related', () => {
     for (const state of [
-      { state: 'customizeHome' as const, homeWidgets: [{ value: 'tasks', label: 'Tasks' }] },
       { state: 'noMarkdown' as const },
       { state: 'loading' as const },
     ]) {
@@ -186,15 +185,15 @@ suite('Context: the pages at its top', () => {
   });
 
   test('draws only the pages kept, in the page list\'s order', () => {
-    const pages = listContextPages(listDeckardPages(FACTS), { contextPagesStyle: 'icons', contextPagesHidden: ['graph', 'stats', 'help'] }, 'calendar');
+    const pages = listContextPages(listDeckardPages(FACTS), { contextPagesHidden: ['graph', 'stats', 'help'] }, 'calendar');
     const shown = open(pages);
     assert.deepStrictEqual(shown.findAll('.pages-icon').map((icon) => icon.getAttribute('data-page')), ['home', 'board', 'calendar', 'today', 'find']);
     assert.strictEqual(shown.find('[aria-current="page"]').getAttribute('data-page'), 'calendar');
   });
 
   test('reads its look and the pages kept from the preferences, a page kept unless left out', () => {
-    assert.strictEqual(readPagesStyle({}), 'list');
-    assert.strictEqual(readPagesStyle({ contextPagesStyle: 'icons' }), 'icons');
+    assert.strictEqual(readPagesStyle({}), 'icons', 'a row of icons until the reader chooses the list');
+    assert.strictEqual(readPagesStyle({ contextPagesStyle: 'list' }), 'list');
     assert.strictEqual(isPageShown({}, 'stats'), true);
     assert.strictEqual(isPageShown({ contextPagesHidden: ['stats'] }, 'stats'), false);
     assert.strictEqual(isPageShown({ contextPagesHidden: ['stats'] }, 'home'), true);

@@ -247,8 +247,12 @@ export interface PersistedPreferences {
   outlineFollowCursorOff?: true;
   /** Every page as wide as its panel; stored only when it is. */
   pageWidth?: 'full';
-  /** Deckard's pages at the top of Context as one row of icons; stored only when they are. */
-  contextPagesStyle?: 'icons';
+  /**
+   * Deckard's pages at the top of Context as labeled rows; stored only when
+   * they are. The row of icons is the default: it was 'icons', stored only
+   * then, while the rows were.
+   */
+  contextPagesStyle?: 'list';
   /** The pages left out of the top of Context, by id, in no order; stored only when one is. */
   contextPagesHidden?: string[];
 

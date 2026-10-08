@@ -277,17 +277,6 @@ test('only Home is sent its widgets', async () => {
   );
 });
 
-test('a Dashboard opened on the Tags tab tells Related Notes what Home can add', async () => {
-  const { view } = await openDashboard(createIndex(), (preferences) =>
-    preferences.homeWidgets.setDashboardMode('browse'),
-  );
-  const sent = view.posted.filter((message) => message.type === 'widgetChoices');
-  assert.strictEqual(sent.length, 1, 'told once, before Home is shown');
-  const offered = sent[0].choices.map((choice) => choice.value);
-  assert.ok(offered.includes('stats'), 'a widget Home does not hold is offered');
-  assert.ok(!offered.includes('search'), 'one it holds, that cannot repeat, is not');
-});
-
 test('every page size a paged widget offers is the size Home keeps', async () => {
   const { view, preferences } = await openDashboard(createIndex(), async (store) => {
     await store.homeWidgets.setDashboardWidgets([{ id: 'paged', kind: 'tasks', width: 'half', count: 5, paged: true, page: 1, query: 'is:open' }]);
@@ -356,20 +345,6 @@ test('a widget added is announced by its name alone', async () => {
   view.change(view.find('[data-action="add-widget"]'), 'recentNotes');
   await delay(20);
   assert.strictEqual(view.find('#live-status').textContent, 'Added Recently opened to the top of Home.');
-});
-
-test('a widget Related Notes adds while the Tags tab shows is added on Home, in view', async () => {
-  const { view, panel, preferences } = await openDashboard(createIndex(), (store) =>
-    store.homeWidgets.setDashboardMode('browse'),
-  );
-  panel._deliver({ type: 'addWidget', value: 'stats' });
-  await delay(20);
-  assert.strictEqual(view.find('#home-panel').hidden, false, 'Home is shown');
-  assert.ok(view.find('.home-edit-bar'), 'being customized');
-  assert.strictEqual(preferences.reader.value.dashboardViewState.mode, 'home');
-  const added = view.find('.home-widget[data-widget-id^="stats-"]');
-  assert.ok(added, 'with the new widget drawn');
-  assert.strictEqual(view.document.activeElement, added, 'and focused');
 });
 
 test('Home\'s search box opens a search page, and its links lead on', async () => {
@@ -948,21 +923,14 @@ test('the new widgets act on notes, tags, and today\'s note', async () => {
 
 test('a full Home offers no widget to add, and says why, rather than drop its last', async () => {
   const widgets = Array.from({ length: 30 }, (_, at) => ({ id: `tasks${at}`, kind: 'tasks', width: 'half', count: 3, query: 'is:open' }));
-  const { view, panel, preferences } = await openDashboard(createIndex(), async (store) => {
+  const { view, preferences } = await openDashboard(createIndex(), async (store) => {
     await store.homeWidgets.setDashboardWidgets(widgets);
   });
-  const choices = view.posted.filter((message) => message.type === 'widgetChoices');
-  assert.deepStrictEqual(choices[choices.length - 1].choices, [], 'Related Notes is offered nothing to add');
 
   view.click(view.find('[data-action="customize-home"]'));
   assert.strictEqual(view.find('[data-action="add-widget"]').disabled, true);
   assert.match(view.find('.home-edit-bar').textContent, /Home is full: it holds 30 widgets at most\. Remove one to add another\./);
-
-  // Related Notes may still ask, from a list it was sent before.
-  panel._deliver({ type: 'addWidget', value: 'stats' });
-  await delay(20);
   assert.deepStrictEqual(view.posted.filter((message) => message.type === 'setDashboardWidgets'), []);
-  assert.strictEqual(view.find('#live-status').textContent, 'Home is full: it holds 30 widgets at most. Remove one to add another.');
   assert.strictEqual(preferences.reader.value.dashboardWidgets.length, 30);
   assert.ok(view.find('.home-widget[data-widget-id="tasks29"]'), 'the last widget is still there');
 });

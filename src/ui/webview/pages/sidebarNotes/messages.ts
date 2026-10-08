@@ -8,7 +8,6 @@ import type {
   ActivateNotesGraphNodeMessage,
   AddSuggestedTagMessage,
   CalendarDayMessage,
-  HomeAddWidgetMessage,
   HoverNotesGraphNodeMessage,
   InsertLinkMessage,
   LinkMentionMessage,
@@ -117,10 +116,6 @@ const narrowRefineActiveSearch: Narrower<RefineActiveSearchMessage> = (value) =>
 const narrowSetRelatedNotesSort: Narrower<SetRelatedNotesSortMessage> = (value) =>
   isRelatedNotesSortMode(value.mode) ? { type: 'setRelatedNotesSort', mode: value.mode } : undefined;
 
-/** Home's Customize: a widget to add, by its value; Home checks it is one it offers. */
-const narrowHomeAddWidget: Narrower<HomeAddWidgetMessage> = (value) =>
-  typeof value.value === 'string' ? { type: 'homeAddWidget', value: value.value } : undefined;
-
 /**
  * The calendar day panel's message, narrowed as the Calendar narrows its
  * own, since the calendar page does it as its own panel would.
@@ -155,8 +150,6 @@ export const SIDEBAR_NOTES_MESSAGES: NarrowingTable<SidebarNotesPageToHost> = {
   openTaskBoard: onlyType('openTaskBoard'),
   createDailyNote: onlyType('createDailyNote'),
   openHelp: onlyType('openHelp'),
-  homeAddWidget: narrowHomeAddWidget,
-  homeResetWidgets: onlyType('homeResetWidgets'),
   calendarDay: narrowCalendarDay,
   goToPage: narrowGoToPage,
   setPagesStyle: narrowSetPagesStyle,

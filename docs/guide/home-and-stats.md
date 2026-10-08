@@ -64,8 +64,6 @@ Each offers **Undo**. If the heading is gone, the pin stays on its note and says
 - <kbd>Escape</kbd> closes a widget's gear.
 - **Reset widgets…** asks, then restores the starting widgets; **Finish** ends customizing.
 
-While Home is the active editor, the Context sidebar lists every widget Home can add. Click one to show Home, start customizing, and add it. **Reset widgets…** is there too.
-
 The arrangement is kept in VS Code's preferences, not your notes.
 
 ### Tags

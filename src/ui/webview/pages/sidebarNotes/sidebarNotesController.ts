@@ -36,7 +36,6 @@ import { createEntryScope, findTaggedEntry } from '../../../state/entryScope';
 import { collectNoteLinks, createLinksSearchQuery } from '../../../state/noteLinks';
 import { createSidebarSnapshot, EntryRelatedNotesDiagnostic } from '../../../state/relatedNotesRanking';
 import type { ActiveCalendar } from '../../activeCalendar';
-import type { ActiveHome } from '../../activeHome';
 import type { ActiveNotePage } from '../../activeNotePage';
 import type { ActiveSearch } from '../../activeSearch';
 import { onDidChangePageChrome } from '../../host/pageChrome';
@@ -68,8 +67,6 @@ export interface SidebarNotesControllerOptions {
   extensionVersion: string;
   /** The calendar page, whose chosen day this shows while it is in front. */
   activeCalendar?: ActiveCalendar;
-  /** Home, whose widgets this offers to add while it is in front. */
-  activeHome?: ActiveHome;
   /** The note page, whose note this follows while it is in front, as it follows a note in the editor. */
   activeNotePage?: ActiveNotePage;
   /** The history its links, tags, and renames are written to. */
@@ -174,17 +171,14 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
 
   /**
    * Everything else the sidebar follows, in the order it has always
-   * listened: Home and the calendar page in front, the first scan's
-   * progress, the active search, the editor and its cursor, the theme and
-   * zen, and the settings ranking reads.
+   * listened: the calendar page in front, the first scan's progress, the
+   * active search, the editor and its cursor, the theme and zen, and the
+   * settings ranking reads.
    */
   public subscribe(page: PageContext<SidebarNotesPageState>): vscode.Disposable[] {
     this.page = page;
-    const { indexer, activeSearch, activeCalendar, activeHome } = this.sidebar;
+    const { indexer, activeSearch, activeCalendar } = this.sidebar;
     const disposables: vscode.Disposable[] = [];
-    if (activeHome) {
-      disposables.push(activeHome.onDidChange(() => this.refresh()));
-    }
     if (activeCalendar) {
       disposables.push(activeCalendar.onDidChange(() => this.refresh()));
     }
@@ -579,13 +573,6 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
           await display.setContextPageShown(message.page, message.shown);
         }
       },
-      // Home's widgets are Home's to add, and to reset.
-      homeAddWidget: (message: SidebarNotesPageToHost['homeAddWidget']) => {
-        this.sidebar.activeHome?.active?.addWidget(message.value);
-      },
-      homeResetWidgets: async () => {
-        await this.sidebar.activeHome?.active?.resetWidgets();
-      },
     };
   }
 
@@ -678,8 +665,9 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
 
   /**
    * What a page in front has the sidebar show in its place: a graph node's
-   * connections, the calendar page's chosen day, Home's widgets, or a
-   * search's Refine options. Undefined when none does.
+   * connections, the calendar page's chosen day, or a search's Refine
+   * options. Undefined when none does; Home in front leaves the sidebar on
+   * the note, since Home's own + Add widget lists what it can add.
    */
   private createPageSnapshot(): SidebarNotesSnapshot | undefined {
     if (this.graphContext) {
@@ -690,11 +678,6 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     const day = this.sidebar.activeCalendar?.active?.getDay();
     if (day) {
       return this.createEmptySnapshot({ calendarDay: day, state: 'calendarDay' });
-    }
-    // Home in front: the widgets it can add, and Reset.
-    const home = this.sidebar.activeHome?.active;
-    if (home) {
-      return this.createEmptySnapshot({ homeWidgets: home.getWidgetChoices(), state: 'customizeHome' });
     }
     const refine = this.sidebar.activeSearch.active?.getRefineState();
     return refine ? this.createEmptySnapshot({ refine, state: 'refine' }) : undefined;

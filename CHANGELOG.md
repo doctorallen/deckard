@@ -118,12 +118,24 @@
   still carried a status tag, every start of VS Code said so again. It is
   said once now, and the Task board and the Tasks view keep saying it
   where the tasks are.
+- **Context's pages are a row of icons.** Deckard's pages at the top of
+  Context were eight labeled rows, about a third of a short sidebar, with
+  their hints cut short. They are one row of icons now; point at one, or
+  Tab to it, for its name and hint, such as *Home: 3 tasks due today*.
+  **List** in the gear beside them brings the rows back. If you chose
+  **Icons** before, nothing changes; if you chose **List**, choose it once
+  more.
 
 ### Removed
 
 - **The Esper Themes suggestion.** Deckard no longer suggests installing
   Esper Themes after its first index. The themes are still in the
   Marketplace, and the guide's Themes and Zen page still names them.
+- **Context's list of Home's widgets.** With Home in front, Context
+  listed the widgets Home could add, with **Reset widgets…**, the same
+  list as Home's own **+ Add widget**. Context now keeps its pages and asks
+  for a note, as it does with any other page in front; **Customize Home**
+  offers + Add widget and Reset widgets….
 
 ### Fixed
 

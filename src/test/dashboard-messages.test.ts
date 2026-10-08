@@ -196,28 +196,4 @@ suite('Dashboard messages', () => {
       [{ type: 'retireTryNext' }, undefined],
     ]);
   });
-
-  test('takes what + Add widget offers, each choice as a value and a label', () => {
-    check([
-      [
-        {
-          type: 'widgetChoices',
-          choices: [
-            { value: 'tasks', label: 'Tasks', description: 'Open tasks', extra: 1 },
-            { value: 'stats', label: 'Stats', description: '' },
-          ],
-        },
-        {
-          type: 'widgetChoices',
-          choices: [
-            { value: 'tasks', label: 'Tasks', description: 'Open tasks' },
-            { value: 'stats', label: 'Stats' },
-          ],
-        },
-      ],
-      [{ type: 'widgetChoices', choices: [{ value: 'tasks' }] }, undefined],
-      [{ type: 'widgetChoices', choices: [{ value: 'tasks', label: 'Tasks', description: 1 }] }, undefined],
-      [{ type: 'widgetChoices', choices: Array.from({ length: 201 }, () => ({ value: 'a', label: 'A' })) }, undefined],
-    ]);
-  });
 });

@@ -242,27 +242,3 @@ export function NoTags({ similar, display }: { readonly similar: SidebarNotesSna
   }
   return <Similar similar={similar} display={display} />;
 }
-
-/** Home's widgets to add, each one a click, and Reset. */
-export function CustomizeHome({ widgets }: { readonly widgets: NonNullable<SidebarNotesSnapshot['homeWidgets']> }) {
-  return (
-    <>
-      <span class="section-label">Add a widget</span>
-      {widgets.length
-        ? (
-          <ul class="home-widget-choices">
-            {widgets.map((widget) => (
-              <li>
-                <button type="button" class="home-widget-choice" data-action="home-add-widget" data-value={widget.value} data-tip={widget.description || undefined}>
-                  <span class="home-widget-choice-label">{`+ ${widget.label}`}</span>
-                  {widget.description ? <span class="home-widget-choice-detail">{widget.description}</span> : null}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )
-        : <div class="empty">Every widget is on Home.</div>}
-      <button type="button" class="home-reset-widgets" data-action="home-reset-widgets" data-tip="Put back the widgets Home started with">Reset widgets…</button>
-    </>
-  );
-}

@@ -51,7 +51,7 @@ const CARRIERS: Readonly<Record<MovedSetting, (value: unknown) => Partial<Persis
   'display.pageWidth': (value) =>
     value === 'full' || value === 'limited' ? { pageWidth: value === 'full' ? 'full' : undefined } : undefined,
   'pages.style': (value) =>
-    value === 'icons' || value === 'list' ? { contextPagesStyle: value === 'icons' ? 'icons' : undefined } : undefined,
+    value === 'icons' || value === 'list' ? { contextPagesStyle: value === 'list' ? 'list' : undefined } : undefined,
   'pages.shown': (value) =>
     typeof value === 'object' && value !== null && !Array.isArray(value)
       ? { contextPagesHidden: Object.entries(value).filter(([, shown]) => shown === false).map(([page]) => page) }

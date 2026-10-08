@@ -52,7 +52,6 @@ import { CalendarView } from '../ui/webview/calendar';
 import { CalendarPanel } from '../ui/webview/calendarPage';
 import { ActiveCalendar } from '../ui/webview/activeCalendar';
 import { ActiveNotePage } from '../ui/webview/activeNotePage';
-import { ActiveHome } from '../ui/webview/activeHome';
 import { readManifestTools } from '../core/mcp/mcpProtocol';
 import { DeckardMcpServer } from '../ui/commands/mcpServer';
 import { ActivePinContext } from '../ui/commands/pinNote';
@@ -274,7 +273,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     whatsNew,
     tryNext,
   });
-  const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, dashboard: home.dashboard, whatsNew, writes });
+  const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, whatsNew, writes });
   const trees = createTreesAndAddTask(context, core, preferences, writes);
   // With the note page in front, the Outline lists its note's headings.
   trees.outline.followNotePage(sidebar.activeNotePage);
@@ -886,8 +885,7 @@ function createCalendar(
     preferences: calendarPreferences,
   });
   const activeCalendar = new ActiveCalendar();
-  const activeHome = new ActiveHome();
-  context.subscriptions.push(activeCalendar, activeHome);
+  context.subscriptions.push(activeCalendar);
   const calendarPage = new CalendarPanel({
     indexer,
     extensionUri: context.extensionUri,
@@ -898,7 +896,7 @@ function createCalendar(
     preferences: calendarPreferences,
   });
   context.subscriptions.push(calendarPage);
-  return { calendar, activeCalendar, activeHome, calendarPage };
+  return { calendar, activeCalendar, calendarPage };
 }
 
 /** What {@link createHome} builds the Task Board, Home, and Find from. */
@@ -974,7 +972,6 @@ interface SidebarParts {
   preferences: PreferenceParts;
   search: ReturnType<typeof createSearch>;
   calendar: ReturnType<typeof createCalendar>;
-  dashboard: DashboardPanel;
   whatsNew: WhatsNew;
   writes: Omit<Writes, 'addTask'>;
 }
@@ -984,7 +981,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
   const { indexer, history } = parts.core;
   const { repository, display, usage, tagRenames } = parts.preferences;
   const { searchPanels, activeSearch, themePreview } = parts.search;
-  const { activeCalendar, activeHome } = parts.calendar;
+  const { activeCalendar } = parts.calendar;
   // The note page in front, whose note Related Notes follows.
   const activeNotePage = new ActiveNotePage();
   context.subscriptions.push(activeNotePage);
@@ -996,12 +993,10 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     extensionVersion: context.extension.packageJSON.version,
     extensionUri: context.extensionUri,
     activeCalendar,
-    activeHome,
     activeNotePage,
     history,
     themePreview,
   });
-  parts.dashboard.activeHome = activeHome;
   const stats = new StatsPanel({
     indexer,
     preferences: { reader: repository, usage },

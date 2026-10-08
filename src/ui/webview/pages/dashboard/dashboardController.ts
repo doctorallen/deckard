@@ -23,7 +23,6 @@ import type { WhatsNew } from '../../../commands/whatsNew';
 import { createDashboardSnapshot, getSavedFilterQuery, mergeOrder } from '../../../state/dashboardState';
 import { createDashboardWidgets } from '../../../state/dashboardWidgets';
 import type { TryNextSuggestion } from '../../../state/tryNext';
-import type { ActiveHome, HomeSource, HomeWidgetChoice } from '../../activeHome';
 import { getDashboardHtml } from '../../dashboardHtml';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import {
@@ -90,8 +89,6 @@ export interface DashboardControllerOptions {
   writes: TaskWrites;
   /** What a row's line or tag may open. */
   navigationService: NavigationService;
-  /** What Related Notes is handed while Home is in front: the Dashboard's panel. */
-  source: HomeSource;
 }
 
 /** Some of Home's handlers, by the types they answer. */
@@ -117,10 +114,6 @@ export class DashboardController implements PageController<DashboardPageState, D
   };
   public readonly narrow = narrowDashboardMessage;
   public readonly handlers: MessageHandlers<DashboardPageToHost>;
-  /** Where Home says it is in front, so Related Notes can offer its widgets. */
-  public activeHome?: ActiveHome;
-  /** The widgets + Add widget offers, as the page last listed them. */
-  private widgetChoices: HomeWidgetChoice[] = [];
   private dashboardMode: DashboardMode;
   private dashboardTagColumns: DashboardColumnCount;
   /** The note last open in an editor, which Home's widgets can follow. */
@@ -146,11 +139,6 @@ export class DashboardController implements PageController<DashboardPageState, D
       ...this.widgetHandlers(),
       ...this.tryNextHandlers(),
     };
-  }
-
-  /** The widgets + Add widget offers, as the page last listed them. */
-  public getWidgetChoices(): HomeWidgetChoice[] {
-    return this.widgetChoices;
   }
 
   /** The page's template, in the reader's theme, with the heart icons it loads from the extension. */
@@ -271,37 +259,6 @@ export class DashboardController implements PageController<DashboardPageState, D
     return this.publishedOn !== startOfToday();
   }
 
-  /** A panel that opens in front makes Home the active source. */
-  public onDidAttach(page: PageContext): void {
-    if (page.surface?.active) {
-      this.activeHome?.setActive(this.home.source);
-    }
-  }
-
-  /** Home is the active source while its panel is in front, and only then. */
-  public onDidChangeViewState(page: PageContext): void {
-    if (page.surface?.active) {
-      this.activeHome?.setActive(this.home.source);
-    } else {
-      this.activeHome?.release(this.home.source);
-    }
-  }
-
-  /** A closed panel is no longer in front. */
-  public onDidDetach(): void {
-    this.activeHome?.release(this.home.source);
-  }
-
-  /**
-   * Home disposed of is no longer in front. The host drops the panel's
-   * listeners before it closes the panel, so onDidDetach never hears that
-   * close, and Home used to stay the active source, with Related Notes
-   * offering widgets for a page that was gone.
-   */
-  public dispose(): void {
-    this.activeHome?.release(this.home.source);
-  }
-
   /**
    * Opens a saved view where it was saved: on the Task Board, or on a search
    * page with its query, or its tags that still exist joined by AND.
@@ -330,7 +287,7 @@ export class DashboardController implements PageController<DashboardPageState, D
    * Puts back the widgets Home starts with, after a modal confirmation: it
    * discards an arrangement, which cannot be taken back.
    */
-  public async resetWidgets(): Promise<void> {
+  private async resetWidgets(): Promise<void> {
     const choice = await vscode.window.showWarningMessage(
       'Reset Home to its default widgets?',
       {
@@ -471,7 +428,6 @@ export class DashboardController implements PageController<DashboardPageState, D
   private widgetHandlers(): Handlers<
     | 'setDashboardWidgets'
     | 'resetDashboardWidgets'
-    | 'widgetChoices'
     | 'openWhatsNew'
     | 'dismissWhatsNew'
     | 'openView'
@@ -493,10 +449,6 @@ export class DashboardController implements PageController<DashboardPageState, D
           ),
         ),
       resetDashboardWidgets: () => this.resetWidgets(),
-      widgetChoices: (message) => {
-        this.widgetChoices = message.choices;
-        this.activeHome?.notifyChanged(this.home.source);
-      },
       openWhatsNew: () => vscode.commands.executeCommand('deckard.openWhatsNew'),
       dismissWhatsNew: () => this.home.whatsNew?.clear(),
       openView: (message) =>

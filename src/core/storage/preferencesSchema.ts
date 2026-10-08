@@ -416,7 +416,7 @@ function normalizeViewChoices(
     ...(source.calendarHideWeekends === true ? { calendarHideWeekends: true as const } : {}),
     ...(source.outlineFollowCursorOff === true ? { outlineFollowCursorOff: true as const } : {}),
     ...(source.pageWidth === 'full' ? { pageWidth: 'full' as const } : {}),
-    ...(source.contextPagesStyle === 'icons' ? { contextPagesStyle: 'icons' as const } : {}),
+    ...(source.contextPagesStyle === 'list' ? { contextPagesStyle: 'list' as const } : {}),
     ...(hidden.length ? { contextPagesHidden: hidden } : {}),
   };
 }
