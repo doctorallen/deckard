@@ -1,6 +1,7 @@
 <body
   class="zen"
   data-cards="flat"
+  data-controls="quiet"
   data-density="compact"
   data-help="hidden"
   data-styling="plain"
@@ -8,7 +9,9 @@
 > <main
     id="app"
   ><header
+      class="page-bar"
     ><div
+        class="page-bar-lead"
       ><p
           class="eyebrow"
         ><button
@@ -25,19 +28,121 @@
           ></p
         ><h1
         >Workspace Stats</h1
+        ><p
+          class="updated"
+        >Index last refreshed: <span
+            title="9/21/2026, 11:55:00 AM"
+          >5 minutes ago</span
+          ></p
         ></div
-      ><p
-        class="updated"
-      >Index last refreshed: <span
-          title="9/21/2026, 11:55:00 AM"
-        >5 minutes ago</span
-        > <button
-          class="reindex"
-          data-action="reindex"
-          data-tip="Read every note again"
-          type="button"
-        >Reindex</button
-        ></p
+      ><div
+        aria-label="Stats"
+        class="page-bar-actions"
+        data-query-keeps-text=""
+        role="group"
+      ><details
+          class="page-menu view-options"
+        ><summary
+            aria-label="More: Reindex, Theme, Zen, and more"
+            data-tip="More: Reindex, Theme, Zen, and more"
+          ><svg
+              aria-hidden="true"
+              class="toolbar-icon"
+              fill="none"
+              focusable="false"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><circle
+                cx="3.5"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ><circle
+                cx="8"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ><circle
+                cx="12.5"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ></svg
+            ></summary
+          ><div
+            class="is-dropdown popover view-options-menu"
+          ><div
+              aria-label="Page"
+              class="view-options-section"
+              role="group"
+            ><button
+                class="menu-item view-options-item"
+                data-action="reindex"
+                data-tip="Read every note again"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Reindex</span
+                ></button
+              ></div
+            ><div
+              aria-label="Appearance"
+              class="view-options-section"
+              role="group"
+            ><div
+                aria-hidden="true"
+                class="view-options-heading"
+              >Appearance</div
+              ><div
+                class="view-options-group"
+              ><span
+                >Theme</span
+                ><button
+                  aria-label="Theme: Replicant. Choose another"
+                  class="theme-choice"
+                  data-action="choose-theme"
+                  type="button"
+                >Replicant…</button
+                ></div
+              ><div
+                class="view-options-group"
+              ><label
+                  for="view-options-zen"
+                >Zen</label
+                ><input
+                  class="view-options-check"
+                  data-action="set-zen"
+                  data-dom-checked="true"
+                  data-dom-value="on"
+                  id="view-options-zen"
+                  type="checkbox"
+                ></div
+              ></div
+            ><div
+              aria-label="Help"
+              class="view-options-section"
+              role="group"
+            ><button
+                class="menu-item view-options-item"
+                data-action="page-help"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Help on this page</span
+                ></button
+              ></div
+            ></div
+          ></details
+        ></div
       ></header
     ><section
       aria-labelledby="attention-heading"

@@ -4,24 +4,23 @@
 > <main
     id="app"
   ><header
+      class="page-bar"
     ><div
-      ><div
-          class="overview-eyebrow"
-        ><p
-            class="eyebrow"
-          ><button
-              aria-expanded="false"
-              aria-haspopup="menu"
-              aria-label="Deckard: go to another page"
-              class="eyebrow-home"
-              data-go-to=""
-              type="button"
-            >DECKARD ▾</button
-            ><span
-              class="eyebrow-trail"
-            > / SEARCH PAGE</span
-            ></p
-          ></div
+        class="page-bar-lead"
+      ><p
+          class="eyebrow"
+        ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label="Deckard: go to another page"
+            class="eyebrow-home"
+            data-go-to=""
+            type="button"
+          >DECKARD ▾</button
+          ><span
+            class="eyebrow-trail"
+          > / SEARCH PAGE</span
+          ></p
         ><h1
           aria-label="Project: Atlas"
         ><button
@@ -61,7 +60,7 @@
         ><p
           class="hub-offer"
         ><button
-            class="hub-offer-button"
+            class="hub-offer-link"
             data-action="create-hub"
             data-tip="Create a note whose describes: front matter names #project/atlas"
             type="button"
@@ -69,8 +68,9 @@
           ></p
         ></div
       ><div
-        aria-label="View options"
-        class="toolbar"
+        aria-label="Search page"
+        class="page-bar-actions"
+        data-query-keeps-text=""
         role="group"
       ><span
           aria-label="Search history"
@@ -97,428 +97,449 @@
             type="button"
           >›</button
           ></span
-        ><button
-          aria-label="Open Help"
-          class="help-button icon-button"
-          data-action="open-help"
-          data-help-anchor="search"
-          data-tip="Open Help"
-          type="button"
-        ><svg
-            aria-hidden="true"
-            class="help-icon toolbar-icon"
-            fill="currentColor"
-            focusable="false"
-            viewBox="-5.5 0 19 19"
-          ><path
-              d="M7.987 5.653a4.536 4.536 0 0 1-.149 1.213 4.276 4.276 0 0 1-.389.958 5.186 5.186 0 0 1-.533.773c-.195.233-.386.454-.568.658l-.024.026c-.17.18-.328.353-.468.516a3.596 3.596 0 0 0-.4.567 2.832 2.832 0 0 0-.274.677 3.374 3.374 0 0 0-.099.858v.05a1.03 1.03 0 0 1-2.058 0v-.05a5.427 5.427 0 0 1 .167-1.385 4.92 4.92 0 0 1 .474-1.17 5.714 5.714 0 0 1 .63-.89c.158-.184.335-.38.525-.579.166-.187.34-.39.52-.603a3.108 3.108 0 0 0 .319-.464 2.236 2.236 0 0 0 .196-.495 2.466 2.466 0 0 0 .073-.66 1.891 1.891 0 0 0-.147-.762 1.944 1.944 0 0 0-.416-.633 1.917 1.917 0 0 0-.62-.418 1.758 1.758 0 0 0-.723-.144 1.823 1.823 0 0 0-.746.146 1.961 1.961 0 0 0-1.06 1.062 1.833 1.833 0 0 0-.146.747v.028a1.03 1.03 0 1 1-2.058 0v-.028a3.882 3.882 0 0 1 .314-1.56 4.017 4.017 0 0 1 2.135-2.139 3.866 3.866 0 0 1 1.561-.314 3.792 3.792 0 0 1 1.543.314A3.975 3.975 0 0 1 7.678 4.09a3.933 3.933 0 0 1 .31 1.563zm-2.738 9.81a1.337 1.337 0 0 1 0 1.033 1.338 1.338 0 0 1-.71.71l-.005.003a1.278 1.278 0 0 1-.505.103 1.338 1.338 0 0 1-1.244-.816 1.313 1.313 0 0 1 .284-1.451 1.396 1.396 0 0 1 .434-.283 1.346 1.346 0 0 1 .526-.105 1.284 1.284 0 0 1 .505.103l.005.003a1.404 1.404 0 0 1 .425.281 1.28 1.28 0 0 1 .285.418z"
-            ></path
-            ></svg
-          ></button
         ><details
-          class="view-options"
+          class="page-menu view-options"
         ><summary
-            aria-label="View options"
-            data-tip="View options"
+            aria-label="More: Save search, Export notes, Export tasks, and more"
+            data-tip="More: Save search, Export notes, Export tasks, and more"
           ><svg
               aria-hidden="true"
-              class="settings-icon toolbar-icon"
+              class="toolbar-icon"
+              fill="none"
               focusable="false"
-              viewBox="0 0 24 24"
-            ><path
-                clip-rule="evenodd"
-                d="M12.0002 8C9.79111 8 8.00024 9.79086 8.00024 12C8.00024 14.2091 9.79111 16 12.0002 16C14.2094 16 16.0002 14.2091 16.0002 12C16.0002 9.79086 14.2094 8 12.0002 8ZM10.0002 12C10.0002 10.8954 10.8957 10 12.0002 10C13.1048 10 14.0002 10.8954 14.0002 12C14.0002 13.1046 13.1048 14 12.0002 14C10.8957 14 10.0002 13.1046 10.0002 12Z"
-                fill-rule="evenodd"
-              ></path
-              ><path
-                clip-rule="evenodd"
-                d="M11.2867 0.5C9.88583 0.5 8.6461 1.46745 8.37171 2.85605L8.29264 3.25622C8.10489 4.20638 7.06195 4.83059 6.04511 4.48813L5.64825 4.35447C4.32246 3.90796 2.83873 4.42968 2.11836 5.63933L1.40492 6.83735C0.67773 8.05846 0.954349 9.60487 2.03927 10.5142L2.35714 10.7806C3.12939 11.4279 3.12939 12.5721 2.35714 13.2194L2.03927 13.4858C0.954349 14.3951 0.67773 15.9415 1.40492 17.1626L2.11833 18.3606C2.83872 19.5703 4.3225 20.092 5.64831 19.6455L6.04506 19.5118C7.06191 19.1693 8.1049 19.7935 8.29264 20.7437L8.37172 21.1439C8.6461 22.5325 9.88584 23.5 11.2867 23.5H12.7136C14.1146 23.5 15.3543 22.5325 15.6287 21.1438L15.7077 20.7438C15.8954 19.7936 16.9384 19.1693 17.9553 19.5118L18.3521 19.6455C19.6779 20.092 21.1617 19.5703 21.8821 18.3606L22.5955 17.1627C23.3227 15.9416 23.046 14.3951 21.9611 13.4858L21.6432 13.2194C20.8709 12.5722 20.8709 11.4278 21.6432 10.7806L21.9611 10.5142C23.046 9.60489 23.3227 8.05845 22.5955 6.83732L21.8821 5.63932C21.1617 4.42968 19.678 3.90795 18.3522 4.35444L17.9552 4.48814C16.9384 4.83059 15.8954 4.20634 15.7077 3.25617L15.6287 2.85616C15.3543 1.46751 14.1146 0.5 12.7136 0.5H11.2867ZM10.3338 3.24375C10.4149 2.83334 10.7983 2.5 11.2867 2.5H12.7136C13.2021 2.5 13.5855 2.83336 13.6666 3.24378L13.7456 3.64379C14.1791 5.83811 16.4909 7.09167 18.5935 6.38353L18.9905 6.24984C19.4495 6.09527 19.9394 6.28595 20.1637 6.66264L20.8771 7.86064C21.0946 8.22587 21.0208 8.69271 20.6764 8.98135L20.3586 9.24773C18.6325 10.6943 18.6325 13.3057 20.3586 14.7523L20.6764 15.0186C21.0208 15.3073 21.0946 15.7741 20.8771 16.1394L20.1637 17.3373C19.9394 17.714 19.4495 17.9047 18.9905 17.7501L18.5936 17.6164C16.4909 16.9082 14.1791 18.1618 13.7456 20.3562L13.6666 20.7562C13.5855 21.1666 13.2021 21.5 12.7136 21.5H11.2867C10.7983 21.5 10.4149 21.1667 10.3338 20.7562L10.2547 20.356C9.82113 18.1617 7.50931 16.9082 5.40665 17.6165L5.0099 17.7501C4.55092 17.9047 4.06104 17.714 3.83671 17.3373L3.1233 16.1393C2.9058 15.7741 2.97959 15.3073 3.32398 15.0186L3.64185 14.7522C5.36782 13.3056 5.36781 10.6944 3.64185 9.24779L3.32398 8.98137C2.97959 8.69273 2.9058 8.2259 3.1233 7.86067L3.83674 6.66266C4.06106 6.28596 4.55093 6.09528 5.0099 6.24986L5.40676 6.38352C7.50938 7.09166 9.82112 5.83819 10.2547 3.64392L10.3338 3.24375Z"
-                fill-rule="evenodd"
-              ></path
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><circle
+                cx="3.5"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ><circle
+                cx="8"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ><circle
+                cx="12.5"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
               ></svg
             ></summary
           ><div
             class="is-dropdown popover view-options-menu"
           ><div
-              class="view-options-group"
-            ><span
-              >Sort</span
-              ><label
-                class="control-label"
-              ><span
-                  class="control-icon"
-                ><select
-                    aria-label="Sort notes"
-                    data-action="set-sort"
-                    data-dom-value="alphabetical"
-                  ><option
-                      data-dom-selected="true"
-                      data-dom-value="alphabetical"
-                    >A-Z</option
-                    ><option
-                      data-dom-selected="false"
-                      data-dom-value="alphabeticalReverse"
-                    >Z-A</option
-                    ><option
-                      data-dom-selected="false"
-                      data-dom-value="created"
-                    >Newest created</option
-                    ><option
-                      data-dom-selected="false"
-                      data-dom-value="createdOldest"
-                    >Oldest created</option
-                    ><option
-                      data-dom-selected="false"
-                      data-dom-value="updated"
-                    >Recently updated</option
-                    ><option
-                      data-dom-selected="false"
-                      data-dom-value="updatedOldest"
-                    >Least recently updated</option
-                    ><option
-                      data-dom-selected="false"
-                      data-dom-value="access"
-                    >Most accessed</option
-                    ></select
-                  ><svg
-                    aria-hidden="true"
-                    class="control-icon-svg"
-                    fill="none"
-                    focusable="false"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1.5"
-                    viewBox="0 0 16 16"
-                  ><path
-                      d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"
-                    ></path
-                    ></svg
-                  ></span
-                ></label
-              ></div
-            ><div
-              class="view-options-group"
-            ><span
-              >Layout</span
-              ><div
-                aria-label="Content layout"
-                class="layout-toggle-group segmented toolbar-toggle-group"
-                role="group"
-              ><button
-                  aria-label="Tabs layout"
-                  aria-pressed="true"
-                  class="active icon-button toolbar-toggle"
-                  data-action="set-layout"
-                  data-layout="tabs"
-                  data-tip="Tabs: switch between Notes and Tasks"
-                ><svg
-                    aria-hidden="true"
-                    class="toolbar-icon"
-                    fill="none"
-                    focusable="false"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1.5"
-                    viewBox="0 0 16 16"
-                  ><rect
-                      height="11"
-                      rx="1"
-                      width="12"
-                      x="2"
-                      y="2.5"
-                    ></rect
-                    ><path
-                      d="M2 6h12M5 2.5V6"
-                    ></path
-                    ></svg
-                  ></button
-                ><button
-                  aria-label="Side-by-side layout"
-                  aria-pressed="false"
-                  class="icon-button toolbar-toggle"
-                  data-action="set-layout"
-                  data-layout="split"
-                  data-tip="Side by side: Notes 60%, Tasks 40%"
-                ><svg
-                    aria-hidden="true"
-                    class="toolbar-icon"
-                    fill="none"
-                    focusable="false"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1.5"
-                    viewBox="0 0 16 16"
-                  ><rect
-                      height="12"
-                      rx="1"
-                      width="12"
-                      x="2"
-                      y="2"
-                    ></rect
-                    ><path
-                      d="M9 2v12"
-                    ></path
-                    ></svg
-                  ></button
-                ></div
-              ></div
-            ><div
-              class="view-options-group"
-            ><span
-              >Group by</span
-              ><div
-                aria-label="Group the results by"
-                class="segmented view-options-choices"
-                role="group"
-              ><button
-                  aria-label="None, the results ungrouped"
-                  aria-pressed="true"
-                  class="active"
-                  data-action="set-hierarchy"
-                  data-value="off"
-                  type="button"
-                >None</button
-                ><button
-                  aria-label="Tag, under Refine's tags"
-                  aria-pressed="false"
-                  data-action="set-hierarchy"
-                  data-value="tags"
-                  type="button"
-                >Tag</button
-                ><button
-                  aria-label="Heading, nested by tagged headings"
-                  aria-pressed="false"
-                  data-action="set-hierarchy"
-                  data-value="headings"
-                  type="button"
-                >Heading</button
-                ></div
-              ></div
-            ><div
-              class="view-options-group"
-            ><span
-              >Format</span
-              ><div
-                aria-label="Content format"
-                class="segmented toolbar-toggle-group"
-                role="group"
-              ><button
-                  aria-label="Source view"
-                  aria-pressed="false"
-                  class="icon-button toolbar-toggle"
-                  data-action="set-mode"
-                  data-mode="markdown"
-                  data-tip="Source: show the original Markdown"
-                ><svg
-                    aria-hidden="true"
-                    class="toolbar-icon"
-                    fill="none"
-                    focusable="false"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1.5"
-                    viewBox="0 0 16 16"
-                  ><path
-                      d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"
-                    ></path
-                    ></svg
-                  ></button
-                ><button
-                  aria-label="Rendered view"
-                  aria-pressed="true"
-                  class="active icon-button toolbar-toggle"
-                  data-action="set-mode"
-                  data-mode="html"
-                  data-tip="Rendered: show formatted Markdown"
-                ><svg
-                    aria-hidden="true"
-                    class="toolbar-icon"
-                    fill="none"
-                    focusable="false"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1.5"
-                    viewBox="0 0 16 16"
-                  ><path
-                      d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"
-                    ></path
-                    ><circle
-                      cx="8"
-                      cy="8"
-                      r="1.75"
-                    ></circle
-                    ></svg
-                  ></button
-                ></div
-              ></div
-            ><div
-              class="view-options-group"
-            ><span
-              >Preview</span
-              ><div
-                aria-label="Result preview"
-                class="segmented view-options-choices"
-                role="group"
-              ><button
-                  aria-pressed="false"
-                  data-action="set-preview"
-                  data-value="none"
-                  type="button"
-                >None</button
-                ><button
-                  aria-pressed="true"
-                  class="active"
-                  data-action="set-preview"
-                  data-value="lines"
-                  type="button"
-                >3 lines</button
-                ><button
-                  aria-pressed="false"
-                  data-action="set-preview"
-                  data-value="full"
-                  type="button"
-                >Full</button
-                ></div
-              ></div
-            ><div
-              class="view-options-group"
-            ><span
-              >Note columns</span
-              ><div
-                aria-label="Note columns"
-                class="segmented view-options-choices"
-                role="group"
-              ><button
-                  aria-label="1 columns"
-                  aria-pressed="true"
-                  class="active"
-                  data-action="set-columns"
-                  data-section="notes"
-                  data-value="1"
-                  type="button"
-                >1</button
-                ><button
-                  aria-label="2 columns"
-                  aria-pressed="false"
-                  data-action="set-columns"
-                  data-section="notes"
-                  data-value="2"
-                  type="button"
-                >2</button
-                ><button
-                  aria-label="3 columns"
-                  aria-pressed="false"
-                  data-action="set-columns"
-                  data-section="notes"
-                  data-value="3"
-                  type="button"
-                >3</button
-                ><button
-                  aria-label="4 columns"
-                  aria-pressed="false"
-                  data-action="set-columns"
-                  data-section="notes"
-                  data-value="4"
-                  type="button"
-                >4</button
-                ></div
-              ></div
-            ><div
-              class="view-options-group"
-            ><span
-              >Task columns</span
-              ><div
-                aria-label="Task columns"
-                class="segmented view-options-choices"
-                role="group"
-              ><button
-                  aria-label="1 columns"
-                  aria-pressed="true"
-                  class="active"
-                  data-action="set-columns"
-                  data-section="tasks"
-                  data-value="1"
-                  type="button"
-                >1</button
-                ><button
-                  aria-label="2 columns"
-                  aria-pressed="false"
-                  data-action="set-columns"
-                  data-section="tasks"
-                  data-value="2"
-                  type="button"
-                >2</button
-                ><button
-                  aria-label="3 columns"
-                  aria-pressed="false"
-                  data-action="set-columns"
-                  data-section="tasks"
-                  data-value="3"
-                  type="button"
-                >3</button
-                ><button
-                  aria-label="4 columns"
-                  aria-pressed="false"
-                  data-action="set-columns"
-                  data-section="tasks"
-                  data-value="4"
-                  type="button"
-                >4</button
-                ></div
-              ></div
-            ><div
-              class="view-options-group"
-            ><span
-              >Theme</span
-              ><button
-                aria-label="Theme: Replicant. Choose another"
-                class="theme-choice"
-                data-action="choose-theme"
+              aria-label="Page"
+              class="view-options-section"
+              role="group"
+            ><button
+                class="menu-item view-options-item"
+                data-action="save-filter"
+                data-query-needs-text=""
+                data-tip="Keep this search, named, on Home"
+                data-tip-disabled="Type a search to save it"
                 type="button"
-              >Replicant…</button
+              ><span
+                  class="menu-label"
+                >Save search…</span
+                ></button
+              ><button
+                class="menu-item view-options-item"
+                data-action="export-results"
+                data-kind="notes"
+                data-tip="Export these notes as a Markdown table, a list, or CSV: copy, or save to a file"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Export notes…</span
+                ></button
+              ><button
+                class="menu-item view-options-item"
+                data-action="export-results"
+                data-kind="tasks"
+                data-tip="Export these tasks as a Markdown table, a list, or CSV: copy, or save to a file"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Export tasks…</span
+                ></button
               ></div
             ><div
-              class="view-options-group"
-            ><span
-              >Page width</span
+              aria-label="View"
+              class="view-options-section"
+              role="group"
+            ><div
+                aria-hidden="true"
+                class="view-options-heading"
+              >View</div
               ><div
-                aria-label="Page width"
-                class="segmented view-options-choices"
-                role="group"
-              ><button
-                  aria-pressed="true"
-                  class="active"
-                  data-action="set-display"
-                  data-display="pageWidth"
-                  data-value="limited"
-                  type="button"
-                >Limited</button
+                class="view-options-group"
+              ><span
+                >Layout</span
+                ><div
+                  aria-label="Content layout"
+                  class="layout-toggle-group segmented toolbar-toggle-group"
+                  role="group"
                 ><button
-                  aria-pressed="false"
-                  data-action="set-display"
-                  data-display="pageWidth"
-                  data-value="full"
-                  type="button"
-                >Full</button
+                    aria-label="Tabs layout"
+                    aria-pressed="true"
+                    class="active icon-button toolbar-toggle"
+                    data-action="set-layout"
+                    data-layout="tabs"
+                    data-tip="Tabs: switch between Notes and Tasks"
+                  ><svg
+                      aria-hidden="true"
+                      class="toolbar-icon"
+                      fill="none"
+                      focusable="false"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.5"
+                      viewBox="0 0 16 16"
+                    ><rect
+                        height="11"
+                        rx="1"
+                        width="12"
+                        x="2"
+                        y="2.5"
+                      ></rect
+                      ><path
+                        d="M2 6h12M5 2.5V6"
+                      ></path
+                      ></svg
+                    ></button
+                  ><button
+                    aria-label="Side-by-side layout"
+                    aria-pressed="false"
+                    class="icon-button toolbar-toggle"
+                    data-action="set-layout"
+                    data-layout="split"
+                    data-tip="Side by side: Notes 60%, Tasks 40%"
+                  ><svg
+                      aria-hidden="true"
+                      class="toolbar-icon"
+                      fill="none"
+                      focusable="false"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.5"
+                      viewBox="0 0 16 16"
+                    ><rect
+                        height="12"
+                        rx="1"
+                        width="12"
+                        x="2"
+                        y="2"
+                      ></rect
+                      ><path
+                        d="M9 2v12"
+                      ></path
+                      ></svg
+                    ></button
+                  ></div
+                ></div
+              ><div
+                class="view-options-group"
+              ><span
+                >Group by</span
+                ><div
+                  aria-label="Group the results by"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-label="None, the results ungrouped"
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-hierarchy"
+                    data-value="off"
+                    type="button"
+                  >None</button
+                  ><button
+                    aria-label="Tag, under Refine's tags"
+                    aria-pressed="false"
+                    data-action="set-hierarchy"
+                    data-value="tags"
+                    type="button"
+                  >Tag</button
+                  ><button
+                    aria-label="Heading, nested by tagged headings"
+                    aria-pressed="false"
+                    data-action="set-hierarchy"
+                    data-value="headings"
+                    type="button"
+                  >Heading</button
+                  ></div
+                ></div
+              ><div
+                class="view-options-group"
+              ><span
+                >Format</span
+                ><div
+                  aria-label="Content format"
+                  class="segmented toolbar-toggle-group"
+                  role="group"
+                ><button
+                    aria-label="Source view"
+                    aria-pressed="false"
+                    class="icon-button toolbar-toggle"
+                    data-action="set-mode"
+                    data-mode="markdown"
+                    data-tip="Source: show the original Markdown"
+                  ><svg
+                      aria-hidden="true"
+                      class="toolbar-icon"
+                      fill="none"
+                      focusable="false"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.5"
+                      viewBox="0 0 16 16"
+                    ><path
+                        d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"
+                      ></path
+                      ></svg
+                    ></button
+                  ><button
+                    aria-label="Rendered view"
+                    aria-pressed="true"
+                    class="active icon-button toolbar-toggle"
+                    data-action="set-mode"
+                    data-mode="html"
+                    data-tip="Rendered: show formatted Markdown"
+                  ><svg
+                      aria-hidden="true"
+                      class="toolbar-icon"
+                      fill="none"
+                      focusable="false"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.5"
+                      viewBox="0 0 16 16"
+                    ><path
+                        d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"
+                      ></path
+                      ><circle
+                        cx="8"
+                        cy="8"
+                        r="1.75"
+                      ></circle
+                      ></svg
+                    ></button
+                  ></div
+                ></div
+              ><div
+                class="view-options-group"
+              ><span
+                >Preview</span
+                ><div
+                  aria-label="Result preview"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-pressed="false"
+                    data-action="set-preview"
+                    data-value="none"
+                    type="button"
+                  >None</button
+                  ><button
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-preview"
+                    data-value="lines"
+                    type="button"
+                  >3 lines</button
+                  ><button
+                    aria-pressed="false"
+                    data-action="set-preview"
+                    data-value="full"
+                    type="button"
+                  >Full</button
+                  ></div
+                ></div
+              ><div
+                class="view-options-group"
+              ><span
+                >Note columns</span
+                ><div
+                  aria-label="Note columns"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-label="1 columns"
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-columns"
+                    data-section="notes"
+                    data-value="1"
+                    type="button"
+                  >1</button
+                  ><button
+                    aria-label="2 columns"
+                    aria-pressed="false"
+                    data-action="set-columns"
+                    data-section="notes"
+                    data-value="2"
+                    type="button"
+                  >2</button
+                  ><button
+                    aria-label="3 columns"
+                    aria-pressed="false"
+                    data-action="set-columns"
+                    data-section="notes"
+                    data-value="3"
+                    type="button"
+                  >3</button
+                  ><button
+                    aria-label="4 columns"
+                    aria-pressed="false"
+                    data-action="set-columns"
+                    data-section="notes"
+                    data-value="4"
+                    type="button"
+                  >4</button
+                  ></div
+                ></div
+              ><div
+                class="view-options-group"
+              ><span
+                >Task columns</span
+                ><div
+                  aria-label="Task columns"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-label="1 columns"
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-columns"
+                    data-section="tasks"
+                    data-value="1"
+                    type="button"
+                  >1</button
+                  ><button
+                    aria-label="2 columns"
+                    aria-pressed="false"
+                    data-action="set-columns"
+                    data-section="tasks"
+                    data-value="2"
+                    type="button"
+                  >2</button
+                  ><button
+                    aria-label="3 columns"
+                    aria-pressed="false"
+                    data-action="set-columns"
+                    data-section="tasks"
+                    data-value="3"
+                    type="button"
+                  >3</button
+                  ><button
+                    aria-label="4 columns"
+                    aria-pressed="false"
+                    data-action="set-columns"
+                    data-section="tasks"
+                    data-value="4"
+                    type="button"
+                  >4</button
+                  ></div
                 ></div
               ></div
             ><div
-              class="view-options-group"
-            ><label
-                for="view-options-zen"
-              >Zen</label
-              ><input
-                class="view-options-check"
-                data-action="set-zen"
-                data-dom-checked="false"
-                data-dom-value="on"
-                id="view-options-zen"
-                type="checkbox"
+              aria-label="Appearance"
+              class="view-options-section"
+              role="group"
+            ><div
+                aria-hidden="true"
+                class="view-options-heading"
+              >Appearance</div
+              ><div
+                class="view-options-group"
+              ><span
+                >Theme</span
+                ><button
+                  aria-label="Theme: Replicant. Choose another"
+                  class="theme-choice"
+                  data-action="choose-theme"
+                  type="button"
+                >Replicant…</button
+                ></div
+              ><div
+                class="view-options-group"
+              ><label
+                  for="view-options-zen"
+                >Zen</label
+                ><input
+                  class="view-options-check"
+                  data-action="set-zen"
+                  data-dom-checked="false"
+                  data-dom-value="on"
+                  id="view-options-zen"
+                  type="checkbox"
+                ></div
+              ><div
+                class="view-options-group"
+              ><span
+                >Page width</span
+                ><div
+                  aria-label="Page width"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-display"
+                    data-display="pageWidth"
+                    data-value="limited"
+                    type="button"
+                  >Limited</button
+                  ><button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="pageWidth"
+                    data-value="full"
+                    type="button"
+                  >Full</button
+                  ></div
+                ></div
+              ></div
+            ><div
+              aria-label="Help"
+              class="view-options-section"
+              role="group"
+            ><button
+                class="menu-item view-options-item"
+                data-action="page-help"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Help on this page</span
+                ></button
+              ><button
+                aria-keyshortcuts="?"
+                class="menu-item view-options-item"
+                data-action="open-key-sheet"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Keyboard shortcuts</span
+                ><kbd
+                  aria-hidden="true"
+                  class="menu-key"
+                >?</kbd
+                ></button
+              ></div
             ></div
           ></details
         ></div
@@ -527,6 +548,7 @@
       aria-label="Search notes and tasks"
       class="query-workspace"
       data-has-text=""
+      data-zen-region=""
     ><div
         class="query-bar-row"
       ><div
@@ -610,12 +632,6 @@
             ></div
             ></span
           ></div
-        ><button
-          data-action="save-filter"
-          data-query-needs-text=""
-          data-tip="Keep this search, named, on Home"
-          data-tip-disabled="Type a search to save it"
-        >Save</button
         ></div
       ><div
         class="query-status"
@@ -630,234 +646,238 @@
     ><section
       aria-label="Refine these results"
       class="query-facets"
-    ><div
-        class="query-facets-groups"
-      ><span
+    ><details
+        class="query-facets-fold"
+        open=""
+      ><summary
           class="query-facets-heading"
-        >Refine</span
+        >Refine · 1 set</summary
         ><div
-          aria-label="Tags"
-          class="query-facet"
-          role="group"
-        ><span
-            class="query-facet-label"
-          >Tags</span
-          ><span
-            class="query-facet-values"
-          ><button
-              aria-label="Tags: #topic/replicants, in 25 of 83 results, 25. Enter adds AND #topic/replicants, Alt-Enter adds AND NOT, Shift-Enter adds OR."
-              class="query-facet-value"
-              data-action="facet"
-              data-clause="#topic/replicants"
-              data-facet-id="related"
-              data-tip="In 25 of 83 results. Written together 12 times&#10;Click — AND #topic/replicants: keep only results that match it&#10;Alt-click — AND NOT #topic/replicants: leave those results out&#10;Shift-click — OR #topic/replicants: widen the last value chosen here, so either matches"
-              data-tip-overflow="#topic/replicants"
-            ><span
-                aria-hidden="true"
-                class="tag-weight-rail"
-              ><span
-                  class="filled tag-weight-rail-segment"
-                ></span
-                ><span
-                  class="tag-weight-rail-segment"
-                ></span
-                ><span
-                  class="tag-weight-rail-segment"
-                ></span
-                ></span
-              ><span
-                class="tag-label"
-              ><span
-                  class="tag-namespace"
-                ><span
-                    class="tag-namespace-text"
-                  >#topic</span
-                  >/</span
-                ><span
-                  class="tag-value"
-                >replicants</span
-                ></span
-              ><span
-                class="query-facet-count"
-              >25</span
-              ></button
-            ><button
-              aria-label="Tags: @dana, in 17 of 83 results, 17. Enter adds AND @dana, Alt-Enter adds AND NOT, Shift-Enter adds OR."
-              class="query-facet-value"
-              data-action="facet"
-              data-clause="@dana"
-              data-facet-id="related"
-              data-tip="In 17 of 83 results. Written together 1 time&#10;Click — AND @dana: keep only results that match it&#10;Alt-click — AND NOT @dana: leave those results out&#10;Shift-click — OR @dana: widen the last value chosen here, so either matches"
-              data-tip-overflow="@dana"
-            ><span
-                aria-hidden="true"
-                class="tag-weight-rail"
-              ><span
-                  class="filled tag-weight-rail-segment"
-                ></span
-                ><span
-                  class="tag-weight-rail-segment"
-                ></span
-                ><span
-                  class="tag-weight-rail-segment"
-                ></span
-                ></span
-              ><span
-                class="tag-label"
-              ><span
-                  class="tag-value"
-                >@dana</span
-                ></span
-              ><span
-                class="query-facet-count"
-              >17</span
-              ></button
-            ><button
-              aria-label="Tags: #meeting/standup, in 2 of 83 results, 2. Enter adds AND #meeting/standup, Alt-Enter adds AND NOT, Shift-Enter adds OR."
-              class="query-facet-value"
-              data-action="facet"
-              data-clause="#meeting/standup"
-              data-facet-id="related"
-              data-tip="In 2 of 83 results. Heading context 1 time&#10;Click — AND #meeting/standup: keep only results that match it&#10;Alt-click — AND NOT #meeting/standup: leave those results out&#10;Shift-click — OR #meeting/standup: widen the last value chosen here, so either matches"
-              data-tip-overflow="#meeting/standup"
-            ><span
-                aria-hidden="true"
-                class="tag-weight-rail"
-              ><span
-                  class="filled tag-weight-rail-segment"
-                ></span
-                ><span
-                  class="tag-weight-rail-segment"
-                ></span
-                ><span
-                  class="tag-weight-rail-segment"
-                ></span
-                ></span
-              ><span
-                class="tag-label"
-              ><span
-                  class="tag-namespace"
-                ><span
-                    class="tag-namespace-text"
-                  >#meeting</span
-                  >/</span
-                ><span
-                  class="tag-value"
-                >standup</span
-                ></span
-              ><span
-                class="query-facet-count"
-              >2</span
-              ></button
-            ></span
-          ></div
+          class="query-facets-groups"
         ><div
-          aria-label="Tasks"
-          class="query-facet"
-          role="group"
-        ><span
-            class="query-facet-label"
-          >Tasks</span
+            aria-label="Tags"
+            class="query-facet"
+            role="group"
           ><span
-            class="query-facet-values"
-          ><button
-              aria-label="Tasks: Open, 53. Enter adds AND is:open, Alt-Enter adds AND NOT, Shift-Enter adds OR."
-              class="query-facet-value"
-              data-action="facet"
-              data-clause="is:open"
-              data-facet-id="status"
-              data-tip="Click — AND is:open: keep only results that match it&#10;Alt-click — AND NOT is:open: leave those results out&#10;Shift-click — OR is:open: widen the last value chosen here, so either matches"
-              data-tip-overflow="Open"
-            >Open<span
-                class="query-facet-count"
-              >53</span
-              ></button
+              class="query-facet-label"
+            >Tags</span
+            ><span
+              class="query-facet-values"
             ><button
-              aria-label="Tasks: Done, 1. Enter adds AND is:done, Alt-Enter adds AND NOT, Shift-Enter adds OR."
-              class="query-facet-value"
-              data-action="facet"
-              data-clause="is:done"
-              data-facet-id="status"
-              data-tip="Click — AND is:done: keep only results that match it&#10;Alt-click — AND NOT is:done: leave those results out&#10;Shift-click — OR is:done: widen the last value chosen here, so either matches"
-              data-tip-overflow="Done"
-            >Done<span
-                class="query-facet-count"
-              >1</span
-              ></button
-            ><button
-              aria-label="Tasks: In progress, 40. Enter adds AND status:in-progress, Alt-Enter adds AND NOT, Shift-Enter adds OR."
-              class="query-facet-value"
-              data-action="facet"
-              data-clause="status:in-progress"
-              data-facet-id="status"
-              data-tip="Click — AND status:in-progress: keep only results that match it&#10;Alt-click — AND NOT status:in-progress: leave those results out&#10;Shift-click — OR status:in-progress: widen the last value chosen here, so either matches"
-              data-tip-overflow="In progress"
-            >In progress<span
-                class="query-facet-count"
-              >40</span
-              ></button
-            ></span
-          ></div
-        ><div
-          aria-label="Due"
-          class="query-facet"
-          role="group"
-        ><span
-            class="query-facet-label"
-          >Due</span
+                aria-label="Tags: #topic/replicants, in 25 of 83 results, 25. Enter adds AND #topic/replicants, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="#topic/replicants"
+                data-facet-id="related"
+                data-tip="In 25 of 83 results. Written together 12 times&#10;Click — AND #topic/replicants: keep only results that match it&#10;Alt-click — AND NOT #topic/replicants: leave those results out&#10;Shift-click — OR #topic/replicants: widen the last value chosen here, so either matches"
+                data-tip-overflow="#topic/replicants"
+              ><span
+                  aria-hidden="true"
+                  class="tag-weight-rail"
+                ><span
+                    class="filled tag-weight-rail-segment"
+                  ></span
+                  ><span
+                    class="tag-weight-rail-segment"
+                  ></span
+                  ><span
+                    class="tag-weight-rail-segment"
+                  ></span
+                  ></span
+                ><span
+                  class="tag-label"
+                ><span
+                    class="tag-namespace"
+                  ><span
+                      class="tag-namespace-text"
+                    >#topic</span
+                    >/</span
+                  ><span
+                    class="tag-value"
+                  >replicants</span
+                  ></span
+                ><span
+                  class="query-facet-count"
+                >25</span
+                ></button
+              ><button
+                aria-label="Tags: @dana, in 17 of 83 results, 17. Enter adds AND @dana, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="@dana"
+                data-facet-id="related"
+                data-tip="In 17 of 83 results. Written together 1 time&#10;Click — AND @dana: keep only results that match it&#10;Alt-click — AND NOT @dana: leave those results out&#10;Shift-click — OR @dana: widen the last value chosen here, so either matches"
+                data-tip-overflow="@dana"
+              ><span
+                  aria-hidden="true"
+                  class="tag-weight-rail"
+                ><span
+                    class="filled tag-weight-rail-segment"
+                  ></span
+                  ><span
+                    class="tag-weight-rail-segment"
+                  ></span
+                  ><span
+                    class="tag-weight-rail-segment"
+                  ></span
+                  ></span
+                ><span
+                  class="tag-label"
+                ><span
+                    class="tag-value"
+                  >@dana</span
+                  ></span
+                ><span
+                  class="query-facet-count"
+                >17</span
+                ></button
+              ><button
+                aria-label="Tags: #meeting/standup, in 2 of 83 results, 2. Enter adds AND #meeting/standup, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="#meeting/standup"
+                data-facet-id="related"
+                data-tip="In 2 of 83 results. Heading context 1 time&#10;Click — AND #meeting/standup: keep only results that match it&#10;Alt-click — AND NOT #meeting/standup: leave those results out&#10;Shift-click — OR #meeting/standup: widen the last value chosen here, so either matches"
+                data-tip-overflow="#meeting/standup"
+              ><span
+                  aria-hidden="true"
+                  class="tag-weight-rail"
+                ><span
+                    class="filled tag-weight-rail-segment"
+                  ></span
+                  ><span
+                    class="tag-weight-rail-segment"
+                  ></span
+                  ><span
+                    class="tag-weight-rail-segment"
+                  ></span
+                  ></span
+                ><span
+                  class="tag-label"
+                ><span
+                    class="tag-namespace"
+                  ><span
+                      class="tag-namespace-text"
+                    >#meeting</span
+                    >/</span
+                  ><span
+                    class="tag-value"
+                  >standup</span
+                  ></span
+                ><span
+                  class="query-facet-count"
+                >2</span
+                ></button
+              ></span
+            ></div
+          ><div
+            aria-label="Tasks"
+            class="query-facet"
+            role="group"
           ><span
-            class="query-facet-values"
-          ><button
-              aria-label="Due: Overdue, 6. Enter adds AND is:overdue, Alt-Enter adds AND NOT, Shift-Enter adds OR."
-              class="query-facet-value"
-              data-action="facet"
-              data-clause="is:overdue"
-              data-facet-id="due"
-              data-tip="Click — AND is:overdue: keep only results that match it&#10;Alt-click — AND NOT is:overdue: leave those results out&#10;Shift-click — OR is:overdue: widen the last value chosen here, so either matches"
-              data-tip-overflow="Overdue"
-            >Overdue<span
-                class="query-facet-count"
-              >6</span
-              ></button
+              class="query-facet-label"
+            >Tasks</span
+            ><span
+              class="query-facet-values"
             ><button
-              aria-label="Due: Next 7 days, 10. Enter adds AND (due >= today AND due < 7d), Alt-Enter adds AND NOT, Shift-Enter adds OR."
-              class="query-facet-value"
-              data-action="facet"
-              data-clause="(due >= today AND due < 7d)"
-              data-facet-id="due"
-              data-tip="Click — AND (due >= today AND due < 7d): keep only results that match it&#10;Alt-click — AND NOT (due >= today AND due < 7d): leave those results out&#10;Shift-click — OR (due >= today AND due < 7d): widen the last value chosen here, so either matches"
-              data-tip-overflow="Next 7 days"
-            >Next 7 days<span
-                class="query-facet-count"
-              >10</span
-              ></button
+                aria-label="Tasks: Open, 53. Enter adds AND is:open, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="is:open"
+                data-facet-id="status"
+                data-tip="Click — AND is:open: keep only results that match it&#10;Alt-click — AND NOT is:open: leave those results out&#10;Shift-click — OR is:open: widen the last value chosen here, so either matches"
+                data-tip-overflow="Open"
+              >Open<span
+                  class="query-facet-count"
+                >53</span
+                ></button
+              ><button
+                aria-label="Tasks: Done, 1. Enter adds AND is:done, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="is:done"
+                data-facet-id="status"
+                data-tip="Click — AND is:done: keep only results that match it&#10;Alt-click — AND NOT is:done: leave those results out&#10;Shift-click — OR is:done: widen the last value chosen here, so either matches"
+                data-tip-overflow="Done"
+              >Done<span
+                  class="query-facet-count"
+                >1</span
+                ></button
+              ><button
+                aria-label="Tasks: In progress, 40. Enter adds AND status:in-progress, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="status:in-progress"
+                data-facet-id="status"
+                data-tip="Click — AND status:in-progress: keep only results that match it&#10;Alt-click — AND NOT status:in-progress: leave those results out&#10;Shift-click — OR status:in-progress: widen the last value chosen here, so either matches"
+                data-tip-overflow="In progress"
+              >In progress<span
+                  class="query-facet-count"
+                >40</span
+                ></button
+              ></span
+            ></div
+          ><div
+            aria-label="Due"
+            class="query-facet"
+            role="group"
+          ><span
+              class="query-facet-label"
+            >Due</span
+            ><span
+              class="query-facet-values"
             ><button
-              aria-label="Due: Later, 36. Enter adds AND due >= 7d, Alt-Enter adds AND NOT, Shift-Enter adds OR."
-              class="query-facet-value"
-              data-action="facet"
-              data-clause="due >= 7d"
-              data-facet-id="due"
-              data-tip="Click — AND due >= 7d: keep only results that match it&#10;Alt-click — AND NOT due >= 7d: leave those results out&#10;Shift-click — OR due >= 7d: widen the last value chosen here, so either matches"
-              data-tip-overflow="Later"
-            >Later<span
-                class="query-facet-count"
-              >36</span
-              ></button
-            ><button
-              aria-label="Due: No date, 2. Enter adds AND no:due, Alt-Enter adds AND NOT, Shift-Enter adds OR."
-              class="query-facet-value"
-              data-action="facet"
-              data-clause="no:due"
-              data-facet-id="due"
-              data-tip="Click — AND no:due: keep only results that match it&#10;Alt-click — AND NOT no:due: leave those results out&#10;Shift-click — OR no:due: widen the last value chosen here, so either matches"
-              data-tip-overflow="No date"
-            >No date<span
-                class="query-facet-count"
-              >2</span
-              ></button
-            ></span
+                aria-label="Due: Overdue, 6. Enter adds AND is:overdue, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="is:overdue"
+                data-facet-id="due"
+                data-tip="Click — AND is:overdue: keep only results that match it&#10;Alt-click — AND NOT is:overdue: leave those results out&#10;Shift-click — OR is:overdue: widen the last value chosen here, so either matches"
+                data-tip-overflow="Overdue"
+              >Overdue<span
+                  class="query-facet-count"
+                >6</span
+                ></button
+              ><button
+                aria-label="Due: Next 7 days, 10. Enter adds AND (due >= today AND due < 7d), Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="(due >= today AND due < 7d)"
+                data-facet-id="due"
+                data-tip="Click — AND (due >= today AND due < 7d): keep only results that match it&#10;Alt-click — AND NOT (due >= today AND due < 7d): leave those results out&#10;Shift-click — OR (due >= today AND due < 7d): widen the last value chosen here, so either matches"
+                data-tip-overflow="Next 7 days"
+              >Next 7 days<span
+                  class="query-facet-count"
+                >10</span
+                ></button
+              ><button
+                aria-label="Due: Later, 36. Enter adds AND due >= 7d, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="due >= 7d"
+                data-facet-id="due"
+                data-tip="Click — AND due >= 7d: keep only results that match it&#10;Alt-click — AND NOT due >= 7d: leave those results out&#10;Shift-click — OR due >= 7d: widen the last value chosen here, so either matches"
+                data-tip-overflow="Later"
+              >Later<span
+                  class="query-facet-count"
+                >36</span
+                ></button
+              ><button
+                aria-label="Due: No date, 2. Enter adds AND no:due, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="no:due"
+                data-facet-id="due"
+                data-tip="Click — AND no:due: keep only results that match it&#10;Alt-click — AND NOT no:due: leave those results out&#10;Shift-click — OR no:due: widen the last value chosen here, so either matches"
+                data-tip-overflow="No date"
+              >No date<span
+                  class="query-facet-count"
+                >2</span
+                ></button
+              ></span
+            ></div
           ></div
-        ></div
+        ></details
       ><span
         class="query-facets-count visually-hidden"
         role="status"
@@ -909,6 +929,7 @@
       ></div
     ><div
       class="overview-tabs-row"
+      data-zen-region=""
     ><div
         aria-label="Search results"
         class="overview-tabs segmented"
@@ -947,22 +968,52 @@
         ></div
       ><div
         class="overview-pane-actions"
-      ><button
+      ><label
+          class="control-label result-sort"
+          data-zen-reveal=""
+        >Sort:<select
+            aria-label="Sort notes"
+            data-action="set-sort"
+            data-dom-value="alphabetical"
+          ><option
+              data-dom-selected="true"
+              data-dom-value="alphabetical"
+            >A-Z</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="alphabeticalReverse"
+            >Z-A</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="created"
+            >Newest created</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="createdOldest"
+            >Oldest created</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="updated"
+            >Recently updated</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="updatedOldest"
+            >Least recently updated</option
+            ><option
+              data-dom-selected="false"
+              data-dom-value="access"
+            >Most accessed</option
+            ></select
+          ></label
+        ><button
           aria-label="Bulk edit these notes"
           class="edit-results"
           data-action="edit-results"
           data-kind="notes"
           data-tip="Bulk edit these notes: complete them, date them, or tag them"
+          data-zen-reveal=""
           type="button"
         >Bulk edit</button
-        ><button
-          aria-label="Export these notes"
-          class="edit-results"
-          data-action="export-results"
-          data-kind="notes"
-          data-tip="Export these notes as a Markdown table, a list, or CSV: copy, or save to a file"
-          type="button"
-        >Export notes</button
         ></div
       ></div
     ><div

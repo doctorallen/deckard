@@ -17,9 +17,11 @@
       ></details
     ><div
       class="related-notes-controls"
-    ><span
+      data-zen-region=""
+    ><label
         class="related-notes-sort-control"
-      ><select
+        data-zen-reveal=""
+      >Sort:<select
           aria-label="Sort related notes"
           class="related-notes-sort"
           data-action="set-related-notes-sort"
@@ -41,23 +43,10 @@
             data-dom-value="access"
           >Most accessed</option
           ></select
-        ><svg
-          aria-hidden="true"
-          class="related-notes-sort-icon"
-          fill="none"
-          focusable="false"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.5"
-          viewBox="0 0 16 16"
-        ><path
-            d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"
-          ></path
-          ></svg
-        ></span
+        ></label
       ><details
         class="view-options"
+        data-zen-reveal=""
       ><summary
           aria-label="View options"
           data-tip="View options"

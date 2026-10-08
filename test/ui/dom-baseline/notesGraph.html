@@ -1,8 +1,124 @@
 <body
-> <canvas
+><header
+    class="graph-bar page-bar"
+  ><div
+      class="page-bar-lead"
+    ><p
+        class="eyebrow"
+      ><button
+          aria-expanded="false"
+          aria-haspopup="menu"
+          aria-label="Deckard: go to another page"
+          class="eyebrow-home"
+          data-go-to=""
+          type="button"
+        >DECKARD ▾</button
+        ><span
+          class="eyebrow-trail"
+        > / NOTES GRAPH</span
+        ></p
+      ><h1
+      >Notes Graph</h1
+      ></div
+    ><div
+      aria-label="Notes Graph"
+      class="page-bar-actions"
+      data-query-keeps-text=""
+      role="group"
+    ><details
+        class="page-menu view-options"
+      ><summary
+          aria-label="More: Theme, Zen, Help on this page"
+          data-tip="More: Theme, Zen, Help on this page"
+        ><svg
+            aria-hidden="true"
+            class="toolbar-icon"
+            fill="none"
+            focusable="false"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+            viewBox="0 0 16 16"
+          ><circle
+              cx="3.5"
+              cy="8"
+              fill="currentColor"
+              r="1.1"
+              stroke="none"
+            ></circle
+            ><circle
+              cx="8"
+              cy="8"
+              fill="currentColor"
+              r="1.1"
+              stroke="none"
+            ></circle
+            ><circle
+              cx="12.5"
+              cy="8"
+              fill="currentColor"
+              r="1.1"
+              stroke="none"
+            ></circle
+            ></svg
+          ></summary
+        ><div
+          class="is-dropdown popover view-options-menu"
+        ><div
+            aria-label="Appearance"
+            class="view-options-section"
+            role="group"
+          ><div
+              aria-hidden="true"
+              class="view-options-heading"
+            >Appearance</div
+            ><div
+              class="view-options-group"
+            ><span
+              >Theme</span
+              ><button
+                aria-label="Theme: Replicant. Choose another"
+                class="theme-choice"
+                data-action="choose-theme"
+                type="button"
+              >Replicant…</button
+              ></div
+            ><div
+              class="view-options-group"
+            ><label
+                for="view-options-zen"
+              >Zen</label
+              ><input
+                class="view-options-check"
+                data-action="set-zen"
+                data-dom-checked="false"
+                data-dom-value="on"
+                id="view-options-zen"
+                type="checkbox"
+              ></div
+            ></div
+          ><div
+            aria-label="Help"
+            class="view-options-section"
+            role="group"
+          ><button
+              class="menu-item view-options-item"
+              data-action="page-help"
+              type="button"
+            ><span
+                class="menu-label"
+              >Help on this page</span
+              ></button
+            ></div
+          ></div
+        ></details
+      ></div
+    ></header
+  > <canvas
     aria-describedby="graph-legend"
     aria-label="Notes graph. Press the arrow keys to move between nodes, Enter to open one, Alt+Enter to open it beside the graph, Escape to clear."
-    height="800"
+    height="736"
     id="graph"
     role="application"
     tabindex="0"
@@ -24,6 +140,7 @@
     role="group"
   > <details
       class="control-group"
+      data-group="Focus"
       open=""
     > <summary
       >Focus</summary
@@ -76,6 +193,7 @@
       > </details
     > <details
       class="control-group"
+      data-group="Filters"
       open=""
     > <summary
       >Filters</summary
@@ -268,6 +386,7 @@
       > </details
     > <details
       class="control-group"
+      data-group="Display"
     > <summary
       >Display</summary
       > <div

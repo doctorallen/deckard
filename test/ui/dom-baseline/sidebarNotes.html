@@ -5,6 +5,7 @@
     id="app"
   ><div
       class="context-pages-band"
+      data-zen-region=""
     ><div
         aria-label="Deckard pages"
         aria-orientation="vertical"
@@ -222,6 +223,7 @@
       ><details
         class="view-options"
         data-options="pages"
+        data-zen-reveal=""
       ><summary
           aria-label="Pages: how they look, and which"
           data-tip="Pages: how they look, and which"
@@ -429,9 +431,14 @@
       ></details
     ><div
       class="related-notes-controls"
+      data-zen-region=""
     ><span
+        class="section-label"
+      >Related notes</span
+      ><label
         class="related-notes-sort-control"
-      ><select
+        data-zen-reveal=""
+      >Sort:<select
           aria-label="Sort related notes"
           class="related-notes-sort"
           data-action="set-related-notes-sort"
@@ -453,23 +460,10 @@
             data-dom-value="access"
           >Most accessed</option
           ></select
-        ><svg
-          aria-hidden="true"
-          class="related-notes-sort-icon"
-          fill="none"
-          focusable="false"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.5"
-          viewBox="0 0 16 16"
-        ><path
-            d="M5 3v10m-2-8 2-2 2 2m4 8V3m-2 8 2 2 2-2"
-          ></path
-          ></svg
-        ></span
+        ></label
       ><details
         class="view-options"
+        data-zen-reveal=""
       ><summary
           aria-label="View options"
           data-tip="View options"
@@ -552,9 +546,6 @@
           ></div
         ></details
       ></div
-    ><span
-      class="section-label"
-    >Related notes</span
     ><div
       class="note-list"
     ><article

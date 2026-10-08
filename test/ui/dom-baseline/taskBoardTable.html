@@ -1,0 +1,4904 @@
+<body
+> <main
+    id="app"
+  ><header
+      class="page-bar"
+    ><div
+        class="page-bar-lead"
+      ><p
+          class="eyebrow"
+        ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label="Deckard: go to another page"
+            class="eyebrow-home"
+            data-go-to=""
+            type="button"
+          >DECKARD ▾</button
+          ><span
+            class="eyebrow-trail"
+          > / TASK BOARD</span
+          ></p
+        ><h1
+        >Task Board</h1
+        ></div
+      ><div
+        aria-label="Task Board"
+        class="page-bar-actions"
+        data-query-keeps-text=""
+        role="group"
+      ><span
+          class="board-total"
+        >54 tasks</span
+        ><button
+          class="primary"
+          data-action="add-task"
+          data-tip="Write a new task in the task editor, into today's note or another you choose"
+          type="button"
+        >Add task</button
+        ><details
+          class="page-menu view-options"
+        ><summary
+            aria-label="More: Save search, List in Tasks view, Export tasks, and more"
+            data-tip="More: Save search, List in Tasks view, Export tasks, and more"
+          ><svg
+              aria-hidden="true"
+              class="toolbar-icon"
+              fill="none"
+              focusable="false"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><circle
+                cx="3.5"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ><circle
+                cx="8"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ><circle
+                cx="12.5"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ></svg
+            ></summary
+          ><div
+            class="is-dropdown popover view-options-menu"
+          ><div
+              aria-label="Page"
+              class="view-options-section"
+              role="group"
+            ><button
+                aria-disabled="true"
+                class="menu-item view-options-item"
+                data-action="save-board-search"
+                data-query-needs-text=""
+                data-tip="Keep this search, named, on Home; it reopens on the Task Board"
+                data-tip-disabled="Type a search to save it"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Save search…</span
+                ></button
+              ><button
+                aria-pressed="false"
+                class="menu-item view-options-item"
+                data-action="use-for-agenda"
+                data-tip="Make the Tasks view list this search"
+                type="button"
+              ><span
+                  aria-hidden="true"
+                  class="menu-check"
+                ></span
+                ><span
+                  class="menu-label"
+                >List in Tasks view</span
+                ></button
+              ><button
+                class="menu-item view-options-item"
+                data-action="export-tasks"
+                data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Export tasks…</span
+                ></button
+              ></div
+            ><div
+              aria-label="View"
+              class="view-options-section"
+              role="group"
+            ><div
+                aria-hidden="true"
+                class="view-options-heading"
+              >View</div
+              ><div
+                class="is-stacked view-options-group"
+              ><span
+                >Status columns</span
+                ><div
+                  class="board-settings"
+                ><p
+                    class="board-settings-note help-text"
+                  >Columns when grouped by Status, one per status in your list. Tick one to show it, drag to set the order. Done is always a column; a character no status names gets one of its own.</p
+                  ><ul
+                    aria-label="Status columns"
+                    class="board-status-list"
+                  ><li
+                      class="board-status is-draggable"
+                      data-status="Todo"
+                      data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                      tabindex="0"
+                    ><span
+                        aria-hidden="true"
+                        class="board-status-grip"
+                      >⠿</span
+                      ><label
+                        class="board-status-tick"
+                      ><input
+                          aria-label="Show Todo [ ] as a column"
+                          data-action="show-status-column"
+                          data-dom-checked="true"
+                          data-dom-value="on"
+                          data-name="Todo"
+                          type="checkbox"
+                        ><span
+                          aria-hidden="true"
+                          class="board-status-box"
+                        >[ ]</span
+                        ><span
+                          class="board-status-name"
+                        >Todo</span
+                        ></label
+                      ><span
+                        class="board-status-count"
+                        data-tip="Open tasks with this status, in the whole workspace"
+                      >14 open</span
+                      ></li
+                    ><li
+                      class="board-status is-draggable"
+                      data-status="In progress"
+                      data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                      tabindex="0"
+                    ><span
+                        aria-hidden="true"
+                        class="board-status-grip"
+                      >⠿</span
+                      ><label
+                        class="board-status-tick"
+                      ><input
+                          aria-label="Show In progress [/] as a column"
+                          data-action="show-status-column"
+                          data-dom-checked="true"
+                          data-dom-value="on"
+                          data-name="In progress"
+                          type="checkbox"
+                        ><span
+                          aria-hidden="true"
+                          class="board-status-box"
+                        >[/]</span
+                        ><span
+                          class="board-status-name"
+                        >In progress</span
+                        ></label
+                      ><span
+                        class="board-status-count"
+                        data-tip="Open tasks with this status, in the whole workspace"
+                      >40 open</span
+                      ></li
+                    ><li
+                      class="board-status is-draggable"
+                      data-status="Waiting"
+                      data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                      tabindex="0"
+                    ><span
+                        aria-hidden="true"
+                        class="board-status-grip"
+                      >⠿</span
+                      ><label
+                        class="board-status-tick"
+                      ><input
+                          aria-label="Show Waiting [w] as a column"
+                          data-action="show-status-column"
+                          data-dom-checked="true"
+                          data-dom-value="on"
+                          data-name="Waiting"
+                          type="checkbox"
+                        ><span
+                          aria-hidden="true"
+                          class="board-status-box"
+                        >[w]</span
+                        ><span
+                          class="board-status-name"
+                        >Waiting</span
+                        ></label
+                      ></li
+                    ><li
+                      class="board-status is-draggable"
+                      data-status="Someday"
+                      data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                      tabindex="0"
+                    ><span
+                        aria-hidden="true"
+                        class="board-status-grip"
+                      >⠿</span
+                      ><label
+                        class="board-status-tick"
+                      ><input
+                          aria-label="Show Someday [s] as a column"
+                          data-action="show-status-column"
+                          data-dom-checked="true"
+                          data-dom-value="on"
+                          data-name="Someday"
+                          type="checkbox"
+                        ><span
+                          aria-hidden="true"
+                          class="board-status-box"
+                        >[s]</span
+                        ><span
+                          class="board-status-name"
+                        >Someday</span
+                        ></label
+                      ></li
+                    ><li
+                      class="board-status is-draggable"
+                      data-status="Blocked"
+                      data-tip="Drag to reorder, or press the menu key (Shift+F10) to move it first or last"
+                      tabindex="0"
+                    ><span
+                        aria-hidden="true"
+                        class="board-status-grip"
+                      >⠿</span
+                      ><label
+                        class="board-status-tick"
+                      ><input
+                          aria-label="Show Blocked [=] as a column"
+                          data-action="show-status-column"
+                          data-dom-checked="true"
+                          data-dom-value="on"
+                          data-name="Blocked"
+                          type="checkbox"
+                        ><span
+                          aria-hidden="true"
+                          class="board-status-box"
+                        >[=]</span
+                        ><span
+                          class="board-status-name"
+                        >Blocked</span
+                        ></label
+                      ></li
+                    ><li
+                      class="board-status"
+                      data-tip="Done is always a column, after every open status"
+                    ><span
+                        aria-hidden="true"
+                        class="board-status-grip"
+                      ></span
+                      ><label
+                        class="board-status-tick"
+                      ><input
+                          aria-label="Show Done [x] as a column"
+                          data-action="show-status-column"
+                          data-dom-checked="true"
+                          data-dom-value="on"
+                          data-name="Done"
+                          disabled=""
+                          type="checkbox"
+                        ><span
+                          aria-hidden="true"
+                          class="board-status-box"
+                        >[x]</span
+                        ><span
+                          class="board-status-name"
+                        >Done</span
+                        ></label
+                      ></li
+                    ><li
+                      class="board-status"
+                      data-tip="Cancelled comes after Done when it is shown"
+                    ><span
+                        aria-hidden="true"
+                        class="board-status-grip"
+                      ></span
+                      ><label
+                        class="board-status-tick"
+                      ><input
+                          aria-label="Show Cancelled [-] as a column"
+                          data-action="show-status-column"
+                          data-dom-checked="false"
+                          data-dom-value="on"
+                          data-name="Cancelled"
+                          type="checkbox"
+                        ><span
+                          aria-hidden="true"
+                          class="board-status-box"
+                        >[-]</span
+                        ><span
+                          class="board-status-name"
+                        >Cancelled</span
+                        ></label
+                      ></li
+                    ></ul
+                  ><div
+                    class="board-settings-row"
+                  ><button
+                      data-action="new-task-status"
+                      data-tip="Add a status to the list, with its character"
+                      type="button"
+                    >New status…</button
+                    ><button
+                      data-action="edit-task-statuses"
+                      data-tip="Open Edit Task Statuses"
+                      type="button"
+                    >Edit statuses…</button
+                    ></div
+                  ></div
+                ></div
+              ><div
+                class="is-stacked view-options-group"
+              ><span
+                >Columns</span
+                ><ul
+                  class="table-columns"
+                ><li
+                  ><label
+                    ><input
+                        data-action="toggle-table-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-value="title"
+                        disabled=""
+                        type="checkbox"
+                      >Task</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-table-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-value="due"
+                        type="checkbox"
+                      >Due</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-table-column"
+                        data-dom-checked="false"
+                        data-dom-value="on"
+                        data-value="scheduled"
+                        type="checkbox"
+                      >Scheduled</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-table-column"
+                        data-dom-checked="false"
+                        data-dom-value="on"
+                        data-value="start"
+                        type="checkbox"
+                      >Start</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-table-column"
+                        data-dom-checked="false"
+                        data-dom-value="on"
+                        data-value="done"
+                        type="checkbox"
+                      >Done</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-table-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-value="priority"
+                        type="checkbox"
+                      >Priority</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-table-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-value="assignee"
+                        type="checkbox"
+                      >For</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-table-column"
+                        data-dom-checked="false"
+                        data-dom-value="on"
+                        data-value="status"
+                        type="checkbox"
+                      >Status</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-table-column"
+                        data-dom-checked="false"
+                        data-dom-value="on"
+                        data-value="tags"
+                        type="checkbox"
+                      >Tags</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-table-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-value="note"
+                        type="checkbox"
+                      >Note</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-table-column"
+                        data-dom-checked="false"
+                        data-dom-value="on"
+                        data-value="created"
+                        type="checkbox"
+                      >Created</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-table-column"
+                        data-dom-checked="false"
+                        data-dom-value="on"
+                        data-value="updated"
+                        type="checkbox"
+                      >Updated</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-table-column"
+                        data-dom-checked="false"
+                        data-dom-value="on"
+                        data-value="blockedBy"
+                        type="checkbox"
+                      >Blocked by</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-table-column"
+                        data-dom-checked="false"
+                        data-dom-value="on"
+                        data-value="id"
+                        type="checkbox"
+                      >Id</label
+                    ></li
+                  ></ul
+                ></div
+              ></div
+            ><div
+              aria-label="Appearance"
+              class="view-options-section"
+              role="group"
+            ><div
+                aria-hidden="true"
+                class="view-options-heading"
+              >Appearance</div
+              ><div
+                class="view-options-group"
+              ><span
+                >Theme</span
+                ><button
+                  aria-label="Theme: Replicant. Choose another"
+                  class="theme-choice"
+                  data-action="choose-theme"
+                  type="button"
+                >Replicant…</button
+                ></div
+              ><div
+                class="view-options-group"
+              ><label
+                  for="view-options-zen"
+                >Zen</label
+                ><input
+                  class="view-options-check"
+                  data-action="set-zen"
+                  data-dom-checked="false"
+                  data-dom-value="on"
+                  id="view-options-zen"
+                  type="checkbox"
+                ></div
+              ></div
+            ><div
+              aria-label="Help"
+              class="view-options-section"
+              role="group"
+            ><button
+                class="menu-item view-options-item"
+                data-action="page-help"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Help on this page</span
+                ></button
+              ><button
+                aria-keyshortcuts="?"
+                class="menu-item view-options-item"
+                data-action="open-key-sheet"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Keyboard shortcuts</span
+                ><kbd
+                  aria-hidden="true"
+                  class="menu-key"
+                >?</kbd
+                ></button
+              ></div
+            ></div
+          ></details
+        ></div
+      ></header
+    ><section
+      aria-label="Search tasks"
+      class="query-workspace"
+      data-zen-region=""
+    ><div
+        class="query-bar-row"
+      ><div
+          class="query-field-group"
+        ><button
+            aria-expanded="false"
+            class="query-builder-toggle"
+            data-action="toggle-builder"
+            data-tip="Build the search one condition at a time"
+          ><svg
+              aria-hidden="true"
+              class="query-builder-icon toolbar-icon"
+              fill="none"
+              focusable="false"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><path
+                d="M2.5 13.5 9.3 6.7"
+              ></path
+              ><path
+                d="M9.1 1.9 14.1 6.9 11.9 9.1 6.9 4.1Z"
+              ></path
+              ></svg
+            >Builder</button
+          ><span
+            class="query-bar-shell query-input-shell"
+            data-query-text=""
+          ><input
+              aria-autocomplete="list"
+              aria-controls="suggestions-query"
+              aria-expanded="false"
+              aria-label="Search tasks"
+              autocomplete="off"
+              class="query-input"
+              data-action="query-input"
+              data-dom-value=""
+              data-suggest-key="query"
+              placeholder="Search tasks: words, #tags, is:open, has:due, due < 7d, priority >= high…"
+              role="combobox"
+              spellcheck="false"
+              type="text"
+            ><button
+              aria-label="Clear the search"
+              class="query-clear query-field-glyph"
+              data-action="clear-query"
+              data-tip="Clear the search"
+              hidden=""
+            >×</button
+            ><button
+              aria-label="Search"
+              class="query-field-glyph query-run"
+              data-action="apply-query"
+              data-tip="Run this search"
+              data-tip-key="Enter"
+            >→</button
+            ><div
+              aria-label="Suggestions"
+              class="is-dropdown popover query-suggestions"
+              data-suggestions="query"
+              hidden=""
+              id="suggestions-query"
+              role="listbox"
+            ></div
+            ></span
+          ></div
+        ></div
+      ><div
+        class="query-status"
+      ><span
+          class="help-text query-hint"
+        >Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT.<span
+            class="query-hint-key"
+          > Press / to search.</span
+          ></span
+        ><div
+          aria-label="Task layout"
+          class="segmented task-layout"
+          data-zen-reveal=""
+          role="group"
+        ><button
+            aria-pressed="false"
+            data-action="set-task-layout"
+            data-tip="Tasks as columns of cards"
+            data-value="board"
+            type="button"
+          >Board</button
+          ><button
+            aria-pressed="true"
+            class="active"
+            data-action="set-task-layout"
+            data-tip="Tasks as rows, with the columns you choose"
+            data-value="table"
+            type="button"
+          >Table</button
+          ></div
+        ><span
+          class="control-label"
+          data-zen-reveal=""
+        >Rank order · choose a column to sort by it</span
+        ><button
+          aria-pressed="false"
+          class="board-available"
+          data-action="toggle-available"
+          data-tip="Leave out blocked, not-yet-started, and waiting or someday tasks (is:available)"
+          data-zen-reveal=""
+          type="button"
+        >Can start now</button
+        ></div
+      ></section
+    ><section
+      aria-label="Tasks"
+      class="board-area"
+    ><table
+        aria-label="Tasks"
+        class="result-table"
+      ><thead
+        ><tr
+          ><th
+              class="result-check"
+            ></th
+            ><th
+              scope="col"
+            ><button
+                data-action="set-table-sort"
+                data-tip="Sort by task"
+                data-value="title"
+                type="button"
+              >Task</button
+              ></th
+            ><th
+              scope="col"
+            ><button
+                data-action="set-table-sort"
+                data-tip="Sort by due"
+                data-value="due"
+                type="button"
+              >Due</button
+              ></th
+            ><th
+              scope="col"
+            ><button
+                data-action="set-table-sort"
+                data-tip="Sort by priority"
+                data-value="priority"
+                type="button"
+              >Priority</button
+              ></th
+            ><th
+              scope="col"
+            ><button
+                data-action="set-table-sort"
+                data-tip="Sort by for"
+                data-value="assignee"
+                type="button"
+              >For</button
+              ></th
+            ><th
+              scope="col"
+            ><button
+                data-action="set-table-sort"
+                data-tip="Sort by note"
+                data-value="note"
+                type="button"
+              >Note</button
+              ></th
+            ><th
+              class="result-menu"
+            ><span
+                class="visually-hidden"
+              >Change</span
+              ></th
+            ></tr
+          ></thead
+        ><tbody
+        ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="3"
+            data-reveal-region=""
+            data-task-id="task-84k6vj-elap6m"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Chase the replicant through the neon market and file the report before the rain, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-84k6vj-elap6m"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Chase the replicant through the neon market and file the report before the rain</td
+            ><td
+              class="is-overdue"
+            >overdue 6 days · 2026-09-15</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:3</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Chase the replicant through the neon market and file the report before the rain: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-84k6vj-elap6m"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="6"
+            data-reveal-region=""
+            data-task-id="task-w0wf19-6ga1pk"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 2, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-w0wf19-6ga1pk"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 2</td
+            ><td
+              class="is-overdue"
+            >overdue 5 days · 2026-09-16</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:6</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 2: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-w0wf19-6ga1pk"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="7"
+            data-reveal-region=""
+            data-task-id="task-k4oaq-1aovw8l"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 3, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-k4oaq-1aovw8l"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 3</td
+            ><td
+              class="is-overdue"
+            >overdue 4 days · 2026-09-17</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:7</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 3: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-k4oaq-1aovw8l"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="8"
+            data-reveal-region=""
+            data-task-id="task-x55rmp-50zryy"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 4, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-x55rmp-50zryy"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 4</td
+            ><td
+              class="is-overdue"
+            >overdue 3 days · 2026-09-18</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:8</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 4: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-x55rmp-50zryy"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="9"
+            data-reveal-region=""
+            data-task-id="task-5ax70g-1fb32hr"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 5, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-5ax70g-1fb32hr"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 5</td
+            ><td
+              class="is-overdue"
+            >overdue 2 days · 2026-09-19</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:9</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 5: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-5ax70g-1fb32hr"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="10"
+            data-reveal-region=""
+            data-task-id="task-u8wnvd-1qvaths"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 6, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-u8wnvd-1qvaths"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 6</td
+            ><td
+              class="is-overdue"
+            >overdue 1 day · 2026-09-20</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:10</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 6: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-u8wnvd-1qvaths"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="11"
+            data-reveal-region=""
+            data-task-id="task-876ars-1wk0kwx"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 7, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-876ars-1wk0kwx"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 7</td
+            ><td
+            >due today · 2026-09-21</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:11</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 7: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-876ars-1wk0kwx"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="12"
+            data-reveal-region=""
+            data-task-id="task-lpp6zs-85vs23"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 8, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-lpp6zs-85vs23"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 8</td
+            ><td
+            >due today · 2026-09-21</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:12</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 8: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-lpp6zs-85vs23"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="13"
+            data-reveal-region=""
+            data-task-id="task-z8837s-1iohyo1"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 9, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-z8837s-1iohyo1"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 9</td
+            ><td
+            >due today · 2026-09-21</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:13</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 9: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-z8837s-1iohyo1"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="14"
+            data-reveal-region=""
+            data-task-id="task-rhzoks-1tfib2x"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 10, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-rhzoks-1tfib2x"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 10</td
+            ><td
+            >due tomorrow · 2026-09-22</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:14</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 10: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-rhzoks-1tfib2x"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="15"
+            data-reveal-region=""
+            data-task-id="task-ek1utt-12cttbm"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 11, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-ek1utt-12cttbm"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 11</td
+            ><td
+            >due in 2 days · 2026-09-23</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:15</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 11: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-ek1utt-12cttbm"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="16"
+            data-reveal-region=""
+            data-task-id="task-ef0nqq-cry4gb"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 12, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-ef0nqq-cry4gb"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 12</td
+            ><td
+            >due in 3 days · 2026-09-24</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:16</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 12: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-ef0nqq-cry4gb"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="17"
+            data-reveal-region=""
+            data-task-id="task-rn0vnv-ue48yk"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 13, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-rn0vnv-ue48yk"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 13</td
+            ><td
+            >due in 4 days · 2026-09-25</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:17</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 13: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-rn0vnv-ue48yk"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="18"
+            data-reveal-region=""
+            data-task-id="task-1c1mwo-7dimit"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 14, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-1c1mwo-7dimit"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 14</td
+            ><td
+            >due in 5 days · 2026-09-26</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:18</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 14: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-1c1mwo-7dimit"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="19"
+            data-reveal-region=""
+            data-task-id="task-5dk322-1j6vjzx"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 15, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-5dk322-1j6vjzx"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 15</td
+            ><td
+            >due in 5 days · 2026-09-26</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:19</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 15: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-5dk322-1j6vjzx"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="20"
+            data-reveal-region=""
+            data-task-id="task-kkv26q-1jn60bv"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 16, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-kkv26q-1jn60bv"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 16</td
+            ><td
+            >due in 6 days · 2026-09-27</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:20</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 16: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-kkv26q-1jn60bv"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="21"
+            data-reveal-region=""
+            data-task-id="task-lh6h7v-4oh0mq"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 17, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-lh6h7v-4oh0mq"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 17</td
+            ><td
+            >due in 7 days · 2026-09-28</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:21</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 17: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-lh6h7v-4oh0mq"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="22"
+            data-reveal-region=""
+            data-task-id="task-7hw1co-1w949u5"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 18, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-7hw1co-1w949u5"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 18</td
+            ><td
+            >due in 8 days · 2026-09-29</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:22</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 18: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-7hw1co-1w949u5"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="23"
+            data-reveal-region=""
+            data-task-id="task-878h1s-mala3"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 19, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-878h1s-mala3"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 19</td
+            ><td
+            >due in 9 days · 2026-09-30</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:23</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 19: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-878h1s-mala3"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="24"
+            data-reveal-region=""
+            data-task-id="task-4xb4tn-wzjcv8"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 20, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-4xb4tn-wzjcv8"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 20</td
+            ><td
+            >due in 10 days · 2026-10-01</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:24</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 20: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-4xb4tn-wzjcv8"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="25"
+            data-reveal-region=""
+            data-task-id="task-vsoo9-1prrf2c"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 21, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-vsoo9-1prrf2c"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 21</td
+            ><td
+            >due in 10 days · 2026-10-01</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:25</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 21: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-vsoo9-1prrf2c"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="26"
+            data-reveal-region=""
+            data-task-id="task-s39twa-1si5w1l"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 22, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-s39twa-1si5w1l"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 22</td
+            ><td
+            >due in 11 days · 2026-10-02</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:26</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 22: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-s39twa-1si5w1l"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="27"
+            data-reveal-region=""
+            data-task-id="task-dyrpib-gdh5sq"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 23, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-dyrpib-gdh5sq"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 23</td
+            ><td
+            >due in 12 days · 2026-10-03</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:27</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 23: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-dyrpib-gdh5sq"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="28"
+            data-reveal-region=""
+            data-task-id="task-f0at28-1iehzzz"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 24, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-f0at28-1iehzzz"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 24</td
+            ><td
+            >due in 13 days · 2026-10-04</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:28</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 24: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-f0at28-1iehzzz"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="29"
+            data-reveal-region=""
+            data-task-id="task-r1qqcd-zwmfps"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 25, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-r1qqcd-zwmfps"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 25</td
+            ><td
+            >due in 14 days · 2026-10-05</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:29</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 25: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-r1qqcd-zwmfps"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="30"
+            data-reveal-region=""
+            data-task-id="task-bufr7p-zerp1e"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 26, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-bufr7p-zerp1e"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 26</td
+            ><td
+            >due in 15 days · 2026-10-06</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:30</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 26: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-bufr7p-zerp1e"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="31"
+            data-reveal-region=""
+            data-task-id="task-7sxb2b-icr2ua"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 27, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-7sxb2b-icr2ua"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 27</td
+            ><td
+            >due in 15 days · 2026-10-06</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:31</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 27: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-7sxb2b-icr2ua"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="32"
+            data-reveal-region=""
+            data-task-id="task-l657i8-1nnb2q9"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 28, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-l657i8-1nnb2q9"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 28</td
+            ><td
+            >due in 16 days · 2026-10-07</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:32</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 28: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-l657i8-1nnb2q9"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="33"
+            data-reveal-region=""
+            data-task-id="task-kvwbwd-zgo0hg"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 29, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-kvwbwd-zgo0hg"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 29</td
+            ><td
+            >due in 17 days · 2026-10-08</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:33</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 29: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-kvwbwd-zgo0hg"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="34"
+            data-reveal-region=""
+            data-task-id="task-zbiyp1-107e9po"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 30, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-zbiyp1-107e9po"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 30</td
+            ><td
+            >due in 18 days · 2026-10-09</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:34</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 30: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-zbiyp1-107e9po"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="35"
+            data-reveal-region=""
+            data-task-id="task-k0gkvn-13z0yze"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 31, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-k0gkvn-13z0yze"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 31</td
+            ><td
+            >due in 19 days · 2026-10-10</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:35</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 31: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-k0gkvn-13z0yze"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="36"
+            data-reveal-region=""
+            data-task-id="task-m1kyiy-vuclh"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 32, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-m1kyiy-vuclh"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 32</td
+            ><td
+            >due in 20 days · 2026-10-11</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:36</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 32: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-m1kyiy-vuclh"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="37"
+            data-reveal-region=""
+            data-task-id="task-i02idk-1mxg2mp"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 33, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-i02idk-1mxg2mp"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 33</td
+            ><td
+            >due in 20 days · 2026-10-11</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:37</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 33: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-i02idk-1mxg2mp"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="38"
+            data-reveal-region=""
+            data-task-id="task-az006z-1mo5hto"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 34, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-az006z-1mo5hto"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 34</td
+            ><td
+            >due in 21 days · 2026-10-12</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:38</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 34: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-az006z-1mo5hto"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="39"
+            data-reveal-region=""
+            data-task-id="task-v31j7m-sd0b3z"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 35, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-v31j7m-sd0b3z"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 35</td
+            ><td
+            >due in 22 days · 2026-10-13</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:39</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 35: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-v31j7m-sd0b3z"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="40"
+            data-reveal-region=""
+            data-task-id="task-fvqk2y-vcvefj"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 36, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-fvqk2y-vcvefj"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 36</td
+            ><td
+            >due in 23 days · 2026-10-14</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:40</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 36: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-fvqk2y-vcvefj"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="41"
+            data-reveal-region=""
+            data-task-id="task-d3byhl-1kfkbck"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 37, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-d3byhl-1kfkbck"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 37</td
+            ><td
+            >due in 24 days · 2026-10-15</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:41</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 37: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-d3byhl-1kfkbck"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="42"
+            data-reveal-region=""
+            data-task-id="task-sypkx0-1m4d90l"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 38, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-sypkx0-1m4d90l"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 38</td
+            ><td
+            >due in 25 days · 2026-10-16</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:42</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 38: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-sypkx0-1m4d90l"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="43"
+            data-reveal-region=""
+            data-task-id="task-ox74rm-1bm6gpd"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 39, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-ox74rm-1bm6gpd"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 39</td
+            ><td
+            >due in 25 days · 2026-10-16</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:43</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 39: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-ox74rm-1bm6gpd"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="44"
+            data-reveal-region=""
+            data-task-id="task-voaaeu-3mysun"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Board task 40, In progress"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-status="inProgress"
+                data-task-id="task-voaaeu-3mysun"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Board task 40</td
+            ><td
+            >due in 26 days · 2026-10-17</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:44</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Board task 40: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-voaaeu-3mysun"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="45"
+            data-reveal-region=""
+            data-task-id="task-pg15go-pwocl3"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Later task 1"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-pg15go-pwocl3"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Later task 1</td
+            ><td
+            >due 2026-12-01</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:45</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Later task 1: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-pg15go-pwocl3"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="46"
+            data-reveal-region=""
+            data-task-id="task-ov6q2g-1ppollx"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Later task 2"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-ov6q2g-1ppollx"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Later task 2</td
+            ><td
+            >due 2026-12-01</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:46</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Later task 2: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-ov6q2g-1ppollx"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="47"
+            data-reveal-region=""
+            data-task-id="task-45ajmg-16kc8qr"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Later task 3"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-45ajmg-16kc8qr"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Later task 3</td
+            ><td
+            >due 2026-12-01</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:47</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Later task 3: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-45ajmg-16kc8qr"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="48"
+            data-reveal-region=""
+            data-task-id="task-gklmtk-169cnat"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Later task 4"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-gklmtk-169cnat"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Later task 4</td
+            ><td
+            >due 2026-12-01</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:48</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Later task 4: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-gklmtk-169cnat"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="49"
+            data-reveal-region=""
+            data-task-id="task-xqm8pk-1gmxvj"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Later task 5"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-xqm8pk-1gmxvj"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Later task 5</td
+            ><td
+            >due 2026-12-01</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:49</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Later task 5: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-xqm8pk-1gmxvj"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="50"
+            data-reveal-region=""
+            data-task-id="task-ugjnsd-1jpuxok"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Later task 6"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-ugjnsd-1jpuxok"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Later task 6</td
+            ><td
+            >due 2026-12-01</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:50</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Later task 6: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-ugjnsd-1jpuxok"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="51"
+            data-reveal-region=""
+            data-task-id="task-9qnhcd-9ofrza"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Later task 7"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-9qnhcd-9ofrza"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Later task 7</td
+            ><td
+            >due 2026-12-01</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:51</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Later task 7: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-9qnhcd-9ofrza"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="52"
+            data-reveal-region=""
+            data-task-id="task-az8p3n-yohk9w"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Later task 8"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-az8p3n-yohk9w"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Later task 8</td
+            ><td
+            >due 2026-12-01</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:52</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Later task 8: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-az8p3n-yohk9w"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="53"
+            data-reveal-region=""
+            data-task-id="task-vp4vjn-1gjd4gi"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Later task 9"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-vp4vjn-1gjd4gi"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Later task 9</td
+            ><td
+            >due 2026-12-01</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:53</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Later task 9: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-vp4vjn-1gjd4gi"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="54"
+            data-reveal-region=""
+            data-task-id="task-e8hp96-1d2bnjv"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Later task 10"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-e8hp96-1d2bnjv"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Later task 10</td
+            ><td
+            >due 2026-12-01</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:54</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Later task 10: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-e8hp96-1d2bnjv"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="55"
+            data-reveal-region=""
+            data-task-id="task-keeplw-vw1zcn"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Later task 11"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-keeplw-vw1zcn"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Later task 11</td
+            ><td
+            >due 2026-12-01</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:55</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Later task 11: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-keeplw-vw1zcn"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="56"
+            data-reveal-region=""
+            data-task-id="task-fzsxi6-m08wy7"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Later task 12"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-fzsxi6-m08wy7"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Later task 12</td
+            ><td
+            >due 2026-12-01</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:56</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Later task 12: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-fzsxi6-m08wy7"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="57"
+            data-reveal-region=""
+            data-task-id="task-o1mm8r-nx6pgq"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Undated task"
+                data-action="toggle-task"
+                data-dom-checked="false"
+                data-dom-value="on"
+                data-task-id="task-o1mm8r-nx6pgq"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Undated task</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:57</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Undated task: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-o1mm8r-nx6pgq"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ><tr
+            class="completed is-draggable result-row"
+            data-file-path="notes/tasks.md"
+            data-line="58"
+            data-reveal-region=""
+            data-task-id="task-pmzt6q-tfv9dl"
+            tabindex="0"
+          ><td
+              class="result-check"
+            ><input
+                aria-label="Toggle Finished task"
+                data-action="toggle-task"
+                data-dom-checked="true"
+                data-dom-value="on"
+                data-task-id="task-pmzt6q-tfv9dl"
+                type="checkbox"
+              ></td
+            ><td
+              class="result-title"
+            >Finished task</td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+            ></td
+            ><td
+              class="is-muted"
+            >tasks.md:58</td
+            ><td
+              class="result-menu"
+            ><button
+                aria-expanded="false"
+                aria-haspopup="menu"
+                aria-label="Change Finished task: status, priority, or due date"
+                class="board-move icon-button row-menu"
+                data-action="task-row-menu"
+                data-reveal=""
+                data-task-id="task-pmzt6q-tfv9dl"
+                data-tip="Change this task"
+                type="button"
+              ><svg
+                  aria-hidden="true"
+                  class="toolbar-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  viewBox="0 0 16 16"
+                ><circle
+                    cx="3.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="8"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ><circle
+                    cx="12.5"
+                    cy="8"
+                    fill="currentColor"
+                    r="1.1"
+                    stroke="none"
+                  ></circle
+                  ></svg
+                ></button
+              ></td
+            ></tr
+          ></tbody
+        ></table
+      ></section
+    ></main
+  > <div
+    aria-live="polite"
+    class="visually-hidden"
+    id="live-status"
+    role="status"
+  ></div
+  > </body
+>
