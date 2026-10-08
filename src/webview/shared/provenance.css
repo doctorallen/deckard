@@ -31,6 +31,10 @@
 .entry-details {
   display: block;
   min-width: 0;
+  /* The line is cut short, never the reason its card is wide: a grid or
+     flex parent sizing to its content would otherwise read the whole
+     unwrapped line, as Context's list of notes did in a narrow sidebar. */
+  contain: inline-size;
   margin: 2px 0 0;
   padding: 0;
   overflow: hidden;
