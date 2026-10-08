@@ -172,32 +172,6 @@ function overlaps(a: Box, b: Box): boolean {
   return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
 }
 
-/** A length a card's style gives in pixels, or 0. */
-function pixelsOf(style: CSSStyleDeclaration, name: string): number {
-  const value = parseFloat(style.getPropertyValue(name));
-  return Number.isFinite(value) && value > 0 ? value : 0;
-}
-
-/**
- * How far a card's frame reaches down under it while it is under the
- * pointer or holds the focus, to hold where its entry is written: the
- * `--reach` of provenance.css, past its own frame. Nothing at rest.
- */
-function reachOf(card: Element): number {
-  let open = false;
-  try {
-    open = card.matches(':hover') || card.matches(':focus-within');
-  } catch {
-    open = false;
-  }
-  if (!open) {
-    return 0;
-  }
-  const style = getComputedStyle(card);
-  const reach = pixelsOf(style, '--reach');
-  return reach ? reach + pixelsOf(style, '--frame') : 0;
-}
-
 /** What an open control in a card has opened outside it, as a menu it names in aria-controls. */
 function openedBy(control: Element, card: Element): Box[] {
   const boxes: Box[] = [];
@@ -212,16 +186,12 @@ function openedBy(control: Element, card: Element): Box[] {
 }
 
 /**
- * What a card shows now beyond what it is at rest: its frame carried down
- * under it, what hangs past its top or foot, any popover or panel it holds,
+ * What a card shows now beyond what it is at rest: what hangs past its top
+ * or foot, as a saved search's criteria do, any popover or panel it holds,
  * and what an open control in it has opened elsewhere.
  */
 function shownBy(card: Element, cardBox: Box): Box[] {
   const shown: Box[] = [];
-  const reach = reachOf(card);
-  if (reach) {
-    shown.push({ top: cardBox.bottom - 1, right: cardBox.right, bottom: cardBox.bottom + reach, left: cardBox.left });
-  }
   for (const part of [card, ...Array.from(card.querySelectorAll('*'))]) {
     if (part.getAttribute('aria-expanded') === 'true') {
       shown.push(...openedBy(part, card));

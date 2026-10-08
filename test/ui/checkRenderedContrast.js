@@ -63,10 +63,11 @@ const ICON_CONTROLS = ['.week-label', '.board-move', '.insert-link', '.zoom-cont
 /**
  * Controls whose words are measured hovered as well as at rest, by
  * selector: the sidebar calendar's days, where the theme's hover ground
- * meets the muted ink of a day outside the month; and the day panel's
- * Tomorrow, drawn only once its row is hovered (shared/reveal.css).
+ * meets the muted ink of a day outside the month; and what is drawn only
+ * once its row is hovered (shared/reveal.css): the day panel's Tomorrow, a
+ * card's details line, and a Home row's file.
  */
-const HOVERED_TEXT = ['.day', '.day-move'];
+const HOVERED_TEXT = ['.day', '.day-move', '.entry-details', '.home-row-detail.is-file'];
 
 /**
  * Text a page holds hidden and shows only for a moment, by selector, which

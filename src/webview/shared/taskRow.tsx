@@ -5,7 +5,7 @@
  */
 import { TaskBox } from './taskBox';
 import { ProgressText } from './progressText';
-import type { ComponentChildren } from 'preact';
+import type { ComponentChild, ComponentChildren } from 'preact';
 
 import type { InlineToken } from '../../ui/protocol/inline';
 import type { DashboardTask } from '../../ui/protocol/shared';
@@ -13,7 +13,8 @@ import { ParentTag } from './tagButton';
 import { formatPageDate } from './dateFormats';
 import { DueText } from './dueText';
 import { TaskTitle } from './taskTitle';
-import { describeDates, describeLocation, type EntryFacts, readEntryDetails } from './entryDetails';
+import { describeLocation, type EntryFacts, readEntryDetails } from './entryDetails';
+import { DetailsLine, entryDatesPart } from './detailsLine';
 
 /** A priority's arrow: how far it is from the middle. */
 const PRIORITY_MARKS: Readonly<Record<string, string>> = { highest: '↑↑', high: '↑', medium: '', low: '↓', lowest: '↓↓' };
@@ -77,20 +78,21 @@ export function plainTitle(tokens: readonly InlineToken[]): string {
 }
 
 /**
- * A task's details, carried down under it as a card's are: where it is
- * written, then the headings above it, then its dates, each on its own line,
- * as Card details ticks them. Nothing for what is not ticked.
+ * A task's details on the line kept for them under its dates, as a card's
+ * are: where it is written, then the headings above it, then its dates, as
+ * Card details ticks them. Nothing for what is not ticked.
  */
-export function TaskDetails({ facts, steps, after }: { readonly facts: EntryFacts; readonly steps: Parameters<typeof HeadingPathSteps>[0]['steps']; readonly after?: ComponentChildren }) {
+export function TaskDetails({ facts, steps, after }: { readonly facts: EntryFacts; readonly steps: Parameters<typeof HeadingPathSteps>[0]['steps']; readonly after?: ComponentChild }) {
   const location = describeLocation(facts);
-  const dates = describeDates(facts);
   return (
-    <>
-      {location ? <span key="source" class="task-source">{location}</span> : null}
-      {after ?? null}
-      {steps.length && readEntryDetails().has('fileAndLine') ? <span key="path" class="task-source heading-path"><HeadingPathSteps steps={steps} /></span> : null}
-      {dates ? <span key="dates" class="task-source entry-dates">{dates}</span> : null}
-    </>
+    <DetailsLine
+      parts={[
+        location ? <span key="source" class="task-source">{location}</span> : null,
+        after ?? null,
+        steps.length && readEntryDetails().has('fileAndLine') ? <span key="path" class="task-source heading-path"><HeadingPathSteps steps={steps} /></span> : null,
+        entryDatesPart(facts, 'task-source'),
+      ]}
+    />
   );
 }
 
@@ -165,7 +167,7 @@ export interface TaskListRowProps {
   /** The kind of result the row is in a search, in `data-search-entry`, which plain words being typed match against. */
   readonly entry?: string;
   /** What follows where the task is written, before the headings above it, such as why a search listed it. */
-  readonly afterSource?: ComponentChildren;
+  readonly afterSource?: ComponentChild;
 }
 
 /** The facts under a task's title: parked, its date, when it is scheduled, its priority, repeat, and steps. */
@@ -202,9 +204,9 @@ function TaskFacts({ item }: { readonly item: DashboardTask }) {
 }
 
 /**
- * One task in a task list: its checkbox, title, and where it is written.
- * The headings above the task, tags stripped, go under the file and line:
- * the same two lines a note card and the sidebar show.
+ * One task in a task list: its checkbox, title, its facts, and the line for
+ * its card details under them: where it is written, and the headings above
+ * it, tags stripped, as a note card and the sidebar show them.
  */
 export function TaskListRow({ item, draggable, leading, trailing, entry, afterSource }: TaskListRowProps) {
   const task = item.task;
@@ -231,8 +233,8 @@ export function TaskListRow({ item, draggable, leading, trailing, entry, afterSo
         </div>
         <div class="task-meta">
           <TaskFacts item={item} />
-          <TaskDetails facts={{ location: formatSourceLocation(item.fileName, task.lineNumber), createdAt: task.createdAt, updatedAt: task.updatedAt }} steps={steps} after={afterSource} />
         </div>
+        <TaskDetails facts={{ location: formatSourceLocation(item.fileName, task.lineNumber), createdAt: task.createdAt, updatedAt: task.updatedAt }} steps={steps} after={afterSource} />
       </div>
       {trailing}
     </div>

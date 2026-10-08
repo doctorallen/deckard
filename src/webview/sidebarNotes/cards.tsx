@@ -4,7 +4,7 @@
  * connections; the entries worded like a note with no tags; and Home's
  * widgets to add, while Home is in front.
  */
-import type { ComponentChildren } from 'preact';
+import type { ComponentChild, ComponentChildren } from 'preact';
 
 import type { NotesGraphNode, SidebarGraphContext } from '../../ui/protocol/notesGraph';
 import type { RankedNote, SidebarNotesSnapshot, SuggestedTag } from '../../ui/protocol/sidebarNotes';
@@ -14,7 +14,7 @@ import { TagLabel } from '../shared/tagLabel';
 import { formatSourceLocation, HeadingPathSteps, trimHeadingPath } from '../shared/taskRow';
 import { explainRelevance, RelevanceScore } from './weights';
 import { describeLocation, readEntryDetails } from '../shared/entryDetails';
-import { EntryDates } from '../shared/entryDates';
+import { DetailsLine, entryDatesPart } from '../shared/detailsLine';
 
 /** What a card shows besides its entry: how many lines of excerpt. */
 export interface CardDisplay {
@@ -30,19 +30,20 @@ interface NoteCardProps {
   readonly attributes: Readonly<Record<string, string | number>>;
   readonly title: ComponentChildren;
   readonly trailing: ComponentChildren;
-  readonly source: ComponentChildren;
+  /** The parts of the line kept for its details under its title, in order (detailsLine.tsx). */
+  readonly details: readonly ComponentChild[];
   readonly body: ComponentChildren;
 }
 
 /** The shell a ranked result and a graph node's connection share. */
 function NoteCard(props: NoteCardProps) {
   return (
-    <article class={`note ${props.className}`} tabIndex={0} data-tip-around="" data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading." {...props.attributes}>
+    <article class={`note ${props.className}`} tabIndex={0} data-tip-around="" data-reveal-region="" data-tip="Open this entry. Cmd/Ctrl-click to open it beside the note you are reading." {...props.attributes}>
       <div class="note-header">
         <h2 class="note-title">{props.title}</h2>
         {props.trailing}
       </div>
-      {props.source}
+      <DetailsLine parts={props.details} />
       {props.body}
     </article>
   );
@@ -77,10 +78,17 @@ function InsertLink({ title }: { readonly title: string }) {
   );
 }
 
-/** A result's location line, carried down under it as a search card's is, when Card details ticks it. */
-function RankedNoteDetails({ note, fileName }: { readonly note: RankedNote; readonly fileName: string }) {
+/**
+ * A result's details, as a search card's are: where it is written, the
+ * headings above it, then its dates, as Card details ticks them.
+ */
+function rankedNoteDetails(note: RankedNote, fileName: string, steps: readonly string[]): ComponentChild[] {
   const line = describeLocation({ location: formatSourceLocation(fileName, note.sourceLine) });
-  return line ? <div class="source">{line}</div> : null;
+  return [
+    line ? <span key="source" class="source">{line}</span> : null,
+    steps.length && readEntryDetails().has('fileAndLine') ? <span key="path" class="source heading-path"><HeadingPathSteps steps={steps} /></span> : null,
+    entryDatesPart({ location: '', createdAt: note.createdAt, updatedAt: note.updatedAt }, 'source'),
+  ];
 }
 
 /** One ranked result: its title, score, where it is, excerpt, and why. */
@@ -95,10 +103,8 @@ export function RankedNoteCard({ note, display }: { readonly note: RankedNote; r
       attributes={cardAttributes(note)}
       title={<TitleWithTags title={title} tags={note.titleTags || []} />}
       trailing={<div class="note-actions"><InsertLink title={title} /><RelevanceScore note={note} reasons={reasons} /></div>}
-      source={<RankedNoteDetails note={note} fileName={fileName} />}
+      details={rankedNoteDetails(note, fileName, steps)}
       body={[
-        steps.length && readEntryDetails().has('fileAndLine') ? <div class="source heading-path"><HeadingPathSteps steps={steps} /></div> : null,
-        <EntryDates facts={{ location: '', createdAt: note.createdAt, updatedAt: note.updatedAt }} className="source" />,
         note.excerpt && display.previewLines > 0 ? <p class="note-excerpt">{note.excerpt}</p> : null,
         reasons.length ? <div class="relevance-reason help-text">{reasons[0]}</div> : null,
       ]}
@@ -168,8 +174,11 @@ export function GraphConnections({ graph }: { readonly graph: SidebarGraphContex
             // kind-note, not note: a bare note or task class is a card's,
             // and gave the badge a card's edge and hover.
             trailing={<span class={`graph-kind kind-${node.kind}`}>{node.kind}</span>}
-            source={<div class="source">{source}</div>}
-            body={<div class="source">{connection.types.map((type) => type.replaceAll('-', ' ')).join(' · ')}</div>}
+            details={[
+              <span key="source" class="source">{source}</span>,
+              <span key="types" class="source">{connection.types.map((type) => type.replaceAll('-', ' ')).join(' · ')}</span>,
+            ]}
+            body={null}
           />
         );
       })}

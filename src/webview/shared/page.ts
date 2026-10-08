@@ -153,14 +153,13 @@ export function onHostMessage<M extends { type: string }>(type: M['type'], handl
 /**
  * What every page has done since its script was a template the host wrote:
  * the indexing line and the busy mark, a control held with `aria-disabled`
- * that ignores clicks, Escape putting away the file-and-line line under the
- * pointer, and tips. Installed before any listener of the page's own.
+ * that ignores clicks, and tips. Installed before any listener of the
+ * page's own.
  */
 function installSharedBehavior(): void {
   followIndexing();
   watchBusy();
   guardDisabledControls();
-  dismissProvenanceOnEscape();
   installTip();
   installGoToMenu(post);
 }
@@ -183,22 +182,3 @@ function guardDisabledControls(): void {
   }, true);
 }
 
-/**
- * Escape puts away the file-and-line line an entry carries down under the
- * pointer, which could not be dismissed before (WCAG 1.4.13); it comes
- * back once the pointer or the focus moves on.
- */
-function dismissProvenanceOnEscape(): void {
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && document.body) {
-      document.body.classList.add('provenance-dismissed');
-    }
-  });
-  for (const type of ['pointermove', 'focusin']) {
-    document.addEventListener(type, () => {
-      if (document.body && document.body.classList.contains('provenance-dismissed')) {
-        document.body.classList.remove('provenance-dismissed');
-      }
-    });
-  }
-}

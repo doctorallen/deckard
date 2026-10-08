@@ -49,11 +49,6 @@ body[data-styling=plain] .metric, body[data-styling=plain] .card, body[data-styl
 body[data-styling=plain] .tag-row, body[data-styling=plain] .task-row, body[data-styling=plain] .note-row, body[data-styling=plain] .entity-row,
 body[data-styling=plain] .saved-filter-row, body[data-styling=plain] .stat-row, body[data-styling=plain] .empty,
 body[data-styling=plain] .view-panel, body[data-styling=plain] .board-column { clip-path: none; box-shadow: none; }
-/* Under the pointer the frame reaches down to take in where the entry is
-   written (provenance.css); a plain frame has no corners to keep. */
-body[data-styling=plain] .card:hover, body[data-styling=plain] .card:focus-within, body[data-styling=plain] .note:hover,
-body[data-styling=plain] .note:focus-within, body[data-styling=plain] .task-row:hover,
-body[data-styling=plain] .task-row:focus-within { clip-path: none; }
 /* Rows that slide 3px under the pointer hold still. */
 body[data-styling=plain] .row:hover, body[data-styling=plain] .card:hover, body[data-styling=plain] .note:hover,
 body[data-styling=plain] .task:hover, body[data-styling=plain] .task-row:hover, body[data-styling=plain] .note-row:hover,
@@ -74,20 +69,16 @@ body[data-help=hidden] .help-text { display: none; }
 /* A denser scale, not a second set of rules: the steps shrink, and every
    card, row, column, and margin in the shared sheets follows. */
 body[data-density=compact] { --control-height: 26px; --space-1: 3px; --space-2: 6px; --space-3: 8px; --space-4: 12px; --space-5: 14px; --space-6: 24px; }
-/* The carried-down file and line follows the tighter padding. */
-body[data-density=compact] .card { --inset: 9px; }
-body[data-density=compact] .task-row { --inset: 7px; }
 
 /* ---- Preferences: what is written, which the steps never move ----------- */
 
 /* Each is folded out of sight rather than out of the page: off-screen text a
-   screen reader still reads, as provenance.css folds an entry's file and
-   line. The page writes every part, so nothing here hides meaning. */
+   screen reader still reads, as provenance.css folds an entry's card
+   details with none ticked. The page writes every part, so nothing here hides meaning. */
 
-/* Counts: hidden. The number beside a name, out of sight under the pointer
-   and focus too, as a tag row's count and a Home row's count are. Figures
-   that are the point, such as Home's tiles and a calendar day's counts, are
-   not counts beside names and stay. */
+/* Counts: hidden. The number beside a name, a tag row's and a Home row's
+   among them. Figures that are the point, such as Home's tiles and a
+   calendar day's counts, are not counts beside names and stay. */
 body[data-counts=hidden] .tag-count,
 body[data-counts=hidden] .board-count,
 body[data-counts=hidden] .board-total,
@@ -96,13 +87,10 @@ body[data-counts=hidden] .query-facet-count,
 body[data-counts=hidden] .refine-count,
 body[data-counts=hidden] .links-count,
 body[data-counts=hidden] .section-counts,
+body[data-counts=hidden] .home-row-detail.is-count,
 /* Dates: only how far off, or only the date with its state. "Overdue" is the
    state, never the distance, so an overdue date always says so; a date
    beyond a month, which has no distance, keeps its date. */
-body[data-counts=hidden] .home-row:hover .home-row-detail.is-count,
-body[data-counts=hidden] .home-row:focus-within .home-row-detail.is-count,
-body[data-counts=hidden] .tag-row:hover .tag-count,
-body[data-counts=hidden] .tag-row:focus-within .tag-count,
 body[data-dates=relative] .due-relative .due-on,
 body[data-dates=date] .due-distance {
   position: absolute;
@@ -114,14 +102,6 @@ body[data-dates=date] .due-distance {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-
-/* With its count hidden, a tag row or a Home row of counts has nothing to
-   carry down under the pointer, and focus makes no room for it. */
-body[data-counts=hidden] .tag-row:hover::after, body[data-counts=hidden] .tag-row:focus-within::after,
-body[data-counts=hidden] .home-row:has(.is-count):hover::after,
-body[data-counts=hidden] .home-row:has(.is-count):focus-within::after { content: none; }
-body[data-counts=hidden] .tag-row:focus-within,
-body[data-counts=hidden] .home-row:has(.is-count):focus-within { margin-bottom: 0; }
 
 /* ---- Page width: full --------------------------------------------------- */
 

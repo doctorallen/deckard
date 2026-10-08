@@ -1,201 +1,86 @@
 /*
- * Where an entry is written, as `file / line N`, shown only while the entry is
- * under the pointer or holds focus.
+ * Card details: where an entry is written, the headings above it, and its
+ * created and updated dates, as `deckard.display.cardDetails` ticks them.
  *
- * The entry's frame reaches down to hold it, laid over whatever is below
- * rather than taking room in the list, so showing it moves nothing: the list
- * around the entry stays put. What it covers is the top of the next entry,
- * not the one being read. Folded, it is off-screen rather than display:none, so it stays in the
- * accessibility tree, in find-in-page, and announced. Board details are not
- * provenance: they carry the due date and the word "overdue", so they never
- * fold.
+ * While at least one is ticked, every task row, board card, search card and
+ * Context card keeps one line for them under its date line, at every step:
+ * the details on one line, file and line first, then created, then updated,
+ * cut short with an ellipsis (detailsLine.tsx). The line is drawn at no
+ * opacity until its entry is under the pointer or holds focus, and always
+ * on a screen that does not hover, by the shared reveal rule (reveal.css).
+ * It takes its room at rest, so showing it moves nothing and covers
+ * nothing: it was laid over the top of the next entry before, hiding that
+ * entry's title and due date. A Home row that names a note keeps a line
+ * for its file the same way.
  *
- * It comes after the theme, whose `.source` would otherwise restyle it, and
- * before Display, whose plain styling only takes the corners off the frame
- * around it.
+ * With nothing ticked (data-file-line=never on the body), no room is kept,
+ * and rows are as compact as they are without details. The line is folded
+ * off-screen rather than display:none, so it stays in the accessibility
+ * tree and a screen reader still reads where the entry is written, as the
+ * setting promises.
+ *
+ * A count beside a name, on a Home row or a tag row, is not a card detail:
+ * it is drawn where it stands, and Counts decides it (display.css). Board
+ * details are not card details either: they carry the due date and the
+ * word "overdue", so they are always drawn.
+ *
+ * It comes after the theme, whose `.source` would otherwise restyle the
+ * line's parts.
  */
 
-/* Escape puts the carried-down line away until the pointer or focus moves. */
-body.provenance-dismissed .card::after, body.provenance-dismissed .note::after,
-body.provenance-dismissed .task-row::after, body.provenance-dismissed .home-row::after,
-body.provenance-dismissed .tag-row::after, body.provenance-dismissed .board-card::after,
-body.provenance-dismissed .card .source, body.provenance-dismissed .note .source,
-body.provenance-dismissed .task-row .task-source, body.provenance-dismissed .board-card .task-source,
-body.provenance-dismissed .home-row .home-row-detail, body.provenance-dismissed .tag-row .tag-count { visibility: hidden; }
-.task-row .task-source,
-.board-card .task-source,
-.card .source,
-.note .source,
-.home-row .home-row-detail,
-.tag-row .tag-count {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-/* What the extension has to match: how thick the entry's frame is, how far
-   in its text sits, and how far down it reaches, a line for each place. */
-.card { position: relative; --frame: var(--edge); --inset: 14px; }
-.note { --frame: 2px; --inset: 9px; }
-.task-row { --frame: 1px; --inset: 10px; }
-/* A Home row's readout, a file name or a count, and a tag row's count fold
-   the same way: a column of thirty beside the names was noise, and folded
-   under the row under the pointer they leave the whole width to the name. */
-.home-row, .tag-row { position: relative; --frame: 1px; --inset: 10px; }
-.board-card { --frame: var(--edge); --inset: var(--space-3); }
-.card, .note, .task-row, .home-row, .tag-row, .board-card { --reach: 24px; }
-.note:has(.source ~ .source), .card:has(.source ~ .source), .task-row:has(.task-source ~ .task-source), .board-card:has(.task-source ~ .task-source) { --reach: 42px; }
-/* Three lines: where it is written, the headings above it, and its dates. */
-.note:has(.source ~ .source ~ .source), .card:has(.source ~ .source ~ .source), .task-row:has(.task-source ~ .task-source ~ .task-source), .board-card:has(.task-source ~ .task-source ~ .task-source) { --reach: 60px; }
-/* An entry that carries its line down holds still under the pointer, as a
-   board card does: a theme's 3px slide moved the extension off the entry
-   below it, which showed past its edge, and at Windows' fractional scaling
-   drew its sides blurred or a pixel wide. */
-.card:hover, .note:hover, .task-row:hover, .home-row:hover, .tag-row:hover { transform: none; }
-/* The entry under the pointer is lifted above the ones after it, which its
-   extension lies over. The sidebar lifts its own notes higher still. */
-.card:hover, .card:focus-within, .task-row:hover, .task-row:focus-within,
-.home-row:hover, .home-row:focus-within, .tag-row:hover, .tag-row:focus-within,
-.board-card:hover, .board-card:focus-within { z-index: 2; }
-/* The extension is the entry's own frame carried down: its background,
-   border and inner shading, taken from the entry as it is drawn now, hover
-   colors included. It starts a little inside the entry so it covers the
-   bottom border and any rounded corners, and draws a new bottom edge. */
-.card:hover::after, .card:focus-within::after,
-.note:hover::after, .note:focus-within::after,
-.task-row:hover::after, .task-row:focus-within::after,
-.home-row:hover::after, .home-row:focus-within::after,
-.tag-row:hover::after, .tag-row:focus-within::after,
-.board-card:hover::after, .board-card:focus-within::after {
-  content: '';
-  position: absolute;
-  z-index: 1;
-  top: calc(100% - 6px);
-  /* A theme that frames one side only, as LCARS does with its 7px left
-     bar and no right edge, says so per side; the extension then ends at
-     the entry's own edge instead of reaching past it into the scroller. */
-  left: calc(-1 * var(--frame-left, var(--frame)));
-  right: calc(-1 * var(--frame-right, var(--frame)));
-  box-sizing: border-box;
-  height: calc(var(--reach) + 6px + var(--frame));
-  border: inherit;
-  border-top: 0;
-  /* The entry's bottom corners move down to the extension: a theme that
-     rounds them says so with --corner-bl and --corner-br, and the entry
-     under the pointer gives its own up (below), so the frame is one shape
-     from the title to the last line rather than a notch where they met. */
-  border-radius: 0 0 var(--corner-br, 0) var(--corner-bl, 0);
-  background: inherit;
-  box-shadow: inherit;
-  /* Its glow, in a theme that draws one, runs down its sides and along its
-     foot, never back up over the entry: cut at its own top edge, so the
-     glow frames the line it carries rather than banding across the entry. */
-  clip-path: inset(0 -40px -40px -40px);
-  pointer-events: none;
-}
-.card:hover, .card:focus-within, .note:hover, .note:focus-within,
-.task-row:hover, .task-row:focus-within, .board-card:hover, .board-card:focus-within,
-.home-row:hover, .home-row:focus-within, .tag-row:hover, .tag-row:focus-within { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-/* A task row's corners are cut, and a cut frame clips what reaches outside
-   it, so under the pointer the cut moves down to the new bottom corner. */
-.task-row:hover, .task-row:focus-within, .tag-row:hover, .tag-row:focus-within {
-  clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% + var(--reach) - 8px), calc(100% - 8px) calc(100% + var(--reach)), 0 calc(100% + var(--reach)));
-}
-/* One line each, cut short rather than wrapped, so the extension is always
-   the height it was made for. */
-.task-row:hover .task-source, .task-row:focus-within .task-source,
-.card:hover .source, .card:focus-within .source,
-.note:hover .source, .note:focus-within .source,
-.home-row:hover .home-row-detail, .home-row:focus-within .home-row-detail,
-.tag-row:hover .tag-count, .tag-row:focus-within .tag-count,
-.board-card:hover .task-source, .board-card:focus-within .task-source {
-  z-index: 2;
-  top: calc(100% + 2px);
-  left: var(--inset);
-  right: var(--inset);
-  width: auto;
-  height: auto;
-  margin: 0;
+.entry-details {
+  display: block;
+  min-width: 0;
+  margin: 2px 0 0;
   padding: 0;
   overflow: hidden;
+  color: var(--muted);
   font: var(--text-xs)/16px var(--font-mono);
   letter-spacing: normal;
   text-transform: none;
   white-space: nowrap;
   text-overflow: ellipsis;
-  clip-path: none;
-  color: var(--muted);
-  /* The pointer passes through the text as it does the frame under it: a
-     line that took the pointer kept its entry hovered while the pointer
-     crossed it, and the entry it covered was skipped on the way down. */
-  pointer-events: none;
 }
-.note:hover .source ~ .source, .note:focus-within .source ~ .source,
-.card:hover .source ~ .source, .card:focus-within .source ~ .source,
-.task-row:hover .task-source ~ .task-source, .task-row:focus-within .task-source ~ .task-source,
-.board-card:hover .task-source ~ .task-source, .board-card:focus-within .task-source ~ .task-source { top: calc(100% + 20px); }
-.note:hover .source ~ .source ~ .source, .note:focus-within .source ~ .source ~ .source,
-.card:hover .source ~ .source ~ .source, .card:focus-within .source ~ .source ~ .source,
-.task-row:hover .task-source ~ .task-source ~ .task-source, .task-row:focus-within .task-source ~ .task-source ~ .task-source,
-.board-card:hover .task-source ~ .task-source ~ .task-source, .board-card:focus-within .task-source ~ .task-source ~ .task-source { top: calc(100% + 38px); }
-
-/* Focus and the pointer each mark one entry. While the keyboard has focus
-   somewhere, an entry under a resting pointer no longer carries its line
-   down, so only the focused entry looks active. */
-body:has(:focus-visible) :is(.card, .note, .task-row, .home-row, .tag-row, .board-card):hover:not(:focus-within)::after { content: none; }
-body:has(:focus-visible) :is(.card, .note, .task-row, .home-row, .tag-row, .board-card):hover:not(:focus-within) :is(.source, .task-source, .home-row-detail, .tag-count) {
-  position: absolute;
-  width: 1px;
-  height: 1px;
+/* Each part is a run of the one line, in the line's own type. */
+.entry-details > * {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  overflow-wrap: normal;
+}
+/* An entry holds still under the pointer, so what it reveals shows where it
+   stands: a theme's 3px slide moved the entry, its details and its ⋯ with
+   it, and at Windows' fractional scaling drew its sides blurred. */
+.card:hover, .note:hover, .task-row:hover, .home-row:hover, .tag-row:hover { transform: none; }
+/* What an entry folds out of sight stays inside it. */
+.card, .home-row, .tag-row { position: relative; }
+/* A Home row that names a note: its file on a line of its own under the
+   label, as a card's details are, one line cut short. */
+.home-row:has(> .home-row-detail.is-file) { flex-wrap: wrap; row-gap: 0; }
+.home-row .home-row-detail.is-file {
+  flex: 1 0 100%;
+  min-width: 0;
   overflow: hidden;
-  clip-path: inset(50%);
+  font: var(--text-xs)/16px var(--font-mono);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
-/* A focused entry makes room for its carried-down line, pushing the next
-   entry down rather than covering its title, for a keyboard reader at any
-   zoom. The pointer's hover still lays the line over the next entry, so a
-   list does not jump under a moving mouse. */
-:is(.card, .note, .task-row, .home-row, .tag-row, .board-card):focus-within { margin-bottom: calc(var(--reach) + var(--space-2)); }
 
-/* Card details, all unticked (data-file-line=never on the body): an entry's
-   file and line stay folded under the pointer and focus too. */
-body[data-file-line=never] .task-row:hover .task-source, body[data-file-line=never] .task-row:focus-within .task-source,
-body[data-file-line=never] .board-card:hover .task-source, body[data-file-line=never] .board-card:focus-within .task-source,
-body[data-file-line=never] .card:hover .source, body[data-file-line=never] .card:focus-within .source,
-body[data-file-line=never] .note:hover .source, body[data-file-line=never] .note:focus-within .source,
-body[data-file-line=never] .home-row:hover .home-row-detail.is-file, body[data-file-line=never] .home-row:focus-within .home-row-detail.is-file {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-/* Card details without the file and line: a Home row's file, which has
-   nothing else to show, keeps it folded, as never does; search cards, task
-   rows, board cards, and Related Notes draw only the details ticked
-   (entryDetails.ts). */
+/* Card details, all unticked: no room is kept, and the file and line stay
+   in the tree, out of sight. A Home row's file, which shows only the file
+   and line, is folded too when they are not ticked. */
+body[data-file-line=never] .entry-details,
+body[data-file-line=never] .home-row .home-row-detail.is-file,
 body[data-details]:not([data-details~=fileAndLine]) .home-row .home-row-detail.is-file {
   position: absolute;
   width: 1px;
   height: 1px;
+  margin: 0;
   overflow: hidden;
   clip-path: inset(50%);
+  white-space: nowrap;
 }
-body[data-details]:not([data-details~=fileAndLine]) .home-row:has(.is-file):hover::after,
-body[data-details]:not([data-details~=fileAndLine]) .home-row:has(.is-file):focus-within::after,
-.card:not(:has(.source)):hover::after, .card:not(:has(.source)):focus-within::after,
-.note:not(:has(.source)):hover::after, .note:not(:has(.source)):focus-within::after,
-.task-row:not(:has(.task-source)):hover::after, .task-row:not(:has(.task-source)):focus-within::after,
-.board-card:not(:has(.task-source)):hover::after, .board-card:not(:has(.task-source)):focus-within::after { content: none; }
-/* Either way there is nothing to carry down: no frame reaches below the
-   entry, and focus pushes nothing down to make room. A home row's readout
-   is file and line when it names a note's file (is-file); when it is a
-   count (is-count), as a tag row's is, Counts decides it (display.css). */
-body[data-file-line] .card:hover::after, body[data-file-line] .card:focus-within::after,
-body[data-file-line] .note:hover::after, body[data-file-line] .note:focus-within::after,
-body[data-file-line] .task-row:hover::after, body[data-file-line] .task-row:focus-within::after,
-body[data-file-line] .board-card:hover::after, body[data-file-line] .board-card:focus-within::after,
-body[data-file-line] .home-row:has(.is-file):hover::after, body[data-file-line] .home-row:has(.is-file):focus-within::after { content: none; }
-body[data-file-line] .card:focus-within, body[data-file-line] .note:focus-within,
-body[data-file-line] .task-row:focus-within, body[data-file-line] .board-card:focus-within,
-body[data-file-line] .home-row:has(.is-file):focus-within { margin-bottom: 0; }

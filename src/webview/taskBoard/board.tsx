@@ -13,7 +13,7 @@ import { IconButton } from '../shared/buttons';
 import { DueText } from '../shared/dueText';
 import { EmptyState } from '../shared/emptyState';
 import { EllipsisIcon } from '../shared/strokeIcons';
-import { formatSourceLocation, HeadingPathSteps, plainTitle, PriorityBadge, TaskDetails, trimHeadingPath } from '../shared/taskRow';
+import { formatSourceLocation, plainTitle, PriorityBadge, TaskDetails, trimHeadingPath } from '../shared/taskRow';
 import { ParentTag } from '../shared/tagButton';
 import { TaskTitle } from '../shared/taskTitle';
 import { board, boardCardKey } from './model';
@@ -137,15 +137,6 @@ interface CardProps {
   readonly columns: readonly TaskBoardColumn[];
 }
 
-/** A card's details, carried down under it: those ticked in Card details, and the headings above it with its file and line. */
-function CardPlace({ card, fileName, steps }: { readonly card: TaskBoardCard; readonly fileName: string; readonly steps: Parameters<typeof HeadingPathSteps>[0]['steps'] }) {
-  return (
-    <>
-      <TaskDetails facts={{ location: formatSourceLocation(fileName, card.line), createdAt: card.createdAt, updatedAt: card.updatedAt }} steps={steps} />
-    </>
-  );
-}
-
 /** A card's classes: done, cancelled, or neither. */
 function cardClass(card: TaskBoardCard): string {
   return ['task board-card', card.completed ? 'completed' : '', card.status?.type === 'cancelled' ? 'cancelled' : ''].filter(Boolean).join(' ');
@@ -164,8 +155,8 @@ function BoardCard({ card, columnId, columns }: CardProps) {
   // The title as it reads names the card and its controls, not its Markdown.
   const title = plainTitle(card.titleTokens || []) || String(card.title || '');
   const fileName = String(card.filePath).split('/').pop() || card.filePath;
-  // The file and line, then the headings above, fold under the card as they
-  // do under a row.
+  // The file and line, then the headings above, go on the line the card
+  // keeps for its details, as they do on a row.
   const steps = trimHeadingPath(card.headingPath, fileName, '');
   // A short name for the card as a whole, since a focused article is read in
   // full otherwise: its title, its column, and when it is due.
@@ -206,7 +197,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
             </p>
           )
           : null}
-        <CardPlace card={card} fileName={fileName} steps={steps} />
+        <TaskDetails facts={{ location: formatSourceLocation(fileName, card.line), createdAt: card.createdAt, updatedAt: card.updatedAt }} steps={steps} />
         <IconButton
           key="menu"
           action="board-menu"

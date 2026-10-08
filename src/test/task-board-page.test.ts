@@ -124,13 +124,14 @@ suite('Task Board page', () => {
       assert.strictEqual(badge.querySelector('.priority-mark')?.textContent, '↑↑', `${layout}: the arrow says how far from the middle`);
       assert.match(badge.textContent ?? '', /Highest/);
       const details = page.text(layout === 'board' ? '.board-details' : '.task-meta') ?? '';
-      // Where the task is written folds under a card as under a row: the file
-      // and line, then the headings above it.
+      // Where the task is written is on the line a card keeps for its
+      // details, as a row's is: the file and line, then the headings above it.
       assert.deepStrictEqual(
         page.findAll(layout === 'board' ? '.board-card .task-source' : '.task-row .task-source').map((span) => span.textContent),
         ['atlas / line 2', 'Atlas'],
-        `${layout}: the two provenance lines`,
+        `${layout}: the two parts of the details line`,
       );
+      assert.strictEqual(page.findAll(layout === 'board' ? '.board-card .entry-details' : '.task-row .entry-details').length, 1, `${layout}: on one line`);
       assert.ok(!/atlas\.md/.test(details), `${layout}: the file name is not a detail`);
       assert.ok(!/PRIORITY|SCHEDULED|REPEATS/.test(details), `${layout}: the details read as written`);
       if (layout === 'list') {

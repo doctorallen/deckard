@@ -66,9 +66,6 @@
   overflow-y: auto;
 }
 .board-card { position: relative; }
-/* The last card's frame carries down past the column's scroller; this
-   leaves it room, as an extra card's height would. */
-.board-cards::after { content: ''; display: block; height: 44px; }
 /* Themes slide a row right on hover, which reads well across a wide list and
    badly in a column this narrow: the card had nowhere to go but out. It keeps
    the border and ground the same hover gives every other surface. Written to

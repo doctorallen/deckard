@@ -430,9 +430,10 @@ suite('Component primitives', () => {
       assert.ok(!overlaps(placed, cardBox), `the tip ${JSON.stringify(placed)} covers the card`);
     });
 
-    test('a tag pair\'s tip leaves the count it folds under its row to be read', () => {
-      // As David saw it: the row's count opens under it on hover, in the
-      // row's frame carried down, and the row's tip was drawn over it.
+    test('a tag pair\'s tip leaves its count, drawn in its row, to be read', () => {
+      // As David saw it: the row's count opened under it on hover, and the
+      // row's tip was drawn over it. The count is drawn beside the tags now,
+      // so the tip goes under the row.
       const index = buildWorkspaceIndex(new Map(Array.from({ length: 3 }, (_, n) => [
         `notes/n${n}.md`,
         parseMarkdown(`notes/n${n}.md`, `# Shift ${n} #person/sable-ortiz #team/harbor\nOn the harbor shift.\n`),
@@ -451,8 +452,8 @@ suite('Component primitives', () => {
       const row = page.find('.home-row[data-query="#person/sable-ortiz AND #team/harbor"]') as HTMLElement;
       const detail = row.querySelector('.home-row-detail') as Element;
       const rowBox = { left: 10, top: 100, width: 380, height: 28 };
-      // Folded under the row, a line of 16 px, 2 px past its foot.
-      const detailBox = { left: 20, top: 130, width: 360, height: 16 };
+      // At the row's right, inside it.
+      const detailBox = { left: 300, top: 106, width: 80, height: 16 };
       layOut(page, new Map([[row, rowBox], [detail, detailBox]]));
       keyFocus(page, '.home-row[data-query="#person/sable-ortiz AND #team/harbor"]');
       const placed = tipBox(page);
@@ -462,9 +463,10 @@ suite('Component primitives', () => {
     });
 
     test('every card or row that shows more of itself on hover says so to the tip', () => {
-      // provenance.css folds a line under each of these, and a saved
-      // search's criteria open under its row; the tip keeps off them only
-      // where the card says it shows them (data-tip-around).
+      // Each of these shows more of itself on hover: a card's details on its
+      // line, a panel its score opens, and a saved search's criteria under
+      // its row; the tip keeps off them only where the card says it shows
+      // them (data-tip-around).
       const opening = '.note, .card, .task-row, .home-row, .tag-row, .board-card, .saved-filter-row';
       let seen = 0;
       const read = readGoldens((surface, body) => {
@@ -514,15 +516,14 @@ suite('Component primitives', () => {
 
   suite('popovers and menus (9e)', () => {
     test('no sheet stacks by a number of its own, outside the named exceptions', () => {
-      // Provenance lifts an entry over the next (Decision 5), and the graph
+      // The sidebar lifts a card over the next for the panel its score opens,
+      // a saved search's criteria open over the row below it, and the graph
       // lays its overlays over its canvas; everything else uses the scale.
+      // Card details lift nothing: they keep a line of their own.
       const allowed = [
-        /^\.board-card:hover, \.board-card:focus-within$/,
         /^\.note:hover, \.note:focus-within$/,
         /^\.saved-filter-row/,
-        /^\.card:hover, \.card:focus-within/,
-        /::after$/,
-        /\.source|\.task-source|\.home-row-detail|\.tag-count|\.saved-filter-tags/,
+        /\.saved-filter-tags/,
         /^\.overlay$|^\.graph-zoom-controls$|^\.status-line$|^\.empty-state$/,
       ];
       for (const [name, render] of pages) {

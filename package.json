@@ -1983,7 +1983,7 @@
               "updated": false
             },
             "scope": "application",
-            "description": "Which details pages draw under an entry while the pointer is on it or it has focus: its file and line, and its created and updated dates. Untick all three to draw none; a screen reader still reads the file and line. A task's created date is its own ➕ date when it has one, else its note's; its updated date is its note's. Your own choice, the same in every workspace.",
+            "description": "Which details pages draw on the one line an entry keeps for them, shown while the pointer is on it or it has focus: its file and line, and its created and updated dates. Untick all three to draw none and keep no line; a screen reader still reads the file and line. A task's created date is its own ➕ date when it has one, else its note's; its updated date is its note's. Your own choice, the same in every workspace.",
             "order": 2
           },
           "deckard.display.dates": {

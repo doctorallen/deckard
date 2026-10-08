@@ -133,6 +133,9 @@ const LOOKS = { cards: 'flat', tags: 'text' };
 /** Display's preferences, each away from its default: what a page writes, drawn on Home and the board. */
 const WRITTEN_HOME = { counts: 'hidden', fileAndLine: 'never', dates: 'date' };
 const WRITTEN_BOARD = { counts: 'hidden', dates: 'relative' };
+/** Card details, every one ticked, and none: a line kept under each card for all three, and no line at all. */
+const ALL_DETAILS = { details: 'fileAndLine created updated' };
+const NO_DETAILS = { fileAndLine: 'never' };
 /** A date format of the reader's own, full and short, as the body carries it. */
 const DATED = { dateFormat: 'ddd D MMMM YYYY', shortDateFormat: 'ddd D MMM' };
 
@@ -404,14 +407,80 @@ function statusIndex() {
 }
 
 /**
- * The Task Board, by status, grouped by a tag namespace, as a table, and
- * opened from the Tasks view's search icon to edit what the view lists.
+ * The Task Board drawn to show what a hovered card or row reveals: as a
+ * table, whose rows' ⋯ shows on hover, and with every card detail and with
+ * none, a line kept under each card for all three or no line at all.
+ *
+ * @param {object} boardIndex The workspace the other board surfaces draw.
+ * @param {object} preferences The preference services, whose reader holds what is stored.
+ * @returns {object[]} The table, all details, and no details surfaces.
+ */
+function createRevealBoardSurfaces(boardIndex, preferences) {
+  return [
+    {
+      // The board as a table: a hovered row shows its ⋯, which is drawn at
+      // no opacity until its row is under the pointer (shared/reveal.css).
+      name: 'taskBoardTable',
+      page: 'taskBoard',
+      viewport: [900, 700],
+      snapshot: () => createTaskBoard({
+        index: boardIndex,
+        preferences: { ...preferences.reader.value, taskBoardLayout: 'table' },
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['tbody tr'],
+    },
+    {
+      // Card details all ticked: the file and line, the headings above, and
+      // the created and updated dates on the one line each card keeps for
+      // them, cut short with an ellipsis, shown on the hovered card. Drawn
+      // from the calendar's notes, whose tasks have both dates.
+      name: 'taskBoardDetails',
+      page: 'taskBoard',
+      display: ALL_DETAILS,
+      viewport: [900, 700],
+      snapshot: () => createTaskBoard({
+        index: createCalendarIndex(),
+        preferences: preferences.reader.value,
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
+      }),
+      scrollers: ['html', '.board-cards'],
+      clippers: ['.board-column'],
+      hovered: ['.board-card'],
+    },
+    {
+      // Card details all unticked: no line is kept, so the cards are as
+      // compact as they are without details, and hovering one moves nothing.
+      name: 'taskBoardNoDetails',
+      page: 'taskBoard',
+      display: NO_DETAILS,
+      viewport: [900, 700],
+      snapshot: () => createTaskBoard({
+        index: boardIndex,
+        preferences: preferences.reader.value,
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
+      }),
+      scrollers: ['html', '.board-cards'],
+      clippers: ['.board-column'],
+      hovered: ['.board-card'],
+    },
+  ];
+}
+
+/**
+ * The Task Board, by status, grouped by a tag namespace, and opened from
+ * the Tasks view's search icon to edit what the view lists.
  * Only the board's surfaces carry steps, so no other page's pixels move
  * with them.
  *
  * @param {object} boardIndex The workspace, with steps on the first task.
  * @param {object} preferences The preference services, whose reader holds what is stored.
- * @returns {object[]} The five board surfaces.
+ * @returns {object[]} The four board surfaces.
  */
 function createBoardSurfaces(boardIndex, preferences) {
   return [
@@ -443,22 +512,6 @@ function createBoardSurfaces(boardIndex, preferences) {
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
       hovered: ['.board-card'],
-    },
-    {
-      // The board as a table: a hovered row shows its ⋯, which is drawn at
-      // no opacity until its row is under the pointer (shared/reveal.css).
-      name: 'taskBoardTable',
-      page: 'taskBoard',
-      viewport: [900, 700],
-      snapshot: () => createTaskBoard({
-        index: boardIndex,
-        preferences: { ...preferences.reader.value, taskBoardLayout: 'table' },
-        search: { query: '' },
-        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
-      }),
-      scrollers: ['html'],
-      clippers: [],
-      hovered: ['tbody tr'],
     },
     {
       // Counts hidden, file and line under every card, dates as how far off.
@@ -688,11 +741,11 @@ function createRelatedNotesSurfaces(index, files) {
  */
 function createSummarySurfaces(index, preferences) {
   return [
-    // Zen folds each card's file and line away and reveals it on hover, so a
-    // hovered result is the one row that grows. The search page is where that
-    // reveal sits inside a .card-header rather than at the end of the row.
-    // Without zen it is drawn too, so its cards' tags, their three lines, and
-    // the hub line are measured in every theme.
+    // Each card keeps a line for its file and line under its title and
+    // reveals it on hover, so a hovered result grows by nothing. The search
+    // page is where that line sits inside a .card-header rather than at the
+    // end of the row. Without zen it is drawn too, so its cards' tags, their
+    // lines, and the hub line are measured in every theme.
     {
       // Stats: what needs attention first, then the totals, then what is
       // viewed most, with every panel's rows at full width.
@@ -888,6 +941,7 @@ function createSurfaces() {
   const preferences = createPreferences(createGlobalState());
   const surfaces = [
     ...createBoardSurfaces(boardIndex, preferences),
+    ...createRevealBoardSurfaces(boardIndex, preferences),
     createStatusBoardSurface(preferences),
     createParentTagBoardSurface(preferences),
     createDatedBoardSurface(boardIndex, preferences),

@@ -228,18 +228,22 @@ suite('Zen mode', () => {
 
   });
 
-  test('folds where an entry is written, in and out of zen, without leaving the tree', () => {
+  test('keeps a line for card details, in and out of zen, without leaving the tree', () => {
     const sheet = readSheet('shared/provenance.css');
+    const reveal = readSheet('shared/reveal.css');
 
-    // Folded off-screen rather than out of the tree, so it is still
-    // announced, still found by find-in-page, and comes back on focus.
-    assert.match(sheet, /\.task-row \.task-source,/);
+    // One line, cut short, revealed by opacity alone, so it takes its room
+    // at rest and nothing moves when it shows.
+    assert.match(sheet, /\.entry-details \{[^}]*white-space: nowrap;[^}]*text-overflow: ellipsis;/);
+    assert.match(reveal, /\[data-reveal\][^{]*\{ opacity: 0; \}/);
+    assert.ok(!/::after/.test(sheet), 'nothing is laid over the next entry');
+    // With nothing ticked it is folded off-screen rather than out of the
+    // tree, so a screen reader still reads where the entry is written.
+    assert.match(sheet, /body\[data-file-line=never\] \.entry-details,/);
     assert.match(sheet, /clip-path: inset\(50%\)/);
-    assert.match(sheet, /\.task-row:focus-within \.task-source/);
-    assert.ok(
-      !/\.task-source[^{]*\{[^}]*display: none/.test(sheet),
-      'provenance must not leave the accessibility tree',
-    );
+    for (const rules of [sheet, reveal]) {
+      assert.ok(!/display: none|visibility: hidden/.test(rules), 'card details and row actions never leave the accessibility tree');
+    }
     assert.ok(!/body\.zen/.test(sheet), 'it is the same with zen off');
     assert.ok(
       !/\.board-details/.test(sheet),

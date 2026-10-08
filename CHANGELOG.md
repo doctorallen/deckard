@@ -81,6 +81,21 @@
   header's **Month | Week** again as **Layout**. The gear keeps
   **Weekends**, the theme and Display, and **m** and **w** still switch
   the layout.
+- **Card details have a line of their own.** An entry's file and line,
+  and its created and updated dates when ticked, were laid over the next
+  row on hover, hiding its title and due date on Home, the Task board and
+  search results. While any detail is ticked in **Card details**, each task
+  row, board card, search card, Context card and Home note row keeps one
+  line for them under its dates, shown when you point at or focus the row,
+  and always on a touch screen, so nothing moves and nothing is covered.
+  They read on one line, cut short: *atlas / line 4 · Created
+  2026-09-12*. With none ticked no line is kept, and a screen reader still
+  reads the file and line. Escape no longer puts the line away, since it
+  covers nothing.
+- **Counts beside names show without hovering.** A tag's count in the Tags
+  tab, and a count on Home's rows such as *4 notes · 2 tasks*, showed only
+  under the pointer, folded under the row. They are drawn beside the name
+  now. **Counts** in Settings still leaves them out.
 
 ### Fixed
 

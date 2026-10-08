@@ -47,7 +47,7 @@ Each setting follows the step while it's *Auto*; set one and it stays as you set
 
 **Page width**, its own row in the gear under Theme, keeps pages *Limited* to a column at most 1000px wide, or makes them *Full*, the panel's full width, for a wide monitor. The steps never change it, and every page keeps the width you chose last.
 
-**Card details** (`deckard.display.cardDetails`) says which details an entry shows under it on hover and focus, at every step: where it is written, and its created and updated dates. Untick all three for none; a screen reader still reads where it is written. The Task Board and the Calendar always use the panel's full width, so their gears have no Page width row.
+**Card details** (`deckard.display.cardDetails`) says which details an entry shows on the line it keeps for them under its dates, at every step: where it is written, then its created and updated dates, on one line cut short. The line shows while the pointer is on the entry or it has focus, and always on a touch screen; it keeps its room either way, so nothing moves and nothing is covered. Untick all three for none: no line is kept, and a screen reader still reads where it is written. The Task Board and the Calendar always use the panel's full width, so their gears have no Page width row.
 
 Every Display setting is yours alone: it's the same in every workspace, and a workspace's settings never change how your pages look.
 

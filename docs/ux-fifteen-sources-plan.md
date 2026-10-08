@@ -475,6 +475,14 @@ three baselines, and cannot be seen on touch. E proposes showing it inline
 at rest outside zen, and revealing it in flow rather than as an overlay in
 zen. This reverses a recent, deliberate design, so it is his call.
 
+**Decided (David, 2026-10-07; plan 29, R17).** In flow, not an overlay, and
+only when details are switched on: while at least one card detail is
+ticked, every row and card keeps one line for its details under its date
+line, at every step, drawn at opacity 0 and shown on the row's hover or
+focus, and always on a screen that does not hover. With none ticked no line
+is kept, and the file and line stay in the accessibility tree. The overlay
+and its Escape dismissal are gone.
+
 ---
 
 ## Piece 10. Speed at scale

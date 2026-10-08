@@ -3,8 +3,8 @@
  * (`deckard.display.cardFrames: flat`, `deckard.display.tags: text`), hung
  * on the body's `data-cards` and `data-tags`, which the page shell writes.
  *
- * After provenance, whose carried-down line takes the row's own surface and
- * edge, and before high contrast, which keeps its own borders and colors.
+ * After card details (provenance.css) and before high contrast, which keeps
+ * its own borders and colors.
  * Neither look may draw text on a color the themes don't already check:
  * a flat row's divider is `--divider`, held to 3:1 against every surface in
  * every theme by display-tokens.test.ts, and text tags are `--tag-text`,
@@ -22,9 +22,6 @@ body[data-cards="flat"] .task-row,
 body[data-cards="flat"] .tag-row,
 body[data-cards="flat"] .entity-row,
 body[data-cards="flat"] .saved-filter-row {
-  --frame: 0px;
-  --frame-left: 0px;
-  --frame-right: 0px;
   --corner-bl: 0;
   --corner-br: 0;
   border: 0;
@@ -35,9 +32,8 @@ body[data-cards="flat"] .saved-filter-row {
   clip-path: none;
 }
 /* Under the pointer or keyboard focus a row lifts onto the card surface, its
-   text in its own colors. Hover lays its carried-down file and line over
-   the top of the next row on that surface, as a card does; focus pushes the
-   next row down (provenance.css). */
+   text in its own colors, and its card details show on the line it keeps
+   for them (provenance.css). */
 body[data-cards="flat"] .row:hover,
 body[data-cards="flat"] .card:hover,
 body[data-cards="flat"] .task:hover,

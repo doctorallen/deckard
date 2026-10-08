@@ -107,7 +107,7 @@ Every page with Preact starts from these, in `src/webview/shared/`.
 
 | Module | What a page uses |
 | --- | --- |
-| `page.ts` | `startPage({ initial, ready, view, afterDraw })`, the page's one store: `store.update(change)` draws the whole page before it returns ([decision 0014](architecture/decisions/0014-pages-render-synchronously-from-one-store.md)). Until `ready` holds, the shell's loading line stays. `startPage` first installs what every page shares: the indexing line, the busy mark, the guard that stops a click on an `aria-disabled` control, Escape putting the provenance line away, and tips. `readEmbeddedState()` reads the snapshot the shell carried. `listenForActions(root, actions, otherwise)` is the one delegated click listener, and `dispatchAction` runs the handler a `data-action` names, from a key as from a click. `onHostMessage(type, handler)` takes one kind of host message |
+| `page.ts` | `startPage({ initial, ready, view, afterDraw })`, the page's one store: `store.update(change)` draws the whole page before it returns ([decision 0014](architecture/decisions/0014-pages-render-synchronously-from-one-store.md)). Until `ready` holds, the shell's loading line stays. `startPage` first installs what every page shares: the indexing line, the busy mark, the guard that stops a click on an `aria-disabled` control, and tips. `readEmbeddedState()` reads the snapshot the shell carried. `listenForActions(root, actions, otherwise)` is the one delegated click listener, and `dispatchAction` runs the handler a `data-action` names, from a key as from a click. `onHostMessage(type, handler)` takes one kind of host message |
 | `place.ts` | `readPlace` and `restorePlace`, which the store calls around each draw, so focus goes back only when the draw took away the element that had it, found again by its `data-*` keys (task, card column, tag, widget, column, status, file, line, action, value, kind, section, date) |
 | `status.ts` | `announce(text)`, one short thing at a time to a screen reader through `#live-status`; `describeIndexing(progress)`; and `setSearchInFlight(inFlight)` for a page that runs a search |
 | `vscode.ts`, `scroll.ts` | `post(message)`, `vscodeApi()`, and `keptState()` and `keepState(change)` over `setState`; `rememberScroll` and `restoreScroll` |
@@ -521,9 +521,10 @@ says no more than the control's accessible name.
 tip (**The shared core** above).
 
 Three things keep numbers of their own, and
-`src/test/components-primitives.test.ts` lists them: the provenance lift
-(`z-index: 1/2`, Decision 5), the sidebar's `.note:hover { z-index: 20 }`,
-and the Notes Graph's overlay layers over its canvas.
+`src/test/components-primitives.test.ts` lists them: a saved search's
+criteria over the row below (`z-index: 2`), the sidebar's
+`.note:hover { z-index: 20 }`, and the Notes Graph's overlay layers over its
+canvas.
 
 ---
 
@@ -615,7 +616,7 @@ Board's list layout.
 
 | Piece | What it is |
 | --- | --- |
-| `.task-list`, `.task-row` | The grid of rows, each a `.row` with a checkbox, title, and `.task-meta` line of due date, details, file, heading, and line. |
+| `.task-list`, `.task-row` | The grid of rows, each a `.row` with a checkbox, title, a `.task-meta` line of due date and facts, and under it the `.entry-details` line of file and line, heading, and dates (**Card details** below). |
 | `<TaskListRow item draggable leading trailing entry afterSource>` | One row from a `DashboardTask`. Its due date is the host's `dueLabel`, `Overdue 15 days · 2026-09-08`, worded by `describeDueDate()` in `domain/markdown/dueWording.ts` so every list, the board, the table, and query blocks say it the same way. `draggable` marks a row that can be ranked. A parked task (`item.parked`) says **Parked** first in its meta line. A task with steps has a `.task-detail.task-steps` span after Repeats, the host's `stepsLabel` (`2 of 5 steps · next: Draft the email`). `trailing` is drawn after the words, such as the calendar panel's **Tomorrow** button, and `leading` in place of the checkbox, for a row that cannot be completed from there. Its checkbox posts through `data-action="toggle-task"`. |
 | `installRankedRows(options)` | Ranks rows by dragging them, with a ghost and a placeholder, or by **Move to top** and **Move to bottom** on their context menu. `options.kinds` names each kind of row by selector and dataset key; the page supplies `canRank`, `reorder`, `move`, and any more menu actions. A drag never starts on a control inside a row, such as a button, field, or a `<summary>`, so the control keeps its click. The Dashboard ranks tags, entities, and Home's widgets with it, the Task Board its tasks. |
 | `rankKeys(keys, key, target, before)`, `moveKeyToEdge(keys, key, toTop)` | The new order a drag or a menu choice asks for. |
@@ -654,6 +655,27 @@ after the theme, so no theme draws a control back at rest. A card's ⋯ stays
 right-click; a table row's stays a Tab stop. Add no new row menus: a new
 row action takes this rule rather than a rule of its own.
 
+### Card details
+
+`provenance.css` and `<DetailsLine parts>` (`detailsLine.tsx`) draw what
+`deckard.display.cardDetails` ticks: where an entry is written, the headings
+above it, and its created and updated dates. A task row, board card, search
+card and Context card draws them as one `.entry-details` line under its date
+line, its parts in that order joined by an `aria-hidden` dot, one line cut
+short with an ellipsis. The line carries `data-reveal` and its entry
+`data-reveal-region`, so it is drawn at no opacity until the entry is
+hovered or holds focus (the reveal rule above), and always on a screen that
+does not hover. It takes its room at rest: nothing moves when it shows, and
+nothing is laid over the next entry. A Home row that names a note keeps its
+file on a line of its own the same way.
+
+With nothing ticked the body carries `data-file-line="never"`: no room is
+kept, and the line is folded off-screen, never `display: none`, so a screen
+reader still reads the file and line. A count beside a name, on a Home row
+or a tag row, is not a card detail; it is drawn in place, and Counts decides
+it. A board card's `.board-details` carry its due date and "overdue", and are
+always drawn.
+
 ### `.row`
 
 Every openable row uses this, so none of them can quietly ship without the
@@ -674,9 +696,8 @@ saved-view rows. `npm run test:ui` fails if one of those renders without it.
 
 ## Zen mode
 
-`zen.css`. Deckard's own chrome, turned down: decoration hidden, the frame
-thinned, and each row's file and line folded away until the row is hovered or
-focused. It is not a ninth theme — a theme picks the palette, zen picks how
+`zen.css`. Deckard's own chrome, turned down: decoration hidden and the frame
+thinned. It is not a ninth theme — a theme picks the palette, zen picks how
 much frame is drawn, and the two compose.
 
 **Every rule is scoped under `body.zen`, and the sheet ships whether or not
@@ -1015,11 +1036,10 @@ It needs Chrome (`CHROME_PATH`, or the usual names) and skips itself without
 one; CI has it.
 
 Every surface runs twice, once with zen and once without
-(`LAYOUT_ONLY=cooper+zen:sidebarNotes` picks one out), because zen is the only
-thing here that makes a row grow under the pointer: it folds the file and line
-away and gives them back on hover. The search page is a zen-only surface,
-since that reveal sits inside a `.card-header` rather than at the end of a
-row.
+(`LAYOUT_ONLY=cooper+zen:sidebarNotes` picks one out). Nothing grows under the
+pointer: a row's card details keep their line at rest and are revealed in
+place (**Card details** below), and `taskBoardDetails` and
+`taskBoardNoDetails` draw the board with every detail ticked and with none.
 
 ### A page that paints
 

@@ -94,13 +94,15 @@ suite('Tip placement', () => {
     assert.strictEqual(tip.top, 200 + 6, 'under the panel, the lowest thing the card shows');
   });
 
-  test('a row\'s tip clears the line it carries down under it (Home\'s tag pairs)', () => {
-    // The row's count folds under it on hover, in the row's frame carried
-    // down --reach past its foot; the tip was drawn over it and the next row.
+  test('a row\'s tip goes under the row, which holds its count (Home\'s tag pairs)', () => {
+    // The row's count folded under it on hover, past its foot, and the tip
+    // was drawn over it and the next row. The count is drawn in the row now,
+    // and a card's details on a line it keeps for them, so nothing hangs
+    // past the row for the tip to clear.
     const row = { left: 10, top: 100, width: 380, height: 28 };
-    const detail = { left: 20, top: 130, width: 360, height: 16 };
+    const detail = { left: 300, top: 106, width: 80, height: 16 };
     const shown = open(
-      `<button id="row" class="row home-row" style="--reach: 24px" data-tip-around data-tip="8 notes carry both. Search for both.">
+      `<button id="row" class="row home-row" data-tip-around data-tip="8 notes carry both. Search for both.">
         <span class="home-row-label">#person/sable-ortiz + #team/harbor</span><span id="detail" class="home-row-detail">8× · 100%</span>
       </button>`,
       { row, detail },
@@ -108,7 +110,7 @@ suite('Tip placement', () => {
     keyFocus(shown, 'row');
     const tip = tipBox(shown);
     assert.ok(!overlaps(tip, detail), `the tip ${JSON.stringify(tip)} covers the detail`);
-    assert.ok(tip.top >= 128 + 24 + 6, `the tip (top ${tip.top}) starts past the row's frame carried down`);
+    assert.strictEqual(tip.top, 128 + 6, 'under the row');
   });
 
   test('a card with no room under what it shows has its tip above it', () => {
