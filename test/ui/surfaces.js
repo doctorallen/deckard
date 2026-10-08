@@ -9,7 +9,9 @@
 // `[event, selector]` pairs a reader's actions dispatch, such as opening a
 // menu; `css` of its own, such as the Notes Graph's hidden canvas; and
 // `pageOptions` its page is rendered with, such as the entry the debug page
-// diagnoses.
+// diagnoses. `zenHovered` names a surface's Zen regions (shared/reveal.css),
+// each hovered as well in a Zen pass, so a tool Zen quiets is measured as
+// it shows.
 const path = require('node:path');
 const { readFileSync } = require('node:fs');
 // pages.js puts the vscode stand-in in place, which the modules below need.
@@ -127,6 +129,19 @@ function createCalendarPageIndex() {
 
 const NOW = new Date(2026, 8, 21, 12).getTime();
 
+/**
+ * The regions Zen shows a page's quiet tools from, by page (plan 29, R22):
+ * hovered as well as a surface's own row in a Zen pass.
+ */
+const ZEN_REGIONS = {
+  dashboard: ['.dashboard-tabs-row[data-zen-region]'],
+  taskBoard: ['.query-workspace[data-zen-region]', '.board-column[data-zen-region]'],
+  searchPage: ['.overview-tabs-row[data-zen-region]', '.overview-pane-header[data-zen-region]'],
+  calendar: ['.calendar-row[data-zen-region]'],
+  calendarPage: ['.calendar-row[data-zen-region]'],
+  sidebarNotes: ['.context-pages-band[data-zen-region]', '.related-notes-controls[data-zen-region]'],
+};
+
 /** Flat cards and tags as text: the looks a reader turns on, drawn on a few surfaces. */
 const LOOKS = { cards: 'flat', tags: 'text' };
 
@@ -183,7 +198,7 @@ function createDashboardSurfaces(index, preferences) {
     hovered,
   });
   return [
-    dashboard('dashboardHome', 'home', { hovered: ['.home-widget .row', '.home-widget'] }),
+    { ...dashboard('dashboardHome', 'home', { hovered: ['.home-widget .row', '.home-widget'] }), zenHovered: ZEN_REGIONS.dashboard },
     // Flat cards and tags as text, the two looks a reader turns on.
     { ...dashboard('dashboardHomeLooks', 'home', { hovered: ['.home-widget .row', '.home-widget'] }), display: LOOKS },
     // No card details ticked: no details line under any row.
@@ -514,6 +529,7 @@ function createBoardSurfaces(boardIndex, preferences) {
       scrollers: ['.board-cards'],
       clippers: ['.board-column'],
       hovered: ['.board-card'],
+      zenHovered: ZEN_REGIONS.taskBoard,
     },
     {
       // Grouped by a tag namespace, the switch has five segments: it must
@@ -587,6 +603,7 @@ function createCalendarSurfaces() {
       snapshot: () => createCalendar(createCalendarIndex(), '2026-09', createQueryContext(NOW)),
       scrollers: ['html'],
       clippers: ['.day'],
+      zenHovered: ZEN_REGIONS.calendar,
     },
     {
       // The sidebar calendar as its five working days.
@@ -632,6 +649,7 @@ function createCalendarSurfaces() {
       scrollers: ['html'],
       clippers: ['.cal-chip', '.day-panel .task-row'],
       hovered: ['.cal-chip'],
+      zenHovered: ZEN_REGIONS.calendarPage,
     },
     {
       // The page under 900px: the day panel moves under the month.
@@ -674,6 +692,7 @@ function createRelatedNotesSurfaces(index, files) {
       scrollers: ['html'],
       clippers: [],
       hovered: ['.note'],
+      zenHovered: ZEN_REGIONS.sidebarNotes,
     },
     {
       // A note with no tags: the tags similar notes use, each a full-width
@@ -746,6 +765,7 @@ function createSummarySurfaces(index, preferences) {
       scrollers: ['html'],
       clippers: [],
       hovered: ['.card'],
+      zenHovered: ZEN_REGIONS.searchPage,
     },
     {
       name: 'searchPageLooks',

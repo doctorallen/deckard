@@ -209,6 +209,8 @@ function probeRestingChecks() {
  * The probe's hovered run: the first of the surface's hover targets on the
  * page is hovered, with every :hover rule rewritten to a class, and measured
  * again, and the disabled controls are hovered to see whether they light up.
+ * In a Zen pass, every Zen region the surface names (`zenHovered`) is
+ * hovered with it.
  */
 function probeHover(surface) {
   return `  let target = null;
@@ -230,6 +232,13 @@ function probeHover(surface) {
       }
     }
     target.classList.add('layout-probe-hover');
+    // In a Zen pass, the regions Zen shows a page's quiet tools from are
+    // hovered too, so each tool is measured as it shows.
+    if (document.body.dataset.controls === 'quiet') {
+      for (const sel of ${scriptJson(surface.zenHovered || [])}) {
+        document.querySelectorAll(sel).forEach((region) => region.classList.add('layout-probe-hover'));
+      }
+    }
     // Force layout so the rewritten rules apply before measuring.
     void target.offsetWidth;
     runs.push({ ...report('hovered'), transform: getComputedStyle(target).transform });

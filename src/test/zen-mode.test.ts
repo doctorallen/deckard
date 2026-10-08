@@ -37,9 +37,12 @@ class MemoryMemento implements vscode.Memento {
 }
 
 /**
- * Zen mode's promise is that it takes nothing away. The check that matters is
- * not that the eyebrow is gone — it is that the set of controls a reader can
- * reach is the same with zen on as with it off.
+ * Zen's switch: the setting, the body's marker, ⋯'s checkbox, and the sheet
+ * Zen's looks hang on. Zen's promise, that it takes nothing away and leaves
+ * every control reachable where it stands, is held by 'Zen keeps every
+ * control on the page' and the rest of Zen's contract in
+ * zen-controls.test.ts, which draw each page with Zen on and off without
+ * VS Code, so they run with the unit suites.
  */
 suite('Zen mode', () => {
   const pages: WebviewPage[] = [];
@@ -114,21 +117,6 @@ suite('Zen mode', () => {
     return page;
   };
 
-  /** Everything a reader can act on, as the page draws it. */
-  const controls = (page: WebviewPage): string[] =>
-    page
-      .findAll('button, input, select, a, summary, [data-action], [tabindex]')
-      .map((element) =>
-        [
-          element.tagName.toLowerCase(),
-          element.getAttribute('data-action') ?? '',
-          element.getAttribute('data-value') ?? '',
-          element.getAttribute('type') ?? '',
-          (element.textContent ?? '').trim().slice(0, 40),
-        ].join('|'),
-      )
-      .sort();
-
   test('reads the setting, and is off until it is asked for', async () => {
     assert.strictEqual(isZenModeEnabled(), false);
     await setZen(true);
@@ -154,23 +142,6 @@ suite('Zen mode', () => {
     assert.strictEqual(zenOf(on), true, 'on does not mark the body');
     assert.ok(pageSheets(off).includes('body[data-density=compact] {'), 'the sheet ships when zen is off');
     assert.ok(pageSheets(on).includes('body[data-density=compact] {'), 'the sheet ships when zen is on');
-  });
-
-  test('takes no control away from the Dashboard', async () => {
-    const before = controls(dashboard());
-    await setZen(true);
-    const after = controls(dashboard());
-
-    assert.deepStrictEqual(after, before);
-    assert.ok(before.length > 10, 'the page drew something to compare');
-  });
-
-  test('takes no control away from a search page', async () => {
-    const before = controls(searchPage());
-    await setZen(true);
-    const after = controls(searchPage());
-
-    assert.deepStrictEqual(after, before);
   });
 
   test('offers ⋯ a Zen checkbox, in Appearance, that says whether Zen is on', async () => {
