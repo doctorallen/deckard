@@ -67,6 +67,16 @@
 - **Zen's plain type is plain everywhere.** Under Zen and Quiet, buttons,
   tabs and widget titles lose their capitals and letter-spacing too, as
   headings already did, in every theme.
+- **A row's own button shows when you reach the row.** The Calendar day
+  panel's **Tomorrow** (**Next day** on a later day), a board card's **⋯**
+  and a table or list row's **⋯** were drawn on every row, ten down a day
+  and fifty down a full board. Each now shows on the row under the pointer
+  or with focus, and while its menu is open, and always on a touch screen.
+  Nothing moves when it shows, and each keeps its keys: right-click a
+  card, or press Shift+F10, the menu key or Alt+Enter, for its menu, and a
+  table row's **⋯** is still a Tab stop. An empty board column says *Drag
+  a card here, or right-click one.*, and the board's key sheet lists
+  Shift+F10.
 
 ### Fixed
 

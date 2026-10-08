@@ -1,0 +1,21 @@
+/*
+ * One reveal rule for a row's own actions: the calendar day panel's
+ * Tomorrow or Next day, a board card's ⋯, and a list or table row's ⋯.
+ *
+ * Each was drawn on every row at every step, ten Next day buttons down a day
+ * and fifty ⋯ down a full board, though right-click and the menu keys
+ * already open the same menu. A control marked `data-reveal` is drawn at no
+ * opacity while the pointer is off its `data-reveal-region` and focus is
+ * outside it, and shows on the region's hover or focus, on its own keyboard
+ * focus, and while the menu it opens is open, as Context's link button does
+ * (sidebarNotes/notes.css). A region or control marked `data-reveal-keep`
+ * keeps it shown, and so does a screen with no pointer that hovers.
+ *
+ * Opacity only: never display or visibility, so each control keeps its
+ * place, its Tab stop and its name for a screen reader, and nothing moves
+ * when it shows. It comes after the theme, so no theme draws one back.
+ */
+
+@media (hover: hover) {
+  [data-reveal-region]:not(:hover, :focus-within, [data-reveal-keep]) [data-reveal]:not(:focus-visible, [aria-expanded="true"], [data-reveal-keep]) { opacity: 0; }
+}

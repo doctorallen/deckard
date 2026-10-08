@@ -6,6 +6,7 @@
  */
 @import "./controlEdge.css";
 @import "./provenance.css";
+@import "./reveal.css";
 @import "./displayLooks.css";
 @import "./highContrast.css";
 @import "./cardTag.css";

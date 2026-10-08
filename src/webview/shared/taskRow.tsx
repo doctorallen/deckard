@@ -220,7 +220,7 @@ export function TaskListRow({ item, draggable, leading, trailing, entry, afterSo
   }
   const steps = trimHeadingPath(item.headingPath, item.fileName, '');
   return (
-    <div data-search-entry={entry} class={rowClass} draggable={false} tabIndex={0} data-tip-around="" data-task-id={task.id} data-file-path={task.filePath} data-line={task.lineNumber}>
+    <div data-search-entry={entry} class={rowClass} draggable={false} tabIndex={0} data-tip-around="" data-reveal-region="" data-task-id={task.id} data-file-path={task.filePath} data-line={task.lineNumber}>
       {leading === undefined
         ? <TaskBox taskId={task.id} completed={task.completed} status={item.status} title={plainTitle(item.titleTokens) || task.title} />
         : leading}

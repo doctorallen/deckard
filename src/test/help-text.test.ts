@@ -72,8 +72,8 @@ suite('Help text', () => {
     page = openWebviewPage(renderPage('taskBoard'), board);
     const empty = page.findAll('.board-empty').find((line) => line.querySelector('.help-text'));
     assert.ok(empty, 'a droppable column with nothing in it');
-    assert.strictEqual(empty?.textContent, 'No tasks. Drag a card here, or move one with its ⋯ menu.', 'the words are as they were');
-    assert.strictEqual(empty?.querySelector('.help-text')?.textContent, ' Drag a card here, or move one with its ⋯ menu.', 'the state line stays outside the class');
+    assert.strictEqual(empty?.textContent, 'No tasks. Drag a card here, or right-click one.', 'the words are as they were');
+    assert.strictEqual(empty?.querySelector('.help-text')?.textContent, ' Drag a card here, or right-click one.', 'the state line stays outside the class');
     assert.ok(taught(page).includes('Columns when grouped by Status, one per status in your list. Tick one to show it, drag to set the order. Done is always a column; a character no status names gets one of its own.'));
     assert.strictEqual(page.find('.board-count').classList.contains('help-text'), false, 'a count is never help');
     holdsNoControl(page);

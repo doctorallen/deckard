@@ -74,7 +74,7 @@ Select a day, the mark beside a week, or the month's name to open its note; Deck
 **The day panel.** Choose **Open Day Panel** from the Calendar's `…` menu to show the chosen day under the month; **Close Day Panel** takes it away, and the Calendar keeps your choice. A click, Space, or arrow keys then choose a day; double-click or Enter opens its note. The panel shows:
 
 - the day's name, such as *Friday, September 25 · Today*, and its daily note, **Open** or **Create**;
-- tasks due, then scheduled, five of each with **Show 7 more**, each with a checkbox and a **Tomorrow** button (**Next day** after tomorrow) that moves its date, with Undo;
+- tasks due, then scheduled, five of each with **Show 7 more**, each with a checkbox and a **Tomorrow** button (**Next day** after tomorrow) that moves its date, with Undo, shown on the row under the pointer or with focus;
 - tasks done that day, folded; uncheck to reopen;
 - notes created that day, apart from daily, weekly, and monthly notes. After five, **Search all 14** opens `created = 2026-09-25`.
 

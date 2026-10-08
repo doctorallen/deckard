@@ -61,7 +61,7 @@ The board is one Tab stop. Arrow keys move between cards and columns. On a focus
 - **e** opens the task editor; **s** [breaks it into steps](tasks.md#breaking-a-task-into-steps); **Enter** opens its line, and **Cmd+Enter** (Ctrl+Enter on Windows and Linux) opens it beside the board.
 - **?** lists the keys.
 
-A card's **⋯** menu checks the task's current status, priority, and due date, and shows the key for each choice; the keys work in the menu too.
+A card's **⋯** menu checks the task's current status, priority, and due date, and shows the key for each choice; the keys work in the menu too. The **⋯** shows on the card under the pointer or with focus, and on a touch screen always. Right-click a card, or press <kbd>Shift</kbd>+<kbd>F10</kbd>, the menu key, or <kbd>Alt</kbd>+<kbd>Enter</kbd> on a focused one, to open the same menu. A table or list row's **⋯** shows the same way, and stays a <kbd>Tab</kbd> stop.
 
 ### Contexts, areas, and projects
 

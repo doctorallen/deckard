@@ -404,13 +404,14 @@ function statusIndex() {
 }
 
 /**
- * The Task Board, by status, grouped by a tag namespace, and opened from the
- * Tasks view's search icon to edit what the view lists. Only the board's
- * surfaces carry steps, so no other page's pixels move with them.
+ * The Task Board, by status, grouped by a tag namespace, as a table, and
+ * opened from the Tasks view's search icon to edit what the view lists.
+ * Only the board's surfaces carry steps, so no other page's pixels move
+ * with them.
  *
  * @param {object} boardIndex The workspace, with steps on the first task.
  * @param {object} preferences The preference services, whose reader holds what is stored.
- * @returns {object[]} The three board surfaces.
+ * @returns {object[]} The five board surfaces.
  */
 function createBoardSurfaces(boardIndex, preferences) {
   return [
@@ -442,6 +443,22 @@ function createBoardSurfaces(boardIndex, preferences) {
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
       hovered: ['.board-card'],
+    },
+    {
+      // The board as a table: a hovered row shows its ⋯, which is drawn at
+      // no opacity until its row is under the pointer (shared/reveal.css).
+      name: 'taskBoardTable',
+      page: 'taskBoard',
+      viewport: [900, 700],
+      snapshot: () => createTaskBoard({
+        index: boardIndex,
+        preferences: { ...preferences.reader.value, taskBoardLayout: 'table' },
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['tbody tr'],
     },
     {
       // Counts hidden, file and line under every card, dates as how far off.

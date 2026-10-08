@@ -37,6 +37,7 @@ function DayTask({ item, field, move }: { readonly item: DashboardTask; readonly
       <button
         type="button"
         class="day-move"
+        data-reveal=""
         data-action="move-task"
         data-task-id={item.task.id}
         data-field={field}

@@ -184,6 +184,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
       class={cardClass(card)}
       draggable={true}
       data-tip-around=""
+      data-reveal-region=""
       tabIndex={tabStop ? 0 : -1}
       aria-label={cardName}
       aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
@@ -213,7 +214,7 @@ function BoardCard({ card, columnId, columns }: CardProps) {
           label={`Change ${title}: status, priority, or due date`}
           tip="Change this task"
           icon={<EllipsisIcon />}
-          attributes={{ tabindex: '-1', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }}
+          attributes={{ tabindex: '-1', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'data-reveal': '' }}
         />
       </div>
     </article>
@@ -310,7 +311,7 @@ function ColumnCards({ column, cards, columns }: { readonly column: TaskBoardCol
     return (
       <div class="board-cards">
         {column.droppable
-          ? <EmptyState class="board-empty" state="No tasks." teach="Drag a card here, or move one with its ⋯ menu." />
+          ? <EmptyState class="board-empty" state="No tasks." teach="Drag a card here, or right-click one." />
           : <EmptyState class="board-empty" state="No tasks" />}
       </div>
     );

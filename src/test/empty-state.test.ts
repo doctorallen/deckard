@@ -36,12 +36,12 @@ suite('Empty state', () => {
   });
 
   test('the teaching line follows, marked help-text, and the words read as one sentence did', () => {
-    const line = draw({ state: 'No tasks.', teach: 'Drag a card here, or move one with its ⋯ menu.', class: 'board-empty' });
+    const line = draw({ state: 'No tasks.', teach: 'Drag a card here, or right-click one.', class: 'board-empty' });
     assert.strictEqual(line.className, 'board-empty');
-    assert.strictEqual(line.textContent, 'No tasks. Drag a card here, or move one with its ⋯ menu.');
+    assert.strictEqual(line.textContent, 'No tasks. Drag a card here, or right-click one.');
     const taught = line.querySelectorAll('.help-text');
     assert.strictEqual(taught.length, 1);
-    assert.strictEqual(taught[0].textContent, ' Drag a card here, or move one with its ⋯ menu.');
+    assert.strictEqual(taught[0].textContent, ' Drag a card here, or right-click one.');
     // Hidden, the state line is what is left.
     taught[0].remove();
     assert.strictEqual(line.textContent, 'No tasks.', 'the state line is never inside the help');

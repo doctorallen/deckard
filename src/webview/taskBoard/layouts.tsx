@@ -22,7 +22,7 @@ function RowMenuButton({ taskId, title }: { readonly taskId: string; readonly ti
       label={`Change ${title}: status, priority, or due date`}
       tip="Change this task"
       icon={<EllipsisIcon />}
-      attributes={{ 'data-task-id': taskId, 'aria-haspopup': 'menu', 'aria-expanded': 'false' }}
+      attributes={{ 'data-task-id': taskId, 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'data-reveal': '' }}
     />
   );
 }
@@ -99,7 +99,7 @@ export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot
         {table.rows.map((row) => {
           const title = row.cells[titleAt] ? row.cells[titleAt].text : '';
           return (
-            <tr key={row.taskId} class={['result-row', row.completed ? 'completed' : '', row.status?.type === 'cancelled' ? 'cancelled' : ''].filter(Boolean).join(' ')} tabIndex={0} data-task-id={row.taskId} data-file-path={row.filePath} data-line={row.line}>
+            <tr key={row.taskId} class={['result-row', row.completed ? 'completed' : '', row.status?.type === 'cancelled' ? 'cancelled' : ''].filter(Boolean).join(' ')} tabIndex={0} data-reveal-region="" data-task-id={row.taskId} data-file-path={row.filePath} data-line={row.line}>
               <td class="result-check"><input type="checkbox" data-action="toggle-task" data-task-id={row.taskId} {...statusBoxProps(row.completed, row.status)} aria-label={describeBox(title, row.status)} /></td>
               {row.cells.map((cell, at) => {
                 const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '', at === titleAt ? 'result-title' : ''].filter(Boolean).join(' ');

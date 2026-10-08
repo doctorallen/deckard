@@ -17,7 +17,7 @@ Deckard is built to be used with a keyboard, a screen reader, high contrast, and
 | --- | --- |
 | Anywhere | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> Find, <kbd>…</kbd>+<kbd>N</kbd> Add Task, <kbd>…</kbd>+<kbd>D</kbd> today's note, <kbd>…</kbd>+<kbd>P</kbd> Go to… any page (<kbd>Cmd</kbd> for <kbd>Ctrl</kbd> on macOS) |
 | Any right-click menu | <kbd>Shift</kbd>+<kbd>F10</kbd>, the context-menu key, or <kbd>Alt</kbd>+<kbd>Enter</kbd> opens it on what has focus; arrows move, <kbd>Enter</kbd> chooses, <kbd>Escape</kbd> closes |
-| Task board | One Tab stop; arrows move between cards and columns; on a card, **x** done, **t**/**m** due today or tomorrow, **d** a date, **f** who it is for, **1**–**5** priority, **[** and **]** the next column, **e** edit, **?** every key. See [Task board: Keyboard](task-board.md#keyboard) |
+| Task board | One Tab stop; arrows move between cards and columns; on a card, **x** done, **t**/**m** due today or tomorrow, **d** a date, **f** who it is for, **1**–**5** priority, **[** and **]** the next column, **e** edit, <kbd>Shift</kbd>+<kbd>F10</kbd> its **⋯** menu, **?** every key. See [Task board: Keyboard](task-board.md#keyboard) |
 | A card's **⋯** menu | Each item shows its one-key shortcut |
 | Deckard's pages, atop Context | One Tab stop, a toolbar named *Deckard pages*; <kbd>Down</kbd> and <kbd>Up</kbd> move through the list, <kbd>Right</kbd> and <kbd>Left</kbd> through the icons, <kbd>Home</kbd> and <kbd>End</kbd> to either end, <kbd>Enter</kbd> opens. The page in front is read as the current page |
 | **DECKARD ▾** atop a page | <kbd>Enter</kbd> or <kbd>Space</kbd> drops the menu of pages; arrows move, <kbd>Enter</kbd> goes, <kbd>Escape</kbd> closes it and returns to DECKARD |

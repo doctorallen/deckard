@@ -54,17 +54,19 @@ const KNOWN = new Set([]);
  * sees it. Each is measured at rest and hovered: the calendar's week mark,
  * whose icon LCARS once drew in its buttons' black on the calendar's own
  * black; the Task Board's move menu, which takes the hover ink while its
- * menu is open; Related Notes' link button, shown when its row is hovered;
- * and the Notes Graph's zoom buttons.
+ * menu is open and which, as a table row's ⋯ does, shows only once its
+ * card or row is hovered; Related Notes' link button, shown when its row
+ * is hovered; and the Notes Graph's zoom buttons.
  */
 const ICON_CONTROLS = ['.week-label', '.board-move', '.insert-link', '.zoom-controls button'];
 
 /**
  * Controls whose words are measured hovered as well as at rest, by
  * selector: the sidebar calendar's days, where the theme's hover ground
- * meets the muted ink of a day outside the month.
+ * meets the muted ink of a day outside the month; and the day panel's
+ * Tomorrow, drawn only once its row is hovered (shared/reveal.css).
  */
-const HOVERED_TEXT = ['.day'];
+const HOVERED_TEXT = ['.day', '.day-move'];
 
 /**
  * Text a page holds hidden and shows only for a moment, by selector, which
@@ -142,6 +144,9 @@ const PROBE = `
     if (el.closest('[disabled], [aria-disabled="true"]')) return;
     const own = [...el.childNodes].some(function (n) { return n.nodeType === 3 && n.textContent.trim(); });
     if (!own || !shown(el)) return;
+    // Words drawn at no opacity are not shown yet, as a row's revealed
+    // action is until its row is hovered; they are measured where they show.
+    if (opacity(el) === 0) return;
     const style = getComputedStyle(el);
     const fg = parse(style.color);
     if (!fg) return;

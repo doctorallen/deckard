@@ -170,11 +170,14 @@ suite('The shared task parts draw what the template script drew', () => {
       for (const [how, now] of options) {
         const drawn = drawnNow(element('TaskListRow', { item, ...now }));
         // The row now tells the tip to keep off the line it folds under it
-        // (data-tip-around), which the template's row never did: that is
-        // checked here, and the rest is held to the recording.
+        // (data-tip-around), and is the region its own actions show in
+        // (data-reveal-region), which the template's row never did: those
+        // are checked here, and the rest is held to the recording.
         const row = drawn.querySelector('.task-row') as Element;
         assert.strictEqual(row.getAttribute('data-tip-around'), '', `${what}, ${how}: the row keeps the tip off what it shows`);
+        assert.strictEqual(row.getAttribute('data-reveal-region'), '', `${what}, ${how}: the row shows its own actions on hover and focus`);
         row.removeAttribute('data-tip-around');
+        row.removeAttribute('data-reveal-region');
         assertSame(`task row ${what}, ${how}`, drawn, `${what}, ${how}`);
       }
     }

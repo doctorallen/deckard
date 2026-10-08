@@ -80,8 +80,8 @@ onHostMessage<StateMessage<DeckardStatsSnapshot>>('state', (message) => store.up
 ```
 
 Cascade order matters and is always the same: **base sheet → page rules →
-theme sheet → control edges → provenance → high contrast → card tags → zen
-sheet.** A page overrides a component by restating the rule after the
+theme sheet → control edges → provenance → reveal → high contrast → card
+tags → zen sheet.** A page overrides a component by restating the rule after the
 `@import` of `base.css`; a theme overrides tokens for everyone; card tags come
 after every theme so no theme's button rule reaches them; zen comes last
 because what it takes away is largely what a theme adds. The shell links the
@@ -591,7 +591,7 @@ without their cards.
 | `.overdue.quiet` | An overdue card's date when most of its column is overdue and it is not in the longest-overdue third (`card.overdueTone`): `--muted` text after a 6px `--danger` dot, drawn as a border so it is not a background behind the text, the word still "overdue". |
 | `.board-column` | Capped at the viewport's height, with `grid-template-rows: auto minmax(0, 1fr)` so the cards row may shrink; an auto row would size to its cards and the column would clip them with nothing to scroll. |
 | `.board-cards` | The scroller: `overflow-y: auto` with `overflow-x: hidden` said outright, since `overflow-y` alone computes the other axis to `auto` and a theme's hover slide would then put a scrollbar under the column. A hovered board card keeps `transform: none` for the same reason. |
-| `.board-card` | A `.task` card with a checkbox, inline-tag title, `.board-details`, and a corner `.board-move` menu. Each detail span is an `inline-block`: one unit to the line, breaking inside itself only when wider than the column. |
+| `.board-card` | A `.task` card with a checkbox, inline-tag title, `.board-details`, and a corner `.board-move` menu, shown by the reveal rule (below). Each detail span is an `inline-block`: one unit to the line, breaking inside itself only when wider than the column. |
 | `.board-steps` | A card whose task has steps: one `.source` line under the details, `.board-steps-label` (`2 of 5 steps`) then `.board-steps-next` (` · next: Draft the email`); the line is one line with an ellipsis, so in a narrow column the next step gives way first. Host-worded by `describeStepParts()` in `domain/markdown/taskSteps.ts` as `card.steps`; the card's `aria-label` gains the label. Muted like the details, so no color of its own. |
 | `<TaskBoard snapshot>` (`board.tsx`) | Draws the host's board, each card with `BoardCard`. Words typed in the search box hide the cards, list rows, and table rows that do not show every word, file and line included, as they are typed and after every draw; `followShownCards()` (`boardMoves.ts`) then counts each column again from the cards left, and moves the Tab stop to the first of them when the words hid it. |
 | `<GroupSwitch snapshot>` (`board.tsx`) | The Status / Priority / Due date / Person / Tag… `.segmented` switch. **Tag…** (`data-action="pick-board-namespace"`) opens a menu of the namespaces open tasks carry and, grouped by one, reads `#context`, pressed; with none in use it is `aria-disabled` and says why. |
@@ -631,6 +631,28 @@ page's open and toggle handlers serve both, and `td.is-overdue` and
 and cells with the column model in `src/ui/state/resultTable.ts`, which a
 query block's `view=table` shares, so the page only draws them.
 `.table-columns` is the gear's column picker.
+
+### Row actions: the reveal rule
+
+`reveal.css` draws a row's own action only on that row under the pointer or
+with focus in it: the calendar day panel's `.day-move` (**Tomorrow**, or
+**Next day** on a later day), a board card's `.board-move` ⋯, and a list or
+table row's ⋯ (`RowMenuButton`). The control carries `data-reveal`, and the
+row, card, or table row it acts on carries `data-reveal-region`:
+`TaskListRow`, `BoardCard`, and each `.result-row` mark themselves.
+
+| State | Drawn |
+| --- | --- |
+| At rest | `opacity: 0`, in its place, in the Tab order and the accessibility tree |
+| Region `:hover` or `:focus-within`, its own `:focus-visible`, `[aria-expanded="true"]` | Shown |
+| `[data-reveal-keep]` on the control or the region, or `@media (hover: none)` | Always shown |
+
+Opacity only, never `display` or `visibility`, so nothing moves when a
+control shows and a screen reader always finds it. The rule is in the tail,
+after the theme, so no theme draws a control back at rest. A card's ⋯ stays
+`tabindex="-1"` and opens with Shift+F10, the menu key, Alt+Enter and
+right-click; a table row's stays a Tab stop. Add no new row menus: a new
+row action takes this rule rather than a rule of its own.
 
 ### `.row`
 

@@ -634,6 +634,7 @@ const BOARD_KEYS: KeySection = {
     ['[ ]', 'Move it to the column on the left or right'],
     ['e', 'Edit the whole task'],
     ['s', 'Break it into steps'],
+    ['Shift+F10, the menu key, or Alt+Enter', 'Open its ⋯ menu'],
   ],
 };
 const LIST_KEYS: KeySection = { title: 'Ranked list', keys: [['Alt+↑, Alt+↓', 'Move a ranked task up or down']] };
