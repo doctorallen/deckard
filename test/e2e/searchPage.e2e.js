@@ -323,21 +323,20 @@ test('anything more than the one tag is a search, shown by its box alone', async
   assert.deepStrictEqual(view.state, { query: '#project/atlas AND @ren-kade', origin: '#project/atlas' });
 });
 
-test('Clear holds its place, and waits for more than the page\'s own tag', async () => {
+test('the field\'s × waits for more than the page\'s own tag', async () => {
   const { view } = await openOverview();
   const clear = () => view.find('[data-action="clear-query"]');
-  assert.strictEqual(clear().getAttribute('aria-disabled'), 'true', 'with nothing else, there is nothing to clear');
-  assert.strictEqual(clear().getAttribute('disabled'), null, 'it stays in the Tab order');
-  assert.strictEqual(clear().getAttribute('data-tip-disabled'), "Only this page's own tag is left");
+  assert.ok(clear().closest('.query-bar-shell'), 'it is in the field');
+  assert.strictEqual(clear().hidden, true, 'with nothing else, there is nothing to clear');
 
   view.type(view.find('[data-action="query-input"]'), 'planning');
-  assert.strictEqual(clear().getAttribute('aria-disabled'), null, 'typing more makes it live');
+  assert.strictEqual(clear().hidden, false, 'typing more draws it');
 
   view.type(view.find('[data-action="query-input"]'), '');
-  assert.strictEqual(clear().getAttribute('aria-disabled'), 'true', 'and back to the tag alone, it waits again');
+  assert.strictEqual(clear().hidden, true, 'and back to the tag alone, it goes again');
 });
 
-test('Clear returns the page to its own tag, header and all', async () => {
+test('the field\'s × returns the page to its own tag, header and all', async () => {
   const { view } = await openOverview();
   search(view, '@ren-kade text ~ telemetry');
   await settle();
@@ -349,7 +348,7 @@ test('Clear returns the page to its own tag, header and all', async () => {
   assert.strictEqual(box(view), '#project/atlas');
   assert.strictEqual(title(view), 'Project: Atlas');
   assert.deepStrictEqual(visibleTitles(view), ['Atlas planning', 'Shutdown telemetry audit']);
-  assert.strictEqual(view.find('[data-action="clear-query"]').getAttribute('aria-disabled'), 'true');
+  assert.strictEqual(view.find('[data-action="clear-query"]').hidden, true);
 });
 
 test('plain words narrow the whole search as they are typed', async () => {
@@ -883,7 +882,7 @@ test('text not added as a term is let go when the box loses focus', async () => 
   view.type(bar, 'half typed');
   assert.strictEqual(box(view), '#project/atlas AND half typed');
 
-  // Moving to the box's own Search button keeps it.
+  // Moving to the field's own → keeps it.
   view.fire('focusout', bar, { relatedTarget: view.find('[data-action="apply-query"]') });
   assert.strictEqual(typed(view), 'half typed');
 
@@ -893,7 +892,7 @@ test('text not added as a term is let go when the box loses focus', async () => 
   assert.deepStrictEqual(visibleTitles(view), ['Atlas planning', 'Shutdown telemetry audit'], 'its words no longer hide anything');
 });
 
-test('Clear empties the field as well as the chips', async () => {
+test('the field\'s × empties the field as well as the chips', async () => {
   const { view } = await openOverview();
   search(view, '@ren-kade');
   await settle();

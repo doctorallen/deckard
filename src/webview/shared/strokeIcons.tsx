@@ -132,3 +132,13 @@ export function LinkIcon() {
     </StrokeIcon>
   );
 }
+
+/** A hammer: Builder, which builds a search one condition at a time. */
+export function HammerIcon() {
+  return (
+    <StrokeIcon className="toolbar-icon query-builder-icon">
+      <path d="M2.5 13.5 9.3 6.7" />
+      <path d="M9.1 1.9 14.1 6.9 11.9 9.1 6.9 4.1Z" />
+    </StrokeIcon>
+  );
+}

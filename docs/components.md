@@ -252,8 +252,10 @@ re-declare the same names.
 overdue and only overdue, and a theme that wants another mapping
 re-declares the meaning tokens rather than every rule. A negated search
 term is a dashed, struck chip in the muted color, not a red one. The one
-filled control on a page is the primary action (`.query-apply`, or a
-page's own `.query-primary`); a chosen segment is marked, not filled.
+filled control on a page is the primary action (a page's own
+`.query-primary`, such as the Task Board's Save to Tasks view); the search
+box's own controls are never filled, and a chosen segment is marked, not
+filled.
 
 **Paired tokens are not synonyms.** `--amber` and `--amber-bright` share a
 default, but themes pull them apart — Synthwave makes `--amber` pink and
@@ -325,7 +327,7 @@ a page, or a theme, carries the zero-weight guard `ENABLED`
 one that does not. At rest both kinds are drawn at half opacity.
 
 - **`aria-disabled="true"` with `data-tip-disabled`** for a control that
-  holds its place in a bar: Save, Clear, Back, and Forward. It stays in the
+  holds its place in a bar: Save, Back, and Forward. It stays in the
   Tab order, focus shows its reason as the tip, and one capture-phase click
   listener, which `startPage` installs, swallows its click, so no page
   handler checks. The query editor's `syncTextButtons` flips `aria-disabled` in
@@ -725,11 +727,16 @@ what the page can find, such as `['tasks']` on the Task Board, so the result
 count names only those. `options.refineElsewhere()` returns true while the
 Related Notes sidebar shows the page's Refine options, and `facets()`
 then draws a single line in their place. `options.actions(hasText)` draws
-the page's own buttons after Clear, such as the Task Board's Save; one that
-needs text carries `data-query-needs-text`. Search is the bar's filled
-button (`.query-apply`) unless `options.ownPrimary()` returns true: then a
-page's own button marked `.query-primary` is, and Search is drawn as the
-others are, as on the Task Board while it edits what the Tasks view lists.
+the page's own buttons after the field, such as the Task Board's Save; one
+that needs text carries `data-query-needs-text`. The bar has no Search or
+Clear button. **Builder** (`.query-builder-toggle`, with `<HammerIcon>`) is
+joined to the start of the field in a `.query-field-group`, carries
+`aria-expanded`, and is drawn pressed (`.active`) while the builder is open
+under the field; `controlEdge.css` joins the two after the themes. The field
+ends in two `.query-field-glyph` buttons: `.query-clear` (×), drawn only
+while `canClear()` holds, which `syncTextButtons` keeps in place as a search
+is typed, and `.query-run` (→), which runs the search as Enter does. None of
+them is filled.
 `.search-notice`, in the same sheet, is the line above a search that says
 what the reader is looking at, with a way out: the Tags tab's kept search,
 and the Task Board's Tasks view strip.

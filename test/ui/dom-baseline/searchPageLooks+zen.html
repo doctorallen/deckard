@@ -562,59 +562,87 @@
       data-has-text=""
     ><div
         class="query-bar-row"
-      ><span
-          class="query-bar-shell query-input-shell"
-          data-query-text="#project/atlas"
+      ><div
+          class="query-field-group"
         ><button
-            aria-label="Remove #project/atlas"
-            class="is-tag query-chip"
-            data-action="remove-term"
-            data-tip="Remove #project/atlas"
-            data-tip-overflow="#project/atlas"
-            data-without=""
-            type="button"
-          ><span
-              class="query-chip-label"
-            >#project/atlas</span
-            ><span
-              aria-hidden="true"
-              class="query-chip-remove"
-            >×</span
-            ></button
-          ><input
-            aria-autocomplete="list"
-            aria-controls="suggestions-query"
             aria-expanded="false"
-            aria-label="Search notes and tasks: add a term"
-            autocomplete="off"
-            class="query-input"
-            data-action="query-input"
-            data-dom-value=""
-            data-suggest-key="query"
-            placeholder=""
-            role="combobox"
-            spellcheck="false"
-            type="text"
-          ><div
-            aria-label="Suggestions"
-            class="is-dropdown popover query-suggestions"
-            data-suggestions="query"
-            hidden=""
-            id="suggestions-query"
-            role="listbox"
+            class="query-builder-toggle"
+            data-action="toggle-builder"
+            data-tip="Build the search one condition at a time"
+          ><svg
+              aria-hidden="true"
+              class="query-builder-icon toolbar-icon"
+              fill="none"
+              focusable="false"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><path
+                d="M2.5 13.5 9.3 6.7"
+              ></path
+              ><path
+                d="M9.1 1.9 14.1 6.9 11.9 9.1 6.9 4.1Z"
+              ></path
+              ></svg
+            >Builder</button
+          ><span
+            class="query-bar-shell query-input-shell"
+            data-query-text="#project/atlas"
+          ><button
+              aria-label="Remove #project/atlas"
+              class="is-tag query-chip"
+              data-action="remove-term"
+              data-tip="Remove #project/atlas"
+              data-tip-overflow="#project/atlas"
+              data-without=""
+              type="button"
+            ><span
+                class="query-chip-label"
+              >#project/atlas</span
+              ><span
+                aria-hidden="true"
+                class="query-chip-remove"
+              >×</span
+              ></button
+            ><input
+              aria-autocomplete="list"
+              aria-controls="suggestions-query"
+              aria-expanded="false"
+              aria-label="Search notes and tasks: add a term"
+              autocomplete="off"
+              class="query-input"
+              data-action="query-input"
+              data-dom-value=""
+              data-suggest-key="query"
+              placeholder=""
+              role="combobox"
+              spellcheck="false"
+              type="text"
+            ><button
+              aria-label="Clear the search"
+              class="query-clear query-field-glyph"
+              data-action="clear-query"
+              data-tip="Clear the search"
+            >×</button
+            ><button
+              aria-label="Search"
+              class="query-field-glyph query-run"
+              data-action="apply-query"
+              data-tip="Run this search"
+              data-tip-key="Enter"
+            >→</button
+            ><div
+              aria-label="Suggestions"
+              class="is-dropdown popover query-suggestions"
+              data-suggestions="query"
+              hidden=""
+              id="suggestions-query"
+              role="listbox"
+            ></div
+            ></span
           ></div
-          ></span
-        ><button
-          class="query-apply"
-          data-action="apply-query"
-          data-tip="Run this search"
-        >Search</button
-        ><button
-          data-action="clear-query"
-          data-query-clears=""
-          data-tip="Clear the search"
-          data-tip-disabled="The search is already empty"
-        >Clear</button
         ><button
           data-action="save-filter"
           data-query-needs-text=""
@@ -624,15 +652,12 @@
         ></div
       ><div
         class="query-status"
-      ><button
-          aria-expanded="false"
-          class="query-builder-toggle"
-          data-action="toggle-builder"
-          data-tip="Build the search one condition at a time"
-        >Builder</button
-        ><span
+      ><span
           class="query-hint"
-        >Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span
+        >Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT.<span
+            class="query-hint-key"
+          > Press / to search.</span
+          ></span
         ></div
       ></section
     ><section

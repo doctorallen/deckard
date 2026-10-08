@@ -303,56 +303,81 @@
             class="query-workspace"
           ><div
               class="query-bar-row"
-            ><span
-                class="query-bar-shell query-input-shell"
-                data-query-text=""
-              ><input
-                  aria-autocomplete="list"
-                  aria-controls="suggestions-query"
+            ><div
+                class="query-field-group"
+              ><button
                   aria-expanded="false"
-                  aria-label="Search notes and tasks"
-                  autocomplete="off"
-                  class="query-input"
-                  data-action="query-input"
-                  data-dom-value=""
-                  data-suggest-key="query"
-                  placeholder="Search notes and tasks: words, #tags, is:open, has:due, in:folder, updated >= 7d…"
-                  role="combobox"
-                  spellcheck="false"
-                  type="text"
-                ><div
-                  aria-label="Suggestions"
-                  class="is-dropdown popover query-suggestions"
-                  data-suggestions="query"
-                  hidden=""
-                  id="suggestions-query"
-                  role="listbox"
+                  class="query-builder-toggle"
+                  data-action="toggle-builder"
+                  data-tip="Build the search one condition at a time"
+                ><svg
+                    aria-hidden="true"
+                    class="query-builder-icon toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><path
+                      d="M2.5 13.5 9.3 6.7"
+                    ></path
+                    ><path
+                      d="M9.1 1.9 14.1 6.9 11.9 9.1 6.9 4.1Z"
+                    ></path
+                    ></svg
+                  >Builder</button
+                ><span
+                  class="query-bar-shell query-input-shell"
+                  data-query-text=""
+                ><input
+                    aria-autocomplete="list"
+                    aria-controls="suggestions-query"
+                    aria-expanded="false"
+                    aria-label="Search notes and tasks"
+                    autocomplete="off"
+                    class="query-input"
+                    data-action="query-input"
+                    data-dom-value=""
+                    data-suggest-key="query"
+                    placeholder="Search notes and tasks: words, #tags, is:open, has:due, in:folder, updated >= 7d…"
+                    role="combobox"
+                    spellcheck="false"
+                    type="text"
+                  ><button
+                    aria-label="Clear the search"
+                    class="query-clear query-field-glyph"
+                    data-action="clear-query"
+                    data-tip="Clear the search"
+                    hidden=""
+                  >×</button
+                  ><button
+                    aria-label="Search"
+                    class="query-field-glyph query-run"
+                    data-action="apply-query"
+                    data-tip="Run this search"
+                    data-tip-key="Enter"
+                  >→</button
+                  ><div
+                    aria-label="Suggestions"
+                    class="is-dropdown popover query-suggestions"
+                    data-suggestions="query"
+                    hidden=""
+                    id="suggestions-query"
+                    role="listbox"
+                  ></div
+                  ></span
                 ></div
-                ></span
-              ><button
-                class="query-apply"
-                data-action="apply-query"
-                data-tip="Run this search"
-              >Search</button
-              ><button
-                aria-disabled="true"
-                data-action="clear-query"
-                data-query-clears=""
-                data-tip="Clear the search"
-                data-tip-disabled="The search is already empty"
-              >Clear</button
               ></div
             ><div
               class="query-status"
-            ><button
-                aria-expanded="false"
-                class="query-builder-toggle"
-                data-action="toggle-builder"
-                data-tip="Build the search one condition at a time"
-              >Builder</button
-              ><span
+            ><span
                 class="query-hint"
-              >Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span
+              >Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT.<span
+                  class="query-hint-key"
+                > Press / to search.</span
+                ></span
               ></div
             ></section
           ></article

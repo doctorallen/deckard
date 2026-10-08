@@ -45,6 +45,7 @@ import {
   valueContext,
 } from './queryText';
 import { setSearchInFlight } from './status';
+import { HammerIcon } from './strokeIcons';
 
 /** What a page tells its search box. */
 export interface QueryEditorOptions {
@@ -63,8 +64,9 @@ export interface QueryEditorOptions {
   /** What the box searches, for assistive technology. */
   readonly label?: string;
   /**
-   * What Clear leaves in the box, such as the page's own tag on a tag
-   * overview. Empty unless given; Clear is held while the box holds only this.
+   * What clearing leaves in the box, such as the page's own tag on a tag
+   * overview. Empty unless given; the field's × is drawn only while the box
+   * holds more than this.
    */
   readonly clearedText?: () => string;
   /** What the search can find: notes and tasks unless a page lists only one. */
@@ -80,12 +82,6 @@ export interface QueryEditorOptions {
    * pointer while a search is typed.
    */
   readonly actions?: (hasText: boolean) => ComponentChildren;
-  /**
-   * True while one of `actions` is the bar's filled button, marked
-   * `query-primary`, so Search is drawn as the others are: one filled
-   * control to a page.
-   */
-  readonly ownPrimary?: () => boolean;
 }
 
 /** How a value is added to a search: AND, AND NOT, or OR beside the facet's chosen value. */
@@ -624,11 +620,6 @@ class SearchBox implements QueryEditor {
     return <TermChips terms={terms} join={query.termsJoin || 'and'} />;
   }
 
-  /** Search's class: filled, unless the page's own action is the filled one now. */
-  private searchClass(): string | undefined {
-    return this.options.ownPrimary?.() ? undefined : 'query-apply';
-  }
-
   public bar(statusControls?: ComponentChildren): ComponentChild {
     const value = this.currentText();
     const hasText = Boolean(String(value).trim());
@@ -637,42 +628,50 @@ class SearchBox implements QueryEditor {
     const terms = this.chips();
     const label = this.options.label || 'Search';
     const invalid = error === undefined ? '' : ' invalid';
+    // The / key's part of the hint says nothing once the field has focus,
+    // so it is left out then (queryEditor.css).
     const status = error === undefined
-      ? <span key="hint" class="query-hint">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT. Press / to search.</span>
+      ? <span key="hint" class="query-hint">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT.<span class="query-hint-key"> Press / to search.</span></span>
       : <span key="error" class="query-error" role="alert">{error}</span>;
+    // Builder is joined to the start of the field, and pressed while the
+    // builder is open under it. The field ends in two glyphs: × empties
+    // the search, drawn only while there is something to clear, and → runs
+    // it, as Enter does.
     return (
       <section class={searchInFlight ? 'query-workspace is-searching' : 'query-workspace'} data-has-text={hasText ? '' : undefined} aria-label={label}>
         <div class="query-bar-row">
-          <span class={`query-input-shell query-bar-shell${invalid}`} data-query-text={value}>
-            {terms}
-            <input
-              ref={this.barInput}
-              class={`query-input${invalid}`}
-              type="text"
-              data-action="query-input"
-              data-suggest-key="query"
-              {...NO_SPELLCHECK}
-              autocomplete="off"
-              role="combobox"
-              aria-expanded="false"
-              aria-autocomplete="list"
-              aria-controls="suggestions-query"
-              aria-label={terms ? `${label}: add a term` : label}
-              placeholder={terms ? '' : this.placeholder()}
-              value={this.entry}
-            />
-            <SuggestionBox suggestKey="query" />
-          </span>
-          <button class={this.searchClass()} data-action="apply-query" data-tip="Run this search">Search</button>
-          <button data-action="clear-query" data-query-clears="" data-tip="Clear the search" data-tip-disabled={this.clearReason()} aria-disabled={this.canClear(value) ? undefined : 'true'}>Clear</button>
+          <div class="query-field-group">
+            <button class={this.builderOpen ? 'query-builder-toggle active' : 'query-builder-toggle'} data-action="toggle-builder" aria-expanded={this.builderOpen} data-tip="Build the search one condition at a time"><HammerIcon />Builder</button>
+            <span class={`query-input-shell query-bar-shell${invalid}`} data-query-text={value}>
+              {terms}
+              <input
+                ref={this.barInput}
+                class={`query-input${invalid}`}
+                type="text"
+                data-action="query-input"
+                data-suggest-key="query"
+                {...NO_SPELLCHECK}
+                autocomplete="off"
+                role="combobox"
+                aria-expanded="false"
+                aria-autocomplete="list"
+                aria-controls="suggestions-query"
+                aria-label={terms ? `${label}: add a term` : label}
+                placeholder={terms ? '' : this.placeholder()}
+                value={this.entry}
+              />
+              <button class="query-field-glyph query-clear" data-action="clear-query" aria-label="Clear the search" data-tip="Clear the search" hidden={!this.canClear(value)}>×</button>
+              <button class="query-field-glyph query-run" data-action="apply-query" aria-label="Search" data-tip="Run this search" data-tip-key="Enter">→</button>
+              <SuggestionBox suggestKey="query" />
+            </span>
+          </div>
           {this.options.actions ? this.options.actions(hasText) : null}
         </div>
+        {this.builder()}
         <div class="query-status">
-          <button class="query-builder-toggle" data-action="toggle-builder" aria-expanded={this.builderOpen} data-tip="Build the search one condition at a time">{this.builderOpen ? 'Hide builder' : 'Builder'}</button>
           {status}
           {statusControls}
         </div>
-        {this.builder()}
       </section>
     );
   }
@@ -817,6 +816,7 @@ class SearchBox implements QueryEditor {
     };
     document.querySelectorAll('[data-query-needs-text]').forEach((button) => enable(button, hasText));
     document.querySelectorAll('[data-query-clears]').forEach((button) => enable(button, this.canClear(text)));
+    this.showClear(this.canClear(text));
     document.querySelectorAll('.query-bar-shell').forEach((shell) => shell.setAttribute('data-query-text', String(text || '')));
   }
 
@@ -856,7 +856,15 @@ class SearchBox implements QueryEditor {
       hold(button, !this.canClear(text));
       button.setAttribute('data-tip-disabled', this.clearReason());
     });
+    this.showClear(this.canClear(text));
     document.querySelectorAll('.query-bar-shell').forEach((shell) => shell.setAttribute('data-query-text', text));
+  }
+
+  /** Draws the field's × while there is something for it to clear, and takes it away when not. */
+  private showClear(shown: boolean): void {
+    document.querySelectorAll<HTMLElement>('.query-clear').forEach((button) => {
+      button.hidden = !shown;
+    });
   }
 
   /**
@@ -1498,7 +1506,14 @@ class SearchBox implements QueryEditor {
       this.closeSuggestions();
       this.run(this.currentText());
     },
-    'clear-query': () => this.clearSearch(),
+    'clear-query': (target) => {
+      this.clearSearch();
+      // The field's × goes once there is nothing to clear, so the caret
+      // goes back into the field rather than to the page.
+      if (target.classList.contains('query-clear')) {
+        this.restoreBarFocus(undefined);
+      }
+    },
     'query-suggestion': (target) => this.acceptSuggestion(Number(target.dataset.suggestionIndex)),
     'remove-term': (target) => {
       this.closeSuggestions();

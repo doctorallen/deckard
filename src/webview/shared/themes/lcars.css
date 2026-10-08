@@ -57,3 +57,6 @@ section[aria-labelledby="tags-heading"] .control-row { gap: 2px; } section[aria-
 /* A day outside the month, hovered, sits on the amber hover ground, where
    the muted rose read at 1.08:1; it takes the raised panel's plum, 6.92:1. */
 .day.outside:hover:where(:not(:disabled):not([aria-disabled="true"])) { color: var(--panel-raised); }
+/* Builder, joined to the start of the search field, takes the rounded end
+   on its left, where the field's own edge cannot. */
+.query-field-group > .query-builder-toggle { border-radius: 15px 0 0 15px; }

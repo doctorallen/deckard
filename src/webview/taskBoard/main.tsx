@@ -111,7 +111,6 @@ const editor = createQueryEditor({
       <button data-action="add-task" data-tip="Write a new task in the task editor, into today's note or another you choose">Add task</button>
     </>
   ),
-  ownPrimary: () => Boolean(latest?.tasksViewMode),
 });
 
 /**

@@ -631,24 +631,38 @@ suite('Tag overview query builder', () => {
   test('keeps the bar in place while a search is typed', () => {
     const view = mountTagOverview();
     view.send(createState('#project/atlas', { origin: '#project/atlas' }));
-    // Clear is always drawn, disabled while the box holds only the page's
-    // own tag, so nothing appears beside the box when typing starts.
-    const held = view.find('[data-action="clear-query"]');
-    assert.ok(held.hasAttribute('data-query-clears'));
-    assert.strictEqual(held.getAttribute('aria-disabled'), 'true');
-    // Builder sits under the box, not beside it.
-    assert.ok(
-      view.find('.query-status').contains(view.find('[data-action="toggle-builder"]')),
-      'the builder toggle is on the line under the box',
-    );
+    // No Search or Clear beside the box: → at the field's end runs it, and
+    // its × is drawn only while there is more than the page's own tag.
+    assert.deepStrictEqual(view.findAll('.query-bar-row > button').map((button) => button.getAttribute('data-action')), ['save-filter']);
+    const run = view.find('.query-bar-shell [data-action="apply-query"]');
+    assert.strictEqual(run.textContent, '→');
+    assert.ok(run.getAttribute('aria-label'), 'the glyph has a name');
+    const clear = view.find('.query-bar-shell [data-action="clear-query"]') as HTMLElement;
+    assert.strictEqual(clear.hidden, true, 'nothing to clear but the page\'s own tag');
+    // Builder is joined to the start of the field, named and drawn, and
+    // pressed while the builder is open under the field.
+    const builder = view.find('.query-field-group > [data-action="toggle-builder"]');
+    assert.strictEqual(builder, view.find('.query-field-group').firstElementChild, 'at the start of the field');
+    assert.strictEqual(builder.textContent, 'Builder');
+    assert.ok(builder.querySelector('svg.query-builder-icon'), 'with its hammer');
+    assert.strictEqual(builder.getAttribute('aria-expanded'), 'false');
+    assert.strictEqual(view.findAll('.query-status [data-action="toggle-builder"]').length, 0, 'not on the line under the box');
 
     view.posted.length = 0;
     const box = view.find('[data-suggest-key="query"]');
-    const clear = view.find('[data-action="clear-query"]');
     view.type({ dataset: { action: 'query-input', suggestKey: 'query' } }, 'vendor');
     // The shell notes what is typed in an attribute; the elements stay.
     assert.strictEqual(view.find('[data-suggest-key="query"]'), box, 'typing does not redraw the box');
     assert.strictEqual(view.find('[data-action="clear-query"]'), clear, 'or anything beside it');
+    assert.strictEqual(clear.hidden, false, 'and the × is drawn once there is more to clear');
+
+    view.click({ action: 'toggle-builder' });
+    const opened = view.find('[data-action="toggle-builder"]');
+    assert.strictEqual(opened.textContent, 'Builder', 'the same name while open');
+    assert.strictEqual(opened.getAttribute('aria-expanded'), 'true');
+    assert.ok(opened.classList.contains('active'), 'drawn pressed');
+    const panel = view.find('.query-builder');
+    assert.strictEqual(panel.previousElementSibling, view.find('.query-bar-row'), 'the builder opens under the field');
   });
 
   test('sends the query when a condition is removed', () => {

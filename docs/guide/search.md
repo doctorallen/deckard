@@ -24,7 +24,7 @@ Ties go to what you open most and most recently: a note counts once per heading 
 
 ### The search box
 
-Search pages, Home's search widget, and the Task board (tasks only) share one search box. Press <kbd>/</kbd> to type in it. **Builder** sits beside it.
+Search pages, Home's search widget, and the Task board (tasks only) share one search box. Press <kbd>/</kbd> to type in it, and <kbd>Enter</kbd> or the **→** at its end to run the search. The **×** beside it clears the search, and shows only when there is something to clear: on a tag's page, more than the tag. **Builder** is joined to the start of the box.
 
 ![A search page searching #project/meridian-vault is:open, with each term as a chip, Refine counts, and the matching tasks.](../images/notes-search.png)
 
@@ -37,7 +37,7 @@ Search pages, Home's search widget, and the Task board (tasks only) share one se
 - When nothing matches, **Nothing matched. Search for … instead?** corrects misspelled words, never tags or folders.
 - **Save** stores the search by name. Saved searches appear on Home and the Tags tab and survive tag renames.
 
-**Builder** edits the same search as nested rows and groups. Each group matches **all of** or **any of** its rows, and **not** negates a group.
+**Builder** opens under the box, and stays pressed while it is open. It edits the same search as nested rows and groups. Each group matches **all of** or **any of** its rows, and **not** negates a group.
 
 - **Add condition**: type a tag, word, or value such as `open`, then choose a completion or press <kbd>Enter</kbd>; the row fills in its field and operator.
 - <kbd>Enter</kbd> opens the next row, <kbd>Backspace</kbd> in an empty row removes it, and <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>Cmd</kbd>+<kbd>Enter</kbd> on macOS) adds a group joined the other way.

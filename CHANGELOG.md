@@ -26,6 +26,14 @@
   editor's Refactor… menu now, under one title.
 - **Edit task… and Break into steps… only in notes.** The editor offers
   them on a task line of a note, and no longer in other Markdown files.
+- **The search box has no Search or Clear button.** On search pages,
+  Home's search widget and the Task board, Enter or the **→** at the end of
+  the box runs the search, and an **×** beside it clears it, shown only
+  when there is something to clear: on a tag's page, more than the tag.
+  The filled Search button was the loudest control on each page.
+  **Builder** is joined to the start of the box, with a hammer, stays
+  pressed while it is open rather than turning into Hide builder, and
+  opens the builder right under the box.
 
 ### Fixed
 

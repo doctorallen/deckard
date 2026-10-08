@@ -19,6 +19,7 @@ import { createQueryViewState } from '../ui/state/querySuggestions';
  * run the same searches, and leave focus in the same place. The template's
  * side is its recording (templateRecords.ts), taken at each comparison as
  * the Task Board's template ran it, with a Save button and a Sorted label.
+ * The bar has changed since, and asDrawnSinceTemplate says how.
  */
 
 /** What the template drew, ran, was told, and focused, by test and step. */
@@ -55,6 +56,54 @@ const FACETS: QueryFacet[] = [
     values: Array.from({ length: 7 }, (_, at) => ({ label: `state ${at}`, count: 7 - at, clause: `status = s${at}` })),
   },
 ];
+
+/** The hammer Builder has carried since the template was recorded (HammerIcon in strokeIcons.tsx). */
+const HAMMER = '<svg class="toolbar-icon query-builder-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 13.5 9.3 6.7"></path><path d="M9.1 1.9 14.1 6.9 11.9 9.1 6.9 4.1Z"></path></svg>';
+
+/**
+ * A recorded page as the bar has been drawn since the template was
+ * recorded (plan 29, R1): no Search or Clear beside the field, which ends
+ * in × (drawn only while Clear could act) and →; Builder joined to the
+ * start of the field, pressed rather than renamed while open; the builder
+ * under the field; and the / key's part of the hint in a span of its own.
+ * Everything else is held to the recording as it was.
+ */
+function asDrawnSinceTemplate(page: WebviewPage, recorded: string): string {
+  const holder = page.document.createElement('div');
+  holder.innerHTML = recorded;
+  const make = (html: string): Element => {
+    const made = page.document.createElement('div');
+    made.innerHTML = html;
+    return made.firstElementChild as Element;
+  };
+  for (const workspace of holder.querySelectorAll('.query-workspace')) {
+    const row = workspace.querySelector(':scope > .query-bar-row') as Element;
+    const shell = row.querySelector(':scope > .query-bar-shell') as Element;
+    const clear = row.querySelector(':scope > [data-action="clear-query"]') as Element;
+    const held = clear.getAttribute('aria-disabled') === 'true';
+    row.querySelector(':scope > [data-action="apply-query"]')?.remove();
+    clear.remove();
+    const status = workspace.querySelector(':scope > .query-status') as Element;
+    const toggle = status.querySelector(':scope > [data-action="toggle-builder"]') as Element;
+    const open = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.remove();
+    const group = make(`<div class="query-field-group"><button class="query-builder-toggle${open ? ' active' : ''}" data-action="toggle-builder" aria-expanded="${String(open)}" data-tip="Build the search one condition at a time">${HAMMER}Builder</button></div>`);
+    row.insertBefore(group, shell);
+    group.appendChild(shell);
+    const list = shell.querySelector(':scope > [data-suggestions]');
+    shell.insertBefore(make(`<button class="query-field-glyph query-clear" data-action="clear-query" aria-label="Clear the search" data-tip="Clear the search"${held ? ' hidden' : ''}>×</button>`), list);
+    shell.insertBefore(make('<button class="query-field-glyph query-run" data-action="apply-query" aria-label="Search" data-tip="Run this search" data-tip-key="Enter">→</button>'), list);
+    const hint = status.querySelector(':scope > .query-hint');
+    if (hint) {
+      hint.innerHTML = 'Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT.<span class="query-hint-key"> Press / to search.</span>';
+    }
+    const builder = workspace.querySelector(':scope > .query-builder');
+    if (builder) {
+      workspace.insertBefore(builder, status);
+    }
+  }
+  return normalizeBody(holder.firstElementChild as Element, { captured: true });
+}
 
 /** Fields added since the template was recorded, which its builder never listed. */
 const FIELDS_SINCE_TEMPLATE = new Set(['status', 'cancelled']);
@@ -172,7 +221,7 @@ suite('The shared search box draws and does what the template script did', () =>
    */
   const assertSame = (what: string, focusKept = false): void => {
     const before = doneByTemplate<StepRecord>(`${running}: ${what}`);
-    assert.strictEqual(normalizeBody(core.find('#app')), before.page, `${what}: the page`);
+    assert.strictEqual(normalizeBody(core.find('#app')), asDrawnSinceTemplate(core, before.page), `${what}: the page`);
     assert.deepStrictEqual([...harness(core).applied], before.ran, `${what}: what was run`);
     assert.deepStrictEqual([...harness(core).drafts], before.typed, `${what}: what was typed`);
     if (focusKept && before.focus === 'body') {

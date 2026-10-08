@@ -776,7 +776,6 @@ suite('Task Board page', () => {
     const add = shown.find('.query-bar-row > [data-action="add-task"]');
     assert.strictEqual(add.textContent, 'Add task');
     assert.ok(add.getAttribute('data-tip'), 'its tip says where the task goes');
-    assert.ok(!add.classList.contains('query-primary'), 'Search keeps the one filled button');
     shown.click('.query-bar-row > [data-action="add-task"]');
     assert.deepStrictEqual(shown.lastPosted('addTask'), { type: 'addTask' });
 
@@ -788,12 +787,11 @@ suite('Task Board page', () => {
     assert.strictEqual(shown.findAll('.board-column[data-column-id="done"] [data-action="board-add-task"]').length, 0, 'Done takes no new task');
   });
 
-  test('a plain board has no Tasks view strip, and keeps its Save and its filled Search', () => {
+  test('a plain board has no Tasks view strip, and keeps its Save', () => {
     const shown = show(boardOf(TWO, {}, 'is:open'));
     assert.deepStrictEqual(shown.findAll('.tasks-view-strip'), []);
-    assert.deepStrictEqual(barButtons(shown), ['apply-query', 'clear-query', 'save-board-search', 'export-tasks', 'add-task']);
+    assert.deepStrictEqual(barButtons(shown), ['save-board-search', 'export-tasks', 'add-task']);
     assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save');
-    assert.ok(shown.find('[data-action="apply-query"]').classList.contains('query-apply'), 'Search is the filled button');
     assert.strictEqual(shown.savedState() && (shown.savedState() as Record<string, unknown>).tasksViewMode, undefined);
   });
 
@@ -809,12 +807,11 @@ suite('Task Board page', () => {
     assert.strictEqual(cancel?.textContent, 'Cancel');
     assert.ok(cancel?.getAttribute('data-tip'), 'its tip says what Cancel keeps');
 
-    assert.deepStrictEqual(barButtons(shown), ['apply-query', 'clear-query', 'save-to-tasks-view', 'save-board-search', 'export-tasks', 'add-task'], 'Save to Tasks view first, then Save as search');
+    assert.deepStrictEqual(barButtons(shown), ['save-to-tasks-view', 'save-board-search', 'export-tasks', 'add-task'], 'Save to Tasks view first, then Save as search');
     const save = () => shown.find('[data-action="save-to-tasks-view"]');
     assert.strictEqual(save().textContent, 'Save to Tasks view');
     assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save as search');
     assert.ok(save().classList.contains('query-primary'), 'Save to Tasks view is the filled button');
-    assert.ok(!shown.find('[data-action="apply-query"]').classList.contains('query-apply'), 'and Search is not, one filled button to a page');
     assert.strictEqual(save().getAttribute('aria-disabled'), null);
     assert.ok(save().getAttribute('data-tip'));
     assert.deepStrictEqual(shown.findAll('.tasks-view-strip [title], .query-bar-row [title]'), [], 'tips, not native titles');

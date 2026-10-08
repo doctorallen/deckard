@@ -691,9 +691,9 @@ suite('Webview contracts', () => {
       const tabs = page.findAll('[role="tab"][data-action="set-result-tab"]');
       assert.deepStrictEqual(tabs.map((tab) => tab.textContent), ['Notes (1)', 'Tasks (2)']);
       assert.deepStrictEqual(tabs.map((tab) => tab.getAttribute('data-tab')), ['notes', 'tasks']);
-      // Clear returns the page to the search it was opened with, so it is
-      // held while the box holds only that.
-      assert.strictEqual(page.find('[data-action="clear-query"]').getAttribute('aria-disabled'), 'true');
+      // Clearing returns the page to the search it was opened with, so the
+      // field's × is not drawn while the box holds only that.
+      assert.strictEqual((page.find('[data-action="clear-query"]') as HTMLElement).hidden, true);
       // While the sidebar shows this search's Refine, the page says so in its place.
       page.send({ ...snapshot, originQuery: '#risk/vendor', refineInSidebar: true });
       assert.match(page.text('.query-facets') ?? '', /In the Context sidebar\./);

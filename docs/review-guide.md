@@ -199,8 +199,9 @@ Open one with **Deckard: Open Search Page**, a Home figure, or a tag's
 - [ ] **Loading waits.** A fast page shows nothing while loading. A slow one
   says *Loading search…* after 0.4 s, and a search still running after a
   second shows a thin bar under the box.
-- [ ] **Buttons that cannot act yet.** Tab to Save, Clear, Back, or Forward
-  on an empty page. *Look for:* each stays focusable, explains why it cannot
+- [ ] **Buttons that cannot act yet.** Tab to Save, Back, or Forward
+  on an empty page; the search box's × shows only once there is something
+  to clear. *Look for:* each stays focusable, explains why it cannot
   act (*Type a search to save it*), and does not light up on hover.
 - [ ] **Tips on focus.** Tab through the buttons. *Look for:* each tip shows
   on keyboard focus. Back and Forward name Alt+← and Alt+→, and Escape hides

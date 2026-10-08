@@ -112,16 +112,16 @@ suite('Component primitives', () => {
       assert.ok(unguarded('.toolbar button:hover'), 'and a bare hover is caught');
     });
 
-    test('Save and Clear hold their place while they cannot act, and say why', () => {
+    test('Save holds its place while it cannot act, and says why; the field\'s × waits for something to clear', () => {
       const board = openBoard();
       const save = board.find('[data-action="save-board-search"]') as HTMLButtonElement;
       const clear = board.find('[data-action="clear-query"]') as HTMLButtonElement;
-      for (const button of [save, clear]) {
-        assert.strictEqual(button.getAttribute('aria-disabled'), 'true');
-        assert.strictEqual(button.hasAttribute('disabled'), false);
-        assert.ok(button.tabIndex >= 0, 'still in the Tab order');
-        assert.ok(button.getAttribute('data-tip-disabled'));
-      }
+      assert.strictEqual(save.getAttribute('aria-disabled'), 'true');
+      assert.strictEqual(save.hasAttribute('disabled'), false);
+      assert.ok(save.tabIndex >= 0, 'still in the Tab order');
+      assert.ok(save.getAttribute('data-tip-disabled'));
+      assert.ok(clear.closest('.query-bar-shell'), 'the × is in the field');
+      assert.strictEqual(clear.hidden, true, 'and not drawn with nothing to clear');
       board.click('[data-action="save-board-search"]');
       assert.strictEqual(board.lastPosted('saveBoardSearch'), undefined, 'a click does nothing');
       keyFocus(board, '[data-action="save-board-search"]');
@@ -131,6 +131,7 @@ suite('Component primitives', () => {
       input.dispatchEvent(new board.window.Event('input', { bubbles: true }));
       assert.strictEqual(save.getAttribute('aria-disabled'), null, 'typing enables it in place');
       assert.strictEqual(board.find('[data-action="save-board-search"]'), save, 'without a redraw');
+      assert.strictEqual(clear.hidden, false, 'and draws the × in place');
     });
   });
 
@@ -320,8 +321,10 @@ suite('Component primitives', () => {
 
     test('a tip that says more than the name describes its control', () => {
       const search = openSearch();
+      // The field's → is named Search, and says it runs the search, as Enter does.
       const apply = keyFocus(search, '[data-action="apply-query"]');
-      assert.strictEqual(tip(search)?.textContent, 'Run this search');
+      assert.strictEqual(tip(search)?.firstChild?.textContent, 'Run this search');
+      assert.strictEqual(tip(search)?.querySelector('kbd')?.textContent, 'Enter');
       assert.ok(String(apply.getAttribute('aria-describedby')).includes('deckard-tip'));
     });
 
