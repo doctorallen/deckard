@@ -65,7 +65,7 @@ function StatusRow({ column }: { readonly column: BoardStatusColumn }) {
 export function StatusSettings({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   return (
     <div class="board-settings">
-      <p class="board-settings-note">Columns when grouped by Status, one per status in your list. Tick one to show it, drag to set the order. Done is always a column; a character no status names gets one of its own.</p>
+      <p class="board-settings-note help-text">Columns when grouped by Status, one per status in your list. Tick one to show it, drag to set the order. Done is always a column; a character no status names gets one of its own.</p>
       <ul key={`statuses-${board.generation}`} class="board-status-list" aria-label="Status columns">
         {snapshot.settings.columns.map((column) => <StatusRow key={column.id} column={column} />)}
       </ul>

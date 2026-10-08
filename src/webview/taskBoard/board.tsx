@@ -306,7 +306,11 @@ export function TaskBoard({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
  */
 function ColumnCards({ column, cards, columns }: { readonly column: TaskBoardColumn; readonly cards: readonly TaskBoardCard[]; readonly columns: readonly TaskBoardColumn[] }) {
   if (!cards.length) {
-    return <div class="board-cards"><p class="board-empty">{column.droppable ? 'No tasks. Drag a card here, or move one with its ⋯ menu.' : 'No tasks'}</p></div>;
+    return (
+      <div class="board-cards">
+        <p class="board-empty">{column.droppable ? ['No tasks.', <span class="help-text">{' Drag a card here, or move one with its ⋯ menu.'}</span>] : 'No tasks'}</p>
+      </div>
+    );
   }
   return (
     <div class="board-cards" role="list" aria-label={column.label}>

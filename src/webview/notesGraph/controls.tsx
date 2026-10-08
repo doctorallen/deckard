@@ -14,6 +14,13 @@ import type { ComponentChildren, RefObject } from 'preact';
 import { UndoNotice } from '../shared/undoToast';
 import type { GraphSettings, GraphState } from './model';
 
+/**
+ * What Focus says before a note is open: how to use it, so Zen's help step
+ * puts it away. Around a note, the line names it and counts its nodes, and
+ * stays.
+ */
+export const OPEN_A_NOTE = 'Open a note to draw the graph around it.';
+
 /** What the page last said in its controls, beside the settings. */
 export interface ControlsState {
   /** Around this note, its hops and its daily notes, as the host last drew the graph or the reader set them. */
@@ -258,7 +265,7 @@ function FocusGroup({ ui, on }: ControlsProps) {
         {' Pass through daily notes'}
       </label>
       {' '}
-      <p class="focus-note" id="focus-note">{focus.note}</p>
+      <p class={focus.note === OPEN_A_NOTE ? 'focus-note help-text' : 'focus-note'} id="focus-note">{focus.note}</p>
       {' '}
     </ControlGroup>
   );

@@ -60,11 +60,12 @@ body[data-styling=plain] .saved-filter-row:hover, body[data-styling=plain] .stat
 
 /* ---- Help text: hidden -------------------------------------------------- */
 
-/* Lines that teach rather than show. The query hint goes; the parse error
-   that shares its slot does not, or a failed search reads as an empty one. */
-body[data-help=hidden] .query-hint,
-body[data-help=hidden] .refine-hint,
-body[data-help=hidden] .home-hint-bar { display: none; }
+/* Lines that teach rather than show, each marked .help-text where it is
+   drawn. The class is never on a control, on anything holding one, or on
+   the parse error that shares the query hint's slot, or a failed search
+   would read as an empty one; a state line such as "No tasks." keeps its
+   own element beside the line that teaches. */
+body[data-help=hidden] .help-text { display: none; }
 
 /* ---- Density: compact --------------------------------------------------- */
 

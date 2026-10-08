@@ -36,7 +36,7 @@ How much a page draws is a scale of three steps. Pick one with **Display** in a 
 | **Dates** (`dates`) | Both | Both | Both |
 
 - **Theme styling**: *styled* keeps each theme's grid, corners, glow, codes, and display headings; *plain* draws thin frames and sentence-case headings, two sizes kept. DECKARD ▾ stays either way.
-- **Help text**: the lines that teach, such as the search box's line of syntax and Home's key bar. A search that fails to parse always says so.
+- **Help text**: the lines that teach, such as the search box's line of syntax, the builder's paragraph, Refine's line on Alt- and Shift-click, the Graph's *Open a note to draw the graph around it.*, why Context lists a result, and an empty board column's line on dragging. What a line says is there stays: *No tasks.*, where Task Statuses saves, every count, and a search that fails to parse.
 - **Tags**: where tags are listed on their own, such as a note card's tags and Refine, framed *chips* or plain *text* in the theme's tag color, its `#` or `@` kept. A tag inside a task's title is always text.
 - **Density**: *comfortable* or *compact* spacing.
 - **Cards**: *raised* cards, or *flat* rows parted by a divider, which lift onto the card surface under the pointer or keyboard focus.
@@ -79,7 +79,7 @@ What Deckard writes into your notes stays `YYYY-MM-DD`: task dates such as `📅
 
 Zen is Display's last step, one click away from any page: the Zen button in a page's title bar, `Deckard: Toggle Zen`, or `Deckard: Enter Zen` and `Deckard: Leave Zen`. Leaving goes back to the step you were on, or to Full.
 
-- **Hidden:** decorative labels, the grid backdrop, the eyebrow's trail, and the search box's line of syntax; cards are flat and tags are text.
+- **Hidden:** decorative labels, the grid backdrop, the eyebrow's trail, and every line that teaches, such as the search box's line of syntax; cards are flat and tags are text.
 - **Kept:** every button, filter, checkbox, and tag, every count beside a name, and a task's due date written in full, with its priority and overdue marker. Zen never hides data; to leave counts out, or write dates only one way, set **Counts** or **Dates** yourself.
 
 ---

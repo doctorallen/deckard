@@ -631,7 +631,7 @@ class SearchBox implements QueryEditor {
     // The / key's part of the hint says nothing once the field has focus,
     // so it is left out then (queryEditor.css).
     const status = error === undefined
-      ? <span key="hint" class="query-hint">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT.<span class="query-hint-key"> Press / to search.</span></span>
+      ? <span key="hint" class="query-hint help-text">Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT.<span class="query-hint-key"> Press / to search.</span></span>
       : <span key="error" class="query-error" role="alert">{error}</span>;
     // Builder is joined to the start of the field, and pressed while the
     // builder is open under it. The field ends in two glyphs: × empties
@@ -685,7 +685,7 @@ class SearchBox implements QueryEditor {
     return (
       <div class="query-builder">
         <BuilderGroup group={this.builderTree()} path={[]} depth={0} context={context} />
-        <p class="query-builder-note">In a new row, type a tag, a word, or a value such as open. Enter adds another row, Backspace in an empty row removes it, and Ctrl or Cmd+Enter adds a group beside the row. A group matches all of its rows or any of them, and not turns it around.</p>
+        <p class="query-builder-note help-text">In a new row, type a tag, a word, or a value such as open. Enter adds another row, Backspace in an empty row removes it, and Ctrl or Cmd+Enter adds a group beside the row. A group matches all of its rows or any of them, and not turns it around.</p>
       </div>
     );
   }

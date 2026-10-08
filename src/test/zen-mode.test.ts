@@ -209,7 +209,7 @@ suite('Zen mode', () => {
     // Ornament goes.
     assert.match(sheet, /body\[data-styling=plain\] \.eyebrow-trail,/);
     assert.match(sheet, /body\[data-styling=plain\] \.metric::before \{/);
-    assert.match(sheet, /body\[data-help=hidden\] \.query-hint,/);
+    assert.match(sheet, /body\[data-help=hidden\] \.help-text \{ display: none; \}/);
 
     // DECKARD ▾ is the way to every other page, and stays.
     assert.ok(!/\.eyebrow-home/.test(sheet.replace(':not(:has(.eyebrow-home))', '')), 'DECKARD ▾ is never hidden');

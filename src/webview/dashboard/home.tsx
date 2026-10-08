@@ -95,7 +95,7 @@ function GetStarted() {
   return (
     <section class="home-start" aria-label="Get started">
       <h2>No notes here yet</h2>
-      <p>Deckard reads every saved Markdown file in this workspace. Start with today’s note, or open a work sample: a week of a team lead’s notes to try everything on.</p>
+      <p class="help-text">Deckard reads every saved Markdown file in this workspace. Start with today’s note, or open a work sample: a week of a team lead’s notes to try everything on.</p>
       <div class="home-start-actions">
         <button type="button" class="primary" data-action="open-daily-note">Create today’s note</button>
         <button type="button" data-action="open-view" data-view="sampleWorkspace">Create a work sample</button>

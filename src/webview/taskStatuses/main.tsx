@@ -216,7 +216,10 @@ function TaskStatusesPage({ state }: { readonly state: StatusesState }) {
           <Eyebrow trail="TASKS" />
           <h1>Task Statuses</h1>
         </div>
-        <p class="status-note">{`What each checkbox character means. Saved to your ${snapshot.target === 'workspace' ? "workspace's" : 'user'} settings.`}</p>
+        <p class="status-note">
+          <span class="help-text">{'What each checkbox character means. '}</span>
+          {`Saved to your ${snapshot.target === 'workspace' ? "workspace's" : 'user'} settings.`}
+        </p>
       </header>
       <fieldset class="status-click">
         <legend>Checking a box</legend>

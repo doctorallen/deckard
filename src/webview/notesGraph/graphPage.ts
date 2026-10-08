@@ -12,7 +12,7 @@ import type { NotesGraphMessage } from '../../ui/protocol/notesGraph';
 import { post } from '../shared/vscode';
 import { centerCamera, type ClientPoint, fitCamera, zoomCamera } from './camera';
 import { type Camera, drawGraph, type GraphColors } from './canvas';
-import type { ControlRefs, ControlsState } from './controls';
+import { type ControlRefs, type ControlsState, OPEN_A_NOTE } from './controls';
 import { type GraphSettings, type GraphState, isRendered, nodeRadius } from './model';
 import { persist, resetSettings, SETTING_KEYS } from './settings';
 import { tick } from './simulation';
@@ -339,7 +339,7 @@ export function updateFocus(page: GraphPage): void {
   }
   const graph = snapshot as NonNullable<typeof snapshot>;
   const depth = String(focus.depth || 1);
-  let note = 'Open a note to draw the graph around it.';
+  let note = OPEN_A_NOTE;
   if (focus.title) {
     note = focus.local
       ? focus.title + ' · ' + (graph.nodes.length + (graph.hiddenNodeCount || 0)) +

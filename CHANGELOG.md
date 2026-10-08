@@ -43,6 +43,15 @@
   **Finish** are plain buttons now. In Corpo the primary takes VS Code's
   own button colors; in Fellowship it has a darker edge.
 
+- **Zen hides every line that teaches, and only those.** Help text used to
+  hide the search box's line of syntax, Refine's line and Home's update
+  line, and missed the rest. It now hides each line that teaches, such as
+  the builder's paragraph, the Graph's *Open a note to draw the graph
+  around it.*, why Context lists a result, an empty board column's line on
+  dragging, and Task Statuses' *What each checkbox character means.* What
+  a line says is there still shows: *No tasks.*, where Task Statuses saves,
+  and Home's *Updated to Deckard* line with its buttons.
+
 ### Fixed
 
 - **Copy MCP Server Setup is in the palette before the server is on.**

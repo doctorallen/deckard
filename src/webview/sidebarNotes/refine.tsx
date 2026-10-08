@@ -79,7 +79,7 @@ function RefineHeading({ title, hint }: { readonly title: string; readonly hint:
       <h2>Refine</h2>
       {title ? <p class="refine-subject" title={title}>{title}</p> : null}
       {hint
-        ? <p class="refine-hint">Selecting a value adds it to the search with AND; Alt-click adds it with AND NOT, and Shift-click with OR, widening the value chosen before it. The icon beside a tag opens it in a new tab.</p>
+        ? <p class="refine-hint help-text">Selecting a value adds it to the search with AND; Alt-click adds it with AND NOT, and Shift-click with OR, widening the value chosen before it. The icon beside a tag opens it in a new tab.</p>
         : null}
     </div>
   );

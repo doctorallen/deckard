@@ -100,7 +100,7 @@ export function RankedNoteCard({ note, display }: { readonly note: RankedNote; r
         steps.length && readEntryDetails().has('fileAndLine') ? <div class="source heading-path"><HeadingPathSteps steps={steps} /></div> : null,
         <EntryDates facts={{ location: '', createdAt: note.createdAt, updatedAt: note.updatedAt }} className="source" />,
         note.excerpt && display.previewLines > 0 ? <p class="note-excerpt">{note.excerpt}</p> : null,
-        reasons.length ? <div class="relevance-reason">{reasons[0]}</div> : null,
+        reasons.length ? <div class="relevance-reason help-text">{reasons[0]}</div> : null,
       ]}
     />
   );
@@ -214,7 +214,7 @@ export function Similar({ similar, display }: { readonly similar: SidebarNotesSn
         ? (
           <section class="similar-wording" aria-label="Similar wording (no tags yet)">
             <span class="section-label">Similar wording (no tags yet)</span>
-            <p class="similar-hint">These share words with this note, not tags or links.</p>
+            <p class="similar-hint help-text">These share words with this note, not tags or links.</p>
             <div class="note-list"><RankedNoteCards notes={similar.notes} display={display} /></div>
           </section>
         )

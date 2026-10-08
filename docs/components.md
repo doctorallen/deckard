@@ -685,9 +685,11 @@ Two things look like chrome and are not:
 - `.query-error` shares its slot with `.query-hint`. Outside zen the hint
   already rests while the box is idle and empty, through
   `.query-workspace:not(:focus-within):not([data-has-text])`, and comes back
-  on focus or once a term is written. Zen hides it outright. The hint goes; the error
-  never does, or a search that failed to parse reads as one that found
-  nothing.
+  on focus or once a term is written. The hint is a `.help-text`, the one
+  class Display's help step hides (`body[data-help=hidden] .help-text`), as
+  every line that teaches is. The hint goes; the error never does, or a
+  search that failed to parse reads as one that found nothing. The class is
+  never on a control or on anything that holds one.
 - `.board-details` is a `.source`, but it carries the due date and the word
   "overdue". It does not fold. Only `.card .source`, `.note .source`, and the
   `.task-source` spans in `<TaskListRow>` do.

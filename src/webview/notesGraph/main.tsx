@@ -20,7 +20,7 @@ import type { MessageOf } from '../../ui/protocol/messaging';
 import type { NotesGraphHostToPage, NotesGraphWireSnapshot } from '../../ui/protocol/notesGraph';
 import { installTip } from '../shared/tip';
 import type { GraphColors } from './canvas';
-import { type ControlHandlers, type ControlRefs, GraphBody, type SliderKey, type ToggleKey } from './controls';
+import { type ControlHandlers, type ControlRefs, GraphBody, OPEN_A_NOTE, type SliderKey, type ToggleKey } from './controls';
 import {
   clearResetUndo,
   dismissResetUndo,
@@ -293,7 +293,7 @@ function createPage(): GraphPage {
     needsDraw: true,
     frameQueued: false,
     ui: {
-      focus: { local: false, skipPeriodic: true, skipDisabled: false, depth: '1', note: 'Open a note to draw the graph around it.' },
+      focus: { local: false, skipPeriodic: true, skipDisabled: false, depth: '1', note: OPEN_A_NOTE },
       tagList: null,
       groupValue: undefined,
       status: { text: '', joinedShown: false },
