@@ -35,7 +35,7 @@ How much a page draws is a scale of three steps. Pick one with **Display** in a 
 | **Counts** (`counts`) | Shown | Shown | Shown |
 | **Dates** (`dates`) | Both | Both | Both |
 
-- **Theme styling**: *styled* keeps each theme's grid, corners, glow, codes, and display headings; *plain* draws thin frames and sentence-case headings, two sizes kept. DECKARD ▾ stays either way.
+- **Theme styling**: *styled* keeps each theme's grid, corners, glow, codes, and display headings; *plain* draws thin frames, and no capitals or letter-spacing on headings, buttons, or tabs, two heading sizes kept. DECKARD ▾ stays either way. Text from your notes is never set in capitals or letter-spaced, in any theme or step: a note's title and headings, its tables, query results and embeds, Linked from, and the tag a search page is about.
 - **Help text**: the lines that teach, such as the search box's line of syntax, the builder's paragraph, Refine's line on Alt- and Shift-click, the Graph's *Open a note to draw the graph around it.*, why Context lists a result, and an empty board column's line on dragging. What a line says is there stays: an empty place keeps its state, such as *No tasks.* or *No tags indexed yet.*, and loses only how to fill it; where Task Statuses saves, every count, and a search that fails to parse stay too.
 - **Tags**: where tags are listed on their own, such as a note card's tags and Refine, framed *chips* or plain *text* in the theme's tag color, its `#` or `@` kept. A tag inside a task's title is always text.
 - **Density**: *comfortable* or *compact* spacing.

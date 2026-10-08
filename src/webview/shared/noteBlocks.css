@@ -23,7 +23,10 @@
 .note-table-scroll { margin: 0 0 var(--space-3); overflow-x: auto; }
 .note-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); line-height: 1.4; }
 .note-table th, .note-table td { padding: 6px 10px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
-.note-table th { background: var(--panel); color: var(--muted); font: var(--text-xs) var(--font-mono); text-transform: uppercase; letter-spacing: .06em; }
+.note-table th { background: var(--panel); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+/* A query block's columns are Deckard's names, set as labels; a table the
+   note wrote keeps its header as written. */
+.note-query .note-table th { text-transform: uppercase; letter-spacing: .06em; }
 .note-table tr.is-done .note-query-title { text-decoration: line-through; }
 
 /* A task: its box, then its words, struck through once done. */
@@ -53,7 +56,7 @@
 /* An embed: what it names, under a title that opens it. */
 .note-embed { margin: 0 0 var(--space-4); padding: var(--space-2) var(--space-3) var(--space-1); border-left: 3px solid var(--line-strong); background: var(--panel); }
 .note-embed-header { margin-bottom: var(--space-2); }
-.note-embed-title { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--muted); font: var(--text-xs) var(--font-mono); text-transform: uppercase; letter-spacing: .08em; }
+.note-embed-title { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 button.note-embed-title { cursor: pointer; }
 button.note-embed-title:hover:where(:not(:disabled):not([aria-disabled="true"])), button.note-embed-title:focus-visible { color: var(--hover-fg); }
 .note-embed-missing { margin: 0 0 var(--space-2); color: var(--muted); font-size: var(--text-sm); font-style: italic; }

@@ -292,6 +292,11 @@ the notes graph does exactly that to go full-bleed.
 | `.eyebrow` | The small amber label above a title, e.g. `DECKARD / SEARCH`. |
 | `.lead` | Introductory paragraph, muted, capped at 680px. |
 | `.source` | File and line beneath a card title. Muted, 11px. |
+| `.note-text` | Words the reader's note wrote: a note's title and headings, a table header it wrote, a query block's titles, an embed's title, Linked from's lines, and the tag a search page is about. No theme or step upper-cases or letter-spaces them (`body .note-text`, which outranks a theme's `h1` and `button` rules). Card titles are left to the theme. |
+
+Under plain type (`body[data-styling=plain]`, Quiet and Zen) every element,
+chrome included, reads as written: `text-transform: none` and
+`letter-spacing: normal`, at the `!important` strength Corpo's own rule has.
 
 To make an element read as data rather than prose, add it to a page-local
 `font-family: var(--font-mono)` rule; do not restate the whole type scale.

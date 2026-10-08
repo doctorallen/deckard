@@ -37,12 +37,14 @@ body[data-styling=plain] { --edge: 1px; --grid-line: transparent; background-ima
 body[data-styling=plain] .eyebrow-trail,
 body[data-styling=plain] .eyebrow:not(:has(.eyebrow-home)),
 body[data-styling=plain] .metric::before { display: none; }
-body[data-styling=plain] .eyebrow { letter-spacing: .08em; }
-/* Sentence case, two sizes kept: the page title shrinks, never hidden, since
-   on a search page the h1 is the subject being searched and the page's one
-   landmark; a section or widget name stays a size above its rows. */
-body[data-styling=plain] h1 { font-size: var(--text-lg); letter-spacing: normal; text-transform: none; }
-body[data-styling=plain] h2, body[data-styling=plain] h3, body[data-styling=plain] .metric-label { letter-spacing: normal; text-transform: none; }
+/* Plain type: nothing upper-cased or letter-spaced, chrome included:
+   headings, buttons, segmented tabs and widget titles, at the strength
+   Corpo's own rule has, so no theme's capitals outrank it. */
+body[data-styling=plain] * { text-transform: none !important; letter-spacing: normal !important; }
+/* Two sizes kept: the page title shrinks, never hidden, since on a search
+   page the h1 is the subject being searched and the page's one landmark; a
+   section or widget name stays a size above its rows. */
+body[data-styling=plain] h1 { font-size: var(--text-lg); }
 body[data-styling=plain] .metric, body[data-styling=plain] .card, body[data-styling=plain] .note, body[data-styling=plain] .task,
 body[data-styling=plain] .tag-row, body[data-styling=plain] .task-row, body[data-styling=plain] .note-row, body[data-styling=plain] .entity-row,
 body[data-styling=plain] .saved-filter-row, body[data-styling=plain] .stat-row, body[data-styling=plain] .empty,

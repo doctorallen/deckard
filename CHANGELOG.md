@@ -57,6 +57,16 @@
   tags indexed yet.* and hides only how to fill it: in board columns, the
   Task board's list and table, Home's widgets and Tags tab, Context, its
   pages band, the builder's empty group and Stats' Most viewed.
+- **Your notes' words are never set in capitals.** Cooper, Oblivion,
+  Synthwave and Tomcat upper-cased and letter-spaced some of your own text
+  with their buttons and headings: a note's title and headings, embed
+  titles, a table's header, query results, Linked from and the tag a search
+  page is about. These read as written now, in every theme and at every
+  step; each theme keeps its capitals on its own buttons, headings and card
+  titles.
+- **Zen's plain type is plain everywhere.** Under Zen and Quiet, buttons,
+  tabs and widget titles lose their capitals and letter-spacing too, as
+  headings already did, in every theme.
 
 ### Fixed
 

@@ -146,11 +146,11 @@ function LinkedFrom({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
       <ul>
         {snapshot.backlinks.map((link) => (
           <li class="note-backlink">
-            <button type="button" class="note-backlink-title" data-action="open-note" data-file-path={link.filePath}>{link.title}</button>
+            <button type="button" class="note-backlink-title note-text" data-action="open-note" data-file-path={link.filePath}>{link.title}</button>
             {link.count > link.lines.length ? <span class="note-backlink-more">{` ${link.count} lines`}</span> : null}
             <ul class="note-backlink-lines">
               {link.lines.map((line) => (
-                <li><button type="button" class="note-backlink-line" data-action="open-note" data-file-path={link.filePath} data-line={line.line}>{line.text}</button></li>
+                <li><button type="button" class="note-backlink-line note-text" data-action="open-note" data-file-path={link.filePath} data-line={line.line}>{line.text}</button></li>
               ))}
             </ul>
           </li>
@@ -166,7 +166,7 @@ function NotePage({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
     return (
       <>
         <header>
-          <div class="note-lead"><Eyebrow trail="NOTE" /><h1>{snapshot.title}</h1></div>
+          <div class="note-lead"><Eyebrow trail="NOTE" /><h1 class="note-text">{snapshot.title}</h1></div>
           <Toolbar snapshot={snapshot} />
         </header>
         <p class="note-missing">Deckard has no note at {snapshot.filePath} now. It may have been moved, renamed, or deleted.</p>
@@ -178,7 +178,7 @@ function NotePage({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
       <header>
         <div class="note-lead">
           <Eyebrow trail={snapshot.folder ? `NOTE / ${snapshot.folder.toUpperCase()}` : 'NOTE'} />
-          <h1>{snapshot.title}</h1>
+          <h1 class="note-text">{snapshot.title}</h1>
           <Breadcrumbs crumbs={snapshot.breadcrumbs} />
           {snapshot.hub ? <HubLine hub={snapshot.hub} /> : null}
           {snapshot.taskProgress ? <TaskLine progress={snapshot.taskProgress} /> : null}

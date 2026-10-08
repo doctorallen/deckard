@@ -24,7 +24,7 @@ export function formatEntityTitle(kind: string, name: string): string {
 /** The page's title, or a tag under it, as the control that opens the tag's page. */
 function OverviewTagLink({ tag, text }: { readonly tag: TagReference; readonly text: string }) {
   return (
-    <button class="overview-tag-link" data-action="open-tag" data-tag-key={tag.key} aria-label={`Open ${tag.label} overview`}>
+    <button class="overview-tag-link note-text" data-action="open-tag" data-tag-key={tag.key} aria-label={`Open ${tag.label} overview`}>
       <TagLabel label={text} />
     </button>
   );
