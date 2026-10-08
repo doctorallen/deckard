@@ -61,6 +61,9 @@ body .note:hover { transform: none; }
 .related-notes-controls > .section-label { flex: 1 1 auto; min-width: 0; margin: 0; }
 /* Sort: a compact select at the Related notes heading, its label the word before it. */
 .related-notes-sort-control { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: var(--muted); font-size: var(--text-xs); white-space: nowrap; }
+/* In the narrowest sidebar the select gives way, so the gear after it stays in the pane. */
+.related-notes-sort-control { flex: 0 1 auto; min-width: 0; }
+.related-notes-sort { min-width: 0; max-width: 100%; text-overflow: ellipsis; }
 /* The gear's menu opens under it, inside a sidebar only as wide as the pane. */
 .related-notes-controls .view-options-menu { min-width: 0; width: max-content; max-width: calc(100vw - 24px); }
 /* A result's first lines, clamped to the Preview the gear sets. */
