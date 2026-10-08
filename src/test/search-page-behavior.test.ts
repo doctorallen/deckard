@@ -451,7 +451,18 @@ suite('Search page behavior', () => {
       page.find('.query-facets-count').classList.contains('visually-hidden'),
       'and the Refine strip keeps its live region without drawing the count again',
     );
-    assert.ok(page.find('.page-menu [aria-label="View"] [data-action="set-sort"]'), 'Sort sits in ⋯ with the other view options');
+    assert.strictEqual(page.findAll('.page-menu [data-action="set-sort"]').length, 0, 'Sort is not in ⋯');
+    assert.ok(page.find('.overview-tabs-row [data-action="set-sort"]'), 'but on the results row, beside Notes | Tasks');
+  });
+
+  test('keeps Export in ⋯, after Save search…, and Bulk edit beside the pane', () => {
+    const { page } = open(NOTES, '#project/atlas');
+    const rows = page.findAll('.page-menu [data-action]').map((row) => row.textContent);
+    assert.deepStrictEqual(rows.slice(0, 3), ['Save search…', 'Export notes…', 'Export tasks…'], 'the page\'s actions, one per kind with results');
+    assert.strictEqual(page.findAll('.overview-tabs-row [data-action="export-results"]').length, 0, 'Export is not beside the pane');
+    assert.strictEqual(page.text('.overview-tabs-row [data-action="edit-results"]'), 'Bulk edit');
+    page.click('.page-menu [data-action="export-results"][data-kind="tasks"]');
+    assert.deepStrictEqual(page.lastPosted('exportResults'), { type: 'exportResults', kind: 'tasks' });
   });
 
   test('marks a search box that holds a term, and shows its hint', () => {
@@ -590,6 +601,16 @@ suite('Search page behavior', () => {
     const { page } = open({ ...NOTES, 'notes/plain.md': '# Plain\nThe atlas review is late.' }, '#project/atlas');
     assert.match(page.text('.query-facets .query-facets-lead .tag-note') ?? '', /mentions? "atlas" without the tag/);
     assert.strictEqual(page.findAll('.tag-notes [data-action="show-mentions"]').length, 0, 'not among the lines under the hub');
+  });
+
+  test('with Refine in the Context sidebar, draws no Refine but keeps the tag’s lines', () => {
+    const { page, snapshot } = open({ ...NOTES, 'notes/plain.md': '# Plain\nThe atlas review is late.' }, '#project/atlas');
+    page.send({ ...snapshot, refineInSidebar: true });
+    assert.strictEqual(page.findAll('.query-facets').length, 0, 'no Refine box, and no line saying where it went');
+    assert.doesNotMatch(page.text('#app') ?? '', /In the Context sidebar/);
+    assert.match(page.text('.query-facets-elsewhere .tag-note') ?? '', /mentions? "atlas" without the tag/, 'the untagged mentions stay, as a plain line');
+    assert.ok(page.find('.query-facets-elsewhere [data-action="show-mentions"]'), 'with Show them');
+    assert.ok(page.find('.query-facets-count').classList.contains('visually-hidden'), 'the count is for a screen reader alone');
   });
 
   test('shows the note that describes a tag, and offers to write one', () => {

@@ -906,14 +906,14 @@ test('the field\'s × empties the field as well as the chips', async () => {
 // ---------------------------------------------------------------------------
 // The sidebar's Refine view.
 
-test('with the sidebar open, Refine moves there and the page keeps a line', async () => {
+test('with the sidebar open, Refine moves there and the page draws none', async () => {
   const { view, sidebar, sidebarPage } = await openOverview('#project/atlas', { sidebarVisible: true });
   const state = sidebar();
   assert.strictEqual(state.state, 'refine');
   assert.strictEqual(state.refine.title, 'Project: Atlas');
   assert.strictEqual(state.refine.page, 'search');
 
-  assert.ok(view.find('.query-facets.is-elsewhere'), 'the page shows a line for Refine');
+  assert.strictEqual(view.find('.query-facets'), null, 'the page draws no Refine, not even a line saying where it went');
   assert.strictEqual(view.find('[data-action="facet"]'), null);
   assert.ok(sidebarPage.find('.refine-value [data-action="refine"][data-clause="@ren-kade"]'), 'the sidebar lists the related tag');
   assert.ok(sidebarPage.find('.refine-value .tag-weight-rail'));
@@ -966,14 +966,14 @@ test('the sidebar refines only what the page offers', async () => {
 
 test('closing the sidebar brings Refine back to the page', async () => {
   const { view, sidebarHost } = await openOverview('#project/atlas', { sidebarVisible: true });
-  assert.ok(view.find('.query-facets.is-elsewhere'));
+  assert.strictEqual(view.find('.query-facets'), null);
 
   sidebarHost._setVisible(false);
-  assert.strictEqual(view.find('.query-facets.is-elsewhere'), null);
+  assert.ok(view.find('section.query-facets'));
   assert.ok(view.find('[data-action="facet"][data-clause="@ren-kade"]'));
 
   sidebarHost._setVisible(true);
-  assert.ok(view.find('.query-facets.is-elsewhere'));
+  assert.strictEqual(view.find('.query-facets'), null);
 });
 
 test('a Markdown editor takes the sidebar back, and the page its Refine', async () => {
@@ -985,6 +985,6 @@ test('a Markdown editor takes the sidebar back, and the page its Refine', async 
   await settle();
 
   assert.notStrictEqual(sidebar().state, 'refine');
-  assert.strictEqual(view.find('.query-facets.is-elsewhere'), null);
+  assert.ok(view.find('section.query-facets'), 'the page draws its Refine again');
 });
 

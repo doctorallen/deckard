@@ -146,4 +146,7 @@
 /* The rest of a facet's values, or fewer: words, the height of a value. */
 .query-facet-more.query-facet-more { min-height: 26px; margin: 0; border: 0; background: transparent; color: var(--muted); padding: 3px 6px; font-size: var(--text-xs); text-transform: none; text-decoration: underline 1px transparent; box-shadow: none; clip-path: none; transform: none; }
 .query-facet-more.query-facet-more:hover, .query-facet-more.query-facet-more:focus-visible { background: transparent; color: var(--text); text-decoration-color: var(--accent); }
-.query-facets.is-elsewhere { padding-block: 6px; }
+/* With Refine in the sidebar: the lines the sidebar does not show, plain, with no box around them. */
+.query-facets-elsewhere { display: grid; gap: var(--space-1); margin: var(--space-3) 0; }
+.query-facets-recovery { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; }
+.query-facets-lead-plain { display: grid; gap: var(--space-1); }

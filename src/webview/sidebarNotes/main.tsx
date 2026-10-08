@@ -91,8 +91,8 @@ function Content({ snapshot }: { readonly snapshot: SidebarNotesSnapshot }) {
 
 /**
  * The heading over what the sidebar lists: the graph's, or, for the related
- * notes, their sort and gear, and the label once there are any. A page in
- * front otherwise heads its own part.
+ * notes, the label once there are any, with their Sort and gear at it. A
+ * page in front otherwise heads its own part.
  */
 function SectionHeading({ snapshot }: { readonly snapshot: SidebarNotesSnapshot }) {
   if (snapshot.state === 'graph') {
@@ -101,12 +101,11 @@ function SectionHeading({ snapshot }: { readonly snapshot: SidebarNotesSnapshot 
   if (isPageInFront(snapshot)) {
     return null;
   }
-  return (
-    <>
-      {snapshot.relatedNotesSortMode ? <RelatedNotesControls snapshot={snapshot} /> : null}
-      {snapshot.state === 'ready' ? <span class="section-label">Related notes</span> : null}
-    </>
-  );
+  const heading = snapshot.state === 'ready';
+  if (snapshot.relatedNotesSortMode) {
+    return <RelatedNotesControls snapshot={snapshot} heading={heading} />;
+  }
+  return heading ? <span class="section-label">Related notes</span> : null;
 }
 
 /**

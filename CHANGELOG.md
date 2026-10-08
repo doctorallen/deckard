@@ -39,11 +39,30 @@
   rows. Task Statuses and Help draw the bar with no **⋯**. Zen draws the
   bar as it is.
 - **A search page's ⋯.** **‹ ›** stays, and **⋯** beside it holds **Save
-  search…**, which was **Save** beside the search box, then **Sort**,
-  **Layout**, **Group by**, **Format**, **Preview** and the columns, then
-  **Theme…**, **Zen** and **Page width**, then **Help on this page** and
-  **Keyboard shortcuts**. Words typed and not yet run are still what Save
-  search… keeps.
+  search…**, which was **Save** beside the search box, then **Export
+  notes…** and **Export tasks…** while the search found notes or tasks
+  (they were **Export** buttons beside each pane), then **Layout**,
+  **Group by**, **Format**, **Preview** and the columns, then **Theme…**,
+  **Zen** and **Page width**, then **Help on this page** and **Keyboard
+  shortcuts**. Words typed and not yet run are still what Save search…
+  keeps.
+- **A search page's Sort is beside the notes.** **Sort: A-Z ▾** sits on
+  the results row beside **Notes | Tasks** while the notes are shown, or
+  at the Notes heading side by side, rather than in the gear. **Bulk
+  edit** stays beside the results it acts on, as a small quiet button.
+- **Create hub note is a link.** A tag page with no hub note offers
+  **Create hub note** as a text link under its title, rather than a
+  bordered button. Zen leaves it drawn, since it also says the tag has no
+  hub.
+- **No Refine on the page while the Context sidebar shows it.** A search
+  page and the Task board draw no Refine box, and no *In the Context
+  sidebar* line, while the sidebar shows their Refine. A tag page's lines
+  about its other spellings and untagged mentions stay, as a plain line
+  under the search box, and so do **Drop** and **Clear** when a search
+  matched nothing.
+- **Context's Sort is compact.** The Related notes sort is a small
+  **Sort: Relevance ▾** at the Related notes heading, rather than a select
+  as wide as the sidebar.
 - **A search page lists its keys.** **?**, or **Keyboard shortcuts** in
   **⋯**, opens the sheet of its keys there too: **/** for the search box,
   **Alt+←** and **Alt+→** through the page's searches, and the menu keys.

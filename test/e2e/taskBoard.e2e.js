@@ -572,14 +572,14 @@ test('shows a line for Refine while the sidebar holds it', async () => {
 
   activeSearch.setSidebarVisible(true);
   assert.strictEqual(view.find('.query-facet-value'), null);
-  assert.ok(view.find('.query-facets.is-elsewhere'), 'a line takes Refine\'s place');
+  assert.strictEqual(view.find('.query-facets'), null, 'the page draws no Refine, not even a line saying where it went');
   assert.deepStrictEqual(board.getRefineState().resultKinds, ['tasks']);
 
   await board.applySearch('tag = #project/atlas is:done');
   assert.strictEqual(view.find('.query-bar-shell').getAttribute('data-query-text'), 'tag = #project/atlas is:done');
 
   activeSearch.setSidebarVisible(false);
-  assert.strictEqual(view.find('.query-facets.is-elsewhere'), null, 'closing the sidebar brings Refine back');
+  assert.ok(view.find('section.query-facets'), 'closing the sidebar brings Refine back');
 });
 
 test('plain words hide cards at once, and typing survives a host update', async () => {

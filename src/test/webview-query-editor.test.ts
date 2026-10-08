@@ -112,6 +112,42 @@ function asDrawnSinceTemplate(page: WebviewPage, recorded: string): string {
   return normalizeBody(holder.firstElementChild as Element, { captured: true });
 }
 
+/**
+ * A recorded page as drawn since Refine in the Context sidebar draws no
+ * Refine of its own (plan 29, R10): the template's 'Refine: In the
+ * Context sidebar.' box goes, and its count stays for a screen reader
+ * alone. The ways out of a search that matched nothing, which the page
+ * draws now and the template did not, are checked on their own.
+ */
+function withRefineElsewhere(page: WebviewPage, recorded: string): string {
+  const holder = page.document.createElement('div');
+  holder.innerHTML = recorded;
+  for (const section of holder.querySelectorAll('section.query-facets.is-elsewhere')) {
+    const count = section.querySelector(':scope > .query-facets-count');
+    count?.classList.add('visually-hidden');
+    if (count) {
+      section.replaceWith(count);
+    } else {
+      section.remove();
+    }
+  }
+  return holder.innerHTML;
+}
+
+/** The live page with the lines drawn around a hidden count taken out, and the words of those lines. */
+function withoutPlainLines(page: WebviewPage): { readonly app: Element; readonly lines: string } {
+  const app = page.find('#app').cloneNode(true) as Element;
+  const plain = app.querySelector('.query-facets-elsewhere');
+  const lines = plain ? [...plain.querySelectorAll(':scope > :not(.query-facets-count)')].map((line) => line.textContent).join(' | ') : '';
+  const count = plain?.querySelector(':scope > .query-facets-count');
+  if (plain && count) {
+    plain.replaceWith(count);
+  } else {
+    plain?.remove();
+  }
+  return { app, lines };
+}
+
 /** Fields added since the template was recorded, which its builder never listed. */
 const FIELDS_SINCE_TEMPLATE = new Set(['status', 'cancelled']);
 
@@ -226,9 +262,17 @@ suite('The shared search box draws and does what the template script did', () =>
    * draw took away, leaving focus on the page, may keep it here: Preact
    * keeps the element.
    */
+  /** The words of the plain lines drawn with Refine in the sidebar, a step at a time. */
+  const plainLines: string[] = [];
   const assertSame = (what: string, focusKept = false): void => {
     const before = doneByTemplate<StepRecord>(`${running}: ${what}`);
-    assert.strictEqual(normalizeBody(core.find('#app')), asDrawnSinceTemplate(core, before.page), `${what}: the page`);
+    if (harness(core).settings.elsewhere) {
+      const live = withoutPlainLines(core);
+      assert.strictEqual(normalizeBody(live.app), asDrawnSinceTemplate(core, withRefineElsewhere(core, before.page)), `${what}: the page`);
+      plainLines.push(live.lines);
+    } else {
+      assert.strictEqual(normalizeBody(core.find('#app')), asDrawnSinceTemplate(core, before.page), `${what}: the page`);
+    }
     assert.deepStrictEqual([...harness(core).applied], before.ran, `${what}: what was run`);
     assert.deepStrictEqual([...harness(core).drafts], before.typed, `${what}: what was typed`);
     if (focusKept && before.focus === 'body') {
@@ -276,10 +320,12 @@ suite('The shared search box draws and does what the template script did', () =>
     onPage((page) => {
       harness(page).settings.elsewhere = true;
     });
+    plainLines.length = 0;
     for (const [what, state] of searches) {
       send(state);
       assertSame(`${what}, with Refine in the sidebar`);
     }
+    assert.deepStrictEqual(plainLines, ['', '', '', '', '', 'Nothing matched.Drop #project/betaClear', 'Nothing matched.Clear', ''], 'only a search that matched nothing draws a line, its ways out');
   });
 
   test('more of a facet, and fewer', () => {

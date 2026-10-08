@@ -8,7 +8,7 @@ Open the **Context** view from the Deckard Activity Bar while editing a saved Ma
 
 ![Deckard Related Notes sidebar showing ranked note entries and matching tags.](../images/related-notes.png)
 
-- **Sort by**: **Relevance**, **Newest**, **Oldest**, or **Most accessed**. The gear beside it sets **Preview** (None, 1 line, or 2 lines) and **Daily notes** (Show or Hide).
+- **Sort**, at the Related notes heading: **Relevance**, **Newest**, **Oldest**, or **Most accessed**. The gear beside it sets **Preview** (None, 1 line, or 2 lines) and **Daily notes** (Show or Hide).
 - Select a result to open its matching line, or a tag to open its page.
 - Each result shows its heading path and main reason for matching; daily notes also show their date, as in `2026-09-10 > Project Atlas > Check-in`. A nested child heading with the same tags as its parent comes first. Results show 50 at a time; **Show more** adds 50.
 - **Link button.** Beside each score, it writes a `[[Note#Heading]]` link to that entry at your cursor, replacing any selection. It names the heading without its tags, or the note alone when the heading repeats the note's title. A tagged line or task is linked through the heading above it. When two notes share the name, Deckard writes the link and says which notes it could mean.
@@ -56,7 +56,7 @@ Each result has a three-step rail for a strong, moderate, or weak relation. Sele
 
 ### Refine a search from the sidebar
 
-While a [search page](search-pages.md#search-pages) or the Task board is active, the Context sidebar shows that search's [Refine](search.md#refine) options instead. The page keeps its search, terms, and counts; remove terms in its search box. Related tags are listed by how many results carry them, each with a three-step rail; hover for **In 6 of 13 results.** and how often the tags were written together or shared a heading.
+While a [search page](search-pages.md#search-pages) or the Task board is active, the Context sidebar shows that search's [Refine](search.md#refine) options instead. The page keeps its search, terms, and counts, and draws no Refine of its own; remove terms in its search box. Related tags are listed by how many results carry them, each with a three-step rail; hover for **In 6 of 13 results.** and how often the tags were written together or shared a heading.
 
 - Select a value to add it to the search.
 - <kbd>Alt</kbd>-select it to leave those results out.

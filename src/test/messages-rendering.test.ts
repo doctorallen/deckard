@@ -683,9 +683,9 @@ suite('Webview contracts', () => {
       // Clearing returns the page to the search it was opened with, so the
       // field's × is not drawn while the box holds only that.
       assert.strictEqual((page.find('[data-action="clear-query"]') as HTMLElement).hidden, true);
-      // While the sidebar shows this search's Refine, the page says so in its place.
+      // While the sidebar shows this search's Refine, the page draws none.
       page.send({ ...snapshot, originQuery: '#risk/vendor', refineInSidebar: true });
-      assert.match(page.text('.query-facets') ?? '', /In the Context sidebar\./);
+      assert.strictEqual(page.findAll('.query-facets').length, 0);
       // Side by side, there are no tabs, and each pane's heading counts it.
       page.send({ ...snapshot, layout: 'split' });
       assert.strictEqual(page.findAll('[role="tab"]').length, 0);

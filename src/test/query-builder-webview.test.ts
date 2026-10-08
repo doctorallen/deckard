@@ -558,7 +558,8 @@ suite('Tag overview query builder', () => {
 
     view.send({ ...(createState('#project/atlas', { facets }) as object), refineInSidebar: true });
     assert.strictEqual(view.findAll('[data-clause="#team/harbor"]').length, 0);
-    assert.match(view.html(), /In the Context sidebar\./);
+    assert.strictEqual(view.findAll('.query-facets').length, 0, 'the page draws no Refine, not even a line saying where it went');
+    assert.doesNotMatch(view.html(), /In the Context sidebar/);
   });
 
   test('offers recent searches in an empty search box', () => {

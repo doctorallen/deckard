@@ -726,14 +726,18 @@ class SearchBox implements QueryEditor {
     return <><span class="query-facets-empty">Nothing matched.</span><span class="query-recovery">{drop}{clear}</span></>;
   }
 
-  /** How many of each kind of result the applied search matches. */
-  private matchCount(): ComponentChild {
+  /**
+   * How many of each kind of result the applied search matches. Kept for a
+   * screen reader alone where the page shows the counts itself: in its
+   * tabs, or, with Refine in the sidebar, in its headings and bar.
+   */
+  private matchCount(hidden = false): ComponentChild {
     if (!this.appliedText().trim()) {
       return null;
     }
     const counts = this.query().matchCounts || { notes: 0, tasks: 0 };
     const nouns = { notes: ['note', 'notes'], tasks: ['task', 'tasks'] };
-    const elsewhere = this.options.countElsewhere && this.options.countElsewhere();
+    const elsewhere = hidden || (this.options.countElsewhere && this.options.countElsewhere());
     const said = (this.options.resultKinds || ['notes', 'tasks']).map((kind) => {
       const count = counts[kind] || 0;
       return `${count} ${nouns[kind][count === 1 ? 0 : 1]}`;
@@ -756,6 +760,9 @@ class SearchBox implements QueryEditor {
   }
 
   public facets(lead?: ComponentChild): ComponentChild {
+    if (this.options.refineElsewhere && this.options.refineElsewhere()) {
+      return this.facetsElsewhere(lead);
+    }
     const facets = this.query().facets || [];
     const count = this.matchCount();
     const recovery = this.matchedNothing() ? this.recovery() : null;
@@ -764,18 +771,6 @@ class SearchBox implements QueryEditor {
     }
     const top = lead ? <div class="query-facets-lead">{lead}</div> : null;
     const nothingLeft = <span class="query-facets-empty">Nothing left to narrow by.</span>;
-    if (this.options.refineElsewhere && this.options.refineElsewhere()) {
-      // The sidebar still says where Refine went; a search that matched
-      // nothing has nothing to narrow, so it offers the way back instead.
-      const note = facets.length ? <span class="query-facets-empty">In the Context sidebar.</span> : (recovery || nothingLeft);
-      return (
-        <section class="query-facets is-elsewhere" aria-label="Refine these results">
-          {top}
-          <div class="query-facets-groups"><span class="query-facets-heading">Refine</span>{note}</div>
-          {count}
-        </section>
-      );
-    }
     return (
       <section class="query-facets" aria-label="Refine these results">
         {top}
@@ -786,6 +781,28 @@ class SearchBox implements QueryEditor {
         </div>
         {count}
       </section>
+    );
+  }
+
+  /**
+   * With Refine in the Context sidebar, the page draws no Refine of its own,
+   * not even a line saying where it went: the reader can see it there. What
+   * the sidebar does not show stays, as plain lines under the search box:
+   * the page's lead lines, such as a tag's look-alikes, and the ways out of
+   * a search that matched nothing. The count stays for a screen reader.
+   */
+  private facetsElsewhere(lead?: ComponentChild): ComponentChild {
+    const count = this.matchCount(true);
+    const recovery = this.matchedNothing() ? this.recovery() : null;
+    if (!lead && !recovery) {
+      return count;
+    }
+    return (
+      <div class="query-facets-elsewhere">
+        {lead ? <div class="query-facets-lead-plain">{lead}</div> : null}
+        {recovery ? <p class="query-facets-recovery">{recovery}</p> : null}
+        {count}
+      </div>
     );
   }
 

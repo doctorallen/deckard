@@ -776,8 +776,11 @@ and `afterRender()` and of each host state with `receive()`, and passes its
 events through the `handle*` methods. `options.resultKinds` names
 what the page can find, such as `['tasks']` on the Task Board, so the result
 count names only those. `options.refineElsewhere()` returns true while the
-Related Notes sidebar shows the page's Refine options, and `facets()`
-then draws a single line in their place. `options.actions(hasText)` draws
+Context sidebar shows the page's Refine options, and `facets()` then
+draws no Refine at all: only the page's lead lines (`facets(lead)`, such as
+a tag page's look-alikes) and the ways out of a search that matched
+nothing, as plain lines in `.query-facets-elsewhere`, with the count kept
+for a screen reader. `options.actions(hasText)` draws
 the page's own buttons after the field, such as the Task Board's Save; one
 that needs text carries `data-query-needs-text`. The bar has no Search or
 Clear button. **Builder** (`.query-builder-toggle`, with `<HammerIcon>`) is

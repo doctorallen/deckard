@@ -4,13 +4,13 @@
  */
 import type { ComponentChildren } from 'preact';
 
-import { NOTE_SORT_LABELS } from '../../domain/model/sortOrders';
 import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { TagReference } from '../../ui/protocol/shared';
 import { IconButton } from '../shared/buttons';
 import { PageBar } from '../shared/pageBar';
-import { LayoutSplitIcon, LayoutTabsIcon, RenderedIcon, SortIcon, SourceIcon } from '../shared/strokeIcons';
+import { LayoutSplitIcon, LayoutTabsIcon, RenderedIcon, SourceIcon } from '../shared/strokeIcons';
 import { TagLabel } from '../shared/tagLabel';
+import { resultCounts } from './results';
 import { type ViewOptionGroup, type ViewOptionItem, ViewOptionChoices } from '../shared/viewOptions';
 
 /** A built-in or user-made namespace and its name in one readable title form: "Project: Atlas". */
@@ -42,21 +42,6 @@ function HistoryButtons({ history }: { readonly history: SearchPageSnapshot['his
       <IconButton action="history-back" label="Back to the search before" tipKey="Alt+←" icon="‹" disabledReason={steps.back ? '' : 'No search before this one'} />
       <IconButton action="history-forward" label="Forward to the search after" tipKey="Alt+→" icon="›" disabledReason={steps.forward ? '' : 'No search after this one'} />
     </span>
-  );
-}
-
-/** How the notes are ordered, in ⋯: the select alone, its label being the row's. */
-function SortControl({ mode }: { readonly mode: SearchPageSnapshot['sortMode'] }) {
-  const options = Object.entries(NOTE_SORT_LABELS);
-  return (
-    <label class="control-label">
-      <span class="control-icon">
-        <select data-action="set-sort" aria-label="Sort notes">
-          {options.map(([value, text]) => <option value={value} selected={mode === value}>{text}</option>)}
-        </select>
-        <SortIcon />
-      </span>
-    </label>
   );
 }
 
@@ -125,10 +110,26 @@ function saveSearchRow(hasText: boolean): ViewOptionItem {
   };
 }
 
-/** ⋯'s view rows: sort, layout, grouping, format, preview, and columns, as the gear held them. */
+/**
+ * Export notes… and Export tasks…, after Save search…, each while its kind
+ * has results: rare, and output only, so in ⋯ as on the Task board, rather
+ * than beside each pane.
+ */
+function exportRows(snapshot: SearchPageSnapshot): ViewOptionItem[] {
+  const counts = resultCounts(snapshot);
+  const rows: ViewOptionItem[] = [];
+  if (counts.notes) {
+    rows.push({ action: 'export-results', text: 'Export notes…', tip: 'Export these notes as a Markdown table, a list, or CSV: copy, or save to a file', attributes: { 'data-kind': 'notes' } });
+  }
+  if (counts.tasks) {
+    rows.push({ action: 'export-results', text: 'Export tasks…', tip: 'Export these tasks as a Markdown table, a list, or CSV: copy, or save to a file', attributes: { 'data-kind': 'tasks' } });
+  }
+  return rows;
+}
+
+/** ⋯'s view rows: layout, grouping, format, preview, and columns, as the gear held them; Sort is beside the notes. */
 function searchView(snapshot: SearchPageSnapshot): ViewOptionGroup[] {
   return [
-    { label: 'Sort', content: <SortControl mode={snapshot.sortMode} /> },
     {
       label: 'Layout',
       content: (
@@ -167,8 +168,10 @@ function searchView(snapshot: SearchPageSnapshot): ViewOptionGroup[] {
 /**
  * The bar: one name for the place whatever it searches, a saved search's
  * name, the title (the entity or tag the page is about, as the control
- * that opens it, or Search), the entity's tag under it, and a line
+ * that opens it, or Search), the entity's tag under it, and a link
  * offering a hub note when no note describes the tag; then ‹ › and ⋯.
+ * The link is never in ⋯, and Zen draws it as it is: it also says the
+ * tag has no hub.
  */
 export function PageHeader({ snapshot, hasText }: { readonly snapshot: SearchPageSnapshot; readonly hasText: boolean }) {
   const entity = snapshot.entity;
@@ -192,12 +195,12 @@ export function PageHeader({ snapshot, hasText }: { readonly snapshot: SearchPag
           <h1 aria-label={title}>{focus ? <OverviewTagLink tag={focus} text={title} /> : title}</h1>
           {entity && focus ? <div class="entity-meta"><OverviewTagLink tag={focus} text={entity.label} /></div> : null}
           {tag && !snapshot.hub
-            ? <p class="hub-offer"><button type="button" class="hub-offer-button" data-action="create-hub" data-tip={`Create a note whose describes: front matter names ${tag.label}`}>Create hub note</button></p>
+            ? <p class="hub-offer"><button type="button" class="hub-offer-link" data-action="create-hub" data-tip={`Create a note whose describes: front matter names ${tag.label}`}>Create hub note</button></p>
             : null}
         </>
       )}
       controls={<HistoryButtons history={snapshot.history} />}
-      menu={{ actions: [saveSearchRow(hasText)], view: searchView(snapshot), pageWidth: true, keySheet: true }}
+      menu={{ actions: [saveSearchRow(hasText), ...exportRows(snapshot)], view: searchView(snapshot), pageWidth: true, keySheet: true }}
     />
   );
 }
