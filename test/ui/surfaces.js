@@ -271,14 +271,13 @@ function createReferenceSurfaces(index, files) {
     {
       // The simulation settles differently from run to run, so the canvas
       // is hidden and only the controls around it are compared; the canvas
-      // is held to its recorded calls instead. With the canvas hidden, the
-      // probe's report would show through where it was, so it goes too.
+      // is held to its recorded calls instead.
       page: 'notesGraph',
       viewport: [1100, 800],
       snapshot: () => ({ ...graph, focus: { local: false, depth: 1, skipPeriodic: false, workspaceNodeCount: graph.nodes.length } }),
       // The canvas, and the note that says the layout is still settling,
       // are drawn at whatever moment Chrome is read, so neither is compared.
-      css: 'canvas { visibility: hidden !important; } #sim-note, #layout-probe { display: none !important; }',
+      css: 'canvas { visibility: hidden !important; } #sim-note { display: none !important; }',
       scrollers: ['html'],
       clippers: [],
       hovered: ['button'],
