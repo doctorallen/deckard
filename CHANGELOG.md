@@ -70,6 +70,10 @@
 
 ### Fixed
 
+- **Help's title is its largest heading under Zen.** Under Zen and Quiet,
+  Help drew *Changelog* smaller than the releases under it. Its title now
+  stays over its sections, and its sections over what is under them, at
+  every step.
 - **Copy MCP Server Setup is in the palette before the server is on.**
   The guide says to run it to turn the MCP server on, but the palette
   listed it only once the server was already on. It is listed now while

@@ -61,6 +61,11 @@ header { display: block; }
 h1 { font-size: 28px; line-height: 1.2; overflow-wrap: normal; }
 h2 { margin: 38px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line); color: var(--cyan); font-size: 19px; line-height: 1.2; }
 h3 { margin: 0 0 6px; font-size: var(--text-lg); line-height: 1.2; }
+/* Plain type takes every page's title down to a section's size
+   (display.css), which here left Changelog under its 19px releases. Help's
+   headings keep their order at every step: h1 over h2 over h3. `main`
+   outranks the plain rule wherever the sheets are linked. */
+body[data-styling=plain] main h1 { font-size: 22px; }
 .eyebrow { margin: 0 0 6px; }
 @media (max-width: 900px) {
   main { grid-template-columns: 1fr; gap: 20px; padding: 20px 16px 36px; }
