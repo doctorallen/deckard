@@ -161,7 +161,7 @@ suite('Task Board page', () => {
     assert.deepStrictEqual(page.lastPosted('moveTask'), { type: 'moveTask', taskId, column: 'priority:high', from: 'status:todo', requestId: 1 });
   });
 
-  test('List in Tasks view sits in the gear, and says when there is nothing to change', () => {
+  test('List in Tasks view sits in ⋯, and says when there is nothing to change', () => {
     const index = buildWorkspaceIndex(new Map([['notes/a.md', parseMarkdown('notes/a.md', '- [ ] One')]]));
     store = createPreferences({ get: (_k: string, d?: unknown) => d, keys: () => [], update: async () => undefined } as never);
     const board = createTaskBoard({ index, preferences: { ...store.reader.value, taskBoardLayout: 'board' }, search: { query: 'is:mine' }, options });
@@ -180,11 +180,11 @@ suite('Task Board page', () => {
     assert.strictEqual(toggle().getAttribute('data-tip-disabled'), 'The Tasks view lists every open task, as this search does.');
   });
 
-  test('Board | Table sits in the status row, the gear has no Layout, and Group is one select', () => {
+  test('Board | Table sits in the status row, ⋯ has no Layout, and Group is one select', () => {
     const shown = show(boardOf(TWO));
     const segment = shown.findAll('.query-status .segmented [data-action="set-task-layout"]');
     assert.deepStrictEqual(segment.map((button) => [button.textContent, button.getAttribute('aria-pressed')]), [['Board', 'true'], ['Table', 'false']]);
-    assert.strictEqual(shown.findAll('.view-options [data-action="set-task-layout"]').length, 0, 'the gear no longer holds the layout');
+    assert.strictEqual(shown.findAll('.view-options [data-action="set-task-layout"]').length, 0, '⋯ does not hold the layout');
     assert.ok(!shown.findAll('.view-options-group > span').some((label) => label.textContent === 'Layout'));
     shown.click('.query-status [data-action="set-task-layout"][data-value="table"]');
     assert.deepStrictEqual(shown.lastPosted('setTaskLayout'), { type: 'setTaskLayout', layout: 'table' });
@@ -647,7 +647,7 @@ suite('Task Board page', () => {
     }
   });
 
-  test('the gear lists every status, ticked to show its column, and opens the status list', () => {
+  test('⋯ lists every status, ticked to show its column, and opens the status list', () => {
     const shown = show(boardOf({ 'notes/a.md': '- [ ] Alpha\n- [s] Later\n- [s] Much later\n' }, { taskBoardHiddenColumns: ['Someday'] }));
     (shown.find('details.view-options') as HTMLDetailsElement).open = true;
     const rows = shown.findAll('.board-status').map((row) => [
@@ -823,17 +823,22 @@ suite('Task Board page', () => {
     box.dispatchEvent(new shown.window.Event('input', { bubbles: true }));
   };
 
-  /** The search bar's own buttons, after the box and its terms, in the order Tab reaches them. */
+  /** The page bar's buttons, then ⋯'s own actions, by what each does. */
   const barButtons = (shown: WebviewPage) =>
-    shown.findAll('.query-bar-row > button').map((button) => button.getAttribute('data-action'));
+    shown.findAll('.page-bar-actions > button').map((button) => button.getAttribute('data-action'));
+  const menuActions = (shown: WebviewPage) =>
+    shown.findAll('.page-menu [role="group"][aria-label="Page"] .view-options-item').map((row) => row.getAttribute('data-action'));
 
-  test('Add task ends the search bar and runs Add Task; a column’s + starts it in the column', () => {
+  test('Add task is the bar\'s one filled button and runs Add Task; a column’s + starts it in the column', () => {
     const shown = show(boardOf(TWO, { taskBoardGroup: 'status' }));
-    const add = shown.find('.query-bar-row > [data-action="add-task"]');
+    assert.deepStrictEqual(shown.findAll('.query-bar-row > button'), [], 'the search bar is the search alone');
+    const add = shown.find('.page-bar-actions > [data-action="add-task"]');
     assert.strictEqual(add.textContent, 'Add task');
     assert.ok(add.getAttribute('data-tip'), 'its tip says where the task goes');
     assert.ok(add.classList.contains('primary'), 'the board\'s one filled button');
-    shown.click('.query-bar-row > [data-action="add-task"]');
+    assert.strictEqual(shown.findAll('.primary').length, 1);
+    assert.strictEqual(shown.text('.page-bar-actions .board-total'), '2 tasks', 'the count stays as text');
+    shown.click('.page-bar-actions > [data-action="add-task"]');
     assert.deepStrictEqual(shown.lastPosted('addTask'), { type: 'addTask' });
 
     const column = shown.find('.board-column[data-column-id="status:in-progress"] .board-column-head > [data-action="board-add-task"]');
@@ -845,11 +850,22 @@ suite('Task Board page', () => {
     assert.strictEqual(shown.findAll('.board-column[data-column-id="done"] [data-action="board-add-task"]').length, 0, 'Done takes no new task');
   });
 
-  test('a plain board has no Tasks view strip, and keeps its Save', () => {
+  test('a plain board has no Tasks view strip, and keeps Save search… in ⋯, with Export tasks… and its view', () => {
     const shown = show(boardOf(TWO, {}, 'is:open'));
     assert.deepStrictEqual(shown.findAll('.tasks-view-strip'), []);
-    assert.deepStrictEqual(barButtons(shown), ['save-board-search', 'export-tasks', 'add-task']);
-    assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save');
+    assert.deepStrictEqual(barButtons(shown), ['add-task']);
+    assert.deepStrictEqual(menuActions(shown), ['save-board-search', 'use-for-agenda', 'export-tasks']);
+    assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save search…');
+    assert.strictEqual(shown.text('[data-action="export-tasks"]'), 'Export tasks…');
+    const sections = shown.findAll('.page-menu .view-options-section').map((section) => section.getAttribute('aria-label'));
+    assert.deepStrictEqual(sections, ['Page', 'View', 'Appearance', 'Help']);
+    assert.deepStrictEqual(shown.findAll('.page-menu [aria-label="Help"] .view-options-item').map((row) => row.textContent), ['Help on this page', 'Keyboard shortcuts?']);
+    assert.strictEqual(shown.find('.page-menu summary').getAttribute('aria-label'), 'More: Save search, List in Tasks view, Export tasks, and more', 'named by its first rows');
+    assert.strictEqual(shown.findAll('.help-button').length, 0, 'Help is a row of ⋯');
+    shown.click('[data-action="export-tasks"]');
+    assert.deepStrictEqual(shown.lastPosted('exportResults'), { type: 'exportResults', kind: 'tasks' });
+    shown.click('[data-action="page-help"]');
+    assert.deepStrictEqual(shown.lastPosted('openHelp'), { type: 'openHelp' });
     assert.strictEqual(shown.savedState() && (shown.savedState() as Record<string, unknown>).tasksViewMode, undefined);
   });
 
@@ -865,15 +881,16 @@ suite('Task Board page', () => {
     assert.strictEqual(cancel?.textContent, 'Cancel');
     assert.ok(cancel?.getAttribute('data-tip'), 'its tip says what Cancel keeps');
 
-    assert.deepStrictEqual(barButtons(shown), ['save-to-tasks-view', 'save-board-search', 'export-tasks', 'add-task'], 'Save to Tasks view first, then Save as search');
+    assert.deepStrictEqual(barButtons(shown), ['save-to-tasks-view', 'add-task'], 'Save to Tasks view first, then Add task');
+    assert.deepStrictEqual(menuActions(shown), ['save-board-search', 'use-for-agenda', 'export-tasks']);
     const save = () => shown.find('[data-action="save-to-tasks-view"]');
     assert.strictEqual(save().textContent, 'Save to Tasks view');
-    assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save as search');
+    assert.strictEqual(shown.findAll('.primary').length, 1);
     assert.ok(save().classList.contains('primary'), 'Save to Tasks view is the filled button');
     assert.ok(!shown.find('[data-action="add-task"]').classList.contains('primary'), 'and Add task goes plain, one filled button to a page');
     assert.strictEqual(save().getAttribute('aria-disabled'), null);
     assert.ok(save().getAttribute('data-tip'));
-    assert.deepStrictEqual(shown.findAll('.tasks-view-strip [title], .query-bar-row [title]'), [], 'tips, not native titles');
+    assert.deepStrictEqual(shown.findAll('.tasks-view-strip [title], .page-bar [title]'), [], 'tips, not native titles');
 
     // Typed and never run, as Save keeps it. A click focuses the button, as
     // in Chrome, and the words typed stay in the box.
@@ -900,7 +917,7 @@ suite('Task Board page', () => {
     assert.strictEqual(save().getAttribute('aria-disabled'), 'true', 'and the box as the view lists it cannot');
   });
 
-  test('Cancel asks the host to leave the mode, and the plain board it sends has its Save back, focused', () => {
+  test('Cancel asks the host to leave the mode, and the plain board it sends has Add task back as its primary, focused', () => {
     const board = boardOf(TWO, {}, 'is:open');
     const shown = show({ ...board, tasksViewMode: { listed: true } });
     assert.deepStrictEqual(shown.savedState(), { query: 'is:open', tasksViewMode: true }, 'kept for a reload while it lives');
@@ -908,8 +925,8 @@ suite('Task Board page', () => {
     assert.deepStrictEqual(shown.lastPosted('leaveTasksViewMode'), { type: 'leaveTasksViewMode' });
     shown.send(board);
     assert.deepStrictEqual(shown.findAll('.tasks-view-strip'), []);
-    assert.strictEqual(shown.text('[data-action="save-board-search"]'), 'Save');
-    assert.strictEqual(shown.document.activeElement, shown.find('[data-action="save-board-search"]'), 'focus is not lost with Cancel');
+    assert.ok(shown.find('[data-action="add-task"]').classList.contains('primary'));
+    assert.strictEqual(shown.document.activeElement, shown.find('[data-action="add-task"]'), 'focus is not lost with Cancel');
     assert.deepStrictEqual(shown.savedState(), { query: 'is:open' });
   });
 });

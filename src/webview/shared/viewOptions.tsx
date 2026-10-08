@@ -33,7 +33,7 @@ export interface ViewOptionItem {
   readonly pressed?: boolean;
   /** Why it cannot act now, which holds it with `aria-disabled` and says so in its tip. */
   readonly disabledReason?: string;
-  /** Any other attributes it carries, by name. */
+  /** Any other attributes it carries, by name, such as the reason it gives whenever the page holds it. */
   readonly attributes?: Readonly<Record<string, string>>;
 }
 
@@ -58,12 +58,12 @@ function ItemRow({ item }: { readonly item: ViewOptionItem }) {
       type="button"
       class="menu-item view-options-item"
       data-action={item.action}
+      data-tip={item.tip || undefined}
+      data-tip-disabled={item.disabledReason || undefined}
       {...item.attributes}
       aria-pressed={isSwitch ? item.pressed : undefined}
       aria-keyshortcuts={item.key || undefined}
-      data-tip={item.tip || undefined}
       aria-disabled={item.disabledReason ? 'true' : undefined}
-      data-tip-disabled={item.disabledReason || undefined}
     >
       {isSwitch ? <span class="menu-check" aria-hidden="true">{item.pressed ? <CheckIcon /> : null}</span> : null}
       <span class="menu-label">{item.text}</span>

@@ -23,7 +23,7 @@ Opening a tag's page or a section records access for the access sort.
 
 ## Taking a search's results out
 
-**Export**, beside **Bulk edit** on a search page and beside **Save** on the Task Board, copies or saves everything the search found as a Markdown table, a Markdown list of links, or CSV. With a search, it first offers **Copy as live query block**, which copies the search and its sort as a [query block](query-blocks.md#query-blocks). Nothing else leaves the machine.
+**Export**, beside **Bulk edit** on a search page, and **Export tasks…** in the Task Board's **⋯**, copies or saves everything the search found as a Markdown table, a Markdown list of links, or CSV. With a search, it first offers **Copy as live query block**, which copies the search and its sort as a [query block](query-blocks.md#query-blocks). Nothing else leaves the machine.
 
 ## Editing a search's results
 

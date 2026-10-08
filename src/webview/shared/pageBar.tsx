@@ -107,7 +107,8 @@ export function PageBar({ trail, lead, controls, menu, className, leadClass, lab
         <Eyebrow trail={trail} />
         {lead}
       </div>
-      <div class="page-bar-actions" role="group" aria-label={label}>
+      {/* Focus moving here keeps words typed in the page's search box, which Save search… saves. */}
+      <div class="page-bar-actions" role="group" aria-label={label} data-query-keeps-text="">
         {controls}
         {menu ? <PageMenu {...menu} /> : null}
       </div>

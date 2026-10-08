@@ -28,6 +28,20 @@
   search box, beside **Group**, **Sort** and **Can start now**, where the
   gear's Layout row was. A board you kept as a list opens as the table,
   which ranks every task in one order as the list did.
+- **The Task board's bar: Add task, then ⋯.** **Add task** moves from the
+  end of the search bar to the top right, beside the task count, as the
+  page's one filled button; while the board edits what the Tasks view
+  lists, **Save to Tasks view** takes its place and Add task goes plain.
+  A **⋯** replaces the gear and the **?** button. Its first rows are
+  **Save search…** (the bar's Save), **List in Tasks view**, checked while
+  the view lists the search, and **Export tasks…**; then the view's
+  **Cards**, **Status columns** and the table's **Columns**; then
+  **Theme…** and **Zen**; then **Help on this page** and **Keyboard
+  shortcuts**. The search bar holds the search alone.
+- **The calendar page's bar: ‹ Today ›, Month | Week, ⋯.** A **⋯**
+  replaces the gear and the **?** button, with **Show weekends**, a
+  checkbox in place of Weekends' Shown | Hidden, then **Theme…** and
+  **Zen**, **Help on this page** and **Keyboard shortcuts**.
 - **Group is one select.** The board's five grouping buttons are one
   **Group** select: Status, Priority, Due date, Person and **Tag…**, which
   still opens a menu of the namespaces your open tasks use.
@@ -140,9 +154,8 @@
   a card here, or right-click one.*, and the board's key sheet lists
   Shift+F10.
 - **The calendar page draws Month and Week once.** Its gear drew the
-  header's **Month | Week** again as **Layout**. The gear keeps
-  **Weekends**, the theme and Display, and **m** and **w** still switch
-  the layout.
+  header's **Month | Week** again as **Layout**. **m** and **w** still
+  switch the layout.
 - **Card details have a line of their own.** An entry's file and line,
   and its created and updated dates when ticked, were laid over the next
   row on hover, hiding its title and due date on Home, the Task board and
@@ -239,8 +252,8 @@
   Calendar is the month alone: select a day, a week's mark or the month's
   name to open its note. **Open Day Panel**, **Close Day Panel**, **Hide
   Weekends** and **Include Weekends** are gone from its `…` menu; the
-  calendar page lists a day's tasks beside the month, and its gear's
-  **Weekends** sets both calendars. Its one title icon opens the calendar
+  calendar page lists a day's tasks beside the month, and **Show
+  weekends** in its **⋯** sets both calendars. Its one title icon opens the calendar
   page.
 - **The Notes Graph's physics tuning.** The **Forces** group (cluster
   centering, cluster cohesion, community spacing, repel strength, link

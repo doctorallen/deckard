@@ -73,7 +73,7 @@ Select a day, the mark beside a week, or the month's name to open its note; Deck
 
 **Repeats.** A repeating task shows a muted **↻** on every later date its rule lands on in the visible weeks, and a **Repeats** group in the calendar page's day panel. These dates are not written; a row opens the task. A `when done` rule shows only its next date.
 
-**Weekends.** **Weekends**, in the calendar page's gear, shows five working days or all seven, on the page and in the Calendar view alike.
+**Weekends.** **Show weekends**, in the calendar page's **⋯**, shows all seven days; clear it for five working days, on the page and in the Calendar view alike.
 
 **The calendar page.** `Deckard: Open Calendar`, **Calendar** at the top of the Context view, or the button in the Calendar view's title bar, opens the calendar as a page. Each day lists its tasks by name: due, then scheduled (⏳), then repeats (↻, dashed), with **+3 more**. Click a day to choose it; its panel sits beside or under the month, or in the Context sidebar while that is open. Double-click a day, or press Enter on it, to open its note. The panel shows:
 
@@ -84,7 +84,7 @@ Select a day, the mark beside a week, or the month's name to open its note; Deck
 
 On the page:
 
-- **Month** and **Week** switch layouts.
+- The top right reads **‹ Today ›**, **Month | Week**, and **⋯**: the arrows step, **Today** returns, and **Month** and **Week** switch layouts. **⋯** holds **Show weekends**, **Theme…** and **Zen**, **Help on this page**, and **Keyboard shortcuts**.
 - Drag a due or scheduled task to another day to move its date. Repeats stay put.
 - Keys: `[` and `]` step, `t` returns to today, `m` and `w` switch the layout, `?` lists the keys.
 

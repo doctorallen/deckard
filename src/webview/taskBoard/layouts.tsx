@@ -1,6 +1,6 @@
 /**
  * The Task Board's other layout, a table, the controls under its search box
- * and in its gear, and what it draws while it edits what the Tasks view
+ * and in its ⋯, and what it draws while it edits what the Tasks view
  * lists.
  */
 import { describeBox, statusBoxProps } from '../shared/taskBox';
@@ -11,6 +11,7 @@ import { EmptyState } from '../shared/emptyState';
 import { Inline } from '../shared/inline';
 import { EllipsisIcon, SortIcon } from '../shared/strokeIcons';
 import { plainTitle } from '../shared/taskRow';
+import type { ViewOptionItem } from '../shared/viewOptions';
 import { board } from './model';
 
 /** A table row's ⋯, which opens the menu a board card has. */
@@ -163,29 +164,20 @@ export function AvailableToggle({ pressed }: { readonly pressed: boolean }) {
 }
 
 /**
- * The gear's switch that makes the Tasks view list this search, and lists
- * every open task again when pressed once more. The Tasks view lists a
+ * The ⋯'s switch that makes the Tasks view list this search, and lists
+ * every open task again when chosen once more. The Tasks view lists a
  * search of its own; this is where it is edited.
  */
-export function AgendaToggle({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
+export function agendaRow(snapshot: TaskBoardSnapshot): ViewOptionItem {
   const listed = Boolean(snapshot.agendaListsThisSearch);
   const everything = listed && snapshot.agendaQueryIsDefault;
-  const tip = listed
-    ? 'The Tasks view lists this search. Select to list every open task again.'
-    : 'Make the Tasks view list this search';
-  return (
-    <button
-      type="button"
-      data-action="use-for-agenda"
-      aria-pressed={listed}
-      class={listed ? 'active' : undefined}
-      data-tip={tip}
-      aria-disabled={everything ? 'true' : undefined}
-      data-tip-disabled={everything ? 'The Tasks view lists every open task, as this search does.' : undefined}
-    >
-      List in Tasks view
-    </button>
-  );
+  return {
+    action: 'use-for-agenda',
+    text: 'List in Tasks view',
+    pressed: listed,
+    tip: listed ? 'The Tasks view lists this search. Select to list every open task again.' : 'Make the Tasks view list this search',
+    disabledReason: everything ? 'The Tasks view lists every open task, as this search does.' : undefined,
+  };
 }
 
 /**
@@ -206,37 +198,40 @@ export function TasksViewStrip() {
 }
 
 /**
- * The bar's buttons while the board edits what the Tasks view lists: Save
- * to Tasks view, the one the reader came for, then Save as search, the
- * board's Save, named for what it does here. Save to Tasks view takes the
- * box as it is, run or not, and is held while the view lists what the box
+ * The bar's one filled control while the board edits what the Tasks view
+ * lists: Save to Tasks view, the one the reader came for. It takes the box
+ * as it is, run or not, and is held while the view lists what the box
  * shows; `syncSaveToTasksView` keeps that as the reader types.
  */
-export function TasksViewActions({ listed, hasText }: { readonly listed: boolean; readonly hasText: boolean }) {
+export function SaveToTasksViewButton({ listed }: { readonly listed: boolean }) {
   return (
-    <>
-      <button
-        class="primary"
-        data-action="save-to-tasks-view"
-        data-tip="Make the Tasks view list this search"
-        data-tip-disabled="The Tasks view lists this search"
-        aria-disabled={listed ? 'true' : undefined}
-      >
-        Save to Tasks view
-      </button>
-      <SaveSearchButton label="Save as search" hasText={hasText} />
-    </>
+    <button
+      type="button"
+      class="primary"
+      data-action="save-to-tasks-view"
+      data-tip="Make the Tasks view list this search"
+      data-tip-disabled="The Tasks view lists this search"
+      aria-disabled={listed ? 'true' : undefined}
+    >
+      Save to Tasks view
+    </button>
   );
 }
 
 /**
- * Save: names the search in the box and keeps it on Home, to reopen here.
- * Held until there is a search to save.
+ * Save search…, the ⋯'s first row: names the search in the box and keeps
+ * it on Home, to reopen here. Held until there is a search to save, and
+ * let go as the reader types, as every control that needs text is.
  */
-export function SaveSearchButton({ label, hasText }: { readonly label: string; readonly hasText: boolean }) {
-  return (
-    <button data-action="save-board-search" data-query-needs-text="" data-tip="Keep this search, named, on Home; it reopens on the Task Board" data-tip-disabled="Type a search to save it" aria-disabled={hasText ? undefined : 'true'}>{label}</button>
-  );
+export function saveSearchRow(hasText: boolean): ViewOptionItem {
+  return {
+    action: 'save-board-search',
+    text: 'Save search…',
+    tip: 'Keep this search, named, on Home; it reopens on the Task Board',
+    disabledReason: hasText ? undefined : 'Type a search to save it',
+    // The box lets it go and holds it again as the reader types.
+    attributes: { 'data-query-needs-text': '', 'data-tip-disabled': 'Type a search to save it' },
+  };
 }
 
 /**
@@ -256,7 +251,7 @@ export function syncSaveToTasksView(listed: boolean): void {
   }
 }
 
-/** The gear's list of the table's columns, the title fixed. */
+/** The ⋯'s list of the table's columns, the title fixed. */
 export function ColumnPicker({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   const table = snapshot.table;
   if (!table) {

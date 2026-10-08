@@ -391,7 +391,8 @@ test('the page’s Add task runs Add Task', async () => {
 test('saves its search as a view that reopens on the Task Board', async () => {
   const { view, preferences, index } = await openBoard();
   const save = () => view.find('[data-action="save-board-search"]');
-  assert.ok(save(), 'Save sits in the search bar');
+  assert.ok(save().closest('.page-menu'), 'Save search… is the first row of ⋯');
+  assert.strictEqual(save().textContent, 'Save search…');
   view.click(view.find('[data-action="clear-query"]'));
   await delay(10);
   assert.strictEqual(save().getAttribute('aria-disabled'), 'true', 'with no search, there is nothing to save');
@@ -442,8 +443,8 @@ test('saves its search as a view that reopens on the Task Board', async () => {
 test('hands its search to the Tasks view, and says when the view has it', async () => {
   const { view } = await openBoard();
   const button = () => view.find('[data-action="use-for-agenda"]');
-  assert.ok(button(), 'List in Tasks view sits in the gear');
-  assert.strictEqual(button().closest('.view-options') !== null, true, 'in the gear, not the search bar');
+  assert.ok(button(), 'List in Tasks view sits in ⋯');
+  assert.strictEqual(button().closest('.page-menu') !== null, true, 'in ⋯, not the search bar');
   assert.strictEqual(view.find('.query-bar-row [data-action="use-for-agenda"]'), null);
   assert.strictEqual(button().getAttribute('aria-pressed'), 'true', 'the view lists every open task, and so does a board with no search');
   assert.strictEqual(button().getAttribute('aria-disabled'), 'true', 'so there is nothing to change');
@@ -489,7 +490,8 @@ test('opened from the Tasks view\'s search icon, it edits what the view lists an
     assert.ok(strip(), 'the board says what it is editing');
     assert.strictEqual(view.find('.query-bar-shell').getAttribute('data-query-text'), '#project/beta', "on the view's search");
     assert.strictEqual(save().getAttribute('aria-disabled'), 'true', 'which the view lists already');
-    assert.strictEqual(view.find('[data-action="save-board-search"]').textContent, 'Save as search');
+    assert.ok(save().classList.contains('primary'), 'Save to Tasks view is the bar\'s one filled button');
+    assert.ok(!view.find('[data-action="add-task"]').classList.contains('primary'), 'and Add task goes plain');
 
     view.press(view.find('[data-action="clear-query"]'));
     await delay(10);
@@ -521,7 +523,7 @@ test('opened from the Tasks view\'s search icon, it edits what the view lists an
     await delay(10);
     assert.strictEqual(view.find('.tasks-view-strip'), null);
     assert.strictEqual(view.find('[data-action="save-to-tasks-view"]'), null);
-    assert.strictEqual(view.find('[data-action="save-board-search"]').textContent, 'Save');
+    assert.ok(view.find('[data-action="add-task"]').classList.contains('primary'), 'Add task is the filled button again');
     assert.strictEqual(vscode._test.configurationUpdates.length, 1, 'Cancel writes nothing');
     assert.strictEqual(vscode._test.workspaceSettings.get('deckard.tasks.viewQuery'), '#project/atlas');
 
@@ -613,7 +615,7 @@ test('a search that does not parse keeps the board and says why', async () => {
 
 test('Board | Table switches the layout, and the table ranks while in Rank order', async () => {
   const { view, preferences } = await openBoard();
-  assert.strictEqual(view.find('.view-options [data-action="set-task-layout"]'), null, 'the gear no longer holds the layout');
+  assert.strictEqual(view.find('.view-options [data-action="set-task-layout"]'), null, '⋯ does not hold the layout');
   assert.ok(view.find('.query-status select[data-action="set-board-group"]'), 'the board groups from one select');
 
   view.click(view.find('.query-status [data-action="set-task-layout"][data-value="table"]'));

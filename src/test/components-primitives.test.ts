@@ -520,7 +520,7 @@ suite('Component primitives', () => {
       assert.ok(search.findAll('#tag-context-menu button').every((item) => item.classList.contains('menu-item')));
     });
 
-    test('the gear\'s menu and the completions drop down from their control', () => {
+    test('⋯\'s menu and the completions drop down from their control', () => {
       const board = openBoard();
       assert.ok(board.find('.view-options-menu').classList.contains('is-dropdown'));
       assert.ok(board.find('#suggestions-query').classList.contains('popover'));

@@ -1,34 +1,28 @@
 /**
  * The Task Board page: tasks as a Kanban board or a table, narrowed by the
- * search box every search page shares, with its view options and status
- * columns in the gear. A card moved between columns
+ * search box every search page shares, with Add task in its bar and its
+ * saving, exporting, view options and status columns in its ⋯. A card moved between columns
  * moves at once and is written by the host, whose next state confirms it
  * or puts the card back.
  */
 import type { StateMessage } from '../../ui/protocol/messaging';
 import type { SavedToTasksViewMessage, TaskBoardMessage, TaskBoardSnapshot, ToggleRefusedMessage } from '../../ui/protocol/taskBoard';
 import { type ActionMenuGroup, closeActionMenu, openActionMenu } from '../shared/actionMenu';
-import { HelpButton } from '../shared/buttons';
-import { Eyebrow } from '../shared/eyebrow';
 import { installKeySheet, type KeySection } from '../shared/keySheet';
 import { installMenuKeys } from '../shared/menuKeys';
 import { openSourceMessage } from '../shared/openSource';
 import { onHostMessage, startPage } from '../shared/page';
+import { PageBar } from '../shared/pageBar';
 import { closeRankMenu, installRankedRows, moveKeyToEdge, rankKeys } from '../shared/rankedRows';
 import { createQueryEditor, refineModeOf } from '../shared/queryEditor';
 import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { announce } from '../shared/status';
 import { taskTitleOf } from '../shared/taskRow';
-import {
-  installViewOptions,
-  themeOption,
-  ViewOptions,
-  zenOption,
-} from '../shared/viewOptions';
+import { installViewOptions, type ViewOptionGroup, type ViewOptionItem } from '../shared/viewOptions';
 import { keptState, vscodeApi } from '../shared/vscode';
 import { GroupSelect, TaskBoard, taskCardMoves } from './board';
 import { type BoardScroll, editRow, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll, sendHeldEdits, settleRefusedEdit } from './boardMoves';
-import { AgendaToggle, AvailableToggle, canRank, ColumnPicker, LayoutSwitch, ResultTable, SaveSearchButton, SortControl, syncSaveToTasksView, TableSortNote, TasksViewActions, TasksViewStrip } from './layouts';
+import { agendaRow, AvailableToggle, canRank, ColumnPicker, LayoutSwitch, ResultTable, saveSearchRow, SaveToTasksViewButton, SortControl, syncSaveToTasksView, TableSortNote, TasksViewStrip } from './layouts';
 import { board, type BoardPageState, type DrawnBoard, lingerRemaining } from './model';
 import { statusColumnNames, StatusSettings } from './statusSettings';
 
@@ -57,7 +51,7 @@ let scrolledTo = { x: 0, y: 0 };
 /** Where the board and its columns were scrolled when a draw began, put back after it. */
 let boardScrolledTo: BoardScroll | undefined;
 
-/** Set by Cancel until the plain board is drawn, which focus then goes to: its Save, in Save to Tasks view's place. */
+/** Set by Cancel until the plain board is drawn, which focus then goes to: its Add task, in Save to Tasks view's place. */
 let focusSaveAfterLeaving = false;
 
 // What every page shares comes first, as the template's component script
@@ -77,13 +71,6 @@ const store = startPage<BoardPageState>({
 });
 installMenuKeys();
 
-document.addEventListener('click', (event) => {
-  const target = event.target instanceof Element ? event.target : null;
-  if (target && target.closest('[data-action="open-help"]')) {
-    post({ type: 'openHelp' });
-  }
-});
-
 /** The Task Board searches tasks alone, with the box every search page uses. */
 const editor = createQueryEditor({
   getState: () => latest?.query,
@@ -100,18 +87,6 @@ const editor = createQueryEditor({
   label: 'Search tasks',
   resultKinds: ['tasks'],
   refineElsewhere: () => Boolean(latest && latest.refineInSidebar),
-  // Saving sits with the search it saves; the saved search reopens here.
-  // Opened to edit what the Tasks view lists, saving to the view comes first.
-  // Add task ends the row, the one control there that is not about the
-  // search, and is the board's one filled control, unless the board is
-  // editing what the Tasks view lists: then Save to Tasks view is.
-  actions: (hasText) => (
-    <>
-      {latest?.tasksViewMode ? <TasksViewActions listed={tasksViewListsBox()} hasText={hasText} /> : <SaveSearchButton label="Save" hasText={hasText} />}
-      <button data-action="export-tasks" data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export tasks</button>
-      <button class={latest?.tasksViewMode ? undefined : 'primary'} data-action="add-task" data-tip="Write a new task in the task editor, into today's note or another you choose">Add task</button>
-    </>
-  ),
 });
 
 /**
@@ -123,13 +98,13 @@ function tasksViewListsBox(): boolean {
   return Boolean(mode && mode.listed && editor.currentText().trim() === (latest?.query.text || '').trim());
 }
 
-/** After Cancel, puts focus on the plain board's Save once it is drawn, so it is not lost with the strip. */
+/** After Cancel, puts focus on the plain board's Add task once it is drawn, so it is not lost with the strip. */
 function focusSaveOnceLeft(): void {
   if (!focusSaveAfterLeaving || shown()?.tasksViewMode) {
     return;
   }
   focusSaveAfterLeaving = false;
-  document.querySelector<HTMLElement>('[data-action="save-board-search"]')?.focus();
+  document.querySelector<HTMLElement>('[data-action="add-task"]')?.focus();
 }
 
 /**
@@ -150,24 +125,46 @@ function filterTaskEntries(): void {
   followShownCards();
 }
 
-/** The gear: the Tasks view, the table's columns or the cards' parent tag, the status columns, theme, and zen. */
-function BoardViewOptions({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
+/**
+ * The ⋯'s own actions: Save search…, which keeps what the box shows whether
+ * or not Enter ran it, List in Tasks view, and Export tasks….
+ */
+function boardActions(snapshot: TaskBoardSnapshot): ViewOptionItem[] {
+  return [
+    saveSearchRow(Boolean(editor.currentText().trim())),
+    agendaRow(snapshot),
+    { action: 'export-tasks', text: 'Export tasks…', tip: 'Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file' },
+  ];
+}
+
+/** The ⋯'s view rows: the cards' parent tag or the table's columns, then the status columns. */
+function boardView(snapshot: TaskBoardSnapshot): ViewOptionGroup[] {
   const isTable = snapshot.layout === 'table';
+  return [
+    ...(isTable ? [] : [{ label: 'Cards', content: <ParentTagToggle snapshot={snapshot} /> }]),
+    { label: 'Status columns', content: <StatusSettings snapshot={snapshot} />, stacked: true },
+    ...(isTable ? [{ label: 'Columns', content: <ColumnPicker snapshot={snapshot} />, stacked: true }] : []),
+  ];
+}
+
+/**
+ * The bar's right side: the count, then the one filled control, Add task,
+ * unless the board is editing what the Tasks view lists: then Save to Tasks
+ * view is, and Add task is drawn plain after it.
+ */
+function BoardControls({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
+  const shown = snapshot.taskCount;
+  const editing = Boolean(snapshot.tasksViewMode);
   return (
-    <ViewOptions
-      groups={[
-        { label: 'Tasks view', content: <AgendaToggle snapshot={snapshot} /> },
-        ...(isTable ? [{ label: 'Columns', content: <ColumnPicker snapshot={snapshot} />, stacked: true }] : []),
-        ...(isTable ? [] : [{ label: 'Cards', content: <ParentTagToggle snapshot={snapshot} /> }]),
-        { label: 'Status columns', content: <StatusSettings snapshot={snapshot} />, stacked: true },
-        themeOption(),
-        zenOption(),
-      ]}
-    />
+    <>
+      <span class="board-total">{`${shown}${shown === 1 ? ' task' : ' tasks'}`}</span>
+      {editing ? <SaveToTasksViewButton listed={tasksViewListsBox()} /> : null}
+      <button type="button" class={editing ? undefined : 'primary'} data-action="add-task" data-tip="Write a new task in the task editor, into today's note or another you choose">Add task</button>
+    </>
   );
 }
 
-/** The gear's switch for the tag each card is under. */
+/** The switch, in ⋯'s view rows, for the tag each card is under. */
 function ParentTagToggle({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   return (
     <label class="board-settings-row">
@@ -210,17 +207,15 @@ function BoardContent({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
 /** The whole page: its header, the search box with its Refine row, and the tasks. */
 function BoardPage({ state }: { readonly state: DrawnBoard }) {
   const snapshot = state.snapshot;
-  const shown = snapshot.taskCount;
   return (
     <>
-      <header>
-        <div><Eyebrow trail="TASK BOARD" /><h1>Task Board</h1></div>
-        <div class="board-header-actions">
-          <span class="board-total">{`${shown}${shown === 1 ? ' task' : ' tasks'}`}</span>
-          <HelpButton anchor="task-views" />
-          <BoardViewOptions snapshot={snapshot} />
-        </div>
-      </header>
+      <PageBar
+        trail="TASK BOARD"
+        lead={<h1>Task Board</h1>}
+        label="Task Board"
+        controls={<BoardControls snapshot={snapshot} />}
+        menu={{ actions: boardActions(snapshot), view: boardView(snapshot), keySheet: true }}
+      />
       {snapshot.tasksViewMode ? <TasksViewStrip /> : null}
       {snapshot.statusTagsLeft ? <StatusTagsStrip key="status-tags" text={snapshot.statusTagsLeft} /> : null}
       {editor.bar(<StatusControls snapshot={snapshot} />)}
@@ -263,7 +258,7 @@ function setColumnOrder(names: string[]): void {
   post({ type: 'setBoardColumnOrder', names });
 }
 
-// The table in Rank order, and the status columns in the gear, are ordered
+// The table in Rank order, and the status columns in ⋯, are ordered
 // by dragging their rows, or from their context menu.
 installRankedRows({
   kinds: {

@@ -528,12 +528,15 @@ class SearchBox implements QueryEditor {
 
   /**
    * Text typed and not added as a term is let go when the search box loses
-   * focus, as a multi-select does; moving to the box's own buttons keeps it.
+   * focus, as a multi-select does; moving to the box's own buttons keeps it,
+   * and so does moving to the page's bar (`data-query-keeps-text`), whose
+   * Save search… in ⋯ and Save to Tasks view save what the box shows.
    */
   private listen(): void {
+    const keeps = '.query-workspace, [data-query-keeps-text]';
     document.addEventListener('mousedown', (event) => {
       const target = targetOf(event);
-      this.pointerInWorkspace = Boolean(target && target.closest('.query-workspace'));
+      this.pointerInWorkspace = Boolean(target && target.closest(keeps));
     }, true);
     document.addEventListener('mouseup', () => {
       setTimeout(() => {
@@ -549,7 +552,7 @@ class SearchBox implements QueryEditor {
         return;
       }
       const next = event.relatedTarget as Element | null;
-      if (this.pointerInWorkspace || (next && next.closest && next.closest('.query-workspace'))) {
+      if (this.pointerInWorkspace || (next && next.closest && next.closest(keeps))) {
         return;
       }
       this.closeSuggestions();

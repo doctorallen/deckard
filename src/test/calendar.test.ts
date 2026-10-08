@@ -327,7 +327,10 @@ suite('Calendar', () => {
     );
     try {
       assert.strictEqual(page.findAll('.day-cell[data-drop-date="2026-09-12"]').length, 0);
-      page.click('.view-options [data-action="set-show-weekends"][data-value="on"]');
+      const weekends = page.find('.page-menu [aria-label="View"] input[data-action="set-show-weekends"]') as HTMLInputElement;
+      assert.strictEqual(weekends.checked, false, 'Show weekends, a View row of ⋯, unticked');
+      assert.strictEqual(page.find('label[for="calendar-show-weekends"]').textContent, 'Show weekends');
+      page.click('.view-options [data-action="set-show-weekends"]');
       assert.deepStrictEqual(page.lastPosted('setShowWeekends'), { type: 'setShowWeekends', show: true });
     } finally {
       page.dispose();
@@ -342,8 +345,14 @@ suite('Calendar', () => {
     const snapshot = createCalendar(done, '2026-09', createQueryContext(now.getTime()), { dayPanel: true, layout: 'page' });
     const page = openWebviewPage(renderPage('calendarPage'), snapshot);
     try {
-      assert.strictEqual(page.findAll('.view-options [data-action="set-calendar-layout"]').length, 0, 'the gear does not draw Month and Week again');
-      page.click('.calendar-page-actions [data-action="set-calendar-layout"][data-value="week"]');
+      assert.strictEqual(page.findAll('.view-options [data-action="set-calendar-layout"]').length, 0, '⋯ does not draw Month and Week again');
+      assert.deepStrictEqual(
+        page.findAll('.page-bar-actions > button, .page-bar-actions > .segmented, .page-bar-actions > .page-menu').map((element) => element.getAttribute('data-action') || element.className),
+        ['step-calendar', 'step-calendar', 'segmented view-options-choices', 'view-options page-menu'],
+        '‹ ›, with Today between them away from today, Month | Week, then ⋯',
+      );
+      assert.strictEqual(page.findAll('.help-button').length, 0, 'Help is a row of ⋯');
+      page.click('.page-bar-actions [data-action="set-calendar-layout"][data-value="week"]');
       assert.ok(page.find('.calendar-page-body').classList.contains('is-week'));
 
       (page.find('.day-panel details.day-group') as HTMLDetailsElement).open = true;
@@ -402,7 +411,7 @@ suite('Calendar', () => {
     const page = openWebviewPage(renderPage('calendarPage'), snapshot, { clock: true });
     try {
       assert.strictEqual(page.savedState(), undefined, 'nothing is kept until the reader chooses');
-      page.click('.calendar-page-actions [data-action="set-calendar-layout"][data-value="week"]');
+      page.click('.page-bar-actions [data-action="set-calendar-layout"][data-value="week"]');
       assert.deepStrictEqual(page.savedState(), { layout: 'week' });
       page.window.dispatchEvent(new page.window.Event('scroll'));
       page.clock!.advance(250);
@@ -552,7 +561,7 @@ suite('Calendar', () => {
       const title = page.find('.calendar-title');
       assert.strictEqual(title.textContent, '2026-09-13 to 2026-09-19');
       assert.strictEqual(title.getAttribute('aria-label'), '2026-09-13 to 2026-09-19, September 2026, monthly note', 'its name begins with what it shows');
-      page.click('.calendar-page-actions [data-action="set-calendar-layout"][data-value="month"]');
+      page.click('.page-bar-actions [data-action="set-calendar-layout"][data-value="month"]');
       assert.strictEqual(page.find('.calendar-title').getAttribute('aria-label'), 'September 2026, monthly note');
     } finally {
       page.dispose();

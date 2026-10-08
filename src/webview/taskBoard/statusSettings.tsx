@@ -1,5 +1,5 @@
 /**
- * The gear's status columns: the status list as the board shows it, a row
+ * The ⋯'s status columns: the status list as the board shows it, a row
  * per status, ticked to draw its column and dragged into order, with its
  * box and how many open tasks have it; and the way to the list itself.
  */

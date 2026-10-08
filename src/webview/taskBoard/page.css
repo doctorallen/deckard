@@ -5,9 +5,8 @@
 @import "../shared/base.css";
 @import "../shared/queryEditor.css";
 
-/* The gear holds the header's top-right corner, as it does on the Dashboard. */
+/* The bar's count, Add task and ⋯ hold the header's top-right corner. */
 header { align-items: flex-start; }
-.board-header-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .board-total { color: var(--muted); font: var(--text-sm) var(--font-mono); }
 .board-view-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
 .board-area { margin-top: 12px; }
@@ -17,7 +16,7 @@ header { align-items: flex-start; }
 .tasks-view-strip > span { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .tasks-view-strip-note { color: var(--muted); font-size: var(--text-xs); }
 
-/* The status column editor inside the gear's menu. */
+/* The status column editor inside the ⋯'s menu. */
 .board-settings { display: grid; gap: 6px; width: min(280px, 80vw); text-transform: none; }
 .board-settings-note { margin: 0; color: var(--muted); font-size: var(--text-xs); }
 .board-status-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }

@@ -185,7 +185,7 @@ test('with weeks starting on Monday, the header and every row start on Monday', 
   }
 });
 
-test('draws no day panel, and leaves the weekends out when the calendar page\'s gear does', async () => {
+test('draws no day panel, and leaves the weekends out when the calendar page\'s Show weekends does', async () => {
   const preferences = createPreferences(createGlobalState());
   const { host, view } = await openCalendar(preferences);
   assert.strictEqual(view.findAll('.day-panel').length, 0, 'the month alone');
