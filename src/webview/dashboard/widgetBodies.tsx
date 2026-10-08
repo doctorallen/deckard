@@ -34,7 +34,7 @@ function TryNextBody({ widget }: WidgetBodyProps) {
     <>
       <p class="try-next-text">{next.text}</p>
       <div class="try-next-actions">
-        <button type="button" class="active" data-action="run-try-next" data-key={next.key}>{next.action.label}</button>
+        <button type="button" data-action="run-try-next" data-key={next.key}>{next.action.label}</button>
         <button type="button" data-action="snooze-try-next" data-key={next.key} data-tip="Put it off for a week">Not now</button>
         <button type="button" data-action="retire-try-next" data-key={next.key}>Do not suggest this</button>
       </div>

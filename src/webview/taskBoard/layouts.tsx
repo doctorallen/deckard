@@ -212,7 +212,7 @@ export function TasksViewActions({ listed, hasText }: { readonly listed: boolean
   return (
     <>
       <button
-        class="query-primary"
+        class="primary"
         data-action="save-to-tasks-view"
         data-tip="Make the Tasks view list this search"
         data-tip-disabled="The Tasks view lists this search"

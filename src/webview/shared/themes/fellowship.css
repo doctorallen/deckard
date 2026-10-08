@@ -63,3 +63,6 @@ button:hover:where(:not(:disabled):not([aria-disabled="true"])), button.active, 
 /* The Notes Graph's note that it is simulating, on the same parchment, was
    in the pale gold at 1.89:1; it takes Fellowship's amber, a deep brown, 5.53:1. */
 .status-line .sim-note { color: var(--amber); }
+/* The primary's gold fill barely parts from the parchment around it, so a
+   darker 1px edge draws it out, at rest and under the pointer. */
+button.primary.primary, button.primary.primary:hover:where(:not(:disabled):not([aria-disabled="true"])), button.primary.primary:focus-visible { border-width: 1px; border-color: #7a5a00; }

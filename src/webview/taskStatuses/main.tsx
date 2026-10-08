@@ -251,7 +251,7 @@ function TaskStatusesPage({ state }: { readonly state: StatusesState }) {
         {snapshot.canImport ? <button type="button" data-action="import">Import from Obsidian Tasks</button> : null}
         <span class="status-actions-gap" />
         <button type="button" data-action="revert" disabled={state.rows === undefined}>Revert</button>
-        <button type="button" class="is-primary" data-action="save" disabled={state.rows === undefined || errors}>Save</button>
+        <button type="button" class="primary" data-action="save" disabled={state.rows === undefined || errors}>Save</button>
       </div>
       {workflow ? <Workflow rows={rows} /> : null}
     </>

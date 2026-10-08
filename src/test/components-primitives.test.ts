@@ -363,6 +363,24 @@ suite('Component primitives', () => {
       assert.ok(read >= 22, `every surface's drawn DOM is read (${read})`);
     });
 
+    test('a drawn page fills at most one control, and only one that commits something', () => {
+      // Plan 29, R2: .primary, the --chosen fill, is the page's one primary
+      // action. Navigation, a suggestion, or the search box's own controls
+      // are never filled.
+      const commits = new Set(['add-task', 'save-to-tasks-view', 'save', 'create-day', 'open-daily-note']);
+      let filled = 0;
+      const read = readGoldens((surface, body) => {
+        const primaries = [...body.querySelectorAll('.primary')];
+        assert.ok(primaries.length <= 1, `${surface}: ${primaries.length} filled controls`);
+        for (const primary of primaries) {
+          filled += 1;
+          assert.ok(commits.has(String(primary.getAttribute('data-action'))), `${surface}: ${primary.outerHTML.slice(0, 120)}`);
+        }
+        assert.deepStrictEqual([...body.querySelectorAll('.query-primary, .is-primary, .query-apply')], [], `${surface}: no other idiom for primary`);
+      });
+      assert.ok(read >= 22 && filled >= 10, `every surface's drawn DOM is read (${read} surfaces, ${filled} filled)`);
+    });
+
     /** A box in the window, and whether two share any of it. */
     type Box = { left: number; top: number; width: number; height: number };
     const overlaps = (a: Box, b: Box): boolean =>

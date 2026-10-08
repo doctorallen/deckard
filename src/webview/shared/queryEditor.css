@@ -80,11 +80,6 @@
 /* The / key's part of the hint, which says nothing while the field it
    would focus already has focus. */
 .query-workspace:has(.query-input:focus) .query-hint-key { display: none; }
-/* One filled control per page: the one the reader most likely wants. A
-   chosen segment is drawn another way (see button.active), so filled means
-   "do this" and nothing else. */
-.query-bar-row .query-primary, .query-bar-row .query-primary:not(:hover):not(:focus-visible) { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
-.query-bar-row .query-primary:hover, .query-bar-row .query-primary:focus-visible { border-color: var(--amber-bright); background: var(--chosen-bg); color: var(--chosen-fg); filter: brightness(1.08); }
 /* A line above a search, or the list it narrows, that says what the reader
    is looking at, with a way out: the Tags tab's kept search, and the Task
    Board editing what the Tasks view lists. */

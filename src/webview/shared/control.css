@@ -54,6 +54,14 @@ button:focus-visible, select:focus-visible, input:focus-visible {
    tip says why (data-tip-disabled); both look the same, and neither lights
    up under the pointer (the ENABLED guard on every hover rule). */
 button:disabled, button[aria-disabled="true"] { opacity: .5; cursor: default; }
+/* The page's primary action: filled with the chosen pair, at most one to a
+   page, and only on an action that commits something, such as Add task or
+   Save. Navigation is never filled, and a chosen segment is marked another
+   way (button.active), so filled means "do this" and nothing else. The
+   class is doubled to stay above each theme's button rules, which come
+   after this sheet. */
+button.primary.primary { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); }
+button.primary.primary:hover:where(:not(:disabled):not([aria-disabled="true"])), button.primary.primary:focus-visible { border-color: var(--amber-bright); background: var(--chosen-bg); color: var(--chosen-fg); filter: brightness(1.08); }
 /* The one button that commits what cannot be put back. Neutral, with a
    heavier edge: red means overdue and nothing else. Never the only or the
    first button in its row, and never filled at rest. */

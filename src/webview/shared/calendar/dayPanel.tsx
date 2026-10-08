@@ -122,7 +122,7 @@ function CreatedGroup({ day }: { readonly day: CalendarDayDetail }) {
   );
 }
 
-/** The day's daily note, to open, or the offer to create it. */
+/** The day's daily note, to open, or the offer to create it, the panel's one filled control. */
 function DayNote({ day }: { readonly day: CalendarDayDetail }) {
   if (day.notePath) {
     return (
@@ -136,7 +136,7 @@ function DayNote({ day }: { readonly day: CalendarDayDetail }) {
   return (
     <div class="day-note-line">
       <span class="day-note-label">No daily note yet</span>
-      <button type="button" data-action="create-day" data-date={day.date} aria-label={`Create the daily note for ${formatPageDay(day.date)}`}>Create</button>
+      <button type="button" class="primary" data-action="create-day" data-date={day.date} aria-label={`Create the daily note for ${formatPageDay(day.date)}`}>Create</button>
     </div>
   );
 }

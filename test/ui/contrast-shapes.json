@@ -204,7 +204,8 @@
       ["div.browse-toolbar", []],
       ["div.browse-toolbar-controls", []],
       ["input.catalog-search", [["type", "search"], ["data-action", "search-browse"]]],
-      ["div.control-row", []]
+      ["div.control-row", []],
+      ["button.primary", [["type", "button"]]]
     ],
     "searchPage": [
       ["div.loading", []],
@@ -558,7 +559,8 @@
       ["div.related-notes-controls", []],
       ["span.related-notes-sort-control", []],
       ["select.related-notes-sort", [["data-action", "set-related-notes-sort"]]],
-      ["svg.related-notes-sort-icon", []]
+      ["svg.related-notes-sort-icon", []],
+      ["button.primary", [["type", "button"]]]
     ],
     "notesGraph": [
       ["div.empty-state", [["id", "empty-state"]]],
@@ -889,7 +891,8 @@
       ["th.result-check", []],
       ["th.result-menu", []],
       ["span.control-label", []],
-      ["ul.table-columns", []]
+      ["ul.table-columns", []],
+      ["button.primary", [["type", "button"]]]
     ],
     "calendar": [
       ["div.loading", []],
@@ -1000,7 +1003,8 @@
       ["button.cal-more.text-button", [["type", "button"], ["data-action", "open-day"]]],
       ["header.calendar-page-header", []],
       ["p.eyebrow", []],
-      ["div.calendar-page-actions", []]
+      ["div.calendar-page-actions", []],
+      ["button.primary", [["type", "button"]]]
     ],
     "calendarPage": [
       ["div.loading", []],
@@ -1111,7 +1115,8 @@
       ["button.cal-more.text-button", [["type", "button"], ["data-action", "open-day"]]],
       ["header.calendar-page-header", []],
       ["p.eyebrow", []],
-      ["div.calendar-page-actions", []]
+      ["div.calendar-page-actions", []],
+      ["button.primary", [["type", "button"]]]
     ],
     "relatedNotesDebug": [
       ["p.lead", []],

@@ -103,12 +103,14 @@ const editor = createQueryEditor({
   refineElsewhere: () => Boolean(latest && latest.refineInSidebar),
   // Saving sits with the search it saves; the saved search reopens here.
   // Opened to edit what the Tasks view lists, saving to the view comes first.
-  // Add task ends the row, the one control there that is not about the search.
+  // Add task ends the row, the one control there that is not about the
+  // search, and is the board's one filled control, unless the board is
+  // editing what the Tasks view lists: then Save to Tasks view is.
   actions: (hasText) => (
     <>
       {latest?.tasksViewMode ? <TasksViewActions listed={tasksViewListsBox()} hasText={hasText} /> : <SaveSearchButton label="Save" hasText={hasText} />}
       <button data-action="export-tasks" data-tip="Every task this search found, as a Markdown table, a list, or CSV: copy, or save to a file">Export tasks</button>
-      <button data-action="add-task" data-tip="Write a new task in the task editor, into today's note or another you choose">Add task</button>
+      <button class={latest?.tasksViewMode ? undefined : 'primary'} data-action="add-task" data-tip="Write a new task in the task editor, into today's note or another you choose">Add task</button>
     </>
   ),
 });

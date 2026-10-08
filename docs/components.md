@@ -252,10 +252,8 @@ re-declare the same names.
 overdue and only overdue, and a theme that wants another mapping
 re-declares the meaning tokens rather than every rule. A negated search
 term is a dashed, struck chip in the muted color, not a red one. The one
-filled control on a page is the primary action (a page's own
-`.query-primary`, such as the Task Board's Save to Tasks view); the search
-box's own controls are never filled, and a chosen segment is marked, not
-filled.
+filled control on a page is its primary action, `.primary` (see
+**The primary action** below); a chosen segment is marked, not filled.
 
 **Paired tokens are not synonyms.** `--amber` and `--amber-bright` share a
 default, but themes pull them apart — Synthwave makes `--amber` pink and
@@ -858,6 +856,28 @@ Buttons, menu items, and command titles follow one table, and
   `src/test/components-primitives.test.ts` fails one that does. A
   non-focusable span, such as the priority badge, and a select's `<option>`
   may keep one.
+
+### The primary action
+
+**At most one filled control to a page, and only for an action that commits
+something.** `button.primary` in `shared/control.css` fills a button with the
+`--chosen-bg` / `--chosen-fg` pair, with a hover and focus of its own: VS
+Code's own button colors in Corpo, gold in Cooper, and in Fellowship a
+darker 1px edge, since its gold fill barely parts from the parchment. These
+are the only ones:
+
+| Page | The primary |
+| --- | --- |
+| Task Board | **Add task**; while the board edits what the Tasks view lists, **Save to Tasks view**, and Add task goes plain |
+| Task Statuses | **Save** |
+| Calendar day panel | **Create**, while the day has no daily note (**Open** is plain) |
+| Home, in a workspace with no notes | Get Started's **Create today's note** |
+
+Nothing else is filled: not navigation, not Try next's suggestion, not the
+search box's own controls, and not a button borrowing `.active`, which
+marks a chosen segment or a pressed toggle. `components-primitives.test.ts`
+reads every surface's drawn DOM and fails a page with two, or with one on
+another action.
 
 ### Destructive actions
 

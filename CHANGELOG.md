@@ -34,6 +34,14 @@
   **Builder** is joined to the start of the box, with a hammer, stays
   pressed while it is open rather than turning into Hide builder, and
   opens the builder right under the box.
+- **One filled button to a page, for what it commits.** The filled look
+  now marks only a page's one primary action: **Add task** on the Task
+  board (or **Save to Tasks view** while it edits what the Tasks view
+  lists), **Save** in Task Statuses, the Calendar day panel's **Create**
+  while the day has no daily note, and Get Started's **Create today's
+  note** in an empty workspace. Try next's suggestion and Customize Home's
+  **Finish** are plain buttons now. In Corpo the primary takes VS Code's
+  own button colors; in Fellowship it has a darker edge.
 
 ### Fixed
 

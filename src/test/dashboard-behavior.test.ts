@@ -462,6 +462,8 @@ suite('Dashboard behavior', () => {
     page.send({ ...snapshot, totalNoteCount: 0 });
     assert.match(page.text('.home-start p') ?? '', /work sample/);
     assert.ok(page.find('.home-start [data-view="sampleWorkspace"]'));
+    // Creating today's note is the one thing an empty Home commits.
+    assert.deepStrictEqual(page.findAll('.primary').map((button) => button.getAttribute('data-action')), ['open-daily-note']);
   });
 
   test('Try next draws one card, or nothing at all', () => {
@@ -477,6 +479,8 @@ suite('Dashboard behavior', () => {
       page.findAll('.try-next-actions button').map((button) => button.textContent),
       ['Open Task board', 'Not now', 'Do not suggest this'],
     );
+    // A suggestion leads somewhere; it commits nothing, so nothing is filled.
+    assert.deepStrictEqual(page.findAll('.primary, .try-next-actions .active'), []);
     page.click('[data-action="run-try-next"]');
     assert.deepStrictEqual(page.lastPosted('runTryNext'), { type: 'runTryNext', key: 'taskBoard' });
     page.click('[data-action="snooze-try-next"]');

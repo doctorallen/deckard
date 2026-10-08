@@ -478,7 +478,7 @@ function createBoardSurfaces(boardIndex, preferences) {
       }),
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
-      hovered: ['.query-bar-row .query-primary'],
+      hovered: ['.query-bar-row .primary'],
     },
   ];
 }

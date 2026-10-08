@@ -60,7 +60,7 @@ function EditBar({ choices, full }: { readonly choices: readonly WidgetChoice[];
         <AddWidget choices={choices} full={full} />
         {/* The host asks first, in VS Code's own modal: a reset cannot be undone. */}
         <button type="button" data-action="reset-widgets" data-tip="Put back the widgets Home started with">Reset widgets…</button>
-        <button type="button" class="active" data-action="finish-customizing">Finish</button>
+        <button type="button" data-action="finish-customizing">Finish</button>
       </div>
     </div>
   );
@@ -97,7 +97,7 @@ function GetStarted() {
       <h2>No notes here yet</h2>
       <p>Deckard reads every saved Markdown file in this workspace. Start with today’s note, or open a work sample: a week of a team lead’s notes to try everything on.</p>
       <div class="home-start-actions">
-        <button type="button" class="active" data-action="open-daily-note">Create today’s note</button>
+        <button type="button" class="primary" data-action="open-daily-note">Create today’s note</button>
         <button type="button" data-action="open-view" data-view="sampleWorkspace">Create a work sample</button>
         <button type="button" data-action="open-view" data-view="checkSetup">Check my setup</button>
       </div>
