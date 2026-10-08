@@ -29,9 +29,13 @@ function createIndex() {
     task('room', 'Book the review room', 2),
     task('call', 'Call Ren', 3),
   ];
+  // One note, so Home draws its widgets: a workspace without notes gets
+  // Get Started in the grid's place.
+  const plan = parseMarkdown('notes/plan.md', '# Plan', { createdAt: 1, updatedAt: 2 }, {});
+  const notes = buildWorkspaceIndex(new Map([[plan.filePath, plan]]));
   return {
-    files: new Map(),
-    sections: new Map(),
+    files: notes.files,
+    sections: notes.sections,
     tasks: new Map(tasks.map((entry) => [entry.id, entry])),
     tags: new Map(),
     entities: new Map(),
