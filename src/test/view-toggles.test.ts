@@ -52,6 +52,26 @@ suite('View toggles', () => {
     assert.deepStrictEqual(whens.filter((when) => /config\.deckard\.(calendar|outline)\./.test(when)), [], 'no menu reads a moved setting');
   });
 
+  test('the Tasks view and the Outline draw two icons in their titles, the rest in ⋯, and say one thing when empty', () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as {
+      contributes: {
+        menus: { 'view/title': Array<{ command: string; when: string; group?: string }> };
+        viewsWelcome: Array<{ view: string; contents: string }>;
+      };
+    };
+    const title = (view: string, inline: boolean) => manifest.contributes.menus['view/title']
+      .filter((entry) => entry.when.startsWith(`view == ${view}`) && (entry.group ?? '').startsWith('navigation') === inline)
+      .map((entry) => entry.command);
+    assert.deepStrictEqual(title('deckard.agenda', true), ['deckard.agenda.setGrouping', 'deckard.showTaskBoard']);
+    assert.deepStrictEqual(title('deckard.agenda', false), ['deckard.clearAgendaQuery', 'deckard.agenda.editQuery', 'deckard.agenda.setSort']);
+    // Collapse All is the tree's own, beside Filter by Tag; Unfold All only while a section is focused.
+    assert.deepStrictEqual(title('deckard.outline', true), ['deckard.unfoldAllSections', 'deckard.outline.filterByTag', 'deckard.outline.clearTagFilter']);
+    assert.deepStrictEqual(title('deckard.outline', false), ['deckard.outline.enableFollowCursor', 'deckard.outline.disableFollowCursor']);
+    const welcome = new Map(manifest.contributes.viewsWelcome.map((entry) => [entry.view, entry.contents]));
+    assert.strictEqual(welcome.get('deckard.outline'), 'Open a Markdown note to see its headings.');
+    assert.strictEqual(welcome.get('deckard.hubs'), 'A hub note gathers a project\'s or person\'s notes.\n[Create Hub Note for Tag…](command:deckard.createHubNoteForTag)');
+  });
+
   test('keeps each choice only away from its default, and reads it back', () => {
     for (const choice of VIEW_CHOICES) {
       const fallback = readViewChoice({}, choice);

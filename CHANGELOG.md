@@ -80,6 +80,17 @@
   title bar's **‹** and **›** show only under the **Writing** and **Off**
   presets, or with `deckard.editor.dailyNoteActions` set off. A daily note
   under **Full** shows two Deckard buttons in its title bar, not four.
+- **Two icons in the Tasks view's and the Outline's titles.** The Tasks
+  view's title keeps **Group by** and **Open Task Board**; **Edit What the
+  Tasks View Lists…** and **Sort Tasks By…** move to its **⋯** menu, beside
+  **Clear the Tasks View's Search**. The Outline's title keeps **Filter
+  Outline by Tag…** and **Collapse All**, with **Unfold All Sections**
+  while a section is focused; **Follow Cursor in Outline** (or **Stop
+  Following Cursor in Outline**) moves to its **⋯** menu.
+- **Shorter welcomes.** An empty Outline says *Open a Markdown note to see
+  its headings.*, with no buttons. An empty Hubs view says *A hub note
+  gathers a project's or person's notes.*, with **Create Hub Note for
+  Tag…**.
 - **A search page lists its keys.** **?**, or **Keyboard shortcuts** in
   **⋯**, opens the sheet of its keys there too: **/** for the search box,
   **Alt+←** and **Alt+→** through the page's searches, and the menu keys.

@@ -98,7 +98,8 @@ Open **Outline** from the Deckard Activity Bar to see the active Markdown file's
 - **2/5** means two of five tasks under the heading are done, sub-headings included; **↩3** means links in other notes name it three times.
 - The tree follows the file as you type.
 - Select a heading to jump to it. Right-click a tagged heading for **Open the Tag's Search Page** and **Rename Tag**.
-- The eye control sets whether the Outline follows the cursor; **Collapse all** is beside it.
+- The title holds **Filter Outline by Tag…** and **Collapse All**, and **Unfold All Sections** while a section is focused. Its **⋯** menu holds **Follow Cursor in Outline**, or **Stop Following Cursor in Outline** while it follows.
+- With no Markdown note open, the Outline says *Open a Markdown note to see its headings.*
 - **Focus Section**, the target button on a heading (also in the editor's **Deckard** submenu and Note Actions), folds the rest of the note away. **Unfold All Sections** or moving to another note ends it. It needs `editor.folding` on.
 - **Filter Outline by Tag…**, in the view title or a tagged heading's context menu, shows only headings with that tag or a tag under it (`#project` keeps `#project/atlas`), plus their parents. It stays until **Clear Outline Tag Filter**.
 

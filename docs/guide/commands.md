@@ -67,7 +67,7 @@
 | **Deckard: Rename Tag** | Searches indexed tags and replaces the selected tag in its source notes. |
 | **Deckard: Rename Heading** | Renames the heading the cursor is in and rewrites every `[[Note#Heading]]` link that named it. |
 | **Deckard: Undo Last Change** | Reverts Deckard's last workspace-wide write, such as a tag rename or merge. |
-| **Deckard: Follow Cursor in Outline** | Selects the Outline heading containing the editor cursor. The Outline title has the same control. |
+| **Deckard: Follow Cursor in Outline** | Selects the Outline heading containing the editor cursor. The Outline title's **⋯** menu has the same control. |
 | **Deckard: Stop Following Cursor in Outline** | Leaves the Outline selection where you put it. |
 | **Deckard: Focus Section** | Folds the rest of the note away from the current section or Outline heading. |
 | **Deckard: Unfold All Sections** | Unfolds the note again after Focus Section. |

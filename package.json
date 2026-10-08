@@ -210,11 +210,11 @@
     "viewsWelcome": [
       {
         "view": "deckard.hubs",
-        "contents": "Hub notes and the notes about their tags appear here, as pages under the pages they belong to.\n\nA hub note describes a tag with describes: in its front matter, such as describes: project/atlas. A note is filed under it when its front matter or first heading carries the tag, or when it says up: \"[[Atlas]]\".\n[Read about hub notes](https://deckard.esperinnovations.com/search-pages.html#hub-notes)"
+        "contents": "A hub note gathers a project's or person's notes.\n[Create Hub Note for Tag…](command:deckard.createHubNoteForTag)"
       },
       {
         "view": "deckard.outline",
-        "contents": "Open a Markdown note to see its headings here.\n[Create today's note](command:deckard.createDailyNote)\n[Open Help](command:deckard.showHelp)"
+        "contents": "Open a Markdown note to see its headings."
       },
       {
         "view": "deckard.agenda",
@@ -1317,12 +1317,12 @@
         {
           "command": "deckard.clearAgendaQuery",
           "when": "view == deckard.agenda && deckard.agendaQuerySet",
-          "group": "9_query"
+          "group": "9_query@2"
         },
         {
           "command": "deckard.agenda.editQuery",
           "when": "view == deckard.agenda",
-          "group": "navigation@0"
+          "group": "9_query@1"
         },
         {
           "command": "deckard.agenda.setGrouping",
@@ -1332,7 +1332,7 @@
         {
           "command": "deckard.agenda.setSort",
           "when": "view == deckard.agenda",
-          "group": "navigation@1"
+          "group": "1_sort@1"
         },
         {
           "command": "deckard.showTaskBoard",
@@ -1342,12 +1342,12 @@
         {
           "command": "deckard.outline.enableFollowCursor",
           "when": "view == deckard.outline && !deckard.outlineFollowCursor",
-          "group": "navigation@1"
+          "group": "1_follow@1"
         },
         {
           "command": "deckard.outline.disableFollowCursor",
           "when": "view == deckard.outline && deckard.outlineFollowCursor",
-          "group": "navigation@1"
+          "group": "1_follow@1"
         },
         {
           "command": "deckard.unfoldAllSections",
