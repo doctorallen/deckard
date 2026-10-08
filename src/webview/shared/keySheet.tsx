@@ -65,10 +65,14 @@ export function closeKeySheet(): void {
   sheet.opener = undefined;
 }
 
-/** Opens the sheet with a page's own sections, then the keys every page shares, and focuses Close. */
-export function openKeySheet(sections: readonly KeySection[]): void {
+/**
+ * Opens the sheet with a page's own sections, then the keys every page
+ * shares, and focuses Close, which gives focus back to `opener` when the
+ * sheet closes: what had focus, unless the page names another.
+ */
+export function openKeySheet(sections: readonly KeySection[], opener: Element | null = document.activeElement): void {
   closeKeySheet();
-  sheet.opener = document.activeElement;
+  sheet.opener = opener;
   const element = document.createElement('div');
   element.setAttribute('class', 'key-sheet');
   element.setAttribute('role', 'dialog');
@@ -81,10 +85,10 @@ export function openKeySheet(sections: readonly KeySection[]): void {
 }
 
 /**
- * Opens the sheet on `?`, outside a field, and closes it on Escape, on
- * Close, or on a click outside its panel. While it is open, Tab stays on
- * Close, its one control. `sections` is the page's own, or a function that
- * makes them when the sheet opens.
+ * Opens the sheet on `?`, outside a field, or on Keyboard shortcuts in the
+ * page's ⋯, and closes it on Escape, on Close, or on a click outside its
+ * panel. While it is open, Tab stays on Close, its one control. `sections`
+ * is the page's own, or a function that makes them when the sheet opens.
  */
 export function installKeySheet(sections: readonly KeySection[] | (() => readonly KeySection[])): void {
   document.addEventListener('keydown', (event) => {
@@ -106,10 +110,16 @@ export function installKeySheet(sections: readonly KeySection[] | (() => readonl
     openKeySheet(typeof sections === 'function' ? sections() : sections);
   });
   document.addEventListener('click', (event) => {
+    const target = event.target as Element;
+    // From ⋯, whose menu has closed: focus goes back to ⋯ afterwards.
+    const row = target.closest ? target.closest('[data-action="open-key-sheet"]') : null;
+    if (row) {
+      openKeySheet(typeof sections === 'function' ? sections() : sections, row.closest('.view-options')?.querySelector('summary') ?? row);
+      return;
+    }
     if (!sheet.element) {
       return;
     }
-    const target = event.target as Element;
     if (target.closest('[data-action="close-key-sheet"]') || !target.closest('.key-sheet-panel')) {
       closeKeySheet();
     }
