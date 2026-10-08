@@ -326,6 +326,25 @@ function createMenuSurfaces(surfaces) {
 }
 
 /**
+ * The three pages that hand part of themselves to the Context sidebar while
+ * it is open, drawn so: a search page and the Task Board with Refine in the
+ * sidebar, and the calendar page with its chosen day there, the month at
+ * the full width.
+ *
+ * @param {object[]} surfaces The surfaces already made, whose snapshots these reuse.
+ * @returns {object[]} The three pages with the sidebar open.
+ */
+function createSidebarOpenSurfaces(surfaces) {
+  const of = (name) => surfaces.find((surface) => (surface.name || surface.page) === name);
+  const withSidebar = (surface, name, change) => ({ ...surface, name, snapshot: () => ({ ...surface.snapshot(), ...change }) });
+  return [
+    withSidebar(of('searchPage'), 'searchPageSidebarOpen', { refineInSidebar: true }),
+    withSidebar(of('taskBoard'), 'taskBoardSidebarOpen', { refineInSidebar: true }),
+    withSidebar(of('calendarPage'), 'calendarPageSidebarOpen', { dayInSidebar: true }),
+  ];
+}
+
+/**
  * The Task Board with a task of every status, and its Cancelled column.
  *
  * @param {object} preferences The preference services, whose reader holds what is stored.
@@ -910,6 +929,7 @@ function createSurfaces() {
     ...createDashboardSurfaces(index, preferences.reader.value),
     ...createReferenceSurfaces(index, files),
     ...createMenuSurfaces(surfaces),
+    ...createSidebarOpenSurfaces(surfaces),
   ];
 }
 
