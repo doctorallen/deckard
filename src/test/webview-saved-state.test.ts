@@ -264,7 +264,8 @@ suite('Webview saved state', () => {
       for (const id of ['link-thickness', 'label-threshold', 'tag-specificity', 'bridge-strength', 'show-all-links', 'center-strength', 'cluster-cohesion', 'community-spacing', 'repel-strength', 'link-strength', 'link-distance']) {
         assert.strictEqual(page.document.getElementById(id), null, id);
       }
-      assert.deepStrictEqual(page.findAll('.control-group > summary').map((summary) => summary.textContent), ['Focus', 'Filters', 'Display']);
+      // Six switches, a tag, a group and a search, each away from how a graph starts.
+      assert.deepStrictEqual(page.findAll('.control-group > summary').map((summary) => summary.textContent), ['Focus', 'Filters · 9 set', 'Display']);
       assert.strictEqual(page.find('[data-headings][aria-pressed="true"]').getAttribute('data-headings'), 'never');
       assert.strictEqual((page.find('#search') as HTMLInputElement).value, 'lift');
     });

@@ -15,6 +15,7 @@ import type { ComponentChildren, RefObject } from 'preact';
 import { PageBar } from '../shared/pageBar';
 import { UndoNotice } from '../shared/undoToast';
 import type { GraphSettings, GraphState } from './model';
+import { DEFAULT_SETTINGS } from './settings';
 
 /**
  * What Focus says before a note is open: how to use it, so Zen's help step
@@ -139,16 +140,23 @@ export function GraphBody(props: ControlsProps) {
   );
 }
 
-/** A folding group of controls, open or closed to begin with. */
-function ControlGroup({ title, open, children }: {
+/**
+ * A folding group of controls, open or closed to begin with, then as the
+ * reader left it across a draw. Its summary says, after the title, what
+ * the group is doing to the graph while it is closed over it.
+ */
+function ControlGroup({ title, open, note, children }: {
   readonly title: string;
   readonly open?: boolean;
+  /** What the summary says after the title, such as "2 set". */
+  readonly note?: string;
   readonly children: ComponentChildren;
 }) {
+  const shown = document.querySelector<HTMLDetailsElement>(`.control-group[data-group="${title}"]`);
   return (
-    <details class="control-group" open={open}>
+    <details class="control-group" data-group={title} open={shown ? shown.open : open}>
       {' '}
-      <summary>{title}</summary>
+      <summary>{note ? `${title} · ${note}` : title}</summary>
       {' '}
       <div class="control-body">{children}</div>
       {' '}
@@ -238,11 +246,31 @@ function SettingSlider({ props, spec }: { readonly props: ControlsProps; readonl
   );
 }
 
+/**
+ * Whether the page is drawn in Zen, under which Focus and Filters start
+ * closed, as Display always does, each summary saying what it is doing.
+ */
+function zen(): boolean {
+  return document.body.classList.contains('zen');
+}
+
+/**
+ * How many filters are away from how a new graph starts: each switch, each
+ * tag picked, the group picked and the search.
+ */
+export function filtersSet(settings: GraphSettings): number {
+  const switches: ToggleKey[] = ['showNotes', 'showTasks', 'showTags', 'showOrphans', 'onlyWrittenLinks', 'showParked'];
+  return switches.filter((key) => Boolean(settings[key]) !== DEFAULT_SETTINGS[key]).length
+    + settings.selectedTags.length
+    + (settings.group ? 1 : 0)
+    + (String(settings.search || '').trim() ? 1 : 0);
+}
+
 /** Focus: the graph around the note in the editor, how far out, and whether daily notes are passed through. */
 function FocusGroup({ ui, on }: ControlsProps) {
   const { focus } = ui;
   return (
-    <ControlGroup title="Focus" open>
+    <ControlGroup title="Focus" open={!zen()} note={focus.local ? 'around this note' : undefined}>
       {' '}
       <Toggle id="local-graph" tip="Draw only the note open in the editor and what it is connected to." label="Around this note" checked={focus.local} onChange={on.scope} />
       {' '}
@@ -269,7 +297,7 @@ function FocusGroup({ ui, on }: ControlsProps) {
 function FiltersGroup(props: ControlsProps) {
   const { on, refs } = props;
   return (
-    <ControlGroup title="Filters" open>
+    <ControlGroup title="Filters" open={!zen()} note={filtersSet(props.settings) ? `${filtersSet(props.settings)} set` : undefined}>
       {' '}
       <input class="graph-search" id="search" type="search" placeholder="Search notes…" aria-label="Search graph nodes" data-tip="Filter note, task, and tag titles and file paths." ref={refs.search} onInput={on.searchInput} />
       {' '}

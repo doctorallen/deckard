@@ -798,7 +798,11 @@ removable terms, and **Refine**. A page creates it with
 and `afterRender()` and of each host state with `receive()`, and passes its
 events through the `handle*` methods. `options.resultKinds` names
 what the page can find, such as `['tasks']` on the Task Board, so the result
-count names only those. `options.refineElsewhere()` returns true while the
+count names only those. Otherwise `facets()` draws the lead lines and the
+count in `section.query-facets`, and the facets in a `details.query-facets-fold`
+whose summary reads **Refine**, with **· N set** while the search holds N of
+its values past the page's own: open to begin with, closed under Zen, and
+kept as the reader left it across a draw. `options.refineElsewhere()` returns true while the
 Context sidebar shows the page's Refine options, and `facets()` then
 draws no Refine at all: only the page's lead lines (`facets(lead)`, such as
 a tag page's look-alikes) and the ways out of a search that matched

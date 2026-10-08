@@ -53,6 +53,8 @@ Search pages, Home's search widget, and the Task board (tasks only) share one se
 - <kbd>Shift</kbd>-select to add it with **OR** to the value before it, such as open *or* done tasks.
 - <kbd>Enter</kbd>, <kbd>Alt</kbd>+<kbd>Enter</kbd>, and <kbd>Shift</kbd>+<kbd>Enter</kbd> do the same from the keyboard. Hover a value to see what each writes.
 
+Refine's values fold under its heading: select **Refine** to fold or unfold them. It starts unfolded, or folded with [Zen](themes-and-zen.md#zen) on, and stays as you leave it while you search. While the search holds values Refine offers, the heading says how many, such as **Refine · 2 set**. The count of results and a tag page's lines about its other spellings and untagged mentions are never folded.
+
 Refine writes ordinary query text, so the result can be saved, copied into a query block, or edited in the builder. A search of one tag, or tags joined by AND, lists related **Tags** instead, each with a three-step rail for its share of results (**in 6 of 13 results**). While the Context sidebar is open, Refine is [shown there](connections.md#refine-a-search-from-the-sidebar), and the page draws none of its own. A tag page's lines about its other spellings and untagged mentions stay under the search box, as do **Drop** and **Clear** when a search matched nothing.
 
 ### Query language

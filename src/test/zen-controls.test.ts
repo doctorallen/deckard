@@ -103,7 +103,7 @@ suite('Zen quiets controls in place', () => {
       options: { queryContext, format: 'emoji' },
     }));
   const searchPage = (zen: boolean, extra: Record<string, unknown> = {}) =>
-    open(renderPage('searchPage', { chrome: chromeOf(zen) }), createSearchPageSnapshot(index(), preferences(extra), '#project/atlas', { queryContext }));
+    open(renderPage('searchPage', { chrome: chromeOf(zen) }), createSearchPageSnapshot(index(), preferences(extra), '#project/atlas', { queryContext, originQuery: '#project/atlas' }));
 
   const home = (zen: boolean) => {
     const built = index();
@@ -211,5 +211,49 @@ suite('Zen quiets controls in place', () => {
         assert.strictEqual(quietAtRest(mark), !mark.classList.contains('has-note'), 'a mark is quiet at rest unless its week has a note');
       }
     }
+  });
+
+  test('Refine folds over its facets, open at Full and closed under Zen, with the lead lines and the count outside', () => {
+    for (const zen of [false, true]) {
+      const page = searchPage(zen);
+      const fold = page.find('.query-facets > details.query-facets-fold') as HTMLDetailsElement;
+      assert.strictEqual(fold.open, !zen, zen ? 'closed under Zen' : 'open at Full');
+      assert.strictEqual(fold.querySelector(':scope > summary')?.textContent, 'Refine');
+      assert.ok(page.findAll('.query-facet').every((facet) => fold.contains(facet)), 'the facets are in the fold');
+      for (const always of page.findAll('.query-facets-count, .query-facets-lead')) {
+        assert.ok(!fold.contains(always), `${always.className} is drawn outside the fold`);
+      }
+    }
+  });
+
+  test("Refine's summary says how many of its values the search holds, past the page's own", () => {
+    assert.strictEqual(board(true, {}, '#project/atlas is:open').text('.query-facets-fold > summary'), 'Refine · 1 set', 'the tag is set from Tags');
+    const tagged = open(
+      renderPage('searchPage', { chrome: chromeOf(true) }),
+      createSearchPageSnapshot(index(), preferences(), '#project/atlas', { queryContext }),
+    );
+    assert.strictEqual(tagged.text('.query-facets-fold > summary'), 'Refine · 1 set', 'a search the page did not open with is set');
+  });
+
+  test('Refine stays as the reader left it across a draw', () => {
+    const page = searchPage(true);
+    const state = createSearchPageSnapshot(index(), preferences(), '#project/atlas', { queryContext, originQuery: '#project/atlas' });
+    (page.find('.query-facets-fold') as HTMLDetailsElement).open = true;
+    page.send(state);
+    assert.strictEqual((page.find('.query-facets-fold') as HTMLDetailsElement).open, true, 'opened, it stays open');
+    (page.find('.query-facets-fold') as HTMLDetailsElement).open = false;
+    page.send(state);
+    assert.strictEqual((page.find('.query-facets-fold') as HTMLDetailsElement).open, false, 'closed, it stays closed');
+  });
+
+  test("the Notes Graph's Focus and Filters start closed under Zen, as Display does, and their summaries say what they are doing", () => {
+    const groups = (page: WebviewPage) => page.findAll('details.control-group').map((group) => [group.querySelector(':scope > summary')?.textContent, (group as HTMLDetailsElement).open]);
+    assert.deepStrictEqual(groups(open(renderPage('notesGraph', { chrome: chromeOf(false) }), undefined)), [['Focus', true], ['Filters', true], ['Display', false]]);
+    const page = open(renderPage('notesGraph', { chrome: chromeOf(true) }), undefined);
+    assert.deepStrictEqual(groups(page), [['Focus', false], ['Filters', false], ['Display', false]]);
+    page.click('#show-tags');
+    page.click('#show-orphans');
+    assert.strictEqual(page.text('.control-group[data-group="Filters"] > summary'), 'Filters · 2 set', 'two filters away from how a graph starts');
+    assert.strictEqual((page.find('.control-group[data-group="Filters"]') as HTMLDetailsElement).open, false, 'and still as the reader left it');
   });
 });

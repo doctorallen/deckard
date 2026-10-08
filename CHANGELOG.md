@@ -180,6 +180,15 @@
   its default, **Can start now** while pressed and a week mark whose week
   has a note stay drawn. Nothing leaves the page, the Tab order or what a
   screen reader reads, and on a touch screen everything is drawn.
+- **Refine folds.** A search page's and the Task board's **Refine** folds
+  its values under its heading, which reads **Refine · 2 set** while the
+  search holds values it offers. It starts unfolded, or folded with Zen
+  on, and stays as you leave it while you search. The count of results
+  and a tag page's lines about its other spellings stay outside the fold.
+- **The Notes Graph's Focus and Filters fold under Zen.** With Zen on, they
+  start folded, as Display does. **Filters · 2 set** says how many filters
+  are away from how a graph starts, and **Focus · around this note** says
+  the graph is drawn around the note.
 - **The Calendar view starts collapsed.** In a new install the sidebar's
   Calendar starts collapsed, as Hubs does, leaving the room to Context,
   Outline and Tasks. Where it is already open, it stays as you left it.

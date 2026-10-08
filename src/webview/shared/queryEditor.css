@@ -127,6 +127,11 @@
    word in the run. */
 .query-facets-lead { display: grid; gap: var(--space-1); grid-column: 1 / -1; padding-bottom: var(--space-2); border-bottom: 1px dashed var(--line); }
 .query-facets-groups { display: flex; flex-wrap: wrap; align-items: start; gap: var(--space-3) var(--space-5); }
+/* The facets fold under Refine's summary: open to begin with, closed under
+   Zen. The lead lines and the count stay outside the fold, always drawn. */
+.query-facets-fold { min-width: 0; }
+.query-facets-fold > summary { width: fit-content; cursor: pointer; }
+.query-facets-fold[open] > summary { margin-bottom: var(--space-2); }
 .query-facets-count { align-self: center; color: var(--muted); font-size: var(--text-xs); line-height: 26px; white-space: nowrap; }
 .query-facets-empty { color: var(--muted); font-size: var(--text-xs); }
 /* A value and its two other modes read as one control. The modes stay out of

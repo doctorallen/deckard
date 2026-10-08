@@ -761,6 +761,23 @@ class SearchBox implements QueryEditor {
     );
   }
 
+  /**
+   * How many of Refine's values the applied search holds, each once, though
+   * a tag is applied in Tags and in Related alike, and past the page's own:
+   * its tag, on a tag page, is not something Refine set.
+   */
+  private refinedCount(facets: readonly QueryFacet[]): number {
+    const own = this.clearedText();
+    const set = new Set(facets.flatMap((facet) => facet.applied || []).map((clause) => clause.toLowerCase()));
+    return [...set].filter((clause) => !namesClause(own, clause)).length;
+  }
+
+  /**
+   * Refine: the page's lead lines and the match count, always drawn, and
+   * the facets in a fold whose summary says how many of them are set. The
+   * fold is open to begin with, and closed under Zen, which a reader opens
+   * by its summary (plan 29, R23); a draw keeps it as the reader left it.
+   */
   public facets(lead?: ComponentChild): ComponentChild {
     if (this.options.refineElsewhere && this.options.refineElsewhere()) {
       return this.facetsElsewhere(lead);
@@ -773,14 +790,31 @@ class SearchBox implements QueryEditor {
     }
     const top = lead ? <div class="query-facets-lead">{lead}</div> : null;
     const nothingLeft = <span class="query-facets-empty">Nothing left to narrow by.</span>;
+    if (!facets.length) {
+      // Nothing to fold: what is left is a state line and the ways out.
+      return (
+        <section class="query-facets" aria-label="Refine these results">
+          {top}
+          <div class="query-facets-groups">
+            <span class="query-facets-heading">Refine</span>
+            {recovery || nothingLeft}
+          </div>
+          {count}
+        </section>
+      );
+    }
+    const set = this.refinedCount(facets);
+    const shown = document.querySelector<HTMLDetailsElement>('.query-facets-fold');
+    const open = shown ? shown.open : !document.body.classList.contains('zen');
     return (
       <section class="query-facets" aria-label="Refine these results">
         {top}
-        <div class="query-facets-groups">
-          <span class="query-facets-heading">Refine</span>
-          {facets.length ? null : (recovery || nothingLeft)}
-          {facets.map((facet) => this.facet(facet))}
-        </div>
+        <details class="query-facets-fold" open={open}>
+          <summary class="query-facets-heading">{set ? `Refine · ${set} set` : 'Refine'}</summary>
+          <div class="query-facets-groups">
+            {facets.map((facet) => this.facet(facet))}
+          </div>
+        </details>
         {count}
       </section>
     );

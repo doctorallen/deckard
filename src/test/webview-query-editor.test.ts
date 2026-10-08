@@ -66,9 +66,11 @@ const HAMMER = '<svg class="toolbar-icon query-builder-icon" viewBox="0 0 16 16"
  * in × (drawn only while Clear could act) and →; Builder joined to the
  * start of the field, pressed rather than renamed while open; the builder
  * under the field; the / key's part of the hint in a span of its own; and
- * the hint and the builder's paragraph marked .help-text (R9); and the box
- * the region Zen shows its status line's tools from (R22). Everything else
- * is held to the recording as it was.
+ * the hint and the builder's paragraph marked .help-text (R9); the box
+ * the region Zen shows its status line's tools from (R22); and Refine's
+ * facets in a fold, whose summary and whether it is open are read from the
+ * page, since the zen-controls suite checks them (R23). Everything else is
+ * held to the recording as it was.
  */
 function asDrawnSinceTemplate(page: WebviewPage, recorded: string): string {
   const holder = page.document.createElement('div');
@@ -111,7 +113,31 @@ function asDrawnSinceTemplate(page: WebviewPage, recorded: string): string {
       workspace.insertBefore(builder, status);
     }
   }
+  foldRefine(page, holder);
   return normalizeBody(holder.firstElementChild as Element, { captured: true });
+}
+
+/**
+ * Refine's facets in a recorded page, put in the fold the page draws them
+ * in now, with the summary and the open state the page drew.
+ */
+function foldRefine(page: WebviewPage, holder: Element): void {
+  const shown = page.document.querySelector<HTMLDetailsElement>('.query-facets-fold');
+  for (const groups of holder.querySelectorAll('section.query-facets:not(.is-elsewhere) > .query-facets-groups')) {
+    if (!groups.querySelector('.query-facet')) {
+      continue;
+    }
+    groups.querySelector(':scope > .query-facets-heading')?.remove();
+    const fold = page.document.createElement('details');
+    fold.className = 'query-facets-fold';
+    fold.open = Boolean(shown?.open);
+    const summary = page.document.createElement('summary');
+    summary.className = 'query-facets-heading';
+    summary.textContent = shown?.querySelector(':scope > summary')?.textContent ?? '';
+    fold.appendChild(summary);
+    groups.replaceWith(fold);
+    fold.appendChild(groups);
+  }
 }
 
 /**
