@@ -264,12 +264,6 @@
             >@dana · topic/replicants (12)</option
             ></select
           ></div
-        > <button
-          class="clear-tags"
-          data-tip="Remove the tag filters and the group picked out."
-          id="clear-tags"
-          type="button"
-        >Clear filters</button
         > </div
       > </details
     > <details
@@ -295,26 +289,6 @@
               type="range"
             ><output
               id="node-size-out"
-            >1.0</output
-            ></div
-          ></div
-        > <div
-          class="control-row"
-        ><label
-            for="link-thickness"
-          >Link thickness</label
-          ><div
-            class="slider-line"
-          ><input
-              data-dom-value="1"
-              data-tip="Scale the width of visible edges."
-              id="link-thickness"
-              max="3"
-              min="0.5"
-              step="0.1"
-              type="range"
-            ><output
-              id="link-thickness-out"
             >1.0</output
             ></div
           ></div
@@ -347,26 +321,6 @@
           ></div
         > <div
           class="control-row"
-        ><label
-            for="label-threshold"
-          >Label fade zoom</label
-          ><div
-            class="slider-line"
-          ><input
-              data-dom-value="1.4"
-              data-tip="Set the zoom level where node labels begin to appear; higher values keep labels hidden longer."
-              id="label-threshold"
-              max="4"
-              min="0.5"
-              step="0.1"
-              type="range"
-            ><output
-              id="label-threshold-out"
-            >1.4</output
-            ></div
-          ></div
-        > <div
-          class="control-row"
         ><span
             class="control-label"
             id="headings-label"
@@ -378,7 +332,7 @@
           ><button
               aria-pressed="true"
               data-headings="zoom"
-              data-tip="Zoomed out, draw each file as one node; zoomed in past Label fade zoom, draw its headings."
+              data-tip="Zoomed out, draw each file as one node; zoomed in far enough that every note is named, draw its headings."
               type="button"
             >By zoom</button
             ><button
@@ -395,225 +349,6 @@
             >Never</button
             ></div
           ></div
-        > <details
-          class="advanced control-group"
-        > <summary
-          >Advanced</summary
-          > <div
-            class="control-body"
-          > <div
-              class="control-row"
-            ><label
-                for="tag-specificity"
-              >Favor rare tags</label
-              ><div
-                class="slider-line"
-              ><span
-                  aria-hidden="true"
-                  class="slider-end"
-                >Less</span
-                ><input
-                  aria-valuetext="most"
-                  data-dom-value="0.9"
-                  data-tip="How much more a tag on a few notes counts than a tag on nearly every note, when choosing which links to draw."
-                  data-words="least,less,about half,more,most"
-                  id="tag-specificity"
-                  max="1"
-                  min="0"
-                  step="0.05"
-                  type="range"
-                ><span
-                  aria-hidden="true"
-                  class="slider-end"
-                >More</span
-                ></div
-              ></div
-            > <div
-              class="control-row"
-            ><label
-                for="bridge-strength"
-              >Links between groups</label
-              ><div
-                class="slider-line"
-              ><span
-                  aria-hidden="true"
-                  class="slider-end"
-                >Fewer</span
-                ><input
-                  aria-valuetext="fewest"
-                  data-dom-value="0.15"
-                  data-tip="How strongly a note's other tags pull it toward other groups."
-                  data-words="fewest,fewer,about half,more,most"
-                  id="bridge-strength"
-                  max="1"
-                  min="0"
-                  step="0.05"
-                  type="range"
-                ><span
-                  aria-hidden="true"
-                  class="slider-end"
-                >More</span
-                ></div
-              ></div
-            > <label
-              class="toggle-row"
-            ><input
-                data-dom-checked="false"
-                data-dom-value="on"
-                data-tip="Draw every link rather than each note's strongest. Busy on a large workspace."
-                id="show-all-links"
-                type="checkbox"
-              > Show every link</label
-            > </div
-          > </details
-        > </div
-      > </details
-    > <details
-      class="control-group"
-    > <summary
-      >Forces</summary
-      > <div
-        class="control-body"
-      > <div
-          class="control-row"
-        ><label
-            for="center-strength"
-          >Cluster centering</label
-          ><div
-            class="slider-line"
-          ><input
-              data-dom-value="0.4"
-              data-tip="Pull community anchors gently toward the center of the viewport."
-              id="center-strength"
-              max="1"
-              min="0"
-              step="0.05"
-              type="range"
-            ><output
-              id="center-strength-out"
-            >0.40</output
-            ></div
-          ></div
-        > <div
-          class="control-row"
-        ><label
-            for="cluster-cohesion"
-          >Cluster cohesion</label
-          ><div
-            class="slider-line"
-          ><input
-              data-dom-value="1.5"
-              data-tip="Strengthen or weaken the pull from notes and tasks toward their detected community anchor."
-              id="cluster-cohesion"
-              max="3"
-              min="0.5"
-              step="0.1"
-              type="range"
-            ><output
-              id="cluster-cohesion-out"
-            >1.5</output
-            ></div
-          ></div
-        > <div
-          class="control-row"
-        ><label
-            for="community-spacing"
-          >Community spacing</label
-          ><div
-            class="slider-line"
-          ><input
-              data-dom-value="1.2"
-              data-tip="Increase or reduce the distance between detected communities; changing it recomputes the layout framing."
-              id="community-spacing"
-              max="2.5"
-              min="0.6"
-              step="0.1"
-              type="range"
-            ><output
-              id="community-spacing-out"
-            >1.2</output
-            ></div
-          ></div
-        > <div
-          class="control-row"
-        ><label
-            for="repel-strength"
-          >Repel strength</label
-          ><div
-            class="slider-line"
-          ><input
-              data-dom-value="225"
-              data-tip="Increase or reduce node-to-node repulsion; higher values spread crowded nodes apart."
-              id="repel-strength"
-              max="2000"
-              min="50"
-              step="25"
-              type="range"
-            ><output
-              id="repel-strength-out"
-            >220</output
-            ></div
-          ></div
-        > <div
-          class="control-row"
-        ><label
-            for="link-strength"
-          >Link strength</label
-          ><div
-            class="slider-line"
-          ><input
-              data-dom-value="1"
-              data-tip="Increase or reduce the spring force along visible links."
-              id="link-strength"
-              max="2"
-              min="0"
-              step="0.05"
-              type="range"
-            ><output
-              id="link-strength-out"
-            >1.00</output
-            ></div
-          ></div
-        > <div
-          class="control-row"
-        ><label
-            for="link-distance"
-          >Link distance</label
-          ><div
-            class="slider-line"
-          ><input
-              data-dom-value="30"
-              data-tip="Set the target length of visible links; larger values spread connected nodes farther apart."
-              id="link-distance"
-              max="200"
-              min="10"
-              step="5"
-              type="range"
-            ><output
-              id="link-distance-out"
-            >32</output
-            ></div
-          ></div
-        > </div
-      > </details
-    > <details
-      class="control-group"
-    > <summary
-      >Relationships</summary
-      > <div
-        class="control-body"
-      > <p
-          class="relationship-note"
-        >The graph uses prevalence-aware groups: direct Wiki links and headings seed strong groups, while tag membership is discounted when a tag is too rare or too widespread. Hidden tags act as virtual anchors rather than high-mass particles, and each node keeps only its strongest local connections.</p
-        > <p
-          class="relationship-note"
-        >Each group is named after the tags its notes carry more than the rest of the workspace does.</p
-        > <p
-          class="relationship-note"
-        >Links per note controls that local budget. The status line reports strong links retained versus all indexed links; Connected Nodes in the sidebar still uses the complete graph.</p
-        > <p
-          class="relationship-note"
-        >Selecting a node highlights its direct graph neighbors and lists those same note, task, and tag nodes in the sidebar. Related Notes ranking remains exclusive to Markdown pages.</p
         > </div
       > </details
     > </div

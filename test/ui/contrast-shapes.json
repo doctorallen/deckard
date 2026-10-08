@@ -571,8 +571,6 @@
       ["span.slider-end", []],
       ["span.control-label", [["id", "headings-label"]]],
       ["div.segmented.graph-segmented", [["aria-labelledby", "headings-label"]]],
-      ["details.control-group.advanced", []],
-      ["p.relationship-note", []],
       ["div.graph-zoom-controls", []],
       ["div.zoom-controls", []],
       ["svg.toolbar-icon", []],

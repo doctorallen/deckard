@@ -14,7 +14,7 @@ import type { NotesGraphEdgeType, NotesGraphNode, NotesGraphWireSnapshot } from 
  * persisted-formats inventory), so arithmetic on a setting coerces as the
  * script's did.
  */
-export interface GraphSettings {
+export interface ReaderGraphSettings {
   showNotes: boolean;
   showTasks: boolean;
   showTags: boolean;
@@ -25,12 +25,22 @@ export interface GraphSettings {
   group: string;
   search: string;
   nodeSize: number;
-  linkThickness: number;
   linkDensity: number;
+  headings: string;
+}
+
+/**
+ * How the graph is laid out and drawn, at fixed values: the page offered
+ * each as a control until its Forces and Advanced groups, Link thickness
+ * and Label fade zoom went, and a tuned layout was rarely better than the
+ * default.
+ */
+export interface GraphLayout {
+  linkThickness: number;
   tagSpecificity: number;
   bridgeStrength: number;
   showAllLinks: boolean;
-  headings: string;
+  /** The zoom past which every label shows, and By zoom draws headings. */
   labelThreshold: number;
   centerStrength: number;
   clusterCohesion: number;
@@ -39,6 +49,9 @@ export interface GraphSettings {
   linkStrength: number;
   linkDistance: number;
 }
+
+/** Everything the graph is drawn with: what the reader set, and the fixed layout. */
+export type GraphSettings = ReaderGraphSettings & GraphLayout;
 
 /** A node as the page draws it: one the host sent, or a file its headings are folded into. */
 export interface ViewNode extends NotesGraphNode {

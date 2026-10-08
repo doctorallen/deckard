@@ -328,8 +328,8 @@ suite('Component primitives', () => {
 
     test('the Notes Graph, which takes only the tip script, shows its tips too', () => {
       page = openWebviewPage(renderPage('notesGraph'));
-      keyFocus(page, '#link-distance');
-      assert.match(String(tip(page)?.textContent), /length of visible links/);
+      keyFocus(page, '#link-density');
+      assert.match(String(tip(page)?.textContent), /strongest links are drawn/);
     });
 
     test('no control on any page carries a native title', () => {

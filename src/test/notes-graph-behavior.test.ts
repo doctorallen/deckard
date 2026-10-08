@@ -1,4 +1,6 @@
 import * as assert from 'assert';
+import { readFileSync } from 'fs';
+import * as path from 'path';
 
 import { narrowNotesGraphMessage } from '../ui/webview/pages/notesGraph/messages';
 import { CanvasCall, openWebviewPage, WebviewPage } from './webviewPage';
@@ -82,7 +84,7 @@ suite('Notes Graph behavior', () => {
     return page;
   };
 
-  test('offers every filter and force the graph is tuned by', () => {
+  test('offers every filter and display control, and no forces to tune', () => {
     const page = open();
 
     const control = (id: string) => page.find(`#${id}`);
@@ -93,26 +95,15 @@ suite('Notes Graph behavior', () => {
         `${id} is a switch`,
       );
     });
-    [
-      'link-density',
-      'tag-specificity',
-      'bridge-strength',
-      'cluster-cohesion',
-      'community-spacing',
-      'node-size',
-      'link-thickness',
-      'label-threshold',
-      'center-strength',
-      'repel-strength',
-      'link-strength',
-      'link-distance',
-    ].forEach((id) => {
+    ['link-density', 'node-size'].forEach((id) => {
       assert.strictEqual(
         (control(id) as HTMLInputElement).type,
         'range',
         `${id} is a slider`,
       );
     });
+    // The layout is fixed at the values these had by default.
+    assert.deepStrictEqual(page.findAll('input[type="range"]').map((input) => input.id), ['local-depth', 'node-size', 'link-density']);
 
     // Notes and tasks are drawn to begin with. Tag nodes are not: they
     // would crowd the graph, and they guide the clustering either way.
@@ -128,34 +119,22 @@ suite('Notes Graph behavior', () => {
     assert.match(title('search'), /Filter note, task, and tag titles/);
     assert.match(title('show-tags'), /hidden tags still guide clustering/);
     assert.match(title('link-density'), /strongest links are drawn/);
-    assert.match(title('tag-specificity'), /tag on a few notes/);
-    assert.match(title('cluster-cohesion'), /toward their detected community/);
-    assert.match(title('community-spacing'), /distance between detected communities/);
-    assert.match(title('link-distance'), /length of visible links/);
+    assert.match(page.find('[data-headings="zoom"]').getAttribute('data-tip') ?? '', /zoomed in far enough that every note is named/);
     assert.match(title('reset-graph-settings'), /Restore all graph controls/);
   });
 
-  test('says the link sliders in words, with the rarer ones folded under Advanced', () => {
+  test('says Links per note in words', () => {
     const page = open();
 
-    ['link-density', 'tag-specificity', 'bridge-strength'].forEach((id) => {
-      assert.strictEqual(page.document.getElementById(`${id}-out`), null, `${id} shows no number`);
-      assert.ok(page.find(`#${id}`).getAttribute('aria-valuetext'), `${id} is said in a word`);
-    });
+    assert.strictEqual(page.document.getElementById('link-density-out'), null, 'it shows no number');
+    assert.ok(page.find('#link-density').getAttribute('aria-valuetext'), 'it is said in a word');
     const density = page.find('#link-density') as HTMLInputElement;
     const before = density.getAttribute('aria-valuetext');
     density.value = density.max;
     density.dispatchEvent(new page.window.Event('input', { bubbles: true }));
     assert.strictEqual(density.getAttribute('aria-valuetext'), 'most');
     assert.notStrictEqual(before, 'most');
-
-    const advanced = page.document.querySelector('details.advanced') as HTMLDetailsElement;
-    assert.strictEqual(advanced.querySelector('summary')?.textContent, 'Advanced');
-    assert.strictEqual(advanced.open, false, 'closed to begin with');
-    ['tag-specificity', 'bridge-strength', 'show-all-links'].forEach((id) => {
-      assert.ok(advanced.querySelector(`#${id}`), `${id} is under Advanced`);
-    });
-    assert.strictEqual(advanced.querySelector('#link-density'), null);
+    assert.strictEqual(page.document.querySelector('details.control-group details'), null, 'no group folded inside Display');
   });
 
   test('tells the host which kinds of node it shows, at load and on each toggle', () => {
@@ -233,9 +212,8 @@ suite('Notes Graph behavior', () => {
     assert.deepStrictEqual(controls.map((control) => control.id), [
       'local-graph', 'local-depth', 'skip-periodic',
       'search', 'show-notes', 'show-tasks', 'show-tags', 'show-orphans', 'only-written-links', 'show-parked',
-      'tag-search', 'group-filter', 'clear-tags',
-      'node-size', 'link-thickness', 'link-density', 'label-threshold', 'tag-specificity', 'bridge-strength', 'show-all-links',
-      'center-strength', 'cluster-cohesion', 'community-spacing', 'repel-strength', 'link-strength', 'link-distance',
+      'tag-search', 'group-filter',
+      'node-size', 'link-density',
       'zoom-out', 'zoom-in', 'zoom-fit', 'reset-graph-settings',
     ]);
     controls.forEach((control) => assert.ok(control.getAttribute('data-tip'), `${control.id} has a tip`));
@@ -244,14 +222,14 @@ suite('Notes Graph behavior', () => {
     assert.ok(page.find('.zoom-controls').compareDocumentPosition(page.find('#reset-graph-settings')) & page.window.Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
-  test('says how it groups notes and chooses which links to draw', () => {
+  test('leaves how it groups notes to Help', () => {
     const page = open();
-    const notes = page.findAll('.relationship-note').map((note) => note.textContent ?? '');
-    assert.strictEqual(notes.length, 4);
-    assert.match(notes[0], /^The graph uses prevalence-aware groups: direct Wiki links and headings seed strong groups/);
-    assert.match(notes[1], /named after the tags its notes carry/);
-    assert.match(notes[2], /^Links per note controls that local budget/);
-    assert.match(notes[3], /^Selecting a node highlights its direct graph neighbors/);
+    assert.strictEqual(page.findAll('.relationship-note').length, 0, 'no paragraphs of prose in the panel');
+    const guide = readFileSync(path.join(__dirname, '..', '..', 'docs', 'guide', 'connections.md'), 'utf8');
+    assert.match(guide, /The graph uses prevalence-aware groups: direct wiki links and headings seed strong groups/);
+    assert.match(guide, /named after the tags its notes carry/);
+    assert.match(guide, /\*\*Links per note\*\* sets that local budget/);
+    assert.match(guide, /Selecting a node highlights its direct neighbors/);
   });
 
   test('a search box says its clear button can be clicked', () => {
@@ -345,11 +323,20 @@ suite('Notes Graph behavior', () => {
       box.checked = checked;
       box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
     };
+    /** Links per note at its most, so a graph this small draws every link. */
+    const mostLinks = (page: WebviewPage) => {
+      const density = page.find('#link-density') as HTMLInputElement;
+      density.value = density.max;
+      density.dispatchEvent(new page.window.Event('input', { bubbles: true }));
+    };
     const threeKinds = () => graphState(
       [note('a'), note('b'), note('c'), { id: 'tag:#x', kind: 'tag', title: '#x', tagKeys: [], degree: 1 }],
       [
         { source: 'section:a', target: 'section:b', weight: 2, types: ['wiki-link'] },
         { source: 'section:a', target: 'section:c', weight: 1, types: ['heading'] },
+        // A tag on every note is each one's primary, so its lines are drawn.
+        { source: 'section:a', target: 'tag:#x', weight: 1, types: ['tag-membership'] },
+        { source: 'section:b', target: 'tag:#x', weight: 1, types: ['tag-membership'] },
         { source: 'section:c', target: 'tag:#x', weight: 1, types: ['tag-membership'] },
       ],
     );
@@ -361,7 +348,7 @@ suite('Notes Graph behavior', () => {
     test('a wiki link is solid, a heading dashed, and a tag dotted', () => {
       const page = openCanvas();
       check(page, 'show-tags', true);
-      check(page, 'show-all-links', true);
+      mostLinks(page);
       page.send(threeKinds());
       assert.deepStrictEqual(strokes(page), [[], [5, 3], [1, 3]]);
       const dotted = lastFrame(page).filter((call) => call.op === 'stroke')[2];
@@ -371,7 +358,7 @@ suite('Notes Graph behavior', () => {
     test('Only links I wrote draws the wiki links alone, and says so', () => {
       const page = openCanvas();
       check(page, 'show-tags', true);
-      check(page, 'show-all-links', true);
+      mostLinks(page);
       page.send(threeKinds());
       check(page, 'only-written-links', true);
       assert.deepStrictEqual(strokes(page), [[]]);
@@ -385,9 +372,9 @@ suite('Notes Graph behavior', () => {
 
     test('the status line says how many of the indexed links are drawn', () => {
       const page = openCanvas();
-      check(page, 'show-all-links', true);
+      mostLinks(page);
       page.send(threeKinds());
-      assert.match(page.text('#status-counts') ?? '', /^3 notes · 0 tasks · \d+ of 3 links drawn · /);
+      assert.match(page.text('#status-counts') ?? '', /^3 notes · 0 tasks · \d+ of 5 links drawn · /);
     });
 
     test('the legend names each kind, and Through a daily note only while there is one', () => {
@@ -674,6 +661,8 @@ suite('Notes Graph behavior', () => {
       [
         { source: 'section:atlas', target: 'task:call', weight: 2, types: ['wiki-link'] },
         { source: 'section:atlas', target: 'tag:#project/atlas', weight: 1, types: ['tag-membership'] },
+        // The tag is the task's too, so its lines are among those drawn.
+        { source: 'task:call', target: 'tag:#project/atlas', weight: 1, types: ['tag-membership'] },
       ],
     );
     /** The tooltip shown while the pointer is over the node with a title. */
@@ -701,11 +690,9 @@ suite('Notes Graph behavior', () => {
 
     test('says what a note, a task, a tag, and a node with nothing are joined by', () => {
       const page = openCanvas();
-      ['#show-tags', '#show-all-links'].forEach((selector) => {
-        const box = page.find(selector) as HTMLInputElement;
-        box.checked = true;
-        box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
-      });
+      const box = page.find('#show-tags') as HTMLInputElement;
+      box.checked = true;
+      box.dispatchEvent(new page.window.Event('change', { bubbles: true }));
       page.send(graph());
       assert.strictEqual(hover(page, 'atlas'), 'atlas.md:12 · 4 wiki links · 2 headings · 7 tags');
       assert.strictEqual(hover(page, 'call'), 'Task · atlas.md:30 · 1 wiki link · 3 tags');
@@ -822,8 +809,12 @@ suite('Notes Graph behavior', () => {
       select.value = '#design';
       select.dispatchEvent(new page.window.Event('change', { bubbles: true }));
       assert.strictEqual((page.savedState() as { group: string }).group, '#design');
-      page.click('#clear-tags');
+      const clear = page.find('#clear-tags') as HTMLElement;
+      clear.focus();
+      clear.click();
       assert.strictEqual(select.value, '', 'Clear filters lets the group go too');
+      assert.strictEqual(page.document.getElementById('clear-tags'), null, 'and goes, with nothing left to clear');
+      assert.strictEqual(page.document.activeElement?.id, 'tag-search', 'the focus goes to the tag filter');
 
       page.send(grouped({ relay: 4 }));
       assert.strictEqual((page.find('#group-row') as HTMLElement).hidden, true, 'one group is no choice');
@@ -852,11 +843,6 @@ suite('Notes Graph behavior', () => {
       page.flushFrames(1);
       return lastFrame(page).filter((call) => call.op === 'arc').length;
     };
-    const setThreshold = (page: WebviewPage, value: number) => {
-      const slider = page.find('#label-threshold') as HTMLInputElement;
-      slider.value = String(value);
-      slider.dispatchEvent(new page.window.Event('input', { bubbles: true }));
-    };
 
     test('zoomed out, a file of two headings is one node; zoomed in, two', () => {
       const page = openCanvas();
@@ -871,14 +857,12 @@ suite('Notes Graph behavior', () => {
       }
       assert.strictEqual(drawn(page), 2, 'zoomed out, the file and the note it links to');
 
-      // Within the give around the threshold, nothing is rebuilt.
-      const k = zoom(page);
-      setThreshold(page, Math.floor((k - 0.05) * 10) / 10);
-      assert.strictEqual(drawn(page), 2, 'just past the threshold, still one node');
-
-      setThreshold(page, 0.5);
-      assert.ok(k > 0.65);
-      assert.strictEqual(drawn(page), 3, 'well past it, the headings');
+      // Past the fixed zoom where every note is named, 140%, the headings.
+      for (let step = 0; step < 20 && zoom(page) <= 1.55; step += 1) {
+        page.click('#zoom-in');
+        page.flushFrames(1);
+      }
+      assert.strictEqual(drawn(page), 3, 'zoomed in again, the headings');
     });
 
     test('Headings: Always draws every heading, Never every file, and Reset goes back to By zoom', () => {

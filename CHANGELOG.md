@@ -185,6 +185,12 @@
   a Tasks widget holding the same search, such as
   `is:open AND updated < 30d` for its 30 days, sorted Least recently
   updated, so it lists what it listed and you can change its search.
+- **Clear filters shows only while a filter is set.** In the Notes
+  Graph's Filters, **Clear filters** appears once a tag or a group is
+  picked, and goes when there is nothing to clear.
+- **How the Notes Graph groups notes is in Help.** The four paragraphs the
+  graph's Relationships group held are in the guide's Notes Graph section
+  now.
 
 ### Removed
 
@@ -217,6 +223,13 @@
   calendar page lists a day's tasks beside the month, and its gear's
   **Weekends** sets both calendars. Its one title icon opens the calendar
   page.
+- **The Notes Graph's physics tuning.** The **Forces** group (cluster
+  centering, cluster cohesion, community spacing, repel strength, link
+  strength and link distance), the **Advanced** group (Favor rare tags,
+  Links between groups and Show every link), and Display's **Link
+  thickness** and **Label fade zoom** are gone. Each is fixed at the
+  default it had, so a graph you never tuned looks as it did. Display
+  keeps **Node size**, **Links per note** and **Headings**.
 
 ### Fixed
 

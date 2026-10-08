@@ -76,9 +76,16 @@ Run `Deckard: Open Notes Graph`, or select **Notes Graph** in the row of page ic
 - **Focus.** With a note open, the graph starts around it, one hop out, and follows the editor. Clear **Around this note** for the whole graph. **Hops out** sets the reach, one to three hops: one hop is the note, its tags, and the notes it links to; two adds what those touch, including tags usually written with yours. The line beneath names the note and counts the nodes on screen. **Pass through daily notes**, on by default, hides daily, weekly, and monthly notes but still counts them as a hop. The tag checklist narrows to the neighborhood's tags.
 - **Labels.** At rest, the best-connected notes are named; zooming in names the rest. Groups of four or more are named after their most distinctive tags (`atlas · design`), or their best-connected note. Click a group name, or choose it from **Group**, to pick it out; the rest dim.
 - **Lines**: solid for a wiki link you wrote, dashed for a heading and its sub-heading, dotted for a shared tag, dash-dot for a path through a daily note in a focused graph. The status line has a legend. **Only links I wrote** draws every wiki link and nothing else, and counts links and notes with none.
-- **Filters** search titles and paths, restrict to selected tags, and toggle notes, tasks, tag nodes (off by default), and orphans. Parked notes and tasks, and tags only they carry, stay hidden until **Show parked** is on. **Clear filters** clears tag filters and the picked group.
-- **Display** sets node size, link thickness, and **Label fade zoom**. **Headings**: **By zoom** (default) draws a multi-heading file as one dot until you zoom past **Label fade zoom**; **Always** draws every heading; **Never** every file. **Links per note** runs from **Fewer** to **More**. **Advanced** holds **Favor rare tags**, **Links between groups**, and **Show every link**. **Reset graph settings** restores controls, clears filters, and reframes; **Undo** beside it reverses that for a few seconds.
-- **Forces** sets cluster centering, cluster cohesion, community spacing, repel strength, link strength, and link distance, live.
+- **Filters** search titles and paths, restrict to selected tags, and toggle notes, tasks, tag nodes (off by default), and orphans. Parked notes and tasks, and tags only they carry, stay hidden until **Show parked** is on. **Clear filters**, shown while a tag or a group is picked, clears the tag filters and the picked group.
+- **Display** sets **Node size** and **Links per note**, which runs from **Fewer** to **More**. **Headings**: **By zoom** (default) draws a multi-heading file as one dot until you zoom in far enough that every note is named; **Always** draws every heading; **Never** every file. **Reset graph** restores controls, clears filters, and reframes; **Undo** beside it reverses that for a few seconds.
+
+**How the graph groups notes.** The graph uses prevalence-aware groups: direct wiki links and headings seed strong groups, while tag membership is discounted when a tag is too rare or too widespread. Hidden tags act as virtual anchors rather than high-mass particles, and each node keeps only its strongest local connections. The layout's forces are fixed, so every graph is laid out alike.
+
+Each group is named after the tags its notes carry more than the rest of the workspace does.
+
+**Links per note** sets that local budget. The status line reports the strong links kept against all indexed links; **Connected nodes** in the sidebar still uses the complete graph.
+
+Selecting a node highlights its direct neighbors and lists those same note, task, and tag nodes in the sidebar. Related notes are ranked for Markdown notes only.
 
 ## Outline
 
