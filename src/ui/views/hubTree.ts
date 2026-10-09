@@ -17,7 +17,8 @@ export interface HubTreeIndexSource extends ViewUpdateSource {
  * each the notes about its tag or that name it in `up:`, as Notion's sidebar
  * keeps pages under the pages they belong to. Selecting a hub opens its
  * tag's search page, and its inline button opens the hub note itself;
- * selecting any other note opens it.
+ * selecting any other note opens it; selecting a namespace a type has
+ * opens the type's search.
  */
 export class HubTreeProvider implements vscode.TreeDataProvider<HubTreeNode>, vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<HubTreeNode | undefined>();
@@ -75,6 +76,11 @@ export class HubTreeProvider implements vscode.TreeDataProvider<HubTreeNode>, vs
     }
     if (node.kind === 'namespace') {
       item.contextValue = 'hubNamespace';
+      // A namespace a type has is that type's rows: its heading opens them.
+      if (node.typeQuery) {
+        item.command = { title: 'Open Type', command: 'deckard.searchNotes', arguments: [node.typeQuery] };
+        item.tooltip = `Open ${node.label}: ${node.typeQuery}`;
+      }
       return item;
     }
     const uri = node.filePath ? this.indexer.getUri(node.filePath) : undefined;

@@ -10,6 +10,7 @@ import { stripTags } from '../../domain/markdown/parser';
 import { formatKeyWords, readTagNamespace } from '../../domain/markdown/tagKeys';
 import { collectTagProgress } from '../../domain/tasks/tagProgress';
 import { ParsedFile, WorkspaceIndex } from '../../domain/model';
+import { getTypeIndex } from '../../domain/types/typeIndex';
 
 /**
  * Notes under their hubs, as Notion's sidebar keeps pages under the pages
@@ -39,6 +40,11 @@ export interface HubTreeNode {
   filePath?: string;
   /** For a hub, the tag it describes, whose page it can open. */
   tagKey?: string;
+  /**
+   * For a namespace whose tags a type has as rows, the search that lists
+   * them, `type = team`, which selecting its heading opens.
+   */
+  typeQuery?: string;
   children: HubTreeNode[];
 }
 
@@ -318,12 +324,30 @@ export function buildHubTree(index: WorkspaceIndex, now: number): HubTreeNode[] 
   };
   return [...groups.values()]
     .sort((left, right) => order(left)[0] - order(right)[0] || collator.compare(order(left)[1], order(right)[1]))
-    .map((group) => ({
-      id: group.id,
-      kind: 'namespace' as const,
-      label: group.heading,
-      children: [...group.notes].sort(byLabel).map((filePath) => built.get(filePath) as HubTreeNode),
-    }));
+    .map((group) => {
+      const typeKey = findGroupType(index, group.id);
+      return {
+        id: group.id,
+        kind: 'namespace' as const,
+        label: group.heading,
+        ...(typeKey ? { typeQuery: `type = ${typeKey}` } : {}),
+        children: [...group.notes].sort(byLabel).map((filePath) => built.get(filePath) as HubTreeNode),
+      };
+    });
+}
+
+/**
+ * The type whose rows a namespace group's tags are, by key: the people
+ * type for People; undefined for Other tags, Other notes, or a namespace
+ * no type has.
+ */
+function findGroupType(index: WorkspaceIndex, groupId: string): string | undefined {
+  if (!groupId.startsWith('namespace:')) {
+    return undefined;
+  }
+  const namespace = groupId.slice('namespace:'.length);
+  const sample = namespace === 'person' ? '@a' : `#${namespace}/a`;
+  return getTypeIndex(index).registry.forTag(sample)?.key;
 }
 
 /**
