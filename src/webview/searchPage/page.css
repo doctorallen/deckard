@@ -173,7 +173,7 @@ header { position: relative; }
    schema field's heading is its key, in monospace and in the text's ink; a
    computed one, and the title's, in sentence case and muted. A row with
    no hub note says so, muted, under its title. */
-.type-table th.is-field button { color: var(--text); }
+.result-table:where(.type-table) th.is-field button { color: var(--text); }
 .type-table th.is-computed button, .type-table th.is-title button { font-family: var(--font-display); text-transform: none; letter-spacing: normal; }
 .type-no-hub { display: block; color: var(--muted); font-size: var(--text-xs); }
 .type-create-hub.type-create-hub { min-height: 0; margin-left: var(--space-2); padding: 0 6px; font-size: var(--text-xs); }
