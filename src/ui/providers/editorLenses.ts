@@ -5,6 +5,7 @@ import { pluralize } from '../../shared/text';
 import { measure } from '../../shared/timing';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import {
+  describeHubLenses,
   describeNoteProblems,
   findDailyNoteActions,
   findEmbedProblems,
@@ -29,9 +30,12 @@ import { whenPublished } from '../../core/workspace/publishing';
 import { findLinkProblems, findMissingNoteNames, LinkProblem } from '../../domain/links/linkProblems';
 import { formatLocalDate } from '../../domain/notes/periodicNotes';
 import { findUnlinkedMentions, UnlinkedMention } from '../../domain/search/mentions';
-import { ParsedFile, Task, WorkspaceIndex } from '../../domain/model';
+import { ParsedFile, Task, TypeProblem, WorkspaceIndex } from '../../domain/model';
 import { formatDisplayDay } from '../../domain/markdown/dateFormat';
 import { readDateFormats } from '../commands/datePrompt';
+import { getTypeIndex } from '../../domain/types/typeIndex';
+import { describeNoteRows } from '../state/typeRows';
+import { countTypeProblems } from '../state/typeProblems';
 
 /** What the lenses read from the indexer, and when they redraw. */
 interface LensIndexSource {
@@ -330,18 +334,31 @@ function provideBreadcrumbLenses({ file, index, isNotesFile }: LensContext): Laz
 /**
  * On a hub note's first line: how far along the tasks of each tag it
  * describes are, which opens the tag's page. A tag with no task has none.
+ * A typed row's lens leads with its type and first relation, "Person ·
+ * Credit Trading | 1/3 done", and a row with no tasks, or a note row, gets
+ * that lead alone (docs/implementation/30-databases.md § Surfaces 2).
  */
 function provideHubProgressLenses({ file, index }: LensContext): LazyCodeLens[] {
   const progress = findHubProgress(file, index, readQueryContext());
+  const rows = describeNoteRows(getTypeIndex(index), file.filePath);
   const range = new vscode.Range(0, 0, 0, 0);
-  return progress.map(
-    (entry) =>
-      new LazyCodeLens(range, () => ({
-        title: progress.length > 1 ? `${entry.tagLabel}: ${entry.text}` : `Progress: ${entry.text}`,
-        tooltip: `Open ${entry.tagLabel}'s page, with every task it finds`,
-        command: 'deckard.showTagOverview',
-        arguments: [entry.tagKey],
-      })),
+  return describeHubLenses(progress, rows).map(
+    (lens) =>
+      new LazyCodeLens(range, () =>
+        lens.tagKey
+          ? {
+              title: lens.title,
+              tooltip: `Open ${lens.tagLabel ?? lens.tagKey}'s page, with every task it finds`,
+              command: 'deckard.showTagOverview',
+              arguments: [lens.tagKey],
+            }
+          : {
+              title: lens.title,
+              tooltip: `Search for every ${lens.typeName ?? lens.typeKey ?? 'row'}`,
+              command: 'deckard.search',
+              arguments: [`type = ${lens.typeKey ?? ''}`],
+            },
+      ),
   );
 }
 
@@ -371,18 +388,24 @@ function provideNoteProblemLenses({
     : [];
   const mentions = shows.has('unlinkedMentions') ? findUnlinkedMentions(file, index) : [];
   const names = findMissingNoteNames(problems);
+  // A typed field's value that names nothing is counted with the links, as
+  // its mark follows the link marks' setting.
+  const typeProblems = shows.has('linkProblems') ? getTypeIndex(index).problemsIn(file.filePath) : [];
+  const typeCounts = countTypeProblems(typeProblems);
   const summary = describeNoteProblems({
     missing: problems.filter((problem) => problem.kind === 'missing').length,
     ambiguous: problems.filter((problem) => problem.kind === 'ambiguous').length,
     creatable: names.length,
     mentions: mentions.length,
     mentionNotes: new Set(mentions.map((mention) => mention.filePath)).size,
+    unresolved: typeCounts.unresolved,
+    fieldProblems: typeCounts.other,
   });
   if (!summary) {
     return [];
   }
   const range = new vscode.Range(0, 0, 0, 0);
-  const fixes = createNoteProblemFixes(document.uri, problems, names, mentions);
+  const fixes = createNoteProblemFixes(document.uri, { problems, names, mentions, typeProblems });
   return [
     new LazyCodeLens(range, async () => {
       const { title, tooltip } = summary;
@@ -400,15 +423,21 @@ function provideNoteProblemLenses({
   ];
 }
 
+/** What the problems lens counted: the links, the missing names, the mentions, and the typed fields. */
+interface NoteProblemSources {
+  problems: readonly LinkProblem[];
+  names: readonly string[];
+  mentions: readonly UnlinkedMention[];
+  typeProblems: readonly TypeProblem[];
+}
+
 /**
  * What each fix the problems lens offers runs, each built only when the lens
  * can reach it, since finding where the mentions are reads other notes.
  */
 function createNoteProblemFixes(
   uri: vscode.Uri,
-  problems: readonly LinkProblem[],
-  names: readonly string[],
-  mentions: readonly UnlinkedMention[],
+  { problems, names, mentions, typeProblems }: NoteProblemSources,
 ): Record<NoteProblemFix, () => Promise<NoteProblemFixChoice>> {
   // The references view opens at the lens, on the note's first line.
   const start = new vscode.Position(0, 0);
@@ -462,6 +491,19 @@ function createNoteProblemFixes(
         title: NOTE_PROBLEM_FIXES.linkMentions,
         command: LINK_MENTIONS_COMMAND,
         arguments: [uri.toString()],
+      },
+    }),
+    showFieldProblems: async () => ({
+      label: NOTE_PROBLEM_FIXES.showFieldProblems,
+      detail: `${pluralize(typeProblems.length, 'field problem')}, in the references view; each offers its fixes where it is marked`,
+      command: {
+        title: NOTE_PROBLEM_FIXES.showFieldProblems,
+        command: 'editor.action.showReferences',
+        arguments: [
+          uri,
+          start,
+          typeProblems.map((problem) => new vscode.Location(uri, new vscode.Position(Math.max(problem.line - 1, 0), 0))),
+        ],
       },
     }),
   };

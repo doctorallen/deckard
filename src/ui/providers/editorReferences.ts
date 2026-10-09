@@ -26,6 +26,11 @@ import { LazyCodeLens, locate, resolveLazyCodeLens } from './codeLenses';
 import { readParseOptions } from '../commands/parseSettings';
 import { ParsedFile, Section, WorkspaceIndex } from '../../domain/model';
 import { findFencedLines } from '../../domain/markdown/lineShapes';
+import { fileEntryId } from '../../domain/markdown/noteEntries';
+import { getTypeIndex } from '../../domain/types/typeIndex';
+import { describeRowHover, RowHover } from '../state/typeHover';
+import { readDateFormats } from '../commands/datePrompt';
+import { COPY_FIELD_VALUE_COMMAND } from '../commands/typeNotes';
 
 /** The `[[link]]` found under the cursor, and the columns it spans. */
 type WikiLinkAt = NonNullable<ReturnType<typeof findWikiLinkAt>>;
@@ -264,8 +269,15 @@ export class EditorReferences
       link.target,
       this.indexer.getFilePath(document.uri),
     );
+    // A link to a note row says what the row is above the preview, in a
+    // part of its own: the preview is the note's Markdown, never trusted.
+    const row = preview.kind === 'found' ? this.describeRow(fileEntryId(preview.filePath)) : undefined;
+    const parts = [await renderLinkPreview(preview)];
+    if (row) {
+      parts.unshift(await renderRowHover(row));
+    }
     return new vscode.Hover(
-      await renderLinkPreview(preview),
+      parts,
       new vscode.Range(
         position.line,
         link.startColumn,
@@ -297,8 +309,12 @@ export class EditorReferences
     if (!span || !summary) {
       return undefined;
     }
+    // A typed row says what it is; any other tag hovers as it always has.
+    const types = getTypeIndex(this.getIndex());
+    const rowId = types.isEmpty ? undefined : types.rowOfTag(span.key)?.id;
+    const row = rowId ? this.describeRow(rowId, summary) : undefined;
     return new vscode.Hover(
-      await renderTagSummary(summary, span.key),
+      row ? await renderRowHover(row) : await renderTagSummary(summary, span.key),
       new vscode.Range(
         position.line,
         span.startColumn,
@@ -306,6 +322,19 @@ export class EditorReferences
         span.endColumn,
       ),
     );
+  }
+
+  /** A typed row's hover, read now, with the hovered tag's counts when there is one. */
+  private describeRow(rowId: string, counts?: TagSummary): RowHover | undefined {
+    const types = getTypeIndex(this.getIndex());
+    if (types.isEmpty || !types.row(rowId)) {
+      return undefined;
+    }
+    return describeRowHover(types, rowId, {
+      now: Date.now(),
+      dateFormats: readDateFormats(),
+      ...(counts ? { counts } : {}),
+    });
   }
 
   /**
@@ -491,6 +520,38 @@ async function renderTagSummary(
   const markdown = new vscode.MarkdownString(lines.join('\n'));
   markdown.isTrusted = { enabledCommands: ['deckard.showTagOverview'] };
   return markdown;
+}
+
+/**
+ * A typed row's hover: what it is, its relations and how to reach it, how
+ * much the notes say of it, and links to its page, its note, and a copy of
+ * its email. Only those two commands may run from it.
+ */
+async function renderRowHover(row: RowHover): Promise<vscode.MarkdownString> {
+  const lines = [row.heading, ''];
+  row.facts.forEach((fact) => lines.push(fact, ''));
+  lines.push(row.activity, '');
+  const links: string[] = [];
+  if (row.tag) {
+    links.push(`[Open ${escapeMarkdown(row.tag.label)}](${commandUri('deckard.showTagOverview', row.tag.key)})`);
+  }
+  if (row.filePath) {
+    links.push(await linkToLine(`Open ${row.filePath.split('/').pop() ?? row.filePath}`, row.filePath, 1));
+  }
+  if (row.email) {
+    links.push(`[Copy email](${commandUri(COPY_FIELD_VALUE_COMMAND, row.email)})`);
+  }
+  if (links.length > 0) {
+    lines.push(links.join(' · '));
+  }
+  const markdown = new vscode.MarkdownString(lines.join('\n'));
+  markdown.isTrusted = { enabledCommands: ['deckard.showTagOverview', COPY_FIELD_VALUE_COMMAND] };
+  return markdown;
+}
+
+/** A link that runs a command with one argument. */
+function commandUri(command: string, argument: string): string {
+  return `command:${command}?${encodeURIComponent(JSON.stringify([argument]))}`;
 }
 
 /** The checkbox a summary entry starts with: none for a note, else done or open. */

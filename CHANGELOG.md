@@ -18,6 +18,26 @@
   have meant. After `type = team`, the search box offers the type's fields
   and their values, and the Builder lists them under the type's name, then
   "Through <relation>", then "Built in".
+- **Typed fields in the editor.** In a row's note, the front matter
+  completes the type's field names, and after `lead: ` the rows it can
+  name ("Omar Haddad", described "Person · team Credit"), a select's
+  options, or `true` and `false`, each written as Deckard writes it
+  (`"@omar"`, `"#team/credit"`, `"[[RFQ outage]]"`). In a type note, the
+  Kind column completes kinds and type names, and `rows:` the namespaces
+  in use. A value that names nothing, a value that does not fit its kind,
+  a field a built-in query field's name takes, two types defining one
+  field differently, and a relation both sides disagree on are marked as
+  Information, with quick fixes: **Change to @omar (Omar Haddad)**,
+  **Create person "Omar H"**, and, on a type note, **Allow Area or
+  System** and **Create a System type**. The marks follow
+  `deckard.editor.linkDiagnostics`, and the one problems lens on the first
+  line counts them ("2 unresolved"). The hub lens leads with the row's type
+  and first relation ("Person · Credit | 1/3 done"), and a note row gets
+  that lead alone. Hovering a typed tag, or a `[[link]]` to a note row,
+  names the row, its type, its relations and reverses, how to reach it,
+  and when it was last mentioned ("today · 2026-10-08"), with links to
+  open its page and its note and to copy its email. Other tags hover as
+  before.
 - **Create Type from Tags….** `Deckard: Create Type from Tags…` lists the
   namespaces with their tags and hub notes, the people, and the `type:`
   values in use, then the fields their notes already write, each with a
