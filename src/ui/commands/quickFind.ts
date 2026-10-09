@@ -830,6 +830,7 @@ function resultRows(results: QuickFindResults, value: string): QuickFindPickItem
     items.push(...rows);
   };
   if (value.trim()) {
+    group('Answer', (results.answers ?? []).map(toPickItem));
     group('Complete', results.conditions.map(toPickItem));
     group('Tags', results.tags.map(toPickItem));
     group('Saved searches', results.savedViews.map(toPickItem));
@@ -932,7 +933,8 @@ export function isNoteName(text: string): boolean {
 function buttonsFor(item: QuickFindItem): vscode.QuickInputButton[] | undefined {
   switch (item.kind) {
     case 'tag':
-      return [ADD_TO_SEARCH];
+      // An answer completes nothing: it is the value, not a word of the search.
+      return item.answer ? undefined : [ADD_TO_SEARCH];
     case 'recent':
       return [SAVE_AS_VIEW];
     case 'note':
@@ -946,8 +948,19 @@ function buttonsFor(item: QuickFindItem): vscode.QuickInputButton[] | undefined 
   }
 }
 
-/** The icon a row's label starts with, by what it is. */
+/** An answer's icon, by what its value is. */
+const ANSWER_ICONS: Readonly<Record<NonNullable<QuickFindItem['answer']>, string>> = {
+  person: '$(person)',
+  tag: '$(tag)',
+  note: '$(note)',
+  value: '$(symbol-field)',
+};
+
+/** The icon a row's label starts with, by what it is; an answer's by what its value is. */
 function iconFor(item: QuickFindItem): string {
+  if (item.answer) {
+    return ANSWER_ICONS[item.answer];
+  }
   switch (item.kind) {
     case 'tag':
       return '$(tag)';

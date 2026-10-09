@@ -67,14 +67,12 @@ export function describeRowHover(types: TypeIndex, rowId: string, options: RowHo
   }
   const fields = types.fields(rowId);
   const contacts = fields.filter((field) => isContactField(field) && field.values.length > 0);
-  const summary = fields.find(
-    (field) => field.kind.name === 'text' && field.source === 'written' && field.values.length > 0 && !contacts.includes(field),
-  );
+  const summary = findRowSummary(types, rowId);
   const tag = rowTag(row);
   const heading = [
     `**${escapeMarkdown(row.title)}**${tag ? ` \`${tag.label}\`` : ''}`,
     escapeMarkdown(type.name),
-    ...(summary ? [escapeMarkdown(summary.values.map((value) => value.text).join(', '))] : []),
+    ...(summary ? [escapeMarkdown(summary)] : []),
   ].join(' · ');
 
   const relations = fields
@@ -93,8 +91,20 @@ export function describeRowHover(types: TypeIndex, rowId: string, options: RowHo
   };
 }
 
+/**
+ * What a row is, in a few words: the values of its first written Text
+ * field that is not a way to reach it, `Head of Rates`. What its hover's
+ * first line, and a Find answer's description, end with.
+ */
+export function findRowSummary(types: TypeIndex, rowId: string): string | undefined {
+  const summary = types
+    .fields(rowId)
+    .find((field) => field.kind.name === 'text' && field.source === 'written' && field.values.length > 0 && !isContactField(field));
+  return summary?.values.map((value) => value.text).join(', ');
+}
+
 /** A tag row's tag, for its hover's code span and Open link: a person as `@dana`, any other as written. */
-function rowTag(row: TypeRow): RowHover['tag'] {
+export function rowTag(row: TypeRow): RowHover['tag'] {
   if (row.tagKeys.length === 0) {
     return undefined;
   }

@@ -56,6 +56,11 @@ suite('What a Find row can do', () => {
     assert.ok(!STAYING_ACTIONS.has('open'));
     assert.strictEqual(rowKey({ kind: 'task', label: 'x', taskId: 't1', line: 9 }), 'task:t1');
     assert.strictEqual(rowKey({ kind: 'note', label: 'x', sectionId: 's1' }), 'note:s1');
+    assert.strictEqual(
+      rowKey({ kind: 'tag', answer: 'person', label: 'Dana Whitfield', tagKey: '@dana' }),
+      'answer:@dana:Dana Whitfield',
+      'an answer is known apart from the same tag under Tags',
+    );
   });
 
   test('the actions that need the row\'s task, and the ones that stay, are the table\'s', () => {

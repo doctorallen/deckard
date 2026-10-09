@@ -46,6 +46,18 @@
   beside. A field whose name a built-in query field takes is written as
   `<type>-<name>`, and the list says so. **New note type…** writes a type
   whose rows are notes with `type:` and an empty table.
+- **Find answers questions.** In a workspace with types, Find reads what
+  is typed as a row and a field, and lists up to three answers first,
+  under **Answer**: "who leads bond trading" walks from the Bond Trading
+  area through the team that owns it to its lead, and lists Dana Whitfield
+  with "@dana · Person · Head of Rates" and the path "Bond Trading › owned
+  by Rates › lead". A field is found by its name, its reverse's, or a word
+  it is also called, on the row or up to two relations away; "who is on
+  rates", "rates members", "rates channel", and "what does priya own" work
+  too. Enter opens the answer's page, or, for a value written as text, the
+  page of the row that holds it. A typed tag under Tags leads with its type
+  and one fact ("Team · lead Dana Whitfield · 4 notes · 1 task"). A
+  workspace with no types finds as before.
 
 ### Changed
 

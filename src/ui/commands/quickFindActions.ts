@@ -324,6 +324,9 @@ export const STAYING_ACTIONS: ReadonlySet<RowActionId> = new Set(
  * A row's identity across redraws: what it opens, not where it is listed.
  */
 export function rowKey(item: QuickFindItem): string {
+  if (item.answer) {
+    return `answer:${item.tagKey ?? `${item.filePath}:${item.line}`}:${item.label}`;
+  }
   switch (item.kind) {
     case 'task':
       return `task:${item.taskId ?? `${item.filePath}:${item.line}`}`;

@@ -236,6 +236,35 @@ suite('Quick Find', () => {
     }
   });
 
+  test('lists answers from the types first, under Answer, each with its value\'s icon and no Tab completion', () => {
+    const results: QuickFindResults = {
+      answers: [
+        { kind: 'tag', answer: 'person', label: 'Dana Whitfield', description: '@dana · Person', detail: 'Rates › lead', tagKey: '@dana' },
+        { kind: 'tag', answer: 'value', label: '#rates-desk', description: 'channel of Rates', detail: 'Rates › channel', tagKey: '#team/rates' },
+        { kind: 'note', answer: 'note', label: 'RFQ outage', detail: 'Dana › owner of', filePath: 'Incidents/RFQ outage.md', line: 1 },
+      ],
+      tags: [{ kind: 'tag', label: '#team/rates', description: 'Team · lead Dana Whitfield · 2 notes · 1 task', tagKey: '#team/rates', completion: '#team/rates ' }],
+      conditions: [],
+      recent: [],
+      savedViews: [],
+      notes: [],
+      tasks: [],
+      totals: { notes: 0, tasks: 0 },
+    };
+    const items = toPickItems(results, 'rates lead');
+    assert.deepStrictEqual(
+      items.filter((item) => item.kind === vscode.QuickPickItemKind.Separator).map((item) => item.label),
+      ['Answer', 'Tags'],
+    );
+    assert.deepStrictEqual(items.slice(1, 4).map((item) => [item.label, item.detail, item.buttons?.length]), [
+      ['$(person) Dana Whitfield', 'Rates › lead', undefined],
+      ['$(symbol-field) #rates-desk', 'Rates › channel', undefined],
+      ['$(note) RFQ outage', 'Dana › owner of', 2],
+    ]);
+    assert.strictEqual(items[5].label, '$(tag) #team/rates');
+    assert.strictEqual(toPickItems({ ...results, answers: undefined }, 'rates lead')[0].label, 'Tags');
+  });
+
   test('writes a key the way VS Code writes it on each platform', () => {
     assert.strictEqual(keyLabel('cmd+enter', 'darwin'), '⌘Enter');
     assert.strictEqual(keyLabel('alt+enter', 'darwin'), '⌥Enter');
