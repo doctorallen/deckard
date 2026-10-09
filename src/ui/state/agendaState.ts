@@ -4,7 +4,7 @@ import { describeSteps, isPlainStep } from '../../domain/markdown/taskSteps';
 import { addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
 import { formatDisplayDate } from '../../domain/markdown/dateFormat';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
-import { parseQuery } from '../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { QueryContext } from '../../domain/query/queryContext';
 import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { listUnknownColumns, orderOpenStatuses, readTaskColumnKey } from '../../domain/tasks/statusColumns';
@@ -176,7 +176,7 @@ export function selectAgendaTasks(
   if (!text) {
     return { tasks: withoutParked([...index.tasks.values()], index) };
   }
-  const parsed = parseQuery(text);
+  const parsed = parseWorkspaceQuery(index, text);
   if (!parsed.node) {
     return {
       tasks: withoutParked([...index.tasks.values()], index),

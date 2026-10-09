@@ -351,7 +351,7 @@ function readFence(token: MarkdownToken, source: Source, line: number): NoteBloc
 /** What a query block finds, drawn as the preview draws it: lists, or tables for `view=table`. */
 function runQueryBlock(query: string, options: NonNullable<ReturnType<typeof parseQueryBlockInfo>>, reading: Reading): NoteQueryResult {
   const { queryContext } = reading.options;
-  const snapshot = getQueryBlockSnapshot(reading.index, query, options, { queryContext });
+  const snapshot = getQueryBlockSnapshot(reading.index, query, options, { queryContext, notePath: reading.file.filePath });
   if (snapshot.hasError) {
     const error = snapshot.messages.find((message) => message.severity === 'error')?.text ?? 'This query cannot run.';
     return { counts: '', error, notes: [], tasks: [], noteCount: 0, taskCount: 0 };

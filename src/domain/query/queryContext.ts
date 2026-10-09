@@ -39,6 +39,12 @@ export interface QueryContext {
    * setting. A date written into a note or a search stays `YYYY-MM-DD`.
    */
   dateFormats: DateFormats;
+  /**
+   * The note a query block is in, by path: what `this` names in its query,
+   * as in `team = this`. Undefined anywhere else, where `this` names
+   * nothing.
+   */
+  thisNotePath?: string;
 }
 
 /** The settings a QueryContext is built from, each one optional. */

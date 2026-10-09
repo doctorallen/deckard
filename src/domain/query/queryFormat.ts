@@ -2,9 +2,11 @@ import { readLinkValue } from './queryLinks';
 import { isWildcard } from './queryValues';
 import {
   describeOperator,
+  QUERY_FIELDS,
   QUERY_OPERATOR_INVERSES,
   QUERY_SHORTHAND_FIELDS,
   QueryConditionNode,
+  QueryFieldConditionNode,
   QueryNode,
 } from './queryTypes';
 import { QueryBuilderGroup, QueryBuilderItem, QueryBuilderRow, QueryField } from '../model';
@@ -32,6 +34,9 @@ type FormatContext = 'top' | 'or' | 'and' | 'not';
 function formatNode(node: QueryNode, context: FormatContext): string {
   if (node.type === 'condition') {
     return formatCondition(node);
+  }
+  if (node.type === 'field') {
+    return formatFieldCondition(node);
   }
   if (node.type === 'not') {
     const inner = formatNode(node.child, 'not');
@@ -67,6 +72,55 @@ export function formatCondition(condition: QueryConditionNode): string {
   }
   const operator = describeOperator(condition.operator);
   return `${condition.field} ${operator} ${value}`;
+}
+
+/**
+ * Writes a type field's condition: its name, its operator, and its values
+ * between commas, `tier = gold, silver`. A value with a comma of its own is
+ * quoted, and a `[[link]]` is written as one.
+ */
+export function formatFieldCondition(condition: Pick<QueryFieldConditionNode, 'name' | 'operator' | 'values'>): string {
+  return `${condition.name} ${describeOperator(condition.operator)} ${condition.values.map(quoteFieldValue).join(', ')}`;
+}
+
+/** A type field's value as a condition writes it: a whole `[[link]]` bare, one with a comma quoted. */
+function quoteFieldValue(value: string): string {
+  if (/^\[\[[^\]]+\]\]$/.test(value)) {
+    return value;
+  }
+  return value.includes(',') ? `"${value.replace(/(["\\])/g, '\\$1')}"` : quoteValue(value);
+}
+
+/**
+ * A type field's values as a builder row writes them, `gold, silver`, read
+ * back into the values: split at each comma outside double quotes, each
+ * value unquoted and trimmed.
+ */
+export function splitFieldValues(text: string): string[] {
+  const values: string[] = [];
+  let current = '';
+  let quoted = false;
+  for (let at = 0; at < text.length; at += 1) {
+    const character = text[at];
+    if (character === '\\' && quoted && at + 1 < text.length) {
+      current += text[at + 1];
+      at += 1;
+    } else if (character === '"') {
+      quoted = !quoted;
+    } else if (character === ',' && !quoted) {
+      values.push(current);
+      current = '';
+    } else {
+      current += character;
+    }
+  }
+  values.push(current);
+  return values.map((value) => value.trim()).filter(Boolean);
+}
+
+/** Whether a builder row's field is a built-in one, rather than a type's field. */
+export function isBuiltInQueryField(field: string): field is QueryField {
+  return (QUERY_FIELDS as readonly string[]).includes(field);
 }
 
 /**
@@ -190,12 +244,12 @@ export function toBuilderTree(node: QueryNode | undefined): QueryBuilderGroup {
 
 /** A node as a builder row or group, a negated condition as its opposite row. */
 function toBuilderItem(node: QueryNode): QueryBuilderItem {
-  if (node.type === 'condition') {
+  if (node.type === 'condition' || node.type === 'field') {
     return conditionRow(node, false);
   }
   if (node.type === 'not') {
     const inner = node.child;
-    if (inner.type === 'condition') {
+    if (inner.type === 'condition' || inner.type === 'field') {
       return conditionRow(inner, true);
     }
     if (inner.type === 'not') {
@@ -206,12 +260,16 @@ function toBuilderItem(node: QueryNode): QueryBuilderItem {
   return { join: node.type, items: node.children.map(toBuilderItem) };
 }
 
-/** A condition as a builder row, its operator turned to its opposite when it was negated. */
-function conditionRow(node: QueryConditionNode, negated: boolean): QueryBuilderRow {
+/**
+ * A condition as a builder row, its operator turned to its opposite when it
+ * was negated; a type field's row is its query name, its values between
+ * commas.
+ */
+function conditionRow(node: QueryConditionNode | QueryFieldConditionNode, negated: boolean): QueryBuilderRow {
   return {
-    field: node.field,
+    field: node.type === 'field' ? node.name : node.field,
     operator: negated ? QUERY_OPERATOR_INVERSES[node.operator] : node.operator,
-    value: node.value,
+    value: node.type === 'field' ? node.values.map((value) => (value.includes(',') ? quoteValue(value) : value)).join(', ') : node.value,
     supported: true,
     text: formatNode(negated ? { type: 'not', child: node } : node, 'top'),
   };
@@ -245,6 +303,9 @@ function formatBuilderRow(row: QueryBuilderRow): string {
   }
   if (!row.value.trim()) {
     return '';
+  }
+  if (!isBuiltInQueryField(row.field)) {
+    return formatFieldCondition({ name: row.field, operator: row.operator, values: splitFieldValues(row.value) });
   }
   const condition: QueryConditionNode = {
     type: 'condition',
@@ -284,11 +345,50 @@ export function visitConditions(
     visit(node);
     return;
   }
+  if (node.type === 'field') {
+    return;
+  }
   if (node.type === 'not') {
     visitConditions(node.child, visit);
     return;
   }
   node.children.forEach((child) => visitConditions(child, visit));
+}
+
+/** Walks every type field's condition in a query, ignoring the shape of the logic above it. */
+export function visitFieldConditions(
+  node: QueryNode | undefined,
+  visit: (condition: QueryFieldConditionNode) => void,
+): void {
+  if (!node || node.type === 'condition') {
+    return;
+  }
+  if (node.type === 'field') {
+    visit(node);
+    return;
+  }
+  if (node.type === 'not') {
+    visitFieldConditions(node.child, visit);
+    return;
+  }
+  node.children.forEach((child) => visitFieldConditions(child, visit));
+}
+
+/**
+ * The types a search is for: the keys its top level names with
+ * `type = <key>` (or `is:<key>`), alone or ANDed with other terms, in the
+ * order written. What a page titles itself by and lists rows of.
+ */
+export function getQueryTypeKeys(node: QueryNode | undefined): string[] {
+  if (!node) {
+    return [];
+  }
+  const terms = node.type === 'and' ? node.children : [node];
+  return [
+    ...new Set(
+      terms.flatMap((term) => (term.type === 'condition' && term.field === 'type' && term.operator === 'eq' ? [term.value] : [])),
+    ),
+  ];
 }
 
 /**

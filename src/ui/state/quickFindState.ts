@@ -16,6 +16,7 @@ import {
   visitConditions,
 } from '../../domain/query/queryFormat';
 import { parseQuery } from '../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { QueryNode } from '../../domain/query/queryTypes';
 import { EntrySearchResult } from '../../core/storage/searchStore';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
@@ -216,10 +217,10 @@ function readTypedSearch(index: WorkspaceIndex, input: string, context: QueryCon
     !resolveIndexedTagKey(index.tags, token.replace(/^-/, ''), context.entityNamespaceAliases)
       ? token.replace(/^-/, '')
       : undefined;
-  let parsed = parseQuery(tagToken ? beforeToken : input);
+  let parsed = parseWorkspaceQuery(index, tagToken ? beforeToken : input);
   let message: string | undefined;
   if (!parsed.node && parsed.diagnostics.length > 0) {
-    const withoutToken = parseQuery(beforeToken);
+    const withoutToken = parseWorkspaceQuery(index, beforeToken);
     if (withoutToken.node || !beforeToken.trim()) {
       parsed = withoutToken;
     } else {

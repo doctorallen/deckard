@@ -7,7 +7,7 @@ import { resolveIndexedTagKey } from '../../../../domain/index/tagNavigation';
 import { EntityNamespaceAliases, formatEntityTitle } from '../../../../domain/markdown/parser';
 import type { Section, Task, WorkspaceIndex } from '../../../../domain/model';
 import { formatQuery } from '../../../../domain/query/queryFormat';
-import { parseQuery } from '../../../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../../../domain/types/typeQueryFields';
 import type { ExportService } from '../../../../services/exportService';
 import type { NavigationService } from '../../../../services/navigationService';
 import { measure } from '../../../../shared/timing';
@@ -234,7 +234,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
 
   /** Whether the page is about one tag the index no longer has. */
   public isForMissingTag(index: WorkspaceIndex): boolean {
-    const parsed = parseQuery(this.queryText);
+    const parsed = parseWorkspaceQuery(index, this.queryText);
     const node = parsed.node;
     return (
       node?.type === 'condition' &&
@@ -396,7 +396,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
         : {
             query: createQueryViewState({
               index,
-              parsed: parseQuery(this.queryText),
+              parsed: parseWorkspaceQuery(index, this.queryText),
               matchCounts: snapshot.query.matchCounts,
               isAdvanced: true,
               recentQueries: preferences.recentQueries ?? [],
@@ -415,7 +415,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
    */
   private async applyQuery(page: PageContext, queryText: string, remember = true): Promise<void> {
     const text = queryText.trim();
-    if (text && parseQuery(text).node === undefined) {
+    if (text && parseWorkspaceQuery(this.search.indexer.getSnapshot(), text).node === undefined) {
       this.invalidQueryText = text;
       page.refresh();
       return;
@@ -545,7 +545,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     const index = this.search.indexer.getSnapshot();
     const snapshot = this.currentSnapshot();
     const node = this.queryText.trim()
-      ? parseQuery(this.queryText).node
+      ? parseWorkspaceQuery(index, this.queryText).node
       : undefined;
     if (!node) {
       return {
@@ -639,11 +639,11 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     if (!text) {
       return;
     }
-    if (parseQuery(text).node === undefined) {
+    if (parseWorkspaceQuery(index, text).node === undefined) {
       await this.applyQuery(page, text);
       return;
     }
-    const tagKeys = resolveQueryTagIntersection(index, parseQuery(text), readEntityNamespaceAliases());
+    const tagKeys = resolveQueryTagIntersection(index, parseWorkspaceQuery(index, text), readEntityNamespaceAliases());
     const isTagSet = tagKeys !== undefined && tagKeys.length >= 2;
     const name = await vscode.window.showInputBox({
       title: 'Save search',
@@ -677,7 +677,7 @@ export function getSearchKey(
   queryText: string,
   entityNamespaceAliases?: EntityNamespaceAliases,
 ): string {
-  const parsed = parseQuery(queryText.trim());
+  const parsed = parseWorkspaceQuery(index, queryText.trim());
   if (!parsed.node) {
     return '';
   }

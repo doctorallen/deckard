@@ -1,16 +1,29 @@
 import { needsNewDate } from '../tasks/taskPolicy';
 import { isOpenTask, normalizeStatusName } from '../tasks/taskStatuses';
-import { addDays, startOfDay } from '../markdown/calendar';
+import { addDays, parseIsoDate, startOfDay } from '../markdown/calendar';
 import { getFileName } from '../../shared/paths';
 import { EntityNamespaceAliases, isDailyNoteFile, isPeriodicNoteFile } from '../markdown/parser';
 import {
+  FieldKind,
   ParsedFile,
+  QueryOperator,
   Section,
   Task,
   TaskPriority,
   TaskStatus,
   WorkspaceIndex,
 } from '../model';
+import { isRowKind } from '../types/fieldKinds';
+import { readCheckboxValue, readNumberValue } from '../types/fieldValues';
+import {
+  FieldValue,
+  getTypeIndex,
+  MAX_PATH_SEGMENTS,
+  RowField,
+  splitFieldPath,
+  TypeIndex,
+  TypeRow,
+} from '../types/typeIndex';
 import { resolveIndexedTagKey } from '../index/tagNavigation';
 import {
   getQueryLinkState,
@@ -22,7 +35,15 @@ import {
 } from './queryLinks';
 import { QueryContext } from './queryContext';
 import { DateDirection, resolveDateRange } from './queryDates';
-import { compareByOperator, QueryConditionNode, QueryNode } from './queryTypes';
+import {
+  compareByOperator,
+  QUERY_HAS_VALUES,
+  QUERY_OPERATOR_INVERSES,
+  QueryConditionNode,
+  QueryFieldConditionNode,
+  QueryNode,
+  THIS_VALUE,
+} from './queryTypes';
 import { isWildcard, normalizeFolder } from './queryValues';
 import { escapeRegExp } from '../../shared/text';
 import { TASK_PRIORITY_RANKS } from '../markdown/taskFields';
@@ -70,27 +91,42 @@ export function evaluateQuery(
     return { sections: [], tasks: [], files: [] };
   }
 
-  const membership = buildTagMembership(index);
   const context = createEvaluationContext(index, node, query);
+  const units = collectUnits(index, context);
+  const matching = <Item>(pairs: ReadonlyArray<readonly [Item, QueryUnit]>): Item[] =>
+    pairs.filter(([, unit]) => matchesNode(node, unit, context)).map(([item]) => item);
+  return {
+    sections: matching(units.sections),
+    tasks: matching(units.tasks),
+    files: matching(units.files),
+  };
+}
+
+/** Every unit a search tests, each with the section, task, or note it is. */
+interface IndexUnits {
+  sections: Array<readonly [Section, QueryUnit]>;
+  tasks: Array<readonly [Task, QueryUnit]>;
+  files: Array<readonly [ParsedFile, QueryUnit]>;
+}
+
+/**
+ * The units a search tests, in index order: every entry, every task, and
+ * every note that is a result of its own, each with its links when the
+ * search asks about them.
+ */
+function collectUnits(index: WorkspaceIndex, context: EvaluationContext): IndexUnits {
+  const membership = buildTagMembership(index);
   const links = context.links;
   const withLinks = (unit: QueryUnit, key: string): QueryUnit =>
     links ? { ...unit, links: links.byUnit.get(key) } : unit;
   // A note is an entry: an untagged heading under a tagged one is part of
   // it, never a result of its own (noteEntries.ts).
   const parts = getEntryParts(index);
-  const sections = [...index.sections.values()].filter(isEntrySection).filter((section) =>
-    matchesNode(
-      node,
-      withLinks(createSectionUnit(index, membership, section, parts.get(section.id)), `section:${section.id}`),
-      context,
-    ),
-  );
-  const tasks = [...index.tasks.values()].filter((task) =>
-    matchesNode(
-      node,
-      withLinks(createTaskUnit(index, membership, task), `task:${task.id}`),
-      context,
-    ),
+  const sections = [...index.sections.values()]
+    .filter(isEntrySection)
+    .map((section) => [section, withLinks(createSectionUnit(index, membership, section, parts.get(section.id)), `section:${section.id}`)] as const);
+  const tasks = [...index.tasks.values()].map(
+    (task) => [task, withLinks(createTaskUnit(index, membership, task), `task:${task.id}`)] as const,
   );
   // A note is a result of its own only when it has tags of its own, or, for
   // a search by link, a link none of its entries owns.
@@ -100,15 +136,103 @@ export function evaluateQuery(
         (membership.files.get(file.filePath)?.size ?? 0) > 0 ||
         (links?.looseFiles.has(file.filePath) ?? false),
     )
-    .filter((file) =>
-      matchesNode(
-        node,
-        withLinks(createFileUnit(index, membership, file, parts.get(fileEntryId(file.filePath))), `file:${file.filePath}`),
-        context,
-      ),
+    .map(
+      (file) =>
+        [file, withLinks(createFileUnit(index, membership, file, parts.get(fileEntryId(file.filePath))), `file:${file.filePath}`)] as const,
     );
-
   return { sections, tasks, files };
+}
+
+/**
+ * Evaluates a parsed query to the rows of the workspace's types it finds,
+ * by id (docs/implementation/30-databases.md § Types as searches): the
+ * rows tab of a search for `type = team`. A row matches a type condition
+ * by its type, a type field's condition by its own field, and any other
+ * condition when one of its entries does: an entry in its note, or one
+ * that carries its tag, so `type = team is:overdue` finds the teams with
+ * an overdue task. A negative condition (`!=`, `!~`) is the opposite of
+ * its positive one, row by row. Rows come in the type index's order.
+ */
+export function evaluateTypeRows(
+  index: WorkspaceIndex,
+  node: QueryNode | undefined,
+  query: QueryContext,
+): string[] {
+  const types = getTypeIndex(index);
+  if (!node || types.isEmpty) {
+    return [];
+  }
+  const context = createEvaluationContext(index, node, query);
+  let units: QueryUnit[] | undefined;
+  const rowsByCondition = new Map<QueryConditionNode, Set<string>>();
+  const rowsMatching = (condition: QueryConditionNode): Set<string> => {
+    let rows = rowsByCondition.get(condition);
+    if (!rows) {
+      if (!units) {
+        const collected = collectUnits(index, context);
+        units = [...collected.sections, ...collected.tasks, ...collected.files].map(([, unit]) => unit);
+      }
+      const found = new Set<string>();
+      units.forEach((unit) => {
+        if (matchesCondition(condition, unit, context)) {
+          rowIdsOfUnit(unit, types).forEach((rowId) => found.add(rowId));
+        }
+      });
+      rows = found;
+      rowsByCondition.set(condition, rows);
+    }
+    return rows;
+  };
+  const matchesRow = (current: QueryNode, row: TypeRow): boolean => {
+    switch (current.type) {
+      case 'and':
+        return current.children.every((child) => matchesRow(child, row));
+      case 'or':
+        return current.children.some((child) => matchesRow(child, row));
+      case 'not':
+        return !matchesRow(current.child, row);
+      case 'field':
+        return matchesFieldCondition(current, [row], context);
+      case 'condition':
+        return matchesRowCondition(current, row, context, rowsMatching);
+    }
+  };
+  return types.rows().filter((row) => matchesRow(node, row)).map((row) => row.id);
+}
+
+/**
+ * Whether a row answers a built-in condition: `type` by its type, `has:`
+ * a type field by its own field, and anything else when one of its
+ * entries does, as `rowsMatching` finds them for the positive condition.
+ */
+function matchesRowCondition(
+  condition: QueryConditionNode,
+  row: TypeRow,
+  context: EvaluationContext,
+  rowsMatching: (condition: QueryConditionNode) => Set<string>,
+): boolean {
+  if (condition.field === 'type') {
+    return applyNegation(condition, row.typeKey === (context.types().registry.get(condition.value)?.key ?? condition.value));
+  }
+  if (condition.field === 'has' && isTypeFieldHas(condition.value)) {
+    return applyNegation(condition, hasFieldValue(context, [row], condition.value));
+  }
+  const negative = condition.operator === 'neq' || condition.operator === 'notContains';
+  const positive = negative ? { ...condition, operator: QUERY_OPERATOR_INVERSES[condition.operator] } : condition;
+  const matched = rowsMatching(positive).has(row.id);
+  return negative ? !matched : matched;
+}
+
+/** The rows an entry, task, or note belongs to: those its note holds the fields of, and those its tags are. */
+function rowIdsOfUnit(unit: QueryUnit, types: TypeIndex): Set<string> {
+  const rowIds = new Set(types.rowsOfFile(unit.filePath).map((row) => row.id));
+  unit.tagKeys.forEach((tagKey) => {
+    const row = types.rowOfTag(tagKey);
+    if (row) {
+      rowIds.add(row.id);
+    }
+  });
+  return rowIds;
 }
 
 /**
@@ -121,6 +245,14 @@ interface EvaluationContext {
   query: QueryContext;
   links?: LinkState;
   linkQueries: Map<string, LinkQuery>;
+  /** The workspace's types, read the first time a condition asks about them. */
+  types: () => TypeIndex;
+  /** The rows `this` names: those the query block's note holds the fields of, by id. */
+  thisRows?: Set<string>;
+  /** Each value a type field is compared with, read by the field's kind once. */
+  wantedValues: Map<string, FieldValue>;
+  /** The fields each row's name or path reaches, worked out once, since a note's entries share its rows. */
+  rowFields: Map<string, RowField[]>;
 }
 
 /** The context of one evaluation; the links are gathered only when the search names `link`. */
@@ -134,6 +266,9 @@ function createEvaluationContext(
     query,
     ...(hasField(node, 'link') ? { links: getQueryLinkState(index) } : {}),
     linkQueries: new Map(),
+    types: () => getTypeIndex(index),
+    wantedValues: new Map(),
+    rowFields: new Map(),
   };
 }
 
@@ -142,6 +277,8 @@ function hasField(node: QueryNode, field: QueryConditionNode['field']): boolean 
   switch (node.type) {
     case 'condition':
       return node.field === field;
+    case 'field':
+      return false;
     case 'not':
       return hasField(node.child, field);
     case 'and':
@@ -607,6 +744,8 @@ function matchesNode(
       return !matchesNode(node.child, unit, context);
     case 'condition':
       return matchesCondition(node, unit, context);
+    case 'field':
+      return matchesFieldCondition(node, context.types().rowsOfFile(unit.filePath), context);
   }
 }
 
@@ -638,7 +777,12 @@ function matchesCondition(
       }
       return applyNegation(condition, matchesIs(condition.value, unit, context.query));
     case 'has':
+      if (isTypeFieldHas(condition.value)) {
+        return applyNegation(condition, hasFieldValue(context, context.types().rowsOfFile(unit.filePath), condition.value));
+      }
       return matchesHas(condition, unit);
+    case 'type':
+      return applyNegation(condition, matchesType(condition.value, unit, context));
     case 'in':
       return applyNegation(condition, isInFolder(condition.value, unit.filePath));
     case 'kind':
@@ -991,6 +1135,199 @@ function matchesKind(value: string, unit: QueryUnit, aliases: EntityNamespaceAli
 }
 
 /**
+ * Answers `type = team`: an entry, task, or note in a note that is a row
+ * of the type, its own or its tag's hub; and, for a type whose rows are
+ * tags, one that carries a row's tag, as `kind` finds a namespace's. A
+ * value no type has keeps `type`'s older meaning, a namespace.
+ */
+function matchesType(value: string, unit: QueryUnit, context: EvaluationContext): boolean {
+  const types = context.types();
+  const typeKey = types.registry.get(value)?.key;
+  if (!typeKey) {
+    return matchesKind(value, unit, context.query.entityNamespaceAliases);
+  }
+  return (
+    types.rowsOfFile(unit.filePath).some((row) => row.typeKey === typeKey) ||
+    [...unit.tagKeys].some((tagKey) => types.rowOfTag(tagKey)?.typeKey === typeKey)
+  );
+}
+
+/** Whether a `has:` value names a type's field rather than one of a task's. */
+function isTypeFieldHas(value: string): boolean {
+  return !(QUERY_HAS_VALUES as readonly string[]).includes(value);
+}
+
+/** Whether any of these rows has a value in the field a name or path reaches: `has:on-call`. */
+function hasFieldValue(context: EvaluationContext, rows: readonly TypeRow[], name: string): boolean {
+  return rows.some((row) => fieldsAt(context, row.id, name).some((field) => field.values.length > 0));
+}
+
+/**
+ * Answers a type field's condition for the rows an entry belongs to, or a
+ * row alone: whether any of them has a value in the field that matches any
+ * of the values written. `!=` and `!~` are the opposite of `=` and `~`, so
+ * a row with the field empty, or an entry in no row, is not `lead = @dana`
+ * and so is `lead != @dana`, as `NOT lead = @dana` is.
+ */
+function matchesFieldCondition(
+  condition: QueryFieldConditionNode,
+  rows: readonly TypeRow[],
+  context: EvaluationContext,
+): boolean {
+  const negative = condition.operator === 'neq' || condition.operator === 'notContains';
+  const operator = negative ? QUERY_OPERATOR_INVERSES[condition.operator] : condition.operator;
+  const matched = rows.some((row) =>
+    fieldsAt(context, row.id, condition.name).some((field) =>
+      field.values.some((value) =>
+        condition.values.some((wanted) => matchesFieldValue(value, field.kind, { wanted, operator }, context)),
+      ),
+    ),
+  );
+  return negative ? !matched : matched;
+}
+
+/**
+ * The fields a name or path reaches from one row: the row's own field for
+ * a name, and for a path each segment a field of every row the one before
+ * named, the last one's fields with their kinds and values.
+ */
+function fieldsAt(context: EvaluationContext, rowId: string, name: string): RowField[] {
+  const key = `${rowId}\u0000${name}`;
+  let fields = context.rowFields.get(key);
+  if (!fields) {
+    fields = readFieldsAt(context, rowId, name);
+    context.rowFields.set(key, fields);
+  }
+  return fields;
+}
+
+/** The fields a name or path reaches from one row, worked out from the type index. */
+function readFieldsAt(context: EvaluationContext, rowId: string, name: string): RowField[] {
+  const types = context.types();
+  const now = context.query.now;
+  const segments = splitFieldPath(name);
+  if (segments.length === 0 || segments.length > MAX_PATH_SEGMENTS) {
+    return [];
+  }
+  let rowIds = [rowId];
+  for (let at = 0; at < segments.length - 1; at += 1) {
+    const next = new Set<string>();
+    rowIds.forEach((id) =>
+      types.field(id, segments[at], now)?.values.forEach((value) => {
+        if (value.rowId) {
+          next.add(value.rowId);
+        }
+      }),
+    );
+    rowIds = [...next];
+  }
+  const last = segments[segments.length - 1];
+  return rowIds.flatMap((id) => types.field(id, last, now) ?? []);
+}
+
+/** One value a type field's condition writes, and the operator it compares with. */
+interface FieldComparison {
+  wanted: string;
+  operator: QueryOperator;
+}
+
+/**
+ * Whether one value of a field matches one value a condition writes, by
+ * the field's kind: a row by the row the written value resolves to, as
+ * front matter's values resolve, or by its title; a number or date by
+ * order; a checkbox by true or false; a select's option and text in any
+ * case. `~` looks within the text, or the row's title. `this` is a row
+ * the query block's note is, or that note itself.
+ */
+function matchesFieldValue(
+  value: FieldValue,
+  kind: FieldKind,
+  comparison: FieldComparison,
+  context: EvaluationContext,
+): boolean {
+  const { wanted, operator } = comparison;
+  if (wanted.toLowerCase() === THIS_VALUE) {
+    return (operator === 'eq' || operator === 'contains') && isThisValue(value, context);
+  }
+  if (operator === 'contains') {
+    const written = wanted.trim().toLowerCase();
+    return describeFieldValue(value, context).toLowerCase().includes(written) || value.text.toLowerCase().includes(written);
+  }
+  if (value.rowId || value.notePath || (isRowKind(kind) && !value.unresolved)) {
+    return operator === 'eq' && matchesRowValue(value, kind, wanted, context);
+  }
+  return matchesWrittenValue(value, comparison, context.query);
+}
+
+/**
+ * Whether a value that names a row, or a note, is the one a written value
+ * names, read as front matter's values are; one that names nothing is
+ * matched by the row's title or the value as written, in any case.
+ */
+function matchesRowValue(value: FieldValue, kind: FieldKind, wanted: string, context: EvaluationContext): boolean {
+  const target = readWantedValue(kind, wanted, context);
+  if (target.rowId || target.notePath) {
+    return (target.rowId !== undefined && value.rowId === target.rowId) || (target.notePath !== undefined && value.notePath === target.notePath);
+  }
+  const written = wanted.trim().toLowerCase();
+  return describeFieldValue(value, context).toLowerCase() === written || value.text.toLowerCase() === written;
+}
+
+/**
+ * Whether a value read by its kind compares with a written one as the
+ * operator asks: a number or date by order, a checkbox by true or false,
+ * a select's option or text whole and in any case, and text that reads as
+ * a number by order.
+ */
+function matchesWrittenValue(value: FieldValue, { wanted, operator }: FieldComparison, query: QueryContext): boolean {
+  const written = wanted.trim().toLowerCase();
+  if (value.number !== undefined) {
+    const number = readNumberValue(wanted);
+    return number === undefined ? operator === 'eq' && value.text.toLowerCase() === written : compareByOperator(operator, value.number, number);
+  }
+  if (value.date !== undefined) {
+    return matchesDate({ operator, value: wanted }, parseIsoDate(value.date), 'past', query);
+  }
+  if (value.checked !== undefined) {
+    return operator === 'eq' && readCheckboxValue(wanted) === value.checked;
+  }
+  if (operator === 'eq') {
+    return (value.option ?? value.text).toLowerCase() === written;
+  }
+  const left = readNumberValue(value.text);
+  const right = readNumberValue(wanted);
+  return left !== undefined && right !== undefined && compareByOperator(operator, left, right);
+}
+
+/** A field's value as a reader names it: a row's title, or what is written. */
+function describeFieldValue(value: FieldValue, context: EvaluationContext): string {
+  return (value.rowId ? context.types().row(value.rowId)?.title : undefined) ?? value.text;
+}
+
+/** A value a condition writes, read by the field's kind once per evaluation. */
+function readWantedValue(kind: FieldKind, wanted: string, context: EvaluationContext): FieldValue {
+  const key = `${JSON.stringify(kind)}\u0000${wanted}`;
+  let read = context.wantedValues.get(key);
+  if (!read) {
+    read = context.types().resolveValue(kind, wanted);
+    context.wantedValues.set(key, read);
+  }
+  return read;
+}
+
+/** Whether a value names the note a query block is in, or a row that note is. */
+function isThisValue(value: FieldValue, context: EvaluationContext): boolean {
+  const notePath = context.query.thisNotePath;
+  if (!notePath) {
+    return false;
+  }
+  if (!context.thisRows) {
+    context.thisRows = new Set(context.types().rowsOfFile(notePath).map((row) => row.id));
+  }
+  return value.notePath === notePath || (value.rowId !== undefined && context.thisRows.has(value.rowId));
+}
+
+/**
  * Derives the namespace of a tag key, treating `@name` as a person.
  */
 export function getTagKind(tagKey: string): string | undefined {
@@ -1075,7 +1412,7 @@ function matchesPriority(
  * week's first day are the context's.
  */
 function matchesDate(
-  condition: QueryConditionNode,
+  condition: Pick<QueryConditionNode, 'operator' | 'value'>,
   timestamp: number | undefined,
   direction: DateDirection,
   context: QueryContext,

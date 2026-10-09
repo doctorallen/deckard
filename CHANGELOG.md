@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### Added
+
+- **Searches by a type's fields.** In a workspace with types, `type = team`
+  (or `is:team`) finds a type's rows: the notes and tasks in their notes,
+  and, for a namespace type, everything its tags are on. A type's fields
+  are conditions by name, after the built-in fields: `lead = @dana`,
+  `owns = "Bond trading"` (a person or related row by its tag, name, or
+  title, as front matter reads it), `tier = gold, silver` (any of),
+  `headcount > 10`, paths through relations and their reverses up to two
+  hops (`team.lead = @dana`, `owned-by.lead = @dana`), `has:on-call` and
+  `no:email`, and `field.status` for a field whose name a built-in takes.
+  In a query block, `this` is the note the block is in: `team = this`. A
+  field name no type has is still an error, now naming the fields it could
+  have meant. After `type = team`, the search box offers the type's fields
+  and their values, and the Builder lists them under the type's name, then
+  "Through <relation>", then "Built in".
+
 ### Changed
 
 - **`Types/` holds types, not notes.** A note in the `Types/` folder under

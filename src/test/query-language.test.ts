@@ -532,7 +532,7 @@ suite('Deckard search page state', () => {
         } else if (node.type === 'not') {
           found.push('NOT');
           visit(node.child);
-        } else {
+        } else if (node.type !== 'field') {
           node.children.forEach(visit);
         }
       };

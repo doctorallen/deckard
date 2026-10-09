@@ -7,6 +7,7 @@
  * canonical representation.
  */
 
+import type { FieldKindName } from '../model/noteTypes';
 import type { QueryDiagnostic, QueryField, QueryOperator } from '../model/query';
 
 /** Every field a query can name, in the order the query bar suggests them. */
@@ -26,6 +27,7 @@ export const QUERY_FIELDS: readonly QueryField[] = [
   'assignee',
   'has',
   'kind',
+  'type',
   'file',
   'path',
   'in',
@@ -209,6 +211,7 @@ export const QUERY_FIELD_OPERATORS: Readonly<
   assignee: ['eq', 'neq'],
   has: ['eq', 'neq'],
   kind: ['eq', 'neq'],
+  type: ['eq', 'neq'],
   file: ['eq', 'neq', 'contains', 'notContains'],
   path: ['eq', 'neq', 'contains', 'notContains'],
   in: ['eq', 'neq'],
@@ -273,8 +276,96 @@ export interface QueryNotNode {
   child: QueryNode;
 }
 
-/** A parsed query: a condition, a group of them, or a negation. */
-export type QueryNode = QueryConditionNode | QueryLogicalNode | QueryNotNode;
+/**
+ * One condition on a type's field, by the name a query gives it: a field of
+ * the type's table (`lead`, `field.status` for one a built-in's name
+ * takes), a reverse (`owned-by`), a computed field (`open-tasks`), or a
+ * path of up to three of them (`team.lead`). An entry matches when its
+ * note is a row whose field matches; a row, when its own does.
+ */
+export interface QueryFieldConditionNode {
+  type: 'field';
+  /** The field's query name or path, lowercased: `lead`, `owned-by.lead`, `field.status`. */
+  name: string;
+  operator: QueryOperator;
+  /**
+   * The values compared with, as written: one, or several for
+   * `tier = gold, silver`, any of which matches. `this` is the note a
+   * query block is in.
+   */
+  values: string[];
+  /** Character offset of the condition in the source query text. */
+  start: number;
+  /** Character offset one past the end of the condition. */
+  end: number;
+}
+
+/** A parsed query: a condition, a type field's condition, a group of them, or a negation. */
+export type QueryNode = QueryConditionNode | QueryFieldConditionNode | QueryLogicalNode | QueryNotNode;
+
+/** The value that names the note a query block is in: `team = this`. */
+export const THIS_VALUE = 'this';
+
+/**
+ * What a query's parser knows of the workspace's types: which names are
+ * type fields, and which values name a type. Without one, a query knows
+ * only the built-in fields, as before types.
+ */
+export interface QueryFieldSchema {
+  /**
+   * The field a name or path reaches (`lead`, `team.lead`, `field.status`),
+   * any case, with the kinds it has among the types that have it;
+   * undefined when no type has it.
+   */
+  field(name: string): QueryTypeField | undefined;
+  /** The key of the type a value names, by key or display name, any case. */
+  type(value: string): string | undefined;
+  /** The type fields a name no type has could have meant, closest first. */
+  closest(name: string): string[];
+}
+
+/** A type field as the parser knows it. */
+export interface QueryTypeField {
+  /** Its query name or path, lowercased. */
+  name: string;
+  /**
+   * What it holds, among the types that have it: one kind, unless two
+   * types define it differently; empty when that is not known.
+   */
+  kinds: readonly FieldKindName[];
+}
+
+/**
+ * Operators a type field takes, by its kind: numbers and dates compare by
+ * order; text, links, and rows' titles can also be searched within.
+ */
+export const TYPE_FIELD_OPERATORS: Readonly<Record<FieldKindName, readonly QueryOperator[]>> = {
+  text: ['eq', 'neq', 'contains', 'notContains'],
+  link: ['eq', 'neq', 'contains', 'notContains'],
+  email: ['eq', 'neq', 'contains', 'notContains'],
+  phone: ['eq', 'neq', 'contains', 'notContains'],
+  number: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+  date: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+  checkbox: ['eq', 'neq'],
+  select: ['eq', 'neq'],
+  person: ['eq', 'neq', 'contains', 'notContains'],
+  relation: ['eq', 'neq', 'contains', 'notContains'],
+  note: ['eq', 'neq', 'contains', 'notContains'],
+};
+
+/** Every operator, for a type field whose kind differs between types. */
+const ALL_OPERATORS: readonly QueryOperator[] = ['eq', 'neq', 'contains', 'notContains', 'gt', 'gte', 'lt', 'lte'];
+
+/** The operators a type field takes: its kind's, or every one when its kinds differ or are unknown. */
+export function typeFieldOperators(kinds: readonly FieldKindName[]): readonly QueryOperator[] {
+  return kinds.length === 1 ? TYPE_FIELD_OPERATORS[kinds[0]] : ALL_OPERATORS;
+}
+
+/**
+ * What a type field's query name or path looks like: words of letters,
+ * digits, `_`, and `-`, joined by dots.
+ */
+export const TYPE_FIELD_NAME = /^[\p{L}\p{N}_][\p{L}\p{N}_-]*(?:\.[\p{L}\p{N}_][\p{L}\p{N}_-]*)*$/u;
 
 /** What parseQuery returns: the text, its tree when it parsed, and what it reported. */
 export interface ParsedQuery {
@@ -284,3 +375,15 @@ export interface ParsedQuery {
   node?: QueryNode;
   diagnostics: QueryDiagnostic[];
 }
+
+/**
+ * A schema that takes any name a field could have as a type field, of a
+ * kind not known, and any value as a type: for reading a query's shape
+ * (its terms, where each was written, its tags) without the workspace's
+ * types to hand, never for answering it.
+ */
+export const ANY_FIELD_SCHEMA: QueryFieldSchema = {
+  field: (name) => (TYPE_FIELD_NAME.test(name) ? { name: name.toLowerCase(), kinds: [] } : undefined),
+  type: (value) => value.trim().toLowerCase() || undefined,
+  closest: () => [],
+};

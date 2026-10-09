@@ -5,7 +5,7 @@ import { getFileName } from '../../shared/paths';
 import { type DateFormats, formatDisplayDate } from '../../domain/markdown/dateFormat';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
-import { parseQuery } from '../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { pluralize } from '../../shared/text';
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
 
@@ -385,6 +385,11 @@ export function isQueryBlockLine(
  */
 export interface QueryBlockReading {
   queryContext: QueryContext;
+  /**
+   * The note the block is written in, by path: what `this` names in its
+   * query (`team = this`). Without it, `this` names nothing.
+   */
+  notePath?: string;
 }
 
 /**
@@ -416,6 +421,7 @@ export function getQueryBlockSnapshot(
     new Date(reading.queryContext.now).toDateString(),
     queryText,
     options,
+    reading.notePath ?? null,
   ]);
   let snapshot = snapshots.get(key);
   if (!snapshot) {
@@ -462,7 +468,7 @@ export function createQueryBlockSnapshot(
     };
   }
 
-  const parsed = parseQuery(query);
+  const parsed = parseWorkspaceQuery(index, query);
   const messages = [
     ...parsed.diagnostics.map(
       (diagnostic): QueryBlockMessage => ({
@@ -476,7 +482,11 @@ export function createQueryBlockSnapshot(
     return { ...empty, messages, hasError: true };
   }
 
-  const results = evaluateQuery(index, parsed.node, reading.queryContext);
+  const results = evaluateQuery(
+    index,
+    parsed.node,
+    reading.notePath ? { ...reading.queryContext, thisNotePath: reading.notePath } : reading.queryContext,
+  );
   // A table reads the note columns, and so does a sort by one only notes have.
   const table = options.view === 'table' || isNoteOnlySort(options.sort);
   const notes = [

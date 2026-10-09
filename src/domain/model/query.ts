@@ -27,6 +27,12 @@
  * written GitHub-style as `is:open`, `has:due`, `no:due`, or `in:notes/work`.
  * Each is one short token for something that otherwise takes one or two
  * conditions.
+ *
+ * `type` names the rows of a type a `Types/` note defines
+ * (docs/implementation/30-databases.md): `type = team`, or `is:team`. A
+ * value no type has keeps `type`'s older meaning, `kind`. A type's own
+ * fields are not in this list: a query names them by their query names
+ * (`lead`, `team.lead`), which the parser reads as a field condition.
  */
 export type QueryField =
   | 'tag'
@@ -44,6 +50,7 @@ export type QueryField =
   | 'assignee'
   | 'has'
   | 'kind'
+  | 'type'
   | 'file'
   | 'path'
   | 'in'
@@ -80,7 +87,11 @@ export interface QueryDiagnostic {
  * a condition the author wrote by hand.
  */
 export interface QueryBuilderRow {
-  field: QueryField;
+  /**
+   * A built-in field (a QueryField), or a type's field by its query name:
+   * `lead`, `team.lead`, `field.status`.
+   */
+  field: string;
   operator: QueryOperator;
   value: string;
   supported: boolean;
@@ -202,6 +213,11 @@ export interface QuerySuggestion {
   value: string;
   label: string;
   detail?: string;
+  /**
+   * For a field: the heading the builder's field list files it under, such
+   * as a type's name, "Through team", or "Built in".
+   */
+  group?: string;
 }
 
 /**
@@ -214,13 +230,13 @@ export interface QuerySuggestion {
 export interface QuerySuggestions {
   /** Field names, inserted with their operator ready for a value. */
   fields: QuerySuggestion[];
-  /** Values known to be valid for a field. */
-  values: Partial<Record<QueryField, QuerySuggestion[]>>;
+  /** Values known to be valid for a field: a built-in's, or a type field's by its query name. */
+  values: Partial<Record<string, QuerySuggestion[]>>;
   /**
    * The operators each field accepts, in the order the builder offers them,
    * so a page never keeps its own copy of the parser's rules.
    */
-  operators: Record<QueryField, readonly QueryOperator[]>;
+  operators: Record<string, readonly QueryOperator[]>;
   /**
    * Whole conditions offered when the author types a value without its field,
    * such as `open` for `is:open` or `#atl` for a tag. `value` is the condition
@@ -233,5 +249,5 @@ export interface QuerySuggestions {
    * Every spelling that names a field, so the query bar can tell which field
    * the caret sits in without keeping its own copy of the parser's aliases.
    */
-  aliases: Record<string, QueryField>;
+  aliases: Record<string, string>;
 }

@@ -270,7 +270,7 @@ export class TypeIndex {
    * {@link MAX_PATH_SEGMENTS}. Empty for a longer path or a name no row has.
    */
   public path(rowId: string, path: string | readonly string[], now: number = Date.now()): PathValue[] {
-    const segments = typeof path === 'string' ? splitPath(path) : [...path];
+    const segments = typeof path === 'string' ? splitFieldPath(path) : [...path];
     if (segments.length === 0 || segments.length > MAX_PATH_SEGMENTS) {
       return [];
     }
@@ -1144,7 +1144,7 @@ function slugPath(text: string): string {
 }
 
 /** A path's segments: `team.lead` is `team`, `lead`; `field.status` stays one. */
-function splitPath(path: string): string[] {
+export function splitFieldPath(path: string): string[] {
   const segments = path.split('.').map((segment) => segment.trim());
   const joined: string[] = [];
   for (let at = 0; at < segments.length; at += 1) {

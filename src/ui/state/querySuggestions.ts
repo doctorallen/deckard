@@ -3,7 +3,8 @@ import { canAppendTerm, getTopLevelJoin, getTopLevelTerms } from '../../domain/q
 import { countTagMatches } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { collectQueryTagKeys, quoteValue, toBuilderTree } from '../../domain/query/queryFormat';
-import { FIELD_ALIASES, parseQuery } from '../../domain/query/queryParser';
+import { FIELD_ALIASES } from '../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { ParsedQuery, QUERY_FIELD_OPERATORS, QUERY_FIELDS, QUERY_PRIORITY_VALUES, QUERY_RESERVED_STATUS_VALUES } from '../../domain/query/queryTypes';
 import { DEFAULT_TASK_POLICY, type TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { normalizeStatusName, UNKNOWN_STATUS_NAME } from '../../domain/tasks/taskStatuses';
@@ -73,7 +74,7 @@ export function createQueryViewState({
     canAppend: canAppendTerm(parsed),
     facets: facets ?? [],
     isAdvanced,
-    diagnostics: pending ? parseQuery(pending).diagnostics : parsed.diagnostics,
+    diagnostics: pending ? parseWorkspaceQuery(index, pending).diagnostics : parsed.diagnostics,
     builder: toBuilderTree(parsed.node),
     tags: resolveQueryTags(index, parsed, queryContext.entityNamespaceAliases),
     suggestions: createQuerySuggestions(index, recentQueries, queryContext),

@@ -4,7 +4,10 @@ import { normalizeFolder } from './queryValues';
 import {
   ParsedQuery,
   QueryConditionNode,
+  QueryFieldConditionNode,
+  QueryFieldSchema,
   QueryNode,
+  QueryTypeField,
   QUERY_FIELD_OPERATORS,
   QUERY_OPERATOR_INVERSES,
   QUERY_HAS_VALUES,
@@ -15,7 +18,10 @@ import {
   QUERY_OPERATOR_SYMBOLS,
   describeOperator,
   FIELD_ALIASES,
+  THIS_VALUE,
+  typeFieldOperators,
 } from './queryTypes';
+import { readCheckboxValue } from '../types/fieldValues';
 import { QueryDiagnostic, QueryField, QueryOperator } from '../model';
 
 export { FIELD_ALIASES };
@@ -45,15 +51,23 @@ export { FIELD_ALIASES };
  *
  * `is:open`, `has:due`, `no:due`, and `in:notes/work` are shorthands. `no:` is
  * `has:` with its meaning reversed, so it needs no field of its own.
+ *
+ * `schema` is what the workspace's types add (docs/implementation/
+ * 30-databases.md § Query language): a name no built-in field takes is a
+ * type field when the schema has it (`lead = @dana`, `team.lead = @dana`,
+ * `tier = gold, silver`), `type = team` and `is:team` name a type's rows,
+ * and `has:on-call` asks whether a field is filled. A name the schema does
+ * not have either is reported with the type fields it could have meant.
+ * Without a schema, only the built-in fields are known.
  */
-export function parseQuery(text: string): ParsedQuery {
+export function parseQuery(text: string, schema?: QueryFieldSchema): ParsedQuery {
   const diagnostics: QueryDiagnostic[] = [];
   const tokens = tokenize(text, diagnostics);
   if (tokens.length === 0) {
     return { text, diagnostics };
   }
 
-  const parser = new Parser(tokens, text, diagnostics);
+  const parser = new Parser(tokens, text, diagnostics, schema);
   const node = parser.parse();
   const hasError = diagnostics.some(
     (diagnostic) => diagnostic.severity === 'error',
@@ -502,6 +516,7 @@ class Parser {
     private readonly tokens: Token[],
     private readonly text: string,
     private readonly diagnostics: QueryDiagnostic[],
+    private readonly schema?: QueryFieldSchema,
   ) {}
 
   /** The whole query, and a diagnostic for anything left after it. */
@@ -663,7 +678,8 @@ class Parser {
 
   /**
    * Reads a word as a field condition, or, with no operator after it, as a
-   * tag or free text. A field Deckard does not know, a missing value, and an
+   * tag or free text. A built-in field's name wins; a name the schema has is
+   * a type field. A field Deckard does not know, a missing value, and an
    * operator the field does not take are each reported.
    */
   private parseWordCondition(): QueryNode | undefined {
@@ -676,12 +692,13 @@ class Parser {
 
     const field = lookupAlias(FIELD_ALIASES, word.value);
     if (!field) {
+      const typeField = this.schema?.field(word.value);
+      if (typeField) {
+        this.next();
+        return this.parseFieldCondition(word, operatorToken, typeField);
+      }
       this.diagnostics.push({
-        message: `"${word.value}" is not a Deckard query field. Use one of: ${Object.keys(
-          FIELD_ALIASES,
-        )
-          .slice(0, 8)
-          .join(', ')}.`,
+        message: this.describeUnknownField(word.value),
         severity: 'error',
         start: word.start,
         end: operatorToken.end,
@@ -692,7 +709,7 @@ class Parser {
     }
 
     this.next();
-    const operator = this.readConditionOperator(word, operatorToken, field);
+    const operator = this.readConditionOperator(word, operatorToken, field === 'text' ? 'contains' : 'eq');
     const valueToken = this.consumeValueToken(field);
     if (!valueToken) {
       this.diagnostics.push({
@@ -718,13 +735,102 @@ class Parser {
       return undefined;
     }
 
+    // `type = team` names a type's rows when a type is called that; any
+    // other value keeps the older meaning, a namespace.
+    const typeKey = field === 'kind' && word.value.toLowerCase() === 'type' ? this.schema?.type(valueToken.value.trim()) : undefined;
     return this.createCondition({
-      field,
+      field: typeKey ? 'type' : field,
       operator,
-      value: valueToken.value,
+      value: typeKey ?? valueToken.value,
       start: word.start,
       end: valueToken.end,
     });
+  }
+
+  /**
+   * The sentence for a field no built-in or type has: the type fields it
+   * could have meant, when there are some, else the built-in fields.
+   */
+  private describeUnknownField(name: string): string {
+    const close = this.schema?.closest(name) ?? [];
+    if (close.length > 0) {
+      return `"${name}" is not a Deckard query field. Did you mean ${listAlternatives(close)}?`;
+    }
+    return `"${name}" is not a Deckard query field. Use one of: ${Object.keys(FIELD_ALIASES).slice(0, 8).join(', ')}.`;
+  }
+
+  /**
+   * Reads the rest of a type field's condition, its operator already taken:
+   * the operator its kind takes, and one value or several, written
+   * `gold, silver`, any of which matches.
+   */
+  private parseFieldCondition(word: Token, operatorToken: Token, typeField: QueryTypeField): QueryNode | undefined {
+    const operator = this.readConditionOperator(word, operatorToken, 'eq');
+    const { values, end, unfinished } = this.readFieldValues(operatorToken.end);
+    const name = typeField.name;
+    if (values.length === 0 || unfinished) {
+      this.diagnostics.push({
+        message: values.length === 0 ? `${name} needs a value after "${operatorToken.value}".` : `${name} needs another value after the comma.`,
+        severity: 'error',
+        start: word.start,
+        end,
+      });
+      return undefined;
+    }
+    const allowed = typeFieldOperators(typeField.kinds);
+    if (!allowed.includes(operator)) {
+      this.diagnostics.push({
+        message: `${name} does not support "${operatorToken.value}". Try: ${allowed.map(describeOperator).join(', ')}.`,
+        severity: 'error',
+        start: word.start,
+        end,
+      });
+      return undefined;
+    }
+    const refusal = values.map((value) => checkTypeFieldValue(name, typeField, operator, value)).find(Boolean);
+    if (refusal) {
+      this.diagnostics.push({ message: refusal, severity: 'error', start: word.start, end });
+      return undefined;
+    }
+    const node: QueryFieldConditionNode = { type: 'field', name, operator, values, start: word.start, end };
+    return node;
+  }
+
+  /**
+   * A type field's values: a word, a quoted value, or a link, and more after
+   * a comma, as `gold, silver` or `"Bond trading", rates` writes them.
+   * `unfinished` is set when the last comma has nothing after it.
+   */
+  private readFieldValues(from: number): { values: string[]; end: number; unfinished: boolean } {
+    const values: string[] = [];
+    let end = from;
+    let expecting = true;
+    for (;;) {
+      const token = this.peek();
+      if (!token) {
+        break;
+      }
+      if (token.type === 'word' && (expecting || token.value.startsWith(','))) {
+        this.next();
+        const parts = token.value.split(',');
+        parts.map((part) => part.trim()).filter(Boolean).forEach((part) => values.push(part));
+        expecting = parts.length > 1 ? parts[parts.length - 1].trim() === '' : false;
+        end = token.end;
+        continue;
+      }
+      if (expecting && (token.type === 'string' || token.type === 'link')) {
+        this.next();
+        const value = token.type === 'link' ? token.raw ?? `[[${token.value}]]` : token.value.trim();
+        if (value) {
+          values.push(value);
+        }
+        expecting = false;
+        end = token.end;
+        continue;
+      }
+      break;
+    }
+    return { values, end, unfinished: expecting && values.length > 0 };
   }
 
   /** A word with no operator after it: a tag when it starts with `#` or `@`, else text. */
@@ -740,12 +846,13 @@ class Parser {
   }
 
   /**
-   * The operator a condition compares with, once its field is known. A
-   * comparison after a plain `:` or `=` is the one meant, as in
-   * `created:>2026-01-01`, and `no:` turns the operator into its opposite.
+   * The operator a condition compares with, once its field is known: a
+   * plain `:` is `fallback`, the field's own. A comparison after a plain
+   * `:` or `=` is the one meant, as in `created:>2026-01-01`, and `no:`
+   * turns the operator into its opposite.
    */
-  private readConditionOperator(word: Token, operatorToken: Token, field: QueryField): QueryOperator {
-    let operator = readOperator(operatorToken.value, field);
+  private readConditionOperator(word: Token, operatorToken: Token, fallback: QueryOperator): QueryOperator {
+    let operator = readOperator(operatorToken.value, fallback);
     const chained = this.peek();
     if (
       (operatorToken.value === ':' || operatorToken.value === '=') &&
@@ -753,7 +860,7 @@ class Parser {
       ['>', '>=', '<', '<=', '~'].includes(chained.value)
     ) {
       this.next();
-      operator = readOperator(chained.value, field);
+      operator = readOperator(chained.value, fallback);
     }
     if (word.value.toLowerCase() === NEGATED_HAS) {
       operator = QUERY_OPERATOR_INVERSES[operator];
@@ -785,14 +892,36 @@ class Parser {
    * field cannot take is reported over the condition's span.
    */
   private createCondition(input: ConditionInput): QueryConditionNode | undefined {
-    const { field, operator, start, end } = input;
+    const { operator, start, end } = input;
+    let field = input.field;
     const value = input.value.trim();
-    const read = field === 'link' ? readLinkCondition(value) : readFieldValue(field, operator, value);
+    const typed = this.readTypedShorthand(field, value);
+    if (typed) {
+      field = typed.field;
+    }
+    const read = typed ?? (field === 'link' ? readLinkCondition(value) : readFieldValue(field, operator, value));
     if ('message' in read) {
       this.diagnostics.push({ message: read.message, severity: 'error', start, end });
       return undefined;
     }
     return { type: 'condition', field, operator, value: read.value, start, end };
+  }
+
+  /**
+   * What a shorthand names among the types when it names no built-in:
+   * `is:team` the rows of a type, `has:on-call` whether a type field is
+   * filled. Undefined when a built-in takes the value, or no type does.
+   */
+  private readTypedShorthand(field: QueryField, value: string): { field: QueryField; value: string } | undefined {
+    if (!this.schema || (field !== 'is' && field !== 'has')) {
+      return undefined;
+    }
+    if (field === 'is') {
+      const typeKey = lookupAlias(IS_VALUE_ALIASES, value) ? undefined : this.schema.type(value);
+      return typeKey ? { field: 'type', value: typeKey } : undefined;
+    }
+    const typeField = lookupAlias(HAS_VALUE_ALIASES, value) ? undefined : this.schema.field(value);
+    return typeField ? { field: 'has', value: typeField.name } : undefined;
   }
 
   /** The token under the reader, if any, without moving past it. */
@@ -950,12 +1079,12 @@ const VALUE_READERS: Partial<
  * Maps written operators onto the evaluator's operator set: each symbol
  * QUERY_OPERATOR_SYMBOLS writes reads as its operator, so `text = plan` is
  * the whole word, as the guide, Help, and the builder say. `:`, which
- * names no operator of its own, reads as the field's default: `contains`
- * for `text`, so `text:plan` matches as a bare word does, and `eq` for
- * every other field.
+ * names no operator of its own, reads as `fallback`, the field's default:
+ * `contains` for `text`, so `text:plan` matches as a bare word does, and
+ * `eq` for every other field.
  */
-function readOperator(value: string, field: QueryField): QueryOperator {
-  return WRITTEN_OPERATORS.get(value) ?? (field === 'text' ? 'contains' : 'eq');
+function readOperator(value: string, fallback: QueryOperator): QueryOperator {
+  return WRITTEN_OPERATORS.get(value) ?? fallback;
 }
 
 /** The operator each written symbol names. */
@@ -975,6 +1104,37 @@ function listAlternatives(values: readonly string[]): string {
     return values.join(' or ');
   }
   return `${values.slice(0, -1).join(', ')}, or ${values[values.length - 1]}`;
+}
+
+/**
+ * Why a type field cannot take a value, or undefined when it can: a number
+ * field compared by order needs a number, a date field a date, and a
+ * checkbox true or false. A field whose kind differs between types takes
+ * anything, as does `this`.
+ */
+function checkTypeFieldValue(name: string, field: QueryTypeField, operator: QueryOperator, value: string): string | undefined {
+  if (field.kinds.length !== 1 || value.toLowerCase() === THIS_VALUE) {
+    return undefined;
+  }
+  switch (field.kinds[0]) {
+    case 'number':
+      return operator !== 'eq' && operator !== 'neq' && Number.isNaN(Number(value.replace(/,/g, '')))
+        ? `${name} compares with a number, such as 12 — not "${value}".`
+        : undefined;
+    case 'date':
+      return isDateValue(value) ? undefined : `${name} accepts a date such as 2026-09-13, today, this-week, or a window such as 30d — not "${value}".`;
+    case 'checkbox':
+      return readCheckboxValue(value) === undefined ? `${name} accepts true or false — not "${value}".` : undefined;
+    case 'text':
+    case 'link':
+    case 'email':
+    case 'phone':
+    case 'select':
+    case 'person':
+    case 'relation':
+    case 'note':
+      return undefined;
+  }
 }
 
 /**

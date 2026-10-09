@@ -10,7 +10,7 @@ import { evaluateQuery, QueryResults } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { EntityNamespaceAliases } from '../../domain/markdown/parser';
 import { collectQueryTagKeys, getQueryNarrowedTag, getQueryTagIntersection, quoteValue } from '../../domain/query/queryFormat';
-import { parseQuery } from '../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { ParsedQuery } from '../../domain/query/queryTypes';
 import { noteTitle } from '../../domain/index/backlinks';
 import { getFileName } from '../../shared/paths';
@@ -630,7 +630,7 @@ function describeTagMentions(
     `-${tag.key}`,
     ...(tag.hubFilePaths ?? []).map((filePath) => `NOT path = ${quoteValue(filePath)}`),
   ].join(' ');
-  const found = evaluateQuery(index, parseQuery(query).node, context);
+  const found = evaluateQuery(index, parseWorkspaceQuery(index, query).node, context);
   const count = found.sections.length + found.tasks.length + found.files.length;
   return count > 0 ? { mention: { word, count, query } } : {};
 }
@@ -667,7 +667,7 @@ export function evaluateSearchPage(
   options: Pick<SearchPageOptions, 'previewWords' | 'queryContext'>,
 ): SearchPageResults {
   const text = queryText.trim();
-  const parsed = parseQuery(text);
+  const parsed = parseWorkspaceQuery(index, text);
   // The words being typed narrow the search before they are committed to the
   // box. They are run as part of the search rather than matched against what
   // is on screen, so a page of thirty is not what a reader is searching, and
@@ -675,7 +675,7 @@ export function evaluateSearchPage(
   const preview = (options.previewWords ?? [])
     .map((word) => word.trim())
     .filter(Boolean);
-  const drafted = preview.length > 0 ? parseQuery([text, ...preview].join(' ')) : parsed;
+  const drafted = preview.length > 0 ? parseWorkspaceQuery(index, [text, ...preview].join(' ')) : parsed;
   const { tagKeys, focusTag, filtered } = resolveFocusTag(index, parsed, options.queryContext.entityNamespaceAliases);
   const hubPaths = focusTag?.hubFilePaths ?? [];
   const hubFile = hubPaths.length ? index.files.get(hubPaths[0]) : undefined;
@@ -699,7 +699,7 @@ export function evaluateSearchPage(
     .join(' OR ');
   const linking = evaluateQuery(
     index,
-    parseQuery(preview.length > 0 ? `(${links}) ${preview.join(' ')}` : links).node,
+    parseWorkspaceQuery(index, preview.length > 0 ? `(${links}) ${preview.join(' ')}` : links).node,
     options.queryContext,
   );
   const sectionIds = new Set(results.sections.map((section) => section.id));
@@ -1108,7 +1108,7 @@ function findsSomething(
   sectionKey: (section: Section) => NoteKey,
   context: QueryContext,
 ): boolean {
-  const parsed = parseQuery(text);
+  const parsed = parseWorkspaceQuery(index, text);
   if (!parsed.node) {
     return false;
   }
