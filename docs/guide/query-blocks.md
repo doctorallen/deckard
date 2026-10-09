@@ -25,6 +25,8 @@ tag = #project/atlas AND is:open
 - `limit=10` shows at most ten notes and ten tasks; the header still shows full totals.
 - `view=table` draws tasks as a table. `columns=due,priority,for,note` picks the columns after the title, from the `sort=` names plus `tags`, `blocked`, and `id`. The default is due date, priority, who it is for, and note.
 - `view=table` draws notes as a table too, above the tasks. `noteColumns=` picks their columns after the title: `note`, `created`, `updated`, `links` (how many other notes link to the entry's note), `tasks` (*1/4 done (25%)*, steps aside), `tags`, or a namespace such as `#status`, which shows the entry's `#status/…` tags by name. The default is note, updated, links, and tasks. A cell with nothing to show is left empty.
+- `noteColumns=` also takes a [type's field](databases.md#in-query-blocks), a path, a reverse, or a computed field, headed as you write it: `noteColumns=lead,team.lead,open-tasks` reads them from the typed row each note is, or else the rows its tags are. A name no type has is warned of, and the rest draw.
+- `this` in a block's query is the note the block is in, so `team = this` in a team's hub note lists what its people's notes hold, and the same block works in every team's note.
 - Notes sort by any of their columns too, with or without `view=table`: `sort=links dir=desc` puts the most linked first, and `sort=#status` orders them by status. A note's `#status` and tags include those it inherits from the tagged headings above it and the note's front matter; an untagged heading is part of the note above it, not a row of its own. A sort by a column only tasks have, such as `due`, leaves the notes in their order, and one only notes have leaves the tasks in theirs.
 - Above the fence in the editor: totals and **Open search page**. Results refresh when any note changes, not only the one holding the block. Everywhere else, such as on GitHub, the fence stays ordinary fenced code.
 - A query that does not parse shows its error. An unknown option shows a warning and the rest runs.
@@ -35,6 +37,14 @@ A table of every project, its status, and how far along its tasks are:
 ````markdown
 ```deckard view=table noteColumns=#status,tasks,updated sort=#status
 tag = #project/* AND is:note
+```
+````
+
+A project's decisions, with the fields their front matter holds:
+
+````markdown
+```deckard view=table noteColumns=date,state,decided-by
+type = decision AND project = this
 ```
 ````
 
