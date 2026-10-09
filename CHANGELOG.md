@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.6.0 - 2026-10-09
+
+### Highlights
+
+- **Types and fields**: a note in `Types/` turns a tag namespace, or notes with `type:`, into rows with fields and reverses.
+- A search for `type = team` opens on a table of its rows, and the Note page edits a row's fields in place.
+- **Find** answers questions like `bond trading lead`, and assistants can describe a tag with `deckard_describe_tag`.
+
 ### Added
 
 - **Types and fields.** A note in the `Types` folder of your notes folder
