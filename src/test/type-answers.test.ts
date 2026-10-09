@@ -128,6 +128,43 @@ suite('Types: answers to questions', () => {
     assert.deepStrictEqual(ask('rates oncall'), [['Priya Natarajan', 'Rates › on-call']]);
   });
 
+  test('a relation that says what its row does is asked from the other side', () => {
+    const owner = [['Rates', 'Bond Trading › owned by']];
+    assert.deepStrictEqual(ask('who owns bond trading'), owner);
+    assert.deepStrictEqual(ask('which team owns bond trading'), owner, 'the type of the row that owns it may be named');
+    assert.deepStrictEqual(ask('bond trading owned by'), owner, 'the reverse by its own name');
+    assert.deepStrictEqual(ask('who owns fx'), [['Rates', 'Fx › owned by']], 'the FX team owns nothing, and the FX area is owned by Rates');
+    assert.deepStrictEqual(ask('what does rates own').map(([value]) => value), ['Bond Trading', 'Fx', 'Swaps'], 'a row that has the field reads it forward');
+  });
+
+  test('a row is named by part of its name when only that fits, and each of several gets one answer', () => {
+    const named = indexOf({
+      'Types/Person.md': lines('---', 'deckard-type: person', 'rows: "@*"', '---', '# Person', '', '| Field | Kind  | Reverse |', '| ----- | ----- | ------- |', '| team  | Team  | members |', '| email | Email |         |'),
+      'Types/Team.md': lines('---', 'deckard-type: team', 'rows: "#team/*"', '---', '# Team', '', '| Field | Kind       | Reverse  |', '| ----- | ---------- | -------- |', '| owns  | Area, many | owned by |'),
+      'Types/Area.md': lines('---', 'deckard-type: area', 'rows: "#area/*"', '---', '# Area', '', '| Field   | Kind |', '| ------- | ---- |', '| runbook | Link |'),
+      'People/Noor Haddad.md': lines('---', 'describes: "@noor-haddad"', 'team: "#team/payments"', 'email: noor@example.com', '---', '# Noor Haddad'),
+      'People/Noor Ali.md': lines('---', 'describes: "@noor-ali"', 'email: ali@example.com', '---', '# Noor Ali'),
+      'People/Theo Park.md': lines('---', 'describes: "@theo-park"', 'team: "#team/payments"', 'email: theo@example.com', '---', '# Theo Park'),
+      'Teams/Payments.md': lines('---', 'describes: "#team/payments"', 'owns: ["#area/checkout", "#area/card-payments"]', '---', '# Payments'),
+      'notes/areas.md': lines('# Checkout #area/checkout', '', '# Card payments #area/card-payments', '', '# Refunds #area/refunds'),
+    });
+    const namedTypes = getTypeIndex(named);
+    const answers = (question: string): string[] => answerQuestion(namedTypes, question, now).map((answer) => namedTypes.row(answer.value.rowId ?? '')?.title ?? answer.value.text);
+    assert.deepStrictEqual(answers('theo email'), ['theo@example.com'], 'a first name');
+    assert.deepStrictEqual(answers('park email'), ['theo@example.com'], 'a part of a slug');
+    assert.deepStrictEqual(answers('haddad email'), ['noor@example.com']);
+    assert.deepStrictEqual(answers('noor haddad email'), ['noor@example.com'], 'a whole name');
+    assert.deepStrictEqual(answers('noor email').sort(), ['ali@example.com', 'noor@example.com'], 'two Noors, one answer each');
+    assert.deepStrictEqual(answers('what does noor own'), ['Checkout', 'Card Payments'], 'only one Noor is on a team');
+    assert.deepStrictEqual(answers('who is on payments').sort(), ['Noor Haddad', 'Theo Park'], 'a whole name before a part of one');
+    assert.deepStrictEqual(answers('who owns checkout'), ['Payments']);
+    assert.deepStrictEqual(answers('who owns refunds'), [], 'nothing owns it');
+    assert.deepStrictEqual(findRowsByPhrase(namedTypes, 'noor').map((match) => [match.row.id, match.partial]), [
+      ['@noor-haddad', true],
+      ['@noor-ali', true],
+    ]);
+  });
+
   test('a people reverse with no name of its own still answers who is on a row', () => {
     const plain = indexOf({
       'Types/Person.md': lines('---', 'deckard-type: person', 'rows: "@*"', '---', '# Person', '', '| Field | Kind |', '| ----- | ---- |', '| squad | Squad |'),

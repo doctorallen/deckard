@@ -385,7 +385,12 @@ describes:
   workspace's types are named at run time instead, on the second line of
   `deckard_query`'s and `deckard_list_tags`'s answers.
 - **Find** reads a row's name without case, hyphens, or a trailing `s`,
-  and also reads "X members". An answer that is text opens the page of the
+  and also reads "X members". Failing a whole name, one word of it names
+  a row (a title's first word, a part of its slug), and two rows one word
+  fits get one answer each. A relation whose name is a verb (`owns`, a
+  word ending in `s`) asked of a row of its target type that has no such
+  field reads the reverse: "who owns checkout" is Payments. A role such
+  as `lead` keeps reading forward. An answer that is text opens the page of the
   row holding it.
 - **Note page.** Edit ends in **Clear**; a many-valued field adds or
   removes one choice at a time; each write is offered with **Undo**. A

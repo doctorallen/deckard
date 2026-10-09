@@ -75,6 +75,26 @@ suite('The work sample’s types', () => {
     assert.deepStrictEqual(answers('payments channel'), [['payments-eng', 'Payments › channel']]);
   });
 
+  test('Find answers who owns checkout from the team that owns it, and knows Noor by a first name', () => {
+    const answers = (question: string) => listAnswerItems(index, question, now).map((item) => [item.label, item.detail]);
+    const owner = [['Payments', 'Checkout › owned by']];
+    assert.deepStrictEqual(answers('who owns checkout'), owner);
+    assert.deepStrictEqual(answers('which team owns checkout'), owner);
+    assert.deepStrictEqual(answers('checkout owned by'), owner);
+    assert.deepStrictEqual(answers('who is responsible for checkout'), owner);
+    assert.deepStrictEqual(answers('what does payments own'), [
+      ['Checkout', 'Payments › owns'],
+      ['Card Payments', 'Payments › owns'],
+    ]);
+    const email = [['noor@example.com', 'Noor Haddad › email']];
+    assert.deepStrictEqual(answers('noor haddad email'), email);
+    assert.deepStrictEqual(answers('noor email'), email);
+    assert.deepStrictEqual(answers('what does noor own'), [
+      ['Checkout', 'Noor Haddad › team Payments › owns'],
+      ['Card Payments', 'Noor Haddad › team Payments › owns'],
+    ]);
+  });
+
   test('every query block parses and runs, and the two typed ones list what they say', () => {
     const results = new Map<string, ReturnType<typeof createQueryBlockSnapshot>[]>();
     texts.forEach((text, filePath) => {

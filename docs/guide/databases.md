@@ -169,12 +169,15 @@ In a workspace with types, [Find](search.md#find) reads what you type as a row a
 | `who is on payments`, `payments members` | Noor Haddad, Theo Park | *Payments › members* |
 | `payments channel`, `payments slack` | payments-eng | *Payments › channel* |
 | `what does payments own` | Checkout, Card Payments | *Payments › owns* |
+| `who owns checkout`, `which team owns checkout` | Payments | *Checkout › owned by* |
+| `noor email` | noor@example.com | *Noor Haddad › email* |
 | `who reports to alex rivera` | Noor Haddad, Theo Park | *Alex Rivera › reports* |
 
 In a trading desk's notes, `bond trading lead` walks the same way, from the Bond Trading area through Rates, the team that owns it, to its lead.
 
-- **The row** is a run of words that is a row's title, tag, or alias, without case, hyphens, or a trailing *s*: `checkout`, `payments`, `alex rivera`.
+- **The row** is a run of words that is a row's title, tag, or alias, without case, hyphens, or a trailing *s*: `checkout`, `payments`, `alex rivera`. Failing that, one word of its name will do: the first word of its title or a part of its tag, `noor` or `haddad` for `@noor-haddad`. When that word fits two rows, two Noors, each gets one answer.
 - **The field** is the rest, after words such as *who*, *is*, and *the*: a field's name, its reverse's, or a word it is also called. When the row has no such field, Deckard looks through its relations and reverses, up to two away, and takes the nearest.
+- **A field that says what its row does**, such as `owns`, asked of a row it names, is read from the other side: Checkout has no `owns`, so `who owns checkout` is the team whose `owns` lists Checkout. A field named for a role, such as `lead`, is not: `checkout lead` is the lead of the team that owns it.
 - <kbd>Enter</kbd> opens the answer's page, or, for a value written as text, the page of the row that holds it.
 - A typed tag under **Tags** leads with its type and one fact: *Team · lead Alex Rivera · 4 notes · 1 task*.
 

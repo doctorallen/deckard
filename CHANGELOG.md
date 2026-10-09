@@ -90,9 +90,14 @@
   by Rates › lead". A field is found by its name, its reverse's, or a word
   it is also called, on the row or up to two relations away; "who is on
   rates", "rates members", "rates channel", and "what does priya own" work
-  too. Enter opens the answer's page, or, for a value written as text, the
-  page of the row that holds it. A typed tag under Tags leads with its type
-  and one fact ("Team · lead Dana Whitfield · 4 notes · 1 task").
+  too. A field that says what its row does is read from the other side:
+  "who owns bond trading" is Rates, the team whose `owns` lists it. A row
+  is also known by one word of its name when no whole name fits, "noor
+  email" for Noor Haddad, and when that word fits two people, each gets
+  one answer. Enter opens the answer's page, or, for a value written as
+  text, the page of the row that holds it. A typed tag under Tags leads
+  with its type and one fact ("Team · lead Dana Whitfield · 4 notes · 1
+  task").
 - **Typed fields in the editor.** In a row's note, the front matter
   completes the type's field names, and after `lead: ` the rows it can
   name ("Omar Haddad", described "Person · team Credit"), a select's

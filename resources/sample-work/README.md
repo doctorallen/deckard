@@ -63,8 +63,8 @@ matter of a note then fills them in: Noor's note says `team:
 one of Payments' **members**, and Checkout is **owned by** Payments.
 
 - **Ask.** In Find, type `checkout lead`: the answer is Alex Rivera, by way
-  of the team that owns Checkout. `who is on payments` and `payments
-  channel` work too.
+  of the team that owns Checkout. `who owns checkout`, `who is on
+  payments`, `payments channel`, and `noor email` work too.
 - **See everyone as a table.** Search `type = person`: one row per person,
   with their role, team, manager, and email. Ines and Sam have no note yet,
   and the table says so. Right-click a heading to sort by it or hide it.

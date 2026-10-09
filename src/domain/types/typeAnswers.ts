@@ -6,14 +6,18 @@
  * The words are split into a row phrase and a field phrase:
  *
  * 1. Row: a run of words that is a row's title, slug, tag, or alias, of any
- *    type, read without case, hyphens, or a trailing `s`.
+ *    type, read without case, hyphens, or a trailing `s`; failing that, one
+ *    word that is part of a name: a title's first word or a part of a slug
+ *    (`noor` of `@noor-haddad`).
  * 2. Field: the other words, which must name a field, a reverse, or a word
  *    the field is "also called", on the row's type or within two hops of it.
  *    Question words (`who`, `the`, `is`…) are left out; any other word must
  *    be the field's, or a type's or relation's on the way there.
  * 3. Path: breadth first over relations and their reverses, at most two
  *    hops, from the row to the nearest row with that field. Each of its
- *    values is an answer.
+ *    values is an answer. A field that says what its row does (`owns`),
+ *    asked of a row of the type it names, is read from the other side:
+ *    `who owns checkout` is the team whose `owns` lists Checkout.
  *
  * What a question is read against is gathered once per type index, so Find
  * answers as it is typed; a workspace with no types answers nothing.
@@ -114,6 +118,9 @@ export interface TypeAnswer {
   quality: number;
 }
 
+/** How well a word that is only part of a row's name names it: below any whole name. */
+const PARTIAL_QUALITY = 10;
+
 /** A row the words name, and where in the words its name is. */
 export interface RowMatch {
   row: TypeRow;
@@ -122,6 +129,18 @@ export interface RowMatch {
   end: number;
   /** How well the words name it: longer names first, then a title over an alias over a slug. */
   quality: number;
+  /** Set when one word names it that is only part of its name: `noor` for Noor Haddad. */
+  partial?: true;
+}
+
+/** A relation whose name says what its row does (`owns`), as the rows it names may be asked about. */
+interface VerbField {
+  /** The query name of its reverse, which the rows it names hold: `owned-by`. */
+  reverse: string;
+  /** The type that writes it, whose words a question may use: `which team owns checkout`. */
+  typeKey: string;
+  /** Its names that read as a verb, each as its words. */
+  names: string[][];
 }
 
 /** What a question is read against, gathered once per type index. */
@@ -130,6 +149,10 @@ interface AnswerVocabulary {
   rowNames: Map<string, Array<{ rowId: string; quality: number }>>;
   /** The most words any row name has. */
   longestName: number;
+  /** Each word that is part of a row's name, a title's first word or a part of a slug, with the rows it is part of. */
+  partialNames: Map<string, string[]>;
+  /** For each type, the relations of other types that name it and say what their row does. */
+  verbFields: Map<string, VerbField[]>;
   /** For each type and reverse query name, the words its forward fields are also called. */
   reverseNames: Map<string, Map<string, string[]>>;
   /** Each type's words: its display name and key. */
@@ -160,6 +183,9 @@ export function answerQuestion(types: TypeIndex, text: string, now: number = Dat
   // A row named better that has the field outranks one named worse: "fx
   // team owns" is the FX team's, even when it owns nothing.
   let answeredQuality = -1;
+  // Rows named by part of their name that answered: when several did, each
+  // gets one answer, so two Noors are both listed.
+  const partials = new Set<string>();
   for (const match of matchRows(types, words, vocabulary)) {
     if (match.quality < answeredQuality) {
       break;
@@ -175,9 +201,13 @@ export function answerQuestion(types: TypeIndex, text: string, now: number = Dat
     if (found) {
       answers.push(...found);
       answeredQuality = match.quality;
+      if (match.partial && found.length > 0) {
+        partials.add(match.row.id);
+      }
     }
   }
   const seen = new Set<string>();
+  const oneEach = partials.size > 1 ? new Set<string>() : undefined;
   return answers
     .map((answer, order) => ({ answer, order }))
     .sort(
@@ -193,6 +223,12 @@ export function answerQuestion(types: TypeIndex, text: string, now: number = Dat
         return false;
       }
       seen.add(key);
+      if (oneEach && partials.has(answer.from.id)) {
+        if (oneEach.has(answer.from.id)) {
+          return false;
+        }
+        oneEach.add(answer.from.id);
+      }
       return true;
     })
     .slice(0, MAX_ANSWERS);
@@ -201,7 +237,8 @@ export function answerQuestion(types: TypeIndex, text: string, now: number = Dat
 /**
  * The rows a text names as a whole, or, when none does, the rows a run of
  * its words names, best first, each once: the longest run, then a title
- * over an alias over a slug. What `deckard_describe_tag` resolves a phrase by.
+ * over an alias over a slug, then a row one word is part of the name of.
+ * What `deckard_describe_tag` resolves a phrase by.
  */
 export function findRowsByPhrase(types: TypeIndex, text: string): RowMatch[] {
   if (types.isEmpty) {
@@ -218,10 +255,11 @@ export function findRowsByPhrase(types: TypeIndex, text: string): RowMatch[] {
 }
 
 /**
- * The rows runs of the words name, longest runs first. A run of question
- * words alone (`on`, `the`) names nothing, whatever a row is called. A
- * word beside the run that names the row's type is part of it, and names
- * it better: `rates team` is the Rates team.
+ * The rows runs of the words name, longest runs first, and then the rows
+ * one word is part of the name of (`noor` of Noor Haddad). A run of
+ * question words alone (`on`, `the`) names nothing, whatever a row is
+ * called. A word beside the run that names the row's type is part of it,
+ * and names it better: `rates team` is the Rates team.
  */
 function matchRows(types: TypeIndex, words: readonly Word[], vocabulary: AnswerVocabulary): RowMatch[] {
   const matches: RowMatch[] = [];
@@ -232,7 +270,9 @@ function matchRows(types: TypeIndex, words: readonly Word[], vocabulary: AnswerV
       if (run.every((word) => QUESTION_WORDS.has(word.raw))) {
         continue;
       }
-      vocabulary.rowNames.get(run.map((word) => word.stem).join(' '))?.forEach(({ rowId, quality }) => {
+      const key = run.map((word) => word.stem).join(' ');
+      const whole = vocabulary.rowNames.get(key) ?? [];
+      const add = (rowId: string, quality: number, partial: boolean): void => {
         const row = types.row(rowId);
         if (!row) {
           return;
@@ -244,9 +284,17 @@ function matchRows(types: TypeIndex, words: readonly Word[], vocabulary: AnswerV
           row,
           start: start - before,
           end: start + length + after,
-          quality: length * 10 + quality + (before + after) * 5,
+          quality: quality + (before + after) * 5,
+          ...(partial ? { partial: true as const } : {}),
         });
-      });
+      };
+      whole.forEach(({ rowId, quality }) => add(rowId, length * 10 + quality, false));
+      if (length === 1) {
+        vocabulary.partialNames
+          .get(key)
+          ?.filter((rowId) => !whole.some((entry) => entry.rowId === rowId))
+          .forEach((rowId) => add(rowId, PARTIAL_QUALITY, true));
+      }
     }
   }
   const best = new Map<string, RowMatch>();
@@ -295,8 +343,14 @@ function walkToField(asking: Asking, match: RowMatch): TypeAnswer[] | undefined 
     const found: TypeAnswer[] = [];
     let matched = false;
     level.forEach((reached) => {
-      const fields = findAskedFields(asking, reached);
+      let fields = findAskedFields(asking, reached);
       const holder = types.row(reached.rowId);
+      if (fields.length === 0 && hops === 0) {
+        // "who owns checkout": the rows whose `owns` names it, or none.
+        const verb = findVerbReverse(asking, reached);
+        matched ||= verb !== undefined;
+        fields = verb ?? [];
+      }
       matched ||= fields.length > 0;
       fields.forEach((field) =>
         field.values.forEach((value) => {
@@ -394,6 +448,42 @@ function findAskedFields(asking: Asking, reached: Reached): RowField[] {
   );
 }
 
+/**
+ * For a row no field of its own answers, the reverses of the relations
+ * that say what their row does and name its type, when the asked words
+ * are one of their names and, at most, their type's words: `who owns
+ * checkout` and `which team owns checkout` ask for Checkout's `owned by`.
+ * Undefined when no such name is asked; empty when it is and no row's
+ * relation names this one, since then nothing owns it.
+ */
+function findVerbReverse(asking: Asking, reached: Reached): RowField[] | undefined {
+  const { types, vocabulary, asked, askedSet } = asking;
+  const row = types.row(reached.rowId);
+  const verbs = row ? vocabulary.verbFields.get(row.typeKey) : undefined;
+  if (!row || !verbs) {
+    return undefined;
+  }
+  let found: RowField[] | undefined;
+  verbs.forEach((verb) => {
+    const typeWords = vocabulary.typeWords.get(verb.typeKey) ?? [];
+    const asks = verb.names.some(
+      (name) =>
+        name.length > 0 &&
+        name.every((word) => askedSet.has(word)) &&
+        asked.every((word) => name.includes(word) || typeWords.includes(word) || reached.pathWords.has(word)),
+    );
+    if (!asks) {
+      return;
+    }
+    found ??= [];
+    const reverse = types.fields(row.id).find((field) => field.queryName === verb.reverse && field.values.length > 0);
+    if (reverse && !found.includes(reverse)) {
+      found.push(reverse);
+    }
+  });
+  return found;
+}
+
 /** Whether every word left over names a type or relation on the way, or the type of one of the field's values. */
 function isExplained(asking: Asking, reached: Reached, field: RowField, rest: readonly string[]): boolean {
   if (rest.length === 0) {
@@ -451,10 +541,17 @@ function fieldWords(
 /** What questions are read against in one type index: its rows' names, reverses' other names, and types' names. */
 function getVocabulary(types: TypeIndex): AnswerVocabulary {
   let vocabulary = vocabularies.get(types);
-  if (vocabulary) {
-    return vocabulary;
+  if (!vocabulary) {
+    vocabulary = { ...gatherRowNames(types), ...gatherTypeWords(types), fieldNames: new WeakMap() };
+    vocabularies.set(types, vocabulary);
   }
+  return vocabulary;
+}
+
+/** Each row's names, whole and in part, for matching runs of a question's words. */
+function gatherRowNames(types: TypeIndex): Pick<AnswerVocabulary, 'rowNames' | 'longestName' | 'partialNames'> {
   const rowNames = new Map<string, Array<{ rowId: string; quality: number }>>();
+  const partialNames = new Map<string, string[]>();
   let longestName = 0;
   const add = (name: string | undefined, rowId: string, quality: number): void => {
     const words = name ? toWords(name).map((word) => word.stem) : [];
@@ -472,24 +569,48 @@ function getVocabulary(types: TypeIndex): AnswerVocabulary {
     }
     longestName = Math.max(longestName, words.length);
   };
+  const addPartial = (words: readonly Word[], rowId: string): void => {
+    words.forEach(({ raw, stem }) => {
+      const rows = partialNames.get(stem) ?? [];
+      if (QUESTION_WORDS.has(raw) || rows.includes(rowId)) {
+        return;
+      }
+      rows.push(rowId);
+      partialNames.set(stem, rows);
+    });
+  };
   types.rows().forEach((row) => {
     add(row.title, row.id, 3);
+    const titleWords = toWords(row.title);
+    if (titleWords.length > 1) {
+      addPartial(titleWords.slice(0, 1), row.id);
+    }
     row.aliases.forEach((alias) => add(alias, row.id, 2));
     [row.id, ...row.tagKeys].forEach((key) => {
       if (key.startsWith('file:')) {
         return;
       }
+      const slug = key.slice(key.lastIndexOf('/') + 1);
       add(key, row.id, 1);
-      add(key.slice(key.lastIndexOf('/') + 1), row.id, 1);
+      add(slug, row.id, 1);
+      const slugWords = toWords(slug);
+      if (slugWords.length > 1) {
+        addPartial(slugWords, row.id);
+      }
     });
   });
+  return { rowNames, longestName, partialNames };
+}
 
+/** Each type's words, and the words its relations are asked by from the rows they name. */
+function gatherTypeWords(types: TypeIndex): Pick<AnswerVocabulary, 'reverseNames' | 'verbFields' | 'typeWords'> {
   const reverseNames = new Map<string, Map<string, string[]>>();
+  const verbFields = new Map<string, VerbField[]>();
   const typeWords = new Map<string, string[]>();
   types.registry.types.forEach((type) => {
     typeWords.set(type.key, [...new Set([...toWords(type.name), ...toWords(type.key)].map((word) => word.stem))]);
     type.fields.forEach((field) => {
-      if (!isRowKind(field.kind) || field.alsoCalled.length === 0) {
+      if (!isRowKind(field.kind)) {
         return;
       }
       const targets = [
@@ -499,16 +620,32 @@ function getVocabulary(types: TypeIndex): AnswerVocabulary {
           : []),
       ];
       const reverse = toFieldQueryName(reverseNameOf(field));
+      const verbs = [field.name, ...field.alsoCalled].filter(isVerbShaped).map((name) => toWords(name).map((word) => word.stem));
       targets.forEach((target) => {
-        const byName = reverseNames.get(target) ?? new Map<string, string[]>();
-        byName.set(reverse, [...(byName.get(reverse) ?? []), ...field.alsoCalled]);
-        reverseNames.set(target, byName);
+        if (field.alsoCalled.length > 0) {
+          const byName = reverseNames.get(target) ?? new Map<string, string[]>();
+          byName.set(reverse, [...(byName.get(reverse) ?? []), ...field.alsoCalled]);
+          reverseNames.set(target, byName);
+        }
+        if (verbs.length > 0) {
+          verbFields.set(target, [...(verbFields.get(target) ?? []), { reverse, typeKey: type.key, names: verbs }]);
+        }
       });
     });
   });
-  vocabulary = { rowNames, longestName, reverseNames, typeWords, fieldNames: new WeakMap() };
-  vocabularies.set(types, vocabulary);
-  return vocabulary;
+  return { reverseNames, verbFields, typeWords };
+}
+
+/**
+ * Whether a field's name says what its row does, as a verb whose subject
+ * is the row: `owns`, `uses`, `depends on`, but not `lead` or `status`.
+ * Only such a field is read from the other side when the row a question
+ * names is one of its values: a team's `lead` is who leads the team, so
+ * `who leads dana` is not the team Dana leads.
+ */
+function isVerbShaped(name: string): boolean {
+  const [first] = toWords(name);
+  return first !== undefined && first.raw.length > 3 && /[^siu]s$/.test(first.raw);
 }
 
 /** A word of a question or a name: as written, lowercased, and stemmed for comparing. */
