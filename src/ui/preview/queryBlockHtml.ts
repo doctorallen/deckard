@@ -37,6 +37,11 @@ export interface QueryBlockPreviewSource {
   /** The settings a block is evaluated in, for a render made at `now`. */
   getQueryContext(now: number): QueryContext;
   /**
+   * The index's path for the note a render draws, read from markdown-it's
+   * `env`, which `this` in a block's query names; undefined when unknown.
+   */
+  getNotePath?(env: unknown): string | undefined;
+  /**
    * The link a task's checkbox opens, which puts the task in the state the
    * box offers; without one, the box is drawn and does nothing.
    */
@@ -61,16 +66,18 @@ export function addQueryBlockRenderer(
       self.renderToken(tokens, index, options));
 
   md.renderer.rules.fence = (...args) => {
-    const [tokens, index] = args;
+    const [tokens, index, , env] = args;
     const token = tokens[index];
     const blockOptions = parseQueryBlockInfo(token.info);
     if (!blockOptions) {
       return fallback(...args);
     }
     source.onDidRender?.();
+    const notePath = source.getNotePath?.(env);
     return renderQueryBlockHtml(token.content, blockOptions, source.getIndex(), {
       queryContext: source.getQueryContext(Date.now()),
       sourceLine: token.map?.[0],
+      ...(notePath ? { notePath } : {}),
       ...(source.getTaskHref ? { taskHref: (item: QueryBlockItem) => source.getTaskHref?.(item) } : {}),
     });
   };
@@ -88,6 +95,8 @@ export interface QueryBlockRendering {
   sourceLine?: number;
   /** The link a task's checkbox opens; the box does nothing without one. */
   taskHref?: (item: QueryBlockItem) => string | undefined;
+  /** The note the block is in, by its index path: what `this` in its query names. */
+  notePath?: string;
 }
 
 /** Renders one block, in the rendering's context. */
@@ -114,6 +123,7 @@ export function renderQueryBlockHtml(
 
   const snapshot = getQueryBlockSnapshot(index, queryText, options, {
     queryContext,
+    ...(rendering.notePath ? { notePath: rendering.notePath } : {}),
   });
   return [
     open,

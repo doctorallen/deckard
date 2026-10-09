@@ -124,6 +124,13 @@
   #team…**. In the Hubs view, a namespace heading a type has opens its
   search. Under Zen, each row's ⋯ and Create hub note wait for the row,
   and every cell, count, and date stays drawn.
+- **Fields as query block columns.** `noteColumns=` takes any field of a
+  type, a path, a reverse, or a computed field (`noteColumns=lead,team.lead,
+  open-tasks`), headed as written, read from the typed row a note is or
+  the rows its tags are; a name no type has is warned of beside the
+  results. `this` now names the note a block is in in the editor's lens,
+  the Markdown preview, and Copy as Plain Markdown, as it did on the Note
+  page.
 
 ### Changed
 
