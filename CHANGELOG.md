@@ -58,6 +58,17 @@
   page of the row that holds it. A typed tag under Tags leads with its type
   and one fact ("Team · lead Dana Whitfield · 4 notes · 1 task"). A
   workspace with no types finds as before.
+- **Describe a tag, for assistants.** A fifth assistant tool,
+  `deckard_describe_tag` ("Describe a Deckard tag and its fields"), takes
+  a tag, a title, or a few words and answers in plain text: a typed row's
+  type, title, tag, and note ("Team: Rates (#team/rates), Teams/Rates.md",
+  or "No hub note."), each field with its values ("lead: Dana Whitfield
+  (@dana)"), its reverses ("members (reverse of Person.team): …"), its open
+  tasks with how many are overdue, and its three latest entries with their
+  dates; a tag no type has gets its counts, hub note, open tasks, and
+  latest entries. It only reads, and is served by both VS Code's assistants
+  and the MCP server. In a workspace with types, `deckard_query` and
+  `deckard_list_tags` name the types and their fields on their second line.
 
 ### Changed
 

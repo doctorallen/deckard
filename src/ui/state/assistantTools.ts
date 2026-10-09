@@ -15,6 +15,12 @@ import {
   readChangeTaskInput,
 } from './assistantWriteInput';
 import { TagInfo, WorkspaceIndex } from '../../domain/model';
+import {
+  answerDescribeTag,
+  DESCRIBE_TAG_TOOL_NAME,
+  describeWorkspaceTypes,
+  readDescribeTagToolInput,
+} from './assistantDescribe';
 import { formatIsoDate } from '../../domain/markdown/calendar';
 
 /**
@@ -119,7 +125,9 @@ export function answerQuery(
     ...(input.sort ? { sort: input.sort } : {}),
     warnings: [],
   }, { queryContext: context });
-  const lines = [`Deckard query: ${snapshot.query}`];
+  // The workspace's types, which the manifest's fixed description cannot name.
+  const typesLine = describeWorkspaceTypes(index);
+  const lines = [`Deckard query: ${snapshot.query}`, ...(typesLine ? [typesLine] : [])];
 
   if (snapshot.hasError) {
     return [
@@ -207,10 +215,12 @@ export function answerTags(
       : 'The workspace has no tags yet.';
   }
 
+  const typesLine = describeWorkspaceTypes(index);
   const lines = [
     search
       ? `${pluralize(matches.length, 'tag')} match "${input.search?.trim()}".`
       : `The workspace has ${pluralize(matches.length, 'tag')}.`,
+    ...(typesLine ? [typesLine] : []),
     shown.length < matches.length
       ? `The ${shown.length} most used:`
       : 'Most used first:',
@@ -224,6 +234,7 @@ export function answerTags(
   lines.push(
     '',
     `Query a tag with ${QUERY_TOOL_NAME}, for example: tag = ${shown[0].label} AND task = open`,
+    `Describe one, with its fields when a type has it, with ${DESCRIBE_TAG_TOOL_NAME}.`,
   );
   return lines.join('\n');
 }
@@ -366,12 +377,15 @@ export type WriteTool = ToolEntry<'write', Promise<ToolAnswer>>;
 /** Any of Deckard's assistant tools. */
 export type AssistantTool = ReadTool | WriteTool;
 
+/** A describe call without a tag, refused alike on both surfaces. */
+const DESCRIBE_INVALID_INPUT = 'Send a tag, a title, or a few words naming one as "tag", such as #team/rates, @dana, or Bond trading.';
+
 /** A query call without a query, refused alike on both surfaces. */
 const QUERY_INVALID_INPUT =
   'Send a Deckard query as "query", such as tag = #project/atlas AND task = open.';
 
 /**
- * Deckard's four assistant tools, in the order VS Code registers them. The
+ * Deckard's five assistant tools, in the order VS Code registers them. The
  * language-model tools and the MCP server both dispatch through this one
  * table, so the tools cannot drift apart; what differs between the surfaces,
  * the refusals and the timing names, is written here side by side. The
@@ -411,6 +425,25 @@ export const ASSISTANT_TOOLS: readonly AssistantTool[] = [
     read: (value, runners) => {
       const input = readTagsToolInput(value);
       return { kind: 'run', run: () => answerTags(runners.getSnapshot(), input) };
+    },
+  },
+  {
+    kind: 'read',
+    name: DESCRIBE_TAG_TOOL_NAME,
+    measure: { languageModel: 'Assistant describe tag', mcp: 'MCP describe tag' },
+    progressMessage: (value) => {
+      const tag = readDescribeTagToolInput(value)?.tag;
+      return tag ? `Describing ${shorten(tag)} in Deckard` : 'Describing a Deckard tag';
+    },
+    read: (value, runners) => {
+      const input = readDescribeTagToolInput(value);
+      if (!input) {
+        return { kind: 'invalid', text: { languageModel: DESCRIBE_INVALID_INPUT, mcp: DESCRIBE_INVALID_INPUT } };
+      }
+      return {
+        kind: 'run',
+        run: () => answerDescribeTag(runners.getSnapshot(), input, runners.readQueryContext().now),
+      };
     },
   },
   {

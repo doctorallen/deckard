@@ -3,6 +3,8 @@ import * as assert from 'assert';
 import { createQueryContext } from '../domain/query/queryContext';
 import { answerQuestion, findRowsByPhrase, type TypeAnswer } from '../domain/types/typeAnswers';
 import { getTypeIndex } from '../domain/types/typeIndex';
+import { answerDescribeTag, describeWorkspaceTypes } from '../ui/state/assistantDescribe';
+import { answerQuery, answerTags } from '../ui/state/assistantTools';
 import { buildQuickFindResults, findChoiceKey, type QuickFindResults } from '../ui/state/quickFindState';
 import type { WorkspaceIndex } from '../domain/model';
 import { createPreferences, MemoryStore } from './preferenceServices';
@@ -245,5 +247,60 @@ suite('Types: Find answers', () => {
     assert.match(dana?.description ?? '', /^Person · team Rates · /);
     const area = find(index, 'swaps').tags.find((tag) => tag.tagKey === '#area/swaps');
     assert.match(area?.description ?? '', /^Area · \d+ notes? · /, 'a row with no fact is its type');
+  });
+});
+
+suite('Types: the assistant', () => {
+  test('describes a typed row: its type, note, fields, reverses, tasks, and latest entries', () => {
+    const text = answerDescribeTag(index, { tag: '#team/rates' }, now);
+    const expected = [
+      'Team: Rates (#team/rates), Teams/Rates.md',
+      'lead: Dana Whitfield (@dana)',
+      'owns: Bond Trading (#area/bond-trading), Fx (#area/fx), Swaps (#area/swaps), Repo (#area/repo)',
+      'on-call: Priya Natarajan (@priya)',
+      'channel: #rates-desk',
+      'members (reverse of Person.team): Dana Whitfield (@dana), Priya Natarajan (@priya)',
+    ];
+    assert.deepStrictEqual(text.split('\n').slice(0, expected.length), expected);
+    assert.match(text, /^Open tasks: 2, 1 overdue$/m);
+    assert.match(text, /^Latest entries:\n- 2026-10-08 Standup — notes\/standup\.md:1/m);
+    assert.ok(!text.includes('Teams/Rates.md:'), 'its hub note is not one of its entries');
+  });
+
+  test('resolves a title or a phrase as Find does, and names the other rows it fits', () => {
+    assert.match(answerDescribeTag(index, { tag: 'Dana Whitfield' }, now), /^Person: Dana Whitfield \(@dana\), People\/Dana Whitfield\.md\nteam: Rates \(#team\/rates\)\nrole: Head of Rates\nemail: dana@example\.com\nlead of \(reverse of Team\.lead\): Rates \(#team\/rates\)/);
+    const fx = answerDescribeTag(index, { tag: 'fx' }, now);
+    assert.match(fx, /^(Area: Fx \(#area\/fx\)\. No hub note\.|Team: FX \(#team\/fx\), Teams\/FX\.md)/);
+    assert.match(fx, /"fx" also matches: /);
+    assert.match(answerDescribeTag(index, { tag: '#area/swaps' }, now), /^Area: Swaps \(#area\/swaps\)\. No hub note\.\nowned by \(reverse of Team\.owns\): Rates \(#team\/rates\)/);
+    assert.match(answerDescribeTag(index, { tag: 'RFQ outage' }, now), /^Incident: RFQ outage \(type: incident\), Incidents\/RFQ outage\.md\nowner: Dana Whitfield \(@dana\)/);
+  });
+
+  test('describes a tag no type has, and says when nothing matches', () => {
+    const plain = indexOf({
+      'notes/atlas.md': lines('---', 'describes: "#project/atlas"', '---', '# Atlas'),
+      'notes/log.md': lines('# Kickoff #project/atlas', '- [ ] Send the plan 📅 2020-01-01', '- [ ] Book the room'),
+    });
+    const text = answerDescribeTag(plain, { tag: 'atlas' }, now);
+    assert.deepStrictEqual(text.split('\n'), [
+      'Tag: #project/atlas (2 notes · 2 tasks)',
+      'Hub note: notes/atlas.md',
+      'Open tasks: 2, 1 overdue',
+      'Latest entries:',
+      '- 2026-10-08 Kickoff — notes/log.md:1',
+    ]);
+    assert.strictEqual(answerDescribeTag(plain, { tag: 'nothing here' }, now), 'No tag or row matches "nothing here". Call deckard_list_tags to see the tags that exist.');
+  });
+
+  test('the query and tag-list answers name the types and their fields, and say nothing of them without types', () => {
+    const line = describeWorkspaceTypes(index) ?? '';
+    assert.match(line, /^Types in this workspace: Area \(system; reverses: owned by\), Incident \(owner, team, severity\), Person \(team, role, email; reverses: lead of, on-call of, owner of\), Team \(lead, owns, on-call, channel; reverses: members, team of\)\./);
+    const context = createQueryContext(now);
+    assert.strictEqual(answerQuery(index, { query: 'type = team' }, context).split('\n')[1], line);
+    assert.strictEqual(answerTags(index, {}).split('\n')[1], line);
+    const plain = indexOf({ 'notes/a.md': '# A #project/atlas' });
+    assert.strictEqual(describeWorkspaceTypes(plain), undefined);
+    assert.ok(!answerQuery(plain, { query: 'tag = #project/atlas' }, context).includes('Types in this workspace'));
+    assert.ok(!answerTags(plain, {}).includes('Types in this workspace'));
   });
 });

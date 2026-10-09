@@ -13,6 +13,7 @@ import { addTask, changeTask } from './assistantWrites';
 import { readQueryContext } from './queryContext';
 import { WorkspaceWriteHistory } from './workspaceWrites';
 import { ADD_TASK_TOOL_NAME, CHANGE_TASK_TOOL_NAME } from '../state/assistantWriteInput';
+import { DESCRIBE_TAG_TOOL_NAME } from '../state/assistantDescribe';
 import { WorkspaceIndex } from '../../domain/model';
 
 interface IndexSource {
@@ -43,6 +44,7 @@ export class AssistantTools implements vscode.Disposable {
   /** The tools as registered, so tests can call them without a chat. */
   public readonly queryTool: vscode.LanguageModelTool<unknown>;
   public readonly tagsTool: vscode.LanguageModelTool<unknown>;
+  public readonly describeTagTool: vscode.LanguageModelTool<unknown>;
   public readonly addTaskTool: vscode.LanguageModelTool<unknown>;
   public readonly changeTaskTool: vscode.LanguageModelTool<unknown>;
   private readonly registrations: vscode.Disposable[];
@@ -50,7 +52,7 @@ export class AssistantTools implements vscode.Disposable {
   private allowed = false;
 
   /**
-   * Registers the four tools with VS Code (or with `register`, in a test).
+   * Registers the five tools with VS Code (or with `register`, in a test).
    * Each answers only while `deckard.assistantTools` is on and the user has
    * agreed to it.
    */
@@ -71,12 +73,13 @@ export class AssistantTools implements vscode.Disposable {
     );
     this.queryTool = toolNamed(tools, QUERY_TOOL_NAME);
     this.tagsTool = toolNamed(tools, TAGS_TOOL_NAME);
+    this.describeTagTool = toolNamed(tools, DESCRIBE_TAG_TOOL_NAME);
     this.addTaskTool = toolNamed(tools, ADD_TASK_TOOL_NAME);
     this.changeTaskTool = toolNamed(tools, CHANGE_TASK_TOOL_NAME);
     this.registrations = [...tools].map(([name, tool]) => register(name, tool));
   }
 
-  /** Unregisters the four tools. */
+  /** Unregisters the five tools. */
   public dispose(): void {
     this.registrations.forEach((registration) => registration.dispose());
   }
@@ -184,7 +187,7 @@ export class AssistantTools implements vscode.Disposable {
   }
 }
 
-/** A tool the table must hold; the four names are the table's own. */
+/** A tool the table must hold; the five names are the table's own. */
 function toolNamed(
   tools: ReadonlyMap<string, vscode.LanguageModelTool<unknown>>,
   name: string,
