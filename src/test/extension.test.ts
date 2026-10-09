@@ -145,6 +145,7 @@ suite('Extension Test Suite', () => {
         'deckard.showLog',
         'deckard.reindexWorkspace',
         'deckard.createHubNoteForTag',
+        'deckard.createTypeFromTags',
         'deckard.pauseHere',
         'deckard.resumeHere',
         'deckard.chooseScope',

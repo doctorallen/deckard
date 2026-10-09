@@ -314,6 +314,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.createTypeFromTags",
+        "title": "Create Type from Tags…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.pauseHere",
         "title": "Pause in This Workspace",
         "category": "Deckard"

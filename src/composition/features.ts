@@ -17,6 +17,7 @@ import { register as tagEditing } from '../ui/commands/tagEditing/register';
 import { register as taskEditing } from '../ui/commands/taskEditing/register';
 import { register as tasksView } from '../ui/commands/tasksView/register';
 import { register as toggles } from '../ui/commands/toggles/register';
+import { register as types } from '../ui/commands/types/register';
 import { register as undo } from '../ui/commands/undo/register';
 import type { NamedFeature } from './feature';
 
@@ -49,4 +50,5 @@ export const features: readonly NamedFeature[] = [
   { name: 'tag editing', register: tagEditing },
   { name: 'Undo Last Change', register: undo },
   { name: 'the Hubs view', register: hubs },
+  { name: 'types', register: types },
 ];

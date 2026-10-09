@@ -18,6 +18,14 @@
   have meant. After `type = team`, the search box offers the type's fields
   and their values, and the Builder lists them under the type's name, then
   "Through <relation>", then "Built in".
+- **Create Type from Tags….** `Deckard: Create Type from Tags…` lists the
+  namespaces with their tags and hub notes, the people, and the `type:`
+  values in use, then the fields their notes already write, each with a
+  guessed kind ("Person · 5 of 5 · reverse: lead of"). It writes
+  `Types/<Type>.md` as one change Undo Last Change takes back, and opens it
+  beside. A field whose name a built-in query field takes is written as
+  `<type>-<name>`, and the list says so. **New note type…** writes a type
+  whose rows are notes with `type:` and an empty table.
 
 ### Changed
 
