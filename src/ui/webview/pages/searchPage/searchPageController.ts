@@ -16,6 +16,9 @@ import type { SearchRefineState } from '../../../protocol/shared';
 import { editResults } from '../../../commands/bulkEditPrompts';
 import { presentExport } from '../../../commands/exportResults';
 import { createHubNote } from '../../../commands/hubNote';
+import { copyFieldValue, createRowNote } from '../../../commands/typeNotes';
+import { renameTypeField, renameTypeOption } from '../../../commands/typeRenames';
+import { getTypeIndex, type TypeRow } from '../../../../domain/types/typeIndex';
 import { NoteOpening, openNoteAt } from '../../../commands/noteOpening';
 import { setPinned } from '../../../commands/pinNote';
 import { readEntityNamespaceAliases } from '../../../commands/parseSettings';
@@ -214,6 +217,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       exportResults: (message) => this.exportResults(message.kind),
       openSource: (message) => this.openSource(message.filePath, message.line, message),
       openWikiLink: (message) => this.openWikiLink(message.target, message.from, message),
+      ...this.typeHandlers(),
     };
   }
 
@@ -573,6 +577,100 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   }
 
   /**
+   * What a type's page asks of its host: its rows tab's sort, columns, and
+   * grouping; Add <type>…, its note, and Create type; the renames a
+   * column's menu offers; and a row's hub note and Copy.
+   */
+  private typeHandlers(): Pick<
+    MessageHandlers<SearchPagePageToHost>,
+    | 'setTypeSort'
+    | 'setTypeColumns'
+    | 'setTypeGroup'
+    | 'addTypeRow'
+    | 'openTypeNote'
+    | 'createTypeFromTag'
+    | 'renameTypeField'
+    | 'editTypeField'
+    | 'renameTypeOption'
+    | 'createRowHub'
+    | 'copyRowValue'
+  > {
+    const { indexer, preferences, writes } = this.search;
+    return {
+      setTypeSort: (message) =>
+        preferences.display.setTypeTable(message.typeKey, {
+          sort: message.column ? { column: message.column, direction: message.direction ?? 'asc' } : undefined,
+        }),
+      setTypeColumns: (message) => preferences.display.setTypeTable(message.typeKey, { columns: message.columns }),
+      setTypeGroup: (message) => preferences.display.setTypeTable(message.typeKey, { groupBy: message.field }),
+      addTypeRow: (message) => this.addTypeRow(message.typeKey),
+      openTypeNote: (message) => this.openTypeNote(message.typeKey),
+      createTypeFromTag: async (message) => {
+        await vscode.commands.executeCommand('deckard.createTypeFromTags', message.namespace);
+      },
+      renameTypeField: async (message) => {
+        await renameTypeField({ indexer, history: writes.history }, message.typeKey, message.field);
+      },
+      editTypeField: (message) => this.openTypeNote(message.typeKey, message.field),
+      renameTypeOption: async (message) => {
+        await renameTypeOption({ indexer, history: writes.history }, message.typeKey, message.field, message.option);
+      },
+      createRowHub: async (message) => {
+        const row = this.findTypeRow(message.typeKey, message.rowId);
+        if (row && !row.filePath && row.tagKeys.length) {
+          await createHubNote(indexer, row.tagKeys.includes(row.id) ? row.id : row.tagKeys[0]);
+        }
+      },
+      copyRowValue: async (message) => {
+        // What the row's ⋯ offered to copy, as the page drew it.
+        const table = this.currentSnapshot().typeRows;
+        const rows = [...(table?.rows ?? []), ...(table?.groups ?? []).flatMap((group) => group.rows)];
+        const copy = rows.find((row) => row.id === message.rowId)?.copy;
+        if (copy) {
+          await copyFieldValue(copy.value);
+        }
+      },
+    };
+  }
+
+  /** A row of the page's type, by id, as the index has it now; undefined for one it no longer has. */
+  private findTypeRow(typeKey: string, rowId: string): TypeRow | undefined {
+    const row = getTypeIndex(this.search.indexer.getSnapshot()).row(rowId);
+    return row?.typeKey === typeKey ? row : undefined;
+  }
+
+  /**
+   * Add <type>…: asks the new row's title, then writes its note into the
+   * type's folder, from the type's template or with its fields' keys, and
+   * opens it.
+   */
+  private async addTypeRow(typeKey: string): Promise<void> {
+    const type = getTypeIndex(this.search.indexer.getSnapshot()).registry.get(typeKey);
+    if (!type) {
+      return;
+    }
+    const title = await vscode.window.showInputBox({
+      title: `Add ${type.name.toLowerCase()}`,
+      prompt: `The new ${type.name.toLowerCase()}'s title, which names its note${type.rows?.kind === 'tags' ? ' and its tag' : ''}`,
+      validateInput: (value) => (value.trim() ? undefined : `A ${type.name.toLowerCase()} needs a title.`),
+    });
+    if (!title?.trim()) {
+      return;
+    }
+    await createRowNote({ indexer: this.search.indexer, history: this.search.writes.history }, { typeKey, title: title.trim() });
+  }
+
+  /** Opens a type's note, at a field's row of its table when one is named, else at the top. */
+  private async openTypeNote(typeKey: string, fieldKey?: string): Promise<void> {
+    const type = getTypeIndex(this.search.indexer.getSnapshot()).registry.get(typeKey);
+    if (!type) {
+      return;
+    }
+    const field = fieldKey ? type.fields.find((candidate) => candidate.key === fieldKey.toLowerCase()) : undefined;
+    await openResultAt(type.filePath, field?.line ?? type.table?.startLine ?? 1, { pin: true });
+  }
+
+  /**
    * Opens a line the page shows: its hub, a card, or a task. A card's visit
    * is counted, unless it is a note's front matter.
    */
@@ -623,6 +721,11 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     );
     if (task) {
       await openNoteAt(task.task.filePath, task.task.lineNumber, how);
+      return;
+    }
+    // A note a type's row, or one of its values, names: a row's note or hub, or a Note field's.
+    if (snapshot.typeRows && this.search.indexer.getSnapshot().files.has(filePath)) {
+      await openNoteAt(filePath, line, how);
     }
   }
 
@@ -691,6 +794,9 @@ export function getSearchKey(
  * A page's tab title: its entity or tag, or its search.
  */
 function getPageTitle(snapshot: SearchPageSnapshot): string {
+  if (snapshot.typeRows) {
+    return snapshot.typeRows.plural;
+  }
   if (snapshot.entity) {
     return formatEntityTitle(snapshot.entity.kind, snapshot.entity.name);
   }

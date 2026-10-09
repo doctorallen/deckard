@@ -95,6 +95,35 @@
   of it and who is behind them ("owned by: Rates (lead Dana Whitfield ·
   on-call Sam Ortiz)"), so a row with no note still shows who owns it.
   **Create hub note** stays under the title.
+- **A type's rows, as a search.** A search for `type = team` is titled
+  with the type's plural name, "Teams", with its rows under it in
+  monospace ("#team/*", or "type: incident · Incidents/"), and opens on a
+  new first tab, "Teams (4)", beside Notes and Tasks: a table of the rows
+  the search finds, drawn as the Task board's table is. Its columns are
+  the row's title, each field, its key in monospace, then Open tasks and
+  Last mentioned, in sentence case and muted as worked out from the notes;
+  ⋯ **Team columns** adds the reverses (a team's Members), Mentions, and
+  the rest. People and related rows are links by their titles; a reverse
+  lists three people by first name and how many more ("Dana, Sam, Lena
+  +2"); dates read "today · 2026-10-08", and open tasks "4 · 1 overdue".
+  A row with no hub note says so ("No hub note · 6 entries"), with
+  **Create hub note** on its row, and each row's **⋯** opens it, its hub
+  note, or copies its email. A heading sorts, and again the other way,
+  with "Sorted by lead · Sort A-Z" drawn beside the tab; right-click or
+  Shift+F10 on it for Sort A-Z, Sort Z-A, Hide column, **Rename field
+  everywhere…**, and **Edit in Types/Team.md**, and on a select's value
+  for **Rename option everywhere…**. Each rename asks the new name, then
+  shows every note it changes, the type's table among them, in the
+  refactor preview, as one change Undo Last Change takes back. ⋯ adds
+  **Add team…**, which writes a new row's note, and **Open
+  Types/Team.md**; Group by adds each select, person, and relation field,
+  a row with two values under both and the rows with none last ("No
+  team"); and Refine offers each select field's options, counted over
+  the rows.
+  On a tag's page whose namespace has no type, ⋯ offers **Create type from
+  #team…**. In the Hubs view, a namespace heading a type has opens its
+  search. Under Zen, each row's ⋯ and Create hub note wait for the row,
+  and every cell, count, and date stays drawn.
 
 ### Changed
 

@@ -310,4 +310,38 @@ suite('Search page messages', () => {
       assert.strictEqual(narrowSearchPageMessage(message), undefined, JSON.stringify(message));
     }
   });
+
+  test("accepts a type's page's messages, each naming its type, and nothing like them", () => {
+    const accepted = [
+      { type: 'setTypeSort', typeKey: 'team', column: 'lead', direction: 'desc' },
+      { type: 'setTypeSort', typeKey: 'team' },
+      { type: 'setTypeColumns', typeKey: 'team', columns: ['title', 'lead'] },
+      { type: 'setTypeGroup', typeKey: 'team', field: 'tier' },
+      { type: 'setTypeGroup', typeKey: 'team' },
+      { type: 'addTypeRow', typeKey: 'team' },
+      { type: 'openTypeNote', typeKey: 'team' },
+      { type: 'createTypeFromTag', namespace: 'team' },
+      { type: 'renameTypeField', typeKey: 'team', field: 'lead' },
+      { type: 'editTypeField', typeKey: 'team', field: 'lead' },
+      { type: 'renameTypeOption', typeKey: 'team', field: 'tier', option: 'gold' },
+      { type: 'createRowHub', typeKey: 'area', rowId: '#area/fx' },
+      { type: 'copyRowValue', typeKey: 'person', rowId: '@dana' },
+    ];
+    for (const message of accepted) {
+      assert.deepStrictEqual(narrowSearchPageMessage(message), message, JSON.stringify(message));
+    }
+    for (const message of [
+      { type: 'setTypeSort', typeKey: 'team', column: 'lead', direction: 'up' },
+      { type: 'setTypeSort', column: 'lead' },
+      { type: 'setTypeColumns', typeKey: 'team', columns: 'lead' },
+      { type: 'setTypeColumns', typeKey: 'team', columns: Array.from({ length: 61 }, (_, at) => `c${at}`) },
+      { type: 'addTypeRow', typeKey: '' },
+      { type: 'addTypeRow', typeKey: 'team', title: 'Rates' },
+      { type: 'createTypeFromTag', namespace: 'team', extra: true },
+      { type: 'renameTypeOption', typeKey: 'team', field: 'tier' },
+      { type: 'createRowHub', typeKey: 'area', rowId: '' },
+    ]) {
+      assert.strictEqual(narrowSearchPageMessage(message), undefined, JSON.stringify(message));
+    }
+  });
 });

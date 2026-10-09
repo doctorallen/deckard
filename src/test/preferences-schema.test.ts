@@ -62,11 +62,11 @@ suite('Preferences schema', () => {
     assert.deepStrictEqual(filterNumericRecord([7, 8], () => true), { 0: 7, 1: 8 }, 'an array reads as a record');
   });
 
-  test('the workspace keeps its nineteen keys, and the machine-wide blob the rest', () => {
+  test('the workspace keeps its twenty keys, and the machine-wide blob the rest', () => {
     const blob = normalizePreferences({ favoriteTags: ['#a'], tagSortMode: 'count', pinnedNotes: [{ filePath: 'a.md' }] });
     const share = pickWorkspacePreferences(blob);
     const rest = omitWorkspacePreferences(blob);
-    assert.strictEqual(WORKSPACE_PREFERENCE_KEYS.length, 19);
+    assert.strictEqual(WORKSPACE_PREFERENCE_KEYS.length, 20);
     assert.deepStrictEqual(Object.keys(share), WORKSPACE_PREFERENCE_KEYS.filter((key) => blob[key] !== undefined));
     assert.ok(Object.keys(rest).every((key) => !(WORKSPACE_PREFERENCE_KEYS as readonly string[]).includes(key)));
     assert.deepStrictEqual({ ...rest, ...share }, { ...blob }, 'together they are the blob');

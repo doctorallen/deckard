@@ -191,6 +191,12 @@ export interface PersistedPreferences {
   searchHierarchy?: 'tags' | 'headings';
   /** A tag's page starts with its hub note folded, as the reader last left one; stored only when folded. */
   hubNoteCollapsed?: true;
+  /**
+   * Each type's rows tab on a search page, by type key: its columns, its
+   * sort, and the field it groups by; stored only for a type the reader
+   * changed one of these for.
+   */
+  typeTables?: Record<string, TypeTableView>;
   relatedNotesSortMode: RelatedNotesSortMode;
   /** Related Notes and Linked from leave out daily, weekly, and monthly notes. */
   hideDailyNotes?: true;
@@ -331,6 +337,18 @@ export type TaskColumnId =
 
 /** Which way a table column sorts: ascending or descending. */
 export type TableSortDirection = 'asc' | 'desc';
+
+/**
+ * How a type's rows tab is drawn (docs/implementation/30-databases.md
+ * § Types as searches): its columns by id (`title`, a schema field's key,
+ * a reverse's or computed field's query name), the column it is sorted by,
+ * and the field it groups by. Each is the default when unset.
+ */
+export interface TypeTableView {
+  columns?: string[];
+  sort?: { column: string; direction: TableSortDirection };
+  groupBy?: string;
+}
 
 /** The column a task table is ordered by, and which way. */
 export interface TableSort {

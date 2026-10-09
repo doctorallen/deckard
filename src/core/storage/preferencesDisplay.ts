@@ -10,6 +10,7 @@ import type {
   TagOverviewLayout,
   TagOverviewSortMode,
   TagSortMode,
+  TypeTableView,
 } from '../../domain/model/preferences';
 import type { PreferencesRepository } from './preferencesRepository';
 import { type ViewChoice, viewChoiceChange } from './preferencesViewChoices';
@@ -82,6 +83,30 @@ export class DisplayService {
   /** Selects whether a search page groups its results by tag, by heading, or not at all. */
   public async setSearchHierarchy(searchHierarchy: SearchHierarchy): Promise<void> {
     await this.repository.update({ searchHierarchy: searchHierarchy === 'off' ? undefined : searchHierarchy });
+  }
+
+  /**
+   * Changes how one type's rows tab is drawn: its columns, its sort, or the
+   * field it groups by, each left as it was when not given and put back to
+   * the default when given as undefined. Type keys name what is in one
+   * workspace, so the workspace keeps these, unlike the rest here.
+   */
+  public async setTypeTable(typeKey: string, change: Partial<TypeTableView>): Promise<void> {
+    const tables = { ...(this.repository.current.typeTables ?? {}) };
+    const view: TypeTableView = { ...(tables[typeKey] ?? {}) };
+    (Object.keys(change) as Array<keyof TypeTableView>).forEach((key) => {
+      if (change[key] === undefined) {
+        delete view[key];
+      } else {
+        Object.assign(view, { [key]: change[key] });
+      }
+    });
+    if (Object.keys(view).length) {
+      tables[typeKey] = view;
+    } else {
+      delete tables[typeKey];
+    }
+    await this.repository.update({ typeTables: Object.keys(tables).length ? tables : undefined });
   }
 
   /**

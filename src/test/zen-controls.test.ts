@@ -136,6 +136,12 @@ const context = (zen: boolean, mode = 'tags') => open(renderPage('sidebarNotes',
   pages: { pages: [{ id: 'home', label: 'Home', description: '', detail: '' }], style: 'icons', current: undefined },
 });
 const graph = (zen: boolean) => open(renderPage('notesGraph', { chrome: chromeOf(zen) }));
+/** A type's search page: its rows tab, sorted by a column, with rows that have no hub note. */
+const typeSearchPage = (zen: boolean) =>
+  open(renderPage('searchPage', { chrome: chromeOf(zen) }), {
+    ...createSearchPageSnapshot(typedWorkspace(), preferences({ typeTables: { area: { sort: { column: 'system', direction: 'asc' } } } }), 'type = area', { queryContext, originQuery: 'type = area' }),
+    parkedTags: [],
+  });
 /** The Note page on a typed row's note, with filled fields, a reverse, and empty ones folded. */
 const notePage = (zen: boolean) =>
   open(renderPage('notePage', { chrome: chromeOf(zen) }), createNotePageSnapshot(typedWorkspace(), 'Teams/Credit.md', { queryContext, history: { back: false, forward: false }, visit: 1 }));
@@ -195,6 +201,19 @@ suite('Zen quiets controls in place', () => {
     assert.ok(!quietAtRest(searchPage(true, { tagOverviewSortMode: 'newest' }).find('.result-sort')), 'Newest stays drawn');
     // The tabs are a content switch, and never quieted.
     assert.ok(page.findAll('[data-action="set-result-tab"]').every((tab) => !quietAtRest(tab)));
+  });
+
+  test("a type's search page quiets each row's ⋯ and Create hub note on its rows, and keeps every cell, date, and the sort it is in", () => {
+    const page = typeSearchPage(true);
+    for (const control of page.findAll('[data-action="type-row-menu"], [data-action="create-row-hub"]')) {
+      assert.ok(quietAtRest(control), `${nameOf(control)} is quiet at rest`);
+      assert.ok(control.closest('.type-rows[data-zen-region]') && control.closest('.type-row[data-reveal-region]'), `${nameOf(control)} shows from its row`);
+    }
+    for (const kept of page.findAll('.type-table th button, .type-row .field-link, .type-sort-note [data-action="clear-type-sort"]')) {
+      assert.ok(!quietAtRest(kept), `${nameOf(kept)} stays drawn`);
+    }
+    assert.ok(page.findAll('.type-no-hub').length > 0, 'a row with no hub note still says so');
+    assert.ok(!quietAtRest(typeSearchPage(false).find('[data-action="set-result-tab"][data-tab="rows"]')), 'the rows tab is a content switch, and stays');
   });
 
   test("Home quiets Customize at its tab row, and keeps the tabs and its tiles", () => {
@@ -354,6 +373,7 @@ const CONTRACT_PAGES: ReadonlyArray<readonly [string, (zen: boolean) => WebviewP
   ['Context', context],
   ['the Notes Graph', graph],
   ['the Note page', notePage],
+  ["a type's search page", typeSearchPage],
 ];
 
 /**

@@ -168,3 +168,17 @@ header { position: relative; }
    nothing; focus on the card shows it, so Tab reaches it next. */
 .card .card-more.card-more { visibility: hidden; opacity: 0; transition: opacity 120ms ease, visibility 0s linear 120ms; }
 .card:hover .card-more.card-more, .card:focus-within .card-more.card-more { visibility: visible; opacity: 1; transition: opacity 120ms ease; }
+
+/* A type's rows tab (typeRows.tsx), drawn as the Task board's table: a
+   schema field's heading is its key, in monospace and in the text's ink; a
+   computed one, and the title's, in sentence case and muted. A row with
+   no hub note says so, muted, under its title. */
+.type-table th.is-field button { color: var(--text); }
+.type-table th.is-computed button, .type-table th.is-title button { font-family: var(--font-display); text-transform: none; letter-spacing: normal; }
+.type-no-hub { display: block; color: var(--muted); font-size: var(--text-xs); }
+.type-create-hub.type-create-hub { min-height: 0; margin-left: var(--space-2); padding: 0 6px; font-size: var(--text-xs); }
+.type-more { color: var(--muted); }
+.type-group-row th { padding: var(--space-3) var(--space-3) var(--space-1); color: var(--text); font: 700 var(--text-sm) var(--font-display); text-align: left; text-transform: none; }
+.type-group-row .display-count { color: var(--muted); font-weight: 400; }
+.type-sort-note { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.type-pane { margin-bottom: var(--space-4); }

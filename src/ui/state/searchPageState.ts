@@ -6,11 +6,15 @@ import {
 } from '../../domain/index/parked';
 import { countTaskProgress, isOpenTask } from '../../domain/tasks/taskStatuses';
 import { correctQueryText, getPlainTextTerms, getTextWords } from '../../domain/query/queryEdit';
-import { evaluateQuery, QueryResults } from '../../domain/query/queryEvaluator';
+import { evaluateQuery, evaluateTypeRows, QueryResults } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { EntityNamespaceAliases } from '../../domain/markdown/parser';
-import { collectQueryTagKeys, getQueryNarrowedTag, getQueryTagIntersection, quoteValue } from '../../domain/query/queryFormat';
+import { collectQueryTagKeys, getQueryNarrowedTag, getQueryTagIntersection, getQueryTypeKeys, quoteValue } from '../../domain/query/queryFormat';
 import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
+import { getTypeIndex } from '../../domain/types/typeIndex';
+import { buildFieldFacets } from '../../domain/search/fieldFacets';
+import { readTagNamespace } from '../../domain/markdown/tagKeys';
+import { createTypeTable } from './typeTable';
 import { ParsedQuery } from '../../domain/query/queryTypes';
 import { noteTitle } from '../../domain/index/backlinks';
 import { getFileName } from '../../shared/paths';
@@ -169,7 +173,8 @@ export function createSearchPageSnapshot(
     ranked.length === 0 && tasks.length === 0
       ? suggestWorkingSearch(index, { text, parsed, sectionKey, options })
       : undefined;
-  const facets = buildPageFacets(index, page, text, options);
+  const typeRows = describeTypeRows(index, preferences, page, options);
+  const facets = [...(typeRows?.facets ?? []), ...buildPageFacets(index, page, text, options)];
   const drawTask = (task: Task) =>
     markParked(
       markVia(createDashboardTask(task, index.sections, options.queryContext), task.id),
@@ -186,6 +191,7 @@ export function createSearchPageSnapshot(
 
   return {
     ...buildTagPageBlock(index, preferences, page, options.queryContext),
+    ...(typeRows ? { typeRows: typeRows.table } : {}),
     query: createQueryViewState({
       index,
       parsed,
@@ -214,6 +220,34 @@ export function createSearchPageSnapshot(
     noteColumns: preferences.dashboardNoteColumns,
     taskColumns: preferences.dashboardTaskColumns,
   };
+}
+
+/**
+ * For a search whose top level names a type, `type = team`: the type's
+ * rows the search finds, the words being typed among it, as the rows tab
+ * draws them, and Refine's facets of its select fields. Nothing for any
+ * other search.
+ */
+function describeTypeRows(
+  index: WorkspaceIndex,
+  preferences: PersistedPreferences,
+  page: SearchPageResults,
+  options: SearchPageOptions,
+): { table: NonNullable<SearchPageSnapshot['typeRows']>; facets: QueryFacet[] } | undefined {
+  const types = getTypeIndex(index);
+  const typeKey = getQueryTypeKeys(page.parsed.node).find((key) => types.registry.get(key));
+  const type = typeKey ? types.registry.get(typeKey) : undefined;
+  if (!type || !page.drafted.node) {
+    return undefined;
+  }
+  const rowIds = evaluateTypeRows(index, page.drafted.node, options.queryContext).filter((id) => types.row(id)?.typeKey === type.key);
+  const table = createTypeTable(types, type, rowIds, {
+    entriesOf: (tagKey) => index.tags.get(tagKey)?.count ?? 0,
+    now: options.queryContext.now,
+    dateFormats: options.queryContext.dateFormats,
+    view: preferences.typeTables?.[type.key],
+  });
+  return { table, facets: buildFieldFacets(types, type.key, rowIds, page.parsed.text) };
 }
 
 /**
@@ -509,6 +543,7 @@ function buildTagPageBlock(
         }
       : {}),
     ...fields.page,
+    ...describeUntypedNamespace(index, focusTag.key, filtered),
     tagPage: {
       ...(filtered ? { filtered } : {}),
       lookalikes: findTagLookalikes(index, focusTag.key),
@@ -519,6 +554,20 @@ function buildTagPageBlock(
       ...describeTagMentions(index, focusTag, context),
     },
   };
+}
+
+/**
+ * On a tag's own page, the tag's namespace when no type has rows in it,
+ * which ⋯ offers to make a type from; nothing for a person, a tag with no
+ * namespace, a typed one, or a page a search narrows.
+ */
+function describeUntypedNamespace(index: WorkspaceIndex, tagKey: string, filtered: boolean | undefined): Pick<SearchPageSnapshot, 'untypedNamespace'> {
+  const key = tagKey.toLowerCase();
+  if (filtered || key.startsWith('@') || key.startsWith('#person/')) {
+    return {};
+  }
+  const namespace = readTagNamespace(key);
+  return namespace && !getTypeIndex(index).registry.forTag(key) ? { untypedNamespace: namespace } : {};
 }
 
 /**

@@ -22,7 +22,8 @@ import { installViewOptions } from '../shared/viewOptions';
 import { vscodeApi } from '../shared/vscode';
 import { PageHeader } from './header';
 import { HubNote, tagRefineLines, TagNotes, TagProgress } from './hub';
-import { type ResultKind, resultCounts, Results } from './results';
+import { type ResultKind, type ResultTabId, resultCounts, Results } from './results';
+import { columnMenu, findTypeRow, nextTypeSort, rowMenu } from './typeRows';
 
 /** What the page draws from: the host's last snapshot, once there is one. */
 interface SearchStore {
@@ -46,7 +47,7 @@ function send(message: SearchPageMessage): void {
 let latest: SearchPageState | undefined;
 
 /** The tab shown, in the tabs layout. */
-let activeTab: ResultKind = 'notes';
+let activeTab: ResultTabId = 'notes';
 
 /**
  * Whether the reader picked the tab themselves. Until they do, the page
@@ -55,7 +56,7 @@ let activeTab: ResultKind = 'notes';
  */
 let tabChosen = false;
 const savedPageState = kept();
-if (savedPageState && (savedPageState.tab === 'notes' || savedPageState.tab === 'tasks')) {
+if (savedPageState && (savedPageState.tab === 'notes' || savedPageState.tab === 'tasks' || savedPageState.tab === 'rows')) {
   activeTab = savedPageState.tab;
   tabChosen = true;
 }
@@ -120,14 +121,38 @@ function settleTab(snapshot: SearchPageState): void {
   const searched = (snapshot.query && snapshot.query.text) || '';
   const newSearch = searched !== settledFor;
   settledFor = searched;
+  if (settleRowsTab(snapshot, newSearch)) {
+    return;
+  }
   if (!tabChosen) {
     activeTab = counts.notes === 0 && counts.tasks > 0 ? 'tasks' : 'notes';
+    return;
+  }
+  if (activeTab === 'rows') {
     return;
   }
   const other: ResultKind = activeTab === 'notes' ? 'tasks' : 'notes';
   if (newSearch && counts[activeTab] === 0 && counts[other] > 0) {
     activeTab = other;
   }
+}
+
+/**
+ * A type's page opens on its rows, the rows tab being first, and a new
+ * search goes there from an empty tab; a page with no rows tab leaves it.
+ * True when the rows tab is the one shown.
+ */
+function settleRowsTab(snapshot: SearchPageState, newSearch: boolean): boolean {
+  if (!snapshot.typeRows) {
+    if (activeTab === 'rows') {
+      activeTab = 'notes';
+    }
+    return false;
+  }
+  if (!tabChosen || (newSearch && activeTab !== 'rows' && resultCounts(snapshot)[activeTab] === 0)) {
+    activeTab = 'rows';
+  }
+  return activeTab === 'rows';
 }
 
 /** The whole page: its header, the search box and Refine, the tag's progress, the hub, the tag's notes, and the results. */
@@ -166,12 +191,14 @@ let announcedCounts: string | undefined;
  */
 function announceCounts(snapshot: SearchPageState): void {
   const counts = resultCounts(snapshot);
-  const said = [(snapshot.query && snapshot.query.text) || '', counts.notes, counts.tasks].join('\u0000');
+  const table = snapshot.typeRows;
+  const said = [(snapshot.query && snapshot.query.text) || '', counts.notes, counts.tasks, table ? table.count : ''].join('\u0000');
   if (said === announcedCounts) {
     return;
   }
   announcedCounts = said;
-  announce(`${counts.notes}${counts.notes === 1 ? ' note' : ' notes'} and ${counts.tasks}${counts.tasks === 1 ? ' task' : ' tasks'} match this search.`);
+  const rows = table ? `${table.count} ${(table.count === 1 ? table.name : table.plural).toLowerCase()}, ` : '';
+  announce(`${rows}${counts.notes}${counts.notes === 1 ? ' note' : ' notes'} and ${counts.tasks}${counts.tasks === 1 ? ' task' : ' tasks'} match this search.`);
 }
 
 const store = startPage<SearchStore>({
@@ -323,6 +350,81 @@ function saveState(): void {
 /** The result a card's menu is about, while the menu is open. */
 let cardContext: { filePath: string; line: number; pinned: boolean; parked: boolean } | null = null;
 
+/** What a type's menu is about, while it is open: a column's heading, a row, or a select's option. */
+let typeContext: { column?: string; rowId?: string; field?: string; option?: string } | null = null;
+
+/**
+ * A column's menu, opened on its heading: its sorts, Hide column, and for
+ * a schema field its renames and its row in the type's note.
+ */
+function openColumnMenu(event: MouseEvent, heading: HTMLElement): void {
+  const table = latest && latest.typeRows;
+  const column = table ? table.columns.find((candidate) => candidate.id === heading.dataset.column) : undefined;
+  if (!table || !column) {
+    return;
+  }
+  openContextMenu(event, columnMenu(table, column));
+  typeContext = { column: column.id };
+}
+
+/** A row's menu, from its ⋯, a right-click on it, or its menu key. */
+function openRowMenu(event: MouseEvent, rowId: string): void {
+  const row = latest && latest.typeRows ? findTypeRow(latest.typeRows, rowId) : undefined;
+  if (!row) {
+    return;
+  }
+  openContextMenu(event, rowMenu(row));
+  typeContext = { rowId };
+}
+
+/** A row's menu from its ⋯, opened under the button. */
+function openRowMenuAt(button: HTMLElement): void {
+  const bounds = button.getBoundingClientRect();
+  openRowMenu(new MouseEvent('contextmenu', { clientX: bounds.left, clientY: bounds.bottom }), String(button.dataset.rowId));
+}
+
+/** Opens a type's row: its tag's page, or its note. */
+function openTypeRow(rowId: string, event?: MouseEvent | KeyboardEvent): void {
+  const row = latest && latest.typeRows ? findTypeRow(latest.typeRows, rowId) : undefined;
+  if (row && row.tag) {
+    send({ type: 'openTag', tagKey: row.tag.key });
+  } else if (row && row.filePath) {
+    const how = openingOf(event);
+    send({ type: 'openSource', filePath: row.filePath, line: 1, ...(how.beside ? { beside: true } : {}) });
+  }
+}
+
+/** Runs a row of a type's menu, for the column, row, or option it was opened on. */
+function chooseTypeAction(action: string, context: NonNullable<typeof typeContext>): void {
+  const table = latest && latest.typeRows;
+  if (!table) {
+    return;
+  }
+  const typeKey = table.key;
+  const column = context.column;
+  const field = column && column.startsWith('field.') ? column.slice('field.'.length) : column;
+  const actions: Readonly<Record<string, () => void>> = {
+    'type-sort-asc': () => send({ type: 'setTypeSort', typeKey, column, direction: 'asc' }),
+    'type-sort-desc': () => send({ type: 'setTypeSort', typeKey, column, direction: 'desc' }),
+    'type-hide-column': () => send({ type: 'setTypeColumns', typeKey, columns: table.columns.map((each) => each.id).filter((id) => id !== column) }),
+    'type-rename-field': () => send({ type: 'renameTypeField', typeKey, field: String(field) }),
+    'type-edit-field': () => send({ type: 'editTypeField', typeKey, field: String(field) }),
+    'type-rename-option': () => send({ type: 'renameTypeOption', typeKey, field: String(context.field), option: String(context.option) }),
+    'type-open-row': () => openTypeRow(String(context.rowId)),
+    'type-open-hub': () => {
+      const row = findTypeRow(table, String(context.rowId));
+      if (row && row.filePath) {
+        send({ type: 'openSource', filePath: row.filePath, line: 1 });
+      }
+    },
+    'type-create-hub': () => send({ type: 'createRowHub', typeKey, rowId: String(context.rowId) }),
+    'type-copy': () => send({ type: 'copyRowValue', typeKey, rowId: String(context.rowId) }),
+  };
+  if (Object.prototype.hasOwnProperty.call(actions, action)) {
+    actions[action]();
+  }
+}
+
 /** Pinning and parking, on the results a search already gathered. */
 function openCardContextMenu(event: MouseEvent, card: HTMLElement): void {
   cardContext = {
@@ -341,8 +443,14 @@ function openCardContextMenu(event: MouseEvent, card: HTMLElement): void {
 function chooseFromMenu(action: string | undefined): void {
   const tagKey = tagContextKey();
   const card = cardContext;
+  const type = typeContext;
   closeTagContextMenu();
   cardContext = null;
+  typeContext = null;
+  if (type && action) {
+    chooseTypeAction(action, type);
+    return;
+  }
   if (action === 'rename-tag' && tagKey) {
     send({ type: 'renameTag', tagKey });
   }
@@ -384,7 +492,8 @@ function setColumns(target: HTMLElement, snapshot: SearchPageState): void {
 
 /** Shows one of the result tabs, which is the reader's choice from then on. */
 function showTab(target: HTMLElement): void {
-  activeTab = target.dataset.tab === 'tasks' ? 'tasks' : 'notes';
+  const tab = target.dataset.tab;
+  activeTab = tab === 'tasks' || tab === 'rows' ? tab : 'notes';
   tabChosen = true;
   saveState();
   redraw();
@@ -395,7 +504,7 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   'set-mode': (target) => send({ type: 'setRenderMode', mode: target.dataset.mode as never }),
   'set-layout': (target) => send({ type: 'setTagOverviewLayout', layout: target.dataset.layout as never }),
   'set-preview': (target) => send({ type: 'setSearchPreview', preview: target.dataset.value as never }),
-  'set-hierarchy': (target) => send({ type: 'setSearchHierarchy', hierarchy: target.dataset.value as never }),
+  'set-hierarchy': (target, snapshot) => setGrouping(String(target.dataset.value), snapshot),
   'toggle-card-body': (target) => toggleCardBody(target),
   'edit-results': (target) => send({ type: 'editResults', kind: target.dataset.kind === 'tasks' ? 'tasks' : 'notes' }),
   'export-results': (target) => send({ type: 'exportResults', kind: target.dataset.kind === 'tasks' ? 'tasks' : 'notes' }),
@@ -462,7 +571,67 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
     target.setAttribute('aria-label', `${alt}, shown ${whole ? 'at full size' : 'fitted'}; select to show it ${whole ? 'fitted' : 'at full size'}`);
   },
   'open-tag': (target) => send({ type: 'openTag', tagKey: String(target.dataset.tagKey) }),
+  // A type's page: its rows tab, and ⋯'s rows for the type.
+  'set-type-sort': (target, snapshot) => {
+    if (snapshot.typeRows) {
+      send({ type: 'setTypeSort', typeKey: snapshot.typeRows.key, ...nextTypeSort(snapshot.typeRows, String(target.dataset.value)) });
+    }
+  },
+  'clear-type-sort': (_target, snapshot) => {
+    if (snapshot.typeRows) {
+      send({ type: 'setTypeSort', typeKey: snapshot.typeRows.key });
+    }
+  },
+  'add-type-row': (_target, snapshot) => {
+    if (snapshot.typeRows) {
+      send({ type: 'addTypeRow', typeKey: snapshot.typeRows.key });
+    }
+  },
+  'open-type-note': (_target, snapshot) => {
+    if (snapshot.typeRows) {
+      send({ type: 'openTypeNote', typeKey: snapshot.typeRows.key });
+    }
+  },
+  'create-type-from-tag': (target) => send({ type: 'createTypeFromTag', namespace: String(target.dataset.namespace) }),
+  'create-row-hub': (target, snapshot) => {
+    if (snapshot.typeRows) {
+      send({ type: 'createRowHub', typeKey: snapshot.typeRows.key, rowId: String(target.dataset.rowId) });
+    }
+  },
+  'type-row-menu': (target) => openRowMenuAt(target),
 };
+
+/**
+ * Group by: None, Tag, or Heading group the notes and tasks; a type's field
+ * groups its rows instead, and choosing any of the others lets go of it.
+ */
+function setGrouping(value: string, snapshot: SearchPageState): void {
+  const table = snapshot.typeRows;
+  if (value.startsWith('field:')) {
+    if (table) {
+      send({ type: 'setTypeGroup', typeKey: table.key, field: value.slice('field:'.length) });
+    }
+    return;
+  }
+  if (table && table.groupBy) {
+    send({ type: 'setTypeGroup', typeKey: table.key });
+  }
+  send({ type: 'setSearchHierarchy', hierarchy: value as never });
+}
+
+/**
+ * A column ticked or cleared in ⋯'s list of a type's columns: added after
+ * the last shown, or taken out.
+ */
+function toggleTypeColumn(target: HTMLInputElement): void {
+  const table = latest && latest.typeRows;
+  const id = String(target.dataset.value);
+  if (!table || id === 'title') {
+    return;
+  }
+  const shown = table.columns.map((column) => column.id).filter((column) => column !== id);
+  send({ type: 'setTypeColumns', typeKey: table.key, columns: target.checked ? [...shown, id] : shown });
+}
 
 installViewOptions();
 // The page's own keys, on ?, or Keyboard shortcuts in ⋯: / and the menu
@@ -517,11 +686,33 @@ document.addEventListener('click', (event) => {
   const entry = element.closest<HTMLElement>('.card, .task-row');
   if (entry && !element.closest('button, input, a')) {
     send(openSourceMessage(entry, event));
+    return;
+  }
+  const typeRow = element.closest<HTMLElement>('.type-row');
+  if (typeRow && !element.closest('button, input, a')) {
+    openTypeRow(String(typeRow.dataset.rowId), event);
   }
 });
 
 document.addEventListener('contextmenu', (event) => {
   const element = event.target instanceof Element ? event.target : null;
+  // A type's rows tab: a select's option, a column's heading, or a row.
+  const option = element ? element.closest<HTMLElement>('.type-option') : null;
+  if (option) {
+    openContextMenu(event, [{ action: 'type-rename-option', label: 'Rename option everywhere…' }]);
+    typeContext = { field: option.dataset.field, option: option.dataset.option };
+    return;
+  }
+  const heading = element ? element.closest<HTMLElement>('.type-table th[data-column]') : null;
+  if (heading) {
+    openColumnMenu(event, heading);
+    return;
+  }
+  const typeRow = element && !element.closest('[data-tag-key]') ? element.closest<HTMLElement>('.type-row') : null;
+  if (typeRow) {
+    openRowMenu(event, String(typeRow.dataset.rowId));
+    return;
+  }
   const tag = element ? element.closest<HTMLElement>('[data-tag-key]') : null;
   if (tag) {
     openTagContextMenu(event, tag);
@@ -560,6 +751,12 @@ function openEntryByKey(event: KeyboardEvent, element: Element | null): void {
   if ((event.key !== 'Enter' && event.key !== ' ') || !element || element.closest('[data-action], button, input, a')) {
     return;
   }
+  const typeRow = element.closest<HTMLElement>('.type-row');
+  if (typeRow) {
+    event.preventDefault();
+    openTypeRow(String(typeRow.dataset.rowId), event);
+    return;
+  }
   const entry = element.closest<HTMLElement>('.card, .task-row');
   if (!entry) {
     return;
@@ -587,6 +784,9 @@ document.addEventListener('change', (event) => {
   const target = event.target as HTMLInputElement;
   if (target.dataset.action === 'set-sort') {
     send({ type: 'setTagOverviewSort', mode: target.value as never });
+  }
+  if (target.dataset.action === 'toggle-type-column') {
+    toggleTypeColumn(target);
   }
   if (target.dataset.action === 'set-results-per-page') {
     send({ type: 'setResultsPerPage', size: Number(target.value) as never });

@@ -21,6 +21,14 @@ import type {
   SetTagOverviewLayoutMessage,
   SetSearchHierarchyMessage,
   SetTagOverviewSortMessage,
+  CreateTypeFromTagMessage,
+  RenameTypeOptionMessage,
+  SetTypeColumnsMessage,
+  SetTypeGroupMessage,
+  SetTypeSortMessage,
+  TypeActionMessage,
+  TypeFieldMessage,
+  TypeRowMessage,
 } from '../../../protocol/searchPage';
 import type { MergeTagsMessage } from '../../../protocol/shared';
 import {
@@ -178,6 +186,72 @@ const narrowMergeTags: Narrower<MergeTagsMessage> = (value) =>
     ? { type: 'mergeTags', sourceKey: value.sourceKey, targetKey: value.targetKey }
     : undefined;
 
+/** The longest type key, field, option, or column id a type's page may name. */
+const MAX_TYPE_NAME_LENGTH = 200;
+/** The most columns a type's rows tab may be asked to show. */
+const MAX_TYPE_COLUMNS = 60;
+
+/** A type key, a field, an option, or a column id: a string of a sensible length, not empty. */
+function isTypeName(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_TYPE_NAME_LENGTH;
+}
+
+/** A type's rows tab sorted by a column in a direction, or by nothing. */
+const narrowSetTypeSort: Narrower<SetTypeSortMessage> = (value) => {
+  if (!isTypeName(value.typeKey) || (value.column !== undefined && !isTypeName(value.column))) {
+    return undefined;
+  }
+  if (value.direction !== undefined && value.direction !== 'asc' && value.direction !== 'desc') {
+    return undefined;
+  }
+  return {
+    type: 'setTypeSort',
+    typeKey: value.typeKey,
+    ...(value.column === undefined ? {} : { column: value.column }),
+    ...(value.direction === undefined ? {} : { direction: value.direction }),
+  };
+};
+
+/** A type's rows tab's columns: a short list of ids. */
+const narrowSetTypeColumns: Narrower<SetTypeColumnsMessage> = (value) =>
+  isTypeName(value.typeKey) && Array.isArray(value.columns) && value.columns.length <= MAX_TYPE_COLUMNS && value.columns.every(isTypeName)
+    ? { type: 'setTypeColumns', typeKey: value.typeKey, columns: [...(value.columns as string[])] }
+    : undefined;
+
+/** A type's rows tab grouped by a field, or by nothing. */
+const narrowSetTypeGroup: Narrower<SetTypeGroupMessage> = (value) =>
+  isTypeName(value.typeKey) && (value.field === undefined || isTypeName(value.field))
+    ? { type: 'setTypeGroup', typeKey: value.typeKey, ...(value.field === undefined ? {} : { field: value.field }) }
+    : undefined;
+
+/** Add <type>… or Open its note, for one type. */
+function narrowTypeAction<T extends TypeActionMessage['type']>(type: T): Narrower<TypeActionMessage & { type: T }> {
+  return (value) => (isTypeName(value.typeKey) && Object.keys(value).length === 2 ? { type, typeKey: value.typeKey } : undefined);
+}
+
+/** Create type from a namespace: its name, and nothing else. */
+const narrowCreateTypeFromTag: Narrower<CreateTypeFromTagMessage> = (value) =>
+  isTypeName(value.namespace) && Object.keys(value).length === 2 ? { type: 'createTypeFromTag', namespace: value.namespace } : undefined;
+
+/** Rename field everywhere… or Edit in the type's note, for one field. */
+function narrowTypeField<T extends TypeFieldMessage['type']>(type: T): Narrower<TypeFieldMessage & { type: T }> {
+  return (value) => (isTypeName(value.typeKey) && isTypeName(value.field) ? { type, typeKey: value.typeKey, field: value.field } : undefined);
+}
+
+/** Rename option everywhere…, for one option of one field. */
+const narrowRenameTypeOption: Narrower<RenameTypeOptionMessage> = (value) =>
+  isTypeName(value.typeKey) && isTypeName(value.field) && isTypeName(value.option)
+    ? { type: 'renameTypeOption', typeKey: value.typeKey, field: value.field, option: value.option }
+    : undefined;
+
+/** Create hub note or Copy, for one row of one type. */
+function narrowTypeRow<T extends TypeRowMessage['type']>(type: T): Narrower<TypeRowMessage & { type: T }> {
+  return (value) =>
+    isTypeName(value.typeKey) && typeof value.rowId === 'string' && value.rowId.length > 0 && value.rowId.length <= MAX_FILE_PATH_LENGTH + 5
+      ? { type, typeKey: value.typeKey, rowId: value.rowId }
+      : undefined;
+}
+
 /** Each message a search page may send, and what it must hold. */
 export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   exportResults: narrowExportResults,
@@ -216,6 +290,17 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   goToPage: narrowGoToPage,
   navigateSearchHistory: narrowNavigateSearchHistory,
   setOverviewQuery: narrowSetOverviewQuery,
+  setTypeSort: narrowSetTypeSort,
+  setTypeColumns: narrowSetTypeColumns,
+  setTypeGroup: narrowSetTypeGroup,
+  addTypeRow: narrowTypeAction('addTypeRow'),
+  openTypeNote: narrowTypeAction('openTypeNote'),
+  createTypeFromTag: narrowCreateTypeFromTag,
+  renameTypeField: narrowTypeField('renameTypeField'),
+  editTypeField: narrowTypeField('editTypeField'),
+  renameTypeOption: narrowRenameTypeOption,
+  createRowHub: narrowTypeRow('createRowHub'),
+  copyRowValue: narrowTypeRow('copyRowValue'),
 };
 
 /** A message from a search page, narrowed by its table, or undefined. */
