@@ -63,6 +63,7 @@ export function createWorkspaceIndex<U extends ResourceUri = ResourceUri>(
     getSnapshot: () => service.getSnapshot(),
     getTask: (taskId) => service.getTask(taskId),
     getParkedRules: () => service.getParkedRules(),
+    getTypeIndex: () => service.getTypeIndex(),
     getFilePath: (uri) => scanner.getFilePath(uri),
     getUri: (filePath) => scanner.getUri(filePath),
     isNotesFile: (uri) => scanner.isNotesFile(uri),
