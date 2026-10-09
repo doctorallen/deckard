@@ -10,10 +10,21 @@
    sits, and how far along its tasks are at the left, its controls and ⋯
    at the right. */
 /* A note's bar runs tall, with its progress, so its controls sit at the
-   top, beside the title, as the Task Board's do. */
+   top, beside the title, as the Task Board's do. The lead's lines are laid
+   out in the bar's own grid, so the breadcrumbs and progress lines run its
+   whole width, under the controls, and a progress line's words keep to one
+   line until the pane is narrow; a narrow pane puts the controls under
+   them, as every bar does. */
 header { align-items: flex-start; }
-.note-lead { display: grid; align-content: start; gap: var(--space-2); min-width: 0; }
-header > .page-bar-actions { flex: 0 0 auto; flex-wrap: nowrap; }
+header.page-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: var(--space-2) var(--space-4); }
+.note-lead { display: contents; }
+.note-lead > * { grid-column: 1; }
+.note-lead > .note-breadcrumbs, .note-lead > .note-progress { grid-column: 1 / -1; }
+header.page-bar > .page-bar-actions { flex-wrap: nowrap; grid-column: 2; grid-row: 1 / span 2; }
+@media (max-width: 700px) {
+  header.page-bar { grid-template-columns: minmax(0, 1fr); }
+  header.page-bar > .page-bar-actions { grid-column: 1; grid-row: auto; justify-self: start; margin: var(--space-2) 0 0; }
+}
 .note-breadcrumbs { display: grid; gap: 2px; }
 .note-breadcrumb { margin: 0; color: var(--muted); font-size: var(--text-sm); }
 .note-crumb { min-height: 0; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; }
@@ -29,9 +40,11 @@ button.note-crumb:hover:where(:not(:disabled):not([aria-disabled="true"])), butt
 .note-progress .tag-note-action { grid-column: 2 / -1; justify-self: start; }
 .note-progress-label { color: var(--muted); font-size: var(--text-sm); }
 .tag-note-action { min-height: 0; padding: 0 2px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: var(--text-sm); text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
-/* A typed row's type, as an eyebrow that opens its rows. */
-.eyebrow-link.eyebrow-link { min-height: 0; margin: 0 0 0 -3px; padding: 0 3px; border: 0; background: transparent; color: var(--amber); font: inherit; font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: .15em; text-align: left; text-transform: uppercase; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
-.eyebrow-link.eyebrow-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .eyebrow-link.eyebrow-link:focus-visible { border: 0; background: var(--hover-bg); color: var(--hover-fg); }
+/* A typed row's type, a link that opens its rows: drawn as the progress
+   line's label is, but not an eyebrow, since Zen hides those and this one
+   carries data. */
+.type-link.type-link { min-height: 0; margin: 0 0 0 -3px; padding: 0 3px; border: 0; background: transparent; color: var(--amber); font: inherit; font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: .15em; text-align: left; text-transform: uppercase; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.type-link.type-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .type-link.type-link:focus-visible { border: 0; background: var(--hover-bg); color: var(--hover-fg); }
 /* The note's front matter, under the bar's divider: a typed row's fields, or its properties as written. */
 .note-fields { display: grid; gap: var(--space-1); margin: var(--space-3) 0 0; }
 .note-fields-type { margin: 0; }

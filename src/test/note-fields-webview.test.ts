@@ -58,9 +58,9 @@ suite('Note page fields, drawn', () => {
     assert.deepStrictEqual([lead.textContent, lead.getAttribute('data-action'), lead.getAttribute('data-tag-key')], ['Dana Whitfield', 'open-tag', '@dana']);
     page.click('.field-row[data-field-key="lead"] .field-link');
     assert.deepStrictEqual(page.lastPosted('openTag'), { type: 'openTag', tagKey: '@dana' });
-    const type = page.find('.note-progress .eyebrow-link');
+    const type = page.find('.note-progress .type-link');
     assert.strictEqual(type.textContent, 'Team');
-    page.click('.note-progress .eyebrow-link');
+    page.click('.note-progress .type-link');
     assert.deepStrictEqual(page.lastPosted('openSearch'), { type: 'openSearch', query: 'type = team' });
   });
 
@@ -149,7 +149,7 @@ suite('Note page fields, drawn', () => {
 
   test('a note row names its type above its fields; a note no type has keeps its properties, in the same region', () => {
     const outage = notePage('Incidents/RFQ outage.md');
-    assert.strictEqual(outage.text('.note-fields .note-fields-type .eyebrow-link'), 'Incident');
+    assert.strictEqual(outage.text('.note-fields .note-fields-type .type-link'), 'Incident');
     const plain = openWebviewPage(
       renderPage('notePage'),
       createNotePageSnapshot(indexOf({ 'notes/props.md': '---\nstatus: active\n---\n# Props' }), 'notes/props.md', options),

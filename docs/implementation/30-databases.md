@@ -248,8 +248,8 @@ types and their fields, and its query accepts the new fields.
 
 `src/webview/notePage/main.tsx`: the properties line leaves the page bar's
 lead and becomes a region below the bar's divider (`section.note-fields`,
-`data-zen-region`). The HubLine's eyebrow names the type ("Team"), linked to
-the type's search.
+`data-zen-region`). The HubLine's label names the type ("Team"), linked to
+the type's search; it is drawn as the label, not an eyebrow, so Zen keeps it.
 
 - One row per filled field: the key in monospace, muted; its values. Person
   and relation values are links with the row's title; selecting one opens it,

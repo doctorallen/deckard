@@ -286,9 +286,11 @@ suite('Zen quiets controls in place', () => {
       assert.ok(quietAtRest(control), `${nameOf(control)} is quiet at rest`);
       assert.ok(control.closest('section.note-fields[data-zen-region]'), `${nameOf(control)} shows from the fields region`);
     }
-    for (const kept of page.findAll('.field-link, .field-empty > summary, .note-progress .eyebrow-link')) {
+    for (const kept of page.findAll('.field-link, .field-empty > summary, .note-progress .type-link')) {
       assert.ok(!quietAtRest(kept), `${nameOf(kept)} stays drawn`);
     }
+    // Plain styling hides an eyebrow whole; the type opens its rows, so it is drawn as the line's label instead.
+    assert.strictEqual(page.find('.note-progress .type-link').closest('.eyebrow'), null, 'the hub line’s type is no eyebrow');
     assert.ok(!quietAtRest(notePage(false).find('.field-add-button')), 'at Full, Add field… is drawn');
     assert.ok(quietAtRest(notePage(false).find('.field-edit')), "at Full, a row's Edit shows on its row, as a row's ⋯ does");
     page.click('.field-edit[data-field-key="lead"]');

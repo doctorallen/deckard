@@ -124,9 +124,12 @@ function Properties({ properties }: { readonly properties: readonly NoteProperty
   );
 }
 
-/** A typed row's type, as an eyebrow that opens the search for its rows. */
+/**
+ * A typed row's type, a link that opens the search for its rows. It reads
+ * as a label but is no eyebrow: it carries data, so Zen keeps it.
+ */
 function TypeLink({ name, query }: { readonly name: string; readonly query: string }) {
-  return <button type="button" class="eyebrow eyebrow-link" data-action="open-search" data-query={query} data-tip={`Search every ${name.toLowerCase()}: ${query}`}>{name}</button>;
+  return <button type="button" class="type-link" data-action="open-search" data-query={query} data-tip={`Search every ${name.toLowerCase()}: ${query}`}>{name}</button>;
 }
 
 /**
