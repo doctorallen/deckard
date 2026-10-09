@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Changed
+
+- **`Types/` holds types, not notes.** A note in the `Types/` folder under
+  the notes folder defines a type: its front matter names the type
+  (`deckard-type: team`) and its rows (`rows: "#team/*"`, `"@*"` for
+  people, or `notes`), and its first table with Field and Kind columns
+  lists the fields. Deckard reads it as a type and leaves it out of
+  searches, counts, Related notes, and overviews, as it does the templates
+  folder, so its tags and tasks stay out of your notes. The search cache is
+  rebuilt once, on the first start after the update.
+
 ## 2.5.0 - 2026-10-08
 
 ### Highlights

@@ -68,6 +68,7 @@ export function createWorkspaceIndex<U extends ResourceUri = ResourceUri>(
     isNotesFile: (uri) => scanner.isNotesFile(uri),
     getNotesFolderUri: (workspaceFolder) => scanner.getNotesFolderUri(workspaceFolder),
     getTemplatesFolderUri: (workspaceFolder) => scanner.getTemplatesFolderUri(workspaceFolder),
+    getTypesFolderUri: (workspaceFolder) => scanner.getTypesFolderUri(workspaceFolder),
     parse: (uri, content, metadata) => scanner.parse(uri, content, metadata),
     searchEntries: (query, searchOptions) => service.searchEntries(query, searchOptions),
     suggestWords: (terms) => service.suggestWords(terms),

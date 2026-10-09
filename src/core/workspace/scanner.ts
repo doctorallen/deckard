@@ -15,6 +15,7 @@ import {
   PARSE_FORMAT,
 } from '../../domain/markdown/parser';
 import { readTaskStatusSettings } from '../../domain/tasks/taskStatuses';
+import { TYPES_FOLDER } from '../../domain/types/typeNotes';
 import { findWorkspaceFolderByKey, readFolderSetting, workspaceFolderKey } from '../../shared/paths';
 import { decodeUtf8Text } from '../../shared/text';
 import { reportError } from '../../shared/timing';
@@ -227,7 +228,7 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
       this.getFilePath(uri, workspaceFolder),
       content,
       metadata,
-      this.getParseOptions(workspaceFolder),
+      this.getNoteParseOptions(uri, workspaceFolder),
     );
   }
 
@@ -265,8 +266,19 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
       this.getFilePath(uri, workspaceFolder),
       content,
       metadata,
-      this.getParseOptions(workspaceFolder),
+      this.getNoteParseOptions(uri, workspaceFolder),
     );
+  }
+
+  /**
+   * How one note is parsed: its folder's settings, and, for a note in the
+   * types folder, as the type it defines.
+   */
+  private getNoteParseOptions(uri: U, workspaceFolder: WorkspaceFolder<U> | undefined): MarkdownParseOptions {
+    const options = this.getParseOptions(workspaceFolder);
+    return workspaceFolder && isWithinWorkspace(uri, this.getTypesFolderUri(workspaceFolder))
+      ? { ...options, typeNote: true }
+      : options;
   }
 
   /**
@@ -438,6 +450,15 @@ export class WorkspaceScanner<U extends ResourceUri = ResourceUri> implements No
     return folder && folder !== '.'
       ? this.access.joinPath(workspaceFolder.uri, ...folder.split('/'))
       : undefined;
+  }
+
+  /**
+   * The folder of type notes, `Types/` under the notes folder. Its notes are
+   * read as the types they define, never as notes, so no entry, search, or
+   * count sees them (docs/implementation/30-databases.md).
+   */
+  public getTypesFolderUri(workspaceFolder: WorkspaceFolder<U>): U {
+    return this.access.joinPath(this.getNotesFolderUri(workspaceFolder), TYPES_FOLDER);
   }
 
   /**

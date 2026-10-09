@@ -780,15 +780,15 @@ export class IndexState {
    * next change, so it is treated as read-only.
    */
   public snapshot(): WorkspaceIndex {
-    const files = new Map(this.notes);
     if (this.repeatedIds > 0) {
       // A repeated id makes one entry replace another across notes, which a
       // note's own part cannot see. Built the direct way, the index is what
       // it always was.
       this.dirty = 'all';
       this.previous = undefined;
-      return buildIndexDirectly(files);
+      return buildIndexDirectly(new Map(this.notes));
     }
+    const { files, typeNotes } = splitTypeNotes(this.notes);
 
     const sections = new Map<string, Section>();
     const tasks = new Map<string, Task>();
@@ -804,6 +804,7 @@ export class IndexState {
 
     const index: WorkspaceIndex = {
       files,
+      ...(typeNotes ? { typeNotes } : {}),
       sections,
       tasks,
       tags,
@@ -1182,7 +1183,33 @@ function removeFrom(map: Map<string, Set<string>>, key: string, value: string): 
 export function buildWorkspaceIndex(
   files: Map<string, ParsedFile>,
 ): WorkspaceIndex {
-  return { ...IndexState.build(files.values()).snapshot(), files };
+  const index = IndexState.build(files.values()).snapshot();
+  return index.typeNotes ? index : { ...index, files };
+}
+
+/**
+ * The notes, in order, with the type notes (`Types/`) taken out into a map
+ * of their own: they define types and are not notes. `typeNotes` is absent
+ * when there are none.
+ */
+function splitTypeNotes(notes: ReadonlyMap<string, ParsedFile>): {
+  files: Map<string, ParsedFile>;
+  typeNotes?: Map<string, ParsedFile>;
+} {
+  let typeNotes: Map<string, ParsedFile> | undefined;
+  notes.forEach((file, filePath) => {
+    if (file.typeNote) {
+      (typeNotes ??= new Map()).set(filePath, file);
+    }
+  });
+  if (!typeNotes) {
+    return { files: new Map(notes) };
+  }
+  const kept = typeNotes;
+  return {
+    files: new Map([...notes].filter(([filePath]) => !kept.has(filePath))),
+    typeNotes,
+  };
 }
 
 /**
@@ -1190,7 +1217,8 @@ export function buildWorkspaceIndex(
  * the fold. Used only while two entries share an id, when one replaces the
  * other across notes and no note's own part can say so.
  */
-export function buildIndexDirectly(files: Map<string, ParsedFile>): WorkspaceIndex {
+export function buildIndexDirectly(notes: Map<string, ParsedFile>): WorkspaceIndex {
+  const { files, typeNotes } = splitTypeNotes(notes);
   const sections = new Map<string, Section>();
   const tasks = new Map<string, Task>();
   const tags = new Map<string, TagInfo>();
@@ -1222,7 +1250,8 @@ export function buildIndexDirectly(files: Map<string, ParsedFile>): WorkspaceInd
   entities.forEach((entity) => finishEntity(entity, tasks));
 
   return {
-    files,
+    files: typeNotes ? files : notes,
+    ...(typeNotes ? { typeNotes } : {}),
     sections,
     tasks,
     tags,

@@ -15,6 +15,12 @@ export interface WorkspaceIndex {
   entities: Map<string, Entity>;
   /** Tag key -> weighted co-occurrence and heading-proximity associations. */
   tagAssociations?: ReadonlyMap<string, TagAssociation[]>;
+  /**
+   * The notes in the types folder, by path, each defining a type
+   * (`ParsedFile.typeNote`). They are kept out of `files`, so no entry,
+   * search, or count sees them; absent when there are none.
+   */
+  typeNotes?: Map<string, ParsedFile>;
   /** What `deckard.parked` parks, set by the indexer; absent means nothing. */
   parked?: ParkedState;
   updatedAt: number;

@@ -52,6 +52,8 @@ export interface NoteFiles<U extends ResourceUri = ResourceUri> {
   getNotesFolderUri(workspaceFolder: WorkspaceFolder<U>): U;
   /** The folder `deckard.templatesFolder` names in a workspace folder, if it names one. */
   getTemplatesFolderUri(workspaceFolder: WorkspaceFolder<U>): U | undefined;
+  /** The folder of type notes, `Types/` under the notes folder, whether or not it exists. */
+  getTypesFolderUri(workspaceFolder: WorkspaceFolder<U>): U;
   /**
    * Parses text an editor holds as the index would parse the file, under
    * its folder's parse settings. It changes nothing in the index.

@@ -1,12 +1,14 @@
 import {
   BuiltInEntityKind,
   EntityKind,
+  FrontmatterProperty,
   HeadingTagSpan,
   NoteHub,
   ParsedFile,
   Section,
   TagReference,
   Task,
+  TypeNote,
 } from '../model';
 import { makeDay, MONTH_NUMBERS, parseIsoDate, WEEKDAY_NAMES } from './calendar';
 import { findFrontmatterEnd, readFlowListValue, splitFlowListItems, splitFrontmatterValues, unquote } from './frontmatter';
@@ -30,13 +32,14 @@ import { MIGRATED_TASK_LINE } from './taskLineEdits';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
 import { assignNoteEntries } from './noteEntries';
 import { DEFAULT_TASK_STATUSES, isNonTaskSymbol, statusForSymbol, type TaskStatusDefinition } from '../tasks/taskStatuses';
+import { parseTypeNote } from '../types/typeNotes';
 
 /**
  * What the parser produces, named. A change to what a parsed note holds
  * (steps' parent links, say) changes it, so the local cache, which keeps
  * parsed notes, is rebuilt rather than served in the old shape.
  */
-export const PARSE_FORMAT = 'task-statuses';
+export const PARSE_FORMAT = 'note-properties';
 
 /** A heading as the parser found it: its 1-based line, its level, and its words. */
 interface HeadingMatch {
@@ -59,6 +62,10 @@ interface Frontmatter {
   tagSpans: HeadingTagSpan[];
   endLine?: number;
   hub?: NoteHub;
+  /** Every key with its values, tags, and lines, when there is one. */
+  properties?: FrontmatterProperty[];
+  /** The `type:` value as written. */
+  typeKey?: string;
   /** The note's `date:`, `created:`, and `updated:` values, as YYYY-MM-DD. */
   date?: string;
   created?: string;
@@ -105,6 +112,12 @@ export interface MarkdownParseOptions {
   assigneeFromPersonTag?: boolean;
   /** What each checkbox character means; see `deckard.tasks.statuses` and taskStatuses.ts. */
   taskStatuses?: readonly TaskStatusDefinition[];
+  /**
+   * Whether the note is in the types folder (`Types/`): it is read as the
+   * type it defines (`ParsedFile.typeNote`), with no entries, tasks, tags,
+   * or links of its own.
+   */
+  typeNote?: boolean;
 }
 
 /** Namespace aliases, lowercased, each to the namespace it stands for: `proj` to `project`. */
@@ -239,18 +252,16 @@ export function parseMarkdown(
   metadata?: Pick<ParsedFile, 'createdAt' | 'updatedAt'>,
   options: MarkdownParseOptions = {},
 ): ParsedFile {
+  if (options.typeNote) {
+    return readTypeNoteFile(filePath, content, metadata, options);
+  }
   const lines = content.split(/\r?\n/);
   const personMarker = getPersonMarker(options.personMarker);
   const frontmatter = parseFrontmatter(lines, {
     aliases: options.entityNamespaceAliases,
     personMarker,
   });
-  const fencedLines = findFencedLines(lines);
-  if (frontmatter.endLine !== undefined) {
-    for (let lineIndex = 0; lineIndex <= frontmatter.endLine; lineIndex += 1) {
-      fencedLines.add(lineIndex);
-    }
-  }
+  const fencedLines = findTextFences(lines, frontmatter);
   const headings = findHeadings(lines, fencedLines);
   const dailyDate = findDailyNoteDate(
     filePath,
@@ -298,8 +309,7 @@ export function parseMarkdown(
     ...(Object.keys(blockIds).length > 0 ? { blockIds } : {}),
     frontmatterTags: frontmatter.tags,
     links: [...new Set([...frontmatter.links, ...extractNoteLinks(content, filePath)])],
-    ...(frontmatter.aliases ? { aliases: frontmatter.aliases } : {}),
-    ...(frontmatter.hub ? { hub: frontmatter.hub } : {}),
+    ...readNoteFields(frontmatter),
     ...(otherCheckboxes > 0 ? { otherCheckboxes } : {}),
     createdAt: dates.createdAt,
     updatedAt: dates.updatedAt,
@@ -312,6 +322,73 @@ export function parseMarkdown(
         }
       : {}),
   }, options.entityNamespaceAliases);
+}
+
+/** The lines that are not a note's text: those in code fences, and its front matter. */
+function findTextFences(lines: string[], frontmatter: Frontmatter): Set<number> {
+  const fencedLines = findFencedLines(lines);
+  if (frontmatter.endLine !== undefined) {
+    for (let lineIndex = 0; lineIndex <= frontmatter.endLine; lineIndex += 1) {
+      fencedLines.add(lineIndex);
+    }
+  }
+  return fencedLines;
+}
+
+/** What a note's front matter gives the parsed note as it is: aliases, hub, properties, and `type:`. */
+function readNoteFields(frontmatter: Frontmatter): Pick<ParsedFile, 'aliases' | 'hub' | 'properties' | 'typeKey'> {
+  return {
+    ...(frontmatter.aliases ? { aliases: frontmatter.aliases } : {}),
+    ...(frontmatter.hub ? { hub: frontmatter.hub } : {}),
+    ...(frontmatter.properties ? { properties: frontmatter.properties } : {}),
+    ...(frontmatter.typeKey ? { typeKey: frontmatter.typeKey } : {}),
+  };
+}
+
+/**
+ * A note in the types folder, read as the type it defines and nothing else:
+ * no entries, tasks, tags, or links, so no search, count, or overview sees
+ * it. Its `rows:` namespace is keyed as tags are, alias resolved.
+ */
+function readTypeNoteFile(
+  filePath: string,
+  content: string,
+  metadata: Pick<ParsedFile, 'createdAt' | 'updatedAt'> | undefined,
+  options: MarkdownParseOptions,
+): ParsedFile {
+  const lines = content.split(/\r?\n/);
+  const frontmatter = parseFrontmatter(lines, {
+    aliases: options.entityNamespaceAliases,
+    personMarker: getPersonMarker(options.personMarker),
+  });
+  const fencedLines = findTextFences(lines, frontmatter);
+  const typeNote: TypeNote = parseTypeNote({
+    filePath,
+    lines,
+    skippedLines: fencedLines,
+    properties: frontmatter.properties ?? [],
+    firstHeading: findHeadings(lines, fencedLines)[0]?.text,
+  });
+  const rows = typeNote.rows;
+  if (rows?.kind === 'tags' && rows.prefix.startsWith('#')) {
+    // `#proj/*` names the rows of `#project/…`, as the index keys them.
+    const probe = normalizeTagKey(`${rows.prefix}x`, options.entityNamespaceAliases);
+    typeNote.rows = { ...rows, prefix: probe.slice(0, -1) };
+  }
+  return {
+    filePath,
+    content,
+    sections: [],
+    tasks: [],
+    frontmatterTags: [],
+    links: [],
+    typeNote,
+    createdAt: metadata?.createdAt,
+    updatedAt: metadata?.updatedAt,
+    ...(metadata
+      ? { fileTimes: { createdAt: metadata.createdAt, updatedAt: metadata.updatedAt } }
+      : {}),
+  };
 }
 
 /**
@@ -508,8 +585,10 @@ function parseFrontmatter(lines: string[], settings: TagSettings): Frontmatter {
   if (end === undefined) {
     return { tags: [], links: [], tagSpans: [] };
   }
-  const { values, tagSpans } = readFrontmatterValues(lines, end, settings);
+  const { values, tagSpans, lineNumbers } = readFrontmatterValues(lines, end, settings);
   const { tags, links } = frontmatterToTags(values, settings);
+  const properties = readProperties(values, lineNumbers, settings);
+  const typeKey = values.get('type')?.[0]?.trim();
   const aliases = [
     ...new Set(
       [...(values.get('aliases') ?? []), ...(values.get('alias') ?? [])]
@@ -524,6 +603,8 @@ function parseFrontmatter(lines: string[], settings: TagSettings): Frontmatter {
     ...(aliases.length > 0 ? { aliases } : {}),
     tagSpans,
     endLine: end,
+    ...(properties.length > 0 ? { properties } : {}),
+    ...(typeKey ? { typeKey } : {}),
     ...createHub(values, settings),
     ...findFrontmatterDates(values),
   };
@@ -538,9 +619,10 @@ function readFrontmatterValues(
   lines: string[],
   end: number,
   settings: TagSettings,
-): { values: Map<string, string[]>; tagSpans: HeadingTagSpan[] } {
+): { values: Map<string, string[]>; tagSpans: HeadingTagSpan[]; lineNumbers: Map<string, FieldLines> } {
   const values = new Map<string, string[]>();
   const tagSpans: HeadingTagSpan[] = [];
+  const lineNumbers = new Map<string, FieldLines>();
   let currentKey: string | undefined;
   lines.slice(1, end).forEach((line, lineIndex) => {
     const lineNumber = lineIndex + 2;
@@ -549,7 +631,9 @@ function readFrontmatterValues(
     if (property) {
       const value = property[3];
       currentKey = property[1].toLowerCase();
-      values.set(currentKey, splitFrontmatterValues(value, { keepEmptyValue: true }));
+      const fieldValues = splitFrontmatterValues(value, { keepEmptyValue: true });
+      values.set(currentKey, fieldValues);
+      lineNumbers.set(currentKey, { key: lineNumber, values: fieldValues.map(() => lineNumber) });
       const valueStart = line.indexOf(value, property[1].length + property[2].length);
       tagSpans.push(
         ...createFrontmatterTagSpans(
@@ -564,6 +648,7 @@ function readFrontmatterValues(
       return;
     }
     values.get(currentKey)?.push(unquote(listItem[1]));
+    lineNumbers.get(currentKey)?.values.push(lineNumber);
     tagSpans.push(
       ...createFrontmatterTagSpans(
         { field: currentKey, rawValue: listItem[1], lineNumber, valueStart: line.indexOf(listItem[1]) },
@@ -571,7 +656,38 @@ function readFrontmatterValues(
       ),
     );
   });
-  return { values, tagSpans };
+  return { values, tagSpans, lineNumbers };
+}
+
+/** The one-based lines a front-matter field is written on: its key's, and each value's. */
+interface FieldLines {
+  key: number;
+  values: number[];
+}
+
+/**
+ * Every front-matter key as a property, in source order, each value with
+ * the tag it names and its line. A value names a tag as the index reads it
+ * (frontmatterToTags): `aliases:` and `links:` name none.
+ */
+function readProperties(
+  values: Map<string, string[]>,
+  lineNumbers: ReadonlyMap<string, FieldLines>,
+  settings: TagSettings,
+): FrontmatterProperty[] {
+  return [...values].map(([name, fieldValues]) => {
+    const lines = lineNumbers.get(name);
+    const namesTags = name !== 'aliases' && name !== 'alias' && name !== 'links';
+    return {
+      name,
+      ...(lines ? { line: lines.key } : {}),
+      values: fieldValues.map((text, at) => {
+        const tag = namesTags ? frontmatterValueToTag(getTagField(name), text, settings) : undefined;
+        const line = lines?.values[at];
+        return { text, ...(tag ? { tag } : {}), ...(line ? { line } : {}) };
+      }),
+    };
+  });
 }
 
 /**
@@ -931,6 +1047,13 @@ function normalizeParsedTagReferences(
     parsed.frontmatterTags,
     entityNamespaceAliases,
   );
+  parsed.properties?.forEach((property) => {
+    property.values.forEach((value) => {
+      if (value.tag) {
+        value.tag = normalizeTagReferences([value.tag], entityNamespaceAliases)[0];
+      }
+    });
+  });
   if (parsed.hub) {
     parsed.hub.describes = normalizeTagReferences(
       parsed.hub.describes,
