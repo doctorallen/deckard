@@ -1,7 +1,9 @@
 import * as assert from 'assert';
 
 import { createQueryContext } from '../domain/query/queryContext';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 import { createNotePageSnapshot } from '../ui/state/notePageState';
+import { createPreferences } from './preferenceServices';
 import { renderPage } from './pages';
 import { indexOf, now, typedWorkspace } from './typedWorkspace';
 import { openWebviewPage, type WebviewPage } from './webviewPage';
@@ -155,5 +157,33 @@ suite('Note page fields, drawn', () => {
     pages.push(plain);
     assert.ok(plain.find('main > section.note-fields .note-properties'));
     assert.strictEqual(plain.findAll('.field-edit, .field-add-button').length, 0);
+  });
+});
+
+suite('Tag page fields, drawn', () => {
+  teardown(() => pages.splice(0).forEach((page) => page.dispose()));
+
+  const searchPage = (query: string): WebviewPage => {
+    const store = createPreferences({ get: (_key: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never);
+    try {
+      const page = openWebviewPage(renderPage('searchPage'), createSearchPageSnapshot(index, store.reader.value, query, { queryContext: createQueryContext(now) }));
+      pages.push(page);
+      return page;
+    } finally {
+      store.repository.dispose();
+    }
+  };
+
+  test('a typed row’s hub card draws its fields, read-only', () => {
+    const page = searchPage('#team/rates');
+    assert.deepStrictEqual(rows(page, '.hub').slice(0, 2), [['lead', 'Dana Whitfield'], ['owns', 'Bond Trading, Fx']]);
+    assert.strictEqual(page.findAll('.hub .field-edit, .hub .hub-properties').length, 0);
+  });
+
+  test('a typed row with no note gets a Fields card in the hub’s place, with who owns it', () => {
+    const page = searchPage('#area/bond-trading');
+    assert.strictEqual(page.text('details.hub-fields-card > summary .eyebrow'), 'Fields');
+    assert.deepStrictEqual(rows(page, '.hub-fields-card'), [['owned by', 'Rates (lead Dana Whitfield · on-call Priya Natarajan)']]);
+    assert.strictEqual(page.find('.hub-offer-link').textContent, 'Create hub note', 'Create hub note stays under the title');
   });
 });

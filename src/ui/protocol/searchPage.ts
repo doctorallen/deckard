@@ -15,6 +15,7 @@ import type {
 } from '../../domain/model/preferences';
 import type { QueryViewState } from '../../domain/model/query';
 import type { EntityKind } from '../../domain/model/tags';
+import type { DrawnFields } from './fields';
 import type { IndexingMessage, MessageAs, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
@@ -72,6 +73,12 @@ export interface SearchPageSnapshot {
   entity?: SearchPageEntity;
   /** The note that describes the tag. */
   hub?: TagOverviewHub;
+  /**
+   * For a tag that is a typed row with no hub note, its fields as other
+   * rows give them, drawn in the hub's place: its reverses, each with what
+   * the row it names holds of people.
+   */
+  rowFields?: DrawnFields;
   /** What a tag's page says under its hub: how else it is reached. */
   tagPage?: SearchPageTagNotes;
   /** The search box's state, and the facets that could narrow it. */
@@ -212,6 +219,8 @@ export interface TagOverviewHub {
   /** The body as block tokens, which the page draws as elements and text. */
   bodyTokens: BlockToken[];
   properties: FrontmatterProperty[];
+  /** For a typed row, its fields, drawn read-only in place of `properties`. */
+  fields?: DrawnFields;
   /** Other notes that also describe the tag. */
   otherFilePaths: string[];
   /** Whether the hub starts open: unless the reader last folded one. */

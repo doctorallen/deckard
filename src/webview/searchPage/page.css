@@ -5,6 +5,7 @@
 @import "../shared/base.css";
 @import "../shared/noteBlocks.css";
 @import "../shared/queryEditor.css";
+@import "../shared/fieldRows.css";
 
 /* ‹ › and ⋯ sit in the bar's top-right corner, beside DECKARD ▾, however
    tall the title and the lines under it run. */
@@ -112,6 +113,8 @@ header.page-bar { align-items: flex-start; }
 .hub-title { display: inline-flex; align-items: center; gap: 8px; }
 .hub-toggle { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 6px solid var(--amber); transition: transform 120ms ease; }
 .hub[open] .hub-toggle { transform: rotate(90deg); }
+.hub-fields { margin: 10px 0 0; }
+.hub-fields-type { color: var(--muted); font-size: var(--text-sm); }
 .hub-properties { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 10px 0 0; }
 .hub-properties div { display: flex; align-items: baseline; gap: 6px; }
 .hub-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); }

@@ -89,6 +89,12 @@
   rewrite safely, such as a `|` block, opens the note at that line
   instead. Under Zen, Edit and Add field… wait until you point at or tab
   into the fields, and an open list stays open.
+- **Fields on a tag's page.** A typed row's tag page draws its hub
+  note's fields as the Note page does, read-only. A typed row with no hub
+  note gets a **Fields** card in the hub's place, with what other rows say
+  of it and who is behind them ("owned by: Rates (lead Dana Whitfield ·
+  on-call Sam Ortiz)"), so a row with no note still shows who owns it.
+  **Create hub note** stays under the title.
 
 ### Changed
 

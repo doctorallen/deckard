@@ -45,6 +45,7 @@ import { findTagFacet, GROUP_ITEM_LIMIT, groupResults } from './searchGroups';
 import { countGroup, groupByHeading, type HeadingGroup } from './headingGroups';
 import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
 import { linkProgressParts } from './progressLinks';
+import { describeTagFields } from './noteFields';
 import { isEntrySection } from '../../domain/markdown/noteEntries';
 import { getEntryLineMap, getEntryTextOf, getFileEntryLines, isFileEntry } from '../../domain/index/noteEntryIndex';
 import { stripTags } from '../../domain/markdown/parser';
@@ -482,11 +483,12 @@ function buildTagPageBlock(
   preferences: PersistedPreferences,
   { focusTag, filtered, hubFile, viaHub, hubTitle, parsed }: SearchPageResults,
   context: QueryContext,
-): Pick<SearchPageSnapshot, 'tag' | 'entity' | 'hub' | 'tagPage'> {
+): Pick<SearchPageSnapshot, 'tag' | 'entity' | 'hub' | 'rowFields' | 'tagPage'> {
   if (!focusTag) {
     return {};
   }
   const entity = index.entities.get(focusTag.key);
+  const fields = readTagPageFields(index, focusTag.key, hubFile);
   return {
     tag: {
       key: focusTag.key,
@@ -502,9 +504,11 @@ function buildTagPageBlock(
             ...createTagOverviewHub(hubFile, focusTag.hubFilePaths?.slice(1) ?? []),
             // Drawn as the note page draws it, its query blocks run.
             ...readNoteBody(index, hubFile.filePath, { queryContext: context }),
+            ...fields.hub,
           },
         }
       : {}),
+    ...fields.page,
     tagPage: {
       ...(filtered ? { filtered } : {}),
       lookalikes: findTagLookalikes(index, focusTag.key),
@@ -515,6 +519,27 @@ function buildTagPageBlock(
       ...describeTagMentions(index, focusTag, context),
     },
   };
+}
+
+/**
+ * A typed row's fields on its tag's page: with a hub note, the hub's, for
+ * its card; without one, what other rows give it, for the card in its
+ * place. Nothing for a tag no type has.
+ */
+function readTagPageFields(
+  index: WorkspaceIndex,
+  tagKey: string,
+  hubFile: ParsedFile | undefined,
+): { hub: Pick<NonNullable<SearchPageSnapshot['hub']>, 'fields'>; page: Pick<SearchPageSnapshot, 'rowFields'> } {
+  const others = (hubFile?.hub?.properties ?? []).map((property) => ({
+    name: property.name,
+    values: property.values.map((value) => (value.tag ? { text: value.text, tag: { key: value.tag.key, label: value.tag.label } } : { text: value.text })),
+  }));
+  const fields = describeTagFields(index, tagKey, others);
+  if (!fields) {
+    return { hub: {}, page: {} };
+  }
+  return hubFile ? { hub: { fields }, page: {} } : { hub: {}, page: { rowFields: fields } };
 }
 
 /** Whether two searches are the same words, their spacing aside. */
