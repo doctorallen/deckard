@@ -276,15 +276,15 @@ export function splitTableRow(line: string): string[] {
   if (text.startsWith('|')) {
     text = text.slice(1);
   }
-  if (text.endsWith('|') && !text.endsWith('\\|')) {
+  if (text.endsWith('|') && (/\\*\|$/.exec(text)?.[0].length ?? 1) % 2 === 1) {
     text = text.slice(0, -1);
   }
   const cells: string[] = [];
   let current = '';
   for (let at = 0; at < text.length; at += 1) {
     const character = text[at];
-    if (character === '\\' && text[at + 1] === '|') {
-      current += '|';
+    if (character === '\\' && (text[at + 1] === '|' || text[at + 1] === '\\')) {
+      current += text[at + 1];
       at += 1;
     } else if (character === '|') {
       cells.push(current.trim());

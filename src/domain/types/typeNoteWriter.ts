@@ -76,7 +76,7 @@ export function typeNotePath(name: string): string | undefined {
 /** `rows:` quoted where YAML would read it otherwise: a `#` starts a comment, and `@` and `*` cannot start a plain value. */
 function quoteRows(rows: string): string {
   const text = rows.trim();
-  return /^[#@*]/.test(text) ? `"${text.replace(/"/g, '\\"')}"` : text;
+  return /^[#@*]/.test(text) ? `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : text;
 }
 
 /** The line under the table that says what the type's rows are. */
@@ -90,12 +90,19 @@ function describeRows(draft: TypeNoteDraft): string {
 }
 
 /**
- * A Markdown table, each column as wide as its widest cell, with `|` in a
- * cell escaped.
+ * A table cell's text as written in a row: a backslash doubled and a `|`
+ * escaped, which is how `splitTableRow` reads them back.
+ */
+export function escapeTableCell(text: string): string {
+  return text.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
+}
+
+/**
+ * A Markdown table, each column as wide as its widest cell, with each cell
+ * escaped by `escapeTableCell`.
  */
 export function writeTable(header: readonly string[], rows: readonly (readonly string[])[]): string[] {
-  const escape = (cell: string): string => cell.replace(/\|/g, '\\|');
-  const cells = [header, ...rows].map((row) => header.map((_, at) => escape(row[at] ?? '')));
+  const cells = [header, ...rows].map((row) => header.map((_, at) => escapeTableCell(row[at] ?? '')));
   const widths = header.map((_, at) => Math.max(3, ...cells.map((row) => row[at].length)));
   const line = (row: readonly string[]): string =>
     `| ${row.map((cell, at) => cell.padEnd(widths[at])).join(' | ')} |`;

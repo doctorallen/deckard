@@ -10,7 +10,7 @@
 import type { WorkspaceIndex } from '../model';
 import type { FrontmatterFieldWrite } from './frontmatterWriter';
 import { getTypeIndex, type TypeIndex } from './typeIndex';
-import { findTableCells } from './typeNoteWriter';
+import { escapeTableCell, findTableCells } from './typeNoteWriter';
 import type { TypeDefinition } from './typeRegistry';
 
 /** A front-matter key as a field name must be to be written as one. */
@@ -190,7 +190,7 @@ export function rewriteTableCell(line: string, cell: number, text: string): stri
   if (!span) {
     return line;
   }
-  const escaped = text.replace(/\|/g, '\\|');
+  const escaped = escapeTableCell(text);
   const after = line.slice(span.end);
   const surplus = escaped.length - (span.end - span.start);
   // Longer text takes the spaces after it, leaving one; shorter is padded.

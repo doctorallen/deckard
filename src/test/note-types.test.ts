@@ -9,6 +9,7 @@ import { readCheckboxValue, readDateValue, readNumberValue, readSelectValue } fr
 import { entryOfLink, getTypeIndex, MAX_PATH_SEGMENTS, TypeIndex } from '../domain/types/typeIndex';
 import { buildTypeRegistry } from '../domain/types/typeRegistry';
 import { readRowsRule, splitTableRow } from '../domain/types/typeNotes';
+import { escapeTableCell, writeTable } from '../domain/types/typeNoteWriter';
 import { createSearchEntries } from '../core/storage/searchDatabase';
 import { decodeParsedFile, encodeParsedFile } from '../core/storage/parsedFileCodec';
 import { WorkspaceScanner } from '../core/workspace/scanner';
@@ -231,6 +232,15 @@ suite('Types: the schema table', () => {
       ],
     );
     assert.deepStrictEqual(splitTableRow('| a \\| b | c |'), ['a | b', 'c']);
+  });
+
+  test('reads back a cell Deckard wrote with a backslash or a pipe in it', () => {
+    const cells = ['a | b', 'C:\\notes\\', 'ends \\|', '\\'];
+    for (const line of writeTable(['One', 'Two', 'Three', 'Four'], [cells]).slice(2)) {
+      assert.deepStrictEqual(splitTableRow(line), cells);
+    }
+    assert.strictEqual(escapeTableCell('a\\|b'), 'a\\\\\\|b');
+    assert.deepStrictEqual(splitTableRow('| a \\\\| b |'), ['a \\', 'b']);
   });
 
   test('says what a type note gets wrong, by line', () => {
