@@ -294,10 +294,44 @@ function descriptionsFor(field: string): Readonly<Record<string, string>> {
   return field === 'priority' ? { ...OPERATOR_DESCRIPTIONS, ...PRIORITY_OPERATOR_DESCRIPTIONS } : OPERATOR_DESCRIPTIONS;
 }
 
+/** One field a builder row's field list offers, under its heading when it has one. */
+interface FieldOption {
+  readonly value: string;
+  readonly group?: string;
+}
+
 /** What a builder row draws with, besides the row. */
 interface BuilderContext {
-  readonly fieldNames: readonly string[];
+  readonly fields: readonly FieldOption[];
   readonly operatorsFor: (field: string) => readonly string[];
+}
+
+/**
+ * A row's field list: a native select whose options are written as query
+ * names, under optgroups when the host files them under headings (a
+ * type's own fields, "Through <relation>", then "Built in"). A field the
+ * list does not offer, such as one typed by hand, is offered first, so the
+ * row keeps it.
+ */
+function FieldSelect({ field, at, fields }: { readonly field: string; readonly at: string; readonly fields: readonly FieldOption[] }) {
+  const listed = fields.some((option) => option.value === field) ? fields : [{ value: field }, ...fields];
+  const option = (item: FieldOption) => <option value={item.value} selected={item.value === field}>{item.value}</option>;
+  // Runs of fields under one heading, in order; a field with none stands alone.
+  const runs: Array<{ label?: string; items: FieldOption[] }> = [];
+  listed.forEach((item) => {
+    const last = runs[runs.length - 1];
+    if (item.group && last && last.label === item.group) {
+      last.items.push(item);
+    } else {
+      runs.push({ label: item.group, items: [item] });
+    }
+  });
+  const drawn = runs.map((run) => (run.label ? <optgroup label={run.label}>{run.items.map(option)}</optgroup> : run.items.map(option)));
+  return (
+    <select data-action="builder-set-field" data-path={at} aria-label="Field">
+      {drawn}
+    </select>
+  );
 }
 
 /** A row of the builder: a new row's one field, a row it cannot edit as written, or field, operator, and value. */
@@ -345,9 +379,7 @@ function BuilderRow({ row, path, joiner, context }: { readonly row: EditorRow; r
   return (
     <div class="query-builder-row">
       {joiner}
-      <select data-action="builder-set-field" data-path={at} aria-label="Field">
-        {context.fieldNames.map((field) => <option value={field} selected={field === row.field}>{field}</option>)}
-      </select>
+      <FieldSelect field={row.field} at={at} fields={context.fields} />
       <select class="query-builder-operator" data-action="builder-set-operator" data-path={at} aria-label={`Operator: ${operatorTitle}`} data-tip={operatorTitle}>
         {context.operatorsFor(row.field).map((operator) => (
           <option value={operator} title={descriptions[operator] || ''} selected={operator === row.operator}>{OPERATOR_LABELS[operator] || operator}</option>
@@ -585,9 +617,9 @@ class SearchBox implements QueryEditor {
     return table[field] || DEFAULT_OPERATORS[field] || ['eq'];
   }
 
-  private fieldNames(): string[] {
-    const listed = (this.suggestions().fields || []).map((field) => field.value);
-    return listed.length ? listed : Object.keys(DEFAULT_OPERATORS);
+  private fieldOptions(): FieldOption[] {
+    const listed = this.suggestions().fields || [];
+    return listed.length ? listed : Object.keys(DEFAULT_OPERATORS).map((value) => ({ value }));
   }
 
   private aliases(): Readonly<Record<string, string>> {
@@ -687,7 +719,7 @@ class SearchBox implements QueryEditor {
     if (!this.builderOpen) {
       return null;
     }
-    const context: BuilderContext = { fieldNames: this.fieldNames(), operatorsFor: (field) => this.operatorsFor(field) };
+    const context: BuilderContext = { fields: this.fieldOptions(), operatorsFor: (field) => this.operatorsFor(field) };
     return (
       <div class="query-builder">
         <BuilderGroup group={this.builderTree()} path={[]} depth={0} context={context} />

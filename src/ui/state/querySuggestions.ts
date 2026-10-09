@@ -2,10 +2,27 @@ import { EntityNamespaceAliases, isPersonTag } from '../../domain/markdown/parse
 import { canAppendTerm, getTopLevelJoin, getTopLevelTerms } from '../../domain/query/queryEdit';
 import { countTagMatches } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
-import { collectQueryTagKeys, quoteValue, toBuilderTree } from '../../domain/query/queryFormat';
+import {
+  collectQueryTagKeys,
+  getQueryTypeKeys,
+  quoteValue,
+  toBuilderTree,
+  visitFieldConditions,
+} from '../../domain/query/queryFormat';
 import { FIELD_ALIASES } from '../../domain/query/queryParser';
 import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
-import { ParsedQuery, QUERY_FIELD_OPERATORS, QUERY_FIELDS, QUERY_PRIORITY_VALUES, QUERY_RESERVED_STATUS_VALUES } from '../../domain/query/queryTypes';
+import {
+  ParsedQuery,
+  QUERY_FIELD_OPERATORS,
+  QUERY_FIELDS,
+  QUERY_PRIORITY_VALUES,
+  QUERY_RESERVED_STATUS_VALUES,
+  QueryNode,
+  typeFieldOperators,
+} from '../../domain/query/queryTypes';
+import { getTypeIndex, type TypeIndex } from '../../domain/types/typeIndex';
+import { listTypeQueryFields, resolveTypeQueryPath, type TypeQueryField } from '../../domain/types/typeQueryFields';
+import type { TypeDefinition } from '../../domain/types/typeRegistry';
 import { DEFAULT_TASK_POLICY, type TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { normalizeStatusName, UNKNOWN_STATUS_NAME } from '../../domain/tasks/taskStatuses';
 import {
@@ -21,6 +38,7 @@ import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { addDays } from '../../domain/markdown/calendar';
 import { formatDisplayDate } from '../../domain/markdown/dateFormat';
 import {
+  QueryOperator,
   TagInfo,
   TagReference,
   WorkspaceIndex,
@@ -77,7 +95,7 @@ export function createQueryViewState({
     diagnostics: pending ? parseWorkspaceQuery(index, pending).diagnostics : parsed.diagnostics,
     builder: toBuilderTree(parsed.node),
     tags: resolveQueryTags(index, parsed, queryContext.entityNamespaceAliases),
-    suggestions: createQuerySuggestions(index, recentQueries, queryContext),
+    suggestions: createQuerySuggestions(index, recentQueries, queryContext, parsed.node),
     matchCounts,
   };
 }
@@ -132,17 +150,21 @@ export function describeTagMatches(
  * builder row can complete its own value field with the same list. A date
  * value says the days it means on the context's today, in weeks from its
  * week start.
+ *
+ * In a workspace with types, `node`, the search being edited, decides the
+ * type fields offered: those of each type its top level names
+ * (`type = team`), then those one relation away ("Through lead"), then the
+ * built-in fields, each with its values by kind.
  */
 export function createQuerySuggestions(
   index: WorkspaceIndex,
   recentQueries: readonly string[],
   context: Pick<QueryContext, 'now' | 'weekStart'> & Partial<Pick<QueryContext, 'taskPolicy' | 'dateFormats'>>,
+  node?: QueryNode,
 ): QuerySuggestions {
-  const fields: QuerySuggestion[] = QUERY_FIELDS.map((field) => ({
-    value: field,
-    label: field,
-    detail: describeQueryField(field),
-  }));
+  const types = getTypeIndex(index);
+  const typed = types.isEmpty ? undefined : suggestTypeFields(types, node);
+  const fields = listFields(typed);
   const tags = suggestTags(index, () => true);
   const kinds: QuerySuggestion[] = [
     ...new Set(
@@ -178,9 +200,10 @@ export function createQuerySuggestions(
 
   return {
     fields,
-    aliases: { ...FIELD_ALIASES },
-    operators: { ...QUERY_FIELD_OPERATORS },
+    aliases: { ...FIELD_ALIASES, ...typed?.aliases },
+    operators: { ...QUERY_FIELD_OPERATORS, ...typed?.operators },
     values: {
+      ...typed?.values,
       tag: tags,
       link: links,
       kind: kinds,
@@ -191,7 +214,7 @@ export function createQuerySuggestions(
       })),
       task: TASK_SUGGESTIONS,
       status: suggestStatuses(index, context.taskPolicy ?? DEFAULT_TASK_POLICY),
-      has: HAS_SUGGESTIONS.map((value) => ({ value, label: value })),
+      has: [...HAS_SUGGESTIONS.map((value) => ({ value, label: value })), ...(typed?.has ?? [])],
       file: files,
       path: paths,
       in: folders,
@@ -205,13 +228,189 @@ export function createQuerySuggestions(
       created: dates,
       updated: dates,
     },
-    conditions: suggestConditions(folders),
+    conditions: [...(typed?.conditions ?? []), ...suggestConditions(folders)],
     recent: recentQueries.map((query) => ({
       value: query,
       label: query,
       detail: 'Recent search',
     })),
   };
+}
+
+/**
+ * The fields offered: the type fields, then the built-ins, under "Built in"
+ * when there are type fields, and `type` only when the workspace has types.
+ */
+function listFields(typed: TypeFieldSuggestions | undefined): QuerySuggestion[] {
+  return [
+    ...(typed?.fields ?? []),
+    ...QUERY_FIELDS.filter((field) => field !== 'type' || typed).map((field) => ({
+      value: field,
+      label: field,
+      detail: describeQueryField(field),
+      ...(typed ? { group: 'Built in' } : {}),
+    })),
+  ];
+}
+
+/** What a workspace's types add to the completions. */
+interface TypeFieldSuggestions {
+  /** The type fields offered, each under its type's or relation's heading. */
+  fields: QuerySuggestion[];
+  /** Each type field's values by its kind, and `type`'s, the types. */
+  values: Record<string, QuerySuggestion[]>;
+  operators: Record<string, readonly QueryOperator[]>;
+  /** Each type field's name, naming itself, and `type`, so the bar knows the field its caret is in. */
+  aliases: Record<string, string>;
+  /** The type fields `has:` and `no:` ask about. */
+  has: QuerySuggestion[];
+  /** `type = <key>` for each type. */
+  conditions: QuerySuggestion[];
+}
+
+/** Upper bound on the rows a relation's value completes with. */
+const QUERY_ROW_SUGGESTION_LIMIT = 200;
+
+/**
+ * The type fields a search can be narrowed by: for each type its top level
+ * names, its own fields, reverses, and computed fields under its name, then
+ * each relation's target's fields, one level deep, under "Through
+ * <relation>" as `<relation>.<field>`. Every type field the search already
+ * uses is offered too, so a row the builder draws for it keeps its field.
+ */
+function suggestTypeFields(types: TypeIndex, node: QueryNode | undefined): TypeFieldSuggestions {
+  const registry = types.registry;
+  const fields: QuerySuggestion[] = [];
+  const kinds = new Map<string, TypeQueryField[]>();
+  const offer = (name: string, found: TypeQueryField[], group: string, detail: string): void => {
+    if (kinds.has(name) || found.length === 0) {
+      return;
+    }
+    kinds.set(name, found);
+    fields.push({ value: name, label: name, detail, group });
+  };
+  getQueryTypeKeys(node).forEach((typeKey) => {
+    const type = registry.get(typeKey);
+    if (!type) {
+      return;
+    }
+    const own = listTypeQueryFields(registry, type.key);
+    own.forEach((field) => offer(field.name, [field], type.name, describeTypeField(field, registry.get(field.targets[0] ?? ''))));
+    own
+      .filter((field) => field.targets.length > 0 && field.name !== 'children' && field.name !== 'parent')
+      .forEach((relation) =>
+        relation.targets.forEach((targetKey) =>
+          listTypeQueryFields(registry, targetKey)
+            .filter((field) => field.source !== 'computed')
+            .forEach((field) =>
+              offer(`${relation.name}.${field.name}`, [field], `Through ${relation.name}`, describeTypeField(field, registry.get(field.targets[0] ?? ''))),
+            ),
+        ),
+      );
+  });
+  visitFieldConditions(node, (condition) => {
+    const found = resolveTypeQueryPath(registry, condition.name);
+    offer(condition.name, found, 'In this search', found[0] ? describeTypeField(found[0], registry.get(found[0].targets[0] ?? '')) : '');
+  });
+  const values: Record<string, QuerySuggestion[]> = {
+    type: registry.types.map((type) => ({ value: type.key, label: type.key, detail: describeType(type) })),
+  };
+  const operators: Record<string, readonly QueryOperator[]> = {};
+  const aliases: Record<string, string> = { type: 'type' };
+  kinds.forEach((found, name) => {
+    values[name] = suggestTypeFieldValues(types, found);
+    operators[name] = typeFieldOperators([...new Set(found.map((field) => field.kind.name))]);
+    aliases[name] = name;
+  });
+  return {
+    fields,
+    values,
+    operators,
+    aliases,
+    has: [...kinds.keys()].filter((name) => !name.includes('.') || name.startsWith('field.')).map((name) => ({ value: name, label: name, detail: 'Rows with this field filled' })),
+    conditions: registry.types.map((type) => ({ value: `type = ${type.key}`, label: `type = ${type.key}`, detail: describeType(type) })),
+  };
+}
+
+/** A type as a completion describes it: its name and what its rows are, `Team · #team/*`. */
+function describeType(type: TypeDefinition): string {
+  const rows = type.rows?.kind === 'notes' ? `notes with type: ${type.key}` : type.rows?.written;
+  return rows ? `${type.name} · ${rows}` : type.name;
+}
+
+/**
+ * A type field as a completion describes it: its kind, the type its values
+ * are rows of, and whether it is computed: `Person`, `Team, many · reverse`,
+ * `Number · computed from the notes`.
+ */
+function describeTypeField(field: TypeQueryField, target: TypeDefinition | undefined): string {
+  const rows = field.kind.name === 'relation' || field.kind.name === 'person';
+  const kind = `${rows ? (target?.name ?? 'Person') : describeKind(field.kind.name)}${field.kind.many ? ', many' : ''}`;
+  switch (field.source) {
+    case 'reverse':
+      return `${kind} · reverse`;
+    case 'computed':
+      return `${kind} · computed from the notes`;
+    case 'field':
+      return kind;
+  }
+}
+
+/** A kind's name as a completion says it: `Number`, `Select`. */
+function describeKind(kind: string): string {
+  return kind.charAt(0).toUpperCase() + kind.slice(1);
+}
+
+/**
+ * The values a type field completes with, by its kind: the rows of the
+ * types a relation or person names, their tag or title; a select's
+ * options; true and false; the dates `created` takes.
+ */
+function suggestTypeFieldValues(types: TypeIndex, found: readonly TypeQueryField[]): QuerySuggestion[] {
+  const values = new Map<string, QuerySuggestion>();
+  const add = (suggestion: QuerySuggestion): void => {
+    if (!values.has(suggestion.value.toLowerCase())) {
+      values.set(suggestion.value.toLowerCase(), suggestion);
+    }
+  };
+  found.forEach((field) => {
+    switch (field.kind.name) {
+      case 'person':
+      case 'relation':
+      case 'note':
+        field.targets.forEach((typeKey) => {
+          const typeName = types.registry.get(typeKey)?.name ?? typeKey;
+          types
+            .rows(typeKey)
+            .slice(0, QUERY_ROW_SUGGESTION_LIMIT)
+            .forEach((row) =>
+              add({
+                value: row.tagKeys.length > 0 ? row.id : row.title,
+                label: row.title,
+                detail: row.tagKeys.length > 0 ? `${typeName} · ${row.id}` : typeName,
+              }),
+            );
+        });
+        return;
+      case 'select':
+        (field.kind.options ?? []).forEach((option) => add({ value: option, label: option, detail: 'Option' }));
+        return;
+      case 'checkbox':
+        add({ value: 'true', label: 'true', detail: 'Checked' });
+        add({ value: 'false', label: 'false', detail: 'Not checked' });
+        return;
+      case 'date':
+        ['today', '7d', '30d', 'this-month', 'last-month'].forEach((value) => add({ value, label: value }));
+        return;
+      case 'number':
+      case 'text':
+      case 'link':
+      case 'email':
+      case 'phone':
+        return;
+    }
+  });
+  return [...values.values()];
 }
 
 /** The tags `keep` lets through, most used first, each with what searching for it finds. */
@@ -514,6 +713,8 @@ export function describeQueryField(field: string): string {
       return 'The person a task is for: whoever its 👤 field names, or none';
     case 'kind':
       return 'An entity namespace such as project or person';
+    case 'type':
+      return 'The rows of a type a note in Types/ defines, as type = team';
     case 'file':
       return 'A file name, with * as a wildcard';
     case 'path':

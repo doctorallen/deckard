@@ -107,6 +107,49 @@ suite('Tag overview query builder', () => {
     assert.strictEqual(view.find('[data-action="builder-toggle-not"][data-path="0"]').getAttribute('aria-pressed'), 'true', 'the group is shown as negated');
   });
 
+  test('files a type\'s fields under headings, and keeps a field typed by hand as an editable row', () => {
+    const view = mountTagOverview();
+    const state = createState('') as { query: { text: string; builder: unknown; suggestions: Record<string, unknown> } };
+    state.query.text = 'type = team tier = gold, silver on-call = @priya';
+    state.query.builder = {
+      join: 'and',
+      items: [
+        { field: 'type', operator: 'eq', value: 'team', supported: true, text: 'type = team' },
+        { field: 'tier', operator: 'eq', value: 'gold, silver', supported: true, text: 'tier = gold, silver' },
+        { field: 'on-call', operator: 'eq', value: '@priya', supported: true, text: 'on-call = @priya' },
+      ],
+    };
+    state.query.suggestions.fields = [
+      { value: 'tier', label: 'tier', group: 'Team' },
+      { value: 'lead', label: 'lead', group: 'Team' },
+      { value: 'lead.email', label: 'lead.email', group: 'Through lead' },
+      { value: 'tag', label: 'tag', group: 'Built in' },
+      { value: 'type', label: 'type', group: 'Built in' },
+    ];
+    state.query.suggestions.operators = { tier: ['eq', 'neq'], lead: ['eq', 'neq'], 'lead.email': ['eq', 'neq', 'contains', 'notContains'], tag: ['eq', 'neq'], type: ['eq', 'neq'] };
+    view.send(state);
+    view.click({ action: 'toggle-builder' });
+
+    const tier = view.find('[data-action="builder-set-field"][data-path="1"]') as HTMLSelectElement;
+    assert.deepStrictEqual([...tier.querySelectorAll('optgroup')].map((group) => group.getAttribute('label')), ['Team', 'Through lead', 'Built in']);
+    assert.deepStrictEqual([...tier.querySelectorAll('optgroup')].map((group) => [...group.querySelectorAll('option')].map((option) => option.value)), [
+      ['tier', 'lead'],
+      ['lead.email'],
+      ['tag', 'type'],
+    ]);
+    assert.strictEqual(tier.value, 'tier');
+    // A field the list does not offer is offered first, so its row keeps it.
+    const onCall = view.find('[data-action="builder-set-field"][data-path="2"]') as HTMLSelectElement;
+    assert.strictEqual(onCall.value, 'on-call');
+    assert.strictEqual(onCall.querySelector('option')?.value, 'on-call');
+    assert.strictEqual(view.findAll('.query-builder-readonly').length, 0, 'nothing is text');
+
+    view.posted.length = 0;
+    view.change({ dataset: { action: 'builder-set-value', path: '1' } }, 'gold, Bronze age');
+    const sent = view.posted.filter((message) => message.type === 'setOverviewQuery').pop();
+    assert.strictEqual(sent?.query, 'type = team AND tier = gold, "Bronze age" AND on-call = @priya');
+  });
+
   test('accepting a completion in a nested group\'s second row leaves its first row alone', () => {
     // Reported: with #person/mara-vale as the first row of a nested OR group,
     // typing "harb" in the group's next row and choosing #team/harbor turned
