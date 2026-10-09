@@ -34,6 +34,50 @@ export const QUERY_FIELDS: readonly QueryField[] = [
 ];
 
 /**
+ * Field spellings accepted in a query, mapped to their canonical field.
+ */
+export const FIELD_ALIASES: Readonly<Record<string, QueryField>> = {
+  tag: 'tag',
+  tags: 'tag',
+  link: 'link',
+  links: 'link',
+  linksto: 'link',
+  text: 'text',
+  content: 'text',
+  body: 'text',
+  task: 'task',
+  tasks: 'task',
+  status: 'status',
+  due: 'due',
+  deadline: 'due',
+  scheduled: 'scheduled',
+  start: 'start',
+  starts: 'start',
+  done: 'done',
+  cancelled: 'cancelled',
+  canceled: 'cancelled',
+  priority: 'priority',
+  assignee: 'assignee',
+  assigned: 'assignee',
+  owner: 'assignee',
+  kind: 'kind',
+  type: 'kind',
+  namespace: 'kind',
+  file: 'file',
+  note: 'file',
+  filename: 'file',
+  path: 'path',
+  folder: 'path',
+  created: 'created',
+  updated: 'updated',
+  modified: 'updated',
+  is: 'is',
+  has: 'has',
+  no: 'has',
+  in: 'in',
+};
+
+/**
  * Fields written as one `field:value` token rather than `field = value`.
  */
 export const QUERY_SHORTHAND_FIELDS: readonly QueryField[] = ['is', 'has', 'in'];

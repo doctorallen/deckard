@@ -14,8 +14,11 @@ import {
   QUERY_TASK_VALUES,
   QUERY_OPERATOR_SYMBOLS,
   describeOperator,
+  FIELD_ALIASES,
 } from './queryTypes';
 import { QueryDiagnostic, QueryField, QueryOperator } from '../model';
+
+export { FIELD_ALIASES };
 
 /**
  * Parses DQL, the Deckard query language.
@@ -61,50 +64,6 @@ export function parseQuery(text: string): ParsedQuery {
     diagnostics,
   };
 }
-
-/**
- * Field spellings accepted in a query, mapped to their canonical field.
- */
-export const FIELD_ALIASES: Readonly<Record<string, QueryField>> = {
-  tag: 'tag',
-  tags: 'tag',
-  link: 'link',
-  links: 'link',
-  linksto: 'link',
-  text: 'text',
-  content: 'text',
-  body: 'text',
-  task: 'task',
-  tasks: 'task',
-  status: 'status',
-  due: 'due',
-  deadline: 'due',
-  scheduled: 'scheduled',
-  start: 'start',
-  starts: 'start',
-  done: 'done',
-  cancelled: 'cancelled',
-  canceled: 'cancelled',
-  priority: 'priority',
-  assignee: 'assignee',
-  assigned: 'assignee',
-  owner: 'assignee',
-  kind: 'kind',
-  type: 'kind',
-  namespace: 'kind',
-  file: 'file',
-  note: 'file',
-  filename: 'file',
-  path: 'path',
-  folder: 'path',
-  created: 'created',
-  updated: 'updated',
-  modified: 'updated',
-  is: 'is',
-  has: 'has',
-  no: 'has',
-  in: 'in',
-};
 
 /** The spelling of `has:` that means "has no". */
 const NEGATED_HAS = 'no';
