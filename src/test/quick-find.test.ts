@@ -254,7 +254,8 @@ suite('Quick Find', () => {
     const items = toPickItems(results, 'rates lead');
     assert.deepStrictEqual(
       items.filter((item) => item.kind === vscode.QuickPickItemKind.Separator).map((item) => item.label),
-      ['Answer', 'Tags'],
+      ['Answer', 'Tags', ''],
+      'the answers, the tags, and the offer of a note by the words typed',
     );
     assert.deepStrictEqual(items.slice(1, 4).map((item) => [item.label, item.detail, item.buttons?.length]), [
       ['$(person) Dana Whitfield', 'Rates › lead', undefined],

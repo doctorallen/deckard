@@ -458,7 +458,7 @@ suite('Search page behavior', () => {
   test('keeps Export in ⋯, after Save search…, and Bulk edit beside the pane', () => {
     const { page } = open(NOTES, '#project/atlas');
     const rows = page.findAll('.page-menu [data-action]').map((row) => row.textContent);
-    assert.deepStrictEqual(rows.slice(0, 3), ['Save search…', 'Export notes…', 'Export tasks…'], 'the page\'s actions, one per kind with results');
+    assert.deepStrictEqual(rows.slice(0, 4), ['Save search…', 'Create type from #project…', 'Export notes…', 'Export tasks…'], 'the page\'s actions, one per kind with results');
     assert.strictEqual(page.findAll('.overview-tabs-row [data-action="export-results"]').length, 0, 'Export is not beside the pane');
     assert.strictEqual(page.text('.overview-tabs-row [data-action="edit-results"]'), 'Bulk edit');
     page.click('.page-menu [data-action="export-results"][data-kind="tasks"]');
