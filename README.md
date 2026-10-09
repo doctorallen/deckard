@@ -26,6 +26,7 @@
 | | |
 | --- | --- |
 | [**Tags, people, and entities**](docs/guide/notes-and-links.md) | `#tags`, `@people`, and namespaced tags such as `#project/atlas`, on headings, lines, tasks, and front matter, become one index. |
+| [**Types and fields**](docs/guide/databases.md) | Say in one note what a team, a person, or an incident is, and the front matter you already write becomes fields: every team as a table you sort and group, each row's fields on its page, and Find answering *who leads checkout?* |
 | [**Links and embeds**](docs/guide/notes-and-links.md#markdown-format) | `[[Note]]`, `[[Note#Heading]]`, and `[[Note#^line]]` complete and open; `![[Note#Heading]]` shows a section in place; **Copy as Plain Markdown** writes them out for a chat, an email, or a pull request. |
 | [**The / menu**](docs/guide/notes-and-links.md#editor-assistance) | A `/` at the start of a line offers a task, a heading, a link or an embed, a query block, a table of notes or tasks, or one of your templates. |
 | [**Tasks**](docs/guide/tasks.md) | Due, scheduled, and start dates, priorities, repeats, dependencies, steps, and who a task is for, in either Obsidian Tasks format — with a task editor that takes dates in plain words. |
@@ -38,7 +39,7 @@
 | [**Related notes and the graph**](docs/guide/connections.md) | A sidebar ranks the notes most related to the one you are editing, and says why; the Notes Graph maps every connection. |
 | [**Daily notes and reviews**](docs/guide/daily-notes.md) | Today's note from your template, yesterday's unfinished tasks carried in, weekly and monthly reviews written for you, a calendar page where you drag a task to another day, and your dated tasks in your own calendar app. |
 | [**Renaming and tidying**](docs/guide/organizing.md) | Rename a tag, note, or heading everywhere it is written; merge lookalike tags; park what you are not working on. |
-| [**AI assistants**](docs/guide/ai-assistants.md) | Copilot, Claude Code, and other MCP clients can search your notes and tasks with Deckard's queries. |
+| [**AI assistants**](docs/guide/ai-assistants.md) | Copilot, Claude Code, and other MCP clients can search your notes and tasks with Deckard's queries, and describe a tag and its fields. |
 | [**Themes and Zen**](docs/guide/themes-and-zen.md) | Eight looks for Deckard's pages, and a Zen mode that turns the chrome down in any of them. |
 
 <table>
