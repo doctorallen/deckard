@@ -8,7 +8,7 @@
  */
 import { formatQuery } from './queryFormat';
 import { parseQuery } from './queryParser';
-import { ParsedQuery, QueryConditionNode, QueryNode } from './queryTypes';
+import { ANY_FIELD_SCHEMA, ParsedQuery, QueryConditionNode, QueryNode } from './queryTypes';
 import { isWildcard } from './queryValues';
 import { escapeRegExp } from '../../shared/text';
 import { QueryBuilderJoin, QueryTermChip } from '../model';
@@ -112,6 +112,7 @@ function spanOf(text: string, node: QueryNode): Span | undefined {
 function rawSpanOf(text: string, node: QueryNode): Span | undefined {
   switch (node.type) {
     case 'condition':
+    case 'field':
       return { start: node.start, end: node.end };
     case 'not': {
       const inner = spanOf(text, node.child);
@@ -218,7 +219,9 @@ export function extractTagTerms(
   text: string,
   resolve: (tagKey: string) => string | undefined,
 ): { tagKeys: string[]; rest: string } {
-  const parsed = parseQuery(text);
+  // Only the query's shape matters here, so a type's field reads as one
+  // whatever the workspace's types are.
+  const parsed = parseQuery(text, ANY_FIELD_SCHEMA);
   const spans = getTermSpans(parsed);
   if (!spans) {
     return { tagKeys: [], rest: text.trim() };
@@ -316,6 +319,8 @@ function forEachTextCondition(
       case 'or':
         current.children.forEach((child) => walk(child, negated));
         return;
+      case 'field':
+        return;
       case 'condition':
         if (
           !negated &&
@@ -395,7 +400,7 @@ export function refineQueryText(
   if (!current) {
     return term;
   }
-  return canAppendTerm(parseQuery(current))
+  return canAppendTerm(parseQuery(current, ANY_FIELD_SCHEMA))
     ? `${current} AND ${term}`
     : `(${current}) AND ${term}`;
 }
@@ -447,10 +452,10 @@ function getTermSpans(parsed: ParsedQuery): TermSpan[] | undefined {
   }
   const children = node.type === 'and' ? node.children : [node];
   return children.map((child) => {
-    if (child.type === 'condition') {
+    if (child.type === 'condition' || child.type === 'field') {
       return { node: child, start: child.start, end: child.end };
     }
-    if (child.type === 'not' && child.child.type === 'condition') {
+    if (child.type === 'not' && (child.child.type === 'condition' || child.child.type === 'field')) {
       const start = findNegationStart(parsed.text, child.child.start);
       return start === undefined
         ? { node: child }

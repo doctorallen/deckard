@@ -10,6 +10,9 @@ import { render } from 'preact';
 import { type ContextMenuAction, ContextMenuItem } from './rankedRows';
 import { returnFocusFromMenu, walkMenu } from './menuKeys';
 
+/** A row of a context menu, or a line between rows. */
+export type ContextMenuEntry = ContextMenuAction | 'separator';
+
 /** The menu's element, made the first time it opens. */
 let menu: HTMLElement | undefined;
 
@@ -86,17 +89,21 @@ function menuElement(): HTMLElement {
 
 /**
  * Opens the menu where the pointer is, kept inside the window, with one row
- * per item, each naming its action in `data-context-action`; focus goes to
- * the first. Nothing opens for no items.
+ * per item, each naming its action in `data-context-action`, and a line
+ * for each separator; focus goes to the first row. Nothing opens for no
+ * items.
  */
-export function openContextMenu(event: MouseEvent, items: readonly ContextMenuAction[]): void {
-  if (!items.length) {
+export function openContextMenu(event: MouseEvent, items: readonly ContextMenuEntry[]): void {
+  if (!items.some((item) => item !== 'separator')) {
     return;
   }
   event.preventDefault();
   closeTagContextMenu();
   const element = menuElement();
-  render(<>{items.map((item) => <ContextMenuItem action={item.action} label={item.label} />)}</>, element);
+  render(
+    <>{items.map((item) => (item === 'separator' ? <div class="menu-separator" role="separator" /> : <ContextMenuItem action={item.action} label={item.label} />))}</>,
+    element,
+  );
   element.hidden = false;
   const bounds = element.getBoundingClientRect();
   element.style.left = `${Math.max(8, Math.min(event.clientX, window.innerWidth - bounds.width - 8))}px`;

@@ -18,9 +18,10 @@ export const DEFAULT_OPERATORS: Readonly<Record<string, readonly string[]>> = {
   tag: ['eq', 'neq'], link: ['eq', 'neq'], text: ['contains', 'notContains', 'eq', 'neq'], is: ['eq', 'neq'],
   task: ['eq', 'neq'], due: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], scheduled: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
   start: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], done: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
-  priority: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], has: ['eq', 'neq'], kind: ['eq', 'neq'],
+  priority: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], has: ['eq', 'neq'], kind: ['eq', 'neq'], type: ['eq', 'neq'],
   file: ['eq', 'neq', 'contains', 'notContains'], path: ['eq', 'neq', 'contains', 'notContains'], in: ['eq', 'neq'],
   created: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], updated: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+  status: ['eq', 'neq'], cancelled: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'], assignee: ['eq', 'neq'],
 };
 
 /** The operator each symbol writes. */
@@ -53,6 +54,12 @@ export const FIELD_PLACEHOLDERS: Readonly<Record<string, string>> = {
 
 /** Fields written as one field:value token. */
 export const SHORTHAND_FIELDS: readonly string[] = ['is', 'has', 'in'];
+
+/**
+ * A field's name as a condition writes it: a built-in's word, or a type
+ * field's query name or path, such as on-call, team.lead, or field.status.
+ */
+const FIELD_NAME = '[\\p{L}\\p{N}_][\\p{L}\\p{N}_.-]*';
 
 /** One piece of a search's text: what it is, and where it starts and ends. */
 export interface QueryPiece {
@@ -233,8 +240,44 @@ export function pendingRow(): EditorRow {
   return { pending: true, field: 'text', operator: 'contains', value: '', supported: true, text: '' };
 }
 
+/**
+ * A type field's values as a row holds them, gold, silver, as the
+ * condition writes them: split at each comma outside double quotes, each
+ * quoted as it needs, one with a comma of its own always.
+ */
+export function formatFieldValues(text: string): string {
+  const values: string[] = [];
+  let current = '';
+  let quoted = false;
+  for (const character of String(text)) {
+    if (character === '"') {
+      quoted = !quoted;
+    } else if (character === ',' && !quoted) {
+      values.push(current);
+      current = '';
+    } else {
+      current += character;
+    }
+  }
+  values.push(current);
+  return values
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => {
+      if (/^\[\[[^\]]+\]\]$/.test(value)) {
+        return value;
+      }
+      return value.includes(',') ? `"${value.replace(/(["\\])/g, '\\$1')}"` : quoteQueryValue(value);
+    })
+    .join(', ');
+}
+
 /** One row as text, with shorthands written the way they are typed. */
 export function formatBuilderCondition(row: EditorRow): string {
+  if (!ownEntry(DEFAULT_OPERATORS, row.field)) {
+    // A type's field: its values between commas, any of which matches.
+    return `${row.field} ${OPERATOR_LABELS[row.operator] || '='} ${formatFieldValues(row.value)}`;
+  }
   if (row.field === 'link') {
     return `link ${OPERATOR_LABELS[row.operator] || '='} [[${stripLinkBrackets(row.value)}]]`;
   }
@@ -309,7 +352,7 @@ function editableRow(field: string, operator: string, value: string): EditorRow 
 
 /** A condition written field:value, such as is:open or due:>=today, as a row. */
 function shorthandRow(value: string, aliases: Readonly<Record<string, string>>): EditorRow | undefined {
-  const match = /^(-?)([A-Za-z]+):(.+)$/.exec(value);
+  const match = new RegExp(`^(-?)(${FIELD_NAME}):(.+)$`, 'u').exec(value);
   const field = match ? fieldFor(match[2], aliases) : undefined;
   if (!match || !field) {
     return undefined;
@@ -338,7 +381,7 @@ export function parseConditionText(text: string, aliases: Readonly<Record<string
   if (shorthand) {
     return shorthand;
   }
-  let match = /^([A-Za-z]+)\s*(!=|!~|>=|<=|=|~|>|<)\s*(.+)$/.exec(value);
+  let match = new RegExp(`^(${FIELD_NAME})\\s*(!=|!~|>=|<=|=|~|>|<)\\s*(.+)$`, 'u').exec(value);
   const field = match ? fieldFor(match[1], aliases) : undefined;
   if (match && field) {
     return editableRow(field, SYMBOL_OPERATORS[match[2]], unquote(match[3]));
@@ -378,7 +421,7 @@ export function mergeAlternative(text: string, existing: string, clause: string)
 
 /** A caret in the value of a field condition, such as is:ov: the field and what is typed of the value. */
 export function valueContext(prefix: string, aliases: Readonly<Record<string, string>>): { field: string; token: string } | undefined {
-  const match = /([A-Za-z]+)\s*(!=|!~|>=|<=|[:=~<>])\s*([^\s()]*)$/.exec(prefix);
+  const match = new RegExp(`(${FIELD_NAME})\\s*(!=|!~|>=|<=|[:=~<>])\\s*([^\\s()]*)$`, 'u').exec(prefix);
   if (!match) {
     return undefined;
   }

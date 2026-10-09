@@ -39,7 +39,7 @@ import {
   TaskMove,
 } from '../../domain/tasks/boardMoves';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
-import { parseQuery } from '../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { tokenizeInline } from '../../domain/markdown/inline';
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
 import { createTaskComparator, sortTasks, withDrawnStatus } from './entryCards';
@@ -190,7 +190,7 @@ export function createTaskBoard({
     ...board,
     query: createQueryViewState({
       index,
-      parsed: parseQuery(search.query),
+      parsed: parseWorkspaceQuery(index, search.query),
       matchCounts: { notes: 0, tasks: tasks.length },
       isAdvanced: true,
       recentQueries: preferences.recentQueries ?? [],
@@ -780,7 +780,7 @@ function selectTasks(
   query: string,
   context: QueryContext,
 ): { tasks: Task[]; parkedLeftOut: number } {
-  const parsed = query.trim() ? parseQuery(query) : undefined;
+  const parsed = query.trim() ? parseWorkspaceQuery(index, query) : undefined;
   const found = parsed?.node
     ? evaluateQuery(index, parsed.node, context).tasks
     : [...index.tasks.values()];

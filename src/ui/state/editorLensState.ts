@@ -258,6 +258,59 @@ export function findHubProgress(
   });
 }
 
+/** One lens on a hub or row note's first line: its words, and what it opens. */
+export interface HubLens {
+  /** `Person · Credit Trading | 1/3 done (33%) · …`, `Progress: 2/6 done (33%)`, `Incident · Rates`. */
+  title: string;
+  /** The tag whose page it opens. */
+  tagKey?: string;
+  tagLabel?: string;
+  /** For a note row with no tag, the type whose rows it searches. */
+  typeKey?: string;
+  typeName?: string;
+}
+
+/**
+ * The lenses on a hub or row note's first line: each tag's progress, as
+ * {@link findHubProgress} gives it, led by the row's type and first
+ * relation when the tag is a typed row ("Person · Credit Trading | 1/3
+ * done"); then, for each row the note holds that has no progress, its
+ * type and relation alone. No new kind of lens: a row's prefix rides on
+ * its progress, and a row with none takes the progress lens's place.
+ */
+export function describeHubLenses(
+  progress: readonly HubProgress[],
+  rows: ReadonlyArray<{ id: string; tagKeys: readonly string[]; typeKey: string; label?: string; prefix: string; typeName: string }>,
+): HubLens[] {
+  const used = new Set<string>();
+  const lenses: HubLens[] = progress.map((entry) => {
+    const row = rows.find((candidate) => candidate.id === entry.tagKey || candidate.tagKeys.includes(entry.tagKey));
+    const several = progress.length > 1;
+    const body = several ? `${entry.tagLabel}: ${entry.text}` : entry.text;
+    let title = several ? body : `Progress: ${entry.text}`;
+    if (row) {
+      used.add(row.id);
+      title = `${row.prefix} | ${body}`;
+    }
+    return {
+      title,
+      tagKey: entry.tagKey,
+      tagLabel: entry.tagLabel,
+    };
+  });
+  rows.forEach((row) => {
+    if (used.has(row.id)) {
+      return;
+    }
+    lenses.push(
+      row.tagKeys.length > 0
+        ? { title: row.prefix, tagKey: row.tagKeys.includes(row.id) ? row.id : row.tagKeys[0], tagLabel: row.label ?? row.id }
+        : { title: row.prefix, typeKey: row.typeKey, typeName: row.typeName },
+    );
+  });
+  return lenses;
+}
+
 /** How far along one task's steps are, for the lens above it. */
 export interface StepProgress {
   /** Zero-based line of the task. */
@@ -319,7 +372,7 @@ export function formatProgressBar(done: number, total: number, width = 10): stri
  * A fix the problems lens offers: the four lenses it replaced, each now one
  * row of its list.
  */
-export type NoteProblemFix = 'showBrokenLinks' | 'createMissingNotes' | 'showMentions' | 'linkMentions';
+export type NoteProblemFix = 'showBrokenLinks' | 'createMissingNotes' | 'showMentions' | 'linkMentions' | 'showFieldProblems';
 
 /** Each fix as the problems lens's list names it, in the order it lists them. */
 export const NOTE_PROBLEM_FIXES: Readonly<Record<NoteProblemFix, string>> = {
@@ -327,6 +380,7 @@ export const NOTE_PROBLEM_FIXES: Readonly<Record<NoteProblemFix, string>> = {
   createMissingNotes: 'Create missing notes',
   showMentions: 'Show unlinked mentions',
   linkMentions: 'Link mentions',
+  showFieldProblems: 'Show field problems',
 };
 
 /** What the problems lens counts on a note's first line. */
@@ -339,6 +393,12 @@ export interface NoteProblemCounts {
   /** Mentions of the note written without a link, and the notes they are in. */
   mentions: number;
   mentionNotes: number;
+  /**
+   * Typed fields' values that name nothing or do not fit their kind, and
+   * the note's other type problems (docs/implementation/30-databases.md).
+   */
+  unresolved?: number;
+  fieldProblems?: number;
 }
 
 /** The problems lens: what it says, and what selecting it does. */
@@ -351,8 +411,8 @@ export interface NoteProblems {
   fixes: NoteProblemFix[];
   /**
    * The fix selecting the lens runs, when the note has one kind of problem,
-   * broken links or unlinked mentions; `pick`, a list of the fixes, when it
-   * has both.
+   * broken links, unlinked mentions, or field problems; `pick`, a list of
+   * the fixes, when it has more.
    */
   action: NoteProblemFix | 'pick';
 }
@@ -368,7 +428,10 @@ export function describeNoteProblems(counts: NoteProblemCounts): NoteProblems | 
   const broken = counts.missing + counts.ambiguous;
   const hasLinks = broken > 0;
   const hasMentions = counts.mentions > 0;
-  if (!hasLinks && !hasMentions) {
+  const unresolved = counts.unresolved ?? 0;
+  const fieldProblems = counts.fieldProblems ?? 0;
+  const hasFields = unresolved + fieldProblems > 0;
+  if (!hasLinks && !hasMentions && !hasFields) {
     return undefined;
   }
   const parts: string[] = [];
@@ -385,6 +448,7 @@ export function describeNoteProblems(counts: NoteProblemCounts): NoteProblems | 
     parts.push(`${counts.mentions} unlinked`);
     said.push(`${pluralize(counts.mentionNotes, 'note mentions', 'notes mention')} this one without a link`);
   }
+  describeFieldProblems(unresolved, fieldProblems, parts, said);
   const fixes: NoteProblemFix[] = [];
   if (hasLinks) {
     fixes.push('showBrokenLinks');
@@ -395,13 +459,17 @@ export function describeNoteProblems(counts: NoteProblemCounts): NoteProblems | 
   if (hasMentions) {
     fixes.push('showMentions', 'linkMentions');
   }
-  const action = chooseNoteProblemAction(hasLinks, hasMentions, counts.creatable);
+  if (hasFields) {
+    fixes.push('showFieldProblems');
+  }
+  const action = chooseNoteProblemAction(hasLinks, hasMentions, counts.creatable, hasFields);
   const does: Record<NoteProblems['action'], string> = {
     pick: 'Select to choose a fix',
     showBrokenLinks: 'Select to show them in the references view',
     createMissingNotes: `Select to create ${counts.creatable === 1 ? 'the missing note' : `the ${counts.creatable} missing notes`} in your notes folder`,
     showMentions: 'Select to show the mentions in the references view',
     linkMentions: 'Select to turn each mention into a [[link]] to this note',
+    showFieldProblems: 'Select to show them in the references view, where each offers its fixes',
   };
   return {
     title: parts.join(' · '),
@@ -411,14 +479,36 @@ export function describeNoteProblems(counts: NoteProblemCounts): NoteProblems | 
   };
 }
 
+/** The problems lens's words for a note's typed fields: what it counts, and what each count says. */
+function describeFieldProblems(unresolved: number, other: number, parts: string[], said: string[]): void {
+  if (unresolved > 0) {
+    parts.push(`${unresolved} unresolved`);
+    said.push(`${pluralize(unresolved, 'field value')} Deckard cannot read`);
+  }
+  if (other === 0) {
+    return;
+  }
+  parts.push(pluralize(other, 'field problem'));
+  said.push(`${pluralize(other, 'field needs', 'fields need')} a look`);
+}
+
 /**
- * What selecting the problems lens does: a list with both kinds of problem;
- * with mentions alone, linking them; with broken links alone, creating the
- * missing notes, or showing the links when no name can be created.
+ * What selecting the problems lens does: a list with more than one kind of
+ * problem; with field problems alone, showing them; with mentions alone,
+ * linking them; with broken links alone, creating the missing notes, or
+ * showing the links when no name can be created.
  */
-function chooseNoteProblemAction(hasLinks: boolean, hasMentions: boolean, creatable: number): NoteProblems['action'] {
-  if (hasLinks && hasMentions) {
+function chooseNoteProblemAction(
+  hasLinks: boolean,
+  hasMentions: boolean,
+  creatable: number,
+  hasFields = false,
+): NoteProblems['action'] {
+  if ([hasLinks, hasMentions, hasFields].filter(Boolean).length > 1) {
     return 'pick';
+  }
+  if (hasFields) {
+    return 'showFieldProblems';
   }
   if (hasMentions) {
     return 'linkMentions';

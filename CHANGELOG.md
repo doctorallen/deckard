@@ -2,6 +2,176 @@
 
 ## Unreleased
 
+## 2.6.0 - 2026-10-09
+
+### Highlights
+
+- **Types and fields**: a note in `Types/` turns a tag namespace, or notes with `type:`, into rows with fields and reverses.
+- A search for `type = team` opens on a table of its rows, and the Note page edits a row's fields in place.
+- **Find** answers questions like `bond trading lead`, and assistants can describe a tag with `deckard_describe_tag`.
+
+### Added
+
+- **Types and fields.** A note in the `Types` folder of your notes folder
+  says what a kind of thing is and which fields it has: its front matter
+  names the type (`deckard-type: team`) and its rows, and its first table
+  with **Field** and **Kind** columns lists the fields, each with its kind
+  (Text, Number, Date, Checkbox, Select, Person, another type, Note, Link,
+  Email, or Phone, and `, many` for several), the name of its reverse, and
+  the other words it is called. Rows are either the tags of a namespace
+  (`rows: "#team/*"`, or `"@*"` for people), whose fields are their hub
+  notes' front matter, nested tags with a computed `parent`; or notes whose
+  front matter says `type: incident`. Values are read as written by hand,
+  `lead: Dana Whitfield` as well as `"@dana"`, and each relation's reverse,
+  paths through up to two relations, open tasks, and when a row was last
+  mentioned are worked out from the notes. A workspace with no types works
+  as before. The work sample now ships Person, Team, Area, and Decision
+  types, and the guide has a page on them, **Types and fields**, which
+  Help on a type's search page opens.
+- **Create Type from Tags….** `Deckard: Create Type from Tags…`, also
+  **Create type from #team…** in **⋯** on the page of a tag whose
+  namespace has no type, lists the namespaces with their tags and hub
+  notes, the people, and the `type:` values in use, then the fields their
+  notes already write, each with a guessed kind ("Person · 5 of 5 ·
+  reverse: lead of"). It writes `Types/<Type>.md` as one change Undo Last
+  Change takes back, and opens it beside. A field whose name a built-in
+  query field takes is written as `<type>-<name>`, and the list says so.
+  **New note type…** writes a type whose rows are notes with `type:`.
+- **A type's rows, as a search.** A search for `type = team` is titled
+  with the type's plural name, "Teams", with its rows under it in
+  monospace ("#team/*", or "type: incident · Incidents/"), and opens on a
+  new first tab, "Teams (4)", beside Notes and Tasks: a table of the rows
+  the search finds, drawn as the Task board's table is. Its columns are
+  the row's title, each field, its key in monospace, then Open tasks and
+  Last mentioned, in sentence case and muted as worked out from the notes;
+  ⋯ **Team columns** adds the reverses (a team's Members), Mentions, and
+  the rest. People and related rows are links by their titles; a reverse
+  lists three people by first name and how many more ("Dana, Sam, Lena
+  +2"); dates read "today · 2026-10-08", and open tasks "4 · 1 overdue".
+  A row with no hub note says so ("No hub note · 6 entries"), with
+  **Create hub note** on its row, and each row's **⋯** opens it, its hub
+  note, or copies its email. A heading sorts, and again the other way,
+  with "Sorted by lead · Sort A-Z" drawn beside the tab; right-click or
+  Shift+F10 on it for Sort A-Z, Sort Z-A, Hide column, **Rename field
+  everywhere…**, and **Edit in Types/Team.md**, and on a select's value
+  for **Rename option everywhere…**. Each rename asks the new name, then
+  shows every note it changes, the type's table among them, in the
+  refactor preview, as one change Undo Last Change takes back. ⋯ adds
+  **Add team…**, which writes a new row's note, and **Open
+  Types/Team.md**; Group by adds each select, person, and relation field,
+  a row with two values under both and the rows with none last ("No
+  team"); and Refine offers each select field's options, counted over the
+  rows. The columns, sort, and group are kept for each type. In the Hubs
+  view, a namespace heading a type has opens its search. Under Zen, each
+  row's ⋯ and Create hub note wait for the row, and every cell, count, and
+  date stays drawn.
+- **Fields on the Note page.** A typed row's note lists its fields under
+  the page bar: each field that holds something on a row of its own, the
+  key in monospace and the values after it, a person or related row by
+  its title, which opens its page. Reverses, such as a team's `members`,
+  are in italics and say what they come from ("From each person's
+  team"), and the empty fields fold into one line ("1 empty: email") that
+  opens to list them. The hub line, or the top of the fields for a note
+  row, names the type ("Team"), which opens the search for its rows.
+  **Edit**, shown on the row you point at or tab to, or Enter on the row,
+  opens a list by kind: the rows the field can name, each with its first
+  relation, filtered as you type; a select's options; a date; a box; or a
+  text field; then **Clear**. A field that holds several adds or takes
+  away one choice at a time. **Add field…** offers the type's empty
+  fields, then **Other…** for a key of your own. Each change writes one
+  key of the front matter, leaving every other line as written, is offered
+  with **Undo**, and Undo Last Change takes it back; a value Deckard cannot
+  rewrite safely, such as a `|` block, opens the note at that line
+  instead. Under Zen, Edit and Add field… wait until you point at or tab
+  into the fields, and an open list stays open.
+- **Fields on a tag's page.** A typed row's tag page draws its hub
+  note's fields as the Note page does, read-only. A typed row with no hub
+  note gets a **Fields** card in the hub's place, with what other rows say
+  of it and who is behind them ("owned by: Rates (lead Dana Whitfield ·
+  on-call Sam Ortiz)"), so a row with no note still shows who owns it.
+  **Create hub note** stays under the title.
+- **Find answers questions.** In a workspace with types, Find reads what
+  is typed as a row and a field, and lists up to three answers first,
+  under **Answer**: "who leads bond trading" walks from the Bond Trading
+  area through the team that owns it to its lead, and lists Dana Whitfield
+  with "@dana · Person · Head of Rates" and the path "Bond Trading › owned
+  by Rates › lead". A field is found by its name, its reverse's, or a word
+  it is also called, on the row or up to two relations away; "who is on
+  rates", "rates members", "rates channel", and "what does priya own" work
+  too. A field that says what its row does is read from the other side:
+  "who owns bond trading" is Rates, the team whose `owns` lists it. A row
+  is also known by one word of its name when no whole name fits, "noor
+  email" for Noor Haddad, and when that word fits two people, each gets
+  one answer. Enter opens the answer's page, or, for a value written as
+  text, the page of the row that holds it. A typed tag under Tags leads
+  with its type and one fact ("Team · lead Dana Whitfield · 4 notes · 1
+  task").
+- **Typed fields in the editor.** In a row's note, the front matter
+  completes the type's field names, and after `lead: ` the rows it can
+  name ("Omar Haddad", described "Person · team Credit"), a select's
+  options, or `true` and `false`, each written as Deckard writes it
+  (`"@omar"`, `"#team/credit"`, `"[[RFQ outage]]"`). In a type note, the
+  Kind column completes kinds and type names, and `rows:` the namespaces
+  in use. A value that names nothing, a value that does not fit its kind,
+  a field a built-in query field's name takes, two types defining one
+  field differently, and a relation both sides disagree on are marked as
+  Information, with quick fixes: **Change to @omar (Omar Haddad)**,
+  **Create person "Omar H"**, and, on a type note, **Allow Area or
+  System** and **Create a System type**. The marks follow
+  `deckard.editor.linkDiagnostics`, and the one problems lens on the first
+  line counts them ("2 unresolved"). The hub lens leads with the row's type
+  and first relation ("Person · Credit | 1/3 done"), and a note row gets
+  that lead alone. Hovering a typed tag, or a `[[link]]` to a note row,
+  names the row, its type, its relations and reverses, how to reach it,
+  and when it was last mentioned ("today · 2026-10-08"), with links to
+  open its page and its note and to copy its email. Other tags hover as
+  before.
+- **Searches by a type's fields.** `type = team` (or `is:team`) finds a
+  type's rows: the notes and tasks in their notes, and, for a namespace
+  type, everything its tags are on. A type's fields are conditions by
+  name, after the built-in fields: `lead = @dana`, `owns = "Bond trading"`
+  (a person or related row by its tag, name, or title, as front matter
+  reads it), `tier = gold, silver` (any of), `headcount > 10`, paths
+  through relations and their reverses up to two hops (`team.lead =
+  @dana`, `owned-by.lead = @dana`), computed fields (`open-tasks > 0`),
+  `has:on-call` and `no:email`, and `field.status` for a field whose name
+  a built-in takes. A field name no type has is still an error, now naming
+  the fields it could have meant. After `type = team`, the search box
+  offers the type's fields and their values, and the Builder lists them
+  under the type's name, then "Through lead" for each relation, then
+  "Built in".
+- **Fields as query block columns, and `this`.** `noteColumns=` takes any
+  field of a type, a path, a reverse, or a computed field
+  (`noteColumns=lead,team.lead,open-tasks`), headed as written, read from
+  the typed row a note is or the rows its tags are; a name no type has is
+  warned of beside the results. `this` in a block's query is the note the
+  block is in, `team = this`, in the editor's lens, the Markdown preview,
+  the Note page, and Copy as Plain Markdown.
+- **Describe a tag, for assistants.** A fifth assistant tool,
+  `deckard_describe_tag` ("Describe a Deckard tag and its fields"), takes
+  a tag, a title, or a few words and answers in plain text: a typed row's
+  type, title, tag, and note ("Team: Rates (#team/rates), Teams/Rates.md",
+  or "No hub note."), each field with its values ("lead: Dana Whitfield
+  (@dana)"), its reverses ("members (reverse of Person.team): …"), its open
+  tasks with how many are overdue, and its three latest entries with their
+  dates; a tag no type has gets its counts, hub note, open tasks, and
+  latest entries. It only reads, and is served by both VS Code's assistants
+  and the MCP server. In a workspace with types, `deckard_query` takes
+  their fields, and it and `deckard_list_tags` name the types and their
+  fields on their second line.
+
+### Changed
+
+- **`Types/` holds types, not notes.** A note in the `Types` folder under
+  the notes folder is read as a type, and left out of searches, counts,
+  Related notes, and overviews, as the templates folder is, so its tags
+  and tasks stay out of your notes. Every note's front matter is now
+  indexed, not only hub notes', so the search cache is rebuilt once, on
+  the first start after the update.
+- **A note's properties sit under the Note page's bar.** The front matter
+  a note without a type writes is listed under the bar's divider rather
+  than beside the title, as a typed row's fields are.
+
 ## 2.5.0 - 2026-10-08
 
 ### Highlights

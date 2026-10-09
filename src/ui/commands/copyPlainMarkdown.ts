@@ -12,7 +12,7 @@ import { noteName } from './notify';
  * become the text they name, query blocks their results as they stand, and
  * links their words; see `toPlainMarkdown`.
  */
-export async function copyAsPlainMarkdownCommand(indexer: { getSnapshot(): WorkspaceIndex }): Promise<void> {
+export async function copyAsPlainMarkdownCommand(indexer: { getSnapshot(): WorkspaceIndex; getFilePath?(uri: vscode.Uri): string }): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || !isMarkdownFile(editor.document.uri)) {
     void vscode.window.showInformationMessage('Open a note to copy it as plain Markdown.');
@@ -27,6 +27,8 @@ export async function copyAsPlainMarkdownCommand(indexer: { getSnapshot(): Works
     {
       index: indexer.getSnapshot(),
       queryContext: readQueryContext(),
+      // `this` in a query block names the note it is copied from.
+      ...(indexer.getFilePath ? { notePath: indexer.getFilePath(document.uri) } : {}),
     },
     whole,
   );

@@ -58,7 +58,7 @@ suite('Sample corpus', () => {
         used.add(`${node.field}:${node.value}`);
       } else if (node.type === 'not') {
         collect(node.child);
-      } else {
+      } else if (node.type !== 'field') {
         node.children.forEach(collect);
       }
     };
@@ -80,7 +80,9 @@ suite('Sample corpus', () => {
       }
     }
     // A search for every field, every state, and every field a task can lack.
-    for (const field of QUERY_FIELDS) {
+    // `type` names a type's rows, and the sample defines no types yet; until
+    // it does, `type = …` reads as `kind`.
+    for (const field of QUERY_FIELDS.filter((name) => name !== 'type')) {
       assert.ok(used.has(field), `a search uses ${field}`);
     }
     for (const value of QUERY_IS_VALUES) {

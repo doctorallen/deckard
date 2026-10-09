@@ -15,6 +15,7 @@ export const GUIDE_PAGES: Readonly<Record<string, string>> = {
   README: 'Deckard guide',
   'getting-started': 'Getting started',
   'notes-and-links': 'Writing notes: tags, people, and links',
+  databases: 'Types and fields',
   tasks: 'Tasks',
   'task-board': 'Task board',
   search: 'Search',
@@ -44,7 +45,7 @@ export const WHATS_NEW = 'whats-new';
  */
 export const GUIDE_CONTENTS: ReadonlyArray<{ group: string; pages: readonly string[] }> = [
   { group: 'Start', pages: ['getting-started', 'themes-and-zen'] },
-  { group: 'Writing', pages: ['notes-and-links', 'tasks', 'daily-notes', 'organizing'] },
+  { group: 'Writing', pages: ['notes-and-links', 'databases', 'tasks', 'daily-notes', 'organizing'] },
   { group: 'Finding', pages: ['search', 'search-pages', 'query-blocks', 'connections'] },
   { group: 'Seeing the whole', pages: ['task-board', 'home-and-stats', 'ai-assistants'] },
   {

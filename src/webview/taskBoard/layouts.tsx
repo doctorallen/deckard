@@ -10,6 +10,7 @@ import { IconButton } from '../shared/buttons';
 import { EmptyState } from '../shared/emptyState';
 import { Inline } from '../shared/inline';
 import { EllipsisIcon, SortIcon } from '../shared/strokeIcons';
+import { ColumnPicker as SharedColumnPicker, SortHeader } from '../shared/resultTable';
 import { plainTitle } from '../shared/taskRow';
 import type { ViewOptionItem } from '../shared/viewOptions';
 import { board } from './model';
@@ -63,21 +64,7 @@ export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot
       <thead>
         <tr>
           <th class="result-check" />
-          {table.columns.map((column) => {
-            const sorted = Boolean(sort && sort.column === column.id);
-            const descending = sort?.direction === 'desc';
-            let arrow = '';
-            let order: 'ascending' | 'descending' | undefined;
-            if (sorted) {
-              arrow = descending ? ' ▼' : ' ▲';
-              order = descending ? 'descending' : 'ascending';
-            }
-            return (
-              <th key={column.id} scope="col" class={sorted ? 'is-sorted' : undefined} aria-sort={order}>
-                <button type="button" data-action="set-table-sort" data-value={column.id} data-tip={`Sort by ${column.label.toLowerCase()}`}>{column.label + arrow}</button>
-              </th>
-            );
-          })}
+          {table.columns.map((column) => <SortHeader key={column.id} column={column} sort={sort} action="set-table-sort" />)}
           <th class="result-menu"><span class="visually-hidden">Change</span></th>
         </tr>
       </thead>
@@ -267,17 +254,5 @@ export function ColumnPicker({ snapshot }: { readonly snapshot: TaskBoardSnapsho
   if (!table) {
     return null;
   }
-  const shown = table.columns.map((column) => column.id);
-  return (
-    <ul class="table-columns">
-      {table.available.map((column) => (
-        <li key={column.id}>
-          <label>
-            <input type="checkbox" data-action="toggle-table-column" data-value={column.id} checked={shown.includes(column.id)} disabled={column.id === 'title'} />
-            {column.label}
-          </label>
-        </li>
-      ))}
-    </ul>
-  );
+  return <SharedColumnPicker shown={table.columns.map((column) => column.id)} available={table.available} action="toggle-table-column" />;
 }

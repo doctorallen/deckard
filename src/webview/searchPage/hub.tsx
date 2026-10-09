@@ -11,6 +11,7 @@ import { NoteBody } from '../shared/searchCard';
 import { TagButton } from '../shared/tagButton';
 import { isParkedTag } from '../shared/tagMenu';
 import { Blocks } from '../shared/noteBlocks';
+import { FieldRows } from '../shared/fieldRows';
 
 /**
  * A property's values joined by commas, a tag as the control that opens
@@ -52,6 +53,14 @@ function HubProperties({ hub }: { readonly hub: TagOverviewHub }) {
   );
 }
 
+/** The hub note's front matter: a typed row's fields, or its properties as written. */
+function HubFields({ hub }: { readonly hub: TagOverviewHub }) {
+  if (hub.fields) {
+    return <div class="hub-fields"><FieldRows fields={hub.fields} noteAction="open-source" /></div>;
+  }
+  return hub.properties.length ? <HubProperties hub={hub} /> : null;
+}
+
 /** The other notes that describe the tag, each a button that opens it. */
 function OtherHubNotes({ filePaths }: { readonly filePaths: readonly string[] }) {
   return (
@@ -79,11 +88,32 @@ function HubBody({ hub, renderMode }: { readonly hub: NonNullable<SearchPageSnap
 }
 
 /**
+ * In the hub's place, for a typed row no note describes: its fields as
+ * other rows give them, each value with what the row it names holds of
+ * people, so a row with no note still shows who owns it. Read-only; Create
+ * hub note, under the title, writes the note that would hold its own.
+ */
+function RowFieldsCard({ fields, hubOpen }: { readonly fields: NonNullable<SearchPageSnapshot['rowFields']>; readonly hubOpen: boolean | undefined }) {
+  return (
+    <details class="hub hub-fields-card" open={hubOpen !== false}>
+      <summary class="hub-header">
+        <span class="hub-title"><span class="hub-toggle" aria-hidden="true"></span><span class="eyebrow">Fields</span></span>
+        <span class="hub-fields-type" data-tip="Worked out from the rows that name this one; no note holds them">{fields.typeName}</span>
+      </summary>
+      <div class="hub-fields"><FieldRows fields={fields} noteAction="open-source" /></div>
+    </details>
+  );
+}
+
+/**
  * The note that describes the page's tag, open or closed as the reader
  * left it here, or as they left the last tag's page until they do.
  */
 export function HubNote({ snapshot, hubOpen }: { readonly snapshot: SearchPageSnapshot; readonly hubOpen: boolean | undefined }) {
   const hub = snapshot.hub;
+  if (snapshot.tag && !hub && snapshot.rowFields) {
+    return <RowFieldsCard fields={snapshot.rowFields} hubOpen={hubOpen} />;
+  }
   if (!snapshot.tag || !hub) {
     return null;
   }
@@ -94,7 +124,7 @@ export function HubNote({ snapshot, hubOpen }: { readonly snapshot: SearchPageSn
         <span class="hub-title"><span class="hub-toggle" aria-hidden="true"></span><span class="eyebrow">Hub note</span></span>
         <button data-action="open-source" data-file-path={hub.filePath} data-line="1" data-tip={hub.filePath}>{`Open ${hub.fileName}`}</button>
       </summary>
-      {hub.properties.length ? <HubProperties hub={hub} /> : null}
+      <HubFields hub={hub} />
       <HubBody hub={hub} renderMode={snapshot.renderMode} />
       {hub.otherFilePaths.length ? <OtherHubNotes filePaths={hub.otherFilePaths} /> : null}
     </details>

@@ -10,7 +10,9 @@ import { IconButton } from '../shared/buttons';
 import { PageBar } from '../shared/pageBar';
 import { LayoutSplitIcon, LayoutTabsIcon, RenderedIcon, SourceIcon } from '../shared/strokeIcons';
 import { TagLabel } from '../shared/tagLabel';
+import { ColumnPicker } from '../shared/resultTable';
 import { resultCounts } from './results';
+import { typeNoteName } from './typeRows';
 import { type ViewOptionGroup, type ViewOptionItem, ViewOptionChoices } from '../shared/viewOptions';
 
 /** A built-in or user-made namespace and its name in one readable title form: "Project: Atlas". */
@@ -127,6 +129,60 @@ function exportRows(snapshot: SearchPageSnapshot): ViewOptionItem[] {
   return rows;
 }
 
+/**
+ * ⋯'s rows for a type's page: Add <type>… and Open its note; and, on a tag's
+ * page whose namespace has no type, Create type from it.
+ */
+function typeRows(snapshot: SearchPageSnapshot): ViewOptionItem[] {
+  const table = snapshot.typeRows;
+  if (table) {
+    return [
+      { action: 'add-type-row', text: `Add ${table.name.toLowerCase()}…`, tip: `Write a new ${table.name.toLowerCase()}'s note, with its fields' keys` },
+      { action: 'open-type-note', text: `Open ${typeNoteName(table)}`, tip: `Open the note that defines ${table.plural.toLowerCase()} and their fields` },
+    ];
+  }
+  if (snapshot.untypedNamespace) {
+    const namespace = `#${snapshot.untypedNamespace}`;
+    return [{ action: 'create-type-from-tag', text: `Create type from ${namespace}…`, tip: `Make ${namespace}'s tags the rows of a type, with the fields their hub notes write`, attributes: { 'data-namespace': snapshot.untypedNamespace } }];
+  }
+  return [];
+}
+
+/**
+ * Group by: None, Tag, and Heading, and on a type's page each of its
+ * select, person, and relation fields, which group its rows. A field
+ * chosen is shown as the choice while it groups the rows.
+ */
+function groupByRow(snapshot: SearchPageSnapshot): ViewOptionGroup {
+  const table = snapshot.typeRows;
+  const fields = table ? table.groupFields.map((field) => [`field:${field.id}`, field.label, `${field.label}, the ${table.plural.toLowerCase()} under each`] as const) : [];
+  return {
+    label: 'Group by',
+    ...(fields.length ? { stacked: true } : {}),
+    content: (
+      <ViewOptionChoices
+        action="set-hierarchy"
+        choices={[['off', 'None', 'None, the results ungrouped'], ['tags', 'Tag', "Tag, under Refine's tags"], ['headings', 'Heading', 'Heading, nested by tagged headings'], ...fields]}
+        selected={table && table.groupBy ? `field:${table.groupBy}` : snapshot.hierarchy || 'off'}
+        label="Group the results by"
+      />
+    ),
+  };
+}
+
+/** ⋯'s list of a type's columns, the title fixed, which its rows tab shows. */
+function typeColumnsRow(snapshot: SearchPageSnapshot): ViewOptionGroup[] {
+  const table = snapshot.typeRows;
+  if (!table) {
+    return [];
+  }
+  return [{
+    label: `${table.name} columns`,
+    stacked: true,
+    content: <ColumnPicker shown={table.columns.map((column) => column.id)} available={table.available} action="toggle-type-column" />,
+  }];
+}
+
 /** ⋯'s view rows: layout, grouping, format, preview, and columns, as the gear held them; Sort is beside the notes. */
 function searchView(snapshot: SearchPageSnapshot): ViewOptionGroup[] {
   return [
@@ -139,17 +195,8 @@ function searchView(snapshot: SearchPageSnapshot): ViewOptionGroup[] {
         ]} />
       ),
     },
-    {
-      label: 'Group by',
-      content: (
-        <ViewOptionChoices
-          action="set-hierarchy"
-          choices={[['off', 'None', 'None, the results ungrouped'], ['tags', 'Tag', "Tag, under Refine's tags"], ['headings', 'Heading', 'Heading, nested by tagged headings']]}
-          selected={snapshot.hierarchy || 'off'}
-          label="Group the results by"
-        />
-      ),
-    },
+    groupByRow(snapshot),
+    ...typeColumnsRow(snapshot),
     {
       label: 'Format',
       content: (
@@ -176,8 +223,11 @@ function searchView(snapshot: SearchPageSnapshot): ViewOptionGroup[] {
 export function PageHeader({ snapshot, hasText }: { readonly snapshot: SearchPageSnapshot; readonly hasText: boolean }) {
   const entity = snapshot.entity;
   const focus = entity ? { key: entity.key, label: entity.label } : snapshot.tag;
+  const table = snapshot.typeRows;
   let title = 'Search';
-  if (entity) {
+  if (table) {
+    title = table.plural;
+  } else if (entity) {
     title = formatEntityTitle(entity.kind, entity.name);
   } else if (snapshot.tag) {
     title = snapshot.tag.label;
@@ -194,13 +244,14 @@ export function PageHeader({ snapshot, hasText }: { readonly snapshot: SearchPag
             : null}
           <h1 aria-label={title}>{focus ? <OverviewTagLink tag={focus} text={title} /> : title}</h1>
           {entity && focus ? <div class="entity-meta"><OverviewTagLink tag={focus} text={entity.label} /></div> : null}
+          {table && table.rule ? <div class="entity-meta type-rule">{table.rule}</div> : null}
           {tag && !snapshot.hub
             ? <p class="hub-offer"><button type="button" class="hub-offer-link" data-action="create-hub" data-tip={`Create a note whose describes: front matter names ${tag.label}`}>Create hub note</button></p>
             : null}
         </>
       )}
       controls={<HistoryButtons history={snapshot.history} />}
-      menu={{ actions: [saveSearchRow(hasText), ...exportRows(snapshot)], view: searchView(snapshot), pageWidth: true, keySheet: true }}
+      menu={{ actions: [saveSearchRow(hasText), ...typeRows(snapshot), ...exportRows(snapshot)], view: searchView(snapshot), pageWidth: true, keySheet: true }}
     />
   );
 }

@@ -1,6 +1,6 @@
 import { EntityNamespaceAliases, getEntityNamespace } from '../../domain/markdown/parser';
 import { QueryContext } from '../../domain/query/queryContext';
-import { parseQuery } from '../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { createAgenda, normalizeAgendaQuery, selectAgendaTasks } from './agendaState';
 import { startOfWeek } from '../../domain/markdown/dates';
 import { withoutParked } from '../../domain/index/parked';
@@ -143,7 +143,7 @@ export function createDashboardSavedFilters(
         {
           id: filter.id,
           name: filter.name,
-          tags: resolveQueryTags(index, parseQuery(filter.query), entityNamespaceAliases),
+          tags: resolveQueryTags(index, parseWorkspaceQuery(index, filter.query), entityNamespaceAliases),
           query: filter.query,
           ...(filter.page ? { page: filter.page } : {}),
           ...home(filter.id),

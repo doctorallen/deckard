@@ -5,7 +5,7 @@ import { getFileName } from '../../shared/paths';
 import { type DateFormats, formatDisplayDate } from '../../domain/markdown/dateFormat';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
-import { parseQuery } from '../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { pluralize } from '../../shared/text';
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
 
@@ -26,10 +26,15 @@ import { readTagNamespace } from '../../domain/markdown/tagKeys';
 import {
   NOTE_COLUMNS,
   NoteColumnId,
+  noteColumnField,
   noteColumnNamespace,
   parseNoteColumns,
   readNoteColumn,
 } from '../../domain/notes/noteColumns';
+import { isComputedFieldName, toFieldQueryName } from '../../domain/types/fieldKinds';
+import { getTypeIndex } from '../../domain/types/typeIndex';
+import { resolveTypeQueryPath } from '../../domain/types/typeQueryFields';
+import { valueTitle } from './typeRows';
 
 /**
  * Query blocks are fenced ```deckard blocks holding a Deckard query. The
@@ -136,6 +141,12 @@ export interface QueryBlockItem {
   taskDone?: number;
   /** For a note, every tag it carries, inherited ones too, as `{ key, label }`. */
   noteTags?: Array<{ key: string; label: string }>;
+  /**
+   * For a note in a table with field columns, each column's values by the
+   * name it is written with, read from the typed row the note is, or else
+   * the rows its tags are: `{ "team.lead": "Dana Whitfield" }`.
+   */
+  fieldValues?: Record<string, string>;
 }
 
 /** A diagnostic or option warning shown beside a block's results. */
@@ -234,7 +245,7 @@ export function parseQueryBlockInfo(
     const value = match?.[2].toLowerCase() ?? '';
     const read = name === undefined ? undefined : OPTION_READERS.get(name);
     const warning = read
-      ? read(value, options)
+      ? read(value, options, match?.[2] ?? '')
       : `Unknown option "${attribute}". Use sort=, dir=, limit=, view=, columns=, or noteColumns=.`;
     if (warning) {
       options.warnings.push(warning);
@@ -248,9 +259,10 @@ export function parseQueryBlockInfo(
 
 /**
  * Reads one `name=value` option into the block's options, and answers the
- * warning to show when the value is not one the option takes.
+ * warning to show when the value is not one the option takes. `value` is
+ * lowercased; `written` is as the fence writes it.
  */
-type OptionReader = (value: string, options: QueryBlockOptions) => string | undefined;
+type OptionReader = (value: string, options: QueryBlockOptions, written: string) => string | undefined;
 
 /** The options a query block's info string may set, by lowercased name. */
 const OPTION_READERS = new Map<string, OptionReader>([
@@ -287,13 +299,14 @@ const OPTION_READERS = new Map<string, OptionReader>([
     }
     return `columns has no ${parsed.unknown.map((name) => `"${name}"`).join(', ')}; the columns are ${TASK_COLUMNS.map((column) => column.id).join(', ')}.`;
   }],
-  ['notecolumns', (value, options) => {
-    const parsed = parseNoteColumns(value);
+  ['notecolumns', (_value, options, written) => {
+    // A field column is headed as written, so its case is kept.
+    const parsed = parseNoteColumns(written);
     options.noteColumns = parsed.columns;
     if (parsed.unknown.length === 0) {
       return undefined;
     }
-    return `noteColumns has no ${parsed.unknown.map((name) => `"${name}"`).join(', ')}; the columns are ${NOTE_COLUMNS.map((column) => column.id).join(', ')}, or a namespace such as #status.`;
+    return describeUnknownNoteColumns(parsed.unknown);
   }],
   ['limit', (value, options) => {
     if (!/^\d+$/.test(value) || Number(value) <= 0) {
@@ -385,6 +398,11 @@ export function isQueryBlockLine(
  */
 export interface QueryBlockReading {
   queryContext: QueryContext;
+  /**
+   * The note the block is written in, by path: what `this` names in its
+   * query (`team = this`). Without it, `this` names nothing.
+   */
+  notePath?: string;
 }
 
 /**
@@ -416,6 +434,7 @@ export function getQueryBlockSnapshot(
     new Date(reading.queryContext.now).toDateString(),
     queryText,
     options,
+    reading.notePath ?? null,
   ]);
   let snapshot = snapshots.get(key);
   if (!snapshot) {
@@ -462,7 +481,7 @@ export function createQueryBlockSnapshot(
     };
   }
 
-  const parsed = parseQuery(query);
+  const parsed = parseWorkspaceQuery(index, query);
   const messages = [
     ...parsed.diagnostics.map(
       (diagnostic): QueryBlockMessage => ({
@@ -476,12 +495,18 @@ export function createQueryBlockSnapshot(
     return { ...empty, messages, hasError: true };
   }
 
-  const results = evaluateQuery(index, parsed.node, reading.queryContext);
+  const results = evaluateQuery(
+    index,
+    parsed.node,
+    reading.notePath ? { ...reading.queryContext, thisNotePath: reading.notePath } : reading.queryContext,
+  );
   // A table reads the note columns, and so does a sort by one only notes have.
   const table = options.view === 'table' || isNoteOnlySort(options.sort);
+  const fields = table ? readFieldColumns(index, options.noteColumns, messages) : [];
+  const now = reading.queryContext.now;
   const notes = [
-    ...results.sections.map((section) => createSectionItem(section, index, table)),
-    ...results.files.map((file) => createFileItem(file, index, table)),
+    ...results.sections.map((section) => withFieldValues(createSectionItem(section, index, table), index, fields, now)),
+    ...results.files.map((file) => withFieldValues(createFileItem(file, index, table), index, fields, now)),
   ].sort(createNoteComparator(options.sort, options.direction));
   const tasks = results.tasks
     .map((task) => createTaskItem(task, index))
@@ -497,6 +522,49 @@ export function createQueryBlockSnapshot(
     taskCount: tasks.length,
     openTaskCount: tasks.filter((task) => !task.completed && !task.cancelled).length,
   };
+}
+
+/** What a `noteColumns=` warning says of names that are no column. */
+function describeUnknownNoteColumns(names: readonly string[]): string {
+  return `noteColumns has no ${names.map((name) => `"${name}"`).join(', ')}; the columns are ${NOTE_COLUMNS.map((column) => column.id).join(', ')}, a namespace such as #status, or a field of a type.`;
+}
+
+/**
+ * The field columns a block asks for, as written: those some type's rows
+ * have, by name, path, or reverse, or a computed field's name. The rest
+ * are warned of, and draw empty.
+ */
+function readFieldColumns(index: WorkspaceIndex, columns: readonly NoteColumnId[] | undefined, messages: QueryBlockMessage[]): string[] {
+  const names = (columns ?? []).flatMap((column) => noteColumnField(column) ?? []);
+  if (names.length === 0) {
+    return [];
+  }
+  const registry = getTypeIndex(index).registry;
+  const unknown = names.filter((name) => !isComputedFieldName(toFieldQueryName(name)) && resolveTypeQueryPath(registry, name).length === 0);
+  if (unknown.length) {
+    messages.push({ severity: 'warning', text: describeUnknownNoteColumns(unknown) });
+  }
+  return names.filter((name) => !unknown.includes(name));
+}
+
+/**
+ * A note with its field columns' values: read from the typed rows its
+ * note is, or else the rows its tags are, each value by the title of the
+ * row or note it names, several joined with commas.
+ */
+function withFieldValues(item: QueryBlockItem, index: WorkspaceIndex, fields: readonly string[], now: number): QueryBlockItem {
+  if (fields.length === 0) {
+    return item;
+  }
+  const types = getTypeIndex(index);
+  const ofFile = types.rowsOfFile(item.filePath).map((row) => row.id);
+  const rowIds = ofFile.length ? ofFile : [...new Set((item.noteTags ?? []).flatMap((tag) => types.rowOfTag(tag.key)?.id ?? []))];
+  const fieldValues: Record<string, string> = {};
+  fields.forEach((name) => {
+    const titles = rowIds.flatMap((rowId) => types.path(rowId, name.toLowerCase(), now).map((value) => valueTitle(types, value)));
+    fieldValues[name] = [...new Set(titles)].join(', ');
+  });
+  return { ...item, fieldValues };
 }
 
 /**
@@ -762,7 +830,7 @@ function noteSortValue(sort: QueryBlockSort): ((item: QueryBlockItem) => number 
 }
 
 /** Each fixed column's value as notes sort by it; undefined is an empty cell. */
-const NOTE_SORTS: Readonly<Record<Exclude<NoteColumnId, `#${string}`>, (item: QueryBlockItem) => number | string | undefined>> = {
+const NOTE_SORTS: Readonly<Record<Exclude<NoteColumnId, `#${string}` | `field:${string}`>, (item: QueryBlockItem) => number | string | undefined>> = {
   created: (item) => item.createdAt,
   updated: (item) => item.updatedAt,
   title: (item) => item.title,
@@ -827,6 +895,10 @@ export function describeNoteCell(item: QueryBlockItem, column: NoteColumnId, for
     case 'tags':
       return (item.noteTags ?? []).map((tag) => tag.label).join(' ');
     default: {
+      const field = noteColumnField(column);
+      if (field !== undefined) {
+        return item.fieldValues?.[field] ?? '';
+      }
       const namespace = noteColumnNamespace(column);
       return namespace === undefined ? '' : namespaceValues(item, namespace).join(', ');
     }

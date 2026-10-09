@@ -7,6 +7,7 @@ import { createCalendar } from '../ui/state/calendarState';
 import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import { createSearchPageSnapshot } from '../ui/state/searchPageState';
+import { createNotePageSnapshot } from '../ui/state/notePageState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { deckardThemeCss, type PageChrome } from '../ui/webview/components';
 import type { DeckardTheme } from '../ui/webview/themeNames';
@@ -14,6 +15,7 @@ import { createPreferences } from './preferenceServices';
 import { openWebviewPage, type WebviewPage } from './webviewPage';
 import { PAGES, renderPage } from './pages';
 import { pageSheets, themeSheet } from './sheets';
+import { typedWorkspace } from './typedWorkspace';
 
 /** The look a page is drawn in: Corpo, with Zen on or off. */
 const chromeOf = (zen: boolean): PageChrome => ({ theme: 'corpo', zen });
@@ -134,6 +136,15 @@ const context = (zen: boolean, mode = 'tags') => open(renderPage('sidebarNotes',
   pages: { pages: [{ id: 'home', label: 'Home', description: '', detail: '' }], style: 'icons', current: undefined },
 });
 const graph = (zen: boolean) => open(renderPage('notesGraph', { chrome: chromeOf(zen) }));
+/** A type's search page: its rows tab, sorted by a column, with rows that have no hub note. */
+const typeSearchPage = (zen: boolean) =>
+  open(renderPage('searchPage', { chrome: chromeOf(zen) }), {
+    ...createSearchPageSnapshot(typedWorkspace(), preferences({ typeTables: { area: { sort: { column: 'system', direction: 'asc' } } } }), 'type = area', { queryContext, originQuery: 'type = area' }),
+    parkedTags: [],
+  });
+/** The Note page on a typed row's note, with filled fields, a reverse, and empty ones folded. */
+const notePage = (zen: boolean) =>
+  open(renderPage('notePage', { chrome: chromeOf(zen) }), createNotePageSnapshot(typedWorkspace(), 'Teams/Credit.md', { queryContext, history: { back: false, forward: false }, visit: 1 }));
 
 /**
  * Zen quiets the tools under a page's bar in place (plan 29, R22): each is
@@ -190,6 +201,19 @@ suite('Zen quiets controls in place', () => {
     assert.ok(!quietAtRest(searchPage(true, { tagOverviewSortMode: 'newest' }).find('.result-sort')), 'Newest stays drawn');
     // The tabs are a content switch, and never quieted.
     assert.ok(page.findAll('[data-action="set-result-tab"]').every((tab) => !quietAtRest(tab)));
+  });
+
+  test("a type's search page quiets each row's ⋯ and Create hub note on its rows, and keeps every cell, date, and the sort it is in", () => {
+    const page = typeSearchPage(true);
+    for (const control of page.findAll('[data-action="type-row-menu"], [data-action="create-row-hub"]')) {
+      assert.ok(quietAtRest(control), `${nameOf(control)} is quiet at rest`);
+      assert.ok(control.closest('.type-rows[data-zen-region]') && control.closest('.type-row[data-reveal-region]'), `${nameOf(control)} shows from its row`);
+    }
+    for (const kept of page.findAll('.type-table th button, .type-row .field-link, .type-sort-note [data-action="clear-type-sort"]')) {
+      assert.ok(!quietAtRest(kept), `${nameOf(kept)} stays drawn`);
+    }
+    assert.ok(page.findAll('.type-no-hub').length > 0, 'a row with no hub note still says so');
+    assert.ok(!quietAtRest(typeSearchPage(false).find('[data-action="set-result-tab"][data-tab="rows"]')), 'the rows tab is a content switch, and stays');
   });
 
   test("Home quiets Customize at its tab row, and keeps the tabs and its tiles", () => {
@@ -254,6 +278,25 @@ suite('Zen quiets controls in place', () => {
     (page.find('.query-facets-fold') as HTMLDetailsElement).open = false;
     page.send(state);
     assert.strictEqual((page.find('.query-facets-fold') as HTMLDetailsElement).open, false, 'closed, it stays closed');
+  });
+
+  test("the Note page quiets Edit and Add field… in its fields region, keeps the fields drawn, and keeps an open list open", () => {
+    const page = notePage(true);
+    for (const control of page.findAll('.field-edit, .field-add-button')) {
+      assert.ok(quietAtRest(control), `${nameOf(control)} is quiet at rest`);
+      assert.ok(control.closest('section.note-fields[data-zen-region]'), `${nameOf(control)} shows from the fields region`);
+    }
+    for (const kept of page.findAll('.field-link, .field-empty > summary, .note-progress .type-link')) {
+      assert.ok(!quietAtRest(kept), `${nameOf(kept)} stays drawn`);
+    }
+    // Plain styling hides an eyebrow whole; the type opens its rows, so it is drawn as the line's label instead.
+    assert.strictEqual(page.find('.note-progress .type-link').closest('.eyebrow'), null, 'the hub line’s type is no eyebrow');
+    assert.ok(!quietAtRest(notePage(false).find('.field-add-button')), 'at Full, Add field… is drawn');
+    assert.ok(quietAtRest(notePage(false).find('.field-edit')), "at Full, a row's Edit shows on its row, as a row's ⋯ does");
+    page.click('.field-edit[data-field-key="lead"]');
+    const choices = page.findAll('.field-editor .field-choice');
+    assert.ok(choices.length > 0 && choices.every((choice) => !quietAtRest(choice)), 'an open list stays drawn');
+    assert.strictEqual(page.find('.field-edit[data-field-key="lead"]').getAttribute('aria-expanded'), 'true', 'and its Edit with it');
   });
 
   test("the Notes Graph's Focus and Filters start closed under Zen, as Display does, and their summaries say what they are doing", () => {
@@ -331,6 +374,8 @@ const CONTRACT_PAGES: ReadonlyArray<readonly [string, (zen: boolean) => WebviewP
   ['the sidebar Calendar', sidebarCalendar],
   ['Context', context],
   ['the Notes Graph', graph],
+  ['the Note page', notePage],
+  ["a type's search page", typeSearchPage],
 ];
 
 /**

@@ -16,11 +16,13 @@ import {
   visitConditions,
 } from '../../domain/query/queryFormat';
 import { parseQuery } from '../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { QueryNode } from '../../domain/query/queryTypes';
 import { EntrySearchResult } from '../../core/storage/searchStore';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { getHeadingPath } from '../../domain/ranking/entryLabels';
 import { describeTagMatches } from './querySuggestions';
+import { type AnswerKind, describeTypedTag, listAnswerItems } from './findAnswers';
 import { normalizeFindInput, pinKey } from '../../core/storage/preferencesSchema';
 import { createPinForLine, findPinnedSection, resolvePin } from '../../domain/notes/pins';
 import { frecencyScore } from '../../domain/ranking/frecency';
@@ -42,7 +44,9 @@ import {
  * searched as text. Results come in explainable tiers rather than one opaque
  * score: an exact title first, then titles that contain every word or match
  * it loosely, then entries whose body matches, ranked by the full-text index.
- * How often and how recently something was opened breaks ties.
+ * How often and how recently something was opened breaks ties. Above them
+ * all, in a workspace with types, come answers to words read as a question
+ * ("who leads bond trading"), from findAnswers.ts.
  */
 export type QuickFindItemKind =
   | 'tag'
@@ -70,6 +74,11 @@ export interface QuickFindItem {
   taskId?: string;
   /** The query a recent search or saved view stands for. */
   query?: string;
+  /**
+   * Set on an answer from the types, by what its value is: a person, another
+   * tag row, a note, or a value written as text. It opens as its kind does.
+   */
+  answer?: AnswerKind;
   savedFilterId?: string;
   /**
    * The whole search after choosing this item with Tab: the word being typed
@@ -82,6 +91,8 @@ export interface QuickFindItem {
 export interface QuickFindResults {
   /** Pinned notes, offered first before anything is typed. */
   pinned?: QuickFindItem[];
+  /** Answers from the types to what is typed as a question, listed first; absent when there are none. */
+  answers?: QuickFindItem[];
   tags: QuickFindItem[];
   conditions: QuickFindItem[];
   recent: QuickFindItem[];
@@ -172,7 +183,9 @@ export function buildQuickFindResults(request: QuickFindRequest): QuickFindResul
     learned: learnedWeights(preferences, input, now),
   });
   const savedViews = matchSavedViews(index, preferences, input.trim());
+  const answers = listAnswerItems(index, input, now);
   const results: QuickFindResults = {
+    ...(answers.length > 0 ? { answers } : {}),
     tags,
     conditions,
     recent: [],
@@ -216,10 +229,10 @@ function readTypedSearch(index: WorkspaceIndex, input: string, context: QueryCon
     !resolveIndexedTagKey(index.tags, token.replace(/^-/, ''), context.entityNamespaceAliases)
       ? token.replace(/^-/, '')
       : undefined;
-  let parsed = parseQuery(tagToken ? beforeToken : input);
+  let parsed = parseWorkspaceQuery(index, tagToken ? beforeToken : input);
   let message: string | undefined;
   if (!parsed.node && parsed.diagnostics.length > 0) {
-    const withoutToken = parseQuery(beforeToken);
+    const withoutToken = parseWorkspaceQuery(index, beforeToken);
     if (withoutToken.node || !beforeToken.trim()) {
       parsed = withoutToken;
     } else {
@@ -602,6 +615,10 @@ function resolveFindChoiceKey(index: WorkspaceIndex, key: string): string | unde
  * that moves down its note, or a task whose line changes, is still known.
  */
 export function findChoiceKey(index: WorkspaceIndex, item: QuickFindItem): string | undefined {
+  // An answer is worked out from the types each time, never learned.
+  if (item.answer) {
+    return undefined;
+  }
   switch (item.kind) {
     case 'note': {
       if (!item.filePath || !item.line) {
@@ -978,16 +995,21 @@ function listOpenedLast(
     .slice(0, EMPTY_RECENT_LIMIT);
 }
 
-/** A tag as a row that completes the search to it. */
+/**
+ * A tag as a row that completes the search to it, described by its counts,
+ * after its type and one fact when a type has it as a row.
+ */
 function createTagItem(
   index: WorkspaceIndex,
   tag: TagInfo,
   completion: string,
 ): QuickFindItem {
+  const typed = describeTypedTag(index, tag.key);
+  const counts = describeTagMatches(index, tag.key);
   return {
     kind: 'tag',
     label: tag.label,
-    description: describeTagMatches(index, tag.key),
+    description: typed ? `${typed} · ${counts}` : counts,
     tagKey: tag.key,
     completion,
   };

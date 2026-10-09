@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "2.5.0",
+  "version": "2.6.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -52,7 +52,8 @@
     "onStartupFinished",
     "onUri",
     "onLanguageModelTool:deckard_query",
-    "onLanguageModelTool:deckard_list_tags"
+    "onLanguageModelTool:deckard_list_tags",
+    "onLanguageModelTool:deckard_describe_tag"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -311,6 +312,11 @@
       {
         "command": "deckard.createHubNoteForTag",
         "title": "Create Hub Note for Tag…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.createTypeFromTags",
+        "title": "Create Type from Tags…",
         "category": "Deckard"
       },
       {
@@ -1621,7 +1627,7 @@
           "tasks"
         ],
         "userDescription": "Search the workspace's Markdown notes and tasks with a Deckard query.",
-        "modelDescription": "Searches the user's local Markdown notes and checklist tasks, as indexed by the Deckard extension, with a Deckard query, and returns the matching note sections and tasks with their workspace-relative paths, one-based lines, and headings; tasks include their state, due date, and priority. Use it to answer questions about the user's notes, projects, people, and to-dos. For example, 'open tasks for Atlas' is tag = #project/atlas AND task = open, and 'what is overdue' is task = open AND due < today. Conditions combine with AND, OR, NOT, and parentheses. Fields: tag (tag = #project/atlas; tag = #risk/* matches a namespace; a bare #tag or @person also works), text (text ~ \"vendor\" matches words in note and task text), link (link = [[Note]] or a bare [[Note]] finds entries that link to a note; [[Note#Heading]] one heading), task (open, done, or any; only tasks match), due, scheduled, and start (a date such as 2026-09-20, today, tomorrow, a weekday such as friday, a phrase such as \"oct 3\" or end-of-month, this-week, next-month, a window such as 7d counted forward, or none), done (done = 7d means completed in the last seven days), priority (highest, high, medium, none, low, lowest; priority >= high), kind (an entity namespace such as project or person), file and path (with * and ? wildcards), created and updated (dates, a weekday such as friday meaning the last one, this-week, last-month, a month such as 2026-08, or windows such as 30d). Shorthands: is:open, is:done, is:overdue, is:due (open and due within seven days), is:today (what the Tasks view lists under Today), is:needs-date (open and more than 30 days past due), is:task, is:note, is:waiting (on hold, as [w] Waiting, [s] Someday, or [=] Blocked, or assigned to someone else), is:available (open, not blocked, started, not on hold), is:daily and is:periodic (written in a daily note, or a daily, weekly, or monthly note), has:due and no:due (also scheduled, start, done, priority), and in:folder for a folder and everything in it. Operators are = != ~ !~ > >= < <=. If you do not know a tag's exact name, call deckard_list_tags first.",
+        "modelDescription": "Searches the user's local Markdown notes and checklist tasks, as indexed by the Deckard extension, with a Deckard query, and returns the matching note sections and tasks with their workspace-relative paths, one-based lines, and headings; tasks include their state, due date, and priority. Use it to answer questions about the user's notes, projects, people, and to-dos. For example, 'open tasks for Atlas' is tag = #project/atlas AND task = open, and 'what is overdue' is task = open AND due < today. Conditions combine with AND, OR, NOT, and parentheses. Fields: tag (tag = #project/atlas; tag = #risk/* matches a namespace; a bare #tag or @person also works), text (text ~ \"vendor\" matches words in note and task text), link (link = [[Note]] or a bare [[Note]] finds entries that link to a note; [[Note#Heading]] one heading), task (open, done, or any; only tasks match), due, scheduled, and start (a date such as 2026-09-20, today, tomorrow, a weekday such as friday, a phrase such as \"oct 3\" or end-of-month, this-week, next-month, a window such as 7d counted forward, or none), done (done = 7d means completed in the last seven days), priority (highest, high, medium, none, low, lowest; priority >= high), kind (an entity namespace such as project or person), file and path (with * and ? wildcards), created and updated (dates, a weekday such as friday meaning the last one, this-week, last-month, a month such as 2026-08, or windows such as 30d). Shorthands: is:open, is:done, is:overdue, is:due (open and due within seven days), is:today (what the Tasks view lists under Today), is:needs-date (open and more than 30 days past due), is:task, is:note, is:waiting (on hold, as [w] Waiting, [s] Someday, or [=] Blocked, or assigned to someone else), is:available (open, not blocked, started, not on hold), is:daily and is:periodic (written in a daily note, or a daily, weekly, or monthly note), has:due and no:due (also scheduled, start, done, priority), and in:folder for a folder and everything in it. Operators are = != ~ !~ > >= < <=. Types: when the workspace defines types (notes in Types/), type = team (or is:team) finds a type's rows, and a type's fields are conditions by name: lead = @dana, owns = \"Bond trading\" (a person or related row by its tag, name, or title), tier = gold, silver (any of), headcount > 10 and joined >= 2026-01-01 (numbers and dates by order), paths up to two hops through relations and their reverses (team.lead = @dana, owned-by.lead = @dana), has:on-call and no:email (filled or empty), computed fields (open-tasks, last-mentioned, mentions), and field.status for a field whose name a built-in field takes. The answer's second line names the workspace's types and their fields when it has any, and deckard_describe_tag describes one row with its fields. If you do not know a tag's exact name, call deckard_list_tags first.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -1663,7 +1669,7 @@
           "tags"
         ],
         "userDescription": "List the tags used in the workspace's Markdown notes, most used first.",
-        "modelDescription": "Lists the tags in the user's local Markdown notes, as indexed by the Deckard extension, most used first, with how many entries use each. Tags look like #project/atlas, #topic/leadership, or @person-name. Use it to find the exact tag to pass to deckard_query, optionally narrowed by a search such as 'atlas' or 'project/'.",
+        "modelDescription": "Lists the tags in the user's local Markdown notes, as indexed by the Deckard extension, most used first, with how many entries use each. Tags look like #project/atlas, #topic/leadership, or @person-name. Use it to find the exact tag to pass to deckard_query, optionally narrowed by a search such as 'atlas' or 'project/'. When the workspace defines types, the answer also names them and their fields.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -1678,6 +1684,33 @@
               "description": "The most tags to return. Defaults to 50."
             }
           }
+        },
+        "when": "config.deckard.assistantTools"
+      },
+      {
+        "name": "deckard_describe_tag",
+        "displayName": "Describe a Deckard tag and its fields",
+        "toolReferenceName": "deckardDescribeTag",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(symbol-field)",
+        "tags": [
+          "deckard",
+          "notes",
+          "tags"
+        ],
+        "userDescription": "Describe one tag, person, or typed row in the workspace's notes: its type, fields, open tasks, and latest entries.",
+        "modelDescription": "Describes one tag, person, or typed row in the user's local Markdown notes, as indexed by the Deckard extension. Pass a tag (#team/rates, @dana), a title (Dana Whitfield, Bond trading), or a few words naming one. For a row of a type the workspace defines (notes in Types/), it answers with the type, the row's title, tag, and note, each field and its values (a person or related row by its title and tag, as lead: Dana Whitfield (@dana)), the reverses other rows give it (members (reverse of Person.team): …), its open tasks with how many are overdue, and its latest entries with their dates, paths, and lines. For a row with no note it says No hub note. For a tag no type has, it answers with how many notes and tasks carry it, its hub note, its open tasks, and its latest entries. When the words match several rows it describes the best and names the others. Use it to answer who leads, owns, or is on something, and how to reach them; use deckard_query to list entries, and deckard_list_tags to find a tag's exact name.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "tag": {
+              "type": "string",
+              "description": "A tag such as #team/rates or @dana, a title such as Bond trading, or a few words naming one."
+            }
+          },
+          "required": [
+            "tag"
+          ]
         },
         "when": "config.deckard.assistantTools"
       },
@@ -2106,7 +2139,7 @@
           "deckard.editor.linkDiagnostics": {
             "type": "boolean",
             "scope": "resource",
-            "description": "Mark a [[Wiki link]] that opens no note, because no note has its name or several do, and offer to create a missing note. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
+            "description": "Mark a [[Wiki link]] that opens no note, because no note has its name or several do, and offer to create a missing note. Also mark a type's field whose value names nothing or does not fit its kind, with quick fixes. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
             "order": 3
           },
           "deckard.editor.taskDependencies": {

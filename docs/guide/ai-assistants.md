@@ -1,11 +1,14 @@
 # AI assistants
 
-Deckard gives AI assistants in VS Code four tools through VS Code's language model tool API. Any assistant using those tools can call them; in GitHub Copilot's agent mode they appear in the tools picker. Assistants that connect only through MCP servers cannot see them; see [Claude Code and other MCP clients](#claude-code-and-other-mcp-clients).
+Deckard gives AI assistants in VS Code five tools through VS Code's language model tool API. Any assistant using those tools can call them; in GitHub Copilot's agent mode they appear in the tools picker. Assistants that connect only through MCP servers cannot see them; see [Claude Code and other MCP clients](#claude-code-and-other-mcp-clients).
 
 - **Search Deckard notes and tasks** (`deckard_query`, or `#deckardQuery` in a chat prompt) runs a [Deckard query](search.md#query-language) and returns matching sections and tasks with path, line, and headings, plus each task's done state, due and scheduled dates, priority, and repeat rule. It returns at most 25 notes and 25 tasks unless asked for more, up to 200, and always reports full totals. A query that does not parse returns its error and a short syntax guide.
 - **List Deckard tags** (`deckard_list_tags`, or `#deckardTags`) lists tags by use count, optionally narrowed by a search.
+- **Describe a Deckard tag and its fields** (`deckard_describe_tag`, or `#deckardDescribeTag`) takes a tag, a title, or a few words naming one, and answers in plain text. For a row of a [type](databases.md): its type, title, tag, and note, or *No hub note.*; each field and its values, *lead: Alex Rivera (@alex-rivera)*; its reverses and what they come from, *members (reverse of Person.team): …*; its open tasks and how many are overdue; and its three latest entries with their dates. For any other tag: its counts, hub note, open tasks, and latest entries. When the words name several rows, it describes the best and names the others. It only reads.
 - `deckard_add_task` adds a task to today's note or a named note.
 - `deckard_change_task` completes, reopens, retitles, dates, prioritizes, or hands over one task, named by note and line as `deckard_query` reports them.
+
+In a workspace with types, `deckard_query` takes the [type's fields](databases.md#searching-by-field) as conditions, and its answer, like `deckard_list_tags`'s, names the workspace's types and their fields on its second line, *Types in this workspace: Team (lead, owns, on-call, channel; reverses: members), …*, so an assistant knows what it can ask.
 
 **Reading.** The first time an assistant calls a tool in a session, VS Code asks you to allow it. Deckard sends nothing itself; the assistant may send what it gets to its model service. Set `deckard.assistantTools` to `false` to turn the tools off. Calls are timed in [Deckard's log](privacy-and-troubleshooting.md#limitations-and-troubleshooting).
 
@@ -24,7 +27,7 @@ This is the only place Deckard itself sends anything to a model.
 
 ### Claude Code and other MCP clients
 
-Deckard can offer the same four tools to Claude Code and other Model Context Protocol clients. Set `deckard.mcpServer.enabled` to `true`, or run `Deckard: Copy MCP Server Setup`, which offers to turn the server on and copies the command that adds Deckard to Claude Code:
+Deckard can offer the same five tools to Claude Code and other Model Context Protocol clients. Set `deckard.mcpServer.enabled` to `true`, or run `Deckard: Copy MCP Server Setup`, which offers to turn the server on and copies the command that adds Deckard to Claude Code:
 
 ```bash
 claude mcp add --transport http deckard http://127.0.0.1:39217/mcp --header "Authorization: Bearer <token>"

@@ -17,6 +17,7 @@ import {
   visitConditions,
 } from '../query/queryFormat';
 import { parseQuery } from '../query/queryParser';
+import { ANY_FIELD_SCHEMA } from '../query/queryTypes';
 import { ParsedFile, Section, Task, WorkspaceIndex, QueryFacet, QueryFacetValue } from '../model';
 import { noteTitle } from '../index/backlinks';
 import {
@@ -142,7 +143,7 @@ function makeFacet(
  * facet's applied values, so another tag can be ORed with one.
  */
 function appliedTags(queryText: string): string[] {
-  return collectQueryTagKeys(parseQuery(queryText).node).filter((tagKey) =>
+  return collectQueryTagKeys(parseQuery(queryText, ANY_FIELD_SCHEMA).node).filter((tagKey) =>
     isWritten(queryText, tagKey),
   );
 }
@@ -430,14 +431,14 @@ export function countTags(
   queryText: string,
 ): SearchFacetValue[] {
   const named = new Set(
-    collectQueryTagKeys(parseQuery(queryText).node)
+    collectQueryTagKeys(parseQuery(queryText, ANY_FIELD_SCHEMA).node)
       .map((tagKey) => resolveIndexedTagKey(index.tags, tagKey))
       .filter((tagKey): tagKey is string => tagKey !== undefined),
   );
   const counts = new Map<string, number>();
   // A tag only parked notes carry is clutter here, unless the search is
   // about parked notes.
-  const skipParked = !mentionsParked(parseQuery(queryText).node);
+  const skipParked = !mentionsParked(parseQuery(queryText, ANY_FIELD_SCHEMA).node);
   const add = (tagKeys: Iterable<string>): void => {
     new Set(tagKeys).forEach((tagKey) => {
       if (!named.has(tagKey) && !(skipParked && isParkedOnlyTag(index, tagKey))) {
@@ -469,7 +470,7 @@ export function countLinks(
   queryText: string,
 ): SearchFacetValue[] {
   const named = new Set<string>();
-  visitConditions(parseQuery(queryText).node, (condition) => {
+  visitConditions(parseQuery(queryText, ANY_FIELD_SCHEMA).node, (condition) => {
     if (condition.field === 'link') {
       resolveLinkQuery(index, condition.value).paths.forEach((path) => named.add(path));
     }
@@ -490,7 +491,7 @@ export function countLinks(
 /** The links the query writes as terms of their own, as `[[Title]]`. */
 function appliedLinks(queryText: string): string[] {
   const applied: string[] = [];
-  visitConditions(parseQuery(queryText).node, (condition) => {
+  visitConditions(parseQuery(queryText, ANY_FIELD_SCHEMA).node, (condition) => {
     const clause = `[[${condition.value}]]`;
     if (condition.field === 'link' && isWritten(queryText, clause)) {
       applied.push(clause);

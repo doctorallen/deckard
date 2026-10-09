@@ -36,6 +36,7 @@ import {
   TaskSortMode,
   TaskColumnId,
   TaskLayout,
+  TypeTableView,
 } from '../../domain/model/preferences';
 
 /**
@@ -72,6 +73,7 @@ export const WORKSPACE_PREFERENCE_KEYS = [
   'dashboardWidgets',
   'dashboardViewState',
   'agendaGroupNamespace',
+  'typeTables',
 ] as const satisfies readonly (keyof PersistedPreferences)[];
 
 /** Everything except the workspace's share: what stays machine-wide. */
@@ -270,6 +272,7 @@ export function normalizePreferences(
     ...normalizeTaskBoard(source),
     ...normalizeWorkspaceMemory(source),
     ...normalizeViewChoices(source),
+    ...normalizeTypeTables(source.typeTables),
   };
 }
 
@@ -967,6 +970,16 @@ export function clonePreferences(value: PersistedPreferences): PersistedPreferen
     ...(value.findChoices ? { findChoices: value.findChoices.map((choice) => ({ ...choice })) } : {}),
     ...(value.recentHeadings ? { recentHeadings: value.recentHeadings.map((pin) => ({ ...pin })) } : {}),
     ...(value.contextPagesHidden ? { contextPagesHidden: [...value.contextPagesHidden] } : {}),
+    ...(value.typeTables
+      ? {
+          typeTables: Object.fromEntries(
+            Object.entries(value.typeTables).map(([key, view]) => [
+              key,
+              { ...view, ...(view.columns ? { columns: [...view.columns] } : {}), ...(view.sort ? { sort: { ...view.sort } } : {}) },
+            ]),
+          ),
+        }
+      : {}),
   };
 }
 
@@ -979,6 +992,52 @@ export function normalizeTableColumns(value: unknown): TaskColumnId[] | undefine
   const unique = ['title' as const, ...columns.filter((column) => column !== 'title')]
     .filter((column, at, all) => all.indexOf(column) === at);
   return unique.length > 1 ? unique : undefined;
+}
+
+/** The most types whose rows tab a blob keeps a view of. */
+const MAX_TYPE_TABLES = 100;
+/** The most columns a type's rows tab keeps, far more than a type has. */
+const MAX_TYPE_COLUMNS = 60;
+/** A column, sort, or group id as a type's rows tab names one: a query name, `field.status` among them. */
+const TYPE_COLUMN_ID = /^[\p{L}\p{N}][\p{L}\p{N}_.-]{0,79}$/u;
+
+/**
+ * Each type's rows tab as stored: a type key to its columns, sort, and
+ * group, each only when it is a usable value; a type with none is dropped,
+ * and so is a blob of none.
+ */
+export function normalizeTypeTables(value: unknown): Pick<PersistedPreferences, 'typeTables'> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  const tables: Record<string, TypeTableView> = {};
+  Object.entries(value as Record<string, unknown>)
+    .filter(([key]) => TYPE_COLUMN_ID.test(key))
+    .slice(0, MAX_TYPE_TABLES)
+    .forEach(([key, stored]) => {
+      const view = normalizeTypeTableView(stored);
+      if (view) {
+        tables[key] = view;
+      }
+    });
+  return Object.keys(tables).length ? { typeTables: tables } : {};
+}
+
+/** One type's rows tab view, or undefined when it holds nothing usable. */
+function normalizeTypeTableView(value: unknown): TypeTableView | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+  const { columns, sort, groupBy } = value as { columns?: unknown; sort?: unknown; groupBy?: unknown };
+  const isId = (id: unknown): id is string => typeof id === 'string' && TYPE_COLUMN_ID.test(id);
+  const kept = Array.isArray(columns) ? [...new Set(columns.filter(isId))].slice(0, MAX_TYPE_COLUMNS) : undefined;
+  const sorted = sort && typeof sort === 'object' ? (sort as { column?: unknown; direction?: unknown }) : undefined;
+  const view: TypeTableView = {
+    ...(kept ? { columns: kept.includes('title') ? kept : ['title', ...kept] } : {}),
+    ...(sorted && isId(sorted.column) ? { sort: { column: sorted.column, direction: sorted.direction === 'desc' ? 'desc' : 'asc' } } : {}),
+    ...(isId(groupBy) ? { groupBy } : {}),
+  };
+  return Object.keys(view).length ? view : undefined;
 }
 
 /** The column a stored sort names and its direction, ascending unless it says otherwise. */

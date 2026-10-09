@@ -1,6 +1,7 @@
 import type { Disposable, Event } from '../../ports/events';
 import type { ResourceUri, WorkspaceFolder } from '../../ports/uri';
 import type { ParkedRules } from '../../domain/index/parked';
+import type { TypeIndex } from '../../domain/types/typeIndex';
 import type { ParsedFile, Task, UnreadableNote, WorkspaceIndex } from '../../domain/model';
 import type { EntrySearchOptions, EntrySearchResult } from '../storage/searchStore';
 import type { ViewUpdateOptions } from './publishing';
@@ -33,6 +34,12 @@ export interface IndexContents {
   getTask(taskId: string): Task | undefined;
   /** What `deckard.parked` parks now, as the index reads it. */
   getParkedRules(): ParkedRules;
+  /**
+   * The types the workspace's `Types/` notes define, their rows, and what
+   * the rows' fields hold, read from the index now: the same one for every
+   * caller until the notes next change.
+   */
+  getTypeIndex(): TypeIndex;
 }
 
 /**
@@ -52,6 +59,8 @@ export interface NoteFiles<U extends ResourceUri = ResourceUri> {
   getNotesFolderUri(workspaceFolder: WorkspaceFolder<U>): U;
   /** The folder `deckard.templatesFolder` names in a workspace folder, if it names one. */
   getTemplatesFolderUri(workspaceFolder: WorkspaceFolder<U>): U | undefined;
+  /** The folder of type notes, `Types/` under the notes folder, whether or not it exists. */
+  getTypesFolderUri(workspaceFolder: WorkspaceFolder<U>): U;
   /**
    * Parses text an editor holds as the index would parse the file, under
    * its folder's parse settings. It changes nothing in the index.

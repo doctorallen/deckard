@@ -109,9 +109,13 @@ suite('Deckard query blocks', () => {
       direction: 'desc',
       warnings: [],
     });
-    const options = parseQueryBlockInfo('deckard noteColumns=links,color,#9');
-    assert.deepStrictEqual(options?.noteColumns, ['title', 'links']);
-    assert.match(options?.warnings[0] ?? '', /no "color", "#9"/);
+    const options = parseQueryBlockInfo('deckard view=table noteColumns=links,color,#9');
+    // A name a field could have is checked against the workspace's types when the block runs.
+    assert.deepStrictEqual(options?.noteColumns, ['title', 'links', 'field:color']);
+    assert.match(options?.warnings[0] ?? '', /no "#9"/);
+    const index = buildWorkspaceIndex(new Map([['notes/a.md', parseMarkdown('notes/a.md', '# A #project/a')]]));
+    const ran = createQueryBlockSnapshot(index, '#project/a', options!, { queryContext: createQueryContext(Date.now()) });
+    assert.ok(ran.messages.some((message) => /no "color"/.test(message.text)), 'a field no type has is warned of');
     assert.strictEqual(formatQueryBlock('#project/*', { view: 'table', noteColumns: ['links', '#status'] }), '```deckard view=table noteColumns=links,#status\n#project/*\n```\n');
   });
 

@@ -1,7 +1,11 @@
+---
+type: decision
+date: {date}
+state: proposed
+decided-by:
+project:
+---
 # {title} #decision
-
-Date: {date}
-Status: {ask:Status, such as proposed or accepted?}
 
 ## Context
 

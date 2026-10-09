@@ -34,6 +34,8 @@ export interface PlainMarkdownContext {
   index: WorkspaceIndex;
   /** The moment and settings a query block's results are read at. */
   queryContext: QueryContext;
+  /** The note being copied, by its index path: what `this` in its query blocks names. */
+  notePath?: string;
 }
 
 /**
@@ -158,6 +160,7 @@ function writeEmbed(target: string, documentSource: string, context: PlainMarkdo
 export function writeQueryBlock(query: string, options: QueryBlockOptions, context: PlainMarkdownContext): string {
   const snapshot = getQueryBlockSnapshot(context.index, query, options, {
     queryContext: context.queryContext,
+    ...(context.notePath ? { notePath: context.notePath } : {}),
   });
   if (snapshot.hasError) {
     return `\`${query.trim()}\``;

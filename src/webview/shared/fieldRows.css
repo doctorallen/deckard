@@ -1,0 +1,31 @@
+/*
+ * A typed row's fields (fieldRows.tsx): the Note page's fields region and
+ * a tag's page's hub card. A key in monospace, muted; its values; a
+ * reverse in italics; the empty fields folded into one muted line. On the
+ * Note page, a row's Edit shows on the row's hover or focus (reveal.css),
+ * and its editor opens under it.
+ */
+.field-rows { display: grid; gap: 2px; margin: 0; }
+.field-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3); padding: 2px 4px; margin: 0 -4px; }
+.field-row:focus-visible { outline: var(--focus-width, 2px) solid var(--focus); outline-offset: 0; }
+.field-name { flex: 0 0 12ch; min-width: 0; overflow-wrap: anywhere; color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); }
+.field-values { flex: 1 1 16ch; min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.field-row.is-reverse .field-name, .field-value.is-reverse { font-style: italic; }
+.field-none, .field-detail, .field-more { color: var(--muted); font-size: var(--text-sm); }
+.field-value.is-unresolved { text-decoration: underline dotted var(--muted); text-underline-offset: 3px; }
+.field-link.field-link { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; text-decoration: underline; text-decoration-color: var(--cyan); text-underline-offset: 3px; cursor: pointer; }
+.field-link.field-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .field-link.field-link:focus-visible { border: 0; background: transparent; color: var(--hover-fg); text-decoration-color: currentColor; }
+.field-edit.field-edit, .field-add-button.field-add-button { min-height: 0; margin-left: var(--space-2); padding: 0 6px; font-size: var(--text-xs); }
+.field-add-button.field-add-button { margin: var(--space-1) 0 0; }
+.field-editor-cell { flex: 1 0 100%; margin: var(--space-1) 0 var(--space-2); }
+.field-editor { display: grid; gap: var(--space-2); max-width: 520px; padding: var(--space-2); border: var(--edge) solid var(--line); background: var(--panel); }
+.field-text { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.field-text > input { flex: 1 1 16ch; min-width: 0; }
+.field-choices { display: grid; gap: 1px; max-height: 280px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.field-choice.field-choice { display: flex; justify-content: space-between; gap: var(--space-3); width: 100%; min-height: 28px; padding: 2px var(--space-2); border-color: transparent; background: transparent; text-align: left; }
+.field-choice.field-choice[aria-pressed="true"] { border-color: var(--chosen-bg); box-shadow: inset 3px 0 0 var(--chosen-bg); }
+.field-choice-detail { color: var(--muted); font-size: var(--text-xs); }
+.field-clear.field-clear { justify-self: start; min-height: 0; padding: 2px 6px; font-size: var(--text-sm); }
+.field-empty { margin: var(--space-1) 0 0; }
+.field-empty > summary { width: fit-content; color: var(--muted); font-size: var(--text-sm); cursor: pointer; }
+.field-empty > .field-rows { margin-top: var(--space-1); }

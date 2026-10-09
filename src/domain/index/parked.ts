@@ -299,6 +299,8 @@ export function mentionsParked(node: QueryNode | undefined): boolean {
   switch (node.type) {
     case 'condition':
       return node.field === 'is' && node.value === 'parked';
+    case 'field':
+      return false;
     case 'not':
       return mentionsParked(node.child);
     case 'and':

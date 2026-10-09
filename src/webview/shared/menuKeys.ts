@@ -59,7 +59,8 @@ export function isMenuKey(event: KeyboardEvent): boolean {
 
 /**
  * Each menu here opens on a contextmenu event, so the menu key, Shift+F10,
- * and Alt+Enter on a focused tag, card, or row, a table's row too, raise
+ * and Alt+Enter on a focused tag, card, or row, a table's row or a
+ * heading with a menu of its own (`data-context-menu`) too, raise
  * that event at the element, and whatever menu a pointer would get there
  * opens for the keyboard too. Install once, ahead of the page's own listeners, so a
  * handler that opens on the same keys can see the key was taken.
@@ -76,7 +77,7 @@ export function installMenuKeys(): void {
     if (event.target.closest('input, textarea, select')) {
       return;
     }
-    const target = event.target.closest<HTMLElement>('[data-tag-key], .card, .task-row, .task, .row, .result-row');
+    const target = event.target.closest<HTMLElement>('[data-tag-key], [data-context-menu], .card, .task-row, .task, .row, .result-row');
     if (!target) {
       return;
     }

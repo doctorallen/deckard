@@ -12,9 +12,13 @@ import { resultPanelAttributes, ResultTabs } from '../shared/resultTabs';
 import { type CardDisplay, SearchCard } from '../shared/searchCard';
 import { LinesIcon } from '../shared/strokeIcons';
 import { TaskListRow } from '../shared/taskRow';
+import { TypeRowsTable, TypeSortNote } from './typeRows';
 
 /** A kind of result. */
 export type ResultKind = 'notes' | 'tasks';
+
+/** A tab of results: notes, tasks, or, on a type's page, its rows. */
+export type ResultTabId = ResultKind | 'rows';
 
 /** Whether the results are drawn in groups: the hierarchy is on, and there is something to group. */
 function isGrouped(snapshot: SearchPageSnapshot): boolean {
@@ -24,7 +28,7 @@ function isGrouped(snapshot: SearchPageSnapshot): boolean {
 /** What the results are drawn from besides the snapshot: the tab shown, and the cards opened with Show all. */
 export interface ResultsView {
   readonly snapshot: SearchPageSnapshot;
-  readonly activeTab: ResultKind;
+  readonly activeTab: ResultTabId;
   readonly openedCards: ReadonlySet<string>;
 }
 
@@ -252,29 +256,59 @@ function SplitGroups({ view }: { readonly view: ResultsView }) {
 }
 
 /**
+ * Side by side, a type's rows over the notes and tasks: their heading and
+ * count, what they are sorted by, and the table.
+ */
+function RowsPane({ view }: { readonly view: ResultsView }) {
+  const table = view.snapshot.typeRows;
+  if (!table) {
+    return null;
+  }
+  return (
+    <section class="overview-pane type-pane" aria-labelledby="rows-heading">
+      <div class="overview-pane-header" data-zen-region="">
+        <h2 id="rows-heading" class="overview-pane-heading">{[`${table.plural} (`, <span data-search-count="rows">{table.count}</span>, ')']}</h2>
+        <div class="overview-pane-actions"><TypeSortNote table={table} /></div>
+      </div>
+      <TypeRowsTable table={table} />
+    </section>
+  );
+}
+
+/**
  * The results: side by side, or as Notes and Tasks tabs over their panes,
  * each tab counting what its pane holds, so a tab never promises more rows
  * than the pane behind it; either grouped under Refine's tags when the
- * hierarchy is on.
+ * hierarchy is on. A type's page has its rows first, as a tab or over the
+ * panes side by side.
  */
 export function Results({ view }: { readonly view: ResultsView }) {
+  const table = view.snapshot.typeRows;
   if (view.snapshot.layout === 'split' && isGrouped(view.snapshot)) {
-    return <SplitGroups view={view} />;
+    return <><RowsPane view={view} /><SplitGroups view={view} /></>;
   }
   if (view.snapshot.layout === 'split') {
-    return <div key="split" class="overview-split"><NotesPane view={view} /><TasksPane view={view} /></div>;
+    return <><RowsPane view={view} /><div key="split" class="overview-split"><NotesPane view={view} /><TasksPane view={view} /></div></>;
   }
   const counts = resultCounts(view.snapshot);
+  const active = view.activeTab === 'rows' && !table ? 'notes' : view.activeTab;
   return (
     <>
       <ResultTabs
-        tabs={[{ id: 'notes', label: 'Notes', count: counts.notes }, { id: 'tasks', label: 'Tasks', count: counts.tasks }]}
-        active={view.activeTab}
+        tabs={[
+          ...(table ? [{ id: 'rows', label: table.plural, count: table.count }] : []),
+          { id: 'notes', label: 'Notes', count: counts.notes },
+          { id: 'tasks', label: 'Tasks', count: counts.tasks },
+        ]}
+        active={active}
         label="Search results"
-        actions={<PaneActions kind={view.activeTab} view={view} />}
+        actions={active === 'rows' && table ? <div class="overview-pane-actions"><TypeSortNote table={table} /></div> : <PaneActions kind={active as ResultKind} view={view} />}
       />
-      <div class="overview-tab-panel" {...resultPanelAttributes('notes')} hidden={view.activeTab !== 'notes'}><NotesPane view={view} /></div>
-      <div class="overview-tab-panel" {...resultPanelAttributes('tasks')} hidden={view.activeTab !== 'tasks'}><TasksPane view={view} /></div>
+      {table
+        ? <div class="overview-tab-panel" {...resultPanelAttributes('rows')} hidden={active !== 'rows'}><TypeRowsTable table={table} /></div>
+        : null}
+      <div class="overview-tab-panel" {...resultPanelAttributes('notes')} hidden={active !== 'notes'}><NotesPane view={view} /></div>
+      <div class="overview-tab-panel" {...resultPanelAttributes('tasks')} hidden={active !== 'tasks'}><TasksPane view={view} /></div>
     </>
   );
 }

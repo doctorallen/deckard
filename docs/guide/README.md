@@ -12,6 +12,7 @@ Everything Deckard does, one topic to a page. The [README](../../README.md) is t
 ## Writing
 
 - [Writing notes: tags, people, and links](notes-and-links.md): tags, `@people`, namespaced entities, front matter, `[[links]]`, embeds, what counts as a note, editor assistance, and templates.
+- [Types and fields](databases.md): types over front matter, a type's rows as a table, fields on pages, and asking Find who leads or owns something.
 - [Tasks](tasks.md): writing tasks and their dates, priorities, repeats, and steps; the Tasks view, the status bar, and Add Task.
 - [Daily notes, reviews, and the calendar](daily-notes.md): today's note, carrying tasks forward, weekly and monthly reviews, and the calendar.
 - [Renaming, moving, and parking](organizing.md): renaming notes and headings, extracting a heading, moving lines, and parking what you are not working on.

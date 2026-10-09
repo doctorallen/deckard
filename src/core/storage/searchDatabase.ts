@@ -429,9 +429,14 @@ export interface SearchEntry {
  *
  * The headings column carries the file name and every heading above an
  * entry, so a search for a project finds the check-in filed beneath its
- * heading, and a search for a date finds that day's note.
+ * heading, and a search for a date finds that day's note. A type note has
+ * none.
  */
 export function createSearchEntries(file: ParsedFile): SearchEntry[] {
+  // A type note (`Types/`) defines a type; it is not a note to find.
+  if (file.typeNote) {
+    return [];
+  }
   const fileName = (file.filePath.split('/').pop() ?? file.filePath).replace(
     /\.md$/i,
     '',

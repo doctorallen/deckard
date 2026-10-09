@@ -646,6 +646,10 @@ David decided these on 2026-09-25:
   declined, a reskin already rejected, and a move VS Code already lets the
   user make (M). A sentence in Help saying views can be dragged is enough
   (O).
+  *Later:* plan 30 (`implementation/30-databases.md`) took typed schemas
+  up after all, for a who-owns-what knowledge base: types over front
+  matter, with fields edited on the Note page. A front-matter form in the
+  text editor stays declined.
 
 ## Order of work
 

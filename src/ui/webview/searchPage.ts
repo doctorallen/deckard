@@ -6,7 +6,7 @@ import { askForIdentityOnce } from '../commands/identityPrompt';
 import { onDidChangePageChrome } from './host/pageChrome';
 import { ThemePreview } from './themePreview';
 
-import { parseQuery } from '../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { TaskWrites } from '../commands/taskActions';
 import { ActiveSearch, SearchSource } from './activeSearch';
@@ -147,7 +147,7 @@ export class SearchPanels implements vscode.Disposable {
     askForIdentityOnce(text);
     const index = this.indexer.getSnapshot();
     const aliases = readEntityNamespaceAliases();
-    const tagKeys = resolveQueryTagIntersection(index, parseQuery(text), aliases);
+    const tagKeys = resolveQueryTagIntersection(index, parseWorkspaceQuery(index, text), aliases);
     if (tagKeys?.length === 1) {
       await this.preferences.usage.recordTagAccess(tagKeys[0]);
       if (index.entities.has(tagKeys[0])) {
@@ -230,7 +230,7 @@ export class SearchPanels implements vscode.Disposable {
       panel.refresh();
       return;
     }
-    const tagKeys = resolveQueryTagIntersection(index, parseQuery(panel.searchText()), readEntityNamespaceAliases());
+    const tagKeys = resolveQueryTagIntersection(index, parseWorkspaceQuery(index, panel.searchText()), readEntityNamespaceAliases());
     if (tagKeys?.length === 1) {
       void this.preferences.usage.recordTagAccess(tagKeys[0]);
       if (index.entities.has(tagKeys[0])) {

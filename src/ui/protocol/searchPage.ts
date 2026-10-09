@@ -15,6 +15,7 @@ import type {
 } from '../../domain/model/preferences';
 import type { QueryViewState } from '../../domain/model/query';
 import type { EntityKind } from '../../domain/model/tags';
+import type { DrawnFields } from './fields';
 import type { IndexingMessage, MessageAs, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
@@ -72,8 +73,24 @@ export interface SearchPageSnapshot {
   entity?: SearchPageEntity;
   /** The note that describes the tag. */
   hub?: TagOverviewHub;
+  /**
+   * For a tag that is a typed row with no hub note, its fields as other
+   * rows give them, drawn in the hub's place: its reverses, each with what
+   * the row it names holds of people.
+   */
+  rowFields?: DrawnFields;
   /** What a tag's page says under its hub: how else it is reached. */
   tagPage?: SearchPageTagNotes;
+  /**
+   * For a search whose top level names a type (`type = team`): the type,
+   * which titles the page, and its rows as the rows tab draws them.
+   */
+  typeRows?: SearchPageTypeRows;
+  /**
+   * On a tag's page whose namespace no type has rows in: the namespace, for
+   * ⋯'s Create type from #team….
+   */
+  untypedNamespace?: string;
   /** The search box's state, and the facets that could narrow it. */
   query: QueryViewState;
   /** The search the page was opened with, which Clear returns to. */
@@ -158,6 +175,98 @@ export interface SearchResultGroup {
   ownTaskCount?: number;
 }
 
+/**
+ * A type's rows, as a search for `type = team` draws them in its rows tab
+ * (docs/implementation/30-databases.md § Types as searches): a table of
+ * the rows the search finds, with the columns the reader chose.
+ */
+export interface SearchPageTypeRows {
+  /** The type's key, `team`, which every message about the tab names. */
+  key: string;
+  /** Its display name, `Team`, and in the plural, `Teams`, which titles the page and its tab. */
+  name: string;
+  plural: string;
+  /** What its rows are, as the page's mono subtitle says: `#team/*`, or `type: incident · Incidents/`. */
+  rule: string;
+  /** The type's note, `Types/Team.md`. */
+  filePath: string;
+  /** Whether its rows are tags, each with a hub note or not, or notes with a `type:`. */
+  rowsKind: 'tags' | 'notes';
+  /** How many rows the search finds. */
+  count: number;
+  /** The columns shown, the title first, and every column there is, for ⋯'s column list. */
+  columns: TypeTableColumn[];
+  available: TypeTableColumn[];
+  /** The column the rows are ordered by; none is by title, A-Z. */
+  sort?: { column: string; direction: 'asc' | 'desc' };
+  /** The rows, in order, when they are not grouped. */
+  rows: TypeTableRow[];
+  /** The fields ⋯'s Group by offers: each select, person, and relation field, by key and name. */
+  groupFields: Array<{ id: string; label: string }>;
+  /** The field the rows are grouped by, and the groups: a row in two groups is in both, and the rows with none last. */
+  groupBy?: string;
+  groups?: TypeTableGroup[];
+}
+
+/** One column of a type's rows tab. */
+export interface TypeTableColumn {
+  /** What names it in a sort, a column choice, and a group: `title`, a schema field's key, or a reverse's or computed field's query name. */
+  id: string;
+  /** Its heading: the type's name over the titles, a schema field's key as written, a computed one in sentence case. */
+  label: string;
+  /** The title; a field the schema names, written in each row's note; or one the notes compute, a reverse among them. */
+  source: 'title' | 'field' | 'computed';
+  /** For a schema field, whether it is a select, whose options can be renamed. */
+  select?: true;
+}
+
+/** One value of a rows tab cell. */
+export interface TypeTableValue {
+  text: string;
+  /** The row it names, by its tag, which opens the tag's page. */
+  tag?: TagReference;
+  /** The note it names, which opens. */
+  filePath?: string;
+  /** For a select's value, the option as the schema spells it, which Rename option everywhere… renames. */
+  option?: string;
+}
+
+/** One cell of a rows tab. */
+export interface TypeTableCell {
+  /** The cell as text: every value, which a tip and a screen reader give whole. */
+  text: string;
+  /** The values drawn, as links where they name a row or a note; none for a count or a date. */
+  values?: TypeTableValue[];
+  /** How many values are left out after those drawn: `+2`. */
+  more?: number;
+  /** For Open tasks: how many of them are overdue, drawn after the count in the overdue color, "4 · 1 overdue". */
+  overdue?: number;
+}
+
+/** One row of a type's rows tab. */
+export interface TypeTableRow {
+  /** The row's id: its tag's key, `@dana`, or `file:<path>` for a note row. */
+  id: string;
+  title: string;
+  /** The row's tag, which its title opens, for a namespace row. */
+  tag?: TagReference;
+  /** The note that holds its fields: its hub note, or the row's note. */
+  filePath?: string;
+  /** For a namespace row with no hub note: how many entries carry its tag. */
+  noHub?: { entries: number };
+  /** The first email or link it holds, which its ⋯ copies: the field's name and the value. */
+  copy?: { label: string; value: string };
+  /** One cell per column shown, the title's first, in the columns' order. */
+  cells: TypeTableCell[];
+}
+
+/** The rows that hold one value of the field the rows tab groups by. */
+export interface TypeTableGroup {
+  /** The value's title, or `No team` for the rows with none. */
+  label: string;
+  rows: TypeTableRow[];
+}
+
 /** The quiet lines under a tag's page's hub. */
 export interface SearchPageTagNotes {
   /** Set when the search narrows the tag with other terms; the hub starts folded and a part of the progress may be on. */
@@ -212,6 +321,8 @@ export interface TagOverviewHub {
   /** The body as block tokens, which the page draws as elements and text. */
   bodyTokens: BlockToken[];
   properties: FrontmatterProperty[];
+  /** For a typed row, its fields, drawn read-only in place of `properties`. */
+  fields?: DrawnFields;
   /** Other notes that also describe the tag. */
   otherFilePaths: string[];
   /** Whether the hub starts open: unless the reader last folded one. */
@@ -359,6 +470,69 @@ export interface SetRenderModeMessage {
   mode: RenderMode;
 }
 
+/** Sorts a type's rows tab by a column, in a direction; no column is by title, A-Z. */
+export interface SetTypeSortMessage {
+  type: 'setTypeSort';
+  typeKey: string;
+  column?: string;
+  direction?: 'asc' | 'desc';
+}
+
+/** Chooses a type's rows tab's columns, in order; the title is always among them. */
+export interface SetTypeColumnsMessage {
+  type: 'setTypeColumns';
+  typeKey: string;
+  columns: string[];
+}
+
+/** Groups a type's rows tab by one of its fields, or by nothing. */
+export interface SetTypeGroupMessage {
+  type: 'setTypeGroup';
+  typeKey: string;
+  field?: string;
+}
+
+/**
+ * Something a type's page asks for of its type: Add <type>…, Open its
+ * note, or Create type from the tag's namespace. The host asks what it
+ * needs, such as the new row's title.
+ */
+export interface TypeActionMessage {
+  type: 'addTypeRow' | 'openTypeNote';
+  typeKey: string;
+}
+
+/** Create type from #team…, on a tag's page whose namespace has no type. */
+export interface CreateTypeFromTagMessage {
+  type: 'createTypeFromTag';
+  namespace: string;
+}
+
+/**
+ * From a column's menu: Rename field everywhere… or Edit in Types/<Type>.md,
+ * for one of the type's schema fields.
+ */
+export interface TypeFieldMessage {
+  type: 'renameTypeField' | 'editTypeField';
+  typeKey: string;
+  field: string;
+}
+
+/** From a select value's menu: Rename option everywhere…. */
+export interface RenameTypeOptionMessage {
+  type: 'renameTypeOption';
+  typeKey: string;
+  field: string;
+  option: string;
+}
+
+/** From a row's ⋯: Create hub note for a namespace row with none, or Copy its email. */
+export interface TypeRowMessage {
+  type: 'createRowHub' | 'copyRowValue';
+  typeKey: string;
+  rowId: string;
+}
+
 /**
  * What a search page sends its host, by type. A message that serves two
  * types, such as Park Tag and Unpark Tag, is listed under each.
@@ -401,6 +575,17 @@ export interface SearchPagePageToHost {
   createHubNote: CreateHubNoteMessage;
   setHubOpen: SetHubOpenMessage;
   mergeTags: MergeTagsMessage;
+  setTypeSort: SetTypeSortMessage;
+  setTypeColumns: SetTypeColumnsMessage;
+  setTypeGroup: SetTypeGroupMessage;
+  addTypeRow: MessageAs<TypeActionMessage, 'addTypeRow'>;
+  openTypeNote: MessageAs<TypeActionMessage, 'openTypeNote'>;
+  createTypeFromTag: CreateTypeFromTagMessage;
+  renameTypeField: MessageAs<TypeFieldMessage, 'renameTypeField'>;
+  editTypeField: MessageAs<TypeFieldMessage, 'editTypeField'>;
+  renameTypeOption: RenameTypeOptionMessage;
+  createRowHub: MessageAs<TypeRowMessage, 'createRowHub'>;
+  copyRowValue: MessageAs<TypeRowMessage, 'copyRowValue'>;
 }
 
 /**

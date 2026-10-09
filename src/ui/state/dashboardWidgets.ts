@@ -5,6 +5,7 @@ import { isParkedOnlyTag, mentionsParked, withoutParked } from '../../domain/ind
 import { stripTags } from '../../domain/markdown/parser';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { QueryContext } from '../../domain/query/queryContext';
 import { UPCOMING_DAYS } from '../../domain/tasks/agendaGroups';
 import { formatLocalDate, listDailyNotes } from '../../domain/notes/periodicNotes';
@@ -169,7 +170,7 @@ function buildSearchWidget({ index, preferences, options, widget }: WidgetBuild)
  */
 function buildTasksWidget({ index, preferences, options, config, widget, take }: WidgetBuild): DashboardWidget {
   const query = config.query ?? '';
-  const parsed = parseQuery(query);
+  const parsed = parseWorkspaceQuery(index, query);
   if (query.trim() && !parsed.node) {
     return {
       ...widget,

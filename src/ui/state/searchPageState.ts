@@ -6,11 +6,15 @@ import {
 } from '../../domain/index/parked';
 import { countTaskProgress, isOpenTask } from '../../domain/tasks/taskStatuses';
 import { correctQueryText, getPlainTextTerms, getTextWords } from '../../domain/query/queryEdit';
-import { evaluateQuery, QueryResults } from '../../domain/query/queryEvaluator';
+import { evaluateQuery, evaluateTypeRows, QueryResults } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { EntityNamespaceAliases } from '../../domain/markdown/parser';
-import { collectQueryTagKeys, getQueryNarrowedTag, getQueryTagIntersection, quoteValue } from '../../domain/query/queryFormat';
-import { parseQuery } from '../../domain/query/queryParser';
+import { collectQueryTagKeys, getQueryNarrowedTag, getQueryTagIntersection, getQueryTypeKeys, quoteValue } from '../../domain/query/queryFormat';
+import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
+import { getTypeIndex } from '../../domain/types/typeIndex';
+import { buildFieldFacets } from '../../domain/search/fieldFacets';
+import { readTagNamespace } from '../../domain/markdown/tagKeys';
+import { createTypeTable } from './typeTable';
 import { ParsedQuery } from '../../domain/query/queryTypes';
 import { noteTitle } from '../../domain/index/backlinks';
 import { getFileName } from '../../shared/paths';
@@ -45,6 +49,7 @@ import { findTagFacet, GROUP_ITEM_LIMIT, groupResults } from './searchGroups';
 import { countGroup, groupByHeading, type HeadingGroup } from './headingGroups';
 import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
 import { linkProgressParts } from './progressLinks';
+import { describeTagFields } from './noteFields';
 import { isEntrySection } from '../../domain/markdown/noteEntries';
 import { getEntryLineMap, getEntryTextOf, getFileEntryLines, isFileEntry } from '../../domain/index/noteEntryIndex';
 import { stripTags } from '../../domain/markdown/parser';
@@ -168,7 +173,8 @@ export function createSearchPageSnapshot(
     ranked.length === 0 && tasks.length === 0
       ? suggestWorkingSearch(index, { text, parsed, sectionKey, options })
       : undefined;
-  const facets = buildPageFacets(index, page, text, options);
+  const typeRows = describeTypeRows(index, preferences, page, options);
+  const facets = [...(typeRows?.facets ?? []), ...buildPageFacets(index, page, text, options)];
   const drawTask = (task: Task) =>
     markParked(
       markVia(createDashboardTask(task, index.sections, options.queryContext), task.id),
@@ -185,6 +191,7 @@ export function createSearchPageSnapshot(
 
   return {
     ...buildTagPageBlock(index, preferences, page, options.queryContext),
+    ...(typeRows ? { typeRows: typeRows.table } : {}),
     query: createQueryViewState({
       index,
       parsed,
@@ -213,6 +220,34 @@ export function createSearchPageSnapshot(
     noteColumns: preferences.dashboardNoteColumns,
     taskColumns: preferences.dashboardTaskColumns,
   };
+}
+
+/**
+ * For a search whose top level names a type, `type = team`: the type's
+ * rows the search finds, the words being typed among it, as the rows tab
+ * draws them, and Refine's facets of its select fields. Nothing for any
+ * other search.
+ */
+function describeTypeRows(
+  index: WorkspaceIndex,
+  preferences: PersistedPreferences,
+  page: SearchPageResults,
+  options: SearchPageOptions,
+): { table: NonNullable<SearchPageSnapshot['typeRows']>; facets: QueryFacet[] } | undefined {
+  const types = getTypeIndex(index);
+  const typeKey = getQueryTypeKeys(page.parsed.node).find((key) => types.registry.get(key));
+  const type = typeKey ? types.registry.get(typeKey) : undefined;
+  if (!type || !page.drafted.node) {
+    return undefined;
+  }
+  const rowIds = evaluateTypeRows(index, page.drafted.node, options.queryContext).filter((id) => types.row(id)?.typeKey === type.key);
+  const table = createTypeTable(types, type, rowIds, {
+    entriesOf: (tagKey) => index.tags.get(tagKey)?.count ?? 0,
+    now: options.queryContext.now,
+    dateFormats: options.queryContext.dateFormats,
+    view: preferences.typeTables?.[type.key],
+  });
+  return { table, facets: buildFieldFacets(types, type.key, rowIds, page.parsed.text) };
 }
 
 /**
@@ -482,11 +517,12 @@ function buildTagPageBlock(
   preferences: PersistedPreferences,
   { focusTag, filtered, hubFile, viaHub, hubTitle, parsed }: SearchPageResults,
   context: QueryContext,
-): Pick<SearchPageSnapshot, 'tag' | 'entity' | 'hub' | 'tagPage'> {
+): Pick<SearchPageSnapshot, 'tag' | 'entity' | 'hub' | 'rowFields' | 'tagPage'> {
   if (!focusTag) {
     return {};
   }
   const entity = index.entities.get(focusTag.key);
+  const fields = readTagPageFields(index, focusTag.key, hubFile);
   return {
     tag: {
       key: focusTag.key,
@@ -502,9 +538,12 @@ function buildTagPageBlock(
             ...createTagOverviewHub(hubFile, focusTag.hubFilePaths?.slice(1) ?? []),
             // Drawn as the note page draws it, its query blocks run.
             ...readNoteBody(index, hubFile.filePath, { queryContext: context }),
+            ...fields.hub,
           },
         }
       : {}),
+    ...fields.page,
+    ...describeUntypedNamespace(index, focusTag.key, filtered),
     tagPage: {
       ...(filtered ? { filtered } : {}),
       lookalikes: findTagLookalikes(index, focusTag.key),
@@ -515,6 +554,41 @@ function buildTagPageBlock(
       ...describeTagMentions(index, focusTag, context),
     },
   };
+}
+
+/**
+ * On a tag's own page, the tag's namespace when no type has rows in it,
+ * which ⋯ offers to make a type from; nothing for a person, a tag with no
+ * namespace, a typed one, or a page a search narrows.
+ */
+function describeUntypedNamespace(index: WorkspaceIndex, tagKey: string, filtered: boolean | undefined): Pick<SearchPageSnapshot, 'untypedNamespace'> {
+  const key = tagKey.toLowerCase();
+  if (filtered || key.startsWith('@') || key.startsWith('#person/')) {
+    return {};
+  }
+  const namespace = readTagNamespace(key);
+  return namespace && !getTypeIndex(index).registry.forTag(key) ? { untypedNamespace: namespace } : {};
+}
+
+/**
+ * A typed row's fields on its tag's page: with a hub note, the hub's, for
+ * its card; without one, what other rows give it, for the card in its
+ * place. Nothing for a tag no type has.
+ */
+function readTagPageFields(
+  index: WorkspaceIndex,
+  tagKey: string,
+  hubFile: ParsedFile | undefined,
+): { hub: Pick<NonNullable<SearchPageSnapshot['hub']>, 'fields'>; page: Pick<SearchPageSnapshot, 'rowFields'> } {
+  const others = (hubFile?.hub?.properties ?? []).map((property) => ({
+    name: property.name,
+    values: property.values.map((value) => (value.tag ? { text: value.text, tag: { key: value.tag.key, label: value.tag.label } } : { text: value.text })),
+  }));
+  const fields = describeTagFields(index, tagKey, others);
+  if (!fields) {
+    return { hub: {}, page: {} };
+  }
+  return hubFile ? { hub: { fields }, page: {} } : { hub: {}, page: { rowFields: fields } };
 }
 
 /** Whether two searches are the same words, their spacing aside. */
@@ -630,7 +704,7 @@ function describeTagMentions(
     `-${tag.key}`,
     ...(tag.hubFilePaths ?? []).map((filePath) => `NOT path = ${quoteValue(filePath)}`),
   ].join(' ');
-  const found = evaluateQuery(index, parseQuery(query).node, context);
+  const found = evaluateQuery(index, parseWorkspaceQuery(index, query).node, context);
   const count = found.sections.length + found.tasks.length + found.files.length;
   return count > 0 ? { mention: { word, count, query } } : {};
 }
@@ -667,7 +741,7 @@ export function evaluateSearchPage(
   options: Pick<SearchPageOptions, 'previewWords' | 'queryContext'>,
 ): SearchPageResults {
   const text = queryText.trim();
-  const parsed = parseQuery(text);
+  const parsed = parseWorkspaceQuery(index, text);
   // The words being typed narrow the search before they are committed to the
   // box. They are run as part of the search rather than matched against what
   // is on screen, so a page of thirty is not what a reader is searching, and
@@ -675,7 +749,7 @@ export function evaluateSearchPage(
   const preview = (options.previewWords ?? [])
     .map((word) => word.trim())
     .filter(Boolean);
-  const drafted = preview.length > 0 ? parseQuery([text, ...preview].join(' ')) : parsed;
+  const drafted = preview.length > 0 ? parseWorkspaceQuery(index, [text, ...preview].join(' ')) : parsed;
   const { tagKeys, focusTag, filtered } = resolveFocusTag(index, parsed, options.queryContext.entityNamespaceAliases);
   const hubPaths = focusTag?.hubFilePaths ?? [];
   const hubFile = hubPaths.length ? index.files.get(hubPaths[0]) : undefined;
@@ -699,7 +773,7 @@ export function evaluateSearchPage(
     .join(' OR ');
   const linking = evaluateQuery(
     index,
-    parseQuery(preview.length > 0 ? `(${links}) ${preview.join(' ')}` : links).node,
+    parseWorkspaceQuery(index, preview.length > 0 ? `(${links}) ${preview.join(' ')}` : links).node,
     options.queryContext,
   );
   const sectionIds = new Set(results.sections.map((section) => section.id));
@@ -1108,7 +1182,7 @@ function findsSomething(
   sectionKey: (section: Section) => NoteKey,
   context: QueryContext,
 ): boolean {
-  const parsed = parseQuery(text);
+  const parsed = parseWorkspaceQuery(index, text);
   if (!parsed.node) {
     return false;
   }

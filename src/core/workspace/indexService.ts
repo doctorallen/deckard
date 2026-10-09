@@ -14,6 +14,7 @@ import type { ChangeTarget, QueuedChange } from './changeWatcher';
 import type { IndexContents, IndexScanStatus, IndexSearch, RefreshOptions } from './indexReader';
 import { IndexState, NoteChange } from '../../domain/index/indexState';
 import { computeParked, NO_PARKED_RULES, ParkedRules } from '../../domain/index/parked';
+import { getTypeIndex, type TypeIndex } from '../../domain/types/typeIndex';
 import { FileStamp, WorkspaceScanner, describeError } from './scanner';
 import type { ViewPublisher } from './viewPublisher';
 import { ParsedFile, Task, UnreadableNote, WorkspaceIndex } from '../../domain/model';
@@ -184,6 +185,15 @@ export class IndexService<U extends ResourceUri = ResourceUri>
    */
   public getTask(taskId: string): Task | undefined {
     return this.getSnapshot().tasks.get(taskId);
+  }
+
+  /**
+   * The types, their rows, and their fields, read from the snapshot: built
+   * the first time it is asked for after a change to the notes, and shared
+   * until the next (domain/types/typeIndex.ts).
+   */
+  public getTypeIndex(): TypeIndex {
+    return getTypeIndex(this.getSnapshot());
   }
 
   /** What `deckard.parked` parks now, as the index reads it. */

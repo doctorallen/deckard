@@ -15,6 +15,9 @@ Every change Deckard makes to your files, what starts it, and the setting that c
 | A mention turned into a link | **Link mentions** on a note's first line, or **Link** in the Context view | `deckard.links.style`: `[[Name]]` or `[Name](path.md)` |
 | A section moved out to a new note, leaving a link | `Deckard: Extract Heading` | |
 | A task or section moved under another heading | **Move to…** | |
+| One front-matter key set or cleared, every other line left as written | **Edit**, **Clear**, or **Add field…** on a [typed note's fields](databases.md#fields-on-the-note-page) on the Note page | |
+| A field's key, or a select's option, renamed in every note that writes it, and in the type's table | **Rename field everywhere…** or **Rename option everywhere…** on a [type's rows](databases.md#a-types-rows) | Shown first |
+| A field's value, or a type's Kind cell, changed in place | A quick fix on a [marked field](databases.md#in-the-editor), such as **Change to @omar (Omar Haddad)** or **Allow Area or System** | `deckard.editor.linkDiagnostics` |
 | `tags: [parked]` in front matter | **Park Note** | **Unpark Note** removes it |
 | Tags moved into front matter | `Deckard: Move Inline Tags to Front Matter` | |
 | A task added or changed for an AI assistant | The assistant's tools, after you approve the exact line | `deckard.assistantTools` |
@@ -29,6 +32,8 @@ Every change Deckard makes to your files, what starts it, and the setting that c
 | A note from a template | `Deckard: New Note from Template` | `deckard.templatesFolder` |
 | Three starter templates | **Create Starter Templates**, offered when the templates folder is empty | |
 | A hub note for a tag | **Create hub note** on a tag's page, or `Deckard: Create Hub Note for Tag…` | A template named after the tag's namespace |
+| A type, `Types/Team.md`, from the fields your notes already write | `Deckard: Create Type from Tags…`, **Create type from #team…** on a tag's page, or the **Create a System type** quick fix | |
+| A row's note, in the type's `notes:` folder | **Add team…** on a type's rows, or the **Create person "Omar H"** quick fix | A template named after the type's key |
 | A note a link names | **Create note** on a `[[link]]` that opens none, or **Create missing notes** from the problems lens above the note | |
 | A calendar file of your dated tasks | `Deckard: Export Tasks as Calendar…`, or kept up to date as tasks change (*automatic*, once set) | `deckard.calendar.exportFile`, empty by default |
 | A JSON copy of favorites, pins, and searches | **Export…** in `Deckard: Manage Favorites, Pins, and Searches…` | |

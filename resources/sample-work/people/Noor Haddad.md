@@ -1,3 +1,10 @@
+---
+describes: "@noor-haddad"
+role: Senior engineer
+team: "#team/payments"
+manager: "@alex-rivera"
+email: noor@example.com
+---
 # Noor Haddad @noor-haddad
 
 Senior engineer on [[Checkout v2]]. 1:1 every other Tuesday.

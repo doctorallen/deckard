@@ -21,6 +21,12 @@ form from [[ADR-001 Card form]], and a rollout behind flags as
 #project/checkout-v2 is:open
 ```
 
+## Decisions
+
+```deckard view=table noteColumns=date,state,decided-by
+type = decision AND project = this
+```
+
 ## Launch checklist
 - [ ] Load test the new checkout #project/checkout-v2 📅 {{date+5}} 👤 @sam-okafor
 - [ ] Write the support macro for card errors #project/checkout-v2 📅 {{date+6}}

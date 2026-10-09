@@ -26,9 +26,13 @@ import {
   readTaskToggleLink,
 } from './previewTaskLinks';
 
-/** The one thing the blocks need from the indexer: its published snapshots. */
+/**
+ * What the blocks need from the indexer: its published snapshots, and the
+ * index's path for a note, which `this` in a block's query names.
+ */
 interface IndexSource {
   readonly onDidUpdate: vscode.Event<WorkspaceIndex>;
+  getFilePath?(uri: vscode.Uri): string;
 }
 
 /**
@@ -65,7 +69,7 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
    * Starts listening at once: each published index is kept for the lenses
    * and, once a preview has drawn a block, refreshes the open previews.
    */
-  public constructor(indexer: IndexSource, private readonly actions?: QueryBlockActions) {
+  public constructor(private readonly indexer: IndexSource, private readonly actions?: QueryBlockActions) {
     this.disposables = [
       ...(actions ? [vscode.window.registerUriHandler({ handleUri: (uri) => this.handleUri(uri) })] : []),
       this.changeEmitter,
@@ -98,6 +102,11 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
         this.previewReadsIndex = true;
       },
       getQueryContext: (now: number) => readQueryContext(now),
+      // VS Code's preview hands each render the document it draws.
+      getNotePath: (env: unknown) => {
+        const uri = readEnvDocument(env);
+        return uri ? this.notePathOf(uri) : undefined;
+      },
       ...(this.actions
         ? {
             getTaskHref: (item: { id: string; completed?: boolean; cancelled?: boolean }) =>
@@ -123,11 +132,12 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       return [];
     }
     const queryContext = readQueryContext();
+    const notePath = this.notePathOf(document.uri);
     return measure(
       'Query block lenses',
       () =>
         findQueryBlocks(document.getText()).flatMap((block) =>
-          this.createCodeLenses(block, queryContext),
+          this.createCodeLenses(block, queryContext, notePath),
         ),
       (lenses) => `${lenses.length} lenses`,
     );
@@ -173,8 +183,13 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
     this.disposables.forEach((disposable) => disposable.dispose());
   }
 
-  /** The lenses above one block, its query run in `queryContext`. */
-  private createCodeLenses(block: QueryBlockSource, queryContext: QueryContext): vscode.CodeLens[] {
+  /** The index's path for a note, which `this` in its blocks names; undefined for an indexer that cannot say. */
+  private notePathOf(uri: vscode.Uri): string | undefined {
+    return this.indexer.getFilePath?.(uri);
+  }
+
+  /** The lenses above one block, its query run in `queryContext`, `this` the note at `notePath`. */
+  private createCodeLenses(block: QueryBlockSource, queryContext: QueryContext, notePath: string | undefined): vscode.CodeLens[] {
     const range = new vscode.Range(block.startLine, 0, block.startLine, 0);
     const label = (title: string): vscode.CodeLens =>
       new vscode.CodeLens(range, { title, command: '' });
@@ -183,7 +198,7 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       return [label('Deckard is indexing the workspace…')];
     }
 
-    const snapshot = getQueryBlockSnapshot(this.index, block.query, block.options, { queryContext });
+    const snapshot = getQueryBlockSnapshot(this.index, block.query, block.options, { queryContext, ...(notePath ? { notePath } : {}) });
     const warnings = snapshot.messages
       .filter((message) => message.severity === 'warning')
       .map((message) => label(`Warning: ${message.text}`));
@@ -206,6 +221,21 @@ export class QueryBlocks implements vscode.CodeLensProvider, vscode.Disposable {
       ...warnings,
     ];
   }
+}
+
+/**
+ * The document a preview render draws, from markdown-it's `env`, where VS
+ * Code's Markdown extension puts it as `currentDocument`; undefined from a
+ * render that does not say.
+ */
+function readEnvDocument(env: unknown): vscode.Uri | undefined {
+  const document = (env as { currentDocument?: unknown } | undefined)?.currentDocument;
+  if (document instanceof vscode.Uri) {
+    return document;
+  }
+  // A URI from another extension's copy of the API reads the same written out.
+  const scheme = (document as { scheme?: unknown } | undefined)?.scheme;
+  return typeof scheme === 'string' ? vscode.Uri.parse(String(document)) : undefined;
 }
 
 /**

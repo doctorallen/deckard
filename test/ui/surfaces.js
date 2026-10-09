@@ -888,6 +888,116 @@ function createNotePageSurfaces() {
 }
 
 /**
+ * Plan 30's own small knowledge base, so no other surface's pixels move with
+ * it: Person and Team types, two teams with hub notes and one, Payments,
+ * only mentioned, people on them, and a select the rows' Refine counts. Dana
+ * leads Rates, so her page has a reverse, and has no start date, so it has
+ * an empty field.
+ */
+function createTypedIndex() {
+  const written = new Date(2026, 8, 21, 9).getTime();
+  const notes = {
+    'Types/Person.md': [
+      '---', 'deckard-type: person', 'rows: "@*"', '---', '# Person', '',
+      '| Field | Kind  | Reverse |',
+      '| ----- | ----- | ------- |',
+      '| team  | Team  | members |',
+      '| email | Email |         |',
+      '| start | Date  |         |',
+    ],
+    'Types/Team.md': [
+      '---', 'deckard-type: team', 'rows: "#team/*"', '---', '# Team', '',
+      '| Field   | Kind                         | Reverse |',
+      '| ------- | ---------------------------- | ------- |',
+      '| lead    | Person                       | lead of |',
+      '| tier    | Select: gold, silver, bronze |         |',
+      '| on-call | Person                       |         |',
+      '| channel | Text                         |         |',
+    ],
+    'Teams/Rates.md': [
+      '---', 'describes: "#team/rates"', 'lead: "@dana"', 'tier: gold', 'on-call: "@priya"', 'channel: rates-desk', '---',
+      '# Rates', 'Prices and trades government bonds and swaps.', '- [ ] Hire a quant for the swaps desk 📅 2026-09-18',
+    ],
+    'Teams/Credit.md': ['---', 'describes: "#team/credit"', 'lead: "@omar"', 'tier: silver', '---', '# Credit', 'Corporate bonds.'],
+    'People/Dana Whitfield.md': [
+      '---', 'describes: "@dana"', 'team: "#team/rates"', 'email: dana@example.com', '---',
+      '# Dana Whitfield', 'Heads the rates desk.',
+    ],
+    'People/Omar Haddad.md': ['---', 'describes: "@omar"', 'team: "#team/credit"', '---', '# Omar Haddad'],
+    'People/Priya Natarajan.md': ['---', 'describes: "@priya"', 'team: payments', '---', '# Priya Natarajan'],
+    'notes/standup.md': [
+      '# Standup #team/rates', '- [ ] Fix the pricing feed @dana 📅 2026-09-22',
+      '## Payments #team/payments', 'Card settlement runs late on Fridays.', '- [ ] Ask @priya about the settlement window',
+    ],
+  };
+  const files = new Map(Object.entries(notes).map(([filePath, lines]) => [
+    filePath,
+    parseMarkdown(filePath, lines.join('\n'), { createdAt: written, updatedAt: written }, { typeNote: filePath.startsWith('Types/') }),
+  ]));
+  return buildWorkspaceIndex(files);
+}
+
+/**
+ * Plan 30's surfaces: a type's search page on its rows tab, a typed row's
+ * note with its fields, and the page of a typed tag with no hub note, whose
+ * Fields card holds the hub's place.
+ *
+ * @param {object} preferences The preference services, whose reader holds what is stored.
+ * @returns {object[]} The three surfaces.
+ */
+function createTypedSurfaces(preferences) {
+  const index = createTypedIndex();
+  const search = (query) => () => createSearchPageSnapshot(index, preferences.reader.value, query, {
+    queryContext: createQueryContext(NOW),
+    originQuery: query,
+  });
+  return [
+    {
+      // The rows tab, first: a heading for each field and computed column,
+      // a row with no hub note, and select facets in Refine. Narrower than
+      // the other search pages, so the table must fit or scroll in its own
+      // box rather than push the page sideways.
+      name: 'searchPageTypeRows',
+      page: 'searchPage',
+      viewport: [800, 900],
+      snapshot: search('type = team'),
+      scrollers: ['html', '.type-rows'],
+      clippers: [],
+      hovered: ['.type-row'],
+      zenHovered: [...ZEN_REGIONS.searchPage, '.type-rows[data-zen-region]'],
+    },
+    {
+      // A typed row's note: its fields under the bar, a reverse in italics,
+      // and the empty one folded into its line.
+      name: 'notePageFields',
+      page: 'notePage',
+      viewport: [800, 700],
+      snapshot: () => createNotePageSnapshot(index, 'People/Dana Whitfield.md', {
+        queryContext: createQueryContext(NOW),
+        history: { back: true, forward: false },
+        visit: 1,
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.note-fields .field-row'],
+      zenHovered: ['.note-fields[data-zen-region]'],
+    },
+    {
+      // A typed tag no note describes: the Fields card in the hub's place,
+      // and Create hub note under the title.
+      name: 'searchPageFieldsCard',
+      page: 'searchPage',
+      viewport: [800, 700],
+      snapshot: search('#team/payments'),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.hub-fields-card .field-row', '.card'],
+      zenHovered: ZEN_REGIONS.searchPage,
+    },
+  ];
+}
+
+/**
  * Edit Task Statuses, as the settings have them and with characters found
  * in the notes, and in the workflow, where each row has its next status.
  */
@@ -946,6 +1056,7 @@ function createSurfaces() {
     ...createSummarySurfaces(index, preferences),
     ...createNotePageSurfaces(),
     ...createTaskStatusesSurfaces(),
+    ...createTypedSurfaces(preferences),
   ];
   return [
     ...surfaces,

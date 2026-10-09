@@ -15,6 +15,7 @@ Run `Deckard: Find in Notes`, or press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt<
 - With nothing typed, Find lists pinned notes, the five last opened notes, five recent searches (with **Save search**), saved searches, and favorite and recent tags.
 - <kbd>Cmd</kbd>+<kbd>Enter</kbd>, or the row's button, opens a result to the side and keeps Find open. <kbd>Alt</kbd>+<kbd>Enter</kbd> inserts a link at the cursor (for a task, to its heading). <kbd>Cmd</kbd>+<kbd>.</kbd> lists every action for the row with its key: open, link, copy a link, pin; complete, reopen, date, or edit a task; favorite or rename a tag; save or forget a recent search. Use <kbd>Ctrl</kbd> for <kbd>Cmd</kbd> on Windows and Linux.
 - Task rows have **Complete** (or **Reopen**), which redraws in place with **Undo**, and **Set due**: Today, Tomorrow, Next Monday, a date, or none.
+- **Answer.** In a workspace with [types](databases.md), words that name a row and a field, such as `checkout lead` or `who is on payments`, list up to three answers first, each with the path that reached it; see [Asking Find](databases.md#asking-find).
 - **Create note “…”** appears for words that read as a name no note has.
 - **Add “…” to today's note** appears when nothing has every word and you typed only words, tags, and people. It reads the line as [Add Task's quick add](tasks.md#adding-a-task) does: `Call Ren friday p2` becomes `- [ ] Call Ren ⏫ 📅 2026-10-02`.
 - A day such as `friday`, `oct 3`, or `last friday` offers that day's note, creating it if needed. A short weekday alone, such as `fri`, is a word.
@@ -30,7 +31,7 @@ Search pages, Home's search widget, and the Task board (tasks only) share one se
 
 - Each term is a chip with a **×**, joined by **AND** or **OR**; words show as their `text ~` condition. Parenthesized groups nest as frames with their own **×**. Tags are blue; terms negated with `NOT` or `-` are red.
 - Typed words narrow all results, not only the visible page. <kbd>Enter</kbd> makes them chips and remembers the search; otherwise they are dropped when the box loses focus.
-- Completions offer field names, values, tags, conditions, and, in an empty box, recent searches. After `[[` they offer notes, most linked first. Nothing is preselected: <kbd>Enter</kbd> runs what you typed, <kbd>Tab</kbd> completes, <kbd>Escape</kbd> abandons the edit.
+- Completions offer field names, values, tags, conditions, and, in an empty box, recent searches. After `type = team` they offer the type's fields, then their values. After `[[` they offer notes, most linked first. Nothing is preselected: <kbd>Enter</kbd> runs what you typed, <kbd>Tab</kbd> completes, <kbd>Escape</kbd> abandons the edit.
 - Pressing a chip removes its term. <kbd>Backspace</kbd> in an empty field removes the last chip.
 - Two tags side by side are joined with AND.
 - A parse error shows under the box; the results keep the last search that ran.
@@ -42,6 +43,7 @@ Search pages, Home's search widget, and the Task board (tasks only) share one se
 - **Add condition**: type a tag, word, or value such as `open`, then choose a completion or press <kbd>Enter</kbd>; the row fills in its field and operator.
 - <kbd>Enter</kbd> opens the next row, <kbd>Backspace</kbd> in an empty row removes it, and <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>Cmd</kbd>+<kbd>Enter</kbd> on macOS) adds a group joined the other way.
 - The **Status** field lists the workspace's [task statuses](tasks.md#task-statuses).
+- After a `type =` row, the field list offers the [type's fields](databases.md#searching-by-field) under its name, then **Through** each relation, then **Built in**.
 - Operators are `=`, `!=`, `~`, `!~`, `>`, `>=`, `<`, `<=`. `NOT tag = #a` opens as `tag != #a`; negated groups are written as `NOT (…)`.
 
 ### Refine
@@ -54,6 +56,8 @@ Search pages, Home's search widget, and the Task board (tasks only) share one se
 - <kbd>Enter</kbd>, <kbd>Alt</kbd>+<kbd>Enter</kbd>, and <kbd>Shift</kbd>+<kbd>Enter</kbd> do the same from the keyboard. Hover a value to see what each writes.
 
 Refine's values fold under its heading: select **Refine** to fold or unfold them. It starts unfolded, or folded with [Zen](themes-and-zen.md#zen) on, and stays as you leave it while you search. While the search holds values Refine offers, the heading says how many, such as **Refine · 2 set**. The count of results and a tag page's lines about its other spellings and untagged mentions are never folded.
+
+On a [type's rows](databases.md#a-types-rows), Refine also offers each select field's options, counted over the rows.
 
 Refine writes ordinary query text, so the result can be saved, copied into a query block, or edited in the builder. A search of one tag, or tags joined by AND, lists related **Tags** instead, each with a three-step rail for its share of results (**in 6 of 13 results**). While the Context sidebar is open, Refine is [shown there](connections.md#refine-a-search-from-the-sidebar), and the page draws none of its own. A tag page's lines about its other spellings and untagged mentions stay under the search box, as do **Drop** and **Clear** when a search matched nothing.
 
@@ -109,6 +113,8 @@ Fields:
 | `priority` | `highest`, `high`, `medium`, `none`, `low`, or `lowest`. No priority counts as `none`, between `medium` and `low`. | `priority >= high` |
 | `assignee` | The person a task's `👤` field names, or `none`. `@ren-kade`, `#person/ren-kade`, and `ren-kade` are the same person. Only tasks. | `assignee = @ren-kade` |
 | `kind` | An entity namespace, including `person` for `@` tags. | `kind = project` |
+| `type` | The rows of a [type](databases.md): the notes and tasks in their notes, and, for a type of tags, everything its tags are on. `is:team` is the same. A name no type has reads as `kind`. | `type = team`, `is:incident` |
+| A type's field | A field of a type, by its name, after the fields above: a person or row as front matter reads it, a select's options (any of), numbers and dates in order, a reverse with hyphens, a path through up to two relations, or a computed field. `has:` and `no:` read it as filled or empty, and `field.` reaches a field whose name one above takes. An unknown field is an error naming the ones you may have meant. See [Searching by field](databases.md#searching-by-field). | `lead = @alex-rivera`, `team.lead = @alex-rivera`, `owned-by.lead = @alex-rivera`, `state = proposed, accepted`, `has:on-call`, `field.status = active` |
 | `file` | A file name, with `*` and `?` wildcards. | `file = 2026-09-*.md` |
 | `path` | A workspace-relative path, with wildcards. | `path = notes/*` |
 | `created`, `updated` | A date such as `2026-09-13`, a window such as `30d`, `today`, a weekday such as `friday` (the last one), or a week or month (`this-week`, `last-week`, `this-month`, `last-month`, or `2026-08`). A bare date means that whole day. | `updated > 7d`, `created = 2026-09-13`, `created = last-month` |

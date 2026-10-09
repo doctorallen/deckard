@@ -32,6 +32,7 @@ Keys are written both ways: <kbd>Ctrl</kbd> on Windows and Linux,
    linked from the notes that made them.
 4. [[Noor Haddad]] and [[Theo Park]]: 1:1 notes, with the follow-ups each
    of you owns.
+5. [[Payments]], your team: who leads it, what it owns, and who is on call.
 
 ## Try it
 
@@ -52,4 +53,30 @@ Keys are written both ways: <kbd>Ctrl</kbd> on Windows and Linux,
 - **Write a note from a template.** `Deckard: New Note from Template`,
   then **One-on-one**.
 
-`Deckard: Open Help` covers the rest.
+## Who owns what
+
+The notes in `Types/` say what a person, a team, an area, and a decision
+are, and which fields each has: a table with a row per field. The front
+matter of a note then fills them in: Noor's note says `team:
+"#team/payments"`, and the Payments note says `lead: "@alex-rivera"` and
+`owns: ["#area/checkout", ...]`. Deckard reads the rest backwards: Noor is
+one of Payments' **members**, and Checkout is **owned by** Payments.
+
+- **Ask.** In Find, type `checkout lead`: the answer is Alex Rivera, by way
+  of the team that owns Checkout. `who owns checkout`, `who is on
+  payments`, `payments channel`, and `noor email` work too.
+- **See everyone as a table.** Search `type = person`: one row per person,
+  with their role, team, manager, and email. Ines and Sam have no note yet,
+  and the table says so. Right-click a heading to sort by it or hide it.
+- **Hover a person.** Point at `@noor-haddad` in any note: Noor's role,
+  team, manager, and email, and when Noor was last mentioned.
+- **Edit a field.** Open [[Noor Haddad]] as a page (the unicorn button in
+  the editor's title bar): the fields sit under the title bar, and **Edit**
+  on a row changes one line of the front matter.
+- **A page with no note.** Cmd-click (Ctrl-click) `#area/checkout` in the
+  Payments note: no note describes Checkout, and its page still says which
+  team owns it, and who leads that team.
+- **Decisions.** [[ADR-001 Card form]] says `type: decision` in its front
+  matter, and [[Checkout v2]] lists every decision with its date and state.
+
+`Deckard: Open Help` covers the rest, and **Types and fields** covers these.

@@ -5,7 +5,7 @@ import { stripTags } from '../../domain/markdown/parser';
 import { SHORT_WEEKDAY_NAMES, formatIsoDate } from '../../domain/markdown/calendar';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
-import { parseQuery } from '../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { noteTitle } from '../../domain/index/backlinks';
 import { Task, WorkspaceIndex } from '../../domain/model';
 
@@ -266,7 +266,7 @@ function readSection(
   section: ReviewSectionSetting,
   context: QueryContext,
 ): ReviewCustomSection {
-  const parsed = parseQuery(section.query);
+  const parsed = parseWorkspaceQuery(index, section.query);
   const error = parsed.diagnostics.find((diagnostic) => diagnostic.severity === 'error');
   if (!parsed.node || error) {
     return {

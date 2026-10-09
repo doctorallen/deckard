@@ -20,6 +20,7 @@
 | **Deckard: Pause in This Workspace** | Stops Deckard reading and writing in this workspace until **Deckard: Resume in This Workspace**. |
 | **Deckard: Choose Editor Preset…** | Chooses what Deckard draws in the editor: **Full**, **Tasks**, **Writing**, or **Off**; see `deckard.editor.preset`. |
 | **Deckard: Create Hub Note for Tag…** | Lists the tags no hub note describes yet, most used first, and creates a [hub note](search-pages.md#hub-notes) for the one chosen. |
+| **Deckard: Create Type from Tags…** | Lists the tag namespaces, the people, and the `type:` values in use, then the fields their notes already write, and writes a [type](databases.md#create-type-from-tags) in `Types/` from the ones chosen. Also **Create type from #team…** in **⋯** on a tag's page. |
 | **Deckard: Create Daily Note** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>D</kbd> elsewhere. Creates or opens today's note. |
 | **Deckard: Pin Note to Home** | Pins the note the cursor is in to Home's Pinned notes. **Deckard: Unpin Note from Home** removes it. |
 | **Deckard: Park Note** | [Parks](organizing.md#parking-notes) the note in the editor, or notes chosen in the Explorer, by adding `parked` to its front-matter tags. **Deckard: Unpark Note** reverses it. |

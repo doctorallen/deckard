@@ -262,4 +262,4 @@ Run `Deckard: Add Task` from anywhere: <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt<
 
 ---
 
-← [Writing notes: tags, people, and links](notes-and-links.md) · [All topics](README.md) · [Task board](task-board.md) →
+← [Types and fields](databases.md) · [All topics](README.md) · [Task board](task-board.md) →

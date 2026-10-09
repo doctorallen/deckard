@@ -2,6 +2,7 @@
  * Notes as the parser reads them: each file, the sections (entries) it is
  * made of, and the front matter a hub note carries.
  */
+import type { TypeNote } from './noteTypes';
 import type { TagReference } from './tags';
 import type { Task } from './tasks';
 
@@ -88,6 +89,20 @@ export interface ParsedFile {
   /** Present when the note's `describes:` front matter names tags. */
   hub?: NoteHub;
   /**
+   * Every front-matter key of the note, with its values in source order and
+   * the tags they name, each with its line. Absent when the note has no
+   * front matter or none with a key.
+   */
+  properties?: FrontmatterProperty[];
+  /** The note's `type:` value as written, which makes it a row of a type that names it. */
+  typeKey?: string;
+  /**
+   * Present on a note in the types folder (`Types/`): the type it defines.
+   * Such a note holds no entries, tasks, tags, or links; the index keeps it
+   * apart from the notes (`WorkspaceIndex.typeNotes`).
+   */
+  typeNote?: TypeNote;
+  /**
    * How many checkbox lines hold a mark that is not a task's, such as
    * `- [/]` or `- [-]`; absent when none do. They are text, not tasks, so
    * Stats and a one-time notice say how many were left out.
@@ -115,10 +130,12 @@ export interface NoteHub {
   properties: FrontmatterProperty[];
 }
 
-/** One front-matter property of a hub note, with its values in source order. */
+/** One front-matter property of a note, with its values in source order. */
 export interface FrontmatterProperty {
   name: string;
   values: FrontmatterValue[];
+  /** The one-based line of its key; set on `ParsedFile.properties`, not on a hub's. */
+  line?: number;
 }
 
 /** One value of a front-matter property, and the tag it names, if any. */
@@ -126,4 +143,6 @@ export interface FrontmatterValue {
   text: string;
   /** Set when the value names a tag, such as `owner: "@dana"`. */
   tag?: TagReference;
+  /** The one-based line it is written on; set on `ParsedFile.properties`, not on a hub's. */
+  line?: number;
 }

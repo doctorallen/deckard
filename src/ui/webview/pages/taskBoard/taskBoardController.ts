@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 import type { PreferenceServices } from '../../../../core/storage/preferences';
 import type { IndexReader, IndexScanStatus, IndexUpdates } from '../../../../core/workspace/indexReader';
-import { parseQuery } from '../../../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../../../domain/types/typeQueryFields';
 import type { ExportService } from '../../../../services/exportService';
 import type { NavigationService } from '../../../../services/navigationService';
 import type { SearchRefineState } from '../../../protocol/shared';
@@ -271,7 +271,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   public applyQuery(text: string): boolean {
     const query = text.trim();
     this.invalidQuery = undefined;
-    if (query && !parseQuery(query).node) {
+    if (query && !parseWorkspaceQuery(this.board.indexer.getSnapshot(), query).node) {
       this.invalidQuery = query;
       return false;
     }

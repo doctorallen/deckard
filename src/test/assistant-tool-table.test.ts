@@ -14,6 +14,7 @@ import {
   ToolRunners,
 } from '../ui/state/assistantTools';
 import { AddTaskInput, ChangeTaskInput } from '../ui/state/assistantWriteInput';
+import { answerDescribeTag } from '../ui/state/assistantDescribe';
 
 /** A one-note index, the same the tool-call suites answer from. */
 function createIndex() {
@@ -69,12 +70,13 @@ function run(call: ToolCall<unknown>): unknown {
 }
 
 suite('Assistant tool table', () => {
-  test('holds the four tools in the order VS Code registers them', () => {
+  test('holds the five tools in the order VS Code registers them', () => {
     assert.deepStrictEqual(
       ASSISTANT_TOOLS.map((entry) => [entry.name, entry.kind]),
       [
         ['deckard_query', 'read'],
         ['deckard_list_tags', 'read'],
+        ['deckard_describe_tag', 'read'],
         ['deckard_add_task', 'write'],
         ['deckard_change_task', 'write'],
       ],
@@ -87,6 +89,7 @@ suite('Assistant tool table', () => {
       [
         { languageModel: 'Assistant query', mcp: 'MCP query' },
         { languageModel: 'Assistant tag list', mcp: 'MCP tag list' },
+        { languageModel: 'Assistant describe tag', mcp: 'MCP describe tag' },
         { languageModel: 'Assistant add task', mcp: 'MCP add task' },
         { languageModel: 'Assistant change task', mcp: 'MCP change task' },
       ],
@@ -114,6 +117,23 @@ suite('Assistant tool table', () => {
     assert.strictEqual(run(tags.read({ search: 'atlas' }, runners)), answerTags(index, { search: 'atlas' }));
     assert.strictEqual(run(tags.read('junk', runners)), answerTags(index, {}));
     assert.strictEqual(run(tags.read(undefined, runners)), answerTags(index, {}));
+  });
+
+  test('a describe call answers as answerDescribeTag does, and one without a tag is refused alike on both surfaces', () => {
+    const { index, context, runners } = createRunners();
+    const describe = tool('deckard_describe_tag');
+    assert.strictEqual(
+      run(describe.read({ tag: ' #project/atlas ' }, runners)),
+      answerDescribeTag(index, { tag: '#project/atlas' }, context.now),
+    );
+    for (const junk of [undefined, '#project/atlas', {}, { tag: '  ' }, { tag: 7 }]) {
+      assert.deepStrictEqual(refusal(describe.read(junk, runners)), {
+        languageModel: 'Send a tag, a title, or a few words naming one as "tag", such as #team/rates, @dana, or Bond trading.',
+        mcp: 'Send a tag, a title, or a few words naming one as "tag", such as #team/rates, @dana, or Bond trading.',
+      });
+    }
+    assert.strictEqual(describe.progressMessage({ tag: '@dana' }), 'Describing @dana in Deckard');
+    assert.strictEqual(describe.progressMessage({}), 'Describing a Deckard tag');
   });
 
   test('an add-task call is handed to the write as read, and each surface refuses a bad one in its own words', async () => {

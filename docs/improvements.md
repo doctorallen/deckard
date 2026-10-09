@@ -94,7 +94,8 @@ Item 1 stays, but Notion's export is the case to build first. It appends a
 flattens each database to a CSV beside a folder of pages, and turns
 callouts into HTML; a workspace export can take a day to arrive. Cleaning
 the names, rewriting the links as `[[links]]`, and turning each CSV row into
-a tagged note with front matter is a defined job, and losing links on the
+a tagged note with front matter, and each database into a
+[type](guide/databases.md) whose fields are its columns, is a defined job, and losing links on the
 way out is the complaint Notion's leavers make most.
 
 ### 7. A skill for assistants
@@ -134,7 +135,6 @@ Markdown is the answer to each, and the README can say so in a sentence.
 | Smart Connections embeddings, semantic search | Tag and BM25 ranking in Related Notes already covers most of the value at far lower cost. Revisit later. |
 | Natural language to a query | An assistant that has the query language's reference can write a query; a built-in translator would be a second, worse one, and it would have to send text somewhere. |
 | Spaced Repetition | A different product. |
-| Typed front matter schemas | Not a direction Deckard is taking. It would be the largest surface-area increase on this list, touching the query language, the tables and hub notes at once, for a kind of structure the tag and `[[link]]` conventions already carry. |
 
 ## Sequencing
 

@@ -7,7 +7,7 @@ import { resolveIndexedTagKey } from '../../../../domain/index/tagNavigation';
 import { EntityNamespaceAliases, formatEntityTitle } from '../../../../domain/markdown/parser';
 import type { Section, Task, WorkspaceIndex } from '../../../../domain/model';
 import { formatQuery } from '../../../../domain/query/queryFormat';
-import { parseQuery } from '../../../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../../../domain/types/typeQueryFields';
 import type { ExportService } from '../../../../services/exportService';
 import type { NavigationService } from '../../../../services/navigationService';
 import { measure } from '../../../../shared/timing';
@@ -16,6 +16,9 @@ import type { SearchRefineState } from '../../../protocol/shared';
 import { editResults } from '../../../commands/bulkEditPrompts';
 import { presentExport } from '../../../commands/exportResults';
 import { createHubNote } from '../../../commands/hubNote';
+import { copyFieldValue, createRowNote } from '../../../commands/typeNotes';
+import { renameTypeField, renameTypeOption } from '../../../commands/typeRenames';
+import { getTypeIndex, type TypeRow } from '../../../../domain/types/typeIndex';
 import { NoteOpening, openNoteAt } from '../../../commands/noteOpening';
 import { setPinned } from '../../../commands/pinNote';
 import { readEntityNamespaceAliases } from '../../../commands/parseSettings';
@@ -179,7 +182,8 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       setSearchPreview: (message) => preferences.display.setSearchPreview(message.preview),
       setSearchHierarchy: (message) => preferences.display.setSearchHierarchy(message.hierarchy),
       setSearchColumns: (message) => preferences.display.setDashboardColumns(message.section, message.columns),
-      openHelp: openHelp('search'),
+      // A type's rows open Help at the guide's page on types; any other search at Search.
+      openHelp: (message, page) => openHelp(this.currentSnapshot().typeRows ? 'databases' : 'search')(message, page),
       openGoTo: openGoTo(),
       listGoTo: listGoTo({ indexer }),
       goToPage: goToPage(),
@@ -214,6 +218,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       exportResults: (message) => this.exportResults(message.kind),
       openSource: (message) => this.openSource(message.filePath, message.line, message),
       openWikiLink: (message) => this.openWikiLink(message.target, message.from, message),
+      ...this.typeHandlers(),
     };
   }
 
@@ -234,7 +239,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
 
   /** Whether the page is about one tag the index no longer has. */
   public isForMissingTag(index: WorkspaceIndex): boolean {
-    const parsed = parseQuery(this.queryText);
+    const parsed = parseWorkspaceQuery(index, this.queryText);
     const node = parsed.node;
     return (
       node?.type === 'condition' &&
@@ -396,7 +401,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
         : {
             query: createQueryViewState({
               index,
-              parsed: parseQuery(this.queryText),
+              parsed: parseWorkspaceQuery(index, this.queryText),
               matchCounts: snapshot.query.matchCounts,
               isAdvanced: true,
               recentQueries: preferences.recentQueries ?? [],
@@ -415,7 +420,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
    */
   private async applyQuery(page: PageContext, queryText: string, remember = true): Promise<void> {
     const text = queryText.trim();
-    if (text && parseQuery(text).node === undefined) {
+    if (text && parseWorkspaceQuery(this.search.indexer.getSnapshot(), text).node === undefined) {
       this.invalidQueryText = text;
       page.refresh();
       return;
@@ -545,7 +550,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     const index = this.search.indexer.getSnapshot();
     const snapshot = this.currentSnapshot();
     const node = this.queryText.trim()
-      ? parseQuery(this.queryText).node
+      ? parseWorkspaceQuery(index, this.queryText).node
       : undefined;
     if (!node) {
       return {
@@ -570,6 +575,100 @@ export class SearchPageController implements PageController<SearchPageState, Sea
 
   private currentSnapshot(): SearchPageSnapshot {
     return this.lastSnapshot ?? this.createSnapshot();
+  }
+
+  /**
+   * What a type's page asks of its host: its rows tab's sort, columns, and
+   * grouping; Add <type>…, its note, and Create type; the renames a
+   * column's menu offers; and a row's hub note and Copy.
+   */
+  private typeHandlers(): Pick<
+    MessageHandlers<SearchPagePageToHost>,
+    | 'setTypeSort'
+    | 'setTypeColumns'
+    | 'setTypeGroup'
+    | 'addTypeRow'
+    | 'openTypeNote'
+    | 'createTypeFromTag'
+    | 'renameTypeField'
+    | 'editTypeField'
+    | 'renameTypeOption'
+    | 'createRowHub'
+    | 'copyRowValue'
+  > {
+    const { indexer, preferences, writes } = this.search;
+    return {
+      setTypeSort: (message) =>
+        preferences.display.setTypeTable(message.typeKey, {
+          sort: message.column ? { column: message.column, direction: message.direction ?? 'asc' } : undefined,
+        }),
+      setTypeColumns: (message) => preferences.display.setTypeTable(message.typeKey, { columns: message.columns }),
+      setTypeGroup: (message) => preferences.display.setTypeTable(message.typeKey, { groupBy: message.field }),
+      addTypeRow: (message) => this.addTypeRow(message.typeKey),
+      openTypeNote: (message) => this.openTypeNote(message.typeKey),
+      createTypeFromTag: async (message) => {
+        await vscode.commands.executeCommand('deckard.createTypeFromTags', message.namespace);
+      },
+      renameTypeField: async (message) => {
+        await renameTypeField({ indexer, history: writes.history }, message.typeKey, message.field);
+      },
+      editTypeField: (message) => this.openTypeNote(message.typeKey, message.field),
+      renameTypeOption: async (message) => {
+        await renameTypeOption({ indexer, history: writes.history }, message.typeKey, message.field, message.option);
+      },
+      createRowHub: async (message) => {
+        const row = this.findTypeRow(message.typeKey, message.rowId);
+        if (row && !row.filePath && row.tagKeys.length) {
+          await createHubNote(indexer, row.tagKeys.includes(row.id) ? row.id : row.tagKeys[0]);
+        }
+      },
+      copyRowValue: async (message) => {
+        // What the row's ⋯ offered to copy, as the page drew it.
+        const table = this.currentSnapshot().typeRows;
+        const rows = [...(table?.rows ?? []), ...(table?.groups ?? []).flatMap((group) => group.rows)];
+        const copy = rows.find((row) => row.id === message.rowId)?.copy;
+        if (copy) {
+          await copyFieldValue(copy.value);
+        }
+      },
+    };
+  }
+
+  /** A row of the page's type, by id, as the index has it now; undefined for one it no longer has. */
+  private findTypeRow(typeKey: string, rowId: string): TypeRow | undefined {
+    const row = getTypeIndex(this.search.indexer.getSnapshot()).row(rowId);
+    return row?.typeKey === typeKey ? row : undefined;
+  }
+
+  /**
+   * Add <type>…: asks the new row's title, then writes its note into the
+   * type's folder, from the type's template or with its fields' keys, and
+   * opens it.
+   */
+  private async addTypeRow(typeKey: string): Promise<void> {
+    const type = getTypeIndex(this.search.indexer.getSnapshot()).registry.get(typeKey);
+    if (!type) {
+      return;
+    }
+    const title = await vscode.window.showInputBox({
+      title: `Add ${type.name.toLowerCase()}`,
+      prompt: `The new ${type.name.toLowerCase()}'s title, which names its note${type.rows?.kind === 'tags' ? ' and its tag' : ''}`,
+      validateInput: (value) => (value.trim() ? undefined : `A ${type.name.toLowerCase()} needs a title.`),
+    });
+    if (!title?.trim()) {
+      return;
+    }
+    await createRowNote({ indexer: this.search.indexer, history: this.search.writes.history }, { typeKey, title: title.trim() });
+  }
+
+  /** Opens a type's note, at a field's row of its table when one is named, else at the top. */
+  private async openTypeNote(typeKey: string, fieldKey?: string): Promise<void> {
+    const type = getTypeIndex(this.search.indexer.getSnapshot()).registry.get(typeKey);
+    if (!type) {
+      return;
+    }
+    const field = fieldKey ? type.fields.find((candidate) => candidate.key === fieldKey.toLowerCase()) : undefined;
+    await openResultAt(type.filePath, field?.line ?? type.table?.startLine ?? 1, { pin: true });
   }
 
   /**
@@ -623,6 +722,11 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     );
     if (task) {
       await openNoteAt(task.task.filePath, task.task.lineNumber, how);
+      return;
+    }
+    // A note a type's row, or one of its values, names: a row's note or hub, or a Note field's.
+    if (snapshot.typeRows && this.search.indexer.getSnapshot().files.has(filePath)) {
+      await openNoteAt(filePath, line, how);
     }
   }
 
@@ -639,11 +743,11 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     if (!text) {
       return;
     }
-    if (parseQuery(text).node === undefined) {
+    if (parseWorkspaceQuery(index, text).node === undefined) {
       await this.applyQuery(page, text);
       return;
     }
-    const tagKeys = resolveQueryTagIntersection(index, parseQuery(text), readEntityNamespaceAliases());
+    const tagKeys = resolveQueryTagIntersection(index, parseWorkspaceQuery(index, text), readEntityNamespaceAliases());
     const isTagSet = tagKeys !== undefined && tagKeys.length >= 2;
     const name = await vscode.window.showInputBox({
       title: 'Save search',
@@ -677,7 +781,7 @@ export function getSearchKey(
   queryText: string,
   entityNamespaceAliases?: EntityNamespaceAliases,
 ): string {
-  const parsed = parseQuery(queryText.trim());
+  const parsed = parseWorkspaceQuery(index, queryText.trim());
   if (!parsed.node) {
     return '';
   }
@@ -691,6 +795,9 @@ export function getSearchKey(
  * A page's tab title: its entity or tag, or its search.
  */
 function getPageTitle(snapshot: SearchPageSnapshot): string {
+  if (snapshot.typeRows) {
+    return snapshot.typeRows.plural;
+  }
   if (snapshot.entity) {
     return formatEntityTitle(snapshot.entity.kind, snapshot.entity.name);
   }

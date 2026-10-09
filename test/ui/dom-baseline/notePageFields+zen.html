@@ -1,0 +1,365 @@
+<body
+  class="zen"
+  data-cards="flat"
+  data-controls="quiet"
+  data-density="compact"
+  data-help="hidden"
+  data-styling="plain"
+  data-tags="text"
+> <main
+    id="app"
+  ><header
+      class="page-bar"
+    ><div
+        class="note-lead page-bar-lead"
+      ><p
+          class="eyebrow"
+        ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label="Deckard: go to another page"
+            class="eyebrow-home"
+            data-go-to=""
+            type="button"
+          >DECKARD ▾</button
+          ><span
+            class="eyebrow-trail"
+          > / NOTE / PEOPLE</span
+          ></p
+        ><h1
+          class="note-text"
+        >Dana Whitfield</h1
+        ><div
+          class="note-progress"
+        ><button
+            class="type-link"
+            data-action="open-search"
+            data-query="type = person"
+            data-tip="Search every person: type = person"
+            type="button"
+          >Person</button
+          ><span
+            aria-hidden="true"
+            class="progress-bar"
+          ><span
+              class="progress-bar-fill"
+              style="width: 0%"
+            ></span
+            ></span
+          ><span
+            class="note-progress-label"
+          ><span
+              aria-hidden="true"
+            >0/2 done (0%)</span
+            ><span
+              class="visually-hidden"
+            >0 of 2 done, 0%</span
+            > · <button
+              class="progress-link"
+              data-action="open-search"
+              data-query="@dana is:overdue -is:needs-date -is:step -is:parked"
+              data-tip="Search the tag’s overdue tasks"
+              type="button"
+            >1 overdue</button
+            > · <button
+              class="progress-link"
+              data-action="open-search"
+              data-query="@dana is:open due = 2026-09-22 -is:step -is:parked"
+              data-tip="Search the tag’s tasks due next"
+              type="button"
+            >next due tomorrow</button
+            ></span
+          ><button
+            class="tag-note-action"
+            data-action="open-tag"
+            data-tag-key="@dana"
+            data-tip="Open @dana's page"
+            type="button"
+          >Open @dana</button
+          ></div
+        ></div
+      ><div
+        aria-label="Note"
+        class="page-bar-actions"
+        data-query-keeps-text=""
+        role="group"
+      ><span
+          aria-label="Note history"
+          class="history-buttons"
+          role="group"
+        ><button
+            aria-label="Back to the note before"
+            class="icon-button"
+            data-action="history-back"
+            data-tip="Back to the note before"
+            type="button"
+          >‹</button
+          ><button
+            aria-disabled="true"
+            aria-label="Forward to the next note"
+            class="icon-button"
+            data-action="history-forward"
+            data-tip="Forward to the next note"
+            data-tip-disabled="No note after this one"
+            type="button"
+          >›</button
+          ></span
+        ><button
+          data-action="open-in-editor"
+          data-tip="Open this note in the editor · Cmd/Ctrl-click: beside"
+          type="button"
+        >Open in Editor</button
+        ><details
+          class="page-menu view-options"
+        ><summary
+            aria-label="More: Theme, Zen, Page width, and more"
+            data-tip="More: Theme, Zen, Page width, and more"
+          ><svg
+              aria-hidden="true"
+              class="toolbar-icon"
+              fill="none"
+              focusable="false"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><circle
+                cx="3.5"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ><circle
+                cx="8"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ><circle
+                cx="12.5"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ></svg
+            ></summary
+          ><div
+            class="is-dropdown popover view-options-menu"
+          ><div
+              aria-label="Appearance"
+              class="view-options-section"
+              role="group"
+            ><div
+                aria-hidden="true"
+                class="view-options-heading"
+              >Appearance</div
+              ><div
+                class="view-options-group"
+              ><span
+                >Theme</span
+                ><button
+                  aria-label="Theme: Replicant. Choose another"
+                  class="theme-choice"
+                  data-action="choose-theme"
+                  type="button"
+                >Replicant…</button
+                ></div
+              ><div
+                class="view-options-group"
+              ><label
+                  for="view-options-zen"
+                >Zen</label
+                ><input
+                  class="view-options-check"
+                  data-action="set-zen"
+                  data-dom-checked="true"
+                  data-dom-value="on"
+                  id="view-options-zen"
+                  type="checkbox"
+                ></div
+              ><div
+                class="view-options-group"
+              ><span
+                >Page width</span
+                ><div
+                  aria-label="Page width"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-display"
+                    data-display="pageWidth"
+                    data-value="limited"
+                    type="button"
+                  >Limited</button
+                  ><button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="pageWidth"
+                    data-value="full"
+                    type="button"
+                  >Full</button
+                  ></div
+                ></div
+              ></div
+            ><div
+              aria-label="Help"
+              class="view-options-section"
+              role="group"
+            ><button
+                class="menu-item view-options-item"
+                data-action="page-help"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Help on this page</span
+                ></button
+              ></div
+            ></div
+          ></details
+        ></div
+      ></header
+    ><section
+      aria-label="Person fields"
+      class="note-fields"
+      data-zen-region=""
+    ><dl
+        class="field-rows"
+      ><div
+          class="field-row"
+          data-field-key="team"
+          data-reveal-region=""
+          tabindex="0"
+        ><dt
+            class="field-name"
+          >team</dt
+          ><dd
+            class="field-values"
+          ><button
+              class="field-link field-value"
+              data-action="open-tag"
+              data-tag-key="#team/rates"
+              data-tip="Open #team/rates"
+              type="button"
+            >Rates</button
+            ><button
+              aria-expanded="false"
+              aria-label="Edit team"
+              class="field-edit"
+              data-action="edit-field"
+              data-field-key="team"
+              data-reveal=""
+              data-zen-reveal=""
+              type="button"
+            >Edit</button
+            ></dd
+          ></div
+        ><div
+          class="field-row"
+          data-field-key="email"
+          data-reveal-region=""
+          tabindex="0"
+        ><dt
+            class="field-name"
+          >email</dt
+          ><dd
+            class="field-values"
+          ><span
+              class="field-value"
+            >dana@example.com</span
+            ><button
+              aria-expanded="false"
+              aria-label="Edit email"
+              class="field-edit"
+              data-action="edit-field"
+              data-field-key="email"
+              data-reveal=""
+              data-zen-reveal=""
+              type="button"
+            >Edit</button
+            ></dd
+          ></div
+        ><div
+          class="field-row is-reverse"
+          data-reveal-region=""
+        ><dt
+            class="field-name"
+            data-tip="From each team's lead"
+          >lead of</dt
+          ><dd
+            class="field-values"
+          ><button
+              class="field-link field-value is-reverse"
+              data-action="open-tag"
+              data-tag-key="#team/rates"
+              data-tip="Open #team/rates"
+              type="button"
+            >Rates</button
+            ></dd
+          ></div
+        ></dl
+      ><details
+        class="field-empty"
+      ><summary
+        >1 empty: start</summary
+        ><dl
+          class="field-rows"
+        ><div
+            class="field-row"
+            data-field-key="start"
+            data-reveal-region=""
+            tabindex="0"
+          ><dt
+              class="field-name"
+            >start</dt
+            ><dd
+              class="field-values"
+            ><span
+                class="field-none"
+              >empty</span
+              ><button
+                aria-expanded="false"
+                aria-label="Edit start"
+                class="field-edit"
+                data-action="edit-field"
+                data-field-key="start"
+                data-reveal=""
+                data-zen-reveal=""
+                type="button"
+              >Edit</button
+              ></dd
+            ></div
+          ></dl
+        ></details
+      ><div
+        class="field-add"
+      ><button
+          aria-expanded="false"
+          class="field-add-button"
+          data-action="add-field"
+          data-zen-reveal=""
+          type="button"
+        >Add field…</button
+        ></div
+      ></section
+    ><article
+      aria-label="Dana Whitfield"
+      class="note-body"
+    ><p
+        data-line="7"
+      >Heads the rates desk.</p
+      ></article
+    ></main
+  > <div
+    aria-live="polite"
+    class="visually-hidden"
+    id="live-status"
+    role="status"
+  ></div
+  > </body
+>

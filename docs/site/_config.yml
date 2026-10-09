@@ -24,6 +24,7 @@ nav:
   - title: Writing
     pages:
       - { title: Notes, tags, and links, url: /notes-and-links.html }
+      - { title: Types and fields, url: /databases.html }
       - { title: Tasks, url: /tasks.html }
       - { title: Daily notes and the calendar, url: /daily-notes.html }
       - { title: Renaming, moving, and parking, url: /organizing.html }

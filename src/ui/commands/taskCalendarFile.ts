@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
-import { parseQuery } from '../../domain/query/queryParser';
+import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { QueryContext } from '../../domain/query/queryContext';
 import { stripTags } from '../../domain/markdown/parser';
 import { buildTaskCalendar, CalendarTask } from '../../domain/tasks/taskCalendar';
@@ -41,7 +41,7 @@ export function buildCalendarFor(
   query: string,
   context: QueryContext,
 ): CalendarBuild {
-  const parsed = parseQuery(query);
+  const parsed = parseWorkspaceQuery(index, query);
   const error = parsed.diagnostics.find((diagnostic) => diagnostic.severity === 'error');
   if (!parsed.node || error) {
     return { kind: 'error', message: error?.message ?? 'The search is empty.' };

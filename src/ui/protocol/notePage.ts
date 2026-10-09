@@ -2,6 +2,7 @@
  * The note page's protocol: one note as the page draws it, its blocks each
  * with the line it starts on, and the messages the page sends.
  */
+import type { DrawnFields, SetNoteFieldMessage } from './fields';
 import type { DrawnStatus } from './shared';
 import type { InlineToken } from '../../domain/model/inline';
 import type { IndexingMessage, MessageOf, StateMessage } from './messaging';
@@ -127,13 +128,20 @@ export interface NotePageSnapshot {
   /** The folder the note is in, or nothing at the top. */
   folder: string;
   properties: NoteProperty[];
+  /**
+   * For a note that is a typed row, its fields, which the page draws, and
+   * edits, in place of `properties`.
+   */
+  fields?: DrawnFields;
   breadcrumbs: NoteBreadcrumb[];
   /** For a hub note, its tag and how far along the tag's tasks are, wherever they are written. */
   hub?: {
     tagKey: string;
     tagLabel: string;
-    /** What the tag names, by its namespace: Project, Team, Person, or Tag for one with none. */
+    /** What the tag names: its type's name for a typed row, else by its namespace: Project, Team, Person, or Tag for one with none. */
     kind: string;
+    /** For a typed row, the search that lists its type's rows, which the kind opens: `type = team`. */
+    typeQuery?: string;
     done: number;
     total: number;
     label: string;
@@ -217,6 +225,7 @@ export interface NotePagePageToHost {
   navigateNoteHistory: NavigateNoteHistoryMessage;
   openSearch: OpenSearchMessage;
   runNoteAction: RunNoteActionMessage;
+  setNoteField: SetNoteFieldMessage;
   openGoTo: OpenGoToMessage;
   listGoTo: ListGoToMessage;
   goToPage: GoToPageMessage;
