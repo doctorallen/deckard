@@ -45,10 +45,14 @@ function CellValue({ value, field }: { readonly value: TypeTableValue; readonly 
   return <>{value.text}</>;
 }
 
-/** A cell's values, comma-joined, then `+2`, then the overdue count; or its text. */
+/**
+ * A cell's values, comma-joined, then `+2`, then the overdue count; or its
+ * text, a count or a date, kept to one line so a date is never broken at
+ * its hyphens.
+ */
 function CellBody({ cell, column }: { readonly cell: TypeTableCell; readonly column: TypeTableColumn }) {
   if (!cell.values) {
-    return <>{cell.text}</>;
+    return cell.text ? <span class="type-figure">{cell.text}</span> : null;
   }
   const parts: ComponentChild[] = [];
   cell.values.forEach((value, at) => {

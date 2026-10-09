@@ -175,6 +175,12 @@ header { position: relative; }
    no hub note says so, muted, under its title. */
 .result-table:where(.type-table) th.is-field button { color: var(--text); }
 .type-table th.is-computed button, .type-table th.is-title button { font-family: var(--font-display); text-transform: none; letter-spacing: normal; }
+/* A cell breaks between words, never inside one, so "silver" is not drawn
+   as "silve r" in a narrow pane; a table wider than its pane scrolls in its
+   own box rather than pushing the page sideways. */
+.type-rows { overflow-x: auto; }
+.type-table.result-table td { overflow-wrap: break-word; }
+.type-figure { white-space: nowrap; }
 .type-no-hub { display: block; color: var(--muted); font-size: var(--text-xs); }
 .type-create-hub.type-create-hub { min-height: 0; margin-left: var(--space-2); padding: 0 6px; font-size: var(--text-xs); }
 .type-more { color: var(--muted); }
