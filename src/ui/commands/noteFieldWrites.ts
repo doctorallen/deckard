@@ -28,6 +28,7 @@ const REFUSALS: Readonly<Record<FrontmatterRefusal, string>> = {
   nested: 'holds keys of its own',
   unreadable: 'is written in a way Deckard cannot rewrite safely',
   'bad-key': 'is not a key front matter can have',
+  'key-taken': 'is a key the note already writes',
 };
 
 /**

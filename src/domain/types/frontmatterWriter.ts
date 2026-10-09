@@ -35,8 +35,12 @@ export interface FrontmatterFieldWrite {
   list?: boolean;
 }
 
-/** Why a key cannot be written safely, so the editor is opened at it instead. */
-export type FrontmatterRefusal = 'block-scalar' | 'nested' | 'unreadable' | 'bad-key';
+/**
+ * Why a key cannot be written safely, so the editor is opened at it
+ * instead; or, for a rename, why the new key cannot be written: the note
+ * already writes it (`key-taken`).
+ */
+export type FrontmatterRefusal = 'block-scalar' | 'nested' | 'unreadable' | 'bad-key' | 'key-taken';
 
 /**
  * What writing a key comes to: the note's new text and the lines that
@@ -112,6 +116,40 @@ export function setFrontmatterField(content: string, key: string, write: Frontma
     return replaceLines(note, { start: at, count: 0, next: [line], line: at + 1 });
   }
   return rewriteKey(note, written, values, list);
+}
+
+/**
+ * The note with one front-matter key renamed, its value, comment, spacing,
+ * and the lines under it kept byte for byte: what Rename field everywhere
+ * writes in each row's note. `from` is matched in any case, as the parser
+ * reads keys; every line that writes it is renamed, so a key written twice
+ * stays one key. Nothing to do when the note does not write `from` or
+ * already spells it `to`; refused, at the line of the key it would
+ * collide with, when the note writes `to` as another key.
+ */
+export function renameFrontmatterKey(content: string, from: string, to: string): FrontmatterFieldEdit {
+  if (!KEY.test(from) || !KEY.test(to)) {
+    return { kind: 'refused', reason: 'bad-key', line: 1 };
+  }
+  const note: Note = { lines: content.split(/\r?\n/), eol: content.includes('\r\n') ? '\r\n' : '\n' };
+  const end = findFrontmatterEnd(note.lines);
+  const keys = end === undefined ? [] : readKeys(note.lines, end);
+  const nameOf = (key: WrittenKey): string => key.head.replace(/[ \t]*:$/, '');
+  const renamed = keys.filter((key) => nameOf(key).toLowerCase() === from.toLowerCase());
+  if (renamed.length === 0) {
+    return { kind: 'unchanged' };
+  }
+  const taken = from.toLowerCase() === to.toLowerCase() ? undefined : keys.find((key) => nameOf(key).toLowerCase() === to.toLowerCase());
+  if (taken) {
+    return { kind: 'refused', reason: 'key-taken', line: taken.line + 1 };
+  }
+  const start = renamed[0].line;
+  const last = renamed[renamed.length - 1].line;
+  const next = note.lines.slice(start, last + 1).map((text, at) => {
+    const key = renamed.find((each) => each.line === start + at);
+    return key ? `${to}${text.slice(nameOf(key).length)}` : text;
+  });
+  return replaceLines(note, { start, count: last - start + 1, next, line: last + 1 });
 }
 
 /** A note's lines, and the line ending it writes them with. */
