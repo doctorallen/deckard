@@ -19,15 +19,18 @@ import { TagButton } from '../shared/tagButton';
 import { installViewOptions, type ViewOptionItem } from '../shared/viewOptions';
 import { keepState, post } from '../shared/vscode';
 import { Blocks } from '../shared/noteBlocks';
+import { AddField, FieldRows, type FieldEditing, readableValue } from '../shared/fieldRows';
+import type { FieldEditValue } from '../../ui/protocol/fields';
 
 /** Sends the host one of the messages the note page may send. */
 function send(message: NotePageMessage): void {
   post(message);
 }
 
-/** What the page draws from. */
+/** What the page draws from: the note, and which of its fields' editors is open. */
 interface NotePageState {
   readonly snapshot: NotePageSnapshot | undefined;
+  readonly editing?: FieldEditing;
 }
 
 /**
@@ -99,11 +102,6 @@ const PROPERTY_NAMES: ReadonlyMap<string, string> = new Map([
   ['tags', 'Tags'],
 ]);
 
-/** A value as a reader reads it: `[[Atlas]]` as Atlas. */
-function propertyText(text: string): string {
-  return text.replace(/^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/, (_whole, target: string, shown?: string) => shown ?? target);
-}
-
 /** The note's front matter, a tag among the values a button that opens it. */
 function Properties({ properties }: { readonly properties: readonly NoteProperty[] }) {
   if (!properties.length) {
@@ -117,7 +115,7 @@ function Properties({ properties }: { readonly properties: readonly NoteProperty
           <dd>
             {property.values.map((value, at) => [
               at > 0 ? ', ' : null,
-              value.tagKey ? <TagButton tag={{ key: value.tagKey, label: value.text }} className="inline-tag" /> : propertyText(value.text),
+              value.tagKey ? <TagButton tag={{ key: value.tagKey, label: value.text }} className="inline-tag" /> : readableValue(value.text),
             ])}
           </dd>
         </div>
@@ -126,11 +124,22 @@ function Properties({ properties }: { readonly properties: readonly NoteProperty
   );
 }
 
-/** For a hub note, how far along its tag's tasks are, wherever they are written, and the way to its page. */
+/** A typed row's type, as an eyebrow that opens the search for its rows. */
+function TypeLink({ name, query }: { readonly name: string; readonly query: string }) {
+  return <button type="button" class="eyebrow eyebrow-link" data-action="open-search" data-query={query} data-tip={`Search every ${name.toLowerCase()}: ${query}`}>{name}</button>;
+}
+
+/**
+ * For a hub note, how far along its tag's tasks are, wherever they are
+ * written, and the way to its page; a typed row's type names the line and
+ * opens its rows.
+ */
 function HubLine({ hub }: { readonly hub: NonNullable<NotePageSnapshot['hub']> }) {
   return (
     <div class="note-progress">
-      <span class="eyebrow" data-tip={`Every task ${hub.tagLabel} finds, in any note`}>{hub.kind}</span>
+      {hub.typeQuery
+        ? <TypeLink name={hub.kind} query={hub.typeQuery} />
+        : <span class="eyebrow" data-tip={`Every task ${hub.tagLabel} finds, in any note`}>{hub.kind}</span>}
       <ProgressBar done={hub.done} total={hub.total} />
       <span class="note-progress-label"><ProgressWords parts={hub.parts} action="open-search" attributes={(part) => ({ 'data-query': part.query ?? '' })} /></span>
       <button type="button" class="tag-note-action" data-action="open-tag" data-tag-key={hub.tagKey} data-tip={`Open ${hub.tagLabel}'s page`}>{`Open ${hub.tagLabel}`}</button>
@@ -146,6 +155,29 @@ function TaskLine({ progress }: { readonly progress: NonNullable<NotePageSnapsho
       <ProgressBar done={progress.done} total={progress.total} />
       <span class="note-progress-label"><ProgressWords parts={progress.parts} action="open-search" attributes={(part) => ({ 'data-query': part.query ?? '' })} /></span>
     </div>
+  );
+}
+
+/**
+ * Under the bar's divider, the note's front matter: for a typed row, its
+ * fields, each it writes with its Edit, the empty ones folded, and Add
+ * field…, with its type named above them unless its hub line names it;
+ * for any other note, its properties as written. Zen quiets Edit and Add
+ * field… here until the region is pointed at or holds focus.
+ */
+function NoteFields({ snapshot, editing }: { readonly snapshot: NotePageSnapshot; readonly editing: FieldEditing | undefined }) {
+  const fields = snapshot.fields;
+  if (!fields) {
+    return snapshot.properties.length
+      ? <section class="note-fields" data-zen-region="" aria-label="Properties"><Properties properties={snapshot.properties} /></section>
+      : null;
+  }
+  return (
+    <section class="note-fields" data-zen-region="" aria-label={`${fields.typeName} fields`}>
+      {snapshot.hub?.typeQuery ? null : <p class="note-fields-type"><TypeLink name={fields.typeName} query={fields.typeQuery} /></p>}
+      <FieldRows fields={fields} noteAction="open-note" editable editing={editing} />
+      <AddField fields={fields} editing={editing} />
+    </section>
   );
 }
 
@@ -174,8 +206,8 @@ function LinkedFrom({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
   );
 }
 
-/** The whole page: the header with its toolbar, the note, and what links to it. */
-function NotePage({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
+/** The whole page: the header with its toolbar, the note's fields, the note, and what links to it. */
+function NotePage({ snapshot, editing }: { readonly snapshot: NotePageSnapshot; readonly editing: FieldEditing | undefined }) {
   if (snapshot.missing) {
     return (
       <>
@@ -195,10 +227,10 @@ function NotePage({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
             <Breadcrumbs crumbs={snapshot.breadcrumbs} />
             {snapshot.hub ? <HubLine hub={snapshot.hub} /> : null}
             {snapshot.taskProgress ? <TaskLine progress={snapshot.taskProgress} /> : null}
-            <Properties properties={snapshot.properties} />
           </>
         )}
       />
+      <NoteFields snapshot={snapshot} editing={editing} />
       <article class="note-body" aria-label={snapshot.title}>
         {snapshot.blocks.length
           ? <Blocks blocks={snapshot.blocks} context={{ tags: snapshot.tags }} />
@@ -210,6 +242,8 @@ function NotePage({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
 }
 
 let shownVisit: number | undefined;
+/** What takes focus once the page is drawn again, such as an editor just opened. */
+let focusAfterDraw: string | undefined;
 /** The snapshot last drawn, which the first draw needs before the store exists. */
 let drawn: NotePageSnapshot | undefined;
 const store = startPage<NotePageState>({
@@ -217,9 +251,13 @@ const store = startPage<NotePageState>({
   ready: (state) => Boolean(state.snapshot),
   view: (state) => {
     drawn = state.snapshot;
-    return <NotePage snapshot={state.snapshot as NotePageSnapshot} />;
+    return <NotePage snapshot={state.snapshot as NotePageSnapshot} editing={state.editing} />;
   },
   afterDraw: () => {
+    if (focusAfterDraw) {
+      document.querySelector<HTMLElement>(focusAfterDraw)?.focus();
+      focusAfterDraw = undefined;
+    }
     const snapshot = drawn;
     if (!snapshot || snapshot.visit === shownVisit) {
       return;
@@ -274,6 +312,52 @@ function modifiers(event: MouseEvent | KeyboardEvent): { opposite?: true; beside
   };
 }
 
+/** A field the note shown has, by its key: one that holds something, or an empty one. */
+function findField(key: string | undefined) {
+  const fields = store.state.snapshot?.fields;
+  return key ? [...(fields?.fields ?? []), ...(fields?.empty ?? [])].find((field) => field.edit?.key === key) : undefined;
+}
+
+/** Sends a field edit for the note shown. */
+function sendField(key: string, value: FieldEditValue): void {
+  const filePath = store.state.snapshot?.filePath;
+  if (filePath) {
+    send({ type: 'setNoteField', filePath, key, value });
+  }
+}
+
+/**
+ * Opens a field's editor, its input holding what the field holds when it
+ * is typed, and its filter empty when it is a list; or closes it when it is
+ * open. Focus goes to its input, or its first choice.
+ */
+function toggleEditor(key: string): void {
+  const field = findField(key);
+  if (!field?.edit) {
+    return;
+  }
+  if (store.state.editing?.key === key && !store.state.editing.adding && !store.state.editing.other) {
+    closeEditor(key);
+    return;
+  }
+  const typed = field.edit.input === 'rows' || field.edit.input === 'options' ? '' : (field.edit.current[0] ?? '');
+  focusAfterDraw = `.field-row[data-field-key="${key}"] .field-editor :is(input, button)`;
+  store.update({ editing: { key, text: typed } });
+}
+
+/** Closes the editor, focus going back to the field's Edit, or to Add field…. */
+function closeEditor(key?: string): void {
+  focusAfterDraw = key ? `.field-edit[data-field-key="${key}"]` : '.field-add-button';
+  store.update({ editing: undefined });
+}
+
+/** After a choice: a field that holds several keeps its list open for the next; any other closes it. */
+function afterChoice(key: string): void {
+  if (!findField(key)?.edit?.many) {
+    closeEditor(key);
+  }
+}
+
 /** Every control's action, by its `data-action`. */
 const ACTIONS: Readonly<Record<string, ActionHandler>> = {
   'history-back': () => send({ type: 'navigateNoteHistory', direction: 'back' }),
@@ -299,6 +383,55 @@ const ACTIONS: Readonly<Record<string, ActionHandler>> = {
     const whole = element.classList.toggle('is-whole');
     const alt = element.querySelector('img')?.getAttribute('alt') || 'Image';
     element.setAttribute('aria-label', `${alt}, shown ${whole ? 'at full size' : 'fitted'}; select to show it ${whole ? 'fitted' : 'at full size'}`);
+  },
+  'edit-field': (element) => toggleEditor(String(element.dataset.fieldKey)),
+  'choose-field-row': (element) => {
+    const key = String(element.dataset.fieldKey);
+    sendField(key, { kind: 'row', rowId: String(element.dataset.rowId) });
+    afterChoice(key);
+  },
+  'choose-field-option': (element) => {
+    const key = String(element.dataset.fieldKey);
+    sendField(key, { kind: 'option', option: String(element.dataset.option) });
+    afterChoice(key);
+  },
+  'set-field-text': (element) => {
+    const key = String(element.dataset.fieldKey);
+    const text = store.state.editing?.text.trim() ?? '';
+    if (!text) {
+      return;
+    }
+    sendField(key, { kind: 'text', text });
+    closeEditor(key);
+  },
+  'toggle-field': (element) => sendField(String(element.dataset.fieldKey), { kind: 'checkbox', checked: (element as HTMLInputElement).checked }),
+  'clear-field': (element) => {
+    const key = String(element.dataset.fieldKey);
+    sendField(key, { kind: 'clear' });
+    closeEditor(key);
+  },
+  'add-field': () => {
+    if (store.state.editing?.adding || store.state.editing?.other) {
+      closeEditor();
+      return;
+    }
+    focusAfterDraw = '.field-add .field-choice';
+    store.update({ editing: { adding: true, text: '' } });
+  },
+  'add-other-field': () => {
+    focusAfterDraw = '.field-add .field-key-input';
+    store.update({ editing: { other: true, key: '', text: '' } });
+  },
+  'set-other-field': () => {
+    const editing = store.state.editing;
+    const key = editing?.key?.trim() ?? '';
+    const text = editing?.text.trim() ?? '';
+    if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(key) || !text) {
+      announce('Write a key that starts with a letter, then a value.');
+      return;
+    }
+    sendField(key, { kind: 'text', text });
+    closeEditor();
   },
   'open-search': (element) => {
     if (element.dataset.query) {
@@ -351,4 +484,55 @@ document.addEventListener('mouseup', (event) => {
   send({ type: 'navigateNoteHistory', direction: event.button === 3 ? 'back' : 'forward' });
 });
 
-onHostMessage<StateMessage<NotePageSnapshot>>('state', (message) => store.update({ snapshot: message.data }));
+// What is typed in a field's editor is kept in the page's state, so a draw keeps it.
+app.addEventListener('input', (event) => {
+  const input = event.target as HTMLInputElement | null;
+  const editing = store.state.editing;
+  if (!input || !editing || !input.closest?.('.note-fields')) {
+    return;
+  }
+  if (input.classList.contains('field-input')) {
+    store.update({ editing: { ...editing, text: input.value } });
+  } else if (input.classList.contains('field-key-input')) {
+    store.update({ editing: { ...editing, key: input.value } });
+  }
+});
+
+/**
+ * Enter in the fields region: on a focused field, opens its editor; in an
+ * editor's input, takes its first choice, or sets what is typed. True when
+ * the key was taken.
+ */
+function enterInFields(target: HTMLElement): boolean {
+  if (target.matches('.field-row[data-field-key]')) {
+    toggleEditor(String(target.dataset.fieldKey));
+    return true;
+  }
+  if (!target.matches('input[type="text"], input[type="date"]')) {
+    return false;
+  }
+  const editor = target.closest('.field-editor, .field-add');
+  editor?.querySelector<HTMLElement>('[data-action="choose-field-row"], [data-action="set-field-text"], [data-action="set-other-field"]')?.click();
+  return true;
+}
+
+// The fields' keys: Enter opens a field's editor or takes what it holds, and Escape closes it.
+app.addEventListener('keydown', (event) => {
+  const target = event.target as HTMLElement | null;
+  if (!target?.closest?.('.note-fields') || event.metaKey || event.ctrlKey || event.altKey) {
+    return;
+  }
+  const editing = store.state.editing;
+  if (event.key === 'Escape' && editing) {
+    event.preventDefault();
+    closeEditor(editing.adding || editing.other ? undefined : editing.key);
+  } else if (event.key === 'Enter' && enterInFields(target)) {
+    event.preventDefault();
+  }
+});
+
+onHostMessage<StateMessage<NotePageSnapshot>>('state', (message) => {
+  // Another note closes any editor; the same note, drawn again after a write, keeps a list open.
+  const sameNote = message.data.visit === store.state.snapshot?.visit;
+  store.update({ snapshot: message.data, ...(sameNote ? {} : { editing: undefined }) });
+});

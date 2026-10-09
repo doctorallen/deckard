@@ -70,8 +70,31 @@
   and the MCP server. In a workspace with types, `deckard_query` and
   `deckard_list_tags` name the types and their fields on their second line.
 
+- **Fields on the Note page.** A typed row's note lists its fields under
+  the page bar: each field that holds something on a row of its own, the
+  key in monospace and the values after it, a person or related row by
+  its title, which opens its page. Reverses, such as a team's `members`,
+  are in italics and say what they come from ("From each person's
+  team"), and the empty fields fold into one line ("1 empty: email") that
+  opens to list them. The hub line, or the top of the fields for a note
+  row, names the type ("Team"), which opens the search for its rows.
+  **Edit**, shown on the row you point at or tab to, or Enter on the row,
+  opens a list by kind: the rows the field can name, each with its first
+  relation, filtered as you type; a select's options; a date; a box; or a
+  text field; then **Clear**. A field that holds several adds or takes
+  away one choice at a time. **Add field…** offers the type's empty
+  fields, then **Other…** for a key of your own. Each change writes one
+  key of the front matter, leaving every other line as written, is offered
+  with **Undo**, and Undo Last Change takes it back; a value Deckard cannot
+  rewrite safely, such as a `|` block, opens the note at that line
+  instead. Under Zen, Edit and Add field… wait until you point at or tab
+  into the fields, and an open list stays open.
+
 ### Changed
 
+- **A note's properties sit under the Note page's bar.** The front matter
+  a note without a type writes is listed under the bar's divider rather
+  than beside the title, as a typed row's fields are.
 - **`Types/` holds types, not notes.** A note in the `Types/` folder under
   the notes folder defines a type: its front matter names the type
   (`deckard-type: team`) and its rows (`rows: "#team/*"`, `"@*"` for

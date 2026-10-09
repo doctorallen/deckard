@@ -7,6 +7,7 @@ import { createCalendar } from '../ui/state/calendarState';
 import { createDashboardSnapshot } from '../ui/state/dashboardState';
 import { createDashboardWidgets } from '../ui/state/dashboardWidgets';
 import { createSearchPageSnapshot } from '../ui/state/searchPageState';
+import { createNotePageSnapshot } from '../ui/state/notePageState';
 import { createTaskBoard } from '../ui/state/taskBoardState';
 import { deckardThemeCss, type PageChrome } from '../ui/webview/components';
 import type { DeckardTheme } from '../ui/webview/themeNames';
@@ -14,6 +15,7 @@ import { createPreferences } from './preferenceServices';
 import { openWebviewPage, type WebviewPage } from './webviewPage';
 import { PAGES, renderPage } from './pages';
 import { pageSheets, themeSheet } from './sheets';
+import { typedWorkspace } from './typedWorkspace';
 
 /** The look a page is drawn in: Corpo, with Zen on or off. */
 const chromeOf = (zen: boolean): PageChrome => ({ theme: 'corpo', zen });
@@ -134,6 +136,9 @@ const context = (zen: boolean, mode = 'tags') => open(renderPage('sidebarNotes',
   pages: { pages: [{ id: 'home', label: 'Home', description: '', detail: '' }], style: 'icons', current: undefined },
 });
 const graph = (zen: boolean) => open(renderPage('notesGraph', { chrome: chromeOf(zen) }));
+/** The Note page on a typed row's note, with filled fields, a reverse, and empty ones folded. */
+const notePage = (zen: boolean) =>
+  open(renderPage('notePage', { chrome: chromeOf(zen) }), createNotePageSnapshot(typedWorkspace(), 'Teams/Credit.md', { queryContext, history: { back: false, forward: false }, visit: 1 }));
 
 /**
  * Zen quiets the tools under a page's bar in place (plan 29, R22): each is
@@ -256,6 +261,23 @@ suite('Zen quiets controls in place', () => {
     assert.strictEqual((page.find('.query-facets-fold') as HTMLDetailsElement).open, false, 'closed, it stays closed');
   });
 
+  test("the Note page quiets Edit and Add field… in its fields region, keeps the fields drawn, and keeps an open list open", () => {
+    const page = notePage(true);
+    for (const control of page.findAll('.field-edit, .field-add-button')) {
+      assert.ok(quietAtRest(control), `${nameOf(control)} is quiet at rest`);
+      assert.ok(control.closest('section.note-fields[data-zen-region]'), `${nameOf(control)} shows from the fields region`);
+    }
+    for (const kept of page.findAll('.field-link, .field-empty > summary, .note-progress .eyebrow-link')) {
+      assert.ok(!quietAtRest(kept), `${nameOf(kept)} stays drawn`);
+    }
+    assert.ok(!quietAtRest(notePage(false).find('.field-add-button')), 'at Full, Add field… is drawn');
+    assert.ok(quietAtRest(notePage(false).find('.field-edit')), "at Full, a row's Edit shows on its row, as a row's ⋯ does");
+    page.click('.field-edit[data-field-key="lead"]');
+    const choices = page.findAll('.field-editor .field-choice');
+    assert.ok(choices.length > 0 && choices.every((choice) => !quietAtRest(choice)), 'an open list stays drawn');
+    assert.strictEqual(page.find('.field-edit[data-field-key="lead"]').getAttribute('aria-expanded'), 'true', 'and its Edit with it');
+  });
+
   test("the Notes Graph's Focus and Filters start closed under Zen, as Display does, and their summaries say what they are doing", () => {
     const groups = (page: WebviewPage) => page.findAll('details.control-group').map((group) => [group.querySelector(':scope > summary')?.textContent, (group as HTMLDetailsElement).open]);
     assert.deepStrictEqual(groups(graph(false)), [['Focus', true], ['Filters', true], ['Display', false]]);
@@ -331,6 +353,7 @@ const CONTRACT_PAGES: ReadonlyArray<readonly [string, (zen: boolean) => WebviewP
   ['the sidebar Calendar', sidebarCalendar],
   ['Context', context],
   ['the Notes Graph', graph],
+  ['the Note page', notePage],
 ];
 
 /**

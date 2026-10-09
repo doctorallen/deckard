@@ -34,6 +34,7 @@ import {
 } from './queryBlockState';
 import { createTaskCells, DEFAULT_TASK_COLUMNS, getTaskColumn } from './resultTable';
 import { linkProgressParts } from './progressLinks';
+import { describeNoteFields, type OtherKey } from './noteFields';
 import { quoteValue } from '../../domain/query/queryFormat';
 
 /**
@@ -97,12 +98,17 @@ export function createNotePageSnapshot(
   const bodyStart = frontmatterEnd === undefined ? 0 : frontmatterEnd + 1;
   const blocks = readNoteBlocks(lines.slice(bodyStart).join('\n'), bodyStart, reading);
   const { backlinks, count } = collectBacklinks(index, filePath);
+  const properties = readProperties(file, lines, frontmatterEnd);
+  const fields = describeNoteFields(index, filePath, properties.map(toOtherKey));
+  const { hub } = describeHub(index, file, options.queryContext);
   return {
     ...base,
     title,
-    properties: readProperties(file, lines, frontmatterEnd),
+    properties,
+    ...(fields ? { fields } : {}),
     breadcrumbs: findBreadcrumbs(index, filePath).map((crumb) => ({ labels: crumb.labels, notes: crumb.notes })),
-    ...describeHub(index, file, options.queryContext),
+    // A typed hub's progress line is labeled with its type, which opens the type's rows.
+    ...(hub ? { hub: fields ? { ...hub, kind: fields.typeName, typeQuery: fields.typeQuery } : hub } : {}),
     ...describeNoteTasks(index, file, options.queryContext),
     tags: collectTags(file),
     blocks: withoutTitleHeading(blocks, heading?.startLine),
@@ -519,6 +525,14 @@ function readProperties(file: ParsedFile, lines: readonly string[], end: number 
     }
   }
   return properties;
+}
+
+/** A property as the fields read a key the note writes besides its type's: a tag among its values a button. */
+function toOtherKey(property: NoteProperty): OtherKey {
+  return {
+    name: property.name,
+    values: property.values.map((value) => (value.tagKey ? { text: value.text, tag: { key: value.tagKey, label: value.text } } : { text: value.text })),
+  };
 }
 
 /**

@@ -3,6 +3,7 @@
  * hold. The page only opens what it draws, and the host still checks each
  * note, link, tag, and task against the index as it is now.
  */
+import type { FieldEditValue, SetNoteFieldMessage } from '../../../protocol/fields';
 import type {
   NavigateNoteHistoryMessage,
   NotePagePageToHost,
@@ -12,6 +13,7 @@ import type {
   RunNoteActionMessage,
 } from '../../../protocol/notePage';
 import { NOTE_ACTIONS } from '../../../commands/noteActionTable';
+import { isObject } from '../../../../shared/guards';
 import {
   exactlyType,
   MAX_NAME_LENGTH,
@@ -69,6 +71,41 @@ const narrowRunNoteAction: Narrower<RunNoteActionMessage> = (value) =>
     ? { type: 'runNoteAction', command: value.command as string }
     : undefined;
 
+/** What a field edit writes: a row id, an option, text, a box, or Clear, each within bounds. */
+function readFieldEditValue(value: unknown): FieldEditValue | undefined {
+  if (!isObject(value)) {
+    return undefined;
+  }
+  const text = (field: unknown): field is string => typeof field === 'string' && field.length > 0 && field.length <= MAX_NAME_LENGTH;
+  switch (value.kind) {
+    case 'row':
+      return text(value.rowId) ? { kind: 'row', rowId: value.rowId } : undefined;
+    case 'option':
+      return text(value.option) ? { kind: 'option', option: value.option } : undefined;
+    case 'text':
+      return text(value.text) ? { kind: 'text', text: value.text } : undefined;
+    case 'checkbox':
+      return typeof value.checked === 'boolean' ? { kind: 'checkbox', checked: value.checked } : undefined;
+    case 'clear':
+      return { kind: 'clear' };
+    default:
+      return undefined;
+  }
+}
+
+/** A field edit: the note it is in, a key the parser reads as one, and what to write; the host checks the rest against the index. */
+const narrowSetNoteField: Narrower<SetNoteFieldMessage> = (value) => {
+  const edit = readFieldEditValue(value.value);
+  const { filePath, key } = value;
+  if (!edit || typeof filePath !== 'string' || !filePath || filePath.length > MAX_NAME_LENGTH) {
+    return undefined;
+  }
+  if (typeof key !== 'string' || !/^[A-Za-z][A-Za-z0-9_-]{0,99}$/.test(key)) {
+    return undefined;
+  }
+  return { type: 'setNoteField', filePath, key, value: edit };
+};
+
 /** Each message the note page may send, and what it must hold. */
 export const NOTE_PAGE_MESSAGES: NarrowingTable<NotePagePageToHost> = {
   openNote: narrowOpenNote,
@@ -86,6 +123,7 @@ export const NOTE_PAGE_MESSAGES: NarrowingTable<NotePagePageToHost> = {
   navigateNoteHistory: narrowNavigate,
   openSearch: narrowOpenSearch,
   runNoteAction: narrowRunNoteAction,
+  setNoteField: narrowSetNoteField,
 };
 
 /** A message from the note page, narrowed by its table, or undefined. */

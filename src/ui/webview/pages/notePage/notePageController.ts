@@ -4,9 +4,11 @@ import type { IndexReader, IndexScanStatus, IndexUpdates } from '../../../../cor
 import { findWikiLinkPlace, parseWikiTarget } from '../../../../domain/index/backlinks';
 import type { Task } from '../../../../domain/model';
 import type { NavigationService } from '../../../../services/navigationService';
+import type { SetNoteFieldMessage } from '../../../protocol/fields';
 import type { NotePagePageToHost, NotePageSnapshot } from '../../../protocol/notePage';
 import { openResultAt } from '../../../commands/navigation';
 import { NOTE_ACTIONS, notePageActions } from '../../../commands/noteActionTable';
+import { writeNoteField } from '../../../commands/noteFieldWrites';
 import { readQueryContext } from '../../../commands/queryContext';
 import type { TaskWrites } from '../../../commands/taskActions';
 import { findHubTagKey } from '../../../state/hubTree';
@@ -99,6 +101,7 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
       navigateNoteHistory: (message, page) => this.step(page, message.direction),
       openSearch: (message) => this.openSearch(message.query),
       runNoteAction: (message, page) => this.runNoteAction(page, message.command),
+      setNoteField: (message) => this.setField(message),
     };
   }
 
@@ -300,12 +303,25 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
   }
 
   /**
-   * Opens a progress line's search on a search page of its own, so the note
-   * stays where it is: only a search the note shown draws now.
+   * Writes one field of the note shown, as its fields region asked; the
+   * page draws the note again when the index reads the change.
+   */
+  private async setField(message: SetNoteFieldMessage): Promise<void> {
+    if (message.filePath !== this.current?.filePath) {
+      return;
+    }
+    await writeNoteField({ indexer: this.notes.indexer, history: this.notes.writes.history }, message);
+  }
+
+  /**
+   * Opens a progress line's search, or a typed row's type's, on a search
+   * page of its own, so the note stays where it is: only a search the note
+   * shown draws now.
    */
   private async openSearch(query: string): Promise<void> {
     const snapshot = this.buildSnapshot();
-    const drawn = [...(snapshot?.hub?.parts ?? []), ...(snapshot?.taskProgress?.parts ?? [])].some((part) => part.query === query);
+    const types = [snapshot?.hub?.typeQuery, snapshot?.fields?.typeQuery].filter((typeQuery) => typeQuery !== undefined);
+    const drawn = types.includes(query) || [...(snapshot?.hub?.parts ?? []), ...(snapshot?.taskProgress?.parts ?? [])].some((part) => part.query === query);
     if (drawn) {
       await this.notes.onOpenSearch?.(query);
     }

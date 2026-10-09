@@ -4,11 +4,13 @@
  */
 @import "../shared/base.css";
 @import "../shared/noteBlocks.css";
+@import "../shared/fieldRows.css";
 
 /* The bar, as every page draws it: what the note is called, where it
-   sits, and its properties at the left, its controls and ⋯ at the right. */
-/* A note's bar runs tall, with its progress and properties, so its
-   controls sit at the top, beside the title, as the Task Board's do. */
+   sits, and how far along its tasks are at the left, its controls and ⋯
+   at the right. */
+/* A note's bar runs tall, with its progress, so its controls sit at the
+   top, beside the title, as the Task Board's do. */
 header { align-items: flex-start; }
 .note-lead { display: grid; align-content: start; gap: var(--space-2); min-width: 0; }
 header > .page-bar-actions { flex: 0 0 auto; flex-wrap: nowrap; }
@@ -27,6 +29,12 @@ button.note-crumb:hover:where(:not(:disabled):not([aria-disabled="true"])), butt
 .note-progress .tag-note-action { grid-column: 2 / -1; justify-self: start; }
 .note-progress-label { color: var(--muted); font-size: var(--text-sm); }
 .tag-note-action { min-height: 0; padding: 0 2px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: var(--text-sm); text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
+/* A typed row's type, as an eyebrow that opens its rows. */
+.eyebrow-link.eyebrow-link { min-height: 0; margin: 0 0 0 -3px; padding: 0 3px; border: 0; background: transparent; color: var(--amber); font: inherit; font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: .15em; text-align: left; text-transform: uppercase; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+.eyebrow-link.eyebrow-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .eyebrow-link.eyebrow-link:focus-visible { border: 0; background: var(--hover-bg); color: var(--hover-fg); }
+/* The note's front matter, under the bar's divider: a typed row's fields, or its properties as written. */
+.note-fields { display: grid; gap: var(--space-1); margin: var(--space-3) 0 0; }
+.note-fields-type { margin: 0; }
 .note-properties { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 0; }
 .note-properties div { display: flex; align-items: baseline; gap: 6px; }
 .note-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); }
