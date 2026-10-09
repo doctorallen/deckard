@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { fileExists } from './fs';
 import { reportFailure } from './notify';
 import { resolveSampleTokens, sampleFileName } from '../../domain/notes/sampleNotes';
+import { TYPES_FOLDER } from '../../domain/types/typeNotes';
 
 /**
  * Somewhere to start.
@@ -83,7 +84,7 @@ export interface InstallSampleOptions {
  * Writes the sample into `storageUri/deckard-work-sample`, dated from `today`.
  * Refuses, rather than merging, when it is already there, unless told to
  * replace it. Returns where it went and how many notes it holds: every
- * Markdown file but the README and the templates.
+ * Markdown file but the README, the templates, and the type notes.
  */
 export async function installSample({
   extensionUri,
@@ -125,7 +126,8 @@ export function isSampleNote(relativePath: string): boolean {
   return (
     relativePath.endsWith('.md') &&
     relativePath !== 'README.md' &&
-    !relativePath.startsWith(`${SAMPLE_TEMPLATES_FOLDER}/`)
+    !relativePath.startsWith(`${SAMPLE_TEMPLATES_FOLDER}/`) &&
+    !relativePath.startsWith(`${TYPES_FOLDER}/`)
   );
 }
 

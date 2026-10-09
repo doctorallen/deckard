@@ -1,7 +1,11 @@
+---
+type: decision
+date: {{date-9}}
+state: accepted
+decided-by: ["@alex-rivera", "@noor-haddad"]
+project: "[[Checkout v2]]"
+---
 # ADR-001 Card form #decision #project/checkout-v2
-
-Date: {{date-9}}
-Status: accepted
 
 ## Context
 The old checkout built its own card fields, which put card numbers in our

@@ -63,10 +63,11 @@ suite('Work sample', () => {
     const parsed = new Map<string, ParsedFile>(
       [...files]
         .filter(([name]) => name.endsWith('.md') && !name.startsWith('templates/'))
-        .map(([name, text]) => [name, parseMarkdown(name, text)] as const),
+        .map(([name, text]) => [name, parseMarkdown(name, text, undefined, { typeNote: name.startsWith('Types/') })] as const),
     );
-    assert.strictEqual(notes, parsed.size - 1, 'every note but the README');
     const index = buildWorkspaceIndex(parsed);
+    assert.strictEqual(notes, index.files.size - 1, 'every note but the README, and no type note');
+    assert.deepStrictEqual([...(index.typeNotes?.keys() ?? [])].sort(), ['Types/Area.md', 'Types/Decision.md', 'Types/Person.md', 'Types/Team.md']);
     assert.deepStrictEqual(findMissingLinkTargets(index), [], 'no link names a missing note');
     assert.ok(files.has('2026-10-07.md') && files.has('2026-10-06.md'), 'standups dated to the days before it was made');
     const context = createQueryContext(new Date(2026, 9, 7, 12).getTime());
@@ -90,7 +91,7 @@ suite('Work sample', () => {
     assert.strictEqual(sampleFileName('Harbor.md', today), 'Harbor.md');
     assert.strictEqual(sampleFileName('dot-vscode', today), '.vscode');
     assert.ok(isSampleNote('projects/Checkout v2.md'));
-    assert.ok(!isSampleNote('README.md') && !isSampleNote('templates/Meeting.md'));
+    assert.ok(!isSampleNote('README.md') && !isSampleNote('templates/Meeting.md') && !isSampleNote('Types/Team.md'));
   });
 
   test('is replaced only when asked, and never merged onto what is there', async () => {

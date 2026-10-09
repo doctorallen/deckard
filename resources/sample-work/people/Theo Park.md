@@ -1,3 +1,10 @@
+---
+describes: "@theo-park"
+role: Engineer
+team: "#team/payments"
+manager: "@alex-rivera"
+email: theo@example.com
+---
 # Theo Park @theo-park
 
 Engineer on [[Checkout v2]], new to the team this quarter. 1:1 weekly.
