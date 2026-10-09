@@ -182,7 +182,8 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       setSearchPreview: (message) => preferences.display.setSearchPreview(message.preview),
       setSearchHierarchy: (message) => preferences.display.setSearchHierarchy(message.hierarchy),
       setSearchColumns: (message) => preferences.display.setDashboardColumns(message.section, message.columns),
-      openHelp: openHelp('search'),
+      // A type's rows open Help at the guide's page on types; any other search at Search.
+      openHelp: (message, page) => openHelp(this.currentSnapshot().typeRows ? 'databases' : 'search')(message, page),
       openGoTo: openGoTo(),
       listGoTo: listGoTo({ indexer }),
       goToPage: goToPage(),
