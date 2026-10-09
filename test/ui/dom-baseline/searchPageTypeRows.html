@@ -1,0 +1,1995 @@
+<body
+> <main
+    id="app"
+  ><header
+      class="page-bar"
+    ><div
+        class="page-bar-lead"
+      ><p
+          class="eyebrow"
+        ><button
+            aria-expanded="false"
+            aria-haspopup="menu"
+            aria-label="Deckard: go to another page"
+            class="eyebrow-home"
+            data-go-to=""
+            type="button"
+          >DECKARD ▾</button
+          ><span
+            class="eyebrow-trail"
+          > / SEARCH PAGE</span
+          ></p
+        ><h1
+          aria-label="Teams"
+        >Teams</h1
+        ><div
+          class="entity-meta type-rule"
+        >#team/*</div
+        ></div
+      ><div
+        aria-label="Search page"
+        class="page-bar-actions"
+        data-query-keeps-text=""
+        role="group"
+      ><span
+          aria-label="Search history"
+          class="history-buttons"
+          role="group"
+        ><button
+            aria-disabled="true"
+            aria-label="Back to the search before"
+            class="icon-button"
+            data-action="history-back"
+            data-tip="Back to the search before"
+            data-tip-disabled="No search before this one"
+            data-tip-key="Alt+←"
+            type="button"
+          >‹</button
+          ><button
+            aria-disabled="true"
+            aria-label="Forward to the search after"
+            class="icon-button"
+            data-action="history-forward"
+            data-tip="Forward to the search after"
+            data-tip-disabled="No search after this one"
+            data-tip-key="Alt+→"
+            type="button"
+          >›</button
+          ></span
+        ><details
+          class="page-menu view-options"
+        ><summary
+            aria-label="More: Save search, Add team, Open Types/Team.md, and more"
+            data-tip="More: Save search, Add team, Open Types/Team.md, and more"
+          ><svg
+              aria-hidden="true"
+              class="toolbar-icon"
+              fill="none"
+              focusable="false"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><circle
+                cx="3.5"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ><circle
+                cx="8"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ><circle
+                cx="12.5"
+                cy="8"
+                fill="currentColor"
+                r="1.1"
+                stroke="none"
+              ></circle
+              ></svg
+            ></summary
+          ><div
+            class="is-dropdown popover view-options-menu"
+          ><div
+              aria-label="Page"
+              class="view-options-section"
+              role="group"
+            ><button
+                class="menu-item view-options-item"
+                data-action="save-filter"
+                data-query-needs-text=""
+                data-tip="Keep this search, named, on Home"
+                data-tip-disabled="Type a search to save it"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Save search…</span
+                ></button
+              ><button
+                class="menu-item view-options-item"
+                data-action="add-type-row"
+                data-tip="Write a new team's note, with its fields' keys"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Add team…</span
+                ></button
+              ><button
+                class="menu-item view-options-item"
+                data-action="open-type-note"
+                data-tip="Open the note that defines teams and their fields"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Open Types/Team.md</span
+                ></button
+              ><button
+                class="menu-item view-options-item"
+                data-action="export-results"
+                data-kind="notes"
+                data-tip="Export these notes as a Markdown table, a list, or CSV: copy, or save to a file"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Export notes…</span
+                ></button
+              ><button
+                class="menu-item view-options-item"
+                data-action="export-results"
+                data-kind="tasks"
+                data-tip="Export these tasks as a Markdown table, a list, or CSV: copy, or save to a file"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Export tasks…</span
+                ></button
+              ></div
+            ><div
+              aria-label="View"
+              class="view-options-section"
+              role="group"
+            ><div
+                aria-hidden="true"
+                class="view-options-heading"
+              >View</div
+              ><div
+                class="view-options-group"
+              ><span
+                >Layout</span
+                ><div
+                  aria-label="Content layout"
+                  class="layout-toggle-group segmented toolbar-toggle-group"
+                  role="group"
+                ><button
+                    aria-label="Tabs layout"
+                    aria-pressed="true"
+                    class="active icon-button toolbar-toggle"
+                    data-action="set-layout"
+                    data-layout="tabs"
+                    data-tip="Tabs: switch between Notes and Tasks"
+                  ><svg
+                      aria-hidden="true"
+                      class="toolbar-icon"
+                      fill="none"
+                      focusable="false"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.5"
+                      viewBox="0 0 16 16"
+                    ><rect
+                        height="11"
+                        rx="1"
+                        width="12"
+                        x="2"
+                        y="2.5"
+                      ></rect
+                      ><path
+                        d="M2 6h12M5 2.5V6"
+                      ></path
+                      ></svg
+                    ></button
+                  ><button
+                    aria-label="Side-by-side layout"
+                    aria-pressed="false"
+                    class="icon-button toolbar-toggle"
+                    data-action="set-layout"
+                    data-layout="split"
+                    data-tip="Side by side: Notes 60%, Tasks 40%"
+                  ><svg
+                      aria-hidden="true"
+                      class="toolbar-icon"
+                      fill="none"
+                      focusable="false"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.5"
+                      viewBox="0 0 16 16"
+                    ><rect
+                        height="12"
+                        rx="1"
+                        width="12"
+                        x="2"
+                        y="2"
+                      ></rect
+                      ><path
+                        d="M9 2v12"
+                      ></path
+                      ></svg
+                    ></button
+                  ></div
+                ></div
+              ><div
+                class="is-stacked view-options-group"
+              ><span
+                >Group by</span
+                ><div
+                  aria-label="Group the results by"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-label="None, the results ungrouped"
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-hierarchy"
+                    data-value="off"
+                    type="button"
+                  >None</button
+                  ><button
+                    aria-label="Tag, under Refine's tags"
+                    aria-pressed="false"
+                    data-action="set-hierarchy"
+                    data-value="tags"
+                    type="button"
+                  >Tag</button
+                  ><button
+                    aria-label="Heading, nested by tagged headings"
+                    aria-pressed="false"
+                    data-action="set-hierarchy"
+                    data-value="headings"
+                    type="button"
+                  >Heading</button
+                  ><button
+                    aria-label="lead, the teams under each"
+                    aria-pressed="false"
+                    data-action="set-hierarchy"
+                    data-value="field:lead"
+                    type="button"
+                  >lead</button
+                  ><button
+                    aria-label="tier, the teams under each"
+                    aria-pressed="false"
+                    data-action="set-hierarchy"
+                    data-value="field:tier"
+                    type="button"
+                  >tier</button
+                  ><button
+                    aria-label="on-call, the teams under each"
+                    aria-pressed="false"
+                    data-action="set-hierarchy"
+                    data-value="field:on-call"
+                    type="button"
+                  >on-call</button
+                  ></div
+                ></div
+              ><div
+                class="is-stacked view-options-group"
+              ><span
+                >Team columns</span
+                ><ul
+                  class="table-columns"
+                ><li
+                  ><label
+                    ><input
+                        data-action="toggle-type-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-value="title"
+                        disabled=""
+                        type="checkbox"
+                      >Team</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-type-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-value="lead"
+                        type="checkbox"
+                      >lead</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-type-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-value="tier"
+                        type="checkbox"
+                      >tier</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-type-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-value="on-call"
+                        type="checkbox"
+                      >on-call</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-type-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-value="channel"
+                        type="checkbox"
+                      >channel</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-type-column"
+                        data-dom-checked="false"
+                        data-dom-value="on"
+                        data-value="members"
+                        type="checkbox"
+                      >Members</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-type-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-value="open-tasks"
+                        type="checkbox"
+                      >Open tasks</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-type-column"
+                        data-dom-checked="true"
+                        data-dom-value="on"
+                        data-value="last-mentioned"
+                        type="checkbox"
+                      >Last mentioned</label
+                    ></li
+                  ><li
+                  ><label
+                    ><input
+                        data-action="toggle-type-column"
+                        data-dom-checked="false"
+                        data-dom-value="on"
+                        data-value="mentions"
+                        type="checkbox"
+                      >Mentions</label
+                    ></li
+                  ></ul
+                ></div
+              ><div
+                class="view-options-group"
+              ><span
+                >Format</span
+                ><div
+                  aria-label="Content format"
+                  class="segmented toolbar-toggle-group"
+                  role="group"
+                ><button
+                    aria-label="Source view"
+                    aria-pressed="false"
+                    class="icon-button toolbar-toggle"
+                    data-action="set-mode"
+                    data-mode="markdown"
+                    data-tip="Source: show the original Markdown"
+                  ><svg
+                      aria-hidden="true"
+                      class="toolbar-icon"
+                      fill="none"
+                      focusable="false"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.5"
+                      viewBox="0 0 16 16"
+                    ><path
+                        d="M3.5 3.5h9v9h-9zM5.5 6.5l-1.5 1.5 1.5 1.5M10.5 6.5 12 8l-1.5 1.5"
+                      ></path
+                      ></svg
+                    ></button
+                  ><button
+                    aria-label="Rendered view"
+                    aria-pressed="true"
+                    class="active icon-button toolbar-toggle"
+                    data-action="set-mode"
+                    data-mode="html"
+                    data-tip="Rendered: show formatted Markdown"
+                  ><svg
+                      aria-hidden="true"
+                      class="toolbar-icon"
+                      fill="none"
+                      focusable="false"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.5"
+                      viewBox="0 0 16 16"
+                    ><path
+                        d="M2 8s2.25-4 6-4 6 4 6 4-2.25 4-6 4-6-4-6-4Z"
+                      ></path
+                      ><circle
+                        cx="8"
+                        cy="8"
+                        r="1.75"
+                      ></circle
+                      ></svg
+                    ></button
+                  ></div
+                ></div
+              ><div
+                class="view-options-group"
+              ><span
+                >Preview</span
+                ><div
+                  aria-label="Result preview"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-pressed="false"
+                    data-action="set-preview"
+                    data-value="none"
+                    type="button"
+                  >None</button
+                  ><button
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-preview"
+                    data-value="lines"
+                    type="button"
+                  >3 lines</button
+                  ><button
+                    aria-pressed="false"
+                    data-action="set-preview"
+                    data-value="full"
+                    type="button"
+                  >Full</button
+                  ></div
+                ></div
+              ><div
+                class="view-options-group"
+              ><span
+                >Note columns</span
+                ><div
+                  aria-label="Note columns"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-label="1 columns"
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-columns"
+                    data-section="notes"
+                    data-value="1"
+                    type="button"
+                  >1</button
+                  ><button
+                    aria-label="2 columns"
+                    aria-pressed="false"
+                    data-action="set-columns"
+                    data-section="notes"
+                    data-value="2"
+                    type="button"
+                  >2</button
+                  ><button
+                    aria-label="3 columns"
+                    aria-pressed="false"
+                    data-action="set-columns"
+                    data-section="notes"
+                    data-value="3"
+                    type="button"
+                  >3</button
+                  ><button
+                    aria-label="4 columns"
+                    aria-pressed="false"
+                    data-action="set-columns"
+                    data-section="notes"
+                    data-value="4"
+                    type="button"
+                  >4</button
+                  ></div
+                ></div
+              ><div
+                class="view-options-group"
+              ><span
+                >Task columns</span
+                ><div
+                  aria-label="Task columns"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-label="1 columns"
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-columns"
+                    data-section="tasks"
+                    data-value="1"
+                    type="button"
+                  >1</button
+                  ><button
+                    aria-label="2 columns"
+                    aria-pressed="false"
+                    data-action="set-columns"
+                    data-section="tasks"
+                    data-value="2"
+                    type="button"
+                  >2</button
+                  ><button
+                    aria-label="3 columns"
+                    aria-pressed="false"
+                    data-action="set-columns"
+                    data-section="tasks"
+                    data-value="3"
+                    type="button"
+                  >3</button
+                  ><button
+                    aria-label="4 columns"
+                    aria-pressed="false"
+                    data-action="set-columns"
+                    data-section="tasks"
+                    data-value="4"
+                    type="button"
+                  >4</button
+                  ></div
+                ></div
+              ></div
+            ><div
+              aria-label="Appearance"
+              class="view-options-section"
+              role="group"
+            ><div
+                aria-hidden="true"
+                class="view-options-heading"
+              >Appearance</div
+              ><div
+                class="view-options-group"
+              ><span
+                >Theme</span
+                ><button
+                  aria-label="Theme: Replicant. Choose another"
+                  class="theme-choice"
+                  data-action="choose-theme"
+                  type="button"
+                >Replicant…</button
+                ></div
+              ><div
+                class="view-options-group"
+              ><label
+                  for="view-options-zen"
+                >Zen</label
+                ><input
+                  class="view-options-check"
+                  data-action="set-zen"
+                  data-dom-checked="false"
+                  data-dom-value="on"
+                  id="view-options-zen"
+                  type="checkbox"
+                ></div
+              ><div
+                class="view-options-group"
+              ><span
+                >Page width</span
+                ><div
+                  aria-label="Page width"
+                  class="segmented view-options-choices"
+                  role="group"
+                ><button
+                    aria-pressed="true"
+                    class="active"
+                    data-action="set-display"
+                    data-display="pageWidth"
+                    data-value="limited"
+                    type="button"
+                  >Limited</button
+                  ><button
+                    aria-pressed="false"
+                    data-action="set-display"
+                    data-display="pageWidth"
+                    data-value="full"
+                    type="button"
+                  >Full</button
+                  ></div
+                ></div
+              ></div
+            ><div
+              aria-label="Help"
+              class="view-options-section"
+              role="group"
+            ><button
+                class="menu-item view-options-item"
+                data-action="page-help"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Help on this page</span
+                ></button
+              ><button
+                aria-keyshortcuts="?"
+                class="menu-item view-options-item"
+                data-action="open-key-sheet"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Keyboard shortcuts</span
+                ><kbd
+                  aria-hidden="true"
+                  class="menu-key"
+                >?</kbd
+                ></button
+              ></div
+            ></div
+          ></details
+        ></div
+      ></header
+    ><section
+      aria-label="Search notes and tasks"
+      class="query-workspace"
+      data-has-text=""
+      data-zen-region=""
+    ><div
+        class="query-bar-row"
+      ><div
+          class="query-field-group"
+        ><button
+            aria-expanded="false"
+            class="query-builder-toggle"
+            data-action="toggle-builder"
+            data-tip="Build the search one condition at a time"
+          ><svg
+              aria-hidden="true"
+              class="query-builder-icon toolbar-icon"
+              fill="none"
+              focusable="false"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              viewBox="0 0 16 16"
+            ><path
+                d="M2.5 13.5 9.3 6.7"
+              ></path
+              ><path
+                d="M9.1 1.9 14.1 6.9 11.9 9.1 6.9 4.1Z"
+              ></path
+              ></svg
+            >Builder</button
+          ><span
+            class="query-bar-shell query-input-shell"
+            data-query-text="type = team"
+          ><button
+              aria-label="Remove type = team"
+              class="query-chip"
+              data-action="remove-term"
+              data-tip="Remove type = team"
+              data-tip-overflow="type = team"
+              data-without=""
+              type="button"
+            ><span
+                class="query-chip-label"
+              >type = team</span
+              ><span
+                aria-hidden="true"
+                class="query-chip-remove"
+              >×</span
+              ></button
+            ><input
+              aria-autocomplete="list"
+              aria-controls="suggestions-query"
+              aria-expanded="false"
+              aria-label="Search notes and tasks: add a term"
+              autocomplete="off"
+              class="query-input"
+              data-action="query-input"
+              data-dom-value=""
+              data-suggest-key="query"
+              placeholder=""
+              role="combobox"
+              spellcheck="false"
+              type="text"
+            ><button
+              aria-label="Clear the search"
+              class="query-clear query-field-glyph"
+              data-action="clear-query"
+              data-tip="Clear the search"
+              hidden=""
+            >×</button
+            ><button
+              aria-label="Search"
+              class="query-field-glyph query-run"
+              data-action="apply-query"
+              data-tip="Run this search"
+              data-tip-key="Enter"
+            >→</button
+            ><div
+              aria-label="Suggestions"
+              class="is-dropdown popover query-suggestions"
+              data-suggestions="query"
+              hidden=""
+              id="suggestions-query"
+              role="listbox"
+            ></div
+            ></span
+          ></div
+        ></div
+      ><div
+        class="query-status"
+      ><span
+          class="help-text query-hint"
+        >Enter searches. Words, #tags, is:open, has:due, in:folder; AND, OR, NOT.<span
+            class="query-hint-key"
+          > Press / to search.</span
+          ></span
+        ></div
+      ></section
+    ><section
+      aria-label="Refine these results"
+      class="query-facets"
+    ><details
+        class="query-facets-fold"
+        open=""
+      ><summary
+          class="query-facets-heading"
+        >Refine</summary
+        ><div
+          class="query-facets-groups"
+        ><div
+            aria-label="tier"
+            class="query-facet"
+            role="group"
+          ><span
+              class="query-facet-label"
+            >tier</span
+            ><span
+              class="query-facet-values"
+            ><button
+                aria-label="tier: gold, 1. Enter adds AND tier = gold, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="tier = gold"
+                data-facet-id="field:tier"
+                data-tip="Click — AND tier = gold: keep only results that match it&#10;Alt-click — AND NOT tier = gold: leave those results out&#10;Shift-click — OR tier = gold: widen the last value chosen here, so either matches"
+                data-tip-overflow="gold"
+              >gold<span
+                  class="query-facet-count"
+                >1</span
+                ></button
+              ><button
+                aria-label="tier: silver, 1. Enter adds AND tier = silver, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="tier = silver"
+                data-facet-id="field:tier"
+                data-tip="Click — AND tier = silver: keep only results that match it&#10;Alt-click — AND NOT tier = silver: leave those results out&#10;Shift-click — OR tier = silver: widen the last value chosen here, so either matches"
+                data-tip-overflow="silver"
+              >silver<span
+                  class="query-facet-count"
+                >1</span
+                ></button
+              ></span
+            ></div
+          ><div
+            aria-label="Tasks"
+            class="query-facet"
+            role="group"
+          ><span
+              class="query-facet-label"
+            >Tasks</span
+            ><span
+              class="query-facet-values"
+            ><button
+                aria-label="Tasks: Open, 3. Enter adds AND is:open, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="is:open"
+                data-facet-id="status"
+                data-tip="Click — AND is:open: keep only results that match it&#10;Alt-click — AND NOT is:open: leave those results out&#10;Shift-click — OR is:open: widen the last value chosen here, so either matches"
+                data-tip-overflow="Open"
+              >Open<span
+                  class="query-facet-count"
+                >3</span
+                ></button
+              ></span
+            ></div
+          ><div
+            aria-label="Due"
+            class="query-facet"
+            role="group"
+          ><span
+              class="query-facet-label"
+            >Due</span
+            ><span
+              class="query-facet-values"
+            ><button
+                aria-label="Due: Overdue, 1. Enter adds AND is:overdue, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="is:overdue"
+                data-facet-id="due"
+                data-tip="Click — AND is:overdue: keep only results that match it&#10;Alt-click — AND NOT is:overdue: leave those results out&#10;Shift-click — OR is:overdue: widen the last value chosen here, so either matches"
+                data-tip-overflow="Overdue"
+              >Overdue<span
+                  class="query-facet-count"
+                >1</span
+                ></button
+              ><button
+                aria-label="Due: Next 7 days, 1. Enter adds AND (due >= today AND due < 7d), Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="(due >= today AND due < 7d)"
+                data-facet-id="due"
+                data-tip="Click — AND (due >= today AND due < 7d): keep only results that match it&#10;Alt-click — AND NOT (due >= today AND due < 7d): leave those results out&#10;Shift-click — OR (due >= today AND due < 7d): widen the last value chosen here, so either matches"
+                data-tip-overflow="Next 7 days"
+              >Next 7 days<span
+                  class="query-facet-count"
+                >1</span
+                ></button
+              ><button
+                aria-label="Due: No date, 1. Enter adds AND no:due, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="no:due"
+                data-facet-id="due"
+                data-tip="Click — AND no:due: keep only results that match it&#10;Alt-click — AND NOT no:due: leave those results out&#10;Shift-click — OR no:due: widen the last value chosen here, so either matches"
+                data-tip-overflow="No date"
+              >No date<span
+                  class="query-facet-count"
+                >1</span
+                ></button
+              ></span
+            ></div
+          ><div
+            aria-label="Tags"
+            class="query-facet"
+            role="group"
+          ><span
+              class="query-facet-label"
+            >Tags</span
+            ><span
+              class="query-facet-values"
+            ><button
+                aria-label="Tags: #team/rates, 5. Enter adds AND #team/rates, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="#team/rates"
+                data-facet-id="tags"
+                data-tip="Click — AND #team/rates: keep only results that match it&#10;Alt-click — AND NOT #team/rates: leave those results out&#10;Shift-click — OR #team/rates: widen the last value chosen here, so either matches"
+                data-tip-overflow="#team/rates"
+              ><span
+                  class="tag-label"
+                ><span
+                    class="tag-namespace"
+                  ><span
+                      class="tag-namespace-text"
+                    >#team</span
+                    >/</span
+                  ><span
+                    class="tag-value"
+                  >rates</span
+                  ></span
+                ><span
+                  class="query-facet-count"
+                >5</span
+                ></button
+              ><button
+                aria-label="Tags: @dana, 4. Enter adds AND @dana, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="@dana"
+                data-facet-id="tags"
+                data-tip="Click — AND @dana: keep only results that match it&#10;Alt-click — AND NOT @dana: leave those results out&#10;Shift-click — OR @dana: widen the last value chosen here, so either matches"
+                data-tip-overflow="@dana"
+              ><span
+                  class="tag-label"
+                ><span
+                    class="tag-value"
+                  >@dana</span
+                  ></span
+                ><span
+                  class="query-facet-count"
+                >4</span
+                ></button
+              ><button
+                aria-label="Tags: @priya, 3. Enter adds AND @priya, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="@priya"
+                data-facet-id="tags"
+                data-tip="Click — AND @priya: keep only results that match it&#10;Alt-click — AND NOT @priya: leave those results out&#10;Shift-click — OR @priya: widen the last value chosen here, so either matches"
+                data-tip-overflow="@priya"
+              ><span
+                  class="tag-label"
+                ><span
+                    class="tag-value"
+                  >@priya</span
+                  ></span
+                ><span
+                  class="query-facet-count"
+                >3</span
+                ></button
+              ><button
+                aria-label="Tags: @omar, 2. Enter adds AND @omar, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="@omar"
+                data-facet-id="tags"
+                data-tip="Click — AND @omar: keep only results that match it&#10;Alt-click — AND NOT @omar: leave those results out&#10;Shift-click — OR @omar: widen the last value chosen here, so either matches"
+                data-tip-overflow="@omar"
+              ><span
+                  class="tag-label"
+                ><span
+                    class="tag-value"
+                  >@omar</span
+                  ></span
+                ><span
+                  class="query-facet-count"
+                >2</span
+                ></button
+              ><button
+                aria-label="Tags: #team/credit, 2. Enter adds AND #team/credit, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="#team/credit"
+                data-facet-id="tags"
+                data-tip="Click — AND #team/credit: keep only results that match it&#10;Alt-click — AND NOT #team/credit: leave those results out&#10;Shift-click — OR #team/credit: widen the last value chosen here, so either matches"
+                data-tip-overflow="#team/credit"
+              ><span
+                  class="tag-label"
+                ><span
+                    class="tag-namespace"
+                  ><span
+                      class="tag-namespace-text"
+                    >#team</span
+                    >/</span
+                  ><span
+                    class="tag-value"
+                  >credit</span
+                  ></span
+                ><span
+                  class="query-facet-count"
+                >2</span
+                ></button
+              ><button
+                aria-expanded="false"
+                aria-label="Show 1 more Tags values"
+                class="query-facet-more"
+                data-action="facet-more"
+                data-facet-id="tags"
+                type="button"
+              >+1 more</button
+              ></span
+            ></div
+          ><div
+            aria-label="Updated"
+            class="query-facet"
+            role="group"
+          ><span
+              class="query-facet-label"
+            >Updated</span
+            ><span
+              class="query-facet-values"
+            ><button
+                aria-label="Updated: Last 7 days, 6. Enter adds AND updated >= 7d, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="updated >= 7d"
+                data-facet-id="updated"
+                data-tip="Click — AND updated >= 7d: keep only results that match it&#10;Alt-click — AND NOT updated >= 7d: leave those results out&#10;Shift-click — OR updated >= 7d: widen the last value chosen here, so either matches"
+                data-tip-overflow="Last 7 days"
+              >Last 7 days<span
+                  class="query-facet-count"
+                >6</span
+                ></button
+              ></span
+            ></div
+          ><div
+            aria-label="Created"
+            class="query-facet"
+            role="group"
+          ><span
+              class="query-facet-label"
+            >Created</span
+            ><span
+              class="query-facet-values"
+            ><button
+                aria-label="Created: This month, 6. Enter adds AND created = this-month, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="created = this-month"
+                data-facet-id="created"
+                data-tip="Click — AND created = this-month: keep only results that match it&#10;Alt-click — AND NOT created = this-month: leave those results out&#10;Shift-click — OR created = this-month: widen the last value chosen here, so either matches"
+                data-tip-overflow="This month"
+              >This month<span
+                  class="query-facet-count"
+                >6</span
+                ></button
+              ></span
+            ></div
+          ><div
+            aria-label="Folder"
+            class="query-facet"
+            role="group"
+          ><span
+              class="query-facet-label"
+            >Folder</span
+            ><span
+              class="query-facet-values"
+            ><button
+                aria-label="Folder: notes, 4. Enter adds AND in:notes, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="in:notes"
+                data-facet-id="folder"
+                data-tip="Click — AND in:notes: keep only results that match it&#10;Alt-click — AND NOT in:notes: leave those results out&#10;Shift-click — OR in:notes: widen the last value chosen here, so either matches"
+                data-tip-overflow="notes"
+              >notes<span
+                  class="query-facet-count"
+                >4</span
+                ></button
+              ><button
+                aria-label="Folder: Teams, 3. Enter adds AND in:Teams, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="in:Teams"
+                data-facet-id="folder"
+                data-tip="Click — AND in:Teams: keep only results that match it&#10;Alt-click — AND NOT in:Teams: leave those results out&#10;Shift-click — OR in:Teams: widen the last value chosen here, so either matches"
+                data-tip-overflow="Teams"
+              >Teams<span
+                  class="query-facet-count"
+                >3</span
+                ></button
+              ><button
+                aria-label="Folder: People, 2. Enter adds AND in:People, Alt-Enter adds AND NOT, Shift-Enter adds OR."
+                class="query-facet-value"
+                data-action="facet"
+                data-clause="in:People"
+                data-facet-id="folder"
+                data-tip="Click — AND in:People: keep only results that match it&#10;Alt-click — AND NOT in:People: leave those results out&#10;Shift-click — OR in:People: widen the last value chosen here, so either matches"
+                data-tip-overflow="People"
+              >People<span
+                  class="query-facet-count"
+                >2</span
+                ></button
+              ></span
+            ></div
+          ></div
+        ></details
+      ><span
+        class="query-facets-count visually-hidden"
+        role="status"
+      >6 notes · 3 tasks</span
+      ></section
+    ><div
+      class="overview-tabs-row"
+      data-zen-region=""
+    ><div
+        aria-label="Search results"
+        class="overview-tabs segmented"
+        role="tablist"
+      ><button
+          aria-controls="result-panel-rows"
+          aria-selected="true"
+          class="active"
+          data-action="set-result-tab"
+          data-tab="rows"
+          id="result-tab-rows"
+          role="tab"
+          tabindex="0"
+        >Teams<span
+            class="display-count"
+          > (<span
+              data-search-count="rows"
+            >3</span
+            >)</span
+          ></button
+        ><button
+          aria-controls="result-panel-notes"
+          aria-selected="false"
+          data-action="set-result-tab"
+          data-tab="notes"
+          id="result-tab-notes"
+          role="tab"
+          tabindex="-1"
+        >Notes<span
+            class="display-count"
+          > (<span
+              data-search-count="notes"
+            >6</span
+            >)</span
+          ></button
+        ><button
+          aria-controls="result-panel-tasks"
+          aria-selected="false"
+          data-action="set-result-tab"
+          data-tab="tasks"
+          id="result-tab-tasks"
+          role="tab"
+          tabindex="-1"
+        >Tasks<span
+            class="display-count"
+          > (<span
+              data-search-count="tasks"
+            >3</span
+            >)</span
+          ></button
+        ></div
+      ><div
+        class="overview-pane-actions"
+      ></div
+      ></div
+    ><div
+      aria-labelledby="result-tab-rows"
+      class="overview-tab-panel"
+      id="result-panel-rows"
+      role="tabpanel"
+    ><div
+        class="type-rows"
+        data-zen-region=""
+      ><table
+          aria-label="Teams"
+          class="result-table type-table"
+        ><thead
+          ><tr
+            ><th
+                class="is-title type-head"
+                data-column="title"
+                data-context-menu=""
+                data-source="title"
+                scope="col"
+              ><button
+                  data-action="set-type-sort"
+                  data-tip="Sort by team"
+                  data-value="title"
+                  type="button"
+                >Team</button
+                ></th
+              ><th
+                class="is-field type-head"
+                data-column="lead"
+                data-context-menu=""
+                data-source="field"
+                scope="col"
+              ><button
+                  data-action="set-type-sort"
+                  data-tip="Sort by lead"
+                  data-value="lead"
+                  type="button"
+                >lead</button
+                ></th
+              ><th
+                class="is-field type-head"
+                data-column="tier"
+                data-context-menu=""
+                data-select=""
+                data-source="field"
+                scope="col"
+              ><button
+                  data-action="set-type-sort"
+                  data-tip="Sort by tier"
+                  data-value="tier"
+                  type="button"
+                >tier</button
+                ></th
+              ><th
+                class="is-field type-head"
+                data-column="on-call"
+                data-context-menu=""
+                data-source="field"
+                scope="col"
+              ><button
+                  data-action="set-type-sort"
+                  data-tip="Sort by on-call"
+                  data-value="on-call"
+                  type="button"
+                >on-call</button
+                ></th
+              ><th
+                class="is-field type-head"
+                data-column="channel"
+                data-context-menu=""
+                data-source="field"
+                scope="col"
+              ><button
+                  data-action="set-type-sort"
+                  data-tip="Sort by channel"
+                  data-value="channel"
+                  type="button"
+                >channel</button
+                ></th
+              ><th
+                class="is-computed type-head"
+                data-column="open-tasks"
+                data-context-menu=""
+                data-source="computed"
+                scope="col"
+                title="Computed: not written in the note"
+              ><button
+                  data-action="set-type-sort"
+                  data-tip="Sort by open tasks"
+                  data-value="open-tasks"
+                  type="button"
+                >Open tasks</button
+                ></th
+              ><th
+                class="is-computed type-head"
+                data-column="last-mentioned"
+                data-context-menu=""
+                data-source="computed"
+                scope="col"
+                title="Computed: not written in the note"
+              ><button
+                  data-action="set-type-sort"
+                  data-tip="Sort by last mentioned"
+                  data-value="last-mentioned"
+                  type="button"
+                >Last mentioned</button
+                ></th
+              ><th
+                class="result-menu"
+              ><span
+                  class="visually-hidden"
+                >More</span
+                ></th
+              ></tr
+            ></thead
+          ><tbody
+          ><tr
+              class="result-row type-row"
+              data-reveal-region=""
+              data-row-id="#team/credit"
+              tabindex="0"
+            ><td
+                class="result-title"
+              ><button
+                  class="field-link"
+                  data-action="open-tag"
+                  data-tag-key="#team/credit"
+                  data-tip="Open #team/credit"
+                  type="button"
+                >Credit</button
+                ></td
+              ><td
+              ><button
+                  class="field-link"
+                  data-action="open-tag"
+                  data-tag-key="@omar"
+                  data-tip="Open @omar"
+                  type="button"
+                >Omar Haddad</button
+                ></td
+              ><td
+              ><span
+                  class="type-option"
+                  data-field="tier"
+                  data-option="silver"
+                >silver</span
+                ></td
+              ><td
+              ></td
+              ><td
+              ></td
+              ><td
+                class="is-computed"
+              >0</td
+              ><td
+                class="is-computed"
+                title="today · 2026-09-21"
+              >today · 2026-09-21</td
+              ><td
+                class="result-menu"
+              ><button
+                  aria-haspopup="menu"
+                  aria-label="More for Credit: open"
+                  class="icon-button row-menu"
+                  data-action="type-row-menu"
+                  data-reveal=""
+                  data-row-id="#team/credit"
+                  data-tip="More for Credit"
+                  data-zen-reveal=""
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></td
+              ></tr
+            ><tr
+              class="result-row type-row"
+              data-reveal-region=""
+              data-row-id="#team/payments"
+              tabindex="0"
+            ><td
+                class="result-title"
+              ><button
+                  class="field-link"
+                  data-action="open-tag"
+                  data-tag-key="#team/payments"
+                  data-tip="Open #team/payments"
+                  type="button"
+                >Payments</button
+                ><span
+                  class="type-no-hub"
+                >No hub note · 1 entry<button
+                    class="type-create-hub"
+                    data-action="create-row-hub"
+                    data-reveal=""
+                    data-row-id="#team/payments"
+                    data-tip="Create a note whose describes: front matter names #team/payments"
+                    data-zen-reveal=""
+                    type="button"
+                  >Create hub note</button
+                  ></span
+                ></td
+              ><td
+              ></td
+              ><td
+              ></td
+              ><td
+              ></td
+              ><td
+              ></td
+              ><td
+                class="is-computed"
+              >1</td
+              ><td
+                class="is-computed"
+                title="today · 2026-09-21"
+              >today · 2026-09-21</td
+              ><td
+                class="result-menu"
+              ><button
+                  aria-haspopup="menu"
+                  aria-label="More for Payments: open, create hub note"
+                  class="icon-button row-menu"
+                  data-action="type-row-menu"
+                  data-reveal=""
+                  data-row-id="#team/payments"
+                  data-tip="More for Payments"
+                  data-zen-reveal=""
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></td
+              ></tr
+            ><tr
+              class="result-row type-row"
+              data-reveal-region=""
+              data-row-id="#team/rates"
+              tabindex="0"
+            ><td
+                class="result-title"
+              ><button
+                  class="field-link"
+                  data-action="open-tag"
+                  data-tag-key="#team/rates"
+                  data-tip="Open #team/rates"
+                  type="button"
+                >Rates</button
+                ></td
+              ><td
+              ><button
+                  class="field-link"
+                  data-action="open-tag"
+                  data-tag-key="@dana"
+                  data-tip="Open @dana"
+                  type="button"
+                >Dana Whitfield</button
+                ></td
+              ><td
+              ><span
+                  class="type-option"
+                  data-field="tier"
+                  data-option="gold"
+                >gold</span
+                ></td
+              ><td
+              ><button
+                  class="field-link"
+                  data-action="open-tag"
+                  data-tag-key="@priya"
+                  data-tip="Open @priya"
+                  type="button"
+                >Priya Natarajan</button
+                ></td
+              ><td
+              >rates-desk</td
+              ><td
+                class="is-computed"
+              >3 · <span
+                  class="due-date overdue"
+                >1 overdue</span
+                ></td
+              ><td
+                class="is-computed"
+                title="today · 2026-09-21"
+              >today · 2026-09-21</td
+              ><td
+                class="result-menu"
+              ><button
+                  aria-haspopup="menu"
+                  aria-label="More for Rates: open"
+                  class="icon-button row-menu"
+                  data-action="type-row-menu"
+                  data-reveal=""
+                  data-row-id="#team/rates"
+                  data-tip="More for Rates"
+                  data-zen-reveal=""
+                  type="button"
+                ><svg
+                    aria-hidden="true"
+                    class="toolbar-icon"
+                    fill="none"
+                    focusable="false"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    viewBox="0 0 16 16"
+                  ><circle
+                      cx="3.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="8"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ><circle
+                      cx="12.5"
+                      cy="8"
+                      fill="currentColor"
+                      r="1.1"
+                      stroke="none"
+                    ></circle
+                    ></svg
+                  ></button
+                ></td
+              ></tr
+            ></tbody
+          ></table
+        ></div
+      ></div
+    ><div
+      aria-labelledby="result-tab-notes"
+      class="overview-tab-panel"
+      hidden=""
+      id="result-panel-notes"
+      role="tabpanel"
+    ><section
+        class="overview-pane"
+      ><div
+          class="cards"
+          style="grid-template-columns: repeat(1, minmax(0px, 1fr))"
+        ><article
+            class="card"
+            data-file-path="Teams/Credit.md"
+            data-line="1"
+            data-parked="false"
+            data-pinned="false"
+            data-reveal-region=""
+            data-search-entry="notes"
+            data-search-text="credit credit.md corporate bonds. #team/credit @omar"
+            data-tip-around=""
+            tabindex="0"
+          ><div
+              class="card-header"
+            ><h2
+                class="card-title"
+              >Credit</h2
+              ><div
+                class="entry-details"
+                data-reveal=""
+              ><span
+                  class="source"
+                >Credit / line 1</span
+                ></div
+              ></div
+            ><div
+              class="card-body is-clamped"
+              id="card-body-0"
+            ><div
+                class="rendered"
+              ><p
+                >Corporate bonds.</p
+                > </div
+              ></div
+            ></article
+          ><article
+            class="card"
+            data-file-path="People/Dana Whitfield.md"
+            data-line="1"
+            data-parked="false"
+            data-pinned="false"
+            data-reveal-region=""
+            data-search-entry="notes"
+            data-search-text="dana whitfield dana whitfield.md heads the rates desk. @dana #team/rates"
+            data-tip-around=""
+            tabindex="0"
+          ><div
+              class="card-header"
+            ><h2
+                class="card-title"
+              >Dana Whitfield</h2
+              ><div
+                class="entry-details"
+                data-reveal=""
+              ><span
+                  class="source"
+                >Dana Whitfield / line 1</span
+                ></div
+              ></div
+            ><div
+              class="card-body is-clamped"
+              id="card-body-1"
+            ><div
+                class="rendered"
+              ><p
+                >Heads the rates desk.</p
+                > </div
+              ></div
+            ></article
+          ><article
+            class="card"
+            data-file-path="People/Omar Haddad.md"
+            data-line="1"
+            data-parked="false"
+            data-pinned="false"
+            data-reveal-region=""
+            data-search-entry="notes"
+            data-search-text="omar haddad omar haddad.md  @omar #team/credit"
+            data-tip-around=""
+            tabindex="0"
+          ><div
+              class="card-header"
+            ><h2
+                class="card-title"
+              >Omar Haddad</h2
+              ><div
+                class="entry-details"
+                data-reveal=""
+              ><span
+                  class="source"
+                >Omar Haddad / line 1</span
+                ></div
+              ></div
+            ></article
+          ><article
+            class="card"
+            data-file-path="notes/standup.md"
+            data-line="3"
+            data-parked="false"
+            data-pinned="false"
+            data-reveal-region=""
+            data-search-entry="notes"
+            data-search-text="payments #team/payments standup.md card settlement runs late on fridays.&#10;- [ ] ask @priya about the settlement window #team/payments"
+            data-tip-around=""
+            tabindex="0"
+          ><div
+              class="card-header"
+            ><h2
+                class="card-title"
+              >Payments <button
+                  aria-label="Open #team/payments overview"
+                  class="inline-tag tag-open"
+                  data-action="open-tag"
+                  data-tag-key="#team/payments"
+                  data-tip-overflow="#team/payments"
+                ><span
+                    class="tag-label"
+                  ><span
+                      class="tag-namespace"
+                    ><span
+                        class="tag-namespace-text"
+                      >#team</span
+                      >/</span
+                    ><span
+                      class="tag-value"
+                    >payments</span
+                    ></span
+                  ></button
+                ></h2
+              ><div
+                class="entry-details"
+                data-reveal=""
+              ><span
+                  class="source"
+                >standup / line 3</span
+                ></div
+              ></div
+            ><div
+              class="card-body is-clamped"
+              id="card-body-3"
+            ><div
+                class="rendered"
+              ><p
+                >Card settlement runs late on Fridays.</p
+                > <ul
+                > <li
+                  >[ ] Ask @priya about the settlement window</li
+                  > </ul
+                > </div
+              ></div
+            ></article
+          ><article
+            class="card"
+            data-file-path="Teams/Rates.md"
+            data-line="1"
+            data-parked="false"
+            data-pinned="false"
+            data-reveal-region=""
+            data-search-entry="notes"
+            data-search-text="rates rates.md prices and trades government bonds and swaps.&#10;- [ ] hire a quant for the swaps desk 📅 2026-09-18 #team/rates @dana @priya"
+            data-tip-around=""
+            tabindex="0"
+          ><div
+              class="card-header"
+            ><h2
+                class="card-title"
+              >Rates</h2
+              ><div
+                class="entry-details"
+                data-reveal=""
+              ><span
+                  class="source"
+                >Rates / line 1</span
+                ></div
+              ></div
+            ><div
+              class="card-body is-clamped"
+              id="card-body-4"
+            ><div
+                class="rendered"
+              ><p
+                >Prices and trades government bonds and swaps.</p
+                > <ul
+                > <li
+                  >[ ] Hire a quant for the swaps desk 📅 2026-09-18</li
+                  > </ul
+                > </div
+              ></div
+            ></article
+          ><article
+            class="card"
+            data-file-path="notes/standup.md"
+            data-line="1"
+            data-parked="false"
+            data-pinned="false"
+            data-reveal-region=""
+            data-search-entry="notes"
+            data-search-text="standup #team/rates standup.md - [ ] fix the pricing feed @dana 📅 2026-09-22 #team/rates"
+            data-tip-around=""
+            tabindex="0"
+          ><div
+              class="card-header"
+            ><h2
+                class="card-title"
+              >Standup <button
+                  aria-label="Open #team/rates overview"
+                  class="inline-tag tag-open"
+                  data-action="open-tag"
+                  data-tag-key="#team/rates"
+                  data-tip-overflow="#team/rates"
+                ><span
+                    class="tag-label"
+                  ><span
+                      class="tag-namespace"
+                    ><span
+                        class="tag-namespace-text"
+                      >#team</span
+                      >/</span
+                    ><span
+                      class="tag-value"
+                    >rates</span
+                    ></span
+                  ></button
+                ></h2
+              ><div
+                class="entry-details"
+                data-reveal=""
+              ><span
+                  class="source"
+                >standup / line 1</span
+                ></div
+              ></div
+            ><div
+              class="card-body is-clamped"
+              id="card-body-5"
+            ><div
+                class="rendered"
+              ><ul
+                > <li
+                  >[ ] Fix the pricing feed @dana 📅 2026-09-22</li
+                  > </ul
+                > </div
+              ></div
+            ></article
+          ></div
+        ></section
+      ></div
+    ><div
+      aria-labelledby="result-tab-tasks"
+      class="overview-tab-panel"
+      hidden=""
+      id="result-panel-tasks"
+      role="tabpanel"
+    ><section
+        class="overview-pane"
+      ><div
+          class="task-list"
+          style="grid-template-columns: repeat(1, minmax(0px, 1fr))"
+        ><div
+            class="row task-row"
+            data-file-path="notes/standup.md"
+            data-line="2"
+            data-reveal-region=""
+            data-search-entry="tasks"
+            data-task-id="task-7z90zx-17yiuv0"
+            data-tip-around=""
+            draggable="false"
+            tabindex="0"
+          ><input
+              aria-label="Toggle Fix the pricing feed @dana"
+              data-action="toggle-task"
+              data-dom-checked="false"
+              data-dom-value="on"
+              data-task-id="task-7z90zx-17yiuv0"
+              type="checkbox"
+            ><div
+            ><div
+                class="task-title"
+              >Fix the pricing feed <button
+                  aria-label="Open @dana overview"
+                  class="inline-tag tag-open"
+                  data-action="open-tag"
+                  data-tag-key="@dana"
+                  data-tip-overflow="@dana"
+                ><span
+                    class="tag-label"
+                  ><span
+                      class="tag-value"
+                    >@dana</span
+                    ></span
+                  ></button
+                ></div
+              ><div
+                class="task-meta"
+              ><span
+                  class="due-date"
+                ><span
+                    class="due-relative due-text"
+                  >Due<span
+                      class="due-distance"
+                    > tomorrow</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-22</span
+                      ></span
+                    ></span
+                  ></span
+                ></div
+              ><div
+                class="entry-details"
+                data-reveal=""
+              ><span
+                  class="task-source"
+                >standup / line 2</span
+                ><span
+                  aria-hidden="true"
+                  class="entry-details-joiner"
+                > · </span
+                ><span
+                  class="heading-path task-source"
+                >Standup</span
+                ></div
+              ></div
+            ></div
+          ><div
+            class="row task-row"
+            data-file-path="notes/standup.md"
+            data-line="5"
+            data-reveal-region=""
+            data-search-entry="tasks"
+            data-task-id="task-hn8gq0-n0y683"
+            data-tip-around=""
+            draggable="false"
+            tabindex="0"
+          ><input
+              aria-label="Toggle Ask @priya about the settlement window"
+              data-action="toggle-task"
+              data-dom-checked="false"
+              data-dom-value="on"
+              data-task-id="task-hn8gq0-n0y683"
+              type="checkbox"
+            ><div
+            ><div
+                class="task-title"
+              >Ask <button
+                  aria-label="Open @priya overview"
+                  class="inline-tag tag-open"
+                  data-action="open-tag"
+                  data-tag-key="@priya"
+                  data-tip-overflow="@priya"
+                ><span
+                    class="tag-label"
+                  ><span
+                      class="tag-value"
+                    >@priya</span
+                    ></span
+                  ></button
+                > about the settlement window</div
+              ><div
+                class="task-meta"
+              ></div
+              ><div
+                class="entry-details"
+                data-reveal=""
+              ><span
+                  class="task-source"
+                >standup / line 5</span
+                ><span
+                  aria-hidden="true"
+                  class="entry-details-joiner"
+                > · </span
+                ><span
+                  class="heading-path task-source"
+                >Payments</span
+                ></div
+              ></div
+            ></div
+          ><div
+            class="row task-row"
+            data-file-path="Teams/Rates.md"
+            data-line="10"
+            data-reveal-region=""
+            data-search-entry="tasks"
+            data-task-id="task-7bod77-184jh9c"
+            data-tip-around=""
+            draggable="false"
+            tabindex="0"
+          ><input
+              aria-label="Toggle Hire a quant for the swaps desk"
+              data-action="toggle-task"
+              data-dom-checked="false"
+              data-dom-value="on"
+              data-task-id="task-7bod77-184jh9c"
+              type="checkbox"
+            ><div
+            ><div
+                class="task-title"
+              >Hire a quant for the swaps desk</div
+              ><div
+                class="task-meta"
+              ><span
+                  class="due-date overdue"
+                ><span
+                    class="due-relative due-text"
+                  >Overdue<span
+                      class="due-distance"
+                    > 3 days</span
+                    ><span
+                      class="due-on"
+                    ><span
+                        class="due-sep"
+                      > · </span
+                      ><span
+                      >2026-09-18</span
+                      ></span
+                    ></span
+                  ></span
+                ></div
+              ><div
+                class="entry-details"
+                data-reveal=""
+              ><span
+                  class="task-source"
+                >Rates / line 10</span
+                ><span
+                  aria-hidden="true"
+                  class="entry-details-joiner"
+                > · </span
+                ><span
+                  class="heading-path task-source"
+                >Rates</span
+                ></div
+              ></div
+            ></div
+          ></div
+        ></section
+      ></div
+    ></main
+  > <div
+    aria-live="polite"
+    class="visually-hidden"
+    id="live-status"
+    role="status"
+  >3 teams, 6 notes and 3 tasks match this search.</div
+  > </body
+>
