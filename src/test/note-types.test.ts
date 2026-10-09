@@ -6,7 +6,7 @@ import { addDays, startOfDay } from '../domain/markdown/calendar';
 import type { ParsedFile, TypeNote, WorkspaceIndex } from '../domain/model';
 import { parseFieldKind, reverseNameOf, toFieldQueryName } from '../domain/types/fieldKinds';
 import { readCheckboxValue, readDateValue, readNumberValue, readSelectValue } from '../domain/types/fieldValues';
-import { getTypeIndex, MAX_PATH_SEGMENTS, TypeIndex } from '../domain/types/typeIndex';
+import { entryOfLink, getTypeIndex, MAX_PATH_SEGMENTS, TypeIndex } from '../domain/types/typeIndex';
 import { buildTypeRegistry } from '../domain/types/typeRegistry';
 import { readRowsRule, splitTableRow } from '../domain/types/typeNotes';
 import { createSearchEntries } from '../core/storage/searchDatabase';
@@ -689,6 +689,21 @@ suite('Types: computed fields', () => {
       types.field('file:Incidents/RFQ outage.md', 'linked-from', now)?.values.map((value) => value.rowId ?? value.notePath),
       ['file:Incidents/Feed lag.md', 'notes/review.md'],
     );
+  });
+  test('counts a link on a heading’s own line as that heading’s mention', () => {
+    const linked = getTypeIndex(
+      indexOf({
+        'Types/Incident.md': '---\ndeckard-type: incident\nrows: notes\n---\n| Field | Kind |\n| - | - |\n| owner | Person |',
+        'Incidents/RFQ outage.md': '---\ntype: incident\n---\n# RFQ outage',
+        'notes/log.md': ['# Monday', 'See [[RFQ outage]].', '# Tuesday [[RFQ outage]]', 'Fixed.'].join('\n'),
+      }),
+    );
+    const log = linked.computed('file:Incidents/RFQ outage.md', now);
+    assert.strictEqual(log.mentions, 2, 'Monday’s line and Tuesday’s heading are two entries');
+    const file = indexOf({ 'notes/log.md': '# Monday\nSee [[X]].\n# Tuesday [[X]]' }).files.get('notes/log.md');
+    assert.ok(file);
+    assert.strictEqual(entryOfLink(file, { line: 2 })?.heading, 'Tuesday [[X]]');
+    assert.strictEqual(entryOfLink(file, { line: 1 })?.heading, 'Monday');
   });
 });
 

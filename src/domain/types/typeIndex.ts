@@ -1073,7 +1073,7 @@ export class TypeIndex {
         .toNote(row.filePath)
         .forEach((link) => {
           const source = this.index.files.get(link.sourcePath);
-          const section = source ? entryAtLine(source, link.line) : undefined;
+          const section = source ? entryOfLink(source, link) : undefined;
           if (section) {
             times.set(section.id, section.updatedAt);
           } else {
@@ -1208,8 +1208,13 @@ function readTaskTagKeys(index: WorkspaceIndex, task: Task): Set<string> {
   return keys;
 }
 
-/** The innermost section of a note holding a line, or undefined above its first. */
-function entryAtLine(file: ParsedFile, line: number): Section | undefined {
+/**
+ * The entry a link is in: the innermost heading of its note holding its line,
+ * or undefined above the first. A backlink's line is zero-based and a
+ * heading's one-based, so a link on a heading's own line is that heading's.
+ */
+export function entryOfLink(file: ParsedFile, link: { line: number }): Section | undefined {
+  const line = link.line + 1;
   let found: Section | undefined;
   file.sections.forEach((section) => {
     if (section.startLine <= line && line <= section.endLine && (!found || section.startLine >= found.startLine)) {

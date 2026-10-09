@@ -26,7 +26,7 @@ import { isObject } from '../../shared/guards';
 import { pluralize } from '../../shared/text';
 import { isRowKind, reverseNameOf } from '../../domain/types/fieldKinds';
 import { findRowsByPhrase } from '../../domain/types/typeAnswers';
-import { getTypeIndex, type FieldValue, type RowField, type TypeIndex, type TypeRow } from '../../domain/types/typeIndex';
+import { entryOfLink, getTypeIndex, type FieldValue, type RowField, type TypeIndex, type TypeRow } from '../../domain/types/typeIndex';
 import { describeTagMatches } from './querySuggestions';
 import { rowTag } from './typeHover';
 import { valueTitle } from './typeRows';
@@ -312,7 +312,7 @@ function linkingEntries(index: WorkspaceIndex, filePath: string | undefined): Me
       if (!source) {
         return;
       }
-      const section = sectionAtLine(source, link.line + 1);
+      const section = entryOfLink(source, link);
       if (section) {
         entries.set(section.id, sectionEntry(section));
       } else {
@@ -340,17 +340,6 @@ function fileEntry(file: ParsedFile): MentionEntry {
     line: 1,
     ...(file.updatedAt === undefined ? {} : { updatedAt: file.updatedAt }),
   };
-}
-
-/** The innermost heading of a note holding a one-based line, or undefined above its first. */
-function sectionAtLine(file: ParsedFile, line: number): Section | undefined {
-  let found: Section | undefined;
-  file.sections.forEach((section) => {
-    if (section.startLine <= line && line <= section.endLine && (!found || section.startLine >= found.startLine)) {
-      found = section;
-    }
-  });
-  return found;
 }
 
 /**
