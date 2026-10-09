@@ -367,3 +367,45 @@ A type page of its own, Board and Cards views, formulas and numeric rollups,
 per-field visibility settings, colored options and avatars, history,
 stale-fact warnings, timeline/chart/form views, questions beyond row + field
 in Find, and a front-matter form in the text editor.
+
+## As built
+
+Batches 1 to 7 landed as planned, with these changes to what the plan
+describes:
+
+- **`notes:`** defaults to the type's plural name (`Teams/`), not the notes
+  folder's root. A nested namespace level no note writes is a row too, so
+  `parent` has no gaps.
+- **Paths** read two relations and then a field (`owned-by.lead.email`).
+- **Query language.** `no:email` works beside `-has:email`. A `type =`
+  that names no type keeps its old meaning, `kind`. A field condition is
+  its own node, `{ type: 'field', … }`, parsed against the workspace's
+  schema (`parseWorkspaceQuery`).
+- **`deckard_query`'s description** is fixed in the manifest, so the
+  workspace's types are named at run time instead, on the second line of
+  `deckard_query`'s and `deckard_list_tags`'s answers.
+- **Find** reads a row's name without case, hyphens, or a trailing `s`,
+  and also reads "X members". An answer that is text opens the page of the
+  row holding it.
+- **Note page.** Edit ends in **Clear**; a many-valued field adds or
+  removes one choice at a time; each write is offered with **Undo**. A
+  note row names its type above its fields, as it has no hub line.
+- **Tag page.** The Fields card lists the row's reverses with the people
+  behind each one ("owned by: Rates (lead Dana Whitfield · on-call Sam
+  Ortiz)") rather than computed paths.
+- **Rows tab.** Side by side, the table sits above the Notes and Tasks
+  panes. Each row's ⋯ has Open, Open hub note or Create hub note, and Copy
+  email. Columns, sort, and group are kept per type in the workspace's
+  preferences (`typeTables`). A reverse of people reads "Dana, Sam, Lena
+  +2". Help on a type's page opens the guide's Types and fields.
+- **Lenses.** A note row with no tag gets the type-and-relation lens
+  alone; the problems lens counts "unresolved" values and other field
+  problems, and offers Show field problems.
+- **Query blocks.** A `noteColumns=` name no type has is warned of. `this`
+  works in the editor's lens, the preview, and Copy as Plain Markdown, as
+  well as on the Note page.
+- **Work sample.** It ships Person, Team, Area, and Decision types and a
+  Payments team hub. The decision's state field is `state`, since `status`
+  is a built-in query field.
+- **Guide.** The new page is `docs/guide/databases.md`, titled "Types and
+  fields".
