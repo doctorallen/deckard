@@ -320,6 +320,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.newTypedNote",
+        "title": "New Note from Type…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.pauseHere",
         "title": "Pause in This Workspace",
         "category": "Deckard"

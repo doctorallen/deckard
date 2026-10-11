@@ -124,11 +124,11 @@ suite('Types in the editor: marks and quick fixes', () => {
     assert.deepStrictEqual([lead.start, lead.end], [6, 14], 'the value, quotes and all');
     assert.deepStrictEqual(
       lead.fixes.map((fix) => fix.title),
-      ['Change to @omar (Omar Haddad)', 'Create person "Omar H"'],
+      ['Change to @omar (Omar Haddad)', 'Create person "Omar H"…'],
     );
     const change = lead.fixes[0];
     assert.ok(change.kind === 'replace' && change.text === '"@omar"' && change.preferred);
-    assert.deepStrictEqual(lead.fixes[1], { kind: 'create-row', title: 'Create person "Omar H"', typeKey: 'person', rowTitle: 'Omar H' });
+    assert.deepStrictEqual(lead.fixes[1], { kind: 'create-row', title: 'Create person "Omar H"…', typeKey: 'person', rowTitle: 'Omar H' });
     const tier = marks.find((mark) => mark.line === 3);
     assert.deepStrictEqual(tier?.fixes.map((fix) => fix.title), ['Change to gold']);
     const owns = marks.filter((mark) => mark.line === 4);

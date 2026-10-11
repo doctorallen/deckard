@@ -10,31 +10,33 @@ import {
   type FieldGuess,
   type RowSource,
 } from '../../domain/types/createType';
-import { planRowNote, slugTitle, type RowNoteType } from '../../domain/types/rowNotes';
+import { slugTitle } from '../../domain/types/rowNotes';
+import type { DraftType } from '../../domain/types/typedNoteDraft';
+import type { TypeRegistry } from '../../domain/types/typeRegistry';
 import { typeNotePath, writeTypeNote, type TypeNoteDraft } from '../../domain/types/typeNoteWriter';
 import type { ParsedFile } from '../../domain/model';
 import { fileExists } from './fs';
-import { noteName, openNoteAction, reportFailure, reportNeedsFolder } from './notify';
-import { askTemplateQuestions } from './templates';
+import { openNoteAction, reportFailure, reportNeedsFolder } from './notify';
 import type { WorkspaceWriteHistory } from './workspaceWrites';
 
 /**
  * Writing typed notes (docs/implementation/30-databases.md § Writes): a
- * new row's note, a new type note, and Create Type from Tags, which offers
- * the rows a type could be made of and guesses its fields. Each new note
- * is one write, applied directly, that Undo Last Change takes back.
+ * new type note, and Create Type from Tags, which offers the rows a type
+ * could be made of and guesses its fields, and what the form a new row's
+ * note is made in writes through (typeNoteForm.ts). Each new note is one
+ * write, applied directly, that Undo Last Change takes back.
  */
 
 /** What the type commands read and write through. */
 export interface TypeWrites {
   indexer: Pick<
     IndexReader<vscode.Uri>,
-    'ready' | 'getSnapshot' | 'getTypeIndex' | 'getNotesFolderUri' | 'getTemplatesFolderUri' | 'getTypesFolderUri'
+    'ready' | 'getSnapshot' | 'getTypeIndex' | 'getUri' | 'getNotesFolderUri' | 'getTemplatesFolderUri' | 'getTypesFolderUri'
   >;
   history: WorkspaceWriteHistory;
 }
 
-/** The command Create person "Omar H" runs: a document URI, a type's key, and the row's title. */
+/** The command Create person "Omar H"… runs: a document URI, a type's key, and the row's title. */
 export const CREATE_TYPE_ROW_COMMAND = 'deckard.createTypeRow';
 /** The command Create a <Type> type runs: a document URI and `{ key, name, rows }`. */
 export const CREATE_TYPE_COMMAND = 'deckard.createType';
@@ -78,77 +80,16 @@ export async function writeNewNote(
   return true;
 }
 
-/** What a new row's note is asked for with. */
-export interface CreateRowNoteRequest {
-  /** The type's key: `person`, `team`, `incident`. */
-  typeKey: string;
-  /** The row's title, which names its note and, for a namespace type, its tag. */
-  title: string;
-  /** A note in the workspace folder the row belongs in; the first folder when absent. */
-  near?: vscode.Uri;
-  /** Where the note opens once written: in the editor in front (the default), beside it, or not at all. */
-  open?: 'active' | 'beside' | 'none';
-}
-
 /** People, when no type has them: a quick fix can still create a person's hub note. */
-const PEOPLE_FALLBACK: RowNoteType = { key: 'person', name: 'Person', rows: { kind: 'tags', prefix: '@', written: '@*' }, fields: [] };
+const PEOPLE_FALLBACK: DraftType = { key: 'person', name: 'Person', rows: { kind: 'tags', prefix: '@', written: '@*' }, fields: [] };
 
 /**
- * Creates a row of a type: a note in the type's `notes:` folder, or its
- * plural name's (`Teams/`), named for the title; for a namespace type, a
- * hub note describing the row's tag. It holds the type's template,
- * `<templates folder>/<key>.md`, asking the template's questions, or else
- * each schema field's key. One write, undoable; a note already there is
- * never overwritten. The new note's URI, or undefined when nothing was
- * written.
- *
- * The quick fix Create person "Omar H" calls this, and so will a type's
- * search page's Add <type>….
+ * The type a new row is written from, by key: the registry's, or, for
+ * `person` when no type has people, a person with no fields, so a quick
+ * fix can still create a person's hub note.
  */
-export async function createRowNote(writes: TypeWrites, request: CreateRowNoteRequest): Promise<vscode.Uri | undefined> {
-  const { indexer, history } = writes;
-  await indexer.ready;
-  const type: RowNoteType | undefined =
-    indexer.getTypeIndex().registry.get(request.typeKey) ?? (request.typeKey === PEOPLE_FALLBACK.key ? PEOPLE_FALLBACK : undefined);
-  if (!type) {
-    void reportFailure({ outcome: `No type is named ${request.typeKey}, so Deckard did not create "${request.title}".` });
-    return undefined;
-  }
-  const folder = findWorkspaceFolder(request.near);
-  if (!folder) {
-    void reportNeedsFolder();
-    return undefined;
-  }
-  const template = await readTypeTemplate(indexer, folder, type.key);
-  let answers: Map<string, string> | undefined;
-  if (template !== undefined) {
-    answers = await askTemplateQuestions(template, `Deckard: Create ${type.name}`);
-    if (!answers) {
-      return undefined;
-    }
-  }
-  const plan = planRowNote(type, request.title, { template, now: new Date(), answers });
-  if (!plan) {
-    void reportFailure({
-      outcome: `"${request.title}" cannot name a note${type.rows?.kind === 'tags' ? ' or a tag' : ''}, so Deckard did not create the ${type.name.toLowerCase()}.`,
-    });
-    return undefined;
-  }
-  const notesFolder = indexer.getNotesFolderUri(folder);
-  const uri = vscode.Uri.joinPath(notesFolder, ...plan.folder.split('/').filter(Boolean), plan.fileName);
-  if (await fileExists(uri)) {
-    void reportFailure({
-      outcome: `${noteName(uri)} already exists, so Deckard did not create the ${type.name.toLowerCase()}.`,
-      action: openNoteAction(uri),
-    });
-    return undefined;
-  }
-  if (!(await writeNewNote(history, uri, plan.content, `Create ${type.name} "${request.title}"`))) {
-    void reportFailure({ outcome: `VS Code did not accept the new note, so Deckard did not create the ${type.name.toLowerCase()}.` });
-    return undefined;
-  }
-  await openNote(uri, request.open ?? 'active');
-  return uri;
+export function findRowNoteType(registry: Pick<TypeRegistry, 'get'>, typeKey: string): DraftType | undefined {
+  return registry.get(typeKey) ?? (typeKey === PEOPLE_FALLBACK.key ? PEOPLE_FALLBACK : undefined);
 }
 
 /**
@@ -182,7 +123,7 @@ export async function createTypeNote(
     void reportFailure({ outcome: `VS Code did not accept the new note, so Deckard did not create the ${draft.name} type.` });
     return undefined;
   }
-  await openNote(uri, 'beside');
+  await openNewNote(uri, 'beside');
   return uri;
 }
 
@@ -315,12 +256,12 @@ export async function copyFieldValue(value: unknown): Promise<void> {
 }
 
 /** The workspace folder a note is in, or the first. */
-function findWorkspaceFolder(near: vscode.Uri | undefined): vscode.WorkspaceFolder | undefined {
+export function findWorkspaceFolder(near: vscode.Uri | undefined): vscode.WorkspaceFolder | undefined {
   return (near ? vscode.workspace.getWorkspaceFolder(near) : undefined) ?? vscode.workspace.workspaceFolders?.[0];
 }
 
 /** A type's template, `<templates folder>/<key>.md`, when the templates folder has one. */
-async function readTypeTemplate(
+export async function readTypeTemplate(
   indexer: TypeWrites['indexer'],
   folder: vscode.WorkspaceFolder,
   key: string,
@@ -337,7 +278,7 @@ async function readTypeTemplate(
 }
 
 /** Opens a note Deckard just wrote, in front or beside, kept open. */
-async function openNote(uri: vscode.Uri, where: 'active' | 'beside' | 'none'): Promise<void> {
+export async function openNewNote(uri: vscode.Uri, where: 'active' | 'beside' | 'none'): Promise<void> {
   if (where === 'none') {
     return;
   }

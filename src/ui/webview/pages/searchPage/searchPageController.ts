@@ -15,8 +15,8 @@ import type { SearchPagePageToHost, SearchPageSnapshot, SearchPageState } from '
 import type { SearchRefineState } from '../../../protocol/shared';
 import { editResults } from '../../../commands/bulkEditPrompts';
 import { presentExport } from '../../../commands/exportResults';
-import { createHubNote } from '../../../commands/hubNote';
-import { copyFieldValue, createRowNote } from '../../../commands/typeNotes';
+import { copyFieldValue } from '../../../commands/typeNotes';
+import { createHubNoteForTag, openTypeNoteForm } from '../../../commands/typeNoteForm';
 import { renameTypeField, renameTypeOption } from '../../../commands/typeRenames';
 import { getTypeIndex, type TypeRow } from '../../../../domain/types/typeIndex';
 import { NoteOpening, openNoteAt } from '../../../commands/noteOpening';
@@ -193,7 +193,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       createHubNote: async () => {
         const tagKey = this.currentSnapshot().tag?.key;
         if (tagKey) {
-          await createHubNote(indexer, tagKey);
+          await createHubNoteForTag({ indexer, history: search.writes.history }, tagKey);
         }
       },
       openTag: openTag({ indexer, navigation, policy: 'lenient', openTag: (tagKey) => search.openTag(tagKey) }),
@@ -619,7 +619,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       createRowHub: async (message) => {
         const row = this.findTypeRow(message.typeKey, message.rowId);
         if (row && !row.filePath && row.tagKeys.length) {
-          await createHubNote(indexer, row.tagKeys.includes(row.id) ? row.id : row.tagKeys[0]);
+          await createHubNoteForTag({ indexer, history: writes.history }, row.tagKeys.includes(row.id) ? row.id : row.tagKeys[0]);
         }
       },
       copyRowValue: async (message) => {
@@ -641,24 +641,14 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   }
 
   /**
-   * Add <type>…: asks the new row's title, then writes its note into the
-   * type's folder, from the type's template or with its fields' keys, and
-   * opens it.
+   * Add <type>…: the new note's form, its folder, title, tag, and fields,
+   * written into the type's folder when Create the note is chosen.
    */
   private async addTypeRow(typeKey: string): Promise<void> {
-    const type = getTypeIndex(this.search.indexer.getSnapshot()).registry.get(typeKey);
-    if (!type) {
+    if (!getTypeIndex(this.search.indexer.getSnapshot()).registry.get(typeKey)) {
       return;
     }
-    const title = await vscode.window.showInputBox({
-      title: `Add ${type.name.toLowerCase()}`,
-      prompt: `The new ${type.name.toLowerCase()}'s title, which names its note${type.rows?.kind === 'tags' ? ' and its tag' : ''}`,
-      validateInput: (value) => (value.trim() ? undefined : `A ${type.name.toLowerCase()} needs a title.`),
-    });
-    if (!title?.trim()) {
-      return;
-    }
-    await createRowNote({ indexer: this.search.indexer, history: this.search.writes.history }, { typeKey, title: title.trim() });
+    await openTypeNoteForm({ indexer: this.search.indexer, history: this.search.writes.history }, { typeKey });
   }
 
   /** Opens a type's note, at a field's row of its table when one is named, else at the top. */
