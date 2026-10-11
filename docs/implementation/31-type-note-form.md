@@ -85,6 +85,18 @@ Where David's two sentences and the brief were silent:
    the template wrote it, and a message names the fields not written.
 10. **Problems** show one at a time, on the first row at fault, in its
     description after `$(error)`.
+11. **Clear**: a pick for one value leads with a **Clear** row once the
+    field is set; a pick for several has a Clear button in its title bar
+    that unticks every value; an input box clears when emptied, as the
+    date box does.
+12. **Focus**: the form opens on Title while there is none, then on the row
+    last chosen, so a field after a field is one arrow away; on a problem,
+    on its row.
+13. **A tag given to the form** (a hub note for a tag) keeps its Tag row,
+    which says "the tag this note describes" and, chosen, says in the
+    status bar that it stays.
+14. **`createRowNote` is gone**: every way to a new row's note goes through
+    the form, so it had no callers left.
 
 ## Order of work
 
