@@ -2,7 +2,7 @@
  * The note page's protocol: one note as the page draws it, its blocks each
  * with the line it starts on, and the messages the page sends.
  */
-import type { DrawnFields, SetNoteFieldMessage } from './fields';
+import type { DrawnFields, EditFieldsMessage } from './fields';
 import type { DrawnStatus } from './shared';
 import type { InlineToken } from '../../domain/model/inline';
 import type { IndexingMessage, MessageOf, StateMessage } from './messaging';
@@ -225,7 +225,7 @@ export interface NotePagePageToHost {
   navigateNoteHistory: NavigateNoteHistoryMessage;
   openSearch: OpenSearchMessage;
   runNoteAction: RunNoteActionMessage;
-  setNoteField: SetNoteFieldMessage;
+  editFields: EditFieldsMessage;
   openGoTo: OpenGoToMessage;
   listGoTo: ListGoToMessage;
   goToPage: GoToPageMessage;

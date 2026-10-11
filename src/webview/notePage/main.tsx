@@ -19,18 +19,16 @@ import { TagButton } from '../shared/tagButton';
 import { installViewOptions, type ViewOptionItem } from '../shared/viewOptions';
 import { keepState, post } from '../shared/vscode';
 import { Blocks } from '../shared/noteBlocks';
-import { FieldRows, type FieldEditing, readableValue } from '../shared/fieldRows';
-import { createFieldEditing } from '../shared/fieldEditing';
+import { FieldRows, readableValue } from '../shared/fieldRows';
 
 /** Sends the host one of the messages the note page may send. */
 function send(message: NotePageMessage): void {
   post(message);
 }
 
-/** What the page draws from: the note, and which of its fields' editors is open. */
+/** What the page draws from: the note. */
 interface NotePageState {
   readonly snapshot: NotePageSnapshot | undefined;
-  readonly editing?: FieldEditing;
 }
 
 /**
@@ -50,12 +48,14 @@ function NoteControls({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
 }
 
 /**
- * ⋯'s first rows: what can be done with the note outside the editor, from
+ * ⋯'s first rows: for a typed note, Edit fields…, which opens the form on
+ * its fields; then what can be done with the note outside the editor, from
  * the one note-action table that Note Actions and the editor's Deckard
  * submenu list too, as the host sends them.
  */
 function noteActionRows(snapshot: NotePageSnapshot): ViewOptionItem[] {
-  return (snapshot.actions ?? []).map((action) => ({ action: 'run-note-action', text: action.title, attributes: { 'data-command': action.command } }));
+  const fields: ViewOptionItem[] = snapshot.fields ? [{ action: 'edit-fields', text: 'Edit fields…', tip: `Edit this ${snapshot.fields.typeName.toLowerCase()}'s fields in a form` }] : [];
+  return [...fields, ...(snapshot.actions ?? []).map((action) => ({ action: 'run-note-action', text: action.title, attributes: { 'data-command': action.command } }))];
 }
 
 /** The bar every page draws: the note's place and title at the left, its controls and ⋯ at the right, which holds the note's actions, Appearance and Help. */
@@ -163,12 +163,12 @@ function TaskLine({ progress }: { readonly progress: NonNullable<NotePageSnapsho
 
 /**
  * Under the bar's divider, the note's front matter: for a typed row, its
- * fields, each it writes with its Edit, the empty ones folded, and Add
- * field…, with its type named above them unless its hub line names it;
- * for any other note, its properties as written. Zen quiets Edit and Add
- * field… here until the region is pointed at or holds focus.
+ * fields, each name opening the form on it, with its type named above them
+ * unless its hub line names it, and Edit fields… after them; for any other
+ * note, its properties as written. Zen quiets Edit fields… here until the
+ * region is pointed at or holds focus.
  */
-function NoteFields({ snapshot, editing }: { readonly snapshot: NotePageSnapshot; readonly editing: FieldEditing | undefined }) {
+function NoteFields({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
   const fields = snapshot.fields;
   if (!fields) {
     return snapshot.properties.length
@@ -178,7 +178,10 @@ function NoteFields({ snapshot, editing }: { readonly snapshot: NotePageSnapshot
   return (
     <section class="note-fields" data-zen-region="" aria-label={`${fields.typeName} fields`}>
       {snapshot.hub?.typeQuery ? null : <p class="note-fields-type"><TypeLink name={fields.typeName} query={fields.typeQuery} /></p>}
-      <FieldRows fields={fields} noteAction="open-note" editable editing={editing} addField />
+      <FieldRows fields={fields} noteAction="open-note" namesOpen />
+      <p class="note-fields-edit">
+        <button type="button" class="tag-note-action" data-action="edit-fields" data-tip={`Edit this ${fields.typeName.toLowerCase()}'s fields in a form`} data-zen-reveal="">Edit fields…</button>
+      </p>
     </section>
   );
 }
@@ -209,7 +212,7 @@ function LinkedFrom({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
 }
 
 /** The whole page: the header with its toolbar, the note's fields, the note, and what links to it. */
-function NotePage({ snapshot, editing }: { readonly snapshot: NotePageSnapshot; readonly editing: FieldEditing | undefined }) {
+function NotePage({ snapshot }: { readonly snapshot: NotePageSnapshot }) {
   if (snapshot.missing) {
     return (
       <>
@@ -232,7 +235,7 @@ function NotePage({ snapshot, editing }: { readonly snapshot: NotePageSnapshot; 
           </>
         )}
       />
-      <NoteFields snapshot={snapshot} editing={editing} />
+      <NoteFields snapshot={snapshot} />
       <article class="note-body" aria-label={snapshot.title}>
         {snapshot.blocks.length
           ? <Blocks blocks={snapshot.blocks} context={{ tags: snapshot.tags }} />
@@ -244,8 +247,6 @@ function NotePage({ snapshot, editing }: { readonly snapshot: NotePageSnapshot; 
 }
 
 let shownVisit: number | undefined;
-/** What takes focus once the page is drawn again, such as an editor just opened. */
-let focusAfterDraw: string | undefined;
 /** The snapshot last drawn, which the first draw needs before the store exists. */
 let drawn: NotePageSnapshot | undefined;
 const store = startPage<NotePageState>({
@@ -253,13 +254,9 @@ const store = startPage<NotePageState>({
   ready: (state) => Boolean(state.snapshot),
   view: (state) => {
     drawn = state.snapshot;
-    return <NotePage snapshot={state.snapshot as NotePageSnapshot} editing={state.editing} />;
+    return <NotePage snapshot={state.snapshot as NotePageSnapshot} />;
   },
   afterDraw: () => {
-    if (focusAfterDraw) {
-      document.querySelector<HTMLElement>(focusAfterDraw)?.focus();
-      focusAfterDraw = undefined;
-    }
     const snapshot = drawn;
     if (!snapshot || snapshot.visit === shownVisit) {
       return;
@@ -314,20 +311,13 @@ function modifiers(event: MouseEvent | KeyboardEvent): { opposite?: true; beside
   };
 }
 
-/** The note's fields, edited in place as a tag's page's hub card edits them. */
-const fieldEditing = createFieldEditing({
-  region: '.note-fields',
-  current: () => {
-    const snapshot = store.state.snapshot;
-    return snapshot?.fields ? { fields: snapshot.fields, filePath: snapshot.filePath } : undefined;
-  },
-  editing: () => store.state.editing,
-  show: (editing, focus) => {
-    focusAfterDraw = focus || undefined;
-    store.update({ editing });
-  },
-  send,
-});
+/** Edit fields…, or a field's name: the form on the note's fields, at that field. */
+function editFields(element: HTMLElement): void {
+  const snapshot = store.state.snapshot;
+  if (snapshot?.fields) {
+    send({ type: 'editFields', filePath: snapshot.filePath, ...(element.dataset.fieldKey ? { field: element.dataset.fieldKey } : {}) });
+  }
+}
 
 /** Every control's action, by its `data-action`. */
 const ACTIONS: Readonly<Record<string, ActionHandler>> = {
@@ -355,7 +345,7 @@ const ACTIONS: Readonly<Record<string, ActionHandler>> = {
     const alt = element.querySelector('img')?.getAttribute('alt') || 'Image';
     element.setAttribute('aria-label', `${alt}, shown ${whole ? 'at full size' : 'fitted'}; select to show it ${whole ? 'fitted' : 'at full size'}`);
   },
-  ...fieldEditing.actions,
+  'edit-fields': (element) => editFields(element),
   'open-search': (element) => {
     if (element.dataset.query) {
       send({ type: 'openSearch', query: element.dataset.query });
@@ -407,14 +397,4 @@ document.addEventListener('mouseup', (event) => {
   send({ type: 'navigateNoteHistory', direction: event.button === 3 ? 'back' : 'forward' });
 });
 
-// What is typed in a field's editor is kept in the page's state, so a draw
-// keeps it; Enter opens a field's editor or takes what it holds, and Escape
-// closes it.
-app.addEventListener('input', (event) => fieldEditing.handleInput(event));
-app.addEventListener('keydown', (event) => fieldEditing.handleKeydown(event));
-
-onHostMessage<StateMessage<NotePageSnapshot>>('state', (message) => {
-  // Another note closes any editor; the same note, drawn again after a write, keeps a list open.
-  const sameNote = message.data.visit === store.state.snapshot?.visit;
-  store.update({ snapshot: message.data, ...(sameNote ? {} : { editing: undefined }) });
-});
+onHostMessage<StateMessage<NotePageSnapshot>>('state', (message) => store.update({ snapshot: message.data }));

@@ -19,18 +19,15 @@ import { closeTagContextMenu, hasTagContextMenu, isTagContextMenuOpen, openConte
 import { taskTitleOf } from '../shared/taskRow';
 import { installKeySheet } from '../shared/keySheet';
 import { installViewOptions } from '../shared/viewOptions';
-import { createFieldEditing } from '../shared/fieldEditing';
-import type { FieldEditing } from '../shared/fieldRows';
 import { vscodeApi } from '../shared/vscode';
 import { PageHeader } from './header';
 import { HubNote, tagRefineLines, TagNotes, TagProgress } from './hub';
 import { type ResultKind, type ResultTabId, resultCounts, Results } from './results';
 import { columnMenu, findTypeRow, nextTypeSort, rowMenu } from './typeRows';
 
-/** What the page draws from: the host's last snapshot, once there is one, and which of the hub's fields' editors is open. */
+/** What the page draws from: the host's last snapshot, once there is one. */
 interface SearchStore {
   readonly snapshot: SearchPageState | undefined;
-  readonly editing?: FieldEditing;
 }
 
 /** What VS Code kept for the page, as the template read it: any value, a record or not. */
@@ -78,9 +75,6 @@ let filteredHubOpen: boolean | undefined;
 
 /** Where the window was scrolled when a draw began, put back after it. */
 let scrolledTo = { x: 0, y: 0 };
-
-/** What takes focus once the page is drawn again, such as a field's editor just opened. */
-let focusAfterDraw: string | undefined;
 
 /** Takes out the marks the last state's words left, before the page is drawn again. */
 let unmark: Unmark = () => undefined;
@@ -162,7 +156,7 @@ function settleRowsTab(snapshot: SearchPageState, newSearch: boolean): boolean {
 }
 
 /** The whole page: its header, the search box and Refine, the tag's progress, the hub, the tag's notes, and the results. */
-function SearchPage({ snapshot, editing }: { readonly snapshot: SearchPageState; readonly editing: FieldEditing | undefined }) {
+function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
   settleTab(snapshot);
   // A search that does not parse leaves the previous results on the page.
   // Say so, rather than letting them read as answers to what was typed.
@@ -174,7 +168,7 @@ function SearchPage({ snapshot, editing }: { readonly snapshot: SearchPageState;
       {editor.facets(tagRefineLines(snapshot))}
       {/* How far along the tag's tasks are, with Refine, which narrows the same tasks, rather than under the hub. */}
       <TagProgress snapshot={snapshot} />
-      <HubNote snapshot={snapshot} hubOpen={snapshot.tagPage?.filtered ? (filteredHubOpen ?? false) : hubOpen} editing={editing} />
+      <HubNote snapshot={snapshot} hubOpen={snapshot.tagPage?.filtered ? (filteredHubOpen ?? false) : hubOpen} />
       <TagNotes snapshot={snapshot} />
       {invalid ? <p class="stale-results">The search above has not run. These are the results of the last one that did.</p> : null}
       {/* A search that found nothing, and a closer spelling that finds something, so the dead end has a way out of it. */}
@@ -210,16 +204,12 @@ function announceCounts(snapshot: SearchPageState): void {
 const store = startPage<SearchStore>({
   initial: { snapshot: undefined },
   ready: (state) => Boolean(state.snapshot),
-  view: (state) => <SearchPage snapshot={state.snapshot as SearchPageState} editing={state.editing} />,
+  view: (state) => <SearchPage snapshot={state.snapshot as SearchPageState} />,
   afterDraw: () => {
     applyColumns();
     dropFittingMore();
     editor.afterRender();
     window.scrollTo(scrolledTo.x, scrolledTo.y);
-    if (focusAfterDraw) {
-      document.querySelector<HTMLElement>(focusAfterDraw)?.focus();
-      focusAfterDraw = undefined;
-    }
     const snapshot = store.state.snapshot as SearchPageState;
     // Every draw is unmarked first, the page's own redraws included, such
     // as a tab or Show all, so every draw is marked again.
@@ -428,6 +418,12 @@ function chooseTypeAction(action: string, context: NonNullable<typeof typeContex
       }
     },
     'type-create-hub': () => send({ type: 'createRowHub', typeKey, rowId: String(context.rowId) }),
+    'type-edit-fields': () => {
+      const row = findTypeRow(table, String(context.rowId));
+      if (row && row.filePath) {
+        send({ type: 'editFields', filePath: row.filePath });
+      }
+    },
     'type-copy': () => send({ type: 'copyRowValue', typeKey, rowId: String(context.rowId) }),
   };
   if (Object.prototype.hasOwnProperty.call(actions, action)) {
@@ -509,20 +505,18 @@ function showTab(target: HTMLElement): void {
   redraw();
 }
 
-/** The hub note's fields, edited in place as the Note page edits them. */
-const fieldEditing = createFieldEditing({
-  region: '.hub-fields',
-  current: () => {
-    const hub = latest && latest.hub;
-    return hub && hub.fields ? { fields: hub.fields, filePath: hub.filePath } : undefined;
-  },
-  editing: () => store.state.editing,
-  show: (editing, focus) => {
-    focusAfterDraw = focus || undefined;
-    redraw({ editing });
-  },
-  send,
-});
+/**
+ * Edit fields… in the hub card's header, or a field's name on the card:
+ * the form on the hub note's fields, at that field. The card stays as it
+ * was, open or folded.
+ */
+function editHubFields(target: HTMLElement, snapshot: SearchPageState, event: MouseEvent): void {
+  event.preventDefault();
+  const hub = snapshot.hub;
+  if (hub && hub.fields) {
+    send({ type: 'editFields', filePath: hub.filePath, ...(target.dataset.fieldKey ? { field: target.dataset.fieldKey } : {}) });
+  }
+}
 
 /** What each of the page's own controls does on a click, given the snapshot it shows. */
 const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPageState, event: MouseEvent) => void>> = {
@@ -547,11 +541,9 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   // What the box holds, words typed and not yet run among it, is what the
   // reader sees and so what Save keeps.
   'save-filter': () => send({ type: 'saveTagOverviewFilter', query: editor.currentText() }),
+  // Create hub note, or Add fields… on a typed row no note describes: the form for its note.
   'create-hub': () => send({ type: 'createHubNote' }),
-  // A field Not set, or Add field…, on a typed row no note describes: the
-  // form for its note, at that field's input when there is one.
-  'create-row-note': (target) => send({ type: 'createHubNote', ...(target.dataset.fieldKey ? { field: target.dataset.fieldKey } : {}) }),
-  ...Object.fromEntries(Object.entries(fieldEditing.actions).map(([action, run]) => [action, (target: HTMLElement) => run(target)])),
+  'edit-fields': (target, snapshot, event) => editHubFields(target, snapshot, event),
   'unpark-tag': (target) => {
     if (target.dataset.tagKey) {
       send({ type: 'unparkTag', tagKey: target.dataset.tagKey });
@@ -796,7 +788,7 @@ function openEntryByKey(event: KeyboardEvent, element: Element | null): void {
 
 document.addEventListener('keydown', (event) => {
   const element = event.target instanceof Element ? event.target : null;
-  if (fieldEditing.handleKeydown(event) || stepHistoryByKey(event, element) || editor.handleKeydown(event)) {
+  if (stepHistoryByKey(event, element) || editor.handleKeydown(event)) {
     return;
   }
   if (event.key === 'Escape' && isTagContextMenuOpen()) {
@@ -828,15 +820,11 @@ document.addEventListener('change', (event) => {
 });
 
 document.addEventListener('input', (event) => {
-  if (!fieldEditing.handleInput(event)) {
-    editor.handleInput(event);
-  }
+  editor.handleInput(event);
 });
 
 onHostMessage<StateMessage<SearchPageState>>('state', (message) => {
   const first = !latest;
-  // Another hub note closes any field's editor; the same one, drawn again after a write, keeps a list open.
-  const sameHub = Boolean(latest && latest.hub && message.data.hub && latest.hub.filePath === message.data.hub.filePath);
   latest = message.data;
   setParkedTags(latest.parkedTags);
   // Cards opened with Show all stay open through a save, and close when
@@ -853,7 +841,7 @@ onHostMessage<StateMessage<SearchPageState>>('state', (message) => {
     sentPreview = (latest.draftWords || []).join(' ');
   }
   editor.receive();
-  redraw({ snapshot: latest, ...(sameHub ? {} : { editing: undefined }) });
+  redraw({ snapshot: latest });
   if (first) {
     restoreScroll(kept());
   }

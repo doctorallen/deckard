@@ -18,10 +18,10 @@ import {
   Narrower,
   narrowGoToPage,
   NarrowingTable,
+  narrowEditFields,
   narrowOpenTag,
   narrowOpenWikiLink,
   narrowSetDisplay,
-  narrowSetNoteField,
   narrowSetZenMode,
   narrowToggleTask,
   narrowWith,
@@ -87,7 +87,7 @@ export const NOTE_PAGE_MESSAGES: NarrowingTable<NotePagePageToHost> = {
   navigateNoteHistory: narrowNavigate,
   openSearch: narrowOpenSearch,
   runNoteAction: narrowRunNoteAction,
-  setNoteField: narrowSetNoteField,
+  editFields: narrowEditFields,
 };
 
 /** A message from the note page, narrowed by its table, or undefined. */

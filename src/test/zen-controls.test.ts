@@ -142,17 +142,17 @@ const typeSearchPage = (zen: boolean) =>
     ...createSearchPageSnapshot(typedWorkspace(), preferences({ typeTables: { area: { sort: { column: 'system', direction: 'asc' } } } }), 'type = area', { queryContext, originQuery: 'type = area' }),
     parkedTags: [],
   });
-/** The Note page on a typed row's note, with filled fields, a reverse, and empty ones folded. */
+/** The Note page on a typed row's note, with filled fields, a reverse, and Edit fields…. */
 const notePage = (zen: boolean) =>
   open(renderPage('notePage', { chrome: chromeOf(zen) }), createNotePageSnapshot(typedWorkspace(), 'Teams/Credit.md', { queryContext, history: { back: false, forward: false }, visit: 1 }));
 
-/** A typed tag's page with a hub note: its card's fields, each with Edit, the empty ones folded, and Add field…. */
+/** A typed tag's page with a hub note: its card's fields, and Edit fields… in its header. */
 const tagPage = (zen: boolean) =>
   open(renderPage('searchPage', { chrome: chromeOf(zen) }), {
     ...createSearchPageSnapshot(typedWorkspace(), preferences(), '#team/credit', { queryContext, originQuery: '#team/credit' }),
     parkedTags: [],
   });
-/** A typed tag's page with no hub note: the Fields card, its type's fields Not set, then From other notes. */
+/** A typed tag's page with no hub note: the Fields card, Add fields…, then From other notes. */
 const rowFieldsPage = (zen: boolean) =>
   open(renderPage('searchPage', { chrome: chromeOf(zen) }), {
     ...createSearchPageSnapshot(typedWorkspace(), preferences(), '#area/bond-trading', { queryContext, originQuery: '#area/bond-trading' }),
@@ -321,41 +321,39 @@ suite('Zen quiets controls in place', () => {
     assert.strictEqual((page.find('.query-facets-fold') as HTMLDetailsElement).open, false, 'closed, it stays closed');
   });
 
-  test("the Note page quiets Edit and Add field… in its fields region, keeps the fields drawn, and keeps an open list open", () => {
+  test("the Note page quiets Edit fields… in its fields region, and keeps the fields and their names drawn", () => {
     const page = notePage(true);
-    for (const control of page.findAll('.field-edit, .field-add-button')) {
-      assert.ok(quietAtRest(control), `${nameOf(control)} is quiet at rest`);
-      assert.ok(control.closest('section.note-fields[data-zen-region]'), `${nameOf(control)} shows from the fields region`);
-    }
-    for (const kept of page.findAll('.field-link, .field-empty > summary, .note-progress .type-link')) {
+    const edit = page.find('.note-fields-edit [data-action="edit-fields"]');
+    assert.ok(quietAtRest(edit), 'Edit fields… is quiet at rest');
+    assert.ok(edit.closest('section.note-fields[data-zen-region]'), 'and shows from the fields region');
+    assert.ok(!quietAtRest(notePage(false).find('.note-fields-edit [data-action="edit-fields"]')), 'at Full, Edit fields… is drawn');
+    const names = page.findAll('.field-name-link');
+    assert.ok(names.length > 0, 'it has field names that open the form');
+    for (const kept of [...names, ...page.findAll('.field-link, .note-progress .type-link')]) {
       assert.ok(!quietAtRest(kept), `${nameOf(kept)} stays drawn`);
+      assert.notStrictEqual(kept.getAttribute('tabindex'), '-1', `${nameOf(kept)} is a stop for the keyboard`);
     }
+    assert.strictEqual(page.findAll('.field-edit, .field-add-button').length, 0, 'no Edit on a row, and no Add field…');
     // Plain styling hides an eyebrow whole; the type opens its rows, so it is drawn as the line's label instead.
     assert.strictEqual(page.find('.note-progress .type-link').closest('.eyebrow'), null, 'the hub line’s type is no eyebrow');
-    assert.ok(!quietAtRest(notePage(false).find('.field-add-button')), 'at Full, Add field… is drawn');
-    assert.deepStrictEqual(notePage(false).findAll('.field-edit').filter(quietAtRest).map(nameOf), [], 'at Full, every Edit is drawn, so a reader finds it');
-    page.click('.field-edit[data-field-key="lead"]');
-    const choices = page.findAll('.field-editor .field-choice');
-    assert.ok(choices.length > 0 && choices.every((choice) => !quietAtRest(choice)), 'an open list stays drawn');
-    assert.strictEqual(page.find('.field-edit[data-field-key="lead"]').getAttribute('aria-expanded'), 'true', 'and its Edit with it');
   });
 
-  test("a tag's page draws its hub card's and Fields card's Edit and Add field… as the Note page does: drawn at Full, quiet under Zen until the fields are pointed at", () => {
-    for (const draw of [tagPage, rowFieldsPage]) {
-      const full = draw(false);
-      const edits = full.findAll('.hub-fields .field-edit');
-      assert.ok(edits.length > 0, 'it has Edit buttons');
-      assert.deepStrictEqual([...edits, full.find('.hub-fields .field-add-button')].filter(quietAtRest).map(nameOf), [], 'at Full, Edit and Add field… are drawn at rest');
+  test("a tag's page quiets its hub card's Edit fields… and its Fields card's Add fields… in place, and keeps the fields drawn", () => {
+    for (const [draw, selector, region] of [
+      [tagPage, '.hub-header [data-action="edit-fields"]', 'summary.hub-header[data-zen-region]'],
+      [rowFieldsPage, '.hub-fields-add', '.hub-fields[data-zen-region]'],
+    ] as const) {
+      assert.ok(!quietAtRest(draw(false).find(selector)), `at Full, ${selector} is drawn`);
       const zen = draw(true);
-      for (const control of zen.findAll('.hub-fields .field-edit, .hub-fields .field-add-button')) {
-        assert.ok(quietAtRest(control), `${nameOf(control)} is quiet at rest under Zen`);
-        assert.ok(control.closest('.hub-fields[data-zen-region]'), `${nameOf(control)} shows from the fields region`);
-      }
-      for (const kept of zen.findAll('.hub-fields .field-link, .hub-fields .field-none, .hub-fields .field-source, .hub-fields .field-group-label, .hub-fields .field-empty > summary, .hub-fields .hub-fields-none')) {
+      const control = zen.find(selector);
+      assert.ok(quietAtRest(control), `${nameOf(control)} is quiet at rest under Zen`);
+      assert.ok(control.closest(region), `${nameOf(control)} shows from its region`);
+      for (const kept of zen.findAll('.hub-fields .field-link, .hub-fields .field-name-link, .hub-fields .field-source, .hub-fields .field-group-label, .hub-fields .hub-fields-none')) {
         assert.ok(!quietAtRest(kept), `${nameOf(kept)} stays drawn`);
       }
+      assert.strictEqual(zen.findAll('.hub-fields .field-edit, .hub-fields .field-add-button').length, 0, 'no Edit on a row, and no Add field…');
     }
-    assert.strictEqual(rowFieldsPage(true).text('.hub-fields .field-none'), 'Not set');
+    assert.ok(!quietAtRest(tagPage(true).find('.hub-header [data-action="open-source"]')), 'Open stays drawn beside it');
     assert.ok(rowFieldsPage(true).find('.hub-fields .field-group-label').closest('.eyebrow') === null, 'From other notes is no eyebrow, which Zen would hide');
   });
 

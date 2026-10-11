@@ -793,14 +793,11 @@ export async function newTypedNote(writes: TypeWrites): Promise<vscode.Uri | und
 /**
  * Create hub note for a tag, from the palette, a tag's page, or a type's
  * rows tab: for a tag a type has rows of, the form, its tag and title
- * filled in and the tag kept, opened at `options.field`'s input when a
- * tag's page's Edit on a field Not set asks; for any other tag, its hub
- * note as before.
+ * filled in and the tag kept; for any other tag, its hub note as before.
  */
 export async function createHubNoteForTag(
   writes: { indexer: IndexReader<vscode.Uri>; history: TypeWrites['history'] },
   tagKey: string,
-  options: { field?: string } = {},
 ): Promise<vscode.Uri | undefined> {
   const { indexer } = writes;
   await indexer.ready;
@@ -815,6 +812,5 @@ export async function createHubNoteForTag(
     typeKey: start.typeKey,
     start: { title: start.title, tag: start.tag },
     ...(near ? { near } : {}),
-    ...(options.field ? { field: options.field } : {}),
   });
 }

@@ -2,10 +2,10 @@
  * A typed row's fields as the Note page and a tag's page draw them
  * (docs/implementation/30-databases.md § Surfaces 5 and 6,
  * docs/implementation/33-clearer-fields.md): each field a row of its key
- * and values, the reverses other rows compute with where each is set, the
- * empty schema fields folded into one line, and, on the Note page and a
- * hub note's card, how each field the note writes is edited, and the
- * message an edit sends.
+ * and values, and the reverses other rows compute with where each is set.
+ * The pages edit none of them: Edit fields… and a field's name send the
+ * message that opens the form on the note
+ * (docs/implementation/34-edit-fields-form.md).
  */
 import type { TagReference } from './shared';
 
@@ -29,24 +29,6 @@ export interface DrawnFieldValue {
   detail?: string;
 }
 
-/** How a field's value is chosen on the Note page, by its kind. */
-export type FieldInput = 'rows' | 'options' | 'date' | 'number' | 'text' | 'note' | 'checkbox';
-
-/** How one field the note writes is edited. */
-export interface FieldEditor {
-  /** The front-matter key it is written under, as the schema names it. */
-  key: string;
-  input: FieldInput;
-  /** Whether it holds several values, so a choice adds or takes one away. */
-  many: boolean;
-  /** For `rows`: which list of the fields' `choices` its rows are in. */
-  choices?: string;
-  /** For `options`: the select's options, as the schema spells them. */
-  options?: string[];
-  /** What it holds now: the ids of the rows it names, its options, or its values as written. */
-  current: string[];
-}
-
 /** Where a reverse is set: a row, or each row of a type, and its field: `Payments'` `lead`, `each person's` `manager`. */
 export interface FieldSource {
   /** Who sets it, as owning the field: `Payments'`, `each person's`. */
@@ -55,10 +37,12 @@ export interface FieldSource {
   field: string;
 }
 
-/** One field: its name and values, where they come from, and, when the note writes it, its editor. */
+/** One field: its name and values, and where they come from. */
 export interface DrawnField {
   /** Its name: the key as the schema writes it, or a reverse's name. */
   name: string;
+  /** For a field of the row's type its note writes, the schema's key, which its name opens the form on. */
+  key?: string;
   /** Where its values come from: the note, other rows' relations, or both. */
   source: 'written' | 'reverse' | 'merged';
   /** For a reverse, or a field merged with one, what it is worked out from: `From each person's team`. */
@@ -66,22 +50,6 @@ export interface DrawnField {
   /** For a reverse, or a field merged with one, where it is set, drawn after its values. */
   from?: FieldSource[];
   values: DrawnFieldValue[];
-  edit?: FieldEditor;
-  /**
-   * For a row no note describes, the schema key of this field, which reads
-   * Not set: its Edit opens the form for the row's new note at this field.
-   */
-  startsNote?: string;
-}
-
-/** A row another row's relation can name, as an edit's list offers it. */
-export interface FieldChoice {
-  id: string;
-  title: string;
-  /** Its type and first relation: `Team · lead Omar Haddad`. */
-  detail: string;
-  /** The other names a typed value can match it by, lowercased: its tag, slug, and aliases. */
-  names: string[];
 }
 
 /** A typed row's fields, as a page draws them. */
@@ -92,33 +60,17 @@ export interface DrawnFields {
   /**
    * The fields that hold something, the row's own first: the schema's, then
    * the note's other keys, then the reverses other rows give it. For a row
-   * no note describes, its type's fields lead, each Not set.
+   * no note describes, the reverses alone.
    */
   fields: DrawnField[];
-  /** The schema's fields that hold nothing, folded into one line: `1 empty: email`. */
-  empty: DrawnField[];
-  /** Set for a row no note describes: its fields' Edit and Add field… open the form for its new note. */
-  noNote?: true;
-  /** On the Note page and a hub note's card, the rows each relation's list offers, by the editors' `choices`. */
-  choices?: Record<string, FieldChoice[]>;
 }
 
-/** What an edit writes: a row, an option, typed text, a box, or nothing. */
-export type FieldEditValue =
-  | { kind: 'row'; rowId: string }
-  | { kind: 'option'; option: string }
-  | { kind: 'text'; text: string }
-  | { kind: 'checkbox'; checked: boolean }
-  | { kind: 'clear' };
-
 /**
- * Writes one field of the note shown, on the Note page, or of the hub note
- * on a tag's page: a choice from its list, typed text, or Clear. A field that holds several values adds a row or option it
- * does not hold, and takes away one it does.
+ * Opens the form on a typed row's note, from Edit fields… or a field's
+ * name: the note the page drew, and the field to open on, by its key.
  */
-export interface SetNoteFieldMessage {
-  type: 'setNoteField';
+export interface EditFieldsMessage {
+  type: 'editFields';
   filePath: string;
-  key: string;
-  value: FieldEditValue;
+  field?: string;
 }

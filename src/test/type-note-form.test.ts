@@ -151,7 +151,7 @@ suite('The form for a new note of a type', () => {
     assert.strictEqual(findTypedHubStart(untyped, getTypeIndex(untyped), '#team/rates'), undefined);
   });
 
-  test('an Edit on a field Not set opens the form at that field’s input: a field it lists, any case, and nothing for any other key', () => {
+  test('a field’s name on a page opens the form at that field’s input: a field it lists, any case, and nothing for any other key', () => {
     const person = typeOf('person');
     assert.strictEqual(findStartField(person, 'email')?.name, 'email');
     assert.strictEqual(findStartField(person, ' TEAM ')?.key, 'team');

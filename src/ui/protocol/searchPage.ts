@@ -15,7 +15,7 @@ import type {
 } from '../../domain/model/preferences';
 import type { QueryViewState } from '../../domain/model/query';
 import type { EntityKind } from '../../domain/model/tags';
-import type { DrawnFields, SetNoteFieldMessage } from './fields';
+import type { DrawnFields, EditFieldsMessage } from './fields';
 import type { IndexingMessage, MessageAs, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
@@ -338,13 +338,12 @@ export interface TagOverviewHub {
 }
 
 /**
- * A tag's page asks for a hub note that describes the tag; for a typed
- * row, the form for it opens, at `field`'s input when an Edit on a field
- * Not set asks.
+ * A tag's page asks for a hub note that describes the tag, from Create
+ * hub note, or Add fields… on a typed row's Fields card: for a typed row,
+ * the form for it opens.
  */
 export interface CreateHubNoteMessage {
   type: 'createHubNote';
-  field?: string;
 }
 
 /** A tag's page's hub note opened or folded by the reader, which the next tag's page starts as. */
@@ -579,7 +578,7 @@ export interface SearchPagePageToHost {
   editResults: EditResultsMessage;
   createHubNote: CreateHubNoteMessage;
   setHubOpen: SetHubOpenMessage;
-  setNoteField: SetNoteFieldMessage;
+  editFields: EditFieldsMessage;
   mergeTags: MergeTagsMessage;
   setTypeSort: SetTypeSortMessage;
   setTypeColumns: SetTypeColumnsMessage;

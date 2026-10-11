@@ -1,9 +1,8 @@
 import * as assert from 'assert';
 
 import { createQueryContext } from '../domain/query/queryContext';
-import { setFrontmatterField } from '../domain/types/frontmatterWriter';
 import type { DrawnField } from '../ui/protocol/fields';
-import { describeNoteFields, describeTagFields, planNoteFieldWrite, type FieldWritePlan } from '../ui/state/noteFields';
+import { describeNoteFields, describeTagFields } from '../ui/state/noteFields';
 import { createNotePageSnapshot } from '../ui/state/notePageState';
 import { indexOf, now, typedWorkspace } from './typedWorkspace';
 
@@ -11,12 +10,6 @@ const index = typedWorkspace();
 
 /** A field's name and its values' words, as the page draws them. */
 const shown = (fields: readonly DrawnField[]): Array<[string, string[]]> => fields.map((field) => [field.name, field.values.map((value) => value.text)]);
-
-/** A plan that writes, or a failure naming why it does not. */
-function writes(plan: FieldWritePlan): Exclude<FieldWritePlan, { error: string }> {
-  assert.ok(!('error' in plan), `planned no write: ${JSON.stringify(plan)}`);
-  return plan as Exclude<FieldWritePlan, { error: string }>;
-}
 
 suite('Note page fields', () => {
   test('a typed row’s note lists its own filled fields in the schema’s order, then its other keys, then its reverses, its identity aside', () => {
@@ -40,7 +33,6 @@ suite('Note page fields', () => {
       ['team of', ['RFQ outage']],
     ]);
     assert.deepStrictEqual(fields.fields.map((field) => field.source === 'reverse'), [false, false, false, false, false, false, false, true, true], 'own fields, then reverses');
-    assert.deepStrictEqual(fields.empty, []);
   });
 
   test('a person or relation value is its row’s title, opening its tag; a note row opens its note', () => {
@@ -61,35 +53,27 @@ suite('Note page fields', () => {
     assert.strictEqual(members?.tip, "From each person's team");
     assert.deepStrictEqual(members?.from, [{ owner: "Dana Whitfield's", field: 'team' }], 'one person sets it');
     assert.strictEqual(fields?.fields.find((field) => field.name === 'lead')?.from, undefined, 'a field the note writes says nothing');
-    assert.strictEqual(members?.edit, undefined, 'a reverse is written on the other rows');
+    assert.strictEqual(members?.key, undefined, 'a reverse is written on the other rows, so its name opens nothing');
     assert.ok(members?.values.every((value) => value.reverse));
     const dana = describeNoteFields(index, 'People/Dana Whitfield.md', []);
     assert.strictEqual(dana?.fields.find((field) => field.name === 'lead of')?.tip, "From each team's lead");
   });
 
-  test('folds the schema’s empty fields apart, each still with its editor', () => {
-    const credit = describeNoteFields(index, 'Teams/Credit.md', []);
-    assert.deepStrictEqual(credit?.empty.map((field) => [field.name, field.edit?.input]), [['owns', 'rows'], ['on-call', 'rows'], ['status', 'text']]);
-  });
-
-  test('gives each field the note writes an editor by its kind, and lists each relation’s rows once', () => {
-    const fields = describeNoteFields(index, 'Teams/Rates.md', []);
-    const editors = Object.fromEntries((fields?.fields ?? []).map((field) => [field.name, field.edit]));
-    assert.deepStrictEqual(editors.lead, { key: 'lead', many: false, input: 'rows', choices: 'people', current: ['@dana'] });
-    assert.deepStrictEqual(editors.owns, { key: 'owns', many: true, input: 'rows', choices: 'rows:area', current: ['#area/bond-trading', '#area/fx'] });
-    assert.deepStrictEqual(editors.tier, { key: 'tier', many: false, input: 'options', options: ['gold', 'silver', 'bronze'], current: ['gold'] });
-    assert.deepStrictEqual(editors.headcount?.input, 'number');
-    assert.deepStrictEqual(Object.keys(fields?.choices ?? {}).sort(), ['people', 'rows:area']);
-    assert.deepStrictEqual(fields?.choices?.people.map((choice) => [choice.id, choice.title, choice.detail]), [
-      ['@dana', 'Dana Whitfield', 'Person · team Rates'],
-      ['@omar', 'Omar Haddad', 'Person · team Credit'],
-      ['@priya', 'Priya Natarajan', 'Person'],
+  test('gives each schema field the note writes its key, for its name to open the form on, and leaves out the empty ones', () => {
+    const fields = describeNoteFields(index, 'Teams/Rates.md', [{ name: 'aliases', values: [{ text: 'FICC' }] }]);
+    assert.deepStrictEqual(fields?.fields.map((field) => [field.name, field.key]), [
+      ['lead', 'lead'],
+      ['owns', 'owns'],
+      ['tier', 'tier'],
+      ['headcount', 'headcount'],
+      ['on-call', 'on-call'],
+      ['status', 'status'],
+      ['aliases', undefined],
+      ['members', undefined],
+      ['team of', undefined],
     ]);
-    const dana = describeNoteFields(index, 'People/Dana Whitfield.md', []);
-    const kinds = Object.fromEntries((dana?.fields ?? []).map((field) => [field.name, field.edit && [field.edit.input, field.edit.current]]));
-    assert.deepStrictEqual(kinds.start, ['date', ['2026-03-01']]);
-    assert.deepStrictEqual(kinds.remote, ['checkbox', ['true']]);
-    assert.deepStrictEqual(kinds.email, ['text', ['dana@example.com']]);
+    const credit = describeNoteFields(index, 'Teams/Credit.md', []);
+    assert.deepStrictEqual(credit?.fields.map((field) => field.name), ['lead', 'tier', 'headcount', 'members', 'team of'], 'the empty fields are the form’s to list');
   });
 
   test('a note row is drawn as its type’s, and a note no type has has no fields', () => {
@@ -112,24 +96,19 @@ suite('Note page fields', () => {
 });
 
 suite('Tag page fields', () => {
-  test('a typed row with a hub note draws the hub’s fields, each it writes with its editor, as the Note page does', () => {
+  test('a typed row with a hub note draws the hub’s fields, each with its key, as the Note page does', () => {
     const fields = describeTagFields(index, '#team/rates');
     assert.deepStrictEqual(fields?.fields.map((field) => field.name).slice(0, 2), ['lead', 'owns']);
-    assert.deepStrictEqual(fields?.fields.find((field) => field.name === 'lead')?.edit, { key: 'lead', many: false, input: 'rows', choices: 'people', current: ['@dana'] });
-    assert.strictEqual(fields?.fields.find((field) => field.name === 'members')?.edit, undefined, 'a reverse is written on the other rows');
-    assert.deepStrictEqual(Object.keys(fields?.choices ?? {}).sort(), ['people', 'rows:area']);
-    const credit = describeTagFields(index, '#team/credit');
-    assert.deepStrictEqual(credit?.empty.map((field) => field.edit?.key), ['owns', 'on-call', 'status'], 'its empty fields, to fold and add');
+    assert.strictEqual(fields?.fields.find((field) => field.name === 'lead')?.key, 'lead');
+    assert.strictEqual(fields?.fields.find((field) => field.name === 'members')?.key, undefined, 'a reverse is written on the other rows');
   });
 
-  test('a typed row with no note lists its type’s fields as Not set, each starting its note, then its reverses with who owns what they name', () => {
+  test('a typed row with no note lists only its reverses, with who owns what they name; its own fields are the form’s', () => {
     const fields = describeTagFields(index, '#area/bond-trading');
-    assert.deepStrictEqual(fields?.fields.map((field) => [field.name, field.source, field.startsNote, field.values.map((value) => [value.text, value.detail])]), [
-      ['system', 'written', 'system', []],
+    assert.deepStrictEqual(fields?.fields.map((field) => [field.name, field.source, field.key, field.values.map((value) => [value.text, value.detail])]), [
       ['owned by', 'reverse', undefined, [['Rates', 'lead Dana Whitfield · on-call Priya Natarajan']]],
     ]);
-    assert.deepStrictEqual(fields?.fields[1].from, [{ owner: "Rates'", field: 'owns' }]);
-    assert.deepStrictEqual(fields?.empty, [], 'nothing folds: every field of its own reads Not set');
+    assert.deepStrictEqual(fields?.fields[0].from, [{ owner: "Rates'", field: 'owns' }]);
     assert.strictEqual(describeTagFields(index, '#project/none'), undefined);
   });
 });
@@ -151,10 +130,8 @@ suite('Tag page fields for a row with no note', () => {
   const alex = describeTagFields(work, '@alex');
   const field = (name: string) => alex?.fields.find((each) => each.name === name);
 
-  test('its own fields lead, Not set, and the reverses follow', () => {
-    assert.deepStrictEqual(alex?.fields.map((each) => [each.name, each.source, each.startsNote]), [
-      ['role', 'written', 'role'],
-      ['manager', 'written', 'manager'],
+  test('its reverses alone are listed, none of them with a key', () => {
+    assert.deepStrictEqual(alex?.fields.map((each) => [each.name, each.source, each.key]), [
       ['lead of', 'reverse', undefined],
       ['reports', 'reverse', undefined],
       ['decided', 'reverse', undefined],
@@ -173,58 +150,12 @@ suite('Tag page fields for a row with no note', () => {
     assert.deepStrictEqual(field('decided')?.values.map((value) => [value.text, value.detail]), [['ADR-1', 'also decided-by Theo'], ['ADR-2', undefined]]);
   });
 
-  test('a type with no fields lists no Not set rows, and a row nothing names then has no card', () => {
+  test('a row whose type has fields has a card for Add fields…, though nothing names it; one with neither has none', () => {
+    const lone = indexOf({
+      'Types/Person.md': '---\ndeckard-type: person\nrows: "@*"\n---\n# Person\n\n| Field | Kind |\n| --- | --- |\n| role | Text |\n',
+      'notes/log.md': '# Log @lee\n',
+    });
+    assert.deepStrictEqual(describeTagFields(lone, '@lee')?.fields, [], 'a card with no rows, for Add fields…');
     assert.strictEqual(describeTagFields(work, '#badge/silver'), undefined);
-  });
-});
-
-suite('Note page field edits', () => {
-  const rates = index.files.get('Teams/Rates.md')?.content ?? '';
-  const dana = index.files.get('People/Dana Whitfield.md')?.content ?? '';
-  const plan = (filePath: string, key: string, value: Parameters<typeof planNoteFieldWrite>[1]['value']) => planNoteFieldWrite(index, { filePath, key, value }, now);
-  const lineOf = (content: string, key: string, planned: FieldWritePlan): string | undefined => {
-    const write = writes(planned);
-    const edit = setFrontmatterField(content, write.key, write.write);
-    return edit.kind === 'edit' ? edit.content.split('\n').find((line) => line.startsWith(`${key}:`)) : edit.kind;
-  };
-
-  test('a row chosen for a field that holds one replaces it, in its tag form', () => {
-    const planned = writes(plan('Teams/Rates.md', 'lead', { kind: 'row', rowId: '@omar' }));
-    assert.deepStrictEqual(planned.write, { values: [{ text: '@omar' }], list: false });
-    assert.strictEqual(planned.label, 'Set lead to Omar Haddad in "Rates"');
-    assert.strictEqual(lineOf(rates, 'lead', planned), 'lead: "@omar"');
-  });
-
-  test('a row chosen for a field that holds several is added, or taken away when it is there, the rest kept as written', () => {
-    assert.strictEqual(lineOf(rates, 'owns', plan('Teams/Rates.md', 'owns', { kind: 'row', rowId: '#area/fx' })), 'owns: [bond trading]');
-    const credit = index.files.get('Teams/Credit.md')?.content ?? '';
-    assert.strictEqual(lineOf(credit, 'owns', plan('Teams/Credit.md', 'owns', { kind: 'row', rowId: '#area/fx' })), 'owns: ["#area/fx"]');
-  });
-
-  test('an option is written as the schema spells it; a number bare; a date as a day; a box as true or false', () => {
-    assert.strictEqual(lineOf(rates, 'tier', plan('Teams/Rates.md', 'tier', { kind: 'option', option: 'SILVER' })), 'tier: silver');
-    assert.strictEqual(lineOf(rates, 'headcount', plan('Teams/Rates.md', 'headcount', { kind: 'text', text: '12' })), 'headcount: 12');
-    assert.strictEqual(lineOf(dana, 'start', plan('People/Dana Whitfield.md', 'start', { kind: 'text', text: '2026-04-01' })), 'start: 2026-04-01');
-    assert.strictEqual(lineOf(dana, 'remote', plan('People/Dana Whitfield.md', 'remote', { kind: 'checkbox', checked: false })), 'remote: false');
-  });
-
-  test('refuses what the field cannot hold, and a note that is no row', () => {
-    const errors = [
-      plan('Teams/Rates.md', 'lead', { kind: 'row', rowId: '#team/credit' }),
-      plan('Teams/Rates.md', 'tier', { kind: 'option', option: 'platinum' }),
-      plan('Teams/Rates.md', 'headcount', { kind: 'text', text: 'many' }),
-      plan('People/Dana Whitfield.md', 'start', { kind: 'text', text: 'someday soon' }),
-      plan('Teams/Rates.md', 'lead', { kind: 'text', text: 'Omar' }),
-      plan('Teams/Rates.md', 'describes', { kind: 'text', text: '#team/credit' }),
-      plan('notes/plain.md', 'lead', { kind: 'row', rowId: '@dana' }),
-    ];
-    assert.ok(errors.every((each) => 'error' in each), JSON.stringify(errors));
-  });
-
-  test('clears a field, and writes a free key Other… names', () => {
-    assert.strictEqual(lineOf(rates, 'status', plan('Teams/Rates.md', 'status', { kind: 'clear' })), undefined);
-    const other = writes(plan('Teams/Rates.md', 'pager', { kind: 'text', text: 'rates-oncall' }));
-    assert.deepStrictEqual([other.key, other.write], ['pager', { values: [{ text: 'rates-oncall' }] }]);
-    assert.strictEqual(lineOf(rates, 'pager', other), 'pager: rates-oncall');
   });
 });

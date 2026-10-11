@@ -453,9 +453,9 @@ export function findTypedHubStart(index: WorkspaceIndex, types: TypeIndex, tagKe
 
 /**
  * The field the form opens on before its rows, when it is asked to start
- * at one, as a tag's page's Edit on a field Not set does: a field the form
- * lists, by its key, any case. Undefined for none, or for a key the type
- * does not have or the form writes itself, and the form opens as usual.
+ * at one, as a field's name on a page does: a field the form lists, by its
+ * key, any case. Undefined for none, or for a key the type does not have
+ * or the form writes itself, and the form opens as usual.
  */
 export function findStartField(type: Pick<DraftType, 'fields'>, key: string | undefined): DraftType['fields'][number] | undefined {
   const wanted = key?.trim().toLowerCase();
