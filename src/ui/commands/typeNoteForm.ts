@@ -26,6 +26,7 @@ import { pluralTypeName } from '../../domain/types/rowNotes';
 import { listNoteChoices } from '../state/addTaskTarget';
 import {
   createTypeNoteFormRows,
+  findStartField,
   findTypedHubStart,
   describeDraftValues,
   listFolderChoices,
@@ -67,6 +68,11 @@ export interface TypeNoteFormRequest {
   near?: vscode.Uri;
   /** Where the note opens once written: in the editor in front (the default), or beside it. */
   open?: 'active' | 'beside';
+  /**
+   * A field's key to open on: its input shows first, and the form after
+   * it, on that field's row, as a tag's page's Edit on a field Not set asks.
+   */
+  field?: string;
 }
 
 /** A row of the form's pick. */
@@ -96,6 +102,11 @@ export async function openTypeNoteForm(writes: TypeWrites, request: TypeNoteForm
   let draft = startTypedNoteDraft(type, request.start);
   let problem: DraftProblem | undefined;
   let focus: FocusRow = { row: 'title' };
+  const startField = findStartField(type, request.field);
+  if (startField) {
+    draft = (await readField(form, draft, startField)) ?? draft;
+    focus = { row: 'field', fieldKey: startField.key };
+  }
   for (;;) {
     const chosen = await pickRow(form, draft, problem, focus);
     if (!chosen) {
@@ -540,11 +551,14 @@ export async function newTypedNote(writes: TypeWrites): Promise<vscode.Uri | und
 /**
  * Create hub note for a tag, from the palette, a tag's page, or a type's
  * rows tab: for a tag a type has rows of, the form, its tag and title
- * filled in and the tag kept; for any other tag, its hub note as before.
+ * filled in and the tag kept, opened at `options.field`'s input when a
+ * tag's page's Edit on a field Not set asks; for any other tag, its hub
+ * note as before.
  */
 export async function createHubNoteForTag(
   writes: { indexer: IndexReader<vscode.Uri>; history: TypeWrites['history'] },
   tagKey: string,
+  options: { field?: string } = {},
 ): Promise<vscode.Uri | undefined> {
   const { indexer } = writes;
   await indexer.ready;
@@ -555,5 +569,10 @@ export async function createHubNoteForTag(
   }
   const tag = index.tags.get(tagKey.toLowerCase());
   const near = tag?.filePaths[0] === undefined ? undefined : indexer.getUri(tag.filePaths[0]);
-  return openTypeNoteForm(writes, { typeKey: start.typeKey, start: { title: start.title, tag: start.tag }, ...(near ? { near } : {}) });
+  return openTypeNoteForm(writes, {
+    typeKey: start.typeKey,
+    start: { title: start.title, tag: start.tag },
+    ...(near ? { near } : {}),
+    ...(options.field ? { field: options.field } : {}),
+  });
 }

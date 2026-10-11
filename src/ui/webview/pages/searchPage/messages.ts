@@ -5,6 +5,7 @@
  */
 import { SEARCH_PAGE_SIZES, SearchPageSize, TAG_OVERVIEW_SORT_MODES, type TagOverviewSortMode } from '../../../../domain/model/preferences';
 import type {
+  CreateHubNoteMessage,
   EditResultsMessage,
   NavigateSearchHistoryMessage,
   ParkNoteMessage,
@@ -33,6 +34,7 @@ import type {
 import type { MergeTagsMessage } from '../../../protocol/shared';
 import {
   exactlyType,
+  isFieldKey,
   MAX_QUERY_LENGTH,
   narrowAs,
   Narrower,
@@ -252,6 +254,14 @@ function narrowTypeRow<T extends TypeRowMessage['type']>(type: T): Narrower<Type
       : undefined;
 }
 
+/** Create hub note, or an Edit on a field Not set: at most a field's key, and nothing else. */
+const narrowCreateHubNote: Narrower<CreateHubNoteMessage> = (value) => {
+  if (value.field === undefined) {
+    return Object.keys(value).length === 1 ? { type: 'createHubNote' } : undefined;
+  }
+  return Object.keys(value).length === 2 && isFieldKey(value.field) ? { type: 'createHubNote', field: value.field } : undefined;
+};
+
 /** Each message a search page may send, and what it must hold. */
 export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   exportResults: narrowExportResults,
@@ -281,7 +291,7 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   unparkNote: narrowParkNote('unparkNote'),
   mergeTags: narrowMergeTags,
   saveTagOverviewFilter: narrowSaveTagOverviewFilter,
-  createHubNote: exactlyType('createHubNote'),
+  createHubNote: narrowCreateHubNote,
   setHubOpen: narrowSetHubOpen,
   clearOverviewQuery: exactlyType('clearOverviewQuery'),
   openHelp: exactlyType('openHelp'),

@@ -344,4 +344,12 @@ suite('Search page messages', () => {
       assert.strictEqual(narrowSearchPageMessage(message), undefined, JSON.stringify(message));
     }
   });
+
+  test('Create hub note carries at most the key of the field its form opens at', () => {
+    assert.deepStrictEqual(narrowSearchPageMessage({ type: 'createHubNote' }), { type: 'createHubNote' });
+    assert.deepStrictEqual(narrowSearchPageMessage({ type: 'createHubNote', field: 'email' }), { type: 'createHubNote', field: 'email' });
+    assert.strictEqual(narrowSearchPageMessage({ type: 'createHubNote', field: '../email' }), undefined);
+    assert.strictEqual(narrowSearchPageMessage({ type: 'createHubNote', field: 'email', other: 1 }), undefined);
+    assert.strictEqual(narrowSearchPageMessage({ type: 'createHubNote', extra: true }), undefined);
+  });
 });

@@ -5,6 +5,7 @@ import { setDraftValues, startTypedNoteDraft, type DraftType } from '../domain/t
 import {
   createTypeNoteFormRows,
   describeDraftValues,
+  findStartField,
   findTypedHubStart,
   kindIcon,
   listFolderChoices,
@@ -145,5 +146,15 @@ suite('The form for a new note of a type', () => {
     assert.strictEqual(findTypedHubStart(index, types, '#project/atlas'), undefined);
     const untyped = indexOf({ 'notes/a.md': '# A #team/rates' });
     assert.strictEqual(findTypedHubStart(untyped, getTypeIndex(untyped), '#team/rates'), undefined);
+  });
+
+  test('an Edit on a field Not set opens the form at that field’s input: a field it lists, any case, and nothing for any other key', () => {
+    const person = typeOf('person');
+    assert.strictEqual(findStartField(person, 'email')?.name, 'email');
+    assert.strictEqual(findStartField(person, ' TEAM ')?.key, 'team');
+    assert.strictEqual(findStartField(person, undefined), undefined, 'no field asked: the form opens as usual');
+    assert.strictEqual(findStartField(person, 'pager'), undefined, 'a key the type does not have');
+    const described = { fields: [...person.fields, { key: 'describes', name: 'describes', kind: { name: 'text' as const, many: false } }] };
+    assert.strictEqual(findStartField(described, 'describes'), undefined, 'the form writes the note’s identity itself');
   });
 });

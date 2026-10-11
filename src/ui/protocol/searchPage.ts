@@ -337,9 +337,14 @@ export interface TagOverviewHub {
   tags?: TagReference[];
 }
 
-/** A tag's page asks for a hub note that describes the tag. */
+/**
+ * A tag's page asks for a hub note that describes the tag; for a typed
+ * row, the form for it opens, at `field`'s input when an Edit on a field
+ * Not set asks.
+ */
 export interface CreateHubNoteMessage {
   type: 'createHubNote';
+  field?: string;
 }
 
 /** A tag's page's hub note opened or folded by the reader, which the next tag's page starts as. */

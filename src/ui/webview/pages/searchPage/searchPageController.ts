@@ -190,10 +190,11 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       saveTagOverviewFilter: (message, page) => this.saveSearch(page, message.query),
       mergeTags: (message) => this.mergeTags(message.sourceKey, message.targetKey),
       setHubOpen: (message) => preferences.display.setHubNoteCollapsed(!message.open),
-      createHubNote: async () => {
+      // An Edit on a field Not set opens the row's form at that field.
+      createHubNote: async (message) => {
         const tagKey = this.currentSnapshot().tag?.key;
         if (tagKey) {
-          await createHubNoteForTag({ indexer, history: search.writes.history }, tagKey);
+          await createHubNoteForTag({ indexer, history: search.writes.history }, tagKey, message.field ? { field: message.field } : {});
         }
       },
       openTag: openTag({ indexer, navigation, policy: 'lenient', openTag: (tagKey) => search.openTag(tagKey) }),

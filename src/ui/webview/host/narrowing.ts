@@ -10,6 +10,7 @@
  * that page's table, so pages moved in parallel never edit one file.
  */
 import { isObject } from '../../../shared/guards';
+import type { FieldEditValue, SetNoteFieldMessage } from '../../protocol/fields';
 import type { MessageAs, MessageOf, PageMessage } from '../../protocol/messaging';
 import type { OpenWikiLinkMessage } from '../../protocol/notePage';
 import type {
@@ -244,4 +245,41 @@ export const narrowOpenWikiLink: Narrower<OpenWikiLinkMessage> = (value) => {
     return undefined;
   }
   return { type: 'openWikiLink', target: value.target, ...(isName(value.from) ? { from: value.from } : {}), ...modifiers };
+};
+
+/** Whether a value is a front-matter key a field edit may name, as the parser reads one. */
+export function isFieldKey(value: unknown): value is string {
+  return typeof value === 'string' && /^[A-Za-z][A-Za-z0-9_-]{0,99}$/.test(value);
+}
+
+/** What a field edit writes: a row id, an option, text, a box, or Clear, each within bounds. */
+function readFieldEditValue(value: unknown): FieldEditValue | undefined {
+  if (!isObject(value)) {
+    return undefined;
+  }
+  switch (value.kind) {
+    case 'row':
+      return isName(value.rowId) ? { kind: 'row', rowId: value.rowId } : undefined;
+    case 'option':
+      return isName(value.option) ? { kind: 'option', option: value.option } : undefined;
+    case 'text':
+      return isName(value.text) ? { kind: 'text', text: value.text } : undefined;
+    case 'checkbox':
+      return typeof value.checked === 'boolean' ? { kind: 'checkbox', checked: value.checked } : undefined;
+    case 'clear':
+      return { kind: 'clear' };
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * A field edit, from the Note page or a tag's page's hub card: the note it
+ * is in, a key the parser reads as one, and what to write; the host checks
+ * the rest against the index.
+ */
+export const narrowSetNoteField: Narrower<SetNoteFieldMessage> = (value) => {
+  const edit = readFieldEditValue(value.value);
+  const { filePath, key } = value;
+  return edit && isName(filePath) && isFieldKey(key) ? { type: 'setNoteField', filePath, key, value: edit } : undefined;
 };
