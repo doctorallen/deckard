@@ -60,6 +60,30 @@ team) would flood the list unless it were normalized for how common the
 value is, as tags are. If it is wanted later, it should be a separate signal
 limited to the schema's relations and normalized for prevalence.
 
+## Decisions
+
+Where the request was silent:
+
+1. **A type with no relation fields** has no section, rather than a line
+   saying it has nothing to compare by: it could never list anything.
+2. **The heading counts** the other rows the groups hold, each once, as
+   Linked from counts its notes; with none, no count.
+3. **A group's search finds the open note's row too**, since no query term
+   leaves out one row; the group lists the others.
+4. **A row's fact**: what the hover leads with, else "No hub note", else its
+   first written relation besides the group's (`manager Alex Rivera`), so
+   a row with no Text field still says something the group does not.
+5. **A value that names nothing** (unresolved text) makes no group: there
+   is no row or note to compare by.
+6. **A reverse whose name a built-in takes** keeps its group, with its label
+   and +N more as plain text, since no query can name it.
+7. **All people** is drawn at the heading's right but comes first in focus
+   order, before the fold's summary, so it is not inside the summary.
+8. **A row's title opens its note first**, kept rather than previewed, as a
+   related note opens, Cmd/Ctrl beside; its tag's page only when it has no
+   note. The rows tab opens the tag's page first; the request asked for the
+   note here.
+
 ## Order of work
 
 1. This plan.
