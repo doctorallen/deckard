@@ -113,6 +113,11 @@ export interface RowNoteOptions {
   now: Date;
   /** The reader's answers to the template's questions, by question. */
   answers?: ReadonlyMap<string, string>;
+  /**
+   * A namespace row's tag, when it is not the title's: `#team/rates/emea`.
+   * The caller has checked it is a tag of the type's namespace.
+   */
+  tag?: string;
 }
 
 /**
@@ -124,7 +129,7 @@ export interface RowNoteOptions {
 export function planRowNote(type: RowNoteType, title: string, options: RowNoteOptions): RowNotePlan | undefined {
   const fileName = getExtractedNoteFileName(title);
   const rows = type.rows;
-  const tag = rowTagOf(type, title);
+  const tag = rows?.kind === 'tags' ? (options.tag ?? rowTagOf(type, title)) : undefined;
   if (!fileName || (rows?.kind === 'tags' && !tag)) {
     return undefined;
   }
