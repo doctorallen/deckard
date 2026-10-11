@@ -32,12 +32,20 @@ function press(page: WebviewPage, selector: string, key: string): void {
   page.find(selector).dispatchEvent(new page.window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
 }
 
-/** Each field row's key and values, as drawn. */
+/** Each field row's key and values, as drawn, its Edit and where it is set aside. */
 function rows(page: WebviewPage, scope = ''): Array<[string, string]> {
   return page.findAll(`${scope} .field-row`).map((row) => [
     row.querySelector('.field-name')?.textContent ?? '',
-    [...(row.querySelector('.field-values')?.childNodes ?? [])].filter((node) => !(node instanceof page.window.HTMLElement && node.classList.contains('field-edit'))).map((node) => node.textContent).join(''),
+    [...(row.querySelector('.field-values')?.childNodes ?? [])]
+      .filter((node) => !(node instanceof page.window.HTMLElement && (node.classList.contains('field-edit') || node.classList.contains('field-source'))))
+      .map((node) => node.textContent)
+      .join(''),
   ]);
+}
+
+/** The field row named `name`. */
+function rowNamed(page: WebviewPage, name: string, scope = ''): Element | undefined {
+  return page.findAll(`${scope} .field-row`).find((row) => row.querySelector('.field-name')?.textContent === name);
 }
 
 suite('Note page fields, drawn', () => {
@@ -64,12 +72,21 @@ suite('Note page fields, drawn', () => {
     assert.deepStrictEqual(page.lastPosted('openSearch'), { type: 'openSearch', query: 'type = team' });
   });
 
-  test('draws a reverse in italics with what it is worked out from, and no Edit', () => {
+  test('draws the reverses after the note’s own fields, under From other notes, each in italics saying where it is set, with no Edit', () => {
     const page = notePage('Teams/Rates.md');
-    const members = page.findAll('.field-row').find((row) => row.querySelector('.field-name')?.textContent === 'members');
+    const lists = page.findAll('.note-fields > .field-rows, .note-fields > .field-group-label');
+    assert.deepStrictEqual(lists.map((list) => list.className), ['field-rows', 'field-group-label', 'field-rows field-reverses']);
+    assert.strictEqual(page.text('.field-group-label'), 'From other notes');
+    assert.strictEqual(page.find('.field-group-label').classList.contains('eyebrow'), false, 'a label Zen keeps, not an eyebrow');
+    assert.deepStrictEqual(rows(page, '.field-reverses').map(([name]) => name), ['members', 'team of']);
+    assert.ok(!rows(page, '.note-fields > .field-rows:not(.field-reverses)').some(([name]) => name === 'members'));
+    const members = rowNamed(page, 'members');
     assert.ok(members?.classList.contains('is-reverse'));
-    assert.strictEqual(members?.querySelector('.field-name')?.getAttribute('data-tip'), "From each person's team");
+    assert.strictEqual(members?.querySelector('.field-source')?.textContent, "Set in Dana Whitfield's team");
+    assert.strictEqual(members?.querySelector('.field-source code')?.textContent, 'team', 'the field it is set in, in monospace');
+    assert.strictEqual(rowNamed(page, 'team of')?.querySelector('.field-source')?.textContent, "Set in RFQ outage's team");
     assert.strictEqual(members?.querySelector('.field-edit'), null);
+    assert.strictEqual(rowNamed(page, 'lead')?.querySelector('.field-source'), null, 'a field the note writes says nothing of where');
   });
 
   test('folds the empty fields into one line that opens to list them', () => {
@@ -180,10 +197,12 @@ suite('Tag page fields, drawn', () => {
     assert.strictEqual(page.findAll('.hub .field-edit, .hub .hub-properties').length, 0);
   });
 
-  test('a typed row with no note gets a Fields card in the hub’s place, with who owns it', () => {
+  test('a typed row with no note gets a Fields card in the hub’s place, its type’s fields Not set, then who owns it from other notes', () => {
     const page = searchPage('#area/bond-trading');
     assert.strictEqual(page.text('details.hub-fields-card > summary .eyebrow'), 'Fields');
-    assert.deepStrictEqual(rows(page, '.hub-fields-card'), [['owned by', 'Rates (lead Dana Whitfield · on-call Priya Natarajan)']]);
+    assert.deepStrictEqual(rows(page, '.hub-fields-card'), [['system', 'Not set'], ['owned by', 'Rates (lead Dana Whitfield · on-call Priya Natarajan)']]);
+    assert.strictEqual(page.text('.hub-fields-card .field-group-label'), 'From other notes');
+    assert.strictEqual(rowNamed(page, 'owned by')?.querySelector('.field-source')?.textContent, "Set in Rates' owns");
     assert.strictEqual(page.find('.hub-offer-link').textContent, 'Create hub note', 'Create hub note stays under the title');
   });
 });

@@ -19,7 +19,7 @@ import { TagButton } from '../shared/tagButton';
 import { installViewOptions, type ViewOptionItem } from '../shared/viewOptions';
 import { keepState, post } from '../shared/vscode';
 import { Blocks } from '../shared/noteBlocks';
-import { AddField, FieldRows, type FieldEditing, readableValue } from '../shared/fieldRows';
+import { FieldRows, type FieldEditing, readableValue } from '../shared/fieldRows';
 import type { FieldEditValue } from '../../ui/protocol/fields';
 
 /** Sends the host one of the messages the note page may send. */
@@ -178,8 +178,7 @@ function NoteFields({ snapshot, editing }: { readonly snapshot: NotePageSnapshot
   return (
     <section class="note-fields" data-zen-region="" aria-label={`${fields.typeName} fields`}>
       {snapshot.hub?.typeQuery ? null : <p class="note-fields-type"><TypeLink name={fields.typeName} query={fields.typeQuery} /></p>}
-      <FieldRows fields={fields} noteAction="open-note" editable editing={editing} />
-      <AddField fields={fields} editing={editing} />
+      <FieldRows fields={fields} noteAction="open-note" editable editing={editing} addField />
     </section>
   );
 }

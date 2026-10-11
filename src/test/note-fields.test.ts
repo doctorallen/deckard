@@ -5,7 +5,7 @@ import { setFrontmatterField } from '../domain/types/frontmatterWriter';
 import type { DrawnField } from '../ui/protocol/fields';
 import { describeNoteFields, describeTagFields, planNoteFieldWrite, type FieldWritePlan } from '../ui/state/noteFields';
 import { createNotePageSnapshot } from '../ui/state/notePageState';
-import { now, typedWorkspace } from './typedWorkspace';
+import { indexOf, now, typedWorkspace } from './typedWorkspace';
 
 const index = typedWorkspace();
 
@@ -19,7 +19,7 @@ function writes(plan: FieldWritePlan): Exclude<FieldWritePlan, { error: string }
 }
 
 suite('Note page fields', () => {
-  test('a typed row’s note lists its filled fields in the schema’s order, then its reverses, its identity aside', () => {
+  test('a typed row’s note lists its own filled fields in the schema’s order, then its other keys, then its reverses, its identity aside', () => {
     const fields = describeNoteFields(index, 'Teams/Rates.md', [
       { name: 'describes', values: [{ text: '#team/rates' }] },
       { name: 'lead', values: [{ text: '@dana' }] },
@@ -35,10 +35,11 @@ suite('Note page fields', () => {
       ['headcount', ['1,200']],
       ['on-call', ['Priya Natarajan']],
       ['status', ['active']],
+      ['aliases', ['FICC']],
       ['members', ['Dana Whitfield']],
       ['team of', ['RFQ outage']],
-      ['aliases', ['FICC']],
     ]);
+    assert.deepStrictEqual(fields.fields.map((field) => field.source === 'reverse'), [false, false, false, false, false, false, false, true, true], 'own fields, then reverses');
     assert.deepStrictEqual(fields.empty, []);
   });
 
@@ -53,11 +54,13 @@ suite('Note page fields', () => {
     assert.deepStrictEqual(owner?.values, [{ text: 'RFQ outage', filePath: 'Incidents/RFQ outage.md', reverse: true }]);
   });
 
-  test('a reverse is drawn as one, and says what it is worked out from', () => {
+  test('a reverse is drawn as one, and says where it is set: by the one row that sets it, or each row of its type', () => {
     const fields = describeNoteFields(index, 'Teams/Rates.md', []);
     const members = fields?.fields.find((field) => field.name === 'members');
     assert.strictEqual(members?.source, 'reverse');
     assert.strictEqual(members?.tip, "From each person's team");
+    assert.deepStrictEqual(members?.from, [{ owner: "Dana Whitfield's", field: 'team' }], 'one person sets it');
+    assert.strictEqual(fields?.fields.find((field) => field.name === 'lead')?.from, undefined, 'a field the note writes says nothing');
     assert.strictEqual(members?.edit, undefined, 'a reverse is written on the other rows');
     assert.ok(members?.values.every((value) => value.reverse));
     const dana = describeNoteFields(index, 'People/Dana Whitfield.md', []);
@@ -109,19 +112,69 @@ suite('Note page fields', () => {
 });
 
 suite('Tag page fields', () => {
-  test('a typed row with a hub note draws the hub’s fields', () => {
+  test('a typed row with a hub note draws the hub’s fields, each it writes with its editor, as the Note page does', () => {
     const fields = describeTagFields(index, '#team/rates');
     assert.deepStrictEqual(fields?.fields.map((field) => field.name).slice(0, 2), ['lead', 'owns']);
-    assert.ok(fields?.fields.every((field) => field.edit === undefined), 'read-only here');
+    assert.deepStrictEqual(fields?.fields.find((field) => field.name === 'lead')?.edit, { key: 'lead', many: false, input: 'rows', choices: 'people', current: ['@dana'] });
+    assert.strictEqual(fields?.fields.find((field) => field.name === 'members')?.edit, undefined, 'a reverse is written on the other rows');
+    assert.deepStrictEqual(Object.keys(fields?.choices ?? {}).sort(), ['people', 'rows:area']);
+    const credit = describeTagFields(index, '#team/credit');
+    assert.deepStrictEqual(credit?.empty.map((field) => field.edit?.key), ['owns', 'on-call', 'status'], 'its empty fields, to fold and add');
   });
 
-  test('a typed row with no note draws its reverses, each with what the row it names holds of people', () => {
+  test('a typed row with no note lists its type’s fields as Not set, each starting its note, then its reverses with who owns what they name', () => {
     const fields = describeTagFields(index, '#area/bond-trading');
-    assert.deepStrictEqual(fields?.fields.map((field) => [field.name, field.source, field.values.map((value) => [value.text, value.detail])]), [
-      ['owned by', 'reverse', [['Rates', 'lead Dana Whitfield · on-call Priya Natarajan']]],
+    assert.deepStrictEqual(fields?.fields.map((field) => [field.name, field.source, field.startsNote, field.values.map((value) => [value.text, value.detail])]), [
+      ['system', 'written', 'system', []],
+      ['owned by', 'reverse', undefined, [['Rates', 'lead Dana Whitfield · on-call Priya Natarajan']]],
     ]);
-    assert.deepStrictEqual(fields?.empty, [], 'a row with no note has nothing to fill');
+    assert.deepStrictEqual(fields?.fields[1].from, [{ owner: "Rates'", field: 'owns' }]);
+    assert.deepStrictEqual(fields?.empty, [], 'nothing folds: every field of its own reads Not set');
     assert.strictEqual(describeTagFields(index, '#project/none'), undefined);
+  });
+});
+
+suite('Tag page fields for a row with no note', () => {
+  const work = indexOf({
+    'Types/Person.md': '---\ndeckard-type: person\nrows: "@*"\n---\n# Person\n\n| Field | Kind | Reverse |\n| --- | --- | --- |\n| role | Text | |\n| manager | Person | reports |\n',
+    'Types/Team.md': '---\ndeckard-type: team\nrows: "#team/*"\n---\n# Team\n\n| Field | Kind |\n| --- | --- |\n| lead | Person |\n| on-call | Person |\n',
+    'Types/Decision.md': '---\ndeckard-type: decision\nrows: notes\n---\n# Decision\n\n| Field | Kind | Reverse |\n| --- | --- | --- |\n| decided-by | Person, many | decided |\n',
+    'Types/Badge.md': '---\ndeckard-type: badge\nrows: "#badge/*"\n---\n# Badge\n\nNo fields yet.\n',
+    'teams/Payments.md': '---\ndescribes: "#team/payments"\nlead: "@alex"\non-call: "@sam"\n---\n# Payments',
+    'people/Theo.md': '---\ndescribes: "@theo"\nmanager: "@alex"\n---\n# Theo',
+    'people/Noor.md': '---\ndescribes: "@noor"\nmanager: "@alex"\n---\n# Noor',
+    'decisions/ADR-1.md': '---\ntype: decision\ndecided-by: ["@alex", "@theo"]\n---\n# ADR-1',
+    'decisions/ADR-2.md': '---\ntype: decision\ndecided-by: ["@alex"]\n---\n# ADR-2',
+    'notes/log.md': '# Log @alex @sam #badge/gold #badge/silver\n',
+    'notes/gold.md': '# Gold\n#badge/gold',
+  });
+  const alex = describeTagFields(work, '@alex');
+  const field = (name: string) => alex?.fields.find((each) => each.name === name);
+
+  test('its own fields lead, Not set, and the reverses follow', () => {
+    assert.deepStrictEqual(alex?.fields.map((each) => [each.name, each.source, each.startsNote]), [
+      ['role', 'written', 'role'],
+      ['manager', 'written', 'manager'],
+      ['lead of', 'reverse', undefined],
+      ['reports', 'reverse', undefined],
+      ['decided', 'reverse', undefined],
+    ]);
+  });
+
+  test('a reverse says where it is set: the one row by its title, several by their type', () => {
+    assert.deepStrictEqual(field('lead of')?.from, [{ owner: "Payments'", field: 'lead' }]);
+    assert.deepStrictEqual(field('reports')?.from, [{ owner: "each person's", field: 'manager' }]);
+    assert.deepStrictEqual(field('decided')?.from, [{ owner: "each decision's", field: 'decided-by' }]);
+  });
+
+  test('a value’s details leave out the row shown: a fact naming only it goes, and one naming others keeps them', () => {
+    assert.deepStrictEqual(field('lead of')?.values.map((value) => value.detail), ['on-call Sam'], 'its lead is the row shown');
+    assert.deepStrictEqual(field('reports')?.values.map((value) => value.detail), [undefined, undefined], 'nothing left to say');
+    assert.deepStrictEqual(field('decided')?.values.map((value) => [value.text, value.detail]), [['ADR-1', 'also decided-by Theo'], ['ADR-2', undefined]]);
+  });
+
+  test('a type with no fields lists no Not set rows, and a row nothing names then has no card', () => {
+    assert.strictEqual(describeTagFields(work, '#badge/silver'), undefined);
   });
 });
 

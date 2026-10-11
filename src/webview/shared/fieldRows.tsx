@@ -1,16 +1,19 @@
 /**
  * A typed row's fields, as the Note page and a tag's page draw them
- * (docs/implementation/30-databases.md § Surfaces 5 and 6): one row per
- * field that holds something, its key in monospace and its values, a
- * person or relation by its row's title, which opens the row as a tag
- * button does; a reverse in italics, saying what it is worked out from;
- * and the empty fields folded into one line, "1 empty: email", which opens
- * to list them.
+ * (docs/implementation/30-databases.md § Surfaces 5 and 6,
+ * docs/implementation/33-clearer-fields.md): one row per field that holds
+ * something, its key in monospace and its values, a person or relation by
+ * its row's title, which opens the row as a tag button does. The row's own
+ * fields come first, the empty ones folded into one line, "1 empty: email",
+ * which opens to list them; then, under "From other notes", the reverses
+ * other rows give it, in italics, each saying where it is set.
  *
- * On the Note page each field the note writes has an Edit button, revealed
- * on its row's hover or focus (shared/reveal.css), and Enter on the row
- * opens the same editor under it: a list by kind, filtered as you type, an
- * input, or a box, then Clear. A tag's page draws the rows read-only.
+ * Where the fields are `editable`, on the Note page and a hub note's card,
+ * each field the note writes has an Edit button, revealed on its row's
+ * hover or focus (shared/reveal.css), and Enter on the row opens the same
+ * editor under it: a list by kind, filtered as you type, an input, or a
+ * box, then Clear. For a row no note describes, its type's fields read Not
+ * set, and their Edit opens the form for the row's new note at that field.
  */
 import type { ComponentChild } from 'preact';
 
@@ -76,20 +79,35 @@ function FieldValue({ value, noteAction }: { readonly value: DrawnFieldValue; re
 /**
  * A field's Edit: shown on its row's hover or focus at any step, and
  * under Zen only once the fields region is pointed at or holds focus; it
- * stays drawn while its editor is open.
+ * stays drawn while its editor is open. For a row no note describes, it
+ * opens the form for the row's new note instead (`create-row-note`).
  */
-function EditButton({ name, edit, open }: { readonly name: string; readonly edit: FieldEditor; readonly open: boolean }) {
+function EditButton({ name, fieldKey, open, action = 'edit-field' }: { readonly name: string; readonly fieldKey: string; readonly open?: boolean; readonly action?: string }) {
   return (
-    <button type="button" class="field-edit" data-action="edit-field" data-field-key={edit.key} aria-expanded={open} aria-label={`Edit ${name}`} data-reveal="" data-zen-reveal="">
+    <button type="button" class="field-edit" data-action={action} data-field-key={fieldKey} aria-expanded={open} aria-label={`Edit ${name}`} data-reveal="" data-zen-reveal="">
       Edit
     </button>
+  );
+}
+
+/** Where a reverse is set, after its values: `Set in each person's manager`; for a field the note writes too, `Also set in`. */
+function FieldSources({ field }: { readonly field: DrawnField }) {
+  const from = field.from ?? [];
+  if (from.length === 0) {
+    return null;
+  }
+  return (
+    <span class="field-source">
+      {field.source === 'merged' ? 'Also set in ' : 'Set in '}
+      {from.map((source, at) => [at > 0 ? ' and ' : null, `${source.owner} `, <code>{source.field}</code>])}
+    </span>
   );
 }
 
 /** What one field row is drawn with besides its field. */
 interface FieldRowOptions {
   readonly noteAction: string;
-  /** Whether each field the note writes has its Edit button: on the Note page. */
+  /** Whether each field the note writes has its Edit button: on the Note page and a tag's page. */
   readonly editable: boolean;
   /** The editor open now, and the rows each relation's list offers. */
   readonly editing?: FieldEditing;
@@ -101,24 +119,35 @@ function isEditing(editing: FieldEditing | undefined, key: string): editing is F
   return editing?.key === key && !editing.other && !editing.adding;
 }
 
-/** One field: its key, its values, and on the Note page its Edit button and, when open, its editor. */
+/** A field's values, joined by commas; or, holding none, `empty`, or `Not set` for a row no note describes. */
+function FieldValues({ field, noteAction }: { readonly field: DrawnField; readonly noteAction: string }) {
+  if (!field.values.length) {
+    return <span class="field-none">{field.startsNote ? 'Not set' : 'empty'}</span>;
+  }
+  return <>{field.values.map((value, at) => [at > 0 ? ', ' : null, <FieldValue value={value} noteAction={noteAction} />])}</>;
+}
+
+/**
+ * One field: its key, its values and where they are set, and where the
+ * fields are editable its Edit button and, when open, its editor.
+ */
 function FieldRow({ field, options }: { readonly field: DrawnField; readonly options: FieldRowOptions }) {
   const edit = options.editable ? field.edit : undefined;
+  const startsNote = options.editable ? field.startsNote : undefined;
   const editing = edit && isEditing(options.editing, edit.key) ? options.editing : undefined;
-  const open = editing !== undefined;
+  const key = edit?.key ?? startsNote;
   return (
     <div
-      class={['field-row', field.source === 'reverse' ? 'is-reverse' : '', open ? 'is-editing' : ''].filter(Boolean).join(' ')}
+      class={['field-row', field.source === 'reverse' ? 'is-reverse' : '', editing ? 'is-editing' : ''].filter(Boolean).join(' ')}
       data-reveal-region=""
-      data-field-key={edit?.key}
-      tabIndex={edit ? 0 : undefined}
+      data-field-key={key}
+      tabIndex={key ? 0 : undefined}
     >
       <dt class="field-name" data-tip={field.tip}>{field.name}</dt>
       <dd class="field-values">
-        {field.values.length
-          ? field.values.map((value, at) => [at > 0 ? ', ' : null, <FieldValue value={value} noteAction={options.noteAction} />])
-          : <span class="field-none">empty</span>}
-        {edit ? <EditButton name={field.name} edit={edit} open={open} /> : null}
+        <FieldValues field={field} noteAction={options.noteAction} />
+        {key ? <EditButton name={field.name} fieldKey={key} open={edit ? editing !== undefined : undefined} action={edit ? 'edit-field' : 'create-row-note'} /> : null}
+        <FieldSources field={field} />
       </dd>
       {edit && editing ? <dd class="field-editor-cell"><FieldEditorPanel field={field} edit={edit} typed={editing.text} choices={options.choices} /></dd> : null}
     </div>
@@ -216,34 +245,47 @@ function FieldEditorPanel({ field, edit, typed, choices }: { readonly field: Dra
   );
 }
 
-/** What a row's fields are drawn with: the action a note value opens by, and on the Note page, the editing. */
+/** What a row's fields are drawn with: the action a note value opens by, and where they are editable, the editing. */
 export interface FieldRowsProps {
   readonly fields: DrawnFields;
   /** `open-note` on the Note page, `open-source` on a tag's page. */
   readonly noteAction: string;
-  /** Whether each field the note writes has its Edit button. */
+  /** Whether each field the note writes has its Edit button, and a row no note describes its Edit to start one. */
   readonly editable?: boolean;
   readonly editing?: FieldEditing;
+  /** Whether Add field… follows the row's own fields. */
+  readonly addField?: boolean;
 }
 
 /**
- * A row's fields: those that hold something, then the empty ones folded
- * into one line that opens to list them. On the Note page, `editable` gives
- * each field the note writes its Edit button, and `editing` draws the
- * editor open.
+ * A row's fields: its own that hold something, then the empty ones folded
+ * into one line that opens to list them, and Add field… when asked; then
+ * the reverses, under "From other notes". `editable` gives each field the
+ * note writes its Edit button, and `editing` draws the editor open.
  */
-export function FieldRows({ fields, noteAction, editable, editing }: FieldRowsProps) {
+export function FieldRows({ fields, noteAction, editable, editing, addField }: FieldRowsProps) {
   const options: FieldRowOptions = { noteAction, editable: editable === true, editing, choices: fields.choices };
   const emptyOpen = Boolean(editing?.key && !editing.other && fields.empty.some((field) => field.edit?.key === editing.key));
+  const own = fields.fields.filter((field) => field.source !== 'reverse');
+  const reverses = fields.fields.filter((field) => field.source === 'reverse');
   return (
     <>
-      {fields.fields.length ? <dl class="field-rows">{fields.fields.map((field) => <FieldRow field={field} options={options} />)}</dl> : null}
+      {own.length ? <dl class="field-rows">{own.map((field) => <FieldRow field={field} options={options} />)}</dl> : null}
       {fields.empty.length
         ? (
           <details class="field-empty" open={emptyOpen || undefined}>
             <summary>{describeEmptyFields(fields.empty)}</summary>
             <dl class="field-rows">{fields.empty.map((field) => <FieldRow field={field} options={options} />)}</dl>
           </details>
+        )
+        : null}
+      {addField && editable ? <AddField fields={fields} editing={editing} /> : null}
+      {reverses.length
+        ? (
+          <>
+            <p class="field-group-label">From other notes</p>
+            <dl class="field-rows field-reverses">{reverses.map((field) => <FieldRow field={field} options={options} />)}</dl>
+          </>
         )
         : null}
     </>
@@ -255,7 +297,7 @@ export function FieldRows({ fields, noteAction, editable, editing }: FieldRowsPr
  * Other… for a key the type does not name; or, once Other… is chosen, the
  * key and its value.
  */
-export function AddField({ fields, editing }: { readonly fields: DrawnFields; readonly editing: FieldEditing | undefined }) {
+function AddField({ fields, editing }: { readonly fields: DrawnFields; readonly editing: FieldEditing | undefined }) {
   const open = Boolean(editing?.adding || editing?.other);
   return (
     <div class="field-add">

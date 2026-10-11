@@ -1,9 +1,11 @@
 /**
  * A typed row's fields as the Note page and a tag's page draw them
- * (docs/implementation/30-databases.md § Surfaces 5 and 6): each field a
- * row of its key and values, the reverses other rows compute, the empty
- * schema fields folded into one line, and, on the Note page, how each
- * field the note writes is edited, and the message an edit sends.
+ * (docs/implementation/30-databases.md § Surfaces 5 and 6,
+ * docs/implementation/33-clearer-fields.md): each field a row of its key
+ * and values, the reverses other rows compute with where each is set, the
+ * empty schema fields folded into one line, and, on the Note page and a
+ * hub note's card, how each field the note writes is edited, and the
+ * message an edit sends.
  */
 import type { TagReference } from './shared';
 
@@ -19,7 +21,11 @@ export interface DrawnFieldValue {
   unresolved?: true;
   /** Set on a value another row's relation gives, drawn as a reverse is. */
   reverse?: true;
-  /** What the row it names holds, as a path reads it: `lead Dana Whitfield · on-call Sam Ortiz`. */
+  /**
+   * What the row it names holds of people other than the row shown, as a
+   * path reads it: `lead Dana Whitfield · on-call Sam Ortiz`, `also
+   * decided-by Theo Park`.
+   */
   detail?: string;
 }
 
@@ -41,6 +47,14 @@ export interface FieldEditor {
   current: string[];
 }
 
+/** Where a reverse is set: a row, or each row of a type, and its field: `Payments'` `lead`, `each person's` `manager`. */
+export interface FieldSource {
+  /** Who sets it, as owning the field: `Payments'`, `each person's`. */
+  owner: string;
+  /** The field it is set in, as the schema names it. */
+  field: string;
+}
+
 /** One field: its name and values, where they come from, and, when the note writes it, its editor. */
 export interface DrawnField {
   /** Its name: the key as the schema writes it, or a reverse's name. */
@@ -49,8 +63,15 @@ export interface DrawnField {
   source: 'written' | 'reverse' | 'merged';
   /** For a reverse, or a field merged with one, what it is worked out from: `From each person's team`. */
   tip?: string;
+  /** For a reverse, or a field merged with one, where it is set, drawn after its values. */
+  from?: FieldSource[];
   values: DrawnFieldValue[];
   edit?: FieldEditor;
+  /**
+   * For a row no note describes, the schema key of this field, which reads
+   * Not set: its Edit opens the form for the row's new note at this field.
+   */
+  startsNote?: string;
 }
 
 /** A row another row's relation can name, as an edit's list offers it. */
@@ -68,11 +89,15 @@ export interface DrawnFields {
   /** The row's type, by its display name, and the search that lists its rows: `type = team`. */
   typeName: string;
   typeQuery: string;
-  /** The fields that hold something: the schema's, its reverses, then the note's other keys. */
+  /**
+   * The fields that hold something, the row's own first: the schema's, then
+   * the note's other keys, then the reverses other rows give it. For a row
+   * no note describes, its type's fields lead, each Not set.
+   */
   fields: DrawnField[];
   /** The schema's fields that hold nothing, folded into one line: `1 empty: email`. */
   empty: DrawnField[];
-  /** On the Note page, the rows each relation's list offers, by the editors' `choices`. */
+  /** On the Note page and a hub note's card, the rows each relation's list offers, by the editors' `choices`. */
   choices?: Record<string, FieldChoice[]>;
 }
 
@@ -85,8 +110,8 @@ export type FieldEditValue =
   | { kind: 'clear' };
 
 /**
- * Writes one field of the note shown: a choice from its list, typed text,
- * or Clear. A field that holds several values adds a row or option it
+ * Writes one field of the note shown, on the Note page, or of the hub note
+ * on a tag's page: a choice from its list, typed text, or Clear. A field that holds several values adds a row or option it
  * does not hold, and takes away one it does.
  */
 export interface SetNoteFieldMessage {

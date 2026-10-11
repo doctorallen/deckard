@@ -3,18 +3,22 @@
  * what an edit on the Note page writes (docs/implementation/30-databases.md
  * § Surfaces 5 and 6, § Writes).
  *
- * - The fields that hold something come first, in the schema's order, then
- *   the reverses other rows' relations give the row, then the note's other
- *   front-matter keys, its identity (`describes:`, `type:`) aside. A reverse
- *   says what it is worked out from: "From each person's team".
+ * - The row's own fields come first: those that hold something, in the
+ *   schema's order, then the note's other front-matter keys, its identity
+ *   (`describes:`, `type:`) aside. Then the reverses other rows' relations
+ *   give the row, which the page draws under "From other notes", each
+ *   saying where it is set: "Set in each person's manager", "Set in
+ *   Payments' lead" (docs/implementation/33-clearer-fields.md).
  * - The schema's empty fields are listed apart, for the page to fold into
  *   "1 empty: email".
- * - On the Note page each schema field the note can write has an editor by
- *   its kind, and each relation's rows are listed once for every editor
- *   that offers them.
- * - On a tag's page with no hub note, each reverse value names what the
- *   row it names holds of people (`lead Dana Whitfield · on-call Sam
- *   Ortiz`), so a row with no note still shows who owns it.
+ * - On the Note page and a hub note's card each schema field the note can
+ *   write has an editor by its kind, and each relation's rows are listed
+ *   once for every editor that offers them.
+ * - On a tag's page with no hub note, the type's own fields read Not set,
+ *   each opening the form for the row's new note at that field; and each
+ *   reverse value names what the row it names holds of people other than
+ *   this one (`on-call Sam Ortiz`), so a row with no note still shows who
+ *   owns it.
  */
 import { noteTitle } from '../../domain/index/backlinks';
 import { formatKeyWords } from '../../domain/markdown/tagKeys';
@@ -22,7 +26,7 @@ import type { FieldKind, WorkspaceIndex } from '../../domain/model';
 import { readDateValue, readNumberValue, readSelectValue } from '../../domain/types/fieldValues';
 import type { FrontmatterFieldWrite, FrontmatterWriteValue } from '../../domain/types/frontmatterWriter';
 import { getTypeIndex, type FieldValue, type RowField, type TypeIndex, type TypeRow } from '../../domain/types/typeIndex';
-import type { DrawnField, DrawnFields, DrawnFieldValue, FieldChoice, FieldEditor, FieldEditValue } from '../protocol/fields';
+import type { DrawnField, DrawnFields, DrawnFieldValue, FieldChoice, FieldEditor, FieldEditValue, FieldSource } from '../protocol/fields';
 import { rowTag } from './typeHover';
 import { listKindRows, valueTitle } from './typeRows';
 
@@ -55,9 +59,40 @@ export function findNoteRow(types: TypeIndex, filePath: string): TypeRow | undef
 export function describeNoteFields(index: WorkspaceIndex, filePath: string, others: readonly OtherKey[]): DrawnFields | undefined {
   const types = getTypeIndex(index);
   const row = types.isEmpty ? undefined : findNoteRow(types, filePath);
+  return row ? describeEditableFields(index, types, row, others) : undefined;
+}
+
+/**
+ * A tag's page's fields for its typed row: with its hub note, the hub's
+ * fields and other keys with their editors, as the Note page draws them;
+ * without one, the type's own fields, each Not set and opening the form
+ * for the row's new note, then the reverses other rows give it, each value
+ * with what the row it names holds of people. Undefined for a tag no type
+ * has, or a row with no note whose type has no fields and that nothing
+ * names.
+ */
+export function describeTagFields(index: WorkspaceIndex, tagKey: string, others: readonly OtherKey[] = []): DrawnFields | undefined {
+  const types = getTypeIndex(index);
+  const row = types.isEmpty ? undefined : types.rowOfTag(tagKey);
   if (!row) {
     return undefined;
   }
+  if (row.filePath) {
+    return describeEditableFields(index, types, row, others);
+  }
+  const fields = describeRowFields(types, row, { others: [], details: true });
+  const unset: DrawnField[] = (types.registry.get(row.typeKey)?.fields ?? []).map((field) => ({
+    name: field.name,
+    source: 'written',
+    values: [],
+    startsNote: field.key,
+  }));
+  const all = [...unset, ...fields.fields];
+  return all.length > 0 ? { ...fields, fields: all, empty: [] } : undefined;
+}
+
+/** A row's fields with an editor on each its note can write, and each relation's rows listed once. */
+function describeEditableFields(index: WorkspaceIndex, types: TypeIndex, row: TypeRow, others: readonly OtherKey[]): DrawnFields {
   const choices: Record<string, FieldChoice[]> = {};
   const fields = describeRowFields(types, row, {
     others,
@@ -72,68 +107,64 @@ export function describeNoteFields(index: WorkspaceIndex, filePath: string, othe
   return { ...fields, choices };
 }
 
-/**
- * A tag's page's fields for its typed row, read-only: with its hub note,
- * the hub's fields and other keys, as the Note page draws them; without
- * one, the reverses other rows give it, each value with what the row it
- * names holds of people. Undefined for a tag no type has, or a row with no
- * note that nothing names.
- */
-export function describeTagFields(index: WorkspaceIndex, tagKey: string, others: readonly OtherKey[] = []): DrawnFields | undefined {
-  const types = getTypeIndex(index);
-  const row = types.isEmpty ? undefined : types.rowOfTag(tagKey);
-  if (!row) {
-    return undefined;
-  }
-  if (row.filePath) {
-    return describeRowFields(types, row, { others });
-  }
-  const fields = describeRowFields(types, row, { others: [], details: true });
-  return fields.fields.length > 0 ? { ...fields, empty: [] } : undefined;
-}
-
 /** What drawing a row's fields takes besides the row. */
 interface RowFieldOptions {
   /** The note's other keys, drawn after the fields. */
   others: readonly OtherKey[];
-  /** Each written field's editor, on the Note page. */
+  /** Each written field's editor, on the Note page and a hub note's card. */
   editor?: (field: RowField) => FieldEditor | undefined;
   /** Whether each value that names a row says what that row holds of people. */
   details?: boolean;
 }
 
-/** A row's fields, the empty ones apart, as a page draws them. */
+/**
+ * A row's fields, the empty ones apart, as a page draws them: its own that
+ * hold something, then the note's other keys, then the reverses, each
+ * saying where it is set.
+ */
 function describeRowFields(types: TypeIndex, row: TypeRow, options: RowFieldOptions): DrawnFields {
   const type = types.registry.get(row.typeKey);
   const schemaKeys = new Set((type?.fields ?? []).map((field) => field.key));
   const all = types.fields(row.id);
   const draw = (field: RowField): DrawnField => {
     const tip = describeReverseTip(types, field);
+    const from = describeFieldSources(types, field);
     const edit = field.source === 'reverse' ? undefined : options.editor?.(field);
     return {
       name: field.name,
       source: field.source === 'computed' ? 'reverse' : field.source,
       ...(tip ? { tip } : {}),
-      values: field.values.map((value) => drawValue(types, value, options.details === true)),
+      ...(from.length > 0 ? { from } : {}),
+      values: field.values.map((value) => drawValue(types, value, options.details ? row.id : undefined)),
       ...(edit ? { edit } : {}),
     };
   };
   const others: DrawnField[] = options.others
     .filter((other) => !IDENTITY_KEYS.has(other.name.toLowerCase()) && !schemaKeys.has(other.name.toLowerCase()) && other.values.length > 0)
     .map((other) => ({ name: other.name, source: 'written', values: other.values }));
+  const filled = all.filter((field) => field.values.length > 0);
   return {
     typeName: type?.name ?? formatKeyWords(row.typeKey),
     typeQuery: `type = ${row.typeKey}`,
-    fields: [...all.filter((field) => field.values.length > 0).map(draw), ...others],
+    fields: [...filled.filter((field) => !isReverse(field)).map(draw), ...others, ...filled.filter(isReverse).map(draw)],
     empty: all.filter((field) => field.values.length === 0 && field.field && field.source !== 'reverse').map(draw),
   };
 }
 
-/** One value as a page draws it: a row by its title and tag or note, a note by its title, else as written. */
-function drawValue(types: TypeIndex, value: FieldValue, details: boolean): DrawnFieldValue {
+/** Whether a field is worked out from other rows rather than written in the row's note. */
+function isReverse(field: RowField): boolean {
+  return field.source === 'reverse' || field.source === 'computed';
+}
+
+/**
+ * One value as a page draws it: a row by its title and tag or note, a note
+ * by its title, else as written. With `detailsFor`, a row's value says
+ * what that row holds of people other than the row `detailsFor` names.
+ */
+function drawValue(types: TypeIndex, value: FieldValue, detailsFor: string | undefined): DrawnFieldValue {
   const reverse = value.via ? { reverse: true as const } : {};
   if (value.rowId) {
-    return { ...drawRowValue(types, value, value.rowId, details), ...reverse };
+    return { ...drawRowValue(types, value, value.rowId, detailsFor), ...reverse };
   }
   if (value.notePath) {
     return { text: noteTitle(value.notePath), filePath: value.notePath, ...reverse };
@@ -147,16 +178,17 @@ function drawValue(types: TypeIndex, value: FieldValue, details: boolean): Drawn
 /**
  * A value that names a row: the row's title, with its tag to open, or its
  * note for a note row; a person no type has by the tag the value names;
- * and, when asked, what the row holds of people.
+ * and, when asked, what the row holds of people besides the row the page
+ * is about.
  */
-function drawRowValue(types: TypeIndex, value: FieldValue, rowId: string, details: boolean): DrawnFieldValue {
+function drawRowValue(types: TypeIndex, value: FieldValue, rowId: string, detailsFor: string | undefined): DrawnFieldValue {
   const row = types.row(rowId);
   const text = valueTitle(types, value);
   if (!row) {
     return /^[#@]/.test(rowId) ? { text, tag: { key: rowId, label: rowId } } : { text };
   }
   const tag = rowTag(row);
-  const detail = details ? describeRowPeople(types, row) : undefined;
+  const detail = detailsFor === undefined ? undefined : describeRowPeople(types, row, detailsFor);
   return {
     text,
     ...(tag ? { tag } : {}),
@@ -167,15 +199,53 @@ function drawRowValue(types: TypeIndex, value: FieldValue, rowId: string, detail
 
 /**
  * What a row holds of people, as a path through it reads (`owned-by.lead`):
- * each person field with a value, by name and titles, the first few.
+ * each person field with a value, by name and titles, the first few. The
+ * row the page is about, `self`, is left out, as the row it names already
+ * says it: a field that names only it is dropped, and one that names it
+ * among others names the others, `also decided-by Theo Park`.
  */
-function describeRowPeople(types: TypeIndex, row: TypeRow): string | undefined {
+function describeRowPeople(types: TypeIndex, row: TypeRow, self?: string): string | undefined {
   const parts = types
     .fields(row.id)
     .filter((field) => field.kind.name === 'person' && field.source !== 'reverse' && field.values.length > 0)
-    .slice(0, DETAIL_FIELD_LIMIT)
-    .map((field) => `${field.name} ${field.values.map((value) => valueTitle(types, value)).join(', ')}`);
+    .flatMap((field) => {
+      const others = field.values.filter((value) => self === undefined || value.rowId !== self);
+      if (others.length === 0) {
+        return [];
+      }
+      const names = `${field.name} ${others.map((value) => valueTitle(types, value)).join(', ')}`;
+      return [others.length < field.values.length ? `also ${names}` : names];
+    })
+    .slice(0, DETAIL_FIELD_LIMIT);
   return parts.length > 0 ? parts.join(' · ') : undefined;
+}
+
+/**
+ * Where a reverse, or a field merged with one, is set: each type and field
+ * that gives it, by the one row that does, `Payments'` `lead`, or by its
+ * type when several do, `each person's` `manager`.
+ */
+function describeFieldSources(types: TypeIndex, field: RowField): FieldSource[] {
+  const groups = new Map<string, { typeName: string; field: string; rows: Set<string> }>();
+  field.values.forEach(({ via }) => {
+    if (!via) {
+      return;
+    }
+    const type = types.typeOf(via.rowId);
+    const key = `${type?.key ?? ''}\u0000${via.field}`;
+    const group = groups.get(key) ?? { typeName: type?.name ?? 'row', field: via.field, rows: new Set<string>() };
+    group.rows.add(via.rowId);
+    groups.set(key, group);
+  });
+  return [...groups.values()].map((group) => {
+    const only = group.rows.size === 1 ? types.row([...group.rows][0]) : undefined;
+    return { owner: only ? possessive(only.title) : `each ${group.typeName.toLowerCase()}'s`, field: group.field };
+  });
+}
+
+/** A title as owning something: `Payments'`, `Theo Park's`. */
+function possessive(title: string): string {
+  return /s$/i.test(title) ? `${title}'` : `${title}'s`;
 }
 
 /**

@@ -1,9 +1,10 @@
 /*
  * A typed row's fields (fieldRows.tsx): the Note page's fields region and
- * a tag's page's hub card. A key in monospace, muted; its values; a
- * reverse in italics; the empty fields folded into one muted line. On the
- * Note page, a row's Edit shows on the row's hover or focus (reveal.css),
- * and its editor opens under it.
+ * a tag's page's hub card. A key in monospace, muted; its values; the
+ * empty fields folded into one muted line; then, under a muted "From other
+ * notes", the reverses in italics, each with a muted line saying where it
+ * is set. A row's Edit shows on the row's hover or focus (reveal.css), and
+ * its editor opens under it.
  */
 .field-rows { display: grid; gap: 2px; margin: 0; }
 .field-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3); padding: 2px 4px; margin: 0 -4px; }
@@ -12,6 +13,9 @@
 .field-values { flex: 1 1 16ch; min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .field-row.is-reverse .field-name, .field-value.is-reverse { font-style: italic; }
 .field-none, .field-detail, .field-more { color: var(--muted); font-size: var(--text-sm); }
+.field-source { display: block; color: var(--muted); font-size: var(--text-xs); }
+.field-source > code { font-family: var(--font-mono); font-size: inherit; }
+.field-group-label { margin: var(--space-2) 0 var(--space-1); color: var(--muted); font-size: var(--text-sm); }
 .field-value.is-unresolved { text-decoration: underline dotted var(--muted); text-underline-offset: 3px; }
 .field-link.field-link { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; text-decoration: underline; text-decoration-color: var(--cyan); text-underline-offset: 3px; cursor: pointer; }
 .field-link.field-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .field-link.field-link:focus-visible { border: 0; background: transparent; color: var(--hover-fg); text-decoration-color: currentColor; }
