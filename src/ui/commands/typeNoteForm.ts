@@ -8,12 +8,15 @@ import {
   checkTypedNoteDraft,
   draftNotePath,
   draftTagOf,
+  listChangedFields,
   listDraftFields,
+  planFieldSave,
   planTypedNote,
   readDraftFolder,
   readDraftTag,
   readFieldText,
   setDraftValues,
+  startExistingNoteDraft,
   startTypedNoteDraft,
   type DraftProblem,
   type DraftStart,
@@ -24,24 +27,31 @@ import {
 import { getExtractedNoteFileName } from '../../domain/markdown/noteNames';
 import { pluralTypeName } from '../../domain/types/rowNotes';
 import { listNoteChoices } from '../state/addTaskTarget';
+import { findNoteRow } from '../state/noteFields';
 import {
   createTypeNoteFormRows,
+  describeFormReverses,
   findStartField,
   findTypedHubStart,
   describeDraftValues,
   listFolderChoices,
   listTypeChoices,
   previewTypeNoteForm,
+  readNoteDraftValues,
   titleTypeNoteForm,
   type FolderChoice,
+  type FormReverse,
   type FormRowKind,
+  type FormRowOptions,
+  type ReverseOpening,
   type TypeNoteFormRow,
 } from '../state/typeNoteForm';
 import { listKindRows } from '../state/typeRows';
 import { askForDate, readDateFormats } from './datePrompt';
 import { fileExists } from './fs';
 import { createHubNote } from './hubNote';
-import { openNoteAction, reportFailure, reportNeedsFolder } from './notify';
+import { openResultAt } from './navigation';
+import { describeRejectedEdit, describeStale, noteName, openNoteAction, reportFailure, reportNeedsFolder } from './notify';
 import { showQuickPickUntilHidden } from './prompts';
 import { askTemplateQuestions } from './templates';
 import { findRowNoteType, findWorkspaceFolder, openNewNote, readTypeTemplate, writeNewNote, type TypeWrites } from './typeNotes';
@@ -57,6 +67,12 @@ import { findRowNoteType, findWorkspaceFolder, openNewNote, readTypeTemplate, wr
  *
  * New Note from Type…, a type's Add <type>…, the quick fix Create person
  * "Omar H"…, and Create hub note on a tag a type has rows of all open it.
+ *
+ * The same form edits a row's note that exists
+ * (docs/implementation/34-edit-fields-form.md): its fields as the note
+ * holds them, what other notes set on it, and Save changes, which writes
+ * the fields changed as one write. Edit fields… on the Note page, a tag's
+ * page, and a type's rows, and Edit Fields… in the editor, open it.
  */
 
 /** What the form is opened on: a type, what it starts with, and where the note is opened once written. */
@@ -70,9 +86,15 @@ export interface TypeNoteFormRequest {
   open?: 'active' | 'beside';
   /**
    * A field's key to open on: its input shows first, and the form after
-   * it, on that field's row, as a tag's page's Edit on a field Not set asks.
+   * it, on that field's row, as a field's name on a page asks.
    */
   field?: string;
+  /**
+   * A row's note of the type to edit rather than make, by its path in the
+   * index: the form lists its fields as it holds them, and Save changes
+   * writes those changed.
+   */
+  edit?: string;
 }
 
 /** A row of the form's pick. */
@@ -80,8 +102,10 @@ type FormItem = vscode.QuickPickItem & Pick<TypeNoteFormRow, 'row' | 'fieldKey' 
 
 /**
  * Opens the form on a new note of a type and writes the note when Create
- * the note is chosen and nothing is wrong with it. The note's URI, or
- * undefined when the reader left or nothing was written.
+ * the note is chosen and nothing is wrong with it; or, given a row's note
+ * to `edit`, on its fields, and saves those changed when Save changes is
+ * chosen. The note's URI, or undefined when the reader left or nothing was
+ * written.
  */
 export async function openTypeNoteForm(writes: TypeWrites, request: TypeNoteFormRequest): Promise<vscode.Uri | undefined> {
   const { indexer } = writes;
@@ -97,8 +121,16 @@ export async function openTypeNoteForm(writes: TypeWrites, request: TypeNoteForm
     return undefined;
   }
   const notesFolder = indexer.getNotesFolderUri(folder);
-  const template = await readTypeTemplate(indexer, folder, type.key);
   const form: FormContext = { writes, type, notesFolder };
+  if (request.edit !== undefined) {
+    return editNoteFields(form, request.edit, request.field);
+  }
+  return createNote(form, request, await readTypeTemplate(indexer, folder, type.key));
+}
+
+/** The form on a new note: its rows until Create the note writes it, or the reader leaves. */
+async function createNote(form: FormContext, request: TypeNoteFormRequest, template: string | undefined): Promise<vscode.Uri | undefined> {
+  const { type } = form;
   let draft = startTypedNoteDraft(type, request.start);
   let problem: DraftProblem | undefined;
   let focus: FocusRow = { row: 'title' };
@@ -108,7 +140,7 @@ export async function openTypeNoteForm(writes: TypeWrites, request: TypeNoteForm
     focus = { row: 'field', fieldKey: startField.key };
   }
   for (;;) {
-    const chosen = await pickRow(form, draft, problem, focus);
+    const chosen = await pickRow(form, draft, problem ? { problem } : {}, focus);
     if (!chosen) {
       return undefined;
     }
@@ -139,11 +171,8 @@ interface FormContext {
   notesFolder: vscode.Uri;
 }
 
-/** The row the form's pick opens on. */
-interface FocusRow {
-  row: FormRowKind;
-  fieldKey?: string;
-}
+/** The row the form's pick opens on: a row by its kind and field, or the last. */
+type FocusRow = { row: FormRowKind; fieldKey?: string } | { done: true };
 
 /**
  * One turn of the form: its rows, headed by where the note goes and what
@@ -151,14 +180,14 @@ interface FocusRow {
  * opens on Description, then on the row last chosen, or the row a problem
  * is on.
  */
-function pickRow(form: FormContext, draft: TypedNoteDraft, problem: DraftProblem | undefined, focus: FocusRow): Promise<FormItem | undefined> {
+function pickRow(form: FormContext, draft: TypedNoteDraft, said: Omit<FormRowOptions, 'formats'>, focus: FocusRow): Promise<FormItem | undefined> {
   return showQuickPickUntilHidden<FormItem, FormItem>({
     configure: (pick) => {
       pick.title = titleTypeNoteForm(form.type, draft);
       pick.placeholder = previewTypeNoteForm(form.type, draft);
-      pick.items = createTypeNoteFormRows(form.type, draft, { formats: readDateFormats(), ...(problem ? { problem } : {}) }).map(toItem);
-      const target = draft.title.trim() !== '' || problem !== undefined ? focus : { row: 'title' as const };
-      const active = pick.items.find((item) => item.row === target.row && item.fieldKey === target.fieldKey);
+      pick.items = createTypeNoteFormRows(form.type, draft, { formats: readDateFormats(), ...said }).map(toItem);
+      const target: FocusRow = draft.title.trim() !== '' || said.problem !== undefined ? focus : { row: 'title' };
+      const active = pick.items.find((item) => ('done' in target ? item.done === true : item.row === target.row && item.fieldKey === target.fieldKey));
       if (active) {
         pick.activeItems = [active];
       }
@@ -176,6 +205,7 @@ function toItem(row: TypeNoteFormRow): FormItem {
   return {
     label: row.label,
     ...(row.description === undefined ? {} : { description: row.description }),
+    ...(row.detail === undefined ? {} : { detail: row.detail }),
     ...(row.row ? { row: row.row } : {}),
     ...(row.fieldKey ? { fieldKey: row.fieldKey } : {}),
     ...(row.done ? { done: true } : {}),
@@ -195,6 +225,7 @@ async function readRow(form: FormContext, draft: TypedNoteDraft, chosen: FormIte
       const field = listDraftFields(form.type).find((each) => each.key === chosen.fieldKey);
       return field ? readField(form, draft, field) : undefined;
     }
+    case 'reverse':
     case undefined:
       return undefined;
   }
@@ -515,6 +546,217 @@ async function writeDraft(
     );
   }
   return uri;
+}
+
+/**
+ * The form on a row's note that exists: its fields as the note holds them,
+ * at `field`'s input first when asked, then what other notes set on it,
+ * then Save changes. Choosing a field the writer cannot rewrite, or what
+ * another note sets, leaves the form for the note and line, once any
+ * change is let go. The note's URI once saved; undefined when the reader
+ * left, nothing had changed, or nothing was written.
+ */
+async function editNoteFields(form: FormContext, filePath: string, field: string | undefined): Promise<vscode.Uri | undefined> {
+  const read = await readExistingNote(form, filePath);
+  if (!read) {
+    return undefined;
+  }
+  const { uri, reverses } = read;
+  let { draft, focus } = await startEditing(form, read.draft, field);
+  let saveProblem: string | undefined;
+  for (;;) {
+    const chosen = await pickRow(form, draft, { reverses, ...(saveProblem ? { saveProblem } : {}) }, focus);
+    if (!chosen) {
+      return undefined;
+    }
+    if (chosen.done) {
+      const saved = await saveIfChanged(form, draft, uri);
+      if (!saved || !('problem' in saved)) {
+        return saved;
+      }
+      saveProblem = saved.problem;
+      focus = { done: true };
+      continue;
+    }
+    saveProblem = undefined;
+    focus = { row: chosen.row ?? 'field', ...(chosen.fieldKey ? { fieldKey: chosen.fieldKey } : {}) };
+    const leaving = findLeaving(draft, reverses, chosen);
+    if (!leaving) {
+      draft = (await readRow(form, draft, chosen)) ?? draft;
+    } else if (await letChangesGo(form, draft)) {
+      await openLeaving(leaving);
+      return undefined;
+    }
+  }
+}
+
+/**
+ * Where editing starts: at `field`'s input, when asked and the writer can
+ * rewrite it, then on its row; else on the first field, or, with none,
+ * on Save changes.
+ */
+async function startEditing(form: FormContext, draft: TypedNoteDraft, field: string | undefined): Promise<{ draft: TypedNoteDraft; focus: FocusRow }> {
+  const startField = findStartField(form.type, field);
+  if (startField) {
+    const refused = draft.existing?.refused[startField.key] !== undefined;
+    const read = refused ? undefined : await readField(form, draft, startField);
+    return { draft: read ?? draft, focus: { row: 'field', fieldKey: startField.key } };
+  }
+  const first = listDraftFields(form.type)[0];
+  return { draft, focus: first ? { row: 'field', fieldKey: first.key } : { done: true } };
+}
+
+/**
+ * A row's note as the form edits it: its draft, its values as the type
+ * index reads them and its text as its document holds it now, its URI,
+ * and what other notes set on it. Undefined, and said, when the note is no
+ * row of the form's type now.
+ */
+async function readExistingNote(
+  form: FormContext,
+  filePath: string,
+): Promise<{ draft: TypedNoteDraft; uri: vscode.Uri; reverses: FormReverse[] } | undefined> {
+  const { indexer } = form.writes;
+  const types = indexer.getTypeIndex();
+  const row = types.isEmpty ? undefined : findNoteRow(types, filePath);
+  const uri = indexer.getUri(filePath);
+  if (!row || row.typeKey !== form.type.key || !uri) {
+    void reportFailure({ outcome: `${noteTitle(filePath)} is not a ${form.type.name.toLowerCase()} now, so Deckard did not open its fields.` });
+    return undefined;
+  }
+  const document = await vscode.workspace.openTextDocument(uri);
+  const draft = startExistingNoteDraft(form.type, { filePath, title: row.title, content: document.getText(), values: readNoteDraftValues(types, row) });
+  return { draft, uri, reverses: describeFormReverses(types, row) };
+}
+
+/**
+ * Save changes: with nothing changed, the form closes; else the changes
+ * are saved, and the note's URI returned, or, when they cannot be, why,
+ * for the form to say. Undefined when VS Code refused the write, which is
+ * said.
+ */
+async function saveIfChanged(form: FormContext, draft: TypedNoteDraft, uri: vscode.Uri): Promise<vscode.Uri | undefined | { problem: string }> {
+  if (listChangedFields(form.type, draft).length === 0) {
+    return undefined;
+  }
+  const saved = await saveFields(form, draft, uri);
+  if (typeof saved === 'object') {
+    return saved;
+  }
+  return saved === 'saved' ? uri : undefined;
+}
+
+/** Where a row leaves the form for: a field the writer refuses, in the note at its line, or a reverse's note or search. */
+function findLeaving(draft: TypedNoteDraft, reverses: readonly FormReverse[], chosen: FormItem): ReverseOpening | undefined {
+  if (chosen.row === 'reverse') {
+    return reverses.find((reverse) => reverse.name === chosen.fieldKey)?.open;
+  }
+  const line = chosen.fieldKey && draft.existing ? draft.existing.refused[chosen.fieldKey] : undefined;
+  return line !== undefined && draft.existing ? { filePath: draft.existing.filePath, line } : undefined;
+}
+
+/** Opens what a row leaves the form for: a note at a line, or a search on its own page. */
+async function openLeaving(leaving: ReverseOpening): Promise<void> {
+  if ('query' in leaving) {
+    await vscode.commands.executeCommand('deckard.search', leaving.query);
+    return;
+  }
+  await openResultAt(leaving.filePath, leaving.line, { pin: true });
+}
+
+/** Whether the form may close: nothing changed, or the reader lets the changes go. */
+async function letChangesGo(form: FormContext, draft: TypedNoteDraft): Promise<boolean> {
+  const changed = listChangedFields(form.type, draft);
+  if (changed.length === 0) {
+    return true;
+  }
+  const discard = 'Discard Changes';
+  const choice = await vscode.window.showWarningMessage(
+    `${changed.map((field) => field.name).join(', ')} in "${draft.existing?.title ?? draft.title}" ${changed.length === 1 ? 'has' : 'have'} changed and not been saved.`,
+    { modal: true, detail: 'Choose Save changes in the form to keep them.' },
+    discard,
+  );
+  return choice === discard;
+}
+
+/** `lead`, `lead and tier`, `lead, tier, and headcount`. */
+function listNames(names: readonly string[]): string {
+  return names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
+}
+
+/**
+ * Saves the fields changed, against the note as it is now, as one write
+ * Undo Last Change takes back, offered with an Undo. Why it was not
+ * saved, for the form to say on Save changes: the note's front matter
+ * changed since the form read it, or a field the writer cannot rewrite.
+ */
+async function saveFields(form: FormContext, draft: TypedNoteDraft, uri: vscode.Uri): Promise<'saved' | 'failed' | { problem: string }> {
+  const document = await vscode.workspace.openTextDocument(uri);
+  const plan = planFieldSave(form.type, draft, document.getText());
+  const title = draft.existing?.title ?? draft.title;
+  switch (plan.kind) {
+    case 'unchanged':
+      return 'saved';
+    case 'stale':
+      return { problem: describeStale([noteName(uri)]) };
+    case 'refused':
+      return { problem: `${plan.name} is written in a way Deckard cannot rewrite, so nothing was written. Choose ${plan.name} to edit it in the note.` };
+    case 'edit':
+      break;
+  }
+  const eol = document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
+  const end = plan.start + plan.deleted;
+  const atEnd = end >= document.lineCount;
+  const edit = new vscode.WorkspaceEdit();
+  edit.replace(
+    uri,
+    new vscode.Range(new vscode.Position(plan.start, 0), atEnd ? document.lineAt(document.lineCount - 1).range.end : new vscode.Position(end, 0)),
+    atEnd ? plan.lines.join(eol) : plan.lines.map((line) => `${line}${eol}`).join(''),
+  );
+  const names = listNames(plan.changed);
+  // One note the reader changed on purpose, so nothing to preview.
+  const result = await form.writes.history.write(edit, { label: `Edit ${names} in "${title}"`, preview: 'never' });
+  if (!result.applied) {
+    void reportFailure(describeRejectedEdit(noteName(uri)));
+    return 'failed';
+  }
+  result.handle.offerUndo(`Saved ${names} in "${title}".`, { guard: 'latest', done: `Put ${names} back as ${plan.changed.length === 1 ? 'it was' : 'they were'}.` });
+  return 'saved';
+}
+
+/**
+ * Edit fields… on a page, or Edit Fields… in the editor: the form on a
+ * typed row's note, at `field`'s input when asked. A note no type has is
+ * told so, and offered New Note from Type….
+ */
+export async function openEditFieldsForm(writes: TypeWrites, request: { filePath: string; field?: string }): Promise<vscode.Uri | undefined> {
+  await writes.indexer.ready;
+  const types = writes.indexer.getTypeIndex();
+  const row = types.isEmpty ? undefined : findNoteRow(types, request.filePath);
+  if (!row) {
+    const offer = 'New Note from Type…';
+    const choice = await vscode.window.showInformationMessage(`${noteTitle(request.filePath)} has no type, so it has no fields to edit.`, offer);
+    if (choice === offer) {
+      await vscode.commands.executeCommand('deckard.newTypedNote');
+    }
+    return undefined;
+  }
+  return openTypeNoteForm(writes, {
+    typeKey: row.typeKey,
+    edit: request.filePath,
+    near: writes.indexer.getUri(request.filePath),
+    ...(request.field ? { field: request.field } : {}),
+  });
+}
+
+/** Edit Fields…: the form on the note in the editor in front, when it is a typed row's. */
+export async function editActiveNoteFields(writes: TypeWrites & { indexer: Pick<IndexReader<vscode.Uri>, 'getFilePath'> }): Promise<vscode.Uri | undefined> {
+  const document = vscode.window.activeTextEditor?.document;
+  if (!document || document.languageId !== 'markdown') {
+    void vscode.window.showInformationMessage('Open a note in the editor to edit its fields.');
+    return undefined;
+  }
+  return openEditFieldsForm(writes, { filePath: writes.indexer.getFilePath(document.uri) });
 }
 
 /**

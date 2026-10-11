@@ -178,7 +178,7 @@ function findQueryName(field: RowField, queryFields: readonly TypeQueryField[]):
  * a tag row by its tag, `@dana` or `#team/payments`; a note row or a note
  * by its title, quoted when it has to be.
  */
-function writeQueryValue(types: TypeIndex, value: FieldValue): string | undefined {
+export function writeQueryValue(types: TypeIndex, value: FieldValue): string | undefined {
   if (value.rowId) {
     const row = types.row(value.rowId);
     if (!row) {

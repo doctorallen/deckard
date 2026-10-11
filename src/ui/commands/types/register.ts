@@ -10,10 +10,11 @@ import {
   createTypeFromTags,
   createTypeNote,
 } from '../typeNotes';
-import { newTypedNote, openTypeNoteForm } from '../typeNoteForm';
+import { editActiveNoteFields, newTypedNote, openTypeNoteForm } from '../typeNoteForm';
 
 /**
- * Types: Create Type from Tags…, New Note from Type…, and the commands the
+ * Types: Create Type from Tags…, New Note from Type…, Edit Fields… on the
+ * note in front (docs/implementation/34-edit-fields-form.md), and the commands the
  * type quick fixes and hovers run: Create person "Omar H"…, which opens
  * the new note's form on its title, Create a <Type> type, and Copy email
  * (docs/implementation/30-databases.md, 31-type-note-form.md).
@@ -25,6 +26,7 @@ export function register(context: vscode.ExtensionContext, services: Services): 
       createTypeFromTags(writes, typeof namespace === 'string' ? namespace : undefined),
     ),
     registerCommand('deckard.newTypedNote', () => newTypedNote(writes)),
+    registerCommand('deckard.editFields', () => editActiveNoteFields(writes)),
     registerCommand(CREATE_TYPE_ROW_COMMAND, (documentUri: unknown, typeKey: unknown, title: unknown) =>
       typeof typeKey === 'string' && typeof title === 'string'
         ? openTypeNoteForm(writes, {

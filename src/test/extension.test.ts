@@ -147,6 +147,7 @@ suite('Extension Test Suite', () => {
         'deckard.createHubNoteForTag',
         'deckard.createTypeFromTags',
         'deckard.newTypedNote',
+        'deckard.editFields',
         'deckard.pauseHere',
         'deckard.resumeHere',
         'deckard.chooseScope',

@@ -225,7 +225,7 @@ function describeRowPeople(types: TypeIndex, row: TypeRow, self?: string): strin
  * that gives it, by the one row that does, `Payments'` `lead`, or by its
  * type when several do, `each person's` `manager`.
  */
-function describeFieldSources(types: TypeIndex, field: RowField): FieldSource[] {
+export function describeFieldSources(types: TypeIndex, field: RowField): FieldSource[] {
   const groups = new Map<string, { typeName: string; field: string; rows: Set<string> }>();
   field.values.forEach(({ via }) => {
     if (!via) {

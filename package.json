@@ -325,6 +325,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.editFields",
+        "title": "Edit Fields…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.pauseHere",
         "title": "Pause in This Workspace",
         "category": "Deckard"
@@ -1052,6 +1057,10 @@
         },
         {
           "command": "deckard.moveTagsToFrontmatter",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "deckard.editFields",
           "when": "editorLangId == markdown"
         },
         {

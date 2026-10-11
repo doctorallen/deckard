@@ -3,41 +3,56 @@
  * (docs/implementation/31-type-note-form.md): what each row says, the
  * title and the line under it, the types New Note from Type offers, the
  * folders the Folder row offers, and which tags make their hub note in the
- * form rather than as a bare hub note.
+ * form rather than as a bare hub note. The same form edits a row's note
+ * that exists (docs/implementation/34-edit-fields-form.md): its fields as
+ * the note holds them, then what other notes set on it, then Save changes.
  *
  * It is the task editor's form (`createEditorRows`) for a note: a row per
  * field with its value, separators between groups, and the last row writing.
  */
+import { noteTitle } from '../../domain/index/backlinks';
 import { formatKeyWords } from '../../domain/markdown/tagKeys';
 import { nameDay } from '../../domain/markdown/dates';
 import { type DateFormats, DEFAULT_DATE_FORMATS } from '../../domain/markdown/dateFormat';
 import type { FieldKind, FieldKindName, WorkspaceIndex } from '../../domain/model';
+import { formatFieldCondition } from '../../domain/query/queryFormat';
 import { rowNotesFolder } from '../../domain/types/rowNotes';
 import {
   draftNotePath,
   draftTagOf,
+  listChangedFields,
   listDraftFields,
   type DraftProblem,
   type DraftType,
   type DraftValue,
   type TypedNoteDraft,
 } from '../../domain/types/typedNoteDraft';
-import type { TypeIndex } from '../../domain/types/typeIndex';
+import type { FieldValue, RowField, TypeIndex, TypeRow } from '../../domain/types/typeIndex';
+import { listTypeQueryFields } from '../../domain/types/typeQueryFields';
 import { pluralize } from '../../shared/text';
+import type { FieldSource } from '../protocol/fields';
+import { describeFieldSources } from './noteFields';
+import { writeQueryValue } from './sameTypeRows';
+import { writeRowValue } from './typeRows';
 
-/** Which row of the form a row is: where the note goes, its title, its tag, or a field. */
-export type FormRowKind = 'folder' | 'title' | 'tag' | 'field';
+/**
+ * Which row of the form a row is: where the note goes, its title, its tag,
+ * a field, or, editing a note, a field other notes set on it.
+ */
+export type FormRowKind = 'folder' | 'title' | 'tag' | 'field' | 'reverse';
 
 /** One row of the form, as its pick lists it; a separator heads a group. */
 export interface TypeNoteFormRow {
   label: string;
   description?: string;
+  /** The line under it: where a field other notes set is set. */
+  detail?: string;
   /** Drawn as a separator, with its label, if any, as the group's name. */
   separator?: true;
   row?: FormRowKind;
-  /** The field a field's row sets, by its front-matter key. */
+  /** The field a field's row sets, by its front-matter key; a reverse's row, the reverse's name. */
   fieldKey?: string;
-  /** The last row, which writes the note. */
+  /** The last row, which writes the note, or saves the changes to it. */
   done?: true;
 }
 
@@ -72,17 +87,27 @@ function withArticle(name: string): string {
   return `${/^[aeiou]/.test(lower) ? 'an' : 'a'} ${lower}`;
 }
 
-/** The form's title, naming where the note goes, as Add Task's does: `Add a team to Teams/`. */
-export function titleTypeNoteForm(type: Pick<DraftType, 'name'>, draft: Pick<TypedNoteDraft, 'folder'>): string {
+/**
+ * The form's title, naming where the note goes, as Add Task's does: `Add a
+ * team to Teams/`; editing a note, the note, `Edit fields: Rates`.
+ */
+export function titleTypeNoteForm(type: Pick<DraftType, 'name'>, draft: Pick<TypedNoteDraft, 'folder' | 'existing'>): string {
+  if (draft.existing) {
+    return `Edit fields: ${draft.existing.title}`;
+  }
   return `Add ${withArticle(type.name)} to ${nameDraftFolder(draft.folder)}`;
 }
 
 /**
  * The line under the form's title: what will be written, the note's path
  * and, for a namespace type, its tag, `Teams/Risk Tech.md · #team/risk-tech`;
- * before a title, where it goes and that a title names it.
+ * before a title, where it goes and that a title names it. Editing a note,
+ * its type and path, `Team · Teams/Rates.md`.
  */
 export function previewTypeNoteForm(type: DraftType, draft: TypedNoteDraft): string {
+  if (draft.existing) {
+    return `${type.name} · ${draft.existing.filePath}`;
+  }
   const path = draftNotePath(draft);
   if (!path) {
     return `${nameDraftFolder(draft.folder)} · Choose Title to name the note`;
@@ -119,6 +144,10 @@ export interface FormRowOptions {
   formats?: DateFormats;
   /** What keeps the note from being written, said on its row in place of its value. */
   problem?: DraftProblem;
+  /** Editing a note: what other notes set on it, listed after its fields. */
+  reverses?: readonly FormReverse[];
+  /** Editing a note: why the changes were not saved, said on Save changes. */
+  saveProblem?: string;
 }
 
 /**
@@ -127,6 +156,9 @@ export interface FormRowOptions {
  * with its value or Not set; then Create the note.
  */
 export function createTypeNoteFormRows(type: DraftType, draft: TypedNoteDraft, options: FormRowOptions = {}): TypeNoteFormRow[] {
+  if (draft.existing) {
+    return createEditFormRows(type, draft, options);
+  }
   const { problem } = options;
   const said = (row: FormRowKind, description: string): string =>
     problem?.row === row ? `$(error) ${problem.message}` : description;
@@ -138,21 +170,172 @@ export function createTypeNoteFormRows(type: DraftType, draft: TypedNoteDraft, o
   if (type.rows?.kind === 'tags') {
     rows.push({ label: '$(tag) Tag', description: said('tag', describeDraftTag(type, draft)), row: 'tag' });
   }
-  const fields = listDraftFields(type);
-  if (fields.length > 0) {
-    rows.push({ label: 'Fields', separator: true });
-    fields.forEach((field) => {
-      const values = draft.values[field.key] ?? [];
-      rows.push({
-        label: `$(${kindIcon(field.kind)}) ${field.name}`,
-        description: values.length > 0 ? describeDraftValues(field.kind, values, options.formats) : 'Not set',
-        row: 'field',
-        fieldKey: field.key,
-      });
-    });
-  }
+  rows.push(...createFieldRows(type, draft, options));
   rows.push({ label: '', separator: true }, { label: '$(save) Create the note', description: 'Enter', done: true });
   return rows;
+}
+
+/**
+ * The type's fields, under a Fields separator, in the schema's order: each
+ * with its value or Not set; editing a note, a field the writer cannot
+ * rewrite says to edit it in the note.
+ */
+function createFieldRows(type: DraftType, draft: TypedNoteDraft, options: FormRowOptions): TypeNoteFormRow[] {
+  const fields = listDraftFields(type);
+  if (fields.length === 0) {
+    return [];
+  }
+  return [
+    { label: 'Fields', separator: true },
+    ...fields.map((field): TypeNoteFormRow => {
+      const values = draft.values[field.key] ?? [];
+      const refused = draft.existing?.refused[field.key] !== undefined;
+      let description = values.length > 0 ? describeDraftValues(field.kind, values, options.formats) : 'Not set';
+      if (refused) {
+        description = 'Edit in the note';
+      }
+      return { label: `$(${kindIcon(field.kind)}) ${field.name}`, description, row: 'field', fieldKey: field.key };
+    }),
+  ];
+}
+
+/**
+ * The rows of the form editing a note that exists: its fields as it holds
+ * them, never its folder, title, or tag, since editing moves and renames
+ * nothing; then, under From other notes, what other notes set on it, each
+ * saying where; then Save changes, which says No changes until a field
+ * has changed, or why the changes were not saved.
+ */
+function createEditFormRows(type: DraftType, draft: TypedNoteDraft, options: FormRowOptions): TypeNoteFormRow[] {
+  const rows = createFieldRows(type, draft, options);
+  const reverses = options.reverses ?? [];
+  if (reverses.length > 0) {
+    rows.push({ label: 'From other notes', separator: true });
+    reverses.forEach((reverse) => {
+      rows.push({ label: `$(${kindIcon(reverse.kind)}) ${reverse.name}`, description: reverse.values, detail: reverse.detail, row: 'reverse', fieldKey: reverse.name });
+    });
+  }
+  let description = listChangedFields(type, draft).length > 0 ? 'Enter' : 'No changes';
+  if (options.saveProblem) {
+    description = `$(error) ${options.saveProblem}`;
+  }
+  rows.push({ label: '', separator: true }, { label: '$(save) Save changes', description, done: true });
+  return rows;
+}
+
+/** What one of a note's reverses opens: the one note that sets it, at its line, or the search for the rows that do. */
+export type ReverseOpening = { filePath: string; line: number } | { query: string };
+
+/** A field other notes set on a row, as the form lists it under From other notes. */
+export interface FormReverse {
+  name: string;
+  kind: Pick<FieldKind, 'name'>;
+  /** Its values, by title: `Dana Whitfield, Omar Haddad`. */
+  values: string;
+  /** Where it is set, in the pages' words: `Set in Payments' lead`, `Set in each person's manager`. */
+  detail: string;
+  open: ReverseOpening;
+}
+
+/** `Set in Payments' lead`, `Set in each person's manager and Rates' owns`: where a reverse is set, as a page says it. */
+export function describeSourcesText(from: readonly FieldSource[]): string {
+  return `Set in ${from.map((source) => `${source.owner} ${source.field}`).join(' and ')}`;
+}
+
+/**
+ * What other notes set on a row, as the form editing its note lists them:
+ * each reverse other rows' relations give it, its values by title, where
+ * it is set, and what choosing it opens: the one note that sets it, at the
+ * line it does, or, when several do, the search for those rows,
+ * `type = person AND manager = @noor`. A reverse with nothing to open is
+ * left out.
+ */
+export function describeFormReverses(types: TypeIndex, row: TypeRow): FormReverse[] {
+  return types.fields(row.id).flatMap((field) => {
+    if (field.source !== 'reverse' && field.source !== 'computed') {
+      return [];
+    }
+    const open = findReverseOpening(types, row, field);
+    const from = describeFieldSources(types, field);
+    if (!open || from.length === 0) {
+      return [];
+    }
+    return [{
+      name: field.name,
+      kind: field.kind,
+      values: field.values.map((value) => (value.rowId ? (types.row(value.rowId)?.title ?? value.text) : value.text)).join(', '),
+      detail: describeSourcesText(from),
+      open,
+    }];
+  });
+}
+
+/** What choosing a reverse opens: the note of the one row that sets it, at its line, or the search for every row that does. */
+function findReverseOpening(types: TypeIndex, row: TypeRow, field: RowField): ReverseOpening | undefined {
+  const sources = field.values.filter((value): value is FieldValue & { via: NonNullable<FieldValue['via']> } => value.via !== undefined);
+  const rows = new Set(sources.map((value) => value.via.rowId));
+  if (rows.size === 1) {
+    const value = sources[0];
+    const filePath = value.filePath ?? types.row(value.via.rowId)?.filePath;
+    if (filePath) {
+      return { filePath, line: value.line ?? 1 };
+    }
+  }
+  const self = writeQueryValue(types, { text: row.title, rowId: row.id });
+  const groups = new Map<string, string>();
+  sources.forEach(({ via }) => {
+    const type = types.typeOf(via.rowId);
+    const queryName = type ? listTypeQueryFields(types.registry, type.key).find((each) => each.source === 'field' && each.label === via.field)?.name : undefined;
+    if (type && queryName && self) {
+      groups.set(`${type.key}\u0000${queryName}`, `type = ${type.key} AND ${formatFieldCondition({ name: queryName, operator: 'eq', values: [self] })}`);
+    }
+  });
+  const queries = [...groups.values()];
+  if (queries.length === 0) {
+    return undefined;
+  }
+  return { query: queries.length === 1 ? queries[0] : queries.map((query) => `(${query})`).join(' OR ') };
+}
+
+/**
+ * Each field of a row's type as its note holds it, as the form editing it
+ * starts: a value that names a row as Deckard writes it, `@dana`, with its
+ * title; a note as its link; a date as `YYYY-MM-DD`; a checkbox as `true`
+ * or `false`; a select's option as the schema spells it; a value that names
+ * nothing as written. Values other notes give it are left out.
+ */
+export function readNoteDraftValues(types: TypeIndex, row: TypeRow): Record<string, DraftValue[]> {
+  const values: Record<string, DraftValue[]> = {};
+  types.fields(row.id).forEach((field) => {
+    const schema = field.field;
+    if (!schema || field.source === 'reverse' || field.source === 'computed') {
+      return;
+    }
+    const written = field.values.filter((value) => !value.via).map((value) => readDraftValue(types, value));
+    if (written.length > 0) {
+      values[schema.key] = written;
+    }
+  });
+  return values;
+}
+
+/** One value a note writes, as the form holds it. */
+function readDraftValue(types: TypeIndex, value: FieldValue): DraftValue {
+  if (value.unresolved) {
+    return { text: value.text };
+  }
+  if (value.rowId) {
+    const named = types.row(value.rowId);
+    return named ? { text: writeRowValue(named).slice(1, -1), title: named.title } : { text: value.rowId };
+  }
+  if (value.notePath) {
+    const title = noteTitle(value.notePath);
+    return { text: `[[${title}]]`, title };
+  }
+  if (value.checked !== undefined) {
+    return { text: value.checked ? 'true' : 'false' };
+  }
+  return { text: value.date ?? value.option ?? value.text };
 }
 
 /** What the Tag row says: the tag, and whether it follows the title or was given. */

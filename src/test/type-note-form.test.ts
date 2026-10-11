@@ -1,16 +1,19 @@
 import * as assert from 'assert';
 
 import { getTypeIndex } from '../domain/types/typeIndex';
-import { setDraftValues, startTypedNoteDraft, type DraftType } from '../domain/types/typedNoteDraft';
+import { setDraftValues, startExistingNoteDraft, startTypedNoteDraft, type DraftType } from '../domain/types/typedNoteDraft';
+import { findNoteRow } from '../ui/state/noteFields';
 import {
   createTypeNoteFormRows,
   describeDraftValues,
+  describeFormReverses,
   findStartField,
   findTypedHubStart,
   kindIcon,
   listFolderChoices,
   listTypeChoices,
   previewTypeNoteForm,
+  readNoteDraftValues,
   titleTypeNoteForm,
 } from '../ui/state/typeNoteForm';
 import { indexOf, typedWorkspace } from './typedWorkspace';
@@ -156,5 +159,123 @@ suite('The form for a new note of a type', () => {
     assert.strictEqual(findStartField(person, 'pager'), undefined, 'a key the type does not have');
     const described = { fields: [...person.fields, { key: 'describes', name: 'describes', kind: { name: 'text' as const, many: false } }] };
     assert.strictEqual(findStartField(described, 'describes'), undefined, 'the form writes the note’s identity itself');
+  });
+});
+
+suite('The form editing a note of a type', () => {
+  /** The draft that edits a note of the typed workspace, its values read as the form reads them. */
+  function editDraft(filePath: string, content = '') {
+    const row = findNoteRow(types, filePath);
+    assert.ok(row, filePath);
+    const type = typeOf(row.typeKey);
+    return { type, row, draft: startExistingNoteDraft(type, { filePath, title: row.title, content, values: readNoteDraftValues(types, row) }) };
+  }
+
+  test('reads each field as Deckard writes it, a value that names nothing as written, and leaves out what other notes set', () => {
+    const rates = findNoteRow(types, 'Teams/Rates.md');
+    assert.ok(rates);
+    assert.deepStrictEqual(readNoteDraftValues(types, rates), {
+      lead: [{ text: '@dana', title: 'Dana Whitfield' }],
+      owns: [{ text: '#area/bond-trading', title: 'Bond Trading' }, { text: '#area/fx', title: 'Fx' }],
+      tier: [{ text: 'gold' }],
+      headcount: [{ text: '1,200' }],
+      'on-call': [{ text: '@priya', title: 'Priya Natarajan' }],
+      status: [{ text: 'active' }],
+    });
+    const dana = findNoteRow(types, 'People/Dana Whitfield.md');
+    assert.ok(dana);
+    assert.deepStrictEqual(readNoteDraftValues(types, dana), {
+      team: [{ text: '#team/rates', title: 'Rates' }],
+      email: [{ text: 'dana@example.com' }],
+      start: [{ text: '2026-03-01' }],
+      remote: [{ text: 'true' }],
+    });
+    const outage = findNoteRow(types, 'Incidents/RFQ outage.md');
+    assert.ok(outage);
+    assert.deepStrictEqual(readNoteDraftValues(types, outage), {
+      owner: [{ text: '@dana', title: 'Dana Whitfield' }],
+      team: [{ text: '#team/rates', title: 'Rates' }],
+      severity: [{ text: 'sev1' }],
+    });
+    const loose = indexOf({
+      'Types/Team.md': '---\ndeckard-type: team\nrows: "#team/*"\n---\n# Team\n\n| Field | Kind |\n| --- | --- |\n| lead | Person |',
+      'Teams/Ops.md': '---\ndescribes: "#team/ops"\nlead: Nobody Here\n---\n# Ops',
+    });
+    const looseTypes = getTypeIndex(loose);
+    const ops = findNoteRow(looseTypes, 'Teams/Ops.md');
+    assert.ok(ops);
+    assert.deepStrictEqual(readNoteDraftValues(looseTypes, ops), { lead: [{ text: 'Nobody Here' }] });
+  });
+
+  test('lists the note\'s fields filled in, no Folder, Title, or Tag, then From other notes, then Save changes', () => {
+    const { type, row, draft } = editDraft('Teams/Rates.md');
+    assert.strictEqual(titleTypeNoteForm(type, draft), 'Edit fields: Rates');
+    assert.strictEqual(previewTypeNoteForm(type, draft), 'Team · Teams/Rates.md');
+    const rows = createTypeNoteFormRows(type, draft, { reverses: describeFormReverses(types, row) });
+    assert.deepStrictEqual(rows, [
+      { label: 'Fields', separator: true },
+      { label: '$(person) lead', description: 'Dana Whitfield', row: 'field', fieldKey: 'lead' },
+      { label: '$(link) owns', description: 'Bond Trading, Fx', row: 'field', fieldKey: 'owns' },
+      { label: '$(list-selection) tier', description: 'gold', row: 'field', fieldKey: 'tier' },
+      { label: '$(symbol-number) headcount', description: '1,200', row: 'field', fieldKey: 'headcount' },
+      { label: '$(person) on-call', description: 'Priya Natarajan', row: 'field', fieldKey: 'on-call' },
+      { label: '$(symbol-text) status', description: 'active', row: 'field', fieldKey: 'status' },
+      { label: 'From other notes', separator: true },
+      { label: '$(link) members', description: 'Dana Whitfield', detail: "Set in Dana Whitfield's team", row: 'reverse', fieldKey: 'members' },
+      { label: '$(link) team of', description: 'RFQ outage', detail: "Set in RFQ outage's team", row: 'reverse', fieldKey: 'team of' },
+      { label: '', separator: true },
+      { label: '$(save) Save changes', description: 'No changes', done: true },
+    ]);
+  });
+
+  test('Save changes says Enter once a field has changed, and why the changes were not saved', () => {
+    const { type, draft } = editDraft('Teams/Credit.md');
+    const said = (rows: ReturnType<typeof createTypeNoteFormRows>) => rows.find((row) => row.done)?.description;
+    assert.strictEqual(said(createTypeNoteFormRows(type, draft)), 'No changes');
+    const changed = setDraftValues(draft, 'status', [{ text: 'hiring' }]);
+    assert.strictEqual(said(createTypeNoteFormRows(type, changed)), 'Enter');
+    assert.strictEqual(
+      said(createTypeNoteFormRows(type, changed, { saveProblem: 'Credit.md changed after Deckard last read it, so nothing was written.' })),
+      '$(error) Credit.md changed after Deckard last read it, so nothing was written.',
+    );
+    assert.strictEqual(createTypeNoteFormRows(type, changed).find((row) => row.fieldKey === 'status')?.description, 'hiring');
+  });
+
+  test('a field the writer cannot rewrite says to edit it in the note', () => {
+    const team = typeOf('team');
+    const content = ['---', 'describes: "#team/rates"', 'status: |', '  Fine.', '---', '# Rates'].join('\n');
+    const draft = startExistingNoteDraft(team, { filePath: 'Teams/Rates.md', title: 'Rates', content, values: { status: [{ text: 'Fine.' }] } });
+    const rows = createTypeNoteFormRows(team, draft);
+    assert.deepStrictEqual(rows.find((row) => row.fieldKey === 'status'), { label: '$(symbol-text) status', description: 'Edit in the note', row: 'field', fieldKey: 'status' });
+    assert.strictEqual(rows.find((row) => row.fieldKey === 'lead')?.description, 'Not set');
+  });
+
+  test('a reverse set in one note opens it at its line, and one set in several opens the search for them', () => {
+    const rates = findNoteRow(types, 'Teams/Rates.md');
+    assert.ok(rates);
+    assert.deepStrictEqual(describeFormReverses(types, rates).map((reverse) => reverse.open), [
+      { filePath: 'People/Dana Whitfield.md', line: 3 },
+      { filePath: 'Incidents/RFQ outage.md', line: 4 },
+    ]);
+    const shared = indexOf({
+      'Types/Person.md': '---\ndeckard-type: person\nrows: "@*"\n---\n# Person\n\n| Field | Kind | Reverse |\n| --- | --- | --- |\n| manager | Person | reports |',
+      'Types/Team.md': '---\ndeckard-type: team\nrows: "#team/*"\n---\n# Team\n\n| Field | Kind | Reverse |\n| --- | --- | --- |\n| lead | Person | reports |',
+      'People/Noor.md': '---\ndescribes: "@noor"\n---\n# Noor',
+      'People/Ann.md': '---\ndescribes: "@ann"\nmanager: "@noor"\n---\n# Ann',
+      'People/Ben.md': '---\ndescribes: "@ben"\nmanager: "@noor"\n---\n# Ben',
+      'Teams/Payments.md': '---\ndescribes: "#team/payments"\nlead: "@noor"\n---\n# Payments',
+    });
+    const sharedTypes = getTypeIndex(shared);
+    const noor = sharedTypes.rowOfTag('@noor');
+    assert.ok(noor);
+    assert.deepStrictEqual(
+      describeFormReverses(sharedTypes, noor).map(({ name, values, detail, open }) => ({ name, values, detail, open })),
+      [{
+        name: 'reports',
+        values: 'Ann, Ben, Payments',
+        detail: "Set in each person's manager and Payments' lead",
+        open: { query: '(type = person AND manager = @noor) OR (type = team AND lead = @noor)' },
+      }],
+    );
   });
 });
