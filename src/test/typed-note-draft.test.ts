@@ -6,12 +6,17 @@ import {
   checkTypedNoteDraft,
   draftNotePath,
   draftTagOf,
+  findRefusedFields,
+  listChangedFields,
   listDraftFields,
+  planFieldSave,
   planTypedNote,
   readDraftFolder,
   readDraftTag,
   readFieldText,
+  readFrontmatterBlock,
   setDraftValues,
+  startExistingNoteDraft,
   startTypedNoteDraft,
   writeDraftValues,
   type DraftType,
@@ -212,5 +217,94 @@ suite('A new note of a type', () => {
     assert.strictEqual(checkFieldText({ name: 'site', kind: { name: 'link', many: false } }, 'https://example.com', now), undefined);
     assert.strictEqual(checkFieldText({ name: 'phone', kind: { name: 'phone', many: false } }, '+1 (555) 010-2030', now), undefined);
     assert.strictEqual(checkFieldText({ name: 'phone', kind: { name: 'phone', many: false } }, 'ask Dana', now)?.severity, 'warning');
+  });
+});
+
+suite('Editing a note of a type that exists', () => {
+  const rates = [
+    '---',
+    'describes: "#team/rates"',
+    'lead: "@dana" # the head of desk',
+    'owns: [bond trading, "#area/fx"]',
+    'tier: Gold',
+    '---',
+    '# Rates',
+    'Body.',
+  ].join('\n');
+  const values = {
+    lead: [{ text: '@dana', title: 'Dana Whitfield' }],
+    owns: [{ text: '#area/bond-trading', title: 'Bond Trading' }, { text: '#area/fx', title: 'Fx' }],
+    tier: [{ text: 'gold' }],
+    headcount: [],
+  };
+  const edit = () => startExistingNoteDraft(typeOf('team'), { filePath: 'Teams/Rates.md', title: 'Rates', content: rates, values });
+
+  test('starts from the note as read: its title, its folder, its values, and its front matter', () => {
+    const draft = edit();
+    assert.strictEqual(draft.title, 'Rates');
+    assert.strictEqual(draft.folder, 'Teams');
+    assert.deepStrictEqual(Object.keys(draft.values), ['lead', 'owns', 'tier'], 'a field with no values is not set');
+    assert.deepStrictEqual(draft.existing?.original, draft.values);
+    assert.deepStrictEqual(draft.existing?.refused, {});
+    assert.strictEqual(draft.existing?.frontmatter, rates.split('\n').slice(0, 6).join('\n'));
+    assert.strictEqual(readFrontmatterBlock('# No front matter'), '');
+    assert.strictEqual(readFrontmatterBlock('---\r\na: 1\r\n---\r\nBody'), '---\na: 1\n---');
+  });
+
+  test('lists only the fields changed since, and saving nothing changed writes nothing', () => {
+    const team = typeOf('team');
+    const draft = edit();
+    assert.deepStrictEqual(listChangedFields(team, draft), []);
+    assert.deepStrictEqual(planFieldSave(team, draft, rates), { kind: 'unchanged' });
+    const same = setDraftValues(draft, 'tier', [{ text: 'gold' }]);
+    assert.deepStrictEqual(listChangedFields(team, same), [], 'the same value again is no change');
+    const changed = setDraftValues(setDraftValues(draft, 'tier', [{ text: 'silver' }]), 'headcount', [{ text: '12' }]);
+    assert.deepStrictEqual(listChangedFields(team, changed).map((field) => field.key), ['tier', 'headcount']);
+    assert.deepStrictEqual(listChangedFields(team, startTypedNoteDraft(team)), [], 'a new note has nothing to compare');
+  });
+
+  test('saving writes only the changed keys, as one run of lines, every other key and comment as written', () => {
+    const team = typeOf('team');
+    let draft = setDraftValues(edit(), 'tier', [{ text: 'silver' }]);
+    draft = setDraftValues(draft, 'headcount', [{ text: '12' }]);
+    draft = setDraftValues(draft, 'lead', [{ text: '@omar', title: 'Omar Haddad' }]);
+    const plan = planFieldSave(team, draft, rates);
+    assert.strictEqual(plan.kind, 'edit');
+    assert.strictEqual(plan.content, [
+      '---',
+      'describes: "#team/rates"',
+      'lead: "@omar" # the head of desk',
+      'owns: [bond trading, "#area/fx"]',
+      'tier: silver',
+      'headcount: 12',
+      '---',
+      '# Rates',
+      'Body.',
+    ].join('\n'));
+    assert.deepStrictEqual([plan.start, plan.deleted, plan.lines], [2, 3, ['lead: "@omar" # the head of desk', 'owns: [bond trading, "#area/fx"]', 'tier: silver', 'headcount: 12']]);
+    assert.deepStrictEqual(plan.changed, ['lead', 'tier', 'headcount']);
+    const cleared = planFieldSave(team, setDraftValues(edit(), 'owns', []), rates);
+    assert.strictEqual(cleared.kind === 'edit' && cleared.content.includes('owns'), false, 'a field emptied is taken out');
+    assert.deepStrictEqual(cleared.kind === 'edit' ? [cleared.start, cleared.deleted, cleared.lines] : undefined, [3, 1, []]);
+  });
+
+  test('a note whose front matter changed since it was read is stale, and a change to its body is not', () => {
+    const team = typeOf('team');
+    const draft = setDraftValues(edit(), 'tier', [{ text: 'silver' }]);
+    assert.deepStrictEqual(planFieldSave(team, draft, rates.replace('tier: Gold', 'tier: Bronze')), { kind: 'stale' });
+    const plan = planFieldSave(team, draft, rates.replace('Body.', 'Body, edited.'));
+    assert.strictEqual(plan.kind === 'edit' && plan.content.endsWith('Body, edited.'), true);
+  });
+
+  test('a field written as a block, or as keys of its own, is refused, with the line to open the editor at', () => {
+    const team = typeOf('team');
+    const content = ['---', 'describes: "#team/rates"', 'status: |', '  Fine.', 'owns:', '  rates: yes', '---', '# Rates'].join('\n');
+    assert.deepStrictEqual(findRefusedFields(team, content), { owns: 6, status: 3 });
+    const draft = setDraftValues(
+      startExistingNoteDraft(team, { filePath: 'Teams/Rates.md', title: 'Rates', content, values: { status: [{ text: 'Fine.' }] } }),
+      'status',
+      [{ text: 'Done.' }],
+    );
+    assert.deepStrictEqual(planFieldSave(team, draft, content), { kind: 'refused', key: 'status', name: 'status', line: 3 });
   });
 });

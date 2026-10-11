@@ -2,7 +2,10 @@
  * A new note of a type, as its form builds it up before anything is
  * written (docs/implementation/31-type-note-form.md): its title, folder,
  * tag for a namespace type, and the values its fields are given, what is
- * wrong with it, and the note it comes to.
+ * wrong with it, and the note it comes to. The same form edits a row's
+ * note that exists (docs/implementation/34-edit-fields-form.md): the draft
+ * then holds the note as it was read, and a save writes only the fields
+ * changed since.
  *
  * The note is `planRowNote`'s, the type's template filled or each field's
  * key, with each field the form set written by `setFrontmatterField` in
@@ -12,6 +15,7 @@
  * schema spells it. A value the form set takes the place of the key a
  * template writes.
  */
+import { findFrontmatterEnd } from '../markdown/frontmatter';
 import { extractTags } from '../markdown/parser';
 import { getExtractedNoteFileName } from '../markdown/noteNames';
 import type { FieldKind, TypeField } from '../model';
@@ -49,6 +53,21 @@ export interface TypedNoteDraft {
   tagFixed?: boolean;
   /** Each field given a value, by its front-matter key. */
   values: Readonly<Record<string, readonly DraftValue[]>>;
+  /** Set when the form edits a note that exists rather than making one. */
+  existing?: ExistingNote;
+}
+
+/** A row's note the form edits, as it was when the form read it. */
+export interface ExistingNote {
+  /** Its path in the index: `Teams/Rates.md`. */
+  filePath: string;
+  title: string;
+  /** Each field's values as the note held them, by key, as `values` holds them. */
+  original: Readonly<Record<string, readonly DraftValue[]>>;
+  /** The fields the writer cannot rewrite safely, by key, each with the one-based line to open the editor at. */
+  refused: Readonly<Record<string, number>>;
+  /** Its front matter as read, fences and all, to tell whether it has changed since; empty for none. */
+  frontmatter: string;
 }
 
 /** Where a new note's form starts: a title, a tag, or a folder already chosen. */
@@ -348,4 +367,140 @@ export function checkFieldText(field: Pick<TypeField, 'name' | 'kind'>, typed: s
 function joinFolder(folder: string, fileName: string): string {
   const clean = folder.trim().replace(/^\/+|\/+$/g, '');
   return clean ? `${clean}/${fileName}` : fileName;
+}
+
+/** A row's note as the form reads it to edit: its path and title, its text, and each field's values. */
+export interface ExistingNoteRead {
+  filePath: string;
+  title: string;
+  content: string;
+  values: Readonly<Record<string, readonly DraftValue[]>>;
+}
+
+/**
+ * The draft that edits a row's note that exists: its values as read, the
+ * fields the writer refuses, and its front matter, kept to tell a note
+ * changed since from one that was not. Its title and folder are the
+ * note's, which editing never changes.
+ */
+export function startExistingNoteDraft(type: DraftType, note: ExistingNoteRead): TypedNoteDraft {
+  const values = Object.fromEntries(Object.entries(note.values).filter(([, each]) => each.length > 0));
+  return {
+    typeKey: type.key,
+    title: note.title,
+    folder: note.filePath.split('/').slice(0, -1).join('/'),
+    values,
+    existing: {
+      filePath: note.filePath,
+      title: note.title,
+      original: values,
+      refused: findRefusedFields(type, note.content),
+      frontmatter: readFrontmatterBlock(note.content),
+    },
+  };
+}
+
+/**
+ * The fields of a type a note writes in a way the writer cannot rewrite
+ * safely, such as a `|` block or a nested map, by key, each with the
+ * one-based line to open the editor at.
+ */
+export function findRefusedFields(type: Pick<DraftType, 'fields'>, content: string): Record<string, number> {
+  const refused: Record<string, number> = {};
+  listDraftFields(type).forEach((field) => {
+    const edit = setFrontmatterField(content, field.key, { values: [{ text: 'x' }] });
+    if (edit.kind === 'refused') {
+      refused[field.key] = edit.line;
+    }
+  });
+  return refused;
+}
+
+/** A note's front matter, its fences and the lines between, with `\n` between them; empty for a note with none. */
+export function readFrontmatterBlock(content: string): string {
+  const lines = content.split(/\r?\n/);
+  const end = findFrontmatterEnd(lines);
+  return end === undefined ? '' : lines.slice(0, end + 1).join('\n');
+}
+
+/** Whether two lists of values are the same, value for value, in order. */
+function sameValues(left: readonly DraftValue[], right: readonly DraftValue[]): boolean {
+  return left.length === right.length && left.every((value, at) => value.text === right[at].text);
+}
+
+/** The fields an edit of a note that exists has changed since it was read, in the schema's order; none for a new note. */
+export function listChangedFields(type: Pick<DraftType, 'fields'>, draft: TypedNoteDraft): DraftType['fields'] {
+  const existing = draft.existing;
+  if (!existing) {
+    return [];
+  }
+  return listDraftFields(type).filter((field) => !sameValues(draft.values[field.key] ?? [], existing.original[field.key] ?? []));
+}
+
+/**
+ * What saving an edit comes to: nothing to write; a note whose front
+ * matter changed since it was read, which is not written; a changed field
+ * the writer cannot rewrite safely, and its line; or one replacement of
+ * the note's lines, which an editor applies as one edit, and the names of
+ * the fields it writes.
+ */
+export type FieldSavePlan =
+  | { kind: 'unchanged' }
+  | { kind: 'stale' }
+  | { kind: 'refused'; key: string; name: string; line: number }
+  | {
+      kind: 'edit';
+      content: string;
+      /** The zero-based first line replaced, and how many of the old lines were replaced. */
+      start: number;
+      deleted: number;
+      /** The lines written in their place, without line endings. */
+      lines: string[];
+      /** The names of the fields written, in the schema's order. */
+      changed: string[];
+    };
+
+/**
+ * Saves an edit of a note that exists, against `current`, the note as it
+ * is now: each field changed since the note was read is written by
+ * `setFrontmatterField`, in the form Deckard writes by kind, and nothing
+ * else, so every other key and comment stays as written. A note whose front
+ * matter is no longer what was read is stale, and nothing is written.
+ */
+export function planFieldSave(type: DraftType, draft: TypedNoteDraft, current: string): FieldSavePlan {
+  const existing = draft.existing;
+  const changed = listChangedFields(type, draft);
+  if (!existing || changed.length === 0) {
+    return { kind: 'unchanged' };
+  }
+  if (readFrontmatterBlock(current) !== existing.frontmatter) {
+    return { kind: 'stale' };
+  }
+  let content = current;
+  for (const field of changed) {
+    const edit = setFrontmatterField(content, field.key, writeDraftValues(field.kind, draft.values[field.key] ?? []));
+    if (edit.kind === 'refused') {
+      return { kind: 'refused', key: field.key, name: field.name, line: edit.line };
+    }
+    if (edit.kind === 'edit') {
+      content = edit.content;
+    }
+  }
+  if (content === current) {
+    return { kind: 'unchanged' };
+  }
+  return { kind: 'edit', content, ...diffLines(current.split(/\r?\n/), content.split(/\r?\n/)), changed: changed.map((field) => field.name) };
+}
+
+/** The one run of lines that differs between two texts: where it starts, how many old lines it replaces, and the new lines. */
+function diffLines(before: readonly string[], after: readonly string[]): { start: number; deleted: number; lines: string[] } {
+  let start = 0;
+  while (start < before.length && start < after.length && before[start] === after[start]) {
+    start += 1;
+  }
+  let tail = 0;
+  while (tail < before.length - start && tail < after.length - start && before[before.length - 1 - tail] === after[after.length - 1 - tail]) {
+    tail += 1;
+  }
+  return { start, deleted: before.length - start - tail, lines: after.slice(start, after.length - tail) };
 }
