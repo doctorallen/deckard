@@ -15,7 +15,7 @@ Every change Deckard makes to your files, what starts it, and the setting that c
 | A mention turned into a link | **Link mentions** on a note's first line, or **Link** in the Context view | `deckard.links.style`: `[[Name]]` or `[Name](path.md)` |
 | A section moved out to a new note, leaving a link | `Deckard: Extract Heading` | |
 | A task or section moved under another heading | **Move to…** | |
-| One front-matter key set or cleared, every other line left as written | **Edit**, **Clear**, or **Add field…** on a [typed note's fields](databases.md#fields-on-the-note-page) on the Note page | |
+| The front-matter keys you changed, set or cleared, every other line left as written, as one change | **Save changes** in the [form that edits a typed note's fields](databases.md#editing-fields), from **Edit fields…** or `Deckard: Edit Fields…` | Not written when the front matter changed since the form opened |
 | A field's key, or a select's option, renamed in every note that writes it, and in the type's table | **Rename field everywhere…** or **Rename option everywhere…** on a [type's rows](databases.md#a-types-rows) | Shown first |
 | A field's value, or a type's Kind cell, changed in place | A quick fix on a [marked field](databases.md#in-the-editor), such as **Change to @omar (Omar Haddad)** or **Allow Area or System** | `deckard.editor.linkDiagnostics` |
 | `tags: [parked]` in front matter | **Park Note** | **Unpark Note** removes it |

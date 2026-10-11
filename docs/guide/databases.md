@@ -140,6 +140,18 @@ The form is one list that stays open, as [Add Task](tasks.md#adding-a-task)'s is
 
 The note is the type's [template](notes-and-links.md#templates) (`team.md` in your templates folder), its questions asked once you create it, or else each field's key; each field you set is written in, in place of the template's value, as Deckard writes values: `lead: "@dana"`, `owns: ["#area/fx"]`, `start: 2026-03-01`. It is one write, which `Deckard: Undo Last Change` takes back, and it opens in the editor.
 
+## Editing fields
+
+The same form edits a note that exists. **Edit fields…** opens it: on the [Note page](#fields-on-the-note-page), at the end of the fields and in **⋯**; on a [tag's page](#fields-on-a-tags-page), beside **Open** in the hub note's card; in **⋯** on a row of a [type's rows](#a-types-rows); and in the editor, as `Deckard: Edit Fields…`, on the note in front. A field's name on either page opens it at that field's input.
+
+Its title names the note, *Edit fields: Noor Haddad*, and the line under it the type and where the note is, *Person · People/Noor Haddad.md*. Editing never moves or renames the note, so there is no **Folder**, **Title**, or **Tag**.
+
+- **Fields** lists each field with the value the note holds, read as Deckard writes it, `@dana` by its title, or as written when it names nothing yet. Each opens the same input as in a new note, with **Clear**. A field written in a way Deckard cannot rewrite safely, such as a block of lines, says *Edit in the note*, and choosing it opens the note at that line.
+- **From other notes** lists what other notes set on this one, each with its values and where it is set: *Set in Payments' lead*, *Set in each person's manager*. Choosing one opens the note that sets it at that line, or, when several do, the search for them.
+- **Save changes** writes the fields you changed, and nothing else: every other key, its order, and its comments stay as written. It is one write, which `Deckard: Undo Last Change` takes back whole; the message offers **Undo** too. Until a field changes it says *No changes*, and <kbd>Enter</kbd> closes the form. If the note's front matter changed since the form opened, nothing is written and **Save changes** says so; close the form and open it again.
+
+Leaving the form for another note with changes not saved asks first. <kbd>Escape</kbd> closes it without saving.
+
 ## A type's rows
 
 Search `type = team`, or select a namespace heading a type has in the [Hubs view](search-pages.md#the-hubs-view), and the [search page](search-pages.md#search-pages) is titled with the type's plural name, **Teams**, and under it what its rows are, `#team/*`, or `type: incident · Incidents/`. A new first tab, **Teams (4)**, beside **Notes** and **Tasks**, is a table of the rows the search finds; side by side, the table is above both.
@@ -147,7 +159,7 @@ Search `type = team`, or select a namespace heading a type has in the [Hubs view
 - **Columns.** The title, then each field, headed by its key in monospace, then **Open tasks** and **Last mentioned**, headed in muted sentence case: *Computed: not written in the note*. **Team columns**, in **⋯**, adds or removes any of them: the reverses, such as **Members**, **Mentions**, a nested row's **Parent** and **Children**, and a note row's **Linked from**.
 - **Cells.** A person or a related row is a link by its title. A reverse of people lists three by first name and how many more, *Dana, Sam, Lena +2*. A date reads *today · 2026-10-08*, and open tasks *4 · 1 overdue*.
 - **A row with no note** says so, *No hub note · 6 entries*, with **Create hub note** on its row, which opens the [form](#adding-a-note-of-a-type) with the row's tag.
-- **⋯ on a row** opens it or its hub note, offers **Create hub note**, and copies its email.
+- **⋯ on a row** opens it or its hub note, offers **Create hub note**, **Edit fields…** for a row with a note, and copies its email.
 - **Sorting.** Select a heading to sort by it, and again for the other way. While it is sorted, *Sorted by lead* and **Sort A-Z** sit beside the tab; **Sort A-Z** goes back to by title.
 - **A heading's menu**, by right-click or <kbd>Shift</kbd>+<kbd>F10</kbd>: **Sort A-Z**, **Sort Z-A**, **Hide column**, then **Rename field everywhere…** and **Edit in Types/Team.md**. Right-click a select's value for **Rename option everywhere…**. A rename asks the new name, then shows every note it changes, the type's table among them, in the [refactor preview](search-pages.md#previewing-and-undoing-a-write), as one write.
 - **Group by**, in **⋯**, adds each select, person, and relation field. A row with two values is listed under both, and the rows with none come last, *No team*.
@@ -158,27 +170,22 @@ Search `type = team`, or select a namespace heading a type has in the [Hubs view
 
 ## Fields on the Note page
 
-A note whose front matter says `type:`, such as a decision or an incident, is edited on the [note page](notes-and-links.md#reading-a-note-as-a-page): it lists its fields under the page's bar, one to a line, the key muted and in monospace, then its values. A person or a related row is a link by its title, which opens its page. A [hub note](search-pages.md#hub-notes) opens as its tag's page instead, so a person's or a team's fields are edited [on its tag's page](#fields-on-a-tags-page), in the same rows.
+A note whose front matter says `type:`, such as a decision or an incident, shows its fields on the [note page](notes-and-links.md#reading-a-note-as-a-page), under the page's bar, one to a line, the key muted and in monospace, then its values. A person or a related row is a link by its title, which opens its page. A [hub note](search-pages.md#hub-notes) opens as its tag's page instead, so a person's or a team's fields are shown [on its tag's page](#fields-on-a-tags-page), in the same rows.
 
-- **Its own fields** come first: those the note writes, in the type's order, then its other front-matter keys.
-- **Empty fields** fold into one line, *1 empty: email*, which opens to list them.
+- **Its own fields** come first: those the note writes, in the type's order, then its other front-matter keys. The empty ones are left to the form.
 - **From other notes** heads the fields other rows give this one, its reverses, in italics. Each says under its values where it is set, so you know which note to change: *Set in each person's `manager`* when several rows set it, *Set in Payments' `lead`* when one does. A field the note writes that other rows fill too says *Also set in …*.
 - **The type** is named on the hub line, or, for a row of notes, above the fields; it opens the type's rows.
-- **Edit**, at the end of each field the note writes, or <kbd>Enter</kbd> on the line, opens a list by kind: the rows the field can name, each with its first relation, filtered as you type; a select's options; a date; a box; or a text field; then **Clear**. A field that holds several adds or removes one choice at a time. A field from other notes has no **Edit**: change it in the note its line names.
-- **Add field…** lists the type's empty fields, then **Other…** for a key of your own.
-
-Each edit writes one key of the note's front matter and leaves the rest as written. It goes through the note's open editor, so text you have not saved stays, and it is one write, which `Deckard: Undo Last Change` takes back; the message offers **Undo** too. A value written in a way Deckard cannot rewrite safely, such as a block of lines, opens the note at that line instead.
+- **Edit fields…**, after the fields and in **⋯**, opens the [form](#editing-fields) on the note. A field's name, drawn as the key and underlined when pointed at, opens it at that field. A field from other notes is changed in the note its line names.
 
 With a row's note open, the [Context view](connections.md#related-notes) lists, under its related notes, the other rows of its type that share a relation's value with it: *Other people*, grouped by *`team` Payments*, *`manager` Alex Rivera*, and reverses such as *`works on` Checkout v2*, each group's label opening its search. See [Related Notes](connections.md#related-notes).
 
 ## Fields on a tag's page
 
-A typed tag's page is where a person's, a team's, or an area's fields are edited. Its hub card draws the hub note's fields as the Note page does: its own first, each with **Edit**, the empty ones folded into *1 empty: email*, then **Add field…**, then **From other notes**, each saying where it is set. Each edit writes the hub note's front matter, with **Undo**, as on the Note page. Open the page from the tag: <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>-click `@noor-haddad` in a note, choose it in Find, or open the hub note, which opens its tag's page.
+A typed tag's page is where a person's, a team's, or an area's fields are shown. Its hub card draws the hub note's fields as the Note page does: its own first, then **From other notes**, each saying where it is set. **Edit fields…**, beside **Open** in the card's header, opens the [form](#editing-fields) on the hub note, and a field's name opens it at that field. Open the page from the tag: <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>-click `@noor-haddad` in a note, choose it in Find, or open the hub note, which opens its tag's page.
 
 A row with no hub note gets a **Fields** card in the hub's place, its type named at the right:
 
-- *No note describes @alex-rivera yet.*
-- **Its type's fields**, each *Not set*. **Edit**, or <kbd>Enter</kbd> on the line, opens the [form](#adding-a-note-of-a-type) for its hub note at that field's input, its title and tag filled in and kept; once you set the value the form shows the rest, and **Create the note** writes it. **Add field…** opens the same form.
+- *No note describes @alex-rivera yet.* and **Add fields…**, which opens the [form](#adding-a-note-of-a-type) for its hub note, its title and tag filled in and kept; **Create the note** writes it with the fields you set.
 - **From other notes**: what other rows say of it, each with who is behind it besides this row and where it is set: *lead of: Payments (on-call Sam Okafor)*, *Set in Payments' `lead`*. A detail that names only this row is left out, and one that names it among others names the others, *(also decided-by Theo Park)*. So the page of an area no note describes still says who owns it.
 
 **Create hub note** stays under the title, and opens the same form.
@@ -250,7 +257,7 @@ type = decision AND project = this
 
 ## Zen
 
-With [Zen](themes-and-zen.md#zen) on, every name, value, count, and date stays drawn: each cell of a rows tab, its tab's count, *Sorted by lead* with its **Sort A-Z**, the fields on the Note page and a tag's page, their empty-fields line, *From other notes*, where each is set, and *Not set*. Each row's **⋯** and **Create hub note** wait for the pointer or <kbd>Tab</kbd> on their row, and the fields' **Edit** and **Add field…** wait for the pointer or <kbd>Tab</kbd> in the fields; a list that is open stays open. Without Zen, **Edit** is drawn on every field it can change.
+With [Zen](themes-and-zen.md#zen) on, every name, value, count, and date stays drawn: each cell of a rows tab, its tab's count, *Sorted by lead* with its **Sort A-Z**, the fields on the Note page and a tag's page, their names, which still open the form from the keyboard, *From other notes*, and where each is set. Each row's **⋯** and **Create hub note** wait for the pointer or <kbd>Tab</kbd> on their row; **Edit fields…** waits for the pointer or <kbd>Tab</kbd> in the fields on the Note page, or in the hub card's header on a tag's page, and **Add fields…** in the Fields card.
 
 ---
 

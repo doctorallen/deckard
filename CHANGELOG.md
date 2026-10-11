@@ -22,14 +22,16 @@
   `type = person AND team = #team/payments`, and **All people** opens
   the type's. Parked rows come last, eight rows to a group, then
   **+3 more**. The related notes are ranked as before.
-- **Edit fields on a tag's page.** A typed tag's hub card edits its hub
-  note's fields in place, as the Note page does: **Edit** on each field,
-  the empty ones folded, **Add field…**, and **Undo** in the message. A
-  hub note opens as its tag's page, so this is where a person's or a
-  team's fields are edited. A row with no hub note lists its type's
-  fields, *Not set*, under *No note describes @alex-rivera yet.*; **Edit**
-  on one opens the form for its note at that field, its title and tag
-  filled in.
+- **Edit fields in the form.** **Edit fields…** opens New Note from
+  Type…'s form on a typed row's note: *Edit fields: Noor Haddad*, each
+  field filled in with what the note holds, then, under **From other
+  notes**, what other notes set on it, each saying where (choosing one
+  opens that note at the line, or the search for the notes that set it),
+  then **Save changes**. Saving writes only the fields you changed, as one
+  change Undo Last Change takes back whole, and every other key and
+  comment stays as written; a note whose front matter changed since the
+  form opened is not written over. `Deckard: Edit Fields…` opens it on
+  the note in the editor.
 
 ### Changed
 
@@ -41,9 +43,16 @@
   no note, a value's details no longer repeat the row itself: Alex's
   *lead of* reads *Payments (on-call Sam Okafor)*, and a decision she made
   with Theo reads *(also decided-by Theo Park)*.
-- **Edit is drawn on every field** it can change, on the Note page too,
-  rather than on the line you point at; Zen still quiets it until you
-  point at or tab into the fields.
+- **Fields are edited in one place.** The Note page and a tag's page
+  show a typed row's fields, and no longer edit them in place: **Edit**
+  on each field, Enter on a line, the lists and boxes under it, **Add
+  field…**, and the *1 empty: email* line are gone. **Edit fields…**
+  opens the form instead: after the fields and in **⋯** on the Note page,
+  beside **Open** in a typed tag's hub card, and in a type row's **⋯**. A
+  field's name opens it at that field. A row with no hub note says *No
+  note describes @alex-rivera yet.*, with **Add fields…**, which opens the
+  form for its note. Zen quiets Edit fields… and Add fields… until you
+  point at or tab into them; field names stay drawn.
 
 ## 2.6.0 - 2026-10-09
 

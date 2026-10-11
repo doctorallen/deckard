@@ -76,6 +76,41 @@ Under Zen, Edit fields… and Add fields… are quieted in place
 shapes, `DrawnFields.empty`, `choices`, `noNote`, `DrawnField.edit` and
 `startsNote`, `createHubNote`'s `field`, and their CSS.
 
+## Decisions
+
+Where David's request and the brief were silent:
+
+1. **Placeholder** is the type and the note's path, `Team · Teams/Rates.md`,
+   without the tag a new note's placeholder names.
+2. **Values are read from the type index** (the saved note), as Deckard
+   writes them, `@dana` with its title; the note's text is read from its
+   open document, so the save and the stale check see what is unsaved.
+3. **Stale** means the front matter changed, compared fence to fence. An
+   edit to the note's body since the form opened does not stop a save,
+   since a save writes only front matter. The form stays open, its Save
+   row saying `describeStale`'s sentence; Escape and open it again.
+4. **Leaving with changes**: choosing a field to edit in the note, or a
+   reverse, while fields have changed asks first in a modal, **Discard
+   Changes**; Escape closes the form without asking, as Add Task's does.
+5. **"Set in Payments' lead"** in the form has no backticks: a quick pick
+   draws them as written.
+6. **Several sources** open one search: `type = person AND manager =
+   @noor`, and several groups joined with `OR`, each in parentheses.
+7. **Field names that open the form** are the row's own fields of its
+   type; a reverse's name, and a front-matter key the type has no field
+   for, stay plain text.
+8. **The hub card's header** is its Zen region, since Edit fields… sits
+   there; the card's fields region is no longer one, as nothing in it is
+   quieted. The header wraps Open and Edit fields… in `.hub-actions` only
+   for a typed hub, so other hubs draw as before.
+9. **The Fields card** stays for a row whose type has fields though
+   nothing names it, so Add fields… can be found there.
+10. **Edit fields… in ⋯ Page** is the page's own row, not a row of the
+    note-action table, so the editor's Deckard submenu is unchanged;
+    `Deckard: Edit Fields…` is in the palette for Markdown editors.
+11. **Clicking Edit fields…** in the hub card's header leaves the card
+    open or folded as it was.
+
 ## Order of work
 
 1. This plan.
