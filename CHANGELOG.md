@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Added
+
+- **New Note from Type…** opens a form for a new note of a type, as Add
+  Task's editor is a form for a task: one list that stays open, with the note's
+  folder, title, tag, and each of the type's fields, its value beside it,
+  and **Create the note** at the foot. Each field opens an input by its
+  kind, such as the people or teams it can name, a select's options, or a
+  date in plain words, and nothing is written until you create the note,
+  which `Deckard: Undo Last Change` takes back. **Add team…** on a type's
+  rows, the quick fix **Create person "Omar H"…**, and **Create hub note**
+  on a tag a type has rows of now open the same form, where before they
+  asked a title alone.
+
 ## 2.6.0 - 2026-10-09
 
 ### Highlights

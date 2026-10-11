@@ -126,19 +126,33 @@ Every row also has fields no note writes, worked out from the notes each time th
 
 It is one write, which `Deckard: Undo Last Change` takes back. **New note type…** asks a name and writes a type of notes with an empty table to fill in.
 
+## Adding a note of a type
+
+`Deckard: New Note from Type…` lists your types, each with where its notes go and how many it has (*Teams/ · 5 rows*, *type: incident · 7 notes*), then opens a form for a new one. **Add team…** in **⋯** on a type's rows opens the same form, and so do the quick fix **Create person "Omar H"…**, with the title filled in, and **Create hub note** on a tag a type has rows of, from its page, its row, or `Deckard: Create Hub Note for Tag…`, with the tag kept.
+
+The form is one list that stays open, as [Add Task](tasks.md#adding-a-task)'s is. Its title says where the note goes, *Add a team to Teams/*, and the line under it what will be written, *Teams/Risk Tech.md · #team/risk-tech*.
+
+- **Folder** is the type's `notes:` folder, or its plural name. Choose it for another folder with notes in it, or write a new one.
+- **Title** names the note, and, for a type of tags, the tag. <kbd>Enter</kbd> opens it first.
+- **Tag**, for a type of tags, follows the title until you write one: `risk` is `#team/risk`, and a nested `rates/emea` is `#team/rates/emea`.
+- **Fields** lists each field of the type in its table's order, with its value or *Not set*. Choosing one opens its input by kind: the rows it can name, each with its first relation, several for a `, many` field, and a name that is no row yet is kept as written; a select's options; a date in plain words, as the task editor reads one; a box for a number, an email, a link, a phone number, or text, which says as you type when the value does not fit. A checkbox turns *Yes*, *No*, and *Not set* in place. Each input offers **Clear** once the field has a value.
+- **Create the note** writes it. A note with no title, a title that cannot name a file or a tag, a tag that already has a hub note, or a note already at that path keeps the form open on the row to change, saying why. Nothing is written over.
+
+The note is the type's [template](notes-and-links.md#templates) (`team.md` in your templates folder), its questions asked once you create it, or else each field's key; each field you set is written in, in place of the template's value, as Deckard writes values: `lead: "@dana"`, `owns: ["#area/fx"]`, `start: 2026-03-01`. It is one write, which `Deckard: Undo Last Change` takes back, and it opens in the editor.
+
 ## A type's rows
 
 Search `type = team`, or select a namespace heading a type has in the [Hubs view](search-pages.md#the-hubs-view), and the [search page](search-pages.md#search-pages) is titled with the type's plural name, **Teams**, and under it what its rows are, `#team/*`, or `type: incident · Incidents/`. A new first tab, **Teams (4)**, beside **Notes** and **Tasks**, is a table of the rows the search finds; side by side, the table is above both.
 
 - **Columns.** The title, then each field, headed by its key in monospace, then **Open tasks** and **Last mentioned**, headed in muted sentence case: *Computed: not written in the note*. **Team columns**, in **⋯**, adds or removes any of them: the reverses, such as **Members**, **Mentions**, a nested row's **Parent** and **Children**, and a note row's **Linked from**.
 - **Cells.** A person or a related row is a link by its title. A reverse of people lists three by first name and how many more, *Dana, Sam, Lena +2*. A date reads *today · 2026-10-08*, and open tasks *4 · 1 overdue*.
-- **A row with no note** says so, *No hub note · 6 entries*, with **Create hub note** on its row.
+- **A row with no note** says so, *No hub note · 6 entries*, with **Create hub note** on its row, which opens the [form](#adding-a-note-of-a-type) with the row's tag.
 - **⋯ on a row** opens it or its hub note, offers **Create hub note**, and copies its email.
 - **Sorting.** Select a heading to sort by it, and again for the other way. While it is sorted, *Sorted by lead* and **Sort A-Z** sit beside the tab; **Sort A-Z** goes back to by title.
 - **A heading's menu**, by right-click or <kbd>Shift</kbd>+<kbd>F10</kbd>: **Sort A-Z**, **Sort Z-A**, **Hide column**, then **Rename field everywhere…** and **Edit in Types/Team.md**. Right-click a select's value for **Rename option everywhere…**. A rename asks the new name, then shows every note it changes, the type's table among them, in the [refactor preview](search-pages.md#previewing-and-undoing-a-write), as one write.
 - **Group by**, in **⋯**, adds each select, person, and relation field. A row with two values is listed under both, and the rows with none come last, *No team*.
 - **[Refine](search.md#refine)** offers each select field's options, counted over the rows.
-- **⋯** adds **Add team…**, which asks a title and writes the new row's note into the type's `notes:` folder, from a `team.md` in your [templates folder](notes-and-links.md#templates) if there is one, or else with each field's key; and **Open Types/Team.md**.
+- **⋯** adds **Add team…**, which opens the [form for a new note](#adding-a-note-of-a-type) on the type, and **Open Types/Team.md**.
 - The columns, sort, and group are kept for each type in this workspace. **Save search…** puts the table's search on Home, as any search.
 - The Notes and Tasks tabs list what the search finds, as on any page: the notes and tasks in the rows' notes, and, for rows of a namespace, everything their tags are on.
 
@@ -184,7 +198,7 @@ In a trading desk's notes, `bond trading lead` walks the same way, from the Bond
 ## In the editor
 
 - **Completions.** In a row's front matter, a new line offers the type's field names. After `lead: `, the rows the field can name, each described by its type and first relation (*Noor Haddad*, *Person · team Payments*), or a select's options, or `true` and `false`; each is written as Deckard writes it. In a type note, the **Kind** column offers the kinds and the type names, and `rows:` the namespaces in use.
-- **Marks.** A value that names nothing, a value that does not fit its kind (`date: soon`), a field whose name a search already uses, a field two types define differently, and a relation the two sides disagree on are marked as Information, with `deckard.editor.linkDiagnostics`. Quick fixes offer **Change to @omar (Omar Haddad)** or the closest options, **Create person "Omar H"**, which writes the row's note, and, in a type note, **Allow Area or System** and **Create a System type**.
+- **Marks.** A value that names nothing, a value that does not fit its kind (`date: soon`), a field whose name a search already uses, a field two types define differently, and a relation the two sides disagree on are marked as Information, with `deckard.editor.linkDiagnostics`. Quick fixes offer **Change to @omar (Omar Haddad)** or the closest options, **Create person "Omar H"…**, which opens the [form](#adding-a-note-of-a-type) with the title filled in, and, in a type note, **Allow Area or System** and **Create a System type**.
 - **The first line.** The one problems lens counts them, *2 unresolved*, and selecting it shows them. The [hub progress](search-pages.md#hub-notes) lens leads with the row's type and first relation, *Person · Payments | 1/3 done (33%)*, and a row of notes gets that lead alone.
 - **Hover.** A typed tag, or a `[[link]]` to a row of notes, names the row, its type, and its first text field, *Noor Haddad `@noor-haddad` · Person · Senior engineer*; then its relations and reverses, how to reach it, how much the notes say of it, *last mentioned today · 2026-10-08*, and **Open @noor-haddad**, **Open Noor Haddad.md**, and **Copy email**. Other tags hover as before.
 

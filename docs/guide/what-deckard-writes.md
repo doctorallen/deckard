@@ -33,7 +33,7 @@ Every change Deckard makes to your files, what starts it, and the setting that c
 | Three starter templates | **Create Starter Templates**, offered when the templates folder is empty | |
 | A hub note for a tag | **Create hub note** on a tag's page, or `Deckard: Create Hub Note for Tag…` | A template named after the tag's namespace |
 | A type, `Types/Team.md`, from the fields your notes already write | `Deckard: Create Type from Tags…`, **Create type from #team…** on a tag's page, or the **Create a System type** quick fix | |
-| A row's note, in the type's `notes:` folder | **Add team…** on a type's rows, or the **Create person "Omar H"** quick fix | A template named after the type's key |
+| A row's note, in the type's `notes:` folder or the one you choose, with the fields you set | `Deckard: New Note from Type…`, **Add team…** on a type's rows, the **Create person "Omar H"…** quick fix, or **Create hub note** on a typed tag | A template named after the type's key |
 | A note a link names | **Create note** on a `[[link]]` that opens none, or **Create missing notes** from the problems lens above the note | |
 | A calendar file of your dated tasks | `Deckard: Export Tasks as Calendar…`, or kept up to date as tasks change (*automatic*, once set) | `deckard.calendar.exportFile`, empty by default |
 | A JSON copy of favorites, pins, and searches | **Export…** in `Deckard: Manage Favorites, Pins, and Searches…` | |
