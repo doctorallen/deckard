@@ -9,7 +9,9 @@ import { parseWorkspaceQuery } from '../domain/types/typeQueryFields';
 import type { SameTypeRows } from '../ui/protocol/sidebarNotes';
 import { describeSameTypeRows, SAME_TYPE_GROUP_LIMIT } from '../ui/state/sameTypeRows';
 import { parkedRules } from './parkedFixture';
+import { renderPage } from './pages';
 import { indexOf, now } from './typedWorkspace';
+import { openWebviewPage, WebviewPage } from './webviewPage';
 
 const lines = (...text: string[]): string => text.join('\n');
 
@@ -205,5 +207,81 @@ suite('Other rows of a note\'s type', () => {
     assert.deepStrictEqual(group?.rows.map((row) => row.title), ['A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'A9']);
     assert.strictEqual(section?.count, 10);
     assert.strictEqual(rowsFound(big, group?.query ?? '').length, 11);
+  });
+});
+
+suite('Other rows of a note\'s type, in Context', () => {
+  let page: WebviewPage | undefined;
+  teardown(() => {
+    page?.dispose();
+    page = undefined;
+  });
+
+  /** Sam's note in Context, with the other people. */
+  const open = (savedState: unknown = {}): WebviewPage => {
+    page = openWebviewPage(renderPage('sidebarNotes'), {
+      activeFileName: 'Sam Okafor.md',
+      activeTags: [],
+      notes: [],
+      state: 'noMatches',
+      sameType: describeSameTypeRows(workspace(), 'People/Sam Okafor.md'),
+      links: {
+        linkedFromNotes: [{ filePath: 'notes/standup.md', title: 'standup', entries: [{ filePath: 'notes/standup.md', title: 'standup', line: 1, text: '[[Sam Okafor]]', headingPath: [] }], linkCount: 1 }],
+        linkedFromCount: 1,
+        linkedFromNoteCount: 1,
+        mentions: [],
+        mentionCount: 0,
+      },
+      parkedTags: [],
+    }, { savedState });
+    return page;
+  };
+
+  test('draws the heading, its All link, each group\'s label, and its rows', () => {
+    const view = open();
+    assert.strictEqual(view.text('.same-type summary'), 'Other people 5');
+    assert.strictEqual(view.text('.same-type-all'), 'All people');
+    assert.deepStrictEqual(view.findAll('.same-type-label').map((label) => label.textContent), [
+      'team Payments',
+      'manager Alex Rivera',
+      'works on Checkout v2',
+    ]);
+    assert.strictEqual(view.findAll('.same-type-key.is-reverse').length, 1);
+    assert.deepStrictEqual(
+      view.findAll('.same-type-group')[0].querySelectorAll('.same-type-detail')[2].textContent,
+      'Former engineer · Parked',
+    );
+    // It sits above what links here.
+    assert.ok(view.find('.same-type').compareDocumentPosition(view.find('.note-links')) & view.window.Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  test('a row opens itself, and a label or All opens its search, by id', () => {
+    const view = open();
+    view.click('[data-action="open-same-type-row"][data-row-id="@kim"]');
+    assert.deepStrictEqual(view.lastPosted('openSameTypeRow'), { type: 'openSameTypeRow', rowId: '@kim' });
+    view.click('.same-type-label');
+    assert.deepStrictEqual(view.lastPosted('openSameTypeSearch'), { type: 'openSameTypeSearch', group: 'team=#team/payments' });
+    view.click('.same-type-all');
+    assert.deepStrictEqual(view.lastPosted('openSameTypeSearch'), { type: 'openSameTypeSearch' });
+  });
+
+  test('says what it compared by when nothing is shared', () => {
+    page = openWebviewPage(renderPage('sidebarNotes'), {
+      activeFileName: 'Lone.md',
+      activeTags: [],
+      notes: [],
+      state: 'noMatches',
+      sameType: describeSameTypeRows(workspace(), 'Decisions/Lone.md'),
+      parkedTags: [],
+    });
+    assert.strictEqual(page.text('.same-type summary'), 'Other decisions');
+    assert.strictEqual(page.text('.same-type .links-more'), 'No other decision shares a project, owner, or spec.');
+    assert.strictEqual(page.text('.same-type-all'), 'All decisions');
+  });
+
+  test('stays folded as the reader left it', () => {
+    const folded = open({ linksOpen: { linked: true, mentions: false, sameType: false } });
+    assert.strictEqual((folded.find('[data-links-group="sameType"]') as HTMLDetailsElement).open, false);
+    assert.deepStrictEqual((folded.savedState() as { linksOpen: unknown }).linksOpen, { linked: true, mentions: false, sameType: false });
   });
 });

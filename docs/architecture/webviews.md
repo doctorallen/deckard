@@ -367,6 +367,7 @@ What the template did to the page outside a draw, the page still does, and squar
 | `context.tsx` | What the sidebar is about: the note or entry, with its own tags, or the page in front; and the related notes' sort and gear |
 | `cards.tsx` | A ranked result's card, a graph node's connections, the entries worded like a note with no tags, and Home's widgets to add |
 | `links.tsx` | Linked from and Mentioned without a link |
+| `sameType.tsx` | For a typed row's note, the other rows of its type that share a relation's value with it (plan 32) |
 | `refine.tsx` | Refine: the active search's values, folded at five |
 | `weights.tsx` | The weight rail where the sidebar draws it: beside each of the note's tags, and as each result's relevance with its breakdown |
 

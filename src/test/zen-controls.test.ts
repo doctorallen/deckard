@@ -236,6 +236,34 @@ suite('Zen quiets controls in place', () => {
     assert.ok(!quietAtRest(sidebar('newest').find('.related-notes-sort')), 'Newest stays drawn');
   });
 
+  test("Context keeps the other rows of a note's type whole under Zen: its labels, rows, +N more, and All are content", () => {
+    const page = open(renderPage('sidebarNotes', { chrome: chromeOf(true) }), {
+      activeFileName: 'Sam Okafor.md',
+      activeTags: [],
+      notes: [],
+      state: 'noMatches',
+      parkedTags: [],
+      sameType: {
+        typeKey: 'person',
+        plural: 'people',
+        query: 'type = person',
+        count: 9,
+        groups: [{
+          id: 'team=#team/payments',
+          field: 'team',
+          value: 'Payments',
+          query: 'type = person AND team = #team/payments',
+          rows: Array.from({ length: 8 }, (_, at) => ({ id: `@p${at}`, title: `P${at}`, filePath: `People/P${at}.md`, detail: 'Engineer' })),
+          more: 1,
+        }],
+      },
+    });
+    assert.strictEqual(page.document.body.getAttribute('data-controls'), 'quiet');
+    const controls = page.findAll('.same-type button, .same-type summary');
+    assert.strictEqual(controls.length, 12, 'All, the summary, the label, eight rows, and +1 more');
+    assert.ok(controls.every((control) => !quietAtRest(control)));
+  });
+
   test('a calendar quiets the week marks without a note on the page and in the sidebar, and keeps those with one', () => {
     for (const page of [calendarPage(true), sidebarCalendar(true)]) {
       const marks = page.findAll('.week-label');

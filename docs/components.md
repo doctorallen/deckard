@@ -571,6 +571,22 @@ one `.links-more` foot line whose `.links-search` button posts
 `.hide-daily-toggle` (`aria-pressed`) posts `setHideDailyNotes`; while it
 hides a note, a `.links-hiding` line says how many, with **Show them**.
 
+### Other rows of a type
+
+For a note that is a typed row, Related Notes draws `.same-type` between
+the related notes and Linked from: a `details.links-group`
+(`data-links-group="sameType"`, kept open or closed as Linked from is),
+headed *Other people* with its `.links-count`, and a `.links-search`
+`.same-type-all` (*All people*) drawn at the heading's right. Each
+`.same-type-group` has a `.same-type-label` button, the field's
+`.same-type-key` (monospace, muted, `.is-reverse` in italics) and the
+value, then a `.link-list` of `.same-type-row`s: a `.same-type-open` title
+and a muted `.same-type-detail` (*Head of Payments · Parked*), and, past
+eight, a `.same-type-more` button. The rows post `openSameTypeRow` by id
+and the label, *+N more*, and *All* post `openSameTypeSearch` by the
+group's id or none; the host checks both against what it would list now
+and builds the search itself. Nothing in it is quieted under Zen.
+
 ### A tag's page's quiet lines
 
 Under a one-tag page's hub, the search page's `<TagNotes>` (`searchPage/hub.tsx`) draws `.tag-notes`: one muted
