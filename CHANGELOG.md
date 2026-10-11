@@ -22,6 +22,28 @@
   `type = person AND team = #team/payments`, and **All people** opens
   the type's. Parked rows come last, eight rows to a group, then
   **+3 more**. The related notes are ranked as before.
+- **Edit fields on a tag's page.** A typed tag's hub card edits its hub
+  note's fields in place, as the Note page does: **Edit** on each field,
+  the empty ones folded, **Add field…**, and **Undo** in the message. A
+  hub note opens as its tag's page, so this is where a person's or a
+  team's fields are edited. A row with no hub note lists its type's
+  fields, *Not set*, under *No note describes @alex-rivera yet.*; **Edit**
+  on one opens the form for its note at that field, its title and tag
+  filled in.
+
+### Changed
+
+- **Where a field comes from.** A typed row's fields list its own first,
+  then, under **From other notes**, those other notes give it, each
+  saying where it is set: *Set in each person's `manager`*, *Set in
+  Payments' `lead`*. Before, only italics and a tooltip said so.
+- **Details that name the row are left out.** On the page of a row with
+  no note, a value's details no longer repeat the row itself: Alex's
+  *lead of* reads *Payments (on-call Sam Okafor)*, and a decision she made
+  with Theo reads *(also decided-by Theo Park)*.
+- **Edit is drawn on every field** it can change, on the Note page too,
+  rather than on the line you point at; Zen still quiets it until you
+  point at or tab into the fields.
 
 ## 2.6.0 - 2026-10-09
 

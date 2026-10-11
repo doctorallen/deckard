@@ -148,6 +148,7 @@ Everything else under the bar takes the shared reveal rule
 | Home's `.dashboard-tabs-row` | Customize |
 | Context's `.context-pages-band` and `.related-notes-controls` | The two gears, and the Related Sort |
 | Each week's `.calendar-row`, on the page and in the sidebar | The week mark |
+| A typed row's fields: the Note page's `.note-fields`, a tag page's `.hub-fields` | Each field's Edit and Add field…, drawn at Full |
 
 A tool whose current value is shaping the page is marked
 `data-reveal-keep` by its renderer and stays drawn: Can start now while

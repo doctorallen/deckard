@@ -70,13 +70,17 @@ one of Payments' **members**, and Checkout is **owned by** Payments.
   and the table says so. Right-click a heading to sort by it or hide it.
 - **Hover a person.** Point at `@noor-haddad` in any note: Noor's role,
   team, manager, and email, and when Noor was last mentioned.
-- **Edit a field.** Open [[Noor Haddad]] as a page (the unicorn button in
-  the editor's title bar): the fields sit under the title bar, and **Edit**
-  on a row changes one line of the front matter.
+- **Edit a field.** Cmd-click (Ctrl-click) `@noor-haddad` in any note, or
+  find Noor in Find: her page's hub card lists her fields, and **Edit** on
+  a row changes one line of her note's front matter. **From other notes**
+  lists what other notes say of her, and where each is set.
 - **A page with no note.** Cmd-click (Ctrl-click) `#area/checkout` in the
   Payments note: no note describes Checkout, and its page still says which
-  team owns it, and who leads that team.
+  team owns it, and who leads that team. **Edit** on a field there writes
+  Checkout's note.
 - **Decisions.** [[ADR-001 Card form]] says `type: decision` in its front
   matter, and [[Checkout v2]] lists every decision with its date and state.
+  Open the decision as a page (the unicorn button in the editor's title
+  bar): its fields sit under the title bar, each with **Edit**.
 
 `Deckard: Open Help` covers the rest, and **Types and fields** covers these.
