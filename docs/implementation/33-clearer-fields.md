@@ -1,5 +1,7 @@
 # 33 · Clearer fields
 
+> Plan 34 (`34-edit-fields-form.md`) replaces this plan's editing on the pages (3 and 4, and Edit drawn at rest) with Edit fields…, which opens the New Note from Type… form on the note.
+
 A follow-up to plan 30's fields (§ Surfaces 5 and 6). On the work sample,
 the page for `@alex-rivera`, a Person with no hub note, showed a
 "FIELDS · Person" card of italic rows, *lead of*, *reports*, *decided*.
