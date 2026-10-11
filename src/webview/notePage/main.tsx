@@ -20,7 +20,7 @@ import { installViewOptions, type ViewOptionItem } from '../shared/viewOptions';
 import { keepState, post } from '../shared/vscode';
 import { Blocks } from '../shared/noteBlocks';
 import { FieldRows, type FieldEditing, readableValue } from '../shared/fieldRows';
-import type { FieldEditValue } from '../../ui/protocol/fields';
+import { createFieldEditing } from '../shared/fieldEditing';
 
 /** Sends the host one of the messages the note page may send. */
 function send(message: NotePageMessage): void {
@@ -314,51 +314,20 @@ function modifiers(event: MouseEvent | KeyboardEvent): { opposite?: true; beside
   };
 }
 
-/** A field the note shown has, by its key: one that holds something, or an empty one. */
-function findField(key: string | undefined) {
-  const fields = store.state.snapshot?.fields;
-  return key ? [...(fields?.fields ?? []), ...(fields?.empty ?? [])].find((field) => field.edit?.key === key) : undefined;
-}
-
-/** Sends a field edit for the note shown. */
-function sendField(key: string, value: FieldEditValue): void {
-  const filePath = store.state.snapshot?.filePath;
-  if (filePath) {
-    send({ type: 'setNoteField', filePath, key, value });
-  }
-}
-
-/**
- * Opens a field's editor, its input holding what the field holds when it
- * is typed, and its filter empty when it is a list; or closes it when it is
- * open. Focus goes to its input, or its first choice.
- */
-function toggleEditor(key: string): void {
-  const field = findField(key);
-  if (!field?.edit) {
-    return;
-  }
-  if (store.state.editing?.key === key && !store.state.editing.adding && !store.state.editing.other) {
-    closeEditor(key);
-    return;
-  }
-  const typed = field.edit.input === 'rows' || field.edit.input === 'options' ? '' : (field.edit.current[0] ?? '');
-  focusAfterDraw = `.field-row[data-field-key="${key}"] .field-editor :is(input, button)`;
-  store.update({ editing: { key, text: typed } });
-}
-
-/** Closes the editor, focus going back to the field's Edit, or to Add field…. */
-function closeEditor(key?: string): void {
-  focusAfterDraw = key ? `.field-edit[data-field-key="${key}"]` : '.field-add-button';
-  store.update({ editing: undefined });
-}
-
-/** After a choice: a field that holds several keeps its list open for the next; any other closes it. */
-function afterChoice(key: string): void {
-  if (!findField(key)?.edit?.many) {
-    closeEditor(key);
-  }
-}
+/** The note's fields, edited in place as a tag's page's hub card edits them. */
+const fieldEditing = createFieldEditing({
+  region: '.note-fields',
+  current: () => {
+    const snapshot = store.state.snapshot;
+    return snapshot?.fields ? { fields: snapshot.fields, filePath: snapshot.filePath } : undefined;
+  },
+  editing: () => store.state.editing,
+  show: (editing, focus) => {
+    focusAfterDraw = focus || undefined;
+    store.update({ editing });
+  },
+  send,
+});
 
 /** Every control's action, by its `data-action`. */
 const ACTIONS: Readonly<Record<string, ActionHandler>> = {
@@ -386,55 +355,7 @@ const ACTIONS: Readonly<Record<string, ActionHandler>> = {
     const alt = element.querySelector('img')?.getAttribute('alt') || 'Image';
     element.setAttribute('aria-label', `${alt}, shown ${whole ? 'at full size' : 'fitted'}; select to show it ${whole ? 'fitted' : 'at full size'}`);
   },
-  'edit-field': (element) => toggleEditor(String(element.dataset.fieldKey)),
-  'choose-field-row': (element) => {
-    const key = String(element.dataset.fieldKey);
-    sendField(key, { kind: 'row', rowId: String(element.dataset.rowId) });
-    afterChoice(key);
-  },
-  'choose-field-option': (element) => {
-    const key = String(element.dataset.fieldKey);
-    sendField(key, { kind: 'option', option: String(element.dataset.option) });
-    afterChoice(key);
-  },
-  'set-field-text': (element) => {
-    const key = String(element.dataset.fieldKey);
-    const text = store.state.editing?.text.trim() ?? '';
-    if (!text) {
-      return;
-    }
-    sendField(key, { kind: 'text', text });
-    closeEditor(key);
-  },
-  'toggle-field': (element) => sendField(String(element.dataset.fieldKey), { kind: 'checkbox', checked: (element as HTMLInputElement).checked }),
-  'clear-field': (element) => {
-    const key = String(element.dataset.fieldKey);
-    sendField(key, { kind: 'clear' });
-    closeEditor(key);
-  },
-  'add-field': () => {
-    if (store.state.editing?.adding || store.state.editing?.other) {
-      closeEditor();
-      return;
-    }
-    focusAfterDraw = '.field-add .field-choice';
-    store.update({ editing: { adding: true, text: '' } });
-  },
-  'add-other-field': () => {
-    focusAfterDraw = '.field-add .field-key-input';
-    store.update({ editing: { other: true, key: '', text: '' } });
-  },
-  'set-other-field': () => {
-    const editing = store.state.editing;
-    const key = editing?.key?.trim() ?? '';
-    const text = editing?.text.trim() ?? '';
-    if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(key) || !text) {
-      announce('Write a key that starts with a letter, then a value.');
-      return;
-    }
-    sendField(key, { kind: 'text', text });
-    closeEditor();
-  },
+  ...fieldEditing.actions,
   'open-search': (element) => {
     if (element.dataset.query) {
       send({ type: 'openSearch', query: element.dataset.query });
@@ -486,52 +407,11 @@ document.addEventListener('mouseup', (event) => {
   send({ type: 'navigateNoteHistory', direction: event.button === 3 ? 'back' : 'forward' });
 });
 
-// What is typed in a field's editor is kept in the page's state, so a draw keeps it.
-app.addEventListener('input', (event) => {
-  const input = event.target as HTMLInputElement | null;
-  const editing = store.state.editing;
-  if (!input || !editing || !input.closest?.('.note-fields')) {
-    return;
-  }
-  if (input.classList.contains('field-input')) {
-    store.update({ editing: { ...editing, text: input.value } });
-  } else if (input.classList.contains('field-key-input')) {
-    store.update({ editing: { ...editing, key: input.value } });
-  }
-});
-
-/**
- * Enter in the fields region: on a focused field, opens its editor; in an
- * editor's input, takes its first choice, or sets what is typed. True when
- * the key was taken.
- */
-function enterInFields(target: HTMLElement): boolean {
-  if (target.matches('.field-row[data-field-key]')) {
-    toggleEditor(String(target.dataset.fieldKey));
-    return true;
-  }
-  if (!target.matches('input[type="text"], input[type="date"]')) {
-    return false;
-  }
-  const editor = target.closest('.field-editor, .field-add');
-  editor?.querySelector<HTMLElement>('[data-action="choose-field-row"], [data-action="set-field-text"], [data-action="set-other-field"]')?.click();
-  return true;
-}
-
-// The fields' keys: Enter opens a field's editor or takes what it holds, and Escape closes it.
-app.addEventListener('keydown', (event) => {
-  const target = event.target as HTMLElement | null;
-  if (!target?.closest?.('.note-fields') || event.metaKey || event.ctrlKey || event.altKey) {
-    return;
-  }
-  const editing = store.state.editing;
-  if (event.key === 'Escape' && editing) {
-    event.preventDefault();
-    closeEditor(editing.adding || editing.other ? undefined : editing.key);
-  } else if (event.key === 'Enter' && enterInFields(target)) {
-    event.preventDefault();
-  }
-});
+// What is typed in a field's editor is kept in the page's state, so a draw
+// keeps it; Enter opens a field's editor or takes what it holds, and Escape
+// closes it.
+app.addEventListener('input', (event) => fieldEditing.handleInput(event));
+app.addEventListener('keydown', (event) => fieldEditing.handleKeydown(event));
 
 onHostMessage<StateMessage<NotePageSnapshot>>('state', (message) => {
   // Another note closes any editor; the same note, drawn again after a write, keeps a list open.

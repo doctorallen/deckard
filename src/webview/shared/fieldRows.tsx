@@ -8,9 +8,9 @@
  * which opens to list them; then, under "From other notes", the reverses
  * other rows give it, in italics, each saying where it is set.
  *
- * Where the fields are `editable`, on the Note page and a hub note's card,
- * each field the note writes has an Edit button, revealed on its row's
- * hover or focus (shared/reveal.css), and Enter on the row opens the same
+ * Where the fields are `editable`, on the Note page and a tag's page, each
+ * field the note writes has an Edit button, drawn at rest and quieted only
+ * under Zen (shared/reveal.css), and Enter on the row opens the same
  * editor under it: a list by kind, filtered as you type, an input, or a
  * box, then Clear. For a row no note describes, its type's fields read Not
  * set, and their Edit opens the form for the row's new note at that field.
@@ -77,14 +77,15 @@ function FieldValue({ value, noteAction }: { readonly value: DrawnFieldValue; re
 }
 
 /**
- * A field's Edit: shown on its row's hover or focus at any step, and
- * under Zen only once the fields region is pointed at or holds focus; it
- * stays drawn while its editor is open. For a row no note describes, it
- * opens the form for the row's new note instead (`create-row-note`).
+ * A field's Edit: drawn on every row it can change, so a reader finds it,
+ * and under Zen quieted until the fields region is pointed at or holds
+ * focus; it stays drawn while its editor is open. For a row no note
+ * describes, it opens the form for the row's new note instead
+ * (`create-row-note`).
  */
 function EditButton({ name, fieldKey, open, action = 'edit-field' }: { readonly name: string; readonly fieldKey: string; readonly open?: boolean; readonly action?: string }) {
   return (
-    <button type="button" class="field-edit" data-action={action} data-field-key={fieldKey} aria-expanded={open} aria-label={`Edit ${name}`} data-reveal="" data-zen-reveal="">
+    <button type="button" class="field-edit" data-action={action} data-field-key={fieldKey} aria-expanded={open} aria-label={`Edit ${name}`} data-zen-reveal="">
       Edit
     </button>
   );
@@ -139,7 +140,6 @@ function FieldRow({ field, options }: { readonly field: DrawnField; readonly opt
   return (
     <div
       class={['field-row', field.source === 'reverse' ? 'is-reverse' : '', editing ? 'is-editing' : ''].filter(Boolean).join(' ')}
-      data-reveal-region=""
       data-field-key={key}
       tabIndex={key ? 0 : undefined}
     >
@@ -295,9 +295,17 @@ export function FieldRows({ fields, noteAction, editable, editing, addField }: F
 /**
  * Add field…: the type's empty fields, each opening its editor, then
  * Other… for a key the type does not name; or, once Other… is chosen, the
- * key and its value.
+ * key and its value. For a row no note describes, it opens the form for
+ * the row's new note, which lists every field.
  */
 function AddField({ fields, editing }: { readonly fields: DrawnFields; readonly editing: FieldEditing | undefined }) {
+  if (fields.noNote) {
+    return (
+      <div class="field-add">
+        <button type="button" class="field-add-button" data-action="create-row-note" data-zen-reveal="">Add field…</button>
+      </div>
+    );
+  }
   const open = Boolean(editing?.adding || editing?.other);
   return (
     <div class="field-add">

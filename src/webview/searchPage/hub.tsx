@@ -11,7 +11,7 @@ import { NoteBody } from '../shared/searchCard';
 import { TagButton } from '../shared/tagButton';
 import { isParkedTag } from '../shared/tagMenu';
 import { Blocks } from '../shared/noteBlocks';
-import { FieldRows } from '../shared/fieldRows';
+import { FieldRows, type FieldEditing } from '../shared/fieldRows';
 
 /**
  * A property's values joined by commas, a tag as the control that opens
@@ -53,10 +53,19 @@ function HubProperties({ hub }: { readonly hub: TagOverviewHub }) {
   );
 }
 
-/** The hub note's front matter: a typed row's fields, or its properties as written. */
-function HubFields({ hub }: { readonly hub: TagOverviewHub }) {
+/**
+ * The hub note's front matter: a typed row's fields, each the note writes
+ * with its Edit, the empty ones folded, and Add field…, as the Note page
+ * draws them, in a region of their own Zen quiets them in; or its
+ * properties as written.
+ */
+function HubFields({ hub, editing }: { readonly hub: TagOverviewHub; readonly editing: FieldEditing | undefined }) {
   if (hub.fields) {
-    return <div class="hub-fields"><FieldRows fields={hub.fields} noteAction="open-source" /></div>;
+    return (
+      <div class="hub-fields" data-zen-region="">
+        <FieldRows fields={hub.fields} noteAction="open-source" editable editing={editing} addField />
+      </div>
+    );
   }
   return hub.properties.length ? <HubProperties hub={hub} /> : null;
 }
@@ -88,31 +97,37 @@ function HubBody({ hub, renderMode }: { readonly hub: NonNullable<SearchPageSnap
 }
 
 /**
- * In the hub's place, for a typed row no note describes: its fields as
- * other rows give them, each value with what the row it names holds of
- * people, so a row with no note still shows who owns it. Read-only; Create
- * hub note, under the title, writes the note that would hold its own.
+ * In the hub's place, for a typed row no note describes: that no note
+ * does, its type's own fields, each Not set with an Edit that opens the
+ * form for the row's new note at that field, and Add field…; then, under
+ * From other notes, what other rows give it, each value with what the row
+ * it names holds of people, so a row with no note still shows who owns it.
+ * Create hub note, under the title, opens the same form.
  */
-function RowFieldsCard({ fields, hubOpen }: { readonly fields: NonNullable<SearchPageSnapshot['rowFields']>; readonly hubOpen: boolean | undefined }) {
+function RowFieldsCard({ tag, fields, hubOpen }: { readonly tag: SearchPageTag; readonly fields: NonNullable<SearchPageSnapshot['rowFields']>; readonly hubOpen: boolean | undefined }) {
   return (
     <details class="hub hub-fields-card" open={hubOpen !== false}>
       <summary class="hub-header">
         <span class="hub-title"><span class="hub-toggle" aria-hidden="true"></span><span class="eyebrow">Fields</span></span>
-        <span class="hub-fields-type" data-tip="Worked out from the rows that name this one; no note holds them">{fields.typeName}</span>
+        <span class="hub-fields-type" data-tip={`No note describes ${tag.label} yet; Edit on a field writes one`}>{fields.typeName}</span>
       </summary>
-      <div class="hub-fields"><FieldRows fields={fields} noteAction="open-source" /></div>
+      <div class="hub-fields" data-zen-region="">
+        <p class="hub-fields-none">{`No note describes ${tag.label} yet.`}</p>
+        <FieldRows fields={fields} noteAction="open-source" editable addField />
+      </div>
     </details>
   );
 }
 
 /**
  * The note that describes the page's tag, open or closed as the reader
- * left it here, or as they left the last tag's page until they do.
+ * left it here, or as they left the last tag's page until they do, with
+ * the field editor `editing` open on a typed row's fields.
  */
-export function HubNote({ snapshot, hubOpen }: { readonly snapshot: SearchPageSnapshot; readonly hubOpen: boolean | undefined }) {
+export function HubNote({ snapshot, hubOpen, editing }: { readonly snapshot: SearchPageSnapshot; readonly hubOpen: boolean | undefined; readonly editing?: FieldEditing }) {
   const hub = snapshot.hub;
   if (snapshot.tag && !hub && snapshot.rowFields) {
-    return <RowFieldsCard fields={snapshot.rowFields} hubOpen={hubOpen} />;
+    return <RowFieldsCard tag={snapshot.tag} fields={snapshot.rowFields} hubOpen={hubOpen} />;
   }
   if (!snapshot.tag || !hub) {
     return null;
@@ -124,7 +139,7 @@ export function HubNote({ snapshot, hubOpen }: { readonly snapshot: SearchPageSn
         <span class="hub-title"><span class="hub-toggle" aria-hidden="true"></span><span class="eyebrow">Hub note</span></span>
         <button data-action="open-source" data-file-path={hub.filePath} data-line="1" data-tip={hub.filePath}>{`Open ${hub.fileName}`}</button>
       </summary>
-      <HubFields hub={hub} />
+      <HubFields hub={hub} editing={editing} />
       <HubBody hub={hub} renderMode={snapshot.renderMode} />
       {hub.otherFilePaths.length ? <OtherHubNotes filePaths={hub.otherFilePaths} /> : null}
     </details>

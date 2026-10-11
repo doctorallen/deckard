@@ -97,6 +97,8 @@ export interface DrawnFields {
   fields: DrawnField[];
   /** The schema's fields that hold nothing, folded into one line: `1 empty: email`. */
   empty: DrawnField[];
+  /** Set for a row no note describes: its fields' Edit and Add field… open the form for its new note. */
+  noNote?: true;
   /** On the Note page and a hub note's card, the rows each relation's list offers, by the editors' `choices`. */
   choices?: Record<string, FieldChoice[]>;
 }

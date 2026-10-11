@@ -15,7 +15,7 @@ import type {
 } from '../../domain/model/preferences';
 import type { QueryViewState } from '../../domain/model/query';
 import type { EntityKind } from '../../domain/model/tags';
-import type { DrawnFields } from './fields';
+import type { DrawnFields, SetNoteFieldMessage } from './fields';
 import type { IndexingMessage, MessageAs, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
@@ -579,6 +579,7 @@ export interface SearchPagePageToHost {
   editResults: EditResultsMessage;
   createHubNote: CreateHubNoteMessage;
   setHubOpen: SetHubOpenMessage;
+  setNoteField: SetNoteFieldMessage;
   mergeTags: MergeTagsMessage;
   setTypeSort: SetTypeSortMessage;
   setTypeColumns: SetTypeColumnsMessage;

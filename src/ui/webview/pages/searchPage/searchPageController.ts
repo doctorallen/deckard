@@ -11,11 +11,13 @@ import { parseWorkspaceQuery } from '../../../../domain/types/typeQueryFields';
 import type { ExportService } from '../../../../services/exportService';
 import type { NavigationService } from '../../../../services/navigationService';
 import { measure } from '../../../../shared/timing';
+import type { SetNoteFieldMessage } from '../../../protocol/fields';
 import type { SearchPagePageToHost, SearchPageSnapshot, SearchPageState } from '../../../protocol/searchPage';
 import type { SearchRefineState } from '../../../protocol/shared';
 import { editResults } from '../../../commands/bulkEditPrompts';
 import { presentExport } from '../../../commands/exportResults';
 import { copyFieldValue } from '../../../commands/typeNotes';
+import { writeNoteField } from '../../../commands/noteFieldWrites';
 import { createHubNoteForTag, openTypeNoteForm } from '../../../commands/typeNoteForm';
 import { renameTypeField, renameTypeOption } from '../../../commands/typeRenames';
 import { getTypeIndex, type TypeRow } from '../../../../domain/types/typeIndex';
@@ -190,6 +192,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       saveTagOverviewFilter: (message, page) => this.saveSearch(page, message.query),
       mergeTags: (message) => this.mergeTags(message.sourceKey, message.targetKey),
       setHubOpen: (message) => preferences.display.setHubNoteCollapsed(!message.open),
+      setNoteField: (message) => this.setHubField(message),
       // An Edit on a field Not set opens the row's form at that field.
       createHubNote: async (message) => {
         const tagKey = this.currentSnapshot().tag?.key;
@@ -633,6 +636,19 @@ export class SearchPageController implements PageController<SearchPageState, Sea
         }
       },
     };
+  }
+
+  /**
+   * Writes one field of the hub note the page shows, as its card asked, the
+   * way the Note page writes one; the page draws again when the index reads
+   * the change. Only the hub note drawn with fields is written.
+   */
+  private async setHubField(message: SetNoteFieldMessage): Promise<void> {
+    const hub = this.currentSnapshot().hub;
+    if (!hub?.fields || hub.filePath !== message.filePath) {
+      return;
+    }
+    await writeNoteField({ indexer: this.search.indexer, history: this.search.writes.history }, message);
   }
 
   /** A row of the page's type, by id, as the index has it now; undefined for one it no longer has. */

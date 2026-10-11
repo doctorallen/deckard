@@ -146,6 +146,19 @@ const typeSearchPage = (zen: boolean) =>
 const notePage = (zen: boolean) =>
   open(renderPage('notePage', { chrome: chromeOf(zen) }), createNotePageSnapshot(typedWorkspace(), 'Teams/Credit.md', { queryContext, history: { back: false, forward: false }, visit: 1 }));
 
+/** A typed tag's page with a hub note: its card's fields, each with Edit, the empty ones folded, and Add field…. */
+const tagPage = (zen: boolean) =>
+  open(renderPage('searchPage', { chrome: chromeOf(zen) }), {
+    ...createSearchPageSnapshot(typedWorkspace(), preferences(), '#team/credit', { queryContext, originQuery: '#team/credit' }),
+    parkedTags: [],
+  });
+/** A typed tag's page with no hub note: the Fields card, its type's fields Not set, then From other notes. */
+const rowFieldsPage = (zen: boolean) =>
+  open(renderPage('searchPage', { chrome: chromeOf(zen) }), {
+    ...createSearchPageSnapshot(typedWorkspace(), preferences(), '#area/bond-trading', { queryContext, originQuery: '#area/bond-trading' }),
+    parkedTags: [],
+  });
+
 /**
  * Zen quiets the tools under a page's bar in place (plan 29, R22): each is
  * drawn at no opacity until its area is pointed at or holds focus, and
@@ -320,11 +333,30 @@ suite('Zen quiets controls in place', () => {
     // Plain styling hides an eyebrow whole; the type opens its rows, so it is drawn as the line's label instead.
     assert.strictEqual(page.find('.note-progress .type-link').closest('.eyebrow'), null, 'the hub line’s type is no eyebrow');
     assert.ok(!quietAtRest(notePage(false).find('.field-add-button')), 'at Full, Add field… is drawn');
-    assert.ok(quietAtRest(notePage(false).find('.field-edit')), "at Full, a row's Edit shows on its row, as a row's ⋯ does");
+    assert.deepStrictEqual(notePage(false).findAll('.field-edit').filter(quietAtRest).map(nameOf), [], 'at Full, every Edit is drawn, so a reader finds it');
     page.click('.field-edit[data-field-key="lead"]');
     const choices = page.findAll('.field-editor .field-choice');
     assert.ok(choices.length > 0 && choices.every((choice) => !quietAtRest(choice)), 'an open list stays drawn');
     assert.strictEqual(page.find('.field-edit[data-field-key="lead"]').getAttribute('aria-expanded'), 'true', 'and its Edit with it');
+  });
+
+  test("a tag's page draws its hub card's and Fields card's Edit and Add field… as the Note page does: drawn at Full, quiet under Zen until the fields are pointed at", () => {
+    for (const draw of [tagPage, rowFieldsPage]) {
+      const full = draw(false);
+      const edits = full.findAll('.hub-fields .field-edit');
+      assert.ok(edits.length > 0, 'it has Edit buttons');
+      assert.deepStrictEqual([...edits, full.find('.hub-fields .field-add-button')].filter(quietAtRest).map(nameOf), [], 'at Full, Edit and Add field… are drawn at rest');
+      const zen = draw(true);
+      for (const control of zen.findAll('.hub-fields .field-edit, .hub-fields .field-add-button')) {
+        assert.ok(quietAtRest(control), `${nameOf(control)} is quiet at rest under Zen`);
+        assert.ok(control.closest('.hub-fields[data-zen-region]'), `${nameOf(control)} shows from the fields region`);
+      }
+      for (const kept of zen.findAll('.hub-fields .field-link, .hub-fields .field-none, .hub-fields .field-source, .hub-fields .field-group-label, .hub-fields .field-empty > summary, .hub-fields .hub-fields-none')) {
+        assert.ok(!quietAtRest(kept), `${nameOf(kept)} stays drawn`);
+      }
+    }
+    assert.strictEqual(rowFieldsPage(true).text('.hub-fields .field-none'), 'Not set');
+    assert.ok(rowFieldsPage(true).find('.hub-fields .field-group-label').closest('.eyebrow') === null, 'From other notes is no eyebrow, which Zen would hide');
   });
 
   test("the Notes Graph's Focus and Filters start closed under Zen, as Display does, and their summaries say what they are doing", () => {
@@ -404,6 +436,8 @@ const CONTRACT_PAGES: ReadonlyArray<readonly [string, (zen: boolean) => WebviewP
   ['the Notes Graph', graph],
   ['the Note page', notePage],
   ["a type's search page", typeSearchPage],
+  ["a typed tag's page", tagPage],
+  ["a typed tag's page with no note", rowFieldsPage],
 ];
 
 /**

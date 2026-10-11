@@ -98,8 +98,8 @@ suite('Note page fields, drawn', () => {
   test('Edit opens a list of people filtered as you type, and Enter takes the first', () => {
     const page = notePage('Teams/Rates.md');
     const edit = page.find('.field-edit[data-field-key="lead"]');
-    assert.strictEqual(edit.getAttribute('data-reveal'), '', 'revealed on its row, as a row’s ⋯ is');
-    assert.strictEqual(edit.getAttribute('data-zen-reveal'), '');
+    assert.strictEqual(edit.getAttribute('data-reveal'), null, 'drawn at rest, so a reader finds it');
+    assert.strictEqual(edit.getAttribute('data-zen-reveal'), '', 'quieted under Zen only');
     page.click('.field-edit[data-field-key="lead"]');
     assert.strictEqual(page.find('.field-edit[data-field-key="lead"]').getAttribute('aria-expanded'), 'true');
     assert.deepStrictEqual(page.findAll('.field-editor .field-choice-title').map((title) => title.textContent), ['Dana Whitfield', 'Omar Haddad', 'Priya Natarajan']);
@@ -191,18 +191,62 @@ suite('Tag page fields, drawn', () => {
     }
   };
 
-  test('a typed row’s hub card draws its fields, read-only', () => {
+  test('a typed row’s hub card draws its fields with Edit, the empty ones folded, and Add field…, as the Note page does', () => {
     const page = searchPage('#team/rates');
     assert.deepStrictEqual(rows(page, '.hub').slice(0, 2), [['lead', 'Dana Whitfield'], ['owns', 'Bond Trading, Fx']]);
-    assert.strictEqual(page.findAll('.hub .field-edit, .hub .hub-properties').length, 0);
+    assert.strictEqual(page.findAll('.hub .hub-properties').length, 0);
+    const region = page.find('.hub .hub-fields');
+    assert.strictEqual(region.getAttribute('data-zen-region'), '');
+    const edit = page.find('.hub .field-edit[data-field-key="lead"]');
+    assert.deepStrictEqual([edit.textContent, edit.getAttribute('aria-label'), edit.getAttribute('data-reveal')], ['Edit', 'Edit lead', null]);
+    assert.strictEqual(rowNamed(page, 'members', '.hub')?.querySelector('.field-edit'), null, 'a reverse is set on the other rows');
+    assert.ok(page.find('.hub .field-add .field-add-button'));
+    const credit = searchPage('#team/credit');
+    assert.strictEqual(credit.text('.hub .field-empty > summary'), '3 empty: owns, on-call, status');
+  });
+
+  test('Edit on the hub card opens the same editor, and a choice writes the hub note', () => {
+    const page = searchPage('#team/rates');
+    page.click('.hub .field-edit[data-field-key="lead"]');
+    assert.strictEqual(page.find('.hub .field-edit[data-field-key="lead"]').getAttribute('aria-expanded'), 'true');
+    assert.deepStrictEqual(page.findAll('.hub .field-editor .field-choice-title').map((title) => title.textContent), ['Dana Whitfield', 'Omar Haddad', 'Priya Natarajan']);
+    type(page, '.hub .field-editor .field-input', 'om');
+    press(page, '.hub .field-editor .field-input', 'Enter');
+    assert.deepStrictEqual(page.lastPosted('setNoteField'), { type: 'setNoteField', filePath: 'Teams/Rates.md', key: 'lead', value: { kind: 'row', rowId: '@omar' } });
+    press(page, '.hub .field-row[data-field-key="tier"]', 'Enter');
+    page.click('.hub .field-editor [data-option="bronze"]');
+    assert.deepStrictEqual(page.lastPosted('setNoteField')?.value, { kind: 'option', option: 'bronze' });
+    press(page, '.hub .field-row[data-field-key="headcount"]', 'Enter');
+    press(page, '.hub .field-editor .field-input', 'Escape');
+    assert.strictEqual(page.findAll('.hub .field-editor').length, 0, 'Escape closes it');
+    page.click('.hub .field-add-button');
+    page.click('.hub .field-add [data-action="add-other-field"]');
+    type(page, '.hub .field-add .field-key-input', 'pager');
+    type(page, '.hub .field-add .field-input', 'rates-oncall');
+    press(page, '.hub .field-add .field-input', 'Enter');
+    assert.deepStrictEqual(page.lastPosted('setNoteField'), { type: 'setNoteField', filePath: 'Teams/Rates.md', key: 'pager', value: { kind: 'text', text: 'rates-oncall' } });
   });
 
   test('a typed row with no note gets a Fields card in the hub’s place, its type’s fields Not set, then who owns it from other notes', () => {
     const page = searchPage('#area/bond-trading');
     assert.strictEqual(page.text('details.hub-fields-card > summary .eyebrow'), 'Fields');
+    assert.strictEqual(page.text('.hub-fields-card .hub-fields-none'), 'No note describes #area/bond-trading yet.');
     assert.deepStrictEqual(rows(page, '.hub-fields-card'), [['system', 'Not set'], ['owned by', 'Rates (lead Dana Whitfield · on-call Priya Natarajan)']]);
     assert.strictEqual(page.text('.hub-fields-card .field-group-label'), 'From other notes');
     assert.strictEqual(rowNamed(page, 'owned by')?.querySelector('.field-source')?.textContent, "Set in Rates' owns");
     assert.strictEqual(page.find('.hub-offer-link').textContent, 'Create hub note', 'Create hub note stays under the title');
+  });
+
+  test('on the Fields card, Edit on a field Not set, Enter on its row, and Add field… open the form for the row’s note', () => {
+    const page = searchPage('#area/bond-trading');
+    const edit = page.find('.hub-fields-card .field-edit[data-field-key="system"]');
+    assert.deepStrictEqual([edit.textContent, edit.getAttribute('data-action'), edit.getAttribute('data-reveal'), edit.getAttribute('data-zen-reveal')], ['Edit', 'create-row-note', null, '']);
+    assert.strictEqual(rowNamed(page, 'owned by', '.hub-fields-card')?.querySelector('.field-edit'), null);
+    page.click('.hub-fields-card .field-edit[data-field-key="system"]');
+    assert.deepStrictEqual(page.lastPosted('createHubNote'), { type: 'createHubNote', field: 'system' });
+    page.click('.hub-fields-card .field-add-button');
+    assert.deepStrictEqual(page.lastPosted('createHubNote'), { type: 'createHubNote' });
+    press(page, '.hub-fields-card .field-row[data-field-key="system"]', 'Enter');
+    assert.deepStrictEqual(page.lastPosted('createHubNote'), { type: 'createHubNote', field: 'system' });
   });
 });

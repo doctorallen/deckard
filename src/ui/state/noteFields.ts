@@ -88,7 +88,7 @@ export function describeTagFields(index: WorkspaceIndex, tagKey: string, others:
     startsNote: field.key,
   }));
   const all = [...unset, ...fields.fields];
-  return all.length > 0 ? { ...fields, fields: all, empty: [] } : undefined;
+  return all.length > 0 ? { ...fields, fields: all, empty: [], noNote: true } : undefined;
 }
 
 /** A row's fields with an editor on each its note can write, and each relation's rows listed once. */
