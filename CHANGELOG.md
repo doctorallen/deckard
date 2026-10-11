@@ -14,6 +14,14 @@
   rows, the quick fix **Create person "Omar H"…**, and **Create hub note**
   on a tag a type has rows of now open the same form, where before they
   asked a title alone.
+- **Other people in Context.** With a typed row's note open, the Context
+  view lists, under its related notes, the other rows of its type that
+  share a relation's value with it, grouped by the value: for a person,
+  the rest of their team, the others with their manager, the others on
+  their projects. Each group's label opens its search, such as
+  `type = person AND team = #team/payments`, and **All people** opens
+  the type's. Parked rows come last, eight rows to a group, then
+  **+3 more**. The related notes are ranked as before.
 
 ## 2.6.0 - 2026-10-09
 

@@ -169,6 +169,10 @@ A row's note, on the [note page](notes-and-links.md#reading-a-note-as-a-page), l
 
 A note with front matter and no type lists its properties in the same place, read-only.
 
+## Other rows in Context
+
+With a row's note open, the [Context view](connections.md#related-notes) lists, under its related notes, the other rows of its type that share a relation's value with it: *Other people*, grouped by *`team` Payments*, *`manager` Alex Rivera*, and reverses such as *`works on` Checkout v2*, each group's label opening its search. See [Related Notes](connections.md#related-notes).
+
 ## Fields on a tag's page
 
 A typed tag's page draws its hub note's fields in the hub card, as the Note page does, read-only; **Edit** is on the Note page. A row with no hub note gets a **Fields** card in the hub's place, with what other rows say of it and who is behind them: *owned by: Payments (lead Alex Rivera · on-call Sam Okafor)*. So the page of an area no note describes still says who owns it. **Create hub note** stays under the title.
