@@ -183,7 +183,7 @@ function describeRowPeople(types: TypeIndex, row: TypeRow): string | undefined {
  * type and field that gives it, `From each person's team`; for a merged
  * field, that it is written here too.
  */
-function describeReverseTip(types: TypeIndex, field: RowField): string | undefined {
+export function describeReverseTip(types: TypeIndex, field: RowField): string | undefined {
   const sources = new Set<string>();
   field.values.forEach(({ via }) => {
     if (!via) {

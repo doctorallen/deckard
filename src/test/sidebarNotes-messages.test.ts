@@ -63,6 +63,24 @@ suite('Related Notes messages', () => {
     assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'renameTag', tagKey: '#work', extra: 1 }), { type: 'renameTag', tagKey: '#work' });
   });
 
+  test('opens a row of the note\'s type by its id, and a search by its group\'s id', () => {
+    assert.deepStrictEqual(
+      narrowSidebarNotesMessage({ type: 'openSameTypeRow', rowId: '@sam', beside: true, filePath: 'x.md' }),
+      { type: 'openSameTypeRow', rowId: '@sam', beside: true },
+    );
+    assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'openSameTypeRow', rowId: '@sam', beside: 'yes' }), { type: 'openSameTypeRow', rowId: '@sam' });
+    assert.strictEqual(narrowSidebarNotesMessage({ type: 'openSameTypeRow', rowId: '' }), undefined);
+    assert.strictEqual(narrowSidebarNotesMessage({ type: 'openSameTypeRow' }), undefined);
+    // The host builds the search from the group it lists; the page names it only.
+    assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'openSameTypeSearch', query: 'type = x' }), { type: 'openSameTypeSearch' });
+    assert.deepStrictEqual(
+      narrowSidebarNotesMessage({ type: 'openSameTypeSearch', group: 'team=#team/payments' }),
+      { type: 'openSameTypeSearch', group: 'team=#team/payments' },
+    );
+    assert.strictEqual(narrowSidebarNotesMessage({ type: 'openSameTypeSearch', group: 3 }), undefined);
+    assert.strictEqual(narrowSidebarNotesMessage({ type: 'openSameTypeSearch', group: '' }), undefined);
+  });
+
   test('opens from the sidebar toolbar', () => {
     assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'openTaskBoard' }), { type: 'openTaskBoard' });
     assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'openNotesGraph' }), { type: 'openNotesGraph' });
