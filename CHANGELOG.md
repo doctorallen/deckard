@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.7.0 - 2026-10-11
+
+### Highlights
+
+- **New Note from Type…** opens a form for a new note of a type: its folder, title, tag, and each field.
+- **Edit fields…** opens the same form on a typed row's note and saves only the fields you changed.
+- Context lists the other rows of a note's type that share its team, manager, or project.
+
 ### Added
 
 - **New Note from Type…** opens a form for a new note of a type, as Add
