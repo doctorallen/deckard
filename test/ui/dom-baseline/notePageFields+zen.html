@@ -24,59 +24,61 @@
           >DECKARD ▾</button
           ><span
             class="eyebrow-trail"
-          > / NOTE / PEOPLE</span
+          > / NOTE / DECISIONS</span
           ></p
         ><h1
           class="note-text"
-        >Dana Whitfield</h1
-        ><div
-          class="note-progress"
-        ><button
-            class="type-link"
-            data-action="open-search"
-            data-query="type = person"
-            data-tip="Search every person: type = person"
-            type="button"
-          >Person</button
+        >ADR-001 Card form</h1
+        ><nav
+          aria-label="Where this note sits"
+          class="note-breadcrumbs"
+        ><p
+            class="note-breadcrumb"
           ><span
-            aria-hidden="true"
-            class="progress-bar"
-          ><span
-              class="progress-bar-fill"
-              style="width: 0%"
-            ></span
-            ></span
-          ><span
-            class="note-progress-label"
-          ><span
-              aria-hidden="true"
-            >0/2 done (0%)</span
+              class="note-crumb"
+            >People</span
             ><span
-              class="visually-hidden"
-            >0 of 2 done, 0%</span
-            > · <button
-              class="progress-link"
-              data-action="open-search"
-              data-query="@dana is:overdue -is:needs-date -is:step -is:parked"
-              data-tip="Search the tag’s overdue tasks"
+              aria-hidden="true"
+              class="note-crumb-join"
+            > › </span
+            ><button
+              class="note-crumb"
+              data-action="open-note"
+              data-file-path="People/Dana Whitfield.md"
               type="button"
-            >1 overdue</button
-            > · <button
-              class="progress-link"
-              data-action="open-search"
-              data-query="@dana is:open due = 2026-09-22 -is:step -is:parked"
-              data-tip="Search the tag’s tasks due next"
+            >Dana Whitfield</button
+            ><span
+              aria-hidden="true"
+              class="note-crumb-join"
+            > › </span
+            ><span
+              class="is-current note-crumb"
+            >ADR-001 Card form</span
+            ></p
+          ><p
+            class="note-breadcrumb"
+          ><span
+              class="note-crumb"
+            >People</span
+            ><span
+              aria-hidden="true"
+              class="note-crumb-join"
+            > › </span
+            ><button
+              class="note-crumb"
+              data-action="open-note"
+              data-file-path="People/Omar Haddad.md"
               type="button"
-            >next due tomorrow</button
-            ></span
-          ><button
-            class="tag-note-action"
-            data-action="open-tag"
-            data-tag-key="@dana"
-            data-tip="Open @dana's page"
-            type="button"
-          >Open @dana</button
-          ></div
+            >Omar Haddad</button
+            ><span
+              aria-hidden="true"
+              class="note-crumb-join"
+            > › </span
+            ><span
+              class="is-current note-crumb"
+            >ADR-001 Card form</span
+            ></p
+          ></nav
         ></div
       ><div
         aria-label="Note"
@@ -112,8 +114,8 @@
         ><details
           class="page-menu view-options"
         ><summary
-            aria-label="More: Theme, Zen, Page width, and more"
-            data-tip="More: Theme, Zen, Page width, and more"
+            aria-label="More: Edit fields, Theme, Zen, and more"
+            data-tip="More: Edit fields, Theme, Zen, and more"
           ><svg
               aria-hidden="true"
               class="toolbar-icon"
@@ -150,6 +152,20 @@
           ><div
             class="is-dropdown popover view-options-menu"
           ><div
+              aria-label="Page"
+              class="view-options-section"
+              role="group"
+            ><button
+                class="menu-item view-options-item"
+                data-action="edit-fields"
+                data-tip="Edit this decision's fields in a form"
+                type="button"
+              ><span
+                  class="menu-label"
+                >Edit fields…</span
+                ></button
+              ></div
+            ><div
               aria-label="Appearance"
               class="view-options-section"
               role="group"
@@ -225,134 +241,90 @@
         ></div
       ></header
     ><section
-      aria-label="Person fields"
+      aria-label="Decision fields"
       class="note-fields"
       data-zen-region=""
-    ><dl
+    ><p
+        class="note-fields-type"
+      ><button
+          class="type-link"
+          data-action="open-search"
+          data-query="type = decision"
+          data-tip="Search every decision: type = decision"
+          type="button"
+        >Decision</button
+        ></p
+      ><dl
         class="field-rows"
       ><div
           class="field-row"
-          data-field-key="team"
-          data-reveal-region=""
-          tabindex="0"
+          data-field-key="decided-by"
         ><dt
             class="field-name"
-          >team</dt
+          ><button
+              class="field-name-link"
+              data-action="edit-fields"
+              data-field-key="decided-by"
+              data-tip="Edit decided-by"
+              type="button"
+            >decided-by</button
+            ></dt
           ><dd
             class="field-values"
           ><button
               class="field-link field-value"
               data-action="open-tag"
-              data-tag-key="#team/rates"
-              data-tip="Open #team/rates"
+              data-tag-key="@dana"
+              data-tip="Open @dana"
               type="button"
-            >Rates</button
-            ><button
-              aria-expanded="false"
-              aria-label="Edit team"
-              class="field-edit"
-              data-action="edit-field"
-              data-field-key="team"
-              data-reveal=""
-              data-zen-reveal=""
+            >Dana Whitfield</button
+            >, <button
+              class="field-link field-value"
+              data-action="open-tag"
+              data-tag-key="@omar"
+              data-tip="Open @omar"
               type="button"
-            >Edit</button
+            >Omar Haddad</button
             ></dd
           ></div
         ><div
           class="field-row"
-          data-field-key="email"
-          data-reveal-region=""
-          tabindex="0"
+          data-field-key="status"
         ><dt
             class="field-name"
-          >email</dt
+          ><button
+              class="field-name-link"
+              data-action="edit-fields"
+              data-field-key="status"
+              data-tip="Edit status"
+              type="button"
+            >status</button
+            ></dt
           ><dd
             class="field-values"
           ><span
               class="field-value"
-            >dana@example.com</span
-            ><button
-              aria-expanded="false"
-              aria-label="Edit email"
-              class="field-edit"
-              data-action="edit-field"
-              data-field-key="email"
-              data-reveal=""
-              data-zen-reveal=""
-              type="button"
-            >Edit</button
-            ></dd
-          ></div
-        ><div
-          class="field-row is-reverse"
-          data-reveal-region=""
-        ><dt
-            class="field-name"
-            data-tip="From each team's lead"
-          >lead of</dt
-          ><dd
-            class="field-values"
-          ><button
-              class="field-link field-value is-reverse"
-              data-action="open-tag"
-              data-tag-key="#team/rates"
-              data-tip="Open #team/rates"
-              type="button"
-            >Rates</button
+            >accepted</span
             ></dd
           ></div
         ></dl
-      ><details
-        class="field-empty"
-      ><summary
-        >1 empty: start</summary
-        ><dl
-          class="field-rows"
-        ><div
-            class="field-row"
-            data-field-key="start"
-            data-reveal-region=""
-            tabindex="0"
-          ><dt
-              class="field-name"
-            >start</dt
-            ><dd
-              class="field-values"
-            ><span
-                class="field-none"
-              >empty</span
-              ><button
-                aria-expanded="false"
-                aria-label="Edit start"
-                class="field-edit"
-                data-action="edit-field"
-                data-field-key="start"
-                data-reveal=""
-                data-zen-reveal=""
-                type="button"
-              >Edit</button
-              ></dd
-            ></div
-          ></dl
-        ></details
-      ><div
-        class="field-add"
+      ><p
+        class="note-fields-edit"
       ><button
-          aria-expanded="false"
-          class="field-add-button"
-          data-action="add-field"
+          class="tag-note-action"
+          data-action="edit-fields"
+          data-tip="Edit this decision's fields in a form"
           data-zen-reveal=""
           type="button"
-        >Add field…</button
-        ></div
+        >Edit fields…</button
+        ></p
       ></section
     ><article
-      aria-label="Dana Whitfield"
+      aria-label="ADR-001 Card form"
       class="note-body"
     ><p
         data-line="7"
-      >Heads the rates desk.</p
+      >Card details are taken in a hosted form, never on our servers.</p
       ></article
     ></main
   > <div
