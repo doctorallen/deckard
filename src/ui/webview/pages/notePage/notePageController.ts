@@ -4,12 +4,12 @@ import type { IndexReader, IndexScanStatus, IndexUpdates } from '../../../../cor
 import { findWikiLinkPlace, parseWikiTarget } from '../../../../domain/index/backlinks';
 import type { Task } from '../../../../domain/model';
 import type { NavigationService } from '../../../../services/navigationService';
-import type { SetNoteFieldMessage } from '../../../protocol/fields';
+import type { EditFieldsMessage } from '../../../protocol/fields';
 import type { NotePagePageToHost, NotePageSnapshot } from '../../../protocol/notePage';
 import { openResultAt } from '../../../commands/navigation';
 import { NOTE_ACTIONS, notePageActions } from '../../../commands/noteActionTable';
-import { writeNoteField } from '../../../commands/noteFieldWrites';
 import { readQueryContext } from '../../../commands/queryContext';
+import { openEditFieldsForm } from '../../../commands/typeNoteForm';
 import type { TaskWrites } from '../../../commands/taskActions';
 import { findHubTagKey } from '../../../state/hubTree';
 import { createNotePageSnapshot } from '../../../state/notePageState';
@@ -101,7 +101,7 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
       navigateNoteHistory: (message, page) => this.step(page, message.direction),
       openSearch: (message) => this.openSearch(message.query),
       runNoteAction: (message, page) => this.runNoteAction(page, message.command),
-      setNoteField: (message) => this.setField(message),
+      editFields: (message) => this.editFields(message),
     };
   }
 
@@ -303,14 +303,15 @@ export class NotePageController implements PageController<NotePageSnapshot, Note
   }
 
   /**
-   * Writes one field of the note shown, as its fields region asked; the
-   * page draws the note again when the index reads the change.
+   * Edit fields…, or a field's name: the form on the note shown, at the
+   * field asked; the page draws the note again when the index reads the
+   * save. Only the note the page shows is opened.
    */
-  private async setField(message: SetNoteFieldMessage): Promise<void> {
+  private async editFields(message: EditFieldsMessage): Promise<void> {
     if (message.filePath !== this.current?.filePath) {
       return;
     }
-    await writeNoteField({ indexer: this.notes.indexer, history: this.notes.writes.history }, message);
+    await openEditFieldsForm({ indexer: this.notes.indexer, history: this.notes.writes.history }, message);
   }
 
   /**

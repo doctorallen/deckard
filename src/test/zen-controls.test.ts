@@ -142,9 +142,22 @@ const typeSearchPage = (zen: boolean) =>
     ...createSearchPageSnapshot(typedWorkspace(), preferences({ typeTables: { area: { sort: { column: 'system', direction: 'asc' } } } }), 'type = area', { queryContext, originQuery: 'type = area' }),
     parkedTags: [],
   });
-/** The Note page on a typed row's note, with filled fields, a reverse, and empty ones folded. */
+/** The Note page on a typed row's note, with filled fields, a reverse, and Edit fields…. */
 const notePage = (zen: boolean) =>
   open(renderPage('notePage', { chrome: chromeOf(zen) }), createNotePageSnapshot(typedWorkspace(), 'Teams/Credit.md', { queryContext, history: { back: false, forward: false }, visit: 1 }));
+
+/** A typed tag's page with a hub note: its card's fields, and Edit fields… in its header. */
+const tagPage = (zen: boolean) =>
+  open(renderPage('searchPage', { chrome: chromeOf(zen) }), {
+    ...createSearchPageSnapshot(typedWorkspace(), preferences(), '#team/credit', { queryContext, originQuery: '#team/credit' }),
+    parkedTags: [],
+  });
+/** A typed tag's page with no hub note: the Fields card, Add fields…, then From other notes. */
+const rowFieldsPage = (zen: boolean) =>
+  open(renderPage('searchPage', { chrome: chromeOf(zen) }), {
+    ...createSearchPageSnapshot(typedWorkspace(), preferences(), '#area/bond-trading', { queryContext, originQuery: '#area/bond-trading' }),
+    parkedTags: [],
+  });
 
 /**
  * Zen quiets the tools under a page's bar in place (plan 29, R22): each is
@@ -236,6 +249,34 @@ suite('Zen quiets controls in place', () => {
     assert.ok(!quietAtRest(sidebar('newest').find('.related-notes-sort')), 'Newest stays drawn');
   });
 
+  test("Context keeps the other rows of a note's type whole under Zen: its labels, rows, +N more, and All are content", () => {
+    const page = open(renderPage('sidebarNotes', { chrome: chromeOf(true) }), {
+      activeFileName: 'Sam Okafor.md',
+      activeTags: [],
+      notes: [],
+      state: 'noMatches',
+      parkedTags: [],
+      sameType: {
+        typeKey: 'person',
+        plural: 'people',
+        query: 'type = person',
+        count: 9,
+        groups: [{
+          id: 'team=#team/payments',
+          field: 'team',
+          value: 'Payments',
+          query: 'type = person AND team = #team/payments',
+          rows: Array.from({ length: 8 }, (_, at) => ({ id: `@p${at}`, title: `P${at}`, filePath: `People/P${at}.md`, detail: 'Engineer' })),
+          more: 1,
+        }],
+      },
+    });
+    assert.strictEqual(page.document.body.getAttribute('data-controls'), 'quiet');
+    const controls = page.findAll('.same-type button, .same-type summary');
+    assert.strictEqual(controls.length, 12, 'All, the summary, the label, eight rows, and +1 more');
+    assert.ok(controls.every((control) => !quietAtRest(control)));
+  });
+
   test('a calendar quiets the week marks without a note on the page and in the sidebar, and keeps those with one', () => {
     for (const page of [calendarPage(true), sidebarCalendar(true)]) {
       const marks = page.findAll('.week-label');
@@ -280,23 +321,40 @@ suite('Zen quiets controls in place', () => {
     assert.strictEqual((page.find('.query-facets-fold') as HTMLDetailsElement).open, false, 'closed, it stays closed');
   });
 
-  test("the Note page quiets Edit and Add field… in its fields region, keeps the fields drawn, and keeps an open list open", () => {
+  test("the Note page quiets Edit fields… in its fields region, and keeps the fields and their names drawn", () => {
     const page = notePage(true);
-    for (const control of page.findAll('.field-edit, .field-add-button')) {
-      assert.ok(quietAtRest(control), `${nameOf(control)} is quiet at rest`);
-      assert.ok(control.closest('section.note-fields[data-zen-region]'), `${nameOf(control)} shows from the fields region`);
-    }
-    for (const kept of page.findAll('.field-link, .field-empty > summary, .note-progress .type-link')) {
+    const edit = page.find('.note-fields-edit [data-action="edit-fields"]');
+    assert.ok(quietAtRest(edit), 'Edit fields… is quiet at rest');
+    assert.ok(edit.closest('section.note-fields[data-zen-region]'), 'and shows from the fields region');
+    assert.ok(!quietAtRest(notePage(false).find('.note-fields-edit [data-action="edit-fields"]')), 'at Full, Edit fields… is drawn');
+    const names = page.findAll('.field-name-link');
+    assert.ok(names.length > 0, 'it has field names that open the form');
+    for (const kept of [...names, ...page.findAll('.field-link, .note-progress .type-link')]) {
       assert.ok(!quietAtRest(kept), `${nameOf(kept)} stays drawn`);
+      assert.notStrictEqual(kept.getAttribute('tabindex'), '-1', `${nameOf(kept)} is a stop for the keyboard`);
     }
+    assert.strictEqual(page.findAll('.field-edit, .field-add-button').length, 0, 'no Edit on a row, and no Add field…');
     // Plain styling hides an eyebrow whole; the type opens its rows, so it is drawn as the line's label instead.
     assert.strictEqual(page.find('.note-progress .type-link').closest('.eyebrow'), null, 'the hub line’s type is no eyebrow');
-    assert.ok(!quietAtRest(notePage(false).find('.field-add-button')), 'at Full, Add field… is drawn');
-    assert.ok(quietAtRest(notePage(false).find('.field-edit')), "at Full, a row's Edit shows on its row, as a row's ⋯ does");
-    page.click('.field-edit[data-field-key="lead"]');
-    const choices = page.findAll('.field-editor .field-choice');
-    assert.ok(choices.length > 0 && choices.every((choice) => !quietAtRest(choice)), 'an open list stays drawn');
-    assert.strictEqual(page.find('.field-edit[data-field-key="lead"]').getAttribute('aria-expanded'), 'true', 'and its Edit with it');
+  });
+
+  test("a tag's page quiets its hub card's Edit fields… and its Fields card's Add fields… in place, and keeps the fields drawn", () => {
+    for (const [draw, selector, region] of [
+      [tagPage, '.hub-header [data-action="edit-fields"]', 'summary.hub-header[data-zen-region]'],
+      [rowFieldsPage, '.hub-fields-add', '.hub-fields[data-zen-region]'],
+    ] as const) {
+      assert.ok(!quietAtRest(draw(false).find(selector)), `at Full, ${selector} is drawn`);
+      const zen = draw(true);
+      const control = zen.find(selector);
+      assert.ok(quietAtRest(control), `${nameOf(control)} is quiet at rest under Zen`);
+      assert.ok(control.closest(region), `${nameOf(control)} shows from its region`);
+      for (const kept of zen.findAll('.hub-fields .field-link, .hub-fields .field-name-link, .hub-fields .field-source, .hub-fields .field-group-label, .hub-fields .hub-fields-none')) {
+        assert.ok(!quietAtRest(kept), `${nameOf(kept)} stays drawn`);
+      }
+      assert.strictEqual(zen.findAll('.hub-fields .field-edit, .hub-fields .field-add-button').length, 0, 'no Edit on a row, and no Add field…');
+    }
+    assert.ok(!quietAtRest(tagPage(true).find('.hub-header [data-action="open-source"]')), 'Open stays drawn beside it');
+    assert.ok(rowFieldsPage(true).find('.hub-fields .field-group-label').closest('.eyebrow') === null, 'From other notes is no eyebrow, which Zen would hide');
   });
 
   test("the Notes Graph's Focus and Filters start closed under Zen, as Display does, and their summaries say what they are doing", () => {
@@ -376,6 +434,8 @@ const CONTRACT_PAGES: ReadonlyArray<readonly [string, (zen: boolean) => WebviewP
   ['the Notes Graph', graph],
   ['the Note page', notePage],
   ["a type's search page", typeSearchPage],
+  ["a typed tag's page", tagPage],
+  ["a typed tag's page with no note", rowFieldsPage],
 ];
 
 /**

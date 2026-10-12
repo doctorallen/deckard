@@ -6,7 +6,7 @@ import type { HubTreeNode } from '../../state/hubTree';
 import { registerCommand } from '../runCommand';
 import { openResultAt } from '../navigation';
 import { openNoteAt } from '../noteOpening';
-import { createHubNote } from '../hubNote';
+import { createHubNoteForTag } from '../typeNoteForm';
 import type { WorkspaceIndex } from '../../../domain/model';
 
 /**
@@ -33,7 +33,8 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.hubs.openAsPage', (node?: HubTreeNode) =>
       node?.filePath ? vscode.commands.executeCommand('deckard.openNotePage', node.filePath) : undefined,
     ),
-    // The palette's way to the offer a tag's page makes under its title.
+    // The palette's way to the offer a tag's page makes under its title: a
+    // tag a type has rows of gets the new note's form, any other its hub note.
     registerCommand('deckard.createHubNoteForTag', async () => {
       await services.indexer.ready;
       const picked = await vscode.window.showQuickPick(
@@ -45,7 +46,7 @@ export function register(context: vscode.ExtensionContext, services: Services): 
         { title: 'Deckard: Create Hub Note for Tag', placeHolder: 'Choose a tag with no hub note yet' },
       );
       if (picked) {
-        await createHubNote(services.indexer, picked.key);
+        await createHubNoteForTag({ indexer: services.indexer, history: services.history }, picked.key);
       }
     }),
   );

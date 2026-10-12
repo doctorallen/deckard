@@ -17,6 +17,13 @@ Open the **Context** view from the Deckard Activity Bar while editing a saved Ma
 
 **Untagged notes.** A note with no tags lists up to ten entries with similar wording, under **Similar wording (no tags yet)**, marked weak, and above them **Tags used by similar notes**. Select **Add** beside a tag to write it on the heading or line at the cursor and save the note; the message offers **Undo**, as does **Undo Last Change**. A tagged note never gets this list.
 
+**Other people**, or other decisions, other teams, follows the related notes when the note is a row of a [type](databases.md): the other rows of its type that share a relation's value with it, grouped by the value. For Sam, a person on Payments managed by Alex Rivera, it lists *`team` Payments* with the rest of the team, *`manager` Alex Rivera* with the others Alex manages, and, in italics, reverses such as *`works on` Checkout v2*. Rows are not ranked here, and a type alone does not make a note related.
+
+- Select a row to open its note, or its tag's page when it has no hub note; Cmd/Ctrl-click opens the note beside. Each row adds one fact, such as its role, or *No hub note*. A parked row is listed last, marked **Parked**.
+- A group lists eight rows, then **+3 more**. Select its label, or **+3 more**, to search `type = person AND team = #team/payments`, which finds the group and this note's row. **All people**, at the heading, searches `type = person`.
+- When no other row shares a value, it says so: *No other person shares a team, manager, or project.* A type with no relation fields has no such section.
+- It folds like Linked from, and stays as you leave it.
+
 **Linked from** lists notes that link to this one, newest updated first, each with its update time, link count, and linking lines under their headings. The count is the number of notes. **›** on a line unfolds up to fifteen more lines of its section.
 
 - **Open as search** opens `link = [[This note]]` as a search page. Over fifty lines, it reads *12 more not listed.* **Open all as a search**.

@@ -123,13 +123,16 @@ suite('Types as searches, drawn', () => {
     assert.deepStrictEqual(page.lastPosted('renameTypeOption'), { type: 'renameTypeOption', typeKey: 'team', field: 'tier', option: 'gold' });
   });
 
-  test('a row’s ⋯, revealed on its row, opens, opens its hub, and copies its email', () => {
+  test('a row’s ⋯, revealed on its row, opens, opens its hub, edits its fields, and copies its email', () => {
     const page = typePage('type = person');
     const more = page.find('.type-row[data-row-id="@dana"] [data-action="type-row-menu"]');
     assert.strictEqual(more.getAttribute('data-reveal'), '');
     assert.strictEqual(more.getAttribute('data-zen-reveal'), '');
     page.click('.type-row[data-row-id="@dana"] [data-action="type-row-menu"]');
-    assert.deepStrictEqual(menuRows(page), ['Open', 'Open hub note', 'Copy email']);
+    assert.deepStrictEqual(menuRows(page), ['Open', 'Open hub note', 'Edit fields…', 'Copy email']);
+    choose(page, 'Edit fields…');
+    assert.deepStrictEqual(page.lastPosted('editFields'), { type: 'editFields', filePath: 'People/Dana Whitfield.md' });
+    page.click('.type-row[data-row-id="@dana"] [data-action="type-row-menu"]');
     choose(page, 'Copy email');
     assert.deepStrictEqual(page.lastPosted('copyRowValue'), { type: 'copyRowValue', typeKey: 'person', rowId: '@dana' });
     page.click('.type-row[data-row-id="@dana"] [data-action="type-row-menu"]');
@@ -145,6 +148,8 @@ suite('Types as searches, drawn', () => {
     assert.strictEqual(create?.getAttribute('data-reveal'), '');
     page.click('.type-row[data-row-id="#area/bond-trading"] [data-action="create-row-hub"]');
     assert.deepStrictEqual(page.lastPosted('createRowHub'), { type: 'createRowHub', typeKey: 'area', rowId: '#area/bond-trading' });
+    page.click('.type-row[data-row-id="#area/bond-trading"] [data-action="type-row-menu"]');
+    assert.deepStrictEqual(menuRows(page), ['Open', 'Create hub note'], 'no Edit fields… for a row with no note');
   });
 
   test('⋯ adds a row, opens the type’s note, chooses its columns, and groups by its fields', () => {

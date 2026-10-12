@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 
 import { narrowSearchPageMessage } from '../ui/webview/pages/searchPage/messages';
+import { narrowNotePageMessage } from '../ui/webview/pages/notePage/messages';
 
 // A search page's narrowing table, with the payloads parseSearchPageMessage
 // was held to before it moved, from messages-rendering, parked-commands,
@@ -342,6 +343,23 @@ suite('Search page messages', () => {
       { type: 'createRowHub', typeKey: 'area', rowId: '' },
     ]) {
       assert.strictEqual(narrowSearchPageMessage(message), undefined, JSON.stringify(message));
+    }
+  });
+
+  test('Create hub note, Add fields… on a Fields card among them, carries nothing more', () => {
+    assert.deepStrictEqual(narrowSearchPageMessage({ type: 'createHubNote' }), { type: 'createHubNote' });
+    assert.strictEqual(narrowSearchPageMessage({ type: 'createHubNote', field: 'email' }), undefined);
+    assert.strictEqual(narrowSearchPageMessage({ type: 'createHubNote', extra: true }), undefined);
+  });
+
+  test('Edit fields… names a note, and at most the key of the field the form opens at, on a tag’s page and the Note page', () => {
+    for (const narrow of [narrowSearchPageMessage, narrowNotePageMessage] as const) {
+      assert.deepStrictEqual(narrow({ type: 'editFields', filePath: 'Teams/Rates.md' }), { type: 'editFields', filePath: 'Teams/Rates.md' });
+      assert.deepStrictEqual(narrow({ type: 'editFields', filePath: 'Teams/Rates.md', field: 'on-call', extra: 1 }), { type: 'editFields', filePath: 'Teams/Rates.md', field: 'on-call' });
+      assert.strictEqual(narrow({ type: 'editFields', filePath: '' }), undefined);
+      assert.strictEqual(narrow({ type: 'editFields', filePath: 'Teams/Rates.md', field: '../lead' }), undefined);
+      assert.strictEqual(narrow({ type: 'editFields', filePath: 'Teams/Rates.md', field: 3 }), undefined);
+      assert.strictEqual(narrow({ type: 'setNoteField', filePath: 'Teams/Rates.md', key: 'lead', value: { kind: 'clear' } }), undefined, 'a page no longer writes a field itself');
     }
   });
 });

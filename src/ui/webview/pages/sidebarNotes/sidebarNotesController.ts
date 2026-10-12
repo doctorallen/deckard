@@ -35,6 +35,7 @@ import { isDeckardPageId, listDeckardPages } from '../../../state/deckardPages';
 import { createEntryScope, findTaggedEntry } from '../../../state/entryScope';
 import { collectNoteLinks, createLinksSearchQuery } from '../../../state/noteLinks';
 import { createSidebarSnapshot, EntryRelatedNotesDiagnostic } from '../../../state/relatedNotesRanking';
+import { describeSameTypeRows } from '../../../state/sameTypeRows';
 import type { ActiveCalendar } from '../../activeCalendar';
 import type { ActiveNotePage } from '../../activeNotePage';
 import type { ActiveSearch } from '../../activeSearch';
@@ -518,6 +519,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       openTag: openTag({ indexer, navigation, policy: 'lenient', openTag: openTagPage }),
       openSource: (message: SidebarNotesPageToHost['openSource']) => this.openSource(message),
       openLinksSearch: () => this.openLinksSearch(),
+      openSameTypeRow: (message: SidebarNotesPageToHost['openSameTypeRow']) => this.openSameTypeRow(message),
+      openSameTypeSearch: (message: SidebarNotesPageToHost['openSameTypeSearch']) => this.openSameTypeSearch(message),
       refineActiveSearch: (message: RefineActiveSearchMessage) => this.refineActiveSearch(message),
       // What is done in the calendar's day is the calendar's to do.
       calendarDay: async (message: SidebarNotesPageToHost['calendarDay']) => {
@@ -729,12 +732,15 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     const indexedFile = filePath ? index.files.get(filePath) : undefined;
     const hideDailyNotes = this.sidebar.preferences.reader.value.hideDailyNotes === true;
     const previewLines = this.sidebar.preferences.reader.value.relatedNotesPreviewLines ?? 1;
+    // So are the other rows of its type, for a note that is a typed row.
+    const sameType = indexedFile && filePath ? describeSameTypeRows(index, filePath) : undefined;
     return indexedFile
       ? {
           ...snapshot,
           hideDailyNotes,
           previewLines,
           links: collectNoteLinks(index, indexedFile, { now, hideDailyNotes, dateFormats: readDateFormats() }),
+          ...(sameType ? { sameType } : {}),
         }
       : { ...snapshot, hideDailyNotes, previewLines };
   }
@@ -883,6 +889,37 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
         'deckard.search',
         createLinksSearchQuery(file, this.sidebar.preferences.reader.value.hideDailyNotes === true),
       );
+    }
+  }
+
+  /**
+   * The other rows of the note's type, as the section would list them now,
+   * which a click is checked against.
+   */
+  private listSameTypeRows() {
+    const filePath = this.getSelectedFilePath();
+    return filePath ? describeSameTypeRows(this.sidebar.indexer.getSnapshot(), filePath) : undefined;
+  }
+
+  /**
+   * Opens a row the section lists: its note, kept rather than previewed, as
+   * a related note opens; or, with no note, its tag's page.
+   */
+  private async openSameTypeRow(message: SidebarNotesPageToHost['openSameTypeRow']): Promise<void> {
+    const row = this.listSameTypeRows()?.groups.flatMap((group) => group.rows).find((candidate) => candidate.id === message.rowId);
+    if (row?.filePath) {
+      await openNoteAt(row.filePath, 1, { beside: message.beside === true, pin: true });
+    } else if (row?.tagKey) {
+      await this.sidebar.onOpenTag(row.tagKey);
+    }
+  }
+
+  /** The type's search, or a group's, built from what the section lists now. */
+  private async openSameTypeSearch(message: SidebarNotesPageToHost['openSameTypeSearch']): Promise<void> {
+    const section = this.listSameTypeRows();
+    const query = message.group === undefined ? section?.query : section?.groups.find((group) => group.id === message.group)?.query;
+    if (query) {
+      await vscode.commands.executeCommand('deckard.search', query);
     }
   }
 

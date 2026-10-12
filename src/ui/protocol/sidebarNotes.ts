@@ -96,6 +96,23 @@ export interface OpenLinksSearchMessage {
   type: 'openLinksSearch';
 }
 
+/** A row in the open note's Other <type> section: open its note, or its tag's page. */
+export interface OpenSameTypeRowMessage {
+  type: 'openSameTypeRow';
+  rowId: string;
+  /** Cmd/Ctrl: beside the note. */
+  beside?: boolean;
+}
+
+/**
+ * The Other <type> section's searches: every row of the type, or, by a
+ * group's id, every row that holds its value.
+ */
+export interface OpenSameTypeSearchMessage {
+  type: 'openSameTypeSearch';
+  group?: string;
+}
+
 /** Related Notes' Link all: every mention of the note, as one write. */
 export interface LinkAllMentionsMessage {
   type: 'linkAllMentions';
@@ -115,12 +132,69 @@ export interface NoteLinks {
   mentionCount: number;
 }
 
+/** Another row of the open note's type, as its section lists it. */
+export interface SameTypeRow {
+  /** The row's id: `@sam`, `#team/rates`, `file:Decisions/Use Postgres.md`. */
+  id: string;
+  title: string;
+  /** One fact about it, muted: what its hover leads with, or `No hub note`. */
+  detail?: string;
+  /** Its note, which its title opens. */
+  filePath?: string;
+  /** Its tag, whose page its title opens when it has no note. */
+  tagKey?: string;
+  /** Its note is parked: listed after the rest, and said so. */
+  parked?: true;
+}
+
+/** The other rows whose field holds a value the open note's row holds there too. */
+export interface SameTypeGroup {
+  /** Names the group in a message: its field and its value. */
+  id: string;
+  /** The field's name as the schema writes it, or the reverse's: `team`, `lead of`. */
+  field: string;
+  /** The field is a reverse, worked out from other rows: drawn in italics. */
+  reverse?: true;
+  /** What a reverse is worked out from: `From each team's lead`. */
+  tip?: string;
+  /** The title of the value they share: `Payments`. */
+  value: string;
+  /**
+   * The search for every row of the type with the value, the open note's
+   * row among them; none for a reverse whose name a built-in takes.
+   */
+  query?: string;
+  /** The rows listed, the parked last. */
+  rows: SameTypeRow[];
+  /** How many more share the value than are listed. */
+  more: number;
+}
+
+/**
+ * For a note that is a typed row: the other rows of its type that share a
+ * relation's value with it, grouped by the field and the value.
+ */
+export interface SameTypeRows {
+  typeKey: string;
+  /** The type's plural name, lowercased: `people`. */
+  plural: string;
+  /** The search for every row of the type: `type = person`. */
+  query: string;
+  /** How many other rows the groups hold, each once, listed or not. */
+  count: number;
+  groups: SameTypeGroup[];
+  /** What the section says when no group has a row. */
+  empty?: string;
+}
+
 /** What the Related Notes sidebar draws, and which of its states it is in. */
 export interface SidebarNotesSnapshot {
   /** How far the first scan has got, while the state is loading. */
   progress?: { completed: number; total: number };
   /** What links to the note being read, and what names it without a link. */
   links?: NoteLinks;
+  /** For a typed row's note, the other rows of its type that share a value with it. */
+  sameType?: SameTypeRows;
   activeFileName?: string;
   activeEntryTitle?: string;
   activeTags: SidebarTag[];
@@ -305,6 +379,8 @@ export interface SidebarNotesPageToHost {
   linkMention: LinkMentionMessage;
   linkAllMentions: LinkAllMentionsMessage;
   openLinksSearch: OpenLinksSearchMessage;
+  openSameTypeRow: OpenSameTypeRowMessage;
+  openSameTypeSearch: OpenSameTypeSearchMessage;
   addSuggestedTag: AddSuggestedTagMessage;
   setRelatedNotesPreviewLines: SetRelatedNotesPreviewLinesMessage;
   setHideDailyNotes: SetHideDailyNotesMessage;

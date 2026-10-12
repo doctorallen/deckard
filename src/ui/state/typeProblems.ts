@@ -31,7 +31,7 @@ export type TypeDiagnosticCode = TypeProblemCode | 'other-namespace';
 export type TypeFix =
   /** Rewrites the marked text: Change to a close row or option, or Allow Area or System. */
   | { kind: 'replace'; title: string; line: number; start: number; end: number; text: string; preferred?: boolean }
-  /** Writes a row's note: Create person "Omar H". */
+  /** Opens a row's note's form: Create person "Omar H"…. */
   | { kind: 'create-row'; title: string; typeKey: string; rowTitle: string }
   /** Writes a type note: Create a System type. */
   | { kind: 'create-type'; title: string; key: string; name: string; rows: string };
@@ -201,9 +201,10 @@ function closestOptions(options: readonly string[], value: string): string[] {
 }
 
 /**
- * Create person "Omar H": a new row of the type the field takes first, for
- * a value written loosely or as a tag of that type's namespace. A tag of
- * another namespace is that namespace's, so it is not offered.
+ * Create person "Omar H"…: a new row of the type the field takes first,
+ * for a value written loosely or as a tag of that type's namespace, made
+ * in the new note's form. A tag of another namespace is that namespace's,
+ * so it is not offered.
  */
 function createRowFix(types: TypeIndex, kind: FieldKind, value: string): TypeFix | undefined {
   const { type, typeKey } = findCreatedRowType(types, kind);
@@ -216,7 +217,7 @@ function createRowFix(types: TypeIndex, kind: FieldKind, value: string): TypeFix
     return undefined;
   }
   const name = (type?.name ?? 'Person').toLowerCase();
-  return { kind: 'create-row', title: `Create ${name} "${title}"`, typeKey, rowTitle: title };
+  return { kind: 'create-row', title: `Create ${name} "${title}"…`, typeKey, rowTitle: title };
 }
 
 /**

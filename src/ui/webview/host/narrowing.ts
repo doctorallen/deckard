@@ -10,6 +10,7 @@
  * that page's table, so pages moved in parallel never edit one file.
  */
 import { isObject } from '../../../shared/guards';
+import type { EditFieldsMessage } from '../../protocol/fields';
 import type { MessageAs, MessageOf, PageMessage } from '../../protocol/messaging';
 import type { OpenWikiLinkMessage } from '../../protocol/notePage';
 import type {
@@ -244,4 +245,22 @@ export const narrowOpenWikiLink: Narrower<OpenWikiLinkMessage> = (value) => {
     return undefined;
   }
   return { type: 'openWikiLink', target: value.target, ...(isName(value.from) ? { from: value.from } : {}), ...modifiers };
+};
+
+/** Whether a value is a front-matter key a page may name a field by, as the parser reads one. */
+export function isFieldKey(value: unknown): value is string {
+  return typeof value === 'string' && /^[A-Za-z][A-Za-z0-9_-]{0,99}$/.test(value);
+}
+
+/**
+ * Edit fields…, or a field's name, from the Note page or a tag's page: the
+ * note it drew, and the field to open on when given, a key the parser
+ * reads as one; the host checks the note is the one the page drew.
+ */
+export const narrowEditFields: Narrower<EditFieldsMessage> = (value) => {
+  const { filePath, field } = value;
+  if (!isName(filePath) || (field !== undefined && !isFieldKey(field))) {
+    return undefined;
+  }
+  return { type: 'editFields', filePath, ...(isFieldKey(field) ? { field } : {}) };
 };

@@ -48,6 +48,7 @@ button.note-crumb:hover:where(:not(:disabled):not([aria-disabled="true"])), butt
 /* The note's front matter, under the bar's divider: a typed row's fields, or its properties as written. */
 .note-fields { display: grid; gap: var(--space-1); margin: var(--space-3) 0 0; }
 .note-fields-type { margin: 0; }
+.note-fields-edit { margin: 0; }
 .note-properties { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 0; }
 .note-properties div { display: flex; align-items: baseline; gap: 6px; }
 .note-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); }

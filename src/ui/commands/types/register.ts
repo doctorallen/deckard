@@ -7,15 +7,17 @@ import {
   COPY_FIELD_VALUE_COMMAND,
   CREATE_TYPE_COMMAND,
   CREATE_TYPE_ROW_COMMAND,
-  createRowNote,
   createTypeFromTags,
   createTypeNote,
 } from '../typeNotes';
+import { editActiveNoteFields, newTypedNote, openTypeNoteForm } from '../typeNoteForm';
 
 /**
- * Types: Create Type from Tags…, and the commands the type quick fixes
- * and hovers run: Create person "Omar H", Create a <Type> type, and Copy
- * email (docs/implementation/30-databases.md).
+ * Types: Create Type from Tags…, New Note from Type…, Edit Fields… on the
+ * note in front (docs/implementation/34-edit-fields-form.md), and the commands the
+ * type quick fixes and hovers run: Create person "Omar H"…, which opens
+ * the new note's form on its title, Create a <Type> type, and Copy email
+ * (docs/implementation/30-databases.md, 31-type-note-form.md).
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
   const writes = { indexer: services.indexer, history: services.history };
@@ -23,11 +25,13 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.createTypeFromTags', (namespace?: unknown) =>
       createTypeFromTags(writes, typeof namespace === 'string' ? namespace : undefined),
     ),
+    registerCommand('deckard.newTypedNote', () => newTypedNote(writes)),
+    registerCommand('deckard.editFields', () => editActiveNoteFields(writes)),
     registerCommand(CREATE_TYPE_ROW_COMMAND, (documentUri: unknown, typeKey: unknown, title: unknown) =>
       typeof typeKey === 'string' && typeof title === 'string'
-        ? createRowNote(writes, {
+        ? openTypeNoteForm(writes, {
             typeKey,
-            title,
+            start: { title },
             ...(typeof documentUri === 'string' ? { near: vscode.Uri.parse(documentUri) } : {}),
             open: 'beside',
           })

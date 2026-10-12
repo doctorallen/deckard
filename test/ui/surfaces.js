@@ -890,9 +890,10 @@ function createNotePageSurfaces() {
 /**
  * Plan 30's own small knowledge base, so no other surface's pixels move with
  * it: Person and Team types, two teams with hub notes and one, Payments,
- * only mentioned, people on them, and a select the rows' Refine counts. Dana
- * leads Rates, so her page has a reverse, and has no start date, so it has
- * an empty field.
+ * only mentioned, people on them, and a select the rows' Refine counts; and
+ * a Decision type, whose rows are notes, so one opens on the Note page (a
+ * hub note opens its tag's page instead). The decision has no date, so it
+ * has an empty field.
  */
 function createTypedIndex() {
   const written = new Date(2026, 8, 21, 9).getTime();
@@ -913,6 +914,18 @@ function createTypedIndex() {
       '| tier    | Select: gold, silver, bronze |         |',
       '| on-call | Person                       |         |',
       '| channel | Text                         |         |',
+    ],
+    'Types/Decision.md': [
+      '---', 'deckard-type: decision', 'rows: notes', '---', '# Decision', '',
+      '| Field      | Kind                       | Reverse |',
+      '| ---------- | -------------------------- | ------- |',
+      '| decided-by | Person, many               | decided |',
+      '| status     | Select: proposed, accepted |         |',
+      '| date       | Date                       |         |',
+    ],
+    'Decisions/ADR-001 Card form.md': [
+      '---', 'type: decision', 'decided-by: ["@dana", "@omar"]', 'status: accepted', '---',
+      '# ADR-001 Card form', 'Card details are taken in a hosted form, never on our servers.',
     ],
     'Teams/Rates.md': [
       '---', 'describes: "#team/rates"', 'lead: "@dana"', 'tier: gold', 'on-call: "@priya"', 'channel: rates-desk', '---',
@@ -938,9 +951,9 @@ function createTypedIndex() {
 }
 
 /**
- * Plan 30's surfaces: a type's search page on its rows tab, a typed row's
- * note with its fields, and the page of a typed tag with no hub note, whose
- * Fields card holds the hub's place.
+ * Plan 30's surfaces: a type's search page on its rows tab, a note-type
+ * row on the Note page with its fields, and the page of a typed tag with
+ * no hub note, whose Fields card holds the hub's place.
  *
  * @param {object} preferences The preference services, whose reader holds what is stored.
  * @returns {object[]} The three surfaces.
@@ -967,12 +980,13 @@ function createTypedSurfaces(preferences) {
       zenHovered: [...ZEN_REGIONS.searchPage, '.type-rows[data-zen-region]'],
     },
     {
-      // A typed row's note: its fields under the bar, a reverse in italics,
-      // and the empty one folded into its line.
+      // A note-type row on the Note page: its fields under the bar, each
+      // with Edit, and the empty one folded into its line. A hub note's
+      // fields are edited on its tag's page, as a hub note opens there.
       name: 'notePageFields',
       page: 'notePage',
       viewport: [800, 700],
-      snapshot: () => createNotePageSnapshot(index, 'People/Dana Whitfield.md', {
+      snapshot: () => createNotePageSnapshot(index, 'Decisions/ADR-001 Card form.md', {
         queryContext: createQueryContext(NOW),
         history: { back: true, forward: false },
         visit: 1,
@@ -984,6 +998,7 @@ function createTypedSurfaces(preferences) {
     },
     {
       // A typed tag no note describes: the Fields card in the hub's place,
+      // its type's fields Not set, each with Edit, then From other notes;
       // and Create hub note under the title.
       name: 'searchPageFieldsCard',
       page: 'searchPage',
@@ -992,7 +1007,7 @@ function createTypedSurfaces(preferences) {
       scrollers: ['html'],
       clippers: [],
       hovered: ['.hub-fields-card .field-row', '.card'],
-      zenHovered: ZEN_REGIONS.searchPage,
+      zenHovered: [...ZEN_REGIONS.searchPage, '.hub-fields[data-zen-region]'],
     },
   ];
 }

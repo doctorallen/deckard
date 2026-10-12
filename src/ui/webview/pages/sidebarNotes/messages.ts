@@ -11,6 +11,8 @@ import type {
   HoverNotesGraphNodeMessage,
   InsertLinkMessage,
   LinkMentionMessage,
+  OpenSameTypeRowMessage,
+  OpenSameTypeSearchMessage,
   RefineActiveSearchMessage,
   SetHideDailyNotesMessage,
   SetPageShownMessage,
@@ -64,6 +66,25 @@ const narrowLinkMention: Narrower<LinkMentionMessage> = (value) =>
   value.startColumn >= 0
     ? { type: 'linkMention', filePath: value.filePath as string, line: value.line as number, startColumn: value.startColumn }
     : undefined;
+
+/** A row of the note's type, by a non-empty id no longer than a search, and whether to open it beside. */
+const narrowOpenSameTypeRow: Narrower<OpenSameTypeRowMessage> = (value) =>
+  typeof value.rowId === 'string' && value.rowId.length > 0 && value.rowId.length <= MAX_QUERY_LENGTH
+    ? { type: 'openSameTypeRow', rowId: value.rowId, ...(value.beside === true ? { beside: true } : {}) }
+    : undefined;
+
+/**
+ * The type's search, or a group's by its id; the host builds the search
+ * from the group it lists now, never from text the page sent.
+ */
+const narrowOpenSameTypeSearch: Narrower<OpenSameTypeSearchMessage> = (value) => {
+  if (value.group === undefined) {
+    return { type: 'openSameTypeSearch' };
+  }
+  return typeof value.group === 'string' && value.group.length > 0 && value.group.length <= MAX_QUERY_LENGTH
+    ? { type: 'openSameTypeSearch', group: value.group }
+    : undefined;
+};
 
 /** A tag offered to an untagged note, by one non-empty key and nothing else. */
 const narrowAddSuggestedTag: Narrower<AddSuggestedTagMessage> = (value) =>
@@ -136,6 +157,8 @@ export const SIDEBAR_NOTES_MESSAGES: NarrowingTable<SidebarNotesPageToHost> = {
   linkMention: narrowLinkMention,
   linkAllMentions: onlyType('linkAllMentions'),
   openLinksSearch: onlyType('openLinksSearch'),
+  openSameTypeRow: narrowOpenSameTypeRow,
+  openSameTypeSearch: narrowOpenSameTypeSearch,
   addSuggestedTag: narrowAddSuggestedTag,
   setRelatedNotesPreviewLines: narrowSetRelatedNotesPreviewLines,
   setHideDailyNotes: narrowSetHideDailyNotes,

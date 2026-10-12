@@ -27,6 +27,24 @@
 .link-one, .link-all { min-height: 24px; padding: 2px var(--space-2); font-size: var(--text-xs); }
 .link-all { margin-top: var(--space-2); }
 .links-more { margin: var(--space-1) 0 0; color: var(--muted); font-size: var(--text-xs); }
+/*
+ * The other rows of a typed note's type, between its related notes and what
+ * links to it: a fold headed as Linked from is, its All link at the
+ * heading's right, a label per field and value, and a line per row.
+ */
+.same-type { position: relative; margin-top: var(--space-4); }
+.same-type > .links-group > summary { padding-right: 12ch; }
+.same-type-all { position: absolute; top: -4px; right: 0; max-width: 12ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.same-type-group { display: grid; gap: 2px; margin-top: var(--space-2); }
+.same-type-label { display: block; min-width: 0; min-height: 0; padding: 0 var(--space-2); overflow: hidden; border-color: transparent; background: transparent; color: var(--text); font-size: var(--text-xs); text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.same-type-key { color: var(--muted); font-family: var(--font-mono); }
+.same-type-key.is-reverse { font-style: italic; }
+.same-type-list { margin-top: 0; gap: 0; }
+.same-type-row { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; padding: 0 var(--space-2) 0 var(--space-4); }
+.same-type-open { flex: 0 1 auto; min-width: 0; min-height: 0; padding: 0; overflow: hidden; border-color: transparent; background: transparent; color: var(--cyan); font-size: var(--text-sm); text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+span.same-type-open { color: var(--text); }
+.same-type-detail { flex: 1 1 auto; min-width: 0; overflow: hidden; color: var(--muted); font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
+.same-type-more { justify-self: start; margin-left: var(--space-2); }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-bottom: 8px; border-bottom: 2px solid var(--line-strong); }
 .sidebar-header .eyebrow { flex: 0 0 auto; }
 /* The selected entry is context for the list, not the subject of the pane:

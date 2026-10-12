@@ -2,6 +2,66 @@
 
 ## Unreleased
 
+## 2.7.0 - 2026-10-11
+
+### Highlights
+
+- **New Note from Type…** opens a form for a new note of a type: its folder, title, tag, and each field.
+- **Edit fields…** opens the same form on a typed row's note and saves only the fields you changed.
+- Context lists the other rows of a note's type that share its team, manager, or project.
+
+### Added
+
+- **New Note from Type…** opens a form for a new note of a type, as Add
+  Task's editor is a form for a task: one list that stays open, with the note's
+  folder, title, tag, and each of the type's fields, its value beside it,
+  and **Create the note** at the foot. Each field opens an input by its
+  kind, such as the people or teams it can name, a select's options, or a
+  date in plain words, and nothing is written until you create the note,
+  which `Deckard: Undo Last Change` takes back. **Add team…** on a type's
+  rows, the quick fix **Create person "Omar H"…**, and **Create hub note**
+  on a tag a type has rows of now open the same form, where before they
+  asked a title alone.
+- **Other people in Context.** With a typed row's note open, the Context
+  view lists, under its related notes, the other rows of its type that
+  share a relation's value with it, grouped by the value: for a person,
+  the rest of their team, the others with their manager, the others on
+  their projects. Each group's label opens its search, such as
+  `type = person AND team = #team/payments`, and **All people** opens
+  the type's. Parked rows come last, eight rows to a group, then
+  **+3 more**. The related notes are ranked as before.
+- **Edit fields in the form.** **Edit fields…** opens New Note from
+  Type…'s form on a typed row's note: *Edit fields: Noor Haddad*, each
+  field filled in with what the note holds, then, under **From other
+  notes**, what other notes set on it, each saying where (choosing one
+  opens that note at the line, or the search for the notes that set it),
+  then **Save changes**. Saving writes only the fields you changed, as one
+  change Undo Last Change takes back whole, and every other key and
+  comment stays as written; a note whose front matter changed since the
+  form opened is not written over. `Deckard: Edit Fields…` opens it on
+  the note in the editor.
+
+### Changed
+
+- **Where a field comes from.** A typed row's fields list its own first,
+  then, under **From other notes**, those other notes give it, each
+  saying where it is set: *Set in each person's `manager`*, *Set in
+  Payments' `lead`*. Before, only italics and a tooltip said so.
+- **Details that name the row are left out.** On the page of a row with
+  no note, a value's details no longer repeat the row itself: Alex's
+  *lead of* reads *Payments (on-call Sam Okafor)*, and a decision she made
+  with Theo reads *(also decided-by Theo Park)*.
+- **Fields are edited in one place.** The Note page and a tag's page
+  show a typed row's fields, and no longer edit them in place: **Edit**
+  on each field, Enter on a line, the lists and boxes under it, **Add
+  field…**, and the *1 empty: email* line are gone. **Edit fields…**
+  opens the form instead: after the fields and in **⋯** on the Note page,
+  beside **Open** in a typed tag's hub card, and in a type row's **⋯**. A
+  field's name opens it at that field. A row with no hub note says *No
+  note describes @alex-rivera yet.*, with **Add fields…**, which opens the
+  form for its note. Zen quiets Edit fields… and Add fields… until you
+  point at or tab into them; field names stay drawn.
+
 ## 2.6.0 - 2026-10-09
 
 ### Highlights

@@ -53,10 +53,17 @@ function HubProperties({ hub }: { readonly hub: TagOverviewHub }) {
   );
 }
 
-/** The hub note's front matter: a typed row's fields, or its properties as written. */
+/**
+ * The hub note's front matter: a typed row's fields, as the Note page draws
+ * them, each name opening the form on it; or its properties as written.
+ */
 function HubFields({ hub }: { readonly hub: TagOverviewHub }) {
   if (hub.fields) {
-    return <div class="hub-fields"><FieldRows fields={hub.fields} noteAction="open-source" /></div>;
+    return (
+      <div class="hub-fields">
+        <FieldRows fields={hub.fields} noteAction="open-source" namesOpen />
+      </div>
+    );
   }
   return hub.properties.length ? <HubProperties hub={hub} /> : null;
 }
@@ -88,41 +95,59 @@ function HubBody({ hub, renderMode }: { readonly hub: NonNullable<SearchPageSnap
 }
 
 /**
- * In the hub's place, for a typed row no note describes: its fields as
- * other rows give them, each value with what the row it names holds of
- * people, so a row with no note still shows who owns it. Read-only; Create
- * hub note, under the title, writes the note that would hold its own.
+ * In the hub's place, for a typed row no note describes: that no note
+ * does, and Add fields…, which opens the form for the row's new note, its
+ * title and tag filled in; then, under From other notes, what other rows
+ * give it, each value with what the row it names holds of people, so a row
+ * with no note still shows who owns it. Create hub note, under the title,
+ * opens the same form. Zen quiets Add fields… in place.
  */
-function RowFieldsCard({ fields, hubOpen }: { readonly fields: NonNullable<SearchPageSnapshot['rowFields']>; readonly hubOpen: boolean | undefined }) {
+function RowFieldsCard({ tag, fields, hubOpen }: { readonly tag: SearchPageTag; readonly fields: NonNullable<SearchPageSnapshot['rowFields']>; readonly hubOpen: boolean | undefined }) {
   return (
     <details class="hub hub-fields-card" open={hubOpen !== false}>
       <summary class="hub-header">
         <span class="hub-title"><span class="hub-toggle" aria-hidden="true"></span><span class="eyebrow">Fields</span></span>
-        <span class="hub-fields-type" data-tip="Worked out from the rows that name this one; no note holds them">{fields.typeName}</span>
+        <span class="hub-fields-type" data-tip={`No note describes ${tag.label} yet; Add fields… writes one`}>{fields.typeName}</span>
       </summary>
-      <div class="hub-fields"><FieldRows fields={fields} noteAction="open-source" /></div>
+      <div class="hub-fields" data-zen-region="">
+        <p class="hub-fields-none">
+          {`No note describes ${tag.label} yet. `}
+          <button type="button" class="hub-fields-add" data-action="create-hub" data-tip={`Make the note that describes ${tag.label}, and fill in its fields`} data-zen-reveal="">Add fields…</button>
+        </p>
+        <FieldRows fields={fields} noteAction="open-source" />
+      </div>
     </details>
   );
 }
 
 /**
  * The note that describes the page's tag, open or closed as the reader
- * left it here, or as they left the last tag's page until they do.
+ * left it here, or as they left the last tag's page until they do; for a
+ * typed row, Edit fields… beside Open, quieted under Zen in the card's
+ * header.
  */
 export function HubNote({ snapshot, hubOpen }: { readonly snapshot: SearchPageSnapshot; readonly hubOpen: boolean | undefined }) {
   const hub = snapshot.hub;
   if (snapshot.tag && !hub && snapshot.rowFields) {
-    return <RowFieldsCard fields={snapshot.rowFields} hubOpen={hubOpen} />;
+    return <RowFieldsCard tag={snapshot.tag} fields={snapshot.rowFields} hubOpen={hubOpen} />;
   }
   if (!snapshot.tag || !hub) {
     return null;
   }
   const open = hubOpen === undefined ? hub.expanded !== false : hubOpen;
+  const openNote = <button data-action="open-source" data-file-path={hub.filePath} data-line="1" data-tip={hub.filePath}>{`Open ${hub.fileName}`}</button>;
   return (
     <details class="hub" open={open}>
-      <summary class="hub-header">
+      <summary class="hub-header" data-zen-region={hub.fields ? '' : undefined}>
         <span class="hub-title"><span class="hub-toggle" aria-hidden="true"></span><span class="eyebrow">Hub note</span></span>
-        <button data-action="open-source" data-file-path={hub.filePath} data-line="1" data-tip={hub.filePath}>{`Open ${hub.fileName}`}</button>
+        {hub.fields
+          ? (
+            <span class="hub-actions">
+              <button type="button" data-action="edit-fields" data-file-path={hub.filePath} data-tip={`Edit the ${hub.fields.typeName.toLowerCase()}'s fields in a form`} data-zen-reveal="">Edit fields…</button>
+              {openNote}
+            </span>
+          )
+          : openNote}
       </summary>
       <HubFields hub={hub} />
       <HubBody hub={hub} renderMode={snapshot.renderMode} />

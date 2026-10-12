@@ -204,7 +204,7 @@ export function columnMenu(table: SearchPageTypeRows, column: TypeTableColumn): 
   return entries;
 }
 
-/** The menu a row's ⋯ opens: Open, its hub note or the offer of one, and Copy its email. */
+/** The menu a row's ⋯ opens: Open, its hub note or the offer of one, Edit fields… for a row with a note, and Copy its email. */
 export function rowMenu(row: TypeTableRow): ContextMenuEntry[] {
   const entries: ContextMenuEntry[] = [{ action: 'type-open-row', label: 'Open' }];
   if (row.tag && row.filePath) {
@@ -212,6 +212,9 @@ export function rowMenu(row: TypeTableRow): ContextMenuEntry[] {
   }
   if (row.noHub) {
     entries.push({ action: 'type-create-hub', label: 'Create hub note' });
+  }
+  if (row.filePath) {
+    entries.push({ action: 'type-edit-fields', label: 'Edit fields…' });
   }
   if (row.copy) {
     entries.push({ action: 'type-copy', label: `Copy ${row.copy.label}` });

@@ -418,6 +418,12 @@ function chooseTypeAction(action: string, context: NonNullable<typeof typeContex
       }
     },
     'type-create-hub': () => send({ type: 'createRowHub', typeKey, rowId: String(context.rowId) }),
+    'type-edit-fields': () => {
+      const row = findTypeRow(table, String(context.rowId));
+      if (row && row.filePath) {
+        send({ type: 'editFields', filePath: row.filePath });
+      }
+    },
     'type-copy': () => send({ type: 'copyRowValue', typeKey, rowId: String(context.rowId) }),
   };
   if (Object.prototype.hasOwnProperty.call(actions, action)) {
@@ -499,6 +505,19 @@ function showTab(target: HTMLElement): void {
   redraw();
 }
 
+/**
+ * Edit fields… in the hub card's header, or a field's name on the card:
+ * the form on the hub note's fields, at that field. The card stays as it
+ * was, open or folded.
+ */
+function editHubFields(target: HTMLElement, snapshot: SearchPageState, event: MouseEvent): void {
+  event.preventDefault();
+  const hub = snapshot.hub;
+  if (hub && hub.fields) {
+    send({ type: 'editFields', filePath: hub.filePath, ...(target.dataset.fieldKey ? { field: target.dataset.fieldKey } : {}) });
+  }
+}
+
 /** What each of the page's own controls does on a click, given the snapshot it shows. */
 const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPageState, event: MouseEvent) => void>> = {
   'set-mode': (target) => send({ type: 'setRenderMode', mode: target.dataset.mode as never }),
@@ -522,7 +541,9 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   // What the box holds, words typed and not yet run among it, is what the
   // reader sees and so what Save keeps.
   'save-filter': () => send({ type: 'saveTagOverviewFilter', query: editor.currentText() }),
+  // Create hub note, or Add fields… on a typed row no note describes: the form for its note.
   'create-hub': () => send({ type: 'createHubNote' }),
+  'edit-fields': (target, snapshot, event) => editHubFields(target, snapshot, event),
   'unpark-tag': (target) => {
     if (target.dataset.tagKey) {
       send({ type: 'unparkTag', tagKey: target.dataset.tagKey });

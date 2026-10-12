@@ -28,6 +28,7 @@ import { Links } from './links';
 import { choicesToKeep, isPageInFront, NOTE_PAGE_SIZE, noteListKey, previewLines, readChoices, type SidebarChoices, type SidebarStore } from './model';
 import { ContextPagesBar, installPagesKeys, settlePagesTabStop } from './pages';
 import { Refine } from './refine';
+import { SameType } from './sameType';
 
 console.log('[Deckard Related Notes] Webview script started.');
 
@@ -110,7 +111,8 @@ function SectionHeading({ snapshot }: { readonly snapshot: SidebarNotesSnapshot 
 
 /**
  * The whole sidebar: Deckard's pages, its context, the heading over its
- * list, the list, and what links to the note. The pages lead in every
+ * list, the list, the other rows of a typed note's type, and what links to
+ * the note. The pages lead in every
  * state, so they are always where the reader left them; the page's own
  * shortcuts are the view's title-bar actions, as every other sidebar
  * view's are.
@@ -122,6 +124,7 @@ function SidebarPage({ snapshot }: { readonly snapshot: SidebarNotesPageState })
       <Context snapshot={snapshot} open={choices.contextOpen} showEveryActiveTag={choices.showEveryActiveTag} />
       <SectionHeading snapshot={snapshot} />
       <Content snapshot={snapshot} />
+      {isPageInFront(snapshot) ? null : <SameType sameType={snapshot.sameType} open={choices.linksOpen.sameType} />}
       {isPageInFront(snapshot) ? null : <Links links={snapshot.links} view={{ open: choices.linksOpen, openSections: choices.openLinkSections }} />}
     </>
   );
@@ -242,14 +245,15 @@ function eventTarget(event: Event): Element | null {
   return event.target instanceof Element ? event.target : null;
 }
 
-// The context and Links groups stay as the reader left them across draws.
+// The context, the Links groups, and the other rows of the note's type stay
+// as the reader left them across draws.
 document.addEventListener('toggle', (event) => {
   const target = event.target as HTMLDetailsElement | null;
   if (target && target.classList && target.classList.contains('active-file')) {
     choices.contextOpen = target.open;
   }
   const group = target && target.dataset ? target.dataset.linksGroup : undefined;
-  if (group === 'linked' || group === 'mentions') {
+  if (group === 'linked' || group === 'mentions' || group === 'sameType') {
     choices.linksOpen[group] = target ? target.open : false;
   }
   keepChoices();
@@ -280,6 +284,8 @@ const LINK_ACTIONS: ReadonlyArray<readonly [string, (element: HTMLElement, event
   ['set-pages-style', (choice) => send({ type: 'setPagesStyle', style: choice.dataset.value === 'icons' ? 'icons' : 'list' })],
   ['set-page-shown', (choice) => send({ type: 'setPageShown', page: String(choice.dataset.page), shown: choice.getAttribute('aria-pressed') !== 'true' })],
   ['open-links-search', () => send({ type: 'openLinksSearch' })],
+  ['open-same-type-row', (row, event) => send({ type: 'openSameTypeRow', rowId: String(row.dataset.rowId), ...(event.metaKey || event.ctrlKey ? { beside: true } : {}) })],
+  ['open-same-type-search', (search) => send({ type: 'openSameTypeSearch', ...(search.dataset.group ? { group: search.dataset.group } : {}) })],
   ['link-all-mentions', () => send({ type: 'linkAllMentions' })],
 ];
 

@@ -102,6 +102,7 @@ header.page-bar { align-items: flex-start; }
 .entity-meta { margin-top: 8px; color: var(--muted); font-family: var(--vscode-editor-font-family, ui-monospace, monospace); }
 .hub { margin-top: 20px; padding: 14px; border: var(--edge) solid var(--line); border-left: 4px solid var(--amber); background: var(--panel); }
 .hub-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.hub-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
 /* A tag with no hub note offers one in a line under its title, as an
    underlined text link: an offer, and a sign that the tag has no hub. */
 .hub-offer { margin: var(--space-2) 0 0; }
@@ -115,6 +116,8 @@ header.page-bar { align-items: flex-start; }
 .hub[open] .hub-toggle { transform: rotate(90deg); }
 .hub-fields { margin: 10px 0 0; }
 .hub-fields-type { color: var(--muted); font-size: var(--text-sm); }
+.hub-fields-none { margin: 0 0 var(--space-1); color: var(--muted); font-size: var(--text-sm); }
+.hub-fields-add { margin-left: var(--space-2); }
 .hub-properties { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; margin: 10px 0 0; }
 .hub-properties div { display: flex; align-items: baseline; gap: 6px; }
 .hub-properties dt { color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); }
