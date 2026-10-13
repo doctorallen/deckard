@@ -5,9 +5,10 @@ import { getFileName, getFolder } from '../../shared/paths';
  * Where Add Task writes a new task, and how its editor says so.
  *
  * Add Task writes into the note in the active editor when one is open, at
- * its cursor, and into today's daily note otherwise. The editor's Note row
- * names the note and offers the others: this note, today's, another, or a
- * heading in any note. The names, the choices, the order notes are offered
+ * its cursor, and into today's daily note otherwise, or into the hub note
+ * of a tag its words write. The editor's Note row names the note and offers
+ * the others: this note, today's, the hub, another, or a heading in any
+ * note. The names, the choices, the order notes are offered
  * in, and where on the cursor's line a task goes are decided here, without
  * VS Code, so a test reads each one.
  */
@@ -21,9 +22,11 @@ export type TaskTarget =
   /** Another note, after its last list item or text. */
   | { kind: 'note'; path: string }
   /** Under a heading in any note, above any heading nested in it. */
-  | { kind: 'heading'; path: string; heading: string };
+  | { kind: 'heading'; path: string; heading: string }
+  /** The hub note of a tag the task's words write, `tag` written in full. */
+  | { kind: 'hub'; path: string; tag: string };
 
-/** The four places the Note row offers. */
+/** The places the Note row offers. */
 export type TaskTargetKind = TaskTarget['kind'];
 
 /** The editor's title, the note named plainly: `Add a task to 2026-10-06.md`. */
@@ -45,6 +48,8 @@ export function describeTaskTarget(target: TaskTarget): string {
       return target.path;
     case 'heading':
       return `${target.heading} · ${target.path}`;
+    case 'hub':
+      return `${target.path} · hub of ${target.tag}`;
   }
 }
 
@@ -56,16 +61,19 @@ export interface TaskTargetChoice {
   description: string;
 }
 
-/** The notes the Note row can name before anything is chosen: the one being edited, if any, and today's. */
+/** The notes the Note row can name before anything is chosen: the one being edited, if any, today's, and a hub. */
 export interface TaskTargetPlaces {
   /** The note in the active editor, when there is one. */
   here?: string;
   today: string;
+  /** The hub note of a tag the task's words write, when they write one. */
+  hub?: { path: string; tag: string };
 }
 
 /**
  * The places a task can go, the current one said to be: this note when
- * there is one, today's note, another note, and a heading in any note.
+ * there is one, today's note, the hub its words name, another note, and a
+ * heading in any note.
  */
 export function listTaskTargetChoices(current: TaskTarget, places: TaskTargetPlaces): TaskTargetChoice[] {
   const now = (kind: TaskTargetKind, description: string): string =>
@@ -75,6 +83,13 @@ export function listTaskTargetChoices(current: TaskTarget, places: TaskTargetPla
       ? []
       : [{ target: 'here' as const, label: '$(edit) This note', description: now('here', places.here) }]),
     { target: 'today', label: '$(calendar) Today’s note', description: now('today', places.today) },
+    ...(places.hub === undefined
+      ? []
+      : [{
+          target: 'hub' as const,
+          label: `$(tag) ${getFileName(places.hub.path)}`,
+          description: now('hub', `Hub of ${places.hub.tag}`),
+        }]),
     {
       target: 'note',
       label: '$(file) Another note…',

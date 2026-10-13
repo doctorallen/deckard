@@ -23,6 +23,7 @@ import { askForDate, readDateFormats, readDateOptions } from './datePrompt';
 import { showQuickPickUntilHidden } from './prompts';
 import { describeCompletion, readTaskMetadataFormat } from './taskActions';
 import { TaskPriority, WorkspaceIndex } from '../../domain/model';
+import { listTagSuggestions } from '../state/hubRoute';
 import { TaskDateField } from '../../domain/markdown/taskFields';
 import { parseRecurrence, suggestRecurrence } from '../../domain/markdown/recurrence';
 import { formatIsoDate } from '../../domain/markdown/calendar';
@@ -77,6 +78,10 @@ export interface DraftNote {
   describe(): string;
   /** Asks where the task goes instead; settles once the reader has chosen or left. */
   choose(): Promise<void>;
+  /** Reads the draft for where it goes, as a hub tag in its words names a note; called as it opens and after each change. */
+  follow?(draft: TaskDraft): void;
+  /** What the words say of where the task goes, added to the line under the Description box: `Goes to Atlas.md`. */
+  sayWords?(words: string): string | undefined;
 }
 
 const PRIORITIES: readonly { label: string; value?: TaskPriority }[] = [
@@ -210,6 +215,7 @@ export async function editTaskDraft(
   },
 ): Promise<TaskDraft | undefined> {
   let draft = initial;
+  options.note?.follow?.(draft);
   for (;;) {
     const chosen = await pickField(draft, options);
     if (!chosen) {
@@ -225,6 +231,7 @@ export async function editTaskDraft(
     const next = await readField(draft, chosen.field, options);
     if (next) {
       draft = next;
+      options.note?.follow?.(draft);
     }
   }
 }
@@ -371,6 +378,8 @@ interface FieldContext {
   now: number;
   status?: DraftStatusReading;
   readWords?: boolean;
+  /** What the words say of where a new task goes, beside what they fill. */
+  sayWords?: (words: string) => string | undefined;
 }
 
 /** Asks for one field's value and returns the draft it makes; undefined when the reader cancels. */
@@ -380,19 +389,20 @@ type FieldReader = (draft: TaskDraft, context: FieldContext) => Promise<TaskDraf
 async function readField(
   draft: TaskDraft,
   field: DraftField | undefined,
-  options: Pick<EditorOptions, 'index' | 'now' | 'status' | 'readWords'>,
+  options: Pick<EditorOptions, 'index' | 'now' | 'status' | 'readWords' | 'note'>,
 ): Promise<TaskDraft | undefined> {
   const now = options.now ?? Date.now();
   if (field === undefined) {
     return undefined;
   }
-  return FIELD_READERS[field](draft, { ...options, now });
+  const sayWords = options.note?.sayWords?.bind(options.note);
+  return FIELD_READERS[field](draft, { ...options, now, ...(sayWords ? { sayWords } : {}) });
 }
 
 /** The words of the task, as typed; tags written in them stay. */
-async function readDescription(draft: TaskDraft, { now, readWords }: FieldContext): Promise<TaskDraft | undefined> {
+async function readDescription(draft: TaskDraft, { now, readWords, sayWords }: FieldContext): Promise<TaskDraft | undefined> {
   if (readWords) {
-    return readNewDescription(draft, now);
+    return readNewDescription(draft, now, sayWords);
   }
   const written = await vscode.window.showInputBox({
     title: 'Description',
@@ -430,7 +440,11 @@ const ONLY_TAGS = /^#\S+(?:[ \t]+#\S+)*[ \t]*$/u;
  * them, and said under the box as they are typed. Keep the words as
  * written reads nothing.
  */
-function readNewDescription(draft: TaskDraft, now: number): Promise<TaskDraft | undefined> {
+function readNewDescription(
+  draft: TaskDraft,
+  now: number,
+  sayWords?: (words: string) => string | undefined,
+): Promise<TaskDraft | undefined> {
   const formats = readDateFormats();
   const dateOptions = readDateOptions();
   const box = vscode.window.createInputBox();
@@ -448,7 +462,11 @@ function readNewDescription(draft: TaskDraft, now: number): Promise<TaskDraft | 
   const buttons = createWordsButtons();
   const update = (): void => {
     box.buttons = [literal ? buttons.reading : buttons.literal];
-    const said = literal ? undefined : describeWordsReading(readDraftWords(draft, box.value, now, dateOptions), formats);
+    const parts = [
+      literal ? undefined : describeWordsReading(readDraftWords(draft, box.value, now, dateOptions), formats),
+      sayWords?.(box.value),
+    ].filter((part): part is string => part !== undefined);
+    const said = parts.length === 0 ? undefined : parts.join(' · ');
     box.validationMessage = said === undefined ? undefined : { message: said, severity: vscode.InputBoxValidationSeverity.Info };
   };
   return new Promise((resolve) => {
@@ -658,16 +676,8 @@ async function addTag(
 ): Promise<TaskDraft | undefined> {
   const written = await pickOrWrite({
     title: 'Add a tag',
-    placeholder: 'Choose a tag, or write a new one',
-    items: index
-      ? [...index.getSnapshot().tags.values()]
-          .sort((left, right) => right.count - left.count)
-          .slice(0, TAG_SUGGESTION_LIMIT)
-          .map((tag) => ({
-            label: tag.label,
-            description: `${tag.count} ${tag.count === 1 ? 'entry' : 'entries'}`,
-          }))
-      : [],
+    placeholder: 'Choose a tag, or write a new one; a tag with a hub note sends a new task there',
+    items: index ? listTagSuggestions(index.getSnapshot(), TAG_SUGGESTION_LIMIT) : [],
   });
   return written
     ? { ...draft, description: appendTag(draft.description, written.trim()) }
