@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+### Added
+
+- **Add Task goes to a project's hub.** A tag in a new task's words that a
+  hub note describes sends the task there, so `Call Ren #project/atlas fri`
+  goes into Atlas.md without opening it. It goes under the hub's **Tasks**
+  heading when it has one, otherwise after its last list item, and the tag
+  is left off the line, since the hub carries it. A short tag works when one
+  hub's tag ends with it: `#atlas` is `#project/atlas`. The Note row and the
+  title name the hub, the line under **Description** says **Goes to
+  Atlas.md**, and the Note row offers the hub beside the other places. A
+  place you choose on the Note row stays chosen, with a short tag written in
+  full there; at a cursor under the tag already, the task stays put.
+- **Add a tag** in the task editor lists the tags with a hub note first,
+  each described as **Hub: Atlas.md**.
+
+### Changed
+
+- **A tag written on a task's line shows above its card.** With **Show the
+  tag each task is under** on, the Task board drew only a heading's or the
+  note's tag above a card, and the card's title leaves off the tags written
+  after it, so `- [ ] Call Ren #project/atlas` in a daily note showed its tag
+  nowhere. A tag at the end of the line that has a hub note now comes first,
+  before the heading's; one without a hub comes after the heading's and the
+  note's, so a tagged task under no heading is never bare.
+
 ## 2.7.0 - 2026-10-11
 
 ### Highlights
