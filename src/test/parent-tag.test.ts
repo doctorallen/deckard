@@ -88,3 +88,52 @@ suite('Parent tags', () => {
     assert.strictEqual(card?.parentTag?.key, '#project/atlas');
   });
 });
+
+suite('Parent tags from the task line and hub notes', () => {
+  const hubbed = indexOf({
+    'Atlas.md': ['---', 'describes: project/atlas', '---', '# Atlas', '- [ ] in the hub'],
+    '2026-10-13.md': [
+      '# 2026-10-13',
+      '- [ ] call ren #project/atlas',
+      '- [ ] errand #context/phone',
+      '- [ ] both #context/phone #project/atlas',
+      '- [ ] pair with #project/atlas today',
+      '## Web #team/web',
+      '- [ ] hubbed #project/atlas',
+      '- [ ] mixed #context/phone',
+    ],
+  });
+
+  /** The parent tag's key for the task named in the hubbed index, or none. */
+  function parentIn(word: string, groupNamespace?: string): string | undefined {
+    const task = [...hubbed.tasks.values()].find((each) => each.title.startsWith(word));
+    assert.ok(task, `a task named ${word}`);
+    return findParentTag(hubbed, task, { ...(groupNamespace ? { groupNamespace } : {}) })?.key;
+  }
+
+  test('a tag at the end of the line that has a hub note comes first, before a tagged heading', () => {
+    assert.strictEqual(parentIn('call'), '#project/atlas', 'a daily note needs no heading');
+    assert.strictEqual(parentIn('both'), '#project/atlas', 'the hub tag before another trailing tag');
+    assert.strictEqual(parentIn('hubbed'), '#project/atlas', 'nearer than the heading above it');
+  });
+
+  test('a trailing tag without a hub comes after what the task inherits, and stands alone otherwise', () => {
+    assert.strictEqual(parentIn('mixed'), '#team/web');
+    assert.strictEqual(parentIn('errand'), '#context/phone');
+  });
+
+  test('a tag the title shows is never lifted', () => {
+    assert.strictEqual(parentIn('pair'), undefined);
+  });
+
+  test('a task in a hub note is under the tag the note describes', () => {
+    assert.strictEqual(parentIn('in the hub'), '#project/atlas');
+  });
+
+  test('the grouped namespace is skipped in every step', () => {
+    assert.strictEqual(parentIn('call', 'project'), undefined);
+    assert.strictEqual(parentIn('both', 'project'), '#context/phone');
+    assert.strictEqual(parentIn('hubbed', 'project'), '#team/web');
+    assert.strictEqual(parentIn('in the hub', 'project'), undefined);
+  });
+});
