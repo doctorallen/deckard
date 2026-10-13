@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2.8.0 - 2026-10-13
+
+### Highlights
+
+- **Add Task goes to a project's hub**: `Call Ren #atlas fri` lands under Atlas.md's Tasks heading without opening it.
+- A tag written at the end of a task's line shows above its card on the Task board, so a daily note needs no heading.
+
 ### Added
 
 - **Add Task goes to a project's hub.** A tag in a new task's words that a
