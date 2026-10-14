@@ -121,7 +121,11 @@ function row(shown: Shown, find: (candidate: Row) => boolean): Row {
  */
 function contextOf(notes: Record<string, string>, { indexed = false }: { indexed?: boolean } = {}): AddTaskContext {
   const index = buildWorkspaceIndex(new Map(Object.entries(notes).map(([path, text]) => [path, parseMarkdown(path, text)])));
-  const pathOf = (uri: vscode.Uri): string => uri.fsPath.split('\\').join('/');
+  // The index's own key for a note: on Windows, fsPath writes the drive letter in lower case.
+  const pathOf = (uri: vscode.Uri): string => {
+    const wanted = uri.fsPath.split('\\').join('/').toLowerCase();
+    return [...index.files.keys()].find((key) => key.toLowerCase() === wanted) ?? wanted;
+  };
   const indexer = {
     ready: Promise.resolve(),
     getSnapshot: () => index,
