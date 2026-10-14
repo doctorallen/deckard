@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 2.8.1 - 2026-10-13
+
+### Highlights
+
+- Brings 2.8.0 to the Marketplace: **Add Task goes to a project's hub**, and a task's own tag shows above its card.
+
+### Fixed
+
+- **2.8.0 reaches the Marketplace.** The Marketplace refused 2.8.0 because
+  its icon was 1600 pixels square, over the 1024 it now allows; the icon is
+  512 pixels square, and a test fails before release on a larger one.
+
 ## 2.8.0 - 2026-10-13
 
 ### Highlights
