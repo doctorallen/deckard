@@ -6,7 +6,8 @@ import type { CaptureService } from '../../services/captureService';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { stripTags } from '../../domain/markdown/parser';
 import { formatTaskDraft, isTaskLine, parseTaskDraft, TaskDraft } from '../../domain/markdown/taskDraft';
-import { Section } from '../../domain/model';
+import { ParsedFile, Section } from '../../domain/model';
+import { getFileName } from '../../shared/paths';
 import {
   describeTaskTarget,
   HerePlacement,
@@ -18,11 +19,22 @@ import {
   TaskTargetKind,
   titleTaskTarget,
 } from '../state/addTaskTarget';
+import {
+  findHubInWords,
+  HubPlace,
+  HubRoute,
+  HubWordsReading,
+  isUnderHub,
+  listHubNotes,
+  placeInHub,
+  rewriteHubTag,
+} from '../state/hubRoute';
 import { announce, reportHeadingCapture } from './capture';
 import { chooseTargetFolder, ensureDailyNote, nameTodaysNote } from './dailyNote';
 import { pickDestination } from './destinationPicker';
 import { resolveSourceUri } from './navigation';
 import { describeRejectedEdit, noteName, reportFailure } from './notify';
+import { readEntityNamespaceAliases } from './parseSettings';
 import { showQuickPickUntilHidden } from './prompts';
 import { captureSeed, CaptureSeed, withSourceLink } from './selectionSeed';
 import { readTaskMetadataFormat } from './taskActions';
@@ -67,7 +79,11 @@ type AddTarget =
   | { kind: 'here'; path: string; editor: vscode.TextEditor; anchor: vscode.TextLine; placement: HerePlacement }
   | { kind: 'today'; path: string }
   | { kind: 'note'; path: string; filePath: string }
-  | { kind: 'heading'; path: string; heading: string; section: Section };
+  | { kind: 'heading'; path: string; heading: string; section: Section }
+  | { kind: 'hub'; path: string; tag: string; place: HubPlace };
+
+/** A hub as a place for the task. */
+type HubTarget = Extract<AddTarget, { kind: 'hub' }>;
 
 /** A list item's marker, which a plain line made into a task does not keep in its words. */
 const LIST_MARKER = /^(?:[-*+]|\d+[.)])[ \t]+/;
@@ -75,8 +91,10 @@ const LIST_MARKER = /^(?:[-*+]|\d+[.)])[ \t]+/;
 /**
  * Opens the task editor on a new task and writes it where the Note row
  * says: by default into the Markdown note in the active editor, at the
- * cursor, and into today's note when no note is open. Returns the line
- * written, or undefined when nothing was.
+ * cursor, and into today's note when no note is open. A tag in the words
+ * that a hub note describes moves it to the hub, until the reader chooses
+ * the place on the Note row. Returns the line written, or undefined when
+ * nothing was.
  */
 export async function addTaskCommand(
   context: AddTaskContext,
@@ -99,14 +117,14 @@ export async function addTaskCommand(
   const today = await nameTodaysNote(new Date(now));
   const initial = startDraft({ start, seed, here, format, status });
 
-  let target: AddTarget = here ?? { kind: 'today', path: today };
-  const note: DraftNote = {
-    title: () => titleTaskTarget(target),
-    describe: () => describeTaskTarget(target),
-    choose: async () => {
-      target = (await chooseTarget(context, target, { here, today })) ?? target;
-    },
-  };
+  const { note, target, withHubTag } = createNoteRow(context, {
+    here,
+    today,
+    hereFile: editor && indexer.isNotesFile(editor.document.uri)
+      ? indexer.getSnapshot().files.get(indexer.getFilePath(editor.document.uri))
+      : undefined,
+    scope,
+  });
   const edited = await editTaskDraft(initial, {
     title: 'Add task',
     index: indexer,
@@ -114,16 +132,91 @@ export async function addTaskCommand(
     status,
     note,
     readWords: true,
-    preview: (draft) => lineFor(draft, target, seed),
+    preview: (draft) => lineFor(withHubTag(draft), target(), seed),
   });
   if (!edited) {
     return undefined;
   }
-  if (target.kind === 'here') {
-    return writeHere(target, initial, edited, now);
+  const written = withHubTag(edited);
+  const place = target();
+  if (place.kind === 'here') {
+    return writeHere(place, initial, written, now);
   }
-  const text = writeEditedTask({ before: initial, edited, now, eol: '\n' }).text;
-  return writeElsewhere(context, target, withSourceLink(indentLines(text), seed?.link, edited.format));
+  const text = writeEditedTask({ before: initial, edited: written, now, eol: '\n' }).text;
+  return writeElsewhere(context, place, withSourceLink(indentLines(text), seed?.link, written.format));
+}
+
+/** What the Note row starts from: the note being edited, if any, and today's. */
+interface NoteRowPlaces {
+  here: Extract<AddTarget, { kind: 'here' }> | undefined;
+  today: string;
+  /** The note being edited, as the index read it. */
+  hereFile: ParsedFile | undefined;
+  /** Where the settings that read a tag are read. */
+  scope: vscode.Uri | undefined;
+}
+
+/**
+ * Add Task's Note row, which names where the task goes: the note being
+ * edited or today's note, or the hub note of a tag its words write, until
+ * the reader chooses a place on the row. With it, the task's words as that
+ * place writes them: the hub's tag left off where the place carries it,
+ * and a short one written in full otherwise.
+ */
+function createNoteRow(
+  context: AddTaskContext,
+  places: NoteRowPlaces,
+): { note: DraftNote; target: () => AddTarget; withHubTag: (draft: TaskDraft) => TaskDraft } {
+  const { here, today, hereFile } = places;
+  const snapshot = context.indexer.getSnapshot();
+  const hubs: HubWordsReading = {
+    hubs: listHubNotes(snapshot.files.values()),
+    isTagInUse: (key) => snapshot.tags.has(key),
+    entityNamespaceAliases: readEntityNamespaceAliases(places.scope),
+  };
+  // A hub the words name, unless the task is written in it, or under its tag, already.
+  const hubFor = (words: string): HubRoute | undefined => {
+    const found = findHubInWords(words, hubs);
+    return found && !(here && isUnderHub(hereFile, here.anchor.lineNumber + 1, found.hub)) ? found : undefined;
+  };
+  const toHub = (found: HubRoute): HubTarget => ({
+    kind: 'hub',
+    path: found.hub.filePath,
+    tag: found.hub.label,
+    place: placeInHub(snapshot, found.hub),
+  });
+
+  const first: AddTarget = here ?? { kind: 'today', path: today };
+  let target: AddTarget = first;
+  let route: HubRoute | undefined;
+  // Once the reader chooses a place on the Note row, the words no longer do.
+  let chosen = false;
+  const note: DraftNote = {
+    title: () => titleTaskTarget(target),
+    describe: () => describeTaskTarget(target),
+    choose: async () => {
+      const next = await chooseTarget(context, target, { here, today, hub: route && toHub(route) });
+      chosen ||= next !== undefined;
+      target = next ?? target;
+    },
+    follow: (draft) => {
+      route = findHubInWords(draft.description, hubs);
+      const found = hubFor(draft.description);
+      target = chosen ? target : (found && toHub(found)) ?? first;
+    },
+    sayWords: (words) => {
+      const found = chosen ? undefined : hubFor(words);
+      return found && `Goes to ${getFileName(found.hub.filePath)}`;
+    },
+  };
+  return {
+    note,
+    target: () => target,
+    withHubTag: (draft) =>
+      route
+        ? { ...draft, description: rewriteHubTag(draft.description, route, target.kind !== 'hub' || target.place.keepsTag) }
+        : draft,
+  };
 }
 
 /**
@@ -197,15 +290,20 @@ function lineFor(draft: TaskDraft, target: AddTarget, seed: CaptureSeed | undefi
 }
 
 /**
- * Asks where the task goes instead: this note, today's, another note, or
- * under a heading. Undefined when the reader leaves without choosing.
+ * Asks where the task goes instead: this note, today's, the hub its words
+ * name, another note, or under a heading. Undefined when the reader leaves
+ * without choosing.
  */
 async function chooseTarget(
   context: AddTaskContext,
   current: AddTarget,
-  places: { here: Extract<AddTarget, { kind: 'here' }> | undefined; today: string },
+  places: { here: Extract<AddTarget, { kind: 'here' }> | undefined; today: string; hub: HubTarget | undefined },
 ): Promise<AddTarget | undefined> {
-  const choices = listTaskTargetChoices(current, { here: places.here?.path, today: places.today });
+  const choices = listTaskTargetChoices(current, {
+    here: places.here?.path,
+    today: places.today,
+    ...(places.hub ? { hub: { path: places.hub.path, tag: places.hub.tag } } : {}),
+  });
   const chosen = await showQuickPickUntilHidden<TaskTargetChoice & vscode.QuickPickItem, TaskTargetKind>({
     configure: (pick) => {
       pick.title = 'Where should the task go?';
@@ -221,6 +319,8 @@ async function chooseTarget(
       return places.here;
     case 'today':
       return { kind: 'today', path: places.today };
+    case 'hub':
+      return places.hub;
     case 'note':
       return pickNote(context);
     case 'heading':
@@ -315,8 +415,9 @@ async function writeHere(
 }
 
 /**
- * Writes the task's `line` into today's note, another note, or under a
- * heading, and says where it went, with Open. Today's note is made from its template
+ * Writes the task's `line` into today's note, another note, under a
+ * heading, or into a hub, under its Tasks heading when it has one, and
+ * says where it went, with Open. Today's note is made from its template
  * when it is missing, in the folder of the note being edited or the one
  * chosen.
  */
@@ -326,16 +427,18 @@ async function writeElsewhere(
   line: string,
 ): Promise<string | undefined> {
   const { captures } = context;
-  if (target.kind === 'heading') {
-    const result = await captures.captureUnderHeading(line, target.section);
-    reportHeadingCapture(result, target.section, line);
+  const section = sectionOf(target);
+  if (section) {
+    const result = await captures.captureUnderHeading(line, section);
+    reportHeadingCapture(result, section, line);
     return result.kind === 'added' ? line : undefined;
   }
-  const uri = target.kind === 'today' ? await todaysNote() : await resolveSourceUri(target.filePath);
+  const filePath = target.kind === 'note' || target.kind === 'hub' ? target.path : undefined;
+  const uri = filePath === undefined ? await todaysNote() : await resolveSourceUri(filePath);
   if (!uri) {
-    if (target.kind === 'note') {
+    if (filePath !== undefined) {
       void reportFailure({
-        outcome: `Deckard could not find ${target.filePath}, so the task was not added.`,
+        outcome: `Deckard could not find ${filePath}, so the task was not added.`,
         fix: 'It may have been moved or deleted.',
       });
     }
@@ -344,6 +447,14 @@ async function writeElsewhere(
   const result = await captures.captureToNote(uri, line);
   announce(result, line);
   return result.kind === 'added' ? line : undefined;
+}
+
+/** The heading a task is written under: the one chosen, or a hub's Tasks heading. */
+function sectionOf(target: Exclude<AddTarget, { kind: 'here' }>): Section | undefined {
+  if (target.kind === 'hub') {
+    return target.place.section;
+  }
+  return target.kind === 'heading' ? target.section : undefined;
 }
 
 /** Today's note, made when it is missing; undefined when no folder was settled. */

@@ -114,14 +114,23 @@ function row(shown: Shown, find: (candidate: Row) => boolean): Row {
   return found;
 }
 
-/** Add Task's context over notes at absolute paths, as an index with no workspace holds them. */
-function contextOf(notes: Record<string, string>): AddTaskContext {
+/**
+ * Add Task's context over notes at absolute paths, as an index with no
+ * workspace holds them; with `indexed`, the notes given are the notes
+ * folder's, as an open one is found in the index.
+ */
+function contextOf(notes: Record<string, string>, { indexed = false }: { indexed?: boolean } = {}): AddTaskContext {
   const index = buildWorkspaceIndex(new Map(Object.entries(notes).map(([path, text]) => [path, parseMarkdown(path, text)])));
+  // The index's own key for a note: on Windows, fsPath writes the drive letter in lower case.
+  const pathOf = (uri: vscode.Uri): string => {
+    const wanted = uri.fsPath.split('\\').join('/').toLowerCase();
+    return [...index.files.keys()].find((key) => key.toLowerCase() === wanted) ?? wanted;
+  };
   const indexer = {
     ready: Promise.resolve(),
     getSnapshot: () => index,
-    isNotesFile: () => false,
-    getFilePath: () => '',
+    isNotesFile: (uri: vscode.Uri) => indexed && index.files.has(pathOf(uri)),
+    getFilePath: (uri: vscode.Uri) => (indexed ? pathOf(uri) : ''),
     parse: (uri: vscode.Uri, text: string) => parseMarkdown(uri.fsPath, text),
   };
   return {
@@ -268,5 +277,67 @@ suite('Add Task', () => {
       kind: 'refused',
       reason: 'Drop a task on Today, Tomorrow, or No due date to change its due date.',
     });
+  });
+
+  /** A hub note for #project/atlas, with a Tasks heading. */
+  const atlas = '---\ndescribes: project/atlas\n---\n# Atlas\n## Tasks\n- [ ] Brief\n\n## Notes\nText\n';
+
+  test('a hub’s tag in the words sends the task under the hub’s Tasks heading, the tag left off', async () => {
+    const hub = note('Atlas.md', atlas);
+    const inputs = answerInputs([
+      (shown) => row(shown, (candidate) => candidate.field === 'description'),
+      () => 'Call Ren #atlas',
+      (shown) => row(shown, (candidate) => candidate.done === true),
+    ]);
+    restore = inputs.restore;
+
+    const { result, messages } = await recordMessages(() => addTaskCommand(contextOf({ [hub]: atlas }), {}, now));
+    const editor = inputs.shown[2];
+    assert.strictEqual(editor.title, 'Add a task to Atlas.md');
+    assert.strictEqual(editor.rows[0].description, `${hub} · hub of #project/atlas`);
+    assert.strictEqual(editor.placeholder, '- [ ] Call Ren', 'the hub carries the tag');
+    assert.strictEqual(result, '- [ ] Call Ren');
+    assert.strictEqual(readFileSync(hub, 'utf8'), atlas.replace('- [ ] Brief\n', '- [ ] Brief\n- [ ] Call Ren\n'));
+    assert.deepStrictEqual(messages, ['Added it to Atlas.md.']);
+  });
+
+  test('a place chosen on the Note row stays chosen, and a short tag is written in full there', async () => {
+    const hub = note('Atlas.md', atlas);
+    const other = note('other.md', '# Other\n- [ ] Before\n');
+    const inputs = answerInputs([
+      (shown) => row(shown, (candidate) => candidate.field === 'description'),
+      () => 'Call Ren #atlas',
+      (shown) => row(shown, (candidate) => candidate.field === 'note'),
+      (shown) => row(shown, (candidate) => candidate.target === 'note'),
+      (shown) => row(shown, (candidate) => candidate.filePath === other),
+      (shown) => row(shown, (candidate) => candidate.done === true),
+    ]);
+    restore = inputs.restore;
+
+    await recordMessages(() => addTaskCommand(contextOf({ [hub]: atlas, [other]: readFileSync(other, 'utf8') }), {}, now));
+    const places = inputs.shown[3];
+    assert.deepStrictEqual(places.rows.map((place) => place.target), ['today', 'hub', 'note', 'heading']);
+    assert.strictEqual(places.rows[1].description, 'Hub of #project/atlas · now');
+    assert.strictEqual(readFileSync(other, 'utf8'), '# Other\n- [ ] Before\n- [ ] Call Ren #project/atlas\n');
+    assert.strictEqual(readFileSync(hub, 'utf8'), atlas, 'the hub is left as it was');
+  });
+
+  test('at a cursor under the hub’s tag, the task stays at the cursor', async () => {
+    const hub = note('Atlas.md', atlas);
+    const plan = note('plan.md', '# Plan\n## Atlas work #project/atlas\n\n');
+    const editor = await vscode.window.showTextDocument(vscode.Uri.file(plan));
+    editor.selection = new vscode.Selection(2, 0, 2, 0);
+    const inputs = answerInputs([
+      (shown) => row(shown, (candidate) => candidate.field === 'description'),
+      () => 'Call Ren #project/atlas',
+      (shown) => row(shown, (candidate) => candidate.done === true),
+    ]);
+    restore = inputs.restore;
+
+    const context = contextOf({ [hub]: atlas, [plan]: readFileSync(plan, 'utf8') }, { indexed: true });
+    assert.strictEqual(await addTaskCommand(context, {}, now), '- [ ] Call Ren #project/atlas');
+    assert.strictEqual(inputs.shown[2].title, 'Add a task to plan.md');
+    assert.strictEqual(editor.document.getText(), '# Plan\n## Atlas work #project/atlas\n- [ ] Call Ren #project/atlas\n');
+    assert.strictEqual(readFileSync(hub, 'utf8'), atlas);
   });
 });

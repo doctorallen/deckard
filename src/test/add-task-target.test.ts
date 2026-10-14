@@ -65,6 +65,27 @@ suite('Add Task: where the task goes', () => {
     );
   });
 
+  test('a hub its words name is named in the title and row, and offered after today’s note', () => {
+    const hub = { kind: 'hub' as const, path: 'projects/Atlas.md', tag: '#project/atlas' };
+    assert.strictEqual(titleTaskTarget(hub), 'Add a task to Atlas.md');
+    assert.strictEqual(describeTaskTarget(hub), 'projects/Atlas.md · hub of #project/atlas');
+    const places = { today: '2026-10-13.md', hub: { path: hub.path, tag: hub.tag } };
+    const offered = listTaskTargetChoices(hub, places);
+    assert.deepStrictEqual(
+      offered.map((choice) => [choice.target, choice.label, choice.description]),
+      [
+        ['today', '$(calendar) Today’s note', '2026-10-13.md'],
+        ['hub', '$(tag) Atlas.md', 'Hub of #project/atlas · now'],
+        ['note', '$(file) Another note…', 'The notes changed last first'],
+        ['heading', '$(list-tree) Under a heading…', 'In any note, the headings used last first'],
+      ],
+    );
+    assert.ok(
+      !listTaskTargetChoices({ kind: 'today', path: '2026-10-13.md' }, { today: '2026-10-13.md' }).some((choice) => choice.target === 'hub'),
+      'no hub row while the words name none',
+    );
+  });
+
   test('Another note… lists the note changed last first, by name, with its folder', () => {
     assert.deepStrictEqual(
       listNoteChoices([
