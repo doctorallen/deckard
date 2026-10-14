@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.8.1 - 2026-10-13
+
+### Highlights
+
+- Brings 2.8.0 to the Marketplace: **Add Task goes to a project's hub**, and a task's own tag shows above its card.
+
 ### Fixed
 
 - **2.8.0 reaches the Marketplace.** The Marketplace refused 2.8.0 because
