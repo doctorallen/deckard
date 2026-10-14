@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Fixed
+
+- **2.8.0 reaches the Marketplace.** The Marketplace refused 2.8.0 because
+  its icon was 1600 pixels square, over the 1024 it now allows; the icon is
+  512 pixels square, and a test fails before release on a larger one.
+
 ## 2.8.0 - 2026-10-13
 
 ### Highlights
