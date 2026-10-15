@@ -91,7 +91,9 @@ Where the plan was silent, or the code made its words impractical:
     line), with a hash of its lines, its task lines left out, in place of a
     change time. An entry is a *new mention* when its key is new or its
     words changed; a task done or added is counted as a task, not again as
-    a mention of the entry it is in;
+    a mention of the entry it is in, and a question's `Answer:` line is
+    left out as its task lines are, so an answer counts once, as a
+    question answered (QA);
   - each task by a hash of its note's path and its title, which leaves out
     its metadata, open and done apart. A task added and done since counts
     as done;

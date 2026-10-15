@@ -2048,6 +2048,14 @@ function findQuestions(context: NoteContext, sections: Section[], dateAnchor: nu
 const ANSWER_LINE = /^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?answer:[ \t]*(.*)$/i;
 
 /**
+ * Whether a line has an answer's shape: indented, as an answer is under its
+ * question, and opening with `Answer:`, a list marker or none before it.
+ */
+export function isAnswerLine(line: string): boolean {
+  return /^[ \t]/.test(line) && ANSWER_LINE.test(line);
+}
+
+/**
  * A question's answer: the first line indented under it, before the next
  * line that is not, that starts with `Answer:`, with the day written on it.
  */

@@ -149,6 +149,16 @@ suite('Since you last looked', () => {
     assert.strictEqual(compareTagPage(older, captureTagPageState(index, '#team/rates', context)).answeredQuestions.size, 0);
   });
 
+  test('an answer written under a question counts once, as a question answered, not as a new mention too', () => {
+    for (const answer of ['  Answer: Ops does.', '  - answer: Ops does.']) {
+      const standup = (...rows: string[]) => indexOf({ 'notes/log.md': lines('# Log', '## Standup #team/rates', 'We talked.', '- [?] Who owns the loader?', ...rows) });
+      const visit = toTagVisit(captureTagPageState(standup(), '#team/rates', context), before);
+      const changes = compareTagPage(visit, captureTagPageState(standup(answer), '#team/rates', context));
+      assert.strictEqual(changes.answeredQuestions.size, 1, answer);
+      assert.strictEqual(changes.newEntries.size, 0, answer);
+    }
+  });
+
   test('a search that narrows the tag, or is no tag’s, draws no band and marks nothing', () => {
     const visit = visitThen();
     const narrowed = pageWith(indexOf(NOW), '#team/rates is:open', { visit });

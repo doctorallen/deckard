@@ -14,8 +14,9 @@
  * which an index id does not: its note and heading, or its note and title.
  * An entry is new when its key is, or when its words changed, which a hash
  * of its lines says; a note's change time is its file's, so it cannot tell
- * one entry of a daily note from another. Its task lines are left out of
- * the hash: a task done or added is counted as a task, not again as a new
+ * one entry of a daily note from another. Its task lines, and a
+ * question's answer, are left out of the hash: a task done or added is
+ * counted as a task, and a question answered as one, not again as a new
  * mention of the entry it is written in. A question is known as a task is,
  * by its note and its words (docs/implementation/38-questions.md).
  */
@@ -29,6 +30,7 @@ import type { QueryContext } from '../../domain/query/queryContext';
 import type { QueryResults } from '../../domain/query/queryEvaluator';
 import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { isTaskItemLine } from '../../domain/markdown/listNesting';
+import { isAnswerLine } from '../../domain/markdown/parser';
 import { shortHash } from '../../shared/text';
 import type { TagVisit } from '../../core/storage/tagVisits';
 import type { DrawnFields } from '../protocol/fields';
@@ -113,9 +115,13 @@ export function captureTagPage(
   return { entries, tasks: { open: [...open], done: [...done] }, fields, answered: [...answered] };
 }
 
-/** An entry's words as a visit keeps them: a hash of its lines, its task lines aside. */
+/**
+ * An entry's words as a visit keeps them: a hash of its lines, its task and
+ * question lines aside, and a question's `Answer:` line, so an answer
+ * written since counts as a question answered, not again as a mention.
+ */
 function hashWords(lines: readonly string[]): string {
-  return visitHash(lines.filter((line) => !isTaskItemLine(line)).join('\n'));
+  return visitHash(lines.filter((line) => !isTaskItemLine(line) && !isAnswerLine(line)).join('\n'));
 }
 
 /**
