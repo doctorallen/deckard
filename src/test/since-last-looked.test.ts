@@ -4,7 +4,7 @@ import { TAG_VISIT_LIMIT, TAG_VISIT_PREFIX, TAG_VISITS_KEY, TagVisits } from '..
 import { DAY_MS } from '../domain/markdown/calendar';
 import type { WorkspaceIndex } from '../domain/model';
 import { createQueryContext } from '../domain/query/queryContext';
-import { createHubNews } from '../ui/state/hubNews';
+import { HubNewsReader, type HubVisits } from '../ui/state/hubNews';
 import { buildHubTree, type HubTreeNode } from '../ui/state/hubTree';
 import { captureTagPageState, createSearchPageSnapshot } from '../ui/state/searchPageState';
 import { compareTagPage, isSinceShown, toTagVisit } from '../ui/state/sinceLastLooked';
@@ -200,7 +200,8 @@ suite('Since you last looked', () => {
     const visits = new TagVisits(new MemoryStore());
     await visits.record('#team/rates', visitThen());
     await visits.record('#team/fx', toTagVisit(captureTagPageState(index, '#team/fx', context), now - 60_000));
-    const hubs = (): HubTreeNode[] => buildHubTree(index, now, createHubNews(index, visits, context))[0].children;
+    const reader = await readHubNews(index, visits);
+    const hubs = (): HubTreeNode[] => buildHubTree(index, now, reader.news(index, context))[0].children;
     assert.deepStrictEqual(hubs().map((hub) => [hub.label, hub.description]), [
       ['Credit desk', 'never opened'],
       ['FX desk', 'seen today'],
@@ -210,8 +211,62 @@ suite('Since you last looked', () => {
     assert.deepStrictEqual(hubs().map((hub) => hub.label), ['Rates desk', 'Credit desk', 'FX desk']);
     const seenEarlier = new TagVisits(new MemoryStore());
     await seenEarlier.record('#team/fx', toTagVisit(captureTagPageState(index, '#team/fx', context), before));
-    const fx = buildHubTree(index, now, createHubNews(index, seenEarlier, context))[0].children.find((hub) => hub.label === 'FX desk');
+    const earlier = await readHubNews(index, seenEarlier);
+    const fx = buildHubTree(index, now, earlier.news(index, context))[0].children.find((hub) => hub.label === 'FX desk');
     assert.match(fx?.description ?? '', /^seen /);
     assert.doesNotMatch(fx?.description ?? '', /today|new/, 'nothing new since a visit long ago says when it was');
   });
+
+  test('the Hubs view draws at once and counts what is new after, quickly for 150 visited hubs over 6,000 notes', async () => {
+    const HUBS = 150;
+    const notes: Record<string, string> = {};
+    for (let hub = 0; hub < HUBS; hub += 1) {
+      notes[`Teams/T${hub}.md`] = lines('---', `describes: team/t${hub}`, '---', `# Team ${hub}`);
+    }
+    for (let note = 0; note < 6000; note += 1) {
+      const tag = `#team/t${note % HUBS}`;
+      notes[`notes/n${note}.md`] = lines(`# Note ${note} ${tag}`, 'Some words about the work.', `- [ ] Do the thing ${note} ${tag}`, '## Part', 'More words.');
+    }
+    const then = indexOf(notes);
+    const visits = new TagVisits(new MemoryStore());
+    for (let hub = 0; hub < HUBS; hub += 1) {
+      await visits.record(`#team/t${hub}`, toTagVisit(captureTagPageState(then, `#team/t${hub}`, context), before));
+    }
+    const index = indexOf({ ...notes, 'notes/new.md': lines('# New #team/t7', 'Since.') });
+
+    let ready = (): void => undefined;
+    const counted = new Promise<void>((resolve) => {
+      ready = resolve;
+    });
+    const reader = new HubNewsReader(visits, () => ready(), 0);
+    let start = Date.now();
+    const first = buildHubTree(index, now, reader.news(index, context))[0].children;
+    const draw = Date.now() - start;
+    assert.ok(first.every((hub) => /^seen /.test(hub.description ?? '')), 'the first draw says when each hub was seen');
+    start = Date.now();
+    await counted;
+    const count = Date.now() - start;
+    const after = buildHubTree(index, now, reader.news(index, context))[0].children;
+    assert.deepStrictEqual(
+      after.filter((hub) => /new/.test(hub.description ?? '')).map((hub) => [hub.label, hub.description?.replace(/ ·.*/, '')]),
+      [['Team 7', '1 new']],
+    );
+    // Before, each draw searched the workspace once a hub: some 13 s here.
+    assert.ok(draw < 1000, `the tree drew in ${draw} ms`);
+    assert.ok(count < 5000, `the hubs were counted in ${count} ms`);
+    reader.dispose();
+  });
 });
+
+/** The hubs' news read through `visits`, once every hub of `index` is counted. */
+async function readHubNews(index: WorkspaceIndex, visits: HubVisits): Promise<HubNewsReader> {
+  let ready = (): void => undefined;
+  const counted = new Promise<void>((resolve) => {
+    ready = resolve;
+  });
+  const reader = new HubNewsReader(visits, () => ready(), 0);
+  buildHubTree(index, now, reader.news(index, context));
+  // A tree whose hubs were all seen within the day has nothing to count.
+  await Promise.race([counted, new Promise((resolve) => setTimeout(resolve, 50))]);
+  return reader;
+}

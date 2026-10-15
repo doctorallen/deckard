@@ -517,16 +517,24 @@ function readTagChanges(index: WorkspaceIndex, page: SearchPageResults, options:
   if (!visit || !tagKey || now - visit.seenAt <= SINCE_AFTER_MS) {
     return undefined;
   }
-  const changes = compareTagPage(visit, captureTagPageState(index, tagKey, options.queryContext));
+  // The page is the tag's own search: unless words being typed narrow it,
+  // what it found is what a visit keeps, and is not searched for again.
+  const own = page.preview.length === 0 ? page : undefined;
+  const changes = compareTagPage(visit, captureTagPageState(index, tagKey, options.queryContext, own));
   return isSinceShown(changes, now) ? changes : undefined;
 }
 
 /**
  * What a tag's own page holds now, as a visit keeps it: the entries and
  * tasks its search finds, and its hub's fields as the page draws them.
+ * `page` is the tag's own search when the caller has it evaluated already.
  */
-export function captureTagPageState(index: WorkspaceIndex, tagKey: string, context: QueryContext): TagPageState {
-  const page = evaluateSearchPage(index, tagKey, { queryContext: context });
+export function captureTagPageState(
+  index: WorkspaceIndex,
+  tagKey: string,
+  context: QueryContext,
+  page: SearchPageResults = evaluateSearchPage(index, tagKey, { queryContext: context }),
+): TagPageState {
   const fields = readTagPageFields(index, tagKey, page.hubFile);
   return captureTagPage(index, page.results, {
     hubPaths: page.focusTag?.hubFilePaths ?? [],

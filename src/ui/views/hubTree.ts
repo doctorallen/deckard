@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { onIndexUpdateInTurn, VIEW_PRIORITY, ViewUpdateSource } from '../../core/workspace/publishing';
 import { measure } from '../../shared/timing';
 import { buildHubTree, HubTreeNode } from '../state/hubTree';
-import { createHubNews } from '../state/hubNews';
+import { HubNewsReader, type HubVisits } from '../state/hubNews';
 import { WorkspaceIndex } from '../../domain/model';
 import type { TagVisits } from '../../core/storage/tagVisits';
 import { readQueryContext } from '../commands/queryContext';
@@ -30,14 +30,20 @@ export class HubTreeProvider implements vscode.TreeDataProvider<HubTreeNode>, vs
   private readonly disposables: vscode.Disposable[] = [this.changeEmitter];
   private view: vscode.TreeView<HubTreeNode> | undefined;
   private roots: HubTreeNode[] | undefined;
+  /** Each hub's news, counted off the draw, which draws the tree again once counted. */
+  private readonly news: HubNewsReader | undefined;
 
-  /** Redraws after each index update, in a turn of its own, and when a visit counts or the sort changes. */
+  /**
+   * Redraws after each index update, in a turn of its own, when a visit
+   * counts or the sort changes, and when the hubs' news has been counted.
+   */
   public constructor(
     private readonly indexer: HubTreeIndexSource,
-    private readonly visits?: Pick<TagVisits, 'get' | 'seenAt' | 'hubSort' | 'onDidChange'>,
+    visits?: HubVisits & Pick<TagVisits, 'onDidChange'>,
   ) {
     if (visits) {
-      this.disposables.push(visits.onDidChange(() => this.redraw()));
+      this.news = new HubNewsReader(visits, () => this.redraw());
+      this.disposables.push(visits.onDidChange(() => this.redraw()), this.news);
     }
     this.disposables.push(
       onIndexUpdateInTurn(
@@ -69,7 +75,7 @@ export class HubTreeProvider implements vscode.TreeDataProvider<HubTreeNode>, vs
       () => {
         const index = this.indexer.getSnapshot();
         const context = readQueryContext();
-        return buildHubTree(index, context.now, this.visits ? createHubNews(index, this.visits, context) : undefined);
+        return buildHubTree(index, context.now, this.news?.news(index, context));
       },
       (roots) => `${roots.length} groups`,
     );

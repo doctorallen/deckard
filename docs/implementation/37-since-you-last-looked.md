@@ -135,7 +135,19 @@ Where the plan was silent, or the code made its words impractical:
 - **The Hubs view.** A hub's description is its news, then its progress:
   *9 new · 1/2 done (50%)*. A tree's description cannot be colored, so the
   count is not highlighted. Only hubs seen over a day ago are read, one tag
-  search each, when the view draws. The view had no sort menu, so **Sort
+  search each, and never while the view draws (QA: 150 hubs over 6,000
+  notes took some 13 s a draw). `HubNewsReader` (`src/ui/state/hubNews.ts`)
+  answers the draw from what it counted last, *seen Fri, Oct 9* for a hub
+  not counted yet, and counts the hubs the draw asked for 300 ms after it,
+  a few at a time, against that index and each hub's last visit, then
+  draws the view again. A count from the index before stands until its own
+  is ready. Each search is cheaper too: the evaluator builds an index's
+  units once a snapshot (`getIndexUnits`), reads a tag value's candidates
+  once a search, not once a unit, and reads a unit's links by its key
+  rather than copying every unit for a `link` search, so the 150 hubs are
+  counted in well under a second; a unit test holds the bound. The band
+  reuses its page's own results rather than searching the tag again, unless
+  words being typed narrow them. The view had no sort menu, so **Sort
   Hubs By…** (`deckard.hubs.setSort`) is new, in its **⋯**, with **Name** and
   **What's new**; the choice is kept with the visits, in workspace state,
   not in the preferences blob.
