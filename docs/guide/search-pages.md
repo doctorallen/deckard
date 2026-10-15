@@ -71,6 +71,18 @@ Migration of billing onto the new ledger.
 - **Untagged mentions.** For a tag name of three letters or more, the top of **Refine** (or, while Refine is in the Context sidebar, a line under the search box) says how many entries write it as a plain word: *12 entries mention "atlas" without the tag.* **Show them** runs `text = atlas -#project/atlas`, without the hub, so **Bulk edit → Add a tag** can tag them. `@dana` counts "dana" the same way.
 - **Hub links.** The page also lists entries and tasks that link to the hub note without the tag, marked *Links the hub note*, with a line under the hub: *Also listing 5 entries that link to Atlas plan without the tag.* Counts, tabs, pages, Bulk edit, and Export include them.
 
+## Since you last looked
+
+A tag's page remembers what it held when you last had it open. Come back more than a day later, and if something changed, a band under the page's bar says so: **Since you last looked · Fri, Oct 2, 12 days ago**, then a chip for each kind of change, such as *4 new mentions*, *1 field changed*, *2 tasks done*, and *1 task added*.
+
+- A visit counts once the page has been in front for five seconds; **Mark seen** counts it at once and clears the band. Leaving a page after that marks it seen: the band is gone the next time you come back.
+- A **new mention** is an entry with the tag written or changed since, its tasks aside. A task is **added** or **done** since. A **field** is a value in the hub's front matter or a typed row's fields, its reverses among them.
+- A chip narrows the Notes or Tasks tab to what it counts, as a Refine value does, and shows that tab; select it again to show everything. **N fields changed** opens the hub card instead.
+- Notes new since then are listed first, under **New since Fri, Oct 2**, the rest under **Earlier**, each with a **New** mark; an added task has one too. A changed field shows its old value once, after its value now: *changed · was Alex Rivera*.
+- Only the page of one tag on its own has the band. A first visit draws none; it only records.
+- Deckard keeps one visit for each tag, the last, in VS Code's storage for the workspace, never in your notes. It drops the visits of tags that are gone, and keeps at most 500.
+- With [Zen](themes-and-zen.md#zen) on, the date and the counts stay; **Mark seen** waits for the pointer or <kbd>Tab</kbd>.
+
 ## Between you and a person
 
 A person's page, such as `@sam-okafor`'s, lists every open line between you and them in a **Between you** card, under its fields and above the tabs, ready for a one-to-one:
@@ -109,6 +121,7 @@ HUBS
 - A hub goes under another hub only when its `up:` names it, as a sub-project's does. The tags in a hub's own front matter, such as a team's `regulars:` or a person's `team:`, describe it and do not move it. A note about two projects is under both.
 - A [parked](organizing.md#parking-notes) note is left out of the tree, and a parked task out of a hub's count, as a search leaves them out.
 - Select a hub to open its tag's search page, with the hub note on top and everything the tag finds under it; the hub's **Open Hub Note** button opens the note itself, in the editor or on the note page as `deckard.openNotesIn` says, and its right-click menu offers the other way. Select any other note to open it. A hub shows how far along its tag's tasks are.
+- **What's new.** Each hub says how much is new since you last opened its page, as its [band](#since-you-last-looked) counts it, *9 new*, or else when you saw it, *seen today* or *seen Fri, Oct 9*, or *never opened*. **Sort Hubs By…**, in the view's **⋯**, puts the hubs with the most new first on each level, or goes back to **Name**.
 - **Breadcrumbs.** A note's first line says where it sits, such as **Projects › Atlas › Ledger migration › Cutover plan**, and opens the note above it. `deckard.editor.breadcrumbs` turns them off.
 
 ## Merging tags

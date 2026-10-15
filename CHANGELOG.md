@@ -12,6 +12,17 @@
   one-to-one note. It reads `deckard.me` as `is:mine` does, and says so
   while that is empty. `deckard_describe_tag` counts the same groups for a
   person.
+- **Since you last looked.** A tag's page remembers what it held at your
+  last visit, kept in VS Code's storage for the workspace. Come back more
+  than a day later and a band under its bar says what changed: new
+  mentions, fields changed, tasks done, and tasks added, each a chip that
+  narrows the page to what it counts. New notes are listed first under
+  **New since**, new notes and tasks are marked **New**, and a changed
+  field shows its old value once. A visit counts after five seconds in
+  front, or at once with **Mark seen**.
+- **What's new in the Hubs view.** Each hub says how much is new since you
+  last opened its page, or when you saw it, and **Sort Hubs By…** puts the
+  busiest first.
 
 ## 2.8.1 - 2026-10-13
 

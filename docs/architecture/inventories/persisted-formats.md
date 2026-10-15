@@ -37,6 +37,7 @@ This inventory lists every format Deckard writes and later reads back, so that a
 | 24c | Stats state, view type `deckard.stats`, since Phase 6 step 4.2: `{ showAllOrphans, showUsedOnce, pairsAsTable, scrollY? }` | webview state | none | `stats.test.ts` |
 | 25 | Entry ids, tag keys, and Find keys stored inside rows 1, 9, and 17 | inside other formats | none | `preferences-prune.test.ts`, `preferences.test.ts`; relative only |
 | 26 | Settings Deckard writes | `settings.json` | none | `exclude-folders.test.ts`, `settings.test.ts`; partly |
+| 27 | Tag visits, since plan 37: `deckard.tagVisits` (each tag's visit time, by tag key), `deckard.tagVisit:<tag key>` (`{ seenAt, entries, tasks: { open, done }, fields, answered? }`), and the Hubs view's sort, `deckard.hubs.sort` (`'new'`, or nothing for by name); `src/core/storage/tagVisits.ts`, read by `readTagVisit`, which reads any other shape as no visit | `workspaceState` | none | `since-last-looked.test.ts` |
 
 Deckard calls no `setKeysForSync`, so no memento key travels with Settings Sync. Deckard uses no `logUri`. The `Deckard` output channel (`src/extension.ts:214`) writes a log that Deckard never reads back.
 

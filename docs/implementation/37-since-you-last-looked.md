@@ -75,3 +75,67 @@ The band keeps its date and counts; Mark seen is quieted in place.
 - Page behavior (jsdom): the band, chips filtering, the NEW group, the
   `was` value.
 - Hubs tree: descriptions and the What's new sort.
+
+## As built
+
+Built on `feat/four-ideas`, without the *questions answered* chip, which
+plan 38 adds: `SinceChipKind` gains `answered`, `TagVisit.answered` is
+already read and kept, and `compareTagPage` says where the count goes.
+Where the plan was silent, or the code made its words impractical:
+
+- **What a snapshot keeps.** An index id names an entry or task by its
+  line, so a line written above it, or a task's `✅` date, makes it another
+  id, and a note's change time is its file's, so it cannot tell one entry of
+  a daily note from another. So `src/ui/state/sinceLastLooked.ts` keys:
+  - each entry by a hash of its note's path and its heading (or its tagged
+    line), with a hash of its lines, its task lines left out, in place of a
+    change time. An entry is a *new mention* when its key is new or its
+    words changed; a task done or added is counted as a task, not again as
+    a mention of the entry it is in;
+  - each task by a hash of its note's path and its title, which leaves out
+    its metadata, open and done apart. A task added and done since counts
+    as done;
+  - each field by its name, its values as text: a typed row's fields and
+    reverses, else the hub note's front matter.
+- **Where it is kept.** `src/core/storage/tagVisits.ts`, over the
+  workspace's `workspaceState`: each tag's visit under a key of its own,
+  `deckard.tagVisit:<tag>`, and a list of every tag's visit time,
+  `deckard.tagVisits`, so counting a visit writes one tag's snapshot and not
+  all 500. Tags the index no longer has lose their visits, and the cap of
+  500 drops the oldest, whenever a visit is written, rather than in Tidy
+  Preferences, which asks before it removes anything and lists favorites,
+  pins, and saved searches only.
+- **When a visit counts (D7).** Five seconds after the page is put in front
+  showing one tag alone; leaving it, or searching something else, before
+  then counts nothing. Once counted, it counts again only after the page is
+  left and put in front again. The band compares the page with the visit it
+  read when it first drew the tag, and reads it again after the page is left
+  and put in front again, so the band stays while the reader is on the page
+  and is gone on the next draw after they come back (`readSinceBaseline` in
+  the controller). The time and timer are injectable (`VisitClock`) for the
+  host test.
+- **Which pages.** Only the page of one tag on its own: a search that
+  narrows the tag, or any other search, has no band and marks nothing.
+- **The band** sits between the page bar and the search box. Its date is in
+  the reader's short date format, `Fri, Oct 2, 12 days ago`, and loses the
+  distance past 31 days, as Deckard's other distances do. The plan's `2 Oct`
+  is that format's choice.
+- **Chips.** The language cannot say *new since a visit*, so a chip is not
+  query text: the page sends `setSinceFilter`, the host narrows the list it
+  pages, and the chip is drawn pressed. It shows its tab. Choosing it again,
+  searching something else, or coming back to the page lets it go. *N fields
+  changed* filters nothing: it opens the hub card, where the fields are.
+- **The old value** reads *changed · was Alex Rivera*; a field the visit did
+  not have reads *changed · was not set*. A field taken away is counted but
+  has no row to show it on.
+- **The Notes tab** heads its new notes *New since Fri, Oct 2* and the rest
+  *Earlier*, each with its count, in the plain list. With Group by on, each
+  group keeps its own order and the new notes carry their *New* mark, with
+  no heading.
+- **The Hubs view.** A hub's description is its news, then its progress:
+  *9 new · 1/2 done (50%)*. A tree's description cannot be colored, so the
+  count is not highlighted. Only hubs seen over a day ago are read, one tag
+  search each, when the view draws. The view had no sort menu, so **Sort
+  Hubs By…** (`deckard.hubs.setSort`) is new, in its **⋯**, with **Name** and
+  **What's new**; the choice is kept with the visits, in workspace state,
+  not in the preferences blob.

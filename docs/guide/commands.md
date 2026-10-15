@@ -51,6 +51,7 @@
 | **Deckard: Clear the Tasks View's Search** | Lets the Tasks view list every open task again. |
 | **Deckard: Group Tasks By…** | Chooses the Tasks view's groups: due status, priority, status, person, or a tag namespace. |
 | **Deckard: Sort Tasks By…** | Orders each of the Tasks view's groups: by rank, created or updated date, or title. |
+| **Deckard: Sort Hubs By…** | Orders each level of the Hubs view: by name, or **What's new**, the hubs with the most new since you last opened their page first; see [The Hubs view](search-pages.md#the-hubs-view). |
 | **Deckard: New Note from Template** | Creates a note from a template in your templates folder. |
 | **Deckard: New Note from Template Here…** | The same, in the folder right-clicked in the Explorer, from its **Deckard** menu. |
 | **Deckard: Exclude from Deckard** | On a folder's **Deckard** menu in the Explorer: leaves the folder out of the index. **Deckard: Include in Deckard** brings a folder left out by name back. |
