@@ -64,6 +64,9 @@ p.detail { font-family: var(--font-display); }
 .pair-arrow { color: var(--muted); }
 .view-panel h3.with-action { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .merge { min-height: 22px; padding: 2px 8px; font-size: var(--text-xs); white-space: nowrap; }
+/* A term's row: the term and what it says, its count, and Define… when it has no definition. */
+.term-row { grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
+.term-row .count { font-size: var(--text-sm); }
 @media (max-width: 600px) { main { padding: 16px; } }
 
 /* Stats leads with a green rule and lists plain empty states. */

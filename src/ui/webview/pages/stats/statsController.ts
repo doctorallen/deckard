@@ -9,6 +9,8 @@ import type { NavigationService } from '../../../../services/navigationService';
 import type { DeckardStatsSnapshot, StatsPageToHost } from '../../../protocol/stats';
 import { createMissingNotes, reportCreatedNotes } from '../../../commands/linkHealth';
 import { resolveSourceUri } from '../../../commands/navigation';
+import { readDateFormats } from '../../../commands/datePrompt';
+import { MAKE_TERM_NOTE_COMMAND } from '../../../state/termHover';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import { chooseTheme, goToPage, listGoTo, openGoTo, openHelp, openSource, openTag, setZenMode } from '../../host/sharedHandlers';
 import { getStatsHtml } from '../../statsHtml';
@@ -78,6 +80,8 @@ export class StatsController implements PageController<DeckardStatsSnapshot, Sta
       // The page is where staleness shows, so it is also where it is fixed.
       reindexWorkspace: () => vscode.commands.executeCommand('deckard.reindexWorkspace'),
       createMissingNotes: (message) => this.createMissingNotes(message.names),
+      // Define… makes a term note for a term nothing defines.
+      defineTerm: (message) => vscode.commands.executeCommand(MAKE_TERM_NOTE_COMMAND, message.term),
     };
   }
 
@@ -92,7 +96,7 @@ export class StatsController implements PageController<DeckardStatsSnapshot, Sta
       this.stats.indexer.getSnapshot(),
       this.stats.preferences.reader.value,
       this.stats.indexer.getUnreadable(),
-      Date.now(),
+      { now: Date.now(), formats: readDateFormats() },
     );
   }
 

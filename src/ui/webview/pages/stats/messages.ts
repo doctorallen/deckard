@@ -4,8 +4,10 @@
  * tag and line against the index as it is now.
  */
 import type { MergeTagsMessage } from '../../../protocol/shared';
+import { isTermShape } from '../../../../domain/terms/terms';
 import type {
   CreateMissingNotesMessage,
+  DefineTermMessage,
   MergeTagIntoMessage,
   OpenStatsNotesGraphMessage,
   OpenTagListMessage,
@@ -85,6 +87,10 @@ const narrowCreateMissingNotes: Narrower<CreateMissingNotesMessage> = (value) =>
     ? { type: 'createMissingNotes', names: value.names as string[] }
     : undefined;
 
+/** Define…: a term, in a term's shape. */
+const narrowDefineTerm: Narrower<DefineTermMessage> = (value) =>
+  typeof value.term === 'string' && isTermShape(value.term) ? { type: 'defineTerm', term: value.term } : undefined;
+
 /** Each message the Stats page may send, and what it must hold. */
 export const STATS_MESSAGES: NarrowingTable<StatsPageToHost> = {
   openTag: narrowOpenTag,
@@ -102,6 +108,7 @@ export const STATS_MESSAGES: NarrowingTable<StatsPageToHost> = {
   mergeTagInto: narrowMergeTagInto,
   openNotesGraph: narrowOpenNotesGraph,
   createMissingNotes: narrowCreateMissingNotes,
+  defineTerm: narrowDefineTerm,
 };
 
 /** A message from the Stats page, narrowed by its table, or undefined. */

@@ -8,10 +8,15 @@ import { getFileName } from '../../shared/paths';
 import { baseCollator, defaultCollator } from './entryCards';
 import { sectionIncludesTag, taskIncludesTag } from './tagMatching';
 import { findTagMergeCandidates } from '../../domain/ranking/tagHygiene';
-import { StatsAccessItem, DeckardStatsSnapshot, StatsTrend, StatsTagUsage, StatsTagPairs } from '../protocol/stats';
+import { StatsAccessItem, DeckardStatsSnapshot, StatsTrend, StatsTagUsage, StatsTagPairs, StatsTermItem } from '../protocol/stats';
 import { PersistedPreferences, TagInfo, WorkspaceIndex, TagMergeCandidate, UnreadableNote } from '../../domain/model';
 import { countNotes, isFileEntry } from '../../domain/index/noteEntryIndex';
 import { isEntrySection } from '../../domain/markdown/noteEntries';
+import { getTermTable, type TermEntry, type TermPlace } from '../../domain/terms/terms';
+import { formatIsoDate } from '../../domain/markdown/calendar';
+import { formatShortDay } from '../../domain/markdown/dates';
+import { type DateFormats, DEFAULT_DATE_FORMATS } from '../../domain/markdown/dateFormat';
+import { termSearch } from './termHover';
 
 /**
  * The Stats page: what the workspace holds, how it has grown week by week,
@@ -19,17 +24,24 @@ import { isEntrySection } from '../../domain/markdown/noteEntries';
  * what the reader opens most.
  */
 
+/** The moment Stats is drawn at, and the reader's date formats its days are written in. */
+export interface StatsMoment {
+  now: number;
+  formats?: DateFormats;
+}
+
 /**
  * Summarizes the current index and recorded local navigation for the Stats
  * page, with the notes that could not be read, its trends ending at `now`,
- * the moment the page asked at.
+ * the moment the page asked at, and its days in the reader's formats.
  */
 export function createDeckardStatsSnapshot(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
   unreadable: readonly UnreadableNote[],
-  now: number,
+  moment: number | StatsMoment,
 ): DeckardStatsSnapshot {
+  const { now, formats = DEFAULT_DATE_FORMATS } = typeof moment === 'number' ? { now: moment } : moment;
   // Every pair, once: Stats lists the clearest, and a tag used once is
   // offered its lookalike from the same list.
   const lookalikes = findTagMergeCandidates(index, Number.MAX_SAFE_INTEGER);
@@ -102,6 +114,54 @@ export function createDeckardStatsSnapshot(
     tagPairs: createTagPairs(index, TAG_PAIR_TAGS),
     ...listMissingLinkTargets(index),
     ...countParked(index),
+    ...listTerms(index, now, formats),
+  };
+}
+
+/** How many terms each of Stats' two lists of terms shows. */
+const TERM_LIST_LIMIT = 50;
+
+/**
+ * Stats' Terms (docs/implementation/42-terms.md): the terms used in three
+ * entries or more that nothing defines, each with its first use, and the
+ * terms defined, each with its definition and where it comes from; each
+ * list most used first, then by term.
+ */
+export function listTerms(
+  index: WorkspaceIndex,
+  now: number,
+  formats: DateFormats = DEFAULT_DATE_FORMATS,
+): Pick<DeckardStatsSnapshot, 'undefinedTerms' | 'undefinedTermCount' | 'definedTerms' | 'definedTermCount'> {
+  const terms = [...getTermTable(index).terms.values()].sort(
+    (left, right) => right.count - left.count || (left.term < right.term ? -1 : 1),
+  );
+  const undefinedTerms = terms.filter((entry) => !entry.definition);
+  const definedTerms = terms.filter((entry) => entry.definition);
+  const where = (place: TermPlace): string => {
+    const day = place.date > 0 ? `${formatShortDay(formatIsoDate(place.date), now, formats)} ` : '';
+    return `${day}in ${place.heading ?? getFileName(place.filePath).replace(/\.md$/i, '')}`;
+  };
+  const undefinedItem = (entry: TermEntry): StatsTermItem => ({
+    term: entry.term,
+    count: entry.count,
+    detail: entry.firstUse ? `First used ${where(entry.firstUse)}` : '',
+    open: { type: 'openSearch', query: termSearch(entry.term) },
+  });
+  const definedItem = (entry: TermEntry): StatsTermItem => {
+    const definition = entry.definition!;
+    const source = definition.source === 'note' ? `from ${getFileName(definition.filePath)}` : `defined ${where(definition)}`;
+    return {
+      term: entry.term,
+      count: entry.count,
+      detail: `${definition.text} · ${source}`,
+      open: { type: 'openSource', filePath: definition.filePath, line: definition.line },
+    };
+  };
+  return {
+    undefinedTerms: undefinedTerms.slice(0, TERM_LIST_LIMIT).map(undefinedItem),
+    undefinedTermCount: undefinedTerms.length,
+    definedTerms: definedTerms.slice(0, TERM_LIST_LIMIT).map(definedItem),
+    definedTermCount: definedTerms.length,
   };
 }
 
