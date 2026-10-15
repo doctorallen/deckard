@@ -90,7 +90,9 @@ made its words impractical:
   `WARNING`, `CAUTION`, `INFO`), and `FIXME`, `XXX`, `TBD`, `WIP`, `ASAP`,
   `ETC`, `VS`, `TL`, `DR`. A token may not follow `#`, `@`, `/`, `.`, `\`,
   or `-`, and one whose first part is all digits, such as `2026-W38`, is
-  no term. A shouted line is one with no lowercase letter and two words or
+  no term, nor is a number with a time or a simple quantity after it,
+  `10AM`, `5PM`, `24H`, `30M`, `5K`, `64GB`, `10X`, `1ST` (QA), though `2FA`
+  and `3DS` are. A shouted line is one with no lowercase letter and two words or
   more.
 - **Inline definitions** make a term only of a token used in three entries
   or more; a term note defines its term however few use it. A task's line

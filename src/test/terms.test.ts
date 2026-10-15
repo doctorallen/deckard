@@ -43,6 +43,9 @@ suite('Terms', () => {
   test('finds terms in a line, but not in code, links, web addresses, tags, or a shouted line', () => {
     assert.deepStrictEqual(termsIn('UAT sign-off for RATES-UAT, then NDF.'), ['UAT', 'RATES-UAT', 'NDF']);
     assert.deepStrictEqual(termsIn('OK, TODO: ask the US team about JAN at 9 AM'), []);
+    // A time or a quantity is none, though a term may start with a digit.
+    assert.deepStrictEqual(termsIn('Standup moved to 10AM, the 5PM call, a 24H window, 30M in volume, 5K rows, 64GB, 10X, the 1ST'), []);
+    assert.deepStrictEqual(termsIn('Turn on 2FA for 3DS and 4G'), ['2FA', '3DS', '4G']);
     assert.deepStrictEqual(termsIn('See `UAT`, [[UAT plan]], [notes](UAT.md), #UAT, @UAT and https://example.com/UAT'), []);
     assert.deepStrictEqual(termsIn('UATs and path/UAT and file.UAT stay words'), []);
     assert.deepStrictEqual(termsIn('URGENT: UAT IS DOWN'), [], 'a shouted line');

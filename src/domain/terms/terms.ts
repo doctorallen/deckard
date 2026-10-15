@@ -128,9 +128,16 @@ export function isTermShape(token: string): boolean {
   return part > 0 && letters > 0 && (hyphens > 0 || length <= 6);
 }
 
-/** Whether a token is a term: its shape, and not a capitalized common word. */
+/**
+ * A number with a time or a simple quantity after it, written in capitals:
+ * `10AM`, `5PM`, `24H`, `30M`, `5K`, `2BN`, `64GB`, `10X`, `1ST`. Not a
+ * term, though `2FA` and `3DS` are.
+ */
+const QUANTITY = /^\d+(?:AM|PM|H|HR|HRS|MIN|MINS|S|SEC|MS|K|M|B|BN|KB|MB|GB|TB|BPS|X|ST|ND|RD|TH)$/;
+
+/** Whether a token is a term: its shape, and not a capitalized common word, a time, or a quantity. */
 export function isTermToken(token: string): boolean {
-  return isTermShape(token) && !NOT_TERMS.has(token);
+  return isTermShape(token) && !NOT_TERMS.has(token) && !QUANTITY.test(token);
 }
 
 /**
