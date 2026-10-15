@@ -314,6 +314,15 @@ const STOP_WORDS = new Set([
 ]);
 
 /**
+ * A line's terms, as ranking compares them: its words of three letters or
+ * more, lowercased, without stop words, tags, links, or addresses. What the
+ * line index (lineIndex.ts) keeps of each line.
+ */
+export function getLineTerms(text: string): string[] {
+  return getLexicalTerms('', text);
+}
+
+/**
  * A word most entries of a workspace carry says nothing about which two are
  * alike, whatever it is: "standup" in a folder of standups. Judged only once
  * there are enough entries for "most" to mean something.

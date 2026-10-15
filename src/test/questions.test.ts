@@ -17,6 +17,9 @@ import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { createQueryContext } from '../domain/query/queryContext';
 import { createQueryBlockSnapshot, describeQueryBlockCounts, parseQueryBlockInfo } from '../ui/state/queryBlockState';
 import { renderQueryBlockHtml } from '../ui/preview/queryBlockHtml';
+import { findAnswerOffers, notItKey } from '../domain/ranking/answerOffers';
+import { hashLine } from '../domain/ranking/lineIndex';
+import { indexOf as typedIndexOf, typedWorkspace } from './typedWorkspace';
 
 /** An index of notes, by path and text, each dated by its own name when it is a day. */
 function indexOf(notes: Record<string, string>): ReturnType<typeof buildWorkspaceIndex> {
@@ -149,5 +152,68 @@ suite('Questions: searching', () => {
     const html = renderQueryBlockHtml('is:question', options, index, { queryContext: createQueryContext(Date.now()) });
     assert.match(html, /deckard-query-questions/);
     assert.match(html, /Answer: Priya/);
+  });
+});
+
+suite('Questions: offering an answer', () => {
+  const notes = {
+    'notes/2026-10-01.md': [
+      '# 2026-10-01',
+      '- [?] Who approves access to the bond UAT environment? #team/rates',
+      '- [?] Why did the curve loader lag on Monday?',
+    ].join('\n'),
+    'notes/2026-10-14.md': [
+      '# 2026-10-14',
+      '## Access #team/rates',
+      '- Priya approves bond UAT environment access through the RATES-UAT group',
+      '- The curve loader lag came from a stale cache on Monday',
+    ].join('\n'),
+    'notes/2026-09-01.md': '# 2026-09-01\n- Bond UAT environment access was being set up then\n',
+    'notes/2026-10-15.md': '# 2026-10-15\n- Bond UAT environment access, untagged, written later\n',
+  };
+  const offersOf = (rejected: ReadonlySet<string> = new Set()) => {
+    const index = indexOf(notes);
+    const offers = findAnswerOffers(index, { rejected });
+    return { index, offers: [...offers.values()].map((offer) => [questionText(getQuestions(index).get(offer.questionId)!), offer.text]) };
+  };
+
+  test('offers a later line sharing three uncommon words, and a tag when the question has one', () => {
+    assert.deepStrictEqual(offersOf().offers, [
+      ['Who approves access to the bond UAT environment?', 'Priya approves bond UAT environment access through the RATES-UAT group'],
+      ['Why did the curve loader lag on Monday?', 'The curve loader lag came from a stale cache on Monday'],
+    ]);
+  });
+
+  test('never offers a line written before the question, or one without its tag', () => {
+    const { offers } = offersOf();
+    assert.ok(!offers.some(([, text]) => text.includes('set up then') || text.includes('untagged')));
+  });
+
+  test('Not it sets a pair aside, and the next best is offered, or none', () => {
+    const { index } = offersOf();
+    const first = [...findAnswerOffers(index, { rejected: new Set() }).values()];
+    const rejected = new Set(first.map((offer) => notItKey(offer.questionId, offer.key)));
+    assert.deepStrictEqual([...findAnswerOffers(index, { rejected }).values()], []);
+    assert.strictEqual(hashLine('- Priya approves'), hashLine('* Priya   approves'), 'a pair is kept by the line\'s words');
+  });
+
+  test('a line sharing two words is not offered', () => {
+    const index = indexOf({
+      'notes/2026-10-01.md': '# 2026-10-01\n- [?] Why did the curve loader lag?\n',
+      'notes/2026-10-02.md': '# 2026-10-02\n- The curve was flat\n- The loader lag again\n',
+    });
+    assert.strictEqual(findAnswerOffers(index, { rejected: new Set() }).size, 0);
+  });
+});
+
+suite('Questions: answered by a typed row\'s field', () => {
+  test('a question naming a row and a field is offered the field\'s value, from the note that holds it', () => {
+    const base = typedWorkspace();
+    const notes = Object.fromEntries(
+      [...base.files.values(), ...(base.typeNotes?.values() ?? [])].map((file) => [file.filePath, file.content]),
+    );
+    const index = typedIndexOf({ ...notes, 'notes/asks.md': '# Asks\n- [?] Who leads rates?\n' });
+    const [offer] = [...findAnswerOffers(index, { rejected: new Set() }).values()];
+    assert.deepStrictEqual([offer.kind, offer.text, offer.source, offer.filePath], ['field', 'Dana Whitfield', 'lead of Rates', 'Teams/Rates.md']);
   });
 });
