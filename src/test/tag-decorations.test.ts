@@ -120,7 +120,7 @@ suite('Tag decorations', () => {
   test('offers a tagged entry one short link, to pin it to Home', () => {
     const hover = createEntryHoverMessage({
       documentUri: 'file:///tmp/deckard/relay.md',
-      lineNumber: 12,
+      pinLine: 12,
     });
 
     // Context follows the entry the cursor is in, so the hover offers no
@@ -130,14 +130,31 @@ suite('Tag decorations', () => {
     assert.strictEqual(hover.value.startsWith('[Pin to Home]('), true);
     assert.strictEqual(hover.value.includes('command:deckard.pinNote'), true);
     assert.deepStrictEqual(hover.isTrusted, {
-      enabledCommands: ['deckard.pinNote', 'deckard.unpinNote'],
+      enabledCommands: ['deckard.editTask', 'deckard.pinNote', 'deckard.unpinNote'],
     });
+  });
+
+  test('offers a task Edit task, at its own line, before Pin to Home', () => {
+    const tagged = createEntryHoverMessage({
+      documentUri: 'file:///tmp/deckard/relay.md',
+      pinLine: 14,
+      taskLine: 14,
+    });
+    assert.strictEqual(tagged.value.startsWith('[Edit task](command:deckard.editTask?'), true);
+    assert.strictEqual(tagged.value.includes(encodeURIComponent(JSON.stringify(['file:///tmp/deckard/relay.md', 14]))), true);
+    assert.strictEqual(tagged.value.includes(' · [Pin to Home]('), true);
+
+    const untagged = createEntryHoverMessage({
+      documentUri: 'file:///tmp/deckard/relay.md',
+      taskLine: 15,
+    });
+    assert.strictEqual(untagged.value.includes('Pin'), false, 'a task with no tag of its own offers no pin');
   });
 
   test('offers to unpin an entry that is already pinned', () => {
     const hover = createEntryHoverMessage({
       documentUri: 'file:///tmp/deckard/relay.md',
-      lineNumber: 12,
+      pinLine: 12,
       pinned: true,
     });
 

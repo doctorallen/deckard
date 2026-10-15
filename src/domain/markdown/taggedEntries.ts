@@ -11,6 +11,8 @@ export interface EditorEntry {
   startLine: number;
   endLine: number;
   title: string;
+  /** Whether the entry is a task, which its hover offers to edit. */
+  isTask?: boolean;
 }
 
 /**
@@ -41,6 +43,7 @@ export function collectTaggedEntries(
         startLine: task.lineNumber,
         endLine: task.lineNumber,
         title: task.title,
+        isTask: true,
       }),
     );
   return entries;
@@ -106,4 +109,69 @@ export function splitEntryLines(entries: readonly EditorEntry[]): EntryLines[] {
       }
     });
   return runs;
+}
+
+/** What a hover over some lines (1-based, inclusive) offers. */
+export interface EntryHover {
+  startLine: number;
+  endLine: number;
+  /** The line of the entry Pin to Home pins, when the lines are an entry's. */
+  pinLine?: number;
+  /** The task line Edit task edits, when the lines are one task. */
+  taskLine?: number;
+}
+
+/**
+ * The hovers a note's lines get: an entry's own lines offer to pin it, and a
+ * task's line offers to edit it, tagged or not. A tagged task offers both;
+ * a task with no tag of its own, under a tagged heading, offers only Edit
+ * task, since pinning there would pin the heading, not the task.
+ */
+export function planEntryHovers(
+  entries: readonly EditorEntry[],
+  taskLines: readonly number[],
+): EntryHover[] {
+  const tasks = new Set(taskLines);
+  const hovers: EntryHover[] = [];
+  const covered = new Set<number>();
+  for (const run of splitEntryLines(entries)) {
+    hovers.push(...planRunHovers(run, tasks));
+    for (let line = run.startLine; line <= run.endLine; line++) {
+      covered.add(line);
+    }
+  }
+  tasks.forEach((line) => {
+    if (!covered.has(line)) {
+      hovers.push({ startLine: line, endLine: line, taskLine: line });
+    }
+  });
+  return hovers.sort((a, b) => a.startLine - b.startLine);
+}
+
+/**
+ * One entry's run of lines, cut at each task line with no tag of its own,
+ * which offers only Edit task; the rest offer to pin the entry, and a
+ * task entry's own line to edit it as well.
+ */
+function planRunHovers(run: EntryLines, tasks: ReadonlySet<number>): EntryHover[] {
+  const hovers: EntryHover[] = [];
+  const pin = {
+    pinLine: run.entry.startLine,
+    ...(run.entry.isTask ? { taskLine: run.entry.startLine } : {}),
+  };
+  let start = run.startLine;
+  for (let line = run.startLine; line <= run.endLine; line++) {
+    if (run.entry.isTask || !tasks.has(line)) {
+      continue;
+    }
+    if (start < line) {
+      hovers.push({ startLine: start, endLine: line - 1, ...pin });
+    }
+    hovers.push({ startLine: line, endLine: line, taskLine: line });
+    start = line + 1;
+  }
+  if (start <= run.endLine) {
+    hovers.push({ startLine: start, endLine: run.endLine, ...pin });
+  }
+  return hovers;
 }

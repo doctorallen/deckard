@@ -5,7 +5,7 @@ import {
   collectTaggedEntries,
   EditorEntry,
   findBandEntry,
-  splitEntryLines,
+  planEntryHovers,
 } from '../../domain/markdown/taggedEntries';
 import { KeyedDebouncer } from '../../shared/debounce';
 import { escapeMarkdown } from '../../shared/text';
@@ -34,6 +34,13 @@ const REDRAW_SETTINGS = [
   'search.exclude',
 ];
 
+/** A note's tagged entries and task lines, for one version of it. */
+interface ParsedEntries {
+  version: number;
+  entries: EditorEntry[];
+  taskLines: number[];
+}
+
 /**
  * Keeps tag appearance and click behavior synchronized in visible editors.
  *
@@ -58,7 +65,7 @@ export class EditorTagDecorations implements vscode.Disposable {
       textDecoration: 'none',
     });
   /**
-   * Every tagged entry's "Pin to Home" hover. It draws
+   * Every task's "Edit task" and every tagged entry's "Pin to Home" hover. It draws
    * nothing, so the hover is on every entry while the band is on one.
    */
   private readonly entryHoverType =
@@ -81,10 +88,7 @@ export class EditorTagDecorations implements vscode.Disposable {
     this.sectionBandType,
   ];
   /** Each note's tagged entries, parsed once per version of the document. */
-  private readonly entryCache = new Map<
-    string,
-    { version: number; entries: EditorEntry[] }
-  >();
+  private readonly entryCache = new Map<string, ParsedEntries>();
   /** The editor the band is drawn in, and the entry it is behind. */
   private band: { editor: vscode.TextEditor; key: string } | undefined;
 
@@ -255,8 +259,9 @@ export class EditorTagDecorations implements vscode.Disposable {
   }
 
   /**
-   * Draws a note's tag boxes, then, when section highlighting is on, every
-   * tagged entry's hover and, in the active editor, the band.
+   * Draws a note's tag boxes and every task's hover, then, when section
+   * highlighting is on, every tagged entry's hover and, in the active
+   * editor, the band.
    */
   private decorate(editor: vscode.TextEditor): void {
     const content = editor.document.getText();
@@ -272,45 +277,55 @@ export class EditorTagDecorations implements vscode.Disposable {
     }));
     editor.setDecorations(this.decorationType, decorations);
 
-    // Section highlighting needs the whole note parsed, so that parse is
-    // skipped entirely when highlighting is off.
-    if (!this.shouldHighlightNoteSections(editor.document)) {
-      editor.setDecorations(this.entryHoverType, []);
-      this.clearBand(editor);
-      return;
-    }
-
-    // Each hover covers only its entry's own lines, so a task under a
-    // tagged heading shows the task's hover alone, not the heading's too.
-    const entries = this.readEntries(editor.document);
+    // A task's line offers Edit task wherever it is. With section
+    // highlighting on, an entry's own lines also offer to pin it, and the
+    // band is drawn; off, neither is.
+    const highlight = this.shouldHighlightNoteSections(editor.document);
+    const { entries, taskLines } = this.readEntries(editor.document);
+    const documentUri = editor.document.uri.toString();
     editor.setDecorations(
       this.entryHoverType,
-      splitEntryLines(entries).map(({ entry, startLine, endLine }) => ({
-        range: this.entryRange(editor, { ...entry, startLine, endLine }),
+      planEntryHovers(highlight ? entries : [], taskLines).map((hover) => ({
+        range: this.lineRange(editor, hover.startLine, hover.endLine),
         hoverMessage: createEntryHoverMessage({
-          documentUri: editor.document.uri.toString(),
-          lineNumber: entry.startLine,
-          pinned: this.isPinned(editor.document.uri.fsPath, entry.startLine),
+          documentUri,
+          ...(hover.pinLine === undefined
+            ? {}
+            : {
+              pinLine: hover.pinLine,
+              pinned: this.isPinned(editor.document.uri.fsPath, hover.pinLine),
+            }),
+          ...(hover.taskLine === undefined ? {} : { taskLine: hover.taskLine }),
         }),
       })),
     );
+    if (!highlight) {
+      this.clearBand(editor);
+      return;
+    }
     if (editor === vscode.window.activeTextEditor) {
       this.drawBand(editor, true);
     }
   }
 
-  /** The note's tagged entries, parsed again only when the note changed. */
-  private readEntries(document: vscode.TextDocument): EditorEntry[] {
+  /**
+   * The note's tagged entries and its task lines (1-based), parsed again only
+   * when the note changed.
+   */
+  private readEntries(document: vscode.TextDocument): ParsedEntries {
     const key = document.uri.toString();
     const cached = this.entryCache.get(key);
     if (cached && cached.version === document.version) {
-      return cached.entries;
+      return cached;
     }
-    const entries = collectTaggedEntries(
-      parseMarkdown('', document.getText(), undefined, readParseOptions(document.uri)),
-    );
-    this.entryCache.set(key, { version: document.version, entries });
-    return entries;
+    const parsed = parseMarkdown('', document.getText(), undefined, readParseOptions(document.uri));
+    const read = {
+      version: document.version,
+      entries: collectTaggedEntries(parsed),
+      taskLines: parsed.tasks.map((task) => task.lineNumber),
+    };
+    this.entryCache.set(key, read);
+    return read;
   }
 
   /**
@@ -318,12 +333,17 @@ export class EditorTagDecorations implements vscode.Disposable {
    * clamped to the document so a stale entry never reaches past its end.
    */
   private entryRange(editor: vscode.TextEditor, entry: EditorEntry): vscode.Range {
-    const endLine = Math.min(entry.endLine, editor.document.lineCount) - 1;
+    return this.lineRange(editor, entry.startLine, entry.endLine);
+  }
+
+  /** Lines (1-based, inclusive), clamped to the document. */
+  private lineRange(editor: vscode.TextEditor, startLine: number, endLine: number): vscode.Range {
+    const last = Math.min(endLine, editor.document.lineCount) - 1;
     return new vscode.Range(
-      entry.startLine - 1,
+      Math.min(startLine - 1, last),
       0,
-      endLine,
-      editor.document.lineAt(endLine).text.length,
+      last,
+      editor.document.lineAt(last).text.length,
     );
   }
 
@@ -344,7 +364,7 @@ export class EditorTagDecorations implements vscode.Disposable {
       return;
     }
     const entry = findBandEntry(
-      this.readEntries(editor.document),
+      this.readEntries(editor.document).entries,
       editor.selection.active.line + 1,
     );
     const key = entry ? `${entry.startLine}:${entry.endLine}` : '';
@@ -427,33 +447,52 @@ export function createTagRenameHoverMessage(
   return rename;
 }
 
-/** The tagged entry a hover is about, and what its links offer. */
+/** The lines a hover is on, and what its links offer. */
 export interface EntryHoverOptions {
   documentUri: string;
-  lineNumber: number;
-  /** Whether this entry is already pinned, which names the pin link. */
+  /** The line (1-based) of the entry Pin to Home pins; none offers no pin. */
+  pinLine?: number;
+  /** Whether that entry is already pinned, which names the pin link. */
   pinned?: boolean;
+  /** The task line (1-based) Edit task edits; none offers no edit. */
+  taskLine?: number;
 }
 
 /**
- * A tagged entry's hover: a trusted link that pins or unpins it. Its related
- * notes need no link, since Context follows the entry the cursor is in, and
- * the link names no entry, since the hover sits on the entry it acts on.
+ * A note line's hover: trusted links that edit its task, and pin or unpin
+ * its entry. Its related notes need no link, since Context follows the
+ * entry the cursor is in, and no link names its entry, since the hover sits
+ * on what it acts on.
  */
 export function createEntryHoverMessage({
   documentUri,
-  lineNumber,
+  pinLine,
   pinned = false,
+  taskLine,
 }: EntryHoverOptions): vscode.MarkdownString {
-  const hover = new vscode.MarkdownString(
-    `[${pinned ? 'Unpin from Home' : 'Pin to Home'}](${createPinHoverUri(
-      documentUri,
-      lineNumber,
-      pinned,
-    )})`,
-  );
+  const links: string[] = [];
+  if (taskLine !== undefined) {
+    links.push(`[Edit task](${createEditTaskUri(documentUri, taskLine)})`);
+  }
+  if (pinLine !== undefined) {
+    links.push(
+      `[${pinned ? 'Unpin from Home' : 'Pin to Home'}](${createPinHoverUri(
+        documentUri,
+        pinLine,
+        pinned,
+      )})`,
+    );
+  }
+  const hover = new vscode.MarkdownString(links.join(' · '));
   hover.isTrusted = {
-    enabledCommands: ['deckard.pinNote', 'deckard.unpinNote'],
+    enabledCommands: ['deckard.editTask', 'deckard.pinNote', 'deckard.unpinNote'],
   };
   return hover;
+}
+
+/** The command link that edits the task at a line (1-based) of a note. */
+function createEditTaskUri(documentUri: string, lineNumber: number): vscode.Uri {
+  return vscode.Uri.parse(
+    `command:deckard.editTask?${encodeURIComponent(JSON.stringify([documentUri, lineNumber]))}`,
+  );
 }
