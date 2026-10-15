@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.9.0 - 2026-10-15
+
+### Highlights
+
+- **Questions**: write `- [?]` and Deckard tracks it, offers lines that may answer it, and lists it in the new Questions view.
+- **Story**, **Since you last looked**, and **Between you** on a tag's or person's page show what happened, what changed, and who owes what.
+- **Terms**, **Said they would**, **File this**, and **You've written this before** read what you write as you write it.
+
 ### Added
 
 - **Between you.** A person's page has a **Between you** card under its
@@ -94,8 +102,23 @@
   it is now a question, so task counts leave it out. A status of your own
   for `?` in `deckard.tasks.statuses` keeps it as that status, and turns
   questions off.
+- **A task's hover offers Edit task.** Hovering a task line in a note
+  offers **Edit task**, the same editor as the command, beside **Pin to
+  Home**. The hover is shorter: it covers only the entry's own lines, says
+  only **Pin to Home** or **Unpin from Home**, and no longer offers **Show
+  related notes**, which choosing the line already does in Context.
+- **Context lists Home's widgets again.** With Home in front, Context lists
+  the widgets Home can add, each added with a click, and **Reset
+  widgets…**.
+- **Deckard's pages are in Context's title bar again**, drawn with the
+  pages' own icons. **Choose Pages…** and **List Pages in Context** are in
+  its **⋯**, and the list puts them back under the view.
 
 ### Fixed
+
+- **A note pinned to Home shows on Home.** Pinning a note when Home had no
+  Pinned notes widget changed nothing you could see; the first pin now adds
+  the widget under the search.
 
 - **A person named in any script.** A task assigned `👤 @józef` was read as
   assigned to `@j`; the name after 👤 is now read as a tag's name is, in
