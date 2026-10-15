@@ -82,6 +82,12 @@ suite('Questions: reading a note', () => {
     assert.strictEqual(linkOnly.answer?.answeredAt, undefined, 'a day in a link alone dates nothing');
   });
 
+  test('a CRLF note reads its question line, and its answer, without a carriage return', () => {
+    const [question] = parseMarkdown('notes/q.md', '# A\r\n- [?] Who approves?\r\n  - Answer: Priya\r\n').questions ?? [];
+    assert.strictEqual(question.sourceLineText, '- [?] Who approves?');
+    assert.strictEqual(question.answer?.text, 'Priya');
+  });
+
   test('a tab-indented question is answered only by a line indented further, in columns', () => {
     const [question] = parseMarkdown('notes/q.md', '# A\n- Parent\n\t- [?] Who approves?\n  - Answer: not under it\n').questions ?? [];
     assert.strictEqual(question.answer, undefined, `answered by ${question.answer?.text}`);
