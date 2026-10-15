@@ -20,6 +20,11 @@
   **New since**, new notes and tasks are marked **New**, and a changed
   field shows its old value once. A visit counts after five seconds in
   front, or at once with **Mark seen**.
+- **Said they would.** In today's daily note, a line that names one person
+  and a day to come, such as *@sam says the fix lands by Friday*, has its
+  day underlined, and a lens and the lightbulb offer **Track**, which writes
+  a waiting task for that person, due that day, under the line, and **Not
+  a promise**. `deckard.editor.trackPromises` turns it off.
 - **What's new in the Hubs view.** Each hub says how much is new since you
   last opened its page, or when you saw it, and **Sort Hubs By…** puts the
   busiest first.

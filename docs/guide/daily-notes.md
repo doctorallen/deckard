@@ -65,6 +65,19 @@ A new daily, weekly, or monthly note starts from a file in the templates folder 
 - `Deckard: Roll Unfinished Tasks Forward` does it on demand, whatever the setting, creating today's note if needed. It moves tasks unless the setting is `migrate` or `copy`.
 - The rollover is one write, with **Open** and **Undo** afterward. `Deckard: Undo Last Change` also undoes it. Its notes go back together or not at all: if one changed since, Undo puts nothing back and names that note.
 
+### Promises in today's note
+
+Much of what you wait on is a sentence, not a task: *@sam-okafor says the loader retry fix lands by Friday*. In today's daily note, a line that names one person and a day to come is a promise you can track:
+
+- Its day words get a faint wavy underline, and a lens above it offers **Track: Sam · Fri, Oct 16** and **Not a promise**. The lightbulb offers **Track as waiting on Sam, due Fri, Oct 16**, **Track as waiting on Sam…**, which opens the [task editor](tasks.md#editing-a-whole-task) first, to change the day or the words, and **Not a promise**.
+- **Track** writes a waiting task under the line, as a child list item, so it travels with the sentence: `  - [w] Loader retry fix lands 📅 2026-10-16 👤 @sam-okafor`. Its status is the first on-hold [status](tasks.md#task-statuses) you have (Waiting, `[w]`, unless you changed them), and its metadata is written in your format, or in Dataview's brackets when the note's tasks use them. Undo takes it back. From then on it is an ordinary task: on the board, found by `is:waiting`, under **Sam owes you** on Sam's [Between you](search-pages.md#between-you-and-a-person) card, and overdue when the day passes.
+- **The title** is the words after the person and *says*, *said*, *will*, *promised*, or *to*, without the day, a leading *that* or *the*, or the closing punctuation: *Loader retry fix lands*. When that leaves fewer than two words, it is the whole line without the day.
+- **The person** is one `@name` or `#person/…` tag, and not you (`deckard.me`). A line naming two people, or only you, is no promise.
+- **The day** is after today and no more than 60 days off: `by Friday`, `on Friday`, `Friday`, `on fri`, `tomorrow`, `next week` and `end of week` or `EOW` (that week's Friday), `end of month` or `EOM`, `on the 20th`, `Oct 20`, `20 Oct`, `10/20` (read in your date format's order), `2026-10-20`, or `in 3 days`. Of two days on a line, the last is the promise's.
+- A task, a question, a heading, and code are never promises, and a line with a task under it assigned to the same person, done or not, is already tracked.
+- **Not a promise** is remembered for that line, by its words, in VS Code's storage for the workspace. Change the words and it is offered again.
+- Only today's note is read, while you write in it; older notes are left alone. `deckard.editor.trackPromises` turns the underline, the lens, and the lightbulb off; it follows the [editor preset](notes-and-links.md#editor-assistance) while unset, on in **Full** and **Tasks**. The lens follows VS Code's own `editor.codeLens`. The underline's color is `deckard.promiseUnderline` in `workbench.colorCustomizations`.
+
 ## Calendar
 
 The **Calendar** view in the Deckard sidebar shows a month of whole weeks, Sunday to Saturday unless `deckard.calendar.weekStart` or your display language starts them on Monday. Each day shows its date, a dot for a daily note, a count of open tasks due (orange once past, muted once more than 30 days gone), and, outlined, open tasks scheduled (⏳) that day. In a new install it starts collapsed; expand it, or drag it where you like.
