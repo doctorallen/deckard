@@ -173,8 +173,8 @@ suite('Lines like a line: what the first build and a save cost', () => {
 
   test('the first build reads the notes a slice at a time, each within its budget, and is then read at once', function () {
     this.timeout(120000);
-    // Read again, so no note is the line index's already.
-    const index = buildWorkspaceIndex(new Map([...files].map(([filePath, file]) => [filePath, parseMarkdown(filePath, file.content)])));
+    // Each note as a new object, as a scan reads it again, so no note is the line index's already.
+    const index = buildWorkspaceIndex(new Map([...files].map(([filePath, file]) => [filePath, { ...file }])));
     assert.strictEqual(peekLineIndex(index), undefined, 'thousands of notes are not read at once');
     const slices: number[] = [];
     let done = false;
