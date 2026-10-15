@@ -11,6 +11,7 @@ import { createQueryContext } from '../domain/query/queryContext';
 import { getTypeIndex } from '../domain/types/typeIndex';
 import { parseWorkspaceQuery } from '../domain/types/typeQueryFields';
 import { listAnswerItems } from '../ui/state/findAnswers';
+import { getTermTable } from '../domain/terms/terms';
 import { createQueryBlockSnapshot, findQueryBlocks } from '../ui/state/queryBlockState';
 
 /** The shipped work sample, which `Deckard: Create a Work Sample` copies. */
@@ -49,8 +50,8 @@ suite('The work sample’s types', () => {
   const types = getTypeIndex(index);
   const context = createQueryContext(now, { identity: '@alex-rivera' });
 
-  test('defines a person, a team, an area, and a decision, with nothing to mark', () => {
-    assert.deepStrictEqual([...(index.typeNotes?.keys() ?? [])].sort(), ['Types/Area.md', 'Types/Decision.md', 'Types/Person.md', 'Types/Team.md']);
+  test('defines a person, a team, an area, a decision, and a term, with nothing to mark', () => {
+    assert.deepStrictEqual([...(index.typeNotes?.keys() ?? [])].sort(), ['Types/Area.md', 'Types/Decision.md', 'Types/Person.md', 'Types/Team.md', 'Types/Term.md']);
     assert.deepStrictEqual(types.problems, [], 'no value names nothing, and no field takes a built-in’s name');
   });
 
@@ -111,5 +112,15 @@ suite('The work sample’s types', () => {
     );
     const team = results.get('teams/Payments.md')?.[0];
     assert.strictEqual(team?.tasks.length, 4, 'the open tasks in the notes of the people on the team');
+  });
+
+  test('3DS is a term its term note defines, which the README says to hover and Find answers', () => {
+    const entry = getTermTable(index).terms.get('3DS');
+    assert.strictEqual(entry?.definition?.source, 'note');
+    assert.strictEqual(entry?.definition?.filePath, 'terms/3DS.md');
+    assert.match(entry?.definition?.text ?? '', /^3-D Secure: the card issuer's check/);
+    assert.ok((entry?.count ?? 0) >= 3, 'used across the standups and the project');
+    assert.deepStrictEqual(listAnswerItems(index, 'what is 3DS', now).map((item) => [item.answer, item.filePath]), [['term', 'terms/3DS.md']]);
+    assert.match(texts.get('README.md') ?? '', /Point at `3DS`/);
   });
 });
