@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 import {
-  createEntryRelatedNotesHoverMessage,
+  createEntryHoverMessage,
   EditorTagDecorations,
   createTagRenameHoverMessage,
   isMarkdownDocument,
@@ -117,42 +117,31 @@ suite('Tag decorations', () => {
     });
   });
 
-  test('creates a trusted entry-level related-notes hover action', () => {
-    const hover = createEntryRelatedNotesHoverMessage({
-      title: 'Relay checks',
+  test('offers a tagged entry one short link, to pin it to Home', () => {
+    const hover = createEntryHoverMessage({
       documentUri: 'file:///tmp/deckard/relay.md',
       lineNumber: 12,
     });
 
-    assert.strictEqual(
-      hover.value.includes('command:deckard.showEntryRelatedNotes'),
-      true,
-    );
-    assert.strictEqual(hover.value.includes('Show related notes for Relay checks'), true);
-    // The ranking breakdown is a developer tool, in the palette, not here.
-    assert.strictEqual(hover.value.includes('Debug related notes for Relay checks'), false);
-    // The entry is in front of the reader here, so pinning it is offered
-    // beside its related notes.
-    assert.strictEqual(hover.value.includes('Pin Relay checks to Home'), true);
+    // Context follows the entry the cursor is in, so the hover offers no
+    // related notes, and the link names no entry: the hover sits on it.
+    assert.strictEqual(hover.value.includes('showEntryRelatedNotes'), false);
+    assert.strictEqual(hover.value.includes('Related'), false);
+    assert.strictEqual(hover.value.startsWith('[Pin to Home]('), true);
     assert.strictEqual(hover.value.includes('command:deckard.pinNote'), true);
     assert.deepStrictEqual(hover.isTrusted, {
-      enabledCommands: [
-        'deckard.showEntryRelatedNotes',
-        'deckard.pinNote',
-        'deckard.unpinNote',
-      ],
+      enabledCommands: ['deckard.pinNote', 'deckard.unpinNote'],
     });
   });
 
   test('offers to unpin an entry that is already pinned', () => {
-    const hover = createEntryRelatedNotesHoverMessage({
-      title: 'Relay checks',
+    const hover = createEntryHoverMessage({
       documentUri: 'file:///tmp/deckard/relay.md',
       lineNumber: 12,
       pinned: true,
     });
 
-    assert.strictEqual(hover.value.includes('Unpin Relay checks from Home'), true);
+    assert.strictEqual(hover.value.startsWith('[Unpin from Home]('), true);
     assert.strictEqual(hover.value.includes('command:deckard.unpinNote'), true);
   });
 });

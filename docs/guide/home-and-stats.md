@@ -40,7 +40,7 @@ A widget that leads somewhere makes its title the link, with a **›** after it:
 **Pinning** pins the entry (a heading and what is under it), not the file:
 
 - `Deckard: Pin Note to Home` pins the entry the cursor is in; `Deckard: Unpin Note from Home` unpins it.
-- **Hover a tagged entry** in the editor for **Pin … to Home** or **Unpin**.
+- **Hover a tagged entry** in the editor for **Pin to Home** or **Unpin from Home**.
 - **Right-click a result** on a search page for the same.
 
 Each offers **Undo**. If the heading is gone, the pin stays on its note and says so. A note with no heading above the cursor is pinned whole.

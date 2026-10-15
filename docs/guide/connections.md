@@ -55,7 +55,7 @@ The full model is in the [Related Notes association and ranking reference](https
 
 ### Focus one note entry
 
-Tagged headings highlight their section; tagged lines and tasks highlight their line. Hover one and choose **Show related notes for [entry]**. The sidebar shows **Selected entry** and the source note, and ranks by the entry's tags first, then tagged parent headings, and for a heading, tagged child headings and child items, as lighter context that decays with distance. Each active tag is listed with a **Rail** marker for its contribution and a count of notes and tasks; hover it for its exact weight. **Show whole document** returns to the normal view.
+Tagged headings highlight their section; tagged lines and tasks highlight their line. Put the cursor in one and the sidebar shows **Selected entry** and the source note, and ranks by the entry's tags first, then tagged parent headings, and for a heading, tagged child headings and child items, as lighter context that decays with distance. Each active tag is listed with a **Rail** marker for its contribution and a count of notes and tasks; hover it for its exact weight. **Show whole document** returns to the normal view.
 
 ### Understand a score
 

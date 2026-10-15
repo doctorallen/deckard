@@ -57,7 +57,7 @@ export class EditorTagDecorations implements vscode.Disposable {
       textDecoration: 'none',
     });
   /**
-   * Every tagged entry's "Show related notes / Pin to Home" hover. It draws
+   * Every tagged entry's "Pin to Home" hover. It draws
    * nothing, so the hover is on every entry while the band is on one.
    */
   private readonly entryHoverType =
@@ -284,8 +284,7 @@ export class EditorTagDecorations implements vscode.Disposable {
       this.entryHoverType,
       entries.map((entry) => ({
         range: this.entryRange(editor, entry),
-        hoverMessage: createEntryRelatedNotesHoverMessage({
-          title: entry.title,
+        hoverMessage: createEntryHoverMessage({
           documentUri: editor.document.uri.toString(),
           lineNumber: entry.startLine,
           pinned: this.isPinned(editor.document.uri.fsPath, entry.startLine),
@@ -403,18 +402,6 @@ function createTagRenameUri(tagKey: string): vscode.Uri {
   return createTagCommandUri('deckard.renameTag', tagKey);
 }
 
-/** The command link that opens Related Notes on the entry at a line. */
-function createEntryRelatedNotesUri(
-  documentUri: string,
-  lineNumber: number,
-): vscode.Uri {
-  return vscode.Uri.parse(
-    `command:deckard.showEntryRelatedNotes?${encodeURIComponent(
-      JSON.stringify([documentUri, lineNumber]),
-    )}`,
-  );
-}
-
 /** A command link whose one argument is a tag key, encoded as JSON. */
 function createTagCommandUri(command: string, tagKey: string): vscode.Uri {
   return vscode.Uri.parse(
@@ -439,7 +426,6 @@ export function createTagRenameHoverMessage(
 
 /** The tagged entry a hover is about, and what its links offer. */
 export interface EntryHoverOptions {
-  title: string;
   documentUri: string;
   lineNumber: number;
   /** Whether this entry is already pinned, which names the pin link. */
@@ -447,36 +433,24 @@ export interface EntryHoverOptions {
 }
 
 /**
- * A tagged entry's hover: trusted links that show its related notes, and
- * pin or unpin it. How it is ranked is `Deckard: Show Related Notes
- * Ranking`, from the palette, which explains Deckard to itself and so is
- * not offered on every tagged entry.
+ * A tagged entry's hover: a trusted link that pins or unpins it. Its related
+ * notes need no link, since Context follows the entry the cursor is in, and
+ * the link names no entry, since the hover sits on the entry it acts on.
  */
-export function createEntryRelatedNotesHoverMessage({
-  title,
+export function createEntryHoverMessage({
   documentUri,
   lineNumber,
   pinned = false,
 }: EntryHoverOptions): vscode.MarkdownString {
-  const safeTitle = escapeMarkdown(title);
-  // Pinning belongs beside the other thing this entry can do, since this
-  // hover is where an entry is already in front of the reader.
-  const pinLink = `  \n[${
-    pinned ? 'Unpin' : 'Pin'
-  } ${safeTitle} ${pinned ? 'from' : 'to'} Home](${createPinHoverUri(
-    documentUri,
-    lineNumber,
-    pinned,
-  )})`;
   const hover = new vscode.MarkdownString(
-    `[Show related notes for ${safeTitle}](${createEntryRelatedNotesUri(documentUri, lineNumber)})${pinLink}`,
+    `[${pinned ? 'Unpin from Home' : 'Pin to Home'}](${createPinHoverUri(
+      documentUri,
+      lineNumber,
+      pinned,
+    )})`,
   );
   hover.isTrusted = {
-    enabledCommands: [
-      'deckard.showEntryRelatedNotes',
-      'deckard.pinNote',
-      'deckard.unpinNote',
-    ],
+    enabledCommands: ['deckard.pinNote', 'deckard.unpinNote'],
   };
   return hover;
 }
