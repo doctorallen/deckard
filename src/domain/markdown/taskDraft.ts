@@ -1,6 +1,6 @@
 import { TaskPriority } from '../model';
 import { isTaskLineOf, matchTaskLine, STATUS_MARKS, TaskLineShape } from './lineShapes';
-import { DEFAULT_TASK_STATUSES, statusForSymbol, type TaskStatusDefinition } from '../tasks/taskStatuses';
+import { DEFAULT_TASK_STATUSES, isTaskType, statusForSymbol, type TaskStatusDefinition } from '../tasks/taskStatuses';
 import {
   BLOCK_ID_PATTERN,
   formatTaskMetadata,
@@ -75,6 +75,16 @@ const DATE_ORDER: readonly TaskDateField[] = [
 /** Whether a line is a checklist item Deckard can edit as a task. */
 export function isTaskLine(line: string): boolean {
   return isTaskLineOf(line, TASK_LINE);
+}
+
+/**
+ * Whether a line is a task by its status as well as its shape: a checklist
+ * item whose character marks neither a question nor a line that is no
+ * task, read with `statuses`, as the parser reads it.
+ */
+export function isStatusTaskLine(line: string, statuses: readonly TaskStatusDefinition[] = DEFAULT_TASK_STATUSES): boolean {
+  const match = matchTaskLine(line, TASK_LINE);
+  return match !== undefined && isTaskType(statusForSymbol(statuses, match.mark).type);
 }
 
 /**

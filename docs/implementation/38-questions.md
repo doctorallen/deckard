@@ -214,3 +214,7 @@ Fixed after QA, before release:
   each line's character with the reader's statuses (`deckard.tasks.statuses`)
   and skips a question's and a `nonTask` status's lines, as the parser does;
   every caller passes the statuses it read.
+- **The task lightbulb and `deckard.onTaskLine`** read a `- [?]` line as a
+  task, so a question offered Edit task… and Break into steps…, and the
+  palette offered Edit Task on it. They, and a note's actions, now read
+  the line's character with the note's statuses (`isStatusTaskLine`).

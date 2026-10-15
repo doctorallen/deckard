@@ -18,6 +18,7 @@ import {
   setDraftDate,
   setDraftDependencies,
   TaskEditorActions,
+  TaskLineContext,
   writeEditedTask,
 } from '../ui/commands/taskEditor';
 import { describeCompletion } from '../ui/commands/taskActions';
@@ -224,6 +225,36 @@ suite('Task editor', () => {
       const readme = { ...document, uri: vscode.Uri.file('/code/README.md') } as unknown as vscode.TextDocument;
       assert.deepStrictEqual(actions.provideCodeActions(readme, at(0)), [], 'a Markdown file outside the notes');
     } finally {
+      actions.dispose();
+    }
+  });
+
+  test('offers the editor on no question line, and the palette reads one as no task', async () => {
+    const actions = new TaskEditorActions(() => true);
+    const commands = vscode.commands as unknown as Record<string, unknown>;
+    const execute = commands.executeCommand;
+    const keys: unknown[] = [];
+    try {
+      const lines = ['- [?] Who approves access?', '- [ ] Chase the contractor'];
+      const document = {
+        uri: vscode.Uri.file('/notes/atlas.md'),
+        lineAt: (line: number) => ({ text: lines[line] }),
+      } as unknown as vscode.TextDocument;
+      assert.deepStrictEqual(actions.provideCodeActions(document, new vscode.Range(0, 0, 0, 0)), []);
+
+      commands.executeCommand = async (command: string, ...args: unknown[]) => {
+        if (command === 'setContext' && args[0] === 'deckard.onTaskLine') {
+          keys.push(args[1]);
+        }
+      };
+      const context = new TaskLineContext();
+      const editorOn = (line: number) => ({ document, selection: new vscode.Selection(line, 0, line, 0) }) as unknown as vscode.TextEditor;
+      context.sync(editorOn(1));
+      context.sync(editorOn(0));
+      context.dispose();
+      assert.deepStrictEqual(keys.slice(-2), [true, false]);
+    } finally {
+      commands.executeCommand = execute;
       actions.dispose();
     }
   });
