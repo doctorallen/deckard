@@ -12,6 +12,8 @@ import { getTypeIndex } from '../domain/types/typeIndex';
 import { parseWorkspaceQuery } from '../domain/types/typeQueryFields';
 import { listAnswerItems } from '../ui/state/findAnswers';
 import { getTermTable } from '../domain/terms/terms';
+import { getEntityNamespaceAliases } from '../domain/markdown/parser';
+import { describeReading, findFieldReadings, findLineMentions } from '../ui/state/fileThis';
 import { createQueryBlockSnapshot, findQueryBlocks } from '../ui/state/queryBlockState';
 
 /** The shipped work sample, which `Deckard: Create a Work Sample` copies. */
@@ -122,5 +124,14 @@ suite('The work sample’s types', () => {
     assert.ok((entry?.count ?? 0) >= 3, 'used across the standups and the project');
     assert.deepStrictEqual(listAnswerItems(index, 'what is 3DS', now).map((item) => [item.answer, item.filePath]), [['term', 'terms/3DS.md']]);
     assert.match(texts.get('README.md') ?? '', /Point at `3DS`/);
+  });
+
+  test('File this reads the sample’s Words: is on call for sets a team’s on-call, and reports to only the person’s own manager', () => {
+    const offers = (line: string): string[] =>
+      findFieldReadings(types, line, findLineMentions(index, types, line, { sourcePath: 'notes/day.md', aliases: getEntityNamespaceAliases(undefined) })).map(describeReading);
+    // Not Noor's team set to Payments by *is on*, which *is on call for* starts with.
+    assert.deepStrictEqual(offers('- @noor-haddad is on call for #team/payments this week'), ['Set Payments’ on-call to Noor Haddad (was Sam Okafor)']);
+    // Not Noor's manager set to Theo the other way round.
+    assert.deepStrictEqual(offers('- @theo-park now reports to @noor-haddad'), ['Set Theo Park’s manager to Noor Haddad (was Alex Rivera)']);
   });
 });

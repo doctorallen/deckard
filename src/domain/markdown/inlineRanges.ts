@@ -120,6 +120,43 @@ function isSchemeCharacter(code: number): boolean {
   return isAsciiLetter(code) || (code >= 48 && code <= 57) || code === 43 || code === 46 || code === 45;
 }
 
+/**
+ * The whole of each Markdown link on a line, `[text](target)` or
+ * `![alt](target)`, its words as well as its target: where a word is the
+ * link's, not the line's, as a term or a field's value is read. Tags are
+ * still read in a link's words, so `findCodeAndLinkRanges` leaves them out.
+ */
+export function findMarkdownLinkRanges(text: string): InlineRange[] {
+  const ranges: InlineRange[] = [];
+  for (const target of findCodeAndLinkRanges(text)) {
+    // A link's target is the one range that starts at its `(`.
+    const open = text[target.start] === '(' ? findOpeningBracket(text, target.start - 1) : undefined;
+    if (open !== undefined) {
+      ranges.push({ start: open > 0 && text[open - 1] === '!' ? open - 1 : open, end: target.end });
+    }
+  }
+  return ranges;
+}
+
+/** The `[` that the `]` at `close` closes, brackets between them paired, or undefined. */
+function findOpeningBracket(text: string, close: number): number | undefined {
+  let depth = 0;
+  for (let at = close - 1; at >= 0; at -= 1) {
+    const escaped = at > 0 && text[at - 1] === '\\';
+    if (escaped || (text[at] !== '[' && text[at] !== ']')) {
+      continue;
+    }
+    if (text[at] === ']') {
+      depth += 1;
+    } else if (depth === 0) {
+      return at;
+    } else {
+      depth -= 1;
+    }
+  }
+  return undefined;
+}
+
 /** Whether a column falls inside one of the ranges. */
 export function isInRanges(ranges: readonly InlineRange[], column: number): boolean {
   return ranges.some((range) => column >= range.start && column < range.end);

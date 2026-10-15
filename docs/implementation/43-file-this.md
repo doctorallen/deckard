@@ -126,7 +126,14 @@ impractical:
   first of its options written after the phrase. A Person field takes any
   `@` row; a relation, a row of one of its types, or a person when it takes
   people. Each reading is offered once, and not at all when the row's note
-  already writes that value.
+  already writes that value. Of two phrases written over the same words,
+  across fields and types, only the longer is read, so the sample's *is on
+  call for* (Team's `on-call`) is not also *is on* (Person's `team`). A
+  field whose value is a row of its holder's own type, as Person's
+  `manager`, is not read the other way round, so *@theo reports to @noor*
+  is not also Noor's manager. A select's option is read, as a phrase is,
+  outside tags, code, and links, a Markdown link's words among them
+  (`findMarkdownLinkRanges`). (QA)
 - **What a field gets.** A row by its tag (`@priya-natarajan`,
   `#team/rates`), a note row as `[[Title]]`, an option as the schema spells
   it, written through `setFrontmatterField` and `writeDraftValues` as the

@@ -23,6 +23,7 @@
 import { createNoteTitleMap, noteTitle, normalizeHeading, parseWikiTarget, resolveWikiTarget, WIKI_LINK_WITH_TEXT } from '../../domain/index/backlinks';
 import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
 import { findFencedLines, readHeading } from '../../domain/markdown/lineShapes';
+import { findCodeAndLinkRanges, findMarkdownLinkRanges } from '../../domain/markdown/inlineRanges';
 import { lineIndent, isListItemLine } from '../../domain/markdown/listNesting';
 import { extractTagSpans, findFileDailyNoteDate, stripTags, type EntityNamespaceAliases } from '../../domain/markdown/parser';
 import { formatNoteLink, type NoteLinkStyle } from '../../domain/markdown/wikiLinks';
@@ -142,8 +143,9 @@ export function findFieldReadings(types: TypeIndex, line: string, mentions: read
     return [];
   }
   const readings = new Map<string, FieldReading>();
-  findPhrases(types, maskMentions(line, mentions), rows).forEach((found) => {
-    readPhrase(types, line, rows, found).forEach((reading) => {
+  const masked = maskMentions(line, mentions);
+  findPhrases(types, masked, rows).forEach((found) => {
+    readPhrase(types, masked, rows, found).forEach((reading) => {
       const key = `${reading.rowId}\u0000${reading.field.key}\u0000${reading.value.text.toLowerCase()}`;
       if (!readings.has(key) && !holdsAlready(reading)) {
         readings.set(key, reading);
@@ -153,16 +155,25 @@ export function findFieldReadings(types: TypeIndex, line: string, mentions: read
   return [...readings.values()];
 }
 
-/** The line with what names each mention blanked, so a phrase is never read inside a tag or a link. */
+/**
+ * The line lowercased, with what names each mention, and its code and
+ * links, blanked, so neither a phrase nor a select's option is ever read
+ * inside a tag, code, or a link.
+ */
 function maskMentions(line: string, mentions: readonly LineMention[]): string {
   let masked = line;
-  mentions.forEach((mention) => {
-    masked = `${masked.slice(0, mention.start)}${' '.repeat(mention.end - mention.start)}${masked.slice(mention.end)}`;
+  [...mentions, ...findCodeAndLinkRanges(line), ...findMarkdownLinkRanges(line)].forEach((span) => {
+    masked = `${masked.slice(0, span.start)}${' '.repeat(span.end - span.start)}${masked.slice(span.end)}`;
   });
   return masked.toLowerCase();
 }
 
-/** Where each field's phrases are written on the line, for the types of the rows it mentions, in order. */
+/**
+ * Where each field's phrases are written on the line, for the types of the
+ * rows it mentions, in order. Of two phrases written over the same words,
+ * across fields and types, only the longer is read: *is on call for* is
+ * not also *is on*.
+ */
 function findPhrases(types: TypeIndex, masked: string, rows: ReadonlyArray<{ row: TypeRow }>): PhraseFound[] {
   const found: PhraseFound[] = [];
   [...new Set(rows.map(({ row }) => row.typeKey))].forEach((typeKey) => {
@@ -174,7 +185,15 @@ function findPhrases(types: TypeIndex, masked: string, rows: ReadonlyArray<{ row
       });
     });
   });
-  return found.sort((left, right) => left.start - right.start);
+  const kept: PhraseFound[] = [];
+  [...found]
+    .sort((left, right) => right.end - right.start - (left.end - left.start))
+    .forEach((phrase) => {
+      if (!kept.some((longer) => phrase.start < longer.end && phrase.end > longer.start && longer.end - longer.start > phrase.end - phrase.start)) {
+        kept.push(phrase);
+      }
+    });
+  return kept.sort((left, right) => left.start - right.start);
 }
 
 /** Where a phrase is written as whole words, any case, its spaces any run of spaces. */
@@ -191,9 +210,11 @@ function escapeRegExp(text: string): string {
 /**
  * What one phrase says: the row of the field's type nearest before it set
  * to a value after it, and, for a field that names a row, the row of its
- * type nearest after it set to a value before it.
+ * type nearest after it set to a value before it, unless that value is of
+ * the holder's own type: `@theo reports to @noor` is Theo's manager, and
+ * never Noor's too. `masked` is the line as `maskMentions` leaves it.
  */
-function readPhrase(types: TypeIndex, line: string, rows: ReadonlyArray<LineMention & { row: TypeRow }>, found: PhraseFound): FieldReading[] {
+function readPhrase(types: TypeIndex, masked: string, rows: ReadonlyArray<LineMention & { row: TypeRow }>, found: PhraseFound): FieldReading[] {
   const before = rows.filter((mention) => mention.end <= found.start).reverse();
   const after = rows.filter((mention) => mention.start >= found.end);
   const ofType = (mention: { row: TypeRow }): boolean => mention.row.typeKey === found.typeKey;
@@ -201,14 +222,16 @@ function readPhrase(types: TypeIndex, line: string, rows: ReadonlyArray<LineMent
   const holderBefore = before.find(ofType);
   if (holderBefore) {
     const value = found.field.kind.name === 'select'
-      ? findOption(found.field.kind, line.slice(found.end))
+      ? findOption(found.field.kind, masked.slice(found.end))
       : rowValue(found.field.kind, after.find((mention) => fitsField(found.field.kind, mention.row) && mention.row.id !== holderBefore.row.id)?.row);
     if (value) {
       readings.push(toReading(types, holderBefore.row, found.field, value));
     }
   }
   const holderAfter = isRowField(found.field.kind) ? after.find(ofType) : undefined;
-  const valueBefore = holderAfter ? before.find((mention) => fitsField(found.field.kind, mention.row) && mention.row.id !== holderAfter.row.id) : undefined;
+  const valueBefore = holderAfter
+    ? before.find((mention) => fitsField(found.field.kind, mention.row) && mention.row.id !== holderAfter.row.id && mention.row.typeKey !== found.typeKey)
+    : undefined;
   if (holderAfter && valueBefore) {
     readings.push(toReading(types, holderAfter.row, found.field, rowValue(found.field.kind, valueBefore.row) as ReadingValue));
   }

@@ -120,6 +120,22 @@ suite('File this', () => {
     assert.deepStrictEqual(offers(index, '- @alex-rivera joined #team/fx'), []);
   });
 
+  test('a select’s option is read only outside tags, code, and links', () => {
+    const index = indexOf({
+      'Types/Team.md': lines(
+        '---', 'deckard-type: team', 'rows: "#team/*"', '---', '# Team', '',
+        '| Field | Kind                | Words              |',
+        '| ----- | ------------------- | ------------------ |',
+        '| stage | Select: new, active | stage is, is now   |',
+      ),
+      'Teams/FX.md': lines('---', 'describes: "#team/fx"', '---', '# FX'),
+      'notes/p.md': lines('- #project/new-checkout'),
+    });
+    assert.deepStrictEqual(offers(index, '- #team/fx stage is per #project/new-checkout'), []);
+    assert.deepStrictEqual(offers(index, '- #team/fx stage is `new` [new](x.md) [[new]]'), []);
+    assert.deepStrictEqual(offers(index, '- #team/fx stage is active'), ['Set FX’s stage to active']);
+  });
+
   test('a row with no hub note yet can still be set, its note written then', () => {
     const index = workspace();
     const types = getTypeIndex(index);
