@@ -171,4 +171,21 @@ suite('File this', () => {
     const crlf = '# FX\r\n## Notes\r\n';
     assert.strictEqual(applyLineInsert(crlf, placeUnderNotes(crlf, entry)), `# FX\r\n## Notes\r\n${entry}\r\n`);
   });
+
+  test('keeps an item’s fenced block and its lazy line with it, and makes ## Notes first in an empty note', () => {
+    const entry = '- NEW';
+    const fenced = lines('# FX', '## Notes', '- older', '  ```', '  code', '  ```', '');
+    assert.strictEqual(applyLineInsert(fenced, placeUnderNotes(fenced, entry)), lines('# FX', '## Notes', '- older', '  ```', '  code', '  ```', entry, ''));
+    const lazy = lines('# FX', '## Notes', '- older item that wraps', 'onto a lazy line', '');
+    assert.strictEqual(applyLineInsert(lazy, placeUnderNotes(lazy, entry)), lines('# FX', '## Notes', '- older item that wraps', 'onto a lazy line', entry, ''));
+    // After a blank line, a line at the margin is text of its own, and a fence there is no item's.
+    const after = lines('## Notes', '- older', '', 'Loose words.', '```', 'code', '```');
+    assert.strictEqual(applyLineInsert(after, placeUnderNotes(after, entry)), lines('## Notes', '- older', entry, '', 'Loose words.', '```', 'code', '```'));
+    const numbered = lines('## Notes', '1. one', '2. two', '');
+    assert.strictEqual(applyLineInsert(numbered, placeUnderNotes(numbered, entry)), lines('## Notes', '1. one', '2. two', entry, ''));
+    assert.strictEqual(applyLineInsert('', placeUnderNotes('', entry)), lines('## Notes', '', entry, ''));
+    assert.strictEqual(applyLineInsert('\n\n', placeUnderNotes('\n\n', entry)), lines('## Notes', '', entry, '', '', ''));
+    const last = lines('# FX', '## Notes');
+    assert.strictEqual(applyLineInsert(last, placeUnderNotes(last, entry)), lines('# FX', '## Notes', entry));
+  });
 });

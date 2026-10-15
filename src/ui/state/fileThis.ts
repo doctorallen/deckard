@@ -408,10 +408,14 @@ export function placeUnderNotes(content: string, entry: string): LineInsert {
   if (notes !== undefined) {
     return placeUnderHeading(lines, notes, entry);
   }
-  // A note that ends with a line break ends with an empty line here, which stays last.
-  const end = lines.length > 1 && lines[lines.length - 1] === '' ? lines.length - 1 : lines.length;
-  const gap = end > 0 && lines[end - 1].trim() !== '' ? [''] : [];
-  return { at: end, lines: [...gap, '## Notes', '', entry] };
+  // After the last line of text, a blank line between; the blank lines
+  // after it, the line break a note ends with among them, stay last. An
+  // empty note gets the heading on its first line.
+  let end = lines.length;
+  while (end > 0 && lines[end - 1].trim() === '') {
+    end -= 1;
+  }
+  return { at: end, lines: [...(end > 0 ? [''] : []), '## Notes', '', entry] };
 }
 
 /** The zero-based line of the first heading whose words, tags aside, pass `test`, outside code and front matter. */
@@ -429,9 +433,11 @@ function findHeadingLine(lines: readonly string[], test: (words: string) => bool
 
 /**
  * Where a line goes under a heading: after the last list item of the
- * heading's own lines, with the lines indented under that item; with no
- * list there, after its last line of text, a blank line between; with
- * nothing under it, right under it.
+ * heading's own lines, with the lines that are the item's: those indented
+ * under it, a fenced block among them, and a line of text right after it
+ * with no blank line between, which Markdown reads as more of the item.
+ * With no list there, after its last line of text, a blank line between;
+ * with nothing under it, right under it.
  */
 export function placeUnderHeading(lines: readonly string[], headingLine: number, entry: string): LineInsert {
   const fenced = findFencedLines(lines);
@@ -442,16 +448,22 @@ export function placeUnderHeading(lines: readonly string[], headingLine: number,
   let lastText: number | undefined;
   let lastList: number | undefined;
   let inList = false;
+  let afterBlank = false;
   for (let at = headingLine + 1; at < end; at += 1) {
     const text = lines[at];
     if (!text.trim()) {
+      afterBlank = true;
       continue;
     }
     lastText = at;
-    inList = !fenced.has(at) && (isListItemLine(text) || (inList && lineIndent(text) > 0));
+    // A fence is the item's only when indented under it; text, also when
+    // it follows the item with no blank line between.
+    const continues = lineIndent(text) > 0 || (!afterBlank && !fenced.has(at));
+    inList = (!fenced.has(at) && isListItemLine(text)) || (inList && continues);
     if (inList) {
       lastList = at;
     }
+    afterBlank = false;
   }
   if (lastList !== undefined) {
     return { at: lastList + 1, lines: [entry] };

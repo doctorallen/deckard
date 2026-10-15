@@ -8,7 +8,7 @@ import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import type { WorkspaceIndex } from '../domain/model';
 import { getTypeIndex } from '../domain/types/typeIndex';
-import { fileLine, FileThisActions, type FileThisWrites, setFieldFromLine } from '../ui/commands/fileThis';
+import { fileLine, fileLineUnder, FileThisActions, type FileThisWrites, setFieldFromLine } from '../ui/commands/fileThis';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { createPreferences, MemoryStore } from './preferenceServices';
 
@@ -92,6 +92,15 @@ suite('File this, in the editor', () => {
       // A line that no longer says it writes nothing.
       await setFieldFromLine(writes, daily.toString(), 1, '#team/fx', 'lead', '@priya-natarajan');
       assert.deepStrictEqual(said[said.length - 1], ['The line changed since the lightbulb read it, so nothing was written.']);
+      assert.strictEqual(await read(hub), NOTES['Teams/FX.md']);
+      // Nor is a heading or a blank line filed, under Notes or under any heading, before a heading is asked for.
+      said.length = 0;
+      await fileLine(writes, daily.toString(), 1, 'Teams/FX.md');
+      await fileLineUnder(writes, daily.toString(), 3);
+      assert.deepStrictEqual(said, [
+        ['The line changed since the lightbulb read it, so nothing was written.'],
+        ['The line changed since the lightbulb read it, so nothing was written.'],
+      ]);
       assert.strictEqual(await read(hub), NOTES['Teams/FX.md']);
     } finally {
       window.showInformationMessage = info;

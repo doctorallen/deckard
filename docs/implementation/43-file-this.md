@@ -110,10 +110,14 @@ impractical:
   count as a mention for Set ….
 - **The Notes heading** is the first heading whose words, tags aside, are
   *Notes*, any case and level, outside code. The line goes after the last
-  list item of the heading's own lines and the lines indented under it;
-  with no list there, after its last line of text with a blank line
-  between; with nothing under it, right under it. A hub with none gets
-  `## Notes` at its end, after a blank line.
+  list item of the heading's own lines and the lines that are the item's:
+  those indented under it, a fenced block among them, and a line of text
+  right after it with no blank line between, which Markdown reads as more
+  of the item (QA: the line went inside the fence, or between an item and
+  its lazy line); with no list there, after its last line of text with a
+  blank line between; with nothing under it, right under it. A hub with
+  none gets `## Notes` at its end, after a blank line, or on the first
+  line of an empty note (QA).
 - **File under…** offers headings only, from Move to…'s picker (its
   recent headings first), not today's note or a new note, and records the
   heading chosen as recent, as Move to… does.
@@ -152,7 +156,9 @@ impractical:
   `deckard.fileLine`, and `deckard.fileLineUnder`, are not in the palette or
   `package.json`: each needs the line it was offered on, as
   `deckard.createTypeRow` does. Each reads the line again, and writes
-  nothing, saying so, when it no longer says what was offered.
+  nothing, saying so, when it no longer says what was offered, or is no
+  longer a line File this is offered on, as a heading or a blank line;
+  **File under…** checks before it asks for a heading (QA).
 - **The Words column** is read lowercased, its spaces collapsed, each
   phrase once, and is absent when empty. The parse format is now
   `type-words`, so cached type notes are read again with it. Create Type

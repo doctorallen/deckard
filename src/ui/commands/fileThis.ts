@@ -149,7 +149,11 @@ function createAction(title: string, kind: vscode.CodeActionKind, command: strin
   return action;
 }
 
-/** The line a command was asked about, read again from its note as it is now; undefined when it is gone. */
+/**
+ * The line a command was asked about, read again from its note as it is
+ * now; undefined when it is gone, or is no longer a line File this is
+ * offered on, as a line become blank or a heading.
+ */
 async function readAskedLine(documentUri: unknown, line: unknown): Promise<{ uri: vscode.Uri; document: vscode.TextDocument; line: number; text: string } | undefined> {
   if (typeof documentUri !== 'string' || typeof line !== 'number' || !Number.isInteger(line) || line < 0) {
     return undefined;
@@ -159,7 +163,8 @@ async function readAskedLine(documentUri: unknown, line: unknown): Promise<{ uri
   if (line >= document.lineCount) {
     return undefined;
   }
-  return { uri, document, line, text: document.lineAt(line).text };
+  const text = readOfferedLine(document, line);
+  return text === undefined ? undefined : { uri, document, line, text };
 }
 
 /** Says the line no longer says what the action was offered for, so nothing was written. */
