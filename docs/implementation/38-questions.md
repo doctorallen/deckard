@@ -218,3 +218,14 @@ Fixed after QA, before release:
   task, so a question offered Edit task… and Break into steps…, and the
   palette offered Edit Task on it. They, and a note's actions, now read
   the line's character with the note's statuses (`isStatusTaskLine`).
+- **Find's Ask it** sat above a typed day's row and above results with some
+  of the words, so Enter on *tomorrow* wrote `- [?] Tomorrow?`. It is left
+  out when a day row is offered, and with results it follows the message
+  that they have only some of the words. Its label is *Ask it in today's
+  note*, the question in its detail: VS Code lifts a row whose label matches
+  what is typed above every row that does not, which put the old label,
+  holding the words, first again.
+- **A miss** was counted whenever Find closed on a search that missed, even
+  after one of its partial results was opened. It is counted only when the
+  reader leaves without opening a row (or a day, a capture, a new note, or
+  a link), and still forgotten once the words are asked.

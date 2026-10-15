@@ -200,6 +200,11 @@ export class QuickFind implements vscode.Disposable {
    * word, which Find counts as a miss when it closes; undefined otherwise.
    */
   private missed: string | undefined;
+  /**
+   * The missed search a row was opened for, so leaving Find after opening
+   * something counts no miss: the reader found what they were after.
+   */
+  private openedFor: string | undefined;
 
   /** Find over `options.indexer`, writing through the services `options` gives. */
   public constructor(options: QuickFindOptions) {
@@ -252,11 +257,12 @@ export class QuickFind implements vscode.Disposable {
     picker.onDidTriggerItemButton((event) => void this.triggerItemButton(event));
     picker.onDidHide(() => {
       // A search that found nothing with every word is counted, so Ask it
-      // can say how often it was tried.
-      if (this.missed && this.questions) {
+      // can say how often it was tried, unless something was opened from it.
+      if (this.missed && this.missed !== this.openedFor && this.questions) {
         void this.questions.recordMiss(this.missed, Date.now());
       }
       this.missed = undefined;
+      this.openedFor = undefined;
       updates.dispose();
       void vscode.commands.executeCommand('setContext', QUICK_FIND_CONTEXT, false);
       if (this.refreshTimer) {
@@ -327,6 +333,7 @@ export class QuickFind implements vscode.Disposable {
       return;
     }
     const query = picker.value.trim();
+    this.markOpened();
     picker.hide();
     if (query) {
       await this.preferences.savedSearches.recordRecentQuery(query);
@@ -342,6 +349,7 @@ export class QuickFind implements vscode.Disposable {
       return;
     }
     await this.rememberChoice(this.picker?.value ?? '', item);
+    this.markOpened();
     this.picker?.hide();
     await this.insertLink(item.filePath, item.sectionId);
   }
@@ -521,6 +529,7 @@ export class QuickFind implements vscode.Disposable {
     if (!item.filePath || !item.line) {
       return;
     }
+    this.markOpened();
     // Where the reader reads notes, the editor or the note page, as
     // deckard.openNotesIn and Shift+Enter say.
     if (chooseNoteTarget(readOpenNotesIn(), opposite) === 'page') {
@@ -534,6 +543,11 @@ export class QuickFind implements vscode.Disposable {
     if (item.kind === 'note' && item.sectionId) {
       await this.preferences.usage.recordSectionAccess(item.sectionId);
     }
+  }
+
+  /** Notes that a row was opened, or a day, a capture, or a note made, for the search shown now. */
+  private markOpened(): void {
+    this.openedFor = this.missed;
   }
 
   /** Redraws after each keystroke, bound to the search box's value changing. */
@@ -661,6 +675,7 @@ export class QuickFind implements vscode.Disposable {
       return this.showAll();
     }
     if (chosen.openDate !== undefined) {
+      this.markOpened();
       picker.hide();
       return openDailyNoteFor(this.indexer, this.writes.history, chosen.openDate);
     }
@@ -673,6 +688,7 @@ export class QuickFind implements vscode.Disposable {
       return askToToday(this.indexer, line);
     }
     if (chosen.capture) {
+      this.markOpened();
       picker.hide();
       // Written with its last words read, as Add Task reads them; the words
       // were added as a task, so they are not kept as a search.
@@ -681,6 +697,7 @@ export class QuickFind implements vscode.Disposable {
     if (chosen.create === undefined) {
       return undefined;
     }
+    this.markOpened();
     picker.hide();
     const from =
       this.editor?.document.uri ?? vscode.workspace.workspaceFolders?.[0]?.uri;
@@ -698,6 +715,7 @@ export class QuickFind implements vscode.Disposable {
     query: string,
     item: QuickFindItem,
   ): Promise<void> {
+    this.markOpened();
     picker.hide();
     if (query) {
       await this.preferences.savedSearches.recordRecentQuery(query);
@@ -776,6 +794,7 @@ export class QuickFind implements vscode.Disposable {
     }
     if (event.button === INSERT_LINK && item.filePath) {
       await this.rememberChoice(picker.value, item);
+      this.markOpened();
       picker.hide();
       await this.insertLink(item.filePath, item.sectionId);
       return;
@@ -816,18 +835,22 @@ export function toPickItems(
   dateRow?: DailyNoteRow,
   misses?: string,
 ): QuickFindPickItem[] {
-  return [
-    ...askRows(results, misses),
-    ...leadingRows(results, dateRow),
-    ...resultRows(results, value),
-    ...trailingRows(results, value, dateRow),
-  ];
+  // A typed day opens its note, so Ask it is not offered beside it; with
+  // results that have some of the words, it follows the message saying so,
+  // and Enter never writes the words to today's note in their place.
+  const ask = dateRow ? [] : askRows(results, misses);
+  const found = results.notes.length + results.tasks.length + (results.questions?.length ?? 0) > 0;
+  return found
+    ? [...leadingRows(results, dateRow), ...ask, ...resultRows(results, value), ...trailingRows(results, value, dateRow)]
+    : [...ask, ...leadingRows(results, dateRow), ...resultRows(results, value), ...trailingRows(results, value, dateRow)];
 }
 
 /**
- * Ask it, first when Find found nothing that has every word: adds the
- * words, as a question, to today's note, and says how often they were
- * searched for before (38-questions.md § Where questions show).
+ * Ask it, when Find found nothing that has every word: adds the words, as
+ * a question, to today's note, and says how often they were searched for
+ * before (38-questions.md § Where questions show). Its label leaves the
+ * words out, to its detail: VS Code lifts a row whose label matches what
+ * is typed above every row that does not, which would put it first again.
  */
 function askRows(results: QuickFindResults, misses: string | undefined): QuickFindPickItem[] {
   if (!results.ask) {
@@ -835,7 +858,7 @@ function askRows(results: QuickFindResults, misses: string | undefined): QuickFi
   }
   return [
     {
-      label: `$(question) Ask it: add “${results.ask.question}” to today’s note`,
+      label: '$(question) Ask it in today’s note',
       ...(misses ? { description: misses } : {}),
       detail: results.ask.line,
       alwaysShow: true,

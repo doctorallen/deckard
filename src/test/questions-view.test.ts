@@ -19,7 +19,8 @@ import { QuestionsTreeProvider, type QuestionsNode } from '../ui/views/questions
 import { formatIsoDate } from '../domain/markdown/calendar';
 import { EditorLenses } from '../ui/providers/editorLenses';
 import { buildQuickFindResults } from '../ui/state/quickFindState';
-import { describeMisses, toPickItems } from '../ui/commands/quickFind';
+import { describeMisses, findDailyNoteRow, QuickFind, toPickItems } from '../ui/commands/quickFind';
+import { createTaskWrites } from './taskWrites';
 import { createQueryContext } from '../domain/query/queryContext';
 import { formatQuestionLine } from '../domain/markdown/questionLines';
 import { createPreferences, MemoryStore } from './preferenceServices';
@@ -249,9 +250,124 @@ suite('Find and questions', () => {
     const said = describeMisses(memory.missed('who signs the vendor lease'), createQueryContext(new Date(2026, 9, 14).getTime()));
     assert.strictEqual(said, 'You have searched for this 3 times since Fri, Oct 2');
     const [ask] = toPickItems(results, 'who signs the vendor lease', undefined, said);
-    assert.strictEqual(ask.label, '$(question) Ask it: add “Who signs the vendor lease?” to today’s note');
+    assert.strictEqual(ask.label, '$(question) Ask it in today’s note');
+    assert.strictEqual(ask.detail, '- [?] Who signs the vendor lease?');
     assert.strictEqual(ask.description, said);
     assert.strictEqual(find('rates').ask, undefined, 'a search that found something asks nothing');
+  });
+});
+
+suite('Find: Ask it beside a day and beside results with some of the words', () => {
+  const index = buildWorkspaceIndex(
+    new Map([['n.md', parseMarkdown('n.md', '# N\n- curve loader restarted after the feed lagged\n')]]),
+  );
+  const now = new Date(2026, 9, 14, 12).getTime();
+  const rows = (input: string, partial = false) => {
+    const results = buildQuickFindResults({
+      index,
+      preferences: createPreferences(new MemoryStore()).reader.value,
+      input,
+      searchText: () => ({
+        matches: partial ? [{ kind: 'section' as const, id: [...index.sections.keys()][0], filePath: 'n.md', line: 1, score: 1, excerpt: 'curve loader' }] : [],
+        partial,
+      }),
+      queryContext: createQueryContext(now),
+      formatCapture: (text) => `- [ ] ${text}`,
+      formatQuestion: (text) => formatQuestionLine(text),
+    });
+    return toPickItems(results, input, findDailyNoteRow(input, now));
+  };
+
+  test('a day typed opens its note first, and Ask it is not offered', () => {
+    const items = rows('tomorrow');
+    assert.ok(items[0].openDate, `the first row is ${items[0].label}`);
+    assert.ok(!items.some((item) => item.ask), 'no row writes "- [?] Tomorrow?"');
+  });
+
+  test('with results that have some of the words, Ask it follows the line saying so, and leaves the words out of its label', () => {
+    const items = rows('curve zebra', true);
+    assert.deepStrictEqual(items.slice(0, 2).map((item) => item.label), [
+      '$(info) No entry has every word, so these have some of them.',
+      '$(question) Ask it in today’s note',
+    ]);
+    // VS Code lifts a row whose label matches what is typed above the rest.
+    assert.ok(!items[1].label.toLowerCase().includes('curve'));
+    assert.strictEqual(items[1].detail, '- [?] Curve zebra?');
+  });
+});
+
+suite('Find counts a missed search', () => {
+  /** Find over one note on disk, whose search finds only some of the words, counting misses into `recorded`. */
+  async function openFind(recorded: string[]) {
+    const { uris } = await writeNotes({ 'rates.md': '# Rates\n- curve loader restarted after the feed lagged\n' });
+    const filePath = uris['rates.md'].fsPath;
+    const built = buildWorkspaceIndex(new Map([[filePath, parseMarkdown(filePath, '# Rates\n- curve loader restarted after the feed lagged\n')]]));
+    const store = createPreferences(new MemoryStore());
+    const find = new QuickFind({
+      indexer: {
+        hasIndexed: true,
+        onDidUpdate: new vscode.EventEmitter<void>().event,
+        getSnapshot: () => built,
+        searchEntries: () => ({
+          matches: [{ kind: 'section' as const, id: [...built.sections.keys()][0], filePath, line: 2, score: 1, excerpt: 'curve loader' }],
+          partial: true,
+        }),
+      } as never,
+      preferences: store,
+      actions: { openTag: async () => undefined, openSavedFilter: async () => undefined, showSearch: async () => undefined },
+      writes: createTaskWrites(),
+      questions: {
+        missed: () => undefined,
+        recordMiss: async (words: string) => {
+          recorded.push(words);
+          return { count: 1, first: 0, last: 0 };
+        },
+        forgetMisses: async () => undefined,
+      },
+    });
+    await find.show('curve zebra');
+    const shown = find as unknown as { picker?: vscode.QuickPick<vscode.QuickPickItem & { item?: { kind: string } }> };
+    const picker = shown.picker;
+    assert.ok(picker);
+    // Find disposes its picker once it hides, which its own listener does
+    // first, so a listener of the test's would never hear it.
+    const hidden = (async () => {
+      const until = Date.now() + 5000;
+      while (shown.picker && Date.now() < until) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    })();
+    return { find, picker, hidden, store };
+  }
+
+  test('leaving Find without opening anything counts the search as missed', async () => {
+    const recorded: string[] = [];
+    const { find, picker, hidden, store } = await openFind(recorded);
+    try {
+      picker.hide();
+      await hidden;
+      assert.deepStrictEqual(recorded, ['curve zebra']);
+    } finally {
+      find.dispose();
+      store.repository.dispose();
+    }
+  });
+
+  test('opening a result that has some of the words counts no miss', async () => {
+    const recorded: string[] = [];
+    const { find, picker, hidden, store } = await openFind(recorded);
+    try {
+      const note = picker.items.find((row) => row.item?.kind === 'note');
+      assert.ok(note, 'the note with some of the words is listed');
+      picker.activeItems = [note];
+      await (find as unknown as { accept(): Promise<void> }).accept();
+      await hidden;
+      assert.deepStrictEqual(recorded, []);
+    } finally {
+      find.dispose();
+      store.repository.dispose();
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+    }
   });
 });
 

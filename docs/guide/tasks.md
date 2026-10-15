@@ -242,7 +242,7 @@ The **Questions** view in the Deckard sidebar, under Tasks, lists each open ques
 
 ### In Find
 
-When [Find](search.md#find) finds nothing that has every word, its first row is **Ask it: add “…?” to today's note**, which writes your words as a question in today's note. Open questions that match what you type are listed among the results with a **?**.
+When [Find](search.md#find) finds nothing that has every word, it offers **Ask it in today's note**, which writes your words as a question in today's note: first when nothing has any of them, else after the line that says the results have only some. Open questions that match what you type are listed among the results with a **?**.
 
 ### On a tag's page
 
