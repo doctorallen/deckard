@@ -5,6 +5,7 @@ import { parseMarkdown } from '../../domain/markdown/parser';
 import { createPinForLine, resolvePin } from '../../domain/notes/pins';
 import { PinnedNote, WorkspaceIndex } from '../../domain/model';
 import { pinKey } from '../../core/storage/preferencesSchema';
+import type { PinWidgetChange } from '../../core/storage/preferencesPins';
 import { readParseOptions } from './parseSettings';
 
 /**
@@ -25,8 +26,8 @@ interface PinIndexSource {
 }
 
 interface PinStore {
-  /** Resolves true when pinning also added Home's Pinned notes widget. */
-  pinNote(pin: PinnedNote): Promise<boolean | void>;
+  /** Resolves with what pinning did to Home's widgets, as PinsService says. */
+  pinNote(pin: PinnedNote): Promise<PinWidgetChange | void>;
   unpinNote(key: string): Promise<void>;
   isPinned(key: string): boolean;
 }
@@ -67,15 +68,10 @@ export async function setPinned(
       );
       return pin;
     }
-    const addedWidget = await preferences.pinNote(pin);
+    const change = await preferences.pinNote(pin);
     // Pinning is one keystroke from a command palette, so the way back is
     // offered where the pin is announced rather than left to be found.
-    void offerUndo(
-      addedWidget
-        ? `Pinned "${name}" to Home, in a new Pinned notes widget.`
-        : `Pinned "${name}" to Home.`,
-      () => preferences.unpinNote(key),
-    );
+    void offerUndo(describePin(name, change), () => preferences.unpinNote(key));
     return pin;
   }
 
@@ -90,6 +86,21 @@ export async function setPinned(
     preferences.pinNote(pin),
   );
   return pin;
+}
+
+/**
+ * What pinning says: where the pin shows, and, when Home holds as many
+ * widgets as it may and has no Pinned notes widget, that it shows in Find
+ * alone until a widget makes room.
+ */
+export function describePin(name: string, change: PinWidgetChange | void): string {
+  if (change === 'added') {
+    return `Pinned "${name}" to Home, in a new Pinned notes widget.`;
+  }
+  if (change === 'homeFull') {
+    return `Pinned "${name}". Home is full, so it shows in Find's Pinned list until you remove a widget and add Pinned notes.`;
+  }
+  return `Pinned "${name}" to Home.`;
 }
 
 /** Says what was done, with the way back beside it. */

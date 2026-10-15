@@ -57,6 +57,32 @@ suite('Pin Note to Home in a note with unsaved lines', () => {
     }
   });
 
+  test('a pin Home has no room to show says it shows in Find', async () => {
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const kept = Object.getOwnPropertyDescriptor(window, 'activeTextEditor');
+    const showInformationMessage = window.showInformationMessage;
+    const said: string[] = [];
+    Object.defineProperty(window, 'activeTextEditor', { configurable: true, get: () => editor });
+    window.showInformationMessage = async (text: string) => void said.push(text);
+    try {
+      await setNotePinnedCommand({
+        indexer,
+        preferences: { isPinned: () => false, pinNote: async () => 'homeFull' as const, unpinNote: async () => undefined },
+        pinned: true,
+      });
+      assert.deepStrictEqual(said, [
+        'Pinned "Budget". Home is full, so it shows in Find\'s Pinned list until you remove a widget and add Pinned notes.',
+      ]);
+    } finally {
+      if (kept) {
+        Object.defineProperty(window, 'activeTextEditor', kept);
+      } else {
+        delete window.activeTextEditor;
+      }
+      window.showInformationMessage = showInformationMessage;
+    }
+  });
+
   test('the palette offers Unpin on a heading pinned already', () => {
     const commands = vscode.commands as unknown as Record<string, unknown>;
     const executeCommand = commands.executeCommand;
