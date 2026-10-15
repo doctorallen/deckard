@@ -30,6 +30,21 @@ function textOf(hover: vscode.Hover | undefined): string {
   return (hover?.contents ?? []).map((content) => (content instanceof vscode.MarkdownString ? content.value : String(content))).join('\n');
 }
 
+/**
+ * Removes a test's folder, as far as Windows lets it: VS Code holds the
+ * folder of a file it has shown for a while after its editor closes, and the
+ * folder is in the system's temp folder, which the system clears.
+ */
+function removeFolder(folder: string): void {
+  try {
+    rmSync(folder, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  } catch (error) {
+    if (process.platform !== 'win32') {
+      throw error;
+    }
+  }
+}
+
 suite('Terms in the editor', () => {
   test('a defined term\'s hover says what it means, where, and offers its links; none in code or for a term with no definition', async () => {
     const index = termIndex();
@@ -64,7 +79,7 @@ suite('Terms in the editor', () => {
     } finally {
       hovers.dispose();
       changes.dispose();
-      rmSync(folder, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+      removeFolder(folder);
     }
   });
 
@@ -92,7 +107,7 @@ suite('Terms in the editor', () => {
       hovers.dispose();
       changes.dispose();
       await vscode.commands.executeCommand('workbench.action.closeAllEditors');
-      rmSync(folder, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+      removeFolder(folder);
     }
   });
 });
