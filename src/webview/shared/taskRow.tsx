@@ -52,6 +52,14 @@ export function ParkedLabel() {
 }
 
 /**
+ * New since the reader last had a tag's page open: a card written or
+ * changed since, or a task added since (docs/implementation/37-since-you-last-looked.md).
+ */
+export function NewLabel() {
+  return <span class="new-label" data-tip="New since you last looked">New</span>;
+}
+
+/**
  * A title's tokens as the words a reader sees, with no Markdown in them:
  * what a control that acts on the task is named by. A screen reader read
  * "Toggle Send **the** [proposal](https://…)" before.
@@ -193,6 +201,7 @@ function TaskFacts({ item }: { readonly item: DashboardTask }) {
   // As written, not in capitals: the working labels read as written.
   return (
     <>
+      {item.isNew ? <NewLabel key="new" /> : null}
       {item.parked ? <ParkedLabel key="parked" /> : null}
       {due}
       {task.scheduledAt === undefined ? null : <span key="scheduled" class="task-detail">{`Scheduled ${formatPageDate(task.scheduledAt)}`}</span>}

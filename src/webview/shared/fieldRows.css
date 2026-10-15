@@ -19,3 +19,5 @@
 .field-value.is-unresolved { text-decoration: underline dotted var(--muted); text-underline-offset: 3px; }
 .field-link.field-link { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; text-decoration: underline; text-decoration-color: var(--cyan); text-underline-offset: 3px; cursor: pointer; }
 .field-link.field-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .field-link.field-link:focus-visible { border: 0; background: transparent; color: var(--hover-fg); text-decoration-color: currentColor; }
+/* A field changed since the reader last looked at a tag's page: its old value, muted, once. */
+.field-was { color: var(--muted); font-size: var(--text-xs); }

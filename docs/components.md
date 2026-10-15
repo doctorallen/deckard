@@ -596,6 +596,25 @@ hint: a sentence, then at most two actions, never a box. An entry listed
 because of such a line carries a `.card-via` note after its location, such
 as *Links the hub note* (`via: 'hubLink'` on the card or task).
 
+### Since you last looked
+
+On a tag's own page, the search page's `<SinceBand>` (`searchPage/since.tsx`)
+draws `section.since` between the page bar and the search box: a panel with
+a `--cyan` left rule and a `data-zen-region`. Its `.since-header` holds the
+`.since-title` (*Since you last looked · Fri, Oct 2, 12 days ago*, one text
+node) and the `.since-seen` button (*Mark seen*, `data-zen-reveal`), which
+posts `markSeen`; then `.since-chips`, a group of `.since-chip` buttons, one
+per kind of change, each `data-kind` and, but the fields' chip,
+`aria-pressed`, the one filtering the page `.is-active`. A chip posts
+`setSinceFilter` with its kind, or with none when it is active; the fields'
+chip opens `details.hub` in place. In the Notes tab, a `.since-group-heading`
+(*New since Fri, Oct 2* and a muted `.since-group-count`) spans every column
+before the first new card, and *Earlier* before the first other one. A card
+or task row new since the visit carries the shared `<NewLabel>`
+(`shared/taskRow.tsx`), `.new-label`, an outlined `--cyan` pill after the
+title or before the task's facts; a changed field's row carries
+`<FieldWas>` (`shared/fieldRows.tsx`), a muted `.field-was` after its values.
+
 ### Between you
 
 On a person's page, the search page's `<BetweenCard>`

@@ -3,6 +3,8 @@
  * or side by side, each kind a page at a time, or, with the hierarchy on,
  * grouped under the tags Refine offers.
  */
+import type { ComponentChild } from 'preact';
+
 import { NOTE_SORT_LABELS } from '../../domain/model/sortOrders';
 import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { DashboardTask } from '../../ui/protocol/shared';
@@ -183,6 +185,36 @@ function emptyNotesMessage(snapshot: SearchPageSnapshot): string {
   return hasText ? 'No notes match this search.' : 'No notes yet.';
 }
 
+/**
+ * A tag's page's cards with the notes new since the last visit, which lead
+ * the list, headed New since and the day, and the rest headed Earlier,
+ * each with how many there are in all; the cards alone on a page with no
+ * band, or nothing new among its notes.
+ */
+function withSinceHeadings(snapshot: SearchPageSnapshot, cards: ComponentChild[]): ComponentChild[] {
+  const since = snapshot.since;
+  if (!since || since.newNotes === 0) {
+    return cards;
+  }
+  const total = pagingOf(snapshot.notePaging, snapshot.sections.length).total;
+  const heading = (key: string, words: string, count: number): ComponentChild => (
+    <h3 key={key} class="since-group-heading">{[`${words} `, <span class="since-group-count">{String(count)}</span>]}</h3>
+  );
+  const drawn: ComponentChild[] = [];
+  let headed: 'new' | 'earlier' | undefined;
+  snapshot.sections.forEach((card, at) => {
+    if (card.isNew && headed === undefined) {
+      headed = 'new';
+      drawn.push(heading('since-new', `New since ${since.day}`, since.newNotes));
+    } else if (!card.isNew && headed !== 'earlier') {
+      headed = 'earlier';
+      drawn.push(heading('since-earlier', 'Earlier', total - since.newNotes));
+    }
+    drawn.push(cards[at]);
+  });
+  return drawn;
+}
+
 /** The notes pane: its heading and actions, the cards, and its pages. */
 function NotesPane({ view }: { readonly view: ResultsView }) {
   const { snapshot, openedCards } = view;
@@ -200,9 +232,9 @@ function NotesPane({ view }: { readonly view: ResultsView }) {
       <PaneHeader kind="notes" view={view} />
       <div class="cards">
         {snapshot.sections.length
-          ? snapshot.sections.map((card, position) => (
+          ? withSinceHeadings(snapshot, snapshot.sections.map((card, position) => (
             <SearchCard key={`${position}:${card.id}`} card={card} position={position} display={display} opened={openedCards.has(card.id)} />
-          ))
+          )))
           : <div class="empty">{emptyNotesMessage(snapshot)}<OtherResults kind="notes" view={view} /></div>}
       </div>
       <Pagination kind="notes" paging={pagingOf(snapshot.notePaging, snapshot.sections.length)} pageSizes={snapshot.pageSizes} />

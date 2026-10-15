@@ -10,7 +10,7 @@ import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { TagOverviewCard } from '../../ui/protocol/shared';
 import { BlockExcerpt } from './blockExcerpt';
 import { TitleWithTags } from './tagButton';
-import { formatSourceLocation, HeadingPathSteps, ParkedLabel, trimHeadingPath } from './taskRow';
+import { formatSourceLocation, HeadingPathSteps, NewLabel, ParkedLabel, trimHeadingPath } from './taskRow';
 import { describeLocation, readEntryDetails } from './entryDetails';
 import { DetailsLine, entryDatesPart } from './detailsLine';
 
@@ -130,6 +130,7 @@ function CardTitle({ card }: { readonly card: TagOverviewCard }) {
   return (
     <h2 class="card-title">
       <TitleWithTags title={card.heading} tags={card.titleTags} />
+      {card.isNew ? <NewLabel key="new" /> : null}
       {card.parked ? <ParkedLabel key="parked" /> : null}
     </h2>
   );

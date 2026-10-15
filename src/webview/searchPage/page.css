@@ -143,6 +143,19 @@ header.page-bar { align-items: flex-start; }
 .tag-note-tag { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--text); font: var(--text-sm) var(--font-mono); cursor: pointer; }
 .tag-note-tag:hover:where(:not(:disabled):not([aria-disabled="true"])) { color: var(--hover-fg); text-decoration: underline; }
 .tag-note-action { min-height: 0; padding: 0 2px; border: 0; background: transparent; color: var(--text); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
+/* Since you last looked (since.tsx): a band under the page's bar, its
+   date muted after its title, Mark seen at its right, and a chip for each
+   kind of change; the chip filtering the page is drawn chosen. The Notes
+   tab heads its new notes and the rest, each heading across every column. */
+.since { margin-top: var(--space-3); padding: 10px 14px; border: var(--edge) solid var(--line); border-left: 4px solid var(--cyan); background: var(--panel); }
+.since-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.since-title { margin: 0; color: var(--text); font-size: var(--text-sm); font-weight: 650; }
+.since-seen { flex: 0 0 auto; min-height: 24px; padding: 2px 10px; font-size: var(--text-xs); }
+.since-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.since-chip { min-height: 24px; padding: 2px 10px; font-size: var(--text-xs); text-transform: none; }
+.since-chip.is-active, .since-chip.is-active:hover:where(:not(:disabled):not([aria-disabled="true"])) { border-color: var(--chosen-bg); background: var(--panel-raised); color: var(--text); box-shadow: inset 0 calc(var(--edge) * -1) 0 var(--chosen-bg); }
+.since-group-heading { grid-column: 1 / -1; margin: var(--space-2) 0 0; color: var(--text); font-size: var(--text-sm); font-weight: 650; }
+.since-group-count { margin-left: var(--space-1); color: var(--muted); font-weight: 400; }
 /* A person's Between you card (between.tsx), under the fields and above the
    tabs: a panel as the hub's, each group's label a quiet link to its search
    with its count beside it, then its tasks in one column. */
