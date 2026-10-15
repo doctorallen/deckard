@@ -95,6 +95,16 @@
   for `?` in `deckard.tasks.statuses` keeps it as that status, and turns
   questions off.
 
+### Fixed
+
+- **A change made just after an Undo is kept.** Undo wrote a note that no
+  editor showed straight to its file, and VS Code's copy of the note caught
+  up a moment later; a change Deckard made in that moment, such as
+  completing a task, reached neither the file nor the note, though Deckard
+  said it was done. Undo now puts every note back through VS Code, as a
+  change is made, and a change or an Undo that VS Code cannot save says so,
+  with **Open Note**.
+
 ## 2.8.1 - 2026-10-13
 
 ### Highlights

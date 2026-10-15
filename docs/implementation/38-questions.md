@@ -193,3 +193,16 @@ impractical:
   nothing for a question outside a drawn card. The parse format is now
   `type-words-questions`, plan 43's and this plan's changes together, so a
   cache is rebuilt once.
+
+Fixed after QA, before release:
+
+- **Undo, then a write at once.** Undo Last Change wrote a note no editor
+  showed straight to disk, so the extension host's copy kept the old text
+  until the watcher caught up, and a write in that moment (an answer, a
+  task completed) edited the old copy, its save failed unnoticed, and the
+  write said it was done. `planUndo` now puts every note back through
+  `applyEdit` and saves it, as a write lands (an edit opens no tab), and
+  `writeNow` and `applyUndo` check each `document.save()`: a note VS Code
+  cannot save is reported with Open Note, and the write is `applied: false`
+  with the note in `unsaved` (`workspace-writes.test.ts`,
+  `scopes/workspace-writes-scopes.test.ts`).
