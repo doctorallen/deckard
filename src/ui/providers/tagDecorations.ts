@@ -5,6 +5,7 @@ import {
   collectTaggedEntries,
   EditorEntry,
   findBandEntry,
+  splitEntryLines,
 } from '../../domain/markdown/taggedEntries';
 import { KeyedDebouncer } from '../../shared/debounce';
 import { escapeMarkdown } from '../../shared/text';
@@ -279,11 +280,13 @@ export class EditorTagDecorations implements vscode.Disposable {
       return;
     }
 
+    // Each hover covers only its entry's own lines, so a task under a
+    // tagged heading shows the task's hover alone, not the heading's too.
     const entries = this.readEntries(editor.document);
     editor.setDecorations(
       this.entryHoverType,
-      entries.map((entry) => ({
-        range: this.entryRange(editor, entry),
+      splitEntryLines(entries).map(({ entry, startLine, endLine }) => ({
+        range: this.entryRange(editor, { ...entry, startLine, endLine }),
         hoverMessage: createEntryHoverMessage({
           documentUri: editor.document.uri.toString(),
           lineNumber: entry.startLine,
