@@ -472,8 +472,8 @@ function readSinceView(index: WorkspaceIndex, page: SearchPageResults, options: 
     return { isNewNote: () => false, isNewTask: () => false, notes: (keys) => keys, tasks: (tasks) => tasks, questions: (questions) => questions, band: () => ({}) };
   }
   const filter = options.since?.filter;
-  const isNewNote = (key: NoteKey): boolean => changes.newEntries.has(noteVisitKey(key));
-  const isNewTask = (task: Task): boolean => changes.addedTasks.has(taskVisitKey(task));
+  const isNewNote = (key: NoteKey): boolean => changes.newEntries.has(noteVisitKey(index, key));
+  const isNewTask = (task: Task): boolean => changes.addedTasks.has(taskVisitKey(index, task));
   return {
     isNewNote,
     isNewTask,
@@ -481,11 +481,11 @@ function readSinceView(index: WorkspaceIndex, page: SearchPageResults, options: 
     // A chip of the band narrows the tasks to those it counts.
     tasks: (tasks) => tasks.filter((task) => {
       if (filter === 'done') {
-        return changes.doneTasks.has(taskVisitKey(task));
+        return changes.doneTasks.has(taskVisitKey(index, task));
       }
       return filter !== 'added' || isNewTask(task);
     }),
-    questions: (questions) => (filter === 'answered' ? questions.filter((question) => changes.answeredQuestions.has(questionVisitKey(question))) : questions),
+    questions: (questions) => (filter === 'answered' ? questions.filter((question) => changes.answeredQuestions.has(questionVisitKey(index, question))) : questions),
     band: (ranked, context) => ({ since: describeSince(changes, { filter, newNotes: ranked.filter(isNewNote).length }, context) }),
   };
 }
@@ -500,8 +500,8 @@ function sinceFirst(keys: NoteKey[], isNew: (key: NoteKey) => boolean): NoteKey[
 }
 
 /** A listed note's key in a visit: its entry's, or its note's when it is a note of its own. */
-function noteVisitKey(key: NoteKey): string {
-  return key.section ? entryVisitKey(key.section) : fileVisitKey(key.filePath);
+function noteVisitKey(index: WorkspaceIndex, key: NoteKey): string {
+  return key.section ? entryVisitKey(index, key.section) : fileVisitKey(key.filePath);
 }
 
 /**

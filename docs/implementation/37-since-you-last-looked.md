@@ -97,6 +97,12 @@ Where the plan was silent, or the code made its words impractical:
   - each task by a hash of its note's path and its title, which leaves out
     its metadata, open and done apart. A task added and done since counts
     as done;
+  - the second entry of a note under the same heading, and the second task
+    or question of the same words, and those after, by the same hash with
+    `~1`, `~2`, … after it, so two standups in one note are two (QA). The
+    first's key is as before; a visit kept before (no `ordinals`) counts
+    those keys, and a first key that has them, as no change, rather than
+    new;
   - each field by its name, its values as text: a typed row's fields and
     reverses, else the hub note's front matter.
 - **Where it is kept.** `src/core/storage/tagVisits.ts`, over the

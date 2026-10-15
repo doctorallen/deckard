@@ -54,9 +54,13 @@ export function visitHash(text: string): string {
   return shortHash(text);
 }
 
-/** An entry's key in a visit: its note and its heading, or its tagged line. */
-export function entryVisitKey(section: Section): string {
-  return visitHash(`${section.filePath}\u0000${section.heading}`);
+/**
+ * An entry's key in a visit: its note and its heading, or its tagged line,
+ * and, for the second entry of its note under the same heading and those
+ * after it, which one it is (see `withOrdinal`).
+ */
+export function entryVisitKey(index: WorkspaceIndex, section: Section): string {
+  return withOrdinal(visitHash(`${section.filePath}\u0000${section.heading}`), ordinalOf(index, section.filePath, section.id));
 }
 
 /** A note that is an entry of its own, by its path. */
@@ -68,16 +72,78 @@ export function fileVisitKey(filePath: string): string {
  * A task's key in a visit: its note and its title, which leaves out its
  * metadata, so writing its done date does not make it another task.
  */
-export function taskVisitKey(task: Task): string {
-  return visitHash(`${task.filePath}\u0000${task.title.trim()}`);
+export function taskVisitKey(index: WorkspaceIndex, task: Task): string {
+  return withOrdinal(visitHash(`${task.filePath}\u0000${task.title.trim()}`), ordinalOf(index, task.filePath, task.id));
 }
 
 /**
  * A question's key in a visit: its note and its words, as a task's is, so
  * a line written above it, or its answer, does not make it another.
  */
-export function questionVisitKey(question: Question): string {
-  return visitHash(`question\u0000${question.filePath}\u0000${question.title.trim()}`);
+export function questionVisitKey(index: WorkspaceIndex, question: Question): string {
+  return withOrdinal(
+    visitHash(`question\u0000${question.filePath}\u0000${question.title.trim()}`),
+    ordinalOf(index, question.filePath, question.id),
+  );
+}
+
+/** What marks a key as a second or later of its note with the same words. */
+const ORDINAL_MARK = '~';
+
+/**
+ * A key with which of its note's entries, tasks, or questions with the same
+ * words it is, so two standups under one heading, or two tasks with one
+ * title, are two: the first's key is the words' alone, as every key was
+ * before (`TagVisit.ordinals`), and the second's ends `~1`.
+ */
+function withOrdinal(key: string, ordinal: number): string {
+  return ordinal > 0 ? `${key}${ORDINAL_MARK}${ordinal}` : key;
+}
+
+/** Each index's entries, tasks, and questions, by id, as the how-manyth of their note with the same words. */
+const ordinals = new WeakMap<WorkspaceIndex, Map<string, number>>();
+
+/**
+ * Which of its note's entries, tasks, or questions with the same words one
+ * is, in the order the note writes them, from 0; each note read once an
+ * index.
+ */
+function ordinalOf(index: WorkspaceIndex, filePath: string, id: string): number {
+  let byId = ordinals.get(index);
+  if (!byId) {
+    byId = new Map();
+    ordinals.set(index, byId);
+  }
+  if (!byId.has(id)) {
+    const file = index.files.get(filePath);
+    const count = <Item extends { id: string }>(items: readonly Item[], words: (item: Item) => string): void => {
+      const seen = new Map<string, number>();
+      items.forEach((item) => {
+        const key = words(item);
+        const ordinal = seen.get(key) ?? 0;
+        seen.set(key, ordinal + 1);
+        byId?.set(item.id, ordinal);
+      });
+    };
+    count(file?.sections ?? [], (section) => section.heading);
+    count(file?.tasks ?? [], (task) => task.title.trim());
+    count(file?.questions ?? [], (question) => question.title.trim());
+    if (!byId.has(id)) {
+      byId.set(id, 0);
+    }
+  }
+  return byId.get(id) ?? 0;
+}
+
+/**
+ * Whether a visit kept before keys had ordinals cannot have told a key's
+ * entry, task, or question apart: it names a second or later of its words,
+ * kept under the first's key then, or it is the first's key, whose hash
+ * was the last of them; either is no change, rather than new. `entries`
+ * are the page's now, which say whether the first has others.
+ */
+function isUnknownToOlderVisit(visit: TagVisit, key: string, entries: Readonly<Record<string, string>> = {}): boolean {
+  return !visit.ordinals && (key.includes(ORDINAL_MARK) || `${key}${ORDINAL_MARK}1` in entries);
 }
 
 /**
@@ -95,7 +161,7 @@ export function captureTagPage(
   results.sections
     .filter((section) => !hubs.has(section.filePath))
     .forEach((section) => {
-      entries[entryVisitKey(section)] = hashWords(getEntryTextOf(index, section).split(/\r?\n/));
+      entries[entryVisitKey(index, section)] = hashWords(getEntryTextOf(index, section).split(/\r?\n/));
     });
   results.files
     .filter((file) => !hubs.has(file.filePath))
@@ -106,13 +172,13 @@ export function captureTagPage(
   const done = new Set<string>();
   results.tasks.forEach((task) => {
     if (task.completed) {
-      done.add(taskVisitKey(task));
+      done.add(taskVisitKey(index, task));
     } else if (isOpenTask(task)) {
-      open.add(taskVisitKey(task));
+      open.add(taskVisitKey(index, task));
     }
   });
-  const answered = new Set(results.questions.filter(isAnswered).map(questionVisitKey));
-  return { entries, tasks: { open: [...open], done: [...done] }, fields, answered: [...answered] };
+  const answered = new Set(results.questions.filter(isAnswered).map((question) => questionVisitKey(index, question)));
+  return { entries, tasks: { open: [...open], done: [...done] }, fields, answered: [...answered], ordinals: true };
 }
 
 /**
@@ -170,16 +236,25 @@ export interface TagChanges {
  * counts as done; a task open then and still open is neither. A question is
  * answered since when it is answered now and was not then, asked since or
  * not; a visit kept before questions were, with no `answered`, counts none,
- * rather than every answer the page holds.
+ * rather than every answer the page holds. A visit kept before keys had
+ * ordinals counts a second entry, task, or question of the same words in a
+ * note as no change, since it kept them under the first's key.
  */
 export function compareTagPage(visit: TagVisit, now: TagPageState): TagChanges {
-  const newEntries = new Set(Object.entries(now.entries).filter(([key, hash]) => visit.entries[key] !== hash).map(([key]) => key));
+  const unknown = (key: string): boolean => isUnknownToOlderVisit(visit, key);
+  const newEntries = new Set(
+    Object.entries(now.entries)
+      .filter(([key, hash]) => visit.entries[key] !== hash && !isUnknownToOlderVisit(visit, key, now.entries))
+      .map(([key]) => key),
+  );
   const before = new Set([...visit.tasks.open, ...visit.tasks.done]);
   const doneBefore = new Set(visit.tasks.done);
-  const addedTasks = new Set(now.tasks.open.filter((key) => !before.has(key)));
-  const doneTasks = new Set(now.tasks.done.filter((key) => !doneBefore.has(key)));
+  const addedTasks = new Set(now.tasks.open.filter((key) => !before.has(key) && !unknown(key)));
+  const doneTasks = new Set(now.tasks.done.filter((key) => !doneBefore.has(key) && (before.has(key) || !unknown(key))));
   const answeredBefore = visit.answered ? new Set(visit.answered) : undefined;
-  const answeredQuestions = new Set(answeredBefore ? (now.answered ?? []).filter((key) => !answeredBefore.has(key)) : []);
+  const answeredQuestions = new Set(
+    answeredBefore ? (now.answered ?? []).filter((key) => !answeredBefore.has(key) && !unknown(key)) : [],
+  );
   const names = new Set([...Object.keys(visit.fields), ...Object.keys(now.fields)]);
   const changed = [...names].filter((name) => (visit.fields[name] ?? '') !== (now.fields[name] ?? ''));
   const was = Object.fromEntries(changed.filter((name) => name in now.fields).map((name) => [name, visit.fields[name] ?? '']));

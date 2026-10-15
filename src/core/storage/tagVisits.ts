@@ -29,6 +29,12 @@ export interface TagVisit {
   fields: Record<string, string>;
   /** The page's questions that were answered, by a key that outlasts a line moving; a visit before questions has none. */
   answered?: string[];
+  /**
+   * Whether the keys tell apart a note's entries, tasks, or questions with
+   * the same words, by which of them each is; a visit kept before they did
+   * has none.
+   */
+  ordinals?: true;
 }
 
 /** How the Hubs view orders each level: by name, or the hubs with the most new since their last visit first. */
@@ -137,5 +143,6 @@ export function readTagVisit(value: unknown): TagVisit | undefined {
     tasks: { open: [...tasks.open], done: [...tasks.done] },
     fields: { ...value.fields },
     ...(isTextList(value.answered) ? { answered: [...value.answered] } : {}),
+    ...(value.ordinals === true ? { ordinals: true as const } : {}),
   };
 }

@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { TAG_VISIT_LIMIT, TAG_VISIT_PREFIX, TAG_VISITS_KEY, TagVisits } from '../core/storage/tagVisits';
+import { TAG_VISIT_LIMIT, TAG_VISIT_PREFIX, TAG_VISITS_KEY, type TagVisit, TagVisits } from '../core/storage/tagVisits';
 import { DAY_MS } from '../domain/markdown/calendar';
 import type { WorkspaceIndex } from '../domain/model';
 import { createQueryContext } from '../domain/query/queryContext';
@@ -157,6 +157,41 @@ suite('Since you last looked', () => {
       assert.strictEqual(changes.answeredQuestions.size, 1, answer);
       assert.strictEqual(changes.newEntries.size, 0, answer);
     }
+  });
+
+  test('tells apart two entries under one heading, and two tasks of one title, in a note', () => {
+    const log = (first: string, task: string) => indexOf({
+      'notes/log.md': lines('# Log', '## Standup #team/rates', first, '- [ ] Call Ops', '## Standup #team/rates', 'Second.', `- [${task}] Call Ops`),
+    });
+    const visit = toTagVisit(captureTagPageState(log('First.', ' '), '#team/rates', context), before);
+    assert.strictEqual(Object.keys(visit.entries).length, 2);
+    assert.strictEqual(visit.tasks.open.length, 2);
+    const changes = compareTagPage(visit, captureTagPageState(log('First changed.', 'x'), '#team/rates', context));
+    assert.strictEqual(changes.newEntries.size, 1, 'the first standup changed');
+    assert.strictEqual(changes.doneTasks.size, 1, 'the second Call Ops was done');
+    assert.strictEqual(changes.addedTasks.size, 0);
+    assert.strictEqual(compareTagPage(visit, captureTagPageState(log('First.', ' '), '#team/rates', context)).total, 0);
+  });
+
+  test('a visit kept before keys told those apart counts them as no change, rather than as new', () => {
+    const log = indexOf({
+      'notes/log.md': lines('# Log', '## Standup #team/rates', 'First.', '- [ ] Call Ops', '## Standup #team/rates', 'Second.', '- [ ] Call Ops', '## Other #team/rates', 'Third.'),
+    });
+    const now = captureTagPageState(log, '#team/rates', context);
+    // As it was kept then: each second key folded into the first's, whose hash was the last's.
+    const fold = (keys: readonly string[]) => [...new Set(keys.map((key) => key.replace(/~\d+$/, '')))];
+    const older: TagVisit = {
+      seenAt: before,
+      entries: Object.fromEntries(Object.entries(now.entries).map(([key, hash]) => [key.replace(/~\d+$/, ''), hash])),
+      tasks: { open: fold(now.tasks.open), done: fold(now.tasks.done) },
+      fields: now.fields,
+      answered: [],
+    };
+    assert.strictEqual(compareTagPage(older, now).total, 0);
+    const changed = indexOf({
+      'notes/log.md': lines('# Log', '## Standup #team/rates', 'First.', '- [ ] Call Ops', '## Standup #team/rates', 'Second.', '- [ ] Call Ops', '## Other #team/rates', 'Third, changed.'),
+    });
+    assert.strictEqual(compareTagPage(older, captureTagPageState(changed, '#team/rates', context)).newEntries.size, 1, 'a key it knew still counts');
   });
 
   test('a search that narrows the tag, or is no tag’s, draws no band and marks nothing', () => {
