@@ -724,6 +724,12 @@
         "icon": "$(sort-precedence)"
       },
       {
+        "command": "deckard.hubs.setSort",
+        "title": "Sort Hubs By…",
+        "category": "Deckard",
+        "icon": "$(sort-precedence)"
+      },
+      {
         "command": "deckard.outline.enableFollowCursor",
         "title": "Follow Cursor in Outline",
         "category": "Deckard",
@@ -1401,6 +1407,11 @@
         {
           "command": "deckard.agenda.setSort",
           "when": "view == deckard.agenda",
+          "group": "1_sort@1"
+        },
+        {
+          "command": "deckard.hubs.setSort",
+          "when": "view == deckard.hubs",
           "group": "1_sort@1"
         },
         {

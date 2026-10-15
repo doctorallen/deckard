@@ -11,6 +11,7 @@ import { formatKeyWords, readTagNamespace } from '../../domain/markdown/tagKeys'
 import { collectTagProgress } from '../../domain/tasks/tagProgress';
 import { ParsedFile, WorkspaceIndex } from '../../domain/model';
 import { getTypeIndex } from '../../domain/types/typeIndex';
+import type { HubSort } from '../../core/storage/tagVisits';
 
 /**
  * Notes under their hubs, as Notion's sidebar keeps pages under the pages
@@ -54,6 +55,21 @@ export interface HubGraph {
   parents: ReadonlyMap<string, readonly string[]>;
   /** Each hub note's first described tag that leads to it. */
   hubTags: ReadonlyMap<string, string>;
+}
+
+/**
+ * What the tree says of each hub since the reader last had its tag's page
+ * open (docs/implementation/37-since-you-last-looked.md), and how it orders
+ * the hubs on each level.
+ */
+export interface HubNews {
+  /**
+   * A hub's tag's news: `9 new`, `seen today`, `seen Fri, Oct 9`, or
+   * `never opened`, and how much is new, which What's new sorts by.
+   */
+  describe(tagKey: string): { label: string; count: number };
+  /** By name, or the hubs with the most new first, then by name. */
+  sort: HubSort;
 }
 
 /** How many levels of notes the tree goes down before it stops, so no chain runs away. */
@@ -222,6 +238,31 @@ interface HubGroup {
   notes: string[];
 }
 
+/** How each level is ordered: by name, or by What's new, the most new first and then by name. */
+function levelOrder(
+  sort: HubSort | undefined,
+  newCount: (filePath: string) => number,
+  byName: (left: string, right: string) => number,
+): (left: string, right: string) => number {
+  return sort === 'new' ? (left, right) => newCount(right) - newCount(left) || byName(left, right) : byName;
+}
+
+/** Each hub's news, asked once for each tag, since sorting asks for it again and again; nothing without news. */
+function newsReader(news: HubNews | undefined): (tagKey: string) => { label: string; count: number } | undefined {
+  const read = new Map<string, { label: string; count: number }>();
+  return (tagKey) => {
+    if (!news) {
+      return undefined;
+    }
+    let found = read.get(tagKey);
+    if (!found) {
+      found = news.describe(tagKey);
+      read.set(tagKey, found);
+    }
+    return found;
+  };
+}
+
 /** Each note's children, by path: the notes whose parents name it. */
 function listChildren(graph: HubGraph): Map<string, string[]> {
   const children = new Map<string, string[]>();
@@ -258,15 +299,21 @@ function labelReader(index: WorkspaceIndex): (filePath: string) => string {
  * listed under Other notes. A note the tree would otherwise never reach, in
  * a loop of `up:` or below a chain deeper than it draws, is listed at the
  * top too: a hub in its namespace, any other note under Other notes. Each
- * level is alphabetical.
+ * level is alphabetical, or, sorted by What's new, the hubs with the most
+ * new since their last visit first. With `news`, each hub says what is new
+ * before its progress.
  */
-export function buildHubTree(index: WorkspaceIndex, now: number): HubTreeNode[] {
+export function buildHubTree(index: WorkspaceIndex, now: number, news?: HubNews): HubTreeNode[] {
   const graph = getHubGraph(index);
   const children = listChildren(graph);
   const progress = collectTagProgress(index, now, new Set(graph.hubTags.values()));
   const label = labelReader(index);
   const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
-  const byLabel = (left: string, right: string): number => collator.compare(label(left), label(right)) || left.localeCompare(right);
+  const newsOf = newsReader(news);
+  const byLabel = levelOrder(news?.sort, (filePath) => {
+    const tagKey = graph.hubTags.get(filePath);
+    return tagKey ? (newsOf(tagKey)?.count ?? 0) : 0;
+  }, (left, right) => collator.compare(label(left), label(right)) || left.localeCompare(right));
   const reached = new Set<string>();
 
   const buildNote = (filePath: string, path: readonly string[]): HubTreeNode => {
@@ -274,6 +321,10 @@ export function buildHubTree(index: WorkspaceIndex, now: number): HubTreeNode[] 
     const id = [...path, filePath].join('\u0000');
     const tagKey = graph.hubTags.get(filePath);
     const counted = tagKey ? progress.get(tagKey) : undefined;
+    const description = [
+      tagKey ? newsOf(tagKey)?.label : undefined,
+      counted ? formatProgressCount(counted.done, counted.total) : undefined,
+    ].filter(Boolean).join(' · ');
     const below =
       path.length >= MAX_DEPTH || path.includes(filePath)
         ? []
@@ -284,7 +335,7 @@ export function buildHubTree(index: WorkspaceIndex, now: number): HubTreeNode[] 
       label: label(filePath),
       filePath,
       ...(tagKey ? { tagKey } : {}),
-      ...(counted ? { description: formatProgressCount(counted.done, counted.total) } : {}),
+      ...(description ? { description } : {}),
       children: below.map((child) => buildNote(child, [...path, filePath])),
     };
   };

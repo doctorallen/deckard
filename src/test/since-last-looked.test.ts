@@ -4,6 +4,8 @@ import { TAG_VISIT_LIMIT, TAG_VISIT_PREFIX, TAG_VISITS_KEY, TagVisits } from '..
 import { DAY_MS } from '../domain/markdown/calendar';
 import type { WorkspaceIndex } from '../domain/model';
 import { createQueryContext } from '../domain/query/queryContext';
+import { createHubNews } from '../ui/state/hubNews';
+import { buildHubTree, type HubTreeNode } from '../ui/state/hubTree';
 import { captureTagPageState, createSearchPageSnapshot } from '../ui/state/searchPageState';
 import { compareTagPage, isSinceShown, toTagVisit } from '../ui/state/sinceLastLooked';
 import { createPreferences, MemoryStore } from './preferenceServices';
@@ -161,5 +163,30 @@ suite('Since you last looked', () => {
     assert.strictEqual(visits.get('#b'), undefined);
     assert.deepStrictEqual([...visits.seenAt()], [['#b', now]]);
     assert.strictEqual(visits.hubSort(), 'name');
+  });
+
+  test('the Hubs view says what is new under each hub, when each was seen, and sorts by What’s new', async () => {
+    const index = indexOf({
+      ...NOW,
+      'Teams/FX.md': lines('---', 'describes: team/fx', '---', '# FX desk'),
+      'Teams/Credit.md': lines('---', 'describes: team/credit', '---', '# Credit desk'),
+      'notes/fx.md': lines('# FX notes #team/fx', 'Fixings.'),
+    });
+    const visits = new TagVisits(new MemoryStore());
+    await visits.record('#team/rates', visitThen());
+    await visits.record('#team/fx', toTagVisit(captureTagPageState(index, '#team/fx', context), now - 60_000));
+    const hubs = (): HubTreeNode[] => buildHubTree(index, now, createHubNews(index, visits, context))[0].children;
+    assert.deepStrictEqual(hubs().map((hub) => [hub.label, hub.description]), [
+      ['Credit desk', 'never opened'],
+      ['FX desk', 'seen today'],
+      ['Rates desk', '5 new · 1/3 done (33%)'],
+    ]);
+    await visits.setHubSort('new');
+    assert.deepStrictEqual(hubs().map((hub) => hub.label), ['Rates desk', 'Credit desk', 'FX desk']);
+    const seenEarlier = new TagVisits(new MemoryStore());
+    await seenEarlier.record('#team/fx', toTagVisit(captureTagPageState(index, '#team/fx', context), before));
+    const fx = buildHubTree(index, now, createHubNews(index, seenEarlier, context))[0].children.find((hub) => hub.label === 'FX desk');
+    assert.match(fx?.description ?? '', /^seen /);
+    assert.doesNotMatch(fx?.description ?? '', /today|new/, 'nothing new since a visit long ago says when it was');
   });
 });
