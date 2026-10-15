@@ -233,7 +233,10 @@
         "command": "deckard.showDashboard",
         "title": "Open Home",
         "category": "Deckard",
-        "icon": "$(home)"
+        "icon": {
+          "light": "resources/pages/home-light.svg",
+          "dark": "resources/pages/home-dark.svg"
+        }
       },
       {
         "command": "deckard.goTo",
@@ -244,7 +247,10 @@
         "command": "deckard.showNotesGraph",
         "title": "Open Notes Graph",
         "category": "Deckard",
-        "icon": "$(type-hierarchy)"
+        "icon": {
+          "light": "resources/pages/graph-light.svg",
+          "dark": "resources/pages/graph-dark.svg"
+        }
       },
       {
         "command": "deckard.showNotesGraphAroundNote",
@@ -262,13 +268,19 @@
         "command": "deckard.showTaskBoard",
         "title": "Open Task Board",
         "category": "Deckard",
-        "icon": "$(project)"
+        "icon": {
+          "light": "resources/pages/board-light.svg",
+          "dark": "resources/pages/board-dark.svg"
+        }
       },
       {
         "command": "deckard.showCalendar",
         "title": "Open Calendar",
         "category": "Deckard",
-        "icon": "$(calendar)"
+        "icon": {
+          "light": "resources/pages/calendar-light.svg",
+          "dark": "resources/pages/calendar-dark.svg"
+        }
       },
       {
         "command": "deckard.calendar.openInEditor",
@@ -279,13 +291,35 @@
       {
         "command": "deckard.showStats",
         "title": "Open Stats",
-        "category": "Deckard"
+        "category": "Deckard",
+        "icon": {
+          "light": "resources/pages/stats-light.svg",
+          "dark": "resources/pages/stats-dark.svg"
+        }
       },
       {
         "command": "deckard.showHelp",
         "title": "Open Help",
         "category": "Deckard",
-        "icon": "$(question)"
+        "icon": {
+          "light": "resources/pages/help-light.svg",
+          "dark": "resources/pages/help-dark.svg"
+        }
+      },
+      {
+        "command": "deckard.chooseContextPages",
+        "title": "Choose Pages…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.contextPagesAsList",
+        "title": "Show Pages as a List",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.contextPagesAsIcons",
+        "title": "Show Pages as Icons in the Title Bar",
+        "category": "Deckard"
       },
       {
         "command": "deckard.openWalkthrough",
@@ -353,7 +387,10 @@
         "command": "deckard.createDailyNote",
         "title": "Create Daily Note",
         "category": "Deckard",
-        "icon": "$(new-file)"
+        "icon": {
+          "light": "resources/pages/today-light.svg",
+          "dark": "resources/pages/today-dark.svg"
+        }
       },
       {
         "command": "deckard.pinNote",
@@ -578,7 +615,11 @@
       {
         "command": "deckard.searchWorkspace",
         "title": "Find in Notes",
-        "category": "Deckard"
+        "category": "Deckard",
+        "icon": {
+          "light": "resources/pages/find-light.svg",
+          "dark": "resources/pages/find-dark.svg"
+        }
       },
       {
         "command": "deckard.quickFind.complete",
@@ -1150,6 +1191,14 @@
         {
           "command": "deckard.calendar.openInEditor",
           "when": "false"
+        },
+        {
+          "command": "deckard.contextPagesAsList",
+          "when": "false"
+        },
+        {
+          "command": "deckard.contextPagesAsIcons",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -1388,6 +1437,61 @@
           "command": "deckard.calendar.openInEditor",
           "when": "view == deckard.calendar",
           "group": "navigation@1"
+        },
+        {
+          "command": "deckard.showDashboard",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.home",
+          "group": "navigation@1"
+        },
+        {
+          "command": "deckard.showTaskBoard",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.board",
+          "group": "navigation@2"
+        },
+        {
+          "command": "deckard.showCalendar",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.calendar",
+          "group": "navigation@3"
+        },
+        {
+          "command": "deckard.createDailyNote",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.today",
+          "group": "navigation@4"
+        },
+        {
+          "command": "deckard.showNotesGraph",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.graph",
+          "group": "navigation@5"
+        },
+        {
+          "command": "deckard.searchWorkspace",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.find",
+          "group": "navigation@6"
+        },
+        {
+          "command": "deckard.showStats",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.stats",
+          "group": "navigation@7"
+        },
+        {
+          "command": "deckard.showHelp",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.help",
+          "group": "navigation@8"
+        },
+        {
+          "command": "deckard.chooseContextPages",
+          "when": "view == deckard.relatedNotes",
+          "group": "1_pages@1"
+        },
+        {
+          "command": "deckard.contextPagesAsList",
+          "when": "view == deckard.relatedNotes && !deckard.contextPagesAsList",
+          "group": "1_pages@2"
+        },
+        {
+          "command": "deckard.contextPagesAsIcons",
+          "when": "view == deckard.relatedNotes && deckard.contextPagesAsList",
+          "group": "1_pages@2"
         }
       ],
       "view/item/context": [

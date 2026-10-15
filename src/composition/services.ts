@@ -52,6 +52,7 @@ import { CalendarPanel } from '../ui/webview/calendarPage';
 import { ActiveCalendar } from '../ui/webview/activeCalendar';
 import { ActiveNotePage } from '../ui/webview/activeNotePage';
 import { ActiveHome } from '../ui/webview/activeHome';
+import { watchContextPagesKeys } from '../ui/views/contextPagesTitleBar';
 import { readManifestTools } from '../core/mcp/mcpProtocol';
 import { DeckardMcpServer } from '../ui/commands/mcpServer';
 import { ActivePinContext } from '../ui/commands/pinNote';
@@ -988,6 +989,8 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
   const { activeCalendar, activeHome } = parts.calendar;
   // Which note is pinned, as the note page's ⋯ pins it: by its first line.
   const notePins = new PinService({ index: indexer, store: parts.preferences.pins });
+  // The pages' icons in Context's title bar follow the reader's choices.
+  context.subscriptions.push(watchContextPagesKeys(repository));
   // The note page in front, whose note Related Notes follows.
   const activeNotePage = new ActiveNotePage();
   context.subscriptions.push(activeNotePage);

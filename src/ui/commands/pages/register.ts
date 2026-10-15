@@ -6,6 +6,7 @@ import { registerCommand } from '../runCommand';
 import { openNoteAt } from '../noteOpening';
 import { findHubTagKey } from '../../state/hubTree';
 import { goToPage } from '../../views/pagesTree';
+import { chooseContextPages } from '../../views/contextPagesTitleBar';
 import type { TaskStatusType } from '../../../domain/model';
 import { isTaskStatusType } from '../../../domain/tasks/taskStatuses';
 
@@ -21,6 +22,16 @@ export function register(context: vscode.ExtensionContext, services: Services): 
   const calendar = services.views.calendar;
   // Every page, as the top of Context lists them, from anywhere.
   context.subscriptions.push(registerCommand('deckard.goTo', () => goToPage(indexer, context.extensionUri)));
+  // Context's title bar: which pages it keeps, and whether they are icons
+  // there or a list in the view.
+  const { repository, display } = services.preferences;
+  context.subscriptions.push(
+    registerCommand('deckard.chooseContextPages', () =>
+      chooseContextPages({ current: repository.current, setContextPageShown: (page, shown) => display.setContextPageShown(page, shown) }),
+    ),
+    registerCommand('deckard.contextPagesAsList', () => display.setContextPagesStyle('list')),
+    registerCommand('deckard.contextPagesAsIcons', () => display.setContextPagesStyle('icons')),
+  );
   context.subscriptions.push(
     registerCommand('deckard.showDashboard', () =>
       dashboard.show(),
