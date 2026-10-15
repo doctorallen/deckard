@@ -29,6 +29,7 @@ import type { QueryContext } from '../../domain/query/queryContext';
 import type { QueryResults } from '../../domain/query/queryEvaluator';
 import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { isTaskItemLine } from '../../domain/markdown/listNesting';
+import { shortHash } from '../../shared/text';
 import type { TagVisit } from '../../core/storage/tagVisits';
 import type { DrawnFields } from '../protocol/fields';
 import type { SearchPageSince, SinceChipKind } from '../protocol/searchPage';
@@ -48,14 +49,7 @@ export type TagPageState = Omit<TagVisit, 'seenAt'>;
  * remote.
  */
 export function visitHash(text: string): string {
-  let first = 0;
-  let second = 0x811c9dc5;
-  for (let at = 0; at < text.length; at += 1) {
-    const code = text.charCodeAt(at);
-    first = ((first << 5) - first + code) | 0;
-    second = Math.imul(second ^ code, 0x01000193);
-  }
-  return `${(first >>> 0).toString(36)}${(second >>> 0).toString(36)}`;
+  return shortHash(text);
 }
 
 /** An entry's key in a visit: its note and its heading, or its tagged line. */

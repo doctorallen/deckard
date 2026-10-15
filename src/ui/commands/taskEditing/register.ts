@@ -10,10 +10,12 @@ import { toggleTaskDoneCommand } from '../toggleTaskDone';
 import { setTaskStatusCommand } from '../setTaskStatus';
 import { importObsidianStatusesCommand, moveStatusTagsCommand } from '../statusMove';
 import { registerCommand } from '../runCommand';
+import { NOT_A_PROMISE_COMMAND, notAPromiseCommand, TRACK_PROMISE_COMMAND, trackPromiseCommand } from '../trackPromise';
 
 /**
  * Task editing: Edit Task and Add Task, Break into Steps, Toggle Task Done,
- * Set Task Status…, and Move to….
+ * Set Task Status…, Move to…, and the lens and lightbulb's Track and Not a
+ * promise on a promise in today's note.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
   const { indexer } = services;
@@ -54,6 +56,19 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.moveTo', () =>
       moveToCommand(indexer, services.preferences.move, writes),
     ),
+    // A promise's lens and lightbulb pass its note, its line, and the
+    // line's words, which must still read so; Track… asks for the editor.
+    registerCommand(TRACK_PROMISE_COMMAND, async (target?: unknown, line?: unknown, text?: unknown, edit?: unknown) => {
+      if (typeof target !== 'string' || !Number.isInteger(line) || typeof text !== 'string') {
+        return undefined;
+      }
+      return trackPromiseCommand(indexer, { documentUri: target, line: line as number, text }, { edit: edit === true });
+    }),
+    registerCommand(NOT_A_PROMISE_COMMAND, async (target?: unknown, text?: unknown) => {
+      if (typeof target === 'string' && typeof text === 'string') {
+        await notAPromiseCommand(services.promiseMarks, target, text);
+      }
+    }),
   );
 }
 

@@ -94,6 +94,27 @@ export interface DeckardStatsSnapshot {
   tagUsage: StatsTagUsage;
   /** How often the most-used tags are written on the same entry. */
   tagPairs: StatsTagPairs;
+  /** Terms used in three entries or more that nothing defines, most used first. */
+  undefinedTerms: StatsTermItem[];
+  /** How many such terms there are, listed or not. */
+  undefinedTermCount: number;
+  /** Terms with a definition, most used first. */
+  definedTerms: StatsTermItem[];
+  /** How many such terms there are, listed or not. */
+  definedTermCount: number;
+}
+
+/**
+ * A term as Stats lists it (docs/implementation/42-terms.md): a term never
+ * defined says where it was first used, and opens the search for its uses;
+ * a defined one says its definition and where it comes from, and opens it.
+ */
+export interface StatsTermItem {
+  term: string;
+  /** How many entries use it. */
+  count: number;
+  detail: string;
+  open: OpenSourceMessage | OpenSearchMessage;
 }
 
 /**
@@ -164,6 +185,12 @@ export interface CreateMissingNotesMessage {
   names: string[];
 }
 
+/** Stats' Define…: a term note for a term, made in New Note from Type…'s form. */
+export interface DefineTermMessage {
+  type: 'defineTerm';
+  term: string;
+}
+
 /** Asks the host to read every note again. */
 export interface ReindexWorkspaceMessage {
   type: 'reindexWorkspace';
@@ -207,6 +234,7 @@ export interface StatsPageToHost {
   reindexWorkspace: ReindexWorkspaceMessage;
   mergeTags: MergeTagsMessage;
   createMissingNotes: CreateMissingNotesMessage;
+  defineTerm: DefineTermMessage;
   openGoTo: OpenGoToMessage;
   listGoTo: ListGoToMessage;
   goToPage: GoToPageMessage;

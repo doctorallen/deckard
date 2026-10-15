@@ -54,7 +54,8 @@
     "onLanguageModelTool:deckard_query",
     "onLanguageModelTool:deckard_list_tags",
     "onLanguageModelTool:deckard_describe_tag",
-    "onLanguageModelTool:deckard_list_questions"
+    "onLanguageModelTool:deckard_list_questions",
+    "onLanguageModelTool:deckard_define_term"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -97,6 +98,26 @@
           "light": "errorForeground",
           "highContrast": "errorForeground",
           "highContrastLight": "errorForeground"
+        }
+      },
+      {
+        "id": "deckard.promiseUnderline",
+        "description": "Wavy line under the day in a line of today's daily note that names a person and a day to come, which Deckard offers to track as a waiting task.",
+        "defaults": {
+          "dark": "#cca70080",
+          "light": "#bf880380",
+          "highContrast": "editorWarning.foreground",
+          "highContrastLight": "editorWarning.foreground"
+        }
+      },
+      {
+        "id": "deckard.termUnderline",
+        "description": "Dotted line under a short term that has a definition, such as NDF, in the editor.",
+        "defaults": {
+          "dark": "descriptionForeground",
+          "light": "descriptionForeground",
+          "highContrast": "descriptionForeground",
+          "highContrastLight": "descriptionForeground"
         }
       },
       {
@@ -1992,6 +2013,33 @@
         "when": "config.deckard.assistantTools"
       },
       {
+        "name": "deckard_define_term",
+        "displayName": "Define a term from Deckard notes",
+        "toolReferenceName": "deckardDefineTerm",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(book)",
+        "tags": [
+          "deckard",
+          "notes",
+          "terms"
+        ],
+        "userDescription": "Say what a short term in the workspace's notes, such as NDF or UAT, means, and where it was defined.",
+        "modelDescription": "Looks up what a short term in the user's local Markdown notes means, as indexed by the Deckard extension: an acronym or code of two to six capitals and digits, or up to twelve with hyphens, such as NDF, UAT, or RATES-UAT. A term is defined by a term note (front matter type: term, with term: NDF, its first paragraph the definition), which wins, or inline, the first time by date it was written as NDF (non-deliverable forward), non-deliverable forward (NDF), a line NDF: words, or NDF means words. It answers with the definition, its source as a workspace-relative path and one-based line, the heading and day it was written under, and how many entries use the term; or says the notes define none, with how often they use it and where first. Use it before guessing what an acronym in the user's notes means.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "term": {
+              "type": "string",
+              "description": "The term, such as NDF or RATES-UAT; read in capitals."
+            }
+          },
+          "required": [
+            "term"
+          ]
+        },
+        "when": "config.deckard.assistantTools"
+      },
+      {
         "name": "deckard_add_task",
         "displayName": "Add a task to a Deckard note",
         "toolReferenceName": "deckardAddTask",
@@ -2470,7 +2518,7 @@
             "enumDescriptions": [
               "Everything Deckard draws in the editor: counts, hints, previews, and lenses.",
               "What helps with tasks, and what reports a problem; no link counts, mention lenses, or breadcrumbs.",
-              "A quiet page for writing: the / menu, hover previews, faint task details, and reports of broken links, embeds, and repeat rules. No link counts, mention lenses, breadcrumbs, daily-note links, task hints, dependencies, step bars, or hub progress.",
+              "A quiet page for writing: the / menu, hover previews, faint task details, and reports of broken links, embeds, and repeat rules. No link counts, mention lenses, breadcrumbs, daily-note links, task hints, dependencies, step bars, hub progress, or offers to track promises.",
               "Nothing: no lenses, decorations, hover previews, / menu, or problem reports. A switch you set yourself still draws its part."
             ],
             "default": "full",
@@ -2592,6 +2640,18 @@
             "scope": "resource",
             "description": "Say, after the line being written, when an older line of another note is a close match: its date and words, faded, a mark in the gutter beside other lines that have one, and a hover with Open, Link it here, and Not the same; Context lists them under Written before. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
             "order": 15
+          },
+          "deckard.editor.trackPromises": {
+            "type": "boolean",
+            "scope": "resource",
+            "description": "In today's daily note, underline a line that names one person and a day to come, such as \"@sam says the fix lands by Friday\", and offer, in a lens and the lightbulb, to track it as a waiting task for that person, due that day. Left unset, it follows the editor preset: on in Full and Tasks, off in Writing and Off. Set it here to override the preset.",
+            "order": 16
+          },
+          "deckard.editor.termUnderline": {
+            "type": "boolean",
+            "scope": "resource",
+            "description": "Draw a faint dotted line under a short term that has a definition, such as NDF or UAT, where hovering it says what it means. The hover stays when this is off, and Zen hides the line. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
+            "order": 17
           }
         },
         "order": 3

@@ -60,3 +60,84 @@ fixture stays under 200 ms to build.
   term note winning; counts.
 - Host (single file): the hover's content and links; no hover in code.
 - Page behavior (jsdom): the Stats Terms tab.
+
+## As built
+
+Built on `feat/said-and-terms`, after plan 41. The table is
+`src/domain/terms/terms.ts`; the hover and underline are
+`src/ui/providers/termHovers.ts`, with the hover's words in
+`src/ui/state/termHover.ts`; Make a term note is
+`src/ui/commands/termNotes.ts`; Stats' lists are `listTerms` in
+`src/ui/state/statsState.ts` and `src/webview/stats/terms.tsx`; Find's row
+is in `src/ui/state/findAnswers.ts`; the tool is
+`src/ui/state/assistantTerms.ts`. Where the plan was silent, or the code
+made its words impractical:
+
+- **Stats has no tabs.** It is one page of sections, so **Terms** is its
+  last section, under Tags written together, with the plan's two lists
+  side by side, each up to 50 terms and a count of the rest. A row of
+  **Used but never defined** searches for the term's uses; a row of
+  **Defined** opens the definition.
+- **An entry**, for the count, is a heading and the lines under it, or a
+  note's text above its first heading, read line by line, rather than the
+  search's entries, which fold untagged headings into the tagged one above
+  them. Reading the text once, without the index's entry grouping, keeps
+  the 3,000-note build fast.
+- **What is skipped.** Front matter is skipped whole, values as well as
+  keys: a term note's own `term: NDF` is no use of NDF. Beside the plan's
+  list, the capitalized words left out are the English ones written for
+  emphasis (`NOT`, `AND`, `ALL`, `NEW`…), the Markdown alert words (`TIP`,
+  `WARNING`, `CAUTION`, `INFO`), and `FIXME`, `XXX`, `TBD`, `WIP`, `ASAP`,
+  `ETC`, `VS`, `TL`, `DR`. A token may not follow `#`, `@`, `/`, `.`, `\`,
+  or `-`, and one whose first part is all digits, such as `2026-W38`, is
+  no term. A shouted line is one with no lowercase letter and two words or
+  more.
+- **Inline definitions** make a term only of a token used in three entries
+  or more; a term note defines its term however few use it. A task's line
+  is no `NDF: words`. `NDF means` and `stands for` read to the end of the
+  sentence. In the initials rule a digit counts as a letter, so `3-D
+  Secure` is 3DS, and hyphens and slashes part words. A definition loses
+  its Markdown bold and closing punctuation, and is cut at 200
+  characters.
+- **A term note's term** is its `term:` field, else its file name, in
+  capitals; its definition is its first paragraph after the front matter
+  and the headings, its lines joined.
+- **Hover and underline** are on defined terms only, as the plan's
+  *defined term* says. The day is in the reader's short date format,
+  *Defined Tue, Mar 3 in FX recon kickoff*, and *in* names the heading
+  the definition is under, else the note. **Find uses** opens a search
+  page on `text = NDF` (quoted for a term with a hyphen).
+- **Make a term note** and **Define…** run `deckard.makeTermNote`, an
+  internal command, which opens New Note from Type…'s form for the
+  workspace's `term` type, or, with none, for a built-in Term (a type of
+  notes, in `Terms/`, with one field, `term`), as a quick fix's person
+  falls back to one. The form starts with the title and `term:` filled in,
+  and from an inline definition its words as the note's first paragraph:
+  `DraftStart` gained `values` and `body` for it.
+- **The setting** is one more `deckard.editor.*` switch the editor preset
+  decides: on in Full, Tasks, and Writing, off in Off. Zen hides the
+  line through `deckard.display.zen`. A new theme color,
+  `deckard.termUnderline`, is `descriptionForeground` by default.
+- **Find** reads the term in any case, so `ndf` and `what's ndf?` answer
+  too, and `what does NDF mean` and `define NDF`. The term's row leads the
+  answers, with a book icon, and Find still lists at most three.
+- **The tool** comes after `deckard_describe_tag` in the table, the
+  manifest, and the MCP server's list, with an activation event, and the
+  MCP server's instructions name it. Its answer is plain text: the
+  definition, its source as `path:line`, heading, and day, and the use
+  count; or that the notes define none, with the count and first use.
+- **The work sample**'s Term type is `Types/Term.md` (rows: notes, in
+  `terms/`, one field `term`, also called acronym or abbreviation), with
+  `terms/3DS.md`, a term the standups and the project already use, and a
+  README line to hover it.
+- **Performance.** Each note's terms are read once per parsed version of
+  the note, and the table once per index, both kept in `WeakMap`s; an
+  index update rebuilds the table from the notes' readings when it is next
+  asked for, rather than patching it. The 3,000-note fixture (26 lines a
+  note, a quarter of them with a term) builds in about 100 ms here.
+- **Tests**: `terms.test.ts` (unit: detection and skips, each definition
+  form, initials, a term note winning, counts, Find's answer, and the
+  3,000-note build), `stats-terms.test.ts` (unit, jsdom: the Stats lists
+  and Define…), `term-hovers.test.ts` (host: the hover's content and
+  links, none in code), and additions to the assistant tool, MCP, sample,
+  typed-note-draft, and extension suites.

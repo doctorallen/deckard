@@ -67,7 +67,7 @@ suite('Work sample', () => {
     );
     const index = buildWorkspaceIndex(parsed);
     assert.strictEqual(notes, index.files.size - 1, 'every note but the README, and no type note');
-    assert.deepStrictEqual([...(index.typeNotes?.keys() ?? [])].sort(), ['Types/Area.md', 'Types/Decision.md', 'Types/Person.md', 'Types/Team.md']);
+    assert.deepStrictEqual([...(index.typeNotes?.keys() ?? [])].sort(), ['Types/Area.md', 'Types/Decision.md', 'Types/Person.md', 'Types/Team.md', 'Types/Term.md']);
     assert.deepStrictEqual(findMissingLinkTargets(index), [], 'no link names a missing note');
     assert.ok(files.has('2026-10-07.md') && files.has('2026-10-06.md'), 'standups dated to the days before it was made');
     const context = createQueryContext(new Date(2026, 9, 7, 12).getTime());

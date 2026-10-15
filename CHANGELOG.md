@@ -37,6 +37,22 @@
   also offers **Set FX’s lead to Priya Natarajan**, from the phrases a
   type's new **Words** column lists; the sample's teams and people list
   some. Each is one write, with Undo.
+- **Said they would.** In today's daily note, a line that names one person
+  and a day to come, such as *@sam says the fix lands by Friday*, has its
+  day underlined, and a lens and the lightbulb offer **Track**, which writes
+  a waiting task for that person, due that day, under the line, and **Not
+  a promise**. `deckard.editor.trackPromises` turns it off.
+- **Terms.** Deckard reads the short terms your notes use, such as NDF or
+  UAT, and where each was defined: a term note (`type: term`), which wins,
+  or the first time it was written as `NDF (non-deliverable forward)`,
+  `NDF: words`, or `NDF means words`. Hovering a defined term in any note
+  says what it means and where, with **Open definition**, **Find uses**,
+  and **Make a term note**, and a faint dotted line marks it
+  (`deckard.editor.termUnderline`; Zen hides it). Stats lists the terms
+  used but never defined, each with **Define…**, and those defined. Find
+  answers `NDF` or `what is NDF` with its definition, and
+  `deckard_define_term` answers an assistant. The work sample has a Term
+  type and a term note for 3DS.
 - **What's new in the Hubs view.** Each hub says how much is new since you
   last opened its page, or when you saw it, and **Sort Hubs By…** puts the
   busiest first.

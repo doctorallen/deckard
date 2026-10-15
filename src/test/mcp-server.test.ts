@@ -121,7 +121,7 @@ suite('MCP server', () => {
     const answer = JSON.parse(response.body) as { result: { tools: Array<{ name: string }> } };
     assert.deepStrictEqual(
       answer.result.tools.map((tool) => tool.name),
-      ['deckard_query', 'deckard_list_tags', 'deckard_describe_tag', 'deckard_add_task', 'deckard_change_task', 'deckard_list_questions', 'deckard_answer_question'],
+      ['deckard_query', 'deckard_list_tags', 'deckard_describe_tag', 'deckard_define_term', 'deckard_add_task', 'deckard_change_task', 'deckard_list_questions', 'deckard_answer_question'],
     );
   });
 

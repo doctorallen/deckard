@@ -15,6 +15,7 @@ import { readQueryContext } from './queryContext';
 import { WorkspaceWriteHistory } from './workspaceWrites';
 import { ADD_TASK_TOOL_NAME, ANSWER_QUESTION_TOOL_NAME, CHANGE_TASK_TOOL_NAME } from '../state/assistantWriteInput';
 import { DESCRIBE_TAG_TOOL_NAME } from '../state/assistantDescribe';
+import { DEFINE_TERM_TOOL_NAME } from '../state/assistantTerms';
 import { WorkspaceIndex } from '../../domain/model';
 
 interface IndexSource {
@@ -46,6 +47,7 @@ export class AssistantTools implements vscode.Disposable {
   public readonly queryTool: vscode.LanguageModelTool<unknown>;
   public readonly tagsTool: vscode.LanguageModelTool<unknown>;
   public readonly describeTagTool: vscode.LanguageModelTool<unknown>;
+  public readonly defineTermTool: vscode.LanguageModelTool<unknown>;
   public readonly addTaskTool: vscode.LanguageModelTool<unknown>;
   public readonly changeTaskTool: vscode.LanguageModelTool<unknown>;
   public readonly listQuestionsTool: vscode.LanguageModelTool<unknown>;
@@ -55,7 +57,7 @@ export class AssistantTools implements vscode.Disposable {
   private allowed = false;
 
   /**
-   * Registers the seven tools with VS Code (or with `register`, in a test).
+   * Registers the eight tools with VS Code (or with `register`, in a test).
    * Each answers only while `deckard.assistantTools` is on and the user has
    * agreed to it.
    */
@@ -80,6 +82,7 @@ export class AssistantTools implements vscode.Disposable {
     this.queryTool = toolNamed(tools, QUERY_TOOL_NAME);
     this.tagsTool = toolNamed(tools, TAGS_TOOL_NAME);
     this.describeTagTool = toolNamed(tools, DESCRIBE_TAG_TOOL_NAME);
+    this.defineTermTool = toolNamed(tools, DEFINE_TERM_TOOL_NAME);
     this.addTaskTool = toolNamed(tools, ADD_TASK_TOOL_NAME);
     this.changeTaskTool = toolNamed(tools, CHANGE_TASK_TOOL_NAME);
     this.listQuestionsTool = toolNamed(tools, LIST_QUESTIONS_TOOL_NAME);
@@ -87,7 +90,7 @@ export class AssistantTools implements vscode.Disposable {
     this.registrations = [...tools].map(([name, tool]) => register(name, tool));
   }
 
-  /** Unregisters the seven tools. */
+  /** Unregisters the eight tools. */
   public dispose(): void {
     this.registrations.forEach((registration) => registration.dispose());
   }
@@ -195,7 +198,7 @@ export class AssistantTools implements vscode.Disposable {
   }
 }
 
-/** A tool the table must hold; the seven names are the table's own. */
+/** A tool the table must hold; the eight names are the table's own. */
 function toolNamed(
   tools: ReadonlyMap<string, vscode.LanguageModelTool<unknown>>,
   name: string,

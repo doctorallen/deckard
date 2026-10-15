@@ -22,7 +22,7 @@ export type DrawnStats = StatsState & { readonly snapshot: DeckardStatsSnapshot 
 export const ORPHANS_SHOWN = 10;
 
 /** The lists a row may name in `data-list`, each a list of the snapshot whose items carry what opens them. */
-export const ROW_LISTS = ['unreadable', 'orphanNotes', 'tagViews', 'entityViews', 'sectionViews'] as const;
+export const ROW_LISTS = ['unreadable', 'orphanNotes', 'tagViews', 'entityViews', 'sectionViews', 'undefinedTerms', 'definedTerms'] as const;
 
 /** One of those lists, by name. */
 export type RowList = (typeof ROW_LISTS)[number];

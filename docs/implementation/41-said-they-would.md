@@ -76,3 +76,58 @@ lightbulb off.
   written line in both metadata formats.
 - Host (single file): the code actions on a line in today's note, and
   none in another note; Not a promise remembered.
+
+## As built
+
+Built on `feat/said-and-terms`, after plans 36 and 37. The rules are pure,
+in `src/domain/tasks/promises.ts`; the underline, the lens, and the
+lightbulb are one provider, `src/ui/providers/promiseTracking.ts`; and
+Track and Not a promise are `src/ui/commands/trackPromise.ts`. Where the
+plan was silent, or the code made its words impractical:
+
+- **Today's note** is a note whose name, or top heading, is today's date,
+  as Deckard tells a daily note anywhere else, and not only the path Deckard
+  would create it at, so a daily note kept in another folder is read too.
+- **The day.** Every phrase is read by `parseDatePhrase`, but three the
+  date boxes read otherwise: `next week` and `end of week`/`EOW` are that
+  week's Friday (the plan names Friday for `next week` only; a promise for
+  the end of the week means the workday too, and Deckard has no workday
+  setting to read a last workday from), and `on the 20th` is the next 20th
+  to come. A whole weekday name is read alone; a short one (`fri`, `sat`)
+  only after `by`, `on`, `due`, `before`, or `until`, so *the sat nav* is
+  no day. `next Monday` and `in 2 weeks` are read too. A numeric `10/20` is
+  read in the order the reader's date format writes a day, as the date
+  boxes read one. Of two day phrases on a line, the last that reads is the
+  promise's, so *said on 1 Oct that it lands by Friday* is Friday.
+- **A question** is a line whose last word ends in `?`.
+- **Already tracked** is any task in the lines indented under the line,
+  up to the first that is not, assigned to the same person, whatever its
+  status, not only `[w]`: a promise kept and ticked off is not offered
+  again.
+- **The title** also drops a leading *that*, and a leading *the*, *a*, or
+  *an*, as the plan's own example drops *the*, and punctuation at either
+  end.
+- **The line written** is in the order Deckard writes a task's fields, due
+  before the person: `- [w] Loader retry fix lands 📅 2026-10-16 👤
+  @sam-okafor`. Under a list item it lines up with the item's words; under
+  a plain line it is two spaces in; under a line indented with tabs, one
+  tab more.
+- **The day said** on the lens and in the lightbulb is in the reader's
+  short date format, `Fri, Oct 16`, not `Fri 16 Oct`, as Deckard writes a
+  short day everywhere else.
+- **The lightbulb's Track** carries its edit, so VS Code can preview it;
+  the lens's runs `deckard.trackPromise`, which checks the line still reads
+  as it did and writes the same one edit. **Track as waiting on Sam…**
+  opens the task editor titled *Track as waiting on Sam*. The two commands,
+  `deckard.trackPromise` and `deckard.notAPromise`, are internal, as the
+  other lens commands are, and not in the palette.
+- **Not a promise** is kept in `workspaceState` as `deckard.notPromises`,
+  each line as its note's URI and a hash of its trimmed words, the latest
+  500 kept (persisted format 28). The hash is the one plan 37's visits
+  use, moved to `shared/text.ts` as `shortHash`.
+- **The setting** is one more `deckard.editor.*` switch the editor preset
+  decides, with no default in the manifest, as the others have: on in
+  Full and Tasks, off in Writing and Off. A new theme color,
+  `deckard.promiseUnderline`, is the warning color at half strength.
+- **Tests**: `promises.test.ts` (unit) and `promise-tracking.test.ts`
+  (host).

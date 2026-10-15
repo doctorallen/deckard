@@ -1,6 +1,6 @@
 /**
  * Editor presets: what Deckard draws in the editor, chosen as one of four
- * rather than as fifteen switches.
+ * rather than as seventeen switches.
  *
  * Each `deckard.editor.*` switch still works, and one set by hand, at any
  * scope, wins over the preset; the preset decides only the switches left
@@ -29,6 +29,8 @@ export const EDITOR_TOGGLES = [
   'repeatDiagnostics',
   'questions',
   'writtenBefore',
+  'trackPromises',
+  'termUnderline',
 ] as const;
 
 /** One of those switches. */
@@ -47,7 +49,7 @@ export type EditorPreset = 'full' | 'tasks' | 'writing' | 'off';
 const OFF_IN: Readonly<Record<EditorPreset, ReadonlySet<EditorToggle>>> = {
   full: new Set(),
   tasks: new Set(['referenceCounts', 'unlinkedMentions', 'breadcrumbs']),
-  writing: new Set(['referenceCounts', 'unlinkedMentions', 'breadcrumbs', 'taskDependencies', 'dailyNoteActions', 'stepProgress', 'hubProgress', 'taskDueHints']),
+  writing: new Set(['referenceCounts', 'unlinkedMentions', 'breadcrumbs', 'taskDependencies', 'dailyNoteActions', 'stepProgress', 'hubProgress', 'taskDueHints', 'trackPromises']),
   off: new Set(EDITOR_TOGGLES),
 };
 

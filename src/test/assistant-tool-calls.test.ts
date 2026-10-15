@@ -41,7 +41,7 @@ async function readText(
 suite('Assistant tool calls', () => {
   test('registers the query and tag tools', () => {
     const { registered } = createTools();
-    assert.deepStrictEqual(registered, ['deckard_query', 'deckard_list_tags', 'deckard_describe_tag', 'deckard_add_task', 'deckard_change_task', 'deckard_list_questions', 'deckard_answer_question']);
+    assert.deepStrictEqual(registered, ['deckard_query', 'deckard_list_tags', 'deckard_describe_tag', 'deckard_define_term', 'deckard_add_task', 'deckard_change_task', 'deckard_list_questions', 'deckard_answer_question']);
   });
 
   test('asks before the first call in a session, and not after', async () => {

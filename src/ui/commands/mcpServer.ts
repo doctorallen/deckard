@@ -432,7 +432,7 @@ export class DeckardMcpServer implements vscode.Disposable {
     return {
       serverInfo: { name: 'deckard', version: this.version },
       instructions:
-        "Deckard indexes the Markdown notes and checklist tasks in the user's VS Code workspace. Use deckard_query to find notes and tasks, and deckard_list_tags first when you need a tag's exact name. Use deckard_describe_tag to describe one tag, person, or typed row: its type and fields (who leads a team, what it owns), the reverses other rows give it, its open tasks, and its latest entries. Use deckard_list_questions for the open questions the notes ask, lines written - [?], and deckard_answer_question to write an answer under one. When the workspace defines types, deckard_query and deckard_list_tags name them and their fields.",
+        "Deckard indexes the Markdown notes and checklist tasks in the user's VS Code workspace. Use deckard_query to find notes and tasks, and deckard_list_tags first when you need a tag's exact name. Use deckard_describe_tag to describe one tag, person, or typed row: its type and fields (who leads a team, what it owns), the reverses other rows give it, its open tasks, and its latest entries. Use deckard_list_questions for the open questions the notes ask, lines written - [?], and deckard_answer_question to write an answer under one. Use deckard_define_term for what a short term in the notes, such as NDF or UAT, means and where it was defined. When the workspace defines types, deckard_query and deckard_list_tags name them and their fields.",
       tools: this.tools,
       callTool: async (name, args) => {
         // An early call waits for the first scan rather than answer from part of it.
