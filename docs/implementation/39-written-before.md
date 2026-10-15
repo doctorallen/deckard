@@ -119,3 +119,47 @@ impractical:
 - **The timing test** builds a generated workspace of 3,000 notes of 30
   lines each, words drawn as a language draws them, builds the line index
   once outside the timing, and holds the median of 30 lines under 15 ms.
+
+Fixed after QA, before release:
+
+- **A hover after an edit.** The lines with matches were kept by line
+  number through edits, so a line written above a marked one left its
+  matches on the line that took its number, and Link it here appended to
+  that line. Each marked line now keeps the words its matches were found
+  for, and the hover has none for a line that reads otherwise; an edit
+  clears the marks and the gutter until the note is compared again.
+- **The gutter after an edit.** A pass under way when the note shrank read
+  lines past its end and threw. An edit now stops the pass, and a pass
+  never reads a line the note no longer has.
+- **Headings, front matter, and code** were compared on the cursor's line
+  and in the gutter, though the line index leaves them out; both now leave
+  out the same lines (`findUnindexedLines`).
+- **One reading per version.** The hints read the active note once per
+  version of it, and not at all while it reads as the index read it, where
+  each rest of the cursor read the whole note again. The note is still read
+  whole when it has changed, not the cursor's line alone: the tags a line is
+  compared with come from the headings and tagged lines above it, as the
+  parser reads them (about 50 ms for a 20,000-line note, 1 ms for 500).
+- **The first build off the host's path.** The line index's first build
+  read every note in one turn, about 2.2 s on 10,000 notes of 30 lines,
+  holding the extension host. It now reads a slice of notes at a time,
+  15 ms each, with the host free between (`buildLineIndexSlice`, driven by
+  `ui/state/lineIndexBuild.ts`); an index is brought up at once only when
+  at most 200 notes are to be read (`peekLineIndex`), so a save, or a test's
+  small workspace, costs what it did. Until the lines are ready the hint,
+  the gutter, the question lenses, the Questions view, and Home's widget
+  show no match or offer, and each redraws on `onDidBuildLineIndex`. A
+  settings change that reads every note again rebuilds the lines the same
+  way.
+- **Matches kept across a save.** Each index cleared every line's cached
+  matches. A newer index now keeps a line's matches unless a changed note,
+  in either version, has a line sharing three of its uncommon words, its
+  own note's lines left out (`keepWrittenBefore`), so saving the note being
+  written keeps them all. A word's weight drifts a little with any change;
+  the matches kept are ranked as they were. The timing tests
+  (`written-before.test.ts`, *what the first build and a save cost*) hold
+  the median slice of a 3,000-note build under three times its budget and
+  the longest under a third of reading every note at once, and the median
+  of a save's offers under a quarter of ranking every question, each
+  measured in the same run, so a slower or loaded machine stretches both
+  sides alike.

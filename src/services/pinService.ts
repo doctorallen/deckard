@@ -12,7 +12,8 @@ import { createPinForLine } from '../domain/notes/pins';
 /** Where pins are kept, told apart by `pinKey`. */
 export interface PinStore {
   isPinned(key: string): boolean;
-  pinNote(pin: PinnedNote): PromiseLike<boolean | void>;
+  /** Resolves with what the pin did to Home's widgets, which this does not read. */
+  pinNote(pin: PinnedNote): PromiseLike<unknown>;
   unpinNote(key: string): PromiseLike<void>;
 }
 

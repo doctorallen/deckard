@@ -6,9 +6,10 @@
  *
  * A line is weighed as Related Notes weighs an entry, by BM25 over its
  * terms (wordSimilarity.ts), with every line of the workspace as the
- * corpus. It is built on first use, and after that each index brings only
- * the notes that changed: a note's lines are read once per parsed note,
- * which the index keeps until the note changes.
+ * corpus. It is built once, a slice of notes at a time between the host's
+ * turns (`buildLineIndexSlice`), and after that each index brings only the
+ * notes that changed: a note's lines are read once per parsed note, which
+ * the index keeps until the note changes.
  */
 import { findFrontmatterEnd } from '../markdown/frontmatter';
 import { findFencedLines, isHeading } from '../markdown/lineShapes';
@@ -122,17 +123,51 @@ class LineIndexState implements LineIndex {
 
   /** Brings the lines to `index`: the notes it no longer has go, and the ones that changed are read again. */
   public update(index: WorkspaceIndex): void {
-    this.files.forEach((file, filePath) => {
-      if (index.files.get(filePath) !== file) {
-        this.remove(filePath);
+    this.updateUntil(index, () => false);
+  }
+
+  /**
+   * Brings the lines toward `index` until `stop` says to, after a note:
+   * the notes it no longer has, or has otherwise, go, then the ones it has
+   * are read. True once every note is read, when the lines are `index`'s.
+   */
+  public updateUntil(index: WorkspaceIndex, stop: () => boolean): boolean {
+    for (const [filePath, file] of [...this.files]) {
+      if (index.files.get(filePath) === file) {
+        continue;
       }
-    });
+      this.remove(filePath);
+      if (stop()) {
+        return false;
+      }
+    }
+    for (const [filePath, file] of index.files) {
+      if (this.files.get(filePath) === file) {
+        continue;
+      }
+      this.add(file);
+      if (stop()) {
+        return false;
+      }
+    }
+    this.index = index;
+    return true;
+  }
+
+  /** How many notes of `index` are not read as it has them: new, changed, or gone. */
+  public countBehind(index: WorkspaceIndex): number {
+    let behind = 0;
     index.files.forEach((file, filePath) => {
       if (this.files.get(filePath) !== file) {
-        this.add(file);
+        behind += 1;
       }
     });
-    this.index = index;
+    this.files.forEach((_file, filePath) => {
+      if (!index.files.has(filePath)) {
+        behind += 1;
+      }
+    });
+    return behind;
   }
 
   private add(file: ParsedFile): void {
@@ -187,14 +222,136 @@ let current: LineIndexState | undefined;
 
 /**
  * The line index of `index`, built the first time it is asked for and then
- * brought up to each index by the notes that changed.
+ * brought up to each index by the notes that changed. It reads every note
+ * at once when it must; the extension asks `peekLineIndex` instead, and
+ * builds it with `buildLineIndexSlice`.
  */
 export function getLineIndex(index: WorkspaceIndex): LineIndex {
-  current ??= new LineIndexState();
-  if (current.index !== index) {
-    current.update(index);
+  const lines = stateFor(index);
+  if (lines.index !== index) {
+    lines.update(index);
+  }
+  return lines;
+}
+
+/**
+ * The lines to bring up to `index`: the ones kept, which read the notes
+ * that changed and drop those gone, or new ones, which read every note of
+ * `index`, whichever reads fewer, as when a test's small workspace follows
+ * a large one.
+ */
+function stateFor(index: WorkspaceIndex): LineIndexState {
+  if (!current || (current.index !== index && index.files.size < current.countBehind(index))) {
+    current = new LineIndexState();
   }
   return current;
+}
+
+/**
+ * At most this many notes are read at once to bring the lines up to an
+ * index; more, as the first build of a workspace, or a settings change
+ * that reads every note again, and they are read in slices instead.
+ */
+const AT_ONCE_LIMIT = 200;
+
+/**
+ * The line index of `index` when it costs little: brought up to `index`
+ * at once when at most 200 notes are to be read or dropped. Undefined when more are, until `buildLineIndexSlice` has read
+ * them, so a caller shows nothing rather than holding the host up for
+ * seconds.
+ */
+export function peekLineIndex(index: WorkspaceIndex): LineIndex | undefined {
+  const lines = stateFor(index);
+  if (lines.index !== index) {
+    if (lines.countBehind(index) > AT_ONCE_LIMIT) {
+      return undefined;
+    }
+    lines.update(index);
+  }
+  return lines;
+}
+
+/**
+ * Builds the line index of `index` a slice at a time: reads notes until
+ * `stop` says to, after a note, and says whether it is done, when
+ * `peekLineIndex(index)` has it. Called again, with `index` or a newer
+ * one, it goes on from where it stopped.
+ */
+export function buildLineIndexSlice(index: WorkspaceIndex, stop: () => boolean): boolean {
+  const lines = stateFor(index);
+  return lines.index === index || lines.updateUntil(index, stop);
+}
+
+/** The notes two indexes hold differently, by path: added, gone, or read again. */
+export function listChangedNotes(before: WorkspaceIndex, after: WorkspaceIndex): string[] {
+  const changed: string[] = [];
+  after.files.forEach((file, filePath) => {
+    if (before.files.get(filePath) !== file) {
+      changed.push(filePath);
+    }
+  });
+  before.files.forEach((_file, filePath) => {
+    if (!after.files.has(filePath)) {
+      changed.push(filePath);
+    }
+  });
+  return changed;
+}
+
+/**
+ * The lines the notes in `changed` hold in either index, by each term they
+ * hold: only such a line can have joined a search's matches since `before`,
+ * or left them, and only when it shares enough of the search's words.
+ */
+export function readChangedLines(
+  before: WorkspaceIndex,
+  after: WorkspaceIndex,
+  changed: readonly string[],
+): Map<string, IndexedLine[]> {
+  const byTerm = new Map<string, IndexedLine[]>();
+  changed.forEach((filePath) =>
+    [before.files.get(filePath), after.files.get(filePath)].forEach((file) =>
+      file &&
+      readFileLines(file).lines.forEach((line) =>
+        new Set(line.terms).forEach((term) => {
+          const lines = byTerm.get(term);
+          if (lines) {
+            lines.push(line);
+          } else {
+            byTerm.set(term, [line]);
+          }
+        }),
+      ),
+    ),
+  );
+  return byTerm;
+}
+
+/**
+ * Whether a changed line shares at least `minShared` of `terms`, leaving
+ * out the lines `ignore` names: whether a search for those words can have
+ * found other lines since.
+ */
+export function reachesSearch(
+  changedLines: ReadonlyMap<string, readonly IndexedLine[]>,
+  terms: Iterable<string>,
+  minShared: number,
+  ignore: (line: IndexedLine) => boolean = () => false,
+): boolean {
+  const shared = new Map<IndexedLine, number>();
+  for (const term of new Set(terms)) {
+    for (const line of changedLines.get(term) ?? []) {
+      if (ignore(line)) {
+        continue;
+      }
+      const count = (shared.get(line) ?? 0) + 1;
+      if (count >= minShared) {
+        return true;
+      }
+      shared.set(line, count);
+    }
+  }
+  return false;
 }
 
 /**
@@ -208,8 +365,7 @@ function readFileLines(file: ParsedFile): FileLines {
     return cached;
   }
   const texts = file.content.split(/\r?\n/);
-  const skipped = findFencedLines(texts);
-  const frontmatterEnd = findFrontmatterEnd(texts) ?? -1;
+  const skipped = findUnindexedLines(texts);
   const taskLines = new Set(file.tasks.map((task) => task.lineNumber));
   const questionLines = new Set((file.questions ?? []).map((question) => question.lineNumber));
   const at = noteDay(file);
@@ -217,7 +373,7 @@ function readFileLines(file: ParsedFile): FileLines {
   const termLines = new Map<string, number>();
   let length = 0;
   texts.forEach((text, lineIndex) => {
-    if (lineIndex <= frontmatterEnd || skipped.has(lineIndex) || !text.trim() || isHeading(text)) {
+    if (skipped.has(lineIndex) || !text.trim()) {
       return;
     }
     const terms = getLineTerms(text);
@@ -243,6 +399,25 @@ function readFileLines(file: ParsedFile): FileLines {
   const read = { lines, termLines, length };
   linesByFile.set(file, read);
   return read;
+}
+
+/**
+ * The lines of a note the index leaves out, by zero-based line: its front
+ * matter, its fenced code, and its headings, which are no lines anyone
+ * writes twice. Written before leaves them out of the lines it compares too.
+ */
+export function findUnindexedLines(texts: readonly string[]): Set<number> {
+  const skipped = findFencedLines(texts);
+  const frontmatterEnd = findFrontmatterEnd(texts) ?? -1;
+  for (let line = 0; line <= frontmatterEnd; line += 1) {
+    skipped.add(line);
+  }
+  texts.forEach((text, line) => {
+    if (isHeading(text)) {
+      skipped.add(line);
+    }
+  });
+  return skipped;
 }
 
 /** Whether a line is a question's, a task's, or neither. */

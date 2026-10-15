@@ -275,7 +275,7 @@ export class TaskService<U extends ResourceUri, H = unknown> {
       const completion = writeCompletion(replacement, task.checkboxColumn, {
         now,
         eol,
-        steps: readStepsForNextOccurrence(lines, lineIndex),
+        steps: readStepsForNextOccurrence(lines, lineIndex, statuses),
       });
       return {
         text: completion.text,
@@ -359,9 +359,10 @@ export class TaskService<U extends ResourceUri, H = unknown> {
     const { checkboxColumn } = task;
     return this.rewrite<Completion>(task, (line, { eol, lines, lineIndex }) => {
       const next = createNextOccurrence(line, checkboxColumn, this.options.clock.now());
+      const statuses = readTaskStatusSettings(this.options.configuration.getConfiguration('deckard', uri));
       return next === undefined
         ? { text: line }
-        : { text: [next, ...readStepsForNextOccurrence(lines, lineIndex), line].join(eol), outcome: { next } };
+        : { text: [next, ...readStepsForNextOccurrence(lines, lineIndex, statuses), line].join(eol), outcome: { next } };
     });
   }
 
@@ -395,7 +396,7 @@ export class TaskService<U extends ResourceUri, H = unknown> {
     }
     const configuration = this.options.configuration.getConfiguration('deckard', uri);
     const statuses = readTaskStatusSettings(configuration);
-    const open = findStepFamily(lines, taskLine).steps.filter((line) => !isClosedTaskLine(lines[line], statuses));
+    const open = findStepFamily(lines, taskLine, statuses).steps.filter((line) => !isClosedTaskLine(lines[line], statuses));
     if (open.length === 0) {
       return { kind: 'stale', uri };
     }

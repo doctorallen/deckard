@@ -143,8 +143,8 @@ impractical:
   is uncommon when it is no stop word, not one of a short list of words
   every note writes (*today*, *meeting*, *notes*…), and in at most 2% of
   lines (any such word below 50 lines). A typed row's field answers first,
-  ahead of any line. Not it is kept as `<question id>␀<hash of the line's
-  words>` in workspace state under `deckard.questions.notIt`, the last 500,
+  ahead of any line. Not it is kept as `<question's note>␀<hash of its
+  words>␀<hash of the line's words>` in workspace state under `deckard.questions.notIt`, the last 500,
   apart from the preferences blob, as plan 38 asks.
 - **The lens** has its own switch, `deckard.editor.questions`, as every
   group of lenses does (on in Full, Tasks, and Writing; off in Off). Its
@@ -198,3 +198,67 @@ impractical:
   nothing for a question outside a drawn card. The parse format is now
   `type-words-questions`, plan 43's and this plan's changes together, so a
   cache is rebuilt once.
+
+Fixed after QA, before release:
+
+- **Undo, then a write at once.** Undo Last Change wrote a note no editor
+  showed straight to disk, so the extension host's copy kept the old text
+  until the watcher caught up, and a write in that moment (an answer, a
+  task completed) edited the old copy, its save failed unnoticed, and the
+  write said it was done. `planUndo` now puts every note back through
+  `applyEdit` and saves it, as a write lands (an edit opens no tab), and
+  `writeNow` and `applyUndo` check each `document.save()`: a note VS Code
+  cannot save is reported with Open Note, and the write is `applied: false`
+  with the note in `unsaved` (`workspace-writes.test.ts`,
+  `scopes/workspace-writes-scopes.test.ts`).
+- **A question under a task is no step.** `findStepFamily` read any
+  checkbox as a step or a step's task, so completing a repeating task
+  copied a `- [?]` under it into the next occurrence as `- [ ]`, completing
+  a task said a question was an open step and Complete Steps checked it,
+  and a task under a question took the question for its task. It now reads
+  each line's character with the reader's statuses (`deckard.tasks.statuses`)
+  and skips a question's and a `nonTask` status's lines, as the parser does;
+  every caller passes the statuses it read.
+- **The task lightbulb and `deckard.onTaskLine`** read a `- [?]` line as a
+  task, so a question offered Edit task… and Break into steps…, and the
+  palette offered Edit Task on it. They, and a note's actions, now read
+  the line's character with the note's statuses (`isStatusTaskLine`).
+- **Find's Ask it** sat above a typed day's row and above results with some
+  of the words, so Enter on *tomorrow* wrote `- [?] Tomorrow?`. It is left
+  out when a day row is offered, and with results it follows the message
+  that they have only some of the words. Its label is *Ask it in today's
+  note*, the question in its detail: VS Code lifts a row whose label matches
+  what is typed above every row that does not, which put the old label,
+  holding the words, first again.
+- **A miss** was counted whenever Find closed on a search that missed, even
+  after one of its partial results was opened. It is counted only when the
+  reader leaves without opening a row (or a day, a capture, a new note, or
+  a link), and still forgotten once the words are asked.
+- **Not it** was kept by the question's id, which counts its line, so a
+  line written above a question brought back the offer set aside. It is
+  kept by the question's note and a hash of its words instead (unshipped,
+  so nothing is moved over); a question asked in other words is offered
+  again.
+- **The answer's day** was the first day on the answer's line, so Use as
+  answer's `[[2026-09-02#Access]] (2026-10-14)` was dated by its link. The
+  `(YYYY-MM-DD)` at the line's end is read first, and links are left out
+  of the words searched for any other day.
+- **A tab-indented question** was answered by a line indented less far,
+  since indentation was compared in characters. The answer, and the lines
+  that never answer a question, now compare it in columns, a tab reaching
+  the next multiple of four, as list nesting does (`lineIndent`).
+- **Offers after a save.** Every index ranked every open question again,
+  about 760 ms for 200 questions over 10,000 notes. `updateAnswerOffers`
+  starts from the last index's offers and ranks again only the questions
+  whose note changed or that a changed note's line, old or new, shares three
+  uncommon words with (`reachesSearch`), so a save costs a few milliseconds;
+  more than 200 changed notes rank every question. While the line index is
+  first built (plan 39's As built) no offer is made, and the lens, the view,
+  and Home's widget redraw once it is.
+- **Create note and Add** had the same fault as Ask it: their labels held
+  the words, so VS Code lifted them above results with some of the words,
+  where Enter created a note or added a task. Their labels are now *Create
+  note* and *Add to today's note*, the words in the description and the
+  task's line in the detail. They come first, after Ask it, when Find
+  found nothing (no answer, tag, saved search, note, task, or question),
+  and after the results otherwise.

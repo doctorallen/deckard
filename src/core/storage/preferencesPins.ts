@@ -1,7 +1,14 @@
 import type { PinnedNote } from '../../domain/model/preferences';
 import type { PreferencesRepository } from './preferencesRepository';
 import type { DashboardWidgetConfig } from '../../domain/model/preferences';
+import { HOME_WIDGET_LIMIT } from '../../domain/dashboard/widgetCatalog';
 import { PINNED_NOTE_LIMIT, pinKey } from './preferencesSchema';
+
+/**
+ * What a pin did to Home's widgets: added its Pinned notes widget, found
+ * Home too full to add it, or left the widgets as they were.
+ */
+export type PinWidgetChange = 'added' | 'homeFull' | 'none';
 
 /**
  * The notes and headings pinned to Home, in the order they were pinned and
@@ -15,23 +22,24 @@ export class PinsService {
   /**
    * Pins a note to Home, after the notes pinned before it. Home lists pins
    * in its Pinned notes widget, which it does not start with, so the first
-   * pin adds that widget, under the search, where a pin can be seen. Says
-   * whether it added the widget.
+   * pin adds that widget, under the search, where a pin can be seen, unless
+   * Home already holds as many widgets as it may: adding one then would
+   * push its last widget off. Says which.
    */
-  public async pinNote(pin: PinnedNote): Promise<boolean> {
+  public async pinNote(pin: PinnedNote): Promise<PinWidgetChange> {
     const { pinnedNotes = [], dashboardWidgets } = this.repository.current;
     if (
       pinnedNotes.some((candidate) => pinKey(candidate) === pinKey(pin)) ||
       pinnedNotes.length >= PINNED_NOTE_LIMIT
     ) {
-      return false;
+      return 'none';
     }
-    const hasWidget = dashboardWidgets.some((widget) => widget.kind === 'pinnedNotes');
+    const change = readWidgetChange(dashboardWidgets);
     await this.repository.update({
       pinnedNotes: [...pinnedNotes, pin],
-      ...(hasWidget ? {} : { dashboardWidgets: withPinnedNotesWidget(dashboardWidgets) }),
+      ...(change === 'added' ? { dashboardWidgets: withPinnedNotesWidget(dashboardWidgets) } : {}),
     });
-    return !hasWidget;
+    return change;
   }
 
   /** Unpins the pin a row names, by the key `pinKey` writes for it. */
@@ -49,6 +57,14 @@ export class PinsService {
       (candidate) => pinKey(candidate) === key,
     );
   }
+}
+
+/** What the first pin does to Home's widgets: nothing once it has Pinned notes, and nothing while it is full. */
+function readWidgetChange(widgets: readonly DashboardWidgetConfig[]): PinWidgetChange {
+  if (widgets.some((widget) => widget.kind === 'pinnedNotes')) {
+    return 'none';
+  }
+  return widgets.length >= HOME_WIDGET_LIMIT ? 'homeFull' : 'added';
 }
 
 /**

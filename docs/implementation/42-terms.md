@@ -158,3 +158,9 @@ made its words impractical:
   and Define…), `term-hovers.test.ts` (host: the hover's content and
   links, none in code), and additions to the assistant tool, MCP, sample,
   typed-note-draft, and extension suites.
+- **The 3,000-note timing test** holds the median of three builds, each
+  over new copies of the notes, under one second, where one build was held
+  under 200 ms: it builds in about 100 ms on a laptop, and a single run
+  under a loaded test run took up to 230 ms. A second makes room for a
+  slower CI runner and still fails a table that reads its notes many times
+  over.

@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 
 import { createPreferences } from './preferenceServices';
+import { HOME_WIDGET_LIMIT } from '../domain/dashboard/widgetCatalog';
 import { DEFAULT_DASHBOARD_WIDGETS, isDefaultHomeLayout, normalizeDashboardWidgets, pinKey } from '../core/storage/preferencesSchema';
 
 class MemoryMemento {
@@ -413,9 +414,9 @@ suite('Preferences store', () => {
     const store = createPreferences(new MemoryMemento());
     const kinds = (): string[] => store.reader.value.dashboardWidgets.map((widget) => widget.kind);
     assert.strictEqual(kinds().includes('pinnedNotes'), false, 'Home starts without one');
-    assert.strictEqual(await store.pins.pinNote({ filePath: 'notes/a.md' }), true);
+    assert.strictEqual(await store.pins.pinNote({ filePath: 'notes/a.md' }), 'added');
     assert.strictEqual(kinds()[kinds().indexOf('search') + 1], 'pinnedNotes');
-    assert.strictEqual(await store.pins.pinNote({ filePath: 'notes/b.md' }), false);
+    assert.strictEqual(await store.pins.pinNote({ filePath: 'notes/b.md' }), 'none');
     assert.strictEqual(kinds().filter((kind) => kind === 'pinnedNotes').length, 1);
 
     // Taken off Home, the widget comes back with the next pin, since a pin
@@ -423,7 +424,23 @@ suite('Preferences store', () => {
     await store.homeWidgets.setDashboardWidgets(
       store.reader.value.dashboardWidgets.filter((widget) => widget.kind !== 'pinnedNotes'),
     );
-    assert.strictEqual(await store.pins.pinNote({ filePath: 'notes/c.md' }), true);
+    assert.strictEqual(await store.pins.pinNote({ filePath: 'notes/c.md' }), 'added');
+    store.repository.dispose();
+  });
+
+  test('the first pin on a full Home adds no widget, so none of Home\'s is pushed off, and says so', async () => {
+    const store = createPreferences(new MemoryMemento());
+    const widgets = [
+      { id: 'search', kind: 'search' as const, width: 'full' as const },
+      ...Array.from({ length: HOME_WIDGET_LIMIT - 1 }, (_, at) => ({ id: `tasks-${at}`, kind: 'tasks' as const, width: 'half' as const, query: `tag:#t${at}` })),
+    ];
+    await store.homeWidgets.setDashboardWidgets(widgets);
+    const ids = (): string[] => store.reader.value.dashboardWidgets.map((widget) => widget.id);
+    const before = ids();
+    assert.strictEqual(before.length, HOME_WIDGET_LIMIT);
+    assert.strictEqual(await store.pins.pinNote({ filePath: 'notes/a.md' }), 'homeFull');
+    assert.deepStrictEqual(ids(), before, 'every widget Home had is kept');
+    assert.deepStrictEqual(store.reader.value.pinnedNotes?.map((pin) => pin.filePath), ['notes/a.md'], 'the pin is kept, for Find');
     store.repository.dispose();
   });
 
@@ -431,7 +448,7 @@ suite('Preferences store', () => {
     const store = createPreferences(new MemoryMemento());
     const paths = (): (string | undefined)[] =>
       (store.reader.value.pinnedNotes ?? []).map((pin) => pin.filePath);
-    assert.strictEqual(await store.pins.pinNote({ filePath: 'notes/a.md' }), true);
+    assert.strictEqual(await store.pins.pinNote({ filePath: 'notes/a.md' }), 'added');
     await store.pins.pinNote({ filePath: 'notes/b.md' });
     await store.pins.pinNote({ filePath: 'notes/a.md' });
     assert.deepStrictEqual(paths(), ['notes/a.md', 'notes/b.md']);

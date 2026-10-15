@@ -19,6 +19,9 @@ import { parseQuery } from '../domain/query/queryParser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { createQueryContext } from '../domain/query/queryContext';
 import { Task } from '../domain/model';
+import { readCompletionFamily } from '../domain/tasks/taskLines';
+import { DEFAULT_TASK_STATUSES } from '../domain/tasks/taskStatuses';
+import { toggleTaskLines } from '../domain/tasks/toggleLines';
 
 function tasksOf(markdown: string): Task[] {
   return parseMarkdown('notes/plan.md', markdown).tasks;
@@ -151,6 +154,38 @@ suite('Task steps', () => {
       assert.deepStrictEqual(findStepFamily(lines, 0), { steps: [1, 4] });
       assert.deepStrictEqual(findStepFamily(lines, 1), { parent: 0, steps: [2] });
       assert.deepStrictEqual(findStepFamily(lines, 5), { steps: [] });
+    });
+
+    test('a question under a task is no step, and a task under a question has no task above it', () => {
+      const lines = ['- [ ] Prepare the review', '  - [?] Who signs off on the budget?', '    - [ ] Ask Priya', '  - [ ] Book the room'];
+      assert.deepStrictEqual(findStepFamily(lines, 0), { steps: [3] });
+      assert.deepStrictEqual(findStepFamily(lines, 2), { steps: [] });
+      // With `?` given to a status of the reader's own, the line is a task again.
+      const own = [...DEFAULT_TASK_STATUSES.filter((status) => status.symbol !== '?'), { symbol: '?', name: 'Unsure', type: 'todo' as const }];
+      assert.deepStrictEqual(findStepFamily(lines, 0, own), { steps: [1, 3] });
+      // A line of a status that is no task is no step either.
+      const noted = [...DEFAULT_TASK_STATUSES, { symbol: 'n', name: 'Note', type: 'nonTask' as const }];
+      assert.deepStrictEqual(findStepFamily(['- [ ] Plan', '  - [n] Context', '  - [ ] One'], 0, noted), { steps: [2] });
+    });
+
+    test('completing a task with a question under it finds no open step, and the question is no task\'s last step', () => {
+      const lines = ['# N', '- [ ] Prepare the review', '  - [?] Who signs off on the budget?', '    - [ ] Ask Priya', ''];
+      assert.strictEqual(readCompletionFamily(lines, 1, '- [x] Prepare the review ✅ 2026-10-14').openSteps, 0);
+      assert.strictEqual(readCompletionFamily(lines, 3, '    - [x] Ask Priya ✅ 2026-10-14').lastStepOf, undefined);
+    });
+
+    test('a repeating task\'s next occurrence takes its steps and leaves a question under it where it is', () => {
+      const documentLines = ['# N', '- [ ] Weekly sync 🔁 every week 📅 2026-10-14', '  - [?] Ask about the budget?', '  - [x] Send the notes ✅ 2026-10-14', ''];
+      const result = toggleTaskLines([{ line: 1, text: documentLines[1] }], new Date(2026, 9, 14, 12).getTime(), {
+        format: 'emoji',
+        eol: '\n',
+        documentLines,
+      });
+      assert.deepStrictEqual(result.lines[0].after.split('\n').slice(0, 2), [
+        '- [ ] Weekly sync 🔁 every week 📅 2026-10-21',
+        '  - [ ] Send the notes',
+      ]);
+      assert.ok(!result.lines[0].after.includes('Ask about the budget'), result.lines[0].after);
     });
 
     test('goes after what is under the task, before the blank lines after it', () => {

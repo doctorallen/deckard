@@ -121,7 +121,7 @@ export async function rejectOffer(
   await source.ready;
   const offered = resolveOffer(source.getSnapshot(), writes.memory, argument);
   if (offered) {
-    await writes.memory.reject(notItKey(offered.question.id, offered.offer.key));
+    await writes.memory.reject(notItKey(offered.question, offered.offer.key));
   }
 }
 

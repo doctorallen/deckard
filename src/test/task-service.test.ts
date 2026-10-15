@@ -287,6 +287,20 @@ suite('Task service', () => {
     });
   });
 
+  test('a question under a task is no open step: completing the task says none, and Complete Steps leaves it', async () => {
+    const text = '- [ ] Trip\n  - [?] Who books it?\n  - [ ] Pack\n';
+    const { fake, service } = setup({ 'plan.md': text });
+    const done = await service.toggle(tasksOf('plan.md', text)[0], true);
+    assert.strictEqual(done.kind === 'updated' ? done.outcome?.family?.openSteps : undefined, 1, 'Pack, and not the question');
+    fake.texts.set(fake.uri('plan.md').toString(), text);
+    assert.deepStrictEqual(await service.completeSteps(fake.uri('plan.md'), { line: 0, lineText: '- [ ] Trip', title: 'Trip' }), {
+      kind: 'written',
+      count: 1,
+      handle: 1,
+    });
+    assert.strictEqual(fake.text('plan.md'), '- [ ] Trip\n  - [?] Who books it?\n  - [x] Pack ✅ 2026-09-25\n');
+  });
+
   test('completes no steps when the task\'s line no longer reads as it did', async () => {
     const text = '- [ ] A\n  - [ ] a1\n- [ ] B\n  - [ ] b1\n';
     const { fake, history, service } = setup({ 'plan.md': text });

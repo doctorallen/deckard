@@ -72,12 +72,12 @@ export function readCompletionFamily(
   written: string,
   statuses?: readonly TaskStatusDefinition[],
 ): CompletionFamily {
-  const family = findStepFamily(lines, lineIndex);
+  const family = findStepFamily(lines, lineIndex, statuses);
   const closed = (line: number): boolean => isClosedTaskLine(lines[line], statuses);
   const openSteps = family.steps.filter((line) => !closed(line)).length;
   let lastStepOf: CompletionFamily['lastStepOf'];
   if (family.parent !== undefined && !closed(family.parent)) {
-    const stillOpen = findStepFamily(lines, family.parent).steps.filter(
+    const stillOpen = findStepFamily(lines, family.parent, statuses).steps.filter(
       (line) => line !== lineIndex && !closed(line),
     );
     if (stillOpen.length === 0) {

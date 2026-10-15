@@ -13,7 +13,7 @@ import {
 } from '../model';
 import { makeDay, MONTH_NUMBERS, parseIsoDate, WEEKDAY_NAMES } from './calendar';
 import { findFrontmatterEnd, readFlowListValue, splitFlowListItems, splitFrontmatterValues, unquote } from './frontmatter';
-import { findListParents, findParentTaskLine } from './listNesting';
+import { findListParents, findParentTaskLine, lineIndent } from './listNesting';
 import {
   findFencedLines,
   isHeading,
@@ -2046,6 +2046,10 @@ function findQuestions(context: NoteContext, sections: Section[], dateAnchor: nu
 
 /** What opens an answer line: an optional list marker, then `Answer:`. */
 const ANSWER_LINE = /^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?answer:[ \t]*(.*)$/i;
+/** The day Answer… and Use as answer write at an answer's end: `(2026-10-14)`. */
+const ANSWERED_DAY = /\((\d{4}-\d{2}-\d{2})\)\s*$/;
+/** A wikilink or a Markdown link, whose target may name a day that is not the answer's. */
+const ANSWER_LINK = /!?\[\[[^\]]*\]\]|\[[^\]]*\]\([^)]*\)/g;
 
 /**
  * Whether a line has an answer's shape: indented, as an answer is under its
@@ -2058,6 +2062,8 @@ export function isAnswerLine(line: string): boolean {
 /**
  * A question's answer: the first line indented under it, before the next
  * line that is not, that starts with `Answer:`, with the day written on it.
+ * Indentation is compared in columns, a tab reaching the next multiple of
+ * four, as list nesting reads it.
  */
 function findQuestionAnswer(
   context: NoteContext,
@@ -2065,23 +2071,34 @@ function findQuestionAnswer(
   dateAnchor: number | undefined,
 ): Question['answer'] {
   const { lines, fencedLines } = context;
-  const indent = getLeadingWhitespaceLength(lines[questionIndex]);
+  const indent = lineIndent(lines[questionIndex]);
   for (let index = questionIndex + 1; index < lines.length; index += 1) {
     const line = lines[index];
     if (line.trim().length === 0) {
       continue;
     }
-    if (getLeadingWhitespaceLength(line) <= indent || isHeading(line)) {
+    if (lineIndent(line) <= indent || isHeading(line)) {
       return undefined;
     }
     const answer = fencedLines.has(index) ? undefined : ANSWER_LINE.exec(line);
     if (answer) {
       const text = answer[1].trim();
-      const answeredAt = findTaskDate(text, dateAnchor)?.at;
+      const answeredAt = readAnsweredAt(text, dateAnchor);
       return { text, lineNumber: index + 1, ...(answeredAt === undefined ? {} : { answeredAt }) };
     }
   }
   return undefined;
+}
+
+/**
+ * The day an answer was written: the `(2026-10-14)` at its end, as Deckard
+ * writes it, else the first day written in its words, its links left out,
+ * since `[[2026-09-02#Access]]` names the line's day, not the answer's.
+ */
+function readAnsweredAt(text: string, dateAnchor: number | undefined): number | undefined {
+  const written = ANSWERED_DAY.exec(text);
+  const day = written ? parseIsoDate(written[1]) : undefined;
+  return day ?? findTaskDate(text.replace(ANSWER_LINK, ' '), dateAnchor)?.at;
 }
 
 /**

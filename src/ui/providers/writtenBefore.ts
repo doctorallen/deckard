@@ -4,11 +4,19 @@ import { whenPublished } from '../../core/workspace/publishing';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { extractTags } from '../../domain/markdown/parser';
 import type { ParsedFile, Section, WorkspaceIndex } from '../../domain/model';
-import { describeWrittenBeforeHint, findWrittenBefore, type WrittenBeforeMatch } from '../../domain/ranking/writtenBefore';
+import { findUnindexedLines } from '../../domain/ranking/lineIndex';
+import {
+  describeWrittenBeforeHint,
+  findWrittenBefore,
+  type FoundWrittenBefore,
+  keepWrittenBefore,
+  type WrittenBeforeMatch,
+} from '../../domain/ranking/writtenBefore';
 import { measure } from '../../shared/timing';
 import { readDateFormats } from '../commands/datePrompt';
 import { readZen } from '../commands/displaySettings';
 import { describeWrittenBeforeHover, toWrittenBeforeRow, type WrittenBeforeRow } from '../state/writtenBeforeState';
+import { onDidBuildLineIndex, readLineIndex } from '../state/lineIndexBuild';
 import { readEditorToggle } from './editorToggles';
 
 /**
@@ -53,6 +61,22 @@ const GUTTER_LINES = 200;
 /** How long one turn of working out gutter marks may run before it yields. */
 const GUTTER_BUDGET_MS = 20;
 
+/** A line of the active note that has older lines like it, as they were found. */
+interface MarkedLine {
+  /** The line's words when its matches were found; the hover is for those words only. */
+  text: string;
+  matches: WrittenBeforeMatch[];
+}
+
+/** The active note as the hints read it, once per version of it. */
+interface ReadNote {
+  uri: string;
+  version: number;
+  file: ParsedFile;
+  /** The lines never compared: front matter, fenced code, and headings, as the line index leaves them out. */
+  skipped: ReadonlySet<number>;
+}
+
 /** The command a hover's links run, with their arguments. */
 function commandUri(command: string, args: unknown[]): string {
   return `command:${command}?${encodeURIComponent(JSON.stringify(args))}`;
@@ -71,15 +95,24 @@ export class WrittenBeforeHints implements vscode.HoverProvider, vscode.Disposab
   public readonly onDidChangeCursor = this.changeEmitter.event;
   private readonly disposables: vscode.Disposable[] = [this.hintType, this.changeEmitter];
   private timer: ReturnType<typeof setTimeout> | undefined;
-  /** Each line's matches, by its note and words, for the index and the pairs set aside they were found in. */
-  private found: { index?: WorkspaceIndex; rejected?: ReadonlySet<string>; byLine: Map<string, WrittenBeforeMatch[]> } = { byLine: new Map() };
-  /** The lines of the active note that have matches, by line, for the hover. */
-  private marked = new Map<number, WrittenBeforeMatch[]>();
+  /**
+   * Each line's matches, by its note and words, for the index and the pairs
+   * set aside they were found in. A newer index keeps those its changed
+   * notes cannot reach (`keepWrittenBefore`).
+   */
+  private found: { index?: WorkspaceIndex; rejected?: ReadonlySet<string>; byLine: Map<string, FoundWrittenBefore> } = { byLine: new Map() };
+  /**
+   * The lines of the active note that have matches, by line, for the
+   * hover. Cleared when the note changes, since a line number then names
+   * other words.
+   */
+  private marked = new Map<number, MarkedLine>();
   private markedUri: string | undefined;
   private isReady = false;
   /** The gutter's pass under way, which a newer one stops. */
   private gutterPass = 0;
   private cursor: CursorWrittenBefore | undefined;
+  private note: ReadNote | undefined;
 
   /** Takes the index and the pairs set aside; nothing is drawn or registered until `register`. */
   public constructor(
@@ -117,6 +150,7 @@ export class WrittenBeforeHints implements vscode.HoverProvider, vscode.Disposab
           return;
         }
         this.clearHint();
+        this.clearMarks();
         this.schedule();
       }),
       vscode.window.onDidChangeActiveTextEditor(() => {
@@ -124,10 +158,15 @@ export class WrittenBeforeHints implements vscode.HoverProvider, vscode.Disposab
         this.schedule();
       }),
       this.indexer.onDidUpdate(() => this.schedule()),
+      // Nothing is shown while the line index is first built; then the hint is.
+      onDidBuildLineIndex(() => this.update()),
       this.memory.onDidChange(() => this.update()),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('deckard.editor') || event.affectsConfiguration('deckard.display')) {
           this.update();
+        } else if (event.affectsConfiguration('deckard')) {
+          // How a note is read may have changed with it.
+          this.note = undefined;
         }
       }),
       vscode.languages.registerHoverProvider({ pattern: '**/*.md' }, this),
@@ -153,12 +192,16 @@ export class WrittenBeforeHints implements vscode.HoverProvider, vscode.Disposab
     if (document.uri.toString() !== this.markedUri) {
       return undefined;
     }
-    const matches = this.marked.get(position.line);
-    if (!matches || matches.length === 0) {
+    const marked = position.line < document.lineCount ? this.marked.get(position.line) : undefined;
+    const lineText = marked ? document.lineAt(position.line).text : undefined;
+    // The matches are for the words the line had when they were found; a
+    // line that reads otherwise now, or another line at that number, has
+    // none, so Link it here never reaches words it was not found for.
+    if (!marked || marked.matches.length === 0 || lineText !== marked.text) {
       return undefined;
     }
+    const { matches } = marked;
     const index = this.indexer.getSnapshot();
-    const lineText = document.lineAt(position.line).text;
     const rows = matches.map((match) => toWrittenBeforeRow(index, match, { now: Date.now(), dateFormats: readDateFormats() }));
     const markdown = new vscode.MarkdownString(
       describeWrittenBeforeHover(rows, (row) => ({
@@ -200,35 +243,69 @@ export class WrittenBeforeHints implements vscode.HoverProvider, vscode.Disposab
       this.clearAll();
       return;
     }
+    // While the line index is first built, nothing is compared or shown.
+    if (!readLineIndex(this.indexer.getSnapshot())) {
+      this.clearAll();
+      return;
+    }
     const document = editor.document;
-    const file = this.indexer.parse(document.uri, document.getText());
+    const note = this.readNote(document);
     const line = editor.selection.active.line;
-    const matches = measure(
-      'Written before',
-      () => this.matchesFor(file, line, document.lineAt(line).text),
-      (found) => `${found.length} matches`,
-    );
+    const text = document.lineAt(line).text;
+    const matches = note.skipped.has(line)
+      ? []
+      : measure(
+          'Written before',
+          () => this.matchesFor(note.file, line, text),
+          (found) => `${found.length} matches`,
+        );
     this.markedUri = document.uri.toString();
-    this.marked = new Map(matches.length ? [[line, matches]] : []);
+    this.marked = new Map(matches.length ? [[line, { text, matches }]] : []);
     this.drawHint(editor, line, matches);
-    this.setCursor(matches.length ? { uri: document.uri, line, text: document.lineAt(line).text, rows: this.toRows(matches) } : undefined);
-    this.markGutter(editor, file, line);
+    this.setCursor(matches.length ? { uri: document.uri, line, text, rows: this.toRows(matches) } : undefined);
+    this.markGutter(editor, note, line);
+  }
+
+  /**
+   * The note as the hints read it: the index's own reading while the note
+   * reads as the index read it, else a reading of the editor's text, made
+   * once per version of the document, so a cursor that only moves reads
+   * nothing again.
+   */
+  private readNote(document: vscode.TextDocument): ReadNote {
+    const uri = document.uri.toString();
+    if (this.note?.uri === uri && this.note.version === document.version) {
+      return this.note;
+    }
+    const text = document.getText();
+    const indexed = this.indexer.getSnapshot().files.get(this.indexer.getFilePath(document.uri));
+    const file = indexed?.content === text ? indexed : this.indexer.parse(document.uri, text);
+    this.note = { uri, version: document.version, file, skipped: findUnindexedLines(text.split(/\r?\n/)) };
+    return this.note;
   }
 
   /** The older lines like a line of the note, worked out once per index, pairs set aside, and line. */
   private matchesFor(file: ParsedFile, line: number, text: string): WrittenBeforeMatch[] {
     const index = this.indexer.getSnapshot();
     const rejected = this.memory.rejected();
-    if (this.found.index !== index || this.found.rejected !== rejected) {
+    // A newer index a gutter pass meets is not ranked against until its
+    // lines are ready, which could take a rebuild after a settings change.
+    if (!readLineIndex(index)) {
+      return [];
+    }
+    if (this.found.rejected !== rejected || !this.found.index) {
       this.found = { index, rejected, byLine: new Map() };
+    } else if (this.found.index !== index) {
+      this.found = { index, rejected, byLine: keepWrittenBefore(this.found.index, index, this.found.byLine) };
     }
     const key = `${file.filePath}\u0000${text}`;
-    let matches = this.found.byLine.get(key);
-    if (!matches) {
-      matches = findWrittenBefore(index, { text, filePath: file.filePath, tags: lineTags(file, line, text) }, { now: Date.now(), rejected });
-      this.found.byLine.set(key, matches);
+    let found = this.found.byLine.get(key);
+    if (!found) {
+      const matches = findWrittenBefore(index, { text, filePath: file.filePath, tags: lineTags(file, line, text) }, { now: Date.now(), rejected });
+      found = { filePath: file.filePath, text, matches };
+      this.found.byLine.set(key, found);
     }
-    return matches;
+    return found.matches;
   }
 
   /** The hint after the cursor's line: the first older line, its day, and its words, or `↺` alone under Zen. */
@@ -260,10 +337,10 @@ export class WrittenBeforeHints implements vscode.HoverProvider, vscode.Disposab
    * lines like them: at most the 200 nearest, nearest first, a few at a
    * time, so a long note never holds the editor up.
    */
-  private markGutter(editor: vscode.TextEditor, file: ParsedFile, cursor: number): void {
+  private markGutter(editor: vscode.TextEditor, note: ReadNote, cursor: number): void {
     const pass = (this.gutterPass += 1);
     const document = editor.document;
-    const order = nearestLines(cursor, document.lineCount, GUTTER_LINES).filter((line) => line !== cursor);
+    const order = nearestLines(cursor, document.lineCount, GUTTER_LINES).filter((line) => line !== cursor && !note.skipped.has(line));
     const marks: vscode.Range[] = [];
     const step = (from: number): void => {
       if (pass !== this.gutterPass || document.isClosed) {
@@ -273,9 +350,15 @@ export class WrittenBeforeHints implements vscode.HoverProvider, vscode.Disposab
       let at = from;
       for (; at < order.length && Date.now() - started < GUTTER_BUDGET_MS; at += 1) {
         const line = order[at];
-        const matches = this.matchesFor(file, line, document.lineAt(line).text);
+        // An edit stops the pass, but a line the note no longer has is
+        // never read, whatever the order of events.
+        if (line >= document.lineCount) {
+          continue;
+        }
+        const text = document.lineAt(line).text;
+        const matches = this.matchesFor(note.file, line, text);
         if (matches.length > 0) {
-          this.marked.set(line, matches);
+          this.marked.set(line, { text, matches });
           marks.push(new vscode.Range(line, 0, line, 0));
         }
       }
@@ -294,10 +377,20 @@ export class WrittenBeforeHints implements vscode.HoverProvider, vscode.Disposab
     return matches.map((match) => toWrittenBeforeRow(index, match, options));
   }
 
-  /** Takes the hint away while a line is being typed; the marks stay where they were. */
+  /** Takes the hint away while a line is being typed. */
   private clearHint(): void {
     vscode.window.activeTextEditor?.setDecorations(this.hintType, []);
     this.setCursor(undefined);
+  }
+
+  /**
+   * Takes the gutter's marks away from the active editor and stops the pass
+   * drawing them, as an edit does: its line numbers name other lines now.
+   */
+  private clearMarks(): void {
+    this.gutterPass += 1;
+    this.marked = new Map();
+    vscode.window.activeTextEditor?.setDecorations(this.gutterType, []);
   }
 
   /** Takes the hint and the marks away from every visible editor. */

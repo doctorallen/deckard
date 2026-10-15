@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
-import { isTaskLine } from '../../domain/markdown/taskDraft';
+import { isStatusTaskLine } from '../../domain/markdown/taskDraft';
+import { readTaskStatusOptions } from './parseSettings';
 import { createPinForLine } from '../../domain/notes/pins';
 import { WorkspaceIndex } from '../../domain/model';
 import { pinKey } from '../../core/storage/preferencesSchema';
@@ -78,7 +79,7 @@ export function readNoteActionState(
   );
   const pin = createPinForLine(index, filePath, oneBased);
   return {
-    onTaskLine: isTaskLine(editor.document.lineAt(line).text),
+    onTaskLine: isStatusTaskLine(editor.document.lineAt(line).text, readTaskStatusOptions(editor.document.uri)),
     pinned: pin !== undefined && deps.preferences.isPinned(pinKey(pin)),
     parked: index.parked?.files.has(filePath) ?? false,
     inTaggedEntry: containing.some((section) => section.tags.length > 0),

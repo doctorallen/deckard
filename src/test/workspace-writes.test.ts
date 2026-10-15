@@ -314,6 +314,79 @@ suite('Workspace writes', () => {
   });
 });
 
+/**
+ * Against VS Code's own documents only: whether a note the extension host
+ * has loaded reads what a write or an Undo left, which the stand-in's
+ * documents, read once from disk, cannot show.
+ */
+suite('Workspace writes and the documents VS Code has loaded', () => {
+  test('a write right after an Undo of a note loaded but shown nowhere starts from what the Undo put back', async () => {
+    const root = await createTemporaryRoot();
+    const note = vscode.Uri.joinPath(root, 'note.md');
+    await write(note, 'line one\nline two\n');
+    // Loaded in the extension host, as a scan or a lens leaves a note, and
+    // shown in no editor.
+    const document = await vscode.workspace.openTextDocument(note);
+    assert.ok(!vscode.window.visibleTextEditors.some((editor) => editor.document === document));
+    const history = new WorkspaceWriteHistory('never');
+
+    const first = new vscode.WorkspaceEdit();
+    first.replace(note, lineRange(0, 0, 'line one'.length), 'CHANGED');
+    assert.ok((await history.write(first, { label: 'first' })).applied);
+    assert.strictEqual((await history.undo())?.restored, 1);
+    assert.strictEqual(document.getText(), 'line one\nline two\n', 'the document reads the Undo at once');
+
+    // The next write, at once, as a command would make it.
+    const second = new vscode.WorkspaceEdit();
+    second.insert(note, new vscode.Position(1, 0), 'added\n');
+    const written = await history.write(second, { label: 'second' });
+
+    assert.ok(written.applied);
+    assert.strictEqual(await read(note), 'line one\nadded\nline two\n');
+    assert.strictEqual(document.isDirty, false);
+    assert.deepStrictEqual(
+      history.lastWrite?.notes.map(({ before }) => before),
+      ['line one\nline two\n'],
+      'the write starts from what the Undo put back',
+    );
+    await deleteTemporaryRoot(root);
+  });
+
+  test('a write VS Code cannot save is reported, is not applied, and leaves the file as it was', async () => {
+    const root = await createTemporaryRoot();
+    const note = vscode.Uri.joinPath(root, 'note.md');
+    await write(note, 'One #a tag.\n');
+    const document = await vscode.workspace.openTextDocument(note);
+    // Changed on disk behind the loaded document's back: outside a
+    // workspace folder VS Code does not read it again, so its save is
+    // refused as older than the file.
+    await write(note, 'Rewritten elsewhere.\n');
+    const history = new WorkspaceWriteHistory('never');
+    const said: string[] = [];
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const original = window.showErrorMessage;
+    window.showErrorMessage = async (text: string) => void said.push(text);
+    try {
+      const edit = new vscode.WorkspaceEdit();
+      edit.replace(note, lineRange(0, 4, 6), '#b');
+      const written = await history.write(edit, { label: 'the rename of #a' });
+
+      assert.strictEqual(written.applied, false);
+      assert.deepStrictEqual(written.applied ? [] : written.unsaved?.map(String), [note.toString()]);
+      assert.strictEqual(await read(note), 'Rewritten elsewhere.\n');
+      assert.strictEqual(history.lastWrite, undefined, 'nothing reached the disk, so there is nothing to undo');
+      assert.deepStrictEqual(said, [
+        'VS Code could not save note.md, so the change waits unsaved in its editor and the file is as before. Open the note to save the change or revert it.',
+      ]);
+    } finally {
+      window.showErrorMessage = original;
+      await vscode.window.showTextDocument(document);
+      await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+      await deleteTemporaryRoot(root);
+    }
+  });
+});
+
 suite('An Undo offered on a message', () => {
   onDisk();
 

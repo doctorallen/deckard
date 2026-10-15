@@ -10,6 +10,7 @@ import { DatePhraseOptions, nameDay, parseDatePhrase } from '../../domain/markdo
 import {
   draftCheckboxColumn,
   formatTaskDraft,
+  isStatusTaskLine,
   isTaskLine,
   parseTaskDraft,
   TaskDraft,
@@ -782,7 +783,7 @@ export async function editTaskCommand(
     now,
     eol,
     steps: existing
-      ? readStepsForNextOccurrence(editor.document.getText().split(/\r?\n/), line.lineNumber)
+      ? readStepsForNextOccurrence(editor.document.getText().split(/\r?\n/), line.lineNumber, status.statuses)
       : [],
   });
   const written = completion.text;
@@ -861,6 +862,15 @@ export function sayCompletion(edited: TaskDraft, completion: CompletionWrite): v
 const ON_TASK_LINE = 'deckard.onTaskLine';
 
 /**
+ * Whether the editor offers itself on a line: a task, read with the note's
+ * statuses, so a question's `- [?]` line, or a line of a status that is no
+ * task, is offered neither Edit task… nor Break into steps….
+ */
+function isEditableTaskLine(text: string, uri: vscode.Uri): boolean {
+  return isTaskLine(text) && isStatusTaskLine(text, readTaskStatusOptions(uri));
+}
+
+/**
  * Keeps `deckard.onTaskLine` in step with the cursor, so the palette offers
  * **Edit Task** on a task and **Add Task** anywhere else.
  *
@@ -901,7 +911,7 @@ export class TaskLineContext implements vscode.Disposable {
     const next =
       editor !== undefined &&
       isMarkdownFile(editor.document.uri) &&
-      isTaskLine(editor.document.lineAt(editor.selection.active.line).text);
+      isEditableTaskLine(editor.document.lineAt(editor.selection.active.line).text, editor.document.uri);
     if (next === this.onTaskLine) {
       return;
     }
@@ -949,7 +959,7 @@ export class TaskEditorActions implements vscode.Disposable {
       return [];
     }
     const line = document.lineAt(range.start.line).text;
-    if (!isTaskLine(line)) {
+    if (!isEditableTaskLine(line, document.uri)) {
       return [];
     }
     const action = new vscode.CodeAction(
