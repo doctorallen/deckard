@@ -110,7 +110,19 @@ plan was silent, or the code made its words impractical:
   again.
 - **The title** also drops a leading *that*, and a leading *the*, *a*, or
   *an*, as the plan's own example drops *the*, and punctuation at either
-  end.
+  end. No tag of the person's is kept in it: when the words after
+  the person are too few and the whole line is used, the person is written
+  by name (*Lunch with Sam*), and a closing *…by Friday, says @sam* is
+  dropped. `@sam` and `#person/sam` on one line are one person.
+- **Where a task cannot go.** A table row, a quote or callout line, a line
+  in an HTML comment or in indented code, and a line that is no list item
+  but is indented are never offered: a child line would end the table,
+  fall outside the quote, hide in the comment, or join the text above.
+  The line must read as the same promise with what a reader never sees
+  blanked, as words are counted (`maskNoteForWords`). (QA)
+- **Numbers and the turn of the year.** A bare numeric `11/12` is a day
+  only after a lead word or at the end of the line, so *merged 11/12 PRs*
+  is none; *on the 5th* said in December is January's. (QA)
 - **The line written** is in the order Deckard writes a task's fields, due
   before the person: `- [w] Loader retry fix lands 📅 2026-10-16 👤
   @sam-okafor`. Under a list item it lines up with the item's words; under

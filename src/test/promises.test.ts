@@ -50,6 +50,7 @@ suite('Said they would', () => {
       ['EOM', '2026-10-31'],
       ['on the 20th', '2026-10-20'],
       ['on the 2nd', '2026-11-02'],
+      ['by 10/20', '2026-10-20'],
       ['Oct 20', '2026-10-20'],
       ['October 20th', '2026-10-20'],
       ['20 Oct', '2026-10-20'],
@@ -65,6 +66,23 @@ suite('Said they would', () => {
     assert.strictEqual(dueOf('@sam will send the deck next week', { dateOptions: { weekStart: 1 } }), '2026-10-23');
     // Without an order to read it in, a numeric date is not a day.
     assert.strictEqual(dueOf('@sam will send the deck 10/20', { dateOptions: {} }), undefined);
+    // Nor, in the middle of a line without a lead word, a count.
+    assert.strictEqual(dueOf('@sam merged 11/12 PRs'), undefined);
+    assert.strictEqual(dueOf('@sam merged 11/12 PRs by 10/20'), '2026-10-20');
+  });
+
+  test('reads a day across the turn of a month and of a year', () => {
+    const december = { now: new Date(2026, 11, 20, 10).getTime() };
+    assert.strictEqual(dueOf('@sam ships it on the 5th', december), '2027-01-05');
+    assert.strictEqual(dueOf('@sam ships it by Jan 5', december), '2027-01-05');
+    assert.strictEqual(dueOf('@sam ships it by 1/5', december), '2027-01-05');
+    assert.strictEqual(dueOf('@sam ships it 1/15', { now: new Date(2026, 11, 1, 10).getTime() }), '2027-01-15');
+    // A month without the day is passed over for the next that has it.
+    assert.strictEqual(dueOf('@sam ships it on the 31st', { now: new Date(2026, 10, 5, 10).getTime() }), '2026-12-31');
+    assert.strictEqual(dueOf('@sam ships it tomorrow', { now: new Date(2026, 9, 14, 23, 59, 59).getTime() }), '2026-10-15');
+    // Weeks from Sunday: on a Sunday, this week has begun, so next week's
+    // Friday is the one after this week's.
+    assert.strictEqual(dueOf('@sam ships it next week', { now: new Date(2026, 9, 18, 10).getTime() }), '2026-10-30');
   });
 
   test('offers only a day after today and no more than 60 days off', () => {
@@ -85,6 +103,9 @@ suite('Said they would', () => {
     assert.strictEqual(dueOf('The fix lands tomorrow'), undefined);
     assert.strictEqual(dueOf('@sam says @sam will ship it tomorrow'), '2026-10-15');
     assert.strictEqual(dueOf('#person/sam ships it tomorrow'), '2026-10-15');
+    // The same person written two ways is one person.
+    assert.strictEqual(dueOf('@sam (#person/sam) ships it tomorrow'), '2026-10-15');
+    assert.strictEqual(readPromiseLine('@sam (#person/sam) ships it tomorrow', 0, reading)?.title, 'Ships it');
     assert.strictEqual(dueOf('@david ships it tomorrow'), undefined);
     assert.strictEqual(dueOf('@david ships it tomorrow', { identity: '' }), '2026-10-15');
   });
@@ -102,6 +123,25 @@ suite('Said they would', () => {
     assert.deepStrictEqual(fenced.map((promise) => promise.line), [3]);
     const frontmatter = findPromises(['---', 'note: "@sam ships it tomorrow"', '---', 'Body'], reading);
     assert.deepStrictEqual(frontmatter, []);
+  });
+
+  test('a line a task could not be written under is no promise', () => {
+    const lines = (...text: string[]) => findPromises(text, reading).map((promise) => promise.line);
+    // A table row, which the task would end.
+    assert.deepStrictEqual(lines('| Who | What |', '| --- | --- |', '| @sam | Loader fix lands by Friday |'), []);
+    // A quote or a callout, which the task would have to carry its `>` into.
+    assert.deepStrictEqual(lines('> [!note] Standup', '> @sam says the loader fix lands by Friday'), []);
+    assert.deepStrictEqual(lines('> @sam says the fix lands by Friday'), []);
+    // An HTML comment, on its line or across several.
+    assert.deepStrictEqual(lines('<!-- @sam ships the deck tomorrow -->'), []);
+    assert.deepStrictEqual(lines('<!--', '@sam ships the deck tomorrow', '-->', '@lena ships the deck tomorrow'), [3]);
+    assert.deepStrictEqual(lines('@sam ships the deck tomorrow <!-- and lunch -->'), [0]);
+    // Indented code, or an indented line that is more of the text above.
+    assert.deepStrictEqual(lines('Para line one', '', '    @sam ships the deck tomorrow'), []);
+    assert.deepStrictEqual(lines('Para line one', '    @sam ships the deck tomorrow'), []);
+    assert.deepStrictEqual(lines('\t@sam ships it tomorrow'), []);
+    // A list item at any depth is one.
+    assert.deepStrictEqual(lines('- Standup', '    - @sam ships it tomorrow'), [1]);
   });
 
   test('a promise a task under it already tracks is not offered again', () => {
@@ -128,9 +168,14 @@ suite('Said they would', () => {
     assert.strictEqual(titleOf('@sam promised that the numbers reconcile by EOW.'), 'Numbers reconcile');
     assert.strictEqual(titleOf('- @sam: UAT sign-off on Oct 20'), 'UAT sign-off');
     assert.strictEqual(titleOf('@sam to book the room on the 20th'), 'Book the room');
-    // Fewer than two words left: the whole line without the day.
-    assert.strictEqual(titleOf('- Lunch with @sam tomorrow'), 'Lunch with @sam');
-    assert.strictEqual(titleOf('By Friday, @sam replies.'), '@sam replies');
+    // Fewer than two words left: the whole line without the day, the
+    // person by name, never by their tag.
+    assert.strictEqual(titleOf('- Lunch with @sam tomorrow'), 'Lunch with Sam');
+    assert.strictEqual(titleOf('- Lunch with @sam-okafor tomorrow'), 'Lunch with Sam Okafor');
+    assert.strictEqual(titleOf('By Friday, @sam replies.'), 'Sam replies');
+    // Who said it, after the day, is left out.
+    assert.strictEqual(titleOf('The fix lands by Friday, says @sam'), 'The fix lands');
+    assert.strictEqual(titleOf('The fix lands by Friday according to #person/sam.'), 'The fix lands');
   });
 
   test('writes the waiting task under the line, in the note format and the reader statuses', () => {
@@ -161,11 +206,21 @@ suite('Said they would', () => {
       formatPromiseTask(numbered, findPromises(numbered, reading)[0], { format: 'emoji', statuses }),
       '   - [?] Ships it 📅 2026-10-15 👤 @sam',
     );
-    const paragraph = ['\t@sam ships it tomorrow'];
+    const paragraph = ['@sam ships it tomorrow'];
     assert.strictEqual(
       formatPromiseTask(paragraph, findPromises(paragraph, reading)[0], { format: 'emoji' }),
+      '  - [w] Ships it 📅 2026-10-15 👤 @sam',
+    );
+    const tabbed = ['- Standup', '\t- @sam ships it tomorrow'];
+    assert.strictEqual(
+      formatPromiseTask(tabbed, findPromises(tabbed, reading)[0], { format: 'emoji' }),
       '\t\t- [w] Ships it 📅 2026-10-15 👤 @sam',
     );
+    // Written as #person/sam, the task is assigned so, and reads as tracked.
+    const tagged = ['- #person/sam says the fix lands by Friday'];
+    const written = formatPromiseTask(tagged, findPromises(tagged, reading)[0], { format: 'dataview' });
+    assert.strictEqual(written, '  - [w] Fix lands [due:: 2026-10-16] [assignee:: #person/sam]');
+    assert.deepStrictEqual(findPromises([...tagged, written], reading), []);
   });
 
   test('remembers Not a promise by the note and the words of the line, up to a cap', async () => {

@@ -1,12 +1,13 @@
 import { addDays, formatIsoDate, makeDay, parseIsoDate, startOfDay } from '../markdown/calendar';
 import { DatePhraseOptions, parseDatePhrase, startOfWeek, Weekday } from '../markdown/dates';
-import { findFrontmatterEnd } from '../markdown/frontmatter';
 import { findCodeAndLinkRanges, isInRanges } from '../markdown/inlineRanges';
-import { findFencedLines, isHeading } from '../markdown/lineShapes';
-import { lineIndent } from '../markdown/listNesting';
+import { isHeading } from '../markdown/lineShapes';
+import { isListItemLine, lineIndent } from '../markdown/listNesting';
 import { EntityNamespaceAliases, extractTagSpans, isPersonTag } from '../markdown/parser';
+import { formatKeyWords } from '../markdown/tagKeys';
 import { formatTaskDraft, isTaskLine, parseTaskDraft } from '../markdown/taskDraft';
 import { TaskMetadataFormat } from '../markdown/taskFields';
+import { maskNoteForWords } from '../markdown/wordCount';
 import { matchesPerson } from '../query/queryEvaluator';
 import { shortHash } from '../../shared/text';
 import { DEFAULT_TASK_STATUSES, type TaskStatusDefinition } from './taskStatuses';
@@ -59,17 +60,17 @@ export interface PromiseLine {
  * Every line of a note that reads as a promise, in order. The caller says
  * the note is today's; lines the reader marked as no promise are its to
  * leave out.
+ *
+ * A line must read as the same promise with what a reader never sees
+ * blanked, as words are counted: front matter, fenced and indented code,
+ * and HTML comments, so a task is never written inside one.
  */
 export function findPromises(lines: readonly string[], reading: PromiseReading): PromiseLine[] {
-  const skipped = findFencedLines(lines);
-  const frontmatterEnd = findFrontmatterEnd(lines);
+  const shown = maskNoteForWords(lines);
   const promises: PromiseLine[] = [];
   lines.forEach((text, line) => {
-    if (skipped.has(line) || (frontmatterEnd !== undefined && line <= frontmatterEnd)) {
-      return;
-    }
     const promise = readPromiseLine(text, line, reading);
-    if (promise && !isTracked(lines, promise)) {
+    if (promise && readPromiseLine(shown[line], line, reading)?.due === promise.due && !isTracked(lines, promise)) {
       promises.push(promise);
     }
   });
@@ -81,20 +82,35 @@ export function findPromises(lines: readonly string[], reading: PromiseReading):
  * question, or a heading is not, nor a line naming no person or more than
  * one, or only the reader, nor one whose day has passed, is today, or is
  * more than 60 days off. A question written `- [?]` is a checkbox line, as
- * a task is; one in prose ends in `?`. Fenced code and front matter are
- * the note's to leave out.
+ * a task is; one in prose ends in `?`. `@sam` and `#person/sam` on one line
+ * are one person. Fenced code, front matter, and comments are
+ * `findPromises`'s to leave out.
+ *
+ * Nor is a line a task could not be written under as its child: a table
+ * row, which a line under it would end; a quote or a callout, whose child
+ * would have to carry its `>`; or a line that is no list item and is
+ * indented, which is code, or text a line indented under it would join.
  */
 export function readPromiseLine(text: string, line: number, reading: PromiseReading): PromiseLine | undefined {
   const trimmed = text.trim();
-  if (trimmed === '' || isTaskLine(text) || isHeading(text) || /\?["')\]*_]*$/.test(trimmed)) {
+  if (
+    trimmed === '' ||
+    /^[|>]/.test(trimmed) ||
+    (lineIndent(text) > 0 && !isListItemLine(text)) ||
+    isTaskLine(text) ||
+    isHeading(text) ||
+    /\?["')\]*_]*$/.test(trimmed)
+  ) {
     return undefined;
   }
   const people = extractTagSpans(text, true, reading.aliases).filter((span) => isPersonTag(span.key));
-  const keys = new Set(people.map((span) => span.key));
-  if (keys.size !== 1) {
+  if (people.some((span) => !matchesPerson(people[0].key, span.key))) {
     return undefined;
   }
   const person = people[0];
+  if (!person) {
+    return undefined;
+  }
   if (reading.identity && matchesPerson(reading.identity, person.key)) {
     return undefined;
   }
@@ -109,7 +125,11 @@ export function readPromiseLine(text: string, line: number, reading: PromiseRead
     due: day.date,
     start: day.start,
     end: day.end,
-    title: titlePromise(text, { start: person.startColumn, end: person.endColumn }, day),
+    title: titlePromise(
+      text,
+      people.map((span) => ({ start: span.startColumn, end: span.endColumn })),
+      day,
+    ),
   };
 }
 
@@ -129,6 +149,13 @@ const MONTH =
 const ORDINAL = '(?:st|nd|rd|th)';
 /** A weekday short enough to be another word: read only after a lead word. */
 const SHORT_WEEKDAY = /^(?:sun|mon|tues?|wed|thu(?:rs?)?|fri|sat)$/i;
+/**
+ * A numeric day, `10/20`, which is as often a count, *merged 11/12 PRs*:
+ * read only after a lead word or at the end of the line.
+ */
+const NUMERIC_DAY = /^\d{1,2}\//;
+/** What may follow the last words of a line: closing punctuation. */
+const LINE_END = /^[\s.,;:!)\]*_]*$/;
 
 /**
  * The shapes a promised day is said in, each a phrase `parseDatePhrase`
@@ -183,6 +210,7 @@ export function findPromisedDay(
     const phrase = match[2].toLowerCase();
     if (
       (SHORT_WEEKDAY.test(phrase) && !lead) ||
+      (NUMERIC_DAY.test(phrase) && !lead && !LINE_END.test(text.slice(end))) ||
       isInRanges(skipped, start) ||
       tags.some((tag) => start < tag.endColumn && end > tag.startColumn)
     ) {
@@ -222,11 +250,15 @@ function fridayOf(weekStartDay: number, weekStart: Weekday): number {
   return addDays(weekStartDay, (5 - weekStart + 7) % 7);
 }
 
-/** The next day after today that is the `day`th of its month, within a year. */
+/**
+ * The next day after today that is the `day`th of its month, within a
+ * year, into the next year when it must be.
+ */
 function nextDayOfMonth(day: number, today: number): number | undefined {
   const date = new Date(today);
   for (let month = 0; month <= 12; month += 1) {
-    const at = makeDay(date.getFullYear(), date.getMonth() + month, day);
+    const first = new Date(date.getFullYear(), date.getMonth() + month, 1);
+    const at = makeDay(first.getFullYear(), first.getMonth(), day);
     if (at !== undefined && at > today) {
       return at;
     }
@@ -236,6 +268,8 @@ function nextDayOfMonth(day: number, today: number): number | undefined {
 
 /** The words that say a person reported what follows: `says`, `will`, `promised`, and the like. */
 const REPORTING_VERB = /^(?:says|said|will|promised|promises|to)\b[ \t]*/i;
+/** The same words before a person who ends the line: `…by Friday, says @sam`. */
+const REPORTED_BY = /[\s,;:–—-]*\b(?:says|said|promised|promises|per|according to)[ \t]*$/i;
 
 /**
  * The waiting task's title: the words after the person and a reporting
@@ -244,14 +278,16 @@ const REPORTING_VERB = /^(?:says|said|will|promised|promises|to)\b[ \t]*/i;
  * `@sam says the loader retry fix lands by Friday.` is "Loader retry fix
  * lands".
  * When that leaves fewer than two words, the whole line without the day
- * phrase.
+ * phrase, and without `says @sam` when it ends with that. `people` are the
+ * person's tags on the line, in order, the first the one the words follow;
+ * no tag of theirs is kept in the title, which is assigned to them anyway:
+ * one in the middle of the line is written as their name, *Lunch with Sam*.
  */
-export function titlePromise(text: string, person: Span, day: Span): string {
-  const without = (from: number, to: number): string =>
-    day.start >= from && day.end <= to
-      ? `${text.slice(from, day.start)} ${text.slice(day.end, to)}`
-      : text.slice(from, to);
-  const after = without(person.end, text.length)
+export function titlePromise(text: string, people: readonly Span[], day: Span): string {
+  const [person, ...others] = people;
+  const line = [day, ...others].reduce(blankSpan, text).replace(/\([\s]*\)|\[[\s]*\]/g, (empty) => ' '.repeat(empty.length));
+  const after = line
+    .slice(person.end)
     .replace(/^[\s:,;–—-]+/, '')
     .replace(REPORTING_VERB, '')
     .replace(/^that\b[ \t]*/i, '')
@@ -260,7 +296,23 @@ export function titlePromise(text: string, person: Span, day: Span): string {
   if (title.split(' ').filter(Boolean).length >= 2) {
     return title;
   }
-  return tidyTitle(without(0, text.length).replace(/^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?/, ''));
+  const before = line.slice(0, person.start);
+  const rest = line.slice(person.end);
+  const whole = LINE_END.test(rest) && REPORTED_BY.test(before)
+    ? before.replace(REPORTED_BY, '')
+    : `${before}${personWords(text.slice(person.start, person.end))}${rest}`;
+  return tidyTitle(whole.replace(/^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?/, ''));
+}
+
+/** A line with a stretch of it blanked to spaces, so its columns are kept. */
+function blankSpan(text: string, span: Span): string {
+  return text.slice(0, span.start) + ' '.repeat(Math.max(0, span.end - span.start)) + text.slice(span.end);
+}
+
+/** A person's tag as words: `Sam Okafor` for `@sam-okafor` or `#person/sam-okafor`. */
+function personWords(tag: string): string {
+  const bare = tag.replace(/^[#@]/, '');
+  return formatKeyWords(bare.slice(bare.lastIndexOf('/') + 1));
 }
 
 /** Words as a title: spaces collapsed, punctuation at either end off, first letter capitalized. */
