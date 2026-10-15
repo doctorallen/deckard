@@ -275,10 +275,34 @@ function holdsAlready(reading: FieldReading): boolean {
 
 /**
  * What a field reading writes: the value alone, for a field that holds one;
- * added after the values written, for one that holds several.
+ * added after the values `written`, for one that holds several. `written`
+ * are the values the row's note holds as it is now, which may be more than
+ * the index read, as in an edit not saved yet; the index's by default.
  */
-export function readingValues(reading: FieldReading): string[] {
-  return reading.field.kind.many ? [...reading.was.map((held) => held.text), reading.value.text] : [reading.value.text];
+export function readingValues(reading: FieldReading, written: readonly string[] = reading.was.map((held) => held.text)): string[] {
+  return reading.field.kind.many ? [...written, reading.value.text] : [reading.value.text];
+}
+
+/**
+ * What a reading writes over the values a row's note holds for its field
+ * now, `written`, read from the note's text as it is: the values to write;
+ * `held` when the note already holds the value; or `stale` when a field
+ * that holds one value no longer holds what the action said it was, so the
+ * action no longer says what it would do. A field that holds several gets
+ * the value added to what it holds now, whatever that is.
+ */
+export function planReadingWrite(reading: FieldReading, written: readonly string[]): string[] | 'held' | 'stale' {
+  const wanted = reading.value.text.toLowerCase();
+  if (written.some((text) => text.toLowerCase() === wanted)) {
+    return 'held';
+  }
+  if (!reading.field.kind.many) {
+    const said = reading.was.map((held) => held.text.toLowerCase());
+    if (said.length !== written.length || written.some((text, at) => text.toLowerCase() !== said[at])) {
+      return 'stale';
+    }
+  }
+  return readingValues(reading, written);
 }
 
 /**

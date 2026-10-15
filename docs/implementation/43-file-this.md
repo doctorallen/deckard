@@ -131,7 +131,11 @@ impractical:
   `#team/rates`), a note row as `[[Title]]`, an option as the schema spells
   it, written through `setFrontmatterField` and `writeDraftValues` as the
   form writes them. A field that holds several keeps what its note writes
-  and gets the value added.
+  and gets the value added: what the note writes as it is now, read from
+  its text, not from the index, so a value in an edit not saved yet is
+  kept (QA: it was dropped). A field that holds one value, whose note no
+  longer writes what the action said it was, is not set, and the reader is
+  told the note changed, as the form tells it (`planReadingWrite`).
 - **A row with no hub note** gets one written at once, not through the
   form: in its type's folder, titled and tagged as Create hub note's form
   starts it, from the type's template when there is one (its questions

@@ -14,6 +14,7 @@ import {
   linkToLine,
   listFilingTargets,
   placeUnderNotes,
+  planReadingWrite,
   readingValues,
 } from '../ui/state/fileThis';
 import { indexOf } from './typedWorkspace';
@@ -108,6 +109,13 @@ suite('File this', () => {
     const [reading] = findFieldReadings(types, line, findLineMentions(index, types, line, { sourcePath: 'notes/x.md', aliases }));
     assert.strictEqual(describeReading(reading), 'Add Swaps to FX’s owns');
     assert.deepStrictEqual(readingValues(reading), ['#area/options', '#area/swaps']);
+    // Written over what the hub holds as it is now, which may be more than the index read.
+    assert.deepStrictEqual(planReadingWrite(reading, ['#area/options', '#area/credit']), ['#area/options', '#area/credit', '#area/swaps']);
+    assert.strictEqual(planReadingWrite(reading, ['#area/swaps']), 'held');
+    const lead = '- @priya-natarajan now leads #team/fx';
+    const [setLead] = findFieldReadings(types, lead, findLineMentions(index, types, lead, { sourcePath: 'notes/x.md', aliases }));
+    assert.deepStrictEqual(planReadingWrite(setLead, ['@alex-rivera']), ['@priya-natarajan']);
+    assert.strictEqual(planReadingWrite(setLead, ['@sam-okafor']), 'stale', 'not what the action said it was');
     assert.deepStrictEqual(offers(index, '- #team/fx owns #area/options'), []);
     assert.deepStrictEqual(offers(index, '- @alex-rivera joined #team/fx'), []);
   });

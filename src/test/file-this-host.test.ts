@@ -99,4 +99,74 @@ suite('File this, in the editor', () => {
       await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
     }
   });
+
+  test('Add … to a field that holds several keeps what the hub’s editor holds unsaved, and Set refuses when the hub changed', async () => {
+    const notes: Record<string, string> = {
+      ...NOTES,
+      'Types/Team.md': lines(
+        '---', 'deckard-type: team', 'rows: "#team/*"', '---', '# Team', '',
+        '| Field | Kind       | Words            |',
+        '| ----- | ---------- | ---------------- |',
+        '| lead  | Person     | leads, now leads |',
+        '| owns  | Area, many | took over        |',
+      ),
+      'Types/Area.md': lines('---', 'deckard-type: area', 'rows: "#area/*"', '---', '# Area'),
+      'Teams/FX.md': lines('---', 'describes: "#team/fx"', 'lead: "@alex-rivera"', 'owns: ["#area/options"]', '---', '# FX', ''),
+      'notes/areas.md': lines('- #area/options #area/credit #area/swaps', ''),
+      'journal/2026-10-14.md': lines('# 2026-10-14', '- #team/fx took over #area/swaps', '- @priya-natarajan now leads #team/fx', ''),
+    };
+    const root = vscode.Uri.file(path.join(os.tmpdir(), `deckard-file-this-${Date.now()}`));
+    for (const [filePath, content] of Object.entries(notes)) {
+      await vscode.workspace.fs.writeFile(vscode.Uri.joinPath(root, filePath), Buffer.from(content, 'utf8'));
+    }
+    const relative = (uri: vscode.Uri): string => path.relative(root.fsPath, uri.fsPath).split(path.sep).join('/');
+    const parse = (filePath: string, content: string) => parseMarkdown(filePath, content, undefined, { typeNote: filePath.startsWith('Types/') });
+    const index: WorkspaceIndex = buildWorkspaceIndex(new Map(Object.entries(notes).map(([filePath, content]) => [filePath, parse(filePath, content)])));
+    const writes: FileThisWrites = {
+      indexer: {
+        ready: Promise.resolve(),
+        getSnapshot: () => index,
+        getTypeIndex: () => getTypeIndex(index),
+        getFilePath: relative,
+        getUri: (filePath: string) => vscode.Uri.joinPath(root, filePath),
+        isNotesFile: () => true,
+        parse: (uri: vscode.Uri, content: string) => parse(relative(uri), content),
+        getNotesFolderUri: () => root,
+        getTemplatesFolderUri: () => undefined,
+        getTypesFolderUri: () => vscode.Uri.joinPath(root, 'Types'),
+      },
+      history: new WorkspaceWriteHistory(),
+      preferences: createPreferences(new MemoryStore()) as never,
+    };
+    const daily = vscode.Uri.joinPath(root, 'journal/2026-10-14.md');
+    const hub = vscode.Uri.joinPath(root, 'Teams/FX.md');
+    const window = vscode.window as unknown as Record<string, unknown>;
+    const quiet = { info: window.showInformationMessage, warning: window.showWarningMessage };
+    const warned: unknown[][] = [];
+    window.showInformationMessage = async () => undefined;
+    window.showWarningMessage = async (...args: unknown[]) => {
+      warned.push(args);
+      return undefined;
+    };
+    try {
+      // Credit added to FX's owns in its editor, not saved, so the index holds Options alone.
+      const editor = await vscode.window.showTextDocument(hub, { preview: false });
+      await editor.edit((builder) => builder.replace(new vscode.Range(3, 0, 3, 100), 'owns: ["#area/options", "#area/credit"]'));
+      await setFieldFromLine(writes, daily.toString(), 1, '#team/fx', 'owns', '#area/swaps');
+      assert.strictEqual(editor.document.lineAt(3).text, 'owns: ["#area/options", "#area/credit", "#area/swaps"]');
+
+      // The lead changed in the editor since the index read Alex: Set says so and writes nothing.
+      await editor.edit((builder) => builder.replace(new vscode.Range(2, 0, 2, 100), 'lead: "@sam-okafor"'));
+      const before = editor.document.getText();
+      await setFieldFromLine(writes, daily.toString(), 2, '#team/fx', 'lead', '@priya-natarajan');
+      assert.strictEqual(editor.document.getText(), before);
+      assert.match(String(warned[warned.length - 1]?.[0]), /^FX\.md changed after Deckard last read it, so nothing was written\./);
+    } finally {
+      window.showInformationMessage = quiet.info;
+      window.showWarningMessage = quiet.warning;
+      await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      await vscode.workspace.fs.delete(root, { recursive: true, useTrash: false });
+    }
+  });
 });

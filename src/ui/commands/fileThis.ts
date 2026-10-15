@@ -19,6 +19,7 @@ import {
   listFilingTargets,
   placeUnderHeading,
   placeUnderNotes,
+  planReadingWrite,
   possessive,
   readingValues,
   type FieldReading,
@@ -30,7 +31,7 @@ import { fileExists } from './fs';
 import { readLinkStyle } from './linkMaintenancePorts';
 import { readSectionTarget } from './moveTo';
 import { openResultAt, resolveSourceUri } from './navigation';
-import { describeRejectedEdit, noteName, openNoteAction, reportFailure, reportNeedsFolder } from './notify';
+import { describeRejectedEdit, describeStale, noteName, openNoteAction, reportFailure, reportNeedsFolder } from './notify';
 import { readEntityNamespaceAliases } from './parseSettings';
 import { askTemplateQuestions } from './templates';
 import { findRowNoteType, findWorkspaceFolder, readTypeTemplate, writeNewNote } from './typeNotes';
@@ -309,11 +310,21 @@ async function writeField(writes: Pick<FileThisWrites, 'indexer' | 'history'>, r
     return undefined;
   }
   const document = await vscode.workspace.openTextDocument(uri);
-  const planned = setFrontmatterField(
-    document.getText(),
-    reading.field.key,
-    writeDraftValues(reading.field.kind, readingValues(reading).map((text) => ({ text }))),
-  );
+  // The note as it is now, which may hold more than the index read, as in
+  // an edit not saved yet: a field that holds several keeps all of them.
+  const values = planReadingWrite(reading, readWrittenValues(writes, uri, document.getText(), reading.field.key));
+  if (values === 'stale') {
+    void reportFailure({
+      outcome: describeStale([noteName(uri)]),
+      fix: 'Use the lightbulb on the line again.',
+      severity: 'warning',
+      action: { title: 'Open Note', run: () => openResultAt(filePath, 0, { pin: true }) },
+    });
+    return undefined;
+  }
+  const planned = values === 'held'
+    ? ({ kind: 'unchanged' } as const)
+    : setFrontmatterField(document.getText(), reading.field.key, writeDraftValues(reading.field.kind, values.map((text) => ({ text }))));
   if (planned.kind === 'unchanged') {
     void vscode.window.showInformationMessage(`${possessive(reading.rowTitle)} ${reading.field.name} already says that.`);
     return undefined;
@@ -331,6 +342,13 @@ async function writeField(writes: Pick<FileThisWrites, 'indexer' | 'history'>, r
     return undefined;
   }
   return result.handle;
+}
+
+/** The values a note's text writes for a front-matter key, as the parser reads them; the last of a key written twice, as the writer rewrites it. */
+function readWrittenValues(writes: Pick<FileThisWrites, 'indexer'>, uri: vscode.Uri, text: string, key: string): string[] {
+  const properties = writes.indexer.parse(uri, text).properties ?? [];
+  const property = [...properties].reverse().find((candidate) => candidate.name.toLowerCase() === key.toLowerCase());
+  return property?.values.map((value) => value.text) ?? [];
 }
 
 /** A front-matter key's new lines as an edit of the document, replacing the lines they replace. */
