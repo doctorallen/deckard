@@ -274,7 +274,7 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
 
 - **Tag namespace** groups by tags in one namespace, such as `#project/…`, busiest first, **No project** last. Inherited tags count. The namespace is kept with the workspace.
 - **Priority** runs highest to lowest, **No priority** last.
-- **Status** groups by [status](#task-statuses), in the order of the [Task board's](task-board.md#groupings) status columns, hidden ones too, and a group per character no status names, such as **Unknown [?]**, after them. Dropping a task on a group writes its status the way the board does.
+- **Status** groups by [status](#task-statuses), in the order of the [Task board's](task-board.md#groupings) status columns, hidden ones too, and a group per character no status names, such as **Unknown [!]**, after them. Dropping a task on a group writes its status the way the board does.
 - **Person** groups by [who each task is for](#who-a-task-is-for), **Nobody named** last.
 
 **Working with tasks:**

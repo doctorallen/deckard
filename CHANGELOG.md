@@ -2,6 +2,40 @@
 
 ## Unreleased
 
+### Added
+
+- **Questions.** A line written `- [?] Who approves access to the bond
+  UAT? #team/rates` is a question, not a task: it is never on the Task
+  board, in a task count, `is:open`, or the Tasks view. It is answered by an
+  indented line under it that starts with `Answer:`. Search for them with
+  `is:question`, `is:unanswered`, and `is:answered`, in Find, search pages,
+  query blocks, saved searches, and review sections.
+- **The Questions view** in the Deckard sidebar, under Tasks, lists each open
+  question, oldest first, with how long it has been open and its first tag,
+  its badge the open count. When a line written since may answer one,
+  sharing three of its uncommon words and its tag or person, that line is
+  under it, with **Use as answer**, which writes its words and a link to it
+  under the question, and **Not it**, which sets it aside for good. A
+  question that names a typed row and a field, `who leads #team/fx?`, is
+  offered the field's value. **Include Answered Questions** and **Open as
+  Search** are in its title bar.
+- **Above a question** in the editor, a lens says how long it has been open
+  and which line may answer it, with **Answer…** and **Drop**, which writes
+  `[-]`. `deckard.editor.questions` turns it off.
+- **Find** lists the open questions that match what you type, with a **?**,
+  and, when nothing has every word, first offers **Ask it: add "…?" to
+  today's note**, saying how often you searched for the same words before.
+- Home's **Open questions** widget, a **Questions** tab on a tag's or a
+  person's page, **Open questions** in **Go to…**, and the assistant tools
+  `deckard_list_questions` and `deckard_answer_question`.
+
+### Changed
+
+- **`[?]` is a question.** A `- [?]` line was a task to do called Unknown;
+  it is now a question, so task counts leave it out. A status of your own
+  for `?` in `deckard.tasks.statuses` keeps it as that status, and turns
+  questions off.
+
 ## 2.8.1 - 2026-10-13
 
 ### Highlights
