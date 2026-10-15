@@ -64,7 +64,7 @@ suite('Terms in the editor', () => {
     } finally {
       hovers.dispose();
       changes.dispose();
-      rmSync(folder, { recursive: true, force: true });
+      rmSync(folder, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -92,7 +92,7 @@ suite('Terms in the editor', () => {
       hovers.dispose();
       changes.dispose();
       await vscode.commands.executeCommand('workbench.action.closeAllEditors');
-      rmSync(folder, { recursive: true, force: true });
+      rmSync(folder, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 });
