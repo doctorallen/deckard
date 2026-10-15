@@ -279,8 +279,10 @@ function toItem<A>(row: BuilderRow<A>): ActionItem<A> {
   };
 }
 
-/** The button that opens the type note beside the form. */
-const OPEN_NOTE_BUTTON: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon('go-to-file'), tooltip: 'Open the type note beside' };
+/** The button that opens the type note beside the form, made when the form is drawn. */
+function openNoteButton(): vscode.QuickInputButton {
+  return { iconPath: new vscode.ThemeIcon('go-to-file'), tooltip: 'Open the type note beside' };
+}
 
 /** One turn of the type form: the row chosen, or undefined when the reader left. */
 function pickFormRow(uri: vscode.Uri, type: FormType, focus: FormFocus): Promise<TypeFormAction | undefined> {
@@ -292,7 +294,7 @@ function pickFormRow(uri: vscode.Uri, type: FormType, focus: FormFocus): Promise
     pick.items = items;
     pick.matchOnDescription = true;
     pick.ignoreFocusOut = true;
-    pick.buttons = [OPEN_NOTE_BUTTON];
+    pick.buttons = [openNoteButton()];
     const active = items.find((item) => item.action?.kind === 'field' && item.action.key === focus.field)
       ?? (type.builder.fields.length === 0 ? items.find((item) => item.action?.kind === 'add') : undefined);
     if (active) {
