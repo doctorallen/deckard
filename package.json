@@ -108,6 +108,16 @@
           "highContrast": "descriptionForeground",
           "highContrastLight": "descriptionForeground"
         }
+      },
+      {
+        "id": "deckard.writtenBeforeForeground",
+        "description": "Color of the hint after the line being written that an older line is like it, such as \"↺ 12 Mar: same lag, fixed by restarting the curve loader\".",
+        "defaults": {
+          "dark": "editorCodeLens.foreground",
+          "light": "editorCodeLens.foreground",
+          "highContrast": "descriptionForeground",
+          "highContrastLight": "descriptionForeground"
+        }
       }
     ],
     "grammars": [
@@ -389,6 +399,14 @@
         "command": "deckard.questions.openAsSearch",
         "title": "Open as Search",
         "icon": "$(search)"
+      },
+      {
+        "command": "deckard.writtenBefore.linkHere",
+        "title": "Link It Here"
+      },
+      {
+        "command": "deckard.writtenBefore.notSame",
+        "title": "Not the Same"
       },
       {
         "command": "deckard.createTypeFromTags",
@@ -1264,6 +1282,14 @@
         },
         {
           "command": "deckard.questions.openAsSearch",
+          "when": "false"
+        },
+        {
+          "command": "deckard.writtenBefore.linkHere",
+          "when": "false"
+        },
+        {
+          "command": "deckard.writtenBefore.notSame",
           "when": "false"
         }
       ],
@@ -2549,6 +2575,12 @@
             "scope": "resource",
             "description": "Show, above a question written - [?], how long it has been open, a line that may answer it, and Answer… and Drop; above an answered one, when it was answered. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
             "order": 14
+          },
+          "deckard.editor.writtenBefore": {
+            "type": "boolean",
+            "scope": "resource",
+            "description": "Say, after the line being written, when an older line of another note is a close match: its date and words, faded, a mark in the gutter beside other lines that have one, and a hover with Open, Link it here, and Not the same; Context lists them under Written before. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
+            "order": 15
           }
         },
         "order": 3

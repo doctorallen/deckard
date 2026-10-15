@@ -15,6 +15,9 @@ import {
   type WrittenLine,
 } from '../domain/ranking/writtenBefore';
 import { createRandom, pick } from './indexCorpus';
+import type { SidebarWrittenBefore } from '../ui/protocol/sidebarNotes';
+import { openWebviewPage, type WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 
 /** The moment the tests ask at: 14 October 2026, at noon. */
 const NOW = new Date(2026, 9, 14, 12).getTime();
@@ -144,5 +147,53 @@ suite('You\'ve written this before: how long ranking takes', () => {
     });
     const median = [...timings].sort((left, right) => left - right)[Math.floor(timings.length / 2)];
     assert.ok(median < 15, `the median line took ${median.toFixed(2)} ms`);
+  });
+});
+
+suite('You\'ve written this before: Context', () => {
+  let page: WebviewPage | undefined;
+
+  teardown(() => {
+    page?.dispose();
+    page = undefined;
+  });
+
+  const open = (writtenBefore?: SidebarWrittenBefore[]): WebviewPage => {
+    page = openWebviewPage(renderPage('sidebarNotes'), {
+      activeFileName: '2026-10-14.md',
+      activeTags: [],
+      notes: [],
+      state: 'noMatches',
+      parkedTags: [],
+      ...(writtenBefore ? { writtenBefore } : {}),
+    });
+    return page;
+  };
+
+  const MATCH: SidebarWrittenBefore = {
+    filePath: 'notes/2026-03-12.md',
+    line: 3,
+    text: 'Same lag in the curve feed, fixed by restarting the loader',
+    where: 'Thu, Mar 12 · Rates desk standup',
+    shares: 'Shares curve, feed, loader · both tagged #team/rates',
+    terms: ['curve', 'feed', 'loader'],
+  };
+
+  test('lists the older lines above the related notes, each with what it shares, Link it here, and Not the same', () => {
+    const shown = open([MATCH]);
+    assert.strictEqual(shown.text('.written-before .section-label'), 'Written before');
+    assert.strictEqual(shown.text('.written-before-card .note-title'), 'Thu, Mar 12 · Rates desk standup');
+    assert.strictEqual(shown.text('.written-before-card .written-before-shares'), 'Shares curve, feed, loader · both tagged #team/rates');
+    assert.deepStrictEqual(shown.findAll('.written-before-card mark').map((mark) => mark.textContent), ['curve', 'feed', 'loader'], 'the shared words are marked');
+    shown.click('.written-before-card [data-action="written-before-link-here"]');
+    assert.deepStrictEqual(shown.lastPosted('writtenBeforeAction'), { type: 'writtenBeforeAction', action: 'linkHere', filePath: 'notes/2026-03-12.md', line: 3 });
+    shown.click('.written-before-card [data-action="written-before-not-same"]');
+    assert.deepStrictEqual(shown.lastPosted('writtenBeforeAction'), { type: 'writtenBeforeAction', action: 'notSame', filePath: 'notes/2026-03-12.md', line: 3 });
+    shown.click('.written-before-card .note-excerpt');
+    assert.deepStrictEqual(shown.lastPosted('writtenBeforeAction'), { type: 'writtenBeforeAction', action: 'open', filePath: 'notes/2026-03-12.md', line: 3 });
+  });
+
+  test('is absent when the line has no older line like it', () => {
+    assert.strictEqual(open().document.querySelector('.written-before'), null);
   });
 });

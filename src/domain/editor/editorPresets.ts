@@ -28,6 +28,7 @@ export const EDITOR_TOGGLES = [
   'taskDueHints',
   'repeatDiagnostics',
   'questions',
+  'writtenBefore',
 ] as const;
 
 /** One of those switches. */

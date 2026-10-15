@@ -105,7 +105,7 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 52);
+    assert.strictEqual(Object.keys(settings).length, 53);
     assert.deepStrictEqual(settings['deckard.parked.tags'].default, ['parked']);
     assert.deepStrictEqual(settings['deckard.parked.folders'].default, {});
     assert.deepStrictEqual(settings['deckard.periodicNote.reviewSections'].default, []);
@@ -155,6 +155,8 @@ suite('Extension Test Suite', () => {
         'deckard.questions.showAnswered',
         'deckard.questions.hideAnswered',
         'deckard.questions.openAsSearch',
+        'deckard.writtenBefore.linkHere',
+        'deckard.writtenBefore.notSame',
         'deckard.createTypeFromTags',
         'deckard.newTypedNote',
         'deckard.editFields',

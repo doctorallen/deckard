@@ -72,6 +72,17 @@ While a [search page](search-pages.md#search-pages) or the Task board is active,
 
 The page shows one Refine line while the sidebar holds the options, and its full Refine box when the sidebar closes. A Markdown editor brings related notes back.
 
+## You've written this before
+
+As you write a line of six words or more, and typing rests for a second, Deckard compares it with every line of your other notes, as Related notes compares wording, and says when an older line is a close match.
+
+- **After the line**, faded, the older line's day and its words, cut to fit: *↺ Thu, Mar 12: Same lag in the curve feed, fixed by restarting the loader*. Only on the cursor's line. Under [Zen](themes-and-zen.md#zen), the ↺ alone.
+- **In the gutter**, a ↺ beside the other lines near the cursor that have one, up to 200 lines around it.
+- **A hover** on either says *Written before · 2 close matches*, each with its day and heading, its words with the ones both lines hold in bold, *Shares curve, feed, loader · both tagged #team/rates*, and **Open**, **Link it here**, which adds ` (see [[2026-03-12#Rates desk standup]])` to your line, and **Not the same**, which never offers that line beside yours again.
+- **Context** lists them under **Written before**, above the related notes, with the same buttons; it is not there when the line has none.
+
+An older line counts when it shares at least three of your line's uncommon words, words such as *today* and *meeting* counting for little, and scores high enough on them; one that shares your line's tag, or its heading's, ranks a little higher. Lines of the same note and lines written in the last two days never count, and at most two are shown. `deckard.editor.writtenBefore` turns it all off.
+
 ## Notes Graph
 
 Run `Deckard: Open Notes Graph`, or select **Notes Graph** in the row of page icons at the top of the Context view. **DECKARD ▾** at its top left goes to any other page, and **⋯** at its top right holds **Theme…**, **Zen** and **Help on this page**. Notes and tasks are dots sized by everything each is joined to, grouped into communities by links, headings, and tags. The graph is read-only, and control choices persist per panel.

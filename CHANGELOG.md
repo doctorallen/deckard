@@ -28,6 +28,13 @@
 - Home's **Open questions** widget, a **Questions** tab on a tag's or a
   person's page, **Open questions** in **Go to…**, and the assistant tools
   `deckard_list_questions` and `deckard_answer_question`.
+- **You've written this before.** As you write a line of six words or more
+  and pause, an older line of another note that shares three of its
+  uncommon words is said after it, faded: *↺ Thu, Mar 12: Same lag in the
+  curve feed, fixed by restarting the loader*. The gutter marks the other
+  lines near the cursor that have one, a hover lists them with **Open**,
+  **Link it here**, and **Not the same**, and Context lists them under
+  **Written before**. `deckard.editor.writtenBefore` turns it off.
 
 ### Changed
 

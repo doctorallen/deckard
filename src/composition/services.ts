@@ -34,6 +34,8 @@ import { MoveService } from '../services/moveService';
 import { TaskService, TaskRankKeeper } from '../services/taskService';
 import { QuestionService } from '../services/questionService';
 import { QuestionMemory } from '../core/storage/questionMemory';
+import { WrittenBeforeMemory } from '../core/storage/writtenBeforeMemory';
+import { WrittenBeforeHints } from '../ui/providers/writtenBefore';
 import type { QuestionWrites } from '../ui/commands/questionActions';
 import { resolveSourceUri } from '../ui/commands/navigation';
 import { TaskEditorActions, TaskLineContext } from '../ui/commands/taskEditor';
@@ -228,6 +230,8 @@ export interface Services {
   mcpServer: DeckardMcpServer;
   /** What the Markdown preview draws ```deckard blocks with. */
   queryBlocks: QueryBlocks;
+  /** The older lines like the one being written, and the pairs set aside with Not the same. */
+  writtenBefore: { hints: WrittenBeforeHints; memory: WrittenBeforeMemory };
   sectionFocus: SectionFocus;
 }
 
@@ -282,7 +286,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     whatsNew,
     tryNext,
   });
-  const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, dashboard: home.dashboard, whatsNew, writes });
+  const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, dashboard: home.dashboard, whatsNew, writes, writtenBefore: editor.writtenBefore.hints });
   const trees = createTreesAndAddTask(context, core, preferences, writes);
   // With the note page in front, the Outline lists its note's headings.
   trees.outline.followNotePage(sidebar.activeNotePage);
@@ -318,6 +322,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     mcpServer: assistance.mcpServer,
     queryBlocks: trees.queryBlocks,
     sectionFocus,
+    writtenBefore: editor.writtenBefore,
   };
 }
 
@@ -688,7 +693,14 @@ function createEditorProviders(context: vscode.ExtensionContext, core: Core, pre
   context.subscriptions.push(new StatusSuggestionsProvider((uri) => indexer.isNotesFile(uri)).register());
   const taskEditorActions = new TaskEditorActions((uri) => indexer.isNotesFile(uri));
   const taskLineContext = new TaskLineContext();
-  return { tagDecorations, pins, tagSuggestions, taskMetadataSuggestions, taskEditorActions, taskLineContext };
+  // The older lines like the one being written, and the pairs set aside.
+  const writtenBeforeMemory = new WrittenBeforeMemory(context.workspaceState);
+  const writtenBefore = {
+    memory: writtenBeforeMemory,
+    hints: new WrittenBeforeHints(indexer, writtenBeforeMemory, context.extensionUri).register(),
+  };
+  context.subscriptions.push(writtenBeforeMemory, writtenBefore.hints);
+  return { tagDecorations, pins, tagSuggestions, taskMetadataSuggestions, taskEditorActions, taskLineContext, writtenBefore };
 }
 
 /** Whether a workspace folder with no notes folder set looks like a code repository. */
@@ -999,6 +1011,8 @@ interface SidebarParts {
   dashboard: DashboardPanel;
   whatsNew: WhatsNew;
   writes: Omit<Writes, 'addTask'>;
+  /** The older lines like the line at the cursor, which Context lists. */
+  writtenBefore: WrittenBeforeHints;
 }
 
 /** Related Notes in the sidebar, and Stats, Help, the Notes Graph, the note page, and the debug page. */
@@ -1026,6 +1040,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     activeNotePage,
     history,
     themePreview,
+    writtenBefore: parts.writtenBefore,
   });
   parts.dashboard.activeHome = activeHome;
   const stats = new StatsPanel({

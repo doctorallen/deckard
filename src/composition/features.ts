@@ -20,6 +20,7 @@ import { register as tasksView } from '../ui/commands/tasksView/register';
 import { register as toggles } from '../ui/commands/toggles/register';
 import { register as types } from '../ui/commands/types/register';
 import { register as undo } from '../ui/commands/undo/register';
+import { register as writtenBefore } from '../ui/commands/writtenBefore/register';
 import type { NamedFeature } from './feature';
 
 /**
@@ -53,4 +54,5 @@ export const features: readonly NamedFeature[] = [
   { name: 'the Hubs view', register: hubs },
   { name: 'types', register: types },
   { name: 'questions', register: questions },
+  { name: 'written before', register: writtenBefore },
 ];
