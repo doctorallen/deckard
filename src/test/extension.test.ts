@@ -157,6 +157,8 @@ suite('Extension Test Suite', () => {
         'deckard.questions.openAsSearch',
         'deckard.writtenBefore.linkHere',
         'deckard.writtenBefore.notSame',
+        'deckard.newType',
+        'deckard.editType',
         'deckard.createTypeFromTags',
         'deckard.newTypedNote',
         'deckard.editFields',

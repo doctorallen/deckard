@@ -698,11 +698,11 @@ export interface SetTypeGroupMessage {
 
 /**
  * Something a type's page asks for of its type: Add <type>…, Open its
- * note, or Create type from the tag's namespace. The host asks what it
- * needs, such as the new row's title.
+ * note, Edit type…, or Create type from the tag's namespace. The host asks
+ * what it needs, such as the new row's title.
  */
 export interface TypeActionMessage {
-  type: 'addTypeRow' | 'openTypeNote';
+  type: 'addTypeRow' | 'openTypeNote' | 'editType';
   typeKey: string;
 }
 
@@ -713,11 +713,11 @@ export interface CreateTypeFromTagMessage {
 }
 
 /**
- * From a column's menu: Rename field everywhere… or Edit in Types/<Type>.md,
- * for one of the type's schema fields.
+ * From a column's menu: Rename field everywhere…, Change field… in the type
+ * form, or Edit in Types/<Type>.md, for one of the type's schema fields.
  */
 export interface TypeFieldMessage {
-  type: 'renameTypeField' | 'editTypeField';
+  type: 'renameTypeField' | 'changeTypeField' | 'editTypeField';
   typeKey: string;
   field: string;
 }
@@ -786,8 +786,10 @@ export interface SearchPagePageToHost {
   setTypeGroup: SetTypeGroupMessage;
   addTypeRow: MessageAs<TypeActionMessage, 'addTypeRow'>;
   openTypeNote: MessageAs<TypeActionMessage, 'openTypeNote'>;
+  editType: MessageAs<TypeActionMessage, 'editType'>;
   createTypeFromTag: CreateTypeFromTagMessage;
   renameTypeField: MessageAs<TypeFieldMessage, 'renameTypeField'>;
+  changeTypeField: MessageAs<TypeFieldMessage, 'changeTypeField'>;
   editTypeField: MessageAs<TypeFieldMessage, 'editTypeField'>;
   renameTypeOption: RenameTypeOptionMessage;
   createRowHub: MessageAs<TypeRowMessage, 'createRowHub'>;

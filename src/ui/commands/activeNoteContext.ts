@@ -10,6 +10,8 @@ import { readEditorToggle } from '../providers/editorToggles';
 export interface ActiveNoteIndex {
   isNotesFile(uri: vscode.Uri): boolean;
   getFilePath(uri: vscode.Uri): string;
+  /** The folder of type notes in a workspace folder; without it no note is a type note. */
+  getTypesFolderUri?(workspaceFolder: vscode.WorkspaceFolder): vscode.Uri;
 }
 
 /** Sets a context key; injectable so a test can read back what was set. */
@@ -47,9 +49,10 @@ export function isDailyNoteText(filePath: string, lines: readonly string[]): boo
 }
 
 /**
- * Keeps `deckard.isNote` and `deckard.isDailyNote` in step with the active
- * editor, so the title bar offers Deckard's button on a note and the arrows
- * between days on a daily note, and nowhere else; and
+ * Keeps `deckard.isNote`, `deckard.isDailyNote`, and `deckard.isTypeNote`
+ * in step with the active editor, so the title bar offers Deckard's button
+ * on a note, the arrows between days on a daily note, and Edit Type… on a
+ * type note, and nowhere else; and
  * `deckard.dailyNoteLensOff`, so the arrows are offered only while the
  * daily note's own lens, which has them, is not drawn: under the Writing
  * and Off presets, or with `deckard.editor.dailyNoteActions` set off.
@@ -109,7 +112,15 @@ export class ActiveNoteContext implements vscode.Disposable {
       );
     this.update('deckard.isNote', isNote);
     this.update('deckard.isDailyNote', isDaily);
+    this.update('deckard.isTypeNote', isNote && this.isTypeNote(document.uri));
     this.update('deckard.dailyNoteLensOff', !readEditorToggle('dailyNoteActions', document?.uri));
+  }
+
+  /** Whether a note is in its workspace folder's types folder, as the scanner reads type notes. */
+  private isTypeNote(uri: vscode.Uri): boolean {
+    const folder = vscode.workspace.getWorkspaceFolder(uri);
+    const types = folder ? this.index.getTypesFolderUri?.(folder) : undefined;
+    return types !== undefined && uri.scheme === types.scheme && uri.path.startsWith(`${types.path.replace(/\/+$/, '')}/`);
   }
 
   /** Re-reads the active note once typing in it pauses, not on every keystroke. */

@@ -17,6 +17,7 @@ import type { DashboardTask, SearchRefineState } from '../../../protocol/shared'
 import { editResults } from '../../../commands/bulkEditPrompts';
 import { presentExport } from '../../../commands/exportResults';
 import { copyFieldValue } from '../../../commands/typeNotes';
+import { EDIT_TYPE_COMMAND } from '../../../commands/typeBuilder';
 import { createHubNoteForTag, openEditFieldsForm, openTypeNoteForm } from '../../../commands/typeNoteForm';
 import { renameTypeField, renameTypeOption } from '../../../commands/typeRenames';
 import { getTypeIndex, type TypeRow } from '../../../../domain/types/typeIndex';
@@ -886,8 +887,9 @@ export class SearchPageController implements PageController<SearchPageState, Sea
 
   /**
    * What a type's page asks of its host: its rows tab's sort, columns, and
-   * grouping; Add <type>…, its note, and Create type; the renames a
-   * column's menu offers; and a row's hub note and Copy.
+   * grouping; Add <type>…, its note, Edit type…, and Create type; the
+   * renames and Change field… a column's menu offers; and a row's hub note
+   * and Copy.
    */
   private typeHandlers(): Pick<
     MessageHandlers<SearchPagePageToHost>,
@@ -896,8 +898,10 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     | 'setTypeGroup'
     | 'addTypeRow'
     | 'openTypeNote'
+    | 'editType'
     | 'createTypeFromTag'
     | 'renameTypeField'
+    | 'changeTypeField'
     | 'editTypeField'
     | 'renameTypeOption'
     | 'createRowHub'
@@ -913,11 +917,17 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       setTypeGroup: (message) => preferences.display.setTypeTable(message.typeKey, { groupBy: message.field }),
       addTypeRow: (message) => this.addTypeRow(message.typeKey),
       openTypeNote: (message) => this.openTypeNote(message.typeKey),
+      editType: async (message) => {
+        await vscode.commands.executeCommand(EDIT_TYPE_COMMAND, message.typeKey);
+      },
       createTypeFromTag: async (message) => {
         await vscode.commands.executeCommand('deckard.createTypeFromTags', message.namespace);
       },
       renameTypeField: async (message) => {
         await renameTypeField({ indexer, history: writes.history }, message.typeKey, message.field);
+      },
+      changeTypeField: async (message) => {
+        await vscode.commands.executeCommand(EDIT_TYPE_COMMAND, message.typeKey, { field: message.field });
       },
       editTypeField: (message) => this.openTypeNote(message.typeKey, message.field),
       renameTypeOption: async (message) => {

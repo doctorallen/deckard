@@ -185,7 +185,7 @@ export function TypeSortNote({ table }: { readonly table: SearchPageTypeRows }) 
   );
 }
 
-/** The menu a column's heading opens: Sort A-Z and Z-A, Hide column, and, for a schema field, its renames and its row in the type's note. */
+/** The menu a column's heading opens: Sort A-Z and Z-A, Hide column, and, for a schema field, Change field…, its renames, and its row in the type's note. */
 export function columnMenu(table: SearchPageTypeRows, column: TypeTableColumn): ContextMenuEntry[] {
   const entries: ContextMenuEntry[] = [
     { action: 'type-sort-asc', label: 'Sort A-Z' },
@@ -197,6 +197,7 @@ export function columnMenu(table: SearchPageTypeRows, column: TypeTableColumn): 
   if (column.source === 'field') {
     entries.push(
       'separator',
+      { action: 'type-change-field', label: 'Change field…' },
       { action: 'type-rename-field', label: 'Rename field everywhere…' },
       { action: 'type-edit-field', label: `Edit in ${typeNoteName(table)}` },
     );

@@ -430,6 +430,17 @@
         "title": "Not the Same"
       },
       {
+        "command": "deckard.newType",
+        "title": "New Type…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.editType",
+        "title": "Edit Type…",
+        "category": "Deckard",
+        "icon": "$(symbol-structure)"
+      },
+      {
         "command": "deckard.createTypeFromTags",
         "title": "Create Type from Tags…",
         "category": "Deckard"
@@ -1335,6 +1346,11 @@
           "command": "deckard.noteActions",
           "when": "resourceLangId == markdown && deckard.isNote",
           "group": "navigation@12"
+        },
+        {
+          "command": "deckard.editType",
+          "when": "resourceLangId == markdown && deckard.isTypeNote",
+          "group": "navigation@14"
         },
         {
           "command": "deckard.openNotePage",

@@ -117,6 +117,24 @@ Every row also has fields no note writes, worked out from the notes each time th
 | `linked-from` | for a row of notes, the notes that link to it |
 | `parent`, `children` | for a nested tag, the tag above it and those below |
 
+## Building a type
+
+You never need to write the table by hand. `Deckard: New Type…` asks the type's name (*Org*), then what its rows are: the namespaces in use, the closest to the name first (*Each #org/… tag · 14 tags, 9 with a hub note*), **Another namespace…**, **Each person**, or **Each note that says type: org**. Deckard writes `Types/Org.md`, opens it beside, and opens the type form on it.
+
+`Deckard: Edit Type…` opens the same form on the type note in front, the type of the row note in front, or a type you choose. It is also on a type note's title bar, on the **Edit Type…** lens over its table, in **⋯** on a type's page (**Edit type…**), and on a column's menu there (**Change field…**). The form lists:
+
+- **The fields**, in the table's order, each with its kind and, below it, what else is set (*Reverse: lead of · Also called: owner*) or what is wrong with it.
+- **Add field…**: the field's name (the box says how it is written and searched: *Written in front matter as Distribution List:, searched as distribution-list.*), its kind, whether it holds one value or several (each shown as a row's front matter writes it), and, for a field that names people or rows, what the other side calls it. Each step has a Back button.
+- **Rows**, **New notes go in** (a type of tags), and **Open Types/Org.md**; the button in the form's title opens the note beside.
+
+The kinds are listed with an example of each: **Person**, each of your types, **More than one type…** (*Team or Area*), and **Note**, then **Text**, **Number**, **Date**, **Select…** (which asks its options), **Checkbox**, **Link**, **Email**, and **Phone**.
+
+Choosing a field opens its menu, each row with what it is now: **Rename…** ([Rename field everywhere](#a-types-rows)), **Kind**, **Holds** one or several, **Reverse**, **Also called**, **Words**, **Move up**, **Move down**, and **Remove from Org**. Removing takes the row out of the table and nothing else: notes that write the field keep it, shown as one of their other keys.
+
+Each change is written when you make it, as its own write that `Deckard: Undo Last Change` takes back, and the form is drawn again from the note, so an edit you make by hand meanwhile is kept. The table is written aligned, with your own columns, a separator's alignment, and a Field cell in backticks kept.
+
+Writing the table by hand still works. In a type note, the lens over the table offers **Edit Type…**, **Add field…**, and the type's count of fields and rows, which opens its rows; a hover on each header cell says what the column holds, the **Kind** header listing every kind; and `Format Document` realigns the table.
+
 ## Create Type from Tags
 
 `Deckard: Create Type from Tags…`, also **Create type from #team…** in **⋯** on the page of a tag whose namespace has no type, makes a type from what your notes already write:
@@ -181,7 +199,7 @@ Search `type = team`, or select a namespace heading a type has in the [Hubs view
 - **A row with no note** says so, *No hub note · 6 entries*, with **Create hub note** on its row, which opens the [form](#adding-a-note-of-a-type) with the row's tag.
 - **⋯ on a row** opens it or its hub note, offers **Create hub note**, **Edit fields…** for a row with a note, and copies its email.
 - **Sorting.** Select a heading to sort by it, and again for the other way. While it is sorted, *Sorted by lead* and **Sort A-Z** sit beside the tab; **Sort A-Z** goes back to by title.
-- **A heading's menu**, by right-click or <kbd>Shift</kbd>+<kbd>F10</kbd>: **Sort A-Z**, **Sort Z-A**, **Hide column**, then **Rename field everywhere…** and **Edit in Types/Team.md**. Right-click a select's value for **Rename option everywhere…**. A rename asks the new name, then shows every note it changes, the type's table among them, in the [refactor preview](search-pages.md#previewing-and-undoing-a-write), as one write.
+- **A heading's menu**, by right-click or <kbd>Shift</kbd>+<kbd>F10</kbd>: **Sort A-Z**, **Sort Z-A**, **Hide column**, then **Change field…**, which opens the field's menu in the [type form](#building-a-type), **Rename field everywhere…**, and **Edit in Types/Team.md**. Right-click a select's value for **Rename option everywhere…**. A rename asks the new name, then shows every note it changes, the type's table among them, in the [refactor preview](search-pages.md#previewing-and-undoing-a-write), as one write.
 - **Group by**, in **⋯**, adds each select, person, and relation field. A row with two values is listed under both, and the rows with none come last, *No team*.
 - **[Refine](search.md#refine)** offers each select field's options, counted over the rows.
 - **⋯** adds **Add team…**, which opens the [form for a new note](#adding-a-note-of-a-type) on the type, and **Open Types/Team.md**.

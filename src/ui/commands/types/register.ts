@@ -11,12 +11,15 @@ import {
   createTypeNote,
 } from '../typeNotes';
 import { editActiveNoteFields, newTypedNote, openTypeNoteForm } from '../typeNoteForm';
+import { EDIT_TYPE_COMMAND, editType, newType } from '../typeBuilder';
 import { makeTermNote } from '../termNotes';
 import { MAKE_TERM_NOTE_COMMAND } from '../../state/termHover';
 
 /**
- * Types: Create Type from Tags…, New Note from Type…, Edit Fields… on the
- * note in front (docs/implementation/34-edit-fields-form.md), and the commands the
+ * Types: New Type… and Edit Type…, the type builder
+ * (docs/implementation/44-type-builder.md); Create Type from Tags…, New
+ * Note from Type…, Edit Fields… on the note in front
+ * (docs/implementation/34-edit-fields-form.md), and the commands the
  * type quick fixes and hovers run: Create person "Omar H"…, which opens
  * the new note's form on its title, Create a <Type> type, and Copy email
  * (docs/implementation/30-databases.md, 31-type-note-form.md); and Make a
@@ -28,6 +31,9 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.createTypeFromTags', (namespace?: unknown) =>
       createTypeFromTags(writes, typeof namespace === 'string' ? namespace : undefined),
     ),
+    registerCommand('deckard.newType', () => newType(writes)),
+    // A type note's CodeLens and a type's page name the type; Add field… asks for its steps first.
+    registerCommand(EDIT_TYPE_COMMAND, (target?: unknown, addField?: unknown) => editType(writes, target, addField)),
     registerCommand('deckard.newTypedNote', () => newTypedNote(writes)),
     registerCommand('deckard.editFields', () => editActiveNoteFields(writes)),
     registerCommand(CREATE_TYPE_ROW_COMMAND, (documentUri: unknown, typeKey: unknown, title: unknown) =>

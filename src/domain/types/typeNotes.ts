@@ -43,6 +43,11 @@ const NAMESPACE_PATH = /^[\p{L}\p{N}][\p{L}\p{N}\p{M}_-]*(?:\/[\p{L}\p{N}][\p{L}
 /** A table's separator row: `| --- | :-: |`. */
 const SEPARATOR_ROW = /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$/;
 
+/** Whether a line is a table's separator row: `| --- | :-: |`. */
+export function isSeparatorRow(line: string): boolean {
+  return SEPARATOR_ROW.test(line);
+}
+
 /** The columns of a schema table Deckard reads, by their header lowercased. */
 const KNOWN_COLUMNS: ReadonlyMap<string, ColumnRole> = new Map([
   ['field', 'field'],
@@ -178,7 +183,7 @@ function readSchemaTable(source: TypeNoteSource, problem: ReportProblem): Schema
       continue;
     }
     const columns = splitTableRow(lines[index]);
-    const roles = columns.map((header) => KNOWN_COLUMNS.get(header.trim().toLowerCase().replace(/\s+/g, ' ')));
+    const roles = columns.map(readColumnRole);
     if (!roles.includes('field') || !roles.includes('kind')) {
       continue;
     }
@@ -204,7 +209,12 @@ function readSchemaTable(source: TypeNoteSource, problem: ReportProblem): Schema
 }
 
 /** The role Deckard reads a schema table's column in. */
-type ColumnRole = 'field' | 'kind' | 'reverse' | 'alsoCalled' | 'words';
+export type ColumnRole = 'field' | 'kind' | 'reverse' | 'alsoCalled' | 'words';
+
+/** The role a schema table's column is read in, by its header in any case and spacing; undefined for a column of the reader's own. */
+export function readColumnRole(header: string): ColumnRole | undefined {
+  return KNOWN_COLUMNS.get(header.trim().toLowerCase().replace(/\s+/g, ' '));
+}
 
 /** What reading a schema table's rows takes: its header as written, each column's role, and where problems go. */
 interface TableHeader {
@@ -268,7 +278,7 @@ function readFieldRow(cells: readonly string[], header: TableHeader, line: numbe
 }
 
 /** Whether a line can be a table's row: it holds a `|` that is not escaped. */
-function isTableRow(line: string): boolean {
+export function isTableRow(line: string): boolean {
   return /(^|[^\\])\|/.test(line) && line.trim().length > 0;
 }
 
@@ -303,7 +313,7 @@ export function splitTableRow(line: string): string[] {
 }
 
 /** A cell's text without the backticks of a code span around all of it. */
-function stripCode(cell: string): string {
+export function stripCode(cell: string): string {
   const text = cell.trim();
   return /^`[^`]*`$/.test(text) ? text.slice(1, -1).trim() : text;
 }

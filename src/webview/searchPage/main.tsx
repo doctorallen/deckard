@@ -459,6 +459,7 @@ function chooseTypeAction(action: string, context: NonNullable<typeof typeContex
     'type-sort-desc': () => send({ type: 'setTypeSort', typeKey, column, direction: 'desc' }),
     'type-hide-column': () => send({ type: 'setTypeColumns', typeKey, columns: table.columns.map((each) => each.id).filter((id) => id !== column) }),
     'type-rename-field': () => send({ type: 'renameTypeField', typeKey, field: String(field) }),
+    'type-change-field': () => send({ type: 'changeTypeField', typeKey, field: String(field) }),
     'type-edit-field': () => send({ type: 'editTypeField', typeKey, field: String(field) }),
     'type-rename-option': () => send({ type: 'renameTypeOption', typeKey, field: String(context.field), option: String(context.option) }),
     'type-open-row': () => openTypeRow(String(context.rowId)),
@@ -663,6 +664,11 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   'open-type-note': (_target, snapshot) => {
     if (snapshot.typeRows) {
       send({ type: 'openTypeNote', typeKey: snapshot.typeRows.key });
+    }
+  },
+  'edit-type': (_target, snapshot) => {
+    if (snapshot.typeRows) {
+      send({ type: 'editType', typeKey: snapshot.typeRows.key });
     }
   },
   'create-type-from-tag': (target) => send({ type: 'createTypeFromTag', namespace: String(target.dataset.namespace) }),
