@@ -142,7 +142,7 @@ export function describeBetweenCounts(index: WorkspaceIndex, tagKey: string, con
   }
   const counts = groups.map((group) => `${group.label}: ${group.tasks.length}.`).join(' ');
   return context.identity === undefined
-    ? `${counts} deckard.me names nobody, so only tasks for nobody count as yours.`
+    ? `${counts} Deckard doesn’t know who you are yet: the "Me" setting names nobody, so only tasks for nobody count as yours.`
     : counts;
 }
 

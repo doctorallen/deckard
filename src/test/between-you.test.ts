@@ -155,7 +155,7 @@ suite('Between you', () => {
   test('the describe tool counts each group for a person, and says nothing of it for a tag that is none', () => {
     const index = samWorkspace({ 'notes/team.md': '# Team #team/rates' });
     assert.match(answerDescribeTag(index, { tag: '@sam-okafor' }, now, asDavid), /\nBetween you: You owe Sam: 2\. Sam owes you: 2\.$/m);
-    assert.match(answerDescribeTag(index, { tag: '@sam-okafor' }, now, createQueryContext(now)), /deckard\.me names nobody/);
+    assert.match(answerDescribeTag(index, { tag: '@sam-okafor' }, now, createQueryContext(now)), /the "Me" setting names nobody/);
     assert.doesNotMatch(answerDescribeTag(index, { tag: '#team/rates' }, now, asDavid), /Between you/);
     assert.doesNotMatch(answerDescribeTag(index, { tag: '@sam-okafor' }, now), /Between you/, 'nothing without a context to ask in');
   });

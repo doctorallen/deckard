@@ -46,7 +46,7 @@ export function BetweenCard({ between }: { readonly between: SearchPageBetween |
         ? (
           <p class="between-identity">
             {'Deckard doesn’t know who you are yet, so only tasks for nobody count as yours. '}
-            <button type="button" class="tag-note-action" data-action="set-identity" data-tip="Open the setting deckard.me, and write the tag you use for yourself">Set who you are…</button>
+            <button type="button" class="tag-note-action" data-action="set-identity" data-tip={'Open the "Me" setting, and write the tag you use for yourself'}>Set who you are…</button>
           </p>
         )
         : null}
