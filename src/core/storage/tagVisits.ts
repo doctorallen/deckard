@@ -58,6 +58,8 @@ export class TagVisits {
   private readonly changeEmitter = new Emitter<void>();
   /** Fires when a visit is counted, or the Hubs view's sort changes, so the views that show them redraw. */
   public readonly onDidChange: Event<void> = this.changeEmitter.event;
+  /** The visits being written, one after another, so one never reads the list before another has written it. */
+  private writing: Promise<void> = Promise.resolve();
 
   /** Over the workspace's store. */
   public constructor(private readonly store: KeyValueStore) {}
@@ -78,9 +80,17 @@ export class TagVisits {
 
   /**
    * Counts a visit: replaces the tag's snapshot with this one. Tags `exists`
-   * says are gone lose theirs, and past the cap the oldest visits go.
+   * says are gone lose theirs, and past the cap the oldest visits go. Two
+   * visits counted at once are written in turn, so neither's time is lost.
    */
-  public async record(tagKey: string, visit: TagVisit, exists: (tagKey: string) => boolean = () => true): Promise<void> {
+  public record(tagKey: string, visit: TagVisit, exists: (tagKey: string) => boolean = () => true): Promise<void> {
+    const written = this.writing.then(() => this.write(tagKey, visit, exists));
+    this.writing = written.catch(() => undefined);
+    return written;
+  }
+
+  /** Writes one visit, and the list of every tag's visit time with it. */
+  private async write(tagKey: string, visit: TagVisit, exists: (tagKey: string) => boolean): Promise<void> {
     const times = new Map(this.seenAt());
     times.delete(tagKey);
     const kept = [...times.entries()]

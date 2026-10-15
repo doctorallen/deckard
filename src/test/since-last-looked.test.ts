@@ -223,6 +223,20 @@ suite('Since you last looked', () => {
     assert.ok(kept.has(`#t/${TAG_VISIT_LIMIT + 1}`));
   });
 
+  test('two visits counted at once both keep their time', async () => {
+    /** A store whose writes are read at once but settle a tick later, as workspaceState's do. */
+    class SlowStore extends MemoryStore {
+      public override async update(key: string, value: unknown): Promise<void> {
+        await super.update(key, value);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+    }
+    const visits = new TagVisits(new SlowStore());
+    const empty = (seenAt: number): TagVisit => ({ seenAt, entries: {}, tasks: { open: [], done: [] }, fields: {} });
+    await Promise.all([visits.record('#a', empty(now)), visits.record('#b', empty(now + 1))]);
+    assert.deepStrictEqual([...visits.seenAt()].sort(), [['#a', now], ['#b', now + 1]]);
+  });
+
   test('reads a stored value that is no visit as none', async () => {
     const store = new MemoryStore();
     await store.update(`${TAG_VISIT_PREFIX}#a`, { seenAt: 'yesterday', entries: {}, tasks: { open: [], done: [] }, fields: {} });

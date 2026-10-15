@@ -110,7 +110,8 @@ Where the plan was silent, or the code made its words impractical:
   `deckard.tagVisit:<tag>`, and a list of every tag's visit time,
   `deckard.tagVisits`, so counting a visit writes one tag's snapshot and not
   all 500. Tags the index no longer has lose their visits, and the cap of
-  500 drops the oldest, whenever a visit is written, rather than in Tidy
+  500 drops the oldest, whenever a visit is written (two visits counted at
+  once are written in turn, so neither's time is lost, QA), rather than in Tidy
   Preferences, which asks before it removes anything and lists favorites,
   pins, and saved searches only.
 - **When a visit counts (D7).** Five seconds after the page is put in front
