@@ -388,4 +388,24 @@ suite('Search page messages', () => {
       assert.strictEqual(narrowSearchPageMessage(message), undefined, JSON.stringify(message));
     }
   });
+
+  test('the Story tab: a filter, Oldest first, Show more, and Copy as Markdown, each carrying no more than it needs', () => {
+    for (const filter of ['all', 'decisions', 'done', 'questions']) {
+      assert.deepStrictEqual(narrowSearchPageMessage({ type: 'setStoryFilter', filter }), { type: 'setStoryFilter', filter });
+    }
+    assert.deepStrictEqual(narrowSearchPageMessage({ type: 'setStoryOrder', oldestFirst: true }), { type: 'setStoryOrder', oldestFirst: true });
+    assert.deepStrictEqual(narrowSearchPageMessage({ type: 'showMoreStory' }), { type: 'showMoreStory' });
+    assert.deepStrictEqual(narrowSearchPageMessage({ type: 'copyStory' }), { type: 'copyStory' });
+    for (const message of [
+      { type: 'setStoryFilter' },
+      { type: 'setStoryFilter', filter: 'constructor' },
+      { type: 'setStoryFilter', filter: 'done', extra: 1 },
+      { type: 'setStoryOrder', oldestFirst: 'yes' },
+      { type: 'setStoryOrder' },
+      { type: 'showMoreStory', limit: 1000 },
+      { type: 'copyStory', text: '## October 2026' },
+    ]) {
+      assert.strictEqual(narrowSearchPageMessage(message), undefined, JSON.stringify(message));
+    }
+  });
 });

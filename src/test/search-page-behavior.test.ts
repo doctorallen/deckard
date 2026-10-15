@@ -497,17 +497,19 @@ suite('Search page behavior', () => {
       'and the panel names its tab',
     );
 
+    // A tag's page: Notes, Tasks, and its Story.
     key('notes', 'ArrowRight');
     assert.strictEqual(tab('tasks').getAttribute('aria-selected'), 'true', 'Right chooses the next tab');
     assert.strictEqual(page.document.activeElement, tab('tasks'), 'and focuses it');
     key('tasks', 'ArrowRight');
+    key('story', 'ArrowRight');
     assert.strictEqual(tab('notes').getAttribute('aria-selected'), 'true', 'and wraps');
     key('notes', 'End');
-    assert.strictEqual(tab('tasks').getAttribute('aria-selected'), 'true', 'End goes to the last');
-    key('tasks', 'Home');
+    assert.strictEqual(tab('story').getAttribute('aria-selected'), 'true', 'End goes to the last');
+    key('story', 'Home');
     assert.strictEqual(tab('notes').getAttribute('aria-selected'), 'true', 'Home to the first');
     key('notes', 'ArrowLeft');
-    assert.strictEqual(tab('tasks').getAttribute('aria-selected'), 'true', 'Left wraps the other way');
+    assert.strictEqual(tab('story').getAttribute('aria-selected'), 'true', 'Left wraps the other way');
   });
 
   test('a tag\'s context menu opens from the keyboard, and gives focus back', () => {

@@ -14,13 +14,14 @@ import { resultPanelAttributes, ResultTabs } from '../shared/resultTabs';
 import { type CardDisplay, SearchCard } from '../shared/searchCard';
 import { LinesIcon } from '../shared/strokeIcons';
 import { TaskListRow } from '../shared/taskRow';
+import { StoryTab } from './story';
 import { TypeRowsTable, TypeSortNote } from './typeRows';
 
 /** A kind of result. */
 export type ResultKind = 'notes' | 'tasks';
 
-/** A tab of results: notes, tasks, or, on a type's page, its rows. */
-export type ResultTabId = ResultKind | 'rows';
+/** A tab of results: notes, tasks, on a type's page its rows, or on a tag's page its story. */
+export type ResultTabId = ResultKind | 'rows' | 'story';
 
 /** Whether the results are drawn in groups: the hierarchy is on, and there is something to group. */
 function isGrouped(snapshot: SearchPageSnapshot): boolean {
@@ -308,22 +309,60 @@ function RowsPane({ view }: { readonly view: ResultsView }) {
 }
 
 /**
+ * Side by side, a tag's story under the notes and tasks: its heading and
+ * count, then the tab's filters and rows.
+ */
+function StoryPane({ view }: { readonly view: ResultsView }) {
+  const story = view.snapshot.story;
+  if (!story) {
+    return null;
+  }
+  return (
+    <section class="overview-pane story-pane" aria-labelledby="story-heading">
+      <div class="overview-pane-header" data-zen-region="">
+        <h2 id="story-heading" class="overview-pane-heading">{['Story (', <span data-search-count="story">{story.count}</span>, ')']}</h2>
+      </div>
+      <StoryTab story={story} />
+    </section>
+  );
+}
+
+/** The actions at the end of the tab row: the rows tab's sort, nothing for the story, or the pane's. */
+function TabActions({ active, view }: { readonly active: ResultTabId; readonly view: ResultsView }) {
+  const table = view.snapshot.typeRows;
+  if (active === 'rows' && table) {
+    return <div class="overview-pane-actions"><TypeSortNote table={table} /></div>;
+  }
+  return active === 'story' ? null : <PaneActions kind={active as ResultKind} view={view} />;
+}
+
+/** The tab shown: the one asked for, or Notes when the page has no such tab. */
+function shownTab(view: ResultsView): ResultTabId {
+  if ((view.activeTab === 'rows' && !view.snapshot.typeRows) || (view.activeTab === 'story' && !view.snapshot.story)) {
+    return 'notes';
+  }
+  return view.activeTab;
+}
+
+/**
  * The results: side by side, or as Notes and Tasks tabs over their panes,
  * each tab counting what its pane holds, so a tab never promises more rows
  * than the pane behind it; either grouped under Refine's tags when the
  * hierarchy is on. A type's page has its rows first, as a tab or over the
- * panes side by side.
+ * panes side by side; a tag's page has its story last, as a tab or under
+ * them.
  */
 export function Results({ view }: { readonly view: ResultsView }) {
   const table = view.snapshot.typeRows;
+  const story = view.snapshot.story;
   if (view.snapshot.layout === 'split' && isGrouped(view.snapshot)) {
-    return <><RowsPane view={view} /><SplitGroups view={view} /></>;
+    return <><RowsPane view={view} /><SplitGroups view={view} /><StoryPane view={view} /></>;
   }
   if (view.snapshot.layout === 'split') {
-    return <><RowsPane view={view} /><div key="split" class="overview-split"><NotesPane view={view} /><TasksPane view={view} /></div></>;
+    return <><RowsPane view={view} /><div key="split" class="overview-split"><NotesPane view={view} /><TasksPane view={view} /></div><StoryPane view={view} /></>;
   }
   const counts = resultCounts(view.snapshot);
-  const active = view.activeTab === 'rows' && !table ? 'notes' : view.activeTab;
+  const active = shownTab(view);
   return (
     <>
       <ResultTabs
@@ -331,16 +370,20 @@ export function Results({ view }: { readonly view: ResultsView }) {
           ...(table ? [{ id: 'rows', label: table.plural, count: table.count }] : []),
           { id: 'notes', label: 'Notes', count: counts.notes },
           { id: 'tasks', label: 'Tasks', count: counts.tasks },
+          ...(story ? [{ id: 'story', label: 'Story', count: story.count }] : []),
         ]}
         active={active}
         label="Search results"
-        actions={active === 'rows' && table ? <div class="overview-pane-actions"><TypeSortNote table={table} /></div> : <PaneActions kind={active as ResultKind} view={view} />}
+        actions={<TabActions active={active} view={view} />}
       />
       {table
         ? <div class="overview-tab-panel" {...resultPanelAttributes('rows')} hidden={active !== 'rows'}><TypeRowsTable table={table} /></div>
         : null}
       <div class="overview-tab-panel" {...resultPanelAttributes('notes')} hidden={active !== 'notes'}><NotesPane view={view} /></div>
       <div class="overview-tab-panel" {...resultPanelAttributes('tasks')} hidden={active !== 'tasks'}><TasksPane view={view} /></div>
+      {story
+        ? <div class="overview-tab-panel" {...resultPanelAttributes('story')} hidden={active !== 'story'}><StoryTab story={story} /></div>
+        : null}
     </>
   );
 }

@@ -21,8 +21,11 @@ import type {
   SetTagOverviewLayoutMessage,
   SetSearchHierarchyMessage,
   SetSinceFilterMessage,
+  SetStoryFilterMessage,
+  SetStoryOrderMessage,
   SetTagOverviewSortMessage,
   SinceChipKind,
+  StoryFilter,
   CreateTypeFromTagMessage,
   RenameTypeOptionMessage,
   SetTypeColumnsMessage,
@@ -269,6 +272,21 @@ const narrowSetSinceFilter: Narrower<SetSinceFilterMessage> = (value) => {
     : undefined;
 };
 
+/** The Story tab's filters. */
+const STORY_FILTERS: readonly StoryFilter[] = ['all', 'decisions', 'done', 'questions'];
+
+/** A filter of the Story tab, and nothing else. */
+const narrowSetStoryFilter: Narrower<SetStoryFilterMessage> = (value) =>
+  (STORY_FILTERS as readonly unknown[]).includes(value.filter) && Object.keys(value).length === 2
+    ? { type: 'setStoryFilter', filter: value.filter as StoryFilter }
+    : undefined;
+
+/** Oldest first on or off, and nothing else. */
+const narrowSetStoryOrder: Narrower<SetStoryOrderMessage> = (value) =>
+  typeof value.oldestFirst === 'boolean' && Object.keys(value).length === 2
+    ? { type: 'setStoryOrder', oldestFirst: value.oldestFirst }
+    : undefined;
+
 /** Each message a search page may send, and what it must hold. */
 export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   exportResults: narrowExportResults,
@@ -324,6 +342,10 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   openIdentitySetting: exactlyType('openIdentitySetting'),
   markSeen: exactlyType('markSeen'),
   setSinceFilter: narrowSetSinceFilter,
+  setStoryFilter: narrowSetStoryFilter,
+  setStoryOrder: narrowSetStoryOrder,
+  showMoreStory: exactlyType('showMoreStory'),
+  copyStory: exactlyType('copyStory'),
 };
 
 /** A message from a search page, narrowed by its table, or undefined. */

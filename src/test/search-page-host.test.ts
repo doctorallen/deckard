@@ -217,6 +217,34 @@ suite('Search page host', () => {
     }
   });
 
+  test('the Story tab: a filter and Oldest first narrow and order its rows, Show more draws more, and Copy as Markdown copies the rows shown', async () => {
+    const page = openSearchPage();
+    try {
+      page.host.refresh();
+      const texts = () => (page.last().story?.months ?? []).flatMap((month) => month.rows.map((row) => row.tokens.map((token) => ('text' in token ? token.text : '')).join('')));
+      assert.deepStrictEqual(texts(), ['The feed.', 'Send the audit summary', 'Sequencing for the milestone.'], 'every line about the tag, its hub aside');
+      await page.send({ type: 'setStoryFilter', filter: 'done' });
+      assert.deepStrictEqual(texts(), []);
+      assert.strictEqual(page.last().story?.count, 3, 'the tab still counts every row');
+      await page.send({ type: 'setStoryFilter', filter: 'all' });
+      await page.send({ type: 'setStoryOrder', oldestFirst: true });
+      assert.strictEqual(page.last().story?.oldestFirst, true);
+      await page.send({ type: 'showMoreStory' });
+      assert.strictEqual(page.last().story?.total, 3);
+      await page.send({ type: 'copyStory' });
+      assert.strictEqual(await vscode.env.clipboard.readText(), [
+        '## Undated',
+        '',
+        '- The feed. (Telemetry audit)',
+        '- Send the audit summary (Telemetry audit)',
+        '- Sequencing for the milestone. (Atlas planning)',
+        '',
+      ].join('\n'));
+    } finally {
+      page.dispose();
+    }
+  });
+
   test('before the first scan sends nothing and marks nothing stale, and draws once the scan is done', () => {
     const page = openSearchPage('#project/atlas', { hasIndexed: false });
     try {
@@ -320,7 +348,7 @@ suite('Search page host', () => {
     }
   });
 
-  test('opens the hub, a card counting its visit, or a task the page shows, and nothing else', async () => {
+  test('opens the hub, a card counting its visit, a task or a story’s line the page shows, and nothing else', async () => {
     const page = openSearchPage();
     try {
       page.host.refresh();
@@ -330,13 +358,16 @@ suite('Search page host', () => {
         await page.send({ type: 'openSource', filePath: '/notes/atlas.md', line: 2 });
         await page.send({ type: 'openSource', filePath: '/notes/planning.md', line: 1, pin: true });
         await page.send({ type: 'openSource', filePath: '/notes/audit.md', line: 3, beside: true });
+        // A line of the Story tab, and one the page does not draw.
         await page.send({ type: 'openSource', filePath: '/notes/planning.md', line: 2 });
+        await page.send({ type: 'openSource', filePath: '/notes/planning.md', line: 3 });
         await page.send({ type: 'openSource', filePath: '/notes/beta.md', line: 1 });
       });
       assert.deepStrictEqual(calls, [
         ['open', '/notes/atlas.md', true, false],
         ['open', '/notes/planning.md', false, false],
         ['open', '/notes/audit.md', true, true],
+        ['open', '/notes/planning.md', true, false],
       ]);
       assert.deepStrictEqual(page.preferences.reader.value.sectionAccessCounts, { [card.id]: 1 });
     } finally {

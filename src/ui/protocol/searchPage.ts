@@ -505,6 +505,31 @@ export interface SetSinceFilterMessage {
   kind?: SinceChipKind;
 }
 
+/** A filter chip of a tag's Story tab chosen: every row, or one kind of them. */
+export interface SetStoryFilterMessage {
+  type: 'setStoryFilter';
+  filter: StoryFilter;
+}
+
+/** Oldest first, on a tag's Story tab, turned on or off. */
+export interface SetStoryOrderMessage {
+  type: 'setStoryOrder';
+  oldestFirst: boolean;
+}
+
+/** Show more, under a tag's Story tab: one more page of its rows. */
+export interface ShowMoreStoryMessage {
+  type: 'showMoreStory';
+}
+
+/**
+ * Copy as Markdown, in ⋯ while the Story tab is shown: the rows it shows,
+ * worked out again by the host, on the clipboard.
+ */
+export interface CopyStoryMessage {
+  type: 'copyStory';
+}
+
 /** Sets how many columns a search page lays its notes or tasks out in. */
 export interface SetSearchColumnsMessage {
   type: 'setSearchColumns';
@@ -750,6 +775,10 @@ export interface SearchPagePageToHost {
   openIdentitySetting: OpenIdentitySettingMessage;
   markSeen: MarkSeenMessage;
   setSinceFilter: SetSinceFilterMessage;
+  setStoryFilter: SetStoryFilterMessage;
+  setStoryOrder: SetStoryOrderMessage;
+  showMoreStory: ShowMoreStoryMessage;
+  copyStory: CopyStoryMessage;
 }
 
 /**

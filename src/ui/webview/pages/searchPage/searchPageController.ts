@@ -53,10 +53,12 @@ import {
   captureTagPageState,
   createSearchPageSnapshot,
   evaluateSearchPage,
+  readTagStory,
   resolveQueryTagIntersection,
   type SearchPageOptions,
 } from '../../../state/searchPageState';
 import { toTagVisit, VISIT_COUNTS_AFTER_MS } from '../../../state/sinceLastLooked';
+import { DEFAULT_STORY_VIEW, formatStoryMarkdown, shownStoryLines, STORY_PAGE_SIZE, type StoryView } from '../../../state/storySoFar';
 import type { TagVisit, TagVisits } from '../../../../core/storage/tagVisits';
 import { createQueryViewState } from '../../../state/querySuggestions';
 import { findWikiLinkPlace, parseWikiTarget } from '../../../../domain/index/backlinks';
@@ -193,6 +195,12 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   private sinceBaseline: { tagKey: string; visit: TagVisit | undefined } | undefined;
   /** The band's chip filtering the page, until it is chosen again or the search changes. */
   private sinceFilter: SinceChipKind | undefined;
+  /**
+   * How the Story tab is shown: the filter and the order the reader chose,
+   * kept while the page is open, and how many rows it draws, which starts
+   * again with each search.
+   */
+  private storyView: StoryView = DEFAULT_STORY_VIEW;
   /** Whether the page is in front, where a visit to it counts. */
   private inFront = false;
   /** The visit waiting out its five seconds in front, and the tag it is to. */
@@ -262,7 +270,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       }),
       toggleTask: toggleTask({
         writes: search.writes,
-        findTask: (taskId) => this.drawnTasks().find((candidate) => candidate.task.id === taskId)?.task,
+        findTask: (taskId) => this.drawnTasks().find((candidate) => candidate.task.id === taskId)?.task ?? this.storyTask(taskId),
       }),
       // A result is an entry, so pinning one pins that entry rather than
       // the file it is written in.
@@ -274,6 +282,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       openWikiLink: (message) => this.openWikiLink(message.target, message.from, message),
       ...this.betweenHandlers(),
       ...this.sinceHandlers(),
+      ...this.storyHandlers(),
       ...this.typeHandlers(),
     };
   }
@@ -445,6 +454,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       {
         queryContext,
         ...(since ? { since } : {}),
+        story: this.storyView,
         originQuery: this.originQuery,
         notePage: this.notePage,
         taskPage: this.taskPage,
@@ -534,6 +544,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   private showSearch(page: PageContext, entry: SearchHistoryEntry): void {
     this.invalidQueryText = undefined;
     this.sinceFilter = undefined;
+    this.storyView = { ...this.storyView, limit: STORY_PAGE_SIZE };
     this.queryText = entry.query;
     // The draft has become the search, or been replaced by another, so it is
     // no longer narrowing anything on its own.
@@ -654,6 +665,53 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   private drawnTasks(): DashboardTask[] {
     const snapshot = this.currentSnapshot();
     return [...snapshot.tasks, ...(snapshot.between?.groups ?? []).flatMap((group) => group.tasks)];
+  }
+
+  /** A task the Story tab draws, by id, as the index has it now; undefined for any other. */
+  private storyTask(taskId: string): Task | undefined {
+    const drawn = (this.currentSnapshot().story?.months ?? []).some((month) => month.rows.some((row) => row.task?.id === taskId));
+    return drawn ? this.search.indexer.getSnapshot().tasks.get(taskId) : undefined;
+  }
+
+  /** A row the Story tab draws, by where it is written. */
+  private isStoryRow(filePath: string, line: number): boolean {
+    return (this.currentSnapshot().story?.months ?? []).some((month) => month.rows.some((row) => row.filePath === filePath && row.line === line));
+  }
+
+  /**
+   * The Story tab: a filter chip, Oldest first, Show more, and Copy as
+   * Markdown, which copies the rows the tab shows.
+   */
+  private storyHandlers(): Pick<MessageHandlers<SearchPagePageToHost>, 'setStoryFilter' | 'setStoryOrder' | 'showMoreStory' | 'copyStory'> {
+    return {
+      // Another filter is another list, read from its first page.
+      setStoryFilter: (message, page) => {
+        this.storyView = { ...this.storyView, filter: message.filter, limit: STORY_PAGE_SIZE };
+        page.refresh();
+      },
+      setStoryOrder: (message, page) => {
+        this.storyView = { ...this.storyView, oldestFirst: message.oldestFirst, limit: STORY_PAGE_SIZE };
+        page.refresh();
+      },
+      showMoreStory: (_message, page) => {
+        this.storyView = { ...this.storyView, limit: this.storyView.limit + STORY_PAGE_SIZE };
+        page.refresh();
+      },
+      copyStory: () => this.copyStory(),
+    };
+  }
+
+  /** Copy as Markdown: the rows the Story tab shows, worked out afresh from the index, on the clipboard. */
+  private async copyStory(): Promise<void> {
+    const index = this.search.indexer.getSnapshot();
+    const context = readQueryContext(this.clock.now());
+    const story = readTagStory(index, evaluateSearchPage(index, this.queryText, { queryContext: context, previewWords: this.previewWords }), context);
+    const shown = story ? shownStoryLines(story, this.storyView) : [];
+    if (!shown.length) {
+      return;
+    }
+    await vscode.env.clipboard.writeText(`${formatStoryMarkdown(shown)}\n`);
+    vscode.window.setStatusBarMessage(`Copied ${shown.length} ${shown.length === 1 ? 'line' : 'lines'} of the story as Markdown`, 3000);
   }
 
   /**
@@ -942,6 +1000,11 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     );
     if (task) {
       await openNoteAt(task.task.filePath, task.task.lineNumber, how);
+      return;
+    }
+    // A line of the Story tab.
+    if (this.isStoryRow(filePath, line)) {
+      await openNoteAt(filePath, line, how);
       return;
     }
     // A note a type's row, or one of its values, names: a row's note or hub, or a Note field's.

@@ -632,6 +632,28 @@ text button and muted `.between-count`; a `.task-list.between-tasks` of
 whose `.between-more-link` (*Show all 14*) posts `openSearch` as the label
 does. The host opens only a search the card drew.
 
+### Story
+
+On a tag's page, the search page's `<StoryTab>` (`searchPage/story.tsx`)
+draws the **Story** tab's panel, after Notes and Tasks; side by side it is a
+`.story-pane` under the two, headed *Story (N)*. A `.story-filters` group of
+`.story-chip` buttons comes first, each `aria-pressed`, the one in use
+`.is-active` as a Since chip is: *All*, *Decisions*, *Done*, *Questions*
+while the story holds a question, each posting `setStoryFilter` (with `all`
+when chosen again), then `.story-order` (*Oldest first*), which posts
+`setStoryOrder`. Zen leaves them drawn. Each month is a `section.story-month`
+with its `.story-month-heading` (*October 2026*) over an `ol.story-rows` of
+`li.story-row`s, each `data-kind`, `data-file-path`, and `data-line`, a tab
+stop that opens its line as a card does: a muted monospace `.story-day`, a
+`.story-mark` holding a task's `<TaskBox>` (`input.story-box`) or a
+`.story-kind` letter (`D`, `?`, `·`, labeled for a screen reader), the
+`.story-text` cut to two lines with `<TaskTitle>`'s tag buttons, the
+`.story-children` lines smaller and muted under it, and a muted
+`.story-where`. Past the rows drawn, `.story-more` holds a
+`.story-more-link` (*Show more*) that posts `showMoreStory`. While the tab
+is shown, ⋯ holds *Copy as Markdown*, which posts `copyStory`; the host
+works the rows out again and writes them.
+
 ### Task board
 
 `taskBoard.css` and the Task Board's own modules, in `src/webview/taskBoard/`,
