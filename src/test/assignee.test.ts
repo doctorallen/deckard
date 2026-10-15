@@ -8,6 +8,8 @@ import { layoutTaskBoard, resolveTaskMove } from '../ui/state/taskBoardState';
 import { createQueryContext } from '../domain/query/queryContext';
 import { WorkspaceIndex } from '../domain/model';
 
+const lines = (...text: string[]): string => text.join('\n');
+
 const notes = {
   'notes/atlas.md': [
     '# Atlas #project/atlas',
@@ -69,6 +71,16 @@ suite('Task assignees', () => {
     assert.ok(
       tasks[0].tags.includes('@dana'),
       'the person a task is for is still one of its tags',
+    );
+  });
+
+  test('reads a name in any script, as a tag is read', () => {
+    const accented = indexOf({
+      'notes/a.md': lines('# A', '- [ ] Do it 👤 @józef', '- [ ] Ask 🧑 #person/zoë-ñúñez [due:: 2026-10-20]', '- [ ] Then 👤 @李雷 📅 2026-10-20'),
+    });
+    assert.deepStrictEqual(
+      [...accented.tasks.values()].map((task) => [task.title, task.assignee]),
+      [['Do it', '@józef'], ['Ask', '#person/zoë-ñúñez'], ['Then', '@李雷']],
     );
   });
 

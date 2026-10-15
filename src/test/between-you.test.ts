@@ -114,6 +114,15 @@ suite('Between you', () => {
     assert.ok(!groups.youOwe.includes('Loader retry fix lands'));
   });
 
+  test('a person whose name is not ASCII is owed what is assigned to them, and their promise reads back as tracked', () => {
+    const index = indexOf({ 'notes/a.md': lines('# A', '- [ ] Send it @józef', '- [ ] Do it 👤 @józef') });
+    assert.deepStrictEqual(titles(index, '@józef', asDavid), { youOwe: ['Send it @józef'], theyOwe: ['Do it'], toAsk: [] });
+    const today = ['- @józef says the loader fix lands by Friday'];
+    const tracked = formatPromiseTask(today, findPromises(today, { now, identity: '@david' })[0], { format: 'emoji' });
+    assert.strictEqual(tracked, '  - [w] Loader fix lands 📅 2026-10-16 👤 @józef');
+    assert.deepStrictEqual(findPromises([...today, tracked], { now, identity: '@david' }), []);
+  });
+
   test('puts what is overdue first, the longest overdue first, then the oldest', () => {
     const index = indexOf({
       'notes/a.md': lines(

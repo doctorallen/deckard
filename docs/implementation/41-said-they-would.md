@@ -123,6 +123,11 @@ plan was silent, or the code made its words impractical:
 - **Numbers and the turn of the year.** A bare numeric `11/12` is a day
   only after a lead word or at the end of the line, so *merged 11/12 PRs*
   is none; *on the 5th* said in December is January's. (QA)
+- **A person in any script.** `👤 @józef` was written but read back as
+  `@j`, since 👤's name was read in ASCII only, as 🆔's is: it is now read
+  as a tag's name is (`\p{L}\p{N}\p{M}_-`), task ids staying ASCII as the
+  Tasks plugin reads them, and the parse format is
+  `type-words-questions-assignees`, so the cache rebuilds. (QA)
 - **The line written** is in the order Deckard writes a task's fields, due
   before the person: `- [w] Loader retry fix lands 📅 2026-10-16 👤
   @sam-okafor`. Under a list item it lines up with the item's words; under

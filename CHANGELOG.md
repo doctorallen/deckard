@@ -95,6 +95,13 @@
   for `?` in `deckard.tasks.statuses` keeps it as that status, and turns
   questions off.
 
+### Fixed
+
+- **A person named in any script.** A task assigned `👤 @józef` was read as
+  assigned to `@j`; the name after 👤 is now read as a tag's name is, in
+  any script, so the task is Józef's in searches, on the board, and on
+  Between you.
+
 ## 2.8.1 - 2026-10-13
 
 ### Highlights
