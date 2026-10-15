@@ -13,6 +13,9 @@ Every change Deckard makes to your files, what starts it, and the setting that c
 | A question, `- [?] …`, in today's note, under its Questions heading when it has one | Find's **Ask it: add “…?” to today's note** | |
 | An answer, `- Answer: …`, under a question; a dropped question's box, `[?]` to `[-]` | **Answer…**, **Use as answer**, and **Drop** in the Questions view, Home's Open questions, and the lens above a question; the assistant's answer tool | Not written when the question's line changed since Deckard read it |
 | ` (see [[Note#Heading]])` at the end of the line being written | **Link it here**, on an older line that line is like, in its hover or in Context's Written before | |
+| A waiting task, `- [w] … 📅 day 👤 @sam`, under a line of today's note that names one person and a day to come | **Track** on its lens or lightbulb, or **Track as waiting on Sam…**, which opens the task editor first | `deckard.editor.trackPromises`; not written when the line changed, is tracked already, or the note is no longer today's |
+| A line, dated, with a link back to where it was written, `- 2026-10-14: … ([[2026-10-14#Org news]])`, as the last item under a hub note's Notes heading, which is made at the end of the hub when it has none; or under a heading you choose | **Add this line to FX’s notes** or **File under…** on a line's lightbulb | `deckard.links.style` for the link |
+| A field of a row's hub note, its front-matter key alone changing: `lead: "@priya-natarajan"`, or a value added to a field that holds several | **Set FX’s lead to Priya Natarajan** or **Add Swaps to FX’s owns** on a line's lightbulb, from the phrases a type's Words column lists | Not written when the line changed, or the field no longer holds what the action said it did |
 | A tag added, renamed, or merged on every line that carries it | Rename Tag, **Merge** in Stats, a search page's edit, **Add a tag** | Shown first when it reaches several notes |
 | `[[links]]` rewritten to a renamed note or heading | Renaming a note in the Explorer, or `Deckard: Rename Heading` | |
 | A mention turned into a link | **Link mentions** on a note's first line, or **Link** in the Context view | `deckard.links.style`: `[[Name]]` or `[Name](path.md)` |
@@ -38,6 +41,8 @@ Every change Deckard makes to your files, what starts it, and the setting that c
 | A type, `Types/Team.md`, from the fields your notes already write | `Deckard: Create Type from Tags…`, **Create type from #team…** on a tag's page, or the **Create a System type** quick fix | |
 | A row's note, in the type's `notes:` folder or the one you choose, with the fields you set | `Deckard: New Note from Type…`, **Add team…** on a type's rows, the **Create person "Omar H"…** quick fix, or **Create hub note** on a typed tag | A template named after the type's key |
 | A note a link names | **Create note** on a `[[link]]` that opens none, or **Create missing notes** from the problems lens above the note | |
+| A row's hub note, with the field the line's words set, when the row has none | **Set …** on a line's lightbulb | A template named after the type's key |
+| A term note, `type: term`, with the term and its definition under its title | **Make a term note** on a term's hover, or **Define…** in Stats, through New Note from Type…'s form | Your Term type and its template, else a built-in one in `Terms/` |
 | A calendar file of your dated tasks | `Deckard: Export Tasks as Calendar…`, or kept up to date as tasks change (*automatic*, once set) | `deckard.calendar.exportFile`, empty by default |
 | A JSON copy of favorites, pins, and searches | **Export…** in `Deckard: Manage Favorites, Pins, and Searches…` | |
 | A sample workspace | `Deckard: Create a Work Sample`, in Deckard's own storage, not your folder | |
