@@ -37,6 +37,8 @@ export interface DashboardTask {
   via?: 'hubLink';
   /** In a parked folder or under a parked tag: listed last, and said so. */
   parked?: true;
+  /** On a tag's page, added since the reader last had it open: it carries a NEW pill. */
+  isNew?: true;
   /** The title as inline Markdown tokens, which a page draws as elements and text. */
   titleTokens: InlineToken[];
   titleTags: TagReference[];
@@ -94,6 +96,8 @@ export interface TagOverviewCard {
   via?: 'hubLink';
   /** In a parked folder or under a parked tag: listed last, and said so. */
   parked?: true;
+  /** On a tag's page, written or changed since the reader last had it open: listed first, with a NEW pill. */
+  isNew?: true;
   /** Whether this entry is pinned to Home, so a menu says which it offers. */
   pinned?: boolean;
   titleTags: TagReference[];

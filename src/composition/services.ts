@@ -88,6 +88,7 @@ import { NotePagePanel } from '../ui/webview/notePage';
 import { TaskBoardPanel } from '../ui/webview/taskBoard';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { SearchPanels } from '../ui/webview/searchPage';
+import { TagVisits } from '../core/storage/tagVisits';
 import { setZenMode, startZenMode, toggleZenMode } from '../ui/webview/zenMode';
 import { getSampleStorageUri, SAMPLE_FOLDER_NAMES, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
 import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/firstIndex';
@@ -224,6 +225,8 @@ export interface Services {
   /** What the Markdown preview draws ```deckard blocks with. */
   queryBlocks: QueryBlocks;
   sectionFocus: SectionFocus;
+  /** What each tag's page held at the reader's last visit, which its band and the Hubs view read. */
+  tagVisits: TagVisits;
 }
 
 /** The index and what it reads and writes through. */
@@ -312,6 +315,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     mcpServer: assistance.mcpServer,
     queryBlocks: trees.queryBlocks,
     sectionFocus,
+    tagVisits: search.tagVisits,
   };
 }
 
@@ -634,6 +638,10 @@ function createSearch(
     queryBlock: (query) => formatQueryBlock(query),
   });
   const { repository, usage, savedSearches, display, pins, homeWidgets, tagRenames } = preferences;
+  // What each tag's page held at the last visit, kept with the workspace
+  // whose notes it names, apart from the preferences blob.
+  const tagVisits = new TagVisits(context.workspaceState);
+  context.subscriptions.push(tagVisits);
   const searchPanels = new SearchPanels({
     indexer,
     preferences: { reader: repository, usage, savedSearches, display, pins, homeWidgets, tagRenames },
@@ -642,8 +650,9 @@ function createSearch(
     writes: writes.tasks,
     themePreview,
     exports: exportService,
+    visits: tagVisits,
   });
-  return { themePreview, activeSearch, exportService, searchPanels };
+  return { themePreview, activeSearch, exportService, searchPanels, tagVisits };
 }
 
 /** The tag decorations and hover, the completions, and the task editor's actions. */

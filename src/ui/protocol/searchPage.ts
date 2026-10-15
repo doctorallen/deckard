@@ -88,6 +88,12 @@ export interface SearchPageSnapshot {
    */
   between?: SearchPageBetween;
   /**
+   * On a tag's own page, what changed since the reader last had it open,
+   * when that was over a day ago and something did; the band under the
+   * page's bar draws it.
+   */
+  since?: SearchPageSince;
+  /**
    * For a search whose top level names a type (`type = team`): the type,
    * which titles the page, and its rows as the rows tab draws them.
    */
@@ -306,6 +312,29 @@ export interface SearchPageBetweenGroup {
   tasks: DashboardTask[];
 }
 
+/**
+ * A kind of change the Since you last looked band counts, each a chip that
+ * filters the page to what it counts. Plan 38 adds questions answered.
+ */
+export type SinceChipKind = 'mentions' | 'fields' | 'done' | 'added';
+
+/**
+ * What changed on a tag's page since the reader last had it open
+ * (docs/implementation/37-since-you-last-looked.md).
+ */
+export interface SearchPageSince {
+  /** When the last visit was, as the band says it: `Fri, Oct 2, 12 days ago`. */
+  when: string;
+  /** Its day alone, which heads the Notes tab's new entries: `Fri, Oct 2`. */
+  day: string;
+  /** A chip for each kind of change there is, in the band's order; the one filtering the page is `active`. */
+  chips: Array<{ kind: SinceChipKind; label: string; count: number; active?: true }>;
+  /** Each changed field's value at the last visit, by the field's name, shown once after its value now. */
+  was: Record<string, string>;
+  /** How many of the notes the page lists are new since, which it lists first. */
+  newNotes: number;
+}
+
 /** The quiet lines under a tag's page's hub. */
 export interface SearchPageTagNotes {
   /** Set when the search narrows the tag with other terms; the hub starts folded and a part of the progress may be on. */
@@ -402,6 +431,17 @@ export interface CopyBetweenAgendaMessage {
 /** Set who you are…, on the Between you card while `deckard.me` names nobody. */
 export interface OpenIdentitySettingMessage {
   type: 'openIdentitySetting';
+}
+
+/** Mark seen, on the Since you last looked band: the visit counts now, and the band goes. */
+export interface MarkSeenMessage {
+  type: 'markSeen';
+}
+
+/** A chip of the Since you last looked band chosen, filtering the page to what it counts; none clears it. */
+export interface SetSinceFilterMessage {
+  type: 'setSinceFilter';
+  kind?: SinceChipKind;
 }
 
 /** Sets how many columns a search page lays its notes or tasks out in. */
@@ -647,6 +687,8 @@ export interface SearchPagePageToHost {
   openSearch: OpenSearchMessage;
   copyBetweenAgenda: CopyBetweenAgendaMessage;
   openIdentitySetting: OpenIdentitySettingMessage;
+  markSeen: MarkSeenMessage;
+  setSinceFilter: SetSinceFilterMessage;
 }
 
 /**

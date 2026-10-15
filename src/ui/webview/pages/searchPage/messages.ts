@@ -20,7 +20,9 @@ import type {
   SetSearchPreviewMessage,
   SetTagOverviewLayoutMessage,
   SetSearchHierarchyMessage,
+  SetSinceFilterMessage,
   SetTagOverviewSortMessage,
+  SinceChipKind,
   CreateTypeFromTagMessage,
   RenameTypeOptionMessage,
   SetTypeColumnsMessage,
@@ -254,6 +256,19 @@ function narrowTypeRow<T extends TypeRowMessage['type']>(type: T): Narrower<Type
       : undefined;
 }
 
+/** The kinds of change a Since you last looked chip filters by. */
+const SINCE_CHIP_KINDS: readonly SinceChipKind[] = ['mentions', 'fields', 'done', 'added'];
+
+/** A chip of the Since you last looked band, or none to clear it, and nothing else. */
+const narrowSetSinceFilter: Narrower<SetSinceFilterMessage> = (value) => {
+  if (value.kind === undefined) {
+    return Object.keys(value).length === 1 ? { type: 'setSinceFilter' } : undefined;
+  }
+  return (SINCE_CHIP_KINDS as readonly unknown[]).includes(value.kind) && Object.keys(value).length === 2
+    ? { type: 'setSinceFilter', kind: value.kind as SinceChipKind }
+    : undefined;
+};
+
 /** Each message a search page may send, and what it must hold. */
 export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   exportResults: narrowExportResults,
@@ -307,6 +322,8 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   openSearch: narrowOpenSearch,
   copyBetweenAgenda: exactlyType('copyBetweenAgenda'),
   openIdentitySetting: exactlyType('openIdentitySetting'),
+  markSeen: exactlyType('markSeen'),
+  setSinceFilter: narrowSetSinceFilter,
 };
 
 /** A message from a search page, narrowed by its table, or undefined. */

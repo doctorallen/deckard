@@ -12,7 +12,7 @@ import type { ExportService } from '../../../../services/exportService';
 import type { NavigationService } from '../../../../services/navigationService';
 import { measure } from '../../../../shared/timing';
 import type { EditFieldsMessage } from '../../../protocol/fields';
-import type { SearchPagePageToHost, SearchPageSnapshot, SearchPageState } from '../../../protocol/searchPage';
+import type { SearchPagePageToHost, SearchPageSnapshot, SearchPageState, SinceChipKind } from '../../../protocol/searchPage';
 import type { DashboardTask, SearchRefineState } from '../../../protocol/shared';
 import { editResults } from '../../../commands/bulkEditPrompts';
 import { presentExport } from '../../../commands/exportResults';
@@ -49,7 +49,15 @@ import {
 import { getSearchPageHtml } from '../../searchPageHtml';
 import type { PageChrome } from '../../components';
 import { narrowSearchPageMessage } from './messages';
-import { createSearchPageSnapshot, evaluateSearchPage, resolveQueryTagIntersection } from '../../../state/searchPageState';
+import {
+  captureTagPageState,
+  createSearchPageSnapshot,
+  evaluateSearchPage,
+  resolveQueryTagIntersection,
+  type SearchPageOptions,
+} from '../../../state/searchPageState';
+import { toTagVisit, VISIT_COUNTS_AFTER_MS } from '../../../state/sinceLastLooked';
+import type { TagVisit, TagVisits } from '../../../../core/storage/tagVisits';
 import { createQueryViewState } from '../../../state/querySuggestions';
 import { findWikiLinkPlace, parseWikiTarget } from '../../../../domain/index/backlinks';
 import { openResultAt } from '../../../commands/navigation';
@@ -95,7 +103,29 @@ export interface SearchPageControllerOptions {
   setTitle(title: string): void;
   /** Called when the reader closes the page. */
   onDidClose(): void;
+  /**
+   * The tags' last visits, which the page's Since you last looked band
+   * reads, and which a visit to a tag's page is counted in. Without them
+   * the page has no band and counts nothing.
+   */
+  visits?: Pick<TagVisits, 'get' | 'record'>;
+  /** The time and the timer a visit is counted by: the real ones unless a test sets its own. */
+  clock?: VisitClock;
 }
+
+/** The time, and a timer, as a visit is counted by them. */
+export interface VisitClock {
+  now(): number;
+  setTimeout(run: () => void, ms: number): unknown;
+  clearTimeout(handle: unknown): void;
+}
+
+/** The real time and timers. */
+const REAL_CLOCK: VisitClock = {
+  now: () => Date.now(),
+  setTimeout: (run, ms) => setTimeout(run, ms),
+  clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+};
 
 /**
  * One search page: its search, the search it opened with, the pages of
@@ -154,9 +184,28 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   /** Whether the last state sent put Refine in the sidebar. */
   private refineWasInSidebar = false;
   private lastSnapshot: SearchPageSnapshot | undefined;
+  /**
+   * The visit the band compares the tag's page with: the last one before
+   * the page was put in front, read again once the reader leaves the page
+   * and comes back, so a visit counted meanwhile clears the band on the
+   * next draw, and not under the reader's eyes.
+   */
+  private sinceBaseline: { tagKey: string; visit: TagVisit | undefined } | undefined;
+  /** The band's chip filtering the page, until it is chosen again or the search changes. */
+  private sinceFilter: SinceChipKind | undefined;
+  /** Whether the page is in front, where a visit to it counts. */
+  private inFront = false;
+  /** The visit waiting out its five seconds in front, and the tag it is to. */
+  private visitTimer: { tagKey: string; handle: unknown } | undefined;
+  /** The tag whose visit counted while the page has been in front, which counts no more until it is left. */
+  private countedVisit: string | undefined;
+
+  /** The time and the timer a visit to the page is counted by. */
+  private readonly clock: VisitClock;
 
   /** Starts on `search.queryText`, opened with `search.originQuery`. */
   public constructor(private readonly search: SearchPageControllerOptions) {
+    this.clock = search.clock ?? REAL_CLOCK;
     this.originQuery = search.originQuery;
     this.queryText = search.queryText;
     const { indexer, navigation, preferences } = search;
@@ -224,6 +273,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       openSource: (message) => this.openSource(message.filePath, message.line, message),
       openWikiLink: (message) => this.openWikiLink(message.target, message.from, message),
       ...this.betweenHandlers(),
+      ...this.sinceHandlers(),
       ...this.typeHandlers(),
     };
   }
@@ -287,6 +337,8 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     this.lastSnapshot = snapshot;
     this.refineWasInSidebar = snapshot.refineInSidebar === true;
     this.search.setTitle(getPageTitle(snapshot));
+    // The search may have moved to another tag, or off one.
+    this.syncVisitTimer();
     return {
       ...snapshot,
       parkedTags: listedParkedTags(this.search.indexer),
@@ -332,8 +384,9 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     this.search.onDidClose();
   }
 
-  /** A page that is gone is no longer the active search. */
+  /** A page that is gone is no longer the active search, and counts no visit. */
   public dispose(): void {
+    this.stopVisitTimer();
     this.search.activeSearch.release(this.search.source);
   }
 
@@ -353,12 +406,23 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     await this.applyQuery(page, queryText);
   }
 
+  /**
+   * While the page is in front it is the active search, and a visit to its
+   * tag counts after five seconds. Left, a visit no longer counts, and the
+   * next time it is put in front the band reads the tag's last visit again.
+   */
   private updateActivity(active: boolean): void {
     if (active) {
       this.search.activeSearch.setActive(this.search.source);
     } else {
       this.search.activeSearch.release(this.search.source);
     }
+    if (!active && this.inFront) {
+      this.countedVisit = undefined;
+      this.sinceBaseline = undefined;
+    }
+    this.inFront = active;
+    this.syncVisitTimer();
   }
 
   private createSnapshot(): SearchPageSnapshot {
@@ -372,13 +436,15 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       this.taskPage = 1;
     }
     this.pagedAt = preferences.searchPageSize;
-    const queryContext = readQueryContext();
+    const queryContext = readQueryContext(this.clock.now());
+    const since = this.readSinceBaseline();
     const snapshot = createSearchPageSnapshot(
       index,
       preferences,
       this.queryText,
       {
         queryContext,
+        ...(since ? { since } : {}),
         originQuery: this.originQuery,
         notePage: this.notePage,
         taskPage: this.taskPage,
@@ -467,6 +533,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
 
   private showSearch(page: PageContext, entry: SearchHistoryEntry): void {
     this.invalidQueryText = undefined;
+    this.sinceFilter = undefined;
     this.queryText = entry.query;
     // The draft has become the search, or been replaced by another, so it is
     // no longer narrowing anything on its own.
@@ -607,6 +674,105 @@ export class SearchPageController implements PageController<SearchPageState, Sea
         await openSettingAction('me').run();
       },
     };
+  }
+
+  /**
+   * Since you last looked: Mark seen counts the visit now and clears the
+   * band; a chip narrows the page to what it counts, or, chosen again,
+   * lets it go.
+   */
+  private sinceHandlers(): Pick<MessageHandlers<SearchPagePageToHost>, 'markSeen' | 'setSinceFilter'> {
+    return {
+      markSeen: async (_message, page) => {
+        const tagKey = this.visitTagKey();
+        const visit = tagKey ? await this.countVisit(tagKey) : undefined;
+        if (!tagKey || !visit) {
+          return;
+        }
+        this.sinceBaseline = { tagKey, visit };
+        this.sinceFilter = undefined;
+        page.refresh();
+      },
+      setSinceFilter: (message, page) => {
+        this.sinceFilter = message.kind;
+        // A narrower list, read from its first page.
+        this.notePage = 1;
+        this.taskPage = 1;
+        page.refresh();
+      },
+    };
+  }
+
+  /** The tag whose own page this is, when the search is that one tag alone; a visit counts only to it. */
+  private visitTagKey(): string | undefined {
+    if (!this.search.visits) {
+      return undefined;
+    }
+    const index = this.search.indexer.getSnapshot();
+    const tagKeys = resolveQueryTagIntersection(index, parseWorkspaceQuery(index, this.queryText), readEntityNamespaceAliases());
+    return tagKeys?.length === 1 ? tagKeys[0] : undefined;
+  }
+
+  /**
+   * What the band compares the page with: the tag's last visit, read when
+   * the page first draws the tag, and again after the page is left and
+   * put in front again. A different tag lets the chip go.
+   */
+  private readSinceBaseline(): SearchPageOptions['since'] {
+    const tagKey = this.visitTagKey();
+    if (this.sinceBaseline?.tagKey !== tagKey) {
+      this.sinceBaseline = tagKey ? { tagKey, visit: this.search.visits?.get(tagKey) } : undefined;
+      this.sinceFilter = undefined;
+    }
+    return this.sinceBaseline ? { visit: this.sinceBaseline.visit, filter: this.sinceFilter } : undefined;
+  }
+
+  /**
+   * Starts the five seconds a visit to the tag's page waits in front (D7),
+   * or stops them when the page is left or shows something else. A visit
+   * counted while the page has been in front counts again only after it
+   * is left.
+   */
+  private syncVisitTimer(): void {
+    const tagKey = this.inFront ? this.visitTagKey() : undefined;
+    if (this.visitTimer && this.visitTimer.tagKey === tagKey) {
+      return;
+    }
+    this.stopVisitTimer();
+    if (!tagKey || this.countedVisit === tagKey) {
+      return;
+    }
+    const handle = this.clock.setTimeout(() => {
+      this.visitTimer = undefined;
+      if (this.inFront && this.visitTagKey() === tagKey) {
+        void this.countVisit(tagKey);
+      }
+    }, VISIT_COUNTS_AFTER_MS);
+    this.visitTimer = { tagKey, handle };
+  }
+
+  /** Stops the five seconds a visit was waiting out, when one was. */
+  private stopVisitTimer(): void {
+    if (!this.visitTimer) {
+      return;
+    }
+    this.clock.clearTimeout(this.visitTimer.handle);
+    this.visitTimer = undefined;
+  }
+
+  /** Counts a visit to a tag's page: what it holds now replaces its last visit. */
+  private async countVisit(tagKey: string): Promise<TagVisit | undefined> {
+    const visits = this.search.visits;
+    if (!visits) {
+      return undefined;
+    }
+    this.stopVisitTimer();
+    this.countedVisit = tagKey;
+    const index = this.search.indexer.getSnapshot();
+    const now = this.clock.now();
+    const visit = toTagVisit(captureTagPageState(index, tagKey, readQueryContext(now)), now);
+    await visits.record(tagKey, visit, (key) => index.tags.has(key));
+    return visit;
   }
 
   /**

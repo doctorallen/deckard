@@ -371,4 +371,21 @@ suite('Search page messages', () => {
     assert.deepStrictEqual(narrowSearchPageMessage({ type: 'openIdentitySetting' }), { type: 'openIdentitySetting' });
     assert.strictEqual(narrowSearchPageMessage({ type: 'openIdentitySetting', value: '@david' }), undefined, 'the page names no one');
   });
+
+  test('Since you last looked: Mark seen carries nothing, and a chip names one kind of change or none', () => {
+    assert.deepStrictEqual(narrowSearchPageMessage({ type: 'markSeen' }), { type: 'markSeen' });
+    assert.strictEqual(narrowSearchPageMessage({ type: 'markSeen', seenAt: 1 }), undefined, 'the host says when');
+    for (const kind of ['mentions', 'fields', 'done', 'added']) {
+      assert.deepStrictEqual(narrowSearchPageMessage({ type: 'setSinceFilter', kind }), { type: 'setSinceFilter', kind });
+    }
+    assert.deepStrictEqual(narrowSearchPageMessage({ type: 'setSinceFilter' }), { type: 'setSinceFilter' });
+    for (const message of [
+      { type: 'setSinceFilter', kind: 'everything' },
+      { type: 'setSinceFilter', kind: 'constructor' },
+      { type: 'setSinceFilter', kind: 'done', keys: ['a'] },
+      { type: 'setSinceFilter', extra: true },
+    ]) {
+      assert.strictEqual(narrowSearchPageMessage(message), undefined, JSON.stringify(message));
+    }
+  });
 });

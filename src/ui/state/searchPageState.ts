@@ -44,7 +44,7 @@ import { pinKey } from '../../core/storage/preferencesSchema';
 import { createPinForLine } from '../../domain/notes/pins';
 import { buildSearchFacets, SearchFacetValue } from '../../domain/search/facets';
 import { DashboardTask, ResultPaging, TagOverviewCard } from '../protocol/shared';
-import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes, SearchResultGroup } from '../protocol/searchPage';
+import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes, SearchResultGroup, SinceChipKind } from '../protocol/searchPage';
 import { findTagFacet, GROUP_ITEM_LIMIT, groupResults } from './searchGroups';
 import { countGroup, groupByHeading, type HeadingGroup } from './headingGroups';
 import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
@@ -71,6 +71,20 @@ import { collectTagParts } from '../../domain/tasks/tagParts';
 import { formatProgressCount } from '../../domain/tasks/progressCount';
 import { readNoteBody } from './notePageState';
 import { describeBetween } from './betweenYou';
+import {
+  captureTagPage,
+  compareTagPage,
+  describeSince,
+  entryVisitKey,
+  fileVisitKey,
+  isSinceShown,
+  readFieldValues,
+  SINCE_AFTER_MS,
+  TagChanges,
+  TagPageState,
+  taskVisitKey,
+} from './sinceLastLooked';
+import type { TagVisit } from '../../core/storage/tagVisits';
 
 /**
  * A search page: what one search finds, sorted, paged, and drawn as cards
@@ -117,6 +131,12 @@ export interface SearchPageOptions {
   taskPage?: number;
   /** The settings and moment the search is evaluated, and its dates worded, in. */
   queryContext: QueryContext;
+  /**
+   * On a tag's own page, the reader's last visit to it, and the band's chip
+   * filtering the page, if one is: what changed since is drawn, marked, and
+   * listed first (docs/implementation/37-since-you-last-looked.md).
+   */
+  since?: { visit: TagVisit | undefined; filter?: SinceChipKind };
 }
 
 /**
@@ -150,7 +170,8 @@ export function createSearchPageSnapshot(
   // large workspace rendered every entry to show thirty.
   const sectionKey = (section: Section): NoteKey =>
     createSectionKey(section, preferences.sectionAccessCounts);
-  const ranked = rankNoteKeys(index, preferences, page, sectionKey);
+  const since = readSinceView(index, page, options);
+  const ranked = since.notes(rankNoteKeys(index, preferences, page, sectionKey));
   const pageSize =
     options.pageSize ??
     (options.paged === false ? undefined : preferences.searchPageSize);
@@ -161,11 +182,12 @@ export function createSearchPageSnapshot(
     keys: takePage(ranked, notePaging),
     page,
     markVia,
+    isNew: since.isNewNote,
   });
-  const tasks = parkedLast(
+  const tasks = since.tasks(parkedLast(
     sortTasks([...results.tasks], preferences.taskOrder, preferences.taskSortMode),
     (task) => isParkedTask(index, task.id),
-  );
+  ));
   const taskPaging = createPaging(tasks.length, pageSize, options.taskPage);
   // Only a search that found nothing is worth correcting: results answer the
   // search as it was typed, and offering a different one beside them would
@@ -176,23 +198,20 @@ export function createSearchPageSnapshot(
       : undefined;
   const typeRows = describeTypeRows(index, preferences, page, options);
   const facets = [...(typeRows?.facets ?? []), ...buildPageFacets(index, page, text, options)];
-  const drawTask = (task: Task) =>
-    markParked(
-      markVia(createDashboardTask(task, index.sections, options.queryContext), task.id),
-      isParkedTask(index, task.id),
-    );
+  const drawTask = (task: Task): DashboardTask => drawSearchTask(index, task, { markVia, isNew: since.isNewTask, context: options.queryContext });
   const groups = drawHierarchy(index, preferences.searchHierarchy, {
     facets,
     page,
     ranked,
     tasks,
     drawTask,
-    drawNotes: (keys) => drawNoteCards(index, preferences, { keys, page, markVia, withoutTasks: true }),
+    drawNotes: (keys) => drawNoteCards(index, preferences, { keys, page, markVia, isNew: since.isNewNote, withoutTasks: true }),
   });
 
   return {
     ...buildTagPageBlock(index, preferences, page, options.queryContext),
     ...(typeRows ? { typeRows: typeRows.table } : {}),
+    ...since.band(ranked, options.queryContext),
     query: createQueryViewState({
       index,
       parsed,
@@ -368,6 +387,105 @@ function countTasks(tasks: readonly Task[]): SearchPageSnapshot['taskCounts'] {
   };
 }
 
+/**
+ * A task as a search page draws it: marked as listed for the tag's hub,
+ * as parked, and as added since the last visit, each when it is.
+ */
+function drawSearchTask(
+  index: WorkspaceIndex,
+  task: Task,
+  { markVia, isNew, context }: { markVia: <T extends object>(item: T, id: string) => T; isNew: (task: Task) => boolean; context: QueryContext },
+): DashboardTask {
+  return markNew(markParked(markVia(createDashboardTask(task, index.sections, context), task.id), isParkedTask(index, task.id)), isNew(task));
+}
+
+/** An item marked as new since the last visit, when it is, for the page to give it a NEW pill. */
+function markNew<T extends object>(item: T, isNew: boolean): T {
+  return isNew ? { ...item, isNew: true } : item;
+}
+
+/**
+ * What a search page draws of the changes on its tag's own page since the
+ * last visit: which notes and tasks are new, the notes new first, the lists
+ * a chip of the band narrows, and the band. On any other page, or with no
+ * band, the lists as they are and nothing marked.
+ */
+interface SinceView {
+  isNewNote: (key: NoteKey) => boolean;
+  isNewTask: (task: Task) => boolean;
+  notes: (keys: NoteKey[]) => NoteKey[];
+  tasks: (tasks: Task[]) => Task[];
+  band: (ranked: readonly NoteKey[], context: QueryContext) => Pick<SearchPageSnapshot, 'since'>;
+}
+
+/** The changes since the last visit, as a search page draws them; see SinceView. */
+function readSinceView(index: WorkspaceIndex, page: SearchPageResults, options: SearchPageOptions): SinceView {
+  const changes = readTagChanges(index, page, options);
+  if (!changes) {
+    return { isNewNote: () => false, isNewTask: () => false, notes: (keys) => keys, tasks: (tasks) => tasks, band: () => ({}) };
+  }
+  const filter = options.since?.filter;
+  const isNewNote = (key: NoteKey): boolean => changes.newEntries.has(noteVisitKey(key));
+  const isNewTask = (task: Task): boolean => changes.addedTasks.has(taskVisitKey(task));
+  return {
+    isNewNote,
+    isNewTask,
+    notes: (keys) => sinceFirst(keys, isNewNote).filter((key) => filter !== 'mentions' || isNewNote(key)),
+    // A chip of the band narrows the tasks to those it counts.
+    tasks: (tasks) => tasks.filter((task) => {
+      if (filter === 'done') {
+        return changes.doneTasks.has(taskVisitKey(task));
+      }
+      return filter !== 'added' || isNewTask(task);
+    }),
+    band: (ranked, context) => ({ since: describeSince(changes, { filter, newNotes: ranked.filter(isNewNote).length }, context) }),
+  };
+}
+
+/**
+ * The entries new since the last visit first, each list in the order it
+ * had, so the Notes tab can head them New since and the rest Earlier.
+ */
+function sinceFirst(keys: NoteKey[], isNew: (key: NoteKey) => boolean): NoteKey[] {
+  const fresh = keys.filter(isNew);
+  return fresh.length ? [...fresh, ...keys.filter((key) => !isNew(key))] : keys;
+}
+
+/** A listed note's key in a visit: its entry's, or its note's when it is a note of its own. */
+function noteVisitKey(key: NoteKey): string {
+  return key.section ? entryVisitKey(key.section) : fileVisitKey(key.filePath);
+}
+
+/**
+ * What changed on a tag's own page since the last visit, when the band
+ * shows: the visit was over a day ago and something changed. Nothing for
+ * a page a search narrows, or one never visited.
+ */
+function readTagChanges(index: WorkspaceIndex, page: SearchPageResults, options: SearchPageOptions): TagChanges | undefined {
+  const visit = options.since?.visit;
+  const now = options.queryContext.now;
+  const tagKey = page.focusTag && !page.filtered && page.tagKeys?.length === 1 ? page.focusTag.key : undefined;
+  // A visit within the day shows no band whatever changed, so nothing is read.
+  if (!visit || !tagKey || now - visit.seenAt <= SINCE_AFTER_MS) {
+    return undefined;
+  }
+  const changes = compareTagPage(visit, captureTagPageState(index, tagKey, options.queryContext));
+  return isSinceShown(changes, now) ? changes : undefined;
+}
+
+/**
+ * What a tag's own page holds now, as a visit keeps it: the entries and
+ * tasks its search finds, and its hub's fields as the page draws them.
+ */
+export function captureTagPageState(index: WorkspaceIndex, tagKey: string, context: QueryContext): TagPageState {
+  const page = evaluateSearchPage(index, tagKey, { queryContext: context });
+  const fields = readTagPageFields(index, tagKey, page.hubFile);
+  return captureTagPage(index, page.results, {
+    hubPaths: page.focusTag?.hubFilePaths ?? [],
+    fields: readFieldValues(fields.hub.fields ?? fields.page.rowFields, page.hubFile?.hub?.properties),
+  });
+}
+
 /** An item marked as parked, when it is, for the page to draw it after the rest. */
 function markParked<T extends object>(item: T, parked: boolean): T {
   return parked ? { ...item, parked: true } : item;
@@ -421,10 +539,12 @@ function rankNoteKeys(
 function drawNoteCards(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
-  { keys, page, markVia, withoutTasks }: {
+  { keys, page, markVia, isNew, withoutTasks }: {
     keys: readonly NoteKey[];
     page: SearchPageResults;
     markVia: <T extends object>(item: T, id: string) => T;
+    /** Whether a note is new since the last visit, which marks its card. */
+    isNew: (key: NoteKey) => boolean;
     /** Leave the task lines out of each card, when the tasks are listed beside it. */
     withoutTasks?: boolean;
   },
@@ -474,7 +594,7 @@ function drawNoteCards(
     const drawn = key.section ? cardFor(key.section) : fileCardFor(key.file as ParsedFile);
     const card = withoutTasks ? dropTaskLines(drawn, cardLines) : drawn;
     return withPreview(
-      markParked(markVia(card, key.section ? key.section.id : card.filePath), isParkedKey(index, key)),
+      markNew(markParked(markVia(card, key.section ? key.section.id : card.filePath), isParkedKey(index, key)), isNew(key)),
       preferences.searchPreview,
       snippetWords,
       cardLines.get(card.id),
