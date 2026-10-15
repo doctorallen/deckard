@@ -970,6 +970,7 @@ function createHome(context: vscode.ExtensionContext, parts: HomeParts) {
     tryNext,
     writes: writes.tasks,
     themePreview,
+    questions: writes.questions.memory,
   });
   const quickFind = new QuickFind({
     indexer,

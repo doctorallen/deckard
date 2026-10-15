@@ -136,6 +136,18 @@ export interface DashboardWidgetNote {
   pinKey?: string;
 }
 
+/** An open question, as Home's Open questions widget lists it, with the line that may answer it. */
+export interface DashboardWidgetQuestion {
+  id: string;
+  text: string;
+  filePath: string;
+  line: number;
+  /** How long it has been open, and its first tag: `open 12 days · #team/rates`. */
+  detail: string;
+  /** The line, or the typed row's field, that may answer it. */
+  offer?: { text: string; where: string; filePath: string; line: number };
+}
+
 /** Today's daily note, as Home shows it. */
 export interface DashboardWidgetToday {
   /** Today, as YYYY-MM-DD. */
@@ -190,6 +202,8 @@ export interface DashboardWidget extends DashboardWidgetConfig {
   today?: DashboardWidgetToday;
   /** Try next's one suggestion; absent, the widget draws nothing outside Customize. */
   tryNext?: DashboardTryNext;
+  /** Open questions' questions, each with the answer offered for it. */
+  questions?: DashboardWidgetQuestion[];
 }
 
 /** One thing Home suggests trying, and the button that does it. */
@@ -273,6 +287,16 @@ export interface AddNextActionMessage {
   tagKey: string;
 }
 
+/**
+ * Acts on a question Open questions lists: Answer…, Use as answer on the
+ * line offered for it, or Not it, which sets that line aside.
+ */
+export interface QuestionActionMessage {
+  type: 'questionAction';
+  action: 'answer' | 'useOffer' | 'notIt';
+  questionId: string;
+}
+
 /** Opens a note at its top. */
 export interface OpenNoteMessage {
   type: 'openNote';
@@ -295,7 +319,7 @@ export interface WhatsNewMessage {
 /** Opens a Deckard view Home links to. */
 export interface OpenDeckardViewMessage {
   type: 'openView';
-  view: 'agenda' | 'sampleWorkspace' | 'checkSetup' | 'walkthrough';
+  view: 'agenda' | 'questions' | 'sampleWorkspace' | 'checkSetup' | 'walkthrough';
 }
 
 /**
@@ -386,6 +410,7 @@ export interface DashboardPageToHost {
   openView: OpenDeckardViewMessage;
   openDailyNote: OpenDailyNoteMessage;
   addNextAction: AddNextActionMessage;
+  questionAction: QuestionActionMessage;
   openNote: OpenNoteMessage;
   pinNote: MessageAs<PinNoteMessage, 'pinNote'>;
   unpinNote: MessageAs<PinNoteMessage, 'unpinNote'>;

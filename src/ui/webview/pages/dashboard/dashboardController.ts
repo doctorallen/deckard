@@ -87,6 +87,8 @@ export interface DashboardControllerOptions {
   navigationService: NavigationService;
   /** What Related Notes is handed while Home is in front: the Dashboard's panel. */
   source: HomeSource;
+  /** The offered answers set aside with Not it, which Open questions leaves out; absent, none are. */
+  questions?: { rejected(): ReadonlySet<string>; readonly onDidChange: vscode.Event<void> };
 }
 
 /** Some of Home's handlers, by the types they answer. */
@@ -204,6 +206,9 @@ export class DashboardController implements PageController<DashboardPageState, D
     }
     if (tryNext) {
       disposables.push(tryNext.onDidChange(() => page.refresh()));
+    }
+    if (this.home.questions) {
+      disposables.push(this.home.questions.onDidChange(() => page.refresh()));
     }
     disposables.push(
       // A visit is kept quietly; only Home's Recently opened shows it.
@@ -453,6 +458,7 @@ export class DashboardController implements PageController<DashboardPageState, D
     | 'openNote'
     | 'pinNote'
     | 'unpinNote'
+    | 'questionAction'
   > {
     const { indexer, preferences, navigation } = this.home;
     return {
@@ -476,6 +482,7 @@ export class DashboardController implements PageController<DashboardPageState, D
         vscode.commands.executeCommand(
           {
             agenda: 'deckard.agenda.focus',
+            questions: 'deckard.questions.focus',
             sampleWorkspace: 'deckard.createWorkSample',
             checkSetup: 'deckard.checkSetup',
             walkthrough: 'deckard.openWalkthrough',
@@ -495,6 +502,9 @@ export class DashboardController implements PageController<DashboardPageState, D
           await preferences.pins.unpinNote(message.pinKey);
         }
       },
+      // The question is read again from the index by the command, which
+      // writes nothing when its line has changed since.
+      questionAction: (message) => vscode.commands.executeCommand(`deckard.questions.${message.action}`, message.questionId),
     };
   }
 
@@ -571,6 +581,7 @@ export class DashboardController implements PageController<DashboardPageState, D
       queryContext,
       agendaQuery: readAgendaQuery(configuration),
       ...(tryNext ? { tryNext } : {}),
+      ...(this.home.questions ? { rejectedOffers: this.home.questions.rejected() } : {}),
     });
   }
 

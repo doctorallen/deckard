@@ -34,6 +34,7 @@ A widget that leads somewhere makes its title the link, with a **›** after it:
 | **Gone quiet** | People, or another namespace, not written about for 30, 60, 90, or 180 days, with what is still open. **Only those with no open tasks** adds **Add next action**, which adds a task with the tag to today's note | The Tags tab |
 | **Progress** | Each project tag with tasks, or another namespace's, with a bar and how far along it is: *2/6 done (33%) · 1 overdue · next due in 3 days*. Unfinished first, overdue ones first among them, then by the next due date | The Tags tab |
 | **Pinned notes** | The notes you pinned, each with **×** to unpin | The note, at the heading you pinned |
+| **Open questions** | Your [questions](tasks.md#questions) with no answer yet, oldest first, each with how long it has been open and **Answer…**, and under it the line that may answer it, with **Use as answer** and **Not it**. Not on a new Home: add it with **Customize Home** | The Questions view |
 
 **Tasks gone stale:** give a Tasks widget the search `is:open AND updated < 30d` and the sort **Least recently updated**. A task's updated date is its note's. A Stale tasks widget from an earlier version became this widget, with its own days.
 

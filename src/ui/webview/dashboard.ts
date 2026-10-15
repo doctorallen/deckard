@@ -11,6 +11,7 @@ import { PanelAdapter } from './host/panelAdapter';
 import { WebviewHost } from './host/webviewHost';
 import {
   DashboardController,
+  type DashboardControllerOptions,
   DashboardNavigation,
   DashboardPreferences,
 } from './pages/dashboard/dashboardController';
@@ -30,6 +31,8 @@ export interface DashboardPanelOptions {
   writes: TaskWrites;
   /** The theme Choose Theme… is previewing, which the page draws in. */
   themePreview: ThemePreview;
+  /** The offered answers set aside with Not it, which Open questions leaves out. */
+  questions?: DashboardControllerOptions['questions'];
 }
 
 /**
@@ -59,6 +62,7 @@ export class DashboardPanel implements HomeSource, vscode.Disposable {
       writes: options.writes,
       navigationService: new NavigationService(),
       source: this,
+      questions: options.questions,
     });
     this.host = new WebviewHost(this.controller, { indexer: options.indexer, themePreview: options.themePreview });
     this.page = new PanelAdapter(this.host, {

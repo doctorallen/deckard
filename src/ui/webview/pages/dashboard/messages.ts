@@ -11,6 +11,7 @@ import type {
   DashboardWidgetChoicesMessage,
   OpenDeckardViewMessage,
   OpenNoteMessage,
+  QuestionActionMessage,
   RecordRecentQueryMessage,
   ReorderEntitiesMessage,
   ReorderTagsMessage,
@@ -186,6 +187,7 @@ const narrowOpenTaskBoard: Narrower<OpenTaskBoardMessage> = (value) =>
 /** One of the Deckard views Home links to. */
 const narrowOpenView: Narrower<OpenDeckardViewMessage> = (value) =>
   value.view === 'agenda' ||
+  value.view === 'questions' ||
   value.view === 'sampleWorkspace' ||
   value.view === 'checkSetup' ||
   value.view === 'walkthrough'
@@ -196,6 +198,14 @@ const narrowOpenView: Narrower<OpenDeckardViewMessage> = (value) =>
 const narrowAddNextAction: Narrower<AddNextActionMessage> = (value) =>
   typeof value.tagKey === 'string' && value.tagKey.length > 0 && value.tagKey.length <= MAX_NEXT_ACTION_TAG_LENGTH
     ? { type: 'addNextAction', tagKey: value.tagKey }
+    : undefined;
+
+/** A question to answer, or whose offered line to use or set aside, by its id. */
+const narrowQuestionAction: Narrower<QuestionActionMessage> = (value) =>
+  (value.action === 'answer' || value.action === 'useOffer' || value.action === 'notIt') &&
+  typeof value.questionId === 'string' &&
+  /^question-[0-9a-z]+-[0-9a-z]+$/.test(value.questionId)
+    ? { type: 'questionAction', action: value.action, questionId: value.questionId }
     : undefined;
 
 /** A note to open at its top. */
@@ -245,6 +255,7 @@ export const DASHBOARD_MESSAGES: NarrowingTable<DashboardPageToHost> = {
   openView: narrowOpenView,
   openDailyNote: onlyType('openDailyNote'),
   addNextAction: narrowAddNextAction,
+  questionAction: narrowQuestionAction,
   openNote: narrowOpenNote,
   pinNote: narrowAs('pinNote', narrowPinNote),
   unpinNote: narrowAs('unpinNote', narrowPinNote),

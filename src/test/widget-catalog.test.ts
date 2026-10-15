@@ -9,10 +9,10 @@ import { formatKeyWords, readTagNamespace } from '../domain/markdown/tagKeys';
  * one by it, and the parser and the Tags tab read a key's namespace alike.
  */
 suite('Widget catalog', () => {
-  test('lists every kind, fourteen, in the order + Add widget offers them', () => {
+  test('lists every kind, fifteen, in the order + Add widget offers them', () => {
     assert.deepStrictEqual(Object.keys(WIDGET_KINDS), [
       'search', 'tasks', 'agenda', 'favoriteTags', 'topTags', 'savedSearches', 'recentSearches', 'recentNotes',
-      'savedQuery', 'todayNote', 'quietPeople', 'progress', 'pinnedNotes', 'tryNext',
+      'savedQuery', 'todayNote', 'quietPeople', 'progress', 'pinnedNotes', 'tryNext', 'openQuestions',
     ]);
   });
 

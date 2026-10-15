@@ -5,17 +5,19 @@
 import type { ComponentChild } from 'preact';
 
 import { widgetNamespace } from '../../domain/dashboard/widgetCatalog';
-import type { DashboardWidget, DashboardWidgetKind } from '../../ui/protocol/dashboard';
+import type { DashboardWidget, DashboardWidgetKind, DashboardWidgetQuestion } from '../../ui/protocol/dashboard';
 import { EmptyState } from '../shared/emptyState';
 import type { HomeContext } from './homeContext';
 import {
   EmptyLine,
   HomeNotes,
+  HomeRow,
   HomeTags,
   HomeTasks,
   OpenSearchPageLine,
   RowAction,
   SavedFilterList,
+  WithRowAction,
 } from './rows';
 
 /** What a widget's body is drawn from: the widget, and what Home holds besides. */
@@ -164,6 +166,45 @@ function PinnedNotesBody({ widget }: WidgetBodyProps) {
   );
 }
 
+/**
+ * One open question: its words, which open its line, its age and tag, and
+ * Answer…; under it, the line that may answer it, which opens, with Use as
+ * answer and Not it. Under Zen its buttons are quiet until it is pointed at.
+ */
+function QuestionItem({ question }: { readonly question: DashboardWidgetQuestion }) {
+  const id = { 'data-question-id': question.id, 'data-zen-reveal': '' };
+  const offer = question.offer;
+  return (
+    <div class="home-question" data-zen-region="">
+      <WithRowAction
+        row={<HomeRow action="open-source" attributes={{ 'data-file-path': question.filePath, 'data-line': question.line }} label={question.text} detail={question.detail} detailKind="count" />}
+        action={<RowAction action="answer-question" attributes={id} label="Answer…" title={`Answer ${question.text}`} />}
+      />
+      {offer
+        ? (
+          <div class="home-question-offer">
+            <button type="button" class="home-question-offer-line" data-action="open-source" data-file-path={offer.filePath} data-line={offer.line} data-tip={`Open the line that may answer it: ${offer.text}`}>
+              <span class="home-question-offer-where">{`May answer: ${offer.where}`}</span>
+              <span class="home-question-offer-text">{offer.text}</span>
+            </button>
+            <RowAction action="use-offer" attributes={id} label="Use as answer" title="Write this line under the question, with a link to it" />
+            <RowAction action="not-it" attributes={id} label="Not it" title="Set this line aside for this question" />
+          </div>
+        )
+        : null}
+    </div>
+  );
+}
+
+/** The open questions, oldest first, each with the line that may answer it. */
+function OpenQuestionsBody({ widget }: WidgetBodyProps) {
+  const questions = widget.questions || [];
+  if (!questions.length) {
+    return <EmptyLine text="No open questions. Write one as - [?] …" />;
+  }
+  return <div class="home-list">{questions.map((question) => <QuestionItem key={question.id} question={question} />)}</div>;
+}
+
 /** What one saved search finds: its notes and its open tasks, or its tasks alone for one saved on the Task Board. */
 function SavedQueryBody({ widget }: WidgetBodyProps) {
   if (widget.missing) {
@@ -199,6 +240,7 @@ const BODIES: Readonly<Record<DashboardWidgetKind, (props: WidgetBodyProps) => C
   progress: ProgressBody,
   pinnedNotes: PinnedNotesBody,
   savedQuery: SavedQueryBody,
+  openQuestions: OpenQuestionsBody,
 };
 
 /** What one widget shows; nothing for a kind this page does not know. */

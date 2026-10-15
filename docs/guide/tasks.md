@@ -239,6 +239,10 @@ The **Questions** view in the Deckard sidebar, under Tasks, lists each open ques
 - **Drop Question**, on a question's right-click menu, writes its box as `[-]`, which makes it a cancelled task.
 - The title bar's **Include Answered Questions** lists the answered ones after them, and **Open as Search** opens the search page for `is:unanswered`.
 
+### On Home
+
+Home's **Open questions** widget, which **Customize Home** adds, lists the same questions with the same buttons; its title opens the Questions view. Under [Zen](themes-and-zen.md#zen), its buttons stay quiet until you point at a question.
+
 ### In the editor
 
 Above an open question, a lens says **Question · open 12 days**, then, when a line may answer it, **1 line may answer it: Wed, Oct 14 · Access**, which opens that line, then **Answer…** and **Drop**. Above an answered one it says **Question · answered Fri, Oct 9**. Under [Zen](themes-and-zen.md#zen) the lens keeps the age and the line that may answer, and leaves out **Answer…** and **Drop**. `deckard.editor.questions` turns the lens off.
