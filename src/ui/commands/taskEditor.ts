@@ -15,7 +15,7 @@ import {
   TaskDraft,
 } from '../../domain/markdown/taskDraft';
 import { readLineStatus, setTaskStatus } from '../../domain/tasks/statusWrites';
-import { DEFAULT_TASK_STATUSES, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
+import { DEFAULT_TASK_STATUSES, isTaskType, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
 import { readTaskStatusOptions } from './parseSettings';
 import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
 import { isMarkdownFile } from '../../core/workspace/scanner';
@@ -622,12 +622,13 @@ export interface StatusPick extends vscode.QuickPickItem {
 
 /**
  * Every status a task can have, in the order the settings list them: its
- * name, its character, and the current one marked. A `nonTask` status
- * is not offered, since a task given it would stop being a task.
+ * name, its character, and the current one marked. A `nonTask` or a
+ * `question` status is not offered, since a task given it would stop being
+ * a task.
  */
 export function createStatusPicks(statuses: readonly TaskStatusDefinition[], current: string): StatusPick[] {
   return statuses
-    .filter((status) => status.type !== 'nonTask')
+    .filter((status) => isTaskType(status.type))
     .map((status) => ({
       label: `${status.name === current ? '$(check) ' : ''}${status.name}`,
       description: `[${status.symbol}]`,
@@ -644,6 +645,7 @@ const STATUS_TYPE_WORDS: Readonly<Record<TaskStatusDefinition['type'], string>> 
   done: 'Done',
   cancelled: 'Closed, not done',
   nonTask: 'Not a task',
+  question: 'A question, not a task',
 };
 
 /** Asks which status the task has, every status offered. */

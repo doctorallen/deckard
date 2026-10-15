@@ -9,7 +9,7 @@ import { ensureDailyNote } from './dailyNote';
 import { confirmNotesWrite } from './writeTarget';
 import { resolveSourceUri } from './navigation';
 import { completeDraft, readDraftStatusReading, setDraftStatus, writeEditedTask, type DraftStatusReading } from './taskEditor';
-import { DEFAULT_TASK_STATUSES, normalizeStatusName, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
+import { DEFAULT_TASK_STATUSES, isTaskType, normalizeStatusName, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
 
 /** Deckard's own statuses. */
 function readDefaultStatusReading(): DraftStatusReading {
@@ -71,7 +71,7 @@ export function findNamedStatus(statuses: readonly TaskStatusDefinition[], named
   const box = /^\[(.)\]$/u.exec(named);
   return box
     ? statuses.find((status) => status.symbol === box[1])
-    : statuses.find((status) => status.type !== 'nonTask' && normalizeStatusName(status.name) === normalizeStatusName(named));
+    : statuses.find((status) => isTaskType(status.type) && normalizeStatusName(status.name) === normalizeStatusName(named));
 }
 
 /** A draft with its words, due date, priority, and person changed as asked; `null` clears one. */
@@ -251,7 +251,7 @@ export async function changeTask(
   const configuration = vscode.workspace.getConfiguration('deckard', uri);
   const statusReading = readDraftStatusReading(uri);
   if (changes.status !== undefined && !findNamedStatus(statusReading.statuses, changes.status)) {
-    const names = statusReading.statuses.filter((status) => status.type !== 'nonTask').map((status) => status.name);
+    const names = statusReading.statuses.filter((status) => isTaskType(status.type)).map((status) => status.name);
     return { text: `No status is called "${changes.status}". The statuses are ${[...new Set(names)].join(', ')}; or name one by its character, as [/].`, isError: true };
   }
   const completion = changeTaskLine({

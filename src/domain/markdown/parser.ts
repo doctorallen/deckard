@@ -5,6 +5,7 @@ import {
   HeadingTagSpan,
   NoteHub,
   ParsedFile,
+  Question,
   Section,
   TagReference,
   Task,
@@ -31,7 +32,7 @@ import { formatKeyWords, readTagNamespace } from './tagKeys';
 import { MIGRATED_TASK_LINE } from './taskLineEdits';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
 import { assignNoteEntries } from './noteEntries';
-import { DEFAULT_TASK_STATUSES, isNonTaskSymbol, statusForSymbol, type TaskStatusDefinition } from '../tasks/taskStatuses';
+import { DEFAULT_TASK_STATUSES, isNonTaskSymbol, isQuestionSymbol, statusForSymbol, type TaskStatusDefinition } from '../tasks/taskStatuses';
 import { parseTypeNote } from '../types/typeNotes';
 
 /**
@@ -39,7 +40,7 @@ import { parseTypeNote } from '../types/typeNotes';
  * (steps' parent links, say) changes it, so the local cache, which keeps
  * parsed notes, is rebuilt rather than served in the old shape.
  */
-export const PARSE_FORMAT = 'note-properties';
+export const PARSE_FORMAT = 'note-questions';
 
 /** A heading as the parser found it: its 1-based line, its level, and its words. */
 interface HeadingMatch {
@@ -83,7 +84,8 @@ function getTagField(field: string): string {
 /**
  * A task the index reads: any status's character, a gap after the box, and
  * the rest of the line on one line. A character whose status is `nonTask`
- * makes the line text again (isTaskLine).
+ * makes the line text again, and one whose status is `question` makes it a
+ * question (matchTask, matchQuestion).
  */
 const taskShape: TaskLineShape = { indent: 'whitespace', marks: STATUS_MARKS, after: 'gap', oneLine: true };
 const listItemPattern = /^(\s*)([-*+])[ \t]+/;
@@ -146,11 +148,19 @@ interface NoteContext {
 
 /**
  * The line as a task, taken apart, when it is one: a checkbox line of any
- * status but a `nonTask` one, which is text.
+ * status but a `nonTask` one, which is text, and a `question` one.
  */
 function matchTask(context: Pick<NoteContext, 'taskStatuses'>, line: string): TaskLineMatch | undefined {
   const match = matchTaskLine(line, taskShape);
-  return match && !isNonTaskSymbol(context.taskStatuses, match.mark) ? match : undefined;
+  return match && !isNonTaskSymbol(context.taskStatuses, match.mark) && !isQuestionSymbol(context.taskStatuses, match.mark)
+    ? match
+    : undefined;
+}
+
+/** The line as a question, taken apart, when it is one: `- [?] …`. */
+function matchQuestion(context: Pick<NoteContext, 'taskStatuses'>, line: string): TaskLineMatch | undefined {
+  const match = matchTaskLine(line, taskShape);
+  return match && isQuestionSymbol(context.taskStatuses, match.mark) ? match : undefined;
 }
 
 /**
@@ -293,6 +303,7 @@ export function parseMarkdown(
     assigneeFromPersonTag: options.assigneeFromPersonTag ?? false,
   });
   assignNoteEntries(filePath, sections, tasks, frontmatter.tags.length > 0);
+  const questions = findQuestions(context, sections, dateAnchor);
 
   const blockIds = findBlockIds(lines, fencedLines);
   // A `nonTask` status's lines: checkbox lines that are text.
@@ -306,6 +317,7 @@ export function parseMarkdown(
     content,
     sections,
     tasks,
+    ...(questions.length > 0 ? { questions } : {}),
     ...(Object.keys(blockIds).length > 0 ? { blockIds } : {}),
     frontmatterTags: frontmatter.tags,
     links: [...new Set([...frontmatter.links, ...extractNoteLinks(content, filePath)])],
@@ -1070,7 +1082,7 @@ function normalizeParsedTagReferences(
       });
     });
   }
-  [...parsed.sections, ...parsed.tasks].forEach((item) => {
+  [...parsed.sections, ...parsed.tasks, ...(parsed.questions ?? [])].forEach((item) => {
     if ('headingTags' in item) {
       item.headingTags = normalizeTagReferences(
         item.headingTags ?? [],
@@ -1716,7 +1728,7 @@ interface EntryReading {
 
 /**
  * The tagged entry that starts on a line, if one does. A line in a fence,
- * a heading, or a task, open, done, or migrated, starts none.
+ * a heading, a task, open, done, or migrated, or a question starts none.
  */
 function readTaggedEntry(
   context: NoteContext,
@@ -1728,6 +1740,7 @@ function readTaggedEntry(
     context.fencedLines.has(lineIndex) ||
     isHeading(line) ||
     matchTask(context, line) ||
+    matchQuestion(context, line) ||
     // A task migrated to another day is neither a task nor a note.
     isTaskLineOf(line, MIGRATED_TASK_LINE)
   ) {
@@ -1797,6 +1810,7 @@ function readTaggedParagraph(
       fencedLines.has(next) ||
       isHeading(continuation) ||
       matchTask(context, continuation) ||
+      matchQuestion(context, continuation) ||
       getListItemMatch(continuation) ||
       extractTags(continuation, undefined, personMarker).length === 0
     ) {
@@ -1986,6 +2000,80 @@ function readTask(
     updatedAt: dates.updatedAt,
     ...(parentTaskId === undefined ? {} : { parentTaskId }),
   };
+}
+
+/**
+ * The note's questions, `- [?]` lines: each with its own tags and those of
+ * the entry around it, as a task has them, and its answer, the first
+ * indented line under it that starts with `Answer:`, in any case.
+ */
+function findQuestions(context: NoteContext, sections: Section[], dateAnchor: number | undefined): Question[] {
+  const { filePath, lines, fencedLines, frontmatterTags, personMarker, dates } = context;
+  return lines.flatMap((line, lineIndex): Question[] => {
+    const match = fencedLines.has(lineIndex) ? undefined : matchQuestion(context, line);
+    if (!match) {
+      return [];
+    }
+    const lineNumber = lineIndex + 1;
+    const section = findNearestSection(sections, lineNumber);
+    const inlineTags = extractTags(match.body, undefined, personMarker);
+    const inheritedLabels =
+      section?.tagLabels ?? Object.fromEntries(frontmatterTags.map((tag) => [tag.key, tag.label]));
+    const { metadata: fields, title } = parseTaskMetadata(match.body);
+    const answer = findQuestionAnswer(context, lineIndex, dateAnchor);
+    return [
+      {
+        id: createId('question', `${filePath}:${lineNumber}:${match.body}`),
+        filePath,
+        ...omitUndefined({ sectionId: section?.id }),
+        title: title || match.body,
+        tags: mergeTags(section?.tags ?? frontmatterTags.map((tag) => tag.key), inlineTags.map((tag) => tag.key)),
+        tagLabels: mergeTagLabels(inheritedLabels, inlineTags),
+        associationTagGroups: [inlineTags],
+        lineNumber,
+        checkboxColumn: match.opening.length,
+        symbol: match.mark,
+        sourceLineText: line,
+        ...(answer ? { answer } : {}),
+        ...omitUndefined({
+          createdAt: parseIsoDate(fields.created) ?? dates.createdAt,
+          updatedAt: dates.updatedAt,
+        }),
+      },
+    ];
+  });
+}
+
+/** What opens an answer line: an optional list marker, then `Answer:`. */
+const ANSWER_LINE = /^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?answer:[ \t]*(.*)$/i;
+
+/**
+ * A question's answer: the first line indented under it, before the next
+ * line that is not, that starts with `Answer:`, with the day written on it.
+ */
+function findQuestionAnswer(
+  context: NoteContext,
+  questionIndex: number,
+  dateAnchor: number | undefined,
+): Question['answer'] {
+  const { lines, fencedLines } = context;
+  const indent = getLeadingWhitespaceLength(lines[questionIndex]);
+  for (let index = questionIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line.trim().length === 0) {
+      continue;
+    }
+    if (getLeadingWhitespaceLength(line) <= indent || isHeading(line)) {
+      return undefined;
+    }
+    const answer = fencedLines.has(index) ? undefined : ANSWER_LINE.exec(line);
+    if (answer) {
+      const text = answer[1].trim();
+      const answeredAt = findTaskDate(text, dateAnchor)?.at;
+      return { text, lineNumber: index + 1, ...(answeredAt === undefined ? {} : { answeredAt }) };
+    }
+  }
+  return undefined;
 }
 
 /**

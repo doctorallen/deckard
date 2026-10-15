@@ -24,7 +24,7 @@ import { getTypeIndex, type TypeIndex } from '../../domain/types/typeIndex';
 import { listTypeQueryFields, resolveTypeQueryPath, type TypeQueryField } from '../../domain/types/typeQueryFields';
 import type { TypeDefinition } from '../../domain/types/typeRegistry';
 import { DEFAULT_TASK_POLICY, type TaskPolicy } from '../../domain/tasks/taskPolicy';
-import { normalizeStatusName, UNKNOWN_STATUS_NAME } from '../../domain/tasks/taskStatuses';
+import { isTaskType, normalizeStatusName, UNKNOWN_STATUS_NAME } from '../../domain/tasks/taskStatuses';
 import {
   formatMonthName,
   formatShortDay,
@@ -582,7 +582,7 @@ function suggestStatuses(index: WorkspaceIndex, policy: Pick<TaskPolicy, 'status
   });
   const named = new Map<string, QuerySuggestion>();
   policy.statuses
-    .filter((status) => status.type !== 'nonTask')
+    .filter((status) => isTaskType(status.type))
     .forEach((status) => {
       const slug = normalizeStatusName(status.name).replace(/ /g, '-');
       if (named.has(slug) || QUERY_RESERVED_STATUS_VALUES.includes(slug)) {

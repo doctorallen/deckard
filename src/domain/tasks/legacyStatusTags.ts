@@ -64,7 +64,7 @@ export function readLegacyStatusTags(namespace: unknown, statuses: unknown): Leg
   (Array.isArray(statuses) ? statuses : []).forEach((entry: unknown) => {
     const { tag, symbol, type } = (entry && typeof entry === 'object' ? entry : {}) as Record<string, unknown>;
     const name = typeof tag === 'string' ? tag.trim().replace(/^#/, '').toLowerCase() : '';
-    if (!TAG_NAME.test(name) || !isTaskStatusType(type) || type === 'nonTask' || type === 'done' || type === 'cancelled' || named.has(name)) {
+    if (!TAG_NAME.test(name) || !isTaskStatusType(type) || type === 'nonTask' || type === 'question' || type === 'done' || type === 'cancelled' || named.has(name)) {
       return;
     }
     named.add(name);

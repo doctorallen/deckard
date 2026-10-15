@@ -2423,7 +2423,8 @@
                     "onHold",
                     "done",
                     "cancelled",
-                    "nonTask"
+                    "nonTask",
+                    "question"
                   ],
                   "enumDescriptions": [
                     "Open, to do.",
@@ -2431,7 +2432,8 @@
                     "Open, waiting: left out of is:available.",
                     "Done: counts as done everywhere.",
                     "Closed, but not done: left out of progress and of what is open.",
-                    "Not a task: the line stays text, as a pro and con list's."
+                    "Not a task: the line stays text, as a pro and con list's.",
+                    "A question: not a task, open until a line under it starts with Answer:."
                   ]
                 },
                 "next": {
@@ -2508,9 +2510,14 @@
                 "type": "onHold",
                 "icon": "blocked",
                 "next": " "
+              },
+              {
+                "symbol": "?",
+                "name": "Question",
+                "type": "question"
               }
             ],
-            "markdownDescription": "What each checkbox character means, as Obsidian Tasks' statuses do: `- [/]` in progress, `- [w]` waiting, `- [s]` someday, `- [=]` blocked, `- [-]` cancelled. Each has its `symbol`, a `name`, and a `type` (`todo`, `inProgress`, `onHold`, `done`, `cancelled`, or `nonTask`). A task's status is its box's character alone: a `#status/…` tag is a tag like any other. A character no status names is a task to do, called Unknown. `[ ]` and `[x]` are always Todo and Done.",
+            "markdownDescription": "What each checkbox character means, as Obsidian Tasks' statuses do: `- [/]` in progress, `- [w]` waiting, `- [s]` someday, `- [=]` blocked, `- [-]` cancelled, and `- [?]` a question, which is not a task. Each has its `symbol`, a `name`, and a `type` (`todo`, `inProgress`, `onHold`, `done`, `cancelled`, `nonTask`, or `question`). A task's status is its box's character alone: a `#status/…` tag is a tag like any other. A character no status names is a task to do, called Unknown. `[ ]` and `[x]` are always Todo and Done, and `[?]` is Question unless a status here gives it another meaning.",
             "order": 12
           },
           "deckard.tasks.checkboxClick": {

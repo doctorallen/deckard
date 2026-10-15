@@ -3,6 +3,7 @@
  * made of, and the front matter a hub note carries.
  */
 import type { TypeNote } from './noteTypes';
+import type { Question } from './questions';
 import type { TagReference } from './tags';
 import type { Task } from './tasks';
 
@@ -77,6 +78,8 @@ export interface ParsedFile {
   content: string;
   sections: Section[];
   tasks: Task[];
+  /** Its `- [?]` lines, which are not tasks; absent when it has none. */
+  questions?: Question[];
   frontmatterTags: TagReference[];
   links: string[];
   /** Other names `[[links]]` can use for the note, from `aliases:` front matter. */

@@ -10,9 +10,10 @@ export type TaskPriority = 'highest' | 'high' | 'medium' | 'low' | 'lowest';
 /**
  * What a status means, whatever it is called: `todo`, `inProgress`, and
  * `onHold` are open; `done` is done; `cancelled` is closed but not done;
- * `nonTask` marks a checkbox line that is not a task at all.
+ * `nonTask` marks a checkbox line that is not a task at all; `question`
+ * marks a question, which is not a task either (model/questions.ts).
  */
-export type TaskStatusType = 'todo' | 'inProgress' | 'onHold' | 'done' | 'cancelled' | 'nonTask';
+export type TaskStatusType = 'todo' | 'inProgress' | 'onHold' | 'done' | 'cancelled' | 'nonTask' | 'question';
 
 /** A task's status as its checkbox says it: the character, its status's name, and its type. */
 export interface TaskStatus {

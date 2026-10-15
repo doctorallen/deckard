@@ -9,6 +9,7 @@ export type * from './inline';
 export type * from './notes';
 export type * from './noteTypes';
 export type * from './query';
+export type * from './questions';
 export type * from './relatedNotes';
 export type * from './tags';
 export type * from './tasks';
