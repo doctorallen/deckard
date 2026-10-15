@@ -118,3 +118,11 @@ impractical:
   `copyStory`, each narrowed to exactly what it carries.
 - The DOM goldens of a tag's search page change, since it gains the tab;
   they are recorded after David's review, not on this branch.
+- **Questions, once plan 38 was merged in.** A line's kind is a question
+  when its note's `ParsedFile.questions` holds one on that line, rather
+  than when a `[?]` box is read, so a reader who gave `?` a status of their
+  own keeps a task there. A question line starts no entry, so the story
+  reads the lines of the questions the search finds as it reads those of
+  its tasks; a question that carries the tag under a heading that does not
+  is in the story. Its `Answer:` line folds under it, and the Questions
+  chip is drawn. On a tag's page the Questions tab comes before the Story.

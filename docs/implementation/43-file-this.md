@@ -151,3 +151,5 @@ impractical:
 - **The host test** runs with no workspace folder, so it writes into a hub
   note that exists and leaves the new hub note's write to the planner's
   tests.
+- **The parse format** became `type-words-questions` when plan 38's
+  `note-questions` was merged in, so a cache is rebuilt once for both.

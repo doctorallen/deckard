@@ -186,3 +186,10 @@ impractical:
   names use `[b]`. The Task Board surface with a task of every status reads
   its note with Question left out of the statuses, so it still draws its
   Unknown `[?]` column as its DOM golden and baselines record it.
+- **Plan 36's To ask group and plan 37's answered chip** were wired in
+  after the merge with `feat/four-ideas`; see those plans' As built. A row
+  of the Questions tab, or of To ask, opens its line: the page's host now
+  opens a question it draws, as it opens a task, where before it opened
+  nothing for a question outside a drawn card. The parse format is now
+  `type-words-questions`, plan 43's and this plan's changes together, so a
+  cache is rebuilt once.

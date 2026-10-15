@@ -600,14 +600,16 @@ and line; the host acts only on a line the cursor's line still has.
 
 ### A search's questions
 
-A search that finds questions draws `.questions-pane`: a third result tab,
-or, side by side, a pane under the two with its own heading. Its
-`.search-questions` list holds a `.search-question` row per question, the
+A search that finds questions draws `.questions-pane`: a result tab after
+Tasks, or, side by side, a pane under the two with its own heading. Its
+`.search-questions` list holds a `<QuestionRow>` (`searchPage/questionRow.tsx`),
+a `.search-question` row, per question, the
 answered ones `.is-answered`: a `.search-question-mark`, a
 `.search-question-open` button (the words over a muted
 `.search-question-detail`) that posts `openSource`, and, while it is open, a
 `.search-question-answer` button, quiet under Zen, that posts
-`questionAction`.
+`questionAction`. A person's Between you card draws its To ask group with
+the same rows.
 
 ### A tag's page's quiet lines
 
@@ -626,7 +628,8 @@ a `--cyan` left rule and a `data-zen-region`. Its `.since-header` holds the
 `.since-title` (*Since you last looked · Fri, Oct 2, 12 days ago*, one text
 node) and the `.since-seen` button (*Mark seen*, `data-zen-reveal`), which
 posts `markSeen`; then `.since-chips`, a group of `.since-chip` buttons, one
-per kind of change, each `data-kind` and, but the fields' chip,
+per kind of change (new mentions, fields changed, tasks done, tasks added,
+questions answered), each `data-kind` and, but the fields' chip,
 `aria-pressed`, the one filtering the page `.is-active`. A chip posts
 `setSinceFilter` with its kind, or with none when it is active; the fields'
 chip opens `details.hub` in place. In the Notes tab, a `.since-group-heading`
@@ -647,9 +650,11 @@ you*) and the `.between-copy` button (*Copy as agenda*, `data-zen-reveal`),
 which posts `copyBetweenAgenda`; while `deckard.me` names nobody, a muted
 `.between-identity` line follows, whose `.tag-note-action` posts
 `openIdentitySetting`. Then a `.between-group` per group
-(`data-group="youOwe"` or `"theyOwe"`): its heading's `.between-group-label`
-text button and muted `.between-count`; a `.task-list.between-tasks` of
-`<TaskListRow>`s, one column whatever the results take, or a muted
+(`data-group="youOwe"`, `"theyOwe"`, or `"toAsk"`): its heading's
+`.between-group-label` text button and muted `.between-count`; a
+`.task-list.between-tasks` of `<TaskListRow>`s, one column whatever the
+results take, or, under To ask, a `.search-questions.between-questions` list
+of `<QuestionRow>`s as a search's questions draw them, or a muted
 `.between-none` (*Nothing open.*); and past ten lines a `.between-more` line
 whose `.between-more-link` (*Show all 14*) posts `openSearch` as the label
 does. The host opens only a search the card drew.
@@ -657,8 +662,8 @@ does. The host opens only a search the card drew.
 ### Story
 
 On a tag's page, the search page's `<StoryTab>` (`searchPage/story.tsx`)
-draws the **Story** tab's panel, after Notes and Tasks; side by side it is a
-`.story-pane` under the two, headed *Story (N)*. A `.story-filters` group of
+draws the **Story** tab's panel, after Notes, Tasks, and Questions; side by
+side it is a `.story-pane` under the two, headed *Story (N)*. A `.story-filters` group of
 `.story-chip` buttons comes first, each `aria-pressed`, the one in use
 `.is-active` as a Since chip is: *All*, *Decisions*, *Done*, *Questions*
 while the story holds a question, each posting `setStoryFilter` (with `all`

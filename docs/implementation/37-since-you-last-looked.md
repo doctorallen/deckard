@@ -139,3 +139,12 @@ Where the plan was silent, or the code made its words impractical:
   Hubs By…** (`deckard.hubs.setSort`) is new, in its **⋯**, with **Name** and
   **What's new**; the choice is kept with the visits, in workspace state,
   not in the preferences blob.
+- **N questions answered**, added once plan 38 was merged in. A question is
+  kept as a task is, by a hash of its note's path and its words
+  (`questionVisitKey`), so a line written above it does not make it
+  another; `answered` lists the page's answered ones. It is answered since
+  when it is answered now and was not at the visit, asked since or not. A
+  visit kept before questions has no `answered`, and counts none, rather
+  than every answer the page holds. The chip narrows the Questions tab to
+  them and shows it, leaving the notes and tasks as they are, and counts in
+  the band's total and the Hubs view's *N new*.

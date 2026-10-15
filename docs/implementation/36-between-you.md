@@ -127,3 +127,15 @@ adds. Where the plan was silent, or the code made its words impractical:
   without one it says nothing of the card.
 - The mockup's *Settled since you last looked* line under the card is not
   in this plan's text and is not built.
+- **To ask Sam**, added once plan 38 was merged in: a third row of
+  `BETWEEN_GROUPS`, whose lines are `listQuestionsMentioning(index, tag)`,
+  the open questions that name the person on their own line, oldest first,
+  drawn as the Questions tab draws a question (its line opens, **Answer…**
+  writes the answer). Its label opens `is:unanswered @sam-okafor`, which
+  also finds the questions under a heading or in a note that names Sam, so
+  **Show all** may list more than the card counts. Copy as agenda writes
+  `## To ask Sam` and a `- [?] …` line for each, its tags as written, and
+  the describe tool's line ends `To ask Sam: 1.` A person with only a
+  question open gets the card. While `deckard.me` is empty, the describe
+  tool says the "Me" setting names nobody, in words, as every message
+  names a setting.

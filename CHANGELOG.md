@@ -5,28 +5,30 @@
 ### Added
 
 - **Between you.** A person's page has a **Between you** card under its
-  fields: **You owe Sam**, your open tasks that mention Sam, and **Sam owes
+  fields: **You owe Sam**, your open tasks that mention Sam; **Sam owes
   you**, the tasks assigned to Sam and yours on hold that mention Sam, each
-  overdue first, then oldest. A row's box completes it; a group's name opens
-  it as a search. **Copy as agenda** copies both groups as Markdown for a
-  one-to-one note. It reads `deckard.me` as `is:mine` does, and says so
-  while that is empty. `deckard_describe_tag` counts the same groups for a
-  person.
+  overdue first, then oldest; and **To ask Sam**, the open questions that
+  mention Sam, oldest first, each with **Answer…**. A row's box completes
+  it; a group's name opens it as a search. **Copy as agenda** copies the
+  groups as Markdown for a one-to-one note, the questions as `- [?]` lines.
+  It reads `deckard.me` as `is:mine` does, and says so while that is empty.
+  `deckard_describe_tag` counts the same groups for a person.
 - **Since you last looked.** A tag's page remembers what it held at your
   last visit, kept in VS Code's storage for the workspace. Come back more
   than a day later and a band under its bar says what changed: new
-  mentions, fields changed, tasks done, and tasks added, each a chip that
-  narrows the page to what it counts. New notes are listed first under
+  mentions, fields changed, tasks done, tasks added, and questions
+  answered, each a chip that narrows the page to what it counts. New notes are listed first under
   **New since**, new notes and tasks are marked **New**, and a changed
   field shows its old value once. A visit counts after five seconds in
   front, or at once with **Mark seen**.
 - **The story so far.** A tag's page has a **Story** tab: every line about
   the tag, from the notes under its headings, its tagged notes, and the
   lines that carry it, on one timeline by month, newest first. Each row is
-  its date, a mark (a task's box, **D** for a decision), the line, and the
-  heading it is under; a task's steps read with it. Filter it to
-  **Decisions** or **Done**, turn on **Oldest first**, and **Copy as
-  Markdown** from **⋯**.
+  its date, a mark (a task's box, **D** for a decision, **?** for a
+  question), the line, and the heading it is under; a task's steps and a
+  question's answer read with it. Filter it to **Decisions**, **Done**, or
+  **Questions**, turn on **Oldest first**, and **Copy as Markdown** from
+  **⋯**.
 - **File this.** A line's lightbulb offers **Add this line to FX’s notes**
   for each tag on it with a hub note: the line, dated, with a link back to
   it, as the last item under the hub's **Notes** heading, which is made

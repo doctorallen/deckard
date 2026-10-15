@@ -246,7 +246,7 @@ When [Find](search.md#find) finds nothing that has every word, its first row is 
 
 ### On a tag's page
 
-A tag's or a person's [search page](search-pages.md) has a **Questions** tab beside Notes and Tasks when questions carry the tag or name the person, each with **Answer…** while it is open.
+A tag's or a person's [search page](search-pages.md) has a **Questions** tab beside Notes and Tasks when questions carry the tag or name the person, each with **Answer…** while it is open. A person's [Between you](search-pages.md#between-you-and-a-person) card lists the open questions that name them under **To ask Sam**, and a tag's [Since you last looked](search-pages.md#since-you-last-looked) band counts the questions answered since your last visit. Its [Story](search-pages.md#the-story-so-far) marks each question **?**, with its answer under it.
 
 ### On Home
 

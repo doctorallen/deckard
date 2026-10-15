@@ -74,11 +74,11 @@ Migration of billing onto the new ledger.
 
 ## Since you last looked
 
-A tag's page remembers what it held when you last had it open. Come back more than a day later, and if something changed, a band under the page's bar says so: **Since you last looked · Fri, Oct 2, 12 days ago**, then a chip for each kind of change, such as *4 new mentions*, *1 field changed*, *2 tasks done*, and *1 task added*.
+A tag's page remembers what it held when you last had it open. Come back more than a day later, and if something changed, a band under the page's bar says so: **Since you last looked · Fri, Oct 2, 12 days ago**, then a chip for each kind of change, such as *4 new mentions*, *1 field changed*, *2 tasks done*, *1 task added*, and *1 question answered*.
 
 - A visit counts once the page has been in front for five seconds; **Mark seen** counts it at once and clears the band. Leaving a page after that marks it seen: the band is gone the next time you come back.
-- A **new mention** is an entry with the tag written or changed since, its tasks aside. A task is **added** or **done** since. A **field** is a value in the hub's front matter or a typed row's fields, its reverses among them.
-- A chip narrows the Notes or Tasks tab to what it counts, as a Refine value does, and shows that tab; select it again to show everything. **N fields changed** opens the hub card instead.
+- A **new mention** is an entry with the tag written or changed since, its tasks aside. A task is **added** or **done** since. A [question](tasks.md#questions) is **answered** since when an `Answer:` line was written under it, whenever it was asked. A **field** is a value in the hub's front matter or a typed row's fields, its reverses among them.
+- A chip narrows the Notes, Tasks, or Questions tab to what it counts, as a Refine value does, and shows that tab; select it again to show everything. **N fields changed** opens the hub card instead.
 - Notes new since then are listed first, under **New since Fri, Oct 2**, the rest under **Earlier**, each with a **New** mark; an added task has one too. A changed field shows its old value once, after its value now: *changed · was Alex Rivera*.
 - Only the page of one tag on its own has the band. A first visit draws none; it only records.
 - Deckard keeps one visit for each tag, the last, in VS Code's storage for the workspace, never in your notes. It drops the visits of tags that are gone, and keeps at most 500.
@@ -92,11 +92,12 @@ A person's page, such as `@sam-okafor`'s, lists every open line between you and 
 | --- | --- |
 | **You owe Sam** | Open tasks of yours, assigned to you or to nobody, that mention Sam |
 | **Sam owes you** | Open tasks assigned to Sam with `👤`, and tasks of yours on hold, such as Waiting `[w]`, that mention Sam |
+| **To ask Sam** | Open [questions](tasks.md#questions) that mention Sam on their own line |
 
 - Yours is what `is:mine` finds: set `deckard.me` to the tag you write for yourself, such as `@david`. Until then the card says so, with **Set who you are…**, and only tasks for nobody count as yours.
 - A task assigned to someone else is theirs, and shows on their page, whoever it mentions. Done, cancelled, and [parked](organizing.md#parking-notes) tasks leave the card.
-- Each group lists what is overdue first, then the oldest, ten at a time. A row's box completes the task, and the row opens its line. A group's name opens it as a search page, as **Show all** does when it holds more than ten.
-- **Copy as agenda** copies the groups as Markdown, `## You owe Sam` and then a `- [ ]` line for each task with its due date, to paste into a one-to-one note.
+- Each group lists what is overdue first, then the oldest, ten at a time. A row's box completes the task, and the row opens its line. A question's row opens its line too, with **Answer…**, as on the Questions tab. A group's name opens it as a search page, as **Show all** does when it holds more than ten; **To ask Sam**'s search, `is:unanswered @sam-okafor`, also finds the questions under a heading or in a note that names Sam.
+- **Copy as agenda** copies the groups as Markdown, `## You owe Sam` and then a `- [ ]` line for each task with its due date, and `## To ask Sam` with a `- [?]` line for each question, to paste into a one-to-one note.
 - A person with nothing open between you gets no card, and neither does your own page or a search that narrows a person's page.
 - With [Zen](themes-and-zen.md#zen) on, the counts and dates stay; **Copy as agenda** waits for the pointer or <kbd>Tab</kbd>.
 
@@ -104,11 +105,11 @@ A person's page, such as `@sam-okafor`'s, lists every open line between you and 
 
 A tag's page has a **Story** tab after Notes and Tasks, **Story (48)**: every line about the tag on one timeline, by month, so a project's months of daily notes read in one scroll.
 
-- **What goes in.** Every line that carries the tag, or sits under a heading, at any level, or in a note whose front matter does: prose, list items, and tasks. Headings, blank lines, front matter, code, and query blocks are left out, and so is the tag's hub note, which is its summary. A search that narrows the tag, such as a Refine choice, narrows its story too.
+- **What goes in.** Every line that carries the tag, or sits under a heading, at any level, or in a note whose front matter does: prose, list items, tasks, and [questions](tasks.md#questions). Headings, blank lines, front matter, code, and query blocks are left out, and so is the tag's hub note, which is its summary. A search that narrows the tag, such as a Refine choice, narrows its story too.
 - **Its date.** A line is dated by its daily note's day, else its note's `created:` field, else the day its file was made. A day's lines keep their order in the note; a day's notes go by path.
-- **Each row** is its date, a mark, the line as written, cut to two lines, and, muted at the right, the heading it is under, or its note's name. Lines indented under it, such as a task's steps, are read with it, smaller. Select a row to open its line; a task's box completes it, as on the board.
-- **Marks.** A task's box, done or open; **D** for a decision, a line in a note whose `type:` is `decision`, or under a heading tagged with a row of a type named Decision; and **·** for anything else. A cancelled task is marked **·**.
-- **Filters**, a row of chips over the rows: **All**, **Decisions**, and **Done**, and **Oldest first**, since the newest come first. Select a chosen filter again for every row.
+- **Each row** is its date, a mark, the line as written, cut to two lines, and, muted at the right, the heading it is under, or its note's name. Lines indented under it, such as a task's steps or a question's `Answer:` line, are read with it, smaller. Select a row to open its line; a task's box completes it, as on the board.
+- **Marks.** A task's box, done or open; **D** for a decision, a line in a note whose `type:` is `decision`, or under a heading tagged with a row of a type named Decision; **?** for a question, open or answered; and **·** for anything else. A cancelled task is marked **·**.
+- **Filters**, a row of chips over the rows: **All**, **Decisions**, **Done**, and, when the story holds a question, **Questions**, and **Oldest first**, since the newest come first. Select a chosen filter again for every row.
 - The tab draws the first 100 rows; **Show more** adds 100 more. **Copy as Markdown**, in **⋯** while the tab is shown, copies the rows shown under their months, each as `- 2026-10-14 · the line (Heading)`.
 - Side by side, the story is drawn under the notes and tasks.
 - With [Zen](themes-and-zen.md#zen) on, the dates, marks, counts, and filters all stay.
