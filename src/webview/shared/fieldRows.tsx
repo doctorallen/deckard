@@ -111,6 +111,16 @@ export interface FieldRowsProps {
 }
 
 /**
+ * A list's name column, as wide as its longest name in the monospace names
+ * are drawn in, from 12 to 24 characters, so `Distribution List` sits on
+ * one line and the values still line up.
+ */
+function nameColumn(fields: readonly DrawnField[]): Record<string, string> {
+  const longest = Math.max(...fields.map((field) => field.name.length));
+  return { '--field-name-width': `${Math.min(Math.max(longest, 12), 24)}ch` };
+}
+
+/**
  * A row's fields: its own that hold something, then the reverses, under
  * "From other notes". `namesOpen` makes each of its own fields' names a
  * link to the form.
@@ -121,12 +131,12 @@ export function FieldRows({ fields, noteAction, namesOpen, was }: FieldRowsProps
   const reverses = fields.fields.filter((field) => field.source === 'reverse');
   return (
     <>
-      {own.length ? <dl class="field-rows">{own.map((field) => <FieldRow field={field} noteAction={noteAction} opens={opens} was={wasOf(was, field.name)} />)}</dl> : null}
+      {own.length ? <dl class="field-rows" style={nameColumn(own)}>{own.map((field) => <FieldRow field={field} noteAction={noteAction} opens={opens} was={wasOf(was, field.name)} />)}</dl> : null}
       {reverses.length
         ? (
           <>
             <p class="field-group-label">From other notes</p>
-            <dl class="field-rows field-reverses">{reverses.map((field) => <FieldRow field={field} noteAction={noteAction} opens={opens} was={wasOf(was, field.name)} />)}</dl>
+            <dl class="field-rows field-reverses" style={nameColumn(reverses)}>{reverses.map((field) => <FieldRow field={field} noteAction={noteAction} opens={opens} was={wasOf(was, field.name)} />)}</dl>
           </>
         )
         : null}

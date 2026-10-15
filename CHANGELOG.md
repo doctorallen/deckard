@@ -9,6 +9,9 @@
   `Distribution List: ["@dana", "@omar"]`, and Deckard reads it the same
   as `distribution-list:`, the name a search uses. New notes, completions,
   and Rename field write the name as the type's table spells it.
+- **Field names fit.** On a tag's page and the Note page, the field names
+  take the width of the longest, up to 24 characters, rather than breaking
+  a name such as `Distribution List` over two lines.
 
 ### Fixed
 
