@@ -99,7 +99,11 @@ plan was silent, or the code made its words impractical:
   read in the order the reader's date format writes a day, as the date
   boxes read one. Of two day phrases on a line, the last that reads is the
   promise's, so *said on 1 Oct that it lands by Friday* is Friday.
-- **A question** is a line whose last word ends in `?`.
+- **A question** is a line whose last word ends in `?`. Once plan 38 was
+  merged in, a question written `- [?]` is skipped too, whatever it ends
+  with, as a checkbox line, as a task is; a unit test holds it. A tracked
+  promise, a waiting task assigned to the person, is under **Sam owes you**
+  on their Between you card (plan 36), as `between-you.test.ts` holds.
 - **Already tracked** is any task in the lines indented under the line,
   up to the first that is not, assigned to the same person, whatever its
   status, not only `[w]`: a promise kept and ticked off is not offered
