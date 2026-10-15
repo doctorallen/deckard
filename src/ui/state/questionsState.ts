@@ -11,6 +11,7 @@ import { stripTags } from '../../domain/markdown/parser';
 import type { Question, WorkspaceIndex } from '../../domain/model';
 import { type AnswerOffer, findAnswerOffers } from '../../domain/ranking/answerOffers';
 import { pluralize } from '../../shared/text';
+import { measure } from '../../shared/timing';
 
 /** An answer offered for a question, as a row under it draws it. */
 export interface QuestionOfferRow {
@@ -64,7 +65,7 @@ export function getAnswerOffers(index: WorkspaceIndex, rejected: ReadonlySet<str
   if (cached && cached.rejected === rejected) {
     return cached.offers;
   }
-  const offers = findAnswerOffers(index, { rejected });
+  const offers = measure('Answer offers', () => findAnswerOffers(index, { rejected }), (found) => `${found.size} offers`);
   offersByIndex.set(index, { rejected, offers });
   return offers;
 }
