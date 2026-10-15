@@ -78,6 +78,11 @@ const NOTE_WORDS = new Set([
 const COMMON_SHARE = 0.02;
 /** Below this many lines, every term but a note word is uncommon. */
 const FEW_LINES = 50;
+/**
+ * A term held by this many lines or fewer is uncommon however few lines
+ * there are: a line and the one it is like hold it, and one more.
+ */
+const FEW_HOLDERS = 5;
 
 /** A note's lines, and how many of them hold each term, read once per parsed note. */
 interface FileLines {
@@ -276,7 +281,10 @@ export function isUncommonTerm(lines: Pick<LineIndex, 'documentFrequency' | 'doc
   if (NOTE_WORDS.has(term)) {
     return false;
   }
-  return lines.documentCount < FEW_LINES || (lines.documentFrequency.get(term) ?? 0) <= lines.documentCount * COMMON_SHARE;
+  return (
+    lines.documentCount < FEW_LINES ||
+    (lines.documentFrequency.get(term) ?? 0) <= Math.max(FEW_HOLDERS, lines.documentCount * COMMON_SHARE)
+  );
 }
 
 /** How much one term weighs in a line it is written in `frequency` times, by BM25 as Related Notes weighs it. */
