@@ -200,6 +200,26 @@ suite('Changelog', () => {
     assert.strictEqual(script.releaseNotes(BEFORE, '9.9.9'), '');
   });
 
+  test('puts the release page\'s @ mentions in code, so GitHub reads no sample person as a user', () => {
+    const text = [
+      '# Changelog', '', '## Unreleased', '', '## 2.9.0 - 2026-10-15', '', '### Added', '',
+      '- **Said they would.** A line such as *@sam says it lands by Friday*, or',
+      '  (@dana), is offered; `@omar` is code, as is `owned-by.lead =',
+      '  @dana` across a line, and ``a `@x` here``; mail me@example.com.',
+      '', '```', '@fenced', '```', '',
+    ].join('\n');
+    assert.strictEqual(
+      script.releaseNotes(text, '2.9.0'),
+      [
+        '### Added', '',
+        '- **Said they would.** A line such as *`@sam` says it lands by Friday*, or',
+        '  (`@dana`), is offered; `@omar` is code, as is `owned-by.lead =',
+        '  @dana` across a line, and ``a `@x` here``; mail me@example.com.',
+        '', '```', '@fenced', '```', '',
+      ].join('\n'),
+    );
+  });
+
   test('knows a feature release, which must have Highlights', () => {
     assert.strictEqual(script.isFeatureRelease('1.23.0'), true);
     assert.strictEqual(script.isFeatureRelease('1.23.1'), false);

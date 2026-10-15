@@ -170,13 +170,51 @@ function writeSections(preamble, sections) {
   return `${parts.join('\n\n')}\n`;
 }
 
-/** The body of `## <version>`, for the release page. */
+/**
+ * The body of `## <version>`, for the release page, with its `@` mentions in
+ * code: GitHub reads a bare `@sam` on a release page as a GitHub user, links
+ * it, and lists the user among the release's contributors.
+ */
 function releaseNotes(text, version) {
   const section = splitSections(text).sections.find((candidate) => {
     const read = readVersion(candidate.heading);
     return read && read.version.join('.') === version;
   });
-  return section ? `${section.body.trim()}\n` : '';
+  return section ? `${withoutMentions(section.body.trim())}\n` : '';
+}
+
+/** A bare `@name`: at a line's start or after a space or punctuation, never in an address. */
+const MENTION = /(^|[^\w`@./-])(@[A-Za-z0-9][\w-]*)/g;
+
+/**
+ * Markdown with every `@name` outside code put in a code span. A code span is
+ * a run of backticks closed by a run as long, within its paragraph, as
+ * Markdown reads one, so a span wrapped onto the next line is still code;
+ * fenced blocks are code too.
+ */
+function withoutMentions(markdown) {
+  return markdown
+    .split(/(\n[ \t]*\n)/)
+    .map((block, at) => (at % 2 || /^\s*(```|~~~)/m.test(block) ? block : mentionsInCode(block)))
+    .join('');
+}
+
+/** One paragraph's mentions in code spans, its code spans left alone. */
+function mentionsInCode(paragraph) {
+  let written = '';
+  let from = 0;
+  for (let at = paragraph.indexOf('`'); at !== -1; at = paragraph.indexOf('`', from)) {
+    const run = /^`+/.exec(paragraph.slice(at))[0];
+    const close = new RegExp(`(?<!\`)${run}(?!\`)`, 'g');
+    close.lastIndex = at + run.length;
+    const end = close.exec(paragraph);
+    if (!end) {
+      break;
+    }
+    written += paragraph.slice(from, at).replace(MENTION, '$1`$2`') + paragraph.slice(at, end.index + run.length);
+    from = end.index + run.length;
+  }
+  return written + paragraph.slice(from).replace(MENTION, '$1`$2`');
 }
 
 /** Whether a section's body has a `### Highlights` list with something in it. */
