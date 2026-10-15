@@ -12,6 +12,7 @@ import {
 } from '../domain/index/questions';
 import { findQuestionSymbol, readTaskStatuses, statusForSymbol, DEFAULT_TASK_STATUSES } from '../domain/tasks/taskStatuses';
 import type { ParsedFile } from '../domain/model';
+import { toggleTaskLines } from '../domain/tasks/toggleLines';
 import { parseQuery } from '../domain/query/queryParser';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { createQueryContext } from '../domain/query/queryContext';
@@ -73,6 +74,11 @@ suite('Questions: reading a note', () => {
     const file = parseMarkdown('notes/q.md', ['- [?] Who leads #team/fx?', '```', '- [?] An example', '```'].join('\n'));
     assert.strictEqual(file.questions?.length, 1);
     assert.ok(!file.sections.some((section) => section.isInline), 'no entry of its own');
+  });
+
+  test('Toggle Task Done leaves a question alone', () => {
+    const result = toggleTaskLines([{ line: 0, text: '- [?] Who approves access?' }, { line: 1, text: '- [ ] Book the room' }], Date.now(), { format: 'emoji', eol: '\n' });
+    assert.deepStrictEqual(result.lines.map((line) => line.line), [1]);
   });
 
   test('`?` is Question unless the list gives it to a status of its own, which turns questions off', () => {
