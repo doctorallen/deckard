@@ -17,7 +17,7 @@ import { typeNotePath, writeTypeNote, type TypeNoteDraft } from '../../domain/ty
 import type { ParsedFile } from '../../domain/model';
 import { fileExists } from './fs';
 import { openNoteAction, reportFailure, reportNeedsFolder } from './notify';
-import type { WorkspaceWriteHistory } from './workspaceWrites';
+import type { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
 
 /**
  * Writing typed notes (docs/implementation/30-databases.md § Writes): a
@@ -49,14 +49,15 @@ const CREATE_TYPE_TITLE = 'Deckard: Create Type from Tags';
  * Writes a new note as one write Undo Last Change takes back: the file is
  * made empty, its text put in through the write history, and an Undo
  * empties it and then deletes it, unless it has been written in since.
- * False, with nothing left behind, when VS Code refuses the write.
+ * The write's handle, for an Undo offered with it; undefined, with nothing
+ * left behind, when VS Code refuses the write.
  */
 export async function writeNewNote(
   history: WorkspaceWriteHistory,
   uri: vscode.Uri,
   content: string,
   label: string,
-): Promise<boolean> {
+): Promise<WriteHandle | undefined> {
   const fs = vscode.workspace.fs;
   await fs.createDirectory(vscode.Uri.joinPath(uri, '..'));
   await fs.writeFile(uri, new Uint8Array());
@@ -75,9 +76,9 @@ export async function writeNewNote(
   const write = await history.write(edit, { label, preview: 'never', restore: deleteIfEmpty });
   if (!write.applied) {
     await deleteIfEmpty();
-    return false;
+    return undefined;
   }
-  return true;
+  return write.handle;
 }
 
 /** People, when no type has them: a quick fix can still create a person's hub note. */

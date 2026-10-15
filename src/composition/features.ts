@@ -1,5 +1,6 @@
 import { register as assistant } from '../ui/commands/assistant/register';
 import { register as dailyNotes } from '../ui/commands/dailyNotes/register';
+import { register as filing } from '../ui/commands/filing/register';
 import { register as find } from '../ui/commands/find/register';
 import { register as hubs } from '../ui/commands/hubs/register';
 import { register as links } from '../ui/commands/links/register';
@@ -51,4 +52,5 @@ export const features: readonly NamedFeature[] = [
   { name: 'Undo Last Change', register: undo },
   { name: 'the Hubs view', register: hubs },
   { name: 'types', register: types },
+  { name: 'File this', register: filing },
 ];
