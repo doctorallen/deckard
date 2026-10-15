@@ -179,6 +179,16 @@ Front matter can also hold a type's fields: a hub note's `lead: "@alex-rivera"`,
 
 ![Reference counts above a note's lines: its backlinks, and each heading's references, open tasks, and the entries that share its tags.](../images/editor-assistance.png)
 
+## File this
+
+Facts about teams and people land in today's note. **File this**, on a line's lightbulb (<kbd>Cmd</kbd>+<kbd>.</kbd> or <kbd>Ctrl</kbd>+<kbd>.</kbd>), carries a fact where it belongs. On *- @priya-natarajan now leads #team/fx*, under *## Org news* in `2026-10-14.md`, it offers:
+
+- **Set FX’s lead to Priya Natarajan (was Alex Rivera)**, first, when the line says what a [type's field](databases.md#a-type-note) holds in one of the phrases its **Words** column lists, such as *leads* for a team's `lead`. The row before the phrase gets the value after it, or, when the field is the other row's type's, the other way round: *@alex-rivera moved to #team/rates* sets Alex's `team`. A Person field takes a person, a relation a row of its type, and a select one of its options written after the phrase. The value is written in the row's hub note's front matter, that key alone; a field that holds several gets it added. A row with no hub note gets one, as **Create hub note** writes it.
+- **Add this line to FX’s notes**, and the same for each other tag on the line that has a [hub note](search-pages.md#hub-notes), up to four. The line is copied, its list mark and box aside, as the last item of the hub's **Notes** list (a heading at any level, made at the end as `## Notes` when the hub has none): `- 2026-10-14: @priya-natarajan now leads #team/fx ([[2026-10-14#Org news]])`. The date is the daily note's day, or today; the link is to the line's heading, written as `deckard.links.style` says ([Settings](settings.md)). The line itself stays where it is.
+- **File under…**, which picks any heading, as **Move to…** does, and copies the line there the same way.
+
+Each is one write, with **Undo** in its message and in **Deckard: Undo Last Change**. A line in a hub note offers no filing: it is already there.
+
 ## Templates
 
 Put Markdown files in a `templates` folder at the workspace root, or the folder `deckard.templatesFolder` names, and run `Deckard: New Note from Template`. Choose a template and a title; Deckard creates the note in your notes folder and opens it. The templates folder is never indexed. With no templates yet, it offers **Create Starter Templates**: a meeting, a 1:1, and a decision record, which you can change or delete like any other file.

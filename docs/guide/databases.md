@@ -21,12 +21,12 @@ notes: teams/
 ---
 # Team
 
-| Field   | Kind       | Reverse     | Also called     |
-| ------- | ---------- | ----------- | --------------- |
-| lead    | Person     | lead of     | head            |
-| owns    | Area, many | owned by    | responsible for |
-| on-call | Person     | on call for | oncall, pager   |
-| channel | Text       |             | slack, support  |
+| Field   | Kind       | Reverse     | Also called     | Words                           |
+| ------- | ---------- | ----------- | --------------- | ------------------------------- |
+| lead    | Person     | lead of     | head            | leads, led by, now leads, heads |
+| owns    | Area, many | owned by    | responsible for | owns, took over                 |
+| on-call | Person     | on call for | oncall, pager   | is on call for, covers          |
+| channel | Text       |             | slack, support  |                                 |
 
 Every #team/ tag is a team. Text below the table describes the type.
 ```
@@ -43,6 +43,7 @@ The first table whose header has **Field** and **Kind** lists the fields, one to
 - **Kind** says what its values are; see below. Add `, many` for a field that holds several, `Area, many`.
 - **Reverse** names the field the other side of a relation gets: a team's `owns` makes each area **owned by** that team. Left empty, it is the field's name and *of*, `owns of`. In a search, its spaces are hyphens: `owned-by`.
 - **Also called** lists other words for the field, separated by commas, which [Find](#asking-find) reads in a question.
+- **Words**, which you may leave out, lists the phrases a line uses to say the field, separated by commas: `leads, led by, now leads`. On a line such as *@priya-natarajan now leads #team/fx*, the lightbulb then offers to set the field; see [File this](notes-and-links.md#file-this).
 
 Other columns are yours, and kept when Deckard rewrites the table. What Deckard cannot read in a type note, such as a kind it does not know or a field listed twice, is marked in the editor.
 

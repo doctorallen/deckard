@@ -27,6 +27,14 @@
   heading it is under; a task's steps read with it. Filter it to
   **Decisions** or **Done**, turn on **Oldest first**, and **Copy as
   Markdown** from **⋯**.
+- **File this.** A line's lightbulb offers **Add this line to FX’s notes**
+  for each tag on it with a hub note: the line, dated, with a link back to
+  it, as the last item under the hub's **Notes** heading, which is made
+  when missing. **File under…** copies it under any heading. When the line
+  says what a field holds, as in *@priya-natarajan now leads #team/fx*, it
+  also offers **Set FX’s lead to Priya Natarajan**, from the phrases a
+  type's new **Words** column lists; the sample's teams and people list
+  some. Each is one write, with Undo.
 - **What's new in the Hubs view.** Each hub says how much is new since you
   last opened its page, or when you saw it, and **Sort Hubs By…** puts the
   busiest first.
