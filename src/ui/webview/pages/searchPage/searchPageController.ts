@@ -681,6 +681,11 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     return (this.currentSnapshot().story?.months ?? []).some((month) => month.rows.some((row) => row.filePath === filePath && row.line === line));
   }
 
+  /** A question the page draws on its Questions tab, by where it is written. */
+  private isDrawnQuestion(filePath: string, line: number): boolean {
+    return (this.currentSnapshot().questions ?? []).some((question) => question.filePath === filePath && question.line === line);
+  }
+
   /**
    * The Story tab: a filter chip, Oldest first, Show more, and Copy as
    * Markdown, which copies the rows the tab shows.
@@ -1005,8 +1010,8 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       await openNoteAt(task.task.filePath, task.task.lineNumber, how);
       return;
     }
-    // A line of the Story tab.
-    if (this.isStoryRow(filePath, line)) {
+    // A line of the Story tab, or a question of the Questions tab.
+    if (this.isStoryRow(filePath, line) || this.isDrawnQuestion(filePath, line)) {
       await openNoteAt(filePath, line, how);
       return;
     }

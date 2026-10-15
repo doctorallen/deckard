@@ -375,6 +375,23 @@ suite('Search page host', () => {
     }
   });
 
+  test('opens a question its Questions tab draws, as it opens a task', async () => {
+    // A search with no Story tab, whose questions are its only results.
+    const page = openSearchPage('is:unanswered');
+    try {
+      const ask = parseMarkdown('/notes/ask.md', '## Open points #project/atlas\nWhat is left.\n- [?] Who owns the feed?\n');
+      page.updateIndex(buildWorkspaceIndex(new Map([...createIndex().files, [ask.filePath, ask]])));
+      page.host.refresh();
+      assert.deepStrictEqual(page.last().questions?.map((question) => [question.filePath, question.line]), [['/notes/ask.md', 3]]);
+      const calls = await record(async () => {
+        await page.send({ type: 'openSource', filePath: '/notes/ask.md', line: 3 });
+      });
+      assert.deepStrictEqual(calls, [['open', '/notes/ask.md', true, false]]);
+    } finally {
+      page.dispose();
+    }
+  });
+
   test('opens the hub in the editor even where notes open on the note page, since its page is this one', async () => {
     const settings = vscode.workspace.getConfiguration('deckard');
     await settings.update('openNotesIn', 'page', vscode.ConfigurationTarget.Global);
