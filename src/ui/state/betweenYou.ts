@@ -132,6 +132,21 @@ export function formatBetweenAgenda(groups: readonly BetweenGroupLines[]): strin
 }
 
 /**
+ * How many lines each group holds, for an assistant: `You owe Sam: 3. Sam
+ * owes you: 2.`; undefined for a tag that is no person or names the reader.
+ */
+export function describeBetweenCounts(index: WorkspaceIndex, tagKey: string, context: QueryContext): string | undefined {
+  const groups = collectBetweenLines(index, tagKey, context);
+  if (!groups) {
+    return undefined;
+  }
+  const counts = groups.map((group) => `${group.label}: ${group.tasks.length}.`).join(' ');
+  return context.identity === undefined
+    ? `${counts} deckard.me names nobody, so only tasks for nobody count as yours.`
+    : counts;
+}
+
+/**
  * Overdue first, the longest overdue first; then the oldest, by the day each
  * was added, its note's when it says none; then where it is written.
  */

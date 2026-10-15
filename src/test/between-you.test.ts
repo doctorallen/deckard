@@ -2,6 +2,7 @@ import * as assert from 'assert';
 
 import type { WorkspaceIndex } from '../domain/model';
 import { createQueryContext, type QueryContext } from '../domain/query/queryContext';
+import { answerDescribeTag } from '../ui/state/assistantDescribe';
 import { betweenQueries, collectBetweenLines, describeBetween, formatBetweenAgenda, personFirstName } from '../ui/state/betweenYou';
 import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 import { createPreferences, MemoryStore } from './preferenceServices';
@@ -149,5 +150,13 @@ suite('Between you', () => {
     assert.deepStrictEqual(page.between?.groups.map((group) => [group.label, group.count]), [['You owe Sam', 2], ['Sam owes you', 2]]);
     assert.strictEqual(createSearchPageSnapshot(index, preferences, '@sam-okafor is:overdue', { queryContext: asDavid }).between, undefined);
     assert.strictEqual(createSearchPageSnapshot(index, preferences, 'is:open', { queryContext: asDavid }).between, undefined);
+  });
+
+  test('the describe tool counts each group for a person, and says nothing of it for a tag that is none', () => {
+    const index = samWorkspace({ 'notes/team.md': '# Team #team/rates' });
+    assert.match(answerDescribeTag(index, { tag: '@sam-okafor' }, now, asDavid), /\nBetween you: You owe Sam: 2\. Sam owes you: 2\.$/m);
+    assert.match(answerDescribeTag(index, { tag: '@sam-okafor' }, now, createQueryContext(now)), /deckard\.me names nobody/);
+    assert.doesNotMatch(answerDescribeTag(index, { tag: '#team/rates' }, now, asDavid), /Between you/);
+    assert.doesNotMatch(answerDescribeTag(index, { tag: '@sam-okafor' }, now), /Between you/, 'nothing without a context to ask in');
   });
 });

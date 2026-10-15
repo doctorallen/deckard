@@ -124,7 +124,7 @@ suite('Assistant tool table', () => {
     const describe = tool('deckard_describe_tag');
     assert.strictEqual(
       run(describe.read({ tag: ' #project/atlas ' }, runners)),
-      answerDescribeTag(index, { tag: '#project/atlas' }, context.now),
+      answerDescribeTag(index, { tag: '#project/atlas' }, context.now, context),
     );
     for (const junk of [undefined, '#project/atlas', {}, { tag: '  ' }, { tag: 7 }]) {
       assert.deepStrictEqual(refusal(describe.read(junk, runners)), {

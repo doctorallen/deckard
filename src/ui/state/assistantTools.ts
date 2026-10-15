@@ -442,7 +442,10 @@ export const ASSISTANT_TOOLS: readonly AssistantTool[] = [
       }
       return {
         kind: 'run',
-        run: () => answerDescribeTag(runners.getSnapshot(), input, runners.readQueryContext().now),
+        run: () => {
+          const context = runners.readQueryContext();
+          return answerDescribeTag(runners.getSnapshot(), input, context.now, context);
+        },
       };
     },
   },
