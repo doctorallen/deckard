@@ -782,7 +782,7 @@ export async function editTaskCommand(
     now,
     eol,
     steps: existing
-      ? readStepsForNextOccurrence(editor.document.getText().split(/\r?\n/), line.lineNumber)
+      ? readStepsForNextOccurrence(editor.document.getText().split(/\r?\n/), line.lineNumber, status.statuses)
       : [],
   });
   const written = completion.text;

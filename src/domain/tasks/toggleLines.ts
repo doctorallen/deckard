@@ -101,7 +101,7 @@ export function toggleTaskLines(
     const completion = writeCompletion(box, checkboxColumn, {
       now,
       eol: options.eol,
-      steps: options.documentLines ? readStepsForNextOccurrence(options.documentLines, line) : [],
+      steps: options.documentLines ? readStepsForNextOccurrence(options.documentLines, line, statuses) : [],
     });
     toggled.push({
       line,

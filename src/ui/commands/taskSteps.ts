@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import { isTaskLineOf, STATUS_MARKS, TaskLineShape } from '../../domain/markdown/lineShapes';
-import { statusForSymbol } from '../../domain/tasks/taskStatuses';
+import { DEFAULT_TASK_STATUSES, statusForSymbol, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
 import { readTaskStatusOptions } from './parseSettings';
 import {
   findCheckboxColumn,
@@ -202,15 +202,22 @@ function separator(label: string): StepItem {
   return { label, kind: vscode.QuickPickItemKind.Separator, row: { kind: 'separator' } };
 }
 
-/** The steps already written under a task line, read from the note. */
-export function readWrittenSteps(lines: readonly string[], lineIndex: number): WrittenStep[] {
-  return findStepFamily(lines, lineIndex).steps.map((line) => {
+/**
+ * The steps already written under a task line, read from the note with the
+ * reader's statuses, so a question under the task is no step.
+ */
+export function readWrittenSteps(
+  lines: readonly string[],
+  lineIndex: number,
+  statuses: readonly TaskStatusDefinition[] = DEFAULT_TASK_STATUSES,
+): WrittenStep[] {
+  return findStepFamily(lines, lineIndex, statuses).steps.map((line) => {
     const text = lines[line];
     const column = findCheckboxColumn(text);
     const words = text.slice(column + 2).trim();
     return {
       title: parseTaskMetadata(words).title || words,
-      done: isClosedTaskLine(text),
+      done: isClosedTaskLine(text, statuses),
     };
   });
 }
@@ -529,6 +536,13 @@ function reportMissing(filePath: string): void {
   });
 }
 
+/** A task to break into steps, its note's lines, and the statuses they are read with. */
+interface ReadTask {
+  target: StepTarget;
+  lines: string[];
+  statuses: readonly TaskStatusDefinition[];
+}
+
 /** A task with words after its box, which is what can be broken into steps. */
 const CURSOR_TASK: TaskLineShape = { indent: 'spaces-and-tabs', marks: STATUS_MARKS, after: 'gap-then-words' };
 
@@ -536,7 +550,7 @@ const CURSOR_TASK: TaskLineShape = { indent: 'spaces-and-tabs', marks: STATUS_MA
  * The task on the cursor's line, read from the editor itself, so a task
  * typed a moment ago can be broken into steps before the index has it.
  */
-function readCursorTask(indexer: IndexReader): { target: StepTarget; lines: string[] } | undefined {
+function readCursorTask(indexer: IndexReader): ReadTask | undefined {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
     return undefined;
@@ -549,14 +563,16 @@ function readCursorTask(indexer: IndexReader): { target: StepTarget; lines: stri
     return undefined;
   }
   const words = text.slice(column + 2).trim();
+  const statuses = readTaskStatusOptions(editor.document.uri);
   return {
     lines,
+    statuses,
     target: {
       filePath: indexer.getFilePath(editor.document.uri),
       lineNumber: lineIndex + 1,
       sourceLineText: text,
       checkboxColumn: column,
-      status: statusForSymbol(readTaskStatusOptions(editor.document.uri), text[column]),
+      status: statusForSymbol(statuses, text[column]),
       title: parseTaskMetadata(words).title || words,
     },
   };
@@ -579,8 +595,8 @@ export async function breakIntoStepsCommand(
     }
     return false;
   }
-  const { target, lines } = read;
-  const steps = await pickSteps(target, readWrittenSteps(lines, target.lineNumber - 1), suggester);
+  const { target, lines, statuses } = read;
+  const steps = await pickSteps(target, readWrittenSteps(lines, target.lineNumber - 1, statuses), suggester);
   if (!steps || steps.length === 0) {
     return false;
   }
@@ -596,7 +612,7 @@ export async function breakIntoStepsCommand(
 async function readIndexedTask(
   writes: TaskWrites,
   task: Task,
-): Promise<{ target: StepTarget; lines: string[] } | undefined> {
+): Promise<ReadTask | undefined> {
   const opened = await writes.tasks.openIndexedTask(task);
   if (opened.kind === 'missing') {
     reportMissing(task.filePath);
@@ -610,7 +626,7 @@ async function readIndexedTask(
     void reportStale([opened.uri]);
     return undefined;
   }
-  return { target: task, lines: opened.note.getText().split(/\r?\n/) };
+  return { target: task, lines: opened.note.getText().split(/\r?\n/), statuses: readTaskStatusOptions(opened.uri) };
 }
 
 /**

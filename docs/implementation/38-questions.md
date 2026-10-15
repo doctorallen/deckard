@@ -206,3 +206,11 @@ Fixed after QA, before release:
   cannot save is reported with Open Note, and the write is `applied: false`
   with the note in `unsaved` (`workspace-writes.test.ts`,
   `scopes/workspace-writes-scopes.test.ts`).
+- **A question under a task is no step.** `findStepFamily` read any
+  checkbox as a step or a step's task, so completing a repeating task
+  copied a `- [?]` under it into the next occurrence as `- [ ]`, completing
+  a task said a question was an open step and Complete Steps checked it,
+  and a task under a question took the question for its task. It now reads
+  each line's character with the reader's statuses (`deckard.tasks.statuses`)
+  and skips a question's and a `nonTask` status's lines, as the parser does;
+  every caller passes the statuses it read.

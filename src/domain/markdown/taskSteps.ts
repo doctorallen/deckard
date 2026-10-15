@@ -7,7 +7,7 @@ import {
   lineIndent,
 } from './listNesting';
 import { isHeadingLine, matchTaskLine, STATUS_CHARACTER, STATUS_MARKS, TaskLineShape } from './lineShapes';
-import { DEFAULT_TASK_STATUSES, isClosedType, statusForSymbol, type TaskStatusDefinition } from '../tasks/taskStatuses';
+import { DEFAULT_TASK_STATUSES, isClosedType, isTaskType, statusForSymbol, type TaskStatusDefinition } from '../tasks/taskStatuses';
 import { stripTags } from './parser';
 import { setTaskLineCompletion } from './taskLineEdits';
 
@@ -97,18 +97,33 @@ export interface StepFamily {
 /**
  * The task a line is a step of, and its own direct steps, read from the
  * note's lines by the parser's rule. Line indexes are 0-based.
+ *
+ * Only a task is a step or a step's task: a line whose character is a
+ * question's, or a status's whose lines are no tasks, is neither, as the
+ * parser reads it with `statuses`.
  */
-export function findStepFamily(lines: readonly string[], lineIndex: number): StepFamily {
+export function findStepFamily(
+  lines: readonly string[],
+  lineIndex: number,
+  statuses: readonly TaskStatusDefinition[] = DEFAULT_TASK_STATUSES,
+): StepFamily {
   const parents = findListParents(lines);
-  const parent = findParentTaskLine(lines, parents, lineIndex);
+  const listParent = findParentTaskLine(lines, parents, lineIndex);
+  const parent = listParent !== undefined && isStepLine(lines[listParent], statuses) ? listParent : undefined;
   const steps: number[] = [];
   parents.forEach((parentLine, line) => {
-    if (parentLine === lineIndex && isTaskItemLine(lines[line])) {
+    if (parentLine === lineIndex && isTaskItemLine(lines[line]) && isStepLine(lines[line], statuses)) {
       steps.push(line);
     }
   });
   steps.sort((left, right) => left - right);
   return { ...(parent === undefined ? {} : { parent }), steps };
+}
+
+/** Whether a checkbox line is a task by its character's status: not a question, nor a line that is no task. */
+function isStepLine(line: string, statuses: readonly TaskStatusDefinition[]): boolean {
+  const match = matchTaskLine(line, STEP_TASK);
+  return match !== undefined && isTaskType(statusForSymbol(statuses, match.mark).type);
 }
 
 /** A task of any status, indented by spaces and tabs only. */
@@ -254,10 +269,15 @@ export function parseSuggestedSteps(reply: string): string[] {
 
 /**
  * The steps a repeating task's next occurrence takes: its direct steps,
- * each unchecked with its done date taken off.
+ * each unchecked with its done date taken off. A question or a line of a
+ * status that is no task, written under the task, is no step and stays.
  */
-export function readStepsForNextOccurrence(lines: readonly string[], lineIndex: number): string[] {
-  return findStepFamily(lines, lineIndex).steps.map((line) => resetStepLine(lines[line]));
+export function readStepsForNextOccurrence(
+  lines: readonly string[],
+  lineIndex: number,
+  statuses: readonly TaskStatusDefinition[] = DEFAULT_TASK_STATUSES,
+): string[] {
+  return findStepFamily(lines, lineIndex, statuses).steps.map((line) => resetStepLine(lines[line]));
 }
 
 /**

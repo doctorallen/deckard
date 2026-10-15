@@ -264,7 +264,7 @@ export async function changeTask(
     fallbackFormat: readTaskMetadataFormat(configuration),
     eol: document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
     // A next occurrence takes the task's steps back unchecked, as a checkbox's does.
-    steps: readStepsForNextOccurrence(document.getText().split(/\r?\n/), task.lineNumber - 1),
+    steps: readStepsForNextOccurrence(document.getText().split(/\r?\n/), task.lineNumber - 1, statusReading.statuses),
   });
   const replacement = completion.text;
   if (replacement === current.text) {
