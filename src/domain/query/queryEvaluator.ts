@@ -7,6 +7,7 @@ import {
   FieldKind,
   ParsedFile,
   QueryOperator,
+  Question,
   Section,
   Task,
   TaskPriority,
@@ -49,12 +50,15 @@ import { escapeRegExp } from '../../shared/text';
 import { TASK_PRIORITY_RANKS } from '../markdown/taskFields';
 import { entryText, fileEntryId, isEntrySection } from '../markdown/noteEntries';
 import { getEntryParts, getFilePreambleText } from '../index/noteEntryIndex';
+import { getQuestions, isAnswered, readQuestionTagKeys } from '../index/questions';
 
 /** What a search finds, by kind, each list in index order. */
 export interface QueryResults {
   sections: Section[];
   tasks: Task[];
   files: ParsedFile[];
+  /** The `- [?]` lines it finds, which are not tasks (38-questions.md). */
+  questions: Question[];
 }
 
 /**
@@ -88,7 +92,7 @@ export function evaluateQuery(
   query: QueryContext,
 ): QueryResults {
   if (!node) {
-    return { sections: [], tasks: [], files: [] };
+    return { sections: [], tasks: [], files: [], questions: [] };
   }
 
   const context = createEvaluationContext(index, node, query);
@@ -99,6 +103,7 @@ export function evaluateQuery(
     sections: matching(units.sections),
     tasks: matching(units.tasks),
     files: matching(units.files),
+    questions: matching(units.questions),
   };
 }
 
@@ -107,12 +112,13 @@ interface IndexUnits {
   sections: Array<readonly [Section, QueryUnit]>;
   tasks: Array<readonly [Task, QueryUnit]>;
   files: Array<readonly [ParsedFile, QueryUnit]>;
+  questions: Array<readonly [Question, QueryUnit]>;
 }
 
 /**
- * The units a search tests, in index order: every entry, every task, and
- * every note that is a result of its own, each with its links when the
- * search asks about them.
+ * The units a search tests, in index order: every entry, every task, every
+ * note that is a result of its own, each with its links when the search
+ * asks about them, and every question.
  */
 function collectUnits(index: WorkspaceIndex, context: EvaluationContext): IndexUnits {
   const membership = buildTagMembership(index);
@@ -140,7 +146,8 @@ function collectUnits(index: WorkspaceIndex, context: EvaluationContext): IndexU
       (file) =>
         [file, withLinks(createFileUnit(index, membership, file, parts.get(fileEntryId(file.filePath))), `file:${file.filePath}`)] as const,
     );
-  return { sections, tasks, files };
+  const questions = [...getQuestions(index).values()].map((question) => [question, createQuestionUnit(index, question)] as const);
+  return { sections, tasks, files, questions };
 }
 
 /**
@@ -440,7 +447,7 @@ const MAX_TAGS_PER_UNIT = 40;
  * One thing a condition can be tested against.
  */
 interface QueryUnit {
-  kind: 'section' | 'task' | 'file';
+  kind: 'section' | 'task' | 'file' | 'question';
   tagKeys: Set<string>;
   text: string;
   filePath: string;
@@ -473,6 +480,8 @@ interface QueryUnit {
   step?: boolean;
   /** How many steps are written under the task. */
   stepCount?: number;
+  /** A question with an `Answer:` line under it. */
+  answered?: boolean;
 }
 
 /**
@@ -706,6 +715,27 @@ function createTaskUnit(
   };
 }
 
+/**
+ * A question as a condition tests it: the tags it carries as a task would,
+ * its line's words, and its answer's, so a search for what was answered
+ * finds the question.
+ */
+function createQuestionUnit(index: WorkspaceIndex, question: Question): QueryUnit {
+  const parked = index.parked;
+  return {
+    kind: 'question',
+    tagKeys: readQuestionTagKeys(index, question),
+    text: `${question.title}\n${question.sourceLineText}\n${question.answer?.text ?? ''}`.toLowerCase(),
+    filePath: question.filePath,
+    createdAt: question.createdAt,
+    updatedAt: question.updatedAt,
+    answered: isAnswered(question),
+    parked:
+      (parked?.files.has(question.filePath) ?? false) ||
+      (question.sectionId !== undefined && (parked?.sections.has(question.sectionId) ?? false)),
+  };
+}
+
 /** A note as a condition tests it: the tags its front matter gives it, and its whole text. */
 function createFileUnit(
   index: WorkspaceIndex,
@@ -932,7 +962,8 @@ function matchesStatus(value: string, unit: QueryUnit): boolean {
 }
 
 /**
- * Answers `is:`. `note` is anything that is not a task; the rest are tasks.
+ * Answers `is:`. `note` is anything that is neither a task nor a question;
+ * `question`, `answered`, and `unanswered` are questions; the rest are tasks.
  * `due` means open and due within the next seven days, overdue included.
  * `blocked` and `blocking` read the ⛔ and 🆔 dependency edges between open
  * tasks; `has:dependsOn` and `has:id` read the markers themselves, whether or
@@ -945,7 +976,10 @@ function matchesIs(
   context: QueryContext,
 ): boolean {
   if (value === 'note') {
-    return unit.kind !== 'task';
+    return unit.kind === 'section' || unit.kind === 'file';
+  }
+  if (value === 'question' || value === 'answered' || value === 'unanswered') {
+    return unit.kind === 'question' && (value === 'question' || unit.answered === (value === 'answered'));
   }
   if (value === 'parked') {
     // Notes and tasks alike: parking is about where a thing is, not its kind.

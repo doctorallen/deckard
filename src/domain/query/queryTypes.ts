@@ -108,6 +108,9 @@ export const QUERY_IS_VALUES = [
   'periodic',
   'parked',
   'step',
+  'question',
+  'answered',
+  'unanswered',
 ] as const;
 
 /** Values `has:` and `no:` accept: a task date, a priority, or an id. */

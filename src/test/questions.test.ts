@@ -12,6 +12,11 @@ import {
 } from '../domain/index/questions';
 import { findQuestionSymbol, readTaskStatuses, statusForSymbol, DEFAULT_TASK_STATUSES } from '../domain/tasks/taskStatuses';
 import type { ParsedFile } from '../domain/model';
+import { parseQuery } from '../domain/query/queryParser';
+import { evaluateQuery } from '../domain/query/queryEvaluator';
+import { createQueryContext } from '../domain/query/queryContext';
+import { createQueryBlockSnapshot, describeQueryBlockCounts, parseQueryBlockInfo } from '../ui/state/queryBlockState';
+import { renderQueryBlockHtml } from '../ui/preview/queryBlockHtml';
 
 /** An index of notes, by path and text, each dated by its own name when it is a day. */
 function indexOf(notes: Record<string, string>): ReturnType<typeof buildWorkspaceIndex> {
@@ -91,5 +96,58 @@ suite('Questions: across the workspace', () => {
   test('a question carries its heading\'s tags for a tag search', () => {
     const lag = [...getQuestions(index).values()].find((question) => question.title.startsWith('Why'));
     assert.ok(lag && readQuestionTagKeys(index, lag).has('#team/rates'));
+  });
+});
+
+suite('Questions: searching', () => {
+  const index = indexOf({
+    'notes/2026-10-01.md': [
+      '# 2026-10-01',
+      '## Desk #team/rates',
+      '- [?] Who approves access to the bond UAT?',
+      '  - Answer: Priya',
+      '- [?] Why did the feed lag?',
+      '- [ ] Book the room',
+      'A plain line about the feed.',
+    ].join('\n'),
+  });
+  const find = (query: string) => {
+    const parsed = parseQuery(query);
+    assert.deepStrictEqual(parsed.diagnostics.filter((diagnostic) => diagnostic.severity === 'error'), [], query);
+    const results = evaluateQuery(index, parsed.node, createQueryContext(Date.now()));
+    return {
+      questions: results.questions.map(questionText),
+      tasks: results.tasks.length,
+      notes: results.sections.length + results.files.length,
+    };
+  };
+
+  test('is:question, is:answered, and is:unanswered find questions and nothing else', () => {
+    assert.deepStrictEqual(find('is:question'), { questions: ['Who approves access to the bond UAT?', 'Why did the feed lag?'], tasks: 0, notes: 0 });
+    assert.deepStrictEqual(find('is:answered').questions, ['Who approves access to the bond UAT?']);
+    assert.deepStrictEqual(find('is:unanswered').questions, ['Why did the feed lag?']);
+  });
+
+  test('a question is neither a task nor a note, and a tag or a word finds it', () => {
+    assert.deepStrictEqual(find('is:open').questions, []);
+    assert.strictEqual(find('is:open').tasks, 1);
+    assert.deepStrictEqual(find('is:note').questions, []);
+    assert.deepStrictEqual(find('#team/rates is:unanswered').questions, ['Why did the feed lag?']);
+    assert.deepStrictEqual(find('text ~ priya').questions, ['Who approves access to the bond UAT?'], 'its answer\'s words count');
+    assert.deepStrictEqual(find('-is:question #team/rates').questions, []);
+  });
+
+  test('a query block and the assistant list the questions it finds', () => {
+    const options = parseQueryBlockInfo('deckard') as NonNullable<ReturnType<typeof parseQueryBlockInfo>>;
+    const snapshot = createQueryBlockSnapshot(index, 'is:question', options, { queryContext: createQueryContext(Date.now()) });
+    assert.deepStrictEqual(snapshot.questions.map((item) => [item.title, item.answered, item.answer]), [
+      ['Who approves access to the bond UAT?', true, 'Priya'],
+      ['Why did the feed lag?', false, undefined],
+    ]);
+    assert.strictEqual(snapshot.questionCount, 2);
+    assert.strictEqual(describeQueryBlockCounts(snapshot), '2 questions');
+    const html = renderQueryBlockHtml('is:question', options, index, { queryContext: createQueryContext(Date.now()) });
+    assert.match(html, /deckard-query-questions/);
+    assert.match(html, /Answer: Priya/);
   });
 });

@@ -760,6 +760,8 @@ export function evaluateSearchPage(
         sections: [...index.sections.values()].filter(isEntrySection),
         tasks: [...index.tasks.values()],
         files: listFrontmatterOnlyFiles(index),
+        // Questions are listed by a search that names them, not by every note.
+        questions: [],
       };
   const viaHub = new Set<string>();
   // What links to the hub is the tag's plain page's alone: a filter's terms
@@ -802,6 +804,7 @@ export function evaluateSearchPage(
       sections: [...results.sections, ...sections],
       tasks: [...results.tasks, ...tasks],
       files: [...results.files, ...files],
+      questions: results.questions,
     },
     viaHub,
     hubTitle: noteTitle(hubFile.filePath),

@@ -119,6 +119,16 @@ a.deckard-query-checkbox.is-action:focus-visible {
   text-decoration: line-through;
 }
 
+/* A question's mark, where a task has its box; an answered one steps back. */
+.deckard-query-question .deckard-query-checkbox {
+  font-weight: 600;
+  text-align: center;
+}
+
+.deckard-query-question.is-answered .deckard-query-checkbox {
+  opacity: 0.6;
+}
+
 .deckard-query-due.is-overdue {
   color: var(--vscode-errorForeground, #e51400);
 }

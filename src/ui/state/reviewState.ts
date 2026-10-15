@@ -280,6 +280,7 @@ function readSection(
     ...results.tasks.map((task) => ({ title: clean(task.title), note: noteTitle(task.filePath) })),
     ...results.sections.map((entry) => ({ title: noteTitle(entry.filePath), note: noteTitle(entry.filePath) })),
     ...results.files.map((file) => ({ title: noteTitle(file.filePath), note: noteTitle(file.filePath) })),
+    ...results.questions.map((question) => ({ title: clean(question.title), note: noteTitle(question.filePath), ...(question.answer ? { detail: 'answered' } : {}) })),
   ];
   const seen = new Set<string>();
   return {

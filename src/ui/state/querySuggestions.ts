@@ -633,6 +633,9 @@ const IS_SUGGESTIONS: QuerySuggestion[] = [
   { value: 'is:periodic', label: 'is:periodic', detail: 'Written in a daily, weekly, or monthly note' },
   { value: 'is:parked', label: 'is:parked', detail: 'Notes and tasks that are parked' },
   { value: 'is:step', label: 'is:step', detail: 'Tasks written under another task' },
+  { value: 'is:question', label: 'is:question', detail: 'Questions, written - [?]' },
+  { value: 'is:unanswered', label: 'is:unanswered', detail: 'Questions with no Answer: line under them' },
+  { value: 'is:answered', label: 'is:answered', detail: 'Questions with an Answer: line under them' },
 ];
 
 /** The values `has:` and `no:` take. */
@@ -688,7 +691,7 @@ export function describeQueryField(field: string): string {
     case 'text':
       return 'Words in the note, task, or file body';
     case 'is':
-      return 'is:open, is:in-progress, is:done, is:cancelled, is:closed, is:overdue, is:due, is:today, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:waiting, is:available, is:mine, is:assigned, is:unassigned, is:daily, is:periodic, is:parked, or is:step';
+      return 'is:open, is:in-progress, is:done, is:cancelled, is:closed, is:overdue, is:due, is:today, is:needs-date, is:task, is:note, is:blocked, is:blocking, is:waiting, is:available, is:mine, is:assigned, is:unassigned, is:daily, is:periodic, is:parked, is:step, is:question, is:answered, or is:unanswered';
     case 'has':
       return 'has:due or no:due, and the same for scheduled, start, done, cancelled, priority, id, dependsOn, and steps';
     case 'in':

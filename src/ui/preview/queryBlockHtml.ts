@@ -169,7 +169,7 @@ function renderResults(
   context: QueryContext,
   taskHref?: (item: QueryBlockItem) => string | undefined,
 ): string[] {
-  if (snapshot.noteCount === 0 && snapshot.taskCount === 0) {
+  if (snapshot.noteCount === 0 && snapshot.taskCount === 0 && snapshot.questionCount === 0) {
     return ['<p class="deckard-query-message">Nothing matches this query yet.</p>'];
   }
   return [
@@ -185,6 +185,8 @@ function renderResults(
           { kind: 'tasks', label: 'Tasks', items: snapshot.tasks, total: snapshot.taskCount },
           (item) => renderTask(item, context, taskHref),
         )),
+    // Questions are a list in either view: a question has no columns.
+    ...renderGroup({ kind: 'questions', label: 'Questions', items: snapshot.questions, total: snapshot.questionCount }, renderQuestion),
   ];
 }
 
@@ -267,7 +269,7 @@ function renderTaskTable(
 
 /** One list of results: its kind, its label, the items shown, and how many matched. */
 interface ResultGroup {
-  kind: 'notes' | 'tasks';
+  kind: 'notes' | 'tasks' | 'questions';
   label: string;
   items: QueryBlockItem[];
   total: number;
@@ -303,6 +305,23 @@ function renderGroup(
  */
 function renderNote(item: QueryBlockItem): string {
   return `<li class="deckard-query-item">${renderLink(item)}${renderMeta(item)}</li>`;
+}
+
+/**
+ * A question as a row, laid out as a task is: a `?` where a task has its
+ * box, its words, and on the line under them its answer, once it has one,
+ * then where it is.
+ */
+function renderQuestion(item: QueryBlockItem): string {
+  return [
+    `<li class="deckard-query-item deckard-query-task deckard-query-question${item.answered ? ' is-answered' : ''}">`,
+    `<span class="deckard-query-checkbox" role="img" aria-label="${item.answered ? 'Answered question' : 'Open question'}">?</span>`,
+    '<div class="deckard-query-body">',
+    renderLink(item),
+    renderMeta(item, item.answer ? `Answer: ${escapeHtml(item.answer)}` : ''),
+    '</div>',
+    '</li>',
+  ].join('');
 }
 
 /** The arrow each known priority is drawn with; medium has none. */

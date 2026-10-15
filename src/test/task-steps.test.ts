@@ -227,7 +227,7 @@ suite('Task steps', () => {
     });
 
     test('the errors list the new values', () => {
-      assert.match(parseQuery('is:stepz').diagnostics[0].message, /parked, or step — not "stepz"/);
+      assert.match(parseQuery('is:stepz').diagnostics[0].message, /parked, step, question, answered, or unanswered — not "stepz"/);
       assert.match(parseQuery('has:stepz').diagnostics[0].message, /dependsOn, or steps — not "stepz"/);
     });
   });
