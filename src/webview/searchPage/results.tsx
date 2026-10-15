@@ -7,9 +7,10 @@
 import type { ComponentChild } from 'preact';
 
 import { NOTE_SORT_LABELS } from '../../domain/model/sortOrders';
-import type { SearchPageQuestion, SearchPageSnapshot } from '../../ui/protocol/searchPage';
+import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { DashboardTask } from '../../ui/protocol/shared';
 import { ResultGroups } from './groups';
+import { QuestionRow } from './questionRow';
 import { type Paging, describePageRange, PageSteps } from '../shared/pageSteps';
 import { resultPanelAttributes, ResultTabs } from '../shared/resultTabs';
 import { type CardDisplay, SearchCard } from '../shared/searchCard';
@@ -306,26 +307,6 @@ function RowsPane({ view }: { readonly view: ResultsView }) {
       </div>
       <TypeRowsTable table={table} />
     </section>
-  );
-}
-
-/**
- * One question the search found: its mark, its words, which open its line,
- * how long it has been open and its first tag, or its answer, and, while
- * it is open, Answer…, quiet under Zen until the row is pointed at.
- */
-function QuestionRow({ question }: { readonly question: SearchPageQuestion }) {
-  return (
-    <li class={question.answered ? 'search-question is-answered' : 'search-question'} data-zen-region="">
-      <span class="search-question-mark" aria-hidden="true">?</span>
-      <button type="button" class="search-question-open" data-action="open-source" data-file-path={question.filePath} data-line={question.line}>
-        <span class="search-question-text">{question.text}</span>
-        <span class="search-question-detail">{question.answer ? `${question.detail} · Answer: ${question.answer}` : question.detail}</span>
-      </button>
-      {question.answered
-        ? null
-        : <button type="button" class="search-question-answer" data-action="answer-question" data-question-id={question.id} data-zen-reveal="" data-tip="Write the answer under the question">Answer…</button>}
-    </li>
   );
 }
 

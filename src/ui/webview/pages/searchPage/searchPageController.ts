@@ -25,7 +25,7 @@ import { setPinned } from '../../../commands/pinNote';
 import { readEntityNamespaceAliases } from '../../../commands/parseSettings';
 import { readQueryContext } from '../../../commands/queryContext';
 import { openSettingAction } from '../../../commands/notify';
-import { collectBetweenLines, formatBetweenAgenda } from '../../../state/betweenYou';
+import { collectBetweenLines, countAgendaLines, formatBetweenAgenda } from '../../../state/betweenYou';
 import { mergeIndexedTag } from '../../../commands/renameTag';
 import { offerSavedSearchOnHome } from '../../../commands/savedSearchHome';
 import type { TaskWrites } from '../../../commands/taskActions';
@@ -681,9 +681,11 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     return (this.currentSnapshot().story?.months ?? []).some((month) => month.rows.some((row) => row.filePath === filePath && row.line === line));
   }
 
-  /** A question the page draws on its Questions tab, by where it is written. */
+  /** A question the page draws, on its Questions tab or under a person's To ask, by where it is written. */
   private isDrawnQuestion(filePath: string, line: number): boolean {
-    return (this.currentSnapshot().questions ?? []).some((question) => question.filePath === filePath && question.line === line);
+    const snapshot = this.currentSnapshot();
+    const drawn = [...(snapshot.questions ?? []), ...(snapshot.between?.groups ?? []).flatMap((group) => group.questions ?? [])];
+    return drawn.some((question) => question.filePath === filePath && question.line === line);
   }
 
   /**
@@ -853,7 +855,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       return;
     }
     await vscode.env.clipboard.writeText(`${agenda}\n`);
-    const lines = groups.reduce((count, group) => count + group.tasks.length, 0);
+    const lines = countAgendaLines(groups);
     vscode.window.setStatusBarMessage(`Copied ${lines} ${lines === 1 ? 'line' : 'lines'} as an agenda`, 3000);
   }
 
@@ -1010,7 +1012,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       await openNoteAt(task.task.filePath, task.task.lineNumber, how);
       return;
     }
-    // A line of the Story tab, or a question of the Questions tab.
+    // A line of the Story tab, or a question of the Questions tab or of a person's To ask.
     if (this.isStoryRow(filePath, line) || this.isDrawnQuestion(filePath, line)) {
       await openNoteAt(filePath, line, how);
       return;

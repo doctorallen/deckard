@@ -181,6 +181,7 @@ header.page-bar { align-items: flex-start; }
 .between-group-label.between-group-label:hover, .between-group-label.between-group-label:focus-visible { border-color: var(--cyan); background: transparent; color: var(--cyan); transform: none; }
 .between-count { color: var(--muted); font-weight: 400; }
 .between-tasks { grid-template-columns: minmax(0, 1fr); margin-top: var(--space-2); }
+.between-questions { margin-top: var(--space-2); }
 .between-none, .between-more { margin: var(--space-2) 0 0; color: var(--muted); font-size: var(--text-sm); }
 .between-more-link { min-height: 0; padding: 0 2px; border: 0; background: transparent; color: var(--text); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
 /* A tag's Story tab (story.tsx): a row of filter chips, as the Since band's,

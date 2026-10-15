@@ -276,7 +276,8 @@ function describeTagLines(index: WorkspaceIndex, types: TypeIndex, tagKey: strin
 /**
  * For a person, how many open lines are between them and the reader, as
  * their page's Between you card counts them: `Between you: You owe Sam: 3.
- * Sam owes you: 2.`; nothing for any other tag, or with no context to ask in.
+ * Sam owes you: 2. To ask Sam: 1.`; nothing for any other tag, or with no
+ * context to ask in.
  */
 function describeBetweenLine(index: WorkspaceIndex, tagKey: string, context: QueryContext | undefined): string[] {
   const counts = context ? describeBetweenCounts(index, tagKey, context) : undefined;

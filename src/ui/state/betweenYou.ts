@@ -11,15 +11,17 @@
  * - **Sam owes you**: open tasks assigned to Sam, and open tasks of yours on
  *   hold that mention Sam, as a hand-off is written: a waiting task that
  *   mentions someone counts as theirs (D11).
+ * - **To ask Sam**: open questions that name Sam on their own line
+ *   (docs/implementation/38-questions.md).
  *
  * A task assigned to a third person is theirs, and shows on their page,
- * not here, whoever it mentions. Plan 38 adds a third group, what to ask
- * them, from its questions.
+ * not here, whoever it mentions.
  */
 import { isPersonTag } from '../../domain/markdown/parser';
 import { formatKeyWords } from '../../domain/markdown/tagKeys';
 import { formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
-import type { Task, WorkspaceIndex } from '../../domain/model';
+import { listQuestionsMentioning } from '../../domain/index/questions';
+import type { Question, Task, WorkspaceIndex } from '../../domain/model';
 import type { QueryContext } from '../../domain/query/queryContext';
 import { evaluateQuery, matchesPerson } from '../../domain/query/queryEvaluator';
 import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
@@ -27,6 +29,7 @@ import { getTypeIndex } from '../../domain/types/typeIndex';
 import type { BetweenGroupKind, SearchPageBetween } from '../protocol/searchPage';
 import { createDashboardTask } from './entryCards';
 import { hubNoteLabel } from './hubTree';
+import { toSearchPageQuestion } from './questionsState';
 
 /** How many lines a group draws; its label opens the rest. */
 export const BETWEEN_ROW_LIMIT = 10;
@@ -36,6 +39,13 @@ interface BetweenGroupRule {
   kind: BetweenGroupKind;
   label: (name: string) => string;
   query: (tagKey: string) => string;
+  /**
+   * For a group of questions, its lines, oldest first, in place of the
+   * tasks its search finds: the open questions that name the person on
+   * their own line, where the search also finds those under a heading or
+   * in a note that names them.
+   */
+  questions?: (index: WorkspaceIndex, tagKey: string) => Question[];
 }
 
 /**
@@ -55,6 +65,12 @@ const BETWEEN_GROUPS: readonly BetweenGroupRule[] = [
     label: (name) => `${name} owes you`,
     query: (tagKey) => `is:open -is:parked (assignee = ${tagKey} OR (is:waiting is:mine ${tagKey}))`,
   },
+  {
+    kind: 'toAsk',
+    label: (name) => `To ask ${name}`,
+    query: (tagKey) => `is:unanswered ${tagKey}`,
+    questions: listQuestionsMentioning,
+  },
 ];
 
 /** The search each group of a person's card is, by group: what its label opens. */
@@ -62,12 +78,13 @@ export function betweenQueries(tagKey: string): Record<BetweenGroupKind, string>
   return Object.fromEntries(BETWEEN_GROUPS.map((group) => [group.kind, group.query(tagKey)])) as Record<BetweenGroupKind, string>;
 }
 
-/** One group's lines, all of them, in the card's order. */
+/** One group's lines, all of them, in the card's order: its tasks, or, in a group of questions, its questions. */
 export interface BetweenGroupLines {
   kind: BetweenGroupKind;
   label: string;
   query: string;
   tasks: Task[];
+  questions: Question[];
 }
 
 /**
@@ -82,9 +99,18 @@ export function collectBetweenLines(index: WorkspaceIndex, tagKey: string, conte
   const name = personFirstName(index, tagKey);
   return BETWEEN_GROUPS.map((group) => {
     const query = group.query(tagKey);
+    const lines = { kind: group.kind, label: group.label(name), query };
+    if (group.questions) {
+      return { ...lines, tasks: [], questions: group.questions(index, tagKey) };
+    }
     const tasks = evaluateQuery(index, parseWorkspaceQuery(index, query).node, context).tasks;
-    return { kind: group.kind, label: group.label(name), query, tasks: sortBetween(tasks, context.now) };
+    return { ...lines, tasks: sortBetween(tasks, context.now), questions: [] };
   });
+}
+
+/** How many lines a group holds: its tasks and its questions. */
+function countLines(group: BetweenGroupLines): number {
+  return group.tasks.length + group.questions.length;
 }
 
 /**
@@ -95,9 +121,10 @@ export function collectBetweenLines(index: WorkspaceIndex, tagKey: string, conte
  */
 export function describeBetween(index: WorkspaceIndex, tagKey: string, context: QueryContext): SearchPageBetween | undefined {
   const groups = collectBetweenLines(index, tagKey, context);
-  if (!groups || groups.every((group) => group.tasks.length === 0)) {
+  if (!groups || groups.every((group) => countLines(group) === 0)) {
     return undefined;
   }
+  const drawn = { now: context.now, dateFormats: context.dateFormats };
   return {
     name: personFirstName(index, tagKey),
     ...(context.identity === undefined ? { needsIdentity: true as const } : {}),
@@ -105,8 +132,11 @@ export function describeBetween(index: WorkspaceIndex, tagKey: string, context: 
       kind: group.kind,
       label: group.label,
       query: group.query,
-      count: group.tasks.length,
+      count: countLines(group),
       tasks: group.tasks.slice(0, BETWEEN_ROW_LIMIT).map((task) => createDashboardTask(task, index.sections, context)),
+      ...(group.questions.length
+        ? { questions: group.questions.slice(0, BETWEEN_ROW_LIMIT).map((question) => toSearchPageQuestion(index, question, drawn)) }
+        : {}),
     })),
   };
 }
@@ -114,33 +144,44 @@ export function describeBetween(index: WorkspaceIndex, tagKey: string, context: 
 /**
  * The card as a one-to-one's agenda, in Markdown: each group that holds
  * anything under its own heading, then its lines as open tasks, titles
- * only, with the due date. Empty when there is nothing between you.
+ * only, with the due date, and its questions as questions. Empty when
+ * there is nothing between you.
  *
  * ```
  * ## You owe Sam
  * - [ ] Send Sam the recon field mapping (due 2026-10-06)
+ *
+ * ## To ask Sam
+ * - [?] Who approves access to the bond UAT? @sam-okafor
  * ```
  */
 export function formatBetweenAgenda(groups: readonly BetweenGroupLines[]): string {
   return groups
-    .filter((group) => group.tasks.length > 0)
+    .filter((group) => countLines(group) > 0)
     .map((group) => [
       `## ${group.label}`,
       ...group.tasks.map((task) => `- [ ] ${task.title.trim()}${task.dueAt === undefined ? '' : ` (due ${formatIsoDate(task.dueAt)})`}`),
+      ...group.questions.map((question) => `- [?] ${question.title.trim()}`),
     ].join('\n'))
     .join('\n\n');
 }
 
+/** How many lines an agenda copies: every task and question of every group. */
+export function countAgendaLines(groups: readonly BetweenGroupLines[]): number {
+  return groups.reduce((count, group) => count + countLines(group), 0);
+}
+
 /**
  * How many lines each group holds, for an assistant: `You owe Sam: 3. Sam
- * owes you: 2.`; undefined for a tag that is no person or names the reader.
+ * owes you: 2. To ask Sam: 1.`; undefined for a tag that is no person or
+ * names the reader.
  */
 export function describeBetweenCounts(index: WorkspaceIndex, tagKey: string, context: QueryContext): string | undefined {
   const groups = collectBetweenLines(index, tagKey, context);
   if (!groups) {
     return undefined;
   }
-  const counts = groups.map((group) => `${group.label}: ${group.tasks.length}.`).join(' ');
+  const counts = groups.map((group) => `${group.label}: ${countLines(group)}.`).join(' ');
   return context.identity === undefined
     ? `${counts} Deckard doesn’t know who you are yet: the "Me" setting names nobody, so only tasks for nobody count as yours.`
     : counts;

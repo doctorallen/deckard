@@ -69,7 +69,7 @@ import {
   WorkspaceIndex,
 } from '../../domain/model';
 import { listAllQuestions } from '../../domain/index/questions';
-import { describeQuestionRow, toQuestionRow } from './questionsState';
+import { toSearchPageQuestion } from './questionsState';
 import { collectTagParts } from '../../domain/tasks/tagParts';
 import { formatProgressCount } from '../../domain/tasks/progressCount';
 import { readNoteBody } from './notePageState';
@@ -263,18 +263,7 @@ function drawQuestions(index: WorkspaceIndex, found: readonly Question[], contex
   const order = new Map(listAllQuestions(index).map((question, position) => [question.id, position]));
   const questions = [...found]
     .sort((left, right) => (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0))
-    .map((question) => {
-      const row = toQuestionRow(index, question, undefined, { now: context.now, dateFormats: context.dateFormats });
-      return {
-        id: row.id,
-        text: row.text,
-        filePath: row.filePath,
-        line: row.line,
-        detail: describeQuestionRow(row),
-        answered: row.answered,
-        ...(row.answer ? { answer: row.answer } : {}),
-      };
-    });
+    .map((question) => toSearchPageQuestion(index, question, { now: context.now, dateFormats: context.dateFormats }));
   return { questions };
 }
 

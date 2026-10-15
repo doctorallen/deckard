@@ -3,7 +3,7 @@ import * as assert from 'assert';
 import type { WorkspaceIndex } from '../domain/model';
 import { createQueryContext, type QueryContext } from '../domain/query/queryContext';
 import { answerDescribeTag } from '../ui/state/assistantDescribe';
-import { betweenQueries, collectBetweenLines, describeBetween, formatBetweenAgenda, personFirstName } from '../ui/state/betweenYou';
+import { betweenQueries, collectBetweenLines, countAgendaLines, describeBetween, formatBetweenAgenda, personFirstName } from '../ui/state/betweenYou';
 import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 import { createPreferences, MemoryStore } from './preferenceServices';
 import { indexOf } from './typedWorkspace';
@@ -33,14 +33,21 @@ function samWorkspace(extra: Record<string, string> = {}): WorkspaceIndex {
       '- [ ] Chase the vendor @sam-okafor 👤 @lena-brandt',
       '- [x] Send Sam the UAT login @sam-okafor',
       '- [ ] Book the room',
+      '- [?] Who approves access to the bond UAT? @sam-okafor',
+      '- [?] Where is the runbook? @sam-okafor',
+      '  - Answer: in the wiki',
+      '- [?] Who signs off on the vendor? @lena-brandt',
     ),
     ...extra,
   });
 }
 
-/** Each group's task titles, by group, as the card lists them. */
+/** Each group's task and question titles, by group, as the card lists them. */
 function titles(index: WorkspaceIndex, tagKey: string, context: QueryContext): Record<string, string[]> {
-  return Object.fromEntries((collectBetweenLines(index, tagKey, context) ?? []).map((group) => [group.kind, group.tasks.map((task) => task.title.trim())]));
+  return Object.fromEntries((collectBetweenLines(index, tagKey, context) ?? []).map((group) => [
+    group.kind,
+    [...group.tasks, ...group.questions].map((line) => line.title.trim()),
+  ]));
 }
 
 suite('Between you', () => {
@@ -48,6 +55,7 @@ suite('Between you', () => {
     assert.deepStrictEqual(betweenQueries('@sam-okafor'), {
       youOwe: 'is:open is:mine -is:waiting -is:parked @sam-okafor',
       theyOwe: 'is:open -is:parked (assignee = @sam-okafor OR (is:waiting is:mine @sam-okafor))',
+      toAsk: 'is:unanswered @sam-okafor',
     });
   });
 
@@ -58,12 +66,29 @@ suite('Between you', () => {
       // Assigned to Sam, and waiting with a mention (D11). Lena's task is
       // hers, and the done one has left the card.
       theyOwe: ['Rates lineage diagram', 'Prod read access for FX recon @sam-okafor'],
+      // The open question that names Sam; the answered one, and Lena's, are not here.
+      toAsk: ['Who approves access to the bond UAT? @sam-okafor'],
     });
+  });
+
+  test('lists the open questions that name the person on their own line to ask them, oldest first', () => {
+    const index = indexOf({
+      'notes/2026-10-01.md': lines('# 2026-10-01', '- [?] Older one @sam'),
+      'notes/2026-10-05.md': lines('# 2026-10-05', '- [?] Newer one @sam', '## With @sam', '- [?] Under his heading'),
+    });
+    assert.deepStrictEqual(titles(index, '@sam', asDavid).toAsk, ['Older one @sam', 'Newer one @sam']);
+    const toAsk = describeBetween(index, '@sam', asDavid)?.groups.find((group) => group.kind === 'toAsk');
+    assert.strictEqual(toAsk?.count, 2, 'a person with only questions open still has a card');
+    assert.deepStrictEqual(toAsk?.questions?.map((question) => [question.text, question.filePath, question.line, question.answered]), [
+      ['Older one', 'notes/2026-10-01.md', 2, false],
+      ['Newer one', 'notes/2026-10-05.md', 2, false],
+    ]);
+    assert.deepStrictEqual(toAsk?.tasks, []);
   });
 
   test('a task assigned to a third person shows on their page, and not as owed by them to Sam', () => {
     const lena = titles(samWorkspace(), '@lena-brandt', asDavid);
-    assert.deepStrictEqual(lena, { youOwe: [], theyOwe: ['Chase the vendor @sam-okafor'] });
+    assert.deepStrictEqual(lena, { youOwe: [], theyOwe: ['Chase the vendor @sam-okafor'], toAsk: ['Who signs off on the vendor? @lena-brandt'] });
   });
 
   test('a task assigned to Sam that mentions you is still Sam’s to do', () => {
@@ -95,7 +120,7 @@ suite('Between you', () => {
     const index = samWorkspace();
     assert.strictEqual(personFirstName(index, '@sam-okafor'), 'Sam');
     assert.strictEqual(personFirstName(indexOf({ 'notes/a.md': '# A @noor-haddad' }), '@noor-haddad'), 'Noor');
-    assert.deepStrictEqual(collectBetweenLines(index, '@sam-okafor', asDavid)?.map((group) => group.label), ['You owe Sam', 'Sam owes you']);
+    assert.deepStrictEqual(collectBetweenLines(index, '@sam-okafor', asDavid)?.map((group) => group.label), ['You owe Sam', 'Sam owes you', 'To ask Sam']);
   });
 
   test('gives no card to a tag that is no person, to your own page, or to someone with nothing open between you', () => {
@@ -122,11 +147,12 @@ suite('Between you', () => {
     assert.deepStrictEqual(between?.groups.map((group) => group.tasks.map((item) => item.task.title.trim())), [
       ['Send @sam-okafor the recon field mapping'],
       ['Rates lineage diagram', 'Prod read access for FX recon @sam-okafor'],
+      [],
     ]);
     assert.strictEqual(describeBetween(samWorkspace(), '@sam-okafor', asDavid)?.needsIdentity, undefined);
   });
 
-  test('copies the groups as an agenda: a heading each, then the lines as tasks with their due dates', () => {
+  test('copies the groups as an agenda: a heading each, then the lines as tasks with their due dates, and the questions as questions', () => {
     const groups = collectBetweenLines(samWorkspace(), '@sam-okafor', asDavid) ?? [];
     assert.strictEqual(
       formatBetweenAgenda(groups),
@@ -138,8 +164,12 @@ suite('Between you', () => {
         '## Sam owes you',
         '- [ ] Rates lineage diagram',
         '- [ ] Prod read access for FX recon @sam-okafor',
+        '',
+        '## To ask Sam',
+        '- [?] Who approves access to the bond UAT? @sam-okafor',
       ),
     );
+    assert.strictEqual(countAgendaLines(groups), 5);
     assert.strictEqual(formatBetweenAgenda(groups.map((group) => (group.kind === 'theyOwe' ? { ...group, tasks: [] } : group))).includes('owes you'), false, 'an empty group is left out');
   });
 
@@ -147,14 +177,14 @@ suite('Between you', () => {
     const index = samWorkspace();
     const preferences = createPreferences(new MemoryStore()).reader.value;
     const page = createSearchPageSnapshot(index, preferences, '@sam-okafor', { queryContext: asDavid });
-    assert.deepStrictEqual(page.between?.groups.map((group) => [group.label, group.count]), [['You owe Sam', 2], ['Sam owes you', 2]]);
+    assert.deepStrictEqual(page.between?.groups.map((group) => [group.label, group.count]), [['You owe Sam', 2], ['Sam owes you', 2], ['To ask Sam', 1]]);
     assert.strictEqual(createSearchPageSnapshot(index, preferences, '@sam-okafor is:overdue', { queryContext: asDavid }).between, undefined);
     assert.strictEqual(createSearchPageSnapshot(index, preferences, 'is:open', { queryContext: asDavid }).between, undefined);
   });
 
   test('the describe tool counts each group for a person, and says nothing of it for a tag that is none', () => {
     const index = samWorkspace({ 'notes/team.md': '# Team #team/rates' });
-    assert.match(answerDescribeTag(index, { tag: '@sam-okafor' }, now, asDavid), /\nBetween you: You owe Sam: 2\. Sam owes you: 2\.$/m);
+    assert.match(answerDescribeTag(index, { tag: '@sam-okafor' }, now, asDavid), /\nBetween you: You owe Sam: 2\. Sam owes you: 2\. To ask Sam: 1\.$/m);
     assert.match(answerDescribeTag(index, { tag: '@sam-okafor' }, now, createQueryContext(now)), /the "Me" setting names nobody/);
     assert.doesNotMatch(answerDescribeTag(index, { tag: '#team/rates' }, now, asDavid), /Between you/);
     assert.doesNotMatch(answerDescribeTag(index, { tag: '@sam-okafor' }, now), /Between you/, 'nothing without a context to ask in');

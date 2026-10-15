@@ -20,6 +20,7 @@ const index = indexOf({
     '- [ ] Send @sam-okafor the recon field mapping 📅 2026-10-06',
     '- [ ] Rates lineage diagram 👤 @sam-okafor',
     '- [ ] Chase the vendor @sam-okafor 👤 @lena-brandt',
+    '- [?] Who approves access to the bond UAT? @sam-okafor',
   ),
   'notes/quiet.md': lines('# Quiet @quiet', '- [x] Done with @quiet'),
 });
@@ -55,6 +56,7 @@ suite('Between you, drawn', () => {
       [
         ['You owe Sam', '1', ['Send @sam-okafor the recon field mapping']],
         ['Sam owes you', '1', ['Rates lineage diagram']],
+        ['To ask Sam', '1', []],
       ],
     );
     assert.match(page.text('.between-group[data-group="youOwe"] .due-date') ?? '', /^Overdue/, 'an overdue date reads as overdue');
@@ -68,6 +70,20 @@ suite('Between you, drawn', () => {
     assert.deepStrictEqual(page.lastPosted('toggleTask'), { type: 'toggleTask', taskId: box.dataset.taskId, completed: true });
     page.click('.between-group[data-group="theyOwe"] .task-row .task-title');
     assert.deepStrictEqual(page.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/2026-10-02.md', line: 3 });
+  });
+
+  test('To ask lists the questions as the Questions tab does: each opens its line and offers Answer…, quiet under Zen', () => {
+    const page = searchPage('@sam-okafor');
+    const rows = page.findAll('.between-group[data-group="toAsk"] .search-question');
+    assert.deepStrictEqual(rows.map((row) => row.querySelector('.search-question-text')?.textContent), ['Who approves access to the bond UAT?']);
+    page.click('.between-group[data-group="toAsk"] .search-question-open');
+    assert.deepStrictEqual(page.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/2026-10-02.md', line: 5 });
+    const answer = page.find('.between-group[data-group="toAsk"] [data-action="answer-question"]');
+    assert.strictEqual(answer.getAttribute('data-zen-reveal'), '');
+    page.click('.between-group[data-group="toAsk"] [data-action="answer-question"]');
+    assert.strictEqual(page.lastPosted('questionAction')?.action, 'answer');
+    page.click('.between-group[data-group="toAsk"] .between-group-label');
+    assert.deepStrictEqual(page.lastPosted('openSearch'), { type: 'openSearch', query: betweenQueries('@sam-okafor').toAsk });
   });
 
   test('a group’s label opens its search, and Copy as agenda asks the host for the text, quieted under Zen', () => {

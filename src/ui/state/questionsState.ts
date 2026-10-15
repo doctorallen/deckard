@@ -12,6 +12,7 @@ import type { Question, WorkspaceIndex } from '../../domain/model';
 import { type AnswerOffer, findAnswerOffers } from '../../domain/ranking/answerOffers';
 import { pluralize } from '../../shared/text';
 import { measure } from '../../shared/timing';
+import type { SearchPageQuestion } from '../protocol/searchPage';
 
 /** An answer offered for a question, as a row under it draws it. */
 export interface QuestionOfferRow {
@@ -193,4 +194,26 @@ export function describeQuestionLenses(row: QuestionRow, options: { zen: boolean
 /** A row's description: its age, then its first tag, `open 12 days · #team/rates`. */
 export function describeQuestionRow(row: Pick<QuestionRow, 'age' | 'tag'>): string {
   return [row.age, row.tag].filter(Boolean).join(' · ');
+}
+
+/**
+ * One question as a search page draws it, on its Questions tab or a
+ * person's Between you card: its words, its line, its age and first tag,
+ * and its answer once it has one. No answer is offered there.
+ */
+export function toSearchPageQuestion(
+  index: WorkspaceIndex,
+  question: Question,
+  options: Pick<QuestionRowOptions, 'now' | 'dateFormats'>,
+): SearchPageQuestion {
+  const row = toQuestionRow(index, question, undefined, options);
+  return {
+    id: row.id,
+    text: row.text,
+    filePath: row.filePath,
+    line: row.line,
+    detail: describeQuestionRow(row),
+    answered: row.answered,
+    ...(row.answer ? { answer: row.answer } : {}),
+  };
 }

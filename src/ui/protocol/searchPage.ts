@@ -307,10 +307,10 @@ export interface TypeTableGroup {
 
 /**
  * What a group of the Between you card holds: what the reader owes the
- * person, and what the person owes the reader. Plan 38 adds what the
- * reader means to ask them, drawn from its questions.
+ * person, what the person owes the reader, and the open questions that
+ * name them, to ask them (docs/implementation/38-questions.md).
  */
-export type BetweenGroupKind = 'youOwe' | 'theyOwe';
+export type BetweenGroupKind = 'youOwe' | 'theyOwe' | 'toAsk';
 
 /**
  * The open lines between the reader and the person a tag's page is about
@@ -328,14 +328,16 @@ export interface SearchPageBetween {
 /** One group of the Between you card. */
 export interface SearchPageBetweenGroup {
   kind: BetweenGroupKind;
-  /** `You owe Sam`, `Sam owes you`. */
+  /** `You owe Sam`, `Sam owes you`, `To ask Sam`. */
   label: string;
   /** The search the group is, which its label opens on a search page of its own. */
   query: string;
   /** How many lines the group holds, drawn or not. */
   count: number;
-  /** Its first lines, overdue first, then oldest. */
+  /** Its first lines, overdue first, then oldest; none in a group of questions. */
   tasks: DashboardTask[];
+  /** In a group of questions, To ask, its first questions, oldest first, drawn as the Questions tab draws them. */
+  questions?: SearchPageQuestion[];
 }
 
 /**

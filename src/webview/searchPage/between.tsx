@@ -2,24 +2,34 @@
  * Between you (docs/implementation/36-between-you.md): on a person's page,
  * every open line between the reader and them, in the groups a one-to-one
  * goes through. Each row is the board's task row, its box completing it
- * and its title opening the line; each group's label opens the search the
- * group is. Copy as agenda waits under Zen; the counts and dates stay.
+ * and its title opening the line, or, under To ask, the Questions tab's
+ * row, with Answer…; each group's label opens the search the group is.
+ * Copy as agenda waits under Zen; the counts and dates stay.
  */
 import type { SearchPageBetween, SearchPageBetweenGroup } from '../../ui/protocol/searchPage';
 import { TaskListRow } from '../shared/taskRow';
+import { QuestionRow } from './questionRow';
+
+/** A group's first lines: its tasks, or its questions, or that it has none. */
+function BetweenLines({ group }: { readonly group: SearchPageBetweenGroup }) {
+  if (group.questions && group.questions.length) {
+    return <ul class="search-questions between-questions">{group.questions.map((question) => <QuestionRow key={question.id} question={question} />)}</ul>;
+  }
+  return group.tasks.length
+    ? <div class="task-list between-tasks">{group.tasks.map((item) => <TaskListRow key={item.task.id} item={item} />)}</div>
+    : <p class="between-none">Nothing open.</p>;
+}
 
 /** One group: its label, which opens its search, its count, and its first lines. */
 function BetweenGroup({ group }: { readonly group: SearchPageBetweenGroup }) {
-  const more = group.count - group.tasks.length;
+  const more = group.count - group.tasks.length - (group.questions ? group.questions.length : 0);
   return (
     <div class="between-group" data-group={group.kind}>
       <h3 class="between-group-heading">
         <button type="button" class="between-group-label" data-action="open-between-search" data-group={group.kind} data-tip={`Open these as a search: ${group.query}`}>{group.label}</button>
         <span class="between-count">{String(group.count)}</span>
       </h3>
-      {group.tasks.length
-        ? <div class="task-list between-tasks">{group.tasks.map((item) => <TaskListRow key={item.task.id} item={item} />)}</div>
-        : <p class="between-none">Nothing open.</p>}
+      <BetweenLines group={group} />
       {more > 0
         ? <p class="between-more"><button type="button" class="between-more-link" data-action="open-between-search" data-group={group.kind}>{`Show all ${group.count}`}</button></p>
         : null}
