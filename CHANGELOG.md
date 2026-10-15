@@ -20,6 +20,13 @@
   **New since**, new notes and tasks are marked **New**, and a changed
   field shows its old value once. A visit counts after five seconds in
   front, or at once with **Mark seen**.
+- **The story so far.** A tag's page has a **Story** tab: every line about
+  the tag, from the notes under its headings, its tagged notes, and the
+  lines that carry it, on one timeline by month, newest first. Each row is
+  its date, a mark (a task's box, **D** for a decision), the line, and the
+  heading it is under; a task's steps read with it. Filter it to
+  **Decisions** or **Done**, turn on **Oldest first**, and **Copy as
+  Markdown** from **⋯**.
 - **What's new in the Hubs view.** Each hub says how much is new since you
   last opened its page, or when you saw it, and **Sort Hubs By…** puts the
   busiest first.
