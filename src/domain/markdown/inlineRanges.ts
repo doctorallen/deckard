@@ -125,10 +125,11 @@ function isSchemeCharacter(code: number): boolean {
  * `![alt](target)`, its words as well as its target: where a word is the
  * link's, not the line's, as a term or a field's value is read. Tags are
  * still read in a link's words, so `findCodeAndLinkRanges` leaves them out.
+ * `codeAndLinks` are the line's, when the caller has them already.
  */
-export function findMarkdownLinkRanges(text: string): InlineRange[] {
+export function findMarkdownLinkRanges(text: string, codeAndLinks: readonly InlineRange[] = findCodeAndLinkRanges(text)): InlineRange[] {
   const ranges: InlineRange[] = [];
-  for (const target of findCodeAndLinkRanges(text)) {
+  for (const target of codeAndLinks) {
     // A link's target is the one range that starts at its `(`.
     const open = text[target.start] === '(' ? findOpeningBracket(text, target.start - 1) : undefined;
     if (open !== undefined) {

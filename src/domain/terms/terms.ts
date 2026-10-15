@@ -137,7 +137,8 @@ const QUANTITY = /^\d+(?:AM|PM|H|HR|HRS|MIN|MINS|S|SEC|MS|K|M|B|BN|KB|MB|GB|TB|B
 
 /** Whether a token is a term: its shape, and not a capitalized common word, a time, or a quantity. */
 export function isTermToken(token: string): boolean {
-  return isTermShape(token) && !NOT_TERMS.has(token) && !QUANTITY.test(token);
+  // Only a token that starts with a digit can be a quantity.
+  return isTermShape(token) && !NOT_TERMS.has(token) && !(token.charCodeAt(0) <= 57 && QUANTITY.test(token));
 }
 
 /**
@@ -150,7 +151,8 @@ function isShouted(text: string): boolean {
 
 /** Where a line's words are not its own: code, wiki links, and Markdown links, their words and targets both, and web addresses. */
 function findNotOwnRanges(text: string): InlineRange[] {
-  return [...findCodeAndLinkRanges(text), ...findMarkdownLinkRanges(text)];
+  const codeAndLinks = findCodeAndLinkRanges(text);
+  return text.includes('](') ? [...codeAndLinks, ...findMarkdownLinkRanges(text, codeAndLinks)] : codeAndLinks;
 }
 
 /**
@@ -237,20 +239,20 @@ export function matchesInitials(term: string, phrase: string): boolean {
   }
   // Each letter and word pair is tried once, so a long line of small words
   // takes letters × words steps, not one for each way to skip them.
-  const tried = new Map<number, boolean>();
+  // 0 for a pair not tried yet, 1 for one that fails, 2 for one that matches.
+  const tried = new Uint8Array((letters.length + 1) * (words.length + 1));
   const match = (letter: number, word: number): boolean => {
     if (word === words.length) {
       return letter === letters.length;
     }
     const key = letter * (words.length + 1) + word;
-    const known = tried.get(key);
-    if (known !== undefined) {
-      return known;
+    if (tried[key] !== 0) {
+      return tried[key] === 2;
     }
     const found =
       (letter < letters.length && words[word].startsWith(letters[letter]) && match(letter + 1, word + 1)) ||
       (SMALL_WORDS.has(words[word]) && match(letter, word + 1));
-    tried.set(key, found);
+    tried[key] = found ? 2 : 1;
     return found;
   };
   return match(0, 0);
