@@ -146,7 +146,7 @@ export class PromiseTracking
           title: `Track: ${name} · ${day}`,
           tooltip: `Write a waiting task for ${name}, due ${day}, under this line`,
           command: TRACK_PROMISE_COMMAND,
-          arguments: [document.uri.toString(), promise.line, text],
+          arguments: [document.uri.toString(), promise.line, text, false, promise.due],
         }),
         new vscode.CodeLens(range, {
           title: 'Not a promise',
@@ -180,7 +180,7 @@ export class PromiseTracking
       trackInEditor.command = {
         title: trackInEditor.title,
         command: TRACK_PROMISE_COMMAND,
-        arguments: [document.uri.toString(), promise.line, text, true],
+        arguments: [document.uri.toString(), promise.line, text, true, promise.due],
       };
       const dismiss = new vscode.CodeAction('Not a promise', vscode.CodeActionKind.QuickFix);
       dismiss.command = {

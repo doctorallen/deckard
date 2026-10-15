@@ -5,14 +5,8 @@ import { formatTaskDraft, parseTaskDraft } from '../../domain/markdown/taskDraft
 import type { WorkspaceIndex } from '../../domain/model';
 import { formatLocalDate } from '../../domain/notes/periodicNotes';
 import { findDailyNoteDate } from '../../domain/markdown/parser';
-import {
-  findPromises,
-  formatPromiseTask,
-  PromiseLine,
-  PromiseReading,
-  promiseLineKey,
-  readPromiseLine,
-} from '../../domain/tasks/promises';
+import { findPromises, formatPromiseTask, PromiseLine, PromiseReading, promiseLineKey } from '../../domain/tasks/promises';
+import { readEditorToggle } from '../providers/editorToggles';
 import { personFirstName } from '../state/betweenYou';
 import { readTopHeadings } from './activeNoteContext';
 import { readDateFormats, readDateOptions } from './datePrompt';
@@ -27,7 +21,11 @@ import { editTaskDraft, readDraftStatusReading } from './taskEditor';
  * promise, and the settings a promise is read and written with.
  */
 
-/** Tracks a promise as a waiting task under its line; its arguments are the note, the line, its words, and whether to open the task editor first. */
+/**
+ * Tracks a promise as a waiting task under its line; its arguments are the
+ * note, the line, its words, whether to open the task editor first, and the
+ * day the offer said.
+ */
 export const TRACK_PROMISE_COMMAND = 'deckard.trackPromise';
 /** Marks a line as no promise; its arguments are the note and the line's words. */
 export const NOT_A_PROMISE_COMMAND = 'deckard.notAPromise';
@@ -38,6 +36,8 @@ export interface PromiseLineAt {
   /** 0-based. */
   line: number;
   text: string;
+  /** The day the offer said, `YYYY-MM-DD`; a promise read as another day since is not written. */
+  due?: string;
 }
 
 /** What the commands read the index through. */
@@ -120,17 +120,17 @@ export function createPromiseEdit(document: vscode.TextDocument, line: number, t
 /**
  * Track: writes the promise on a note's line as a waiting task under it,
  * or with `edit`, opens the task editor on that task first, to change its
- * day or its words. Nothing is written when the line changed since the
- * lens or the lightbulb offered it, or no longer reads as a promise.
- * Returns the line written.
+ * day or its words. Nothing is written unless the offer still stands, both
+ * before and after the editor: see `readPromiseAt`. Returns the line
+ * written.
  */
 export async function trackPromiseCommand(
   index: PromiseIndex,
-  { documentUri, line, text }: PromiseLineAt,
+  at: PromiseLineAt,
   { edit = false, now = Date.now() }: { edit?: boolean; now?: number } = {},
 ): Promise<string | undefined> {
-  const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(documentUri));
-  const promise = readPromiseAt(document, line, text, now);
+  const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(at.documentUri));
+  const promise = readPromiseAt(document, at, now);
   if (!promise) {
     return undefined;
   }
@@ -145,12 +145,14 @@ export async function trackPromiseCommand(
       now,
       status,
     });
-    if (!edited || !readPromiseAt(document, line, text, now)) {
+    // The editor may have been open past midnight, or while the line was
+    // tracked another way: the offer is read again, at the time it closed.
+    if (!edited || !readPromiseAt(document, { ...at, due: promise.due }, Date.now())) {
       return undefined;
     }
     written = formatTaskDraft(edited);
   }
-  if (!(await vscode.workspace.applyEdit(createPromiseEdit(document, line, written)))) {
+  if (!(await vscode.workspace.applyEdit(createPromiseEdit(document, at.line, written)))) {
     void reportFailure(describeRejectedEdit(noteName(document.uri)));
     return undefined;
   }
@@ -158,10 +160,13 @@ export async function trackPromiseCommand(
 }
 
 /**
- * The promise on a line that still reads as it did when it was offered, or
- * undefined, said, when the line changed or reads as none.
+ * The promise on a line whose offer still stands, or undefined, said, when
+ * it does not: the line changed since it was offered; the setting is off;
+ * the note is no longer today's; the line is tracked already, as a second
+ * click on a lens drawn before the first wrote would find it; or it reads
+ * as no promise, or as another day than the offer said.
  */
-function readPromiseAt(document: vscode.TextDocument, line: number, text: string, now: number): PromiseLine | undefined {
+function readPromiseAt(document: vscode.TextDocument, { line, text, due }: PromiseLineAt, now: number): PromiseLine | undefined {
   if (line >= document.lineCount || document.lineAt(line).text !== text) {
     void reportFailure({
       outcome: describeStale([noteName(document.uri)]),
@@ -170,9 +175,22 @@ function readPromiseAt(document: vscode.TextDocument, line: number, text: string
     });
     return undefined;
   }
-  const promise = readPromiseLine(text, line, readPromiseSettings(document.uri, now));
+  if (!readEditorToggle('trackPromises', document.uri) || !isTodaysNote(document, now)) {
+    void vscode.window.showInformationMessage('Promises are tracked in today\'s daily note only, so nothing was written.');
+    return undefined;
+  }
+  const lines = document.getText().split(/\r?\n/);
+  const settings = readPromiseSettings(document.uri, now);
+  const promise = findPromises(lines, settings).find((found) => found.line === line);
   if (!promise) {
-    void vscode.window.showInformationMessage('This line names no one person and day to come, so nothing was written.');
+    void vscode.window.showInformationMessage(
+      'This line is tracked already, or names no one person and day to come, so nothing was written.',
+    );
+    return undefined;
+  }
+  if (due !== undefined && promise.due !== due) {
+    void vscode.window.showInformationMessage('The day this line promises has changed, so nothing was written.');
+    return undefined;
   }
   return promise;
 }

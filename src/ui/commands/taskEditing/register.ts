@@ -56,13 +56,19 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.moveTo', () =>
       moveToCommand(indexer, services.preferences.move, writes),
     ),
-    // A promise's lens and lightbulb pass its note, its line, and the
-    // line's words, which must still read so; Track… asks for the editor.
-    registerCommand(TRACK_PROMISE_COMMAND, async (target?: unknown, line?: unknown, text?: unknown, edit?: unknown) => {
+    // A promise's lens and lightbulb pass its note, its line, the line's
+    // words, which must still read so, and the day they said; Track… asks
+    // for the editor.
+    registerCommand(TRACK_PROMISE_COMMAND, async (...args: unknown[]) => {
+      const [target, line, text, edit, due] = args;
       if (typeof target !== 'string' || !Number.isInteger(line) || typeof text !== 'string') {
         return undefined;
       }
-      return trackPromiseCommand(indexer, { documentUri: target, line: line as number, text }, { edit: edit === true });
+      return trackPromiseCommand(
+        indexer,
+        { documentUri: target, line: line as number, text, ...(typeof due === 'string' ? { due } : {}) },
+        { edit: edit === true },
+      );
     }),
     registerCommand(NOT_A_PROMISE_COMMAND, async (target?: unknown, text?: unknown) => {
       if (typeof target === 'string' && typeof text === 'string') {

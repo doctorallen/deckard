@@ -133,7 +133,11 @@ plan was silent, or the code made its words impractical:
   short day everywhere else.
 - **The lightbulb's Track** carries its edit, so VS Code can preview it;
   the lens's runs `deckard.trackPromise`, which checks the line still reads
-  as it did and writes the same one edit. **Track as waiting on Sam…**
+  as it did and writes the same one edit. Before it writes, and again when
+  **Track…**'s editor closes, it reads the offer again: the setting must be
+  on, the note still today's, the line not tracked yet (a second click on a
+  lens drawn before the first wrote is refused), and its day the one the
+  lens or lightbulb said, which they pass. (QA) **Track as waiting on Sam…**
   opens the task editor titled *Track as waiting on Sam*. The two commands,
   `deckard.trackPromise` and `deckard.notAPromise`, are internal, as the
   other lens commands are, and not in the palette.

@@ -9,7 +9,7 @@ import { MemoryStore } from './preferenceServices';
 import { indexOf } from './typedWorkspace';
 import { PromiseDismissals } from '../core/storage/promiseDismissals';
 import { formatLocalDate } from '../domain/notes/periodicNotes';
-import { notAPromiseCommand } from '../ui/commands/trackPromise';
+import { notAPromiseCommand, trackPromiseCommand } from '../ui/commands/trackPromise';
 import { PromiseTracking } from '../ui/providers/promiseTracking';
 
 suite('Said they would in the editor', () => {
@@ -84,6 +84,50 @@ suite('Said they would in the editor', () => {
       await vscode.commands.executeCommand('workbench.action.closeAllEditors');
       tracking.dispose();
       marks.dispose();
+      rmSync(folder, { recursive: true, force: true });
+    }
+  });
+
+  test('the lens\'s Track writes once, in today\'s note only, for the day it said, while the setting is on', async () => {
+    const folder = mkdtempSync(path.join(os.tmpdir(), 'deckard-promises-'));
+    const line = '- @sam-okafor says the loader retry fix lands tomorrow';
+    const today = path.join(folder, `${formatLocalDate(new Date())}.md`);
+    const other = path.join(folder, 'Loader.md');
+    writeFileSync(today, `# Today\r\n${line}\r\n- Lunch\r\n`);
+    writeFileSync(other, `# Loader\n${line}\n`);
+    const index = { getSnapshot: () => indexOf({}) };
+    const configuration = vscode.workspace.getConfiguration('deckard');
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    try {
+      // A note that is not today's daily note is never written to.
+      const elsewhere = await vscode.workspace.openTextDocument(other);
+      const at = { documentUri: elsewhere.uri.toString(), line: 1, text: line };
+      assert.strictEqual(await trackPromiseCommand(index, at), undefined);
+      assert.strictEqual(elsewhere.getText(), `# Loader\n${line}\n`);
+
+      const document = await vscode.workspace.openTextDocument(today);
+      const lens = { documentUri: document.uri.toString(), line: 1, text: line, due: formatLocalDate(tomorrow) };
+      // A day other than the one the lens said is not written.
+      assert.strictEqual(await trackPromiseCommand(index, { ...lens, due: '2099-01-01' }), undefined);
+      // Off, nothing is written.
+      await configuration.update('editor.trackPromises', false, vscode.ConfigurationTarget.Global);
+      assert.strictEqual(await trackPromiseCommand(index, lens), undefined);
+      await configuration.update('editor.trackPromises', true, vscode.ConfigurationTarget.Global);
+      assert.strictEqual(document.lineCount, 4);
+
+      // A second click on a lens drawn before the first wrote finds it tracked.
+      const written = `  - [w] Loader retry fix lands 📅 ${formatLocalDate(tomorrow)} 👤 @sam-okafor`;
+      assert.strictEqual(await trackPromiseCommand(index, lens), written);
+      assert.strictEqual(await trackPromiseCommand(index, lens), undefined);
+      assert.deepStrictEqual(
+        document.getText().split('\r\n'),
+        ['# Today', line, written, '- Lunch', ''],
+      );
+    } finally {
+      await configuration.update('editor.trackPromises', undefined, vscode.ConfigurationTarget.Global);
+      await vscode.commands.executeCommand('workbench.action.files.revert');
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
       rmSync(folder, { recursive: true, force: true });
     }
   });
