@@ -546,7 +546,7 @@ suite('Extension Test Suite', () => {
       (extension.packageJSON.contributes?.languageModelTools ?? []).map(
         (tool: { name: string }) => tool.name,
       ),
-      ['deckard_query', 'deckard_list_tags', 'deckard_describe_tag', 'deckard_add_task', 'deckard_change_task'],
+      ['deckard_query', 'deckard_list_tags', 'deckard_describe_tag', 'deckard_define_term', 'deckard_add_task', 'deckard_change_task'],
     );
     await extension.activate();
 

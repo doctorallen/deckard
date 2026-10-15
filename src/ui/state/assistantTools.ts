@@ -22,6 +22,7 @@ import {
   readDescribeTagToolInput,
 } from './assistantDescribe';
 import { formatIsoDate } from '../../domain/markdown/calendar';
+import { answerDefineTerm, DEFINE_TERM_TOOL_NAME, readDefineTermToolInput } from './assistantTerms';
 
 /**
  * What Deckard answers when an AI assistant in VS Code calls one of its
@@ -380,12 +381,15 @@ export type AssistantTool = ReadTool | WriteTool;
 /** A describe call without a tag, refused alike on both surfaces. */
 const DESCRIBE_INVALID_INPUT = 'Send a tag, a title, or a few words naming one as "tag", such as #team/rates, @dana, or Bond trading.';
 
+/** A define call without a term, refused alike on both surfaces. */
+const DEFINE_INVALID_INPUT = 'Send the term as "term", such as NDF or RATES-UAT.';
+
 /** A query call without a query, refused alike on both surfaces. */
 const QUERY_INVALID_INPUT =
   'Send a Deckard query as "query", such as tag = #project/atlas AND task = open.';
 
 /**
- * Deckard's five assistant tools, in the order VS Code registers them. The
+ * Deckard's six assistant tools, in the order VS Code registers them. The
  * language-model tools and the MCP server both dispatch through this one
  * table, so the tools cannot drift apart; what differs between the surfaces,
  * the refusals and the timing names, is written here side by side. The
@@ -447,6 +451,22 @@ export const ASSISTANT_TOOLS: readonly AssistantTool[] = [
           return answerDescribeTag(runners.getSnapshot(), input, context.now, context);
         },
       };
+    },
+  },
+  {
+    kind: 'read',
+    name: DEFINE_TERM_TOOL_NAME,
+    measure: { languageModel: 'Assistant define term', mcp: 'MCP define term' },
+    progressMessage: (value) => {
+      const term = readDefineTermToolInput(value)?.term;
+      return term ? `Looking up ${shorten(term)} in Deckard` : 'Looking up a term in Deckard';
+    },
+    read: (value, runners) => {
+      const input = readDefineTermToolInput(value);
+      if (!input) {
+        return { kind: 'invalid', text: { languageModel: DEFINE_INVALID_INPUT, mcp: DEFINE_INVALID_INPUT } };
+      }
+      return { kind: 'run', run: () => answerDefineTerm(runners.getSnapshot(), input) };
     },
   },
   {

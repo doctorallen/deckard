@@ -15,6 +15,7 @@ import {
 } from '../ui/state/assistantTools';
 import { AddTaskInput, ChangeTaskInput } from '../ui/state/assistantWriteInput';
 import { answerDescribeTag } from '../ui/state/assistantDescribe';
+import { answerDefineTerm } from '../ui/state/assistantTerms';
 
 /** A one-note index, the same the tool-call suites answer from. */
 function createIndex() {
@@ -70,13 +71,14 @@ function run(call: ToolCall<unknown>): unknown {
 }
 
 suite('Assistant tool table', () => {
-  test('holds the five tools in the order VS Code registers them', () => {
+  test('holds the six tools in the order VS Code registers them', () => {
     assert.deepStrictEqual(
       ASSISTANT_TOOLS.map((entry) => [entry.name, entry.kind]),
       [
         ['deckard_query', 'read'],
         ['deckard_list_tags', 'read'],
         ['deckard_describe_tag', 'read'],
+        ['deckard_define_term', 'read'],
         ['deckard_add_task', 'write'],
         ['deckard_change_task', 'write'],
       ],
@@ -90,6 +92,7 @@ suite('Assistant tool table', () => {
         { languageModel: 'Assistant query', mcp: 'MCP query' },
         { languageModel: 'Assistant tag list', mcp: 'MCP tag list' },
         { languageModel: 'Assistant describe tag', mcp: 'MCP describe tag' },
+        { languageModel: 'Assistant define term', mcp: 'MCP define term' },
         { languageModel: 'Assistant add task', mcp: 'MCP add task' },
         { languageModel: 'Assistant change task', mcp: 'MCP change task' },
       ],
@@ -107,6 +110,32 @@ suite('Assistant tool table', () => {
       assert.deepStrictEqual(refusal(query.read(junk, runners)), {
         languageModel: 'Send a Deckard query as "query", such as tag = #project/atlas AND task = open.',
         mcp: 'Send a Deckard query as "query", such as tag = #project/atlas AND task = open.',
+      });
+    }
+  });
+
+  test('define term says a term\'s definition and its source, or that the notes define none, and needs a term', () => {
+    const { runners } = createRunners();
+    const notes: Array<[string, string]> = [
+      ['notes/kickoff.md', '# FX recon kickoff\nBook the NDF (non-deliverable forward) trades in UAT.\n'],
+      ['notes/a.md', '# A\nNDF fixings in UAT\n'],
+      ['notes/b.md', '# B\nNDF desk and UAT\n'],
+    ];
+    const at = new Date(2026, 2, 3, 9).getTime();
+    const index = buildWorkspaceIndex(new Map(notes.map(([filePath, content]) => [filePath, parseMarkdown(filePath, content, { createdAt: at, updatedAt: at })])));
+    const define = tool('deckard_define_term');
+    const ask = (term: string) => run(define.read({ term }, { ...runners, getSnapshot: () => index }));
+    assert.strictEqual(
+      ask('ndf'),
+      'NDF: non-deliverable forward\nSource: defined inline in notes/kickoff.md:2 (under FX recon kickoff), written 2026-03-03: "Book the NDF (non-deliverable forward) trades in UAT.".\nUsed in 3 entries.',
+    );
+    assert.strictEqual(ask('what is NDF?'), answerDefineTerm(index, { term: 'NDF' }));
+    assert.strictEqual(ask('UAT'), 'The notes do not define UAT.\nUsed in 3 entries. First used in notes/a.md:2 (under A), written 2026-03-03.');
+    assert.strictEqual(ask('XYZ'), 'The notes define no term XYZ, and do not use it in three entries or more.');
+    for (const junk of [undefined, {}, { term: '' }, { term: 7 }]) {
+      assert.deepStrictEqual(refusal(define.read(junk, runners)), {
+        languageModel: 'Send the term as "term", such as NDF or RATES-UAT.',
+        mcp: 'Send the term as "term", such as NDF or RATES-UAT.',
       });
     }
   });

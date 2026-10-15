@@ -53,7 +53,8 @@
     "onUri",
     "onLanguageModelTool:deckard_query",
     "onLanguageModelTool:deckard_list_tags",
-    "onLanguageModelTool:deckard_describe_tag"
+    "onLanguageModelTool:deckard_describe_tag",
+    "onLanguageModelTool:deckard_define_term"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -1859,6 +1860,33 @@
           },
           "required": [
             "tag"
+          ]
+        },
+        "when": "config.deckard.assistantTools"
+      },
+      {
+        "name": "deckard_define_term",
+        "displayName": "Define a term from Deckard notes",
+        "toolReferenceName": "deckardDefineTerm",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(book)",
+        "tags": [
+          "deckard",
+          "notes",
+          "terms"
+        ],
+        "userDescription": "Say what a short term in the workspace's notes, such as NDF or UAT, means, and where it was defined.",
+        "modelDescription": "Looks up what a short term in the user's local Markdown notes means, as indexed by the Deckard extension: an acronym or code of two to six capitals and digits, or up to twelve with hyphens, such as NDF, UAT, or RATES-UAT. A term is defined by a term note (front matter type: term, with term: NDF, its first paragraph the definition), which wins, or inline, the first time by date it was written as NDF (non-deliverable forward), non-deliverable forward (NDF), a line NDF: words, or NDF means words. It answers with the definition, its source as a workspace-relative path and one-based line, the heading and day it was written under, and how many entries use the term; or says the notes define none, with how often they use it and where first. Use it before guessing what an acronym in the user's notes means.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "term": {
+              "type": "string",
+              "description": "The term, such as NDF or RATES-UAT; read in capitals."
+            }
+          },
+          "required": [
+            "term"
           ]
         },
         "when": "config.deckard.assistantTools"
