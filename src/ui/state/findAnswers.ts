@@ -1,7 +1,8 @@
 /**
  * Find's answers from the types, as rows it lists under Answer, and the
  * type and fact a typed tag's row under Tags is described by
- * (docs/implementation/30-databases.md § Surfaces 3).
+ * (docs/implementation/30-databases.md § Surfaces 3); and above them, a
+ * term's definition (docs/implementation/42-terms.md).
  *
  * ```
  * $(person) Dana Whitfield   @dana · Person · Head of Rates
@@ -12,13 +13,14 @@ import { noteTitle } from '../../domain/index/backlinks';
 import { formatKeyWords } from '../../domain/markdown/tagKeys';
 import type { WorkspaceIndex } from '../../domain/model';
 import { isRowKind } from '../../domain/types/fieldKinds';
-import { answerQuestion, type TypeAnswer } from '../../domain/types/typeAnswers';
+import { getTermTable, readTermQuestion } from '../../domain/terms/terms';
+import { answerQuestion, MAX_ANSWERS, type TypeAnswer } from '../../domain/types/typeAnswers';
 import { getTypeIndex, type TypeIndex, type TypeRow } from '../../domain/types/typeIndex';
 import { findRowSummary, rowTag } from './typeHover';
 import { valueTitle } from './typeRows';
 
-/** What an answer's value is, which its icon shows: a person, another tag row, a note, or text. */
-export type AnswerKind = 'person' | 'tag' | 'note' | 'value';
+/** What an answer's value is, which its icon shows: a person, another tag row, a note, text, or a term's definition. */
+export type AnswerKind = 'person' | 'tag' | 'note' | 'value' | 'term';
 
 /**
  * An answer as Find lists it: a tag row, opened on its tag page, or a note
@@ -42,15 +44,39 @@ const FACT_VALUE_LIMIT = 3;
 /**
  * Find's answers to what is typed, best first, at most three, each a row
  * that opens the value's page: a row's tag page or note, or, for a value
- * that is text, the page of the row that holds it. Empty in a workspace
- * with no types, and for words no row and field answer.
+ * that is text, the page of the row that holds it. A defined term, or a
+ * question about one, leads with its definition, which opens where it was
+ * defined. Empty for words no term, row, and field answer.
  */
 export function listAnswerItems(index: WorkspaceIndex, input: string, now: number): AnswerItem[] {
+  const term = answerTerm(index, input);
   const types = getTypeIndex(index);
   if (types.isEmpty) {
-    return [];
+    return term ? [term] : [];
   }
-  return answerQuestion(types, input, now).map((answer) => toAnswerItem(index, types, answer));
+  return [...(term ? [term] : []), ...answerQuestion(types, input, now).map((answer) => toAnswerItem(index, types, answer))].slice(0, MAX_ANSWERS);
+}
+
+/**
+ * A term's definition, when what is typed is a defined term or asks what
+ * one is, `NDF` or `what is NDF` (docs/implementation/42-terms.md): a row
+ * that opens where it was defined.
+ */
+function answerTerm(index: WorkspaceIndex, input: string): AnswerItem | undefined {
+  const asked = readTermQuestion(input);
+  const entry = asked === undefined ? undefined : getTermTable(index).terms.get(asked);
+  const definition = entry?.definition;
+  if (!entry || !definition) {
+    return undefined;
+  }
+  return {
+    kind: 'note',
+    answer: 'term',
+    label: definition.text,
+    description: `${entry.term} · ${definition.source === 'note' ? noteTitle(definition.filePath) : `defined in ${definition.heading ?? noteTitle(definition.filePath)}`}`,
+    filePath: definition.filePath,
+    line: definition.line,
+  };
 }
 
 /** One answer as a Find row: what it opens, its icon, and its path as the detail. */

@@ -12,6 +12,7 @@ import {
   readInlineDefinitions,
   readTermQuestion,
 } from '../domain/terms/terms';
+import { listAnswerItems } from '../ui/state/findAnswers';
 
 const lines = (...text: string[]): string => text.join('\n');
 
@@ -134,6 +135,28 @@ suite('Terms', () => {
     assert.strictEqual(readTermQuestion("What's rates-uat"), 'RATES-UAT');
     assert.strictEqual(readTermQuestion('what does UTI mean'), 'UTI');
     assert.strictEqual(readTermQuestion('who leads payments'), undefined);
+  });
+
+  test('Find answers a defined term, or what it is, with its definition, which opens where it was defined', () => {
+    const index = indexOf([
+      ['kickoff.md', '2026-03-03', lines('# FX recon kickoff', 'Book the NDF (non-deliverable forward) trades.')],
+      ['x.md', '2026-03-04', 'NDF desk'],
+      ['y.md', '2026-03-05', 'NDF call'],
+      ['z.md', '2026-03-05', lines('UAT', '# A', 'UAT', '# B', 'UAT')],
+    ]);
+    const now = new Date('2026-10-14T12:00:00').getTime();
+    const expected = {
+      kind: 'note',
+      answer: 'term',
+      label: 'non-deliverable forward',
+      description: 'NDF · defined in FX recon kickoff',
+      filePath: 'kickoff.md',
+      line: 2,
+    };
+    assert.deepStrictEqual(listAnswerItems(index, 'NDF', now), [expected]);
+    assert.deepStrictEqual(listAnswerItems(index, 'what is ndf?', now), [expected]);
+    assert.deepStrictEqual(listAnswerItems(index, 'UAT', now), [], 'a term with no definition');
+    assert.deepStrictEqual(listAnswerItems(index, 'NDF desk', now), []);
   });
 
   test('builds the table of 3,000 notes in under 200 ms', () => {

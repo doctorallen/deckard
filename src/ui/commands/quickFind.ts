@@ -954,6 +954,7 @@ const ANSWER_ICONS: Readonly<Record<NonNullable<QuickFindItem['answer']>, string
   tag: '$(tag)',
   note: '$(note)',
   value: '$(symbol-field)',
+  term: '$(book)',
 };
 
 /** The icon a row's label starts with, by what it is; an answer's by what its value is. */
