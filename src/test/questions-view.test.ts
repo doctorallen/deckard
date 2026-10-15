@@ -252,6 +252,17 @@ suite('Find and questions', () => {
     assert.strictEqual(ask.label, '$(question) Ask it: add “Who signs the vendor lease?” to today’s note');
     assert.strictEqual(ask.description, said);
     assert.strictEqual(find('rates').ask, undefined, 'a search that found something asks nothing');
+    // A search's words are the reader's, and no property every object has.
+    assert.strictEqual(memory.missed('constructor'), undefined);
+    assert.strictEqual(memory.missed('__proto__'), undefined);
+    await memory.recordMiss('__proto__', first);
+    await memory.recordMiss('constructor', first);
+    assert.strictEqual(memory.missed('__proto__')?.count, 1);
+    assert.strictEqual(memory.missed('constructor')?.count, 1);
+    assert.strictEqual(Object.getPrototypeOf({}), Object.prototype);
+    await memory.forgetMisses('__proto__');
+    assert.strictEqual(memory.missed('__proto__'), undefined);
+    assert.strictEqual(memory.missed('constructor')?.count, 1);
   });
 });
 

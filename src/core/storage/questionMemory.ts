@@ -63,19 +63,21 @@ export class QuestionMemory {
 
   /** How often a search found nothing, and since when; undefined when it never has. */
   public missed(words: string): MissedSearch | undefined {
-    return readMisses(this.store.get<unknown>(MISSED_SEARCHES_KEY))[missedSearchKey(words)];
+    return readMisses(this.store.get<unknown>(MISSED_SEARCHES_KEY)).get(missedSearchKey(words));
   }
 
   /** Counts one more miss of a search, at `now`. */
   public async recordMiss(words: string, now: number): Promise<MissedSearch> {
     const key = missedSearchKey(words);
     const misses = readMisses(this.store.get<unknown>(MISSED_SEARCHES_KEY));
-    const before = misses[key];
+    const before = misses.get(key);
     const after: MissedSearch = { count: (before?.count ?? 0) + 1, first: before?.first ?? now, last: now };
-    misses[key] = after;
-    const kept = Object.entries(misses)
+    misses.set(key, after);
+    const kept = [...misses]
       .sort(([, left], [, right]) => right.last - left.last)
       .slice(0, MISSED_SEARCH_LIMIT);
+    // Written as a record, each search its own key: `Object.fromEntries`
+    // makes even `__proto__` a key of its own, never the record's prototype.
     await this.store.update(MISSED_SEARCHES_KEY, Object.fromEntries(kept));
     return after;
   }
@@ -83,11 +85,10 @@ export class QuestionMemory {
   /** Forgets a search's misses, once it has been asked as a question. */
   public async forgetMisses(words: string): Promise<void> {
     const misses = readMisses(this.store.get<unknown>(MISSED_SEARCHES_KEY));
-    if (!Object.hasOwn(misses, missedSearchKey(words))) {
+    if (!misses.delete(missedSearchKey(words))) {
       return;
     }
-    delete misses[missedSearchKey(words)];
-    await this.store.update(MISSED_SEARCHES_KEY, misses);
+    await this.store.update(MISSED_SEARCHES_KEY, Object.fromEntries(misses));
   }
 
   /** Stops telling listeners of changes. */
@@ -101,16 +102,21 @@ function readStrings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((each): each is string => typeof each === 'string') : [];
 }
 
-/** The misses in a stored record, each with its count and dates, leaving out any that cannot be read. */
-function readMisses(value: unknown): Record<string, MissedSearch> {
+/**
+ * The misses in a stored record, by the search's words, each with its count
+ * and dates, leaving out any that cannot be read. A map, since the words
+ * are the reader's: a search for `constructor` or `__proto__` is a search
+ * like any other, never a property every object has.
+ */
+function readMisses(value: unknown): Map<string, MissedSearch> {
+  const misses = new Map<string, MissedSearch>();
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {};
+    return misses;
   }
-  const misses: Record<string, MissedSearch> = {};
   Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
     const { count, first, last } = (entry && typeof entry === 'object' ? entry : {}) as Record<string, unknown>;
     if (typeof count === 'number' && count > 0 && typeof first === 'number' && typeof last === 'number') {
-      misses[key] = { count, first, last };
+      misses.set(key, { count, first, last });
     }
   });
   return misses;

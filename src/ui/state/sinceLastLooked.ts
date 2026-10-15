@@ -195,17 +195,10 @@ function hashWords(lines: readonly string[]): string {
  * they read: a typed row's fields and reverses, or a note's front matter.
  */
 export function readFieldValues(fields: DrawnFields | undefined, properties: readonly FrontmatterProperty[] | undefined): Record<string, string> {
-  const read: Record<string, string> = {};
-  if (fields) {
-    fields.fields.forEach((field) => {
-      read[field.name] = field.values.map((value) => value.text).join(', ');
-    });
-    return read;
-  }
-  (properties ?? []).forEach((property) => {
-    read[property.name] = property.values.map((value) => value.text).join(', ');
-  });
-  return read;
+  // Keyed by the note's own names, and made by `Object.fromEntries`, so a
+  // `__proto__:` key is a field like any other, never the record's prototype.
+  const named = fields ? fields.fields : (properties ?? []);
+  return Object.fromEntries(named.map((field) => [field.name, field.values.map((value) => value.text).join(', ')]));
 }
 
 /** A visit to keep: what the page holds now, seen at a moment. */
@@ -255,9 +248,11 @@ export function compareTagPage(visit: TagVisit, now: TagPageState): TagChanges {
   const answeredQuestions = new Set(
     answeredBefore ? (now.answered ?? []).filter((key) => !answeredBefore.has(key) && !unknown(key)) : [],
   );
+  // A field's name is the note's own, `constructor` as well, so only a
+  // record's own keys are read.
   const names = new Set([...Object.keys(visit.fields), ...Object.keys(now.fields)]);
-  const changed = [...names].filter((name) => (visit.fields[name] ?? '') !== (now.fields[name] ?? ''));
-  const was = Object.fromEntries(changed.filter((name) => name in now.fields).map((name) => [name, visit.fields[name] ?? '']));
+  const changed = [...names].filter((name) => ownValue(visit.fields, name) !== ownValue(now.fields, name));
+  const was = Object.fromEntries(changed.filter((name) => Object.hasOwn(now.fields, name)).map((name) => [name, ownValue(visit.fields, name)]));
   return {
     seenAt: visit.seenAt,
     newEntries,
@@ -268,6 +263,11 @@ export function compareTagPage(visit: TagVisit, now: TagPageState): TagChanges {
     fieldsChanged: changed.length,
     total: newEntries.size + addedTasks.size + doneTasks.size + answeredQuestions.size + changed.length,
   };
+}
+
+/** A record's own value for a key, or empty when it has none of its own. */
+function ownValue(record: Readonly<Record<string, string>>, key: string): string {
+  return Object.hasOwn(record, key) ? record[key] : '';
 }
 
 /** Whether the band shows: something changed, and the last visit was over a day ago (D8). */

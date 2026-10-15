@@ -7,7 +7,7 @@ import { createQueryContext } from '../domain/query/queryContext';
 import { HubNewsReader, type HubVisits } from '../ui/state/hubNews';
 import { buildHubTree, type HubTreeNode } from '../ui/state/hubTree';
 import { captureTagPageState, createSearchPageSnapshot } from '../ui/state/searchPageState';
-import { compareTagPage, isSinceShown, toTagVisit } from '../ui/state/sinceLastLooked';
+import { compareTagPage, isSinceShown, readFieldValues, toTagVisit } from '../ui/state/sinceLastLooked';
 import type { KeyValueStore } from '../ports/keyValueStore';
 import { FakeFileSystem, fileUri } from './fakeWorkspace';
 import { createPreferences, MemoryStore } from './preferenceServices';
@@ -197,6 +197,20 @@ suite('Since you last looked', () => {
       'notes/log.md': lines('# Log', '## Standup #team/rates', 'First.', '- [ ] Call Ops', '## Standup #team/rates', 'Second.', '- [ ] Call Ops', '## Other #team/rates', 'Third, changed.'),
     });
     assert.strictEqual(compareTagPage(older, captureTagPageState(changed, '#team/rates', context)).newEntries.size, 1, 'a key it knew still counts');
+  });
+
+  test('a field named as an object’s own properties are is a field like any other', () => {
+    const fields = readFieldValues(undefined, [
+      { name: 'constructor', values: [{ text: 'x' }] },
+      { name: '__proto__', values: [{ text: 'y' }] },
+    ]);
+    assert.deepStrictEqual(Object.entries(fields), [['constructor', 'x'], ['__proto__', 'y']]);
+    const empty = { entries: {}, tasks: { open: [], done: [] } };
+    const changes = compareTagPage({ seenAt: before, ...empty, fields: {} }, { ...empty, fields });
+    assert.strictEqual(changes.fieldsChanged, 2);
+    assert.deepStrictEqual(Object.entries(changes.was), [['constructor', ''], ['__proto__', '']]);
+    assert.strictEqual(compareTagPage({ seenAt: before, ...empty, fields }, { ...empty, fields: {} }).fieldsChanged, 2);
+    assert.strictEqual(compareTagPage({ seenAt: before, ...empty, fields: {} }, { ...empty, fields: {} }).fieldsChanged, 0);
   });
 
   test('a search that narrows the tag, or is no tag’s, draws no band and marks nothing', () => {

@@ -165,7 +165,12 @@ impractical:
   counted when Find closes on a search that found nothing with every word,
   not once per keystroke, and forgotten once the words are asked; the row
   counts this time too, *3 times since Fri, Oct 2*. Matching questions are
-  the open ones whose words or tags hold every word typed.
+  the open ones whose words or tags hold every word typed. The misses are
+  read into a map, so a search for `constructor` or `__proto__` is counted
+  like any other, never read as a property every object has (QA: it said
+  *NaN times since 0NaN-NaN-NaN*, and `__proto__` changed the record's
+  prototype). Since you last looked reads a hub's fields by their own keys
+  for the same reason.
 - **The Questions tab** is a search page's, so any search that finds a
   question has it, a tag's or a person's page among them, and `is:unanswered`
   opens on it. Side by side, the questions are a list under the two panes. A
