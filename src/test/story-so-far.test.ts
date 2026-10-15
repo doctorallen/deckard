@@ -90,6 +90,13 @@ suite('The story so far', () => {
     assert.strictEqual(story.find((line) => line.text === 'Written some day.')?.date, '2026-10-08');
   });
 
+  test('dates a note by its created: written with a time, or quoted, before its file', () => {
+    for (const created of ['2026-03-02T10:15', '"2026-03-02 10:15"', '2026-03-02T10:15:00']) {
+      const story = storyOf(indexOf({ 'notes/a.md': lines('---', `created: ${created}`, '---', 'About #project/atlas') }));
+      assert.deepStrictEqual(story.map((line) => line.date), ['2026-03-02'], created);
+    }
+  });
+
   test('folds the lines indented under a row into it, a task’s steps and an answer among them', () => {
     const task = storyOf(atlas()).find((line) => line.text.startsWith('Book the load test'));
     assert.deepStrictEqual(task?.children, [{ text: 'Ask Ops for a window', mark: '✓' }, { text: 'Answer: Thursday' }]);

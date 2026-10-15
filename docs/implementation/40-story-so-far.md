@@ -88,7 +88,10 @@ impractical:
   about the tag inside the entries and tasks the narrowed search finds; an
   entry listed only because it links to the hub carries no line about the
   tag, so it adds none.
-- **Dates.** "The note's file date" is the day the file was made. A note
+- **Dates.** "The note's file date" is the day the file was made. A
+  note's `created:` is read as the parser reads it, with a time or quoted
+  (`2026-03-02T10:15`, `"2026-03-02 10:15"`), before the file's own birth
+  time, which it had been preferred to whenever it held a time. (QA) A note
   with no date at all is grouped under **Undated**. The day is drawn in the
   reader's short date format, `Wed, Oct 14`, as plan 37's band draws its
   date; the plan's `14 Oct` is that format's choice. A month heading always

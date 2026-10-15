@@ -349,14 +349,17 @@ function isDecisionTag(tagKey: string, registry: TypeRegistry): boolean {
   return isDecisionType(registry.forTag(tagKey));
 }
 
-/** A note's day: its daily note's, else its `created:`, else its file's; empty when it has none. */
+/**
+ * A note's day: its daily note's, else the day the parser gives it, which
+ * is its `created:` however it is written (with a time, or quoted) before
+ * its file's; else its file's own; empty when it has none.
+ */
 function storyDate(file: ParsedFile): string {
   const daily = findFileDailyNoteDate(file);
   if (daily) {
     return daily;
   }
-  const created = parseIsoDate(file.properties?.find((property) => property.name === 'created')?.values[0]?.text.trim());
-  const at = created ?? file.fileTimes?.createdAt ?? file.createdAt;
+  const at = file.createdAt ?? file.fileTimes?.createdAt;
   return at === undefined ? '' : formatIsoDate(at);
 }
 
