@@ -21,8 +21,9 @@ const { createGlobalState } = require('../e2e/support.js');
 const { createTaskBoard } = modules.taskBoardState;
 const { createSidebarSnapshot } = modules.relatedNotesRanking;
 const { createDashboardSnapshot } = modules.dashboardState;
-const { createSearchPageSnapshot } = modules.searchPageState;
-const { createDeckardStatsSnapshot } = modules.statsState;
+const { captureTagPageState, createSearchPageSnapshot } = modules.searchPageState;
+const { toTagVisit } = modules.sinceLastLooked;
+const { createDeckardStatsSnapshot, listTerms } = modules.statsState;
 const { createNotePageSnapshot } = modules.notePageState;
 const { createDashboardWidgets } = modules.dashboardWidgets;
 const { createNotesGraphSnapshot } = modules.graphBuild;
@@ -30,6 +31,7 @@ const { toWire } = modules.notesGraphState;
 const { createCalendar } = modules.calendarState;
 const { parseMarkdown } = modules.parser;
 const { buildWorkspaceIndex } = modules.indexState;
+const { getLineIndex } = modules.lineIndex;
 const { createPreferences } = modules.preferenceServices;
 // Every snapshot is built at NOW, so no surface reads the wall clock.
 const { createQueryContext } = modules.queryContext;
@@ -679,12 +681,58 @@ function createCalendarSurfaces() {
 }
 
 /**
- * Related Notes for a tagged note, and for a note with no tags, and the
- * sidebar's Customize Home.
+ * Written before in Context: the older lines like the line at the cursor,
+ * above the related notes, each with when and where it was written, what
+ * the two share with its words marked, Link it here, and Not the same, at
+ * the related notes' narrow width.
  *
  * @param {object} index The workspace.
  * @param {Map<string, object>} files The parsed notes, by path.
- * @returns {object[]} The two Related Notes surfaces and Customize Home.
+ * @returns {object} The sidebar with two older lines above its related notes.
+ */
+function createWrittenBeforeSurface(index, files) {
+  return {
+    name: 'sidebarNotesWrittenBefore',
+    page: 'sidebarNotes',
+    viewport: [240, 700],
+    snapshot: () => ({
+      ...createSidebarSnapshot(index, 'notes/atlas.md', files.get('notes/atlas.md'), {
+        now: NOW,
+        relatedNotesSortMode: 'tags',
+        sectionAccessCounts: {},
+      }),
+      writtenBefore: [
+        {
+          filePath: 'notes/2026-03-12.md',
+          line: 3,
+          text: 'Same lag in the curve feed, fixed by restarting the loader before the rates desk opened',
+          where: 'Thu, Mar 12 · Rates desk standup',
+          shares: 'Shares curve, feed, loader · both tagged #project/atlas',
+          terms: ['curve', 'feed', 'loader'],
+        },
+        {
+          filePath: 'notes/replicant-market-retrospective-with-a-long-name.md',
+          line: 18,
+          text: 'The loader stalled on the curve feed again',
+          where: 'Tue, Feb 3 · Replicant market retrospective with a long name',
+          shares: 'Shares curve, feed, loader',
+          terms: ['curve', 'feed', 'loader'],
+        },
+      ],
+    }),
+    scrollers: ['html'],
+    clippers: [],
+    hovered: ['.written-before-card'],
+  };
+}
+
+/**
+ * Related Notes for a tagged note, and for a note with no tags, Written
+ * before, and the sidebar's Customize Home.
+ *
+ * @param {object} index The workspace.
+ * @param {Map<string, object>} files The parsed notes, by path.
+ * @returns {object[]} The two Related Notes surfaces, Written before, and Customize Home.
  */
 function createRelatedNotesSurfaces(index, files) {
   return [
@@ -733,10 +781,11 @@ function createRelatedNotesSurfaces(index, files) {
       clippers: [],
       hovered: ['.note'],
     },
+    createWrittenBeforeSurface(index, files),
     {
       // Customize Home in the sidebar: each widget to add is a button with
-      // its description under its name, on the button's own fill, under
-      // the row of page icons, Home pressed.
+      // its description under its name, on the button's own fill. Deckard's
+      // pages are in the view's title bar, so no band is drawn above.
       name: 'sidebarNotesCustomizeHome',
       page: 'sidebarNotes',
       viewport: [240, 700],
@@ -756,6 +805,24 @@ function createRelatedNotesSurfaces(index, files) {
       hovered: ['.home-widget-choice'],
     },
   ];
+}
+
+/**
+ * The notes Stats' Terms section reads: UAT used in four entries and never
+ * defined, NDF defined inline, and SLO by a term note.
+ */
+function createTermIndex() {
+  const on = (day) => new Date(`${day}T09:00:00`).getTime();
+  const notes = [
+    ['notes/FX recon kickoff.md', '2026-09-03', ['# FX recon kickoff', 'Book the NDF (non-deliverable forward) trades in UAT.']],
+    ['notes/standup.md', '2026-09-04', ['# Standup', 'NDF fixings in UAT']],
+    ['notes/desk.md', '2026-09-05', ['# Desk', 'NDF desk and UAT again', '## Follow-up', 'UAT once more']],
+    ['Terms/SLO.md', '2026-09-01', ['---', 'type: term', 'term: SLO', '---', '# SLO', 'Service level objective.']],
+  ];
+  return buildWorkspaceIndex(new Map(notes.map(([filePath, day, lines]) => [
+    filePath,
+    parseMarkdown(filePath, lines.join('\n'), { createdAt: on(day), updatedAt: on(day) }),
+  ])));
 }
 
 /**
@@ -782,6 +849,9 @@ function createSummarySurfaces(index, preferences) {
           ...preferences.reader.value,
           tagAccessCounts: { '#project/atlas': 4, '#topic/replicants': 2 },
         }, [{ filePath: 'notes/unreadable-note-with-a-long-name.md', reason: 'EACCES: permission denied' }], NOW),
+        // Terms, its last section, read from notes of their own, so no
+        // other surface's pixels move with them.
+        ...listTerms(createTermIndex(), NOW),
         // Five minutes before the snapshot was built, at NOW, which the
         // page says as "5 minutes ago" without reading the wall clock.
         updatedAt: NOW - 5 * 60 * 1000,
@@ -1043,6 +1113,98 @@ function createTypedSurfaces(preferences) {
   ];
 }
 
+/** When the reader last looked at Sam's page: twelve days before NOW. */
+const LAST_LOOKED = NOW - 12 * 24 * 60 * 60 * 1000;
+
+/**
+ * A person's notes, for plans 36 to 40: Sam's hub note, what the reader and
+ * Sam owe each other, questions to ask Sam, one answered, a decision, and a
+ * line that may answer an open question. `then` is the workspace at the
+ * reader's last look at Sam's page, before the sync and the answer.
+ *
+ * @param {boolean} then Whether to draw the workspace as it was then.
+ * @returns {object} The workspace.
+ */
+function createPersonIndex(then = false) {
+  const on = (day) => new Date(`${day}T09:00:00`).getTime();
+  const notes = [
+    ['People/Sam Okafor.md', '2026-08-01', ['---', 'describes: "@sam-okafor"', '---', '# Sam Okafor', 'Runs the rates data desk.']],
+    ['notes/2026-09-08.md', '2026-09-08', [
+      '# 2026-09-08',
+      '- [ ] Send @sam-okafor the recon field mapping before the vendor review 📅 2026-09-14',
+      '- [ ] Rates lineage diagram 👤 @sam-okafor',
+      'Sam says the curve feed lags every Monday after the restart @sam-okafor',
+      '- [?] Who approves access to the bond UAT environment? @sam-okafor',
+      ...(then ? [] : ['  - Answer: Priya approves it, through the access desk (2026-09-17)']),
+      '- [?] When does the rates freeze start? @sam-okafor',
+    ]],
+    ...(then ? [] : [
+      ['notes/2026-09-18.md', '2026-09-18', [
+        '# Rates sync @sam-okafor',
+        '## Decision',
+        'Move the restart window to Thursdays, after the curve feed settles.',
+        '- [x] Book the restart window ✅ 2026-09-18',
+        '- [ ] Review the lineage draft 📅 2026-09-25',
+        '- [?] Does the vendor feed cover the whole bond curve?',
+      ]],
+      ['notes/2026-09-20.md', '2026-09-20', ['# 2026-09-20', 'The vendor feed covers the whole bond curve from October, says @sam-okafor.']],
+    ]),
+  ];
+  return buildWorkspaceIndex(new Map(notes.map(([filePath, day, lines]) => [
+    filePath,
+    parseMarkdown(filePath, lines.join('\n'), { createdAt: on(day), updatedAt: on(day) }),
+  ])));
+}
+
+/**
+ * Plans 36 to 40 on Sam's page: Since you last looked under the bar, the
+ * Between you card under the hub, and the Questions and Story tabs, each
+ * chosen; and Home's Open questions widget, a line that may answer one
+ * of them with Use as answer and Not it.
+ *
+ * @param {object} preferences The preference services, whose reader holds what is stored.
+ * @returns {object[]} The search page on each of three tabs, and Home.
+ */
+function createPersonSurfaces(preferences) {
+  const index = createPersonIndex();
+  // Built now, as the host builds it once the first scan is read, so a
+  // question is offered the line that may answer it.
+  getLineIndex(index);
+  const visit = toTagVisit(captureTagPageState(createPersonIndex(true), '@sam-okafor', createQueryContext(LAST_LOOKED, { identity: '@david' })), LAST_LOOKED);
+  const sam = (name, { drive, hovered }) => ({
+    name,
+    page: 'searchPage',
+    viewport: [900, 900],
+    snapshot: () => createSearchPageSnapshot(index, preferences.reader.value, '@sam-okafor', {
+      queryContext: createQueryContext(NOW, { identity: '@david' }),
+      since: { visit },
+    }),
+    ...(drive ? { drive } : {}),
+    scrollers: ['html'],
+    clippers: [],
+    hovered,
+  });
+  const home = { ...preferences.reader.value, dashboardWidgets: [{ id: 'openQuestions', kind: 'openQuestions', width: 'full', count: 5 }] };
+  return [
+    { ...sam('searchPagePerson', { hovered: ['.between .task-row', '.since-chip'] }), zenHovered: [...ZEN_REGIONS.searchPage, '.between[data-zen-region]', '.since[data-zen-region]'] },
+    {
+      ...sam('searchPageQuestions', { drive: [['click', '[data-action="set-result-tab"][data-tab="questions"]']], hovered: ['#result-panel-questions .search-question'] }),
+      zenHovered: [...ZEN_REGIONS.searchPage, '#result-panel-questions .search-question[data-zen-region]'],
+    },
+    sam('searchPageStory', { drive: [['click', '[data-action="set-result-tab"][data-tab="story"]']], hovered: ['.story-row'] }),
+    {
+      name: 'dashboardHomeQuestions',
+      page: 'dashboard',
+      viewport: [1400, 900],
+      snapshot: () => createDashboardState(index, home, 'home'),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.home-question', '.home-widget'],
+      zenHovered: [...ZEN_REGIONS.dashboard, '.home-question[data-zen-region]'],
+    },
+  ];
+}
+
 /**
  * Edit Task Statuses, as the settings have them and with characters found
  * in the notes, and in the workflow, where each row has its next status.
@@ -1103,6 +1265,7 @@ function createSurfaces() {
     ...createNotePageSurfaces(),
     ...createTaskStatusesSurfaces(),
     ...createTypedSurfaces(preferences),
+    ...createPersonSurfaces(preferences),
   ];
   return [
     ...surfaces,
