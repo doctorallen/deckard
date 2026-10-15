@@ -399,6 +399,12 @@ export function formatMonthName(at: number, now: number): string {
     : `${name} ${day.getFullYear()}`;
 }
 
+/** A month's name and its year, whatever the year: `October 2026`. */
+export function formatMonthAndYear(at: number): string {
+  const day = new Date(at);
+  return `${LONG_MONTHS[day.getMonth()]} ${day.getFullYear()}`;
+}
+
 /** How many weeks or months from this one each period word names. */
 const PERIOD_STEPS: Readonly<Record<string, number>> = { this: 0, last: -1, next: 1 };
 

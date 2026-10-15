@@ -16,10 +16,12 @@ import type {
 import type { QueryViewState } from '../../domain/model/query';
 import type { EntityKind } from '../../domain/model/tags';
 import type { DrawnFields, EditFieldsMessage } from './fields';
+import type { InlineToken } from './inline';
 import type { IndexingMessage, MessageAs, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
   DashboardTask,
+  DrawnStatus,
   ExportResultsMessage,
   GoToPageMessage,
   ListGoToMessage,
@@ -93,6 +95,11 @@ export interface SearchPageSnapshot {
    * page's bar draws it.
    */
   since?: SearchPageSince;
+  /**
+   * On a tag's page, every line about the tag on one dated timeline, which
+   * its Story tab draws: the rows a filter keeps, a page at a time.
+   */
+  story?: SearchPageStory;
   /**
    * For a search whose top level names a type (`type = team`): the type,
    * which titles the page, and its rows as the rows tab draws them.
@@ -333,6 +340,60 @@ export interface SearchPageSince {
   was: Record<string, string>;
   /** How many of the notes the page lists are new since, which it lists first. */
   newNotes: number;
+}
+
+/**
+ * What a line on a tag's Story tab is: a decision, a finished task, an open
+ * task, a question (a `[?]` line that is no task, which plan 38 makes
+ * questions of), or anything else.
+ */
+export type StoryKind = 'decision' | 'done' | 'open' | 'question' | 'note';
+
+/** A filter of the Story tab: every row, or one kind of them. */
+export type StoryFilter = 'all' | 'decisions' | 'done' | 'questions';
+
+/**
+ * A tag's story (docs/implementation/40-story-so-far.md): every line about
+ * the tag, dated and grouped by month, newest first unless the reader
+ * chose oldest first.
+ */
+export interface SearchPageStory {
+  /** How many rows the story holds, whatever the filter: the tab's count. */
+  count: number;
+  /** The filter chips, in their order; the one in use is `active`. */
+  filters: Array<{ id: StoryFilter; label: string; active?: true }>;
+  /** Set when the reader chose oldest first. */
+  oldestFirst?: true;
+  /** How many rows the filter keeps, drawn or not. */
+  total: number;
+  /** The rows drawn, the first `total` up to the page's limit, under their months. */
+  months: SearchPageStoryMonth[];
+}
+
+/** One month of the Story tab: its heading, and its rows in the tab's order. */
+export interface SearchPageStoryMonth {
+  /** `October 2026`. */
+  label: string;
+  rows: SearchPageStoryRow[];
+}
+
+/** One row of the Story tab: a line about the tag, with the lines indented under it. */
+export interface SearchPageStoryRow {
+  /** Where it is written, which selecting it opens. */
+  filePath: string;
+  line: number;
+  /** Its day as the row draws it, in the reader's short format: `Wed, Oct 14`. */
+  day: string;
+  kind: StoryKind;
+  /** The line's text as inline Markdown tokens, its list mark and box aside, and the tags in it. */
+  tokens: InlineToken[];
+  tags: TagReference[];
+  /** The heading it is under, or its note's title. */
+  where: string;
+  /** For a task, what its box shows and completes. */
+  task?: { id: string; completed: boolean; title: string; status?: DrawnStatus };
+  /** The lines indented under it, such as a task's steps or a question's answer. */
+  children?: Array<{ tokens: InlineToken[]; tags: TagReference[]; mark?: string }>;
 }
 
 /** The quiet lines under a tag's page's hub. */

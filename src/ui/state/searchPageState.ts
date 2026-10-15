@@ -85,6 +85,7 @@ import {
   taskVisitKey,
 } from './sinceLastLooked';
 import type { TagVisit } from '../../core/storage/tagVisits';
+import { collectStory, DEFAULT_STORY_VIEW, describeStory, type StoryLine, type StoryView } from './storySoFar';
 
 /**
  * A search page: what one search finds, sorted, paged, and drawn as cards
@@ -137,6 +138,11 @@ export interface SearchPageOptions {
    * listed first (docs/implementation/37-since-you-last-looked.md).
    */
   since?: { visit: TagVisit | undefined; filter?: SinceChipKind };
+  /**
+   * On a tag's page, how its Story tab is shown: its filter, its order, and
+   * how many rows it draws; the first page, newest first, when not given.
+   */
+  story?: StoryView;
 }
 
 /**
@@ -212,6 +218,7 @@ export function createSearchPageSnapshot(
     ...buildTagPageBlock(index, preferences, page, options.queryContext),
     ...(typeRows ? { typeRows: typeRows.table } : {}),
     ...since.band(ranked, options.queryContext),
+    ...describeTagStory(index, page, options),
     query: createQueryViewState({
       index,
       parsed,
@@ -397,6 +404,26 @@ function drawSearchTask(
   { markVia, isNew, context }: { markVia: <T extends object>(item: T, id: string) => T; isNew: (task: Task) => boolean; context: QueryContext },
 ): DashboardTask {
   return markNew(markParked(markVia(createDashboardTask(task, index.sections, context), task.id), isParkedTask(index, task.id)), isNew(task));
+}
+
+/**
+ * On a tag's page, its Story tab: every line about the tag the page's
+ * search finds; nothing for any other search.
+ */
+function describeTagStory(index: WorkspaceIndex, page: SearchPageResults, options: SearchPageOptions): Pick<SearchPageSnapshot, 'story'> {
+  const lines = readTagStory(index, page, options.queryContext);
+  return lines ? { story: describeStory(lines, options.story ?? DEFAULT_STORY_VIEW, options.queryContext) } : {};
+}
+
+/**
+ * Every line about a page's tag, oldest first, of what its search finds,
+ * its hub notes aside; undefined for a search that is no tag's page.
+ */
+export function readTagStory(index: WorkspaceIndex, page: SearchPageResults, context: QueryContext): StoryLine[] | undefined {
+  if (!page.focusTag) {
+    return undefined;
+  }
+  return collectStory(index, page.focusTag.key, page.results, { hubPaths: page.focusTag.hubFilePaths ?? [], context });
 }
 
 /** An item marked as new since the last visit, when it is, for the page to give it a NEW pill. */
