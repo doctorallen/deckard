@@ -43,7 +43,7 @@ A widget that leads somewhere makes its title the link, with a **›** after it:
 - **Hover a tagged entry** in the editor for **Pin to Home** or **Unpin from Home**.
 - **Right-click a result** on a search page for the same.
 
-Each offers **Undo**. If the heading is gone, the pin stays on its note and says so. A note with no heading above the cursor is pinned whole.
+The first pin adds the **Pinned notes** widget under Home's search, if Home does not have one. Each offers **Undo**. If the heading is gone, the pin stays on its note and says so. A note with no heading above the cursor is pinned whole.
 
 **Gone quiet** watches people by default; its gear's **Namespace** chooses another your tags use, such as `project`. It offers each namespace that starts with a letter, so `#2026/q1` adds no `2026`. It reads `@` and `#person/…` tags, so one person written both ways counts as two tags ([Stats](#tags-that-look-alike) flags this). A name's date is its newest note's `updated:` field, daily note day, or file date.
 

@@ -12,7 +12,7 @@ import { readParseOptions } from './parseSettings';
  *
  * A note is an entry, so pinning happens where an entry is in front of you:
  * the cursor in a Markdown editor, a result on a search page, or the hover
- * that already offers that entry's related notes. Home shows the pins; it no
+ * on that entry's lines. Home shows the pins; it no
  * longer offers to make one, because Home is the one place where the note
  * being pinned is not in front of the reader.
  */
@@ -25,7 +25,8 @@ interface PinIndexSource {
 }
 
 interface PinStore {
-  pinNote(pin: PinnedNote): Promise<void>;
+  /** Resolves true when pinning also added Home's Pinned notes widget. */
+  pinNote(pin: PinnedNote): Promise<boolean | void>;
   unpinNote(key: string): Promise<void>;
   isPinned(key: string): boolean;
 }
@@ -66,11 +67,14 @@ export async function setPinned(
       );
       return pin;
     }
-    await preferences.pinNote(pin);
+    const addedWidget = await preferences.pinNote(pin);
     // Pinning is one keystroke from a command palette, so the way back is
     // offered where the pin is announced rather than left to be found.
-    void offerUndo(`Pinned "${name}" to Home.`, () =>
-      preferences.unpinNote(key),
+    void offerUndo(
+      addedWidget
+        ? `Pinned "${name}" to Home, in a new Pinned notes widget.`
+        : `Pinned "${name}" to Home.`,
+      () => preferences.unpinNote(key),
     );
     return pin;
   }
@@ -91,7 +95,7 @@ export async function setPinned(
 /** Says what was done, with the way back beside it. */
 async function offerUndo(
   message: string,
-  undo: () => Promise<void>,
+  undo: () => PromiseLike<unknown>,
 ): Promise<void> {
   const choice = await vscode.window.showInformationMessage(message, 'Undo');
   if (choice === 'Undo') {

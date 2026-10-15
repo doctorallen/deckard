@@ -409,11 +409,29 @@ suite('Preferences store', () => {
     store.repository.dispose();
   });
 
+  test('the first pin adds a Pinned notes widget under the search, once', async () => {
+    const store = createPreferences(new MemoryMemento());
+    const kinds = (): string[] => store.reader.value.dashboardWidgets.map((widget) => widget.kind);
+    assert.strictEqual(kinds().includes('pinnedNotes'), false, 'Home starts without one');
+    assert.strictEqual(await store.pins.pinNote({ filePath: 'notes/a.md' }), true);
+    assert.strictEqual(kinds()[kinds().indexOf('search') + 1], 'pinnedNotes');
+    assert.strictEqual(await store.pins.pinNote({ filePath: 'notes/b.md' }), false);
+    assert.strictEqual(kinds().filter((kind) => kind === 'pinnedNotes').length, 1);
+
+    // Taken off Home, the widget comes back with the next pin, since a pin
+    // to Home has to show on Home.
+    await store.homeWidgets.setDashboardWidgets(
+      store.reader.value.dashboardWidgets.filter((widget) => widget.kind !== 'pinnedNotes'),
+    );
+    assert.strictEqual(await store.pins.pinNote({ filePath: 'notes/c.md' }), true);
+    store.repository.dispose();
+  });
+
   test('pins notes once, in order, and only lets go of a pin when asked', async () => {
     const store = createPreferences(new MemoryMemento());
     const paths = (): (string | undefined)[] =>
       (store.reader.value.pinnedNotes ?? []).map((pin) => pin.filePath);
-    await store.pins.pinNote({ filePath: 'notes/a.md' });
+    assert.strictEqual(await store.pins.pinNote({ filePath: 'notes/a.md' }), true);
     await store.pins.pinNote({ filePath: 'notes/b.md' });
     await store.pins.pinNote({ filePath: 'notes/a.md' });
     assert.deepStrictEqual(paths(), ['notes/a.md', 'notes/b.md']);

@@ -12,7 +12,7 @@ import { createPinForLine } from '../domain/notes/pins';
 /** Where pins are kept, told apart by `pinKey`. */
 export interface PinStore {
   isPinned(key: string): boolean;
-  pinNote(pin: PinnedNote): PromiseLike<void>;
+  pinNote(pin: PinnedNote): PromiseLike<boolean | void>;
   unpinNote(key: string): PromiseLike<void>;
 }
 

@@ -158,7 +158,7 @@ function PinnedNotesBody({ widget }: WidgetBodyProps) {
   return (
     <HomeNotes
       notes={widget.notes}
-      empty="Pin the note you are in with “Deckard: Pin Note to Home”, or right-click a search result."
+      empty="Hover a tagged line in a note and choose Pin to Home, or right-click a search result."
       actionFor={(note) => <RowAction action="unpin-note" attributes={{ 'data-pin-key': note.pinKey || '' }} label="×" title={`Unpin ${note.title}`} />}
     />
   );
