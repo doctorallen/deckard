@@ -107,3 +107,82 @@ The lens keeps count and age; widget and view buttons are quieted in place.
 - Host (single file): the Questions view's rows and actions; the lens;
   Answer… writes the child line.
 - Page behavior: the Home widget and the tag page's Questions tab.
+
+## As built
+
+What was built where the plan was silent, or where the code made the plan
+impractical:
+
+- **The status.** `question` joins the status types (`TASK_STATUS_TYPES`,
+  the manifest's enum), and `{ symbol: '?', name: 'Question', type:
+  'question' }` ends Deckard's own list. `readTaskStatuses` adds it to a
+  reader's list that does not name `?`, as it adds `X`. Edit Task Statuses
+  shows Question's type as text, not a menu: no other status becomes a
+  question and it becomes no other, and the workflow's Next menus leave it
+  out. With `?` given to a status of the reader's own, questions are off,
+  and the log says so once per window, when the first scan is done.
+- **Where questions are kept.** Each note's questions are on
+  `ParsedFile.questions` (the cache's parse format is now `note-questions`),
+  and `getQuestions(index)` (`domain/index/questions.ts`) reads them once
+  per index, rather than a map of its own on `WorkspaceIndex`, which every
+  test that builds an index by hand would have had to fill. A question's id
+  is `question-…`, made as a task's is. A question line starts no tagged
+  entry, as a task line does not; its tags are read as a task's are.
+- **The answer's day.** Answer…, Use as answer, and the assistant write
+  `- Answer: <words> [[link]] (2026-10-14)`: the day as `YYYY-MM-DD`, which
+  every reader of the note can read back, where the plan's example wrote
+  `(14 Oct)`. *Answered 9 Oct* is read from the first day written on the
+  answer's line; an answer with none says *answered*.
+- **Offering an answer** is worked out when it is asked for, once per index,
+  rather than when a note is saved: a line may answer a question when its
+  note's day, a daily note's own or else when the note last changed, is on
+  or after the day the question was asked. So nothing about offers is
+  stored but Not it, and offers survive a restart. The lines are read by a
+  line index (`domain/ranking/lineIndex.ts`), which plan 39 shares: built on
+  first use, then brought up to each index by the notes that changed. A word
+  is uncommon when it is no stop word, not one of a short list of words
+  every note writes (*today*, *meeting*, *notes*…), and in at most 2% of
+  lines (any such word below 50 lines). A typed row's field answers first,
+  ahead of any line. Not it is kept as `<question id>␀<hash of the line's
+  words>` in workspace state under `deckard.questions.notIt`, the last 500,
+  apart from the preferences blob, as plan 38 asks.
+- **The lens** has its own switch, `deckard.editor.questions`, as every
+  group of lenses does (on in Full, Tasks, and Writing; off in Off). Its
+  first lens opens the Questions view, the offer's opens the line, and under
+  Zen it keeps those two and leaves out Answer… and Drop. Drop writes the
+  cancelled status's character with its ❌ date, as cancelling a task does.
+- **The Questions view.** VS Code cannot fold a view while it runs, so the
+  view is listed open and, with nothing to list, says *No open questions.
+  Write one as - [?] …*. The title bar's toggle is **Include Answered
+  Questions** and **Leave Out Answered Questions**, since a command title may
+  not start with *Show*. Answer… is a question row's inline button and its
+  menu's first item, beside Drop. The offer row reads *May answer: Wed, Oct
+  14 · Access*, the day in the reader's short date format.
+- **Home's widget** opens the Questions view from its title, and its
+  buttons are quiet under Zen until a question is pointed at.
+- **Find.** Ask it writes under today's note's **Questions** heading when it
+  has one, else after its last list, as Add Task's capture does. A miss is
+  counted when Find closes on a search that found nothing with every word,
+  not once per keystroke, and forgotten once the words are asked; the row
+  counts this time too, *3 times since Fri, Oct 2*. Matching questions are
+  the open ones whose words or tags hold every word typed.
+- **The Questions tab** is a search page's, so any search that finds a
+  question has it, a tag's or a person's page among them, and `is:unanswered`
+  opens on it. Side by side, the questions are a list under the two panes. A
+  row offers Answer…, not the offered line, which the view and Home show.
+- **Go to…** lists Open questions after the pages, in its quick pick only:
+  the pages are also Context's title-bar icons and DECKARD's menu, each with
+  a glyph and drawn in the pages' DOM goldens, and Open questions is a
+  search, not a page.
+- **The assistant** has `deckard_answer_question` beside
+  `deckard_list_questions`, a write through the refactor preview, as
+  `deckard_change_task` is. Query blocks and the assistant's `deckard_query`
+  list the questions a query finds, under their own heading.
+- **Toggle Task Done** leaves a question's line alone.
+- **Plan 36's To ask group** is not built here; `listQuestionsMentioning(index,
+  person)` in `domain/index/questions.ts` lists the open questions that name
+  a person on their own line, for it.
+- **Tests and fixtures.** The tests that used `[?]` as a character no status
+  names use `[b]`. The Task Board surface with a task of every status reads
+  its note with Question left out of the statuses, so it still draws its
+  Unknown `[?]` column as its DOM golden and baselines record it.

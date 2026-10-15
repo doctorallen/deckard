@@ -16,7 +16,12 @@ import {
   QuickFindItem,
   QuickFindResults,
 } from '../state/quickFindState';
-import { type DateFormats, formatDisplayDay } from '../../domain/markdown/dateFormat';
+import { type DateFormats, formatDisplayDate, formatDisplayDay } from '../../domain/markdown/dateFormat';
+import { formatQuestionLine } from '../../domain/markdown/questionLines';
+import { findQuestionSymbol } from '../../domain/tasks/taskStatuses';
+import type { QueryContext } from '../../domain/query/queryContext';
+import type { MissedSearch, QuestionMemory } from '../../core/storage/questionMemory';
+import { askToToday } from './questionActions';
 import { describeDistance, formatShortDay, parseDatePhrase } from '../../domain/markdown/dates';
 import { openDailyNoteFor } from './dailyNoteForDate';
 import { readDateOptions } from './datePrompt';
@@ -65,7 +70,12 @@ interface QuickFindPickItem extends vscode.QuickPickItem {
   openDate?: string;
   /** The row that adds what was typed to today's note, as a task. */
   capture?: { text: string; line: string };
+  /** The row that adds what was typed to today's note, as a question. */
+  ask?: { words: string; line: string };
 }
+
+/** The rows that open a note at a line: a note, a task, and an open question. */
+const OPENS_AT_LINE: ReadonlySet<QuickFindItem['kind']> = new Set(['note', 'task', 'question']);
 
 /** The row that opens a day's note, when what is typed is a day. */
 export interface DailyNoteRow {
@@ -128,6 +138,8 @@ export interface QuickFindOptions {
   pins?: PinService;
   /** Where a note Find offers to create is made; VS Code's file system when not given. */
   linkNotes?: LinkNoteService<vscode.Uri>;
+  /** The searches Find found nothing for, which its Ask it row counts; absent, it counts none. */
+  questions?: Pick<QuestionMemory, 'missed' | 'recordMiss' | 'forgetMisses'>;
 }
 
 const ADD_TO_SEARCH: vscode.QuickInputButton = {
@@ -182,6 +194,12 @@ export class QuickFind implements vscode.Disposable {
   private readonly writes: TaskWrites;
   private readonly pins: PinService;
   private readonly linkNotes: LinkNoteService<vscode.Uri> | undefined;
+  private readonly questions: QuickFindOptions['questions'];
+  /**
+   * The words of the search shown last when it found nothing that has every
+   * word, which Find counts as a miss when it closes; undefined otherwise.
+   */
+  private missed: string | undefined;
 
   /** Find over `options.indexer`, writing through the services `options` gives. */
   public constructor(options: QuickFindOptions) {
@@ -191,6 +209,7 @@ export class QuickFind implements vscode.Disposable {
     this.writes = options.writes;
     this.pins = options.pins ?? new PinService({ index: options.indexer, store: options.preferences.pins });
     this.linkNotes = options.linkNotes;
+    this.questions = options.questions;
   }
 
   /**
@@ -232,6 +251,12 @@ export class QuickFind implements vscode.Disposable {
     picker.onDidTriggerButton(() => void this.showAll());
     picker.onDidTriggerItemButton((event) => void this.triggerItemButton(event));
     picker.onDidHide(() => {
+      // A search that found nothing with every word is counted, so Ask it
+      // can say how often it was tried.
+      if (this.missed && this.questions) {
+        void this.questions.recordMiss(this.missed, Date.now());
+      }
+      this.missed = undefined;
       updates.dispose();
       void vscode.commands.executeCommand('setContext', QUICK_FIND_CONTEXT, false);
       if (this.refreshTimer) {
@@ -281,7 +306,7 @@ export class QuickFind implements vscode.Disposable {
    */
   public async openBeside(): Promise<void> {
     const item = this.picker?.activeItems[0]?.item;
-    if (!item || (item.kind !== 'note' && item.kind !== 'task') || !item.filePath || !item.line) {
+    if (!item || !OPENS_AT_LINE.has(item.kind) || !item.filePath || !item.line) {
       await this.accept();
       return;
     }
@@ -297,7 +322,7 @@ export class QuickFind implements vscode.Disposable {
   public async openOther(): Promise<void> {
     const picker = this.picker;
     const item = picker?.activeItems[0]?.item;
-    if (!picker || !item || (item.kind !== 'note' && item.kind !== 'task') || !item.filePath || !item.line) {
+    if (!picker || !item || !OPENS_AT_LINE.has(item.kind) || !item.filePath || !item.line) {
       await this.accept();
       return;
     }
@@ -566,11 +591,17 @@ export class QuickFind implements vscode.Disposable {
       queryContext,
       conditions: createQuerySuggestions(index, [], queryContext).conditions,
       formatCapture: (text) => formatCapture(text, queryContext.now),
+      formatQuestion: (text) => {
+        const symbol = findQuestionSymbol(queryContext.taskPolicy.statuses);
+        return symbol ? formatQuestionLine(text, symbol) : undefined;
+      },
     });
+    this.missed = results.ask?.words;
     picker.items = toPickItems(
       results,
       picker.value,
       findDailyNoteRow(picker.value, queryContext.now, { ...readDateOptions(), formats: queryContext.dateFormats }),
+      describeMisses(results.ask && this.questions?.missed(results.ask.words), queryContext),
     );
     if (activeKey === undefined) {
       return;
@@ -632,6 +663,14 @@ export class QuickFind implements vscode.Disposable {
     if (chosen.openDate !== undefined) {
       picker.hide();
       return openDailyNoteFor(this.indexer, this.writes.history, chosen.openDate);
+    }
+    if (chosen.ask) {
+      // Asked, the words are a question now rather than a search that missed.
+      const { words, line } = chosen.ask;
+      this.missed = undefined;
+      picker.hide();
+      void this.questions?.forgetMisses(words);
+      return askToToday(this.indexer, line);
     }
     if (chosen.capture) {
       picker.hide();
@@ -775,12 +814,46 @@ export function toPickItems(
   results: QuickFindResults,
   value: string,
   dateRow?: DailyNoteRow,
+  misses?: string,
 ): QuickFindPickItem[] {
   return [
+    ...askRows(results, misses),
     ...leadingRows(results, dateRow),
     ...resultRows(results, value),
     ...trailingRows(results, value, dateRow),
   ];
+}
+
+/**
+ * Ask it, first when Find found nothing that has every word: adds the
+ * words, as a question, to today's note, and says how often they were
+ * searched for before (38-questions.md § Where questions show).
+ */
+function askRows(results: QuickFindResults, misses: string | undefined): QuickFindPickItem[] {
+  if (!results.ask) {
+    return [];
+  }
+  return [
+    {
+      label: `$(question) Ask it: add “${results.ask.question}” to today’s note`,
+      ...(misses ? { description: misses } : {}),
+      detail: results.ask.line,
+      alwaysShow: true,
+      ask: { words: results.ask.words, line: results.ask.line },
+    },
+  ];
+}
+
+/**
+ * How often a search was tried before and found nothing, counting this
+ * time: `You have searched for this 3 times since Wed, Oct 2`. Nothing for
+ * a search not tried before.
+ */
+export function describeMisses(missed: MissedSearch | undefined, context: Pick<QueryContext, 'now' | 'dateFormats'>): string | undefined {
+  if (!missed) {
+    return undefined;
+  }
+  return `You have searched for this ${missed.count + 1} times since ${formatDisplayDate(missed.first, context.dateFormats, 'short', context.now)}`;
 }
 
 /**
@@ -836,6 +909,7 @@ function resultRows(results: QuickFindResults, value: string): QuickFindPickItem
     group('Saved searches', results.savedViews.map(toPickItem));
     group('Notes', results.notes.map(toPickItem));
     group('Tasks', results.tasks.map(toPickItem));
+    group('Open questions', (results.questions ?? []).map(toPickItem));
     return items;
   }
   // Before anything is typed: what was kept on purpose, then what was
@@ -939,6 +1013,8 @@ function buttonsFor(item: QuickFindItem): vscode.QuickInputButton[] | undefined 
       return [SAVE_AS_VIEW];
     case 'note':
       return [OPEN_BESIDE, INSERT_LINK];
+    case 'question':
+      return [OPEN_BESIDE];
     case 'task':
       return item.completed ? [OPEN_BESIDE, REOPEN] : [OPEN_BESIDE, COMPLETE, SET_DUE];
     case 'condition':
@@ -974,6 +1050,8 @@ function iconFor(item: QuickFindItem): string {
       return item.completed ? '$(pass-filled)' : '$(circle-large-outline)';
     case 'note':
       return item.pinned ? '$(pinned)' : '$(note)';
+    case 'question':
+      return '$(question)';
     case 'message':
       return '$(info)';
   }

@@ -29,6 +29,7 @@ import { choicesToKeep, isPageInFront, NOTE_PAGE_SIZE, noteListKey, previewLines
 import { ContextPagesBar, installPagesKeys, settlePagesTabStop } from './pages';
 import { Refine } from './refine';
 import { SameType } from './sameType';
+import { WrittenBefore } from './writtenBefore';
 
 console.log('[Deckard Related Notes] Webview script started.');
 
@@ -123,6 +124,7 @@ function SidebarPage({ snapshot }: { readonly snapshot: SidebarNotesPageState })
     <>
       <ContextPagesBar pages={snapshot.pages} />
       <Context snapshot={snapshot} open={choices.contextOpen} showEveryActiveTag={choices.showEveryActiveTag} />
+      {isPageInFront(snapshot) ? null : <WrittenBefore matches={snapshot.writtenBefore} />}
       <SectionHeading snapshot={snapshot} />
       <Content snapshot={snapshot} />
       {isPageInFront(snapshot) ? null : <SameType sameType={snapshot.sameType} open={choices.linksOpen.sameType} />}
@@ -401,7 +403,17 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, event: MouseEvent) 
   }),
   'open-selected-graph-node': (target) => send({ type: 'activateNotesGraphNode', nodeId: String(target.dataset.nodeId), open: true }),
   'go-to-page': (target) => send({ type: 'goToPage', page: String(target.dataset.page) }),
+  'written-before-link-here': (target) => sendWrittenBefore(target, 'linkHere'),
+  'written-before-not-same': (target) => sendWrittenBefore(target, 'notSame'),
 };
+
+/** Written before's Open, Link it here, or Not the same, on the older line whose card holds the button. */
+function sendWrittenBefore(target: HTMLElement, action: 'open' | 'linkHere' | 'notSame'): void {
+  const card = target.closest<HTMLElement>('.written-before-card');
+  if (card) {
+    send({ type: 'writtenBeforeAction', action, filePath: String(card.dataset.filePath), line: Number(card.dataset.line) });
+  }
+}
 
 /** How a click without Alt adds a value to the search: Shift widens it with OR, and a plain click narrows with AND. */
 function refineMode(event: MouseEvent): 'or' | 'and' {
@@ -426,6 +438,12 @@ function openCard(element: Element, event: MouseEvent | KeyboardEvent): boolean 
   const graphNode = element.closest<HTMLElement>('.graph-node');
   if (graphNode) {
     send({ type: 'activateNotesGraphNode', nodeId: String(graphNode.dataset.nodeId), open: event.metaKey || event.ctrlKey });
+    return true;
+  }
+  // An older line Written before lists opens through the line it is like.
+  const older = element.closest<HTMLElement>('.written-before-card');
+  if (older) {
+    sendWrittenBefore(older, 'open');
     return true;
   }
   const note = element.closest<HTMLElement>('.note');

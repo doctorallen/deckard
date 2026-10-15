@@ -58,6 +58,7 @@ export const WIDGET_KINDS: Readonly<Record<DashboardWidgetKind, WidgetKind>> = {
   progress: { label: 'Progress', description: 'How far along each project’s tasks are, or any namespace’s', repeatable: false, listed: true, defaultNamespace: 'project' },
   pinnedNotes: { label: 'Pinned notes', description: 'Notes you pin to Home', repeatable: false, listed: true },
   tryNext: { label: 'Try next', description: 'One suggestion, when your notes are ready for it', repeatable: false, listed: false },
+  openQuestions: { label: 'Open questions', description: 'Your - [?] questions with no answer yet, oldest first, each with a line that may answer it', repeatable: false, listed: true },
 };
 
 /**

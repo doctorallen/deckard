@@ -162,3 +162,9 @@ button { min-height: 0; padding: 4px 6px; color: var(--cyan); }
 .inline-tag { display: inline-block; min-height: 0; padding: 1px 4px; border-width: 1px; font-size: .85em; }
 .source { margin-top: 4px; font-size: var(--text-xs); }
 .empty { margin-top: 12px; padding: 14px 10px; line-height: 1.45; }
+
+/* Written before: the older lines like the line at the cursor, above the related notes, each a card with what it shares and its two buttons. */
+.written-before { margin-bottom: 8px; }
+.written-before-card .note-excerpt { -webkit-line-clamp: 3; }
+.written-before-shares { margin-top: 2px; }
+.written-before-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }

@@ -98,6 +98,9 @@ is:mine
 is:assigned
 is:unassigned
 is:step
+is:question
+is:unanswered
+is:answered
 ```
 
 - `is:open` and `is:done`: 49 open tasks and 10 done ones. `is:in-progress`:
@@ -121,6 +124,13 @@ is:step
   nobody in particular. `is:assigned`: 4 tasks name someone.
   `is:unassigned`: the rest.
 - `is:step`: the 3 steps of the field kit task.
+- `is:question`: the 2 questions just below, written `- [?]`, which are
+  not tasks. `is:unanswered`: the one with no `Answer:` line under it;
+  `is:answered`: the other.
+
+- [?] Who keeps the calibration log once the pilot ends?
+  - Answer: Counsel, with the aggregate error metrics.
+- [?] Could the consent language be read aloud at intake?
 
 ## Present or missing
 

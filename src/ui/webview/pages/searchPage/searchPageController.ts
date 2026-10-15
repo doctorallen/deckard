@@ -279,6 +279,9 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       editResults: (message) => editResults(search.writes.history, message.kind, this.currentResults()),
       exportResults: (message) => this.exportResults(message.kind),
       openSource: (message) => this.openSource(message.filePath, message.line, message),
+      // The question is read again from the index by the command, which
+      // writes nothing when its line has changed since.
+      questionAction: (message) => vscode.commands.executeCommand(`deckard.questions.${message.action}`, message.questionId),
       openWikiLink: (message) => this.openWikiLink(message.target, message.from, message),
       ...this.betweenHandlers(),
       ...this.sinceHandlers(),

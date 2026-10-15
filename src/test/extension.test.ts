@@ -105,7 +105,7 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 51);
+    assert.strictEqual(Object.keys(settings).length, 53);
     assert.deepStrictEqual(settings['deckard.parked.tags'].default, ['parked']);
     assert.deepStrictEqual(settings['deckard.parked.folders'].default, {});
     assert.deepStrictEqual(settings['deckard.periodicNote.reviewSections'].default, []);
@@ -148,6 +148,15 @@ suite('Extension Test Suite', () => {
         'deckard.showLog',
         'deckard.reindexWorkspace',
         'deckard.createHubNoteForTag',
+        'deckard.questions.answer',
+        'deckard.questions.drop',
+        'deckard.questions.useOffer',
+        'deckard.questions.notIt',
+        'deckard.questions.showAnswered',
+        'deckard.questions.hideAnswered',
+        'deckard.questions.openAsSearch',
+        'deckard.writtenBefore.linkHere',
+        'deckard.writtenBefore.notSame',
         'deckard.createTypeFromTags',
         'deckard.newTypedNote',
         'deckard.editFields',
@@ -546,7 +555,7 @@ suite('Extension Test Suite', () => {
       (extension.packageJSON.contributes?.languageModelTools ?? []).map(
         (tool: { name: string }) => tool.name,
       ),
-      ['deckard_query', 'deckard_list_tags', 'deckard_describe_tag', 'deckard_add_task', 'deckard_change_task'],
+      ['deckard_query', 'deckard_list_tags', 'deckard_describe_tag', 'deckard_add_task', 'deckard_change_task', 'deckard_list_questions', 'deckard_answer_question'],
     );
     await extension.activate();
 

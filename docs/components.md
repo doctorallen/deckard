@@ -587,6 +587,28 @@ and the label, *+N more*, and *All* post `openSameTypeSearch` by the
 group's id or none; the host checks both against what it would list now
 and builds the search itself. Nothing in it is quieted under Zen.
 
+### Written before
+
+Above the related notes, Context draws `.written-before` while the line at
+the cursor has older lines like it: a `.section-label`, then one
+`.note.written-before-card` per older line, its `.note-title` when and
+where it was written, its `.note-excerpt` with the shared words marked as a
+related note's are (`data-terms`), a muted `.written-before-shares` line,
+and `.written-before-actions`, **Link it here** and **Not the same**. The
+card and its buttons post `writtenBeforeAction` with the older line's note
+and line; the host acts only on a line the cursor's line still has.
+
+### A search's questions
+
+A search that finds questions draws `.questions-pane`: a third result tab,
+or, side by side, a pane under the two with its own heading. Its
+`.search-questions` list holds a `.search-question` row per question, the
+answered ones `.is-answered`: a `.search-question-mark`, a
+`.search-question-open` button (the words over a muted
+`.search-question-detail`) that posts `openSource`, and, while it is open, a
+`.search-question-answer` button, quiet under Zen, that posts
+`questionAction`.
+
 ### A tag's page's quiet lines
 
 Under a one-tag page's hub, the search page's `<TagNotes>` (`searchPage/hub.tsx`) draws `.tag-notes`: one muted
@@ -953,6 +975,12 @@ Overdue, Due today, and Open — each opening the search it counts, scoped by
 The Tasks view widget ends with a `.home-widget-footer` line: what was done
 today, and how many tasks need a new date as a `.text-button` that opens
 `is:needs-date`. It is left out when both are zero.
+
+The Open questions widget lists a `.home-question` per open question, each
+a Zen region: its row, with **Answer…** beside it, and, under it when a
+line may answer it, a `.home-question-offer` with the line's place and
+words, **Use as answer**, and **Not it**. Each button is `data-zen-reveal`
+and posts `questionAction` with the question's id.
 
 ## Host-side helpers
 

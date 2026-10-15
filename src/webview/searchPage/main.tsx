@@ -58,7 +58,7 @@ let activeTab: ResultTabId = 'notes';
  */
 let tabChosen = false;
 const savedPageState = kept();
-if (savedPageState && (savedPageState.tab === 'notes' || savedPageState.tab === 'tasks' || savedPageState.tab === 'rows' || savedPageState.tab === 'story')) {
+if (savedPageState && (savedPageState.tab === 'notes' || savedPageState.tab === 'tasks' || savedPageState.tab === 'rows' || savedPageState.tab === 'questions' || savedPageState.tab === 'story')) {
   activeTab = savedPageState.tab;
   tabChosen = true;
 }
@@ -123,22 +123,46 @@ function settleTab(snapshot: SearchPageState): void {
   const searched = (snapshot.query && snapshot.query.text) || '';
   const newSearch = searched !== settledFor;
   settledFor = searched;
-  if (settleRowsTab(snapshot, newSearch) || settleStoryTab(snapshot)) {
+  if (settleRowsTab(snapshot, newSearch) || settleStoryTab(snapshot) || settleQuestionsTab(snapshot, newSearch)) {
     return;
   }
   if (!tabChosen) {
-    activeTab = counts.notes === 0 && counts.tasks > 0 ? 'tasks' : 'notes';
+    activeTab = firstTabWithResults(counts, snapshot.questions ? snapshot.questions.length : 0);
     return;
   }
   if (activeTab === 'rows') {
     return;
   }
-  // Notes or Tasks: the rows and story tabs were settled above.
+  // Notes or Tasks: the rows, story, and questions tabs were settled above.
   const shown = activeTab as ResultKind;
   const other: ResultKind = shown === 'notes' ? 'tasks' : 'notes';
   if (newSearch && counts[shown] === 0 && counts[other] > 0) {
     activeTab = other;
   }
+}
+
+/**
+ * The Questions tab, once chosen, stays shown while the search is the
+ * same, and a new search that finds no questions goes to the first tab
+ * that has something. True when the Questions tab is the one shown.
+ */
+function settleQuestionsTab(snapshot: SearchPageState, newSearch: boolean): boolean {
+  if (!tabChosen || activeTab !== 'questions') {
+    return false;
+  }
+  const questions = snapshot.questions ? snapshot.questions.length : 0;
+  if (newSearch && !questions) {
+    activeTab = firstTabWithResults(resultCounts(snapshot), questions);
+  }
+  return true;
+}
+
+/** The first tab that has something: Notes, unless only Tasks or only Questions does. */
+function firstTabWithResults(counts: Record<ResultKind, number>, questions: number): ResultTabId {
+  if (counts.notes === 0 && counts.tasks > 0) {
+    return 'tasks';
+  }
+  return counts.notes === 0 && counts.tasks === 0 && questions > 0 ? 'questions' : 'notes';
 }
 
 /**
@@ -526,7 +550,7 @@ function setColumns(target: HTMLElement, snapshot: SearchPageState): void {
 /** Shows one of the result tabs, which is the reader's choice from then on. */
 function showTab(target: HTMLElement): void {
   const tab = target.dataset.tab;
-  activeTab = tab === 'tasks' || tab === 'rows' || tab === 'story' ? tab : 'notes';
+  activeTab = tab === 'tasks' || tab === 'rows' || tab === 'questions' || tab === 'story' ? tab : 'notes';
   tabChosen = true;
   saveState();
   redraw();
@@ -601,6 +625,7 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   },
   'merge-lookalike': (target) => send({ type: 'mergeTags', sourceKey: String(target.dataset.sourceKey), targetKey: String(target.dataset.targetKey) }),
   'open-source': (target, _snapshot, event) => send(openSourceMessage(target, event)),
+  'answer-question': (target) => send({ type: 'questionAction', action: 'answer', questionId: String(target.dataset.questionId) }),
   // The hub note's blocks, drawn as the note page draws them.
   'open-note': (target, _snapshot, event) => send(openSourceMessage(target, event)),
   'open-link': (target, _snapshot, event) => {

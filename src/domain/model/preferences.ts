@@ -109,7 +109,8 @@ export type DashboardWidgetKind =
   | 'quietPeople'
   | 'progress'
   | 'pinnedNotes'
-  | 'tryNext';
+  | 'tryNext'
+  | 'openQuestions';
 
 /** Whether a widget takes one of Home's two columns or both. */
 export type DashboardWidgetWidth = 'half' | 'full';

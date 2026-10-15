@@ -10,6 +10,9 @@ Every change Deckard makes to your files, what starts it, and the setting that c
 | A repeating task's next occurrence, on a new line beside it | Completing a repeating task | The task's own repeat rule |
 | A task's dates, priority, status character, assignee, or steps | The task editor, a board drag or card menu, the Tasks view's drops, Reschedule All… | `deckard.tasks.metadataFormat` for a task with no metadata yet |
 | A new task at the cursor, or at the end of today's note or another, or under a heading | `Deckard: Add Task`, the Task Board's **Add task** or a column's **+**, Find's **Add “…” to today's note** | Asks first in a code repository with no notes folder; see [Getting started](getting-started.md#get-started) |
+| A question, `- [?] …`, in today's note, under its Questions heading when it has one | Find's **Ask it: add “…?” to today's note** | |
+| An answer, `- Answer: …`, under a question; a dropped question's box, `[?]` to `[-]` | **Answer…**, **Use as answer**, and **Drop** in the Questions view, Home's Open questions, and the lens above a question; the assistant's answer tool | Not written when the question's line changed since Deckard read it |
+| ` (see [[Note#Heading]])` at the end of the line being written | **Link it here**, on an older line that line is like, in its hover or in Context's Written before | |
 | A tag added, renamed, or merged on every line that carries it | Rename Tag, **Merge** in Stats, a search page's edit, **Add a tag** | Shown first when it reaches several notes |
 | `[[links]]` rewritten to a renamed note or heading | Renaming a note in the Explorer, or `Deckard: Rename Heading` | |
 | A mention turned into a link | **Link mentions** on a note's first line, or **Link** in the Context view | `deckard.links.style`: `[[Name]]` or `[Name](path.md)` |

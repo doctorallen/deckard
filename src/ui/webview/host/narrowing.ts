@@ -22,6 +22,7 @@ import type {
   OpenTagMessage,
   ParkTagMessage,
   PinNoteMessage,
+  QuestionActionMessage,
   RenameTagMessage,
   SetDisplayMessage,
   SetZenModeMessage,
@@ -264,3 +265,11 @@ export const narrowEditFields: Narrower<EditFieldsMessage> = (value) => {
   }
   return { type: 'editFields', filePath, ...(isFieldKey(field) ? { field } : {}) };
 };
+
+/** A question to answer, or whose offered line to use or set aside, by its id. */
+export const narrowQuestionAction: Narrower<QuestionActionMessage> = (value) =>
+  (value.action === 'answer' || value.action === 'useOffer' || value.action === 'notIt') &&
+  typeof value.questionId === 'string' &&
+  /^question-[0-9a-z]+-[0-9a-z]+$/.test(value.questionId)
+    ? { type: 'questionAction', action: value.action, questionId: value.questionId }
+    : undefined;

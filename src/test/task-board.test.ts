@@ -137,12 +137,12 @@ suite('Task board', () => {
 
   test('a character no status names is a column of its own, after the statuses', () => {
     const index = createIndex();
-    index.tasks.set('ask', createTask('ask', '- [?] Ask about the lens', {}));
+    index.tasks.set('ask', createTask('ask', '- [b] Ask about the lens', {}));
     const layout = board(index, 'status', '', options);
-    const unknown = layout.columns.find((column) => column.id === 'status:unknown-63');
-    assert.deepStrictEqual([unknown?.label, unknown?.symbol, unknown?.cards.map((card) => card.taskId)], ['Unknown', '?', ['ask']]);
+    const unknown = layout.columns.find((column) => column.id === 'status:unknown-98');
+    assert.deepStrictEqual([unknown?.label, unknown?.symbol, unknown?.cards.map((card) => card.taskId)], ['Unknown', 'b', ['ask']]);
     assert.strictEqual(layout.columns.indexOf(unknown as never), layout.columns.length - 2, 'last before Done');
-    assert.strictEqual(resolveTaskMove(index.tasks.get('call') as Task, 'status:unknown-63', options).kind, 'edit');
+    assert.strictEqual(resolveTaskMove(index.tasks.get('call') as Task, 'status:unknown-98', options).kind, 'edit');
   });
 
   test('groups by priority and by due date', () => {

@@ -13,7 +13,7 @@ import {
   ToolCall,
   ToolRunners,
 } from '../ui/state/assistantTools';
-import { AddTaskInput, ChangeTaskInput } from '../ui/state/assistantWriteInput';
+import { AddTaskInput, AnswerQuestionInput, ChangeTaskInput } from '../ui/state/assistantWriteInput';
 import { answerDescribeTag } from '../ui/state/assistantDescribe';
 
 /** A one-note index, the same the tool-call suites answer from. */
@@ -31,7 +31,7 @@ function createIndex() {
 function createRunners() {
   const index = createIndex();
   const context = createQueryContext(Date.UTC(2026, 8, 21, 12));
-  const writes: Array<{ tool: string; input: AddTaskInput | ChangeTaskInput }> = [];
+  const writes: Array<{ tool: string; input: AddTaskInput | ChangeTaskInput | AnswerQuestionInput }> = [];
   const runners: ToolRunners = {
     getSnapshot: () => index,
     readQueryContext: () => context,
@@ -42,6 +42,10 @@ function createRunners() {
     changeTask: (input) => {
       writes.push({ tool: 'change', input });
       return Promise.resolve({ text: 'declined', isError: true });
+    },
+    answerQuestion: (input) => {
+      writes.push({ tool: 'answer', input });
+      return Promise.resolve({ text: 'answered' });
     },
   };
   return { index, context, runners, writes };
@@ -70,7 +74,7 @@ function run(call: ToolCall<unknown>): unknown {
 }
 
 suite('Assistant tool table', () => {
-  test('holds the five tools in the order VS Code registers them', () => {
+  test('holds the seven tools in the order VS Code registers them', () => {
     assert.deepStrictEqual(
       ASSISTANT_TOOLS.map((entry) => [entry.name, entry.kind]),
       [
@@ -79,6 +83,8 @@ suite('Assistant tool table', () => {
         ['deckard_describe_tag', 'read'],
         ['deckard_add_task', 'write'],
         ['deckard_change_task', 'write'],
+        ['deckard_list_questions', 'read'],
+        ['deckard_answer_question', 'write'],
       ],
     );
   });
@@ -92,6 +98,8 @@ suite('Assistant tool table', () => {
         { languageModel: 'Assistant describe tag', mcp: 'MCP describe tag' },
         { languageModel: 'Assistant add task', mcp: 'MCP add task' },
         { languageModel: 'Assistant change task', mcp: 'MCP change task' },
+        { languageModel: 'Assistant question list', mcp: 'MCP question list' },
+        { languageModel: 'Assistant answer question', mcp: 'MCP answer question' },
       ],
     );
   });
@@ -170,6 +178,27 @@ suite('Assistant tool table', () => {
       });
     }
     assert.strictEqual(writes.length, 1, 'a refused call writes nothing');
+  });
+
+  test('a question list lists the open ones by default; an answer call is handed to the write as read, and a bad one refused', async () => {
+    const { runners, writes } = createRunners();
+    const index = buildWorkspaceIndex(new Map([[
+      'notes/q.md',
+      parseMarkdown('notes/q.md', '# Q #team/rates\n- [?] Who approves access?\n- [?] Where is it?\n  - Answer: here\n'),
+    ]]));
+    const listing = String(run(tool('deckard_list_questions').read(undefined, { ...runners, getSnapshot: () => index })));
+    assert.match(listing, /^Found 1 open question\./);
+    assert.match(listing, /- \[\?\] Who approves access\? — (asked today|open( \d+ days?)?) — notes\/q\.md:2 \(under Q\)/);
+    const answered = String(run(tool('deckard_list_questions').read({ state: 'answered' }, { ...runners, getSnapshot: () => index })));
+    assert.match(answered, /Where is it\? — answered: here — notes\/q\.md:3/);
+    assert.match(String(run(tool('deckard_list_questions').read({ search: 'nothing like it' }, { ...runners, getSnapshot: () => index }))), /^No open questions match "nothing like it"\./);
+
+    const answer = tool('deckard_answer_question');
+    assert.deepStrictEqual(await run(answer.read({ note: 'notes/q.md', line: 2, answer: '  Priya,   via RATES-UAT ' }, runners)), { text: 'answered' });
+    assert.deepStrictEqual(writes, [{ tool: 'answer', input: { note: 'notes/q.md', line: 2, answer: 'Priya, via RATES-UAT' } }]);
+    for (const junk of [undefined, { note: 'notes/q.md', line: 2 }, { note: 'notes/q.md', line: 0, answer: 'x' }, { note: 'notes/q.md', line: 2, answer: ' ' }]) {
+      assert.strictEqual(answer.read(junk, runners).kind, 'invalid');
+    }
   });
 
   test('reading a call runs nothing until the surface runs it', () => {

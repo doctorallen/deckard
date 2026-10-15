@@ -1,12 +1,13 @@
 /**
  * What a search found: its notes as cards and its tasks as rows, in two tabs
  * or side by side, each kind a page at a time, or, with the hierarchy on,
- * grouped under the tags Refine offers.
+ * grouped under the tags Refine offers; and its questions, when it finds
+ * any, in a tab of their own or under them.
  */
 import type { ComponentChild } from 'preact';
 
 import { NOTE_SORT_LABELS } from '../../domain/model/sortOrders';
-import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
+import type { SearchPageQuestion, SearchPageSnapshot } from '../../ui/protocol/searchPage';
 import type { DashboardTask } from '../../ui/protocol/shared';
 import { ResultGroups } from './groups';
 import { type Paging, describePageRange, PageSteps } from '../shared/pageSteps';
@@ -20,8 +21,8 @@ import { TypeRowsTable, TypeSortNote } from './typeRows';
 /** A kind of result. */
 export type ResultKind = 'notes' | 'tasks';
 
-/** A tab of results: notes, tasks, on a type's page its rows, or on a tag's page its story. */
-export type ResultTabId = ResultKind | 'rows' | 'story';
+/** A tab of results: notes, tasks, questions, on a type's page its rows, or on a tag's page its story. */
+export type ResultTabId = ResultKind | 'rows' | 'questions' | 'story';
 
 /** Whether the results are drawn in groups: the hierarchy is on, and there is something to group. */
 function isGrouped(snapshot: SearchPageSnapshot): boolean {
@@ -309,6 +310,47 @@ function RowsPane({ view }: { readonly view: ResultsView }) {
 }
 
 /**
+ * One question the search found: its mark, its words, which open its line,
+ * how long it has been open and its first tag, or its answer, and, while
+ * it is open, Answer…, quiet under Zen until the row is pointed at.
+ */
+function QuestionRow({ question }: { readonly question: SearchPageQuestion }) {
+  return (
+    <li class={question.answered ? 'search-question is-answered' : 'search-question'} data-zen-region="">
+      <span class="search-question-mark" aria-hidden="true">?</span>
+      <button type="button" class="search-question-open" data-action="open-source" data-file-path={question.filePath} data-line={question.line}>
+        <span class="search-question-text">{question.text}</span>
+        <span class="search-question-detail">{question.answer ? `${question.detail} · Answer: ${question.answer}` : question.detail}</span>
+      </button>
+      {question.answered
+        ? null
+        : <button type="button" class="search-question-answer" data-action="answer-question" data-question-id={question.id} data-zen-reveal="" data-tip="Write the answer under the question">Answer…</button>}
+    </li>
+  );
+}
+
+/** The questions the search found, a list under its heading side by side; with tabs, its tab names it. */
+function QuestionsPane({ view }: { readonly view: ResultsView }) {
+  const questions = view.snapshot.questions || [];
+  if (!questions.length) {
+    return null;
+  }
+  const split = view.snapshot.layout === 'split';
+  return (
+    <section class="overview-pane questions-pane" aria-labelledby={split ? 'questions-heading' : undefined}>
+      {split
+        ? (
+          <div class="overview-pane-header">
+            <h2 id="questions-heading" class="overview-pane-heading">{['Questions (', <span data-search-count="questions">{questions.length}</span>, ')']}</h2>
+          </div>
+        )
+        : null}
+      <ul class="search-questions">{questions.map((question) => <QuestionRow key={question.id} question={question} />)}</ul>
+    </section>
+  );
+}
+
+/**
  * Side by side, a tag's story under the notes and tasks: its heading and
  * count, then the tab's filters and rows.
  */
@@ -327,21 +369,22 @@ function StoryPane({ view }: { readonly view: ResultsView }) {
   );
 }
 
-/** The actions at the end of the tab row: the rows tab's sort, nothing for the story, or the pane's. */
+/** The actions at the end of the tab row: the rows tab's sort, nothing for the questions or the story, or the pane's. */
 function TabActions({ active, view }: { readonly active: ResultTabId; readonly view: ResultsView }) {
   const table = view.snapshot.typeRows;
   if (active === 'rows' && table) {
     return <div class="overview-pane-actions"><TypeSortNote table={table} /></div>;
   }
-  return active === 'story' ? null : <PaneActions kind={active as ResultKind} view={view} />;
+  return active === 'questions' || active === 'story' ? null : <PaneActions kind={active as ResultKind} view={view} />;
 }
 
 /** The tab shown: the one asked for, or Notes when the page has no such tab. */
 function shownTab(view: ResultsView): ResultTabId {
-  if ((view.activeTab === 'rows' && !view.snapshot.typeRows) || (view.activeTab === 'story' && !view.snapshot.story)) {
-    return 'notes';
-  }
-  return view.activeTab;
+  const missing =
+    (view.activeTab === 'rows' && !view.snapshot.typeRows) ||
+    (view.activeTab === 'questions' && !(view.snapshot.questions || []).length) ||
+    (view.activeTab === 'story' && !view.snapshot.story);
+  return missing ? 'notes' : view.activeTab;
 }
 
 /**
@@ -349,19 +392,20 @@ function shownTab(view: ResultsView): ResultTabId {
  * each tab counting what its pane holds, so a tab never promises more rows
  * than the pane behind it; either grouped under Refine's tags when the
  * hierarchy is on. A type's page has its rows first, as a tab or over the
- * panes side by side; a tag's page has its story last, as a tab or under
- * them.
+ * panes side by side; a search that finds questions has them after the
+ * tasks, and a tag's page has its story last, each as a tab or under them.
  */
 export function Results({ view }: { readonly view: ResultsView }) {
   const table = view.snapshot.typeRows;
   const story = view.snapshot.story;
   if (view.snapshot.layout === 'split' && isGrouped(view.snapshot)) {
-    return <><RowsPane view={view} /><SplitGroups view={view} /><StoryPane view={view} /></>;
+    return <><RowsPane view={view} /><SplitGroups view={view} /><QuestionsPane view={view} /><StoryPane view={view} /></>;
   }
   if (view.snapshot.layout === 'split') {
-    return <><RowsPane view={view} /><div key="split" class="overview-split"><NotesPane view={view} /><TasksPane view={view} /></div><StoryPane view={view} /></>;
+    return <><RowsPane view={view} /><div key="split" class="overview-split"><NotesPane view={view} /><TasksPane view={view} /></div><QuestionsPane view={view} /><StoryPane view={view} /></>;
   }
   const counts = resultCounts(view.snapshot);
+  const questions = view.snapshot.questions || [];
   const active = shownTab(view);
   return (
     <>
@@ -370,6 +414,7 @@ export function Results({ view }: { readonly view: ResultsView }) {
           ...(table ? [{ id: 'rows', label: table.plural, count: table.count }] : []),
           { id: 'notes', label: 'Notes', count: counts.notes },
           { id: 'tasks', label: 'Tasks', count: counts.tasks },
+          ...(questions.length ? [{ id: 'questions', label: 'Questions', count: questions.length }] : []),
           ...(story ? [{ id: 'story', label: 'Story', count: story.count }] : []),
         ]}
         active={active}
@@ -381,6 +426,9 @@ export function Results({ view }: { readonly view: ResultsView }) {
         : null}
       <div class="overview-tab-panel" {...resultPanelAttributes('notes')} hidden={active !== 'notes'}><NotesPane view={view} /></div>
       <div class="overview-tab-panel" {...resultPanelAttributes('tasks')} hidden={active !== 'tasks'}><TasksPane view={view} /></div>
+      {questions.length
+        ? <div class="overview-tab-panel" {...resultPanelAttributes('questions')} hidden={active !== 'questions'}><QuestionsPane view={view} /></div>
+        : null}
       {story
         ? <div class="overview-tab-panel" {...resultPanelAttributes('story')} hidden={active !== 'story'}><StoryTab story={story} /></div>
         : null}

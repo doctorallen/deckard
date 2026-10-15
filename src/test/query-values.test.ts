@@ -25,7 +25,7 @@ suite('Query values', () => {
     const message = (query: string) => parseQuery(query).diagnostics[0]?.message;
     assert.strictEqual(
       message('is:maybe'),
-      'is: accepts open, in-progress, done, cancelled, closed, task, note, overdue, due, today, needs-date, waiting, available, blocked, blocking, mine, assigned, unassigned, daily, periodic, parked, or step — not "maybe".',
+      'is: accepts open, in-progress, done, cancelled, closed, task, note, overdue, due, today, needs-date, waiting, available, blocked, blocking, mine, assigned, unassigned, daily, periodic, parked, step, question, answered, or unanswered — not "maybe".',
     );
     assert.strictEqual(
       message('no:maybe'),

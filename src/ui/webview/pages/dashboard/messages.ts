@@ -37,6 +37,7 @@ import {
   narrowOpenTag,
   narrowParkTag,
   narrowPinNote,
+  narrowQuestionAction,
   narrowRenameTag,
   narrowSetDisplay,
   narrowSetZenMode,
@@ -186,6 +187,7 @@ const narrowOpenTaskBoard: Narrower<OpenTaskBoardMessage> = (value) =>
 /** One of the Deckard views Home links to. */
 const narrowOpenView: Narrower<OpenDeckardViewMessage> = (value) =>
   value.view === 'agenda' ||
+  value.view === 'questions' ||
   value.view === 'sampleWorkspace' ||
   value.view === 'checkSetup' ||
   value.view === 'walkthrough'
@@ -245,6 +247,7 @@ export const DASHBOARD_MESSAGES: NarrowingTable<DashboardPageToHost> = {
   openView: narrowOpenView,
   openDailyNote: onlyType('openDailyNote'),
   addNextAction: narrowAddNextAction,
+  questionAction: narrowQuestionAction,
   openNote: narrowOpenNote,
   pinNote: narrowAs('pinNote', narrowPinNote),
   unpinNote: narrowAs('unpinNote', narrowPinNote),

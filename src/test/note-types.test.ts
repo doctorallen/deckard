@@ -798,8 +798,8 @@ suite('Types: the index', () => {
 });
 
 suite('Types: parsed notes', () => {
-  test('the parse format changed, so the cache rebuilds with a type note’s Words', () => {
-    assert.strictEqual(PARSE_FORMAT, 'type-words');
+  test('the parse format changed, so the cache rebuilds with a type note’s Words and each note’s questions', () => {
+    assert.strictEqual(PARSE_FORMAT, 'type-words-questions');
   });
 
   test('keeps every front-matter key of every note, with tags and lines, and its type', () => {

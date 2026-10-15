@@ -482,7 +482,7 @@ suite('Deckard query language', () => {
   test('returns nothing for a query that failed to parse', () => {
     const index = createIndex();
     const results = evaluateQuery(index, parseQuery('(tag:#a').node, createQueryContext(Date.now()));
-    assert.deepStrictEqual(results, { sections: [], tasks: [], files: [] });
+    assert.deepStrictEqual(results, { sections: [], tasks: [], files: [], questions: [] });
   });
 });
 

@@ -130,6 +130,10 @@ const IS_VALUE_ALIASES: Readonly<Record<string, string>> = {
   step: 'step',
   substep: 'step',
   subtask: 'step',
+  question: 'question',
+  questions: 'question',
+  answered: 'answered',
+  unanswered: 'unanswered',
 };
 
 /**

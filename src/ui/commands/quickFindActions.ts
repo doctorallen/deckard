@@ -332,6 +332,8 @@ export function rowKey(item: QuickFindItem): string {
       return `task:${item.taskId ?? `${item.filePath}:${item.line}`}`;
     case 'note':
       return `note:${item.sectionId ?? `${item.filePath}:${item.line}`}`;
+    case 'question':
+      return `question:${item.filePath}:${item.line}`;
     case 'tag':
       return `tag:${item.tagKey}`;
     case 'savedView':
@@ -364,6 +366,16 @@ function rowActionGroups(
   switch (item.kind) {
     case 'note':
       return noteActionGroups(context, key);
+    case 'question':
+      return [
+        {
+          label: 'Open',
+          actions: [
+            { id: 'open', label: 'Open', description: 'Enter' },
+            { id: 'openBeside', label: 'Open to the side', description: key('cmd+enter') },
+          ],
+        },
+      ];
     case 'task':
       return taskActionGroups(item, context, key);
     case 'tag':

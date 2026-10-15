@@ -187,6 +187,20 @@ export interface SameTypeRows {
   empty?: string;
 }
 
+/** An older line like the one at the cursor, as Context's Written before section draws it. */
+export interface SidebarWrittenBefore {
+  filePath: string;
+  /** One-based. */
+  line: number;
+  text: string;
+  /** When and where it was written: `Thu, Mar 12 · Rates desk standup`. */
+  where: string;
+  /** What the two lines share: `Shares curve, feed, lagged… · both tagged #team/rates`. */
+  shares: string;
+  /** The uncommon words both lines hold, which the card marks. */
+  terms: string[];
+}
+
 /** What the Related Notes sidebar draws, and which of its states it is in. */
 export interface SidebarNotesSnapshot {
   /** How far the first scan has got, while the state is loading. */
@@ -195,6 +209,8 @@ export interface SidebarNotesSnapshot {
   links?: NoteLinks;
   /** For a typed row's note, the other rows of its type that share a value with it. */
   sameType?: SameTypeRows;
+  /** The older lines of other notes like the line at the cursor; absent when there are none. */
+  writtenBefore?: SidebarWrittenBefore[];
   activeFileName?: string;
   activeEntryTitle?: string;
   activeTags: SidebarTag[];
@@ -415,6 +431,18 @@ export interface SidebarNotesPageToHost {
   goToPage: GoToPageMessage;
   setPagesStyle: SetPagesStyleMessage;
   setPageShown: SetPageShownMessage;
+  writtenBeforeAction: WrittenBeforeActionMessage;
+}
+
+/**
+ * Acts on an older line Written before lists: opens it, links to it at the
+ * end of the line at the cursor, or sets the pair aside, Not the same.
+ */
+export interface WrittenBeforeActionMessage {
+  type: 'writtenBeforeAction';
+  action: 'open' | 'linkHere' | 'notSame';
+  filePath: string;
+  line: number;
 }
 
 /** What the host sends the Related Notes sidebar, by type. */

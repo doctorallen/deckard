@@ -21,6 +21,7 @@ const MODULES = {
   // core
   changelog: 'core/changelog.js',
   parser: 'domain/markdown/parser.js',
+  taskStatuses: 'domain/tasks/taskStatuses.js',
   indexState: 'domain/index/indexState.js',
   queryContext: 'domain/query/queryContext.js',
   preferences: 'core/storage/preferences.js',

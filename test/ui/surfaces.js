@@ -377,7 +377,7 @@ function createStatusBoardSurface(preferences) {
         index: statusIndex(),
         preferences: preferences.reader.value,
         search: { query: '' },
-        options: { queryContext: createQueryContext(NOW), format: 'emoji', hiddenColumns: [] },
+        options: { queryContext: createQueryContext(NOW, { taskPolicy: { statuses: STATUSES_WITHOUT_QUESTION } }), format: 'emoji', hiddenColumns: [] },
       }),
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
@@ -436,8 +436,16 @@ function statusIndex() {
     '- [x] Book the room ✅ 2026-09-24',
     '- [-] Order the banner ❌ 2026-09-23',
   ].join('\n');
-  return buildWorkspaceIndex(new Map([['notes/statuses.md', parseMarkdown('notes/statuses.md', text)]]));
+  return buildWorkspaceIndex(new Map([['notes/statuses.md', parseMarkdown('notes/statuses.md', text, undefined, { taskStatuses: STATUSES_WITHOUT_QUESTION })]]));
 }
+
+/**
+ * Deckard's statuses without Question. `[?]` is a question, which no board
+ * draws, so the board of every status reads its note and draws its columns
+ * with `?` left out: its line is the task of a character no status names
+ * that the surface has always drawn.
+ */
+const STATUSES_WITHOUT_QUESTION = modules.taskStatuses.DEFAULT_TASK_STATUSES.filter((status) => status.type !== 'question');
 
 /**
  * The Task Board drawn to show what a hovered card or row reveals: as a

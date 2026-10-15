@@ -7,6 +7,10 @@ import { createTaskGlance } from '../state/dashboardState';
 import type { GoToPagesMessage } from '../protocol/shared';
 import { DeckardPageId, listDeckardPages, PageFacts } from '../state/deckardPages';
 import { countNotes } from '../../domain/index/noteEntryIndex';
+import { listOpenQuestions } from '../../domain/index/questions';
+
+/** The search Open questions opens: the questions still open. */
+export const OPEN_QUESTIONS_QUERY = 'is:unanswered';
 
 /**
  * What the pages at the top of Context and Go to… read about each page: its
@@ -94,20 +98,48 @@ export function pageIcon(extensionUri: vscode.Uri, id: DeckardPageId): { light: 
   };
 }
 
-/** Deckard: Go to…, the same pages as a quick pick, from anywhere. */
-export async function goToPage(indexer: Pick<IndexReader, 'getSnapshot'>, extensionUri: vscode.Uri): Promise<void> {
+/** One row of Go to…: what it says, and the command, with its arguments, that choosing it runs. */
+export interface GoToItem extends vscode.QuickPickItem {
+  command: string;
+  args: unknown[];
+}
+
+/**
+ * Deckard: Go to…, the same pages as a quick pick, from anywhere, then Open
+ * questions, the search page of the questions still open
+ * (docs/implementation/38-questions.md § Where questions show).
+ */
+export function listGoToItems(indexer: Pick<IndexReader, 'getSnapshot'>, extensionUri: vscode.Uri): GoToItem[] {
   const pages = listDeckardPages(readPageFacts(indexer));
-  const picked = await vscode.window.showQuickPick(
-    pages.map((page) => ({
+  const open = listOpenQuestions(indexer.getSnapshot()).length;
+  return [
+    ...pages.map((page) => ({
       label: page.label,
       description: page.description,
       detail: page.detail,
       iconPath: pageIcon(extensionUri, page.id),
-      page,
+      command: page.command,
+      args: [],
     })),
-    { title: 'Go to a Deckard page', placeHolder: 'Type to narrow: bo for the Task Board', matchOnDescription: true },
-  );
+    {
+      label: 'Open questions',
+      description: open > 0 ? `${open.toLocaleString('en-US')} open` : 'None open',
+      detail: 'The questions no line under them answers yet, as a search page',
+      iconPath: new vscode.ThemeIcon('question'),
+      command: 'deckard.searchNotes',
+      args: [OPEN_QUESTIONS_QUERY],
+    },
+  ];
+}
+
+/** Deckard: Go to…, the pages and Open questions as a quick pick, from anywhere. */
+export async function goToPage(indexer: Pick<IndexReader, 'getSnapshot'>, extensionUri: vscode.Uri): Promise<void> {
+  const picked = await vscode.window.showQuickPick(listGoToItems(indexer, extensionUri), {
+    title: 'Go to a Deckard page',
+    placeHolder: 'Type to narrow: bo for the Task Board',
+    matchOnDescription: true,
+  });
   if (picked) {
-    await vscode.commands.executeCommand(picked.page.command);
+    await vscode.commands.executeCommand(picked.command, ...picked.args);
   }
 }

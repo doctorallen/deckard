@@ -8,7 +8,7 @@ Run `Deckard: Open Task Board`, or select **Task Board** at the top of the Conte
 
 **Group**, under the search box, chooses the columns:
 
-- **Status**: a column per open [task status](tasks.md#task-statuses) in your list, each headed by its name and, muted after it, its character: **Todo [ ]**, **In progress [/]**, **Waiting [w]**, **Someday [s]**, **Blocked [=]**. **Status columns**, in **⋯**, says which are columns and in what order. A character no status names that an open task uses gets a column of its own after them, such as **Unknown [?]**.
+- **Status**: a column per open [task status](tasks.md#task-statuses) in your list, each headed by its name and, muted after it, its character: **Todo [ ]**, **In progress [/]**, **Waiting [w]**, **Someday [s]**, **Blocked [=]**. **Status columns**, in **⋯**, says which are columns and in what order. A character no status names that an open task uses gets a column of its own after them, such as **Unknown [!]**.
 - Dropping on a status column writes its status's character, so `- [ ] Draft` dropped on **In progress** becomes `- [/] Draft`. A `#status/…` tag on the line is a tag like any other, and stays.
 - **Priority**: a column per priority. Dropping writes it in the task's format, such as ⏫ or `[priority:: high]`.
 - **Due date**: **Needs a new date** (more than 30 days overdue, titled in red), Overdue, Today, Tomorrow, Within a week, Later, and No due date. Drop on **Today** or **Tomorrow** to set the date, or **No due date** to remove it; other columns take no drops.

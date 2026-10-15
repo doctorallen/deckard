@@ -57,7 +57,7 @@ export function RowAction({ action, attributes, label, title }: RowActionProps) 
 }
 
 /** A row, and beside it a button of its own when there is one. */
-function WithRowAction({ row, action }: { readonly row: ComponentChild; readonly action: ComponentChild }) {
+export function WithRowAction({ row, action }: { readonly row: ComponentChild; readonly action: ComponentChild }) {
   return action ? <div class="home-row-with-action">{row}{action}</div> : <>{row}</>;
 }
 

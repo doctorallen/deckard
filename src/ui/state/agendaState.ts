@@ -456,7 +456,7 @@ function groupByPriority(
 /**
  * Each task's status, its checkbox's, in the board's column order, hidden
  * statuses too, since this is a list and not a board, then a group per
- * character no status names, `Unknown [?]`. A group goes by the key the
+ * character no status names, `Unknown [!]`. A group goes by the key the
  * board's column for it has, so a drop on a group writes what a drop on
  * that column does.
  */

@@ -17,6 +17,8 @@ Run `Deckard: Find in Notes`, or press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt<
 - Task rows have **Complete** (or **Reopen**), which redraws in place with **Undo**, and **Set due**: Today, Tomorrow, Next Monday, a date, or none.
 - **Answer.** In a workspace with [types](databases.md), words that name a row and a field, such as `checkout lead` or `who is on payments`, list up to three answers first, each with the path that reached it; see [Asking Find](databases.md#asking-find).
 - **Create note “…”** appears for words that read as a name no note has.
+- **Ask it: add “…?” to today's note** comes first when nothing has every word and you typed only words, tags, and people. It writes `- [?]` and your words, as a [question](tasks.md#questions), under today's note's **Questions** heading, or after its last list when it has none. When you have searched for the same words before and found nothing, it says how often, and since when: *You have searched for this 3 times since Fri, Oct 2*.
+- **Open questions** whose words hold every word you typed are listed with a **?**; <kbd>Enter</kbd> opens the line.
 - **Add “…” to today's note** appears when nothing has every word and you typed only words, tags, and people. It reads the line as [Add Task's quick add](tasks.md#adding-a-task) does: `Call Ren friday p2` becomes `- [ ] Call Ren ⏫ 📅 2026-10-02`.
 - A day such as `friday`, `oct 3`, or `last friday` offers that day's note, creating it if needed. A short weekday alone, such as `fri`, is a word.
 - Opened with words selected on one line, Find starts with them as its search.
@@ -82,7 +84,7 @@ Shorthands, written the way GitHub writes them:
 | `is:today` | Open tasks due today, or scheduled for today or earlier and started: the Tasks view's **Today**. |
 | `is:needs-date` | Open tasks more than `deckard.tasks.needsNewDateAfterDays` (30) days past due: the Tasks view's **Needs a new date**. |
 | `is:due` | Open tasks due within seven days, overdue included. |
-| `is:task`, `is:note` | Every task, or note sections without tasks. |
+| `is:task`, `is:note` | Every task, or note sections without tasks or questions. |
 | `is:blocked`, `is:blocking` | Open tasks waiting for a still-open task or with the Blocked status (`[=]`), and the open tasks they wait for. |
 | `is:waiting` | Open tasks with an on-hold status (Waiting `[w]`, Someday `[s]`, Blocked `[=]`, or one of your own), or assigned with 👤 to someone other than you. With `deckard.me` empty, every assigned task counts. |
 | `is:available` | Open tasks that are not blocked, started (no 🛫 date, or one today or earlier), and not on hold. |
@@ -94,6 +96,7 @@ Shorthands, written the way GitHub writes them:
 | `is:periodic` | Daily, weekly, and monthly notes. `is:dated` is the same. |
 | `is:parked` | [Parked](organizing.md#parking-notes) notes, entries, and tasks: in a folder `deckard.parked.folders` names, or found by a search for a tag `deckard.parked.tags` names. |
 | `is:step`, `has:steps`, `no:steps` | Steps (checkboxes under another task), tasks with steps, and tasks with none. `-is:step` leaves steps out. |
+| `is:question`, `is:unanswered`, `is:answered` | [Questions](tasks.md#questions), written `- [?]`: every one, those with no `Answer:` line under them, and those with one. A question is neither a task nor a note, so `is:open` and `is:note` leave it out. |
 
 Put `-` before a shorthand to negate it, as in `-is:done`. Deckard keeps a shorthand as written when it saves or formats a query.
 

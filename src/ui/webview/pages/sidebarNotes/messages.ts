@@ -21,6 +21,7 @@ import type {
   SetRelatedNotesPreviewLinesMessage,
   SetRelatedNotesSortMessage,
   SidebarNotesPageToHost,
+  WrittenBeforeActionMessage,
 } from '../../../protocol/sidebarNotes';
 import { narrowCalendarMessage } from '../calendar/messages';
 import {
@@ -115,6 +116,12 @@ const narrowSetPageShown: Narrower<SetPageShownMessage> = (value) =>
     ? { type: 'setPageShown', page: value.page, shown: value.shown }
     : undefined;
 
+/** Written before's Open, Link it here, or Not the same, on an older line, by its note and line. */
+const narrowWrittenBeforeAction: Narrower<WrittenBeforeActionMessage> = (value) =>
+  (value.action === 'open' || value.action === 'linkHere' || value.action === 'notSame') && isSourceLocation(value)
+    ? { type: 'writtenBeforeAction', action: value.action, filePath: value.filePath as string, line: value.line as number }
+    : undefined;
+
 /** Insert link on a related note: the note, by its first line. */
 const narrowInsertLink: Narrower<InsertLinkMessage> = (value) =>
   isSourceLocation(value)
@@ -184,6 +191,7 @@ export const SIDEBAR_NOTES_MESSAGES: NarrowingTable<SidebarNotesPageToHost> = {
   goToPage: narrowGoToPage,
   setPagesStyle: narrowSetPagesStyle,
   setPageShown: narrowSetPageShown,
+  writtenBeforeAction: narrowWrittenBeforeAction,
 };
 
 /** A message from the Related Notes sidebar, narrowed by its table, or undefined. */
