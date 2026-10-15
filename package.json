@@ -109,6 +109,16 @@
         }
       },
       {
+        "id": "deckard.termUnderline",
+        "description": "Dotted line under a short term that has a definition, such as NDF, in the editor.",
+        "defaults": {
+          "dark": "descriptionForeground",
+          "light": "descriptionForeground",
+          "highContrast": "descriptionForeground",
+          "highContrastLight": "descriptionForeground"
+        }
+      },
+      {
         "id": "deckard.taskHintForeground",
         "description": "Color of the hints after a task's line in the editor, such as \"due today\" and \"needs a new date\".",
         "defaults": {
@@ -2372,6 +2382,12 @@
             "scope": "resource",
             "description": "In today's daily note, underline a line that names one person and a day to come, such as \"@sam says the fix lands by Friday\", and offer, in a lens and the lightbulb, to track it as a waiting task for that person, due that day. Left unset, it follows the editor preset: on in Full and Tasks, off in Writing and Off. Set it here to override the preset.",
             "order": 14
+          },
+          "deckard.editor.termUnderline": {
+            "type": "boolean",
+            "scope": "resource",
+            "description": "Draw a faint dotted line under a short term that has a definition, such as NDF or UAT, where hovering it says what it means. The hover stays when this is off, and Zen hides the line. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
+            "order": 15
           }
         },
         "order": 3

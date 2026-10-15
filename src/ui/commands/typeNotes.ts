@@ -84,12 +84,28 @@ export async function writeNewNote(
 const PEOPLE_FALLBACK: DraftType = { key: 'person', name: 'Person', rows: { kind: 'tags', prefix: '@', written: '@*' }, fields: [] };
 
 /**
+ * Terms, when no type has them: a term's hover can still make a term note,
+ * `type: term` with its `term:`, which Deckard reads with or without the
+ * type (docs/implementation/42-terms.md).
+ */
+const TERM_FALLBACK: DraftType = {
+  key: 'term',
+  name: 'Term',
+  rows: { kind: 'notes', written: 'notes' },
+  fields: [{ key: 'term', name: 'term', kind: { name: 'text', many: false } }],
+};
+
+/** The types a new row can be written from when no type of the workspace has their key. */
+const FALLBACK_TYPES: ReadonlyMap<string, DraftType> = new Map([PEOPLE_FALLBACK, TERM_FALLBACK].map((type) => [type.key, type]));
+
+/**
  * The type a new row is written from, by key: the registry's, or, for
  * `person` when no type has people, a person with no fields, so a quick
- * fix can still create a person's hub note.
+ * fix can still create a person's hub note, and for `term`, a term with
+ * its one field.
  */
 export function findRowNoteType(registry: Pick<TypeRegistry, 'get'>, typeKey: string): DraftType | undefined {
-  return registry.get(typeKey) ?? (typeKey === PEOPLE_FALLBACK.key ? PEOPLE_FALLBACK : undefined);
+  return registry.get(typeKey) ?? FALLBACK_TYPES.get(typeKey);
 }
 
 /**

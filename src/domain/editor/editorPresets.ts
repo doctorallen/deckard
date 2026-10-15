@@ -1,6 +1,6 @@
 /**
  * Editor presets: what Deckard draws in the editor, chosen as one of four
- * rather than as sixteen switches.
+ * rather than as seventeen switches.
  *
  * Each `deckard.editor.*` switch still works, and one set by hand, at any
  * scope, wins over the preset; the preset decides only the switches left
@@ -28,6 +28,7 @@ export const EDITOR_TOGGLES = [
   'taskDueHints',
   'repeatDiagnostics',
   'trackPromises',
+  'termUnderline',
 ] as const;
 
 /** One of those switches. */

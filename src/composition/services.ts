@@ -74,6 +74,7 @@ import { TaskMetadataCompletionProvider } from '../ui/providers/taskMetadataSugg
 import { SlashMenuProvider } from '../ui/providers/slashMenu';
 import { StatusSuggestionsProvider } from '../ui/providers/statusSuggestions';
 import { PromiseTracking } from '../ui/providers/promiseTracking';
+import { TermHovers } from '../ui/providers/termHovers';
 import { EditorLenses } from '../ui/providers/editorLenses';
 import { EditorReferences } from '../ui/providers/editorReferences';
 import { AssistantTools } from '../ui/commands/assistantTools';
@@ -689,6 +690,8 @@ function createEditorProviders(context: vscode.ExtensionContext, core: Core, pre
   // waiting task; Not a promise is kept with the workspace.
   const promiseMarks = new PromiseDismissals(context.workspaceState);
   context.subscriptions.push(promiseMarks, new PromiseTracking(indexer, promiseMarks).register());
+  // A defined term's hover anywhere in a note, and its faint underline.
+  context.subscriptions.push(new TermHovers(indexer).register());
   return { tagDecorations, pins, tagSuggestions, taskMetadataSuggestions, taskEditorActions, taskLineContext, promiseMarks };
 }
 
