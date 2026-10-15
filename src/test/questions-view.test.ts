@@ -23,6 +23,7 @@ import { describeMisses, toPickItems } from '../ui/commands/quickFind';
 import { createQueryContext } from '../domain/query/queryContext';
 import { formatQuestionLine } from '../domain/markdown/questionLines';
 import { createPreferences, MemoryStore } from './preferenceServices';
+import { listGoToItems } from '../ui/views/pagesTree';
 
 /** A key-value store in memory, as the workspace's state is. */
 function memoryStore(): ConstructorParameters<typeof QuestionMemory>[0] {
@@ -250,5 +251,15 @@ suite('Find and questions', () => {
     assert.strictEqual(ask.label, '$(question) Ask it: add “Who signs the vendor lease?” to today’s note');
     assert.strictEqual(ask.description, said);
     assert.strictEqual(find('rates').ask, undefined, 'a search that found something asks nothing');
+  });
+});
+
+suite('Go to… and questions', () => {
+  test('lists Open questions after the pages, which opens the search for is:unanswered', () => {
+    const built = buildWorkspaceIndex(new Map([['notes/q.md', parseMarkdown('notes/q.md', '# Q\n- [?] Who approves access?\n- [?] Where is it?\n  - Answer: here\n')]]));
+    const items = listGoToItems({ getSnapshot: () => built }, vscode.Uri.file(path.join(__dirname, '..', '..')));
+    const last = items[items.length - 1];
+    assert.deepStrictEqual([last.label, last.description, last.command, last.args], ['Open questions', '1 open', 'deckard.searchNotes', ['is:unanswered']]);
+    assert.strictEqual(items[0].label, 'Home', 'the pages come first');
   });
 });

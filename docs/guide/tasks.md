@@ -237,11 +237,15 @@ The **Questions** view in the Deckard sidebar, under Tasks, lists each open ques
 
 - **Answer Question…**, on a question's row, asks for the answer: type it, or pick the line offered, which writes its words and a link to it.
 - **Drop Question**, on a question's right-click menu, writes its box as `[-]`, which makes it a cancelled task.
-- The title bar's **Include Answered Questions** lists the answered ones after them, and **Open as Search** opens the search page for `is:unanswered`.
+- The title bar's **Include Answered Questions** lists the answered ones after them, and **Open as Search** opens the search page for `is:unanswered`, as **Open questions** in **Go to…** does.
 
 ### In Find
 
 When [Find](search.md#find) finds nothing that has every word, its first row is **Ask it: add “…?” to today's note**, which writes your words as a question in today's note. Open questions that match what you type are listed among the results with a **?**.
+
+### On a tag's page
+
+A tag's or a person's [search page](search-pages.md) has a **Questions** tab beside Notes and Tasks when questions carry the tag or name the person, each with **Answer…** while it is open.
 
 ### On Home
 

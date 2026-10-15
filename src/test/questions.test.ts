@@ -22,6 +22,10 @@ import { hashLine } from '../domain/ranking/lineIndex';
 import { indexOf as typedIndexOf, typedWorkspace } from './typedWorkspace';
 import { describeQuestionAge, describeQuestionLenses } from '../ui/state/questionsState';
 import { formatAnswerLine, formatQuestionLine, wordQuestion } from '../domain/markdown/questionLines';
+import { createSearchPageSnapshot } from '../ui/state/searchPageState';
+import { createPreferences } from './preferenceServices';
+import { openWebviewPage, type WebviewPage } from './webviewPage';
+import { renderPage } from './pages';
 
 /** An index of notes, by path and text, each dated by its own name when it is a day. */
 function indexOf(notes: Record<string, string>): ReturnType<typeof buildWorkspaceIndex> {
@@ -256,5 +260,54 @@ suite('Questions: as rows and lenses', () => {
     );
     assert.strictEqual(wordQuestion('who approves uat access'), 'Who approves uat access?');
     assert.strictEqual(formatQuestionLine('where is the runbook?'), '- [?] Where is the runbook?');
+  });
+});
+
+suite('Questions: a tag\'s page', () => {
+  let page: WebviewPage | undefined;
+
+  teardown(() => {
+    page?.dispose();
+    page = undefined;
+  });
+
+  const snapshotOf = (query: string) => {
+    const index = indexOf({
+      'notes/2026-10-01.md': [
+        '# 2026-10-01',
+        '## Desk #team/rates',
+        '- [?] Who approves access to the bond UAT?',
+        '- [?] Where is the runbook?',
+        '  - Answer: in the wiki',
+        '- [ ] Book the room',
+      ].join('\n'),
+    });
+    const store = createPreferences({ get: (_key: string, fallback?: unknown) => fallback, keys: () => [], update: async () => undefined } as never);
+    return createSearchPageSnapshot(index, store.reader.value, query, { queryContext: createQueryContext(Date.now()) });
+  };
+
+  test('has a Questions tab beside Notes and Tasks, the open ones first, each with Answer…', () => {
+    const snapshot = snapshotOf('#team/rates');
+    assert.deepStrictEqual(snapshot.questions?.map((question) => [question.text, question.answered]), [
+      ['Who approves access to the bond UAT?', false],
+      ['Where is the runbook?', true],
+    ]);
+    page = openWebviewPage(renderPage('searchPage'), snapshot);
+    assert.deepStrictEqual(page.findAll('[role="tab"]').map((tab) => tab.textContent?.replace(/\s+/g, ' ').trim()), ['Notes (1)', 'Tasks (1)', 'Questions (2)']);
+    page.click('[role="tab"][data-tab="questions"]');
+    assert.strictEqual(page.findAll('.search-question').length, 2);
+    assert.match(page.text('.search-question.is-answered .search-question-detail') ?? '', /Answer: in the wiki$/);
+    page.click('.search-question [data-action="answer-question"]');
+    assert.deepStrictEqual(page.lastPosted('questionAction'), { type: 'questionAction', action: 'answer', questionId: snapshot.questions?.[0]?.id ?? '' });
+  });
+
+  test('a search for open questions opens on its Questions tab', () => {
+    page = openWebviewPage(renderPage('searchPage'), snapshotOf('is:unanswered'));
+    assert.strictEqual(page.find('[role="tab"][aria-selected="true"]').getAttribute('data-tab'), 'questions');
+    assert.strictEqual(page.findAll('.search-question').length, 1);
+  });
+
+  test('a search that finds no question has no Questions tab', () => {
+    assert.strictEqual(snapshotOf('is:task').questions, undefined);
   });
 });

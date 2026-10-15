@@ -11,7 +11,6 @@ import type {
   DashboardWidgetChoicesMessage,
   OpenDeckardViewMessage,
   OpenNoteMessage,
-  QuestionActionMessage,
   RecordRecentQueryMessage,
   ReorderEntitiesMessage,
   ReorderTagsMessage,
@@ -38,6 +37,7 @@ import {
   narrowOpenTag,
   narrowParkTag,
   narrowPinNote,
+  narrowQuestionAction,
   narrowRenameTag,
   narrowSetDisplay,
   narrowSetZenMode,
@@ -198,14 +198,6 @@ const narrowOpenView: Narrower<OpenDeckardViewMessage> = (value) =>
 const narrowAddNextAction: Narrower<AddNextActionMessage> = (value) =>
   typeof value.tagKey === 'string' && value.tagKey.length > 0 && value.tagKey.length <= MAX_NEXT_ACTION_TAG_LENGTH
     ? { type: 'addNextAction', tagKey: value.tagKey }
-    : undefined;
-
-/** A question to answer, or whose offered line to use or set aside, by its id. */
-const narrowQuestionAction: Narrower<QuestionActionMessage> = (value) =>
-  (value.action === 'answer' || value.action === 'useOffer' || value.action === 'notIt') &&
-  typeof value.questionId === 'string' &&
-  /^question-[0-9a-z]+-[0-9a-z]+$/.test(value.questionId)
-    ? { type: 'questionAction', action: value.action, questionId: value.questionId }
     : undefined;
 
 /** A note to open at its top. */

@@ -30,6 +30,7 @@ import type {
   OpenTagMessage,
   ParkTagMessage,
   PinNoteMessage,
+  QuestionActionMessage,
   RenameTagMessage,
   ResultPaging,
   SetDisplayMessage,
@@ -103,6 +104,11 @@ export interface SearchPageSnapshot {
   tasks: DashboardTask[];
   /** Which page of tasks these are, and how many there are in all. */
   taskPaging: ResultPaging;
+  /**
+   * The questions the search finds, open ones first, oldest first; absent
+   * when it finds none, and so is the Questions tab.
+   */
+  questions?: SearchPageQuestion[];
   /** Counts before the active completion filter is applied. */
   taskCounts: {
     all: number;
@@ -137,6 +143,19 @@ export interface SearchPageSnapshot {
    * results, before they are committed to the search itself.
    */
   draftWords?: string[];
+}
+
+/** A question a search finds, as its Questions tab lists it. */
+export interface SearchPageQuestion {
+  id: string;
+  text: string;
+  filePath: string;
+  line: number;
+  /** How long it has been open, or when it was answered, and its first tag: `open 12 days · #team/rates`. */
+  detail: string;
+  answered: boolean;
+  /** Its answer's words, once it has one. */
+  answer?: string;
 }
 
 /**
@@ -553,6 +572,7 @@ export interface SearchPagePageToHost {
   listGoTo: ListGoToMessage;
   goToPage: GoToPageMessage;
   openSource: OpenSourceMessage;
+  questionAction: QuestionActionMessage;
   /** A `[[link]]` in the hub note, followed as the note page follows one. */
   openWikiLink: OpenWikiLinkMessage;
   toggleTask: ToggleTaskMessage;

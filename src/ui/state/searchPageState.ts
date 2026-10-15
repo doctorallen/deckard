@@ -44,7 +44,7 @@ import { pinKey } from '../../core/storage/preferencesSchema';
 import { createPinForLine } from '../../domain/notes/pins';
 import { buildSearchFacets, SearchFacetValue } from '../../domain/search/facets';
 import { DashboardTask, ResultPaging, TagOverviewCard } from '../protocol/shared';
-import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes, SearchResultGroup } from '../protocol/searchPage';
+import { SearchPageEntity, SearchPageQuestion, SearchPageSnapshot, SearchPageTagNotes, SearchResultGroup } from '../protocol/searchPage';
 import { findTagFacet, GROUP_ITEM_LIMIT, groupResults } from './searchGroups';
 import { countGroup, groupByHeading, type HeadingGroup } from './headingGroups';
 import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
@@ -65,8 +65,11 @@ import {
   Task,
   TagAssociation,
   QueryFacet,
+  Question,
   WorkspaceIndex,
 } from '../../domain/model';
+import { listAllQuestions } from '../../domain/index/questions';
+import { describeQuestionRow, toQuestionRow } from './questionsState';
 import { collectTagParts } from '../../domain/tasks/tagParts';
 import { formatProgressCount } from '../../domain/tasks/progressCount';
 import { readNoteBody } from './notePageState';
@@ -169,10 +172,8 @@ export function createSearchPageSnapshot(
   // Only a search that found nothing is worth correcting: results answer the
   // search as it was typed, and offering a different one beside them would
   // argue with what the reader can already see.
-  const suggestion =
-    ranked.length === 0 && tasks.length === 0
-      ? suggestWorkingSearch(index, { text, parsed, sectionKey, options })
-      : undefined;
+  const found = ranked.length + tasks.length + results.questions.length;
+  const suggestion = found === 0 ? suggestWorkingSearch(index, { text, parsed, sectionKey, options }) : undefined;
   const typeRows = describeTypeRows(index, preferences, page, options);
   const facets = [...(typeRows?.facets ?? []), ...buildPageFacets(index, page, text, options)];
   const drawTask = (task: Task) =>
@@ -209,6 +210,7 @@ export function createSearchPageSnapshot(
     notePaging,
     tasks: takePage(tasks, taskPaging).map(drawTask),
     taskPaging,
+    ...drawQuestions(index, results.questions, options.queryContext),
     taskCounts: countTasks(tasks),
     pageSizes: SEARCH_PAGE_SIZES,
     ...(groups ? { groups } : {}),
@@ -220,6 +222,33 @@ export function createSearchPageSnapshot(
     noteColumns: preferences.dashboardNoteColumns,
     taskColumns: preferences.dashboardTaskColumns,
   };
+}
+
+/**
+ * The questions a search finds, as its Questions tab lists them: the open
+ * ones oldest first, then the answered ones, most recently answered first.
+ * Nothing when it finds none, and so no tab.
+ */
+function drawQuestions(index: WorkspaceIndex, found: readonly Question[], context: QueryContext): { questions?: SearchPageQuestion[] } {
+  if (found.length === 0) {
+    return {};
+  }
+  const order = new Map(listAllQuestions(index).map((question, position) => [question.id, position]));
+  const questions = [...found]
+    .sort((left, right) => (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0))
+    .map((question) => {
+      const row = toQuestionRow(index, question, undefined, { now: context.now, dateFormats: context.dateFormats });
+      return {
+        id: row.id,
+        text: row.text,
+        filePath: row.filePath,
+        line: row.line,
+        detail: describeQuestionRow(row),
+        answered: row.answered,
+        ...(row.answer ? { answer: row.answer } : {}),
+      };
+    });
+  return { questions };
 }
 
 /**

@@ -34,6 +34,7 @@ import type {
   OpenTaskBoardMessage,
   ParkTagMessage,
   PinNoteMessage,
+  QuestionActionMessage,
   RenameTagMessage,
   ResultPaging,
   SetDisplayMessage,
@@ -285,16 +286,6 @@ export interface OpenDailyNoteMessage {
 export interface AddNextActionMessage {
   type: 'addNextAction';
   tagKey: string;
-}
-
-/**
- * Acts on a question Open questions lists: Answer…, Use as answer on the
- * line offered for it, or Not it, which sets that line aside.
- */
-export interface QuestionActionMessage {
-  type: 'questionAction';
-  action: 'answer' | 'useOffer' | 'notIt';
-  questionId: string;
 }
 
 /** Opens a note at its top. */

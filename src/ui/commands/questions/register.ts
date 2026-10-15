@@ -6,9 +6,8 @@ import { QuestionsTreeProvider, type QuestionsNode } from '../../views/questions
 import { answerQuestion, dropQuestion, rejectOffer, useOffer, type QuestionArgument } from '../questionActions';
 import { settingLabel } from '../notify';
 import { registerCommand } from '../runCommand';
+import { OPEN_QUESTIONS_QUERY } from '../../views/pagesTree';
 
-/** The search Open as search runs: the questions still open. */
-export const OPEN_QUESTIONS_QUERY = 'is:unanswered';
 
 /**
  * Questions: the Questions view in the sidebar and its title bar's Show

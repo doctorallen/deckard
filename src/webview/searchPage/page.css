@@ -73,6 +73,17 @@ header.page-bar { align-items: flex-start; }
 .result-group.is-part .result-group-heading { font-size: var(--text-md); }
 /* Side by side, a group's notes and tasks share its row, in the panes' columns. */
 .overview-split-groups > .overview-split { margin-bottom: 0; }
+/* The questions a search finds: each a row with its ? mark, its words over how long it has been open, and Answer… at its end. */
+.questions-pane { margin-top: 20px; }
+.overview-tab-panel > .questions-pane { margin-top: 0; }
+.search-questions { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.search-question { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 4px 8px; border: 1px solid var(--line); border-radius: var(--control-radius); background: var(--panel); }
+.search-question-mark { flex: 0 0 auto; color: var(--accent); font-weight: 650; }
+.search-question.is-answered .search-question-mark { color: var(--muted); }
+.search-question-open { display: grid; flex: 1 1 auto; min-width: 0; padding: 0; border: 0; background: none; color: var(--text); font: inherit; text-align: left; text-transform: none; cursor: pointer; }
+.search-question-text { overflow-wrap: anywhere; }
+.search-question-detail { color: var(--muted); font: var(--text-xs) var(--font-mono); overflow-wrap: anywhere; }
+.search-question-answer { flex: 0 0 auto; }
 .result-group-columns { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
 .result-group-column { min-width: 0; }
 @media (max-width: 700px) { .result-group-columns { grid-template-columns: 1fr; } }

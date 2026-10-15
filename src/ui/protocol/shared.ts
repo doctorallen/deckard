@@ -179,6 +179,16 @@ export interface PinNoteMessage {
   pinKey?: string;
 }
 
+/**
+ * Acts on a question a page lists: Answer…, Use as answer on the line
+ * offered for it, or Not it, which sets that line aside.
+ */
+export interface QuestionActionMessage {
+  type: 'questionAction';
+  action: 'answer' | 'useOffer' | 'notIt';
+  questionId: string;
+}
+
 /** Opens a tag's page. */
 export interface OpenTagMessage {
   type: 'openTag';
