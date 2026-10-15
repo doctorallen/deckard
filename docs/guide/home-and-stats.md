@@ -93,6 +93,13 @@ Run `Deckard: Open Stats` to see what needs attention, then totals, then what yo
 
 **Tags written together** pairs your twelve most-used tags in a triangle. Each cell counts the notes and tasks carrying both and opens that search (`#project/atlas #design`). **Show as a table** lists the pairs by count.
 
+### Terms
+
+Last, **Terms** lists the [short terms](notes-and-links.md#terms) your notes use, most used first, in two lists of up to 50, each saying how many more there are:
+
+- **Used but never defined:** each term used in three entries or more that nothing defines, with how many and where it was first used. The row searches for its uses; **Define…** opens [New Note from Type…](databases.md#adding-a-note-of-a-type)'s form for a Term with the term filled in.
+- **Defined:** each term with its definition and where it comes from, a term note or the note that first wrote it. The row opens it there.
+
 ### Tags that look alike
 
 Stats lists pairs of tags that look like one idea spelled twice, clearest first, from the rarer spelling to the one your notes already use. **Merge** runs the usual [merge](search-pages.md#merging-tags), with its preview and [Undo](search-pages.md#previewing-and-undoing-a-write).

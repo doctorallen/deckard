@@ -1,10 +1,11 @@
 # AI assistants
 
-Deckard gives AI assistants in VS Code five tools through VS Code's language model tool API. Any assistant using those tools can call them; in GitHub Copilot's agent mode they appear in the tools picker. Assistants that connect only through MCP servers cannot see them; see [Claude Code and other MCP clients](#claude-code-and-other-mcp-clients).
+Deckard gives AI assistants in VS Code six tools through VS Code's language model tool API. Any assistant using those tools can call them; in GitHub Copilot's agent mode they appear in the tools picker. Assistants that connect only through MCP servers cannot see them; see [Claude Code and other MCP clients](#claude-code-and-other-mcp-clients).
 
 - **Search Deckard notes and tasks** (`deckard_query`, or `#deckardQuery` in a chat prompt) runs a [Deckard query](search.md#query-language) and returns matching sections and tasks with path, line, and headings, plus each task's done state, due and scheduled dates, priority, and repeat rule. It returns at most 25 notes and 25 tasks unless asked for more, up to 200, and always reports full totals. A query that does not parse returns its error and a short syntax guide.
 - **List Deckard tags** (`deckard_list_tags`, or `#deckardTags`) lists tags by use count, optionally narrowed by a search.
 - **Describe a Deckard tag and its fields** (`deckard_describe_tag`, or `#deckardDescribeTag`) takes a tag, a title, or a few words naming one, and answers in plain text. For a row of a [type](databases.md): its type, title, tag, and note, or *No hub note.*; each field and its values, *lead: Alex Rivera (@alex-rivera)*; its reverses and what they come from, *members (reverse of Person.team): …*; its open tasks and how many are overdue; for a person, how many open tasks you owe them and they owe you, as their page's [Between you](search-pages.md#between-you-and-a-person) card counts them; and its three latest entries with their dates. For any other tag: its counts, hub note, open tasks, and latest entries. When the words name several rows, it describes the best and names the others. It only reads.
+- **Define a term from Deckard notes** (`deckard_define_term`, or `#deckardDefineTerm`) takes a short term such as `NDF` and answers with what it means and where it was defined, the term note or the note, line, heading, and day that first wrote it, with how many entries use it; or says the notes define none, and how often they use it. See [Terms](notes-and-links.md#terms). It only reads.
 - `deckard_add_task` adds a task to today's note or a named note.
 - `deckard_change_task` completes, reopens, retitles, dates, prioritizes, or hands over one task, named by note and line as `deckard_query` reports them.
 
@@ -27,7 +28,7 @@ This is the only place Deckard itself sends anything to a model.
 
 ### Claude Code and other MCP clients
 
-Deckard can offer the same five tools to Claude Code and other Model Context Protocol clients. Set `deckard.mcpServer.enabled` to `true`, or run `Deckard: Copy MCP Server Setup`, which offers to turn the server on and copies the command that adds Deckard to Claude Code:
+Deckard can offer the same six tools to Claude Code and other Model Context Protocol clients. Set `deckard.mcpServer.enabled` to `true`, or run `Deckard: Copy MCP Server Setup`, which offers to turn the server on and copies the command that adds Deckard to Claude Code:
 
 ```bash
 claude mcp add --transport http deckard http://127.0.0.1:39217/mcp --header "Authorization: Bearer <token>"

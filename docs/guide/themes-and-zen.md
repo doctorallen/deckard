@@ -73,6 +73,8 @@ Zen is one checkbox, **Zen** under **Appearance** in any page's **⋯**, and one
 
 Zen never removes a control or moves one into **⋯**: every button, filter, checkbox, and tag stays in its place, in the Tab order, and in what a screen reader reads.
 
+In the editor, Zen hides the dotted line under a defined [term](notes-and-links.md#terms); hovering the term still says what it means.
+
 Deckard's Zen quiets Deckard's pages; VS Code's Zen Mode (`⌘K Z`, or `Ctrl+K Z`) hides the workbench around them, and the two combine.
 
 ---
