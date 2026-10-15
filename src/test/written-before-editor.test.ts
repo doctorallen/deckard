@@ -10,6 +10,7 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import type { ParsedFile, WorkspaceIndex } from '../domain/model';
 import { linkHere } from '../ui/commands/writtenBefore/register';
 import { WrittenBeforeHints } from '../ui/providers/writtenBefore';
+import { indexKeyOf } from './indexKeys';
 
 /** A key-value store in memory, as the workspace's state is. */
 function memoryStore(): ConstructorParameters<typeof WrittenBeforeMemory>[0] {
@@ -37,7 +38,7 @@ async function writeNotes(): Promise<{ index: WorkspaceIndex; root: vscode.Uri; 
   for (const [name, text] of Object.entries(notes)) {
     uris[name] = vscode.Uri.joinPath(root, name);
     await vscode.workspace.fs.writeFile(uris[name], Buffer.from(text, 'utf8'));
-    files.set(uris[name].fsPath, parseMarkdown(uris[name].fsPath, text));
+    files.set(indexKeyOf(uris[name]), parseMarkdown(indexKeyOf(uris[name]), text));
   }
   return { index: buildWorkspaceIndex(files), root, today: uris['today.md'], older: uris['2026-03-12.md'] };
 }
@@ -49,9 +50,9 @@ async function createHints(index: WorkspaceIndex): Promise<WrittenBeforeHints> {
       ready: Promise.resolve(),
       onDidUpdate: () => ({ dispose: () => undefined }),
       getSnapshot: () => index,
-      getFilePath: (uri) => uri.fsPath,
+      getFilePath: (uri) => indexKeyOf(uri),
       isNotesFile: () => true,
-      parse: (uri, content) => parseMarkdown(uri.fsPath, content),
+      parse: (uri, content) => parseMarkdown(indexKeyOf(uri), content),
     },
     new WrittenBeforeMemory(memoryStore()),
     vscode.Uri.file(path.join(__dirname, '..', '..')),
@@ -169,7 +170,7 @@ suite('You\'ve written this before in the editor', () => {
     // Hundreds of notes more than are read at once, so the lines are built a slice at a time.
     const files = new Map(index.files);
     for (let note = 0; note < 400; note += 1) {
-      const filePath = path.join(path.dirname(today.fsPath), `other-${note}.md`);
+      const filePath = indexKeyOf({ fsPath: path.join(path.dirname(today.fsPath), `other-${note}.md`) });
       files.set(filePath, parseMarkdown(filePath, `# Other ${note}\n${OTHER_LINES}\n`));
     }
     const hints = await createHints(buildWorkspaceIndex(files));
@@ -194,13 +195,13 @@ suite('You\'ve written this before in the editor', () => {
     const { index, today, older } = await writeNotes();
     const document = await vscode.workspace.openTextDocument(today);
     const lineText = document.lineAt(3).text;
-    assert.strictEqual(await linkHere(index, { documentUri: today, line: 3, lineText }, { filePath: older.fsPath, line: 3 }), true);
+    assert.strictEqual(await linkHere(index, { documentUri: today, line: 3, lineText }, { filePath: indexKeyOf(older), line: 3 }), true);
     assert.strictEqual(document.lineAt(3).text, `${lineText} (see [[2026-03-12#Rates desk standup]])`);
     const window = vscode.window as unknown as Record<string, unknown>;
     const shown = window.showErrorMessage;
     window.showErrorMessage = async () => undefined;
     try {
-      assert.strictEqual(await linkHere(index, { documentUri: today, line: 3, lineText }, { filePath: older.fsPath, line: 3 }), false);
+      assert.strictEqual(await linkHere(index, { documentUri: today, line: 3, lineText }, { filePath: indexKeyOf(older), line: 3 }), false);
     } finally {
       window.showErrorMessage = shown;
     }

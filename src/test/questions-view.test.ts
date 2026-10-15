@@ -18,6 +18,7 @@ import { WorkspaceWriteHistory, type WriteHandle } from '../ui/commands/workspac
 import { QuestionsTreeProvider, type QuestionsNode } from '../ui/views/questionsTree';
 import { formatIsoDate } from '../domain/markdown/calendar';
 import { EditorLenses } from '../ui/providers/editorLenses';
+import { indexKeyOf } from './indexKeys';
 import { buildQuickFindResults } from '../ui/state/quickFindState';
 import { describeMisses, findDailyNoteRow, QuickFind, toPickItems } from '../ui/commands/quickFind';
 import { createTaskWrites } from './taskWrites';
@@ -51,7 +52,7 @@ async function writeNotes(notes: Record<string, string>): Promise<{ index: () =>
         await Promise.all(
           Object.entries(uris).map(async ([, uri]) => {
             const text = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8');
-            return [uri.fsPath, parseMarkdown(uri.fsPath, text)] as const;
+            return [indexKeyOf(uri), parseMarkdown(indexKeyOf(uri), text)] as const;
           }),
         ),
       ),
@@ -185,9 +186,9 @@ suite('The lens above a question', () => {
         ready: Promise.resolve(),
         onDidUpdate: () => ({ dispose: () => undefined }),
         getSnapshot: () => built,
-        getFilePath: (uri) => uri.fsPath,
+        getFilePath: (uri) => indexKeyOf(uri),
         isNotesFile: () => true,
-        parse: (uri, content) => parseMarkdown(uri.fsPath, content),
+        parse: (uri, content) => parseMarkdown(indexKeyOf(uri), content),
       },
       new QuestionMemory(memoryStore()),
     ).register();
@@ -327,7 +328,7 @@ suite('Find counts a missed search', () => {
   /** Find over one note on disk, whose search finds only some of the words, counting misses into `recorded`. */
   async function openFind(recorded: string[]) {
     const { uris } = await writeNotes({ 'rates.md': '# Rates\n- curve loader restarted after the feed lagged\n' });
-    const filePath = uris['rates.md'].fsPath;
+    const filePath = indexKeyOf(uris['rates.md']);
     const built = buildWorkspaceIndex(new Map([[filePath, parseMarkdown(filePath, '# Rates\n- curve loader restarted after the feed lagged\n')]]));
     const store = createPreferences(new MemoryStore());
     const find = new QuickFind({
