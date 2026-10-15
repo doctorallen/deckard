@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Added
+
+- **Between you.** A person's page has a **Between you** card under its
+  fields: **You owe Sam**, your open tasks that mention Sam, and **Sam owes
+  you**, the tasks assigned to Sam and yours on hold that mention Sam, each
+  overdue first, then oldest. A row's box completes it; a group's name opens
+  it as a search. **Copy as agenda** copies both groups as Markdown for a
+  one-to-one note. It reads `deckard.me` as `is:mine` does, and says so
+  while that is empty. `deckard_describe_tag` counts the same groups for a
+  person.
+
 ## 2.8.1 - 2026-10-13
 
 ### Highlights

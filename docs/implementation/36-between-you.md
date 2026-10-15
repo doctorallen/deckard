@@ -76,3 +76,54 @@ it needs and document it in search.md.
 - Messages narrowing for any new page→host message.
 - No DOM goldens or visual baselines in this plan's branch; those are
   recorded once after David's review.
+
+## As built
+
+Built on `feat/four-ideas`, without the **To ask Sam** group, which plan 38
+adds. Where the plan was silent, or the code made its words impractical:
+
+- **The searches.** `src/ui/state/betweenYou.ts` holds them as a table,
+  `BETWEEN_GROUPS`, one rule per group, so plan 38 adds its group as one
+  more row (and `BetweenGroupKind` gains `toAsk`; its rows are questions,
+  not tasks, so that group will carry rows of its own beside `tasks`):
+  - You owe: `is:open is:mine -is:waiting -is:parked @sam-okafor`. The
+    plan's exclusion of `assignee = @sam-okafor` is left out: `is:mine`
+    never holds a task assigned to Sam, since the reader's own page has no
+    card. `-is:waiting` is added: for a task of yours it is the on-hold
+    status alone, and without it a `[w]` task that mentions Sam was in both
+    groups, where D11 puts it in Sam's.
+  - Sam owes you: `is:open -is:parked (assignee = @sam-okafor OR (is:waiting
+    is:mine @sam-okafor))`. `is:mine` narrows `is:waiting` in place of
+    `assignee = none`, so a task on hold that you assigned to yourself and
+    that mentions Sam is Sam's too, and a task assigned to a third person
+    is still left out. The language says all of it, so nothing was added to
+    search.md.
+  - Parked tasks are left out, as the Task board and the Tasks view leave
+    them out.
+- **Where the card shows.** On the page of any `@` or `#person/` tag, but
+  not on the reader's own page (the tag `deckard.me` names, however it is
+  written), nor on a person's page that a search narrows, where it would
+  push the results down.
+- **Each group** draws its first ten lines, and **Show all N** opens its
+  search, as its label does. A group with no lines is still drawn, with
+  *Nothing open.*, so the reader sees both were looked at. Overdue lines
+  come first, the longest overdue first; then the oldest by their `➕` date,
+  or their note's.
+- **The person's name** in the labels is the first word of their row's
+  title, else of their hub note's, else of their tag: *Sam*.
+- **A group's label** opens its search on a search page of its own, through
+  `deckard.searchNotes`. The search page gained an `openSearch` message for
+  it, which the host acts on only for a search the card drew.
+- **Copy as agenda** is worked out again by the host, every line and not
+  only the ten drawn, and written to the clipboard with a status bar
+  message. A group with nothing in it is left out of the agenda. The due
+  date is written as words, `(due 2026-10-06)`, not as a `📅` field; the
+  titles keep their tags as written.
+- **Set who you are…** opens the `deckard.me` setting, as Open Setting does
+  on the first `is:mine` search's message.
+- **The describe tool** adds one line for a person, `Between you: You owe
+  Sam: 2. Sam owes you: 2.`, and says when `deckard.me` names nobody.
+  `answerDescribeTag` takes the query context as a fourth argument for it;
+  without one it says nothing of the card.
+- The mockup's *Settled since you last looked* line under the card is not
+  in this plan's text and is not built.

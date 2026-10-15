@@ -71,6 +71,22 @@ Migration of billing onto the new ledger.
 - **Untagged mentions.** For a tag name of three letters or more, the top of **Refine** (or, while Refine is in the Context sidebar, a line under the search box) says how many entries write it as a plain word: *12 entries mention "atlas" without the tag.* **Show them** runs `text = atlas -#project/atlas`, without the hub, so **Bulk edit → Add a tag** can tag them. `@dana` counts "dana" the same way.
 - **Hub links.** The page also lists entries and tasks that link to the hub note without the tag, marked *Links the hub note*, with a line under the hub: *Also listing 5 entries that link to Atlas plan without the tag.* Counts, tabs, pages, Bulk edit, and Export include them.
 
+## Between you and a person
+
+A person's page, such as `@sam-okafor`'s, lists every open line between you and them in a **Between you** card, under its fields and above the tabs, ready for a one-to-one:
+
+| Group | Lists |
+| --- | --- |
+| **You owe Sam** | Open tasks of yours, assigned to you or to nobody, that mention Sam |
+| **Sam owes you** | Open tasks assigned to Sam with `👤`, and tasks of yours on hold, such as Waiting `[w]`, that mention Sam |
+
+- Yours is what `is:mine` finds: set `deckard.me` to the tag you write for yourself, such as `@david`. Until then the card says so, with **Set who you are…**, and only tasks for nobody count as yours.
+- A task assigned to someone else is theirs, and shows on their page, whoever it mentions. Done, cancelled, and [parked](organizing.md#parking-notes) tasks leave the card.
+- Each group lists what is overdue first, then the oldest, ten at a time. A row's box completes the task, and the row opens its line. A group's name opens it as a search page, as **Show all** does when it holds more than ten.
+- **Copy as agenda** copies the groups as Markdown, `## You owe Sam` and then a `- [ ]` line for each task with its due date, to paste into a one-to-one note.
+- A person with nothing open between you gets no card, and neither does your own page or a search that narrows a person's page.
+- With [Zen](themes-and-zen.md#zen) on, the counts and dates stay; **Copy as agenda** waits for the pointer or <kbd>Tab</kbd>.
+
 ## The Hubs view
 
 The **Hubs** view in the Deckard sidebar is a tree of your projects, people, and other topics, each with the notes about it filed underneath, like pages under pages in Notion's sidebar. A topic appears once it has a [hub note](#hub-notes). It starts collapsed; expand it, or drag it where you like. With no hub note yet, it says *A hub note gathers a project's or person's notes.*, with **Create Hub Note for Tag…**.

@@ -46,6 +46,7 @@ A `👤` field says who a task is for. Mentioning someone does not make the task
 - On the [Task board](task-board.md#task-board), group by **Person**. Drop a card on a person to set the field, or on **Nobody named** to clear it. In any grouping, a card's **⋯** menu has **For someone…** (key **f**), which lists the people you write about.
 - [Add Task](#adding-a-task) reads `for @dana` at the end, or `@dana to …` at the start, as who the task is for.
 - The first search in a window that uses `is:mine` or `is:waiting` while `deckard.me` is empty says so, with the setting a click away.
+- A person's page lists what you owe them and what they owe you, in its [Between you](search-pages.md#between-you-and-a-person) card.
 
 ### Dataview format
 
