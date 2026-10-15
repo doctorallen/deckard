@@ -103,6 +103,29 @@ suite('The story so far', () => {
     assert.ok(!storyOf(atlas()).some((line) => line.text === 'Ask Ops for a window'), 'a step is not a row of its own');
   });
 
+  test('a blank line ends a row: an indented line after it is not folded in, a list item under it is', () => {
+    const story = storyOf(indexOf({
+      'journal/2026-10-01.md': lines(
+        '# 2026-10-01',
+        'Row #project/atlas',
+        '',
+        '    indented code-ish line',
+        '- Plan for #project/atlas',
+        '',
+        '  - Step under it',
+        '- Fenced under #project/atlas',
+        '  ```',
+        '  secret #project/atlas',
+        '  ```',
+      ),
+    }));
+    assert.deepStrictEqual(story.map((line) => [line.text, line.children.map((child) => child.text)]), [
+      ['Row #project/atlas', []],
+      ['Plan for #project/atlas', ['Step under it']],
+      ['Fenced under #project/atlas', []],
+    ]);
+  });
+
   test('reads a decision from a heading tagged with a row of the Decision type', () => {
     const index = atlas({
       'Types/Decision.md': lines('---', 'deckard-type: decision', 'rows: "#decision/*"', '---', '# Decision', '', '| Field | Kind |', '| ----- | ---- |', '| status | Text |'),

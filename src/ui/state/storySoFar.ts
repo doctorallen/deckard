@@ -195,6 +195,12 @@ function readFileStory(file: ParsedFile, found: FoundLines, reading: StoryReadin
   const skipped = (text: string, at: number): boolean => at <= frontmatterEnd || fenced.has(at) || !text.trim() || THEMATIC_BREAK.test(text);
   lines.forEach((text, at) => {
     if (skipped(text, at)) {
+      // A blank line or a break ends the paragraph a row was: an indented
+      // line after it is code, or text of its own, not more of the row. A
+      // list item written under the row still joins it, by its list parent.
+      if (!fenced.has(at) && at > frontmatterEnd) {
+        lastRead = undefined;
+      }
       return;
     }
     const heading = readHeading(text);
@@ -245,7 +251,7 @@ function openHeading(
 /**
  * The row a line is indented under, when there is one: the row of the
  * list item it is written under, or, for an indented line that is no list
- * item, the row of the line before it.
+ * item, the row of the line before it, when no blank line came between.
  */
 function findParentRow(
   text: string,

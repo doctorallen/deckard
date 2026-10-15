@@ -100,7 +100,9 @@ impractical:
   lines in the order they were written, notes by path, so a day reads the
   same either way.
 - **Lines under a row.** A list item written under a row's item, and an
-  indented line after it that is no list item, join the row. They are drawn
+  indented line after it that is no list item, join the row; after a blank
+  line, only a list item does, so indented code after a paragraph is not
+  folded into it. (QA) They are drawn
   as text, a step with `✓` or `☐` and a question with `?` before it, not
   with boxes of their own. A nested line that carries the tag under a line
   that is not in the story is a row of its own.
