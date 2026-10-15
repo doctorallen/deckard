@@ -47,6 +47,8 @@ suite('Terms', () => {
     assert.deepStrictEqual(termsIn('Standup moved to 10AM, the 5PM call, a 24H window, 30M in volume, 5K rows, 64GB, 10X, the 1ST'), []);
     assert.deepStrictEqual(termsIn('Turn on 2FA for 3DS and 4G'), ['2FA', '3DS', '4G']);
     assert.deepStrictEqual(termsIn('See `UAT`, [[UAT plan]], [notes](UAT.md), #UAT, @UAT and https://example.com/UAT'), []);
+    assert.deepStrictEqual(termsIn('See the [NDF desk](notes/desk.md) and ![UAT shot](u.png), then NDF'), ['NDF']);
+    assert.deepStrictEqual(readInlineDefinitions('[NDF (non-deliverable forward)](x.md)'), []);
     assert.deepStrictEqual(termsIn('UATs and path/UAT and file.UAT stay words'), []);
     assert.deepStrictEqual(termsIn('URGENT: UAT IS DOWN'), [], 'a shouted line');
     const at = findTermSpans('Ask about NDF today')[0];

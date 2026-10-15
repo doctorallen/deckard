@@ -1,6 +1,6 @@
 import { noteTitle } from '../index/backlinks';
 import { findFrontmatterEnd } from '../markdown/frontmatter';
-import { findCodeAndLinkRanges, InlineRange, isInRanges } from '../markdown/inlineRanges';
+import { findCodeAndLinkRanges, findMarkdownLinkRanges, InlineRange, isInRanges } from '../markdown/inlineRanges';
 import { findFencedLines, readHeading } from '../markdown/lineShapes';
 import { stripTags } from '../markdown/parser';
 import { isTaskLine } from '../markdown/taskDraft';
@@ -148,9 +148,14 @@ function isShouted(text: string): boolean {
   return !/\p{Ll}/u.test(text) && (text.match(/\p{L}+/gu) ?? []).length >= 2;
 }
 
+/** Where a line's words are not its own: code, wiki links, and Markdown links, their words and targets both, and web addresses. */
+function findNotOwnRanges(text: string): InlineRange[] {
+  return [...findCodeAndLinkRanges(text), ...findMarkdownLinkRanges(text)];
+}
+
 /**
- * The terms written in one line, outside code, links, web addresses, and
- * tags; none in a shouted line.
+ * The terms written in one line, outside code, links (a Markdown link's
+ * words among them), web addresses, and tags; none in a shouted line.
  */
 export function findTermSpans(text: string): TermSpan[] {
   if (!MAY_HOLD_TERM.test(text) || isShouted(text)) {
@@ -163,7 +168,7 @@ export function findTermSpans(text: string): TermSpan[] {
     const start = match.index;
     const end = start + match[0].length;
     if (match[0].length > 1 && standsAlone(text, start, end) && isTermToken(match[0])) {
-      skipped ??= findCodeAndLinkRanges(text);
+      skipped ??= findNotOwnRanges(text);
       if (!isInRanges(skipped, start)) {
         spans.push({ term: match[0], start, end });
       }
@@ -289,7 +294,7 @@ export function readInlineDefinitions(text: string): InlineDefinition[] {
   if ((!parenthesized && !colon && !means) || !/[A-Z]/.test(text)) {
     return [];
   }
-  const skipped = findCodeAndLinkRanges(text);
+  const skipped = findNotOwnRanges(text);
   const found: InlineDefinition[] = [];
   const add = (rank: number) => (term: string, words: string, at: number): void => {
     const definition = tidyDefinition(words);

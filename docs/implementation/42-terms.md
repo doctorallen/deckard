@@ -84,7 +84,10 @@ made its words impractical:
   them. Reading the text once, without the index's entry grouping, keeps
   the 3,000-note build fast.
 - **What is skipped.** Front matter is skipped whole, values as well as
-  keys: a term note's own `term: NDF` is no use of NDF. Beside the plan's
+  keys: a term note's own `term: NDF` is no use of NDF. A Markdown link is
+  skipped whole, its words as well as its target (QA: `[NDF desk](…)` was
+  counted and underlined), as the guide says; tags in a link's words are
+  still tags (`findMarkdownLinkRanges`). Beside the plan's
   list, the capitalized words left out are the English ones written for
   emphasis (`NOT`, `AND`, `ALL`, `NEW`…), the Markdown alert words (`TIP`,
   `WARNING`, `CAUTION`, `INFO`), and `FIXME`, `XXX`, `TBD`, `WIP`, `ASAP`,
