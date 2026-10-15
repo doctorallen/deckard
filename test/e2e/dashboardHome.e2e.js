@@ -284,7 +284,7 @@ test('a Dashboard opened on the Tags tab tells Related Notes what Home can add',
   const sent = view.posted.filter((message) => message.type === 'widgetChoices');
   assert.strictEqual(sent.length, 1, 'told once, before Home is shown');
   const offered = sent[0].choices.map((choice) => choice.value);
-  assert.ok(offered.includes('stats'), 'a widget Home does not hold is offered');
+  assert.ok(offered.includes('progress'), 'a widget Home does not hold is offered');
   assert.ok(!offered.includes('search'), 'one it holds, that cannot repeat, is not');
 });
 
@@ -362,12 +362,12 @@ test('a widget Related Notes adds while the Tags tab shows is added on Home, in 
   const { view, panel, preferences } = await openDashboard(createIndex(), (store) =>
     store.homeWidgets.setDashboardMode('browse'),
   );
-  panel._deliver({ type: 'addWidget', value: 'stats' });
+  panel._deliver({ type: 'addWidget', value: 'progress' });
   await delay(20);
   assert.strictEqual(view.find('#home-panel').hidden, false, 'Home is shown');
   assert.ok(view.find('.home-edit-bar'), 'being customized');
   assert.strictEqual(preferences.reader.value.dashboardViewState.mode, 'home');
-  const added = view.find('.home-widget[data-widget-id^="stats-"]');
+  const added = view.find('.home-widget[data-widget-id^="progress-"]');
   assert.ok(added, 'with the new widget drawn');
   assert.strictEqual(view.document.activeElement, added, 'and focused');
 });
@@ -905,7 +905,7 @@ test('a full Home offers no widget to add, and says why, rather than drop its la
   assert.match(view.find('.home-edit-bar').textContent, /Home is full: it holds 30 widgets at most\. Remove one to add another\./);
 
   // Related Notes may still ask, from a list it was sent before.
-  panel._deliver({ type: 'addWidget', value: 'stats' });
+  panel._deliver({ type: 'addWidget', value: 'progress' });
   await delay(20);
   assert.deepStrictEqual(view.posted.filter((message) => message.type === 'setDashboardWidgets'), []);
   assert.strictEqual(view.find('#live-status').textContent, 'Home is full: it holds 30 widgets at most. Remove one to add another.');
