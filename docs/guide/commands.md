@@ -9,6 +9,7 @@
 | **Deckard: Open Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Calendar** | Opens the calendar across the editor, each day listing its tasks; see [Calendar](daily-notes.md#calendar). |
 | **Deckard: Open Help** | Opens this guide inside VS Code, its pages down the side; see [Reading this guide](getting-started.md#reading-this-guide). |
+| **Deckard: Choose Pages…** | Picks which of Deckard's pages the Context view keeps, as icons in its title bar or as a list; also in the title bar's **⋯**, with **List Pages in Context** and **Move Pages to the Title Bar**; see [Finding your way](getting-started.md#finding-your-way). |
 | **Deckard: Choose Theme…** | Previews each theme on the open pages; Enter keeps one, Escape goes back. |
 | **Deckard: Toggle Zen** | Turns Zen on or off on every Deckard page, as the **Zen** checkbox in a page's **⋯** does; see [Zen](themes-and-zen.md#zen). |
 | **Deckard: Choose Date Format…** | Shows today in each format; **Custom…** says it back as you type; see [Dates](themes-and-zen.md#dates). |

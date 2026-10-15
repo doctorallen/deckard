@@ -313,12 +313,12 @@
       },
       {
         "command": "deckard.contextPagesAsList",
-        "title": "Show Pages as a List",
+        "title": "List Pages in Context",
         "category": "Deckard"
       },
       {
         "command": "deckard.contextPagesAsIcons",
-        "title": "Show Pages as Icons in the Title Bar",
+        "title": "Move Pages to the Title Bar",
         "category": "Deckard"
       },
       {
