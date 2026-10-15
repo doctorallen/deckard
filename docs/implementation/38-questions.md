@@ -143,8 +143,8 @@ impractical:
   is uncommon when it is no stop word, not one of a short list of words
   every note writes (*today*, *meeting*, *notes*…), and in at most 2% of
   lines (any such word below 50 lines). A typed row's field answers first,
-  ahead of any line. Not it is kept as `<question id>␀<hash of the line's
-  words>` in workspace state under `deckard.questions.notIt`, the last 500,
+  ahead of any line. Not it is kept as `<question's note>␀<hash of its
+  words>␀<hash of the line's words>` in workspace state under `deckard.questions.notIt`, the last 500,
   apart from the preferences blob, as plan 38 asks.
 - **The lens** has its own switch, `deckard.editor.questions`, as every
   group of lenses does (on in Full, Tasks, and Writing; off in Off). Its
@@ -229,3 +229,16 @@ Fixed after QA, before release:
   after one of its partial results was opened. It is counted only when the
   reader leaves without opening a row (or a day, a capture, a new note, or
   a link), and still forgotten once the words are asked.
+- **Not it** was kept by the question's id, which counts its line, so a
+  line written above a question brought back the offer set aside. It is
+  kept by the question's note and a hash of its words instead (unshipped,
+  so nothing is moved over); a question asked in other words is offered
+  again.
+- **The answer's day** was the first day on the answer's line, so Use as
+  answer's `[[2026-09-02#Access]] (2026-10-14)` was dated by its link. The
+  `(YYYY-MM-DD)` at the line's end is read first, and links are left out
+  of the words searched for any other day.
+- **A tab-indented question** was answered by a line indented less far,
+  since indentation was compared in characters. The answer, and the lines
+  that never answer a question, now compare it in columns, a tab reaching
+  the next multiple of four, as list nesting does (`lineIndent`).

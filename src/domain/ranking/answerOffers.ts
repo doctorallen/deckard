@@ -7,6 +7,7 @@
 import { noteTitle } from '../index/backlinks';
 import { listOpenQuestions, readQuestionTagKeys } from '../index/questions';
 import { startOfDay } from '../markdown/calendar';
+import { lineIndent } from '../markdown/listNesting';
 import type { Question, WorkspaceIndex } from '../model';
 import { answerQuestion } from '../types/typeAnswers';
 import { getTypeIndex, type TypeIndex } from '../types/typeIndex';
@@ -31,7 +32,7 @@ export interface AnswerOffer {
   source?: string;
   /** The day it was written, as near as its note says. */
   at?: number;
-  /** What Not it keeps it by, with the question's id: a hash of its words. */
+  /** What Not it keeps it by, with the question's: a hash of its words. */
   key: string;
   score: number;
   /** The uncommon words it shares with the question, the weightiest first. */
@@ -40,13 +41,18 @@ export interface AnswerOffer {
 
 /** What offering answers reads besides the index. */
 export interface AnswerOfferOptions {
-  /** The pairs set aside with Not it, each `notItKey(question id, offer key)`. */
+  /** The pairs set aside with Not it, each `notItKey(question, offer key)`. */
   rejected: ReadonlySet<string>;
 }
 
-/** The key a question and an offer set aside with Not it are kept by. */
-export function notItKey(questionId: string, offerKey: string): string {
-  return `${questionId}\u0000${offerKey}`;
+/**
+ * The key a question and an offer set aside with Not it are kept by: the
+ * question's note and a hash of its words, and the offer's key. Not its id,
+ * which counts its line, so a line written above it would bring back what
+ * was set aside.
+ */
+export function notItKey(question: Pick<Question, 'filePath' | 'title'>, offerKey: string): string {
+  return `${question.filePath}\u0000${hashLine(question.title)}\u0000${offerKey}`;
 }
 
 /**
@@ -61,7 +67,7 @@ export function findAnswerOffers(index: WorkspaceIndex, options: AnswerOfferOpti
   const types = getTypeIndex(index);
   listOpenQuestions(index).forEach((question) => {
     const offer = [...offerField(types, question), ...offerLines(index, question)].find(
-      (candidate) => !options.rejected.has(notItKey(question.id, candidate.key)),
+      (candidate) => !options.rejected.has(notItKey(question, candidate.key)),
     );
     if (offer) {
       offers.set(question.id, offer);
@@ -136,7 +142,8 @@ function offerLines(index: WorkspaceIndex, question: Question): AnswerOffer[] {
 
 /** The question's own line and the lines indented under it, which never answer it. */
 function underQuestion(lines: readonly IndexedLine[], question: Question): number[] {
-  const indent = (text: string): number => text.match(/^\s*/)?.[0].length ?? 0;
+  // In columns, a tab to the next multiple of four, as the answer is found.
+  const indent = lineIndent;
   const own = indent(question.sourceLineText);
   const under = [question.lineNumber];
   for (const line of lines) {

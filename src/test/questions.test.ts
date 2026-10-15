@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 
+import { formatIsoDate } from '../domain/markdown/calendar';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
@@ -68,6 +69,24 @@ suite('Questions: reading a note', () => {
     assert.strictEqual(new Date(first.answer?.answeredAt ?? 0).getDate(), 14);
     assert.deepStrictEqual(second.answer, { text: 'in the wiki', lineNumber: 5 });
     assert.strictEqual(third.answer, undefined, 'a line not indented under it answers nothing');
+  });
+
+  test('an answer is dated by the day written at its end, not by a day its link names', () => {
+    const [question] = parseMarkdown('notes/2026-10-01.md', [
+      '# 2026-10-01',
+      '- [?] Who approves?',
+      '  - Answer: Priya approves it [[2026-09-02#Access]] (2026-10-14)',
+    ].join('\n')).questions ?? [];
+    assert.strictEqual(formatIsoDate(question.answer?.answeredAt ?? 0), '2026-10-14');
+    const [linkOnly] = parseMarkdown('notes/q.md', '- [?] Who approves?\n  - Answer: as [[2026-09-02#Access]] says\n').questions ?? [];
+    assert.strictEqual(linkOnly.answer?.answeredAt, undefined, 'a day in a link alone dates nothing');
+  });
+
+  test('a tab-indented question is answered only by a line indented further, in columns', () => {
+    const [question] = parseMarkdown('notes/q.md', '# A\n- Parent\n\t- [?] Who approves?\n  - Answer: not under it\n').questions ?? [];
+    assert.strictEqual(question.answer, undefined, `answered by ${question.answer?.text}`);
+    const [under] = parseMarkdown('notes/q.md', '# A\n- Parent\n\t- [?] Who approves?\n\t\t- Answer: Priya\n').questions ?? [];
+    assert.strictEqual(under.answer?.text, 'Priya');
   });
 
   test('a question line starts no tagged entry, and a fenced one is no question', () => {
@@ -204,9 +223,34 @@ suite('Questions: offering an answer', () => {
   test('Not it sets a pair aside, and the next best is offered, or none', () => {
     const { index } = offersOf();
     const first = [...findAnswerOffers(index, { rejected: new Set() }).values()];
-    const rejected = new Set(first.map((offer) => notItKey(offer.questionId, offer.key)));
+    const rejected = new Set(first.map((offer) => notItKey(getQuestions(index).get(offer.questionId)!, offer.key)));
     assert.deepStrictEqual([...findAnswerOffers(index, { rejected }).values()], []);
     assert.strictEqual(hashLine('- Priya approves'), hashLine('* Priya   approves'), 'a pair is kept by the line\'s words');
+  });
+
+  test('Not it holds once a line is written above the question, and lets go once its words change', () => {
+    const asked = '# 2026-10-01\n- [?] Who approves access to the bond UAT environment?\n';
+    const answer = '# 2026-10-14\n## Access\n- Priya approves bond UAT environment access via RATES-UAT\n';
+    const before = indexOf({ 'notes/2026-10-01.md': asked, 'notes/2026-10-14.md': answer });
+    const [question] = [...getQuestions(before).values()];
+    const offer = findAnswerOffers(before, { rejected: new Set() }).get(question.id);
+    assert.ok(offer, 'an offer is made');
+    const rejected = new Set([notItKey(question, offer.key)]);
+    const above = indexOf({ 'notes/2026-10-01.md': asked.replace('\n', '\nA line written later.\n'), 'notes/2026-10-14.md': answer });
+    assert.notStrictEqual([...getQuestions(above).keys()][0], question.id, 'the question\'s id counts its line');
+    assert.strictEqual(findAnswerOffers(above, { rejected }).size, 0, 'what was set aside stays aside');
+    const reworded = indexOf({ 'notes/2026-10-01.md': asked.replace('Who approves', 'Who grants'), 'notes/2026-10-14.md': answer });
+    assert.strictEqual(findAnswerOffers(reworded, { rejected }).size, 1, 'a question asked in other words is asked again');
+  });
+
+  test('under a tab-indented question, indentation is read in columns: a line further in never answers it, one less far in may', () => {
+    const offered = (under: string) =>
+      findAnswerOffers(
+        indexOf({ 'notes/2026-10-01.md': `# 2026-10-01\n- Parent\n\t- [?] Who approves bond UAT environment access?\n${under}\n` }),
+        { rejected: new Set() },
+      ).size;
+    assert.strictEqual(offered('\t  - Priya approves bond UAT environment access, a note under it'), 0);
+    assert.strictEqual(offered('  - Priya approves bond UAT environment access, under the parent'), 1);
   });
 
   test('a line sharing two words is not offered', () => {
