@@ -84,7 +84,7 @@ suite('Said they would in the editor', () => {
       await vscode.commands.executeCommand('workbench.action.closeAllEditors');
       tracking.dispose();
       marks.dispose();
-      rmSync(folder, { recursive: true, force: true });
+      rmSync(folder, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 
@@ -128,7 +128,7 @@ suite('Said they would in the editor', () => {
       await configuration.update('editor.trackPromises', undefined, vscode.ConfigurationTarget.Global);
       await vscode.commands.executeCommand('workbench.action.files.revert');
       await vscode.commands.executeCommand('workbench.action.closeAllEditors');
-      rmSync(folder, { recursive: true, force: true });
+      rmSync(folder, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
     }
   });
 });
