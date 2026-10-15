@@ -6,6 +6,7 @@ import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import type { WorkspaceIndex } from '../domain/model';
 import { NavigationService } from '../services/navigationService';
+import { ActiveHome, HomeSource } from '../ui/webview/activeHome';
 import { WebviewHost } from '../ui/webview/host/webviewHost';
 import {
   DashboardController,
@@ -86,6 +87,8 @@ function openHome(scan: { hasIndexed: boolean } = { hasIndexed: true }) {
   const preferences = createPreferences(createStore() as never);
   const navigation = createNavigation();
   const ledger = createLedger();
+  const source: HomeSource = { getWidgetChoices: () => [], addWidget: () => undefined, resetWidgets: async () => undefined };
+  const activeHome = new ActiveHome();
   const controller = new DashboardController({
     indexer,
     preferences,
@@ -94,7 +97,9 @@ function openHome(scan: { hasIndexed: boolean } = { hasIndexed: true }) {
     tryNext: ledger,
     writes: createTaskWrites(),
     navigationService: new NavigationService(),
+    source,
   });
+  controller.activeHome = activeHome;
   const host = new WebviewHost(controller, { indexer, themePreview: new ThemePreview() });
   const surface = new FakeSurface();
   host.attach(surface);
@@ -106,6 +111,8 @@ function openHome(scan: { hasIndexed: boolean } = { hasIndexed: true }) {
     preferences,
     navigation,
     ledger,
+    source,
+    activeHome,
     entry: [...index.sections.keys()][0],
     send: (message: unknown) => surface.webview.send(message),
     states: () => surface.webview.postedOf<State>('state'),
@@ -115,6 +122,7 @@ function openHome(scan: { hasIndexed: boolean } = { hasIndexed: true }) {
     },
     dispose: () => {
       host.dispose();
+      activeHome.dispose();
     },
   };
 }
@@ -269,6 +277,43 @@ suite('Dashboard host', () => {
       home.surface.setVisible(false);
       home.surface.setVisible(true);
       assert.strictEqual(home.states().length, 3, 'Today has turned');
+    } finally {
+      home.dispose();
+    }
+  });
+
+  test('is the active source while its panel is in front, and not once disposed of', () => {
+    const home = openHome();
+    try {
+      assert.strictEqual(home.activeHome.active, home.source, 'a panel opened in front');
+      home.surface.setVisible(false);
+      assert.strictEqual(home.activeHome.active, undefined);
+      home.surface.setVisible(true);
+      assert.strictEqual(home.activeHome.active, home.source);
+      home.surface.dispose();
+      assert.strictEqual(home.activeHome.active, undefined, 'a closed panel is not in front');
+
+      const reopened = new FakeSurface();
+      home.host.attach(reopened);
+      assert.strictEqual(home.activeHome.active, home.source);
+      home.host.dispose();
+      // Disposing of Home stops its panel's listeners before closing it, so
+      // the close is never heard; disposing releases it instead.
+      assert.strictEqual(home.activeHome.active, undefined, 'a disposed Home is not in front');
+      assert.strictEqual(reopened.closed, true);
+    } finally {
+      home.dispose();
+    }
+  });
+
+  test('keeps the widgets + Add widget offers, and tells Related Notes', async () => {
+    const home = openHome();
+    let changes = 0;
+    home.activeHome.onDidChange(() => (changes += 1));
+    try {
+      await home.send({ type: 'widgetChoices', choices: [{ value: 'stats', label: 'Stats', description: '' }] });
+      assert.deepStrictEqual(home.controller.getWidgetChoices(), [{ value: 'stats', label: 'Stats' }]);
+      assert.strictEqual(changes, 1);
     } finally {
       home.dispose();
     }

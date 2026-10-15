@@ -22,7 +22,7 @@ import { closeTagContextMenu, hasTagContextMenu, isTagContextMenuOpen, openTagCo
 import { installViewOptions } from '../shared/viewOptions';
 import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { keepState, keptState, post, vscodeApi } from '../shared/vscode';
-import { type CardDisplay, GraphConnections, NoTags, RankedNoteCards, Similar } from './cards';
+import { type CardDisplay, CustomizeHome, GraphConnections, NoTags, RankedNoteCards, Similar } from './cards';
 import { Context, RelatedNotesControls } from './context';
 import { Links } from './links';
 import { choicesToKeep, isPageInFront, NOTE_PAGE_SIZE, noteListKey, previewLines, readChoices, type SidebarChoices, type SidebarStore } from './model';
@@ -73,6 +73,7 @@ type OwnContent = (snapshot: SidebarNotesSnapshot, display: CardDisplay) => Comp
 
 /** The states that draw something of their own in place of the related notes, and what each draws. */
 const OWN_CONTENT: Partial<Record<SidebarNotesSnapshot['state'], OwnContent>> = {
+  customizeHome: (snapshot) => <CustomizeHome widgets={snapshot.homeWidgets || []} />,
   calendarDay: (snapshot) => (snapshot.calendarDay ? <DayPanel day={snapshot.calendarDay} shownGroups={choices.shownGroups} /> : null),
   refine: (snapshot) => (snapshot.refine ? <Refine refine={snapshot.refine} expanded={choices.expandedRefine} /> : null),
   graph: (snapshot) => <GraphConnections graph={snapshot.graph as NonNullable<SidebarNotesSnapshot['graph']>} />,
@@ -245,6 +246,18 @@ function eventTarget(event: Event): Element | null {
   return event.target instanceof Element ? event.target : null;
 }
 
+// Home's widgets, while Home is in front: each is Home's to add, and to reset.
+document.addEventListener('click', (event) => {
+  const target = eventTarget(event);
+  const add = target ? target.closest<HTMLElement>('[data-action="home-add-widget"]') : null;
+  if (add) {
+    send({ type: 'homeAddWidget', value: String(add.dataset.value) });
+    return;
+  }
+  if (target && target.closest('[data-action="home-reset-widgets"]')) {
+    send({ type: 'homeResetWidgets' });
+  }
+});
 // The context, the Links groups, and the other rows of the note's type stay
 // as the reader left them across draws.
 document.addEventListener('toggle', (event) => {

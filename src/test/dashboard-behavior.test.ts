@@ -378,7 +378,18 @@ suite('Dashboard behavior', () => {
     assert.strictEqual(page.findAll('.home-reset-confirm').length, 0, 'no inline confirmation');
   });
 
-  test('+ Add widget adds one first, after Try next, and the host is not told what it offers', () => {
+  test('tells the host what + Add widget offers, and adds one the host sends, customizing first', () => {
+    const { page } = open();
+    const choices = page.lastPosted('widgetChoices')?.choices as Array<{ value: string }>;
+    assert.ok(choices.some((choice) => choice.value === 'topTags'), 'the list the select offers');
+    page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'addWidget', value: 'topTags' } }));
+    assert.ok(page.find('.home-edit-bar'), 'Home is customizing');
+    const widgets = page.lastPosted('setDashboardWidgets')?.widgets as Array<{ kind: string }>;
+    const at = widgets[0].kind === 'tryNext' ? 1 : 0;
+    assert.strictEqual(widgets[at].kind, 'topTags', 'added first, after Try next, where it is seen');
+  });
+
+  test('+ Add widget on Home adds one first, after Try next', () => {
     const { page } = open();
     page.click('[data-action="customize-home"]');
     const select = page.find('select[data-action="add-widget"]') as HTMLSelectElement;
@@ -388,8 +399,6 @@ suite('Dashboard behavior', () => {
     const widgets = page.lastPosted('setDashboardWidgets')?.widgets as Array<{ kind: string }>;
     const at = widgets[0].kind === 'tryNext' ? 1 : 0;
     assert.strictEqual(widgets[at].kind, 'topTags', 'added first, after Try next, where it is seen');
-    // Context no longer lists Home's widgets, so the page keeps its list to itself.
-    assert.strictEqual(page.lastPosted('widgetChoices'), undefined);
   });
 
   test('turns paging on for a widget', () => {

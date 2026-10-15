@@ -61,6 +61,8 @@ The first pin adds the **Pinned notes** widget under Home's search, if Home does
 - <kbd>Escape</kbd> closes a widget's gear.
 - **Reset widgets…** asks, then restores the starting widgets; **Finish** ends customizing.
 
+While Home is the active editor, the Context sidebar lists every widget Home can add. Click one to show Home, start customizing, and add it. **Reset widgets…** is there too.
+
 The arrangement is kept in VS Code's preferences, not your notes.
 
 ### The Tags tab

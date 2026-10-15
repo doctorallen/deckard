@@ -256,6 +256,12 @@ export interface ResetDashboardWidgetsMessage {
   type: 'resetDashboardWidgets';
 }
 
+/** What Home's + Add widget offers, for Related Notes to offer too. */
+export interface DashboardWidgetChoicesMessage {
+  type: 'widgetChoices';
+  choices: { value: string; label: string; description?: string }[];
+}
+
 /** Opens today's daily note, creating it when it does not exist yet. */
 export interface OpenDailyNoteMessage {
   type: 'openDailyNote';
@@ -369,6 +375,7 @@ export interface DashboardPageToHost {
   recordRecentQuery: RecordRecentQueryMessage;
   setDashboardWidgets: SetDashboardWidgetsMessage;
   resetDashboardWidgets: ResetDashboardWidgetsMessage;
+  widgetChoices: DashboardWidgetChoicesMessage;
   openWhatsNew: MessageAs<WhatsNewMessage, 'openWhatsNew'>;
   dismissWhatsNew: MessageAs<WhatsNewMessage, 'dismissWhatsNew'>;
   runTryNext: MessageAs<TryNextMessage, 'runTryNext'>;
@@ -395,10 +402,18 @@ export interface DashboardPageState extends DashboardSnapshot {
   parkedTags: string[];
 }
 
+/** A widget chosen in Related Notes, which Home adds while customizing. */
+export interface AddWidgetMessage {
+  type: 'addWidget';
+  /** The widget's kind, as + Add widget names it. */
+  value: string;
+}
+
 /** What the host sends the Dashboard, by type. */
 export interface DashboardHostToPage {
   state: StateMessage<DashboardPageState>;
   indexing: IndexingMessage;
+  addWidget: AddWidgetMessage;
 }
 
 /** Home's tiles: what is overdue, due today, and open, each a search. */

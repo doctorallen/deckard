@@ -36,7 +36,7 @@ The research read the official guide and samples and the webview source of GitLe
 | `PageContext` | `pageController.ts` | What a handler or hook may ask of the host: `refresh()`, `post(message)`, `postState(data)` (a snapshot the controller built, timed, and logged itself, kept as the last sent), `renderHtml()`, and `surface` |
 | `narrowWith`, the shared narrowers | `narrowing.ts` | Turns a page's table into its narrowing function. Holds the checks that two or more pages make identically today, `narrowAs(type, narrow)`, which lists a check that serves two types under one of them, and `isRequestId`. |
 | The shared handlers | `sharedHandlers.ts` | Factories for the handlers that two or more pages run identically today: `chooseTheme`, `setZenMode`, `openHelp(section?)`, `ready`, `renameTag`, `parkTag` (both types), `toggleTask`, `openSource`, and `openTag` |
-| `ActiveSource<T>` | `activeSource.ts` | Which page of a kind is in front, and whether the sidebar shows its part. It is the one shape of `ActiveSearch` and `ActiveCalendar`. |
+| `ActiveSource<T>` | `activeSource.ts` | Which page of a kind is in front, and whether the sidebar shows its part. It is the one shape of `ActiveSearch`, `ActiveCalendar`, and `ActiveHome`. |
 | `panelPriority`, `viewPriority` | `panelPriority.ts` | A panel's or view's redraw priority |
 | `buildPageShell`, `getContentSecurityPolicy`, `joinUnder` | `pageShell.ts` | A page's document, its policy, and a file under the extension's folder joined as `vscode.Uri.joinPath` joins one; see [Bundling and loading](#bundling-and-loading). Added in step 3. It names no `vscode` type: it takes the webview as a `ShellWebview` and the folder as a `ShellUri`, so a page builds without the extension host. |
 | `pageResourceRoots` | `surface.ts` | The folders a page's webview may load from |
@@ -347,7 +347,7 @@ The date steps both calendars take are `domain/markdown/calendar.ts`'s (D1): `sh
 | --- | --- |
 | `main.tsx` | The page as it runs: the store, the listeners in the order the template registered them, arranging Home (adding, removing with Undo, resizing, ranking, and each widget's settings), the tag search told to the host once typing settles, and what the host sends: `state` |
 | `header.tsx` | The page's bar (its name, the three tiles, and ⋯, which leads with Customize Home…), and the Home and Tags tabs, with a quiet Customize at their right |
-| `home.tsx` | Home: the bar it is arranged from, the line saying what is new or that it can be arranged, the way in for a workspace with no notes in the grid's place, the grid, and `widgetChoices`, what + Add widget offers |
+| `home.tsx` | Home: the bar it is arranged from, the line saying what is new or that it can be arranged, the way in for a workspace with no notes in the grid's place, the grid, and `widgetChoices`, what + Add widget offers and the host hands Context |
 | `widgets.tsx`, `widgetBodies.tsx`, `rows.tsx` | One widget in its frame, with its gear and pager; what each kind shows; and the rows they list |
 | `tagsTab.tsx`, `tagNames.ts` | The Tags tab, and how it names a tag by the namespace the host sends and narrows the tags |
 | `model.ts`, `keptView.ts`, `homeContext.ts`, `icons.tsx` | The page's own state, what it keeps with `setState`, what a widget is drawn with, and its glyphs |

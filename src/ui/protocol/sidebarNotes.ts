@@ -214,6 +214,8 @@ export interface SidebarNotesSnapshot {
   refine?: SearchRefineState;
   /** The calendar page's chosen day, while the page is in front. */
   calendarDay?: CalendarDayDetail;
+  /** The widgets Home can add, while Home is in front. */
+  homeWidgets?: { value: string; label: string; description?: string }[];
   state:
     | 'ready'
     | 'loading'
@@ -223,7 +225,8 @@ export interface SidebarNotesSnapshot {
     | 'noMatches'
     | 'graph'
     | 'refine'
-    | 'calendarDay';
+    | 'calendarDay'
+    | 'customizeHome';
 }
 
 /** A tag of the note being read, with its weight in the ranking. */
@@ -302,6 +305,17 @@ export interface RefineActiveSearchMessage {
  */
 export interface ClearEntryRelatedNotesMessage {
   type: 'clearEntryRelatedNotes';
+}
+
+/** Home's Customize: add a widget Home offers, by its value. */
+export interface HomeAddWidgetMessage {
+  type: 'homeAddWidget';
+  value: string;
+}
+
+/** Home's Customize: put Home's widgets back as they were at first. */
+export interface HomeResetWidgetsMessage {
+  type: 'homeResetWidgets';
 }
 
 /**
@@ -395,6 +409,8 @@ export interface SidebarNotesPageToHost {
   openTaskBoard: OpenTaskBoardMessage;
   createDailyNote: CreateDailyNoteMessage;
   openHelp: OpenHelpMessage;
+  homeAddWidget: HomeAddWidgetMessage;
+  homeResetWidgets: HomeResetWidgetsMessage;
   calendarDay: CalendarDayMessage;
   goToPage: GoToPageMessage;
   setPagesStyle: SetPagesStyleMessage;
