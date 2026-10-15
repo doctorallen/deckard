@@ -17,6 +17,36 @@ import { TaskPriority } from '../../domain/model';
 export const ADD_TASK_TOOL_NAME = 'deckard_add_task';
 /** The change-task tool's name, as the manifest declares it. */
 export const CHANGE_TASK_TOOL_NAME = 'deckard_change_task';
+/** The answer-question tool's name, as the manifest declares it. */
+export const ANSWER_QUESTION_TOOL_NAME = 'deckard_answer_question';
+
+/** An answer-question call, read: the question's note and line, and the answer's words. */
+export interface AnswerQuestionInput {
+  note: string;
+  line: number;
+  answer: string;
+}
+
+/**
+ * Reads an answer-question call, its answer's whitespace collapsed, or
+ * nothing when it names no note and line, or sends no answer, or one of
+ * more than 500 characters.
+ */
+export function readAnswerQuestionInput(value: unknown): AnswerQuestionInput | undefined {
+  if (
+    !isRecord(value) ||
+    typeof value.note !== 'string' ||
+    !value.note.trim() ||
+    typeof value.line !== 'number' ||
+    !Number.isInteger(value.line) ||
+    value.line < 1 ||
+    typeof value.answer !== 'string'
+  ) {
+    return undefined;
+  }
+  const answer = value.answer.trim().replace(/\s+/g, ' ');
+  return answer && answer.length <= MAX_TEXT ? { note: value.note.trim(), line: value.line, answer } : undefined;
+}
 
 /** An add-task call, read. */
 export interface AddTaskInput {

@@ -845,10 +845,11 @@ function createLinksAndAssistance(context: vscode.ExtensionContext, core: Core, 
   const { indexer, history, workspace } = core;
   const editorReferences = new EditorReferences(indexer).register();
   const editorLenses = new EditorLenses(indexer, questions.memory).register();
-  const assistantTools = new AssistantTools(indexer, history);
+  const assistantTools = new AssistantTools(indexer, history, undefined, questions.questions);
   const mcpServer = new DeckardMcpServer({
     indexer,
     history,
+    questions: questions.questions,
     secrets: context.secrets,
     tools: readManifestTools(
       context.extension.packageJSON.contributes?.languageModelTools,

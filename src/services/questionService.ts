@@ -7,7 +7,7 @@ import { setTaskStatus } from '../domain/tasks/statusWrites';
 import { readTaskStatusSettings } from '../domain/tasks/taskStatuses';
 import type { Clock } from '../ports/clock';
 import type { Configuration } from '../ports/configuration';
-import type { EditApplier, HistoryWriter, NoteText } from '../ports/editApplier';
+import type { EditApplier, HistoryWriteOptions, HistoryWriter, NoteText } from '../ports/editApplier';
 import type { ResourceUri } from '../ports/uri';
 
 /**
@@ -63,7 +63,12 @@ export class QuestionService<U extends ResourceUri, H = unknown> {
    * Writes an answer under a question, after whatever is under it already,
    * indented as the note nests its lists, ending with today's date.
    */
-  public async answer(question: QuestionTarget, answer: Omit<AnswerText, 'date'>): Promise<QuestionWrite<U, H>> {
+  public async answer(
+    question: QuestionTarget,
+    answer: Omit<AnswerText, 'date'>,
+    /** How the write is named and shown, when not as Answer… names it. */
+    shown: Partial<Pick<HistoryWriteOptions, 'label' | 'description' | 'preview'>> = {},
+  ): Promise<QuestionWrite<U, H>> {
     const opened = await this.open(question);
     if (opened.kind !== 'open') {
       return opened;
@@ -75,7 +80,7 @@ export class QuestionService<U extends ResourceUri, H = unknown> {
       const end = { line: plan.afterLine, character: note.lineAt(plan.afterLine).length };
       const result = await this.options.history.write(
         [{ uri, replacements: [{ range: { start: end, end }, text: `${note.eol}${line}` }] }],
-        { label: `answering ${quoteQuestion(question)}` },
+        { label: `answering ${quoteQuestion(question)}`, ...shown },
       );
       return result.applied ? { kind: 'written', handle: result.handle } : { kind: 'rejected', uri };
     } catch (error) {

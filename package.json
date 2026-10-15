@@ -53,7 +53,8 @@
     "onUri",
     "onLanguageModelTool:deckard_query",
     "onLanguageModelTool:deckard_list_tags",
-    "onLanguageModelTool:deckard_describe_tag"
+    "onLanguageModelTool:deckard_describe_tag",
+    "onLanguageModelTool:deckard_list_questions"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -2052,6 +2053,82 @@
           "required": [
             "note",
             "line"
+          ]
+        },
+        "when": "config.deckard.assistantTools"
+      },
+      {
+        "name": "deckard_list_questions",
+        "displayName": "List Deckard questions",
+        "toolReferenceName": "deckardQuestions",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(question)",
+        "tags": [
+          "deckard",
+          "notes",
+          "questions"
+        ],
+        "userDescription": "List the open questions written in the workspace's Markdown notes, oldest first.",
+        "modelDescription": "Lists the questions in the user's local Markdown notes, as indexed by the Deckard extension: lines written - [?], which are not tasks. A question is answered when an indented line under it starts with Answer:. Lists the open ones by default, oldest first, each with how long it has been open and its workspace-relative note and one-based line, which deckard_answer_question takes; state answered or all lists the others, with their answers. search keeps the questions whose words or tags hold every word it names.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "state": {
+              "type": "string",
+              "enum": [
+                "open",
+                "answered",
+                "all"
+              ],
+              "description": "Which questions: open (the default), answered, or all."
+            },
+            "search": {
+              "type": "string",
+              "description": "Only questions whose words or tags hold every word given, such as uat or #team/rates."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "The most questions to return. Defaults to 30."
+            }
+          }
+        },
+        "when": "config.deckard.assistantTools"
+      },
+      {
+        "name": "deckard_answer_question",
+        "displayName": "Answer a question in a Deckard note",
+        "toolReferenceName": "deckardAnswerQuestion",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(comment)",
+        "tags": [
+          "deckard",
+          "questions"
+        ],
+        "userDescription": "Writes an answer under a question in a note, after showing you the line.",
+        "modelDescription": "Writes an answer under one of the user's questions, named by its note and one-based line as deckard_list_questions reports them, as an indented line that starts with Answer: and ends with today's date. The answer is refused if the line is no longer the question the index knows, so ask deckard_list_questions first. Nothing is written until the user approves the exact line in a preview; the answer says whether it was written.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "note": {
+              "type": "string",
+              "description": "The question's note, workspace-relative, as deckard_list_questions reports it."
+            },
+            "line": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The question's one-based line, as deckard_list_questions reports it."
+            },
+            "answer": {
+              "type": "string",
+              "description": "The answer's words, such as \"Priya, via the RATES-UAT group\"."
+            }
+          },
+          "required": [
+            "note",
+            "line",
+            "answer"
           ]
         },
         "when": "config.deckard.assistantTools"

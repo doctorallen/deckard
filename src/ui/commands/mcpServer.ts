@@ -20,7 +20,7 @@ import { measure, measureAsync } from '../../shared/timing';
 import { settingTarget, writeSetting } from './settings';
 import { openSettingAction, reportFailure, settingLabel } from './notify';
 import { ASSISTANT_TOOLS, ToolRunners } from '../state/assistantTools';
-import { addTask, changeTask } from './assistantWrites';
+import { addTask, answerQuestion, type AnswerWrites, changeTask } from './assistantWrites';
 import { readQueryContext } from './queryContext';
 import { WorkspaceWriteHistory } from './workspaceWrites';
 import { WorkspaceIndex } from '../../domain/model';
@@ -62,6 +62,8 @@ export interface McpServerOptions {
    * Change takes back what a client wrote, as it does for VS Code's tools.
    */
   history: WorkspaceWriteHistory;
+  /** What the answer-question tool writes through; without it, the tool writes nothing. */
+  questions?: AnswerWrites;
   /** Where its token is kept. */
   secrets: SecretStore;
   /** The tools it lists, from the manifest. */
@@ -122,6 +124,7 @@ export class DeckardMcpServer implements vscode.Disposable {
 
   private readonly indexer: IndexSource;
   private readonly history: WorkspaceWriteHistory;
+  private readonly questions: AnswerWrites | undefined;
   private readonly secrets: SecretStore;
   private readonly tools: readonly McpTool[];
   private readonly version: string;
@@ -135,6 +138,7 @@ export class DeckardMcpServer implements vscode.Disposable {
   public constructor(options: McpServerOptions) {
     this.indexer = options.indexer;
     this.history = options.history;
+    this.questions = options.questions;
     this.secrets = options.secrets;
     this.tools = options.tools;
     this.version = options.version;
@@ -428,7 +432,7 @@ export class DeckardMcpServer implements vscode.Disposable {
     return {
       serverInfo: { name: 'deckard', version: this.version },
       instructions:
-        "Deckard indexes the Markdown notes and checklist tasks in the user's VS Code workspace. Use deckard_query to find notes and tasks, and deckard_list_tags first when you need a tag's exact name. Use deckard_describe_tag to describe one tag, person, or typed row: its type and fields (who leads a team, what it owns), the reverses other rows give it, its open tasks, and its latest entries. When the workspace defines types, deckard_query and deckard_list_tags name them and their fields.",
+        "Deckard indexes the Markdown notes and checklist tasks in the user's VS Code workspace. Use deckard_query to find notes and tasks, and deckard_list_tags first when you need a tag's exact name. Use deckard_describe_tag to describe one tag, person, or typed row: its type and fields (who leads a team, what it owns), the reverses other rows give it, its open tasks, and its latest entries. Use deckard_list_questions for the open questions the notes ask, lines written - [?], and deckard_answer_question to write an answer under one. When the workspace defines types, deckard_query and deckard_list_tags name them and their fields.",
       tools: this.tools,
       callTool: async (name, args) => {
         // An early call waits for the first scan rather than answer from part of it.
@@ -466,6 +470,7 @@ export class DeckardMcpServer implements vscode.Disposable {
       readQueryContext: () => readQueryContext(),
       addTask: (input) => addTask(this.indexer, this.history, input),
       changeTask: (input) => changeTask(this.indexer, this.history, input),
+      answerQuestion: (input) => answerQuestion(this.indexer, this.questions, input),
     };
   }
 }

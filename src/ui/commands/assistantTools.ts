@@ -4,15 +4,16 @@ import { measure, measureAsync } from '../../shared/timing';
 import {
   ASSISTANT_TOOLS,
   AssistantTool,
+  LIST_QUESTIONS_TOOL_NAME,
   QUERY_TOOL_NAME,
   TAGS_TOOL_NAME,
   ToolAnswer,
   ToolRunners,
 } from '../state/assistantTools';
-import { addTask, changeTask } from './assistantWrites';
+import { addTask, answerQuestion, type AnswerWrites, changeTask } from './assistantWrites';
 import { readQueryContext } from './queryContext';
 import { WorkspaceWriteHistory } from './workspaceWrites';
-import { ADD_TASK_TOOL_NAME, CHANGE_TASK_TOOL_NAME } from '../state/assistantWriteInput';
+import { ADD_TASK_TOOL_NAME, ANSWER_QUESTION_TOOL_NAME, CHANGE_TASK_TOOL_NAME } from '../state/assistantWriteInput';
 import { DESCRIBE_TAG_TOOL_NAME } from '../state/assistantDescribe';
 import { WorkspaceIndex } from '../../domain/model';
 
@@ -47,12 +48,14 @@ export class AssistantTools implements vscode.Disposable {
   public readonly describeTagTool: vscode.LanguageModelTool<unknown>;
   public readonly addTaskTool: vscode.LanguageModelTool<unknown>;
   public readonly changeTaskTool: vscode.LanguageModelTool<unknown>;
+  public readonly listQuestionsTool: vscode.LanguageModelTool<unknown>;
+  public readonly answerQuestionTool: vscode.LanguageModelTool<unknown>;
   private readonly registrations: vscode.Disposable[];
   /** Whether the user has let an assistant read notes in this session. */
   private allowed = false;
 
   /**
-   * Registers the five tools with VS Code (or with `register`, in a test).
+   * Registers the seven tools with VS Code (or with `register`, in a test).
    * Each answers only while `deckard.assistantTools` is on and the user has
    * agreed to it.
    */
@@ -61,12 +64,15 @@ export class AssistantTools implements vscode.Disposable {
     /** The history the add-task and change-task tools write to. */
     private readonly history: WorkspaceWriteHistory,
     register: RegisterTool = (name, tool) => vscode.lm.registerTool(name, tool),
+    /** What the answer-question tool writes through; without it, the tool writes nothing. */
+    private readonly questions?: AnswerWrites,
   ) {
     const runners: ToolRunners = {
       getSnapshot: () => this.indexer.getSnapshot(),
       readQueryContext: () => readQueryContext(),
       addTask: (input) => addTask(this.indexer, this.history, input),
       changeTask: (input) => changeTask(this.indexer, this.history, input),
+      answerQuestion: (input) => answerQuestion(this.indexer, this.questions, input),
     };
     const tools = new Map(
       ASSISTANT_TOOLS.map((tool) => [tool.name, this.adapt(tool, runners)] as const),
@@ -76,10 +82,12 @@ export class AssistantTools implements vscode.Disposable {
     this.describeTagTool = toolNamed(tools, DESCRIBE_TAG_TOOL_NAME);
     this.addTaskTool = toolNamed(tools, ADD_TASK_TOOL_NAME);
     this.changeTaskTool = toolNamed(tools, CHANGE_TASK_TOOL_NAME);
+    this.listQuestionsTool = toolNamed(tools, LIST_QUESTIONS_TOOL_NAME);
+    this.answerQuestionTool = toolNamed(tools, ANSWER_QUESTION_TOOL_NAME);
     this.registrations = [...tools].map(([name, tool]) => register(name, tool));
   }
 
-  /** Unregisters the five tools. */
+  /** Unregisters the seven tools. */
   public dispose(): void {
     this.registrations.forEach((registration) => registration.dispose());
   }
@@ -187,7 +195,7 @@ export class AssistantTools implements vscode.Disposable {
   }
 }
 
-/** A tool the table must hold; the five names are the table's own. */
+/** A tool the table must hold; the seven names are the table's own. */
 function toolNamed(
   tools: ReadonlyMap<string, vscode.LanguageModelTool<unknown>>,
   name: string,

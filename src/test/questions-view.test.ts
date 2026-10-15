@@ -24,6 +24,7 @@ import { createQueryContext } from '../domain/query/queryContext';
 import { formatQuestionLine } from '../domain/markdown/questionLines';
 import { createPreferences, MemoryStore } from './preferenceServices';
 import { listGoToItems } from '../ui/views/pagesTree';
+import { answerQuestion } from '../ui/commands/assistantWrites';
 
 /** A key-value store in memory, as the workspace's state is. */
 function memoryStore(): ConstructorParameters<typeof QuestionMemory>[0] {
@@ -261,5 +262,28 @@ suite('Go to… and questions', () => {
     const last = items[items.length - 1];
     assert.deepStrictEqual([last.label, last.description, last.command, last.args], ['Open questions', '1 open', 'deckard.searchNotes', ['is:unanswered']]);
     assert.strictEqual(items[0].label, 'Home', 'the pages come first');
+  });
+});
+
+suite('The assistant answers a question', () => {
+  const built = buildWorkspaceIndex(new Map([['notes/q.md', parseMarkdown('notes/q.md', '# Q\n- [?] Who approves access?\n')]]));
+  const source = { ready: Promise.resolve(), getSnapshot: () => built };
+
+  test('writes through the question service, shown in the preview, and says so', async () => {
+    const asked: unknown[] = [];
+    const answer = await answerQuestion(source, {
+      answer: async (question, words, shown) => {
+        asked.push([question.lineNumber, words, shown?.preview]);
+        return { kind: 'written', handle: undefined };
+      },
+    }, { note: 'notes/q.md', line: 2, answer: 'Priya' });
+    assert.deepStrictEqual(asked, [[2, { text: 'Priya' }, 'always']]);
+    assert.match(answer.text, /^Wrote the answer under the question at notes\/q\.md line 2/);
+  });
+
+  test('refuses a line no question is on, and says when the reader declined', async () => {
+    const declined = { answer: async () => ({ kind: 'rejected' as const, uri: vscode.Uri.file('/q.md') }) };
+    assert.strictEqual((await answerQuestion(source, declined, { note: 'notes/q.md', line: 1, answer: 'x' })).isError, true);
+    assert.match((await answerQuestion(source, declined, { note: 'notes/q.md', line: 2, answer: 'x' })).text, /declined/);
   });
 });

@@ -4,7 +4,9 @@ import {
   parseTaskDraft,
   TaskDraft,
 } from '../../domain/markdown/taskDraft';
-import { AddTaskInput, ChangeTaskInput } from '../state/assistantWriteInput';
+import { AddTaskInput, AnswerQuestionInput, ChangeTaskInput } from '../state/assistantWriteInput';
+import { getQuestions, questionText } from '../../domain/index/questions';
+import type { QuestionService } from '../../services/questionService';
 import { ensureDailyNote } from './dailyNote';
 import { confirmNotesWrite } from './writeTarget';
 import { resolveSourceUri } from './navigation';
@@ -299,3 +301,44 @@ function shorten(text: string): string {
   return text.length > 60 ? `${text.slice(0, 59)}…` : text;
 }
 
+
+/** What answering a question writes through: the question service, over the editor and the history. */
+export type AnswerWrites = Pick<QuestionService<vscode.Uri, unknown>, 'answer'>;
+
+/**
+ * Writes `input.answer` under the question at `input.note` line
+ * `input.line`, through the refactor preview. Refuses when no question is
+ * indexed there, or when its line no longer reads as the index knows it.
+ */
+export async function answerQuestion(
+  indexer: WriteIndexSource,
+  questions: AnswerWrites | undefined,
+  input: AnswerQuestionInput,
+): Promise<WriteAnswer> {
+  await indexer.ready;
+  const question = [...getQuestions(indexer.getSnapshot()).values()].find(
+    (candidate) => candidate.filePath === input.note && candidate.lineNumber === input.line,
+  );
+  if (!question) {
+    return { text: `No question is indexed at ${input.note} line ${input.line}. Ask deckard_list_questions for the question first; it reports each one's note and line.`, isError: true };
+  }
+  if (!questions) {
+    return { text: 'Questions cannot be answered here, so nothing was written.', isError: true };
+  }
+  const result = await questions.answer(
+    question,
+    { text: input.answer },
+    { label: 'Assistant: answer a question', description: `Answer "${shorten(questionText(question))}" in ${input.note}`, preview: 'always' },
+  );
+  switch (result.kind) {
+    case 'written':
+      return { text: `Wrote the answer under the question at ${input.note} line ${input.line}:\nAnswer: ${input.answer}\nThe user can take it back with Deckard: Undo Last Change.` };
+    case 'stale':
+      return { text: `Line ${input.line} of ${input.note} is no longer the question the index knows there; it may have been edited or moved. Ask deckard_list_questions again.`, isError: true };
+    case 'rejected':
+      return { text: 'The user declined the change in the preview. Nothing was written.', isError: true };
+    case 'missing':
+    case 'failed':
+      return { text: `The note "${input.note}" could not be written, so nothing was written.`, isError: true };
+  }
+}

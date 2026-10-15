@@ -10,11 +10,17 @@ import {
 import {
   ADD_TASK_TOOL_NAME,
   AddTaskInput,
+  ANSWER_QUESTION_TOOL_NAME,
+  AnswerQuestionInput,
   CHANGE_TASK_TOOL_NAME,
   ChangeTaskInput,
   readAddTaskInput,
+  readAnswerQuestionInput,
   readChangeTaskInput,
 } from './assistantWriteInput';
+import { listAllQuestions, questionText } from '../../domain/index/questions';
+import { getHeadingPath } from '../../domain/ranking/entryLabels';
+import { describeQuestionAge } from './questionsState';
 import { TagInfo, WorkspaceIndex } from '../../domain/model';
 import {
   answerDescribeTag,
@@ -361,6 +367,8 @@ export interface ToolRunners {
   addTask(input: AddTaskInput): Promise<ToolAnswer>;
   /** Changes a task through the refactor preview, and says what happened. */
   changeTask(input: ChangeTaskInput): Promise<ToolAnswer>;
+  /** Writes an answer under a question through the refactor preview, and says what happened. */
+  answerQuestion(input: AnswerQuestionInput): Promise<ToolAnswer>;
 }
 
 /**
@@ -392,6 +400,73 @@ export type WriteTool = ToolEntry<'write', Promise<ToolAnswer>>;
 
 /** Any of Deckard's assistant tools. */
 export type AssistantTool = ReadTool | WriteTool;
+
+/** The question-list tool's name, as the manifest declares it. */
+export const LIST_QUESTIONS_TOOL_NAME = 'deckard_list_questions';
+
+/** The most questions the list tool lists, and how many it lists when not asked. */
+const MAX_QUESTION_LIMIT = 100;
+const DEFAULT_QUESTION_LIMIT = 30;
+
+/** A question-list call, read: which questions, words they hold, and how many. */
+export interface ListQuestionsInput {
+  /** `open`, the default; `answered`; or `all`. */
+  state?: 'open' | 'answered' | 'all';
+  /** Words or a tag every question listed holds. */
+  search?: string;
+  limit?: number;
+}
+
+/** Reads a question-list call; anything it cannot read is left at its default. */
+export function readListQuestionsInput(value: unknown): ListQuestionsInput {
+  if (!isObject(value)) {
+    return {};
+  }
+  const state = value.state === 'answered' || value.state === 'all' || value.state === 'open' ? value.state : undefined;
+  const search = typeof value.search === 'string' && value.search.trim() ? value.search.trim().slice(0, 200) : undefined;
+  return {
+    ...(state ? { state } : {}),
+    ...(search ? { search } : {}),
+    ...(typeof value.limit === 'number' ? { limit: value.limit } : {}),
+  };
+}
+
+/**
+ * Lists questions, the open ones by default, oldest first: each with its
+ * age, its answer once it has one, and its note and line, which
+ * deckard_answer_question takes. `search` keeps those whose words or tags
+ * hold every word it names.
+ */
+export function answerListQuestions(index: WorkspaceIndex, input: ListQuestionsInput, context: QueryContext): string {
+  const state = input.state ?? 'open';
+  const limit = clampLimit(input.limit, DEFAULT_QUESTION_LIMIT, MAX_QUESTION_LIMIT);
+  const words = (input.search ?? '').toLowerCase().split(/\s+/).filter(Boolean);
+  const found = listAllQuestions(index)
+    .filter((question) => (state === 'all' ? true : (question.answer !== undefined) === (state === 'answered')))
+    .filter((question) => {
+      const text = `${question.title} ${question.tags.join(' ')}`.toLowerCase();
+      return words.every((word) => text.includes(word));
+    });
+  const noun = state === 'all' ? 'question' : `${state} question`;
+  if (found.length === 0) {
+    return `No ${noun}s${input.search ? ` match "${input.search}"` : ''}. A question is a line written - [?] in a note; it is answered by an indented line under it that starts with Answer:.`;
+  }
+  const lines = [
+    `Found ${pluralize(found.length, noun)}${input.search ? ` matching "${input.search}"` : ''}.`,
+    '',
+    ...found.slice(0, limit).map((question) => {
+      const section = question.sectionId ? index.sections.get(question.sectionId) : undefined;
+      const headings = section ? ` (under ${getHeadingPath(section, index.sections).join(' > ')})` : '';
+      const said = question.answer ? `answered: ${question.answer.text}` : describeQuestionAge(question, context.now, context.dateFormats);
+      return `- [?] ${questionText(question)} — ${said} — ${question.filePath}:${question.lineNumber}${headings}`;
+    }),
+  ];
+  if (found.length > limit) {
+    lines.push(`Showing the first ${limit} of ${found.length}. Ask with a higher limit (up to ${MAX_QUESTION_LIMIT}) or a search to see more.`);
+  }
+  lines.push('', 'Paths are relative to the workspace, and each ends with its one-based line, which deckard_answer_question takes.');
+  return lines.join('\n');
+}
 
 /** A describe call without a tag, refused alike on both surfaces. */
 const DESCRIBE_INVALID_INPUT = 'Send a tag, a title, or a few words naming one as "tag", such as #team/rates, @dana, or Bond trading.';
@@ -510,6 +585,43 @@ export const ASSISTANT_TOOLS: readonly AssistantTool[] = [
         };
       }
       return { kind: 'run', run: () => runners.changeTask(input) };
+    },
+  },
+  {
+    kind: 'read',
+    name: LIST_QUESTIONS_TOOL_NAME,
+    measure: { languageModel: 'Assistant question list', mcp: 'MCP question list' },
+    progressMessage: (value) => {
+      const input = readListQuestionsInput(value);
+      return `Listing Deckard's ${input.state === 'all' ? '' : `${input.state ?? 'open'} `}questions${input.search ? ` matching ${shorten(input.search)}` : ''}`;
+    },
+    // Any input lists questions; one that is not an object lists the open ones.
+    read: (value, runners) => {
+      const input = readListQuestionsInput(value);
+      return { kind: 'run', run: () => answerListQuestions(runners.getSnapshot(), input, runners.readQueryContext()) };
+    },
+  },
+  {
+    kind: 'write',
+    name: ANSWER_QUESTION_TOOL_NAME,
+    measure: { languageModel: 'Assistant answer question', mcp: 'MCP answer question' },
+    progressMessage: (value) => {
+      const input = readAnswerQuestionInput(value);
+      return input ? `Answering the question at ${input.note} line ${input.line}` : 'Answering a question';
+    },
+    read: (value, runners) => {
+      const input = readAnswerQuestionInput(value);
+      if (!input) {
+        return {
+          kind: 'invalid',
+          text: {
+            languageModel:
+              'Send the question\'s "note" and "line" as deckard_list_questions reports them, and the answer\'s words as "answer", up to 500 characters.',
+            mcp: 'Send "note" and "line" as deckard_list_questions reports them, and "answer".',
+          },
+        };
+      }
+      return { kind: 'run', run: () => runners.answerQuestion(input) };
     },
   },
 ];
