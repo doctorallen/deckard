@@ -70,6 +70,7 @@ import {
 import { collectTagParts } from '../../domain/tasks/tagParts';
 import { formatProgressCount } from '../../domain/tasks/progressCount';
 import { readNoteBody } from './notePageState';
+import { describeBetween } from './betweenYou';
 
 /**
  * A search page: what one search finds, sorted, paged, and drawn as cards
@@ -508,8 +509,9 @@ function dropTaskLines(card: TagOverviewCard, cardLines: Map<string, CardLines>)
 
 /**
  * On a tag's page, what the page draws of the tag, its entity, and its hub
- * note, with the tag's lookalikes, its hub-link count, and its plain-word
- * mentions; nothing for any other search. Their lists of entries ran to
+ * note, with the tag's lookalikes, its hub-link count, its plain-word
+ * mentions, and for a person what is open between you; nothing for any
+ * other search. Their lists of entries ran to
  * thousands of ids a page never reads, so only what is drawn is sent.
  */
 function buildTagPageBlock(
@@ -517,12 +519,15 @@ function buildTagPageBlock(
   preferences: PersistedPreferences,
   { focusTag, filtered, hubFile, viaHub, hubTitle, parsed }: SearchPageResults,
   context: QueryContext,
-): Pick<SearchPageSnapshot, 'tag' | 'entity' | 'hub' | 'rowFields' | 'tagPage'> {
+): Pick<SearchPageSnapshot, 'tag' | 'entity' | 'hub' | 'rowFields' | 'tagPage' | 'between'> {
   if (!focusTag) {
     return {};
   }
   const entity = index.entities.get(focusTag.key);
   const fields = readTagPageFields(index, focusTag.key, hubFile);
+  // A person's own page has the card; a search that narrows it is about
+  // the results, which the card would push down.
+  const between = filtered ? undefined : describeBetween(index, focusTag.key, context);
   return {
     tag: {
       key: focusTag.key,
@@ -543,6 +548,7 @@ function buildTagPageBlock(
         }
       : {}),
     ...fields.page,
+    ...(between ? { between } : {}),
     ...describeUntypedNamespace(index, focusTag.key, filtered),
     tagPage: {
       ...(filtered ? { filtered } : {}),

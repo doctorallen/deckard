@@ -20,6 +20,7 @@ import { taskTitleOf } from '../shared/taskRow';
 import { installKeySheet } from '../shared/keySheet';
 import { installViewOptions } from '../shared/viewOptions';
 import { vscodeApi } from '../shared/vscode';
+import { BetweenCard } from './between';
 import { PageHeader } from './header';
 import { HubNote, tagRefineLines, TagNotes, TagProgress } from './hub';
 import { type ResultKind, type ResultTabId, resultCounts, Results } from './results';
@@ -155,7 +156,7 @@ function settleRowsTab(snapshot: SearchPageState, newSearch: boolean): boolean {
   return activeTab === 'rows';
 }
 
-/** The whole page: its header, the search box and Refine, the tag's progress, the hub, the tag's notes, and the results. */
+/** The whole page: its header, the search box and Refine, the tag's progress, the hub, the tag's notes, a person's Between you, and the results. */
 function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
   settleTab(snapshot);
   // A search that does not parse leaves the previous results on the page.
@@ -170,6 +171,7 @@ function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
       <TagProgress snapshot={snapshot} />
       <HubNote snapshot={snapshot} hubOpen={snapshot.tagPage?.filtered ? (filteredHubOpen ?? false) : hubOpen} />
       <TagNotes snapshot={snapshot} />
+      <BetweenCard between={snapshot.between} />
       {invalid ? <p class="stale-results">The search above has not run. These are the results of the last one that did.</p> : null}
       {/* A search that found nothing, and a closer spelling that finds something, so the dead end has a way out of it. */}
       {!invalid && snapshot.suggestion
@@ -277,7 +279,8 @@ function applyColumns(): void {
   document.querySelectorAll<HTMLElement>('.cards').forEach((grid) => {
     grid.style.gridTemplateColumns = `repeat(${snapshot.noteColumns || 1}, minmax(0, 1fr))`;
   });
-  document.querySelectorAll<HTMLElement>('.task-list').forEach((grid) => {
+  // A person's Between you card lists its tasks in one column, whatever the results take.
+  document.querySelectorAll<HTMLElement>('.task-list:not(.between-tasks)').forEach((grid) => {
     grid.style.gridTemplateColumns = `repeat(${snapshot.taskColumns || 1}, minmax(0, 1fr))`;
   });
 }
@@ -620,6 +623,16 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
     }
   },
   'type-row-menu': (target) => openRowMenuAt(target),
+  // A person's Between you card: a group's search on a page of its own, the
+  // card as an agenda, and the setting that says who the reader is.
+  'open-between-search': (target, snapshot) => {
+    const group = snapshot.between ? snapshot.between.groups.find((candidate) => candidate.kind === target.dataset.group) : undefined;
+    if (group) {
+      send({ type: 'openSearch', query: group.query });
+    }
+  },
+  'copy-agenda': () => send({ type: 'copyBetweenAgenda' }),
+  'set-identity': () => send({ type: 'openIdentitySetting' }),
 };
 
 /**

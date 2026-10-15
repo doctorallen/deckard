@@ -596,6 +596,23 @@ hint: a sentence, then at most two actions, never a box. An entry listed
 because of such a line carries a `.card-via` note after its location, such
 as *Links the hub note* (`via: 'hubLink'` on the card or task).
 
+### Between you
+
+On a person's page, the search page's `<BetweenCard>`
+(`searchPage/between.tsx`) draws `section.between` between the hub and the
+tabs: a panel as the hub's, with a `--cyan` left rule, and a
+`data-zen-region`. A `.between-header` holds the `.between-title` (*Between
+you*) and the `.between-copy` button (*Copy as agenda*, `data-zen-reveal`),
+which posts `copyBetweenAgenda`; while `deckard.me` names nobody, a muted
+`.between-identity` line follows, whose `.tag-note-action` posts
+`openIdentitySetting`. Then a `.between-group` per group
+(`data-group="youOwe"` or `"theyOwe"`): its heading's `.between-group-label`
+text button and muted `.between-count`; a `.task-list.between-tasks` of
+`<TaskListRow>`s, one column whatever the results take, or a muted
+`.between-none` (*Nothing open.*); and past ten lines a `.between-more` line
+whose `.between-more-link` (*Show all 14*) posts `openSearch` as the label
+does. The host opens only a search the card drew.
+
 ### Task board
 
 `taskBoard.css` and the Task Board's own modules, in `src/webview/taskBoard/`,

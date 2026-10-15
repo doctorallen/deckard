@@ -26,6 +26,7 @@ import type {
   MergeTagsMessage,
   OpenGoToMessage,
   OpenHelpMessage,
+  OpenSearchMessage,
   OpenSourceMessage,
   OpenTagMessage,
   ParkTagMessage,
@@ -81,6 +82,11 @@ export interface SearchPageSnapshot {
   rowFields?: DrawnFields;
   /** What a tag's page says under its hub: how else it is reached. */
   tagPage?: SearchPageTagNotes;
+  /**
+   * On a person's page, the open lines between the reader and them, drawn
+   * between the fields card and the tabs; none when there are none.
+   */
+  between?: SearchPageBetween;
   /**
    * For a search whose top level names a type (`type = team`): the type,
    * which titles the page, and its rows as the rows tab draws them.
@@ -267,6 +273,39 @@ export interface TypeTableGroup {
   rows: TypeTableRow[];
 }
 
+/**
+ * What a group of the Between you card holds: what the reader owes the
+ * person, and what the person owes the reader. Plan 38 adds what the
+ * reader means to ask them, drawn from its questions.
+ */
+export type BetweenGroupKind = 'youOwe' | 'theyOwe';
+
+/**
+ * The open lines between the reader and the person a tag's page is about
+ * (docs/implementation/36-between-you.md), each group one search.
+ */
+export interface SearchPageBetween {
+  /** The person as the groups name them: their first name, `Sam`. */
+  name: string;
+  /** Set while `deckard.me` names nobody, so only what names nobody is the reader's. */
+  needsIdentity?: true;
+  /** The groups, in the card's order, each whether or not it holds anything. */
+  groups: SearchPageBetweenGroup[];
+}
+
+/** One group of the Between you card. */
+export interface SearchPageBetweenGroup {
+  kind: BetweenGroupKind;
+  /** `You owe Sam`, `Sam owes you`. */
+  label: string;
+  /** The search the group is, which its label opens on a search page of its own. */
+  query: string;
+  /** How many lines the group holds, drawn or not. */
+  count: number;
+  /** Its first lines, overdue first, then oldest. */
+  tasks: DashboardTask[];
+}
+
 /** The quiet lines under a tag's page's hub. */
 export interface SearchPageTagNotes {
   /** Set when the search narrows the tag with other terms; the hub starts folded and a part of the progress may be on. */
@@ -350,6 +389,19 @@ export interface CreateHubNoteMessage {
 export interface SetHubOpenMessage {
   type: 'setHubOpen';
   open: boolean;
+}
+
+/**
+ * Copy as agenda, on a person's Between you card: its groups as Markdown,
+ * worked out again by the host, on the clipboard.
+ */
+export interface CopyBetweenAgendaMessage {
+  type: 'copyBetweenAgenda';
+}
+
+/** Set who you are…, on the Between you card while `deckard.me` names nobody. */
+export interface OpenIdentitySettingMessage {
+  type: 'openIdentitySetting';
 }
 
 /** Sets how many columns a search page lays its notes or tasks out in. */
@@ -591,6 +643,10 @@ export interface SearchPagePageToHost {
   renameTypeOption: RenameTypeOptionMessage;
   createRowHub: MessageAs<TypeRowMessage, 'createRowHub'>;
   copyRowValue: MessageAs<TypeRowMessage, 'copyRowValue'>;
+  /** A Between you group's label: its search, on a search page of its own. */
+  openSearch: OpenSearchMessage;
+  copyBetweenAgenda: CopyBetweenAgendaMessage;
+  openIdentitySetting: OpenIdentitySettingMessage;
 }
 
 /**

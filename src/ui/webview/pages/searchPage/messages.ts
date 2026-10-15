@@ -40,6 +40,7 @@ import {
   narrowExportResults,
   narrowGoToPage,
   NarrowingTable,
+  narrowOpenSearch,
   narrowOpenSource,
   narrowOpenWikiLink,
   narrowOpenTag,
@@ -303,6 +304,9 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   renameTypeOption: narrowRenameTypeOption,
   createRowHub: narrowTypeRow('createRowHub'),
   copyRowValue: narrowTypeRow('copyRowValue'),
+  openSearch: narrowOpenSearch,
+  copyBetweenAgenda: exactlyType('copyBetweenAgenda'),
+  openIdentitySetting: exactlyType('openIdentitySetting'),
 };
 
 /** A message from a search page, narrowed by its table, or undefined. */

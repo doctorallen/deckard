@@ -304,7 +304,6 @@ suite('Search page messages', () => {
       { type: 'exportResults', kind: 'tags' },
       { type: 'openSource', filePath: 'notes/a.md', line: 0 },
       { type: 'openSource', filePath: 'notes/a.md', line: 1, beside: 'yes' },
-      { type: 'openSearch', query: '#a' },
       { type: 'constructor' },
       { type: 'toString' },
     ]) {
@@ -361,5 +360,15 @@ suite('Search page messages', () => {
       assert.strictEqual(narrow({ type: 'editFields', filePath: 'Teams/Rates.md', field: 3 }), undefined);
       assert.strictEqual(narrow({ type: 'setNoteField', filePath: 'Teams/Rates.md', key: 'lead', value: { kind: 'clear' } }), undefined, 'a page no longer writes a field itself');
     }
+  });
+
+  test('Between you: a group’s search, Copy as agenda, and Set who you are…, each carrying no more than it needs', () => {
+    assert.deepStrictEqual(narrowSearchPageMessage({ type: 'openSearch', query: 'is:open is:mine @sam' }), { type: 'openSearch', query: 'is:open is:mine @sam' });
+    assert.strictEqual(narrowSearchPageMessage({ type: 'openSearch', query: 3 }), undefined);
+    assert.strictEqual(narrowSearchPageMessage({ type: 'openSearch', query: 'x'.repeat(2001) }), undefined);
+    assert.deepStrictEqual(narrowSearchPageMessage({ type: 'copyBetweenAgenda' }), { type: 'copyBetweenAgenda' });
+    assert.strictEqual(narrowSearchPageMessage({ type: 'copyBetweenAgenda', text: '## You owe Sam' }), undefined, 'the host writes the agenda, never the page');
+    assert.deepStrictEqual(narrowSearchPageMessage({ type: 'openIdentitySetting' }), { type: 'openIdentitySetting' });
+    assert.strictEqual(narrowSearchPageMessage({ type: 'openIdentitySetting', value: '@david' }), undefined, 'the page names no one');
   });
 });

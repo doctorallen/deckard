@@ -13,7 +13,7 @@ import type { NavigationService } from '../../../../services/navigationService';
 import { measure } from '../../../../shared/timing';
 import type { EditFieldsMessage } from '../../../protocol/fields';
 import type { SearchPagePageToHost, SearchPageSnapshot, SearchPageState } from '../../../protocol/searchPage';
-import type { SearchRefineState } from '../../../protocol/shared';
+import type { DashboardTask, SearchRefineState } from '../../../protocol/shared';
 import { editResults } from '../../../commands/bulkEditPrompts';
 import { presentExport } from '../../../commands/exportResults';
 import { copyFieldValue } from '../../../commands/typeNotes';
@@ -24,6 +24,8 @@ import { NoteOpening, openNoteAt } from '../../../commands/noteOpening';
 import { setPinned } from '../../../commands/pinNote';
 import { readEntityNamespaceAliases } from '../../../commands/parseSettings';
 import { readQueryContext } from '../../../commands/queryContext';
+import { openSettingAction } from '../../../commands/notify';
+import { collectBetweenLines, formatBetweenAgenda } from '../../../state/betweenYou';
 import { mergeIndexedTag } from '../../../commands/renameTag';
 import { offerSavedSearchOnHome } from '../../../commands/savedSearchHome';
 import type { TaskWrites } from '../../../commands/taskActions';
@@ -211,7 +213,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       }),
       toggleTask: toggleTask({
         writes: search.writes,
-        findTask: (taskId) => this.currentSnapshot().tasks.find((candidate) => candidate.task.id === taskId)?.task,
+        findTask: (taskId) => this.drawnTasks().find((candidate) => candidate.task.id === taskId)?.task,
       }),
       // A result is an entry, so pinning one pins that entry rather than
       // the file it is written in.
@@ -221,6 +223,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       exportResults: (message) => this.exportResults(message.kind),
       openSource: (message) => this.openSource(message.filePath, message.line, message),
       openWikiLink: (message) => this.openWikiLink(message.target, message.from, message),
+      ...this.betweenHandlers(),
       ...this.typeHandlers(),
     };
   }
@@ -580,6 +583,48 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     return this.lastSnapshot ?? this.createSnapshot();
   }
 
+  /** Every task the page draws: the results, and a person's Between you card. */
+  private drawnTasks(): DashboardTask[] {
+    const snapshot = this.currentSnapshot();
+    return [...snapshot.tasks, ...(snapshot.between?.groups ?? []).flatMap((group) => group.tasks)];
+  }
+
+  /**
+   * What a person's Between you card asks of its host: a group's search on
+   * a page of its own, the card copied as an agenda, and the setting that
+   * says who the reader is.
+   */
+  private betweenHandlers(): Pick<MessageHandlers<SearchPagePageToHost>, 'openSearch' | 'copyBetweenAgenda' | 'openIdentitySetting'> {
+    return {
+      // Only a search the card drew: a group's label.
+      openSearch: async (message) => {
+        if ((this.currentSnapshot().between?.groups ?? []).some((group) => group.query === message.query)) {
+          await vscode.commands.executeCommand('deckard.searchNotes', message.query);
+        }
+      },
+      copyBetweenAgenda: () => this.copyBetweenAgenda(),
+      openIdentitySetting: async () => {
+        await openSettingAction('me').run();
+      },
+    };
+  }
+
+  /**
+   * Copy as agenda: every line of the card, not only those drawn, worked
+   * out afresh from the index, as Markdown on the clipboard.
+   */
+  private async copyBetweenAgenda(): Promise<void> {
+    const tagKey = this.currentSnapshot().tag?.key;
+    const groups = tagKey ? collectBetweenLines(this.search.indexer.getSnapshot(), tagKey, readQueryContext()) : undefined;
+    const agenda = groups ? formatBetweenAgenda(groups) : '';
+    if (!agenda || !groups) {
+      return;
+    }
+    await vscode.env.clipboard.writeText(`${agenda}\n`);
+    const lines = groups.reduce((count, group) => count + group.tasks.length, 0);
+    vscode.window.setStatusBarMessage(`Copied ${lines} ${lines === 1 ? 'line' : 'lines'} as an agenda`, 3000);
+  }
+
   /**
    * What a type's page asks of its host: its rows tab's sort, columns, and
    * grouping; Add <type>…, its note, and Create type; the renames a
@@ -724,7 +769,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       await openNoteAt(card.filePath, card.startLine, how);
       return;
     }
-    const task = snapshot.tasks.find(
+    const task = this.drawnTasks().find(
       (candidate) =>
         candidate.task.filePath === filePath &&
         candidate.task.lineNumber === line,
