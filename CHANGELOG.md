@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2.10.0 - 2026-10-15
+
+### Highlights
+
+- **Type builder**: `New Type…` and `Edit Type…` build a type's fields from a form, each kind listed with an example.
+- A type's field may be named in words, such as `Distribution List`, written so in front matter.
+
 ### Added
 
 - **Type builder.** `Deckard: New Type…` asks a type's name and what its
