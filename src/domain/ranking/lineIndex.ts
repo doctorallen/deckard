@@ -208,8 +208,7 @@ function readFileLines(file: ParsedFile): FileLines {
     return cached;
   }
   const texts = file.content.split(/\r?\n/);
-  const skipped = findFencedLines(texts);
-  const frontmatterEnd = findFrontmatterEnd(texts) ?? -1;
+  const skipped = findUnindexedLines(texts);
   const taskLines = new Set(file.tasks.map((task) => task.lineNumber));
   const questionLines = new Set((file.questions ?? []).map((question) => question.lineNumber));
   const at = noteDay(file);
@@ -217,7 +216,7 @@ function readFileLines(file: ParsedFile): FileLines {
   const termLines = new Map<string, number>();
   let length = 0;
   texts.forEach((text, lineIndex) => {
-    if (lineIndex <= frontmatterEnd || skipped.has(lineIndex) || !text.trim() || isHeading(text)) {
+    if (skipped.has(lineIndex) || !text.trim()) {
       return;
     }
     const terms = getLineTerms(text);
@@ -243,6 +242,25 @@ function readFileLines(file: ParsedFile): FileLines {
   const read = { lines, termLines, length };
   linesByFile.set(file, read);
   return read;
+}
+
+/**
+ * The lines of a note the index leaves out, by zero-based line: its front
+ * matter, its fenced code, and its headings, which are no lines anyone
+ * writes twice. Written before leaves them out of the lines it compares too.
+ */
+export function findUnindexedLines(texts: readonly string[]): Set<number> {
+  const skipped = findFencedLines(texts);
+  const frontmatterEnd = findFrontmatterEnd(texts) ?? -1;
+  for (let line = 0; line <= frontmatterEnd; line += 1) {
+    skipped.add(line);
+  }
+  texts.forEach((text, line) => {
+    if (isHeading(text)) {
+      skipped.add(line);
+    }
+  });
+  return skipped;
 }
 
 /** Whether a line is a question's, a task's, or neither. */

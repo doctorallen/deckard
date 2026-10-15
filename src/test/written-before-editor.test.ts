@@ -24,7 +24,7 @@ function memoryStore(): ConstructorParameters<typeof WrittenBeforeMemory>[0] {
 const OTHER_LINES = Array.from({ length: 200 }, (_, at) => `- Offsite item ${at}: rooms, catering, and the agenda`).join('\n');
 
 /** The notes, written to a folder of their own and indexed by their full paths. */
-async function writeNotes(): Promise<{ index: WorkspaceIndex; today: vscode.Uri; older: vscode.Uri }> {
+async function writeNotes(): Promise<{ index: WorkspaceIndex; root: vscode.Uri; today: vscode.Uri; older: vscode.Uri }> {
   const root = vscode.Uri.file(path.join(os.tmpdir(), `deckard-written-${Date.now()}-${Math.random().toString(36).slice(2)}`));
   await vscode.workspace.fs.createDirectory(root);
   const notes: Record<string, string> = {
@@ -39,7 +39,7 @@ async function writeNotes(): Promise<{ index: WorkspaceIndex; today: vscode.Uri;
     await vscode.workspace.fs.writeFile(uris[name], Buffer.from(text, 'utf8'));
     files.set(uris[name].fsPath, parseMarkdown(uris[name].fsPath, text));
   }
-  return { index: buildWorkspaceIndex(files), today: uris['today.md'], older: uris['2026-03-12.md'] };
+  return { index: buildWorkspaceIndex(files), root, today: uris['today.md'], older: uris['2026-03-12.md'] };
 }
 
 /** Hints over an index that never changes, registered, and ready. */
@@ -88,6 +88,80 @@ suite('You\'ve written this before in the editor', () => {
       hints.dispose();
       await vscode.commands.executeCommand('workbench.action.closeAllEditors');
     }
+  });
+
+  test('an edit takes the marks away, so a hover never offers one line\'s matches on another', async () => {
+    const { index, today } = await writeNotes();
+    const hints = await createHints(index);
+    try {
+      const editor = await vscode.window.showTextDocument(today);
+      editor.selection = new vscode.Selection(3, 0, 3, 0);
+      hints.update();
+      assert.ok(hints.provideHover(editor.document, new vscode.Position(3, 0)), 'the line has older lines like it');
+      // A line written above moves the matched line down; line 3 now holds other words.
+      assert.ok(await editor.edit((builder) => builder.insert(new vscode.Position(2, 0), '- Written above it later\n')));
+      assert.strictEqual(hints.provideHover(editor.document, new vscode.Position(3, 0)), undefined, 'line 3 holds other words now');
+      assert.strictEqual(hints.provideHover(editor.document, new vscode.Position(4, 0)), undefined, 'until the line is compared again');
+      editor.selection = new vscode.Selection(4, 0, 4, 0);
+      hints.update();
+      assert.ok(hints.provideHover(editor.document, new vscode.Position(4, 0)), 'compared again where it is now');
+    } finally {
+      hints.dispose();
+      await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+    }
+  });
+
+  test('a heading, front matter, or fenced code is compared with nothing, as the line index leaves them out', async () => {
+    const line = 'The curve feed lagged again this morning after the loader restarted';
+    const { index } = await writeNotes();
+    const hints = await createHints(index);
+    const note = vscode.Uri.file(path.join(os.tmpdir(), `deckard-written-skipped-${Date.now()}.md`));
+    await vscode.workspace.fs.writeFile(
+      note,
+      Buffer.from(`---\nsummary: ${line}\n---\n## ${line}\n\`\`\`\n${line}\n\`\`\`\n- ${line}\n`, 'utf8'),
+    );
+    try {
+      const editor = await vscode.window.showTextDocument(note);
+      const compared = (at: number): boolean => {
+        editor.selection = new vscode.Selection(at, 0, at, 0);
+        hints.update();
+        return hints.current !== undefined;
+      };
+      assert.deepStrictEqual([1, 3, 5, 7].map(compared), [false, false, false, true]);
+    } finally {
+      hints.dispose();
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      await vscode.workspace.fs.delete(note);
+    }
+  });
+
+  test('the gutter\'s pass reads no line past the end once an edit shortens the note', async () => {
+    const { index, root } = await writeNotes();
+    const hints = await createHints(index);
+    const long = vscode.Uri.joinPath(root, 'long.md');
+    const lines = Array.from({ length: 300 }, (_, at) => `- Line ${at} the curve feed lagged after the loader restarted`);
+    await vscode.workspace.fs.writeFile(long, Buffer.from(`# Long\n${lines.join('\n')}\n`, 'utf8'));
+    const errors: unknown[] = [];
+    const onError = (error: unknown): void => void errors.push(error);
+    process.on('uncaughtException', onError);
+    const realNow = Date.now;
+    try {
+      const editor = await vscode.window.showTextDocument(long);
+      editor.selection = new vscode.Selection(150, 0, 150, 0);
+      let clock = realNow();
+      // Each reading of the clock moves it 10 ms, so a gutter turn does a
+      // line or two and yields, and the edit lands while the pass is under way.
+      Date.now = () => (clock += 10);
+      hints.update();
+      await editor.edit((builder) => builder.delete(new vscode.Range(5, 0, editor.document.lineCount - 1, 0)));
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    } finally {
+      Date.now = realNow;
+      process.off('uncaughtException', onError);
+      hints.dispose();
+      await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+    }
+    assert.deepStrictEqual(errors.map(String), []);
   });
 
   test('Link it here appends a link to the older line\'s heading, and nothing when the line changed', async () => {

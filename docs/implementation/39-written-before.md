@@ -119,3 +119,24 @@ impractical:
 - **The timing test** builds a generated workspace of 3,000 notes of 30
   lines each, words drawn as a language draws them, builds the line index
   once outside the timing, and holds the median of 30 lines under 15 ms.
+
+Fixed after QA, before release:
+
+- **A hover after an edit.** The lines with matches were kept by line
+  number through edits, so a line written above a marked one left its
+  matches on the line that took its number, and Link it here appended to
+  that line. Each marked line now keeps the words its matches were found
+  for, and the hover has none for a line that reads otherwise; an edit
+  clears the marks and the gutter until the note is compared again.
+- **The gutter after an edit.** A pass under way when the note shrank read
+  lines past its end and threw. An edit now stops the pass, and a pass
+  never reads a line the note no longer has.
+- **Headings, front matter, and code** were compared on the cursor's line
+  and in the gutter, though the line index leaves them out; both now leave
+  out the same lines (`findUnindexedLines`).
+- **One reading per version.** The hints read the active note once per
+  version of it, and not at all while it reads as the index read it, where
+  each rest of the cursor read the whole note again. The note is still read
+  whole when it has changed, not the cursor's line alone: the tags a line is
+  compared with come from the headings and tagged lines above it, as the
+  parser reads them (about 50 ms for a 20,000-line note, 1 ms for 500).
