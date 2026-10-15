@@ -101,6 +101,19 @@ suite('The story so far, drawn', () => {
     assert.deepStrictEqual(decisions.lastPosted('setStoryFilter'), { type: 'setStoryFilter', filter: 'all' });
   });
 
+  test('a question is a row marked ?, its answer under it, with a Questions chip and its tab beside the Story', () => {
+    const index = indexOf({
+      'journal/2026-10-14.md': lines('# 2026-10-14', '## Standup', '- [?] Who signs the contract? #project/atlas', '    - Answer: Legal', '- [ ] Book the load test #project/atlas'),
+    });
+    const page = atlasPage({ index });
+    assert.deepStrictEqual(page.findAll('[role="tab"]').map((tab) => tab.textContent), ['Notes (0)', 'Tasks (1)', 'Questions (1)', 'Story (2)']);
+    assert.deepStrictEqual(rows(page)[0], ['Wed, Oct 14', '?', 'Who signs the contract? #project/atlas', 'Standup']);
+    assert.strictEqual(page.find('.story-row[data-kind="question"] .story-child')?.textContent, 'Answer: Legal', 'the answer reads with its question');
+    assert.deepStrictEqual(page.findAll('.story-chip').map((chip) => chip.textContent), ['All', 'Decisions', 'Done', 'Questions', 'Oldest first']);
+    page.click('.story-chip[data-filter="questions"]');
+    assert.deepStrictEqual(page.lastPosted('setStoryFilter'), { type: 'setStoryFilter', filter: 'questions' });
+  });
+
   test('draws a first page of rows, then Show more', () => {
     const page = atlasPage({ story: { limit: 2 } });
     assert.strictEqual(page.findAll('.story-row').length, 2);

@@ -292,14 +292,14 @@ suite('Questions: a tag\'s page', () => {
     return createSearchPageSnapshot(index, store.reader.value, query, { queryContext: createQueryContext(Date.now()) });
   };
 
-  test('has a Questions tab beside Notes and Tasks, the open ones first, each with Answer…', () => {
+  test('has a Questions tab after Notes and Tasks, before the tag’s Story, the open ones first, each with Answer…', () => {
     const snapshot = snapshotOf('#team/rates');
     assert.deepStrictEqual(snapshot.questions?.map((question) => [question.text, question.answered]), [
       ['Who approves access to the bond UAT?', false],
       ['Where is the runbook?', true],
     ]);
     page = openWebviewPage(renderPage('searchPage'), snapshot);
-    assert.deepStrictEqual(page.findAll('[role="tab"]').map((tab) => tab.textContent?.replace(/\s+/g, ' ').trim()), ['Notes (1)', 'Tasks (1)', 'Questions (2)']);
+    assert.deepStrictEqual(page.findAll('[role="tab"]').map((tab) => tab.textContent?.replace(/\s+/g, ' ').trim()), ['Notes (1)', 'Tasks (1)', 'Questions (2)', 'Story (3)']);
     page.click('[role="tab"][data-tab="questions"]');
     assert.strictEqual(page.findAll('.search-question').length, 2);
     assert.match(page.text('.search-question.is-answered .search-question-detail') ?? '', /Answer: in the wiki$/);

@@ -1,9 +1,6 @@
 import * as assert from 'assert';
 
-import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { parseMarkdown } from '../domain/markdown/parser';
 import type { WorkspaceIndex } from '../domain/model';
-import { DEFAULT_TASK_STATUSES } from '../domain/tasks/taskStatuses';
 import { createQueryContext } from '../domain/query/queryContext';
 import { createSearchPageSnapshot, evaluateSearchPage, readTagStory } from '../ui/state/searchPageState';
 import { describeStory, formatStoryMarkdown, shownStoryLines, STORY_PAGE_SIZE, type StoryLine, viewStory } from '../ui/state/storySoFar';
@@ -70,8 +67,8 @@ suite('The story so far', () => {
       '2026-10-02 decision We chose the hosted fields. (hosted-fields)',
       '2026-10-02 decision Cheaper to run. (hosted-fields)',
       '2026-10-14 open Book the load test #project/atlas (Standup)',
-      // An open task of an unknown status, until plan 38 makes it a question.
-      `2026-10-14 ${isQuestionKindBuilt() ? 'question' : 'open'} Who signs the contract? #project/atlas (Standup)`,
+      // A question, which is no task.
+      '2026-10-14 question Who signs the contract? #project/atlas (Standup)',
       // A cancelled task is neither done nor open.
       '2026-10-14 note Drop the old plan #project/atlas (Standup)',
     ]);
@@ -134,17 +131,18 @@ suite('The story so far', () => {
     const filters = (index: WorkspaceIndex): string[] => describeStory(storyOf(index), { filter: 'all', oldestFirst: false, limit: 100 }, context).filters.map((filter) => filter.label);
     const without = atlas({ 'journal/2026-10-14.md': lines('# 2026-10-14', '- Shipped it #project/atlas') });
     assert.deepStrictEqual(filters(without), ['All', 'Decisions', 'Done']);
-    if (isQuestionKindBuilt()) {
-      assert.deepStrictEqual(filters(atlas()), ['All', 'Decisions', 'Done', 'Questions']);
-    }
+    assert.deepStrictEqual(filters(atlas()), ['All', 'Decisions', 'Done', 'Questions']);
   });
 
-  test('reads a [?] line no task reads as a question, which its filter keeps', () => {
-    // As plan 38 will: `?` a status that is not a task.
-    const taskStatuses = [...DEFAULT_TASK_STATUSES, { symbol: '?', name: 'Question', type: 'nonTask' as const }];
-    const content = lines('# 2026-10-14', '- [?] Who signs the contract? #project/atlas', '    - Answer: Legal', '- [ ] Book the room #project/atlas');
-    const index = buildWorkspaceIndex(new Map([['journal/2026-10-14.md', parseMarkdown('journal/2026-10-14.md', content, undefined, { taskStatuses })]]));
-    const story = storyOf(index);
+  test('reads a [?] line as a question, its Answer: line folded under it, which its filter keeps', () => {
+    const content = lines(
+      '# 2026-10-14',
+      '## Standup',
+      '- [?] Who signs the contract? #project/atlas',
+      '    - Answer: Legal',
+      '- [ ] Book the room #project/atlas',
+    );
+    const story = storyOf(indexOf({ 'journal/2026-10-14.md': content }));
     assert.deepStrictEqual(story.map((line) => [line.kind, line.text, line.children]), [
       ['question', 'Who signs the contract? #project/atlas', [{ text: 'Answer: Legal' }]],
       ['open', 'Book the room #project/atlas', []],
@@ -195,12 +193,3 @@ suite('The story so far', () => {
     ));
   });
 });
-
-/**
- * Whether `[?]` lines are questions rather than tasks: plan 38 makes them
- * so. Until it is merged a `[?]` line is a task of an unknown status, and
- * the story reads it as an open task.
- */
-function isQuestionKindBuilt(): boolean {
-  return storyOf(atlas()).some((line) => line.kind === 'question');
-}

@@ -14,19 +14,20 @@
  * - The lines indented under a line are read with it, so a task's steps
  *   and a question's answer are one row.
  *
- * Each line is of a kind, read from a table, so a kind a later plan adds,
- * as plan 38 adds questions, is a row of it and a filter of {@link
- * STORY_FILTERS}.
+ * Each line is of a kind, read from a table, so a kind a later plan adds
+ * is a row of it and a filter of {@link STORY_FILTERS}. A question
+ * (docs/implementation/38-questions.md) is one: its `[?]` line is no task,
+ * and its `Answer:` line, indented under it, reads with it.
  */
 import { formatIsoDate, parseIsoDate } from '../../domain/markdown/calendar';
 import { formatMonthAndYear, formatShortDay } from '../../domain/markdown/dates';
 import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
 import { tokenizeInline } from '../../domain/markdown/inline';
-import { findFencedLines, matchTaskLine, readHeading, STATUS_MARKS, type TaskLineShape } from '../../domain/markdown/lineShapes';
+import { findFencedLines, readHeading } from '../../domain/markdown/lineShapes';
 import { findListParents, lineIndent } from '../../domain/markdown/listNesting';
 import { extractTags, findFileDailyNoteDate, stripTags } from '../../domain/markdown/parser';
 import { noteTitle } from '../../domain/index/backlinks';
-import type { ParsedFile, TagReference, Task, WorkspaceIndex } from '../../domain/model';
+import type { ParsedFile, Question, TagReference, Task, WorkspaceIndex } from '../../domain/model';
 import type { QueryContext } from '../../domain/query/queryContext';
 import type { QueryResults } from '../../domain/query/queryEvaluator';
 import { getTypeIndex } from '../../domain/types/typeIndex';
@@ -78,9 +79,8 @@ interface StoryFilterRule {
   label: string;
   kinds?: readonly StoryKind[];
   /**
-   * Drawn only while the story holds a row of its kinds. Questions are
-   * a kind of their own once plan 38 makes `[?]` lines questions; until
-   * then a story holds none, and its chip is not drawn.
+   * Drawn only while the story holds a row of its kinds, as a story with
+   * no question has no Questions chip.
    */
   whileHeld?: true;
 }
@@ -102,9 +102,6 @@ export interface StoryView {
 
 /** The tab as it first opens: every row, newest first (D18), the first page of them. */
 export const DEFAULT_STORY_VIEW: StoryView = { filter: 'all', oldestFirst: false, limit: STORY_PAGE_SIZE };
-
-/** A checkbox line of any status's character, which a `[?]` line is when no task reads it. */
-const CHECKBOX_LINE: TaskLineShape = { indent: 'whitespace', marks: STATUS_MARKS, after: 'gap', oneLine: true };
 
 /** A line's list mark and its box, which the row draws in its own way. */
 const LIST_MARK = /^\s*(?:[-*+]|\d+[.)])[ \t]+(?:\[[^\]]\][ \t]+)?/;
@@ -140,7 +137,7 @@ export function collectStory(
 /** Which lines of a note a search found: all of them, or those of its entries and tasks. */
 type FoundLines = 'all' | Set<number>;
 
-/** The lines each note's found entries, tasks, and front-matter entries hold, by note. */
+/** The lines each note's found entries, tasks, questions, and front-matter entries hold, by note. */
 function foundLines(results: QueryResults): Map<string, FoundLines> {
   const found = new Map<string, FoundLines>();
   const add = (filePath: string, from: number, to: number): void => {
@@ -156,6 +153,9 @@ function foundLines(results: QueryResults): Map<string, FoundLines> {
   results.files.forEach((file) => found.set(file.filePath, 'all'));
   results.sections.forEach((section) => add(section.filePath, section.startLine, section.endLine));
   results.tasks.forEach((task) => add(task.filePath, task.lineNumber, task.lineNumber));
+  // A question line starts no entry, as a task line does not, so one that
+  // carries the tag under a heading that does not is found on its own.
+  results.questions.forEach((question) => add(question.filePath, question.lineNumber, question.lineNumber));
   return found;
 }
 
@@ -181,6 +181,7 @@ function readFileStory(file: ParsedFile, found: FoundLines, reading: StoryReadin
   const fenced = findFencedLines(lines);
   const listParents = findListParents(lines, fenced);
   const tasks = new Map(file.tasks.map((task) => [task.lineNumber, task]));
+  const questions = new Map((file.questions ?? []).map((question) => [question.lineNumber, question]));
   const aliases = reading.context.entityNamespaceAliases;
   const carries = (tags: readonly TagReference[]): boolean => tags.some((tag) => sameTag(tag.key, reading.tagKey));
   const noteCarries = carries(file.frontmatterTags);
@@ -205,7 +206,7 @@ function readFileStory(file: ParsedFile, found: FoundLines, reading: StoryReadin
     const parentRow = findParentRow(text, at, { listParents, rowOf, lastRead });
     lastRead = at;
     if (parentRow) {
-      parentRow.children.push(readChild(text, tasks.get(at + 1)));
+      parentRow.children.push(readChild(text, tasks.get(at + 1), questions.get(at + 1)));
       rowOf.set(at, parentRow);
       return;
     }
@@ -218,6 +219,7 @@ function readFileStory(file: ParsedFile, found: FoundLines, reading: StoryReadin
       line: at + 1,
       date,
       task: tasks.get(at + 1),
+      question: questions.get(at + 1),
       decision: noteDecision || headings.some((open) => open.decision),
       where: nearestHeading(headings) || noteTitle(file.filePath),
     });
@@ -260,14 +262,22 @@ function findParentRow(
 /** A line of the story: its kind, its words, and where it is. */
 function readRow(
   text: string,
-  { filePath, line, date, task, decision, where }: { filePath: string; line: number; date: string; task: Task | undefined; decision: boolean; where: string },
+  { filePath, line, date, task, question, decision, where }: {
+    filePath: string;
+    line: number;
+    date: string;
+    task: Task | undefined;
+    question: Question | undefined;
+    decision: boolean;
+    where: string;
+  },
 ): StoryLine {
   return {
     filePath,
     line,
     date,
-    kind: readKind(text, task, decision),
-    text: task ? task.title.trim() : lineWords(text),
+    kind: readKind(task, question, decision),
+    text: (task ?? question)?.title.trim() ?? lineWords(text),
     where,
     ...(task ? { task } : {}),
     children: [],
@@ -276,34 +286,29 @@ function readRow(
 
 /**
  * A line's kind. A task is done or open, by its box; a cancelled one is
- * neither, and reads as any other line. A `[?]` line no task reads is a
- * question. Any other line is a decision under a decision's heading or
- * in a decision's note.
+ * neither, and reads as any other line. A question's `[?]` line is a
+ * question, open or answered. Any other line is a decision under a
+ * decision's heading or in a decision's note.
  */
-function readKind(text: string, task: Task | undefined, decision: boolean): StoryKind {
+function readKind(task: Task | undefined, question: Question | undefined, decision: boolean): StoryKind {
   if (task) {
     if (task.completed) {
       return 'done';
     }
     return task.status.type === 'cancelled' ? 'note' : 'open';
   }
-  if (isQuestionLine(text)) {
+  if (question) {
     return 'question';
   }
   return decision ? 'decision' : 'note';
 }
 
-/** Whether a line is a question: a `[?]` box that is no task, as plan 38's questions are written. */
-function isQuestionLine(text: string): boolean {
-  return matchTaskLine(text, CHECKBOX_LINE)?.mark === '?';
-}
-
 /** A line indented under a row: its words, and its box's mark when it is a task or a question. */
-function readChild(text: string, task: Task | undefined): StoryLine['children'][number] {
+function readChild(text: string, task: Task | undefined, question: Question | undefined): StoryLine['children'][number] {
   if (task) {
     return { text: task.title.trim(), mark: task.completed ? STORY_KINDS.done.mark : STORY_KINDS.open.mark };
   }
-  return { text: lineWords(text), ...(isQuestionLine(text) ? { mark: STORY_KINDS.question.mark } : {}) };
+  return question ? { text: question.title.trim(), mark: STORY_KINDS.question.mark } : { text: lineWords(text) };
 }
 
 /** A line's words, its list mark and box aside. */
