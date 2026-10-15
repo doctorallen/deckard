@@ -73,6 +73,7 @@ import { TypeHealth } from '../ui/providers/typeHealth';
 import { TaskMetadataCompletionProvider } from '../ui/providers/taskMetadataSuggestions';
 import { SlashMenuProvider } from '../ui/providers/slashMenu';
 import { StatusSuggestionsProvider } from '../ui/providers/statusSuggestions';
+import { PromiseTracking } from '../ui/providers/promiseTracking';
 import { EditorLenses } from '../ui/providers/editorLenses';
 import { EditorReferences } from '../ui/providers/editorReferences';
 import { AssistantTools } from '../ui/commands/assistantTools';
@@ -89,6 +90,7 @@ import { TaskBoardPanel } from '../ui/webview/taskBoard';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { SearchPanels } from '../ui/webview/searchPage';
 import { TagVisits } from '../core/storage/tagVisits';
+import { PromiseDismissals } from '../core/storage/promiseDismissals';
 import { setZenMode, startZenMode, toggleZenMode } from '../ui/webview/zenMode';
 import { getSampleStorageUri, SAMPLE_FOLDER_NAMES, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
 import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/firstIndex';
@@ -227,6 +229,8 @@ export interface Services {
   sectionFocus: SectionFocus;
   /** What each tag's page held at the reader's last visit, which its band and the Hubs view read. */
   tagVisits: TagVisits;
+  /** The lines of today's note the reader said are no promise, which Not a promise marks. */
+  promiseMarks: PromiseDismissals;
 }
 
 /** The index and what it reads and writes through. */
@@ -316,6 +320,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     queryBlocks: trees.queryBlocks,
     sectionFocus,
     tagVisits: search.tagVisits,
+    promiseMarks: editor.promiseMarks,
   };
 }
 
@@ -680,7 +685,11 @@ function createEditorProviders(context: vscode.ExtensionContext, core: Core, pre
   context.subscriptions.push(new StatusSuggestionsProvider((uri) => indexer.isNotesFile(uri)).register());
   const taskEditorActions = new TaskEditorActions((uri) => indexer.isNotesFile(uri));
   const taskLineContext = new TaskLineContext();
-  return { tagDecorations, pins, tagSuggestions, taskMetadataSuggestions, taskEditorActions, taskLineContext };
+  // A promise in today's note, a person and a day to come, offered as a
+  // waiting task; Not a promise is kept with the workspace.
+  const promiseMarks = new PromiseDismissals(context.workspaceState);
+  context.subscriptions.push(promiseMarks, new PromiseTracking(indexer, promiseMarks).register());
+  return { tagDecorations, pins, tagSuggestions, taskMetadataSuggestions, taskEditorActions, taskLineContext, promiseMarks };
 }
 
 /** Whether a workspace folder with no notes folder set looks like a code repository. */

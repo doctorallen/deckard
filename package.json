@@ -99,6 +99,16 @@
         }
       },
       {
+        "id": "deckard.promiseUnderline",
+        "description": "Wavy line under the day in a line of today's daily note that names a person and a day to come, which Deckard offers to track as a waiting task.",
+        "defaults": {
+          "dark": "#cca70080",
+          "light": "#bf880380",
+          "highContrast": "editorWarning.foreground",
+          "highContrastLight": "editorWarning.foreground"
+        }
+      },
+      {
         "id": "deckard.taskHintForeground",
         "description": "Color of the hints after a task's line in the editor, such as \"due today\" and \"needs a new date\".",
         "defaults": {
@@ -2246,7 +2256,7 @@
             "enumDescriptions": [
               "Everything Deckard draws in the editor: counts, hints, previews, and lenses.",
               "What helps with tasks, and what reports a problem; no link counts, mention lenses, or breadcrumbs.",
-              "A quiet page for writing: the / menu, hover previews, faint task details, and reports of broken links, embeds, and repeat rules. No link counts, mention lenses, breadcrumbs, daily-note links, task hints, dependencies, step bars, or hub progress.",
+              "A quiet page for writing: the / menu, hover previews, faint task details, and reports of broken links, embeds, and repeat rules. No link counts, mention lenses, breadcrumbs, daily-note links, task hints, dependencies, step bars, hub progress, or offers to track promises.",
               "Nothing: no lenses, decorations, hover previews, / menu, or problem reports. A switch you set yourself still draws its part."
             ],
             "default": "full",
@@ -2356,6 +2366,12 @@
             "scope": "resource",
             "description": "Mark a 🔁 repeat rule Deckard cannot read, since completing that task would not start the next one, and offer the nearest rule it can read. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
             "order": 13
+          },
+          "deckard.editor.trackPromises": {
+            "type": "boolean",
+            "scope": "resource",
+            "description": "In today's daily note, underline a line that names one person and a day to come, such as \"@sam says the fix lands by Friday\", and offer, in a lens and the lightbulb, to track it as a waiting task for that person, due that day. Left unset, it follows the editor preset: on in Full and Tasks, off in Writing and Off. Set it here to override the preset.",
+            "order": 14
           }
         },
         "order": 3
