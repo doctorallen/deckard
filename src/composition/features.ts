@@ -10,6 +10,7 @@ import { register as pages } from '../ui/commands/pages/register';
 import { register as parkingAndExclusion } from '../ui/commands/parkingAndExclusion/register';
 import { register as pins } from '../ui/commands/pins/register';
 import { register as preferences } from '../ui/commands/preferences/register';
+import { register as questions } from '../ui/commands/questions/register';
 import { register as reviews } from '../ui/commands/reviews/register';
 import { register as search } from '../ui/commands/search/register';
 import { register as setup } from '../ui/commands/setup/register';
@@ -51,4 +52,5 @@ export const features: readonly NamedFeature[] = [
   { name: 'Undo Last Change', register: undo },
   { name: 'the Hubs view', register: hubs },
   { name: 'types', register: types },
+  { name: 'questions', register: questions },
 ];

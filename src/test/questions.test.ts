@@ -20,6 +20,8 @@ import { renderQueryBlockHtml } from '../ui/preview/queryBlockHtml';
 import { findAnswerOffers, notItKey } from '../domain/ranking/answerOffers';
 import { hashLine } from '../domain/ranking/lineIndex';
 import { indexOf as typedIndexOf, typedWorkspace } from './typedWorkspace';
+import { describeQuestionAge, describeQuestionLenses } from '../ui/state/questionsState';
+import { formatAnswerLine, formatQuestionLine, wordQuestion } from '../domain/markdown/questionLines';
 
 /** An index of notes, by path and text, each dated by its own name when it is a day. */
 function indexOf(notes: Record<string, string>): ReturnType<typeof buildWorkspaceIndex> {
@@ -215,5 +217,44 @@ suite('Questions: answered by a typed row\'s field', () => {
     const index = typedIndexOf({ ...notes, 'notes/asks.md': '# Asks\n- [?] Who leads rates?\n' });
     const [offer] = [...findAnswerOffers(index, { rejected: new Set() }).values()];
     assert.deepStrictEqual([offer.kind, offer.text, offer.source, offer.filePath], ['field', 'Dana Whitfield', 'lead of Rates', 'Teams/Rates.md']);
+  });
+});
+
+suite('Questions: as rows and lenses', () => {
+  const day = (date: string) => new Date(`${date}T12:00:00`).getTime();
+
+  test('a question\'s age, and an answered one\'s day', () => {
+    assert.strictEqual(describeQuestionAge({ createdAt: day('2026-10-02') }, day('2026-10-14')), 'open 12 days');
+    assert.strictEqual(describeQuestionAge({ createdAt: day('2026-10-14') }, day('2026-10-14')), 'asked today');
+    assert.strictEqual(describeQuestionAge({ answer: { text: 'yes', lineNumber: 2, answeredAt: day('2026-10-09') } }, day('2026-10-14')), 'answered Fri, Oct 9');
+  });
+
+  test('the lens keeps its age and offer under Zen, and leaves out Answer… and Drop', () => {
+    const row = {
+      id: 'q',
+      text: 'Who?',
+      filePath: 'a.md',
+      line: 1,
+      age: 'open 3 days',
+      answered: false,
+      offer: { kind: 'line' as const, text: 'Priya', where: 'Wed, Oct 14 · Access', filePath: 'b.md', line: 2, key: 'k' },
+    };
+    assert.deepStrictEqual(describeQuestionLenses(row, { zen: false }).map((lens) => lens.title), [
+      'Question · open 3 days',
+      '1 line may answer it: Wed, Oct 14 · Access',
+      'Answer…',
+      'Drop',
+    ]);
+    assert.deepStrictEqual(describeQuestionLenses(row, { zen: true }).map((lens) => lens.action), ['view', 'offer']);
+    assert.deepStrictEqual(describeQuestionLenses({ ...row, answered: true, age: 'answered' }, { zen: false }).map((lens) => lens.title), ['Question · answered']);
+  });
+
+  test('an answer is written under its question, its trailing tags left out', () => {
+    assert.strictEqual(
+      formatAnswerLine({ text: 'Priya, via RATES-UAT #team/rates', link: '[[2026-10-14#Access]]', date: '2026-10-14' }, '  '),
+      '  - Answer: Priya, via RATES-UAT [[2026-10-14#Access]] (2026-10-14)',
+    );
+    assert.strictEqual(wordQuestion('who approves uat access'), 'Who approves uat access?');
+    assert.strictEqual(formatQuestionLine('where is the runbook?'), '- [?] Where is the runbook?');
   });
 });

@@ -32,6 +32,9 @@ import { createReviewService, ReviewWrites } from '../ui/commands/review';
 import { TaskWrites } from '../ui/commands/taskActions';
 import { MoveService } from '../services/moveService';
 import { TaskService, TaskRankKeeper } from '../services/taskService';
+import { QuestionService } from '../services/questionService';
+import { QuestionMemory } from '../core/storage/questionMemory';
+import type { QuestionWrites } from '../ui/commands/questionActions';
 import { resolveSourceUri } from '../ui/commands/navigation';
 import { TaskEditorActions, TaskLineContext } from '../ui/commands/taskEditor';
 import { TemplateService } from '../services/templateService';
@@ -149,6 +152,8 @@ export interface Writes {
   rollover: VscodeRolloverService;
   reviews: ReviewWrites;
   templates: TemplateService<vscode.Uri>;
+  /** What answers and drops a question, and what Questions remembers per workspace. */
+  questions: QuestionWrites;
   addTask: AddTaskContext;
 }
 
@@ -258,13 +263,14 @@ export function createServices(context: vscode.ExtensionContext): Services {
   const { newWorkspace, whatsNew, tryNext, log } = createLedgers(context);
   const core = createCore(context);
   const preferences = createPreferences(context, core);
-  const writes = createWrites(core, preferences);
+  const writes = createWrites(core, preferences, new QuestionMemory(context.workspaceState));
+  context.subscriptions.push(writes.questions.memory);
   const search = createSearch(context, core, preferences, writes);
   const editor = createEditorProviders(context, core, preferences);
   offerFirstRunNotices(context, { core, preferences }, newWorkspace);
   syncWalkthroughContext(context, core.indexer);
   createEditorContexts(context, core, preferences);
-  const assistance = createLinksAndAssistance(context, core, preferences);
+  const assistance = createLinksAndAssistance(context, core, preferences, writes.questions);
   const calendar = createCalendar(context, { core, preferences, writes, search });
   const home = createHome(context, {
     core,
@@ -547,10 +553,10 @@ function createPreferences(context: vscode.ExtensionContext, core: Core): Prefer
 }
 
 /**
- * What tasks, tags, parking, rollover, reviews, and templates write through.
+ * What tasks, tags, parking, rollover, reviews, templates, and questions write through.
  * Add Task's is made later, with the Tasks view, and filled in by createServices.
  */
-function createWrites(core: Core, preferences: PreferenceParts): Omit<Writes, 'addTask'> {
+function createWrites(core: Core, preferences: PreferenceParts, questionMemory: QuestionMemory): Omit<Writes, 'addTask'> {
   const { history, workspace, indexer } = core;
   // What an edit to a task writes through, for every view that edits one.
   // A task's id comes from its own text, so an edit Deckard writes makes it
@@ -609,7 +615,18 @@ function createWrites(core: Core, preferences: PreferenceParts): Omit<Writes, 'a
     index: indexer,
     clock: { now: () => Date.now() },
   });
-  return { tasks, tags, parking, rollover, reviews, templates };
+  // What answers and drops a question, and the offers set aside with Not it.
+  const questions: QuestionWrites = {
+    questions: new QuestionService<vscode.Uri, WriteHandle>({
+      notes: createVscodeEditApplier(),
+      history: createVscodeHistoryWriter(history),
+      resolveUri: (filePath) => resolveSourceUri(filePath),
+      configuration: workspace,
+      clock: { now: () => Date.now() },
+    }),
+    memory: questionMemory,
+  };
+  return { tasks, tags, parking, rollover, reviews, templates, questions };
 }
 
 /** The theme preview, the active search, exports, and the search pages. */
@@ -824,10 +841,10 @@ function createEditorContexts(context: vscode.ExtensionContext, core: Core, pref
 }
 
 /** The lenses, the assistant's tools and MCP server, and the link services. */
-function createLinksAndAssistance(context: vscode.ExtensionContext, core: Core, preferences: PreferenceParts) {
+function createLinksAndAssistance(context: vscode.ExtensionContext, core: Core, preferences: PreferenceParts, questions: QuestionWrites) {
   const { indexer, history, workspace } = core;
   const editorReferences = new EditorReferences(indexer).register();
-  const editorLenses = new EditorLenses(indexer).register();
+  const editorLenses = new EditorLenses(indexer, questions.memory).register();
   const assistantTools = new AssistantTools(indexer, history);
   const mcpServer = new DeckardMcpServer({
     indexer,

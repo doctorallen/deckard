@@ -82,7 +82,7 @@ Shorthands, written the way GitHub writes them:
 | `is:today` | Open tasks due today, or scheduled for today or earlier and started: the Tasks view's **Today**. |
 | `is:needs-date` | Open tasks more than `deckard.tasks.needsNewDateAfterDays` (30) days past due: the Tasks view's **Needs a new date**. |
 | `is:due` | Open tasks due within seven days, overdue included. |
-| `is:task`, `is:note` | Every task, or note sections without tasks. |
+| `is:task`, `is:note` | Every task, or note sections without tasks or questions. |
 | `is:blocked`, `is:blocking` | Open tasks waiting for a still-open task or with the Blocked status (`[=]`), and the open tasks they wait for. |
 | `is:waiting` | Open tasks with an on-hold status (Waiting `[w]`, Someday `[s]`, Blocked `[=]`, or one of your own), or assigned with 👤 to someone other than you. With `deckard.me` empty, every assigned task counts. |
 | `is:available` | Open tasks that are not blocked, started (no 🛫 date, or one today or earlier), and not on hold. |
@@ -94,6 +94,7 @@ Shorthands, written the way GitHub writes them:
 | `is:periodic` | Daily, weekly, and monthly notes. `is:dated` is the same. |
 | `is:parked` | [Parked](organizing.md#parking-notes) notes, entries, and tasks: in a folder `deckard.parked.folders` names, or found by a search for a tag `deckard.parked.tags` names. |
 | `is:step`, `has:steps`, `no:steps` | Steps (checkboxes under another task), tasks with steps, and tasks with none. `-is:step` leaves steps out. |
+| `is:question`, `is:unanswered`, `is:answered` | [Questions](tasks.md#questions), written `- [?]`: every one, those with no `Answer:` line under them, and those with one. A question is neither a task nor a note, so `is:open` and `is:note` leave it out. |
 
 Put `-` before a shorthand to negate it, as in `-is:done`. Deckard keeps a shorthand as written when it saves or formats a query.
 

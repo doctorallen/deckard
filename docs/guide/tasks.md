@@ -152,8 +152,10 @@ The character between a task's brackets is its status, as in [Obsidian Tasks](ht
 | `[w]` | Waiting | On hold |
 | `[s]` | Someday | On hold |
 | `[=]` | Blocked, with ⊘ beside its box | On hold |
+| `[?]` | Question, which is not a task; see [Questions](#questions) | Question |
 
 - `[ ]` and `[x]` are always Todo and Done.
+- `[?]` is a [question](#questions) unless your list gives `?` to a status of its own. Then your status wins, and questions are off; Deckard's log says so once.
 - Any other character in a box is a task, as in Obsidian Tasks. One that no status names is a task to do called **Unknown**. The first scan that finds one says how many, once, with the setting a click away, and [Stats](home-and-stats.md#stats) keeps saying it. **Add characters found in notes**, on the page [Edit Task Statuses…](#editing-the-statuses) opens, names them.
 - A status of the **Not a task** type leaves its lines as text, for a box that marks something other than a task, such as a pro or a con.
 - `[>]` still marks a task [moved elsewhere](organizing.md#moving-lines-and-tasks), and is not a task.
@@ -207,6 +209,39 @@ While task lines still carry such tags, the Task board and the Tasks view say ho
 - The page checks as you type: a character given twice, a missing name or character, a status named Open or Any, and, with a click moving to the next status, a next character no status has, or Done not followed by to do or in progress.
 - **Save** writes to the workspace's settings when they set the list, and to your user settings otherwise.
 - Renaming a status offers to rename it in saved searches, Home widgets, and query blocks that search by it.
+
+## Questions
+
+A line written `- [?]` is a question. It is not a task: it is never on the Task Board, in a task count, `is:open`, the Tasks view, or the status bar.
+
+```markdown
+- [?] Who approves access to the bond UAT? #team/rates
+    - Answer: Priya Natarajan, via the RATES-UAT group [[2026-10-14#Access]] (2026-10-14)
+```
+
+- A question carries its own tags and people, and those of the heading or front matter it is under, as a task does.
+- **It is answered** when an indented line under it starts with `Answer:`, in any case. Its box stays `[?]`.
+- **Search** with `is:question`, `is:unanswered`, and `is:answered`, in Find, search pages, query blocks, saved searches, and review sections; see [Query language](search.md#query-language).
+
+### An answer offered
+
+When a later line may answer an open question, Deckard offers it. A line is offered when it was written on or after the day the question was asked, shares at least three of the question's uncommon words, and, when the question carries a tag or names a person, shares one of those too. Words every note uses, such as *today* and *meeting*, count for little. A question that names a [typed row](databases.md) and one of its fields, such as `- [?] Who leads #team/fx?`, is offered the field's value, from the note that holds it.
+
+- **Use as answer** writes the offered line's words under the question, with a link to it and today's date.
+- **Not it** sets that line aside for that question, for good.
+- Only the best offer for each question is shown.
+
+### Questions view
+
+The **Questions** view in the Deckard sidebar, under Tasks, lists each open question, oldest first, with how long it has been open and its first tag. Its badge counts them. Selecting a question opens its line. A question a line may answer has that line under it, **May answer: Wed, Oct 14 · Access**, with **Use as answer** and **Not it** beside it.
+
+- **Answer Question…**, on a question's row, asks for the answer: type it, or pick the line offered, which writes its words and a link to it.
+- **Drop Question**, on a question's right-click menu, writes its box as `[-]`, which makes it a cancelled task.
+- The title bar's **Include Answered Questions** lists the answered ones after them, and **Open as Search** opens the search page for `is:unanswered`.
+
+### In the editor
+
+Above an open question, a lens says **Question · open 12 days**, then, when a line may answer it, **1 line may answer it: Wed, Oct 14 · Access**, which opens that line, then **Answer…** and **Drop**. Above an answered one it says **Question · answered Fri, Oct 9**. Under [Zen](themes-and-zen.md#zen) the lens keeps the age and the line that may answer, and leaves out **Answer…** and **Drop**. `deckard.editor.questions` turns the lens off.
 
 ## Tasks view
 

@@ -226,6 +226,10 @@
         "view": "deckard.agenda",
         "contents": "The Tasks view lists only the tasks its search finds, and none match now.\n[Show every open task](command:deckard.clearAgendaQuery)\n[Edit the search](command:deckard.agenda.editQuery)",
         "when": "deckard.agendaFiltered"
+      },
+      {
+        "view": "deckard.questions",
+        "contents": "No open questions. Write one as - [?] …"
       }
     ],
     "commands": [
@@ -347,6 +351,43 @@
         "command": "deckard.createHubNoteForTag",
         "title": "Create Hub Note for Tag…",
         "category": "Deckard"
+      },
+      {
+        "command": "deckard.questions.answer",
+        "title": "Answer Question…",
+        "category": "Deckard",
+        "icon": "$(comment)"
+      },
+      {
+        "command": "deckard.questions.drop",
+        "title": "Drop Question",
+        "category": "Deckard",
+        "icon": "$(circle-slash)"
+      },
+      {
+        "command": "deckard.questions.useOffer",
+        "title": "Use as Answer",
+        "icon": "$(check)"
+      },
+      {
+        "command": "deckard.questions.notIt",
+        "title": "Not It",
+        "icon": "$(close)"
+      },
+      {
+        "command": "deckard.questions.showAnswered",
+        "title": "Include Answered Questions",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "deckard.questions.hideAnswered",
+        "title": "Leave Out Answered Questions",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "deckard.questions.openAsSearch",
+        "title": "Open as Search",
+        "icon": "$(search)"
       },
       {
         "command": "deckard.createTypeFromTags",
@@ -1199,6 +1240,30 @@
         {
           "command": "deckard.contextPagesAsIcons",
           "when": "false"
+        },
+        {
+          "command": "deckard.questions.drop",
+          "when": "false"
+        },
+        {
+          "command": "deckard.questions.useOffer",
+          "when": "false"
+        },
+        {
+          "command": "deckard.questions.notIt",
+          "when": "false"
+        },
+        {
+          "command": "deckard.questions.showAnswered",
+          "when": "false"
+        },
+        {
+          "command": "deckard.questions.hideAnswered",
+          "when": "false"
+        },
+        {
+          "command": "deckard.questions.openAsSearch",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -1492,6 +1557,21 @@
           "command": "deckard.contextPagesAsIcons",
           "when": "view == deckard.relatedNotes && deckard.contextPagesAsList",
           "group": "1_pages@2"
+        },
+        {
+          "command": "deckard.questions.showAnswered",
+          "when": "view == deckard.questions && !deckard.questionsShowAnswered",
+          "group": "navigation@1"
+        },
+        {
+          "command": "deckard.questions.hideAnswered",
+          "when": "view == deckard.questions && deckard.questionsShowAnswered",
+          "group": "navigation@1"
+        },
+        {
+          "command": "deckard.questions.openAsSearch",
+          "when": "view == deckard.questions",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [
@@ -1599,6 +1679,41 @@
           "command": "deckard.agenda.reschedule",
           "when": "view == deckard.agenda && viewItem =~ /^deckardAgendaGroup/",
           "group": "1_due@1"
+        },
+        {
+          "command": "deckard.questions.answer",
+          "when": "view == deckard.questions && viewItem == deckardQuestion",
+          "group": "inline@1"
+        },
+        {
+          "command": "deckard.questions.answer",
+          "when": "view == deckard.questions && viewItem == deckardQuestion",
+          "group": "deckard@1"
+        },
+        {
+          "command": "deckard.questions.drop",
+          "when": "view == deckard.questions && viewItem == deckardQuestion",
+          "group": "deckard@2"
+        },
+        {
+          "command": "deckard.questions.useOffer",
+          "when": "view == deckard.questions && viewItem == deckardQuestionOffer",
+          "group": "inline@1"
+        },
+        {
+          "command": "deckard.questions.notIt",
+          "when": "view == deckard.questions && viewItem == deckardQuestionOffer",
+          "group": "inline@2"
+        },
+        {
+          "command": "deckard.questions.useOffer",
+          "when": "view == deckard.questions && viewItem == deckardQuestionOffer",
+          "group": "deckard@1"
+        },
+        {
+          "command": "deckard.questions.notIt",
+          "when": "view == deckard.questions && viewItem == deckardQuestionOffer",
+          "group": "deckard@2"
         }
       ],
       "editor/title/context": [
@@ -1710,6 +1825,12 @@
           "name": "Tasks",
           "icon": "resources/views/tasks.svg",
           "contextualTitle": "Deckard Tasks"
+        },
+        {
+          "id": "deckard.questions",
+          "name": "Questions",
+          "icon": "resources/views/questions.svg",
+          "contextualTitle": "Deckard Questions"
         },
         {
           "id": "deckard.hubs",
@@ -2345,6 +2466,12 @@
             "scope": "resource",
             "description": "Mark a 🔁 repeat rule Deckard cannot read, since completing that task would not start the next one, and offer the nearest rule it can read. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
             "order": 13
+          },
+          "deckard.editor.questions": {
+            "type": "boolean",
+            "scope": "resource",
+            "description": "Show, above a question written - [?], how long it has been open, a line that may answer it, and Answer… and Drop; above an answered one, when it was answered. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
+            "order": 14
           }
         },
         "order": 3

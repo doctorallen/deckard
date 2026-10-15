@@ -27,6 +27,7 @@ export const EDITOR_TOGGLES = [
   'dimTaskMetadata',
   'taskDueHints',
   'repeatDiagnostics',
+  'questions',
 ] as const;
 
 /** One of those switches. */
