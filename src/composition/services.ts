@@ -984,6 +984,7 @@ function createHome(context: vscode.ExtensionContext, parts: HomeParts) {
     writes: writes.tasks,
     pins: parts.pins,
     linkNotes: parts.linkNotes,
+    questions: writes.questions.memory,
   });
   return { taskBoard, dashboard, quickFind };
 }

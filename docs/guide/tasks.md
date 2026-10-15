@@ -239,6 +239,10 @@ The **Questions** view in the Deckard sidebar, under Tasks, lists each open ques
 - **Drop Question**, on a question's right-click menu, writes its box as `[-]`, which makes it a cancelled task.
 - The title bar's **Include Answered Questions** lists the answered ones after them, and **Open as Search** opens the search page for `is:unanswered`.
 
+### In Find
+
+When [Find](search.md#find) finds nothing that has every word, its first row is **Ask it: add “…?” to today's note**, which writes your words as a question in today's note. Open questions that match what you type are listed among the results with a **?**.
+
 ### On Home
 
 Home's **Open questions** widget, which **Customize Home** adds, lists the same questions with the same buttons; its title opens the Questions view. Under [Zen](themes-and-zen.md#zen), its buttons stay quiet until you point at a question.

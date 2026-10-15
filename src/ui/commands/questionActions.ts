@@ -10,6 +10,10 @@ import { readDateFormats } from './datePrompt';
 import { createWikiLink } from './insertLink';
 import { describeRejectedEdit, noteName, reportFailure, reportStale } from './notify';
 import type { WriteHandle } from './workspaceWrites';
+import type { IndexReader } from '../../core/workspace/indexReader';
+import { stripTags } from '../../domain/markdown/parser';
+import { announce, appendCapture } from './capture';
+import { chooseTargetFolder, ensureDailyNote } from './dailyNote';
 
 /**
  * What Questions' commands do: Answer…, which writes an answer under a
@@ -242,4 +246,24 @@ async function pickQuestion(index: WorkspaceIndex): Promise<Question | undefined
   }
   const picked = await vscode.window.showQuickPick(items, { title: 'Answer a Question', placeHolder: 'Choose the question to answer' });
   return picked?.question;
+}
+
+/**
+ * Find's Ask it: adds a question to today's note, creating the note when
+ * needed, under its Questions heading when it has one, else after its last
+ * list, as Add Task places a task, and says where it went.
+ */
+export async function askToToday(indexer: Pick<IndexReader, 'parse'>, line: string): Promise<boolean> {
+  const folder = await chooseTargetFolder();
+  if (!folder) {
+    return false;
+  }
+  const uri = await ensureDailyNote(folder);
+  const document = await vscode.workspace.openTextDocument(uri);
+  const place = indexer
+    .parse(uri, document.getText())
+    .sections.find((section) => !section.isInline && /^questions$/i.test(stripTags(section.heading).trim()));
+  const taskLine = await appendCapture(uri, line, place);
+  announce(taskLine === undefined ? { kind: 'refused', uri } : { kind: 'added', uri, taskLine }, line);
+  return taskLine !== undefined;
 }

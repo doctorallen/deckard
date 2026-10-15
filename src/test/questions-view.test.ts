@@ -18,6 +18,11 @@ import { WorkspaceWriteHistory, type WriteHandle } from '../ui/commands/workspac
 import { QuestionsTreeProvider, type QuestionsNode } from '../ui/views/questionsTree';
 import { formatIsoDate } from '../domain/markdown/calendar';
 import { EditorLenses } from '../ui/providers/editorLenses';
+import { buildQuickFindResults } from '../ui/state/quickFindState';
+import { describeMisses, toPickItems } from '../ui/commands/quickFind';
+import { createQueryContext } from '../domain/query/queryContext';
+import { formatQuestionLine } from '../domain/markdown/questionLines';
+import { createPreferences, MemoryStore } from './preferenceServices';
 
 /** A key-value store in memory, as the workspace's state is. */
 function memoryStore(): ConstructorParameters<typeof QuestionMemory>[0] {
@@ -199,5 +204,51 @@ suite('The lens above a question', () => {
     } finally {
       lenses.dispose();
     }
+  });
+});
+
+suite('Find and questions', () => {
+  const index = buildWorkspaceIndex(
+    new Map(
+      Object.entries({
+        'notes/2026-10-01.md': '# 2026-10-01\n- [?] Who approves access to the bond UAT? #team/rates\n',
+        'notes/rates.md': '# Rates desk\nThe curve loader restarts at six.\n',
+      }).map(([filePath, text]) => [filePath, parseMarkdown(filePath, text)] as const),
+    ),
+  );
+  const find = (input: string) =>
+    buildQuickFindResults({
+      index,
+      preferences: createPreferences(new MemoryStore()).reader.value,
+      input,
+      searchText: () => ({ matches: [], partial: false }),
+      queryContext: createQueryContext(Date.now()),
+      formatQuestion: (text) => formatQuestionLine(text),
+    });
+
+  test('lists the open questions that match, with a ? icon', () => {
+    const results = find('bond uat');
+    assert.deepStrictEqual(results.questions?.map((row) => [row.kind, row.label, row.line]), [['question', 'Who approves access to the bond UAT?', 2]]);
+    const rows = toPickItems(results, 'bond uat');
+    assert.ok(rows.some((row) => row.label === '$(question) Who approves access to the bond UAT?'));
+  });
+
+  test('offers Ask it first when nothing has every word, saying how often it was searched for', async () => {
+    const results = find('who signs the vendor lease');
+    assert.deepStrictEqual(results.ask, {
+      words: 'who signs the vendor lease',
+      question: 'Who signs the vendor lease?',
+      line: '- [?] Who signs the vendor lease?',
+    });
+    const memory = new QuestionMemory(memoryStore());
+    const first = new Date(2026, 9, 2, 9).getTime();
+    await memory.recordMiss('Who signs the  vendor lease', first);
+    await memory.recordMiss('who signs the vendor lease', first + 1000);
+    const said = describeMisses(memory.missed('who signs the vendor lease'), createQueryContext(new Date(2026, 9, 14).getTime()));
+    assert.strictEqual(said, 'You have searched for this 3 times since Fri, Oct 2');
+    const [ask] = toPickItems(results, 'who signs the vendor lease', undefined, said);
+    assert.strictEqual(ask.label, '$(question) Ask it: add “Who signs the vendor lease?” to today’s note');
+    assert.strictEqual(ask.description, said);
+    assert.strictEqual(find('rates').ask, undefined, 'a search that found something asks nothing');
   });
 });
