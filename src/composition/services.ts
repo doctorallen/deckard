@@ -74,6 +74,7 @@ import { TagService } from '../services/tagService';
 import { EditorTagDecorations } from '../ui/providers/tagDecorations';
 import { TagCompletionProvider } from '../ui/providers/tagSuggestions';
 import { TypeFieldSuggestions } from '../ui/providers/typeSuggestions';
+import { TypeNoteEditor } from '../ui/providers/typeNoteEditor';
 import { TypeHealth } from '../ui/providers/typeHealth';
 import { TaskMetadataCompletionProvider } from '../ui/providers/taskMetadataSuggestions';
 import { SlashMenuProvider } from '../ui/providers/slashMenu';
@@ -898,8 +899,9 @@ function createLinksAndAssistance(context: vscode.ExtensionContext, core: Core, 
     indexer.isNotesFile(uri),
   ).register();
   const linkHealth = new LinkHealth(indexer);
-  // Typed notes: their fields completed, and what is wrong with them marked.
-  context.subscriptions.push(new TypeFieldSuggestions(indexer).register(), new TypeHealth(indexer));
+  // Typed notes: their fields completed, and what is wrong with them marked;
+  // a type note's table helped along by a lens, header hovers, and Format.
+  context.subscriptions.push(new TypeFieldSuggestions(indexer).register(), new TypeHealth(indexer), new TypeNoteEditor(indexer).register());
   // Which links a rename carries and which mentions become links, and the
   // notes links name, each decided once for every command that asks.
   const links = new LinkService({ index: indexer, notes: vscodeLiveNotes, findUnlinkedMentions, linkStyle: readLinkStyle });

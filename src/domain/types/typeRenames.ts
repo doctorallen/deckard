@@ -7,14 +7,12 @@
  * plan to the notes as their documents hold them, through the refactor
  * preview, one edit per note.
  */
+import { isFrontmatterKey, toFrontmatterKey } from '../markdown/frontmatter';
 import type { WorkspaceIndex } from '../model';
 import type { FrontmatterFieldWrite } from './frontmatterWriter';
 import { getTypeIndex, type TypeIndex } from './typeIndex';
 import { escapeTableCell, findTableCells } from './typeNoteWriter';
 import type { TypeDefinition } from './typeRegistry';
-
-/** A front-matter key as a field name must be to be written as one. */
-const FIELD_NAME = /^[A-Za-z][A-Za-z0-9_-]*$/;
 
 /** One cell of a type's schema table to rewrite: its note, one-based line, cell, and new text. */
 export interface SchemaCellEdit {
@@ -68,14 +66,14 @@ export function planFieldRename(
     return found;
   }
   const { type, field } = found;
-  const name = newName.trim();
-  if (!FIELD_NAME.test(name)) {
-    return { error: `"${name}" cannot be a front-matter key: start with a letter and use letters, digits, - and _.` };
+  const name = newName.trim().replace(/\s+/g, ' ');
+  if (!isFrontmatterKey(name)) {
+    return { error: `"${name}" cannot be a front-matter key: start with a letter and use letters, digits, spaces, - and _.` };
   }
   if (name === field.name) {
     return { error: `${field.name} is already called that.` };
   }
-  const other = type.fields.find((each) => each !== field && each.key === name.toLowerCase());
+  const other = type.fields.find((each) => each !== field && each.key === toFrontmatterKey(name));
   if (other) {
     return { error: `${type.name} already has a field called ${other.name}.` };
   }

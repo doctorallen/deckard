@@ -68,6 +68,20 @@ suite('Types in the editor: completions', () => {
     assert.strictEqual(offered[0].detail, 'Team field · Number');
   });
 
+  test('reads a key written in words, as the parser keys it', () => {
+    const acme = lines('---', 'Distribution List: ["@da', 'Distribution L', '---');
+    assert.deepStrictEqual(findFrontmatterCompletionContext(acme, 1, acme[1].length), {
+      kind: 'value',
+      key: 'distribution-list',
+      start: 20,
+      end: 24,
+      typed: '@da',
+      quoted: true,
+    });
+    const key = findFrontmatterCompletionContext(acme, 2, acme[2].length);
+    assert.ok(key?.kind === 'key' && key.present.has('distribution-list') && key.end === 14);
+  });
+
   test('offers the rows a relation names, each with its type and first relation, written as Deckard writes it', () => {
     const team = [types.registry.get('team')].flatMap((type) => (type ? [type] : []));
     const people = listFieldValueCompletions(types, index, team, { key: 'lead', typed: '' });

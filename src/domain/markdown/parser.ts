@@ -12,7 +12,15 @@ import {
   TypeNote,
 } from '../model';
 import { makeDay, MONTH_NUMBERS, parseIsoDate, WEEKDAY_NAMES } from './calendar';
-import { findFrontmatterEnd, readFlowListValue, splitFlowListItems, splitFrontmatterValues, unquote } from './frontmatter';
+import {
+  FRONTMATTER_KEY_SOURCE,
+  findFrontmatterEnd,
+  readFlowListValue,
+  splitFlowListItems,
+  splitFrontmatterValues,
+  toFrontmatterKey,
+  unquote,
+} from './frontmatter';
 import { findListParents, findParentTaskLine, lineIndent } from './listNesting';
 import {
   findFencedLines,
@@ -623,7 +631,13 @@ function parseFrontmatter(lines: string[], settings: TagSettings): Frontmatter {
 }
 
 /**
- * The front matter's fields, lowercased, each with its values: those on the
+ * A front-matter key's line: the key, its colon with any spaces before it
+ * (YAML allows `tags : [parked]`), and its value.
+ */
+const FRONTMATTER_KEY_LINE = new RegExp(`^(${FRONTMATTER_KEY_SOURCE})([ \\t]*:)\\s*(.*)$`);
+
+/**
+ * The front matter's fields, keyed as toFrontmatterKey keys them, each with its values: those on the
  * field's own line, then the `- item` lines under it. Also the spans of the
  * tags those values name, for the editor to draw.
  */
@@ -638,11 +652,10 @@ function readFrontmatterValues(
   let currentKey: string | undefined;
   lines.slice(1, end).forEach((line, lineIndex) => {
     const lineNumber = lineIndex + 2;
-    // YAML allows spaces before the colon, as `tags : [parked]`.
-    const property = line.match(/^([A-Za-z][A-Za-z0-9_-]*)([ \t]*:)\s*(.*)$/);
+    const property = FRONTMATTER_KEY_LINE.exec(line);
     if (property) {
       const value = property[3];
-      currentKey = property[1].toLowerCase();
+      currentKey = toFrontmatterKey(property[1]);
       const fieldValues = splitFrontmatterValues(value, { keepEmptyValue: true });
       values.set(currentKey, fieldValues);
       lineNumbers.set(currentKey, { key: lineNumber, values: fieldValues.map(() => lineNumber) });
@@ -656,6 +669,11 @@ function readFrontmatterValues(
       return;
     }
     const listItem = line.match(/^\s*-\s+(.+?)\s*$/);
+    if (!listItem && /^[^\s#]/.test(line)) {
+      // A line at the left edge that is no key ends the key above, so the
+      // items under it are not read as that key's.
+      currentKey = undefined;
+    }
     if (!listItem || !currentKey) {
       return;
     }

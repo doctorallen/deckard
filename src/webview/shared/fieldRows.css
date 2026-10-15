@@ -2,12 +2,13 @@
  * A typed row's fields (fieldRows.tsx): the Note page's fields region and
  * a tag's page's hub card. A key in monospace, muted; its values; then,
  * under a muted "From other notes", the reverses in italics, each with a
- * muted line saying where it is set. A field's name that opens the form is
+ * muted line saying where it is set. Each list's names take the width of
+ * its longest (fieldRows.tsx nameColumn), so they line up. A field's name that opens the form is
  * drawn as the key is, underlined only on hover and focus.
  */
 .field-rows { display: grid; gap: 2px; margin: 0; }
 .field-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3); padding: 2px 4px; margin: 0 -4px; }
-.field-name { flex: 0 0 12ch; min-width: 0; overflow-wrap: anywhere; color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); }
+.field-name { flex: 0 0 var(--field-name-width, 12ch); min-width: 0; overflow-wrap: anywhere; color: var(--muted); font-family: var(--font-mono); font-size: var(--text-xs); }
 .field-values { flex: 1 1 16ch; min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .field-row.is-reverse .field-name, .field-value.is-reverse { font-style: italic; }
 .field-name-link.field-name-link { min-height: 0; padding: 0; border: 0; background: transparent; box-shadow: none; clip-path: none; color: inherit; font: inherit; text-align: left; text-transform: none; text-decoration: none; cursor: pointer; }

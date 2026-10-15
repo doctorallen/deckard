@@ -241,7 +241,7 @@ function narrowTypeAction<T extends TypeActionMessage['type']>(type: T): Narrowe
 const narrowCreateTypeFromTag: Narrower<CreateTypeFromTagMessage> = (value) =>
   isTypeName(value.namespace) && Object.keys(value).length === 2 ? { type: 'createTypeFromTag', namespace: value.namespace } : undefined;
 
-/** Rename field everywhere… or Edit in the type's note, for one field. */
+/** Rename field everywhere…, Change field…, or Edit in the type's note, for one field. */
 function narrowTypeField<T extends TypeFieldMessage['type']>(type: T): Narrower<TypeFieldMessage & { type: T }> {
   return (value) => (isTypeName(value.typeKey) && isTypeName(value.field) ? { type, typeKey: value.typeKey, field: value.field } : undefined);
 }
@@ -333,8 +333,10 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   setTypeGroup: narrowSetTypeGroup,
   addTypeRow: narrowTypeAction('addTypeRow'),
   openTypeNote: narrowTypeAction('openTypeNote'),
+  editType: narrowTypeAction('editType'),
   createTypeFromTag: narrowCreateTypeFromTag,
   renameTypeField: narrowTypeField('renameTypeField'),
+  changeTypeField: narrowTypeField('changeTypeField'),
   editTypeField: narrowTypeField('editTypeField'),
   renameTypeOption: narrowRenameTypeOption,
   createRowHub: narrowTypeRow('createRowHub'),

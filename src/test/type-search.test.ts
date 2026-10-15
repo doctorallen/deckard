@@ -206,7 +206,10 @@ suite('Types as searches: renames', () => {
     assert.deepStrictEqual([...plan.notes].sort(), ['Teams/Credit.md', 'Teams/Rates.md']);
     assert.deepStrictEqual(plan.schema, { filePath: 'Types/Team.md', line: 9, cell: 0, text: 'manager' });
     assert.deepStrictEqual(planFieldRename(typedWorkspace(), 'team', 'lead', 'owns'), { error: 'Team already has a field called owns.' });
-    assert.ok('error' in planFieldRename(typedWorkspace(), 'team', 'lead', 'two words'));
+    assert.ok('error' in planFieldRename(typedWorkspace(), 'team', 'lead', 'two/words'));
+    const worded = planFieldRename(typedWorkspace(), 'team', 'lead', '  Team   Lead ');
+    assert.ok(!('error' in worded) && worded.newName === 'Team Lead' && worded.schema.text === 'Team Lead');
+    assert.deepStrictEqual(planFieldRename(typedWorkspace(), 'team', 'lead', 'On Call'), { error: 'Team already has a field called on-call.' });
     assert.ok('error' in planFieldRename(typedWorkspace(), 'team', 'nothing', 'x'));
   });
 

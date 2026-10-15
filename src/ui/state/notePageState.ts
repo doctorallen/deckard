@@ -1,7 +1,7 @@
 import { findLinkedBlock, findLinkedSection, getBacklinkIndex, noteTitle, parseWikiTarget } from '../../domain/index/backlinks';
 import { drawTaskStatus } from './drawnStatus';
 import { withDrawnStatus } from './entryCards';
-import { findFrontmatterEnd, splitFrontmatterValues } from '../../domain/markdown/frontmatter';
+import { FRONTMATTER_KEY_SOURCE, findFrontmatterEnd, splitFrontmatterValues } from '../../domain/markdown/frontmatter';
 import { mapInlineTokens, tokenizeInline } from '../../domain/markdown/inline';
 import { readFrontmatterValueTag, stripTags } from '../../domain/markdown/parser';
 import { STATUS_CHARACTER } from '../../domain/markdown/lineShapes';
@@ -483,7 +483,7 @@ function readTableRows(cursor: Cursor, level: number): InlineToken[][][] {
 }
 
 /** A front-matter line that starts a property: its name, and what follows the colon. */
-const PROPERTY_LINE = /^([A-Za-z][\w-]*)\s*:\s*(.*)$/;
+const PROPERTY_LINE = new RegExp(`^(${FRONTMATTER_KEY_SOURCE})\\s*:\\s*(.*)$`);
 
 /** A YAML block scalar's opening, `|` or `>` with its chomping and indent marks. */
 const BLOCK_SCALAR = /^[|>][+-]?\d*\s*$/;

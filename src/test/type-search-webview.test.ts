@@ -91,10 +91,13 @@ suite('Types as searches, drawn', () => {
     assert.deepStrictEqual(sorted.lastPosted('setTypeSort'), { type: 'setTypeSort', typeKey: 'team' });
   });
 
-  test('a heading’s menu sorts, hides, and renames a field everywhere or opens its row of the type’s note', () => {
+  test('a heading’s menu sorts, hides, changes the field in the type form, renames it everywhere, or opens its row of the type’s note', () => {
     const page = typePage();
     rightClick(page, '.type-table th[data-column="lead"]');
-    assert.deepStrictEqual(menuRows(page), ['Sort A-Z', 'Sort Z-A', 'Hide column', '—', 'Rename field everywhere…', 'Edit in Types/Team.md']);
+    assert.deepStrictEqual(menuRows(page), ['Sort A-Z', 'Sort Z-A', 'Hide column', '—', 'Change field…', 'Rename field everywhere…', 'Edit in Types/Team.md']);
+    choose(page, 'Change field…');
+    assert.deepStrictEqual(page.lastPosted('changeTypeField'), { type: 'changeTypeField', typeKey: 'team', field: 'lead' });
+    rightClick(page, '.type-table th[data-column="lead"]');
     choose(page, 'Rename field everywhere…');
     assert.deepStrictEqual(page.lastPosted('renameTypeField'), { type: 'renameTypeField', typeKey: 'team', field: 'lead' });
     rightClick(page, '.type-table th[data-column="lead"]');

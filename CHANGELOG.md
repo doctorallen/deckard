@@ -2,6 +2,49 @@
 
 ## Unreleased
 
+## 2.10.0 - 2026-10-15
+
+### Highlights
+
+- **Type builder**: `New Type…` and `Edit Type…` build a type's fields from a form, each kind listed with an example.
+- A type's field may be named in words, such as `Distribution List`, written so in front matter.
+
+### Added
+
+- **Type builder.** `Deckard: New Type…` asks a type's name and what its
+  rows are, writes `Types/<Name>.md`, and opens the type form;
+  `Deckard: Edit Type…` opens the form on any type. The form lists the
+  fields with their kinds; **Add field…** asks the name, the kind (each
+  listed with an example: Person, your types, More than one type…, Note,
+  Text, Number, Date, Select…, Checkbox, Link, Email, Phone), one or
+  several, and, for a field that names rows, its reverse, each step with
+  Back. Choosing a field offers Rename…, Kind, Holds, Reverse, Also
+  called, Words, Move up, Move down, and Remove (the table row only; notes
+  keep their values). Each change is written as it is made, aligned, and
+  Undo Last Change takes it back. Also on a type note's title bar, **Edit
+  type…** in **⋯** on a type's page, and **Change field…** on a column's
+  menu there.
+- **Type notes in the editor.** A lens over the schema table offers **Edit
+  Type…**, **Add field…**, and the type's count of fields and rows; a hover
+  on each header cell says what the column holds, the Kind header listing
+  every kind; and `Format Document` realigns the table.
+
+### Changed
+
+- **Field names in words.** A type's field may be named in words, such as
+  `Distribution List`. A row's note writes it as named,
+  `Distribution List: ["@dana", "@omar"]`, and Deckard reads it the same
+  as `distribution-list:`, the name a search uses. New notes, completions,
+  and Rename field write the name as the type's table spells it.
+- **Field names fit.** On a tag's page and the Note page, the field names
+  take the width of the longest, up to 24 characters, rather than breaking
+  a name such as `Distribution List` over two lines.
+
+### Fixed
+
+- A front-matter line Deckard cannot read as a key no longer passes the
+  list under it to the key above.
+
 ## 2.9.0 - 2026-10-15
 
 ### Highlights

@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 
-import { setFrontmatterField, type FrontmatterFieldEdit, type FrontmatterWriteValue } from '../domain/types/frontmatterWriter';
+import { renameFrontmatterKey, setFrontmatterField, type FrontmatterFieldEdit, type FrontmatterWriteValue } from '../domain/types/frontmatterWriter';
 
 const lines = (...text: string[]): string => text.join('\n');
 const values = (...texts: string[]): FrontmatterWriteValue[] => texts.map((text) => ({ text }));
@@ -149,7 +149,7 @@ suite('Front matter: writing one key', () => {
     assert.deepStrictEqual(refused(lines('---', 'desc: "two', '  lines"', '---'), 'desc'), { kind: 'refused', reason: 'unreadable', line: 2 });
     assert.deepStrictEqual(refused(lines('---', 'desc: words', '  run on', '---'), 'desc'), { kind: 'refused', reason: 'unreadable', line: 3 });
     assert.deepStrictEqual(refused(lines('---', 'lead: *boss', '---'), 'lead'), { kind: 'refused', reason: 'unreadable', line: 2 });
-    assert.deepStrictEqual(refused(NOTE, 'not a key'), { kind: 'refused', reason: 'bad-key', line: 1 });
+    assert.deepStrictEqual(refused(NOTE, 'not/a key'), { kind: 'refused', reason: 'bad-key', line: 1 });
   });
 
   test('reads a comment only outside quotes and brackets, and a value that opens with # as a value', () => {
@@ -157,5 +157,31 @@ suite('Front matter: writing one key', () => {
     assert.strictEqual(written(setFrontmatterField(note, 'a', { values: values('z') })).split('\n')[1], 'a: "z"   # real');
     assert.strictEqual(written(setFrontmatterField(note, 'b', { values: values('s'), list: true })).split('\n')[2], 'b: [s] # list');
     assert.strictEqual(written(setFrontmatterField(note, 'c', { values: values('#team/credit') })).split('\n')[3], 'c: "#team/credit"');
+  });
+});
+
+suite('Front matter: keys written in words', () => {
+  const note = lines('---', 'describes: "#org/acme"', 'Distribution List:', '  - "@dana"', '---', '# Acme');
+
+  test('a key written in words is the key with hyphens, and keeps its spelling', () => {
+    assert.strictEqual(
+      written(setFrontmatterField(note, 'distribution-list', { values: values('@dana', '@omar') })),
+      lines('---', 'describes: "#org/acme"', 'Distribution List:', '  - "@dana"', '  - "@omar"', '---', '# Acme'),
+    );
+  });
+
+  test('a key the note does not write yet is written as given', () => {
+    assert.strictEqual(
+      written(setFrontmatterField(lines('---', 'describes: "#org/globex"', '---'), 'Distribution List', { values: values('@sam') })),
+      lines('---', 'describes: "#org/globex"', 'Distribution List: "@sam"', '---'),
+    );
+  });
+
+  test('a rename reads the key in words, and writes words', () => {
+    assert.strictEqual(
+      written(renameFrontmatterKey(note, 'distribution-list', 'Mailing List')),
+      lines('---', 'describes: "#org/acme"', 'Mailing List:', '  - "@dana"', '---', '# Acme'),
+    );
+    assert.deepStrictEqual(renameFrontmatterKey(note, 'describes', 'distribution list'), { kind: 'refused', reason: 'key-taken', line: 3 });
   });
 });

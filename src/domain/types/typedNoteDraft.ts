@@ -248,7 +248,7 @@ export function planTypedNote(type: DraftType, draft: TypedNoteDraft, options: O
     if (!values?.length) {
       return;
     }
-    const edit = setFrontmatterField(content, field.key, writeDraftValues(field.kind, values));
+    const edit = setFrontmatterField(content, field.name, writeDraftValues(field.kind, values));
     if (edit.kind === 'edit') {
       content = edit.content;
     } else if (edit.kind === 'refused') {
@@ -439,7 +439,7 @@ export function startExistingNoteDraft(type: DraftType, note: ExistingNoteRead):
 export function findRefusedFields(type: Pick<DraftType, 'fields'>, content: string): Record<string, number> {
   const refused: Record<string, number> = {};
   listDraftFields(type).forEach((field) => {
-    const edit = setFrontmatterField(content, field.key, { values: [{ text: 'x' }] });
+    const edit = setFrontmatterField(content, field.name, { values: [{ text: 'x' }] });
     if (edit.kind === 'refused') {
       refused[field.key] = edit.line;
     }
@@ -509,7 +509,7 @@ export function planFieldSave(type: DraftType, draft: TypedNoteDraft, current: s
   }
   let content = current;
   for (const field of changed) {
-    const edit = setFrontmatterField(content, field.key, writeDraftValues(field.kind, draft.values[field.key] ?? []));
+    const edit = setFrontmatterField(content, field.name, writeDraftValues(field.kind, draft.values[field.key] ?? []));
     if (edit.kind === 'refused') {
       return { kind: 'refused', key: field.key, name: field.name, line: edit.line };
     }

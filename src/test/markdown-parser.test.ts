@@ -68,6 +68,23 @@ suite('Markdown parser', () => {
     );
   });
 
+  test('reads a front-matter key written in words, keyed with hyphens', () => {
+    const parsed = parseMarkdown('notes/acme.md', '---\nDistribution List: ["@dana", "@omar"]\nOn  Call :\n  - "@sam"\n---\n# Acme');
+    assert.deepStrictEqual(
+      parsed.properties?.map((property) => [property.name, property.values.map((value) => value.text)]),
+      [['distribution-list', ['@dana', '@omar']], ['on-call', ['@sam']]],
+    );
+    assert.deepStrictEqual(parsed.frontmatterTags.map((tag) => tag.key), ['@dana', '@omar', '@sam']);
+  });
+
+  test('a front-matter line that is no key ends the key above it', () => {
+    const parsed = parseMarkdown('notes/acme.md', '---\nlead: "@dana"\nCost ($): 4\n  - "@omar"\n---\n# Acme');
+    assert.deepStrictEqual(
+      parsed.properties?.map((property) => [property.name, property.values.map((value) => value.text)]),
+      [['lead', ['@dana']]],
+    );
+  });
+
   test('a # in a bare web address is part of the address, not a tag', () => {
     assert.deepStrictEqual(extractTags('Docs at https://docs.example.com/#install today'), []);
     assert.deepStrictEqual(

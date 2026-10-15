@@ -142,7 +142,7 @@ function storyRows(snapshot: SearchPageSnapshot, storyShown: boolean): ViewOptio
 }
 
 /**
- * ⋯'s rows for a type's page: Add <type>… and Open its note; and, on a tag's
+ * ⋯'s rows for a type's page: Add <type>…, Edit type…, and Open its note; and, on a tag's
  * page whose namespace has no type, Create type from it.
  */
 function typeRows(snapshot: SearchPageSnapshot): ViewOptionItem[] {
@@ -150,6 +150,7 @@ function typeRows(snapshot: SearchPageSnapshot): ViewOptionItem[] {
   if (table) {
     return [
       { action: 'add-type-row', text: `Add ${table.name.toLowerCase()}…`, tip: `Write a new ${table.name.toLowerCase()}'s note, with its fields' keys` },
+      { action: 'edit-type', text: 'Edit type…', tip: `Add, change, or remove a ${table.name.toLowerCase()}'s fields` },
       { action: 'open-type-note', text: `Open ${typeNoteName(table)}`, tip: `Open the note that defines ${table.plural.toLowerCase()} and their fields` },
     ];
   }

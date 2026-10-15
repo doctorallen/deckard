@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "2.9.0",
+  "version": "2.10.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -428,6 +428,17 @@
       {
         "command": "deckard.writtenBefore.notSame",
         "title": "Not the Same"
+      },
+      {
+        "command": "deckard.newType",
+        "title": "New Type…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.editType",
+        "title": "Edit Type…",
+        "category": "Deckard",
+        "icon": "$(symbol-structure)"
       },
       {
         "command": "deckard.createTypeFromTags",
@@ -1335,6 +1346,11 @@
           "command": "deckard.noteActions",
           "when": "resourceLangId == markdown && deckard.isNote",
           "group": "navigation@12"
+        },
+        {
+          "command": "deckard.editType",
+          "when": "resourceLangId == markdown && deckard.isTypeNote",
+          "group": "navigation@14"
         },
         {
           "command": "deckard.openNotePage",

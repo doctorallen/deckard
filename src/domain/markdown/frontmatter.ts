@@ -32,6 +32,29 @@ export function findFrontmatterEnd(lines: readonly string[]): number | undefined
   return end > 0 ? end : undefined;
 }
 
+/**
+ * A front-matter key as Deckard reads one, for building a line's pattern: a
+ * letter, then letters, digits, `_`, and `-`, its words parted by spaces as
+ * YAML allows, so `Distribution List` is a key.
+ */
+export const FRONTMATTER_KEY_SOURCE = '[A-Za-z][A-Za-z0-9_-]*(?:[ \\t]+[A-Za-z0-9_-]+)*';
+
+const FRONTMATTER_KEY = new RegExp(`^${FRONTMATTER_KEY_SOURCE}$`);
+
+/** Whether a name can be written as a front-matter key: `lead`, `on-call`, `Distribution List`. */
+export function isFrontmatterKey(name: string): boolean {
+  return FRONTMATTER_KEY.test(name);
+}
+
+/**
+ * A key as the parser keys it: lowercased, each run of spaces a hyphen, as a
+ * search writes a field's name. `Distribution List` and `distribution-list`
+ * are one key.
+ */
+export function toFrontmatterKey(name: string): string {
+  return name.trim().toLowerCase().replace(/[ \t]+/g, '-');
+}
+
 /** A front-matter value without the one quote, single or double, at either end. */
 export function unquote(value: string): string {
   return value.replace(/^['"]|['"]$/g, '');

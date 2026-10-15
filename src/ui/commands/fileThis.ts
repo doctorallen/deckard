@@ -329,7 +329,7 @@ async function writeField(writes: Pick<FileThisWrites, 'indexer' | 'history'>, r
   }
   const planned = values === 'held'
     ? ({ kind: 'unchanged' } as const)
-    : setFrontmatterField(document.getText(), reading.field.key, writeDraftValues(reading.field.kind, values.map((text) => ({ text }))));
+    : setFrontmatterField(document.getText(), reading.field.name, writeDraftValues(reading.field.kind, values.map((text) => ({ text }))));
   if (planned.kind === 'unchanged') {
     void vscode.window.showInformationMessage(`${possessive(reading.rowTitle)} ${reading.field.name} already says that.`);
     return undefined;
