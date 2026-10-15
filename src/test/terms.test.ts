@@ -61,6 +61,16 @@ suite('Terms', () => {
     assert.ok(!matchesInitials('UAT', 'the test environment'));
   });
 
+  test('reads a phrase’s initials in time linear in its words, however many small words it has', () => {
+    const started = Date.now();
+    assert.ok(!matchesInitials('AAAAAA', `${'a '.repeat(40)}z`));
+    assert.ok(!matchesInitials('AAAAAAAAAAAA', `${'a '.repeat(200)}z`));
+    assert.ok(matchesInitials('AAA', `${'a '.repeat(200)}`));
+    const took = Date.now() - started;
+    // Before, every way of skipping the small words was tried: minutes.
+    assert.ok(took < 200, `took ${took} ms`);
+  });
+
   test('reads each way a definition is written inline', () => {
     const read = (text: string) => readInlineDefinitions(text).map(({ term, text: words }) => [term, words]);
     assert.deepStrictEqual(read('We trade the NDF (non-deliverable forward) book.'), [['NDF', 'non-deliverable forward']]);

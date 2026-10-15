@@ -223,14 +223,23 @@ export function matchesInitials(term: string, phrase: string): boolean {
   if (letters.length < 2 || words.length === 0) {
     return false;
   }
+  // Each letter and word pair is tried once, so a long line of small words
+  // takes letters × words steps, not one for each way to skip them.
+  const tried = new Map<number, boolean>();
   const match = (letter: number, word: number): boolean => {
     if (word === words.length) {
       return letter === letters.length;
     }
-    if (letter < letters.length && words[word].startsWith(letters[letter]) && match(letter + 1, word + 1)) {
-      return true;
+    const key = letter * (words.length + 1) + word;
+    const known = tried.get(key);
+    if (known !== undefined) {
+      return known;
     }
-    return SMALL_WORDS.has(words[word]) && match(letter, word + 1);
+    const found =
+      (letter < letters.length && words[word].startsWith(letters[letter]) && match(letter + 1, word + 1)) ||
+      (SMALL_WORDS.has(words[word]) && match(letter, word + 1));
+    tried.set(key, found);
+    return found;
   };
   return match(0, 0);
 }

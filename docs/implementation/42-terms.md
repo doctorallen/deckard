@@ -102,7 +102,9 @@ made its words impractical:
   initials match, then `means` or `stands for`, then a colon; the
   earliest of the surest form wins. `NDF means` and `stands for` read to the end of the
   sentence. In the initials rule a digit counts as a letter, so `3-D
-  Secure` is 3DS, and hyphens and slashes part words. A definition loses
+  Secure` is 3DS, and hyphens and slashes part words. Each letter and word
+  pair is tried once (QA: a line of forty small words took minutes), so it
+  takes letters × words steps; a unit test holds the bound. A definition loses
   its Markdown bold and closing punctuation, and is cut at 200
   characters.
 - **A term note's term** is its `term:` field, else its file name, in
