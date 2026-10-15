@@ -2,6 +2,7 @@ import * as assert from 'assert';
 
 import type { WorkspaceIndex } from '../domain/model';
 import { createQueryContext, type QueryContext } from '../domain/query/queryContext';
+import { findPromises, formatPromiseTask } from '../domain/tasks/promises';
 import { answerDescribeTag } from '../ui/state/assistantDescribe';
 import { betweenQueries, collectBetweenLines, countAgendaLines, describeBetween, formatBetweenAgenda, personFirstName } from '../ui/state/betweenYou';
 import { createSearchPageSnapshot } from '../ui/state/searchPageState';
@@ -101,6 +102,16 @@ suite('Between you', () => {
     const index = samWorkspace({ 'notes/more.md': lines('# More', '- [w] Sign-off from @sam-okafor 👤 @david') });
     assert.ok(titles(index, '@sam-okafor', asDavid).theyOwe.includes('Sign-off from @sam-okafor'));
     assert.ok(!titles(index, '@sam-okafor', asDavid).youOwe.includes('Sign-off from @sam-okafor'));
+  });
+
+  test('a promise tracked from today’s note, a waiting task assigned to Sam, is Sam’s to do', () => {
+    const today = ['# 2026-10-14', '- @sam-okafor says the loader retry fix lands by Friday'];
+    const promise = findPromises(today, { now, identity: '@david' })[0];
+    const tracked = [...today, formatPromiseTask(today, promise, { format: 'emoji' })];
+    assert.strictEqual(tracked[2], '  - [w] Loader retry fix lands 📅 2026-10-16 👤 @sam-okafor');
+    const groups = titles(samWorkspace({ 'notes/2026-10-14.md': lines(...tracked) }), '@sam-okafor', asDavid);
+    assert.ok(groups.theyOwe.includes('Loader retry fix lands'));
+    assert.ok(!groups.youOwe.includes('Loader retry fix lands'));
   });
 
   test('puts what is overdue first, the longest overdue first, then the oldest', () => {

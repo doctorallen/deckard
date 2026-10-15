@@ -80,8 +80,9 @@ export function findPromises(lines: readonly string[], reading: PromiseReading):
  * One line read as a promise, or undefined when it is none: a task, a
  * question, or a heading is not, nor a line naming no person or more than
  * one, or only the reader, nor one whose day has passed, is today, or is
- * more than 60 days off. Fenced code and front matter are the note's to
- * leave out.
+ * more than 60 days off. A question written `- [?]` is a checkbox line, as
+ * a task is; one in prose ends in `?`. Fenced code and front matter are
+ * the note's to leave out.
  */
 export function readPromiseLine(text: string, line: number, reading: PromiseReading): PromiseLine | undefined {
   const trimmed = text.trim();

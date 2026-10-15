@@ -92,6 +92,9 @@ suite('Said they would', () => {
   test('a task, a question, a heading, or code is no promise', () => {
     assert.strictEqual(dueOf('- [ ] @sam ships it tomorrow'), undefined);
     assert.strictEqual(dueOf('- Will @sam ship it tomorrow?'), undefined);
+    // A question's line is a checkbox line, so it is no promise however it ends.
+    assert.strictEqual(dueOf('- [?] Will @sam ship the fix by Friday'), undefined);
+    assert.strictEqual(dueOf('- [?] @sam says the fix lands by Friday #team/rates'), undefined);
     assert.strictEqual(dueOf('## @sam ships it tomorrow'), undefined);
     assert.strictEqual(dueOf('@sam ships `by Friday`'), undefined);
     assert.strictEqual(dueOf('`@sam` ships it by Friday'), undefined);
