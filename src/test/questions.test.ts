@@ -242,7 +242,7 @@ suite('Questions: offering an answer', () => {
     const offer = findAnswerOffers(before, { rejected: new Set() }).get(question.id);
     assert.ok(offer, 'an offer is made');
     const rejected = new Set([notItKey(question, offer.key)]);
-    const above = indexOf({ 'notes/2026-10-01.md': asked.replace('\n', '\nA line written later.\n'), 'notes/2026-10-14.md': answer });
+    const above = indexOf({ 'notes/2026-10-01.md': '# 2026-10-01\nA line written later.\n- [?] Who approves access to the bond UAT environment?\n', 'notes/2026-10-14.md': answer });
     assert.notStrictEqual([...getQuestions(above).keys()][0], question.id, 'the question\'s id counts its line');
     assert.strictEqual(findAnswerOffers(above, { rejected }).size, 0, 'what was set aside stays aside');
     const reworded = indexOf({ 'notes/2026-10-01.md': asked.replace('Who approves', 'Who grants'), 'notes/2026-10-14.md': answer });
