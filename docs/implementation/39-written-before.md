@@ -158,5 +158,8 @@ Fixed after QA, before release:
   written keeps them all. A word's weight drifts a little with any change;
   the matches kept are ranked as they were. The timing tests
   (`written-before.test.ts`, *what the first build and a save cost*) hold
-  each slice of a 3,000-note build near its budget, and a save's offers
-  under 50 ms and a quarter of ranking every question.
+  the median slice of a 3,000-note build under three times its budget and
+  the longest under a third of reading every note at once, and the median
+  of a save's offers under a quarter of ranking every question, each
+  measured in the same run, so a slower or loaded machine stretches both
+  sides alike.

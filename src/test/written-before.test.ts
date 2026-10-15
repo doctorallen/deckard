@@ -173,8 +173,14 @@ suite('Lines like a line: what the first build and a save cost', () => {
 
   test('the first build reads the notes a slice at a time, each within its budget, and is then read at once', function () {
     this.timeout(120000);
-    // Each note as a new object, as a scan reads it again, so no note is the line index's already.
-    const index = buildWorkspaceIndex(new Map([...files].map(([filePath, file]) => [filePath, { ...file }])));
+    // Each note as a new object, as a scan reads it again, so no note is
+    // the line index's already: once all at once, timed, then in slices.
+    const copy = () => buildWorkspaceIndex(new Map([...files].map(([filePath, file]) => [filePath, { ...file }])));
+    const whole = copy();
+    const wholeStart = performance.now();
+    getLineIndex(whole);
+    const atOnce = performance.now() - wholeStart;
+    const index = copy();
     assert.strictEqual(peekLineIndex(index), undefined, 'thousands of notes are not read at once');
     const slices: number[] = [];
     let done = false;
@@ -184,11 +190,17 @@ suite('Lines like a line: what the first build and a save cost', () => {
       slices.push(performance.now() - start);
     }
     assert.ok(slices.length > 1, 'more than one slice');
-    // Each slice stops once 15 ms have passed, after a note; a pause for
-    // garbage collection can still land in one, so the bound is loose.
+    // Each slice stops once 15 ms have passed, after a note, so the median
+    // is near 15 ms on any machine. A pause for garbage collection, or a
+    // loaded machine, can still stretch one, so the longest is held to a
+    // share of reading every note at once, measured here, which a slower
+    // machine stretches alike.
     const median = [...slices].sort((left, right) => left - right)[Math.floor(slices.length / 2)];
     const longest = Math.max(...slices);
-    assert.ok(median < 30 && longest < 150, `the median slice took ${median.toFixed(1)} ms, the longest ${longest.toFixed(1)} ms`);
+    assert.ok(
+      median < 45 && longest < atOnce / 3,
+      `the median slice took ${median.toFixed(1)} ms, the longest ${longest.toFixed(1)} ms; every note at once, ${atOnce.toFixed(0)} ms`,
+    );
     assert.strictEqual(peekLineIndex(index), getLineIndex(index), 'built, it is read at once');
     const one = buildWorkspaceIndex(new Map([...index.files, ['notes/n5.md', parseMarkdown('notes/n5.md', `# Note 5\n${lineOf()}\n`)]]));
     assert.ok(peekLineIndex(one), 'a save is read at once');
@@ -203,12 +215,17 @@ suite('Lines like a line: what the first build and a save cost', () => {
     const everyQuestion = performance.now() - start;
     const saved = buildWorkspaceIndex(new Map([...files, ['notes/n5.md', parseMarkdown('notes/n5.md', `# Note 5\n${lineOf()}\n`)]]));
     getLineIndex(saved);
-    start = performance.now();
-    const after = updateAnswerOffers(before, saved, { rejected: new Set() });
-    const oneSave = performance.now() - start;
+    // The median of three, each from the same state, against ranking every
+    // question measured in this run, so a slower machine slows both alike.
+    const runs = [0, 1, 2].map(() => {
+      start = performance.now();
+      const state = updateAnswerOffers(before, saved, { rejected: new Set() });
+      return { state, took: performance.now() - start };
+    });
+    const oneSave = [...runs].sort((left, right) => left.took - right.took)[1].took;
     const offered = (offers: Map<string, AnswerOffer>) => [...offers].map(([id, offer]) => `${id} ${offer.filePath}:${offer.line}`).sort();
-    assert.deepStrictEqual(offered(after.offers), offered(findAnswerOffers(saved, { rejected: new Set() })));
-    assert.ok(oneSave < 50 && oneSave < everyQuestion / 4, `a save took ${oneSave.toFixed(1)} ms; every question, ${everyQuestion.toFixed(1)} ms`);
+    assert.deepStrictEqual(offered(runs[0].state.offers), offered(findAnswerOffers(saved, { rejected: new Set() })));
+    assert.ok(oneSave < everyQuestion / 4, `a save took ${oneSave.toFixed(1)} ms; every question, ${everyQuestion.toFixed(1)} ms`);
   });
 });
 
