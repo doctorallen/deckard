@@ -37,6 +37,8 @@ export interface DashboardTask {
   via?: 'hubLink';
   /** In a parked folder or under a parked tag: listed last, and said so. */
   parked?: true;
+  /** On a tag's page, added since the reader last had it open: it carries a NEW pill. */
+  isNew?: true;
   /** The title as inline Markdown tokens, which a page draws as elements and text. */
   titleTokens: InlineToken[];
   titleTags: TagReference[];
@@ -94,6 +96,8 @@ export interface TagOverviewCard {
   via?: 'hubLink';
   /** In a parked folder or under a parked tag: listed last, and said so. */
   parked?: true;
+  /** On a tag's page, written or changed since the reader last had it open: listed first, with a NEW pill. */
+  isNew?: true;
   /** Whether this entry is pinned to Home, so a menu says which it offers. */
   pinned?: boolean;
   titleTags: TagReference[];
@@ -177,6 +181,16 @@ export interface PinNoteMessage {
   line?: number;
   /** Which pin to remove, as `pinKey` writes it. */
   pinKey?: string;
+}
+
+/**
+ * Acts on a question a page lists: Answer…, Use as answer on the line
+ * offered for it, or Not it, which sets that line aside.
+ */
+export interface QuestionActionMessage {
+  type: 'questionAction';
+  action: 'answer' | 'useOffer' | 'notIt';
+  questionId: string;
 }
 
 /** Opens a tag's page. */

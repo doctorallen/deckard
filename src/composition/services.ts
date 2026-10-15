@@ -32,6 +32,11 @@ import { createReviewService, ReviewWrites } from '../ui/commands/review';
 import { TaskWrites } from '../ui/commands/taskActions';
 import { MoveService } from '../services/moveService';
 import { TaskService, TaskRankKeeper } from '../services/taskService';
+import { QuestionService } from '../services/questionService';
+import { QuestionMemory } from '../core/storage/questionMemory';
+import { WrittenBeforeMemory } from '../core/storage/writtenBeforeMemory';
+import { WrittenBeforeHints } from '../ui/providers/writtenBefore';
+import type { QuestionWrites } from '../ui/commands/questionActions';
 import { resolveSourceUri } from '../ui/commands/navigation';
 import { TaskEditorActions, TaskLineContext } from '../ui/commands/taskEditor';
 import { TemplateService } from '../services/templateService';
@@ -51,6 +56,8 @@ import { CalendarView } from '../ui/webview/calendar';
 import { CalendarPanel } from '../ui/webview/calendarPage';
 import { ActiveCalendar } from '../ui/webview/activeCalendar';
 import { ActiveNotePage } from '../ui/webview/activeNotePage';
+import { ActiveHome } from '../ui/webview/activeHome';
+import { watchContextPagesKeys } from '../ui/views/contextPagesTitleBar';
 import { readManifestTools } from '../core/mcp/mcpProtocol';
 import { DeckardMcpServer } from '../ui/commands/mcpServer';
 import { ActivePinContext } from '../ui/commands/pinNote';
@@ -71,6 +78,8 @@ import { TypeHealth } from '../ui/providers/typeHealth';
 import { TaskMetadataCompletionProvider } from '../ui/providers/taskMetadataSuggestions';
 import { SlashMenuProvider } from '../ui/providers/slashMenu';
 import { StatusSuggestionsProvider } from '../ui/providers/statusSuggestions';
+import { PromiseTracking } from '../ui/providers/promiseTracking';
+import { TermHovers } from '../ui/providers/termHovers';
 import { EditorLenses } from '../ui/providers/editorLenses';
 import { EditorReferences } from '../ui/providers/editorReferences';
 import { AssistantTools } from '../ui/commands/assistantTools';
@@ -86,6 +95,8 @@ import { NotePagePanel } from '../ui/webview/notePage';
 import { TaskBoardPanel } from '../ui/webview/taskBoard';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { SearchPanels } from '../ui/webview/searchPage';
+import { TagVisits } from '../core/storage/tagVisits';
+import { PromiseDismissals } from '../core/storage/promiseDismissals';
 import { setZenMode, startZenMode, toggleZenMode } from '../ui/webview/zenMode';
 import { getSampleStorageUri, SAMPLE_FOLDER_NAMES, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
 import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/firstIndex';
@@ -147,6 +158,8 @@ export interface Writes {
   rollover: VscodeRolloverService;
   reviews: ReviewWrites;
   templates: TemplateService<vscode.Uri>;
+  /** What answers and drops a question, and what Questions remembers per workspace. */
+  questions: QuestionWrites;
   addTask: AddTaskContext;
 }
 
@@ -221,7 +234,13 @@ export interface Services {
   mcpServer: DeckardMcpServer;
   /** What the Markdown preview draws ```deckard blocks with. */
   queryBlocks: QueryBlocks;
+  /** The older lines like the one being written, and the pairs set aside with Not the same. */
+  writtenBefore: { hints: WrittenBeforeHints; memory: WrittenBeforeMemory };
   sectionFocus: SectionFocus;
+  /** What each tag's page held at the reader's last visit, which its band and the Hubs view read. */
+  tagVisits: TagVisits;
+  /** The lines of today's note the reader said are no promise, which Not a promise marks. */
+  promiseMarks: PromiseDismissals;
 }
 
 /** The index and what it reads and writes through. */
@@ -256,13 +275,14 @@ export function createServices(context: vscode.ExtensionContext): Services {
   const { newWorkspace, whatsNew, tryNext, log } = createLedgers(context);
   const core = createCore(context);
   const preferences = createPreferences(context, core);
-  const writes = createWrites(core, preferences);
+  const writes = createWrites(core, preferences, new QuestionMemory(context.workspaceState));
+  context.subscriptions.push(writes.questions.memory);
   const search = createSearch(context, core, preferences, writes);
   const editor = createEditorProviders(context, core, preferences);
   offerFirstRunNotices(context, { core, preferences }, newWorkspace);
   syncWalkthroughContext(context, core.indexer);
   createEditorContexts(context, core, preferences);
-  const assistance = createLinksAndAssistance(context, core, preferences);
+  const assistance = createLinksAndAssistance(context, core, preferences, writes.questions);
   const calendar = createCalendar(context, { core, preferences, writes, search });
   const home = createHome(context, {
     core,
@@ -274,7 +294,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     whatsNew,
     tryNext,
   });
-  const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, whatsNew, writes });
+  const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, dashboard: home.dashboard, whatsNew, writes, writtenBefore: editor.writtenBefore.hints });
   const trees = createTreesAndAddTask(context, core, preferences, writes);
   // With the note page in front, the Outline lists its note's headings.
   trees.outline.followNotePage(sidebar.activeNotePage);
@@ -310,6 +330,9 @@ export function createServices(context: vscode.ExtensionContext): Services {
     mcpServer: assistance.mcpServer,
     queryBlocks: trees.queryBlocks,
     sectionFocus,
+    tagVisits: search.tagVisits,
+    writtenBefore: editor.writtenBefore,
+    promiseMarks: editor.promiseMarks,
   };
 }
 
@@ -545,10 +568,10 @@ function createPreferences(context: vscode.ExtensionContext, core: Core): Prefer
 }
 
 /**
- * What tasks, tags, parking, rollover, reviews, and templates write through.
+ * What tasks, tags, parking, rollover, reviews, templates, and questions write through.
  * Add Task's is made later, with the Tasks view, and filled in by createServices.
  */
-function createWrites(core: Core, preferences: PreferenceParts): Omit<Writes, 'addTask'> {
+function createWrites(core: Core, preferences: PreferenceParts, questionMemory: QuestionMemory): Omit<Writes, 'addTask'> {
   const { history, workspace, indexer } = core;
   // What an edit to a task writes through, for every view that edits one.
   // A task's id comes from its own text, so an edit Deckard writes makes it
@@ -607,7 +630,18 @@ function createWrites(core: Core, preferences: PreferenceParts): Omit<Writes, 'a
     index: indexer,
     clock: { now: () => Date.now() },
   });
-  return { tasks, tags, parking, rollover, reviews, templates };
+  // What answers and drops a question, and the offers set aside with Not it.
+  const questions: QuestionWrites = {
+    questions: new QuestionService<vscode.Uri, WriteHandle>({
+      notes: createVscodeEditApplier(),
+      history: createVscodeHistoryWriter(history),
+      resolveUri: (filePath) => resolveSourceUri(filePath),
+      configuration: workspace,
+      clock: { now: () => Date.now() },
+    }),
+    memory: questionMemory,
+  };
+  return { tasks, tags, parking, rollover, reviews, templates, questions };
 }
 
 /** The theme preview, the active search, exports, and the search pages. */
@@ -632,6 +666,12 @@ function createSearch(
     queryBlock: (query) => formatQueryBlock(query),
   });
   const { repository, usage, savedSearches, display, pins, homeWidgets, tagRenames } = preferences;
+  // What each tag's page held at the last visit, kept with the workspace
+  // whose notes it names, apart from the preferences blob: the times in
+  // workspace state, each snapshot a file in the workspace's storage.
+  const tagVisits = new TagVisits(context.workspaceState, { storageUri: context.storageUri, fileSystem: core.workspace });
+  context.subscriptions.push(tagVisits);
+  void tagVisits.dropStoredSnapshots();
   const searchPanels = new SearchPanels({
     indexer,
     preferences: { reader: repository, usage, savedSearches, display, pins, homeWidgets, tagRenames },
@@ -640,8 +680,9 @@ function createSearch(
     writes: writes.tasks,
     themePreview,
     exports: exportService,
+    visits: tagVisits,
   });
-  return { themePreview, activeSearch, exportService, searchPanels };
+  return { themePreview, activeSearch, exportService, searchPanels, tagVisits };
 }
 
 /** The tag decorations and hover, the completions, and the task editor's actions. */
@@ -669,7 +710,20 @@ function createEditorProviders(context: vscode.ExtensionContext, core: Core, pre
   context.subscriptions.push(new StatusSuggestionsProvider((uri) => indexer.isNotesFile(uri)).register());
   const taskEditorActions = new TaskEditorActions((uri) => indexer.isNotesFile(uri));
   const taskLineContext = new TaskLineContext();
-  return { tagDecorations, pins, tagSuggestions, taskMetadataSuggestions, taskEditorActions, taskLineContext };
+  // The older lines like the one being written, and the pairs set aside.
+  const writtenBeforeMemory = new WrittenBeforeMemory(context.workspaceState);
+  const writtenBefore = {
+    memory: writtenBeforeMemory,
+    hints: new WrittenBeforeHints(indexer, writtenBeforeMemory, context.extensionUri).register(),
+  };
+  context.subscriptions.push(writtenBeforeMemory, writtenBefore.hints);
+  // A promise in today's note, a person and a day to come, offered as a
+  // waiting task; Not a promise is kept with the workspace.
+  const promiseMarks = new PromiseDismissals(context.workspaceState);
+  context.subscriptions.push(promiseMarks, new PromiseTracking(indexer, promiseMarks).register());
+  // A defined term's hover anywhere in a note, and its faint underline.
+  context.subscriptions.push(new TermHovers(indexer).register());
+  return { tagDecorations, pins, tagSuggestions, taskMetadataSuggestions, taskEditorActions, taskLineContext, writtenBefore, promiseMarks };
 }
 
 /** Whether a workspace folder with no notes folder set looks like a code repository. */
@@ -822,14 +876,15 @@ function createEditorContexts(context: vscode.ExtensionContext, core: Core, pref
 }
 
 /** The lenses, the assistant's tools and MCP server, and the link services. */
-function createLinksAndAssistance(context: vscode.ExtensionContext, core: Core, preferences: PreferenceParts) {
+function createLinksAndAssistance(context: vscode.ExtensionContext, core: Core, preferences: PreferenceParts, questions: QuestionWrites) {
   const { indexer, history, workspace } = core;
   const editorReferences = new EditorReferences(indexer).register();
-  const editorLenses = new EditorLenses(indexer).register();
-  const assistantTools = new AssistantTools(indexer, history);
+  const editorLenses = new EditorLenses(indexer, questions.memory).register();
+  const assistantTools = new AssistantTools(indexer, history, undefined, questions.questions);
   const mcpServer = new DeckardMcpServer({
     indexer,
     history,
+    questions: questions.questions,
     secrets: context.secrets,
     tools: readManifestTools(
       context.extension.packageJSON.contributes?.languageModelTools,
@@ -890,7 +945,8 @@ function createCalendar(
     preferences: calendarPreferences,
   });
   const activeCalendar = new ActiveCalendar();
-  context.subscriptions.push(activeCalendar);
+  const activeHome = new ActiveHome();
+  context.subscriptions.push(activeCalendar, activeHome);
   const calendarPage = new CalendarPanel({
     indexer,
     extensionUri: context.extensionUri,
@@ -901,7 +957,7 @@ function createCalendar(
     preferences: calendarPreferences,
   });
   context.subscriptions.push(calendarPage);
-  return { calendar, activeCalendar, calendarPage };
+  return { calendar, activeCalendar, activeHome, calendarPage };
 }
 
 /** What {@link createHome} builds the Task Board, Home, and Find from. */
@@ -950,6 +1006,7 @@ function createHome(context: vscode.ExtensionContext, parts: HomeParts) {
     tryNext,
     writes: writes.tasks,
     themePreview,
+    questions: writes.questions.memory,
   });
   const quickFind = new QuickFind({
     indexer,
@@ -963,6 +1020,7 @@ function createHome(context: vscode.ExtensionContext, parts: HomeParts) {
     writes: writes.tasks,
     pins: parts.pins,
     linkNotes: parts.linkNotes,
+    questions: writes.questions.memory,
   });
   return { taskBoard, dashboard, quickFind };
 }
@@ -973,8 +1031,11 @@ interface SidebarParts {
   preferences: PreferenceParts;
   search: ReturnType<typeof createSearch>;
   calendar: ReturnType<typeof createCalendar>;
+  dashboard: DashboardPanel;
   whatsNew: WhatsNew;
   writes: Omit<Writes, 'addTask'>;
+  /** The older lines like the line at the cursor, which Context lists. */
+  writtenBefore: WrittenBeforeHints;
 }
 
 /** Related Notes in the sidebar, and Stats, Help, the Notes Graph, the note page, and the debug page. */
@@ -982,9 +1043,11 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
   const { indexer, history } = parts.core;
   const { repository, display, usage, tagRenames } = parts.preferences;
   const { searchPanels, activeSearch, themePreview } = parts.search;
-  const { activeCalendar } = parts.calendar;
+  const { activeCalendar, activeHome } = parts.calendar;
   // Which note is pinned, as the note page's ⋯ pins it: by its first line.
   const notePins = new PinService({ index: indexer, store: parts.preferences.pins });
+  // The pages' icons in Context's title bar follow the reader's choices.
+  context.subscriptions.push(watchContextPagesKeys(repository));
   // The note page in front, whose note Related Notes follows.
   const activeNotePage = new ActiveNotePage();
   context.subscriptions.push(activeNotePage);
@@ -996,10 +1059,13 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     extensionVersion: context.extension.packageJSON.version,
     extensionUri: context.extensionUri,
     activeCalendar,
+    activeHome,
     activeNotePage,
     history,
     themePreview,
+    writtenBefore: parts.writtenBefore,
   });
+  parts.dashboard.activeHome = activeHome;
   const stats = new StatsPanel({
     indexer,
     preferences: { reader: repository, usage },

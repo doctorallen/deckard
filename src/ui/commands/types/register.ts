@@ -11,13 +11,16 @@ import {
   createTypeNote,
 } from '../typeNotes';
 import { editActiveNoteFields, newTypedNote, openTypeNoteForm } from '../typeNoteForm';
+import { makeTermNote } from '../termNotes';
+import { MAKE_TERM_NOTE_COMMAND } from '../../state/termHover';
 
 /**
  * Types: Create Type from Tags…, New Note from Type…, Edit Fields… on the
  * note in front (docs/implementation/34-edit-fields-form.md), and the commands the
  * type quick fixes and hovers run: Create person "Omar H"…, which opens
  * the new note's form on its title, Create a <Type> type, and Copy email
- * (docs/implementation/30-databases.md, 31-type-note-form.md).
+ * (docs/implementation/30-databases.md, 31-type-note-form.md); and Make a
+ * term note, from a term's hover and Stats (42-terms.md).
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
   const writes = { indexer: services.indexer, history: services.history };
@@ -44,6 +47,10 @@ export function register(context: vscode.ExtensionContext, services: Services): 
         : undefined;
     }),
     registerCommand(COPY_FIELD_VALUE_COMMAND, (value: unknown) => copyFieldValue(value)),
+    // A term's hover passes the term and its inline definition; Stats' Define…, the term alone.
+    registerCommand(MAKE_TERM_NOTE_COMMAND, (term: unknown, definition: unknown) =>
+      typeof term === 'string' ? makeTermNote(writes, term, typeof definition === 'string' ? definition : undefined) : undefined,
+    ),
   );
 }
 

@@ -37,6 +37,7 @@ const ALL_TAGS: Destination = { action: 'set-dashboard-mode', attributes: { 'dat
 const DESTINATIONS: Readonly<Partial<Record<DashboardWidget['kind'], (widget: DashboardWidget) => Destination | undefined>>> = {
   tasks: (widget) => ({ action: 'open-task-board', attributes: { 'data-query': widget.query || '' }, place: 'the Task board' }),
   agenda: () => ({ action: 'open-view', attributes: { 'data-view': 'agenda' }, place: 'the Tasks view' }),
+  openQuestions: () => ({ action: 'open-view', attributes: { 'data-view': 'questions' }, place: 'the Questions view' }),
   favoriteTags: () => ALL_TAGS,
   topTags: () => ALL_TAGS,
   todayNote: (widget) => (widget.today && widget.today.filePath ? { action: 'open-daily-note', place: 'today’s note' } : undefined),

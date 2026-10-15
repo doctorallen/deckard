@@ -8,6 +8,7 @@ import { openResultAt } from '../navigation';
 import { openNoteAt } from '../noteOpening';
 import { createHubNoteForTag } from '../typeNoteForm';
 import type { WorkspaceIndex } from '../../../domain/model';
+import type { HubSort, TagVisits } from '../../../core/storage/tagVisits';
 
 /**
  * The Hubs view: notes under the hub notes of the tags they are about, and
@@ -15,7 +16,7 @@ import type { WorkspaceIndex } from '../../../domain/model';
  * opens its tag's page.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
-  const provider = new HubTreeProvider(services.indexer);
+  const provider = new HubTreeProvider(services.indexer, services.tagVisits);
   const view = vscode.window.createTreeView('deckard.hubs', { treeDataProvider: provider, showCollapseAll: true });
   provider.attach(view);
   context.subscriptions.push(
@@ -33,6 +34,8 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.hubs.openAsPage', (node?: HubTreeNode) =>
       node?.filePath ? vscode.commands.executeCommand('deckard.openNotePage', node.filePath) : undefined,
     ),
+    // By name, or the hubs with the most new since their page was last open first.
+    registerCommand('deckard.hubs.setSort', () => chooseHubSort(services.tagVisits)),
     // The palette's way to the offer a tag's page makes under its title: a
     // tag a type has rows of gets the new note's form, any other its hub note.
     registerCommand('deckard.createHubNoteForTag', async () => {
@@ -50,6 +53,22 @@ export function register(context: vscode.ExtensionContext, services: Services): 
       }
     }),
   );
+}
+
+/** Sort Hubs By…: by name, or What's new, the one in force marked Current. */
+async function chooseHubSort(visits: Pick<TagVisits, 'hubSort' | 'setHubSort'>): Promise<void> {
+  const current = visits.hubSort();
+  const choices: Array<{ label: string; detail: string; sort: HubSort }> = [
+    { label: 'Name', detail: 'A-Z on each level.', sort: 'name' },
+    { label: 'What’s new', detail: 'The hubs with the most new since you last opened their page first.', sort: 'new' },
+  ];
+  const chosen = await vscode.window.showQuickPick(
+    choices.map((choice) => ({ ...choice, description: choice.sort === current ? 'Current' : undefined })),
+    { title: 'Sort hubs by', placeHolder: 'Choose how each level of the Hubs view is ordered' },
+  );
+  if (chosen && chosen.sort !== current) {
+    await visits.setHubSort(chosen.sort);
+  }
 }
 
 /** The tags no hub note describes yet, the most used first. */

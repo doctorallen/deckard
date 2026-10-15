@@ -587,6 +587,30 @@ and the label, *+N more*, and *All* post `openSameTypeSearch` by the
 group's id or none; the host checks both against what it would list now
 and builds the search itself. Nothing in it is quieted under Zen.
 
+### Written before
+
+Above the related notes, Context draws `.written-before` while the line at
+the cursor has older lines like it: a `.section-label`, then one
+`.note.written-before-card` per older line, its `.note-title` when and
+where it was written, its `.note-excerpt` with the shared words marked as a
+related note's are (`data-terms`), a muted `.written-before-shares` line,
+and `.written-before-actions`, **Link it here** and **Not the same**. The
+card and its buttons post `writtenBeforeAction` with the older line's note
+and line; the host acts only on a line the cursor's line still has.
+
+### A search's questions
+
+A search that finds questions draws `.questions-pane`: a result tab after
+Tasks, or, side by side, a pane under the two with its own heading. Its
+`.search-questions` list holds a `<QuestionRow>` (`searchPage/questionRow.tsx`),
+a `.search-question` row, per question, the
+answered ones `.is-answered`: a `.search-question-mark`, a
+`.search-question-open` button (the words over a muted
+`.search-question-detail`) that posts `openSource`, and, while it is open, a
+`.search-question-answer` button, quiet under Zen, that posts
+`questionAction`. A person's Between you card draws its To ask group with
+the same rows.
+
 ### A tag's page's quiet lines
 
 Under a one-tag page's hub, the search page's `<TagNotes>` (`searchPage/hub.tsx`) draws `.tag-notes`: one muted
@@ -595,6 +619,67 @@ with a `.tag-note-action` text button. It is the pattern for a page-level
 hint: a sentence, then at most two actions, never a box. An entry listed
 because of such a line carries a `.card-via` note after its location, such
 as *Links the hub note* (`via: 'hubLink'` on the card or task).
+
+### Since you last looked
+
+On a tag's own page, the search page's `<SinceBand>` (`searchPage/since.tsx`)
+draws `section.since` between the page bar and the search box: a panel with
+a `--cyan` left rule and a `data-zen-region`. Its `.since-header` holds the
+`.since-title` (*Since you last looked · Fri, Oct 2, 12 days ago*, one text
+node) and the `.since-seen` button (*Mark seen*, `data-zen-reveal`), which
+posts `markSeen`; then `.since-chips`, a group of `.since-chip` buttons, one
+per kind of change (new mentions, fields changed, tasks done, tasks added,
+questions answered), each `data-kind` and, but the fields' chip,
+`aria-pressed`, the one filtering the page `.is-active`. A chip posts
+`setSinceFilter` with its kind, or with none when it is active; the fields'
+chip opens `details.hub` in place. In the Notes tab, a `.since-group-heading`
+(*New since Fri, Oct 2* and a muted `.since-group-count`) spans every column
+before the first new card, and *Earlier* before the first other one. A card
+or task row new since the visit carries the shared `<NewLabel>`
+(`shared/taskRow.tsx`), `.new-label`, an outlined `--cyan` pill after the
+title or before the task's facts; a changed field's row carries
+`<FieldWas>` (`shared/fieldRows.tsx`), a muted `.field-was` after its values.
+
+### Between you
+
+On a person's page, the search page's `<BetweenCard>`
+(`searchPage/between.tsx`) draws `section.between` between the hub and the
+tabs: a panel as the hub's, with a `--cyan` left rule, and a
+`data-zen-region`. A `.between-header` holds the `.between-title` (*Between
+you*) and the `.between-copy` button (*Copy as agenda*, `data-zen-reveal`),
+which posts `copyBetweenAgenda`; while `deckard.me` names nobody, a muted
+`.between-identity` line follows, whose `.tag-note-action` posts
+`openIdentitySetting`. Then a `.between-group` per group
+(`data-group="youOwe"`, `"theyOwe"`, or `"toAsk"`): its heading's
+`.between-group-label` text button and muted `.between-count`; a
+`.task-list.between-tasks` of `<TaskListRow>`s, one column whatever the
+results take, or, under To ask, a `.search-questions.between-questions` list
+of `<QuestionRow>`s as a search's questions draw them, or a muted
+`.between-none` (*Nothing open.*); and past ten lines a `.between-more` line
+whose `.between-more-link` (*Show all 14*) posts `openSearch` as the label
+does. The host opens only a search the card drew.
+
+### Story
+
+On a tag's page, the search page's `<StoryTab>` (`searchPage/story.tsx`)
+draws the **Story** tab's panel, after Notes, Tasks, and Questions; side by
+side it is a `.story-pane` under the two, headed *Story (N)*. A `.story-filters` group of
+`.story-chip` buttons comes first, each `aria-pressed`, the one in use
+`.is-active` as a Since chip is: *All*, *Decisions*, *Done*, *Questions*
+while the story holds a question, each posting `setStoryFilter` (with `all`
+when chosen again), then `.story-order` (*Oldest first*), which posts
+`setStoryOrder`. Zen leaves them drawn. Each month is a `section.story-month`
+with its `.story-month-heading` (*October 2026*) over an `ol.story-rows` of
+`li.story-row`s, each `data-kind`, `data-file-path`, and `data-line`, a tab
+stop that opens its line as a card does: a muted monospace `.story-day`, a
+`.story-mark` holding a task's `<TaskBox>` (`input.story-box`) or a
+`.story-kind` letter (`D`, `?`, `·`, labeled for a screen reader), the
+`.story-text` cut to two lines with `<TaskTitle>`'s tag buttons, the
+`.story-children` lines smaller and muted under it, and a muted
+`.story-where`. Past the rows drawn, `.story-more` holds a
+`.story-more-link` (*Show more*) that posts `showMoreStory`. While the tab
+is shown, ⋯ holds *Copy as Markdown*, which posts `copyStory`; the host
+works the rows out again and writes them.
 
 ### Task board
 
@@ -895,6 +980,12 @@ Overdue, Due today, and Open — each opening the search it counts, scoped by
 The Tasks view widget ends with a `.home-widget-footer` line: what was done
 today, and how many tasks need a new date as a `.text-button` that opens
 `is:needs-date`. It is left out when both are zero.
+
+The Open questions widget lists a `.home-question` per open question, each
+a Zen region: its row, with **Answer…** beside it, and, under it when a
+line may answer it, a `.home-question-offer` with the line's place and
+words, **Use as answer**, and **Not it**. Each button is `data-zen-reveal`
+and posts `questionAction` with the question's id.
 
 ## Host-side helpers
 

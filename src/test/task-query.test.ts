@@ -15,14 +15,14 @@ function inDays(days: number): number {
 
 suite('Task metadata queries', () => {
   const index = createIndex();
-  const matches = (query: string): string[] => {
+  const matches = (query: string, within: WorkspaceIndex = index): string[] => {
     const parsed = parseQuery(query);
     assert.deepStrictEqual(
       parsed.diagnostics.filter((diagnostic) => diagnostic.severity === 'error'),
       [],
       query,
     );
-    const results = evaluateQuery(index, parsed.node, createQueryContext(Date.now()));
+    const results = evaluateQuery(within, parsed.node, createQueryContext(Date.now()));
     return [
       ...results.tasks.map((task) => task.id),
       ...results.sections.map((section) => section.id),
@@ -44,17 +44,14 @@ suite('Task metadata queries', () => {
   });
 
   test('is:needs-date finds only what is past the line, and is:overdue still finds it', () => {
-    index.tasks.set(
-      'stale',
-      createTask({ id: 'stale', dueAt: inDays(-45) }),
-    );
-    try {
-      assert.deepStrictEqual(matches('is:needs-date'), ['stale']);
-      assert.deepStrictEqual(matches('is:needsdate'), ['stale']);
-      assert.deepStrictEqual(matches('is:overdue'), ['late', 'stale']);
-    } finally {
-      index.tasks.delete('stale');
-    }
+    // A new index, since a search reads each index's tasks once.
+    const local: WorkspaceIndex = {
+      ...index,
+      tasks: new Map([...index.tasks, ['stale', createTask({ id: 'stale', dueAt: inDays(-45) })]]),
+    };
+    assert.deepStrictEqual(matches('is:needs-date', local), ['stale']);
+    assert.deepStrictEqual(matches('is:needsdate', local), ['stale']);
+    assert.deepStrictEqual(matches('is:overdue', local), ['late', 'stale']);
   });
 
   test('is:waiting means waiting on someone, and is:available what can start now', () => {

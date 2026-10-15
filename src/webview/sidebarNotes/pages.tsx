@@ -1,10 +1,11 @@
 /**
  * Deckard's pages, at the top of Context in every state it is in, held
- * there while the rest scrolls: the pages the reader keeps, as labeled rows
- * that say what is worth knowing about each now, or as one row of their
- * icons for a reader who knows them, named on hover and to a screen reader.
- * The page in front is drawn pressed. They are one toolbar, one Tab stop:
- * the arrow keys move between them, and Home and End go to either end.
+ * there while the rest scrolls, for a reader who chose them as a list: the
+ * pages the reader keeps, as labeled rows that say what is worth knowing
+ * about each now. Otherwise they are icons in Context's title bar, which
+ * the host keeps, and nothing is drawn here. The page in front is drawn
+ * pressed. They are one toolbar, one Tab stop: the arrow keys move between
+ * them, and Home and End go to either end.
  */
 import type { ContextPage, ContextPageChoice, ContextPages } from '../../ui/protocol/sidebarNotes';
 import { EmptyState } from '../shared/emptyState';
@@ -49,15 +50,6 @@ function PageRow({ page, current }: { readonly page: ContextPage; readonly curre
   );
 }
 
-/** A page as its icon, named on hover and to a screen reader. */
-function PageButton({ page, current }: { readonly page: ContextPage; readonly current: boolean }) {
-  return (
-    <button class="pages-icon" data-tip={`${page.label}: ${page.description}`} {...pageButtonProps(page, current)}>
-      <PageIcon id={page.id} />
-    </button>
-  );
-}
-
 /** A pressed button for each page, which keeps it at the top of Context or leaves it out. */
 function PageChoices({ choices }: { readonly choices: readonly ContextPageChoice[] }) {
   return (
@@ -72,7 +64,7 @@ function PageChoices({ choices }: { readonly choices: readonly ContextPageChoice
 }
 
 /**
- * The gear beside the pages: draw them as a list or as icons, and which to
+ * The gear beside the pages: draw them as a list or as title-bar icons, and which to
  * keep. Zen shows it while the band is pointed at or holds focus, and keeps
  * it drawn while no page is chosen, since it is the way to choose one.
  */
@@ -83,7 +75,7 @@ function PagesOptions({ pages }: { readonly pages: ContextPages }) {
       label="Pages: how they look, and which"
       attributes={{ 'data-zen-reveal': '', 'data-reveal-keep': pages.pages.length ? undefined : '' }}
       groups={[
-        { label: 'Look', content: <ViewOptionChoices action="set-pages-style" choices={[['list', 'List'], ['icons', 'Icons']]} selected={pages.style} label="How the pages look" /> },
+        { label: 'Look', content: <ViewOptionChoices action="set-pages-style" choices={[['list', 'List'], ['icons', 'Title bar']]} selected={pages.style} label="How the pages look" /> },
         ...(pages.choices ? [{ label: 'Pages', stacked: true, content: <PageChoices choices={pages.choices} /> }] : []),
       ]}
     />
@@ -91,12 +83,13 @@ function PagesOptions({ pages }: { readonly pages: ContextPages }) {
 }
 
 /**
- * The pages kept, as rows or icons, or a line saying where to choose them
+ * The pages kept, as rows, or a line saying where to choose them
  * when none is, with the gear that chooses them beside; nothing before the
  * host has said which.
  */
 export function ContextPagesBar({ pages }: { readonly pages: ContextPages | undefined }) {
-  if (!pages) {
+  // As icons, the pages are in the title bar, with Choose Pages… in its ⋯.
+  if (!pages || pages.style === 'icons') {
     return null;
   }
   if (!pages.pages.length) {
@@ -107,18 +100,10 @@ export function ContextPagesBar({ pages }: { readonly pages: ContextPages | unde
       </div>
     );
   }
-  const icons = pages.style === 'icons';
   return (
     <div class="context-pages-band" data-zen-region="">
-      <div
-        class={icons ? 'context-pages is-icons' : 'context-pages'}
-        role="toolbar"
-        aria-label="Deckard pages"
-        aria-orientation={icons ? 'horizontal' : 'vertical'}
-      >
-        {pages.pages.map((page) => (icons
-          ? <PageButton page={page} current={page.id === pages.current} />
-          : <PageRow page={page} current={page.id === pages.current} />))}
+      <div class="context-pages" role="toolbar" aria-label="Deckard pages" aria-orientation="vertical">
+        {pages.pages.map((page) => <PageRow page={page} current={page.id === pages.current} />)}
       </div>
       <PagesOptions pages={pages} />
     </div>
@@ -161,8 +146,8 @@ function stepFrom(at: number, count: number, key: string, steps: Readonly<Record
 }
 
 /**
- * The arrow keys move between the pages, right and left in the icons and
- * down and up in the list, and Home and End go to either end; the Tab stop
+ * The arrow keys move between the pages, down and up the list, and Home
+ * and End go to either end; the Tab stop
  * moves with the focus, by a key or a click.
  */
 export function installPagesKeys(): void {

@@ -139,8 +139,13 @@ export const TASK_PRIORITY_RANKS: Readonly<Record<TaskPriority | 'none', number>
 
 /** Emoji are often followed by an invisible variation selector. */
 const VARIATION = '\\uFE0F?';
-/** A task id as 🆔 and ⛔ write it. */
+/** A task id as 🆔 and ⛔ write it: ASCII, as the Tasks plugin reads one. */
 const NAME = '[A-Za-z0-9_-]+';
+/**
+ * A person's name as 👤 writes it, in any script, as a tag's name is read:
+ * letters, digits, combining marks, `_`, and `-`, so `👤 @józef` is Józef.
+ */
+const PERSON_NAME = '[\\p{L}\\p{N}\\p{M}_-]+';
 
 /** A priority marker, and the variation selector that may follow it. */
 export const PRIORITY_PATTERN = /(?:🔺|⏫|🔼|🔽|⏬)\uFE0F?/gu;
@@ -161,7 +166,7 @@ const ON_COMPLETION_PATTERN = /🏁\uFE0F?[ \t]*(?:keep|delete)/giu;
  * what a hand reaches for, but 👤 is what Deckard writes.
  */
 export const ASSIGNEE_PATTERN = new RegExp(
-  `[ \\t]*(?:👤|🧑)${VARIATION}[ \\t]*([@#]?${NAME}(?:/${NAME})*)`,
+  `[ \\t]*(?:👤|🧑)${VARIATION}[ \\t]*([@#]?${PERSON_NAME}(?:/${PERSON_NAME})*)`,
   'gu',
 );
 /** A Dataview inline field in square or round brackets, `[due:: 2026-09-20]`. */

@@ -69,13 +69,30 @@ function FieldName({ field, opens }: { readonly field: DrawnField; readonly open
   return <dt class="field-name" data-tip={field.tip}>{field.name}</dt>;
 }
 
-/** One field: its name, its values, and where they are set. */
-function FieldRow({ field, noteAction, opens }: { readonly field: DrawnField; readonly noteAction: string; readonly opens: boolean }) {
+/**
+ * After a field's values on a tag's page, when it changed since the reader
+ * last looked: its old value, once (docs/implementation/37-since-you-last-looked.md).
+ */
+export function FieldWas({ was }: { readonly was: string | undefined }) {
+  if (was === undefined) {
+    return null;
+  }
+  return <span class="field-was">{was ? ` changed · was ${readableValue(was)}` : ' changed · was not set'}</span>;
+}
+
+/** A field's old value, by its name, when the page says it changed. */
+export function wasOf(was: Readonly<Record<string, string>> | undefined, name: string): string | undefined {
+  return was && Object.prototype.hasOwnProperty.call(was, name) ? was[name] : undefined;
+}
+
+/** One field: its name, its values, what it was when it changed since the last visit, and where it is set. */
+function FieldRow({ field, noteAction, opens, was }: { readonly field: DrawnField; readonly noteAction: string; readonly opens: boolean; readonly was?: string }) {
   return (
     <div class={field.source === 'reverse' ? 'field-row is-reverse' : 'field-row'} data-field-key={field.key}>
       <FieldName field={field} opens={opens} />
       <dd class="field-values">
         <FieldValues field={field} noteAction={noteAction} />
+        <FieldWas was={was} />
         <FieldSources field={field} />
       </dd>
     </div>
@@ -89,6 +106,8 @@ export interface FieldRowsProps {
   readonly noteAction: string;
   /** Whether the fields are a note's, so a field's name opens the form on it: the Note page, and a hub note's card. */
   readonly namesOpen?: boolean;
+  /** On a tag's page, each field changed since the last visit, by name, with its old value. */
+  readonly was?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -96,18 +115,18 @@ export interface FieldRowsProps {
  * "From other notes". `namesOpen` makes each of its own fields' names a
  * link to the form.
  */
-export function FieldRows({ fields, noteAction, namesOpen }: FieldRowsProps) {
+export function FieldRows({ fields, noteAction, namesOpen, was }: FieldRowsProps) {
   const opens = namesOpen === true;
   const own = fields.fields.filter((field) => field.source !== 'reverse');
   const reverses = fields.fields.filter((field) => field.source === 'reverse');
   return (
     <>
-      {own.length ? <dl class="field-rows">{own.map((field) => <FieldRow field={field} noteAction={noteAction} opens={opens} />)}</dl> : null}
+      {own.length ? <dl class="field-rows">{own.map((field) => <FieldRow field={field} noteAction={noteAction} opens={opens} was={wasOf(was, field.name)} />)}</dl> : null}
       {reverses.length
         ? (
           <>
             <p class="field-group-label">From other notes</p>
-            <dl class="field-rows field-reverses">{reverses.map((field) => <FieldRow field={field} noteAction={noteAction} opens={opens} />)}</dl>
+            <dl class="field-rows field-reverses">{reverses.map((field) => <FieldRow field={field} noteAction={noteAction} opens={opens} was={wasOf(was, field.name)} />)}</dl>
           </>
         )
         : null}

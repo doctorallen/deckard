@@ -149,6 +149,27 @@ suite('A new note of a type', () => {
     assert.deepStrictEqual(writeDraftValues({ name: 'number', many: false }, [{ text: '1,200' }]), { values: [{ text: '1,200' }], list: false });
   });
 
+  test('starts with the values and the words it is given, as a term note from a term\'s hover', () => {
+    const term: DraftType = {
+      key: 'term',
+      name: 'Term',
+      rows: { kind: 'notes', written: 'notes' },
+      fields: [{ key: 'term', name: 'term', kind: { name: 'text', many: false } }],
+    };
+    const draft = startTypedNoteDraft(term, { title: 'NDF', values: { term: 'NDF', type: 'other', nothing: 'x' }, body: ' A non-deliverable forward. ' });
+    assert.deepStrictEqual(draft.values, { term: [{ text: 'NDF' }] }, 'only a field the type has, not its identity');
+    assert.strictEqual(
+      planTypedNote(term, draft, { now: new Date(now) })?.content,
+      '---\ntype: term\nterm: NDF\n---\n# NDF\n\nA non-deliverable forward.\n',
+    );
+    // A template's own words come after it, so the definition is the note's first paragraph.
+    const template = '---\ntype: term\n---\n# {title}\n\nWhere it is used:\n\n## Notes\n';
+    assert.strictEqual(
+      planTypedNote(term, draft, { template, now: new Date(now) })?.content,
+      '---\ntype: term\nterm: NDF\n---\n# NDF\n\nA non-deliverable forward.\n\nWhere it is used:\n\n## Notes\n',
+    );
+  });
+
   test('a template still applies, its questions answered, and the form\'s values take its keys\' place', () => {
     const team = typeOf('team');
     const template = '---\ntier: silver\nchannel: "#{ask:Channel?}"\n---\n# {title}\n\nTag: {tag}\n';

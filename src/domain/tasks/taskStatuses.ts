@@ -15,7 +15,7 @@ export const TASK_STATUS_ICONS = ['blocked', 'question', 'alert', 'star', 'flag'
 export type TaskStatusIcon = (typeof TASK_STATUS_ICONS)[number];
 
 /** Every type, in the order a picker offers them. */
-export const TASK_STATUS_TYPES: readonly TaskStatusType[] = ['todo', 'inProgress', 'onHold', 'done', 'cancelled', 'nonTask'];
+export const TASK_STATUS_TYPES: readonly TaskStatusType[] = ['todo', 'inProgress', 'onHold', 'done', 'cancelled', 'nonTask', 'question'];
 
 /** One status as `deckard.tasks.statuses` lists it. */
 export interface TaskStatusDefinition {
@@ -38,6 +38,7 @@ export const DEFAULT_TASK_STATUSES: readonly TaskStatusDefinition[] = [
   { symbol: 'w', name: 'Waiting', type: 'onHold', next: ' ' },
   { symbol: 's', name: 'Someday', type: 'onHold', next: ' ' },
   { symbol: '=', name: 'Blocked', type: 'onHold', icon: 'blocked', next: ' ' },
+  { symbol: '?', name: 'Question', type: 'question' },
 ];
 
 /** The name a character no status names is given. */
@@ -48,6 +49,9 @@ export const UNKNOWN_STATUS_NAME = 'Unknown';
  * `]` closes the box. A line break or a tab can't be written in one.
  */
 const RESERVED_SYMBOLS = new Set(['>', ']', '\n', '\r', '\t']);
+
+/** Question, `[?]`, which every list has unless it gives `?` to a status of its own. */
+const QUESTION_STATUS = DEFAULT_TASK_STATUSES[DEFAULT_TASK_STATUSES.length - 1];
 
 /** The two statuses every list has, as in Obsidian: their characters and types are fixed. */
 const CORE_STATUSES: readonly TaskStatusDefinition[] = [DEFAULT_TASK_STATUSES[0], DEFAULT_TASK_STATUSES[2]];
@@ -118,6 +122,9 @@ export function readTaskStatuses(value: unknown): TaskStatusDefinition[] {
   });
   // `X` has always been Done in Deckard; a list that doesn't say otherwise keeps it so.
   add(DEFAULT_TASK_STATUSES[3]);
+  // `?` is a question unless the list says what it is: a reader's own
+  // status for it wins, and questions are then off.
+  add(QUESTION_STATUS);
   return statuses;
 }
 
@@ -147,6 +154,36 @@ export function statusForSymbol(statuses: readonly TaskStatusDefinition[], symbo
 /** Whether a character marks a line that is not a task, by its status's `nonTask` type. */
 export function isNonTaskSymbol(statuses: readonly TaskStatusDefinition[], symbol: string): boolean {
   return bySymbol(statuses).get(symbol)?.type === 'nonTask';
+}
+
+/** Whether a character marks a question, by its status's `question` type. */
+export function isQuestionSymbol(statuses: readonly TaskStatusDefinition[], symbol: string): boolean {
+  return bySymbol(statuses).get(symbol)?.type === 'question';
+}
+
+/**
+ * Whether a type's lines are tasks: every type but `nonTask`, whose lines
+ * are text, and `question`, whose lines are questions.
+ */
+export function isTaskType(type: TaskStatusType): boolean {
+  return type !== 'nonTask' && type !== 'question';
+}
+
+/**
+ * The character a new question is written with: `?`, or the first a
+ * status of the question type has; none when the reader gave `?` to a
+ * status of their own and named no other, which turns questions off.
+ */
+export function findQuestionSymbol(statuses: readonly TaskStatusDefinition[]): string | undefined {
+  return statuses.find((status) => status.type === 'question')?.symbol;
+}
+
+/**
+ * The character a dropped question is written with: the first cancelled
+ * status's, `-` in Deckard's own list.
+ */
+export function findDropSymbol(statuses: readonly TaskStatusDefinition[]): string {
+  return statuses.find((status) => status.type === 'cancelled')?.symbol ?? '-';
 }
 
 /** Whether a type is open: to do, in progress, or on hold. */

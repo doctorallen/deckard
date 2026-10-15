@@ -2,7 +2,7 @@
 
 A type says what a kind of thing in your notes is, such as a person, a team, or an incident, and which fields it has: a team's lead, the areas it owns, who is on call. The fields are front matter you write, or already wrote, in plain Markdown. Deckard reads them as a table you can search, sort, and group, works out the other side of each relation, and answers questions such as *who leads the team that owns checkout?* from Find, a hover, a page, or an assistant.
 
-A workspace with no types works as it always has. The [work sample](getting-started.md#get-started) ships four types to try: Person, Team, Area, and Decision.
+A workspace with no types works as it always has. The [work sample](getting-started.md#get-started) ships five types to try: Person, Team, Area, Decision, and Term.
 
 ## Two kinds of type
 
@@ -21,12 +21,12 @@ notes: teams/
 ---
 # Team
 
-| Field   | Kind       | Reverse     | Also called     |
-| ------- | ---------- | ----------- | --------------- |
-| lead    | Person     | lead of     | head            |
-| owns    | Area, many | owned by    | responsible for |
-| on-call | Person     | on call for | oncall, pager   |
-| channel | Text       |             | slack, support  |
+| Field   | Kind       | Reverse     | Also called     | Words                           |
+| ------- | ---------- | ----------- | --------------- | ------------------------------- |
+| lead    | Person     | lead of     | head            | leads, led by, now leads, heads |
+| owns    | Area, many | owned by    | responsible for | owns, took over                 |
+| on-call | Person     | on call for | oncall, pager   | is on call for, covers          |
+| channel | Text       |             | slack, support  |                                 |
 
 Every #team/ tag is a team. Text below the table describes the type.
 ```
@@ -43,6 +43,7 @@ The first table whose header has **Field** and **Kind** lists the fields, one to
 - **Kind** says what its values are; see below. Add `, many` for a field that holds several, `Area, many`.
 - **Reverse** names the field the other side of a relation gets: a team's `owns` makes each area **owned by** that team. Left empty, it is the field's name and *of*, `owns of`. In a search, its spaces are hyphens: `owned-by`.
 - **Also called** lists other words for the field, separated by commas, which [Find](#asking-find) reads in a question.
+- **Words**, which you may leave out, lists the phrases a line uses to say the field, separated by commas: `leads, led by, now leads`. On a line such as *@priya-natarajan now leads #team/fx*, the lightbulb then offers to set the field; see [File this](notes-and-links.md#file-this).
 
 Other columns are yours, and kept when Deckard rewrites the table. What Deckard cannot read in a type note, such as a kind it does not know or a field listed twice, is marked in the editor.
 
@@ -125,6 +126,25 @@ Every row also has fields no note writes, worked out from the notes each time th
 3. Deckard writes `Types/Team.md`, opens it beside, and marks any value that does not fit, with quick fixes such as **Allow Area or System** and **Create a System type**.
 
 It is one write, which `Deckard: Undo Last Change` takes back. **New note type…** asks a name and writes a type of notes with an empty table to fill in.
+
+## A Term type
+
+A term note says what a short term in your notes means, such as NDF or 3DS, and Deckard reads it wherever the term is written (see [Terms](notes-and-links.md#terms)). The work sample's `Types/Term.md` is a type of notes with one field, `term`:
+
+```markdown
+---
+deckard-type: term
+rows: notes
+notes: terms/
+---
+# Term
+
+| Field | Kind | Reverse | Also called           |
+| ----- | ---- | ------- | --------------------- |
+| term  | Text |         | acronym, abbreviation |
+```
+
+Its rows are the notes whose front matter says `type: term`, such as `terms/3DS.md`, whose first paragraph is the definition. Deckard reads a term note with or without the type, and **Make a term note** on a term's hover, or **Define…** on Stats, opens the form for one either way.
 
 ## Adding a note of a type
 

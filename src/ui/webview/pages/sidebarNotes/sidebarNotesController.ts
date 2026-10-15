@@ -20,7 +20,11 @@ import type {
   SidebarNotesPageState,
   SidebarNotesPageToHost,
   SidebarNotesSnapshot,
+  SidebarWrittenBefore,
+  WrittenBeforeActionMessage,
 } from '../../../protocol/sidebarNotes';
+import type { CursorWrittenBefore } from '../../../providers/writtenBefore';
+import { describeShared, describeWhere } from '../../../state/writtenBeforeState';
 import { appendTagToLine } from '../../../commands/bulkEdit';
 import { createWikiLink, insertWikiLink } from '../../../commands/insertLink';
 import { resolveSourceUri } from '../../../commands/navigation';
@@ -37,6 +41,7 @@ import { collectNoteLinks, createLinksSearchQuery } from '../../../state/noteLin
 import { createSidebarSnapshot, EntryRelatedNotesDiagnostic } from '../../../state/relatedNotesRanking';
 import { describeSameTypeRows } from '../../../state/sameTypeRows';
 import type { ActiveCalendar } from '../../activeCalendar';
+import type { ActiveHome } from '../../activeHome';
 import type { ActiveNotePage } from '../../activeNotePage';
 import type { ActiveSearch } from '../../activeSearch';
 import { onDidChangePageChrome } from '../../host/pageChrome';
@@ -68,6 +73,8 @@ export interface SidebarNotesControllerOptions {
   extensionVersion: string;
   /** The calendar page, whose chosen day this shows while it is in front. */
   activeCalendar?: ActiveCalendar;
+  /** Home, whose widgets this offers to add while it is in front. */
+  activeHome?: ActiveHome;
   /** The note page, whose note this follows while it is in front, as it follows a note in the editor. */
   activeNotePage?: ActiveNotePage;
   /** The history its links, tags, and renames are written to. */
@@ -78,7 +85,12 @@ export interface SidebarNotesControllerOptions {
   navigation: NavigationService;
   /** The extension's folder, which the page's style sheets are under. */
   extensionUri: vscode.Uri;
+  /** The older lines like the line at the cursor, which Written before lists; absent, it lists none. */
+  writtenBefore?: { readonly current: CursorWrittenBefore | undefined; readonly onDidChangeCursor: vscode.Event<CursorWrittenBefore | undefined> };
 }
+
+/** The states in which a page in front has the sidebar draw it, and no note's context. */
+const PAGE_STATES: ReadonlySet<SidebarNotesSnapshot['state']> = new Set(['graph', 'refine', 'calendarDay', 'customizeHome']);
 
 /** Writes a line to the log at Trace, under Related Notes' name. */
 export function logRelatedNotes(message: string): void {
@@ -172,14 +184,17 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
 
   /**
    * Everything else the sidebar follows, in the order it has always
-   * listened: the calendar page in front, the first scan's progress, the
-   * active search, the editor and its cursor, the theme and zen, and the
-   * settings ranking reads.
+   * listened: Home and the calendar page in front, the first scan's
+   * progress, the active search, the editor and its cursor, the theme and
+   * zen, and the settings ranking reads.
    */
   public subscribe(page: PageContext<SidebarNotesPageState>): vscode.Disposable[] {
     this.page = page;
-    const { indexer, activeSearch, activeCalendar } = this.sidebar;
+    const { indexer, activeSearch, activeCalendar, activeHome } = this.sidebar;
     const disposables: vscode.Disposable[] = [];
+    if (activeHome) {
+      disposables.push(activeHome.onDidChange(() => this.refresh()));
+    }
     if (activeCalendar) {
       disposables.push(activeCalendar.onDidChange(() => this.refresh()));
     }
@@ -205,6 +220,11 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       );
     }
     disposables.push(activeSearch.onDidChange(() => this.refresh()), ...this.followEditor());
+    // The older lines like the cursor's line are found once typing rests,
+    // and drawn without ranking again.
+    if (this.sidebar.writtenBefore) {
+      disposables.push(this.sidebar.writtenBefore.onDidChangeCursor(() => this.refreshWrittenBefore()));
+    }
     // The ranking reads the preferences, and not every write to them redraws
     // the sidebar, so any write means the state last posted may be out of
     // date. The pages at the top are kept there too, and drawn again.
@@ -468,6 +488,69 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
   }
 
   /**
+   * Sends the state last posted again with Written before as the cursor's
+   * line has it now, when it has changed. Nothing is ranked again, and a
+   * hidden view is sent nothing; it reads it when it is shown.
+   */
+  private refreshWrittenBefore(): void {
+    const page = this.page;
+    const posted = this.posted;
+    // A page in front has the sidebar draw it instead of a note's context.
+    if (!page || !posted || page.surface?.visible !== true || PAGE_STATES.has(posted.state)) {
+      return;
+    }
+    const writtenBefore = this.readWrittenBefore();
+    if (JSON.stringify(writtenBefore) === JSON.stringify(posted.writtenBefore)) {
+      return;
+    }
+    const { writtenBefore: _left, ...rest } = posted;
+    const state = writtenBefore ? { ...rest, writtenBefore } : rest;
+    if (this.current?.state === posted) {
+      this.current = { ...this.current, state };
+    }
+    this.post(page, state);
+  }
+
+  /** The older lines like the line at the cursor of the note in the editor, as Written before lists them. */
+  private readWrittenBefore(): SidebarWrittenBefore[] | undefined {
+    const cursor = this.sidebar.writtenBefore?.current;
+    const editor = vscode.window.activeTextEditor;
+    if (!cursor || !editor || editor.document.uri.toString() !== cursor.uri.toString()) {
+      return undefined;
+    }
+    return cursor.rows.map((row) => ({
+      filePath: row.filePath,
+      line: row.line,
+      text: row.text,
+      where: describeWhere(row),
+      shares: describeShared(row),
+      terms: [...row.shared],
+    }));
+  }
+
+  /** Written before's Open, Link it here, and Not the same, on an older line the cursor's line still has. */
+  private async actOnWrittenBefore(message: WrittenBeforeActionMessage): Promise<void> {
+    const cursor = this.sidebar.writtenBefore?.current;
+    const row = cursor?.rows.find((candidate) => candidate.filePath === message.filePath && candidate.line === message.line);
+    if (!cursor || !row) {
+      return;
+    }
+    if (message.action === 'open') {
+      await vscode.commands.executeCommand('deckard.openNote', row.filePath, row.line);
+    } else if (message.action === 'linkHere') {
+      await vscode.commands.executeCommand('deckard.writtenBefore.linkHere', {
+        documentUri: cursor.uri.toString(),
+        line: cursor.line,
+        lineText: cursor.text,
+        filePath: row.filePath,
+        targetLine: row.line,
+      });
+    } else {
+      await vscode.commands.executeCommand('deckard.writtenBefore.notSame', cursor.text, row.text);
+    }
+  }
+
+  /**
    * The state last posted, while nothing it was ranked from has changed
    * since and the day has not turned, which moves how recent each note is.
    */
@@ -522,6 +605,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
       openSameTypeRow: (message: SidebarNotesPageToHost['openSameTypeRow']) => this.openSameTypeRow(message),
       openSameTypeSearch: (message: SidebarNotesPageToHost['openSameTypeSearch']) => this.openSameTypeSearch(message),
       refineActiveSearch: (message: RefineActiveSearchMessage) => this.refineActiveSearch(message),
+      writtenBeforeAction: (message: WrittenBeforeActionMessage) => this.actOnWrittenBefore(message),
       // What is done in the calendar's day is the calendar's to do.
       calendarDay: async (message: SidebarNotesPageToHost['calendarDay']) => {
         const source = this.sidebar.activeCalendar?.active;
@@ -575,6 +659,13 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
         if (isDeckardPageId(message.page)) {
           await display.setContextPageShown(message.page, message.shown);
         }
+      },
+      // Home's widgets are Home's to add, and to reset.
+      homeAddWidget: (message: SidebarNotesPageToHost['homeAddWidget']) => {
+        this.sidebar.activeHome?.active?.addWidget(message.value);
+      },
+      homeResetWidgets: async () => {
+        await this.sidebar.activeHome?.active?.resetWidgets();
       },
     };
   }
@@ -668,9 +759,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
 
   /**
    * What a page in front has the sidebar show in its place: a graph node's
-   * connections, the calendar page's chosen day, or a search's Refine
-   * options. Undefined when none does; Home in front leaves the sidebar on
-   * the note, since Home's own + Add widget lists what it can add.
+   * connections, the calendar page's chosen day, Home's widgets, or a
+   * search's Refine options. Undefined when none does.
    */
   private createPageSnapshot(): SidebarNotesSnapshot | undefined {
     if (this.graphContext) {
@@ -681,6 +771,11 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     const day = this.sidebar.activeCalendar?.active?.getDay();
     if (day) {
       return this.createEmptySnapshot({ calendarDay: day, state: 'calendarDay' });
+    }
+    // Home in front: the widgets it can add, and Reset.
+    const home = this.sidebar.activeHome?.active;
+    if (home) {
+      return this.createEmptySnapshot({ homeWidgets: home.getWidgetChoices(), state: 'customizeHome' });
     }
     const refine = this.sidebar.activeSearch.active?.getRefineState();
     return refine ? this.createEmptySnapshot({ refine, state: 'refine' }) : undefined;
@@ -734,6 +829,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
     const previewLines = this.sidebar.preferences.reader.value.relatedNotesPreviewLines ?? 1;
     // So are the other rows of its type, for a note that is a typed row.
     const sameType = indexedFile && filePath ? describeSameTypeRows(index, filePath) : undefined;
+    const writtenBefore = this.readWrittenBefore();
     return indexedFile
       ? {
           ...snapshot,
@@ -741,6 +837,7 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
           previewLines,
           links: collectNoteLinks(index, indexedFile, { now, hideDailyNotes, dateFormats: readDateFormats() }),
           ...(sameType ? { sameType } : {}),
+          ...(writtenBefore ? { writtenBefore } : {}),
         }
       : { ...snapshot, hideDailyNotes, previewLines };
   }

@@ -7,6 +7,7 @@ import {
   FieldKind,
   ParsedFile,
   QueryOperator,
+  Question,
   Section,
   Task,
   TaskPriority,
@@ -24,14 +25,13 @@ import {
   TypeIndex,
   TypeRow,
 } from '../types/typeIndex';
-import { resolveIndexedTagKey } from '../index/tagNavigation';
+import { listTagKeyCandidates } from '../index/tagNavigation';
 import {
   getQueryLinkState,
   LinkQuery,
   LinkState,
   matchesLinkQuery,
   resolveLinkQuery,
-  UnitLink,
 } from './queryLinks';
 import { QueryContext } from './queryContext';
 import { DateDirection, resolveDateRange } from './queryDates';
@@ -49,12 +49,15 @@ import { escapeRegExp } from '../../shared/text';
 import { TASK_PRIORITY_RANKS } from '../markdown/taskFields';
 import { entryText, fileEntryId, isEntrySection } from '../markdown/noteEntries';
 import { getEntryParts, getFilePreambleText } from '../index/noteEntryIndex';
+import { getQuestions, isAnswered, readQuestionTagKeys } from '../index/questions';
 
 /** What a search finds, by kind, each list in index order. */
 export interface QueryResults {
   sections: Section[];
   tasks: Task[];
   files: ParsedFile[];
+  /** The `- [?]` lines it finds, which are not tasks (38-questions.md). */
+  questions: Question[];
 }
 
 /**
@@ -88,7 +91,7 @@ export function evaluateQuery(
   query: QueryContext,
 ): QueryResults {
   if (!node) {
-    return { sections: [], tasks: [], files: [] };
+    return { sections: [], tasks: [], files: [], questions: [] };
   }
 
   const context = createEvaluationContext(index, node, query);
@@ -99,6 +102,7 @@ export function evaluateQuery(
     sections: matching(units.sections),
     tasks: matching(units.tasks),
     files: matching(units.files),
+    questions: matching(units.questions),
   };
 }
 
@@ -107,40 +111,66 @@ interface IndexUnits {
   sections: Array<readonly [Section, QueryUnit]>;
   tasks: Array<readonly [Task, QueryUnit]>;
   files: Array<readonly [ParsedFile, QueryUnit]>;
+  questions: Array<readonly [Question, QueryUnit]>;
 }
 
 /**
- * The units a search tests, in index order: every entry, every task, and
- * every note that is a result of its own, each with its links when the
- * search asks about them.
+ * The units a search tests, in index order: every entry, every task, every
+ * note that is a result of its own, each with its links when the search
+ * asks about them, and every question.
  */
 function collectUnits(index: WorkspaceIndex, context: EvaluationContext): IndexUnits {
-  const membership = buildTagMembership(index);
+  const units = getIndexUnits(index);
   const links = context.links;
-  const withLinks = (unit: QueryUnit, key: string): QueryUnit =>
-    links ? { ...unit, links: links.byUnit.get(key) } : unit;
-  // A note is an entry: an untagged heading under a tagged one is part of
-  // it, never a result of its own (noteEntries.ts).
+  return {
+    sections: units.sections,
+    tasks: units.tasks,
+    // A note is a result of its own only when it has tags of its own, or, for
+    // a search by link, a link none of its entries owns.
+    files: units.files.filter(
+      ([file]) => units.tagged.has(file.filePath) || (links?.looseFiles.has(file.filePath) ?? false),
+    ),
+    questions: units.questions,
+  };
+}
+
+/** Every unit of an index, with the notes that have tags of their own; see getIndexUnits. */
+interface CachedUnits extends IndexUnits {
+  tagged: ReadonlySet<string>;
+}
+
+/** Each index's units, built once: see getIndexUnits. */
+const indexUnits = new WeakMap<WorkspaceIndex, CachedUnits>();
+
+/**
+ * The units every search of an index tests, in index order, built once for
+ * each snapshot, since a unit is read from the index alone and a page that
+ * runs several searches, or the Hubs view that runs one for each hub, would
+ * otherwise read and lowercase every note's text for each: every entry,
+ * every task, every note, and every question. A note is an entry: an
+ * untagged heading under a tagged one is part of it, never a result of its
+ * own (noteEntries.ts).
+ */
+function getIndexUnits(index: WorkspaceIndex): CachedUnits {
+  const cached = indexUnits.get(index);
+  if (cached) {
+    return cached;
+  }
+  const membership = buildTagMembership(index);
   const parts = getEntryParts(index);
-  const sections = [...index.sections.values()]
-    .filter(isEntrySection)
-    .map((section) => [section, withLinks(createSectionUnit(index, membership, section, parts.get(section.id)), `section:${section.id}`)] as const);
-  const tasks = [...index.tasks.values()].map(
-    (task) => [task, withLinks(createTaskUnit(index, membership, task), `task:${task.id}`)] as const,
-  );
-  // A note is a result of its own only when it has tags of its own, or, for
-  // a search by link, a link none of its entries owns.
-  const files = [...index.files.values()]
-    .filter(
-      (file) =>
-        (membership.files.get(file.filePath)?.size ?? 0) > 0 ||
-        (links?.looseFiles.has(file.filePath) ?? false),
-    )
-    .map(
-      (file) =>
-        [file, withLinks(createFileUnit(index, membership, file, parts.get(fileEntryId(file.filePath))), `file:${file.filePath}`)] as const,
-    );
-  return { sections, tasks, files };
+  const units: CachedUnits = {
+    sections: [...index.sections.values()]
+      .filter(isEntrySection)
+      .map((section) => [section, createSectionUnit(index, membership, section, parts.get(section.id))] as const),
+    tasks: [...index.tasks.values()].map((task) => [task, createTaskUnit(index, membership, task)] as const),
+    files: [...index.files.values()].map(
+      (file) => [file, createFileUnit(index, membership, file, parts.get(fileEntryId(file.filePath)))] as const,
+    ),
+    questions: [...getQuestions(index).values()].map((question) => [question, createQuestionUnit(index, question)] as const),
+    tagged: new Set([...membership.files].filter(([, tags]) => tags.size > 0).map(([filePath]) => filePath)),
+  };
+  indexUnits.set(index, units);
+  return units;
 }
 
 /**
@@ -253,6 +283,8 @@ interface EvaluationContext {
   wantedValues: Map<string, FieldValue>;
   /** The fields each row's name or path reaches, worked out once, since a note's entries share its rows. */
   rowFields: Map<string, RowField[]>;
+  /** Each tag value's test, read once, since every unit is tested with it. */
+  tagMatchers: Map<string, (tagKeys: ReadonlySet<string>) => boolean>;
 }
 
 /** The context of one evaluation; the links are gathered only when the search names `link`. */
@@ -269,6 +301,7 @@ function createEvaluationContext(
     types: () => getTypeIndex(index),
     wantedValues: new Map(),
     rowFields: new Map(),
+    tagMatchers: new Map(),
   };
 }
 
@@ -298,7 +331,10 @@ function matchesLinkCondition(
     query = resolveLinkQuery(context.index, condition.value);
     context.linkQueries.set(condition.value, query);
   }
-  return applyNegation(condition, matchesLinkQuery(unit.links, query));
+  return applyNegation(
+    condition,
+    matchesLinkQuery(unit.linkKey === undefined ? undefined : context.links?.byUnit.get(unit.linkKey), query),
+  );
 }
 
 /** How many notes and tasks a search for a tag finds. */
@@ -440,7 +476,7 @@ const MAX_TAGS_PER_UNIT = 40;
  * One thing a condition can be tested against.
  */
 interface QueryUnit {
-  kind: 'section' | 'task' | 'file';
+  kind: 'section' | 'task' | 'file' | 'question';
   tagKeys: Set<string>;
   text: string;
   filePath: string;
@@ -465,14 +501,19 @@ interface QueryUnit {
   assignee?: string;
   /** The task's status: its checkbox's, or the status its line's tag names. */
   status?: TaskStatus;
-  /** The `[[links]]` on the unit's own lines, read for a `link` search. */
-  links?: readonly UnitLink[];
+  /**
+   * The key the `[[links]]` on the unit's own lines are kept under, read
+   * for a `link` search: `section:id`, `task:id`, or `file:path`.
+   */
+  linkKey?: string;
   /** In a parked folder, or found by a search for a parked tag. */
   parked?: boolean;
   /** A step: written under another task. */
   step?: boolean;
   /** How many steps are written under the task. */
   stepCount?: number;
+  /** A question with an `Answer:` line under it. */
+  answered?: boolean;
 }
 
 /**
@@ -639,6 +680,7 @@ function createSectionUnit(
   collectInheritedTagKeys(index, section, tagKeys);
   return {
     kind: 'section',
+    linkKey: `section:${section.id}`,
     tagKeys,
     text: `${section.heading}\n${entryText(parts, section)}`.toLowerCase(),
     filePath: section.filePath,
@@ -677,6 +719,7 @@ function createTaskUnit(
   const dependencies = getDependencyState(index);
   return {
     kind: 'task',
+    linkKey: `task:${task.id}`,
     tagKeys,
     text: `${task.title}\n${task.sourceLineText}`.toLowerCase(),
     filePath: task.filePath,
@@ -706,6 +749,27 @@ function createTaskUnit(
   };
 }
 
+/**
+ * A question as a condition tests it: the tags it carries as a task would,
+ * its line's words, and its answer's, so a search for what was answered
+ * finds the question.
+ */
+function createQuestionUnit(index: WorkspaceIndex, question: Question): QueryUnit {
+  const parked = index.parked;
+  return {
+    kind: 'question',
+    tagKeys: readQuestionTagKeys(index, question),
+    text: `${question.title}\n${question.sourceLineText}\n${question.answer?.text ?? ''}`.toLowerCase(),
+    filePath: question.filePath,
+    createdAt: question.createdAt,
+    updatedAt: question.updatedAt,
+    answered: isAnswered(question),
+    parked:
+      (parked?.files.has(question.filePath) ?? false) ||
+      (question.sectionId !== undefined && (parked?.sections.has(question.sectionId) ?? false)),
+  };
+}
+
 /** A note as a condition tests it: the tags its front matter gives it, and its whole text. */
 function createFileUnit(
   index: WorkspaceIndex,
@@ -718,6 +782,7 @@ function createFileUnit(
   parts?.forEach((part) => part.bodyTags?.forEach((tag) => tagKeys.add(tag.key)));
   return {
     kind: 'file',
+    linkKey: `file:${file.filePath}`,
     tagKeys,
     // A note with headings of its own reads as what it owns: its text above
     // them, and the untagged headings no tagged heading owns.
@@ -759,7 +824,7 @@ function matchesCondition(
     case 'tag':
       return applyNegation(
         condition,
-        matchesTag(condition.value, unit, context.query.entityNamespaceAliases),
+        matchesTag(condition.value, unit, context),
       );
     case 'link':
       return matchesLinkCondition(condition, unit, context);
@@ -847,15 +912,31 @@ function applyNegation(
  * Deckard accepts, a namespace by any of its aliases, and `*` for
  * namespace queries.
  */
-function matchesTag(value: string, unit: QueryUnit, aliases: EntityNamespaceAliases): boolean {
+function matchesTag(value: string, unit: QueryUnit, context: EvaluationContext): boolean {
+  let matcher = context.tagMatchers.get(value);
+  if (!matcher) {
+    matcher = createTagMatcher(value, context.query.entityNamespaceAliases);
+    context.tagMatchers.set(value, matcher);
+  }
+  return matcher(unit.tagKeys);
+}
+
+/**
+ * A tag value's test of a unit's tags: a wildcard's pattern, or whether
+ * the unit holds the tag as `resolveIndexedTagKey` would find it among
+ * them, as written or through the aliases, in any case.
+ */
+function createTagMatcher(value: string, aliases: EntityNamespaceAliases): (tagKeys: ReadonlySet<string>) => boolean {
   const canonical = resolveNamespaceAlias(value, aliases);
   if (isWildcard(canonical)) {
     const pattern = createGlob(canonical, true);
-    return [...unit.tagKeys].some((tagKey) => pattern.test(tagKey));
+    return (tagKeys) => [...tagKeys].some((tagKey) => pattern.test(tagKey));
   }
-
-  const tagMap = new Map([...unit.tagKeys].map((tagKey) => [tagKey, tagKey]));
-  return resolveIndexedTagKey(tagMap, canonical) !== undefined;
+  const candidates = listTagKeyCandidates(canonical);
+  const lowercase = new Set(candidates.map((candidate) => candidate.toLowerCase()));
+  return (tagKeys) =>
+    candidates.some((candidate) => tagKeys.has(candidate)) ||
+    [...tagKeys].some((tagKey) => lowercase.has(tagKey.toLowerCase()));
 }
 
 /**
@@ -932,7 +1013,8 @@ function matchesStatus(value: string, unit: QueryUnit): boolean {
 }
 
 /**
- * Answers `is:`. `note` is anything that is not a task; the rest are tasks.
+ * Answers `is:`. `note` is anything that is neither a task nor a question;
+ * `question`, `answered`, and `unanswered` are questions; the rest are tasks.
  * `due` means open and due within the next seven days, overdue included.
  * `blocked` and `blocking` read the ⛔ and 🆔 dependency edges between open
  * tasks; `has:dependsOn` and `has:id` read the markers themselves, whether or
@@ -945,7 +1027,10 @@ function matchesIs(
   context: QueryContext,
 ): boolean {
   if (value === 'note') {
-    return unit.kind !== 'task';
+    return unit.kind === 'section' || unit.kind === 'file';
+  }
+  if (value === 'question' || value === 'answered' || value === 'unanswered') {
+    return unit.kind === 'question' && (value === 'question' || unit.answered === (value === 'answered'));
   }
   if (value === 'parked') {
     // Notes and tasks alike: parking is about where a thing is, not its kind.

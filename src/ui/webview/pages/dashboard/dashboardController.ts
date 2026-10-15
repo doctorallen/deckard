@@ -20,8 +20,10 @@ import type { TaskWrites } from '../../../commands/taskActions';
 import { collectTryNextInput, runTryNext, suggestTryNext, TryNextLedger } from '../../../commands/tryNext';
 import type { WhatsNew } from '../../../commands/whatsNew';
 import { createDashboardSnapshot, getSavedFilterQuery, mergeOrder } from '../../../state/dashboardState';
+import { onDidBuildLineIndex } from '../../../state/lineIndexBuild';
 import { createDashboardWidgets } from '../../../state/dashboardWidgets';
 import type { TryNextSuggestion } from '../../../state/tryNext';
+import type { ActiveHome, HomeSource, HomeWidgetChoice } from '../../activeHome';
 import { getDashboardHtml } from '../../dashboardHtml';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
 import {
@@ -84,6 +86,10 @@ export interface DashboardControllerOptions {
   writes: TaskWrites;
   /** What a row's line or tag may open. */
   navigationService: NavigationService;
+  /** What Related Notes is handed while Home is in front: the Dashboard's panel. */
+  source: HomeSource;
+  /** The offered answers set aside with Not it, which Open questions leaves out; absent, none are. */
+  questions?: { rejected(): ReadonlySet<string>; readonly onDidChange: vscode.Event<void> };
 }
 
 /** Some of Home's handlers, by the types they answer. */
@@ -109,6 +115,10 @@ export class DashboardController implements PageController<DashboardPageState, D
   };
   public readonly narrow = narrowDashboardMessage;
   public readonly handlers: MessageHandlers<DashboardPageToHost>;
+  /** Where Home says it is in front, so Related Notes can offer its widgets. */
+  public activeHome?: ActiveHome;
+  /** The widgets + Add widget offers, as the page last listed them. */
+  private widgetChoices: HomeWidgetChoice[] = [];
   private dashboardMode: DashboardMode;
   private dashboardTagColumns: DashboardColumnCount;
   /** The day the widgets were built for: Today goes stale when it turns. */
@@ -132,6 +142,11 @@ export class DashboardController implements PageController<DashboardPageState, D
       ...this.widgetHandlers(),
       ...this.tryNextHandlers(),
     };
+  }
+
+  /** The widgets + Add widget offers, as the page last listed them. */
+  public getWidgetChoices(): HomeWidgetChoice[] {
+    return this.widgetChoices;
   }
 
   /** The page's template, in the reader's theme, with the heart icons it loads from the extension. */
@@ -193,6 +208,13 @@ export class DashboardController implements PageController<DashboardPageState, D
     if (tryNext) {
       disposables.push(tryNext.onDidChange(() => page.refresh()));
     }
+    if (this.home.questions) {
+      disposables.push(
+        this.home.questions.onDidChange(() => page.refresh()),
+        // Open questions leaves out its offers while the line index is first built.
+        onDidBuildLineIndex(() => page.refresh()),
+      );
+    }
     disposables.push(
       // A visit is kept quietly; only Home's Recently opened shows it.
       preferences.reader.onDidRecordVisit(() => {
@@ -243,6 +265,37 @@ export class DashboardController implements PageController<DashboardPageState, D
     return this.publishedOn !== startOfToday();
   }
 
+  /** A panel that opens in front makes Home the active source. */
+  public onDidAttach(page: PageContext): void {
+    if (page.surface?.active) {
+      this.activeHome?.setActive(this.home.source);
+    }
+  }
+
+  /** Home is the active source while its panel is in front, and only then. */
+  public onDidChangeViewState(page: PageContext): void {
+    if (page.surface?.active) {
+      this.activeHome?.setActive(this.home.source);
+    } else {
+      this.activeHome?.release(this.home.source);
+    }
+  }
+
+  /** A closed panel is no longer in front. */
+  public onDidDetach(): void {
+    this.activeHome?.release(this.home.source);
+  }
+
+  /**
+   * Home disposed of is no longer in front. The host drops the panel's
+   * listeners before it closes the panel, so onDidDetach never hears that
+   * close, and Home used to stay the active source, with Related Notes
+   * offering widgets for a page that was gone.
+   */
+  public dispose(): void {
+    this.activeHome?.release(this.home.source);
+  }
+
   /**
    * Opens a saved view where it was saved: on the Task Board, or on a search
    * page with its query, or its tags that still exist joined by AND.
@@ -271,7 +324,7 @@ export class DashboardController implements PageController<DashboardPageState, D
    * Puts back the widgets Home starts with, after a modal confirmation: it
    * discards an arrangement, which cannot be taken back.
    */
-  private async resetWidgets(): Promise<void> {
+  public async resetWidgets(): Promise<void> {
     const choice = await vscode.window.showWarningMessage(
       'Reset Home to its default widgets?',
       {
@@ -402,6 +455,7 @@ export class DashboardController implements PageController<DashboardPageState, D
   private widgetHandlers(): Handlers<
     | 'setDashboardWidgets'
     | 'resetDashboardWidgets'
+    | 'widgetChoices'
     | 'openWhatsNew'
     | 'dismissWhatsNew'
     | 'openView'
@@ -409,6 +463,7 @@ export class DashboardController implements PageController<DashboardPageState, D
     | 'openNote'
     | 'pinNote'
     | 'unpinNote'
+    | 'questionAction'
   > {
     const { indexer, preferences, navigation } = this.home;
     return {
@@ -422,12 +477,17 @@ export class DashboardController implements PageController<DashboardPageState, D
           ),
         ),
       resetDashboardWidgets: () => this.resetWidgets(),
+      widgetChoices: (message) => {
+        this.widgetChoices = message.choices;
+        this.activeHome?.notifyChanged(this.home.source);
+      },
       openWhatsNew: () => vscode.commands.executeCommand('deckard.openWhatsNew'),
       dismissWhatsNew: () => this.home.whatsNew?.clear(),
       openView: (message) =>
         vscode.commands.executeCommand(
           {
             agenda: 'deckard.agenda.focus',
+            questions: 'deckard.questions.focus',
             sampleWorkspace: 'deckard.createWorkSample',
             checkSetup: 'deckard.checkSetup',
             walkthrough: 'deckard.openWalkthrough',
@@ -447,6 +507,9 @@ export class DashboardController implements PageController<DashboardPageState, D
           await preferences.pins.unpinNote(message.pinKey);
         }
       },
+      // The question is read again from the index by the command, which
+      // writes nothing when its line has changed since.
+      questionAction: (message) => vscode.commands.executeCommand(`deckard.questions.${message.action}`, message.questionId),
     };
   }
 
@@ -523,6 +586,7 @@ export class DashboardController implements PageController<DashboardPageState, D
       queryContext,
       agendaQuery: readAgendaQuery(configuration),
       ...(tryNext ? { tryNext } : {}),
+      ...(this.home.questions ? { rejectedOffers: this.home.questions.rejected() } : {}),
     });
   }
 

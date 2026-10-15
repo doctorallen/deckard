@@ -22,6 +22,9 @@ import { EntrySearchResult } from '../../core/storage/searchStore';
 import { resolveIndexedTagKey } from '../../domain/index/tagNavigation';
 import { getHeadingPath } from '../../domain/ranking/entryLabels';
 import { describeTagMatches } from './querySuggestions';
+import { listOpenQuestions, questionText } from '../../domain/index/questions';
+import { wordQuestion } from '../../domain/markdown/questionLines';
+import { describeQuestionAge } from './questionsState';
 import { type AnswerKind, describeTypedTag, listAnswerItems } from './findAnswers';
 import { normalizeFindInput, pinKey } from '../../core/storage/preferencesSchema';
 import { createPinForLine, findPinnedSection, resolvePin } from '../../domain/notes/pins';
@@ -55,9 +58,10 @@ export type QuickFindItemKind =
   | 'savedView'
   | 'note'
   | 'task'
+  | 'question'
   | 'message';
 
-/** One row Find offers: a tag, condition, search, saved view, note, task, or message. */
+/** One row Find offers: a tag, condition, search, saved view, note, task, open question, or message. */
 export interface QuickFindItem {
   kind: QuickFindItemKind;
   label: string;
@@ -99,6 +103,8 @@ export interface QuickFindResults {
   savedViews: QuickFindItem[];
   notes: QuickFindItem[];
   tasks: QuickFindItem[];
+  /** The open questions that match what is typed. */
+  questions?: QuickFindItem[];
   /** A parse error, or why the matches are only partial. */
   message?: string;
   /** The search with a misspelled word corrected. */
@@ -110,6 +116,11 @@ export interface QuickFindResults {
    * nothing that has every word and the words read as something to do.
    */
   capture?: { text: string; line: string };
+  /**
+   * What was typed, as the question its Ask it row would write, when Find
+   * found nothing that has every word (38-questions.md § Where questions show).
+   */
+  ask?: { words: string; question: string; line: string };
 }
 
 /** Asks the full-text index for entries holding the words, best first. */
@@ -128,8 +139,15 @@ export interface QuickFindOptions {
   conditions?: readonly QuerySuggestion[];
   /** Writes typed words as a task line, for Find's Add row. */
   formatCapture?: (text: string) => string;
+  /**
+   * Writes typed words as a question's line, for Find's Ask it row; absent,
+   * or undefined for the words, when questions are off.
+   */
+  formatQuestion?: (text: string) => string | undefined;
 }
 
+/** How many open questions Find lists among its results. */
+const QUESTION_LIMIT = 5;
 /** How many tags Find completes the typed word to. */
 const TAG_LIMIT = 5;
 /** How many whole conditions Find offers for the typed word. */
@@ -271,6 +289,15 @@ function addRankedEntries(
     notes: ranked.notes.length,
     tasks: ranked.tasks.length,
   };
+  const questions = matchOpenQuestions(index, node, request.queryContext);
+  if (questions.length > 0) {
+    results.questions = questions;
+  }
+  const missed = ranked.notes.length + ranked.tasks.length + questions.length === 0 || ranked.partial;
+  const ask = missed && isCaptureable(node) ? toAsk(input, request.formatQuestion) : undefined;
+  if (ask) {
+    results.ask = ask;
+  }
   // Nothing had every word: what was typed may be something to do rather
   // than something to find.
   if (
@@ -287,6 +314,41 @@ function addRankedEntries(
   results.tasks = ranked.tasks
     .slice(0, request.taskLimit ?? 15)
     .map((entry) => entry.item);
+}
+
+/**
+ * The open questions a search finds: for plain words, those whose words or
+ * tags hold every word typed, the best titles first; for any other search,
+ * the open ones the query evaluator finds, as written.
+ */
+function matchOpenQuestions(index: WorkspaceIndex, node: QueryNode, context: QueryContext): QuickFindItem[] {
+  const plainTerms = getPlainTextTerms(node);
+  const found = plainTerms
+    ? listOpenQuestions(index)
+        .map((question) => ({ question, score: scoreTitle(plainTerms, `${question.title} ${question.tags.join(' ')}`) }))
+        .filter((entry) => entry.score >= TITLE_HAS_EVERY_WORD)
+        .sort((left, right) => right.score - left.score)
+        .map((entry) => entry.question)
+    : evaluateQuery(index, node, context).questions.filter((question) => question.answer === undefined);
+  return found.slice(0, QUESTION_LIMIT).map((question) => {
+    const section = question.sectionId ? index.sections.get(question.sectionId) : undefined;
+    return {
+      kind: 'question' as const,
+      label: questionText(question),
+      description: getFileName(question.filePath),
+      detail: describeQuestionAge(question, context.now, context.dateFormats),
+      filePath: question.filePath,
+      line: question.lineNumber,
+      ...(section ? { sectionId: section.id } : {}),
+    };
+  });
+}
+
+/** What Ask it would write for typed words: the words, the question they make, and its line; none when questions are off. */
+function toAsk(input: string, formatQuestion: QuickFindOptions['formatQuestion']): QuickFindResults['ask'] {
+  const words = input.trim();
+  const line = words ? formatQuestion?.(words) : undefined;
+  return line ? { words, question: wordQuestion(words), line } : undefined;
 }
 
 /** A note or task row with what orders it. */
@@ -633,6 +695,7 @@ export function findChoiceKey(index: WorkspaceIndex, item: QuickFindItem): strin
       return item.tagKey ? `tag:${item.tagKey}` : undefined;
     case 'savedView':
       return item.savedFilterId ? `view:${item.savedFilterId}` : undefined;
+    case 'question':
     case 'condition':
     case 'recent':
     case 'message':

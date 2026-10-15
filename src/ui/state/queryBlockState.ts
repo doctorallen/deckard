@@ -13,6 +13,7 @@ import { compareTasksByColumn, parseTaskColumns, TableTask } from './resultTable
 import { isTaskColumnId, TASK_COLUMNS } from '../../domain/tasks/taskColumns';
 import {
   ParsedFile,
+  Question,
   Section,
   Task,
   TaskPriority,
@@ -35,6 +36,7 @@ import { isComputedFieldName, toFieldQueryName } from '../../domain/types/fieldK
 import { getTypeIndex } from '../../domain/types/typeIndex';
 import { resolveTypeQueryPath } from '../../domain/types/typeQueryFields';
 import { valueTitle } from './typeRows';
+import { isAnswered, questionText } from '../../domain/index/questions';
 
 /**
  * Query blocks are fenced ```deckard blocks holding a Deckard query. The
@@ -147,6 +149,9 @@ export interface QueryBlockItem {
    * the rows its tags are: `{ "team.lead": "Dana Whitfield" }`.
    */
   fieldValues?: Record<string, string>;
+  /** For a question, whether an `Answer:` line is under it, and what it says. */
+  answered?: boolean;
+  answer?: string;
 }
 
 /** A diagnostic or option warning shown beside a block's results. */
@@ -164,10 +169,13 @@ export interface QueryBlockSnapshot {
   hasError: boolean;
   notes: QueryBlockItem[];
   tasks: QueryBlockItem[];
+  /** The `- [?]` lines it finds, which are not tasks. */
+  questions: QueryBlockItem[];
   /** Totals before `limit` is applied. */
   noteCount: number;
   taskCount: number;
   openTaskCount: number;
+  questionCount: number;
 }
 
 /** The options a live query block is written with. */
@@ -462,9 +470,11 @@ export function createQueryBlockSnapshot(
     query,
     notes: [],
     tasks: [],
+    questions: [],
     noteCount: 0,
     taskCount: 0,
     openTaskCount: 0,
+    questionCount: 0,
   };
 
   if (!query) {
@@ -511,6 +521,8 @@ export function createQueryBlockSnapshot(
   const tasks = results.tasks
     .map((task) => createTaskItem(task, index))
     .sort(createTaskComparator(options.sort, options.direction));
+  // Questions keep the order they are written in, as a note's lines do.
+  const questions = results.questions.map((question) => createQuestionItem(question, index));
 
   return {
     query,
@@ -518,9 +530,27 @@ export function createQueryBlockSnapshot(
     hasError: false,
     notes: notes.slice(0, options.limit),
     tasks: tasks.slice(0, options.limit),
+    questions: questions.slice(0, options.limit),
     noteCount: notes.length,
     taskCount: tasks.length,
     openTaskCount: tasks.filter((task) => !task.completed && !task.cancelled).length,
+    questionCount: questions.length,
+  };
+}
+
+/** A question as a block lists it: its words, where it is, and its answer when it has one. */
+function createQuestionItem(question: Question, index: WorkspaceIndex): QueryBlockItem {
+  const section = question.sectionId ? index.sections.get(question.sectionId) : undefined;
+  return {
+    id: question.id,
+    title: questionText(question),
+    context: section ? getHeadingPath(section, index.sections) : [],
+    filePath: question.filePath,
+    fileName: getFileName(question.filePath),
+    line: question.lineNumber,
+    createdAt: question.createdAt,
+    answered: isAnswered(question),
+    ...(question.answer ? { answer: question.answer.text } : {}),
   };
 }
 
@@ -568,11 +598,12 @@ function withFieldValues(item: QueryBlockItem, index: WorkspaceIndex, fields: re
 }
 
 /**
- * Summarizes a block's totals in one line, as "3 notes · 5 tasks, 2 open".
+ * Summarizes a block's totals in one line, as "3 notes · 5 tasks, 2 open",
+ * and its questions when it finds any.
  */
 export function describeQueryBlockCounts(snapshot: QueryBlockSnapshot): string {
   const parts: string[] = [];
-  if (snapshot.noteCount > 0 || snapshot.taskCount === 0) {
+  if (snapshot.noteCount > 0 || (snapshot.taskCount === 0 && snapshot.questionCount === 0)) {
     parts.push(pluralize(snapshot.noteCount, 'note'));
   }
   if (snapshot.taskCount > 0) {
@@ -581,6 +612,9 @@ export function describeQueryBlockCounts(snapshot: QueryBlockSnapshot): string {
         ? pluralize(snapshot.taskCount, 'open task')
         : `${pluralize(snapshot.taskCount, 'task')}, ${snapshot.openTaskCount} open`,
     );
+  }
+  if (snapshot.questionCount > 0) {
+    parts.push(pluralize(snapshot.questionCount, 'question'));
   }
   return parts.join(' · ');
 }

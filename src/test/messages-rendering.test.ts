@@ -679,10 +679,10 @@ suite('Webview contracts', () => {
       page.click('[data-action="create-hub"]');
       assert.deepStrictEqual(page.lastPosted('createHubNote'), { type: 'createHubNote' });
       // The Notes and Tasks tabs are the shared result tabs, and each counts
-      // what its pane shows.
+      // what its pane shows; a tag's page adds its Story.
       const tabs = page.findAll('[role="tab"][data-action="set-result-tab"]');
-      assert.deepStrictEqual(tabs.map((tab) => tab.textContent), ['Notes (1)', 'Tasks (2)']);
-      assert.deepStrictEqual(tabs.map((tab) => tab.getAttribute('data-tab')), ['notes', 'tasks']);
+      assert.deepStrictEqual(tabs.map((tab) => tab.textContent), ['Notes (1)', 'Tasks (2)', 'Story (3)']);
+      assert.deepStrictEqual(tabs.map((tab) => tab.getAttribute('data-tab')), ['notes', 'tasks', 'story']);
       // Clearing returns the page to the search it was opened with, so the
       // field's × is not drawn while the box holds only that.
       assert.strictEqual((page.find('[data-action="clear-query"]') as HTMLElement).hidden, true);

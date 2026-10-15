@@ -46,6 +46,7 @@ A `👤` field says who a task is for. Mentioning someone does not make the task
 - On the [Task board](task-board.md#task-board), group by **Person**. Drop a card on a person to set the field, or on **Nobody named** to clear it. In any grouping, a card's **⋯** menu has **For someone…** (key **f**), which lists the people you write about.
 - [Add Task](#adding-a-task) reads `for @dana` at the end, or `@dana to …` at the start, as who the task is for.
 - The first search in a window that uses `is:mine` or `is:waiting` while `deckard.me` is empty says so, with the setting a click away.
+- A person's page lists what you owe them and what they owe you, in its [Between you](search-pages.md#between-you-and-a-person) card.
 
 ### Dataview format
 
@@ -57,7 +58,7 @@ The fields are `due`, `scheduled`, `start`, `created`, `completion`, `cancelled`
 
 ### Editing a whole task
 
-**Deckard: Edit Task** (on a task line) or **Deckard: Add Task** (elsewhere), on the same shortcut, opens the line's fields, headed by the line as it will be written. A non-task line's text becomes the description. Edit Task is also **Edit task…** on the lightbulb, in a note. Add Task works from anywhere, and writes a new task where its **Note** row says; see [Adding a task](#adding-a-task).
+**Deckard: Edit Task** (on a task line) or **Deckard: Add Task** (elsewhere), on the same shortcut, opens the line's fields, headed by the line as it will be written. A non-task line's text becomes the description. Edit Task is also **Edit task…** on the lightbulb, and **Edit task** when you hover a task line, in a note. Add Task works from anywhere, and writes a new task where its **Note** row says; see [Adding a task](#adding-a-task).
 
 | Field | What it takes |
 | --- | --- |
@@ -152,8 +153,10 @@ The character between a task's brackets is its status, as in [Obsidian Tasks](ht
 | `[w]` | Waiting | On hold |
 | `[s]` | Someday | On hold |
 | `[=]` | Blocked, with ⊘ beside its box | On hold |
+| `[?]` | Question, which is not a task; see [Questions](#questions) | Question |
 
 - `[ ]` and `[x]` are always Todo and Done.
+- `[?]` is a [question](#questions) unless your list gives `?` to a status of its own. Then your status wins, and questions are off; Deckard's log says so once.
 - Any other character in a box is a task, as in Obsidian Tasks. One that no status names is a task to do called **Unknown**. The first scan that finds one says how many, once, with the setting a click away, and [Stats](home-and-stats.md#stats) keeps saying it. **Add characters found in notes**, on the page [Edit Task Statuses…](#editing-the-statuses) opens, names them.
 - A status of the **Not a task** type leaves its lines as text, for a box that marks something other than a task, such as a pro or a con.
 - `[>]` still marks a task [moved elsewhere](organizing.md#moving-lines-and-tasks), and is not a task.
@@ -208,6 +211,51 @@ While task lines still carry such tags, the Task board and the Tasks view say ho
 - **Save** writes to the workspace's settings when they set the list, and to your user settings otherwise.
 - Renaming a status offers to rename it in saved searches, Home widgets, and query blocks that search by it.
 
+## Questions
+
+A line written `- [?]` is a question. It is not a task: it is never on the Task Board, in a task count, `is:open`, the Tasks view, or the status bar.
+
+```markdown
+- [?] Who approves access to the bond UAT? #team/rates
+    - Answer: Priya Natarajan, via the RATES-UAT group [[2026-10-14#Access]] (2026-10-14)
+```
+
+- A question carries its own tags and people, and those of the heading or front matter it is under, as a task does.
+- **It is answered** when an indented line under it starts with `Answer:`, in any case. Its box stays `[?]`.
+- **Search** with `is:question`, `is:unanswered`, and `is:answered`, in Find, search pages, query blocks, saved searches, and review sections; see [Query language](search.md#query-language).
+
+### An answer offered
+
+When a later line may answer an open question, Deckard offers it. A line is offered when it was written on or after the day the question was asked, shares at least three of the question's uncommon words, and, when the question carries a tag or names a person, shares one of those too. Words every note uses, such as *today* and *meeting*, count for little. A question that names a [typed row](databases.md) and one of its fields, such as `- [?] Who leads #team/fx?`, is offered the field's value, from the note that holds it.
+
+- **Use as answer** writes the offered line's words under the question, with a link to it and today's date.
+- **Not it** sets that line aside for that question, for good.
+- Only the best offer for each question is shown.
+
+### Questions view
+
+The **Questions** view in the Deckard sidebar, under Tasks, lists each open question, oldest first, with how long it has been open and its first tag. Its badge counts them. Selecting a question opens its line. A question a line may answer has that line under it, **May answer: Wed, Oct 14 · Access**, with **Use as answer** and **Not it** beside it.
+
+- **Answer Question…**, on a question's row, asks for the answer: type it, or pick the line offered, which writes its words and a link to it.
+- **Drop Question**, on a question's right-click menu, writes its box as `[-]`, which makes it a cancelled task.
+- The title bar's **Include Answered Questions** lists the answered ones after them, and **Open as Search** opens the search page for `is:unanswered`, as **Open questions** in **Go to…** does.
+
+### In Find
+
+When [Find](search.md#find) finds nothing that has every word, it offers **Ask it in today's note**, which writes your words as a question in today's note: first when nothing has any of them, else after the line that says the results have only some. Open questions that match what you type are listed among the results with a **?**.
+
+### On a tag's page
+
+A tag's or a person's [search page](search-pages.md) has a **Questions** tab beside Notes and Tasks when questions carry the tag or name the person, each with **Answer…** while it is open. A person's [Between you](search-pages.md#between-you-and-a-person) card lists the open questions that name them under **To ask Sam**, and a tag's [Since you last looked](search-pages.md#since-you-last-looked) band counts the questions answered since your last visit. Its [Story](search-pages.md#the-story-so-far) marks each question **?**, with its answer under it.
+
+### On Home
+
+Home's **Open questions** widget, which **Customize Home** adds, lists the same questions with the same buttons; its title opens the Questions view. Under [Zen](themes-and-zen.md#zen), its buttons stay quiet until you point at a question.
+
+### In the editor
+
+Above an open question, a lens says **Question · open 12 days**, then, when a line may answer it, **1 line may answer it: Wed, Oct 14 · Access**, which opens that line, then **Answer…** and **Drop**. Above an answered one it says **Question · answered Fri, Oct 9**. Under [Zen](themes-and-zen.md#zen) the lens keeps the age and the line that may answer, and leaves out **Answer…** and **Drop**. `deckard.editor.questions` turns the lens off.
+
 ## Tasks view
 
 Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when they are wanted. Parked tasks are left out unless `deckard.tasks.viewQuery` says `is:parked`.
@@ -227,7 +275,7 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
 
 - **Tag namespace** groups by tags in one namespace, such as `#project/…`, busiest first, **No project** last. Inherited tags count. The namespace is kept with the workspace.
 - **Priority** runs highest to lowest, **No priority** last.
-- **Status** groups by [status](#task-statuses), in the order of the [Task board's](task-board.md#groupings) status columns, hidden ones too, and a group per character no status names, such as **Unknown [?]**, after them. Dropping a task on a group writes its status the way the board does.
+- **Status** groups by [status](#task-statuses), in the order of the [Task board's](task-board.md#groupings) status columns, hidden ones too, and a group per character no status names, such as **Unknown [!]**, after them. Dropping a task on a group writes its status the way the board does.
 - **Person** groups by [who each task is for](#who-a-task-is-for), **Nobody named** last.
 
 **Working with tasks:**
@@ -258,7 +306,7 @@ Run `Deckard: Add Task` from anywhere: <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt<
 - **Quick add.** Words at the end of the **Description** fill the task's fields, in any order: a day (`today`, `friday`, `next monday`, `in 3 days`, `oct 3`; or after `on`, `by`, or `due`, a short day such as `fri`, `+2w`, a date, or `10/3`), a priority (`p1` to `p4`, or `!!!`, `!!`, `!`), a repeat rule (`every week`, `daily`), and who it is for (`for @dana`). `@dana to …` at the start hands the task to Dana too; a person mentioned anywhere else stays a mention. `Call Ren friday p2` becomes `- [ ] Call Ren ⏫ 📅 2026-10-02`, and the box says what it read as you type. **Keep the words as written**, the button in the box's title, reads nothing.
 - **From a selection.** Select up to 120 characters on one line and Add Task starts from them. Written into another note, the task links back to the heading they were under: `- [ ] Call Ren [[2026-09-22#Weekly review]] 📅 2026-10-02`. In the note they were selected in, it goes on the line below them.
 - On the [Task board](task-board.md#task-board), **Add task** in the search bar runs Add Task, and a column's **+** starts it with that column's status, priority, date, person, or tag.
-- [Find](search.md) offers **Add “…” to today's note** for words that match nothing, read as Quick add reads it.
+- [Find](search.md) offers **Add to today's note** for words that match nothing, read as Quick add reads it.
 - Unsaved changes in an open note are kept. A task written into another note saves it; one written into the note you are in waits for you to save it, as your own typing does.
 
 ---

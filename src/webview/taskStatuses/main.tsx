@@ -95,6 +95,30 @@ function boxOf(symbol: string | undefined): string {
   return symbol === undefined ? '' : `[${symbol}]`;
 }
 
+/**
+ * A status's type: a menu, or its words where it can't change. Todo's and
+ * Done's are fixed, and a question is not a task, so no other status
+ * becomes one, and it becomes no other.
+ */
+function TypeCell({ status, core, label, field }: {
+  readonly status: StatusRowState;
+  readonly core: boolean;
+  readonly label: string;
+  readonly field: Record<string, string>;
+}) {
+  if (core) {
+    return <span>{TYPES.find(([type]) => type === status.type)?.[1]}</span>;
+  }
+  if (status.type === 'question') {
+    return <span data-tip="A question, - [?], is not a task">Question</span>;
+  }
+  return (
+    <select aria-label={`${label}: type`} {...field}>
+      {TYPES.map(([type, words]) => <option value={type} selected={status.type === type}>{words}</option>)}
+    </select>
+  );
+}
+
 /** One status's row: its character, name, type, next character in the workflow, icon, and a way to remove it. */
 function StatusRow({ status, at, workflow, problems, rows }: {
   readonly status: StatusRowState;
@@ -115,19 +139,13 @@ function StatusRow({ status, at, workflow, problems, rows }: {
           : <input type="text" class="status-symbol-input" maxLength={2} value={status.symbol ?? ''} placeholder="none" aria-label={`${label}: character`} {...field('symbol')} />}
       </td>
       <td><input type="text" value={status.name} aria-label={`${label}: name`} {...field('name')} /></td>
-      <td>
-        {core
-          ? <span>{TYPES.find(([type]) => type === status.type)?.[1]}</span>
-          : (
-            <select aria-label={`${label}: type`} {...field('type')}>
-              {TYPES.map(([type, words]) => <option value={type} selected={status.type === type}>{words}</option>)}
-            </select>
-          )}
-      </td>
-      {workflow ? <td><NextMenu status={status} rows={rows} label={label} field={field('next')} /></td> : null}
+      <td><TypeCell status={status} core={core} label={label} field={field('type')} /></td>
+      {workflow
+        ? <td>{status.type === 'question' ? <span class="status-no-icon">—</span> : <NextMenu status={status} rows={rows} label={label} field={field('next')} />}</td>
+        : null}
       <td>
         {/* Only an open status adds an icon: a closed box shows its type's. */}
-        {status.type === 'done' || status.type === 'cancelled' || status.type === 'nonTask'
+        {status.type === 'done' || status.type === 'cancelled' || status.type === 'nonTask' || status.type === 'question'
           ? <span class="status-no-icon" data-tip="A done or cancelled box shows its type, not an icon">—</span>
           : (
             <select aria-label={`${label}: icon`} {...field('icon')}>
@@ -154,7 +172,8 @@ function NextMenu({ status, rows, label, field }: {
   readonly label: string;
   readonly field: Record<string, string>;
 }) {
-  const symbols = rows.filter((row) => row.symbol !== undefined);
+  // A click never makes a task a question, which is not a task.
+  const symbols = rows.filter((row) => row.symbol !== undefined && row.type !== 'question');
   const known = status.next === undefined || symbols.some((row) => row.symbol === status.next);
   return (
     <select class="status-next" aria-label={`${label}: the status a click moves it to`} {...field}>

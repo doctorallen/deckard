@@ -36,6 +36,9 @@ import { readDateFormats } from '../commands/datePrompt';
 import { getTypeIndex } from '../../domain/types/typeIndex';
 import { describeNoteRows } from '../state/typeRows';
 import { countTypeProblems } from '../state/typeProblems';
+import { describeQuestionLenses, getAnswerOffers, toQuestionRow } from '../state/questionsState';
+import { onDidBuildLineIndex } from '../state/lineIndexBuild';
+import { readZen } from '../commands/displaySettings';
 
 /** What the lenses read from the indexer, and when they redraw. */
 interface LensIndexSource {
@@ -68,7 +71,8 @@ type LensSetting =
   | 'unlinkedMentions'
   | 'hubProgress'
   | 'breadcrumbs'
-  | 'stepProgress';
+  | 'stepProgress'
+  | 'questions';
 
 /**
  * One group of lenses, and the `deckard.editor.*` settings that show it: any
@@ -77,6 +81,12 @@ type LensSetting =
 interface LensGroup {
   settings: readonly LensSetting[];
   provide(context: LensContext): LazyCodeLens[];
+}
+
+/** What the lens above a question reads beside the index: the offers set aside with Not it, and when that changes. */
+interface QuestionLensMemory {
+  rejected(): ReadonlySet<string>;
+  readonly onDidChange: vscode.Event<void>;
 }
 
 /**
@@ -97,14 +107,22 @@ export class EditorLenses
     { settings: ['hubProgress'], provide: provideHubProgressLenses },
     { settings: ['breadcrumbs'], provide: provideBreadcrumbLenses },
     { settings: ['stepProgress'], provide: provideStepProgressLenses },
+    { settings: ['questions'], provide: (context) => provideQuestionLenses(context, this.questions) },
   ];
   /** Before the first scan every other note looks empty. */
   private isReady = false;
 
   public readonly onDidChangeCodeLenses = this.changeEmitter.event;
 
-  /** Takes the index the lenses read; nothing is registered until `register`. */
-  public constructor(private readonly indexer: LensIndexSource) {}
+  /**
+   * Takes the index the lenses read, and the offered answers set aside with
+   * Not it, which the lens above a question leaves out; nothing is
+   * registered until `register`.
+   */
+  public constructor(
+    private readonly indexer: LensIndexSource,
+    private readonly questions?: QuestionLensMemory,
+  ) {}
 
   /**
    * Registers the lenses for Markdown files, and redraws them when the index
@@ -121,6 +139,9 @@ export class EditorLenses
         }
       }),
       vscode.languages.registerCodeLensProvider({ pattern: '**/*.md' }, this),
+      ...(this.questions ? [this.questions.onDidChange(() => this.changeEmitter.fire())] : []),
+      // A question's offer is left out while the line index is first built.
+      onDidBuildLineIndex(() => this.changeEmitter.fire()),
     );
     void whenPublished(this.indexer).then(() => {
       this.isReady = true;
@@ -305,6 +326,47 @@ function provideStepProgressLenses({ document, file }: LensContext): LazyCodeLen
         arguments: [document.uri, { selection: next }],
       };
     });
+  });
+}
+
+/**
+ * Above a question: how long it has been open, a line that may answer it,
+ * which opens, and Answer… and Drop; above an answered one, when it was
+ * answered (docs/implementation/38-questions.md § Where questions show).
+ * A question is found in the note as the editor holds it, and passed to
+ * Answer… and Drop as it is there, so they check its line as it is now.
+ */
+function provideQuestionLenses({ document, file, index }: LensContext, memory: QuestionLensMemory | undefined): LazyCodeLens[] {
+  const questions = file.questions ?? [];
+  if (questions.length === 0) {
+    return [];
+  }
+  const offers = getAnswerOffers(index, memory?.rejected() ?? new Set());
+  const now = Date.now();
+  const dateFormats = readDateFormats();
+  const zen = readZen();
+  return questions.flatMap((question) => {
+    const row = toQuestionRow(index, question, offers.get(question.id), { now, dateFormats });
+    const range = new vscode.Range(question.lineNumber - 1, 0, question.lineNumber - 1, 0);
+    return describeQuestionLenses(row, { zen }).map(
+      (lens) =>
+        new LazyCodeLens(range, (): vscode.Command => {
+          switch (lens.action) {
+            case 'view':
+              return { title: lens.title, tooltip: lens.tooltip, command: 'deckard.questions.focus' };
+            case 'offer':
+              return { title: lens.title, tooltip: lens.tooltip, command: 'deckard.openNote', arguments: [row.offer?.filePath, row.offer?.line] };
+            case 'answer':
+            case 'drop':
+              return {
+                title: lens.title,
+                tooltip: lens.tooltip,
+                command: lens.action === 'answer' ? 'deckard.questions.answer' : 'deckard.questions.drop',
+                arguments: [{ question: { ...question, filePath: index.files.has(question.filePath) ? question.filePath : document.uri.fsPath } }],
+              };
+          }
+        }),
+    );
   });
 }
 

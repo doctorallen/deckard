@@ -10,7 +10,7 @@ export { countOtherCheckboxes, countUnknownStatuses } from '../../domain/index/o
  *
  * Any character between a task's brackets is a task, as in Obsidian Tasks,
  * so a vault's counts match; one no status in `deckard.tasks.statuses`
- * names, such as `[?]`, is read as to do. The first index that finds such
+ * names, such as `[b]`, is read as to do. The first index that finds such
  * tasks in a workspace says how many, once, with a way to name them; Stats
  * keeps saying it.
  */

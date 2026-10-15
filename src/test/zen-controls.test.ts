@@ -133,7 +133,7 @@ const context = (zen: boolean, mode = 'tags') => open(renderPage('sidebarNotes',
   state: 'ready',
   parkedTags: [],
   relatedNotesSortMode: mode,
-  pages: { pages: [{ id: 'home', label: 'Home', description: '', detail: '' }], style: 'icons', current: undefined },
+  pages: { pages: [{ id: 'home', label: 'Home', description: '', detail: '' }], style: 'list', current: undefined },
 });
 const graph = (zen: boolean) => open(renderPage('notesGraph', { chrome: chromeOf(zen) }));
 /** A type's search page: its rows tab, sorted by a column, with rows that have no hub note. */
@@ -245,7 +245,7 @@ suite('Zen quiets controls in place', () => {
     assert.strictEqual(gears.length, 2, 'the band gear and the Related gear');
     assert.ok(gears.every((gear) => gear.getAttribute('data-zen-reveal') === '' && gear.parentElement?.closest('[data-zen-region]')));
     assert.ok(quietAtRest(page.find('.related-notes-sort')), 'Relevance is quiet at rest');
-    assert.ok(page.findAll('.context-pages [data-action]').every((icon) => !quietAtRest(icon)), "the page icons are the band's job, and stay");
+    assert.ok(page.findAll('.context-pages [data-action]').every((icon) => !quietAtRest(icon)), "the pages are the band's job, and stay");
     assert.ok(!quietAtRest(sidebar('newest').find('.related-notes-sort')), 'Newest stays drawn');
   });
 

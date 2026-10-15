@@ -27,6 +27,7 @@ import {
 import { isWritten } from '../../domain/search/facets';
 import { resolveQueryTagIntersection } from '../state/searchPageState';
 import { WorkspaceIndex } from '../../domain/model';
+import type { TagVisits } from '../../core/storage/tagVisits';
 
 /** What the search pages are built from. */
 export interface SearchPanelsOptions {
@@ -40,6 +41,8 @@ export interface SearchPanelsOptions {
   themePreview: ThemePreview;
   /** What a page's Export plans its results with. */
   exports: ExportService;
+  /** What each tag's page held at the last visit, which a page's band reads and its visit is counted in. */
+  visits?: TagVisits;
 }
 
 /**
@@ -66,6 +69,8 @@ export class SearchPanels implements vscode.Disposable {
   private readonly exports: ExportService;
   /** What a tag a page names may open. */
   private readonly navigation = new NavigationService();
+  /** What each tag's page held at the last visit. */
+  private readonly visits: TagVisits | undefined;
 
   /**
    * Starts listening for index updates, preference and settings changes, and
@@ -80,6 +85,7 @@ export class SearchPanels implements vscode.Disposable {
     this.writes = options.writes;
     this.themePreview = options.themePreview;
     this.exports = options.exports;
+    this.visits = options.visits;
     const { indexer, preferences, activeSearch } = options;
     // A page about a tag that is gone closes at once; each page still open
     // redraws in a turn of its own.
@@ -277,6 +283,7 @@ export class SearchPanels implements vscode.Disposable {
         themePreview: this.themePreview,
         exports: this.exports,
         navigation: this.navigation,
+        ...(this.visits ? { visits: this.visits } : {}),
       },
     });
     this.panels.add(panel);
@@ -366,6 +373,8 @@ interface SearchPanelHost {
   readonly exports: ExportService;
   /** What a tag the page names may open. */
   readonly navigation: NavigationService;
+  /** What each tag's page held at the last visit. */
+  readonly visits?: TagVisits;
 }
 
 /** One search page's search, and what it reads, draws with, and tells. */
@@ -410,6 +419,7 @@ class SearchPanel implements SearchSource, vscode.Disposable {
       writes: options.host.writes,
       exports: options.host.exports,
       navigation: options.host.navigation,
+      ...(options.host.visits ? { visits: options.host.visits } : {}),
       openTag: (tagKey) => options.host.openTag(tagKey),
       extensionUri: options.extensionUri,
       setTitle: (title) => {

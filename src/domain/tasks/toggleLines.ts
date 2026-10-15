@@ -1,7 +1,7 @@
 import { matchTaskLine, STATUS_MARKS, TaskLineMatch, TaskLineShape } from '../markdown/lineShapes';
 import { readStepsForNextOccurrence } from '../markdown/taskSteps';
 import { setTaskLineCompletion, writeCompletion } from '../markdown/taskLineEdits';
-import { DEFAULT_TASK_STATUSES, isNonTaskSymbol, statusForSymbol, type TaskStatusDefinition } from './taskStatuses';
+import { DEFAULT_TASK_STATUSES, isNonTaskSymbol, isQuestionSymbol, statusForSymbol, type TaskStatusDefinition } from './taskStatuses';
 import { parseTaskMetadata, TaskMetadataFormat } from '../markdown/taskFields';
 import { formatIsoDate } from '../markdown/calendar';
 
@@ -75,7 +75,11 @@ export function toggleTaskLines(
   const statuses = options.statuses ?? DEFAULT_TASK_STATUSES;
   const tasks = lines
     .map((entry) => ({ ...entry, match: matchTaskLine(entry.text, TASK_LINE) }))
-    .filter((entry): entry is typeof entry & { match: TaskLineMatch } => entry.match !== undefined && !isNonTaskSymbol(statuses, entry.match.mark));
+    // A line of a nonTask status is text, and a question's is no task either.
+    .filter(
+      (entry): entry is typeof entry & { match: TaskLineMatch } =>
+        entry.match !== undefined && !isNonTaskSymbol(statuses, entry.match.mark) && !isQuestionSymbol(statuses, entry.match.mark),
+    );
   const isDone = (mark: string): boolean => statusForSymbol(statuses, mark).type === 'done';
   const completed = tasks.some((entry) => !isDone(entry.match.mark));
   const toggled: ToggledLine[] = [];
@@ -97,7 +101,7 @@ export function toggleTaskLines(
     const completion = writeCompletion(box, checkboxColumn, {
       now,
       eol: options.eol,
-      steps: options.documentLines ? readStepsForNextOccurrence(options.documentLines, line) : [],
+      steps: options.documentLines ? readStepsForNextOccurrence(options.documentLines, line, statuses) : [],
     });
     toggled.push({
       line,

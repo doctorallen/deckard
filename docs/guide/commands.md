@@ -9,6 +9,7 @@
 | **Deckard: Open Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Calendar** | Opens the calendar across the editor, each day listing its tasks; see [Calendar](daily-notes.md#calendar). |
 | **Deckard: Open Help** | Opens this guide inside VS Code, its pages down the side; see [Reading this guide](getting-started.md#reading-this-guide). |
+| **Deckard: Choose Pages…** | Picks which of Deckard's pages the Context view keeps, as icons in its title bar or as a list; also in the title bar's **⋯**, with **List Pages in Context** and **Move Pages to the Title Bar**; see [Finding your way](getting-started.md#finding-your-way). |
 | **Deckard: Choose Theme…** | Previews each theme on the open pages; Enter keeps one, Escape goes back. |
 | **Deckard: Toggle Zen** | Turns Zen on or off on every Deckard page, as the **Zen** checkbox in a page's **⋯** does; see [Zen](themes-and-zen.md#zen). |
 | **Deckard: Choose Date Format…** | Shows today in each format; **Custom…** says it back as you type; see [Dates](themes-and-zen.md#dates). |
@@ -45,12 +46,14 @@
 | **Deckard: Set Task Status…** | Sets any status on the task on the cursor's line; also on the editor's right-click menu and a task's menu in the Tasks view; see [Task statuses](tasks.md#task-statuses). |
 | **Deckard: Edit Task Statuses…** | Opens a page to edit `deckard.tasks.statuses`: each status's character, name, type, and icon; see [Editing the statuses](tasks.md#editing-the-statuses). |
 | **Deckard: Move Status Tags into Checkboxes…** | Writes each `#status/…` tag, which Deckard no longer reads as a status, as the character of the status it meant, such as `- [ ] Draft #status/doing` to `- [/] Draft`, and searches that name one by the status, after a preview; see [Moving status tags into checkboxes](tasks.md#moving-status-tags-into-checkboxes). |
+| **Deckard: Answer Question…** | Writes an answer under a question, typed or taken from the line offered for it; with no question chosen, it lists the open ones first. Also on a question's row in the Questions view, and above a question in the editor; see [Questions](tasks.md#questions). |
 | **Deckard: Roll Unfinished Tasks Forward** | Carries the last daily note's unfinished tasks into today's, creating it if needed. |
 | **Deckard: Reschedule Overdue Tasks…** | Dates the overdue tasks at once, saying how full each day is; see [Tasks view](tasks.md#tasks-view). |
 | **Deckard: Edit What the Tasks View Lists…** | Opens the Task Board on what the Tasks view lists, to change it and keep it with **Save to Tasks view**; see [Editing what the Tasks view lists](task-board.md#editing-what-the-tasks-view-lists). |
 | **Deckard: Clear the Tasks View's Search** | Lets the Tasks view list every open task again. |
 | **Deckard: Group Tasks By…** | Chooses the Tasks view's groups: due status, priority, status, person, or a tag namespace. |
 | **Deckard: Sort Tasks By…** | Orders each of the Tasks view's groups: by rank, created or updated date, or title. |
+| **Deckard: Sort Hubs By…** | Orders each level of the Hubs view: by name, or **What's new**, the hubs with the most new since you last opened their page first; see [The Hubs view](search-pages.md#the-hubs-view). |
 | **Deckard: New Note from Template** | Creates a note from a template in your templates folder. |
 | **Deckard: New Note from Template Here…** | The same, in the folder right-clicked in the Explorer, from its **Deckard** menu. |
 | **Deckard: Exclude from Deckard** | On a folder's **Deckard** menu in the Explorer: leaves the folder out of the index. **Deckard: Include in Deckard** brings a folder left out by name back. |

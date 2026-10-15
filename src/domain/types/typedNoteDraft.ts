@@ -55,6 +55,8 @@ export interface TypedNoteDraft {
   values: Readonly<Record<string, readonly DraftValue[]>>;
   /** Set when the form edits a note that exists rather than making one. */
   existing?: ExistingNote;
+  /** Words written under the title of a new note, as its first paragraph. */
+  body?: string;
 }
 
 /** A row's note the form edits, as it was when the form read it. */
@@ -76,6 +78,10 @@ export interface DraftStart {
   /** A namespace type's tag, which the form then keeps. */
   tag?: string;
   folder?: string;
+  /** Fields already given a value, by key, such as a term note's `term`; a key the type has no field for is left out. */
+  values?: Readonly<Record<string, string>>;
+  /** Words to write under the title, such as a term's definition. */
+  body?: string;
 }
 
 /** The keys that say what a note is a row of, which the form writes itself. */
@@ -84,12 +90,16 @@ const IDENTITY_KEYS: ReadonlySet<string> = new Set(['describes', 'type']);
 /** A new note of `type`, in its folder, with `start`'s title and tag. */
 export function startTypedNoteDraft(type: DraftType, start: DraftStart = {}): TypedNoteDraft {
   const tag = type.rows?.kind === 'tags' && start.tag ? start.tag : undefined;
+  const keys = new Set(listDraftFields(type).map((field) => field.key));
+  const values = Object.entries(start.values ?? {}).filter(([key, value]) => keys.has(key) && value.trim() !== '');
+  const body = start.body?.trim();
   return {
     typeKey: type.key,
     title: start.title?.trim() ?? '',
     folder: start.folder ?? rowNotesFolder(type),
     ...(tag ? { tag, tagFixed: true } : {}),
-    values: {},
+    values: Object.fromEntries(values.map(([key, value]) => [key, [{ text: value.trim() }]])),
+    ...(body ? { body } : {}),
   };
 }
 
@@ -245,8 +255,29 @@ export function planTypedNote(type: DraftType, draft: TypedNoteDraft, options: O
       unwritten.push(field.name);
     }
   });
+  if (draft.body) {
+    content = placeBodyUnderTitle(content, draft.body);
+  }
   const folder = readDraftFolder(draft.folder) ?? plan.folder;
   return { folder, fileName: plan.fileName, path: joinFolder(folder, plan.fileName), ...(plan.tag ? { tag: plan.tag } : {}), content, unwritten };
+}
+
+/**
+ * A note with words put right under its title, a blank line either side,
+ * so they are its first paragraph whatever a template writes after the
+ * title, as a term note's definition must be: under the first top-level
+ * heading after the front matter, or, with none, after the front matter.
+ */
+function placeBodyUnderTitle(content: string, body: string): string {
+  const lines = content.replace(/\s*$/, '').split('\n');
+  const start = (findFrontmatterEnd(lines) ?? -1) + 1;
+  const title = lines.findIndex((line, at) => at >= start && /^#[ \t]/.test(line));
+  const at = title >= 0 ? title + 1 : start;
+  const rest = lines.slice(at);
+  while (rest.length && rest[0].trim() === '') {
+    rest.shift();
+  }
+  return [...lines.slice(0, at), ...(at > 0 ? [''] : []), body, ...(rest.length ? ['', ...rest] : []), ''].join('\n');
 }
 
 /**

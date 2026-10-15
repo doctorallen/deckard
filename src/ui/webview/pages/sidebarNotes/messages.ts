@@ -8,6 +8,7 @@ import type {
   ActivateNotesGraphNodeMessage,
   AddSuggestedTagMessage,
   CalendarDayMessage,
+  HomeAddWidgetMessage,
   HoverNotesGraphNodeMessage,
   InsertLinkMessage,
   LinkMentionMessage,
@@ -20,6 +21,7 @@ import type {
   SetRelatedNotesPreviewLinesMessage,
   SetRelatedNotesSortMessage,
   SidebarNotesPageToHost,
+  WrittenBeforeActionMessage,
 } from '../../../protocol/sidebarNotes';
 import { narrowCalendarMessage } from '../calendar/messages';
 import {
@@ -114,6 +116,12 @@ const narrowSetPageShown: Narrower<SetPageShownMessage> = (value) =>
     ? { type: 'setPageShown', page: value.page, shown: value.shown }
     : undefined;
 
+/** Written before's Open, Link it here, or Not the same, on an older line, by its note and line. */
+const narrowWrittenBeforeAction: Narrower<WrittenBeforeActionMessage> = (value) =>
+  (value.action === 'open' || value.action === 'linkHere' || value.action === 'notSame') && isSourceLocation(value)
+    ? { type: 'writtenBeforeAction', action: value.action, filePath: value.filePath as string, line: value.line as number }
+    : undefined;
+
 /** Insert link on a related note: the note, by its first line. */
 const narrowInsertLink: Narrower<InsertLinkMessage> = (value) =>
   isSourceLocation(value)
@@ -136,6 +144,10 @@ const narrowRefineActiveSearch: Narrower<RefineActiveSearchMessage> = (value) =>
 /** The Sort select: one of the orders Related Notes can list in. */
 const narrowSetRelatedNotesSort: Narrower<SetRelatedNotesSortMessage> = (value) =>
   isRelatedNotesSortMode(value.mode) ? { type: 'setRelatedNotesSort', mode: value.mode } : undefined;
+
+/** Home's Customize: a widget to add, by its value; Home checks it is one it offers. */
+const narrowHomeAddWidget: Narrower<HomeAddWidgetMessage> = (value) =>
+  typeof value.value === 'string' ? { type: 'homeAddWidget', value: value.value } : undefined;
 
 /**
  * The calendar day panel's message, narrowed as the Calendar narrows its
@@ -173,10 +185,13 @@ export const SIDEBAR_NOTES_MESSAGES: NarrowingTable<SidebarNotesPageToHost> = {
   openTaskBoard: onlyType('openTaskBoard'),
   createDailyNote: onlyType('createDailyNote'),
   openHelp: onlyType('openHelp'),
+  homeAddWidget: narrowHomeAddWidget,
+  homeResetWidgets: onlyType('homeResetWidgets'),
   calendarDay: narrowCalendarDay,
   goToPage: narrowGoToPage,
   setPagesStyle: narrowSetPagesStyle,
   setPageShown: narrowSetPageShown,
+  writtenBeforeAction: narrowWrittenBeforeAction,
 };
 
 /** A message from the Related Notes sidebar, narrowed by its table, or undefined. */

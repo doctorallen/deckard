@@ -19,6 +19,7 @@ import { getFileName } from '../../shared/paths';
 import { createSearchPageSnapshot } from './searchPageState';
 import { createQueryViewState, describeTagMatches } from './querySuggestions';
 import { createDashboardTask, sortTasks } from './entryCards';
+import { buildQuestionRows, describeQuestionRow } from './questionsState';
 import { ResultPaging } from '../protocol/shared';
 import {
   DashboardWidgetConfig,
@@ -41,6 +42,8 @@ export interface DashboardWidgetOptions {
   agendaQuery?: string;
   /** Try next's suggestion, which the host chooses. */
   tryNext?: DashboardTryNext;
+  /** The offered answers set aside with Not it, which Open questions leaves out. */
+  rejectedOffers?: ReadonlySet<string>;
 }
 
 /** Each widget's heading. A saved-search widget is named after its search. */
@@ -59,6 +62,7 @@ export const DASHBOARD_WIDGET_TITLES: Readonly<Record<DashboardWidgetKind, strin
   progress: 'Progress',
   pinnedNotes: 'Pinned notes',
   tryNext: 'Try next',
+  openQuestions: 'Open questions',
 };
 
 /**
@@ -453,6 +457,27 @@ function buildTryNextWidget({ options, widget }: WidgetBuild): DashboardWidget {
   return options.tryNext ? { ...widget, tryNext: options.tryNext } : widget;
 }
 
+/**
+ * The open questions, oldest first, each with its age and first tag, and
+ * the line that may answer it, which its rows offer to use or set aside.
+ */
+function buildOpenQuestionsWidget({ index, options, widget, take }: WidgetBuild): DashboardWidget {
+  const { now, dateFormats } = options.queryContext;
+  const rows = buildQuestionRows(index, { rejected: options.rejectedOffers ?? new Set(), now, dateFormats });
+  return {
+    ...widget,
+    total: rows.length,
+    questions: take(rows).map((row) => ({
+      id: row.id,
+      text: row.text,
+      filePath: row.filePath,
+      line: row.line,
+      detail: describeQuestionRow(row),
+      ...(row.offer ? { offer: { text: row.offer.text, where: row.offer.where, filePath: row.offer.filePath, line: row.offer.line } } : {}),
+    })),
+  };
+}
+
 /** Each widget kind's builder. */
 const WIDGET_BUILDERS: { readonly [K in DashboardWidgetKind]: WidgetBuilder } = {
   search: buildSearchWidget,
@@ -469,6 +494,7 @@ const WIDGET_BUILDERS: { readonly [K in DashboardWidgetKind]: WidgetBuilder } = 
   progress: buildProgressWidget,
   pinnedNotes: buildPinnedNotesWidget,
   tryNext: buildTryNextWidget,
+  openQuestions: buildOpenQuestionsWidget,
 };
 
 /** Today's daily note, when there is one, and its open tasks. */

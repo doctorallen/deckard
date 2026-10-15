@@ -157,6 +157,12 @@ input.catalog-search[data-has-query], select[data-action="set-tag-namespace"][da
 .home-row-with-action { display: flex; align-items: stretch; gap: 4px; min-width: 0; }
 .home-row-with-action > .home-row { flex: 1 1 auto; min-width: 0; }
 .home-row-action { flex: 0 0 auto; min-height: 26px; padding: 2px 8px; text-transform: none; white-space: nowrap; }
+/* Open questions: a question's row, and under it, set in, the line that may answer it and its two buttons. */
+.home-question { display: grid; gap: 2px; min-width: 0; }
+.home-question-offer { display: flex; align-items: stretch; gap: 4px; min-width: 0; margin-left: 16px; }
+.home-question-offer-line { display: grid; flex: 1 1 auto; min-width: 0; padding: 2px 8px; border: 0; background: none; color: var(--text); font: inherit; text-align: left; text-transform: none; cursor: pointer; }
+.home-question-offer-where { color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.home-question-offer-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home-today-summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
 .home-today-date { color: var(--text); font: var(--text-md) var(--font-mono); }
 .home-widget-group { margin: 12px 0 6px; color: var(--muted); font: var(--text-xs) var(--font-mono); }

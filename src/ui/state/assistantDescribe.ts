@@ -30,6 +30,8 @@ import { entryOfLink, getTypeIndex, type FieldValue, type RowField, type TypeInd
 import { describeTagMatches } from './querySuggestions';
 import { rowTag } from './typeHover';
 import { valueTitle } from './typeRows';
+import { describeBetweenCounts } from './betweenYou';
+import type { QueryContext } from '../../domain/query/queryContext';
 
 /** The describe tool's name, as the manifest declares it. */
 export const DESCRIBE_TAG_TOOL_NAME = 'deckard_describe_tag';
@@ -38,6 +40,15 @@ export const DESCRIBE_TAG_TOOL_NAME = 'deckard_describe_tag';
 const LATEST_ENTRY_LIMIT = 3;
 /** How many other matches a description names when a phrase matches several. */
 const OTHER_MATCH_LIMIT = 5;
+
+/**
+ * When a description is asked for, and, where the caller has one, the
+ * context its searches run in: who the reader is, for a person's Between you.
+ */
+interface Asked {
+  now: number;
+  context?: QueryContext;
+}
 
 /** A describe call, read: the tag, title, or phrase to describe. */
 export interface DescribeTagToolInput {
@@ -61,22 +72,25 @@ export function readDescribeTagToolInput(value: unknown): DescribeTagToolInput |
  * type has, how much carries it and its hub note. A phrase that names
  * several rows is described by the best, and the others are named.
  */
-export function answerDescribeTag(index: WorkspaceIndex, input: DescribeTagToolInput, now: number): string {
+export function answerDescribeTag(index: WorkspaceIndex, input: DescribeTagToolInput, now: number, context?: QueryContext): string {
   const types = getTypeIndex(index);
+  const asked: Asked = { now, context };
+  const describeRow = (row: TypeRow): string => describeRowLines(index, types, row, asked);
+  const describeTag = (key: string): string => describeTagLines(index, types, key, asked);
   const text = input.tag.trim();
   const tagKey = resolveIndexedTagKey(index.tags, text);
   const tagRow = types.isEmpty ? undefined : types.rowOfTag(tagKey ?? text.toLowerCase());
   if (tagRow) {
-    return describeRow(index, types, tagRow, now);
+    return describeRow(tagRow);
   }
   if (tagKey) {
-    return describeTag(index, types, tagKey, now);
+    return describeTag(tagKey);
   }
   const matches = findRowsByPhrase(types, text);
   if (matches.length > 0) {
     const best = matches[0].row;
     const others = [...new Set(matches.slice(1).map((match) => match.row))].filter((row) => row !== best);
-    const lines = [describeRow(index, types, best, now)];
+    const lines = [describeRow(best)];
     if (others.length > 0) {
       lines.push(
         '',
@@ -90,7 +104,7 @@ export function answerDescribeTag(index: WorkspaceIndex, input: DescribeTagToolI
   }
   const tags = findTagsByName(index, text);
   if (tags.length > 0) {
-    const lines = [describeTag(index, types, tags[0].key, now)];
+    const lines = [describeTag(tags[0].key)];
     if (tags.length > 1) {
       lines.push('', `"${text}" also matches: ${tags.slice(1, OTHER_MATCH_LIMIT + 1).map((tag) => tag.label).join(', ')}.`);
     }
@@ -137,8 +151,12 @@ export function describeWorkspaceTypes(index: WorkspaceIndex): string | undefine
   return `Types in this workspace: ${described.join(', ')}. Query a type's rows with type = ${first.key}, a field by its name (with spaces as hyphens), and describe one row with ${DESCRIBE_TAG_TOOL_NAME}.`;
 }
 
-/** A typed row: its type, name, and note; its fields and reverses; its open tasks; and its latest entries. */
-function describeRow(index: WorkspaceIndex, types: TypeIndex, row: TypeRow, now: number): string {
+/**
+ * A typed row: its type, name, and note; its fields and reverses; its open
+ * tasks, and for a person what is open between them and the reader; and
+ * its latest entries.
+ */
+function describeRowLines(index: WorkspaceIndex, types: TypeIndex, row: TypeRow, { now, context }: Asked): string {
   const typeName = types.registry.get(row.typeKey)?.name ?? formatKeyWords(row.typeKey);
   const reference = rowReference(row);
   const lines = [
@@ -171,6 +189,8 @@ function describeRow(index: WorkspaceIndex, types: TypeIndex, row: TypeRow, now:
     lines.push(`Empty: ${empty.join(', ')}`);
   }
   lines.push(describeOpenTasks(computed.openTasks, computed.overdue));
+  const person = rowTag(row)?.key;
+  lines.push(...(person ? describeBetweenLine(index, person, context) : []));
   if (computed.lastMentioned !== undefined) {
     lines.push(`Last mentioned ${formatIsoDate(computed.lastMentioned)}, ${pluralize(computed.mentions, 'entry', 'entries')} in the last 30 days.`);
   }
@@ -218,8 +238,12 @@ function rowReference(row: TypeRow): string {
   return row.tagKeys.length === 0 && row.filePath ? `type: ${row.typeKey}` : row.id;
 }
 
-/** A tag no type has: how much carries it, its open tasks, its hub note, and its latest entries. */
-function describeTag(index: WorkspaceIndex, types: TypeIndex, tagKey: string, now: number): string {
+/**
+ * A tag no type has: how much carries it, its open tasks, for a person
+ * what is open between them and the reader, its hub note, and its latest
+ * entries.
+ */
+function describeTagLines(index: WorkspaceIndex, types: TypeIndex, tagKey: string, { now, context }: Asked): string {
   const tag = index.tags.get(tagKey);
   if (!tag) {
     return `No tag or row matches "${tagKey}". Call deckard_list_tags to see the tags that exist.`;
@@ -242,10 +266,22 @@ function describeTag(index: WorkspaceIndex, types: TypeIndex, tagKey: string, no
     `Tag: ${tag.label} (${describeTagMatches(index, tag.key)})`,
     hub ? `Hub note: ${hub}` : 'No hub note.',
     describeOpenTasks(open, overdue),
+    ...describeBetweenLine(index, tag.key, context),
     ...(types.isEmpty ? [] : ['No type has this tag as a row.']),
     ...describeLatest(taggedEntries(index, [tag.key], hub)),
   ];
   return lines.join('\n');
+}
+
+/**
+ * For a person, how many open lines are between them and the reader, as
+ * their page's Between you card counts them: `Between you: You owe Sam: 3.
+ * Sam owes you: 2. To ask Sam: 1.`; nothing for any other tag, or with no
+ * context to ask in.
+ */
+function describeBetweenLine(index: WorkspaceIndex, tagKey: string, context: QueryContext | undefined): string[] {
+  const counts = context ? describeBetweenCounts(index, tagKey, context) : undefined;
+  return counts ? [`Between you: ${counts}`] : [];
 }
 
 /** `Open tasks: 2, 1 overdue`, or `Open tasks: none`. */

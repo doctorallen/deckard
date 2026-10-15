@@ -17,7 +17,7 @@ import { typeNotePath, writeTypeNote, type TypeNoteDraft } from '../../domain/ty
 import type { ParsedFile } from '../../domain/model';
 import { fileExists } from './fs';
 import { openNoteAction, reportFailure, reportNeedsFolder } from './notify';
-import type { WorkspaceWriteHistory } from './workspaceWrites';
+import type { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
 
 /**
  * Writing typed notes (docs/implementation/30-databases.md § Writes): a
@@ -49,14 +49,15 @@ const CREATE_TYPE_TITLE = 'Deckard: Create Type from Tags';
  * Writes a new note as one write Undo Last Change takes back: the file is
  * made empty, its text put in through the write history, and an Undo
  * empties it and then deletes it, unless it has been written in since.
- * False, with nothing left behind, when VS Code refuses the write.
+ * The write's handle, for an Undo offered with it; undefined, with nothing
+ * left behind, when VS Code refuses the write.
  */
 export async function writeNewNote(
   history: WorkspaceWriteHistory,
   uri: vscode.Uri,
   content: string,
   label: string,
-): Promise<boolean> {
+): Promise<WriteHandle | undefined> {
   const fs = vscode.workspace.fs;
   await fs.createDirectory(vscode.Uri.joinPath(uri, '..'));
   await fs.writeFile(uri, new Uint8Array());
@@ -75,21 +76,37 @@ export async function writeNewNote(
   const write = await history.write(edit, { label, preview: 'never', restore: deleteIfEmpty });
   if (!write.applied) {
     await deleteIfEmpty();
-    return false;
+    return undefined;
   }
-  return true;
+  return write.handle;
 }
 
 /** People, when no type has them: a quick fix can still create a person's hub note. */
 const PEOPLE_FALLBACK: DraftType = { key: 'person', name: 'Person', rows: { kind: 'tags', prefix: '@', written: '@*' }, fields: [] };
 
 /**
+ * Terms, when no type has them: a term's hover can still make a term note,
+ * `type: term` with its `term:`, which Deckard reads with or without the
+ * type (docs/implementation/42-terms.md).
+ */
+const TERM_FALLBACK: DraftType = {
+  key: 'term',
+  name: 'Term',
+  rows: { kind: 'notes', written: 'notes' },
+  fields: [{ key: 'term', name: 'term', kind: { name: 'text', many: false } }],
+};
+
+/** The types a new row can be written from when no type of the workspace has their key. */
+const FALLBACK_TYPES: ReadonlyMap<string, DraftType> = new Map([PEOPLE_FALLBACK, TERM_FALLBACK].map((type) => [type.key, type]));
+
+/**
  * The type a new row is written from, by key: the registry's, or, for
  * `person` when no type has people, a person with no fields, so a quick
- * fix can still create a person's hub note.
+ * fix can still create a person's hub note, and for `term`, a term with
+ * its one field.
  */
 export function findRowNoteType(registry: Pick<TypeRegistry, 'get'>, typeKey: string): DraftType | undefined {
-  return registry.get(typeKey) ?? (typeKey === PEOPLE_FALLBACK.key ? PEOPLE_FALLBACK : undefined);
+  return registry.get(typeKey) ?? FALLBACK_TYPES.get(typeKey);
 }
 
 /**

@@ -10,6 +10,7 @@ import type { CalendarMessage } from '../ui/protocol/calendar';
 import type { SidebarNotesPageState, SidebarNotesSnapshot } from '../ui/protocol/sidebarNotes';
 import { ActiveCalendar } from '../ui/webview/activeCalendar';
 import { ActiveNotePage } from '../ui/webview/activeNotePage';
+import { ActiveHome } from '../ui/webview/activeHome';
 import { ActiveSearch } from '../ui/webview/activeSearch';
 import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { SidebarNotesController } from '../ui/webview/pages/sidebarNotes/sidebarNotesController';
@@ -353,6 +354,7 @@ function openController() {
   } as unknown as SidebarNotesViewOptions['indexer'];
   const preferences = createPreferences(createStore() as never);
   const activeSearch = new ActiveSearch();
+  const activeHome = new ActiveHome();
   const activeCalendar = new ActiveCalendar();
   const activeNotePage = new ActiveNotePage();
   const openedTags: string[] = [];
@@ -361,6 +363,7 @@ function openController() {
     indexer,
     preferences,
     activeSearch,
+    activeHome,
     activeCalendar,
     activeNotePage,
     onOpenTag: (tagKey) => void openedTags.push(tagKey),
@@ -373,6 +376,11 @@ function openController() {
   const host = new WebviewHost(controller, { indexer, themePreview });
   const surface = new FakeSurface();
   const asked: unknown[][] = [];
+  const home = {
+    getWidgetChoices: () => [{ value: 'calendar', label: 'Calendar' }],
+    addWidget: (value: string) => void asked.push(['addWidget', value]),
+    resetWidgets: async () => void asked.push(['resetWidgets']),
+  };
   const calendar = {
     getDay: () => undefined,
     handleDayMessage: async (message: CalendarMessage) => void asked.push(['day', message]),
@@ -383,8 +391,10 @@ function openController() {
     surface,
     preferences,
     activeSearch,
+    activeHome,
     activeCalendar,
     activeNotePage,
+    home,
     calendar,
     asked,
     openedTags,
@@ -397,6 +407,7 @@ function openController() {
     dispose: () => {
       host.dispose();
       activeSearch.dispose();
+      activeHome.dispose();
       activeCalendar.dispose();
       activeNotePage.dispose();
       updates.dispose();
@@ -658,18 +669,29 @@ suite('Related Notes controller', () => {
     }
   });
 
-  test('passes the calendar\'s day to the calendar page in front, and nothing while none is', async () => {
+  test('passes Home\'s Customize and the calendar\'s day to the page in front, and nothing while none is', async () => {
     await closeEditors();
     const page = openController();
     try {
       page.host.attach(page.surface);
+      await page.send({ type: 'homeAddWidget', value: 'calendar' });
+      await page.send({ type: 'homeResetWidgets' });
       await page.send({ type: 'calendarDay', message: { type: 'openDay', date: '2026-09-24' } });
       assert.deepStrictEqual(page.asked, [], 'no page is in front');
 
+      page.activeHome.setActive(page.home);
+      assert.strictEqual(page.states().at(-1)?.state, 'customizeHome', 'Home in front redraws the sidebar');
+      await page.send({ type: 'homeAddWidget', value: 'calendar' });
+      await page.send({ type: 'homeAddWidget', value: 3 });
+      await page.send({ type: 'homeResetWidgets' });
       page.activeCalendar.setActive(page.calendar);
       await page.send({ type: 'calendarDay', message: { type: 'openDay', date: '2026-09-24', extra: 1 } });
       await page.send({ type: 'calendarDay', message: { type: 'openDay', date: 'Thursday' } });
-      assert.deepStrictEqual(page.asked, [['day', { type: 'openDay', date: '2026-09-24' }]]);
+      assert.deepStrictEqual(page.asked, [
+        ['addWidget', 'calendar'],
+        ['resetWidgets'],
+        ['day', { type: 'openDay', date: '2026-09-24' }],
+      ]);
     } finally {
       page.dispose();
     }

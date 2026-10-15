@@ -29,7 +29,7 @@ const VAULT = [
   '- [x] Book the room',
   '- [/] Write the release notes',
   '- [-] Order the banner',
-  '  - [?] Ask about swag',
+  '  - [b] Ask about swag',
   '- [>] Moved to Friday',
   '```',
   '- [/] An example in code',
@@ -38,11 +38,11 @@ const VAULT = [
 
 suite('Checkbox lines that are not tasks', () => {
   test('are counted apart from tasks, leaving out migrated lines and code', () => {
-    // `[/]`, `[-]`, and `[?]` are tasks now; a status of the nonTask type is text.
+    // `[/]`, `[-]`, and `[b]` are tasks now; a status of the nonTask type is text.
     const taskStatuses = readTaskStatuses([
       { symbol: '/', name: 'Pro', type: 'nonTask' },
       { symbol: '-', name: 'Con', type: 'nonTask' },
-      { symbol: '?', name: 'Question', type: 'nonTask' },
+      { symbol: 'b', name: 'Bookmark', type: 'nonTask' },
     ]);
     const file = parseMarkdown('launch.md', VAULT, undefined, { taskStatuses });
     assert.strictEqual(file.tasks.length, 2);
@@ -54,7 +54,7 @@ suite('Checkbox lines that are not tasks', () => {
 
   test('a character no status names is a task to do, counted apart', () => {
     const file = parseMarkdown('launch.md', VAULT);
-    assert.deepStrictEqual(countUnknownStatuses(buildWorkspaceIndex(new Map([['launch.md', file]]))), { count: 1, symbols: ['?'] });
+    assert.deepStrictEqual(countUnknownStatuses(buildWorkspaceIndex(new Map([['launch.md', file]]))), { count: 1, symbols: ['b'] });
   });
 
   test('tasks of an unknown status are said once per workspace, with a way to name them', async () => {

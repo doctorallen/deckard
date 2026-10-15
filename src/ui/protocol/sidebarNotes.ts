@@ -187,6 +187,20 @@ export interface SameTypeRows {
   empty?: string;
 }
 
+/** An older line like the one at the cursor, as Context's Written before section draws it. */
+export interface SidebarWrittenBefore {
+  filePath: string;
+  /** One-based. */
+  line: number;
+  text: string;
+  /** When and where it was written: `Thu, Mar 12 · Rates desk standup`. */
+  where: string;
+  /** What the two lines share: `Shares curve, feed, lagged… · both tagged #team/rates`. */
+  shares: string;
+  /** The uncommon words both lines hold, which the card marks. */
+  terms: string[];
+}
+
 /** What the Related Notes sidebar draws, and which of its states it is in. */
 export interface SidebarNotesSnapshot {
   /** How far the first scan has got, while the state is loading. */
@@ -195,6 +209,8 @@ export interface SidebarNotesSnapshot {
   links?: NoteLinks;
   /** For a typed row's note, the other rows of its type that share a value with it. */
   sameType?: SameTypeRows;
+  /** The older lines of other notes like the line at the cursor; absent when there are none. */
+  writtenBefore?: SidebarWrittenBefore[];
   activeFileName?: string;
   activeEntryTitle?: string;
   activeTags: SidebarTag[];
@@ -214,6 +230,8 @@ export interface SidebarNotesSnapshot {
   refine?: SearchRefineState;
   /** The calendar page's chosen day, while the page is in front. */
   calendarDay?: CalendarDayDetail;
+  /** The widgets Home can add, while Home is in front. */
+  homeWidgets?: { value: string; label: string; description?: string }[];
   state:
     | 'ready'
     | 'loading'
@@ -223,7 +241,8 @@ export interface SidebarNotesSnapshot {
     | 'noMatches'
     | 'graph'
     | 'refine'
-    | 'calendarDay';
+    | 'calendarDay'
+    | 'customizeHome';
 }
 
 /** A tag of the note being read, with its weight in the ranking. */
@@ -302,6 +321,17 @@ export interface RefineActiveSearchMessage {
  */
 export interface ClearEntryRelatedNotesMessage {
   type: 'clearEntryRelatedNotes';
+}
+
+/** Home's Customize: add a widget Home offers, by its value. */
+export interface HomeAddWidgetMessage {
+  type: 'homeAddWidget';
+  value: string;
+}
+
+/** Home's Customize: put Home's widgets back as they were at first. */
+export interface HomeResetWidgetsMessage {
+  type: 'homeResetWidgets';
 }
 
 /**
@@ -395,10 +425,24 @@ export interface SidebarNotesPageToHost {
   openTaskBoard: OpenTaskBoardMessage;
   createDailyNote: CreateDailyNoteMessage;
   openHelp: OpenHelpMessage;
+  homeAddWidget: HomeAddWidgetMessage;
+  homeResetWidgets: HomeResetWidgetsMessage;
   calendarDay: CalendarDayMessage;
   goToPage: GoToPageMessage;
   setPagesStyle: SetPagesStyleMessage;
   setPageShown: SetPageShownMessage;
+  writtenBeforeAction: WrittenBeforeActionMessage;
+}
+
+/**
+ * Acts on an older line Written before lists: opens it, links to it at the
+ * end of the line at the cursor, or sets the pair aside, Not the same.
+ */
+export interface WrittenBeforeActionMessage {
+  type: 'writtenBeforeAction';
+  action: 'open' | 'linkHere' | 'notSame';
+  filePath: string;
+  line: number;
 }
 
 /** What the host sends the Related Notes sidebar, by type. */

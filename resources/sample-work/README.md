@@ -55,8 +55,8 @@ Keys are written both ways: <kbd>Ctrl</kbd> on Windows and Linux,
 
 ## Who owns what
 
-The notes in `Types/` say what a person, a team, an area, and a decision
-are, and which fields each has: a table with a row per field. The front
+The notes in `Types/` say what a person, a team, an area, a decision, and
+a term are, and which fields each has: a table with a row per field. The front
 matter of a note then fills them in: Noor's note says `team:
 "#team/payments"`, and the Payments note says `lead: "@alex-rivera"` and
 `owns: ["#area/checkout", ...]`. Deckard reads the rest backwards: Noor is
@@ -70,6 +70,10 @@ one of Payments' **members**, and Checkout is **owned by** Payments.
   and the table says so. Right-click a heading to sort by it or hide it.
 - **Hover a person.** Point at `@noor-haddad` in any note: Noor's role,
   team, manager, and email, and when Noor was last mentioned.
+- **Read a term.** Point at `3DS` in today's standup: what it means, from
+  its term note [[3DS]], with **Find uses**. In Find, `what is 3DS` answers
+  the same, and `Deckard: Open Stats` lists every term the notes use, and
+  which have no definition yet.
 - **Edit a field.** Cmd-click (Ctrl-click) `@noor-haddad` in any note, or
   find Noor in Find: her page's hub card lists her fields, and **Edit
   fields…** beside **Open** opens a form with each of them filled in.

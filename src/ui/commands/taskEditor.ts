@@ -10,12 +10,13 @@ import { DatePhraseOptions, nameDay, parseDatePhrase } from '../../domain/markdo
 import {
   draftCheckboxColumn,
   formatTaskDraft,
+  isStatusTaskLine,
   isTaskLine,
   parseTaskDraft,
   TaskDraft,
 } from '../../domain/markdown/taskDraft';
 import { readLineStatus, setTaskStatus } from '../../domain/tasks/statusWrites';
-import { DEFAULT_TASK_STATUSES, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
+import { DEFAULT_TASK_STATUSES, isTaskType, type TaskStatusDefinition } from '../../domain/tasks/taskStatuses';
 import { readTaskStatusOptions } from './parseSettings';
 import { readStepsForNextOccurrence } from '../../domain/markdown/taskSteps';
 import { isMarkdownFile } from '../../core/workspace/scanner';
@@ -622,12 +623,13 @@ export interface StatusPick extends vscode.QuickPickItem {
 
 /**
  * Every status a task can have, in the order the settings list them: its
- * name, its character, and the current one marked. A `nonTask` status
- * is not offered, since a task given it would stop being a task.
+ * name, its character, and the current one marked. A `nonTask` or a
+ * `question` status is not offered, since a task given it would stop being
+ * a task.
  */
 export function createStatusPicks(statuses: readonly TaskStatusDefinition[], current: string): StatusPick[] {
   return statuses
-    .filter((status) => status.type !== 'nonTask')
+    .filter((status) => isTaskType(status.type))
     .map((status) => ({
       label: `${status.name === current ? '$(check) ' : ''}${status.name}`,
       description: `[${status.symbol}]`,
@@ -644,6 +646,7 @@ const STATUS_TYPE_WORDS: Readonly<Record<TaskStatusDefinition['type'], string>> 
   done: 'Done',
   cancelled: 'Closed, not done',
   nonTask: 'Not a task',
+  question: 'A question, not a task',
 };
 
 /** Asks which status the task has, every status offered. */
@@ -780,7 +783,7 @@ export async function editTaskCommand(
     now,
     eol,
     steps: existing
-      ? readStepsForNextOccurrence(editor.document.getText().split(/\r?\n/), line.lineNumber)
+      ? readStepsForNextOccurrence(editor.document.getText().split(/\r?\n/), line.lineNumber, status.statuses)
       : [],
   });
   const written = completion.text;
@@ -859,6 +862,15 @@ export function sayCompletion(edited: TaskDraft, completion: CompletionWrite): v
 const ON_TASK_LINE = 'deckard.onTaskLine';
 
 /**
+ * Whether the editor offers itself on a line: a task, read with the note's
+ * statuses, so a question's `- [?]` line, or a line of a status that is no
+ * task, is offered neither Edit task… nor Break into steps….
+ */
+function isEditableTaskLine(text: string, uri: vscode.Uri): boolean {
+  return isTaskLine(text) && isStatusTaskLine(text, readTaskStatusOptions(uri));
+}
+
+/**
  * Keeps `deckard.onTaskLine` in step with the cursor, so the palette offers
  * **Edit Task** on a task and **Add Task** anywhere else.
  *
@@ -899,7 +911,7 @@ export class TaskLineContext implements vscode.Disposable {
     const next =
       editor !== undefined &&
       isMarkdownFile(editor.document.uri) &&
-      isTaskLine(editor.document.lineAt(editor.selection.active.line).text);
+      isEditableTaskLine(editor.document.lineAt(editor.selection.active.line).text, editor.document.uri);
     if (next === this.onTaskLine) {
       return;
     }
@@ -947,7 +959,7 @@ export class TaskEditorActions implements vscode.Disposable {
       return [];
     }
     const line = document.lineAt(range.start.line).text;
-    if (!isTaskLine(line)) {
+    if (!isEditableTaskLine(line, document.uri)) {
       return [];
     }
     const action = new vscode.CodeAction(

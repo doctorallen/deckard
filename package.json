@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "2.8.1",
+  "version": "2.9.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -53,7 +53,9 @@
     "onUri",
     "onLanguageModelTool:deckard_query",
     "onLanguageModelTool:deckard_list_tags",
-    "onLanguageModelTool:deckard_describe_tag"
+    "onLanguageModelTool:deckard_describe_tag",
+    "onLanguageModelTool:deckard_list_questions",
+    "onLanguageModelTool:deckard_define_term"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -99,11 +101,41 @@
         }
       },
       {
+        "id": "deckard.promiseUnderline",
+        "description": "Wavy line under the day in a line of today's daily note that names a person and a day to come, which Deckard offers to track as a waiting task.",
+        "defaults": {
+          "dark": "#cca70080",
+          "light": "#bf880380",
+          "highContrast": "editorWarning.foreground",
+          "highContrastLight": "editorWarning.foreground"
+        }
+      },
+      {
+        "id": "deckard.termUnderline",
+        "description": "Dotted line under a short term that has a definition, such as NDF, in the editor.",
+        "defaults": {
+          "dark": "descriptionForeground",
+          "light": "descriptionForeground",
+          "highContrast": "descriptionForeground",
+          "highContrastLight": "descriptionForeground"
+        }
+      },
+      {
         "id": "deckard.taskHintForeground",
         "description": "Color of the hints after a task's line in the editor, such as \"due today\" and \"needs a new date\".",
         "defaults": {
           "dark": "descriptionForeground",
           "light": "descriptionForeground",
+          "highContrast": "descriptionForeground",
+          "highContrastLight": "descriptionForeground"
+        }
+      },
+      {
+        "id": "deckard.writtenBeforeForeground",
+        "description": "Color of the hint after the line being written that an older line is like it, such as \"↺ 12 Mar: same lag, fixed by restarting the curve loader\".",
+        "defaults": {
+          "dark": "editorCodeLens.foreground",
+          "light": "editorCodeLens.foreground",
           "highContrast": "descriptionForeground",
           "highContrastLight": "descriptionForeground"
         }
@@ -226,6 +258,10 @@
         "view": "deckard.agenda",
         "contents": "The Tasks view lists only the tasks its search finds, and none match now.\n[Show every open task](command:deckard.clearAgendaQuery)\n[Edit the search](command:deckard.agenda.editQuery)",
         "when": "deckard.agendaFiltered"
+      },
+      {
+        "view": "deckard.questions",
+        "contents": "No open questions. Write one as - [?] …"
       }
     ],
     "commands": [
@@ -233,7 +269,10 @@
         "command": "deckard.showDashboard",
         "title": "Open Home",
         "category": "Deckard",
-        "icon": "$(home)"
+        "icon": {
+          "light": "resources/pages/home-light.svg",
+          "dark": "resources/pages/home-dark.svg"
+        }
       },
       {
         "command": "deckard.goTo",
@@ -244,7 +283,10 @@
         "command": "deckard.showNotesGraph",
         "title": "Open Notes Graph",
         "category": "Deckard",
-        "icon": "$(type-hierarchy)"
+        "icon": {
+          "light": "resources/pages/graph-light.svg",
+          "dark": "resources/pages/graph-dark.svg"
+        }
       },
       {
         "command": "deckard.showNotesGraphAroundNote",
@@ -262,13 +304,19 @@
         "command": "deckard.showTaskBoard",
         "title": "Open Task Board",
         "category": "Deckard",
-        "icon": "$(project)"
+        "icon": {
+          "light": "resources/pages/board-light.svg",
+          "dark": "resources/pages/board-dark.svg"
+        }
       },
       {
         "command": "deckard.showCalendar",
         "title": "Open Calendar",
         "category": "Deckard",
-        "icon": "$(calendar)"
+        "icon": {
+          "light": "resources/pages/calendar-light.svg",
+          "dark": "resources/pages/calendar-dark.svg"
+        }
       },
       {
         "command": "deckard.calendar.openInEditor",
@@ -279,13 +327,35 @@
       {
         "command": "deckard.showStats",
         "title": "Open Stats",
-        "category": "Deckard"
+        "category": "Deckard",
+        "icon": {
+          "light": "resources/pages/stats-light.svg",
+          "dark": "resources/pages/stats-dark.svg"
+        }
       },
       {
         "command": "deckard.showHelp",
         "title": "Open Help",
         "category": "Deckard",
-        "icon": "$(question)"
+        "icon": {
+          "light": "resources/pages/help-light.svg",
+          "dark": "resources/pages/help-dark.svg"
+        }
+      },
+      {
+        "command": "deckard.chooseContextPages",
+        "title": "Choose Pages…",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.contextPagesAsList",
+        "title": "List Pages in Context",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.contextPagesAsIcons",
+        "title": "Move Pages to the Title Bar",
+        "category": "Deckard"
       },
       {
         "command": "deckard.openWalkthrough",
@@ -313,6 +383,51 @@
         "command": "deckard.createHubNoteForTag",
         "title": "Create Hub Note for Tag…",
         "category": "Deckard"
+      },
+      {
+        "command": "deckard.questions.answer",
+        "title": "Answer Question…",
+        "category": "Deckard",
+        "icon": "$(comment)"
+      },
+      {
+        "command": "deckard.questions.drop",
+        "title": "Drop Question",
+        "category": "Deckard",
+        "icon": "$(circle-slash)"
+      },
+      {
+        "command": "deckard.questions.useOffer",
+        "title": "Use as Answer",
+        "icon": "$(check)"
+      },
+      {
+        "command": "deckard.questions.notIt",
+        "title": "Not It",
+        "icon": "$(close)"
+      },
+      {
+        "command": "deckard.questions.showAnswered",
+        "title": "Include Answered Questions",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "deckard.questions.hideAnswered",
+        "title": "Leave Out Answered Questions",
+        "icon": "$(eye-closed)"
+      },
+      {
+        "command": "deckard.questions.openAsSearch",
+        "title": "Open as Search",
+        "icon": "$(search)"
+      },
+      {
+        "command": "deckard.writtenBefore.linkHere",
+        "title": "Link It Here"
+      },
+      {
+        "command": "deckard.writtenBefore.notSame",
+        "title": "Not the Same"
       },
       {
         "command": "deckard.createTypeFromTags",
@@ -353,7 +468,10 @@
         "command": "deckard.createDailyNote",
         "title": "Create Daily Note",
         "category": "Deckard",
-        "icon": "$(new-file)"
+        "icon": {
+          "light": "resources/pages/today-light.svg",
+          "dark": "resources/pages/today-dark.svg"
+        }
       },
       {
         "command": "deckard.pinNote",
@@ -578,7 +696,11 @@
       {
         "command": "deckard.searchWorkspace",
         "title": "Find in Notes",
-        "category": "Deckard"
+        "category": "Deckard",
+        "icon": {
+          "light": "resources/pages/find-light.svg",
+          "dark": "resources/pages/find-dark.svg"
+        }
       },
       {
         "command": "deckard.quickFind.complete",
@@ -679,6 +801,12 @@
       {
         "command": "deckard.agenda.setSort",
         "title": "Sort Tasks By…",
+        "category": "Deckard",
+        "icon": "$(sort-precedence)"
+      },
+      {
+        "command": "deckard.hubs.setSort",
+        "title": "Sort Hubs By…",
         "category": "Deckard",
         "icon": "$(sort-precedence)"
       },
@@ -1150,6 +1278,46 @@
         {
           "command": "deckard.calendar.openInEditor",
           "when": "false"
+        },
+        {
+          "command": "deckard.contextPagesAsList",
+          "when": "false"
+        },
+        {
+          "command": "deckard.contextPagesAsIcons",
+          "when": "false"
+        },
+        {
+          "command": "deckard.questions.drop",
+          "when": "false"
+        },
+        {
+          "command": "deckard.questions.useOffer",
+          "when": "false"
+        },
+        {
+          "command": "deckard.questions.notIt",
+          "when": "false"
+        },
+        {
+          "command": "deckard.questions.showAnswered",
+          "when": "false"
+        },
+        {
+          "command": "deckard.questions.hideAnswered",
+          "when": "false"
+        },
+        {
+          "command": "deckard.questions.openAsSearch",
+          "when": "false"
+        },
+        {
+          "command": "deckard.writtenBefore.linkHere",
+          "when": "false"
+        },
+        {
+          "command": "deckard.writtenBefore.notSame",
+          "when": "false"
         }
       ],
       "editor/title": [
@@ -1355,6 +1523,11 @@
           "group": "1_sort@1"
         },
         {
+          "command": "deckard.hubs.setSort",
+          "when": "view == deckard.hubs",
+          "group": "1_sort@1"
+        },
+        {
           "command": "deckard.showTaskBoard",
           "when": "view == deckard.agenda",
           "group": "navigation@2"
@@ -1388,6 +1561,76 @@
           "command": "deckard.calendar.openInEditor",
           "when": "view == deckard.calendar",
           "group": "navigation@1"
+        },
+        {
+          "command": "deckard.showDashboard",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.home",
+          "group": "navigation@1"
+        },
+        {
+          "command": "deckard.showTaskBoard",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.board",
+          "group": "navigation@2"
+        },
+        {
+          "command": "deckard.showCalendar",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.calendar",
+          "group": "navigation@3"
+        },
+        {
+          "command": "deckard.createDailyNote",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.today",
+          "group": "navigation@4"
+        },
+        {
+          "command": "deckard.showNotesGraph",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.graph",
+          "group": "navigation@5"
+        },
+        {
+          "command": "deckard.searchWorkspace",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.find",
+          "group": "navigation@6"
+        },
+        {
+          "command": "deckard.showStats",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.stats",
+          "group": "navigation@7"
+        },
+        {
+          "command": "deckard.showHelp",
+          "when": "view == deckard.relatedNotes && deckard.contextPageIcon.help",
+          "group": "navigation@8"
+        },
+        {
+          "command": "deckard.chooseContextPages",
+          "when": "view == deckard.relatedNotes",
+          "group": "1_pages@1"
+        },
+        {
+          "command": "deckard.contextPagesAsList",
+          "when": "view == deckard.relatedNotes && !deckard.contextPagesAsList",
+          "group": "1_pages@2"
+        },
+        {
+          "command": "deckard.contextPagesAsIcons",
+          "when": "view == deckard.relatedNotes && deckard.contextPagesAsList",
+          "group": "1_pages@2"
+        },
+        {
+          "command": "deckard.questions.showAnswered",
+          "when": "view == deckard.questions && !deckard.questionsShowAnswered",
+          "group": "navigation@1"
+        },
+        {
+          "command": "deckard.questions.hideAnswered",
+          "when": "view == deckard.questions && deckard.questionsShowAnswered",
+          "group": "navigation@1"
+        },
+        {
+          "command": "deckard.questions.openAsSearch",
+          "when": "view == deckard.questions",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [
@@ -1495,6 +1738,41 @@
           "command": "deckard.agenda.reschedule",
           "when": "view == deckard.agenda && viewItem =~ /^deckardAgendaGroup/",
           "group": "1_due@1"
+        },
+        {
+          "command": "deckard.questions.answer",
+          "when": "view == deckard.questions && viewItem == deckardQuestion",
+          "group": "inline@1"
+        },
+        {
+          "command": "deckard.questions.answer",
+          "when": "view == deckard.questions && viewItem == deckardQuestion",
+          "group": "deckard@1"
+        },
+        {
+          "command": "deckard.questions.drop",
+          "when": "view == deckard.questions && viewItem == deckardQuestion",
+          "group": "deckard@2"
+        },
+        {
+          "command": "deckard.questions.useOffer",
+          "when": "view == deckard.questions && viewItem == deckardQuestionOffer",
+          "group": "inline@1"
+        },
+        {
+          "command": "deckard.questions.notIt",
+          "when": "view == deckard.questions && viewItem == deckardQuestionOffer",
+          "group": "inline@2"
+        },
+        {
+          "command": "deckard.questions.useOffer",
+          "when": "view == deckard.questions && viewItem == deckardQuestionOffer",
+          "group": "deckard@1"
+        },
+        {
+          "command": "deckard.questions.notIt",
+          "when": "view == deckard.questions && viewItem == deckardQuestionOffer",
+          "group": "deckard@2"
         }
       ],
       "editor/title/context": [
@@ -1608,6 +1886,12 @@
           "contextualTitle": "Deckard Tasks"
         },
         {
+          "id": "deckard.questions",
+          "name": "Questions",
+          "icon": "resources/views/questions.svg",
+          "contextualTitle": "Deckard Questions"
+        },
+        {
           "id": "deckard.hubs",
           "name": "Hubs",
           "icon": "resources/views/hubs.svg",
@@ -1713,7 +1997,7 @@
           "tags"
         ],
         "userDescription": "Describe one tag, person, or typed row in the workspace's notes: its type, fields, open tasks, and latest entries.",
-        "modelDescription": "Describes one tag, person, or typed row in the user's local Markdown notes, as indexed by the Deckard extension. Pass a tag (#team/rates, @dana), a title (Dana Whitfield, Bond trading), or a few words naming one. For a row of a type the workspace defines (notes in Types/), it answers with the type, the row's title, tag, and note, each field and its values (a person or related row by its title and tag, as lead: Dana Whitfield (@dana)), the reverses other rows give it (members (reverse of Person.team): …), its open tasks with how many are overdue, and its latest entries with their dates, paths, and lines. For a row with no note it says No hub note. For a tag no type has, it answers with how many notes and tasks carry it, its hub note, its open tasks, and its latest entries. When the words match several rows it describes the best and names the others. Use it to answer who leads, owns, or is on something, and how to reach them; use deckard_query to list entries, and deckard_list_tags to find a tag's exact name.",
+        "modelDescription": "Describes one tag, person, or typed row in the user's local Markdown notes, as indexed by the Deckard extension. Pass a tag (#team/rates, @dana), a title (Dana Whitfield, Bond trading), or a few words naming one. For a row of a type the workspace defines (notes in Types/), it answers with the type, the row's title, tag, and note, each field and its values (a person or related row by its title and tag, as lead: Dana Whitfield (@dana)), the reverses other rows give it (members (reverse of Person.team): …), its open tasks with how many are overdue, for a person how many open tasks the user owes them and they owe the user (Between you: You owe Sam: 3. Sam owes you: 2.), and its latest entries with their dates, paths, and lines. For a row with no note it says No hub note. For a tag no type has, it answers with how many notes and tasks carry it, its hub note, its open tasks, and its latest entries. When the words match several rows it describes the best and names the others. Use it to answer who leads, owns, or is on something, how to reach them, and what is open between the user and a person; use deckard_query to list entries, and deckard_list_tags to find a tag's exact name.",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -1724,6 +2008,33 @@
           },
           "required": [
             "tag"
+          ]
+        },
+        "when": "config.deckard.assistantTools"
+      },
+      {
+        "name": "deckard_define_term",
+        "displayName": "Define a term from Deckard notes",
+        "toolReferenceName": "deckardDefineTerm",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(book)",
+        "tags": [
+          "deckard",
+          "notes",
+          "terms"
+        ],
+        "userDescription": "Say what a short term in the workspace's notes, such as NDF or UAT, means, and where it was defined.",
+        "modelDescription": "Looks up what a short term in the user's local Markdown notes means, as indexed by the Deckard extension: an acronym or code of two to six capitals and digits, or up to twelve with hyphens, such as NDF, UAT, or RATES-UAT. A term is defined by a term note (front matter type: term, with term: NDF, its first paragraph the definition), which wins, or inline, the first time by date it was written as NDF (non-deliverable forward), non-deliverable forward (NDF), a line NDF: words, or NDF means words. It answers with the definition, its source as a workspace-relative path and one-based line, the heading and day it was written under, and how many entries use the term; or says the notes define none, with how often they use it and where first. Use it before guessing what an acronym in the user's notes means.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "term": {
+              "type": "string",
+              "description": "The term, such as NDF or RATES-UAT; read in capitals."
+            }
+          },
+          "required": [
+            "term"
           ]
         },
         "when": "config.deckard.assistantTools"
@@ -1827,6 +2138,82 @@
           "required": [
             "note",
             "line"
+          ]
+        },
+        "when": "config.deckard.assistantTools"
+      },
+      {
+        "name": "deckard_list_questions",
+        "displayName": "List Deckard questions",
+        "toolReferenceName": "deckardQuestions",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(question)",
+        "tags": [
+          "deckard",
+          "notes",
+          "questions"
+        ],
+        "userDescription": "List the open questions written in the workspace's Markdown notes, oldest first.",
+        "modelDescription": "Lists the questions in the user's local Markdown notes, as indexed by the Deckard extension: lines written - [?], which are not tasks. A question is answered when an indented line under it starts with Answer:. Lists the open ones by default, oldest first, each with how long it has been open and its workspace-relative note and one-based line, which deckard_answer_question takes; state answered or all lists the others, with their answers. search keeps the questions whose words or tags hold every word it names.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "state": {
+              "type": "string",
+              "enum": [
+                "open",
+                "answered",
+                "all"
+              ],
+              "description": "Which questions: open (the default), answered, or all."
+            },
+            "search": {
+              "type": "string",
+              "description": "Only questions whose words or tags hold every word given, such as uat or #team/rates."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "The most questions to return. Defaults to 30."
+            }
+          }
+        },
+        "when": "config.deckard.assistantTools"
+      },
+      {
+        "name": "deckard_answer_question",
+        "displayName": "Answer a question in a Deckard note",
+        "toolReferenceName": "deckardAnswerQuestion",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(comment)",
+        "tags": [
+          "deckard",
+          "questions"
+        ],
+        "userDescription": "Writes an answer under a question in a note, after showing you the line.",
+        "modelDescription": "Writes an answer under one of the user's questions, named by its note and one-based line as deckard_list_questions reports them, as an indented line that starts with Answer: and ends with today's date. The answer is refused if the line is no longer the question the index knows, so ask deckard_list_questions first. Nothing is written until the user approves the exact line in a preview; the answer says whether it was written.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "note": {
+              "type": "string",
+              "description": "The question's note, workspace-relative, as deckard_list_questions reports it."
+            },
+            "line": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The question's one-based line, as deckard_list_questions reports it."
+            },
+            "answer": {
+              "type": "string",
+              "description": "The answer's words, such as \"Priya, via the RATES-UAT group\"."
+            }
+          },
+          "required": [
+            "note",
+            "line",
+            "answer"
           ]
         },
         "when": "config.deckard.assistantTools"
@@ -2131,7 +2518,7 @@
             "enumDescriptions": [
               "Everything Deckard draws in the editor: counts, hints, previews, and lenses.",
               "What helps with tasks, and what reports a problem; no link counts, mention lenses, or breadcrumbs.",
-              "A quiet page for writing: the / menu, hover previews, faint task details, and reports of broken links, embeds, and repeat rules. No link counts, mention lenses, breadcrumbs, daily-note links, task hints, dependencies, step bars, or hub progress.",
+              "A quiet page for writing: the / menu, hover previews, faint task details, and reports of broken links, embeds, and repeat rules. No link counts, mention lenses, breadcrumbs, daily-note links, task hints, dependencies, step bars, hub progress, or offers to track promises.",
               "Nothing: no lenses, decorations, hover previews, / menu, or problem reports. A switch you set yourself still draws its part."
             ],
             "default": "full",
@@ -2241,6 +2628,30 @@
             "scope": "resource",
             "description": "Mark a 🔁 repeat rule Deckard cannot read, since completing that task would not start the next one, and offer the nearest rule it can read. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
             "order": 13
+          },
+          "deckard.editor.questions": {
+            "type": "boolean",
+            "scope": "resource",
+            "description": "Show, above a question written - [?], how long it has been open, a line that may answer it, and Answer… and Drop; above an answered one, when it was answered. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
+            "order": 14
+          },
+          "deckard.editor.writtenBefore": {
+            "type": "boolean",
+            "scope": "resource",
+            "description": "Say, after the line being written, when an older line of another note is a close match: its date and words, faded, a mark in the gutter beside other lines that have one, and a hover with Open, Link it here, and Not the same; Context lists them under Written before. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
+            "order": 15
+          },
+          "deckard.editor.trackPromises": {
+            "type": "boolean",
+            "scope": "resource",
+            "description": "In today's daily note, underline a line that names one person and a day to come, such as \"@sam says the fix lands by Friday\", and offer, in a lens and the lightbulb, to track it as a waiting task for that person, due that day. Left unset, it follows the editor preset: on in Full and Tasks, off in Writing and Off. Set it here to override the preset.",
+            "order": 16
+          },
+          "deckard.editor.termUnderline": {
+            "type": "boolean",
+            "scope": "resource",
+            "description": "Draw a faint dotted line under a short term that has a definition, such as NDF or UAT, where hovering it says what it means. The hover stays when this is off, and Zen hides the line. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
+            "order": 17
           }
         },
         "order": 3
@@ -2319,7 +2730,8 @@
                     "onHold",
                     "done",
                     "cancelled",
-                    "nonTask"
+                    "nonTask",
+                    "question"
                   ],
                   "enumDescriptions": [
                     "Open, to do.",
@@ -2327,7 +2739,8 @@
                     "Open, waiting: left out of is:available.",
                     "Done: counts as done everywhere.",
                     "Closed, but not done: left out of progress and of what is open.",
-                    "Not a task: the line stays text, as a pro and con list's."
+                    "Not a task: the line stays text, as a pro and con list's.",
+                    "A question: not a task, open until a line under it starts with Answer:."
                   ]
                 },
                 "next": {
@@ -2404,9 +2817,14 @@
                 "type": "onHold",
                 "icon": "blocked",
                 "next": " "
+              },
+              {
+                "symbol": "?",
+                "name": "Question",
+                "type": "question"
               }
             ],
-            "markdownDescription": "What each checkbox character means, as Obsidian Tasks' statuses do: `- [/]` in progress, `- [w]` waiting, `- [s]` someday, `- [=]` blocked, `- [-]` cancelled. Each has its `symbol`, a `name`, and a `type` (`todo`, `inProgress`, `onHold`, `done`, `cancelled`, or `nonTask`). A task's status is its box's character alone: a `#status/…` tag is a tag like any other. A character no status names is a task to do, called Unknown. `[ ]` and `[x]` are always Todo and Done.",
+            "markdownDescription": "What each checkbox character means, as Obsidian Tasks' statuses do: `- [/]` in progress, `- [w]` waiting, `- [s]` someday, `- [=]` blocked, `- [-]` cancelled, and `- [?]` a question, which is not a task. Each has its `symbol`, a `name`, and a `type` (`todo`, `inProgress`, `onHold`, `done`, `cancelled`, `nonTask`, or `question`). A task's status is its box's character alone: a `#status/…` tag is a tag like any other. A character no status names is a task to do, called Unknown. `[ ]` and `[x]` are always Todo and Done, and `[?]` is Question unless a status here gives it another meaning.",
             "order": 12
           },
           "deckard.tasks.checkboxClick": {

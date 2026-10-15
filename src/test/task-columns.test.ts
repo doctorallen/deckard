@@ -46,8 +46,8 @@ suite('Status columns', () => {
     assert.strictEqual(readUnknownColumnKey('unknown-63'), '?');
     assert.strictEqual(readUnknownColumnKey('unknown-x'), undefined);
     assert.strictEqual(readUnknownColumnKey('todo'), undefined);
-    const tasks = ['?', '!', '?', '/'].map((symbol) => ({ status: { symbol, name: symbol === '/' ? 'In progress' : 'Unknown', type: 'todo' as const } }));
-    assert.deepStrictEqual(listUnknownColumns(tasks, DEFAULT_TASK_STATUSES).map((entry) => entry.key), ['unknown-33', 'unknown-63']);
+    const tasks = ['b', '!', 'b', '/'].map((symbol) => ({ status: { symbol, name: symbol === '/' ? 'In progress' : 'Unknown', type: 'todo' as const } }));
+    assert.deepStrictEqual(listUnknownColumns(tasks, DEFAULT_TASK_STATUSES).map((entry) => entry.key), ['unknown-33', 'unknown-98']);
     assert.strictEqual(readTaskColumnKey({ status: { symbol: '!', name: 'Unknown', type: 'todo' } }, DEFAULT_TASK_STATUSES), 'unknown-33');
     assert.strictEqual(readTaskColumnKey({ status: { symbol: 'w', name: 'Waiting', type: 'onHold' } }, DEFAULT_TASK_STATUSES), 'waiting');
   });

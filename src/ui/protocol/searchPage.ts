@@ -16,20 +16,24 @@ import type {
 import type { QueryViewState } from '../../domain/model/query';
 import type { EntityKind } from '../../domain/model/tags';
 import type { DrawnFields, EditFieldsMessage } from './fields';
+import type { InlineToken } from './inline';
 import type { IndexingMessage, MessageAs, MessageOf, StateMessage } from './messaging';
 import type {
   ChooseThemeMessage,
   DashboardTask,
+  DrawnStatus,
   ExportResultsMessage,
   GoToPageMessage,
   ListGoToMessage,
   MergeTagsMessage,
   OpenGoToMessage,
   OpenHelpMessage,
+  OpenSearchMessage,
   OpenSourceMessage,
   OpenTagMessage,
   ParkTagMessage,
   PinNoteMessage,
+  QuestionActionMessage,
   RenameTagMessage,
   ResultPaging,
   SetDisplayMessage,
@@ -82,6 +86,22 @@ export interface SearchPageSnapshot {
   /** What a tag's page says under its hub: how else it is reached. */
   tagPage?: SearchPageTagNotes;
   /**
+   * On a person's page, the open lines between the reader and them, drawn
+   * between the fields card and the tabs; none when there are none.
+   */
+  between?: SearchPageBetween;
+  /**
+   * On a tag's own page, what changed since the reader last had it open,
+   * when that was over a day ago and something did; the band under the
+   * page's bar draws it.
+   */
+  since?: SearchPageSince;
+  /**
+   * On a tag's page, every line about the tag on one dated timeline, which
+   * its Story tab draws: the rows a filter keeps, a page at a time.
+   */
+  story?: SearchPageStory;
+  /**
    * For a search whose top level names a type (`type = team`): the type,
    * which titles the page, and its rows as the rows tab draws them.
    */
@@ -103,6 +123,11 @@ export interface SearchPageSnapshot {
   tasks: DashboardTask[];
   /** Which page of tasks these are, and how many there are in all. */
   taskPaging: ResultPaging;
+  /**
+   * The questions the search finds, open ones first, oldest first; absent
+   * when it finds none, and so is the Questions tab.
+   */
+  questions?: SearchPageQuestion[];
   /** Counts before the active completion filter is applied. */
   taskCounts: {
     all: number;
@@ -137,6 +162,19 @@ export interface SearchPageSnapshot {
    * results, before they are committed to the search itself.
    */
   draftWords?: string[];
+}
+
+/** A question a search finds, as its Questions tab lists it. */
+export interface SearchPageQuestion {
+  id: string;
+  text: string;
+  filePath: string;
+  line: number;
+  /** How long it has been open, or when it was answered, and its first tag: `open 12 days · #team/rates`. */
+  detail: string;
+  answered: boolean;
+  /** Its answer's words, once it has one. */
+  answer?: string;
 }
 
 /**
@@ -267,6 +305,119 @@ export interface TypeTableGroup {
   rows: TypeTableRow[];
 }
 
+/**
+ * What a group of the Between you card holds: what the reader owes the
+ * person, what the person owes the reader, and the open questions that
+ * name them, to ask them (docs/implementation/38-questions.md).
+ */
+export type BetweenGroupKind = 'youOwe' | 'theyOwe' | 'toAsk';
+
+/**
+ * The open lines between the reader and the person a tag's page is about
+ * (docs/implementation/36-between-you.md), each group one search.
+ */
+export interface SearchPageBetween {
+  /** The person as the groups name them: their first name, `Sam`. */
+  name: string;
+  /** Set while `deckard.me` names nobody, so only what names nobody is the reader's. */
+  needsIdentity?: true;
+  /** The groups, in the card's order, each whether or not it holds anything. */
+  groups: SearchPageBetweenGroup[];
+}
+
+/** One group of the Between you card. */
+export interface SearchPageBetweenGroup {
+  kind: BetweenGroupKind;
+  /** `You owe Sam`, `Sam owes you`, `To ask Sam`. */
+  label: string;
+  /** The search the group is, which its label opens on a search page of its own. */
+  query: string;
+  /** How many lines the group holds, drawn or not. */
+  count: number;
+  /** Its first lines, overdue first, then oldest; none in a group of questions. */
+  tasks: DashboardTask[];
+  /** In a group of questions, To ask, its first questions, oldest first, drawn as the Questions tab draws them. */
+  questions?: SearchPageQuestion[];
+}
+
+/**
+ * A kind of change the Since you last looked band counts, each a chip that
+ * filters the page to what it counts: new mentions, fields changed, tasks
+ * done and added, and questions answered.
+ */
+export type SinceChipKind = 'mentions' | 'fields' | 'done' | 'added' | 'answered';
+
+/**
+ * What changed on a tag's page since the reader last had it open
+ * (docs/implementation/37-since-you-last-looked.md).
+ */
+export interface SearchPageSince {
+  /** When the last visit was, as the band says it: `Fri, Oct 2, 12 days ago`. */
+  when: string;
+  /** Its day alone, which heads the Notes tab's new entries: `Fri, Oct 2`. */
+  day: string;
+  /** A chip for each kind of change there is, in the band's order; the one filtering the page is `active`. */
+  chips: Array<{ kind: SinceChipKind; label: string; count: number; active?: true }>;
+  /** Each changed field's value at the last visit, by the field's name, shown once after its value now. */
+  was: Record<string, string>;
+  /** How many of the notes the page lists are new since, which it lists first. */
+  newNotes: number;
+}
+
+/**
+ * What a line on a tag's Story tab is: a decision, a finished task, an open
+ * task, a question (a `[?]` line that is no task, which plan 38 makes
+ * questions of), or anything else.
+ */
+export type StoryKind = 'decision' | 'done' | 'open' | 'question' | 'note';
+
+/** A filter of the Story tab: every row, or one kind of them. */
+export type StoryFilter = 'all' | 'decisions' | 'done' | 'questions';
+
+/**
+ * A tag's story (docs/implementation/40-story-so-far.md): every line about
+ * the tag, dated and grouped by month, newest first unless the reader
+ * chose oldest first.
+ */
+export interface SearchPageStory {
+  /** How many rows the story holds, whatever the filter: the tab's count. */
+  count: number;
+  /** The filter chips, in their order; the one in use is `active`. */
+  filters: Array<{ id: StoryFilter; label: string; active?: true }>;
+  /** Set when the reader chose oldest first. */
+  oldestFirst?: true;
+  /** How many rows the filter keeps, drawn or not. */
+  total: number;
+  /** The rows drawn, the first `total` up to the page's limit, under their months. */
+  months: SearchPageStoryMonth[];
+}
+
+/** One month of the Story tab: its heading, and its rows in the tab's order. */
+export interface SearchPageStoryMonth {
+  /** `October 2026`. */
+  label: string;
+  rows: SearchPageStoryRow[];
+}
+
+/** One row of the Story tab: a line about the tag, with the lines indented under it. */
+export interface SearchPageStoryRow {
+  /** Where it is written, which selecting it opens. */
+  filePath: string;
+  line: number;
+  /** Its day as the row draws it, in the reader's short format: `Wed, Oct 14`. */
+  day: string;
+  kind: StoryKind;
+  /** The line's text as inline Markdown tokens, its list mark and box aside, and the tags in it. */
+  tokens: InlineToken[];
+  tags: TagReference[];
+  /** The heading it is under, or its note's title. */
+  where: string;
+  /** For a task, what its box shows and completes. */
+  task?: { id: string; completed: boolean; title: string; status?: DrawnStatus };
+  /** The lines indented under it, such as a task's steps or a question's answer. */
+  children?: Array<{ tokens: InlineToken[]; tags: TagReference[]; mark?: string }>;
+}
+
 /** The quiet lines under a tag's page's hub. */
 export interface SearchPageTagNotes {
   /** Set when the search narrows the tag with other terms; the hub starts folded and a part of the progress may be on. */
@@ -350,6 +501,55 @@ export interface CreateHubNoteMessage {
 export interface SetHubOpenMessage {
   type: 'setHubOpen';
   open: boolean;
+}
+
+/**
+ * Copy as agenda, on a person's Between you card: its groups as Markdown,
+ * worked out again by the host, on the clipboard.
+ */
+export interface CopyBetweenAgendaMessage {
+  type: 'copyBetweenAgenda';
+}
+
+/** Set who you are…, on the Between you card while `deckard.me` names nobody. */
+export interface OpenIdentitySettingMessage {
+  type: 'openIdentitySetting';
+}
+
+/** Mark seen, on the Since you last looked band: the visit counts now, and the band goes. */
+export interface MarkSeenMessage {
+  type: 'markSeen';
+}
+
+/** A chip of the Since you last looked band chosen, filtering the page to what it counts; none clears it. */
+export interface SetSinceFilterMessage {
+  type: 'setSinceFilter';
+  kind?: SinceChipKind;
+}
+
+/** A filter chip of a tag's Story tab chosen: every row, or one kind of them. */
+export interface SetStoryFilterMessage {
+  type: 'setStoryFilter';
+  filter: StoryFilter;
+}
+
+/** Oldest first, on a tag's Story tab, turned on or off. */
+export interface SetStoryOrderMessage {
+  type: 'setStoryOrder';
+  oldestFirst: boolean;
+}
+
+/** Show more, under a tag's Story tab: one more page of its rows. */
+export interface ShowMoreStoryMessage {
+  type: 'showMoreStory';
+}
+
+/**
+ * Copy as Markdown, in ⋯ while the Story tab is shown: the rows it shows,
+ * worked out again by the host, on the clipboard.
+ */
+export interface CopyStoryMessage {
+  type: 'copyStory';
 }
 
 /** Sets how many columns a search page lays its notes or tasks out in. */
@@ -553,6 +753,7 @@ export interface SearchPagePageToHost {
   listGoTo: ListGoToMessage;
   goToPage: GoToPageMessage;
   openSource: OpenSourceMessage;
+  questionAction: QuestionActionMessage;
   /** A `[[link]]` in the hub note, followed as the note page follows one. */
   openWikiLink: OpenWikiLinkMessage;
   toggleTask: ToggleTaskMessage;
@@ -591,6 +792,16 @@ export interface SearchPagePageToHost {
   renameTypeOption: RenameTypeOptionMessage;
   createRowHub: MessageAs<TypeRowMessage, 'createRowHub'>;
   copyRowValue: MessageAs<TypeRowMessage, 'copyRowValue'>;
+  /** A Between you group's label: its search, on a search page of its own. */
+  openSearch: OpenSearchMessage;
+  copyBetweenAgenda: CopyBetweenAgendaMessage;
+  openIdentitySetting: OpenIdentitySettingMessage;
+  markSeen: MarkSeenMessage;
+  setSinceFilter: SetSinceFilterMessage;
+  setStoryFilter: SetStoryFilterMessage;
+  setStoryOrder: SetStoryOrderMessage;
+  showMoreStory: ShowMoreStoryMessage;
+  copyStory: CopyStoryMessage;
 }
 
 /**

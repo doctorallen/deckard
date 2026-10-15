@@ -5,6 +5,7 @@ import { parseMarkdown } from '../../domain/markdown/parser';
 import { createPinForLine, resolvePin } from '../../domain/notes/pins';
 import { PinnedNote, WorkspaceIndex } from '../../domain/model';
 import { pinKey } from '../../core/storage/preferencesSchema';
+import type { PinWidgetChange } from '../../core/storage/preferencesPins';
 import { readParseOptions } from './parseSettings';
 
 /**
@@ -12,7 +13,7 @@ import { readParseOptions } from './parseSettings';
  *
  * A note is an entry, so pinning happens where an entry is in front of you:
  * the cursor in a Markdown editor, a result on a search page, or the hover
- * that already offers that entry's related notes. Home shows the pins; it no
+ * on that entry's lines. Home shows the pins; it no
  * longer offers to make one, because Home is the one place where the note
  * being pinned is not in front of the reader.
  */
@@ -25,7 +26,8 @@ interface PinIndexSource {
 }
 
 interface PinStore {
-  pinNote(pin: PinnedNote): Promise<void>;
+  /** Resolves with what pinning did to Home's widgets, as PinsService says. */
+  pinNote(pin: PinnedNote): Promise<PinWidgetChange | void>;
   unpinNote(key: string): Promise<void>;
   isPinned(key: string): boolean;
 }
@@ -66,12 +68,10 @@ export async function setPinned(
       );
       return pin;
     }
-    await preferences.pinNote(pin);
+    const change = await preferences.pinNote(pin);
     // Pinning is one keystroke from a command palette, so the way back is
     // offered where the pin is announced rather than left to be found.
-    void offerUndo(`Pinned "${name}" to Home.`, () =>
-      preferences.unpinNote(key),
-    );
+    void offerUndo(describePin(name, change), () => preferences.unpinNote(key));
     return pin;
   }
 
@@ -88,10 +88,25 @@ export async function setPinned(
   return pin;
 }
 
+/**
+ * What pinning says: where the pin shows, and, when Home holds as many
+ * widgets as it may and has no Pinned notes widget, that it shows in Find
+ * alone until a widget makes room.
+ */
+export function describePin(name: string, change: PinWidgetChange | void): string {
+  if (change === 'added') {
+    return `Pinned "${name}" to Home, in a new Pinned notes widget.`;
+  }
+  if (change === 'homeFull') {
+    return `Pinned "${name}". Home is full, so it shows in Find's Pinned list until you remove a widget and add Pinned notes.`;
+  }
+  return `Pinned "${name}" to Home.`;
+}
+
 /** Says what was done, with the way back beside it. */
 async function offerUndo(
   message: string,
-  undo: () => Promise<void>,
+  undo: () => PromiseLike<unknown>,
 ): Promise<void> {
   const choice = await vscode.window.showInformationMessage(message, 'Undo');
   if (choice === 'Undo') {

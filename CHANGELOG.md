@@ -2,6 +2,136 @@
 
 ## Unreleased
 
+## 2.9.0 - 2026-10-15
+
+### Highlights
+
+- **Questions**: write `- [?]` and Deckard tracks it, offers lines that may answer it, and lists it in the new Questions view.
+- **Story**, **Since you last looked**, and **Between you** on a tag's or person's page show what happened, what changed, and who owes what.
+- **Terms**, **Said they would**, **File this**, and **You've written this before** read what you write as you write it.
+
+### Added
+
+- **Between you.** A person's page has a **Between you** card under its
+  fields: **You owe Sam**, your open tasks that mention Sam; **Sam owes
+  you**, the tasks assigned to Sam and yours on hold that mention Sam, each
+  overdue first, then oldest; and **To ask Sam**, the open questions that
+  mention Sam, oldest first, each with **Answer…**. A row's box completes
+  it; a group's name opens it as a search. **Copy as agenda** copies the
+  groups as Markdown for a one-to-one note, the questions as `- [?]` lines.
+  It reads `deckard.me` as `is:mine` does, and says so while that is empty.
+  `deckard_describe_tag` counts the same groups for a person.
+- **Since you last looked.** A tag's page remembers what it held at your
+  last visit, kept in VS Code's storage for the workspace. Come back more
+  than a day later and a band under its bar says what changed: new
+  mentions, fields changed, tasks done, tasks added, and questions
+  answered, each a chip that narrows the page to what it counts. New notes are listed first under
+  **New since**, new notes and tasks are marked **New**, and a changed
+  field shows its old value once. A visit counts after five seconds in
+  front, or at once with **Mark seen**.
+- **The story so far.** A tag's page has a **Story** tab: every line about
+  the tag, from the notes under its headings, its tagged notes, and the
+  lines that carry it, on one timeline by month, newest first. Each row is
+  its date, a mark (a task's box, **D** for a decision, **?** for a
+  question), the line, and the heading it is under; a task's steps and a
+  question's answer read with it. Filter it to **Decisions**, **Done**, or
+  **Questions**, turn on **Oldest first**, and **Copy as Markdown** from
+  **⋯**.
+- **File this.** A line's lightbulb offers **Add this line to FX’s notes**
+  for each tag on it with a hub note: the line, dated, with a link back to
+  it, as the last item under the hub's **Notes** heading, which is made
+  when missing. **File under…** copies it under any heading. When the line
+  says what a field holds, as in *@priya-natarajan now leads #team/fx*, it
+  also offers **Set FX’s lead to Priya Natarajan**, from the phrases a
+  type's new **Words** column lists; the sample's teams and people list
+  some. Each is one write, with Undo.
+- **Said they would.** In today's daily note, a line that names one person
+  and a day to come, such as *@sam says the fix lands by Friday*, has its
+  day underlined, and a lens and the lightbulb offer **Track**, which writes
+  a waiting task for that person, due that day, under the line, and **Not
+  a promise**. `deckard.editor.trackPromises` turns it off.
+- **Terms.** Deckard reads the short terms your notes use, such as NDF or
+  UAT, and where each was defined: a term note (`type: term`), which wins,
+  or the first time it was written as `NDF (non-deliverable forward)`,
+  `NDF: words`, or `NDF means words`. Hovering a defined term in any note
+  says what it means and where, with **Open definition**, **Find uses**,
+  and **Make a term note**, and a faint dotted line marks it
+  (`deckard.editor.termUnderline`; Zen hides it). Stats lists the terms
+  used but never defined, each with **Define…**, and those defined. Find
+  answers `NDF` or `what is NDF` with its definition, and
+  `deckard_define_term` answers an assistant. The work sample has a Term
+  type and a term note for 3DS.
+- **What's new in the Hubs view.** Each hub says how much is new since you
+  last opened its page, or when you saw it, and **Sort Hubs By…** puts the
+  busiest first.
+- **Questions.** A line written `- [?] Who approves access to the bond
+  UAT? #team/rates` is a question, not a task: it is never on the Task
+  board, in a task count, `is:open`, or the Tasks view. It is answered by an
+  indented line under it that starts with `Answer:`. Search for them with
+  `is:question`, `is:unanswered`, and `is:answered`, in Find, search pages,
+  query blocks, saved searches, and review sections.
+- **The Questions view** in the Deckard sidebar, under Tasks, lists each open
+  question, oldest first, with how long it has been open and its first tag,
+  its badge the open count. When a line written since may answer one,
+  sharing three of its uncommon words and its tag or person, that line is
+  under it, with **Use as answer**, which writes its words and a link to it
+  under the question, and **Not it**, which sets it aside for good. A
+  question that names a typed row and a field, `who leads #team/fx?`, is
+  offered the field's value. **Include Answered Questions** and **Open as
+  Search** are in its title bar.
+- **Above a question** in the editor, a lens says how long it has been open
+  and which line may answer it, with **Answer…** and **Drop**, which writes
+  `[-]`. `deckard.editor.questions` turns it off.
+- **Find** lists the open questions that match what you type, with a **?**,
+  and, when nothing has every word, first offers **Ask it: add "…?" to
+  today's note**, saying how often you searched for the same words before.
+- Home's **Open questions** widget, a **Questions** tab on a tag's or a
+  person's page, **Open questions** in **Go to…**, and the assistant tools
+  `deckard_list_questions` and `deckard_answer_question`.
+- **You've written this before.** As you write a line of six words or more
+  and pause, an older line of another note that shares three of its
+  uncommon words is said after it, faded: *↺ Thu, Mar 12: Same lag in the
+  curve feed, fixed by restarting the loader*. The gutter marks the other
+  lines near the cursor that have one, a hover lists them with **Open**,
+  **Link it here**, and **Not the same**, and Context lists them under
+  **Written before**. `deckard.editor.writtenBefore` turns it off.
+
+### Changed
+
+- **`[?]` is a question.** A `- [?]` line was a task to do called Unknown;
+  it is now a question, so task counts leave it out. A status of your own
+  for `?` in `deckard.tasks.statuses` keeps it as that status, and turns
+  questions off.
+- **A task's hover offers Edit task.** Hovering a task line in a note
+  offers **Edit task**, the same editor as the command, beside **Pin to
+  Home**. The hover is shorter: it covers only the entry's own lines, says
+  only **Pin to Home** or **Unpin from Home**, and no longer offers **Show
+  related notes**, which choosing the line already does in Context.
+- **Context lists Home's widgets again.** With Home in front, Context lists
+  the widgets Home can add, each added with a click, and **Reset
+  widgets…**.
+- **Deckard's pages are in Context's title bar again**, drawn with the
+  pages' own icons. **Choose Pages…** and **List Pages in Context** are in
+  its **⋯**, and the list puts them back under the view.
+
+### Fixed
+
+- **A note pinned to Home shows on Home.** Pinning a note when Home had no
+  Pinned notes widget changed nothing you could see; the first pin now adds
+  the widget under the search.
+
+- **A person named in any script.** A task assigned `👤 @józef` was read as
+  assigned to `@j`; the name after 👤 is now read as a tag's name is, in
+  any script, so the task is Józef's in searches, on the board, and on
+  Between you.
+- **A change made just after an Undo is kept.** Undo wrote a note that no
+  editor showed straight to its file, and VS Code's copy of the note caught
+  up a moment later; a change Deckard made in that moment, such as
+  completing a task, reached neither the file nor the note, though Deckard
+  said it was done. Undo now puts every note back through VS Code, as a
+  change is made, and a change or an Undo that VS Code cannot save says so,
+  with **Open Note**.
+
 ## 2.8.1 - 2026-10-13
 
 ### Highlights

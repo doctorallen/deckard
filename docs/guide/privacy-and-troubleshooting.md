@@ -19,6 +19,7 @@ Before a task edit or extraction, Deckard checks the source is unchanged since i
 **What Deckard remembers** is stored in VS Code, not in your notes:
 
 - **Per workspace:** favorite tags and entities, pinned notes, saved searches, Home's widgets, tag and note view counts, and the custom task order.
+- **Per workspace, apart from the rest:** what each tag's page held when you last had it open, for [Since you last looked](search-pages.md#since-you-last-looked), and the Hubs view's sort. They are not in the copies or an export, and a visit is replaced each time it counts.
 - **Per machine:** sort modes, column counts, layouts, and page sizes.
 
 What names your notes belongs to the folder it describes, so opening another project cannot disturb it. Upgrading from 1.18 or earlier hands what was stored machine-wide to the first workspace you open.

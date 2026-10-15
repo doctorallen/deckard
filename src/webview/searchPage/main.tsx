@@ -6,7 +6,7 @@
  * reader asked for.
  */
 import type { StateMessage } from '../../ui/protocol/messaging';
-import type { SearchPageMessage, SearchPageState } from '../../ui/protocol/searchPage';
+import type { SearchPageMessage, SearchPageState, SinceChipKind } from '../../ui/protocol/searchPage';
 import { installMenuKeys } from '../shared/menuKeys';
 import { markWords, type Unmark } from '../shared/markWords';
 import { openingOf, openSourceMessage } from '../shared/openSource';
@@ -20,7 +20,9 @@ import { taskTitleOf } from '../shared/taskRow';
 import { installKeySheet } from '../shared/keySheet';
 import { installViewOptions } from '../shared/viewOptions';
 import { vscodeApi } from '../shared/vscode';
+import { BetweenCard } from './between';
 import { PageHeader } from './header';
+import { SinceBand } from './since';
 import { HubNote, tagRefineLines, TagNotes, TagProgress } from './hub';
 import { type ResultKind, type ResultTabId, resultCounts, Results } from './results';
 import { columnMenu, findTypeRow, nextTypeSort, rowMenu } from './typeRows';
@@ -56,7 +58,7 @@ let activeTab: ResultTabId = 'notes';
  */
 let tabChosen = false;
 const savedPageState = kept();
-if (savedPageState && (savedPageState.tab === 'notes' || savedPageState.tab === 'tasks' || savedPageState.tab === 'rows')) {
+if (savedPageState && (savedPageState.tab === 'notes' || savedPageState.tab === 'tasks' || savedPageState.tab === 'rows' || savedPageState.tab === 'questions' || savedPageState.tab === 'story')) {
   activeTab = savedPageState.tab;
   tabChosen = true;
 }
@@ -121,20 +123,46 @@ function settleTab(snapshot: SearchPageState): void {
   const searched = (snapshot.query && snapshot.query.text) || '';
   const newSearch = searched !== settledFor;
   settledFor = searched;
-  if (settleRowsTab(snapshot, newSearch)) {
+  if (settleRowsTab(snapshot, newSearch) || settleStoryTab(snapshot) || settleQuestionsTab(snapshot, newSearch)) {
     return;
   }
   if (!tabChosen) {
-    activeTab = counts.notes === 0 && counts.tasks > 0 ? 'tasks' : 'notes';
+    activeTab = firstTabWithResults(counts, snapshot.questions ? snapshot.questions.length : 0);
     return;
   }
   if (activeTab === 'rows') {
     return;
   }
-  const other: ResultKind = activeTab === 'notes' ? 'tasks' : 'notes';
-  if (newSearch && counts[activeTab] === 0 && counts[other] > 0) {
+  // Notes or Tasks: the rows, story, and questions tabs were settled above.
+  const shown = activeTab as ResultKind;
+  const other: ResultKind = shown === 'notes' ? 'tasks' : 'notes';
+  if (newSearch && counts[shown] === 0 && counts[other] > 0) {
     activeTab = other;
   }
+}
+
+/**
+ * The Questions tab, once chosen, stays shown while the search is the
+ * same, and a new search that finds no questions goes to the first tab
+ * that has something. True when the Questions tab is the one shown.
+ */
+function settleQuestionsTab(snapshot: SearchPageState, newSearch: boolean): boolean {
+  if (!tabChosen || activeTab !== 'questions') {
+    return false;
+  }
+  const questions = snapshot.questions ? snapshot.questions.length : 0;
+  if (newSearch && !questions) {
+    activeTab = firstTabWithResults(resultCounts(snapshot), questions);
+  }
+  return true;
+}
+
+/** The first tab that has something: Notes, unless only Tasks or only Questions does. */
+function firstTabWithResults(counts: Record<ResultKind, number>, questions: number): ResultTabId {
+  if (counts.notes === 0 && counts.tasks > 0) {
+    return 'tasks';
+  }
+  return counts.notes === 0 && counts.tasks === 0 && questions > 0 ? 'questions' : 'notes';
 }
 
 /**
@@ -149,13 +177,28 @@ function settleRowsTab(snapshot: SearchPageState, newSearch: boolean): boolean {
     }
     return false;
   }
-  if (!tabChosen || (newSearch && activeTab !== 'rows' && resultCounts(snapshot)[activeTab] === 0)) {
+  if (!tabChosen || (newSearch && (activeTab === 'notes' || activeTab === 'tasks') && resultCounts(snapshot)[activeTab] === 0)) {
     activeTab = 'rows';
   }
   return activeTab === 'rows';
 }
 
-/** The whole page: its header, the search box and Refine, the tag's progress, the hub, the tag's notes, and the results. */
+/**
+ * The Story tab stays shown through a new search, as the tag's story is
+ * there whatever the search finds; a page with no story leaves it. True
+ * when the Story tab is the one shown.
+ */
+function settleStoryTab(snapshot: SearchPageState): boolean {
+  if (activeTab !== 'story') {
+    return false;
+  }
+  if (!snapshot.story) {
+    activeTab = 'notes';
+  }
+  return activeTab === 'story';
+}
+
+/** The whole page: its header, what changed since the last visit, the search box and Refine, the tag's progress, the hub, the tag's notes, a person's Between you, and the results. */
 function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
   settleTab(snapshot);
   // A search that does not parse leaves the previous results on the page.
@@ -163,13 +206,15 @@ function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
   const invalid = (snapshot.query.diagnostics || []).some((diagnostic) => diagnostic.severity === 'error');
   return (
     <>
-      <PageHeader snapshot={snapshot} hasText={Boolean(editor.currentText().trim())} />
+      <PageHeader snapshot={snapshot} hasText={Boolean(editor.currentText().trim())} storyShown={isStoryShown(snapshot)} />
+      <SinceBand since={snapshot.since} />
       {editor.bar()}
       {editor.facets(tagRefineLines(snapshot))}
       {/* How far along the tag's tasks are, with Refine, which narrows the same tasks, rather than under the hub. */}
       <TagProgress snapshot={snapshot} />
       <HubNote snapshot={snapshot} hubOpen={snapshot.tagPage?.filtered ? (filteredHubOpen ?? false) : hubOpen} />
       <TagNotes snapshot={snapshot} />
+      <BetweenCard between={snapshot.between} />
       {invalid ? <p class="stale-results">The search above has not run. These are the results of the last one that did.</p> : null}
       {/* A search that found nothing, and a closer spelling that finds something, so the dead end has a way out of it. */}
       {!invalid && snapshot.suggestion
@@ -178,6 +223,11 @@ function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
       <Results view={{ snapshot, activeTab, openedCards }} />
     </>
   );
+}
+
+/** Whether the page shows its tag's story: on its tab, or under the panes side by side. */
+function isStoryShown(snapshot: SearchPageState): boolean {
+  return Boolean(snapshot.story) && (snapshot.layout === 'split' || activeTab === 'story');
 }
 
 /** The search and its counts last said, so a draw that changes neither says nothing. */
@@ -277,7 +327,8 @@ function applyColumns(): void {
   document.querySelectorAll<HTMLElement>('.cards').forEach((grid) => {
     grid.style.gridTemplateColumns = `repeat(${snapshot.noteColumns || 1}, minmax(0, 1fr))`;
   });
-  document.querySelectorAll<HTMLElement>('.task-list').forEach((grid) => {
+  // A person's Between you card lists its tasks in one column, whatever the results take.
+  document.querySelectorAll<HTMLElement>('.task-list:not(.between-tasks)').forEach((grid) => {
     grid.style.gridTemplateColumns = `repeat(${snapshot.taskColumns || 1}, minmax(0, 1fr))`;
   });
 }
@@ -499,7 +550,7 @@ function setColumns(target: HTMLElement, snapshot: SearchPageState): void {
 /** Shows one of the result tabs, which is the reader's choice from then on. */
 function showTab(target: HTMLElement): void {
   const tab = target.dataset.tab;
-  activeTab = tab === 'tasks' || tab === 'rows' ? tab : 'notes';
+  activeTab = tab === 'tasks' || tab === 'rows' || tab === 'questions' || tab === 'story' ? tab : 'notes';
   tabChosen = true;
   saveState();
   redraw();
@@ -574,6 +625,7 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   },
   'merge-lookalike': (target) => send({ type: 'mergeTags', sourceKey: String(target.dataset.sourceKey), targetKey: String(target.dataset.targetKey) }),
   'open-source': (target, _snapshot, event) => send(openSourceMessage(target, event)),
+  'answer-question': (target) => send({ type: 'questionAction', action: 'answer', questionId: String(target.dataset.questionId) }),
   // The hub note's blocks, drawn as the note page draws them.
   'open-note': (target, _snapshot, event) => send(openSourceMessage(target, event)),
   'open-link': (target, _snapshot, event) => {
@@ -620,7 +672,72 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
     }
   },
   'type-row-menu': (target) => openRowMenuAt(target),
+  // A person's Between you card: a group's search on a page of its own, the
+  // card as an agenda, and the setting that says who the reader is.
+  'open-between-search': (target, snapshot) => {
+    const group = snapshot.between ? snapshot.between.groups.find((candidate) => candidate.kind === target.dataset.group) : undefined;
+    if (group) {
+      send({ type: 'openSearch', query: group.query });
+    }
+  },
+  'copy-agenda': () => send({ type: 'copyBetweenAgenda' }),
+  'set-identity': () => send({ type: 'openIdentitySetting' }),
+  // Since you last looked: Mark seen, and a chip that filters the page to
+  // what it counts.
+  'mark-seen': () => send({ type: 'markSeen' }),
+  'since-chip': (target, snapshot) => chooseSinceChip(String(target.dataset.kind), snapshot),
+  // A tag's Story tab: a filter chip, which chosen again shows every row;
+  // Oldest first; Show more; and Copy as Markdown, in ⋯.
+  'story-filter': (target, snapshot) => {
+    const filter = snapshot.story ? snapshot.story.filters.find((candidate) => candidate.id === target.dataset.filter) : undefined;
+    if (filter) {
+      send({ type: 'setStoryFilter', filter: filter.active ? 'all' : filter.id });
+    }
+  },
+  'story-order': (_target, snapshot) => send({ type: 'setStoryOrder', oldestFirst: !(snapshot.story && snapshot.story.oldestFirst) }),
+  'story-more': () => send({ type: 'showMoreStory' }),
+  'copy-story': () => send({ type: 'copyStory' }),
 };
+
+/** The tab each chip of the Since you last looked band narrows, but fields, which open the hub card. */
+const SINCE_CHIP_TABS: Readonly<Record<Exclude<SinceChipKind, 'fields'>, ResultTabId>> = {
+  mentions: 'notes',
+  done: 'tasks',
+  added: 'tasks',
+  answered: 'questions',
+};
+
+/**
+ * A chip of the Since you last looked band: new mentions, tasks done, tasks
+ * added, and questions answered narrow their tab to what they count, and
+ * show it; chosen again, they let it go. Changed fields are in the hub
+ * card, which opens.
+ */
+function chooseSinceChip(kind: string, snapshot: SearchPageState): void {
+  const chip = snapshot.since ? snapshot.since.chips.find((candidate) => candidate.kind === kind) : undefined;
+  if (!chip) {
+    return;
+  }
+  if (chip.kind === 'fields') {
+    // Opened in place as well as kept: the last draw may have drawn it open
+    // before the reader folded it, and a draw changes only what it drew.
+    hubOpen = true;
+    const hub = document.querySelector<HTMLDetailsElement>('details.hub');
+    if (hub) {
+      hub.open = true;
+      hub.scrollIntoView?.({ block: 'nearest' });
+    }
+    return;
+  }
+  if (!chip.active) {
+    // The tab it narrows is shown, as the reader's choice, so the tab the
+    // page would settle on does not take its place.
+    activeTab = SINCE_CHIP_TABS[chip.kind];
+    tabChosen = true;
+    saveState();
+  }
+  send(chip.active ? { type: 'setSinceFilter' } : { type: 'setSinceFilter', kind: chip.kind });
+}
 
 /**
  * Group by: None, Tag, or Heading group the notes and tasks; a type's field
@@ -704,7 +821,7 @@ document.addEventListener('click', (event) => {
     }
     return;
   }
-  const entry = element.closest<HTMLElement>('.card, .task-row');
+  const entry = element.closest<HTMLElement>('.card, .task-row, .story-row');
   if (entry && !element.closest('button, input, a')) {
     send(openSourceMessage(entry, event));
     return;
@@ -778,7 +895,7 @@ function openEntryByKey(event: KeyboardEvent, element: Element | null): void {
     openTypeRow(String(typeRow.dataset.rowId), event);
     return;
   }
-  const entry = element.closest<HTMLElement>('.card, .task-row');
+  const entry = element.closest<HTMLElement>('.card, .task-row, .story-row');
   if (!entry) {
     return;
   }

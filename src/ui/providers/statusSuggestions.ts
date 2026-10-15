@@ -24,6 +24,7 @@ const TYPE_WORDS: Readonly<Record<TaskStatusDefinition['type'], string>> = {
   done: 'done',
   cancelled: 'cancelled',
   nonTask: 'not a task',
+  question: 'a question, not a task',
 };
 
 /**

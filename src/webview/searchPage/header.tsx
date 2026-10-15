@@ -130,6 +130,18 @@ function exportRows(snapshot: SearchPageSnapshot): ViewOptionItem[] {
 }
 
 /**
+ * Copy as Markdown, while a tag's Story tab is shown and draws a row: the
+ * rows it shows, under their months.
+ */
+function storyRows(snapshot: SearchPageSnapshot, storyShown: boolean): ViewOptionItem[] {
+  const story = snapshot.story;
+  if (!storyShown || !story || !story.total) {
+    return [];
+  }
+  return [{ action: 'copy-story', text: 'Copy as Markdown', tip: 'Copy the story’s lines shown, each with its date, under their months' }];
+}
+
+/**
  * ⋯'s rows for a type's page: Add <type>… and Open its note; and, on a tag's
  * page whose namespace has no type, Create type from it.
  */
@@ -220,7 +232,7 @@ function searchView(snapshot: SearchPageSnapshot): ViewOptionGroup[] {
  * The link is never in ⋯, and Zen draws it as it is: it also says the
  * tag has no hub.
  */
-export function PageHeader({ snapshot, hasText }: { readonly snapshot: SearchPageSnapshot; readonly hasText: boolean }) {
+export function PageHeader({ snapshot, hasText, storyShown }: { readonly snapshot: SearchPageSnapshot; readonly hasText: boolean; readonly storyShown: boolean }) {
   const entity = snapshot.entity;
   const focus = entity ? { key: entity.key, label: entity.label } : snapshot.tag;
   const table = snapshot.typeRows;
@@ -251,7 +263,7 @@ export function PageHeader({ snapshot, hasText }: { readonly snapshot: SearchPag
         </>
       )}
       controls={<HistoryButtons history={snapshot.history} />}
-      menu={{ actions: [saveSearchRow(hasText), ...typeRows(snapshot), ...exportRows(snapshot)], view: searchView(snapshot), pageWidth: true, keySheet: true }}
+      menu={{ actions: [saveSearchRow(hasText), ...typeRows(snapshot), ...exportRows(snapshot), ...storyRows(snapshot, storyShown)], view: searchView(snapshot), pageWidth: true, keySheet: true }}
     />
   );
 }

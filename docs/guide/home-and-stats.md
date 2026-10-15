@@ -34,16 +34,17 @@ A widget that leads somewhere makes its title the link, with a **›** after it:
 | **Gone quiet** | People, or another namespace, not written about for 30, 60, 90, or 180 days, with what is still open. **Only those with no open tasks** adds **Add next action**, which adds a task with the tag to today's note | The Tags tab |
 | **Progress** | Each project tag with tasks, or another namespace's, with a bar and how far along it is: *2/6 done (33%) · 1 overdue · next due in 3 days*. Unfinished first, overdue ones first among them, then by the next due date | The Tags tab |
 | **Pinned notes** | The notes you pinned, each with **×** to unpin | The note, at the heading you pinned |
+| **Open questions** | Your [questions](tasks.md#questions) with no answer yet, oldest first, each with how long it has been open and **Answer…**, and under it the line that may answer it, with **Use as answer** and **Not it**. Not on a new Home: add it with **Customize Home** | The Questions view |
 
 **Tasks gone stale:** give a Tasks widget the search `is:open AND updated < 30d` and the sort **Least recently updated**. A task's updated date is its note's. A Stale tasks widget from an earlier version became this widget, with its own days.
 
 **Pinning** pins the entry (a heading and what is under it), not the file:
 
 - `Deckard: Pin Note to Home` pins the entry the cursor is in; `Deckard: Unpin Note from Home` unpins it.
-- **Hover a tagged entry** in the editor for **Pin … to Home** or **Unpin**.
+- **Hover a tagged entry** in the editor for **Pin to Home** or **Unpin from Home**.
 - **Right-click a result** on a search page for the same.
 
-Each offers **Undo**. If the heading is gone, the pin stays on its note and says so. A note with no heading above the cursor is pinned whole.
+The first pin adds the **Pinned notes** widget under Home's search, if Home does not have one and has room for it; when Home already has as many widgets as it can hold, the pin says so and shows in Find's **Pinned** list until you make room. Each offers **Undo**. If the heading is gone, the pin stays on its note and says so. A note with no heading above the cursor is pinned whole.
 
 **Gone quiet** watches people by default; its gear's **Namespace** chooses another your tags use, such as `project`. It offers each namespace that starts with a letter, so `#2026/q1` adds no `2026`. It reads `@` and `#person/…` tags, so one person written both ways counts as two tags ([Stats](#tags-that-look-alike) flags this). A name's date is its newest note's `updated:` field, daily note day, or file date.
 
@@ -60,6 +61,8 @@ Each offers **Undo**. If the heading is gone, the pin stays on its note and says
 - Remove it with **×**, or add more from **+ Add widget**. A new widget goes at the top, and is outlined for a moment. Home holds 30 widgets at most; once full, it says so and adds none until one is removed.
 - <kbd>Escape</kbd> closes a widget's gear.
 - **Reset widgets…** asks, then restores the starting widgets; **Finish** ends customizing.
+
+While Home is the active editor, the Context sidebar lists every widget Home can add. Click one to show Home, start customizing, and add it. **Reset widgets…** is there too.
 
 The arrangement is kept in VS Code's preferences, not your notes.
 
@@ -83,13 +86,20 @@ Run `Deckard: Open Stats` to see what needs attention, then totals, then what yo
 - **Tags that look alike:** see [below](#tags-that-look-alike).
 - **Notes nothing links to:** excludes daily, weekly, and monthly notes and parked notes. Shows ten, with **Show 40 more**.
 
-**Totals:** every total but Files opens what it counts. **Notes** counts what Deckard's search calls a note: a heading with tags of its own, with the untagged headings under it; a note tagged in its front matter, as a whole; each heading where no tag reaches; and each tagged line outside a heading (see [What is a note](notes-and-links.md#what-is-a-note) and `deckard.noteBoundaries`), so it is usually more than **Files**. **Notes**, **Tasks**, and **Open tasks** open `is:note`, `is:task`, and `is:open`; **Tags** and **Namespaced tags** offer their tags; **Links**, `[[links]]` and `[text](note.md)` links alike, opens the [Notes Graph](connections.md#notes-graph) with **Only links I wrote** on; **Unlinked notes** moves to the list of notes nothing links to. Notes, Tasks, and Open tasks also show a twelve-week line and a change such as **+9 in the last 7 days**. A task stops being open on its ✅ or ❌ date, or its note's last change without one. When anything is parked, a line such as **Parked: 312 notes, 41 open tasks** opens the `is:parked` search. When any task is cancelled, a **Cancelled tasks** tile opens `is:cancelled`. When tasks use a character no status names, such as `[?]`, a line says how many and opens `status:unknown`; name the character in `deckard.tasks.statuses` (see [Task statuses](tasks.md#task-statuses)). Checkbox lines whose status is not a task, such as a pro and con list's, are counted on a line of their own.
+**Totals:** every total but Files opens what it counts. **Notes** counts what Deckard's search calls a note: a heading with tags of its own, with the untagged headings under it; a note tagged in its front matter, as a whole; each heading where no tag reaches; and each tagged line outside a heading (see [What is a note](notes-and-links.md#what-is-a-note) and `deckard.noteBoundaries`), so it is usually more than **Files**. **Notes**, **Tasks**, and **Open tasks** open `is:note`, `is:task`, and `is:open`; **Tags** and **Namespaced tags** offer their tags; **Links**, `[[links]]` and `[text](note.md)` links alike, opens the [Notes Graph](connections.md#notes-graph) with **Only links I wrote** on; **Unlinked notes** moves to the list of notes nothing links to. Notes, Tasks, and Open tasks also show a twelve-week line and a change such as **+9 in the last 7 days**. A task stops being open on its ✅ or ❌ date, or its note's last change without one. When anything is parked, a line such as **Parked: 312 notes, 41 open tasks** opens the `is:parked` search. When any task is cancelled, a **Cancelled tasks** tile opens `is:cancelled`. When tasks use a character no status names, such as `[!]`, a line says how many and opens `status:unknown`; name the character in `deckard.tasks.statuses` (see [Task statuses](tasks.md#task-statuses)). Checkbox lines whose status is not a task, such as a pro and con list's, are counted on a line of their own.
 
 **Most viewed** lists the tags, namespaced entities, and note entries you open most, counted locally in VS Code preferences.
 
 **How often tags are used** draws six bars: used once, twice, 3–5, 6–10, 11–25, and 26 or more times, such as **Used once: 41 tags**. **Used once** lists its tags with **Merge** or **Merge into…**. Other bars offer their tags to open.
 
 **Tags written together** pairs your twelve most-used tags in a triangle. Each cell counts the notes and tasks carrying both and opens that search (`#project/atlas #design`). **Show as a table** lists the pairs by count.
+
+### Terms
+
+Last, **Terms** lists the [short terms](notes-and-links.md#terms) your notes use, most used first, in two lists of up to 50, each saying how many more there are:
+
+- **Used but never defined:** each term used in three entries or more that nothing defines, with how many and where it was first used. The row searches for its uses; **Define…** opens [New Note from Type…](databases.md#adding-a-note-of-a-type)'s form for a Term with the term filled in.
+- **Defined:** each term with its definition and where it comes from, a term note or the note that first wrote it. The row opens it there.
 
 ### Tags that look alike
 

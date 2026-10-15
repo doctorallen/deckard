@@ -97,3 +97,19 @@ export function decodeUtf8Text(bytes: Uint8Array): string {
   // TextDecoder drops a leading byte order mark; Buffer's toString keeps it.
   return new TextDecoder('utf-8').decode(bytes);
 }
+
+/**
+ * A short hash of some text: two 32-bit hashes, each in base 36, so a key
+ * kept in storage stays short and a collision among a few thousand texts is
+ * remote. Not for security.
+ */
+export function shortHash(text: string): string {
+  let first = 0;
+  let second = 0x811c9dc5;
+  for (let at = 0; at < text.length; at += 1) {
+    const code = text.charCodeAt(at);
+    first = ((first << 5) - first + code) | 0;
+    second = Math.imul(second ^ code, 0x01000193);
+  }
+  return `${(first >>> 0).toString(36)}${(second >>> 0).toString(36)}`;
+}

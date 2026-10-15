@@ -70,7 +70,7 @@ suite('Task statuses: the list', () => {
     ]);
     assert.deepStrictEqual(
       statuses.map((status) => `${status.symbol}:${status.name}:${status.type}`),
-      ['/:Doing:inProgress', ' :Open:todo', 'x:Done:done', 'X:Done:done'],
+      ['/:Doing:inProgress', ' :Open:todo', 'x:Done:done', 'X:Done:done', '?:Question:question'],
     );
   });
 
@@ -95,12 +95,12 @@ suite('Task statuses: the list', () => {
     const settings = new Map<string, unknown>([['tasks.statuses', [{ symbol: '/', name: 'Doing', type: 'inProgress' }]]]);
     assert.deepStrictEqual(
       readTaskStatusSettings({ get: <T>(key: string) => settings.get(key) as T | undefined }).map((status) => status.name),
-      ['Todo', 'Doing', 'Done', 'Done'],
+      ['Todo', 'Doing', 'Done', 'Done', 'Question'],
     );
   });
 
   test('a character no status names is an Unknown to do', () => {
-    assert.deepStrictEqual(statusForSymbol(DEFAULT_TASK_STATUSES, '?'), { symbol: '?', name: 'Unknown', type: 'todo' });
+    assert.deepStrictEqual(statusForSymbol(DEFAULT_TASK_STATUSES, 'b'), { symbol: 'b', name: 'Unknown', type: 'todo' });
     assert.deepStrictEqual(statusForSymbol(DEFAULT_TASK_STATUSES, '='), { symbol: '=', name: 'Blocked', type: 'onHold' });
   });
 });
@@ -121,7 +121,7 @@ suite('Task statuses: reading a note', () => {
 
   test('an unknown character is a task to do; [>], a fenced box, and a link are not tasks', () => {
     const content = [
-      '- [?] Ask about swag',
+      '- [b] Ask about swag',
       '- [>] Moved to Friday',
       '- [/]no gap',
       '- [a](https://example.com) a link',
@@ -129,7 +129,7 @@ suite('Task statuses: reading a note', () => {
       '- [/] An example in code',
       '```',
     ].join('\n');
-    assert.deepStrictEqual(read(content), ['[?] Unknown todo']);
+    assert.deepStrictEqual(read(content), ['[b] Unknown todo']);
   });
 
   test('a nonTask character stays text, counted as a checkbox line', () => {
@@ -158,7 +158,7 @@ suite('Task statuses: reading a note', () => {
       '  - [X] Confirm',
       '- [/] Draft',
       '- [-] Banner',
-      '* [?] Swag',
+      '* [i] Swag',
       '+ [!] Urgent',
       '- [=] Waiting on legal',
       '\t- [b] Bookmark',
@@ -194,7 +194,7 @@ suite('Task statuses: what the types mean, and searching', () => {
     '- [=] stuck',
     '- [ ] tagged-blocked #status/blocked',
     '- [w] waiting',
-    '- [?] puzzled',
+    '- [b] puzzled',
     '- [ ] tagged-done #status/done',
     '- [ ] review #status/review',
   ]);
@@ -221,7 +221,7 @@ suite('Task statuses: what the types mean, and searching', () => {
     assert.deepStrictEqual(matches('status:waiting'), ['waiting']);
     assert.deepStrictEqual(matches('status:todo'), ['plain', 'review', 'tagged-blocked', 'tagged-doing', 'tagged-done']);
     assert.deepStrictEqual(matches('status:[=]'), ['stuck']);
-    assert.deepStrictEqual(matches('status:[?]'), ['puzzled']);
+    assert.deepStrictEqual(matches('status:[b]'), ['puzzled']);
     assert.deepStrictEqual(matches('status:unknown'), ['puzzled']);
     assert.deepStrictEqual(matches('status:cancelled'), ['dropped']);
     assert.deepStrictEqual(matches('status:done'), ['finished']);
@@ -360,7 +360,7 @@ suite('Task statuses: the board and the Tasks view', () => {
     '- [/] started',
     '- [ ] tagged #status/doing',
     '- [=] stuck',
-    '- [?] puzzled',
+    '- [b] puzzled',
     '- [w] waiting',
     '- [x] finished',
     '- [-] dropped',
@@ -404,9 +404,9 @@ suite('Task statuses: the board and the Tasks view', () => {
       ['in-progress', 'In progress', ['started']],
       ['waiting', 'Waiting', ['waiting']],
       ['blocked', 'Blocked', ['stuck']],
-      ['unknown-63', 'Unknown [?]', ['puzzled']],
+      ['unknown-98', 'Unknown [b]', ['puzzled']],
     ]);
-    assert.deepStrictEqual(groups(['Blocked', 'Waiting']).map((group) => group[0]), ['blocked', 'waiting', 'todo', 'in-progress', 'unknown-63']);
+    assert.deepStrictEqual(groups(['Blocked', 'Waiting']).map((group) => group[0]), ['blocked', 'waiting', 'todo', 'in-progress', 'unknown-98']);
   });
 });
 
@@ -414,17 +414,17 @@ suite('Task statuses: how a status is drawn', () => {
   const context = createQueryContext(new Date(2026, 9, 5).getTime());
 
   test('the editor marks an in-progress box, a cancelled task\'s words, and a character no status names', () => {
-    const marks = findTaskLineMarks(['- [/] Draft 📅 2026-10-01', '- [-] Banner', '- [?] Swag', '- [ ] Plain'], context, { dim: false, hints: true });
+    const marks = findTaskLineMarks(['- [/] Draft 📅 2026-10-01', '- [-] Banner', '- [b] Swag', '- [ ] Plain'], context, { dim: false, hints: true });
     assert.deepStrictEqual(marks.inProgress, [{ line: 0, start: 2, end: 5 }]);
     assert.deepStrictEqual(marks.cancelled, [{ line: 1, start: 6, end: 12 }]);
-    assert.deepStrictEqual(marks.unknown, [{ line: 2, start: 2, end: 5, symbol: '?' }]);
+    assert.deepStrictEqual(marks.unknown, [{ line: 2, start: 2, end: 5, symbol: 'b' }]);
     assert.deepStrictEqual(marks.hints.map((hint) => hint.line), [0], 'an in-progress task is open, so its date speaks up');
   });
 
   test('a page draws a status only when it is neither a plain to do nor done', () => {
     const [plain, started, waiting, dropped, puzzled, done, stuck] = parseMarkdown(
       'note.md',
-      ['- [ ] a', '- [/] b', '- [w] c', '- [-] d', '- [?] e', '- [x] f', '- [=] g'].join('\n'),
+      ['- [ ] a', '- [/] b', '- [w] c', '- [-] d', '- [b] e', '- [x] f', '- [=] g'].join('\n'),
     ).tasks;
     const draw = (task: Parameters<typeof drawTaskStatus>[0]) => drawTaskStatus(task, DEFAULT_TASK_POLICY);
     assert.strictEqual(draw(plain), undefined);
@@ -432,7 +432,7 @@ suite('Task statuses: how a status is drawn', () => {
     assert.deepStrictEqual(draw(started), { name: 'In progress', type: 'inProgress' });
     assert.deepStrictEqual(draw(waiting), { name: 'Waiting', type: 'onHold' });
     assert.deepStrictEqual(draw(dropped), { name: 'Cancelled', type: 'cancelled' });
-    assert.deepStrictEqual(draw(puzzled), { name: 'Unknown', type: 'todo', unknown: '?' });
+    assert.deepStrictEqual(draw(puzzled), { name: 'Unknown', type: 'todo', unknown: 'b' });
     assert.deepStrictEqual(draw(stuck), { name: 'Blocked', type: 'onHold', icon: 'blocked' });
   });
 });
@@ -529,12 +529,12 @@ suite('Task statuses: moving over, importing, and editing', () => {
     });
     assert.deepStrictEqual(
       imported?.map((status) => `${status.symbol}:${status.name}:${status.type}:${status.next ?? ''}`),
-      [' :Todo:todo:x', 'x:Done:done: ', '/:In Progress:inProgress:x', 'P:Pro:nonTask:C', 'w:Waiting:onHold: ', 's:Someday:onHold: ', 'X:Done:done: '],
+      [' :Todo:todo:x', 'x:Done:done: ', '/:In Progress:inProgress:x', 'P:Pro:nonTask:C', 'w:Waiting:onHold: ', 's:Someday:onHold: ', 'X:Done:done: ', '?:Question:question:'],
     );
     const own = importObsidianStatuses({
       statusSettings: { coreStatuses: [{ symbol: ' ', name: 'Todo', type: 'TODO' }], customStatuses: [{ symbol: 'w', name: 'Win', type: 'TODO' }, { symbol: 'z', name: 'Someday', type: 'ON_HOLD' }] },
     });
-    assert.deepStrictEqual(own?.map((status) => `${status.symbol}:${status.name}`), [' :Todo', 'w:Win', 'z:Someday', 'x:Done', 'X:Done']);
+    assert.deepStrictEqual(own?.map((status) => `${status.symbol}:${status.name}`), [' :Todo', 'w:Win', 'z:Someday', 'x:Done', 'X:Done', '?:Question']);
     assert.strictEqual(importObsidianStatuses({}), undefined);
   });
 

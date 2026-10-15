@@ -14,6 +14,7 @@ import { AttentionSection } from './attention';
 import { type DrawnStats, ROW_LISTS, type RowList, type StatsState } from './model';
 import { movePairFocus, settlePairFocus, TagPairsSection } from './tagPairs';
 import { TagUseSection } from './tagUse';
+import { TermsSection } from './terms';
 import { OtherCheckboxesLine, ParkedLine, StatsHeader, StatsMetrics, UnknownStatusesLine } from './totals';
 import { ViewsSection } from './views';
 
@@ -36,6 +37,7 @@ function StatsPage({ state }: { readonly state: DrawnStats }) {
       <ViewsSection state={state} />
       <TagUseSection usage={snapshot.tagUsage} showUsedOnce={state.showUsedOnce} />
       <TagPairsSection data={snapshot.tagPairs} asTable={state.pairsAsTable} />
+      <TermsSection state={state} />
     </>
   );
 }
@@ -211,6 +213,12 @@ const ACTIONS: Readonly<Record<string, ActionHandler>> = {
     }
   },
   'create-all-missing-notes': () => send({ type: 'createMissingNotes', names: [] }),
+  'define-term': (element) => {
+    const term = shown()?.undefinedTerms[Number(element.dataset.index)];
+    if (term) {
+      send({ type: 'defineTerm', term: term.term });
+    }
+  },
   'merge-lookalike': (element) => {
     const pair = lookalikeAt(element);
     if (pair) {

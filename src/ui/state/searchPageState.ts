@@ -44,7 +44,7 @@ import { pinKey } from '../../core/storage/preferencesSchema';
 import { createPinForLine } from '../../domain/notes/pins';
 import { buildSearchFacets, SearchFacetValue } from '../../domain/search/facets';
 import { DashboardTask, ResultPaging, TagOverviewCard } from '../protocol/shared';
-import { SearchPageEntity, SearchPageSnapshot, SearchPageTagNotes, SearchResultGroup } from '../protocol/searchPage';
+import { SearchPageEntity, SearchPageQuestion, SearchPageSnapshot, SearchPageTagNotes, SearchResultGroup, SinceChipKind } from '../protocol/searchPage';
 import { findTagFacet, GROUP_ITEM_LIMIT, groupResults } from './searchGroups';
 import { countGroup, groupByHeading, type HeadingGroup } from './headingGroups';
 import { computeTagProgress, describeTagProgress } from '../../domain/tasks/tagProgress';
@@ -65,11 +65,31 @@ import {
   Task,
   TagAssociation,
   QueryFacet,
+  Question,
   WorkspaceIndex,
 } from '../../domain/model';
+import { listAllQuestions } from '../../domain/index/questions';
+import { toSearchPageQuestion } from './questionsState';
 import { collectTagParts } from '../../domain/tasks/tagParts';
 import { formatProgressCount } from '../../domain/tasks/progressCount';
 import { readNoteBody } from './notePageState';
+import { describeBetween } from './betweenYou';
+import {
+  captureTagPage,
+  compareTagPage,
+  describeSince,
+  entryVisitKey,
+  fileVisitKey,
+  isSinceShown,
+  questionVisitKey,
+  readFieldValues,
+  SINCE_AFTER_MS,
+  TagChanges,
+  TagPageState,
+  taskVisitKey,
+} from './sinceLastLooked';
+import type { TagVisit } from '../../core/storage/tagVisits';
+import { collectStory, DEFAULT_STORY_VIEW, describeStory, type StoryLine, type StoryView } from './storySoFar';
 
 /**
  * A search page: what one search finds, sorted, paged, and drawn as cards
@@ -116,6 +136,17 @@ export interface SearchPageOptions {
   taskPage?: number;
   /** The settings and moment the search is evaluated, and its dates worded, in. */
   queryContext: QueryContext;
+  /**
+   * On a tag's own page, the reader's last visit to it, and the band's chip
+   * filtering the page, if one is: what changed since is drawn, marked, and
+   * listed first (docs/implementation/37-since-you-last-looked.md).
+   */
+  since?: { visit: TagVisit | undefined; filter?: SinceChipKind };
+  /**
+   * On a tag's page, how its Story tab is shown: its filter, its order, and
+   * how many rows it draws; the first page, newest first, when not given.
+   */
+  story?: StoryView;
 }
 
 /**
@@ -149,7 +180,8 @@ export function createSearchPageSnapshot(
   // large workspace rendered every entry to show thirty.
   const sectionKey = (section: Section): NoteKey =>
     createSectionKey(section, preferences.sectionAccessCounts);
-  const ranked = rankNoteKeys(index, preferences, page, sectionKey);
+  const since = readSinceView(index, page, options);
+  const ranked = since.notes(rankNoteKeys(index, preferences, page, sectionKey));
   const pageSize =
     options.pageSize ??
     (options.paged === false ? undefined : preferences.searchPageSize);
@@ -160,38 +192,35 @@ export function createSearchPageSnapshot(
     keys: takePage(ranked, notePaging),
     page,
     markVia,
+    isNew: since.isNewNote,
   });
-  const tasks = parkedLast(
+  const tasks = since.tasks(parkedLast(
     sortTasks([...results.tasks], preferences.taskOrder, preferences.taskSortMode),
     (task) => isParkedTask(index, task.id),
-  );
+  ));
   const taskPaging = createPaging(tasks.length, pageSize, options.taskPage);
   // Only a search that found nothing is worth correcting: results answer the
   // search as it was typed, and offering a different one beside them would
   // argue with what the reader can already see.
-  const suggestion =
-    ranked.length === 0 && tasks.length === 0
-      ? suggestWorkingSearch(index, { text, parsed, sectionKey, options })
-      : undefined;
+  const found = ranked.length + tasks.length + results.questions.length;
+  const suggestion = found === 0 ? suggestWorkingSearch(index, { text, parsed, sectionKey, options }) : undefined;
   const typeRows = describeTypeRows(index, preferences, page, options);
   const facets = [...(typeRows?.facets ?? []), ...buildPageFacets(index, page, text, options)];
-  const drawTask = (task: Task) =>
-    markParked(
-      markVia(createDashboardTask(task, index.sections, options.queryContext), task.id),
-      isParkedTask(index, task.id),
-    );
+  const drawTask = (task: Task): DashboardTask => drawSearchTask(index, task, { markVia, isNew: since.isNewTask, context: options.queryContext });
   const groups = drawHierarchy(index, preferences.searchHierarchy, {
     facets,
     page,
     ranked,
     tasks,
     drawTask,
-    drawNotes: (keys) => drawNoteCards(index, preferences, { keys, page, markVia, withoutTasks: true }),
+    drawNotes: (keys) => drawNoteCards(index, preferences, { keys, page, markVia, isNew: since.isNewNote, withoutTasks: true }),
   });
 
   return {
     ...buildTagPageBlock(index, preferences, page, options.queryContext),
     ...(typeRows ? { typeRows: typeRows.table } : {}),
+    ...since.band(ranked, options.queryContext),
+    ...describeTagStory(index, page, options),
     query: createQueryViewState({
       index,
       parsed,
@@ -209,6 +238,7 @@ export function createSearchPageSnapshot(
     notePaging,
     tasks: takePage(tasks, taskPaging).map(drawTask),
     taskPaging,
+    ...drawQuestions(index, since.questions(results.questions), options.queryContext),
     taskCounts: countTasks(tasks),
     pageSizes: SEARCH_PAGE_SIZES,
     ...(groups ? { groups } : {}),
@@ -220,6 +250,22 @@ export function createSearchPageSnapshot(
     noteColumns: preferences.dashboardNoteColumns,
     taskColumns: preferences.dashboardTaskColumns,
   };
+}
+
+/**
+ * The questions a search finds, as its Questions tab lists them: the open
+ * ones oldest first, then the answered ones, most recently answered first.
+ * Nothing when it finds none, and so no tab.
+ */
+function drawQuestions(index: WorkspaceIndex, found: readonly Question[], context: QueryContext): { questions?: SearchPageQuestion[] } {
+  if (found.length === 0) {
+    return {};
+  }
+  const order = new Map(listAllQuestions(index).map((question, position) => [question.id, position]));
+  const questions = [...found]
+    .sort((left, right) => (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0))
+    .map((question) => toSearchPageQuestion(index, question, { now: context.now, dateFormats: context.dateFormats }));
+  return { questions };
 }
 
 /**
@@ -367,6 +413,135 @@ function countTasks(tasks: readonly Task[]): SearchPageSnapshot['taskCounts'] {
   };
 }
 
+/**
+ * A task as a search page draws it: marked as listed for the tag's hub,
+ * as parked, and as added since the last visit, each when it is.
+ */
+function drawSearchTask(
+  index: WorkspaceIndex,
+  task: Task,
+  { markVia, isNew, context }: { markVia: <T extends object>(item: T, id: string) => T; isNew: (task: Task) => boolean; context: QueryContext },
+): DashboardTask {
+  return markNew(markParked(markVia(createDashboardTask(task, index.sections, context), task.id), isParkedTask(index, task.id)), isNew(task));
+}
+
+/**
+ * On a tag's page, its Story tab: every line about the tag the page's
+ * search finds; nothing for any other search.
+ */
+function describeTagStory(index: WorkspaceIndex, page: SearchPageResults, options: SearchPageOptions): Pick<SearchPageSnapshot, 'story'> {
+  const lines = readTagStory(index, page, options.queryContext);
+  return lines ? { story: describeStory(lines, options.story ?? DEFAULT_STORY_VIEW, options.queryContext) } : {};
+}
+
+/**
+ * Every line about a page's tag, oldest first, of what its search finds,
+ * its hub notes aside; undefined for a search that is no tag's page.
+ */
+export function readTagStory(index: WorkspaceIndex, page: SearchPageResults, context: QueryContext): StoryLine[] | undefined {
+  if (!page.focusTag) {
+    return undefined;
+  }
+  return collectStory(index, page.focusTag.key, page.results, { hubPaths: page.focusTag.hubFilePaths ?? [], context });
+}
+
+/** An item marked as new since the last visit, when it is, for the page to give it a NEW pill. */
+function markNew<T extends object>(item: T, isNew: boolean): T {
+  return isNew ? { ...item, isNew: true } : item;
+}
+
+/**
+ * What a search page draws of the changes on its tag's own page since the
+ * last visit: which notes and tasks are new, the notes new first, the lists
+ * a chip of the band narrows, and the band. On any other page, or with no
+ * band, the lists as they are and nothing marked.
+ */
+interface SinceView {
+  isNewNote: (key: NoteKey) => boolean;
+  isNewTask: (task: Task) => boolean;
+  notes: (keys: NoteKey[]) => NoteKey[];
+  tasks: (tasks: Task[]) => Task[];
+  questions: (questions: readonly Question[]) => readonly Question[];
+  band: (ranked: readonly NoteKey[], context: QueryContext) => Pick<SearchPageSnapshot, 'since'>;
+}
+
+/** The changes since the last visit, as a search page draws them; see SinceView. */
+function readSinceView(index: WorkspaceIndex, page: SearchPageResults, options: SearchPageOptions): SinceView {
+  const changes = readTagChanges(index, page, options);
+  if (!changes) {
+    return { isNewNote: () => false, isNewTask: () => false, notes: (keys) => keys, tasks: (tasks) => tasks, questions: (questions) => questions, band: () => ({}) };
+  }
+  const filter = options.since?.filter;
+  const isNewNote = (key: NoteKey): boolean => changes.newEntries.has(noteVisitKey(index, key));
+  const isNewTask = (task: Task): boolean => changes.addedTasks.has(taskVisitKey(index, task));
+  return {
+    isNewNote,
+    isNewTask,
+    notes: (keys) => sinceFirst(keys, isNewNote).filter((key) => filter !== 'mentions' || isNewNote(key)),
+    // A chip of the band narrows the tasks to those it counts.
+    tasks: (tasks) => tasks.filter((task) => {
+      if (filter === 'done') {
+        return changes.doneTasks.has(taskVisitKey(index, task));
+      }
+      return filter !== 'added' || isNewTask(task);
+    }),
+    questions: (questions) => (filter === 'answered' ? questions.filter((question) => changes.answeredQuestions.has(questionVisitKey(index, question))) : questions),
+    band: (ranked, context) => ({ since: describeSince(changes, { filter, newNotes: ranked.filter(isNewNote).length }, context) }),
+  };
+}
+
+/**
+ * The entries new since the last visit first, each list in the order it
+ * had, so the Notes tab can head them New since and the rest Earlier.
+ */
+function sinceFirst(keys: NoteKey[], isNew: (key: NoteKey) => boolean): NoteKey[] {
+  const fresh = keys.filter(isNew);
+  return fresh.length ? [...fresh, ...keys.filter((key) => !isNew(key))] : keys;
+}
+
+/** A listed note's key in a visit: its entry's, or its note's when it is a note of its own. */
+function noteVisitKey(index: WorkspaceIndex, key: NoteKey): string {
+  return key.section ? entryVisitKey(index, key.section) : fileVisitKey(key.filePath);
+}
+
+/**
+ * What changed on a tag's own page since the last visit, when the band
+ * shows: the visit was over a day ago and something changed. Nothing for
+ * a page a search narrows, or one never visited.
+ */
+function readTagChanges(index: WorkspaceIndex, page: SearchPageResults, options: SearchPageOptions): TagChanges | undefined {
+  const visit = options.since?.visit;
+  const now = options.queryContext.now;
+  const tagKey = page.focusTag && !page.filtered && page.tagKeys?.length === 1 ? page.focusTag.key : undefined;
+  // A visit within the day shows no band whatever changed, so nothing is read.
+  if (!visit || !tagKey || now - visit.seenAt <= SINCE_AFTER_MS) {
+    return undefined;
+  }
+  // The page is the tag's own search: unless words being typed narrow it,
+  // what it found is what a visit keeps, and is not searched for again.
+  const own = page.preview.length === 0 ? page : undefined;
+  const changes = compareTagPage(visit, captureTagPageState(index, tagKey, options.queryContext, own));
+  return isSinceShown(changes, now) ? changes : undefined;
+}
+
+/**
+ * What a tag's own page holds now, as a visit keeps it: the entries and
+ * tasks its search finds, and its hub's fields as the page draws them.
+ * `page` is the tag's own search when the caller has it evaluated already.
+ */
+export function captureTagPageState(
+  index: WorkspaceIndex,
+  tagKey: string,
+  context: QueryContext,
+  page: SearchPageResults = evaluateSearchPage(index, tagKey, { queryContext: context }),
+): TagPageState {
+  const fields = readTagPageFields(index, tagKey, page.hubFile);
+  return captureTagPage(index, page.results, {
+    hubPaths: page.focusTag?.hubFilePaths ?? [],
+    fields: readFieldValues(fields.hub.fields ?? fields.page.rowFields, page.hubFile?.hub?.properties),
+  });
+}
+
 /** An item marked as parked, when it is, for the page to draw it after the rest. */
 function markParked<T extends object>(item: T, parked: boolean): T {
   return parked ? { ...item, parked: true } : item;
@@ -420,10 +595,12 @@ function rankNoteKeys(
 function drawNoteCards(
   index: WorkspaceIndex,
   preferences: PersistedPreferences,
-  { keys, page, markVia, withoutTasks }: {
+  { keys, page, markVia, isNew, withoutTasks }: {
     keys: readonly NoteKey[];
     page: SearchPageResults;
     markVia: <T extends object>(item: T, id: string) => T;
+    /** Whether a note is new since the last visit, which marks its card. */
+    isNew: (key: NoteKey) => boolean;
     /** Leave the task lines out of each card, when the tasks are listed beside it. */
     withoutTasks?: boolean;
   },
@@ -473,7 +650,7 @@ function drawNoteCards(
     const drawn = key.section ? cardFor(key.section) : fileCardFor(key.file as ParsedFile);
     const card = withoutTasks ? dropTaskLines(drawn, cardLines) : drawn;
     return withPreview(
-      markParked(markVia(card, key.section ? key.section.id : card.filePath), isParkedKey(index, key)),
+      markNew(markParked(markVia(card, key.section ? key.section.id : card.filePath), isParkedKey(index, key)), isNew(key)),
       preferences.searchPreview,
       snippetWords,
       cardLines.get(card.id),
@@ -508,8 +685,9 @@ function dropTaskLines(card: TagOverviewCard, cardLines: Map<string, CardLines>)
 
 /**
  * On a tag's page, what the page draws of the tag, its entity, and its hub
- * note, with the tag's lookalikes, its hub-link count, and its plain-word
- * mentions; nothing for any other search. Their lists of entries ran to
+ * note, with the tag's lookalikes, its hub-link count, its plain-word
+ * mentions, and for a person what is open between you; nothing for any
+ * other search. Their lists of entries ran to
  * thousands of ids a page never reads, so only what is drawn is sent.
  */
 function buildTagPageBlock(
@@ -517,12 +695,15 @@ function buildTagPageBlock(
   preferences: PersistedPreferences,
   { focusTag, filtered, hubFile, viaHub, hubTitle, parsed }: SearchPageResults,
   context: QueryContext,
-): Pick<SearchPageSnapshot, 'tag' | 'entity' | 'hub' | 'rowFields' | 'tagPage'> {
+): Pick<SearchPageSnapshot, 'tag' | 'entity' | 'hub' | 'rowFields' | 'tagPage' | 'between'> {
   if (!focusTag) {
     return {};
   }
   const entity = index.entities.get(focusTag.key);
   const fields = readTagPageFields(index, focusTag.key, hubFile);
+  // A person's own page has the card; a search that narrows it is about
+  // the results, which the card would push down.
+  const between = filtered ? undefined : describeBetween(index, focusTag.key, context);
   return {
     tag: {
       key: focusTag.key,
@@ -543,6 +724,7 @@ function buildTagPageBlock(
         }
       : {}),
     ...fields.page,
+    ...(between ? { between } : {}),
     ...describeUntypedNamespace(index, focusTag.key, filtered),
     tagPage: {
       ...(filtered ? { filtered } : {}),
@@ -760,6 +942,8 @@ export function evaluateSearchPage(
         sections: [...index.sections.values()].filter(isEntrySection),
         tasks: [...index.tasks.values()],
         files: listFrontmatterOnlyFiles(index),
+        // Questions are listed by a search that names them, not by every note.
+        questions: [],
       };
   const viaHub = new Set<string>();
   // What links to the hub is the tag's plain page's alone: a filter's terms
@@ -802,6 +986,7 @@ export function evaluateSearchPage(
       sections: [...results.sections, ...sections],
       tasks: [...results.tasks, ...tasks],
       files: [...results.files, ...files],
+      questions: results.questions,
     },
     viaHub,
     hubTitle: noteTitle(hubFile.filePath),

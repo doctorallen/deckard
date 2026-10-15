@@ -2,7 +2,7 @@
 
 ## Related Notes
 
-Related notes are listed in the **Context** view in the Deckard sidebar, under Deckard's pages, which lead the view in every state as a row of icons. The same view shows a search's Refine, a graph node's connections, or the calendar page's chosen day while one of those is in front. With Home or another page in front, it keeps its row of pages and says *Open a Markdown note to see related entries.*; to add a widget to Home, customize Home and use its own **+ Add widget**.
+Related notes are listed in the **Context** view in the Deckard sidebar, under Deckard's pages, which are icons in the view's title bar, or a list that leads the view in every state. The same view shows a search's Refine, a graph node's connections, the calendar page's chosen day, or Home's widgets to add while one of those is in front. With another page in front, it says *Open a Markdown note to see related entries.*
 
 Open the **Context** view from the Deckard Activity Bar while editing a saved Markdown note; its **Related notes** list suggests note entries that may concern the same work, each showing its first line with shared words marked.
 
@@ -55,7 +55,7 @@ The full model is in the [Related Notes association and ranking reference](https
 
 ### Focus one note entry
 
-Tagged headings highlight their section; tagged lines and tasks highlight their line. Hover one and choose **Show related notes for [entry]**. The sidebar shows **Selected entry** and the source note, and ranks by the entry's tags first, then tagged parent headings, and for a heading, tagged child headings and child items, as lighter context that decays with distance. Each active tag is listed with a **Rail** marker for its contribution and a count of notes and tasks; hover it for its exact weight. **Show whole document** returns to the normal view.
+Tagged headings highlight their section; tagged lines and tasks highlight their line. Put the cursor in one and the sidebar shows **Selected entry** and the source note, and ranks by the entry's tags first, then tagged parent headings, and for a heading, tagged child headings and child items, as lighter context that decays with distance. Each active tag is listed with a **Rail** marker for its contribution and a count of notes and tasks; hover it for its exact weight. **Show whole document** returns to the normal view.
 
 ### Understand a score
 
@@ -71,6 +71,17 @@ While a [search page](search-pages.md#search-pages) or the Task board is active,
 - Select the open icon beside a related tag to open its page in a new tab.
 
 The page shows one Refine line while the sidebar holds the options, and its full Refine box when the sidebar closes. A Markdown editor brings related notes back.
+
+## You've written this before
+
+As you write a line of six words or more, and typing rests for a second, Deckard compares it with every line of your other notes, as Related notes compares wording, and says when an older line is a close match.
+
+- **After the line**, faded, the older line's day and its words, cut to fit: *↺ Thu, Mar 12: Same lag in the curve feed, fixed by restarting the loader*. Only on the cursor's line. Under [Zen](themes-and-zen.md#zen), the ↺ alone.
+- **In the gutter**, a ↺ beside the other lines near the cursor that have one, up to 200 lines around it.
+- **A hover** on either says *Written before · 2 close matches*, each with its day and heading, its words with the ones both lines hold in bold, *Shares curve, feed, loader · both tagged #team/rates*, and **Open**, **Link it here**, which adds ` (see [[2026-03-12#Rates desk standup]])` to your line, and **Not the same**, which never offers that line beside yours again.
+- **Context** lists them under **Written before**, above the related notes, with the same buttons; it is not there when the line has none.
+
+An older line counts when it shares at least three of your line's uncommon words, words such as *today* and *meeting* counting for little, and scores high enough on them; one that shares your line's tag, or its heading's, ranks a little higher. Lines of the same note and lines written in the last two days never count, and at most two are shown. `deckard.editor.writtenBefore` turns it all off.
 
 ## Notes Graph
 

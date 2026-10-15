@@ -271,6 +271,29 @@ suite('Dashboard behavior', () => {
     );
   });
 
+  test('Open questions lists each open question with Answer…, and under it the line that may answer it, with Use as answer and Not it', () => {
+    const { page, snapshot } = open(
+      { dashboardWidgets: [{ id: 'q', kind: 'openQuestions', width: 'full', count: 5 }] },
+      {
+        'notes/2026-10-01.md': '# 2026-10-01\n- [?] Who approves access to the bond UAT environment? #team/rates\n',
+        'notes/2026-10-14.md': '# 2026-10-14\n## Access #team/rates\n- Priya approves bond UAT environment access via RATES-UAT\n',
+      },
+    );
+    const [question] = snapshot.widgets?.[0].questions ?? [];
+    assert.ok(question?.offer, 'the question has a line that may answer it');
+    assert.match(page.find('.home-widget[data-widget-id="q"] h2 .home-widget-link').textContent ?? '', /^Open questions 1›$/);
+    assert.strictEqual(page.find('.home-question .home-row-label').textContent, 'Who approves access to the bond UAT environment?');
+    assert.match(page.find('.home-question-offer-where').textContent ?? '', /^May answer: .+ · Access$/);
+    page.click('.home-question [data-action="open-source"]');
+    assert.deepStrictEqual(page.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/2026-10-01.md', line: 2 });
+    for (const [action, sent] of [['answer-question', 'answer'], ['use-offer', 'useOffer'], ['not-it', 'notIt']] as const) {
+      const button = page.find(`.home-question [data-action="${action}"]`);
+      assert.strictEqual(button.getAttribute('data-zen-reveal'), '', `${action} is quiet under Zen`);
+      page.click(`.home-question [data-action="${action}"]`);
+      assert.deepStrictEqual(page.lastPosted('questionAction'), { type: 'questionAction', action: sent, questionId: question.id });
+    }
+  });
+
   test('draws the widgets Home is set to show', () => {
     const { page, snapshot } = open();
 
@@ -378,7 +401,18 @@ suite('Dashboard behavior', () => {
     assert.strictEqual(page.findAll('.home-reset-confirm').length, 0, 'no inline confirmation');
   });
 
-  test('+ Add widget adds one first, after Try next, and the host is not told what it offers', () => {
+  test('tells the host what + Add widget offers, and adds one the host sends, customizing first', () => {
+    const { page } = open();
+    const choices = page.lastPosted('widgetChoices')?.choices as Array<{ value: string }>;
+    assert.ok(choices.some((choice) => choice.value === 'topTags'), 'the list the select offers');
+    page.window.dispatchEvent(new page.window.MessageEvent('message', { data: { type: 'addWidget', value: 'topTags' } }));
+    assert.ok(page.find('.home-edit-bar'), 'Home is customizing');
+    const widgets = page.lastPosted('setDashboardWidgets')?.widgets as Array<{ kind: string }>;
+    const at = widgets[0].kind === 'tryNext' ? 1 : 0;
+    assert.strictEqual(widgets[at].kind, 'topTags', 'added first, after Try next, where it is seen');
+  });
+
+  test('+ Add widget on Home adds one first, after Try next', () => {
     const { page } = open();
     page.click('[data-action="customize-home"]');
     const select = page.find('select[data-action="add-widget"]') as HTMLSelectElement;
@@ -388,8 +422,6 @@ suite('Dashboard behavior', () => {
     const widgets = page.lastPosted('setDashboardWidgets')?.widgets as Array<{ kind: string }>;
     const at = widgets[0].kind === 'tryNext' ? 1 : 0;
     assert.strictEqual(widgets[at].kind, 'topTags', 'added first, after Try next, where it is seen');
-    // Context no longer lists Home's widgets, so the page keeps its list to itself.
-    assert.strictEqual(page.lastPosted('widgetChoices'), undefined);
   });
 
   test('turns paging on for a widget', () => {

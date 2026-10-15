@@ -18,9 +18,10 @@ const FACTS: PageFacts = {
 };
 
 /**
- * Deckard's pages at the top of Context: as rows with their hints or as a
- * row of icons, the pages kept as the reader chose them, the page in front
- * pressed, each opening its page, and one Tab stop the arrow keys move along.
+ * Deckard's pages at the top of Context: as rows with their hints, or, as
+ * icons, in the title bar and not in the view; the pages kept as the reader
+ * chose them, the page in front pressed, each opening its page, and one Tab
+ * stop the arrow keys move along.
  */
 suite('Context: the pages at its top', () => {
   let page: WebviewPage | undefined;
@@ -66,7 +67,6 @@ suite('Context: the pages at its top', () => {
     ]);
     assert.strictEqual(rows[0].getAttribute('aria-label'), 'Home, 3 tasks due today');
     assert.strictEqual(rows[0].getAttribute('data-tip'), 'What is due today');
-    assert.strictEqual(shown.findAll('.pages-icon').length, 0);
     const toolbar = shown.find('.context-pages');
     assert.strictEqual(toolbar.getAttribute('role'), 'toolbar');
     assert.strictEqual(toolbar.getAttribute('aria-orientation'), 'vertical');
@@ -74,15 +74,9 @@ suite('Context: the pages at its top', () => {
     assert.ok(toolbar.parentElement?.classList.contains('context-pages-band'), 'in the band with their gear');
   });
 
-  test('as icons, each page is its glyph in one toolbar, named to a screen reader and on hover', () => {
+  test('as icons, they are in the title bar, and the view draws none of them', () => {
     const shown = open({ style: 'icons', pages: PAGES });
-    const icons = shown.findAll('.pages-icon');
-    assert.strictEqual(icons.length, 3);
-    assert.ok(icons.every((icon) => icon.querySelector('svg.pages-glyph')), 'every page its glyph');
-    assert.strictEqual(icons[1].getAttribute('aria-label'), 'Task Board, 2 tasks overdue');
-    assert.strictEqual(icons[1].getAttribute('data-tip'), 'Task Board: 2 tasks overdue');
-    assert.strictEqual(shown.findAll('.pages-label').length, 0, 'no names drawn');
-    assert.strictEqual(shown.find('.context-pages.is-icons').getAttribute('aria-orientation'), 'horizontal');
+    assert.strictEqual(shown.findAll('.context-pages-band, .context-pages, .pages-empty').length, 0);
   });
 
   test('lead every state Context is in: a page in front, and a note with nothing related', () => {
@@ -90,7 +84,7 @@ suite('Context: the pages at its top', () => {
       { state: 'noMarkdown' as const },
       { state: 'loading' as const },
     ]) {
-      const shown = open({ style: 'icons', pages: PAGES }, state);
+      const shown = open({ style: 'list', pages: PAGES }, state);
       assert.strictEqual(shown.find('#app').firstElementChild, shown.find('.context-pages-band'), state.state);
       shown.dispose();
     }
@@ -98,10 +92,10 @@ suite('Context: the pages at its top', () => {
   });
 
   test('the page in front is pressed, and holds the one Tab stop', () => {
-    const shown = open({ style: 'icons', pages: PAGES, current: 'board' });
-    const icons = shown.findAll('.pages-icon') as HTMLElement[];
-    assert.deepStrictEqual(icons.map((icon) => icon.getAttribute('aria-current')), [null, 'page', null]);
-    assert.deepStrictEqual(icons.map((icon) => icon.tabIndex), [-1, 0, -1]);
+    const shown = open({ style: 'list', pages: PAGES, current: 'board' });
+    const rows = shown.findAll('.pages-row') as HTMLElement[];
+    assert.deepStrictEqual(rows.map((row) => row.getAttribute('aria-current')), [null, 'page', null]);
+    assert.deepStrictEqual(rows.map((row) => row.tabIndex), [-1, 0, -1]);
   });
 
   test('with no page in front, the first holds the Tab stop', () => {
@@ -110,28 +104,9 @@ suite('Context: the pages at its top', () => {
   });
 
   test('a page opens by its id', () => {
-    const shown = open({ style: 'icons', pages: PAGES });
+    const shown = open({ style: 'list', pages: PAGES });
     shown.click('[data-page="board"]');
     assert.deepStrictEqual(shown.lastPosted('goToPage'), { type: 'goToPage', page: 'board' });
-  });
-
-  test('in the icons, right and left move between the pages, Home and End go to either end, and the Tab stop follows', () => {
-    const shown = open({ style: 'icons', pages: PAGES });
-    const icons = shown.findAll('.pages-icon') as HTMLElement[];
-    const focused = () => icons.indexOf(shown.document.activeElement as HTMLElement);
-    press(icons[0], 'ArrowRight');
-    assert.strictEqual(focused(), 1);
-    assert.deepStrictEqual(icons.map((icon) => icon.tabIndex), [-1, 0, -1], 'one Tab stop, where the focus is');
-    press(icons[1], 'ArrowDown');
-    assert.strictEqual(focused(), 1, 'down is not along a row');
-    press(icons[1], 'End');
-    assert.strictEqual(focused(), 2);
-    press(icons[2], 'ArrowRight');
-    assert.strictEqual(focused(), 2, 'it stops at the end');
-    press(icons[2], 'Home');
-    assert.strictEqual(focused(), 0);
-    press(icons[0], 'ArrowLeft');
-    assert.strictEqual(focused(), 0, 'and at the start');
   });
 
   test('in the list, down and up move between the pages', () => {
@@ -147,11 +122,11 @@ suite('Context: the pages at its top', () => {
   });
 
   test('the Tab stop stays where the reader left it when the view is drawn again', () => {
-    const shown = open({ style: 'icons', pages: PAGES });
-    const icons = shown.findAll('.pages-icon') as HTMLElement[];
-    press(icons[0], 'End');
-    shown.send({ activeTags: [], notes: [], state: 'noMarkdown', parkedTags: [], pages: { style: 'icons', pages: PAGES } });
-    assert.deepStrictEqual((shown.findAll('.pages-icon') as HTMLElement[]).map((icon) => icon.tabIndex), [-1, -1, 0]);
+    const shown = open({ style: 'list', pages: PAGES });
+    const rows = shown.findAll('.pages-row') as HTMLElement[];
+    press(rows[0], 'End');
+    shown.send({ activeTags: [], notes: [], state: 'noMarkdown', parkedTags: [], pages: { style: 'list', pages: PAGES } });
+    assert.deepStrictEqual((shown.findAll('.pages-row') as HTMLElement[]).map((row) => row.tabIndex), [-1, -1, 0]);
   });
 
   test('with no page kept, it says where to choose them', () => {
@@ -185,14 +160,14 @@ suite('Context: the pages at its top', () => {
   });
 
   test('draws only the pages kept, in the page list\'s order', () => {
-    const pages = listContextPages(listDeckardPages(FACTS), { contextPagesHidden: ['graph', 'stats', 'help'] }, 'calendar');
+    const pages = listContextPages(listDeckardPages(FACTS), { contextPagesStyle: 'list', contextPagesHidden: ['graph', 'stats', 'help'] }, 'calendar');
     const shown = open(pages);
-    assert.deepStrictEqual(shown.findAll('.pages-icon').map((icon) => icon.getAttribute('data-page')), ['home', 'board', 'calendar', 'today', 'find']);
+    assert.deepStrictEqual(shown.findAll('.pages-row').map((row) => row.getAttribute('data-page')), ['home', 'board', 'calendar', 'today', 'find']);
     assert.strictEqual(shown.find('[aria-current="page"]').getAttribute('data-page'), 'calendar');
   });
 
   test('reads its look and the pages kept from the preferences, a page kept unless left out', () => {
-    assert.strictEqual(readPagesStyle({}), 'icons', 'a row of icons until the reader chooses the list');
+    assert.strictEqual(readPagesStyle({}), 'icons', 'icons in the title bar until the reader chooses the list');
     assert.strictEqual(readPagesStyle({ contextPagesStyle: 'list' }), 'list');
     assert.strictEqual(isPageShown({}, 'stats'), true);
     assert.strictEqual(isPageShown({ contextPagesHidden: ['stats'] }, 'stats'), false);

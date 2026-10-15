@@ -924,6 +924,21 @@
             >1</span
             >)</span
           ></button
+        ><button
+          aria-controls="result-panel-story"
+          aria-selected="false"
+          data-action="set-result-tab"
+          data-tab="story"
+          id="result-tab-story"
+          role="tab"
+          tabindex="-1"
+        >Story<span
+            class="display-count"
+          > (<span
+              data-search-count="story"
+            >2</span
+            >)</span
+          ></button
         ></div
       ><div
         class="overview-pane-actions"
@@ -1111,6 +1126,133 @@
             ></div
           ></div
         ></section
+      ></div
+    ><div
+      aria-labelledby="result-tab-story"
+      class="overview-tab-panel"
+      hidden=""
+      id="result-panel-story"
+      role="tabpanel"
+    ><div
+        class="story"
+      ><div
+          aria-label="Filter the story"
+          class="story-filters"
+          role="group"
+        ><button
+            aria-pressed="true"
+            class="is-active story-chip"
+            data-action="story-filter"
+            data-filter="all"
+            data-tip="Show every line"
+            type="button"
+          >All</button
+          ><button
+            aria-pressed="false"
+            class="story-chip"
+            data-action="story-filter"
+            data-filter="decisions"
+            data-tip="Show only the decisions"
+            type="button"
+          >Decisions</button
+          ><button
+            aria-pressed="false"
+            class="story-chip"
+            data-action="story-filter"
+            data-filter="done"
+            data-tip="Show only the tasks done"
+            type="button"
+          >Done</button
+          ><button
+            aria-pressed="false"
+            class="story-chip story-order"
+            data-action="story-order"
+            data-tip="Show the oldest lines first"
+            type="button"
+          >Oldest first</button
+          ></div
+        ><section
+          aria-label="September 2026"
+          class="story-month"
+        ><h3
+            class="story-month-heading"
+          >September 2026</h3
+          ><ol
+            class="story-rows"
+          ><li
+              class="story-row"
+              data-file-path="notes/standup.md"
+              data-kind="note"
+              data-line="4"
+              tabindex="0"
+            ><span
+                class="story-day"
+              >Mon, Sep 21</span
+              ><span
+                class="story-mark"
+              ><span
+                  aria-label="Note"
+                  class="story-kind"
+                  data-tip="Note"
+                  role="img"
+                >·</span
+                ></span
+              ><span
+                class="story-body"
+              ><span
+                  class="story-text"
+                >Card settlement runs late on Fridays.</span
+                ></span
+              ><span
+                class="story-where"
+              >Payments</span
+              ></li
+            ><li
+              class="story-row"
+              data-file-path="notes/standup.md"
+              data-kind="open"
+              data-line="5"
+              tabindex="0"
+            ><span
+                class="story-day"
+              >Mon, Sep 21</span
+              ><span
+                class="story-mark"
+              ><input
+                  aria-label="Toggle Ask @priya about the settlement window"
+                  class="story-box"
+                  data-action="toggle-task"
+                  data-dom-checked="false"
+                  data-dom-value="on"
+                  data-task-id="task-hn8gq0-n0y683"
+                  type="checkbox"
+                ></span
+              ><span
+                class="story-body"
+              ><span
+                  class="story-text"
+                >Ask <button
+                    aria-label="Open @priya overview"
+                    class="inline-tag tag-open"
+                    data-action="open-tag"
+                    data-tag-key="@priya"
+                    data-tip-overflow="@priya"
+                  ><span
+                      class="tag-label"
+                    ><span
+                        class="tag-value"
+                      >@priya</span
+                      ></span
+                    ></button
+                  > about the settlement window</span
+                ></span
+              ><span
+                class="story-where"
+              >Payments</span
+              ></li
+            ></ol
+          ></section
+        ></div
       ></div
     ></main
   > <div

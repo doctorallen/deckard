@@ -1,5 +1,6 @@
 import { register as assistant } from '../ui/commands/assistant/register';
 import { register as dailyNotes } from '../ui/commands/dailyNotes/register';
+import { register as filing } from '../ui/commands/filing/register';
 import { register as find } from '../ui/commands/find/register';
 import { register as hubs } from '../ui/commands/hubs/register';
 import { register as links } from '../ui/commands/links/register';
@@ -10,6 +11,7 @@ import { register as pages } from '../ui/commands/pages/register';
 import { register as parkingAndExclusion } from '../ui/commands/parkingAndExclusion/register';
 import { register as pins } from '../ui/commands/pins/register';
 import { register as preferences } from '../ui/commands/preferences/register';
+import { register as questions } from '../ui/commands/questions/register';
 import { register as reviews } from '../ui/commands/reviews/register';
 import { register as search } from '../ui/commands/search/register';
 import { register as setup } from '../ui/commands/setup/register';
@@ -19,6 +21,7 @@ import { register as tasksView } from '../ui/commands/tasksView/register';
 import { register as toggles } from '../ui/commands/toggles/register';
 import { register as types } from '../ui/commands/types/register';
 import { register as undo } from '../ui/commands/undo/register';
+import { register as writtenBefore } from '../ui/commands/writtenBefore/register';
 import type { NamedFeature } from './feature';
 
 /**
@@ -51,4 +54,7 @@ export const features: readonly NamedFeature[] = [
   { name: 'Undo Last Change', register: undo },
   { name: 'the Hubs view', register: hubs },
   { name: 'types', register: types },
+  { name: 'File this', register: filing },
+  { name: 'questions', register: questions },
+  { name: 'written before', register: writtenBefore },
 ];

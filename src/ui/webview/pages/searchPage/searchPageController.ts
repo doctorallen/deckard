@@ -12,8 +12,8 @@ import type { ExportService } from '../../../../services/exportService';
 import type { NavigationService } from '../../../../services/navigationService';
 import { measure } from '../../../../shared/timing';
 import type { EditFieldsMessage } from '../../../protocol/fields';
-import type { SearchPagePageToHost, SearchPageSnapshot, SearchPageState } from '../../../protocol/searchPage';
-import type { SearchRefineState } from '../../../protocol/shared';
+import type { SearchPagePageToHost, SearchPageSnapshot, SearchPageState, SinceChipKind } from '../../../protocol/searchPage';
+import type { DashboardTask, SearchRefineState } from '../../../protocol/shared';
 import { editResults } from '../../../commands/bulkEditPrompts';
 import { presentExport } from '../../../commands/exportResults';
 import { copyFieldValue } from '../../../commands/typeNotes';
@@ -24,6 +24,8 @@ import { NoteOpening, openNoteAt } from '../../../commands/noteOpening';
 import { setPinned } from '../../../commands/pinNote';
 import { readEntityNamespaceAliases } from '../../../commands/parseSettings';
 import { readQueryContext } from '../../../commands/queryContext';
+import { openSettingAction } from '../../../commands/notify';
+import { collectBetweenLines, countAgendaLines, formatBetweenAgenda } from '../../../state/betweenYou';
 import { mergeIndexedTag } from '../../../commands/renameTag';
 import { offerSavedSearchOnHome } from '../../../commands/savedSearchHome';
 import type { TaskWrites } from '../../../commands/taskActions';
@@ -47,7 +49,17 @@ import {
 import { getSearchPageHtml } from '../../searchPageHtml';
 import type { PageChrome } from '../../components';
 import { narrowSearchPageMessage } from './messages';
-import { createSearchPageSnapshot, evaluateSearchPage, resolveQueryTagIntersection } from '../../../state/searchPageState';
+import {
+  captureTagPageState,
+  createSearchPageSnapshot,
+  evaluateSearchPage,
+  readTagStory,
+  resolveQueryTagIntersection,
+  type SearchPageOptions,
+} from '../../../state/searchPageState';
+import { toTagVisit, VISIT_COUNTS_AFTER_MS } from '../../../state/sinceLastLooked';
+import { DEFAULT_STORY_VIEW, formatStoryMarkdown, shownStoryLines, STORY_PAGE_SIZE, type StoryView } from '../../../state/storySoFar';
+import type { TagVisit, TagVisits } from '../../../../core/storage/tagVisits';
 import { createQueryViewState } from '../../../state/querySuggestions';
 import { findWikiLinkPlace, parseWikiTarget } from '../../../../domain/index/backlinks';
 import { openResultAt } from '../../../commands/navigation';
@@ -93,7 +105,29 @@ export interface SearchPageControllerOptions {
   setTitle(title: string): void;
   /** Called when the reader closes the page. */
   onDidClose(): void;
+  /**
+   * The tags' last visits, which the page's Since you last looked band
+   * reads, and which a visit to a tag's page is counted in. Without them
+   * the page has no band and counts nothing.
+   */
+  visits?: Pick<TagVisits, 'get' | 'record'>;
+  /** The time and the timer a visit is counted by: the real ones unless a test sets its own. */
+  clock?: VisitClock;
 }
+
+/** The time, and a timer, as a visit is counted by them. */
+export interface VisitClock {
+  now(): number;
+  setTimeout(run: () => void, ms: number): unknown;
+  clearTimeout(handle: unknown): void;
+}
+
+/** The real time and timers. */
+const REAL_CLOCK: VisitClock = {
+  now: () => Date.now(),
+  setTimeout: (run, ms) => setTimeout(run, ms),
+  clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+};
 
 /**
  * One search page: its search, the search it opened with, the pages of
@@ -152,9 +186,36 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   /** Whether the last state sent put Refine in the sidebar. */
   private refineWasInSidebar = false;
   private lastSnapshot: SearchPageSnapshot | undefined;
+  /**
+   * The visit the band compares the tag's page with: the last one before
+   * the page was put in front, read again once the reader leaves the page
+   * and comes back, so a visit counted meanwhile clears the band on the
+   * next draw, and not under the reader's eyes.
+   */
+  private sinceBaseline: { tagKey: string; visit: TagVisit | undefined } | undefined;
+  /** The page while it is open, which a visit read from storage draws again. */
+  private page: PageContext | undefined;
+  /** The band's chip filtering the page, until it is chosen again or the search changes. */
+  private sinceFilter: SinceChipKind | undefined;
+  /**
+   * How the Story tab is shown: the filter and the order the reader chose,
+   * kept while the page is open, and how many rows it draws, which starts
+   * again with each search.
+   */
+  private storyView: StoryView = DEFAULT_STORY_VIEW;
+  /** Whether the page is in front, where a visit to it counts. */
+  private inFront = false;
+  /** The visit waiting out its five seconds in front, and the tag it is to. */
+  private visitTimer: { tagKey: string; handle: unknown } | undefined;
+  /** The tag whose visit counted while the page has been in front, which counts no more until it is left. */
+  private countedVisit: string | undefined;
+
+  /** The time and the timer a visit to the page is counted by. */
+  private readonly clock: VisitClock;
 
   /** Starts on `search.queryText`, opened with `search.originQuery`. */
   public constructor(private readonly search: SearchPageControllerOptions) {
+    this.clock = search.clock ?? REAL_CLOCK;
     this.originQuery = search.originQuery;
     this.queryText = search.queryText;
     const { indexer, navigation, preferences } = search;
@@ -211,7 +272,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       }),
       toggleTask: toggleTask({
         writes: search.writes,
-        findTask: (taskId) => this.currentSnapshot().tasks.find((candidate) => candidate.task.id === taskId)?.task,
+        findTask: (taskId) => this.drawnTasks().find((candidate) => candidate.task.id === taskId)?.task ?? this.storyTask(taskId),
       }),
       // A result is an entry, so pinning one pins that entry rather than
       // the file it is written in.
@@ -220,7 +281,13 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       editResults: (message) => editResults(search.writes.history, message.kind, this.currentResults()),
       exportResults: (message) => this.exportResults(message.kind),
       openSource: (message) => this.openSource(message.filePath, message.line, message),
+      // The question is read again from the index by the command, which
+      // writes nothing when its line has changed since.
+      questionAction: (message) => vscode.commands.executeCommand(`deckard.questions.${message.action}`, message.questionId),
       openWikiLink: (message) => this.openWikiLink(message.target, message.from, message),
+      ...this.betweenHandlers(),
+      ...this.sinceHandlers(),
+      ...this.storyHandlers(),
       ...this.typeHandlers(),
     };
   }
@@ -284,6 +351,8 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     this.lastSnapshot = snapshot;
     this.refineWasInSidebar = snapshot.refineInSidebar === true;
     this.search.setTitle(getPageTitle(snapshot));
+    // The search may have moved to another tag, or off one.
+    this.syncVisitTimer();
     return {
       ...snapshot,
       parkedTags: listedParkedTags(this.search.indexer),
@@ -316,21 +385,25 @@ export class SearchPageController implements PageController<SearchPageState, Sea
 
   /** The page is the active search while its panel is in front. */
   public onDidAttach(page: PageContext): void {
+    this.page = page;
     this.updateActivity(page.surface?.active === true);
   }
 
   /** The page is the active search while its panel is in front. */
   public onDidChangeViewState(page: PageContext): void {
+    this.page = page;
     this.updateActivity(page.surface?.active === true);
   }
 
   /** A page the reader closed is gone, and its search with it. */
   public onDidDetach(): void {
+    this.page = undefined;
     this.search.onDidClose();
   }
 
-  /** A page that is gone is no longer the active search. */
+  /** A page that is gone is no longer the active search, and counts no visit. */
   public dispose(): void {
+    this.stopVisitTimer();
     this.search.activeSearch.release(this.search.source);
   }
 
@@ -350,12 +423,23 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     await this.applyQuery(page, queryText);
   }
 
+  /**
+   * While the page is in front it is the active search, and a visit to its
+   * tag counts after five seconds. Left, a visit no longer counts, and the
+   * next time it is put in front the band reads the tag's last visit again.
+   */
   private updateActivity(active: boolean): void {
     if (active) {
       this.search.activeSearch.setActive(this.search.source);
     } else {
       this.search.activeSearch.release(this.search.source);
     }
+    if (!active && this.inFront) {
+      this.countedVisit = undefined;
+      this.sinceBaseline = undefined;
+    }
+    this.inFront = active;
+    this.syncVisitTimer();
   }
 
   private createSnapshot(): SearchPageSnapshot {
@@ -369,13 +453,16 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       this.taskPage = 1;
     }
     this.pagedAt = preferences.searchPageSize;
-    const queryContext = readQueryContext();
+    const queryContext = readQueryContext(this.clock.now());
+    const since = this.readSinceBaseline();
     const snapshot = createSearchPageSnapshot(
       index,
       preferences,
       this.queryText,
       {
         queryContext,
+        ...(since ? { since } : {}),
+        story: this.storyView,
         originQuery: this.originQuery,
         notePage: this.notePage,
         taskPage: this.taskPage,
@@ -464,6 +551,8 @@ export class SearchPageController implements PageController<SearchPageState, Sea
 
   private showSearch(page: PageContext, entry: SearchHistoryEntry): void {
     this.invalidQueryText = undefined;
+    this.sinceFilter = undefined;
+    this.storyView = { ...this.storyView, limit: STORY_PAGE_SIZE };
     this.queryText = entry.query;
     // The draft has become the search, or been replaced by another, so it is
     // no longer narrowing anything on its own.
@@ -578,6 +667,221 @@ export class SearchPageController implements PageController<SearchPageState, Sea
 
   private currentSnapshot(): SearchPageSnapshot {
     return this.lastSnapshot ?? this.createSnapshot();
+  }
+
+  /** Every task the page draws: the results, and a person's Between you card. */
+  private drawnTasks(): DashboardTask[] {
+    const snapshot = this.currentSnapshot();
+    return [...snapshot.tasks, ...(snapshot.between?.groups ?? []).flatMap((group) => group.tasks)];
+  }
+
+  /** A task the Story tab draws, by id, as the index has it now; undefined for any other. */
+  private storyTask(taskId: string): Task | undefined {
+    const drawn = (this.currentSnapshot().story?.months ?? []).some((month) => month.rows.some((row) => row.task?.id === taskId));
+    return drawn ? this.search.indexer.getSnapshot().tasks.get(taskId) : undefined;
+  }
+
+  /** A row the Story tab draws, by where it is written. */
+  private isStoryRow(filePath: string, line: number): boolean {
+    return (this.currentSnapshot().story?.months ?? []).some((month) => month.rows.some((row) => row.filePath === filePath && row.line === line));
+  }
+
+  /** A question the page draws, on its Questions tab or under a person's To ask, by where it is written. */
+  private isDrawnQuestion(filePath: string, line: number): boolean {
+    const snapshot = this.currentSnapshot();
+    const drawn = [...(snapshot.questions ?? []), ...(snapshot.between?.groups ?? []).flatMap((group) => group.questions ?? [])];
+    return drawn.some((question) => question.filePath === filePath && question.line === line);
+  }
+
+  /**
+   * The Story tab: a filter chip, Oldest first, Show more, and Copy as
+   * Markdown, which copies the rows the tab shows.
+   */
+  private storyHandlers(): Pick<MessageHandlers<SearchPagePageToHost>, 'setStoryFilter' | 'setStoryOrder' | 'showMoreStory' | 'copyStory'> {
+    return {
+      // Another filter is another list, read from its first page.
+      setStoryFilter: (message, page) => {
+        this.storyView = { ...this.storyView, filter: message.filter, limit: STORY_PAGE_SIZE };
+        page.refresh();
+      },
+      setStoryOrder: (message, page) => {
+        this.storyView = { ...this.storyView, oldestFirst: message.oldestFirst, limit: STORY_PAGE_SIZE };
+        page.refresh();
+      },
+      showMoreStory: (_message, page) => {
+        this.storyView = { ...this.storyView, limit: this.storyView.limit + STORY_PAGE_SIZE };
+        page.refresh();
+      },
+      copyStory: () => this.copyStory(),
+    };
+  }
+
+  /** Copy as Markdown: the rows the Story tab shows, worked out afresh from the index, on the clipboard. */
+  private async copyStory(): Promise<void> {
+    const index = this.search.indexer.getSnapshot();
+    const context = readQueryContext(this.clock.now());
+    const story = readTagStory(index, evaluateSearchPage(index, this.queryText, { queryContext: context, previewWords: this.previewWords }), context);
+    const shown = story ? shownStoryLines(story, this.storyView) : [];
+    if (!shown.length) {
+      return;
+    }
+    await vscode.env.clipboard.writeText(`${formatStoryMarkdown(shown)}\n`);
+    vscode.window.setStatusBarMessage(`Copied ${shown.length} ${shown.length === 1 ? 'line' : 'lines'} of the story as Markdown`, 3000);
+  }
+
+  /**
+   * What a person's Between you card asks of its host: a group's search on
+   * a page of its own, the card copied as an agenda, and the setting that
+   * says who the reader is.
+   */
+  private betweenHandlers(): Pick<MessageHandlers<SearchPagePageToHost>, 'openSearch' | 'copyBetweenAgenda' | 'openIdentitySetting'> {
+    return {
+      // Only a search the card drew: a group's label.
+      openSearch: async (message) => {
+        if ((this.currentSnapshot().between?.groups ?? []).some((group) => group.query === message.query)) {
+          await vscode.commands.executeCommand('deckard.searchNotes', message.query);
+        }
+      },
+      copyBetweenAgenda: () => this.copyBetweenAgenda(),
+      openIdentitySetting: async () => {
+        await openSettingAction('me').run();
+      },
+    };
+  }
+
+  /**
+   * Since you last looked: Mark seen counts the visit now and clears the
+   * band; a chip narrows the page to what it counts, or, chosen again,
+   * lets it go.
+   */
+  private sinceHandlers(): Pick<MessageHandlers<SearchPagePageToHost>, 'markSeen' | 'setSinceFilter'> {
+    return {
+      markSeen: async (_message, page) => {
+        const tagKey = this.visitTagKey();
+        const visit = tagKey ? await this.countVisit(tagKey) : undefined;
+        if (!tagKey || !visit) {
+          return;
+        }
+        this.sinceBaseline = { tagKey, visit };
+        this.sinceFilter = undefined;
+        page.refresh();
+      },
+      setSinceFilter: (message, page) => {
+        this.sinceFilter = message.kind;
+        // A narrower list, read from its first page.
+        this.notePage = 1;
+        this.taskPage = 1;
+        page.refresh();
+      },
+    };
+  }
+
+  /** The tag whose own page this is, when the search is that one tag alone; a visit counts only to it. */
+  private visitTagKey(): string | undefined {
+    if (!this.search.visits) {
+      return undefined;
+    }
+    const index = this.search.indexer.getSnapshot();
+    const tagKeys = resolveQueryTagIntersection(index, parseWorkspaceQuery(index, this.queryText), readEntityNamespaceAliases());
+    return tagKeys?.length === 1 ? tagKeys[0] : undefined;
+  }
+
+  /**
+   * What the band compares the page with: the tag's last visit, read when
+   * the page first draws the tag, and again after the page is left and
+   * put in front again. A different tag lets the chip go. The visit is
+   * read from storage: the page draws without a band, and again with it
+   * once it is read.
+   */
+  private readSinceBaseline(): SearchPageOptions['since'] {
+    const tagKey = this.visitTagKey();
+    if (this.sinceBaseline?.tagKey !== tagKey) {
+      const baseline = tagKey ? { tagKey, visit: undefined } : undefined;
+      this.sinceBaseline = baseline;
+      this.sinceFilter = undefined;
+      if (baseline) {
+        void this.loadSinceBaseline(baseline);
+      }
+    }
+    return this.sinceBaseline ? { visit: this.sinceBaseline.visit, filter: this.sinceFilter } : undefined;
+  }
+
+  /**
+   * Reads a baseline's visit, and draws the page again with it while the
+   * baseline is still the page's and no visit took its place meanwhile,
+   * as Mark seen's does.
+   */
+  private async loadSinceBaseline(baseline: { tagKey: string; visit: TagVisit | undefined }): Promise<void> {
+    const visit = await this.search.visits?.get(baseline.tagKey);
+    if (!visit || this.sinceBaseline !== baseline || baseline.visit) {
+      return;
+    }
+    baseline.visit = visit;
+    this.page?.refresh();
+  }
+
+  /**
+   * Starts the five seconds a visit to the tag's page waits in front (D7),
+   * or stops them when the page is left or shows something else. A visit
+   * counted while the page has been in front counts again only after it
+   * is left.
+   */
+  private syncVisitTimer(): void {
+    const tagKey = this.inFront ? this.visitTagKey() : undefined;
+    if (this.visitTimer && this.visitTimer.tagKey === tagKey) {
+      return;
+    }
+    this.stopVisitTimer();
+    if (!tagKey || this.countedVisit === tagKey) {
+      return;
+    }
+    const handle = this.clock.setTimeout(() => {
+      this.visitTimer = undefined;
+      if (this.inFront && this.visitTagKey() === tagKey) {
+        void this.countVisit(tagKey);
+      }
+    }, VISIT_COUNTS_AFTER_MS);
+    this.visitTimer = { tagKey, handle };
+  }
+
+  /** Stops the five seconds a visit was waiting out, when one was. */
+  private stopVisitTimer(): void {
+    if (!this.visitTimer) {
+      return;
+    }
+    this.clock.clearTimeout(this.visitTimer.handle);
+    this.visitTimer = undefined;
+  }
+
+  /** Counts a visit to a tag's page: what it holds now replaces its last visit. */
+  private async countVisit(tagKey: string): Promise<TagVisit | undefined> {
+    const visits = this.search.visits;
+    if (!visits) {
+      return undefined;
+    }
+    this.stopVisitTimer();
+    this.countedVisit = tagKey;
+    const index = this.search.indexer.getSnapshot();
+    const now = this.clock.now();
+    const visit = toTagVisit(captureTagPageState(index, tagKey, readQueryContext(now)), now);
+    await visits.record(tagKey, visit, (key) => index.tags.has(key));
+    return visit;
+  }
+
+  /**
+   * Copy as agenda: every line of the card, not only those drawn, worked
+   * out afresh from the index, as Markdown on the clipboard.
+   */
+  private async copyBetweenAgenda(): Promise<void> {
+    const tagKey = this.currentSnapshot().tag?.key;
+    const groups = tagKey ? collectBetweenLines(this.search.indexer.getSnapshot(), tagKey, readQueryContext()) : undefined;
+    const agenda = groups ? formatBetweenAgenda(groups) : '';
+    if (!agenda || !groups) {
+      return;
+    }
+    await vscode.env.clipboard.writeText(`${agenda}\n`);
+    const lines = countAgendaLines(groups);
+    vscode.window.setStatusBarMessage(`Copied ${lines} ${lines === 1 ? 'line' : 'lines'} as an agenda`, 3000);
   }
 
   /**
@@ -724,13 +1028,18 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       await openNoteAt(card.filePath, card.startLine, how);
       return;
     }
-    const task = snapshot.tasks.find(
+    const task = this.drawnTasks().find(
       (candidate) =>
         candidate.task.filePath === filePath &&
         candidate.task.lineNumber === line,
     );
     if (task) {
       await openNoteAt(task.task.filePath, task.task.lineNumber, how);
+      return;
+    }
+    // A line of the Story tab, or a question of the Questions tab or of a person's To ask.
+    if (this.isStoryRow(filePath, line) || this.isDrawnQuestion(filePath, line)) {
+      await openNoteAt(filePath, line, how);
       return;
     }
     // A note a type's row, or one of its values, names: a row's note or hub, or a Note field's.

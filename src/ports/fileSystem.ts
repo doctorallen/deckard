@@ -45,4 +45,9 @@ export interface FileSystem<U extends ResourceUri = ResourceUri> {
   createDirectory(uri: U): PromiseLike<void>;
   /** Deletes the file. */
   delete(uri: U): PromiseLike<void>;
+  /**
+   * Moves a file to `target`, replacing any file there, so a file written
+   * beside it first takes its place whole: never read half-written.
+   */
+  rename(source: U, target: U): PromiseLike<void>;
 }

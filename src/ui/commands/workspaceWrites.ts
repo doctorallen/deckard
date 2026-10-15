@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { decodeUtf8Text, pluralize, startsWithUtf8Bom, UTF8_BOM } from '../../shared/text';
+import { decodeUtf8Text, pluralize } from '../../shared/text';
 import { WriteHistory, WriteMark } from '../../core/workspace/writeHistory';
-import { Failure, noteName, reportFailure, reportStale } from './notify';
+import { Failure, noteName, openNoteAction, reportFailure, reportStale } from './notify';
 
 /**
  * The few Deckard commands that rewrite many notes at once, and the way back
@@ -50,6 +50,11 @@ export interface UndoResult {
    * written then, and the write is kept, so the Undo can be tried again.
    */
   refused?: vscode.Uri[];
+  /**
+   * The notes put back in their editors that VS Code then could not save:
+   * each holds the Undo unsaved, and its file is as the write left it.
+   */
+  unsaved?: vscode.Uri[];
   /**
    * What the write's `restore` threw, when putting back what it changed
    * outside the notes failed. The notes are back by then, so the write is
@@ -121,7 +126,8 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
         skippedUris: plan.skippedUris,
       };
     }
-    if (!(await applyUndo(plan))) {
+    const applied = await applyUndo(plan);
+    if (!applied) {
       return {
         label: write.label,
         restored: 0,
@@ -130,7 +136,7 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
         refused: plan.documents.map((document) => document.uri),
       };
     }
-    const restored = plan.documents.length + plan.quiet.length;
+    const restored = plan.documents.length - applied.unsaved.length;
     let unrestored: UndoResult['unrestored'];
     if (restored > 0) {
       try {
@@ -147,6 +153,7 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
       restored,
       skipped: plan.skippedUris.length,
       skippedUris: plan.skippedUris,
+      ...(applied.unsaved.length > 0 ? { unsaved: applied.unsaved } : {}),
       ...(unrestored ? { unrestored } : {}),
     };
   }
@@ -203,11 +210,18 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
     }
 
     const notes: WrittenNote[] = [];
+    const unsaved: vscode.Uri[] = [];
     for (const { uri, text } of before.values()) {
       const document = await vscode.workspace.openTextDocument(uri);
       if (document.isDirty) {
         this.ownWrites.note(document.uri.toString());
-        await document.save();
+        // VS Code refuses a save when the file changed on disk since the
+        // document read it, or cannot be written; the edit then waits in
+        // the editor, and the note on disk is as it was.
+        if (!(await document.save())) {
+          unsaved.push(uri);
+          continue;
+        }
       }
       const after = document.getText();
       if (after !== text) {
@@ -215,6 +229,8 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
       }
     }
 
+    // Only what reached the disk is kept for Undo, so the notes that did
+    // save can still be taken back when one did not.
     this.remember({
       label: options.label,
       at: Date.now(),
@@ -222,6 +238,10 @@ export class WorkspaceWriteHistory extends WriteHistory<WorkspaceWrite> {
       ...(options.restore ? { restore: options.restore } : {}),
       ...(options.together ? { together: true } : {}),
     });
+    if (unsaved.length > 0) {
+      void reportFailure(describeUnsaved(unsaved, 'change'));
+      return { applied: false, notes, unsaved };
+    }
     return { applied: true, notes, handle: this.createHandle() };
   }
 
@@ -341,7 +361,12 @@ export interface WriteHandle extends WriteMark {
 
 /** The result of a write: whether it landed, what it changed, and its handle. */
 export type WorkspaceWriteResult =
-  | { applied: false; notes: WrittenNote[] }
+  /**
+   * Not written: the preview was declined, VS Code refused the edit, or it
+   * could not save the notes in `unsaved`, which hold the edit unsaved and
+   * have been reported. `notes` are those that did save.
+   */
+  | { applied: false; notes: WrittenNote[]; unsaved?: vscode.Uri[] }
   | { applied: true; notes: WrittenNote[]; handle: WriteHandle };
 
 /** A write's handle, on the history it was written to. */
@@ -401,28 +426,27 @@ class Handle implements WriteHandle {
 
 /** How an Undo puts each note back, decided before anything is written. */
 interface UndoPlan {
-  /** The edit for the notes put back through their editors. */
+  /** The edit that puts the notes back, through their documents. */
   edit: vscode.WorkspaceEdit;
   /** The notes in that edit, saved once it lands. */
   documents: vscode.TextDocument[];
-  /**
-   * The notes nobody has open, written straight to disk, each with the
-   * byte order mark it had there.
-   */
-  quiet: { uri: vscode.Uri; text: string; byteOrderMark: boolean }[];
   /** The notes changed since the write, or unreadable, which are left alone. */
   skippedUris: vscode.Uri[];
 }
 
 /**
  * Sorts a write's notes, one at a time and in order, into those an Undo
- * puts back through the editor, those it writes to disk, and those it
- * leaves because they have changed since.
+ * puts back and those it leaves because they have changed since.
+ *
+ * Every note goes back through its document, then is saved, as a write
+ * lands: an edit to a note no editor shows opens no tab. Written straight
+ * to disk, a note the extension host had loaded kept the old text until
+ * the file watcher caught up, and a write made in that moment edited the
+ * old text, so its save failed and the Undo's text was lost.
  */
 async function planUndo(notes: readonly WrittenNote[]): Promise<UndoPlan> {
   const edit = new vscode.WorkspaceEdit();
   const documents: vscode.TextDocument[] = [];
-  const quiet: UndoPlan['quiet'] = [];
   const skippedUris: vscode.Uri[] = [];
 
   for (const note of notes) {
@@ -441,41 +465,28 @@ async function planUndo(notes: readonly WrittenNote[]): Promise<UndoPlan> {
       skippedUris.push(note.uri);
       continue;
     }
-    // A note nobody has open is written straight to disk. Going through
-    // the editor would open every note an undo touches, which is a lot of
-    // tabs to close after taking one thing back.
-    if (isOpenInEditor(note.uri) || document.isDirty) {
-      edit.replace(note.uri, wholeDocument(document), note.before);
-      documents.push(document);
-    } else {
-      quiet.push({ uri: note.uri, text: note.before, byteOrderMark: disk.byteOrderMark });
-    }
+    edit.replace(note.uri, wholeDocument(document), note.before);
+    documents.push(document);
   }
-  return { edit, documents, quiet, skippedUris };
+  return { edit, documents, skippedUris };
 }
 
 /**
- * Writes what a plan puts back: the editor edit, then a save of each note
- * it left unsaved, then the quiet notes to disk. False, with nothing
- * written, when VS Code refuses the editor edit.
+ * Writes what a plan puts back: the edit, then a save of each note it left
+ * unsaved. False, with nothing written, when VS Code refuses the edit;
+ * else the notes VS Code could not save, which hold the Undo unsaved.
  */
-async function applyUndo(plan: UndoPlan): Promise<boolean> {
+async function applyUndo(plan: UndoPlan): Promise<{ unsaved: vscode.Uri[] } | false> {
   if (plan.documents.length > 0 && !(await vscode.workspace.applyEdit(plan.edit))) {
     return false;
   }
+  const unsaved: vscode.Uri[] = [];
   for (const document of plan.documents) {
-    if (document.isDirty) {
-      await document.save();
+    if (document.isDirty && !(await document.save())) {
+      unsaved.push(document.uri);
     }
   }
-  for (const note of plan.quiet) {
-    const text = Buffer.from(note.text, 'utf8');
-    await vscode.workspace.fs.writeFile(
-      note.uri,
-      note.byteOrderMark ? Buffer.concat([UTF8_BOM, text]) : text,
-    );
-  }
-  return true;
+  return { unsaved };
 }
 
 /** How a write is shown before it lands. */
@@ -567,6 +578,10 @@ export function reportUndo(result: UndoResult | undefined, done: string): void {
     void reportFailure(describeRefusedUndo(result.refused, result.skipped));
     return;
   }
+  if (result.unsaved) {
+    void reportFailure(describeUnsaved(result.unsaved, 'undo'));
+    return;
+  }
   if (result.restored === 0) {
     void reportStale(result.skippedUris);
     return;
@@ -611,29 +626,37 @@ function describeRefusedUndo(refused: readonly vscode.Uri[], kept: number): Fail
   };
 }
 
-/** Whether a note is on screen, and so has to be written through its editor. */
-function isOpenInEditor(uri: vscode.Uri): boolean {
-  return vscode.window.visibleTextEditors.some(
-    (editor) => editor.document.uri.toString() === uri.toString(),
-  );
+/**
+ * VS Code could not save the notes in `unsaved` after a write's `change`,
+ * or an Undo, landed in them: each holds it unsaved, and its file on disk
+ * is as it was, which happens when the file changed on disk since VS Code
+ * read it, or cannot be written.
+ */
+function describeUnsaved(unsaved: readonly vscode.Uri[], what: 'change' | 'undo'): Failure {
+  const one = unsaved.length === 1;
+  return {
+    outcome: `VS Code could not save ${one ? noteName(unsaved[0]) : pluralize(unsaved.length, 'note')}, so the ${what} waits unsaved in ${
+      one ? 'its editor' : 'their editors'
+    } and the ${one ? 'file is' : 'files are'} as before.`,
+    fix: `Open ${one ? 'the note' : 'each note'} to save the ${what} or revert it.`,
+    ...(one ? { action: openNoteAction(unsaved[0]) } : {}),
+  };
 }
 
 /**
- * A note as it stands on disk, or nothing when it cannot be read. Its text
- * leaves out a byte order mark, as VS Code's document does, so a note saved
- * with one does not read as changed since; whether it had one is kept, so
- * an Undo written to disk writes it back.
+ * A note's text as it stands on disk, or nothing when it cannot be read.
+ * It leaves out a byte order mark, as VS Code's document does, so a note
+ * saved with one does not read as changed since; the document keeps the
+ * mark and writes it back when it is saved.
  */
-async function readFile(
-  uri: vscode.Uri,
-): Promise<{ text: string; byteOrderMark: boolean } | undefined> {
+async function readFile(uri: vscode.Uri): Promise<{ text: string } | undefined> {
   let bytes: Uint8Array;
   try {
     bytes = await vscode.workspace.fs.readFile(uri);
   } catch {
     return undefined;
   }
-  return { text: decodeUtf8Text(bytes), byteOrderMark: startsWithUtf8Bom(bytes) };
+  return { text: decodeUtf8Text(bytes) };
 }
 
 /** The range that replaces a note's whole text. */

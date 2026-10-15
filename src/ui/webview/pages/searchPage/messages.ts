@@ -20,7 +20,12 @@ import type {
   SetSearchPreviewMessage,
   SetTagOverviewLayoutMessage,
   SetSearchHierarchyMessage,
+  SetSinceFilterMessage,
+  SetStoryFilterMessage,
+  SetStoryOrderMessage,
   SetTagOverviewSortMessage,
+  SinceChipKind,
+  StoryFilter,
   CreateTypeFromTagMessage,
   RenameTypeOptionMessage,
   SetTypeColumnsMessage,
@@ -40,11 +45,13 @@ import {
   narrowExportResults,
   narrowGoToPage,
   NarrowingTable,
+  narrowOpenSearch,
   narrowOpenSource,
   narrowOpenWikiLink,
   narrowOpenTag,
   narrowParkTag,
   narrowPinNote,
+  narrowQuestionAction,
   narrowRenameTag,
   narrowSetDisplay,
   narrowSetZenMode,
@@ -253,6 +260,34 @@ function narrowTypeRow<T extends TypeRowMessage['type']>(type: T): Narrower<Type
       : undefined;
 }
 
+/** The kinds of change a Since you last looked chip filters by. */
+const SINCE_CHIP_KINDS: readonly SinceChipKind[] = ['mentions', 'fields', 'done', 'added', 'answered'];
+
+/** A chip of the Since you last looked band, or none to clear it, and nothing else. */
+const narrowSetSinceFilter: Narrower<SetSinceFilterMessage> = (value) => {
+  if (value.kind === undefined) {
+    return Object.keys(value).length === 1 ? { type: 'setSinceFilter' } : undefined;
+  }
+  return (SINCE_CHIP_KINDS as readonly unknown[]).includes(value.kind) && Object.keys(value).length === 2
+    ? { type: 'setSinceFilter', kind: value.kind as SinceChipKind }
+    : undefined;
+};
+
+/** The Story tab's filters. */
+const STORY_FILTERS: readonly StoryFilter[] = ['all', 'decisions', 'done', 'questions'];
+
+/** A filter of the Story tab, and nothing else. */
+const narrowSetStoryFilter: Narrower<SetStoryFilterMessage> = (value) =>
+  (STORY_FILTERS as readonly unknown[]).includes(value.filter) && Object.keys(value).length === 2
+    ? { type: 'setStoryFilter', filter: value.filter as StoryFilter }
+    : undefined;
+
+/** Oldest first on or off, and nothing else. */
+const narrowSetStoryOrder: Narrower<SetStoryOrderMessage> = (value) =>
+  typeof value.oldestFirst === 'boolean' && Object.keys(value).length === 2
+    ? { type: 'setStoryOrder', oldestFirst: value.oldestFirst }
+    : undefined;
+
 /** Each message a search page may send, and what it must hold. */
 export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   exportResults: narrowExportResults,
@@ -260,6 +295,7 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   setDisplay: narrowSetDisplay,
   chooseTheme: onlyType('chooseTheme'),
   openSource: narrowOpenSource,
+  questionAction: narrowQuestionAction,
   openWikiLink: narrowOpenWikiLink,
   previewSearch: narrowPreviewSearch,
   setResultsPerPage: narrowSetResultsPerPage,
@@ -303,6 +339,15 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   renameTypeOption: narrowRenameTypeOption,
   createRowHub: narrowTypeRow('createRowHub'),
   copyRowValue: narrowTypeRow('copyRowValue'),
+  openSearch: narrowOpenSearch,
+  copyBetweenAgenda: exactlyType('copyBetweenAgenda'),
+  openIdentitySetting: exactlyType('openIdentitySetting'),
+  markSeen: exactlyType('markSeen'),
+  setSinceFilter: narrowSetSinceFilter,
+  setStoryFilter: narrowSetStoryFilter,
+  setStoryOrder: narrowSetStoryOrder,
+  showMoreStory: exactlyType('showMoreStory'),
+  copyStory: exactlyType('copyStory'),
 };
 
 /** A message from a search page, narrowed by its table, or undefined. */

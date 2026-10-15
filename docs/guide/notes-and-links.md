@@ -150,6 +150,17 @@ Front matter can also hold a type's fields: a hub note's `lead: "@alex-rivera"`,
 - [x] Send the update @alex-smith
 ```
 
+### Terms
+
+Work notes are full of short terms: UAT, NDF, RATES-UAT. Deckard reads where each was defined, and says what it means wherever it is written.
+
+- **A term** is two to six capitals and digits with a letter in them, or up to twelve with hyphens between its parts, used in at least three entries: a heading and the lines under it, or a note's text above its first heading. Words in capitals that are no term, such as `OK`, `TODO`, `AM`, `US`, `FYI`, and month and day names, are left out, as are times and quantities such as `10AM`, `24H`, and `5K`, and so is anything in code, a link (its words as well as where it goes), a web address, a tag, or front matter, and every word of a line written all in capitals.
+- **A term note** defines a term: a note whose front matter says `type: term` and `term: NDF`, or whose title is the term, and whose first paragraph is what it means. It wins over anything written elsewhere. A workspace needs no Term [type](databases.md#a-term-type) for Deckard to read one.
+- **Inline**, a term is defined where it is written as `NDF (non-deliverable forward)` or `non-deliverable forward (NDF)`, else as `NDF means words` (or `stands for`), else as a line `NDF: words`, the first time by date of the first of those found. The words in parentheses, or before them, count only when they spell the term's letters: each letter starts a word, in order, with small words such as *of* and *and* skipped. A line `NDF: words` counts when its words spell the letters, or are three words or more and the line is no list item, or the term is in bold as a glossary writes it (`- **NDF**: words`), so a status such as `- UAT: blocked on data` defines nothing.
+- **Hover** a defined term in any note for **NDF** · *non-deliverable forward* · *4 entries*, where it was defined, *Defined Tue, Mar 3 in FX recon kickoff: "…"*, or *From NDF.md*, and **Open definition**, **Find uses** (a search for the term as a word, `text = NDF`), and, for an inline definition, **Make a term note**, which opens [New Note from Type…](databases.md#adding-a-note-of-a-type)'s form for a Term with the term and its words filled in.
+- **A faint dotted line** marks each defined term (`deckard.editor.termUnderline`); [Zen](themes-and-zen.md#zen) hides it, never the hover. Its color is `deckard.termUnderline`.
+- [Stats](home-and-stats.md#terms) lists the terms used but never defined, and those defined; [Find](search.md#find) answers `NDF` or `what is NDF` with its definition; and assistants can ask `deckard_define_term` ([AI assistants](ai-assistants.md#ai-assistants)).
+
 ## Editor assistance
 
 **Presets.** `Deckard: Choose Editor Preset…` sets how much of what follows Deckard draws: **Full**, all of it; **Tasks**, the task hints and problem reports, without link counts, mention lenses, or breadcrumbs; **Writing**, the / menu, hover previews, faint task details, and reports of broken links, embeds, and repeat rules; **Off**, none of it. Each `deckard.editor.*` setting below follows the preset while you leave it unset; one you set yourself, on or off, overrides it.
@@ -158,6 +169,8 @@ Front matter can also hold a type's fields: a hub note's `lead: "@alex-rivera"`,
 - **Right-click in a note** for a **Deckard** submenu, which lists what **Deckard: Note Actions…** lists, in the same order: the task on the line (Toggle Task Done, Edit Task, Set Task Status…, Break into Steps…) and Add Task; the heading (Rename Heading, Extract Heading, Tag Heading with a Person or Project…, Focus Section); the note (Open Note as Page, Open Related Notes, Open Notes Graph Around This Note, Move to…, Copy as Plain Markdown, Move Inline Tags to Front Matter); then Pin or Unpin, and Park or Unpark. A note page's **⋯** lists the ones that work away from the editor: Related Notes, the Notes Graph, Pin or Unpin, and Park or Unpark.
 - **Theme colors:** in any Markdown file, wiki links, an embed's `!`, task dates (`📅 2026-10-02`, `[due:: 2026-10-02]`), repeat rules, priorities, Dataview keys, and a trailing `^block-id` use your theme's colors. To change one, add a rule to `editor.tokenColorCustomizations`, for example `{ "textMateRules": [{ "scope": "constant.numeric.date.deckard", "settings": { "foreground": "#7aa2f7" } }] }`. Scopes end in `.deckard`, such as `constant.numeric.date.due.deckard`, `string.other.repeat.deckard`, and `meta.link.wiki.deckard`.
 - **Task metadata** (dates, priority, repeat rule, ids, person) and any `^block-id` are dimmed (`deckard.editor.dimTaskMetadata`). An overdue task shows its due date in the overdue color and **overdue 5 days** at the line's end; one due today says **due today**; one more than 30 days overdue (`deckard.tasks.needsNewDateAfterDays`) says **needs a new date** (`deckard.editor.taskDueHints`). Change the colors in `workbench.colorCustomizations` as `deckard.overdueForeground` and `deckard.taskHintForeground`.
+- **Terms:** a short term with a definition, such as NDF, has a faint dotted line, and hovering it says what it means and where it was defined. See [Terms](#terms). `deckard.editor.termUnderline` turns the line off.
+- **Promises:** in today's daily note, a line naming one person and a day to come, such as *@sam says the fix lands by Friday*, has its day underlined, and its lens and lightbulb track it as a waiting task under the line. See [Promises in today's note](daily-notes.md#promises-in-todays-note). `deckard.editor.trackPromises` turns this off.
 - **Unreadable repeat rules** are marked on open tasks. The lightbulb offers up to three readable rules. `deckard.editor.repeatDiagnostics` turns this off.
 - **Word count** is in the status bar: see [Status bar and reminders](tasks.md#status-bar-and-reminders).
 - **Tags** are clickable: Cmd/Ctrl-click opens its page, and the hover has **Rename**. Tags on every line are handled, headings' and others' alike.
@@ -178,6 +191,16 @@ Front matter can also hold a type's fields: a hub note's `lead: "@alex-rivera"`,
 - **Hovering a tag** shows its note and task counts, its [hub note](search-pages.md#hub-notes), its five most recently updated entries, **Open overview**, and **Rename**. A [typed](databases.md#in-the-editor) tag, or a link to a typed note, also names its type, its relations, and how to reach it. `deckard.editor.hoverPreviews` set to `false` turns previews off.
 
 ![Reference counts above a note's lines: its backlinks, and each heading's references, open tasks, and the entries that share its tags.](../images/editor-assistance.png)
+
+## File this
+
+Facts about teams and people land in today's note. **File this**, on a line's lightbulb (<kbd>Cmd</kbd>+<kbd>.</kbd> or <kbd>Ctrl</kbd>+<kbd>.</kbd>), carries a fact where it belongs. On *- @priya-natarajan now leads #team/fx*, under *## Org news* in `2026-10-14.md`, it offers:
+
+- **Set FX’s lead to Priya Natarajan (was Alex Rivera)**, first, when the line says what a [type's field](databases.md#a-type-note) holds in one of the phrases its **Words** column lists, such as *leads* for a team's `lead`. The row before the phrase gets the value after it, or, when the field is the other row's type's, the other way round: *@alex-rivera moved to #team/rates* sets Alex's `team`. A Person field takes a person, a relation a row of its type, and a select one of its options written after the phrase. The value is written in the row's hub note's front matter, that key alone; a field that holds several gets it added. A row with no hub note gets one, as **Create hub note** writes it.
+- **Add this line to FX’s notes**, and the same for each other tag on the line that has a [hub note](search-pages.md#hub-notes), up to four. The line is copied, its list mark and box aside, as the last item of the hub's **Notes** list (a heading at any level, made at the end as `## Notes` when the hub has none): `- 2026-10-14: @priya-natarajan now leads #team/fx ([[2026-10-14#Org news]])`. The date is the daily note's day, or today; the link is to the line's heading, written as `deckard.links.style` says ([Settings](settings.md)). The line itself stays where it is.
+- **File under…**, which picks any heading, as **Move to…** does, and copies the line there the same way.
+
+Each is one write, with **Undo** in its message and in **Deckard: Undo Last Change**. A line in a hub note offers no filing: it is already there.
 
 ## Templates
 
