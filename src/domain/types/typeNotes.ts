@@ -10,9 +10,9 @@
  * ---
  * # Team
  *
- * | Field | Kind   | Reverse | Also called |
- * | ----- | ------ | ------- | ----------- |
- * | lead  | Person | lead of | head        |
+ * | Field | Kind   | Reverse | Also called | Words              |
+ * | ----- | ------ | ------- | ----------- | ------------------ |
+ * | lead  | Person | lead of | head        | leads, now leads   |
  * ```
  *
  * The note is read on its own here; what needs the other types too, such
@@ -50,6 +50,7 @@ const KNOWN_COLUMNS: ReadonlyMap<string, ColumnRole> = new Map([
   ['kind', 'kind'],
   ['reverse', 'reverse'],
   ['also called', 'alsoCalled'],
+  ['words', 'words'],
 ]);
 
 /** Records a problem on the note being read. */
@@ -204,7 +205,7 @@ function readSchemaTable(source: TypeNoteSource, problem: ReportProblem): Schema
 }
 
 /** The role Deckard reads a schema table's column in. */
-type ColumnRole = 'field' | 'kind' | 'reverse' | 'alsoCalled';
+type ColumnRole = 'field' | 'kind' | 'reverse' | 'alsoCalled' | 'words';
 
 /** What reading a schema table's rows takes: its header as written, each column's role, and where problems go. */
 interface TableHeader {
@@ -244,6 +245,10 @@ function readFieldRow(cells: readonly string[], header: TableHeader, line: numbe
     .split(',')
     .map((word) => word.trim())
     .filter(Boolean);
+  const words = cell('words')
+    .split(',')
+    .map((phrase) => phrase.trim().replace(/\s+/g, ' ').toLowerCase())
+    .filter(Boolean);
   const extra: Record<string, string> = {};
   roles.forEach((role, at) => {
     if (!role && columns[at].trim()) {
@@ -257,6 +262,7 @@ function readFieldRow(cells: readonly string[], header: TableHeader, line: numbe
     kind,
     ...(reverse ? { reverse } : {}),
     alsoCalled,
+    ...(words.length > 0 ? { words: [...new Set(words)] } : {}),
     line,
     ...(Object.keys(extra).length > 0 ? { extra } : {}),
   };

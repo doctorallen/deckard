@@ -48,6 +48,12 @@ export interface TypeField {
   reverse?: string;
   /** The `Also called` cell's words, the names Find and the assistant also know the field by. */
   alsoCalled: string[];
+  /**
+   * The `Words` cell's phrases, lowercased: what a line says to mean the
+   * field, `leads, led by, now leads`, which File this reads to offer Set
+   * lead (docs/implementation/43-file-this.md). Absent when it names none.
+   */
+  words?: string[];
   /** The one-based line of the field's table row. */
   line: number;
   /** The cells of columns Deckard does not read, by their header as written, kept for a rewrite. */

@@ -234,6 +234,26 @@ suite('Types: the schema table', () => {
     assert.deepStrictEqual(splitTableRow('| a \\| b | c |'), ['a | b', 'c']);
   });
 
+  test('reads a Words column: the phrases that mean each field, lowercased, comma separated', () => {
+    const type = typeNoteOf(
+      [
+        '---',
+        'deckard-type: team',
+        'rows: "#team/*"',
+        '---',
+        '| Field | Kind   | Words                          | Also called |',
+        '| ----- | ------ | ------------------------------ | ----------- |',
+        '| lead  | Person | leads, Led By,  now   leads,   | head        |',
+        '| tier  | Text   |                                |             |',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(type.fields.map((field) => [field.name, field.words, field.alsoCalled]), [
+      ['lead', ['leads', 'led by', 'now leads'], ['head']],
+      ['tier', undefined, []],
+    ]);
+    assert.strictEqual(type.fields[0].extra, undefined, 'a column Deckard reads, not one it only keeps');
+  });
+
   test('reads back a cell Deckard wrote with a backslash or a pipe in it', () => {
     const cells = ['a | b', 'C:\\notes\\', 'ends \\|', '\\'];
     for (const line of writeTable(['One', 'Two', 'Three', 'Four'], [cells]).slice(2)) {
@@ -778,8 +798,8 @@ suite('Types: the index', () => {
 });
 
 suite('Types: parsed notes', () => {
-  test('the parse format changed, so the cache rebuilds with properties', () => {
-    assert.strictEqual(PARSE_FORMAT, 'note-properties');
+  test('the parse format changed, so the cache rebuilds with a type note’s Words', () => {
+    assert.strictEqual(PARSE_FORMAT, 'type-words');
   });
 
   test('keeps every front-matter key of every note, with tags and lines, and its type', () => {

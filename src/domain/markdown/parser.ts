@@ -39,7 +39,7 @@ import { parseTypeNote } from '../types/typeNotes';
  * (steps' parent links, say) changes it, so the local cache, which keeps
  * parsed notes, is rebuilt rather than served in the old shape.
  */
-export const PARSE_FORMAT = 'note-properties';
+export const PARSE_FORMAT = 'type-words';
 
 /** A heading as the parser found it: its 1-based line, its level, and its words. */
 interface HeadingMatch {
