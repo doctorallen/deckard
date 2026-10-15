@@ -1,5 +1,5 @@
 import type { HeadingTagSpan, TagReference } from '../model';
-import { isFrontmatterClose } from './frontmatter';
+import { FRONTMATTER_KEY_SOURCE, isFrontmatterClose, toFrontmatterKey } from './frontmatter';
 import { formatYamlValue } from './frontmatterTags';
 import {
   EntityNamespaceAliases,
@@ -390,11 +390,9 @@ function getFrontmatterField(
       return undefined;
     }
     // YAML allows spaces before the colon, as `tags : [a]`.
-    const property = lines[lineIndex]?.match(
-      /^\s*([A-Za-z][A-Za-z0-9_-]*)[ \t]*:/,
-    );
+    const property = lines[lineIndex]?.match(new RegExp(`^\\s*(${FRONTMATTER_KEY_SOURCE})[ \\t]*:`));
     if (property) {
-      currentField = property[1].toLowerCase();
+      currentField = toFrontmatterKey(property[1]);
     }
   }
   return currentField;

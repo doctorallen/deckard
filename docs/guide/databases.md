@@ -39,7 +39,7 @@ Every #team/ tag is a team. Text below the table describes the type.
 
 The first table whose header has **Field** and **Kind** lists the fields, one to a row, in any case:
 
-- **Field** is the front-matter key, such as `lead` or `on-call`.
+- **Field** is the front-matter key, such as `lead`, `on-call`, or `Distribution List`. A name in words is written in front matter as it is, `Distribution List: ["@dana"]`, and reads the same with hyphens, `distribution-list:`, which is how a search names it.
 - **Kind** says what its values are; see below. Add `, many` for a field that holds several, `Area, many`.
 - **Reverse** names the field the other side of a relation gets: a team's `owns` makes each area **owned by** that team. Left empty, it is the field's name and *of*, `owns of`. In a search, its spaces are hyphens: `owned-by`.
 - **Also called** lists other words for the field, separated by commas, which [Find](#asking-find) reads in a question.

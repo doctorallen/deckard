@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Changed
+
+- **Field names in words.** A type's field may be named in words, such as
+  `Distribution List`. A row's note writes it as named,
+  `Distribution List: ["@dana", "@omar"]`, and Deckard reads it the same
+  as `distribution-list:`, the name a search uses. New notes, completions,
+  and Rename field write the name as the type's table spells it.
+
+### Fixed
+
+- A front-matter line Deckard cannot read as a key no longer passes the
+  list under it to the key above.
+
 ## 2.9.0 - 2026-10-15
 
 ### Highlights

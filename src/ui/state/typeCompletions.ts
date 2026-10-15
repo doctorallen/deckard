@@ -5,7 +5,7 @@
  * the rows, options, or words its kind takes; in a type note, the kinds in
  * the table's Kind column and the rows `rows:` can name.
  */
-import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
+import { FRONTMATTER_KEY_SOURCE, findFrontmatterEnd, isFrontmatterKey, toFrontmatterKey } from '../../domain/markdown/frontmatter';
 import { readTagNamespace } from '../../domain/markdown/tagKeys';
 import type { TypeNote, WorkspaceIndex } from '../../domain/model';
 import type { TypeIndex } from '../../domain/types/typeIndex';
@@ -36,10 +36,8 @@ export type FrontmatterCompletionContext =
       quoted: boolean;
     };
 
-/** A front-matter key, as the parser keys one. */
-const KEY = /^[A-Za-z][A-Za-z0-9_-]*$/;
-/** A line that writes a key: `lead: "@dana"`. */
-const KEY_LINE = /^([A-Za-z][A-Za-z0-9_-]*)\s*:/;
+/** A line that writes a key: `lead: "@dana"`, `Distribution List: [@dana]`. */
+const KEY_LINE = new RegExp(`^(${FRONTMATTER_KEY_SOURCE})\\s*:`);
 
 /**
  * What a cursor in a note's front matter completes: a key, on a line with
@@ -61,8 +59,8 @@ export function findFrontmatterCompletionContext(
   }
   const text = lines[line] ?? '';
   const before = text.slice(0, character);
-  if (before === '' || KEY.test(before)) {
-    const after = /^[A-Za-z0-9_-]*/.exec(text.slice(character))?.[0] ?? '';
+  if (before === '' || isFrontmatterKey(before.trimEnd())) {
+    const after = (/^[A-Za-z0-9_ \t-]*/.exec(text.slice(character))?.[0] ?? '').trimEnd();
     if (/^\s*:/.test(text.slice(character + after.length))) {
       return undefined;
     }
@@ -70,7 +68,7 @@ export function findFrontmatterCompletionContext(
     lines.slice(1, end ?? lines.length).forEach((written, at) => {
       const key = at + 1 === line ? undefined : KEY_LINE.exec(written)?.[1];
       if (key) {
-        present.add(key.toLowerCase());
+        present.add(toFrontmatterKey(key));
       }
     });
     return { kind: 'key', start: 0, end: character + after.length, present };
@@ -84,7 +82,7 @@ export function findFrontmatterCompletionContext(
   const tokenEnd = findValueEnd(text, character);
   return {
     kind: 'value',
-    key: keyed[1].toLowerCase(),
+    key: toFrontmatterKey(keyed[1]),
     start: tokenStart,
     end: Math.max(tokenEnd, character),
     typed: before.slice(tokenStart).replace(/^["']/, ''),
@@ -141,7 +139,7 @@ export interface TypeCompletion {
 
 /**
  * The fields of a row note's types that its front matter does not write
- * yet, in each type's table order, each written as `key: `.
+ * yet, in each type's table order, each written as its table names it: `lead: `.
  */
 export function listFieldKeyCompletions(types: readonly TypeDefinition[], present: ReadonlySet<string>): TypeCompletion[] {
   const offered = new Set<string>();
@@ -155,8 +153,8 @@ export function listFieldKeyCompletions(types: readonly TypeDefinition[], presen
         {
           label: field.name,
           detail: `${type.name} field · ${field.kindText || 'Text'}`,
-          documentation: `Writes \`${field.key}: \`, a ${type.name}'s ${field.name}.`,
-          insertText: `${field.key}: `,
+          documentation: `Writes \`${field.name}: \`, a ${type.name}'s ${field.name}.`,
+          insertText: `${field.name}: `,
           filterText: field.name,
           icon: 'field' as const,
         },

@@ -19,6 +19,7 @@
  * as whether a relation names a type, is the registry's (typeRegistry.ts).
  */
 import type { FrontmatterProperty, TypeField, TypeNote, TypeProblem, TypeRowsRule } from '../model';
+import { isFrontmatterKey, toFrontmatterKey } from '../markdown/frontmatter';
 import { formatKeyWords } from '../markdown/tagKeys';
 import { parseFieldKind } from './fieldKinds';
 
@@ -37,8 +38,6 @@ export interface TypeNoteSource {
   firstHeading?: string;
 }
 
-/** A front-matter key, as a field name must be to be written as one. */
-const FRONTMATTER_KEY = /^[A-Za-z][A-Za-z0-9_-]*$/;
 /** A tag namespace path, as `rows:` names one: `team`, `org/acme`. */
 const NAMESPACE_PATH = /^[\p{L}\p{N}][\p{L}\p{N}\p{M}_-]*(?:\/[\p{L}\p{N}][\p{L}\p{N}\p{M}_-]*)*$/u;
 /** A table's separator row: `| --- | :-: |`. */
@@ -226,15 +225,15 @@ function readFieldRow(cells: readonly string[], header: TableHeader, line: numbe
     }
     return undefined;
   }
-  if (!FRONTMATTER_KEY.test(name)) {
+  if (!isFrontmatterKey(name)) {
     problem(
       'bad-field-name',
       line,
-      `"${name}" cannot be a front-matter key: start with a letter and use letters, digits, - and _.`,
+      `"${name}" cannot be a front-matter key: start with a letter and use letters, digits, spaces, - and _.`,
     );
     return undefined;
   }
-  const key = name.toLowerCase();
+  const key = toFrontmatterKey(name);
   const kindText = cell('kind');
   const { kind, missing } = parseFieldKind(kindText);
   if (missing) {

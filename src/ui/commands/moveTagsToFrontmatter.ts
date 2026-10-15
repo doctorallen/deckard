@@ -16,7 +16,7 @@ import {
 } from '../../domain/markdown/frontmatterTags';
 import { isMarkdownFile } from '../../core/workspace/scanner';
 import { TagReference } from '../../domain/model';
-import { unquote } from '../../domain/markdown/frontmatter';
+import { FRONTMATTER_KEY_SOURCE, unquote } from '../../domain/markdown/frontmatter';
 
 /** A front-matter field tags are moved into, by the entity kind they name. */
 type FrontmatterTagGroup =
@@ -175,7 +175,7 @@ export function moveInlineTagsToFrontmatterContent(
  * YAML allows spaces before the colon, as `tags : [a]`, and so does the
  * parser.
  */
-const FIELD_LINE = /^([A-Za-z][A-Za-z0-9_-]*)[ \t]*:\s*(.*)$/;
+const FIELD_LINE = new RegExp(`^(${FRONTMATTER_KEY_SOURCE})[ \\t]*:\\s*(.*)$`);
 
 /**
  * The first tag field, as written, whose line or list item ends in a YAML

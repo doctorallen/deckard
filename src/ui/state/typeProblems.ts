@@ -14,6 +14,7 @@
  * placed on the editor's lines as they are now, and one whose value is no
  * longer on its line is left out until the notes are read again.
  */
+import { FRONTMATTER_KEY_SOURCE, toFrontmatterKey } from '../../domain/markdown/frontmatter';
 import { formatKeyWords, readTagNamespace } from '../../domain/markdown/tagKeys';
 import type { FieldKind, TypeField, TypeProblem, TypeProblemCode, WorkspaceIndex } from '../../domain/model';
 import { parseFieldKind, isRowKind } from '../../domain/types/fieldKinds';
@@ -110,8 +111,8 @@ export function locateTypeProblem(
       return { start: cell.start, end: cell.end };
     }
   }
-  const key = problem.field ? new RegExp(`^(\\s*)(${escape(problem.field)})\\s*:`, 'i').exec(text) : null;
-  if (key) {
+  const key = problem.field ? new RegExp(`^(\\s*)(${FRONTMATTER_KEY_SOURCE})\\s*:`).exec(text) : null;
+  if (key && toFrontmatterKey(key[2]) === problem.field) {
     return { start: key[1].length, end: key[1].length + key[2].length };
   }
   const start = text.search(/\S/);
@@ -131,10 +132,6 @@ function locateValue(text: string, value: string): { start: number; end: number 
   }
   const at = rest.toLowerCase().indexOf(value.toLowerCase());
   return at >= 0 ? { start: from + at, end: from + at + value.length } : undefined;
-}
-
-function escape(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /** The fixes one problem offers, for its mark at `at`. */

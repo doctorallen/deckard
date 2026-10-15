@@ -16,6 +16,7 @@
  *   (`on-call Sam Ortiz`), so a row with no note still shows who owns it.
  */
 import { noteTitle } from '../../domain/index/backlinks';
+import { toFrontmatterKey } from '../../domain/markdown/frontmatter';
 import { formatKeyWords } from '../../domain/markdown/tagKeys';
 import type { WorkspaceIndex } from '../../domain/model';
 import { getTypeIndex, type FieldValue, type RowField, type TypeIndex, type TypeRow } from '../../domain/types/typeIndex';
@@ -106,7 +107,7 @@ function describeRowFields(types: TypeIndex, row: TypeRow, options: RowFieldOpti
     };
   };
   const others: DrawnField[] = options.others
-    .filter((other) => !IDENTITY_KEYS.has(other.name.toLowerCase()) && !schemaKeys.has(other.name.toLowerCase()) && other.values.length > 0)
+    .filter((other) => !IDENTITY_KEYS.has(toFrontmatterKey(other.name)) && !schemaKeys.has(toFrontmatterKey(other.name)) && other.values.length > 0)
     .map((other) => ({ name: other.name, source: 'written', values: other.values }));
   const filled = all.filter((field) => field.values.length > 0);
   return {

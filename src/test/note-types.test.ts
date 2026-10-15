@@ -272,7 +272,7 @@ suite('Types: the schema table', () => {
         '# Squad',
         '| Field | Kind |',
         '| ----- | ---- |',
-        '| on call | Person |',
+        '| on/call | Person |',
         '| lead | |',
         '| lead | Text |',
         '| | Text |',
@@ -297,6 +297,35 @@ suite('Types: the schema table', () => {
       typeNoteOf('---\ndeckard-type: x\nrows: notes\n---\n# X').problems.map((problem) => problem.code),
       ['no-table'],
     );
+  });
+
+  test('a field named in words is read from its key written in those words, or with hyphens', () => {
+    const types = getTypeIndex(
+      indexOf({
+        'Types/Org.md': [
+          '---',
+          'deckard-type: org',
+          'rows: "#org/*"',
+          '---',
+          '# Org',
+          '| Field | Kind |',
+          '| ----- | ---- |',
+          '| Distribution List | Person, many |',
+          '| distribution-list | Text |',
+        ].join('\n'),
+        'Orgs/Acme.md': ['---', 'describes: "#org/acme"', 'Distribution List:', '  - "@dana"', '  - "@omar"', '---', '# Acme'].join('\n'),
+        'Orgs/Globex.md': ['---', 'describes: "#org/globex"', 'distribution-list: "@dana"', '---', '# Globex'].join('\n'),
+      }),
+    );
+    const org = types.registry.get('org');
+    assert.deepStrictEqual(org?.fields.map((field) => [field.name, field.key]), [['Distribution List', 'distribution-list']]);
+    assert.deepStrictEqual(
+      types.registry.problems.filter((problem) => problem.filePath === 'Types/Org.md').map((problem) => problem.code),
+      ['duplicate-field'],
+      'the same key spelled with hyphens repeats the field',
+    );
+    assert.deepStrictEqual(types.field('#org/acme', 'distribution-list')?.values.map((value) => value.rowId), ['@dana', '@omar']);
+    assert.deepStrictEqual(types.field('#org/globex', 'distribution-list')?.values.map((value) => value.rowId), ['@dana']);
   });
 
   test('reads rows: namespaces, people, and notes', () => {
@@ -354,7 +383,7 @@ suite('Types: kinds', () => {
           '---',
           '| Field | Kind | Reverse |',
           '| --- | --- | --- |',
-          '| part of | Text | |',
+          '| part/of | Text | |',
           '| area | AREA or team | |',
           '| steward | Person or Team | stewards |',
           '| home | Aera | |',

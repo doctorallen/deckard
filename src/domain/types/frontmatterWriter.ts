@@ -18,7 +18,7 @@
  * nested map, or a list or quoted value across lines, is refused with the
  * line to open the editor at.
  */
-import { findFrontmatterEnd } from '../markdown/frontmatter';
+import { FRONTMATTER_KEY_SOURCE, findFrontmatterEnd, isFrontmatterKey, toFrontmatterKey } from '../markdown/frontmatter';
 import { formatYamlValue } from '../markdown/frontmatterTags';
 
 /** One value to write, as text: `@dana`, `#team/rates`, `[[RFQ outage]]`, `Head of Rates`. */
@@ -62,10 +62,8 @@ export type FrontmatterFieldEdit =
   | { kind: 'unchanged' }
   | { kind: 'refused'; reason: FrontmatterRefusal; line: number };
 
-/** A front-matter key as the parser reads one: a letter, then letters, digits, `_`, and `-`. */
-const KEY = /^[A-Za-z][A-Za-z0-9_-]*$/;
 /** A key's line: the key, its colon with any spaces before it, and what follows. */
-const KEY_LINE = /^([A-Za-z][A-Za-z0-9_-]*)([ \t]*:)(.*)$/;
+const KEY_LINE = new RegExp(`^(${FRONTMATTER_KEY_SOURCE})([ \\t]*:)(.*)$`);
 /** One item of a block list: its indentation, its dash and space, and its value. */
 const LIST_ITEM = /^([ \t]*)-(?:[ \t]+(.*?))?[ \t]*$/;
 /** A line that is only a comment, indented or not. */
@@ -90,11 +88,12 @@ interface WrittenKey {
 /**
  * The note with one key of its front matter set to `write`'s values, or
  * taken out when there are none; see the module comment for what is kept.
- * `key` is matched in any case, as the parser reads it; a key written twice
- * is written where the parser reads it, the last time.
+ * `key` is matched as the parser keys it, in any case and with a hyphen for
+ * a space, and written as given when the note does not write it yet; a key
+ * written twice is written where the parser reads it, the last time.
  */
 export function setFrontmatterField(content: string, key: string, write: FrontmatterFieldWrite): FrontmatterFieldEdit {
-  if (!KEY.test(key)) {
+  if (!isFrontmatterKey(key)) {
     return { kind: 'refused', reason: 'bad-key', line: 1 };
   }
   const note: Note = { lines: content.split(/\r?\n/), eol: content.includes('\r\n') ? '\r\n' : '\n' };
@@ -102,7 +101,7 @@ export function setFrontmatterField(content: string, key: string, write: Frontma
   const list = write.list === true || values.length > 1;
   const end = findFrontmatterEnd(note.lines);
   const keys = end === undefined ? [] : readKeys(note.lines, end);
-  const written = [...keys].reverse().find((each) => each.head.replace(/[ \t]*:$/, '').toLowerCase() === key.toLowerCase());
+  const written = [...keys].reverse().find((each) => toFrontmatterKey(nameOf(each)) === toFrontmatterKey(key));
   if (!written) {
     if (values.length === 0) {
       return { kind: 'unchanged' };
@@ -121,25 +120,23 @@ export function setFrontmatterField(content: string, key: string, write: Frontma
 /**
  * The note with one front-matter key renamed, its value, comment, spacing,
  * and the lines under it kept byte for byte: what Rename field everywhere
- * writes in each row's note. `from` is matched in any case, as the parser
- * reads keys; every line that writes it is renamed, so a key written twice
+ * writes in each row's note. `from` is matched as the parser keys it; every line that writes it is renamed, so a key written twice
  * stays one key. Nothing to do when the note does not write `from` or
  * already spells it `to`; refused, at the line of the key it would
  * collide with, when the note writes `to` as another key.
  */
 export function renameFrontmatterKey(content: string, from: string, to: string): FrontmatterFieldEdit {
-  if (!KEY.test(from) || !KEY.test(to)) {
+  if (!isFrontmatterKey(from) || !isFrontmatterKey(to)) {
     return { kind: 'refused', reason: 'bad-key', line: 1 };
   }
   const note: Note = { lines: content.split(/\r?\n/), eol: content.includes('\r\n') ? '\r\n' : '\n' };
   const end = findFrontmatterEnd(note.lines);
   const keys = end === undefined ? [] : readKeys(note.lines, end);
-  const nameOf = (key: WrittenKey): string => key.head.replace(/[ \t]*:$/, '');
-  const renamed = keys.filter((key) => nameOf(key).toLowerCase() === from.toLowerCase());
+  const renamed = keys.filter((key) => toFrontmatterKey(nameOf(key)) === toFrontmatterKey(from));
   if (renamed.length === 0) {
     return { kind: 'unchanged' };
   }
-  const taken = from.toLowerCase() === to.toLowerCase() ? undefined : keys.find((key) => nameOf(key).toLowerCase() === to.toLowerCase());
+  const taken = toFrontmatterKey(from) === toFrontmatterKey(to) ? undefined : keys.find((key) => toFrontmatterKey(nameOf(key)) === toFrontmatterKey(to));
   if (taken) {
     return { kind: 'refused', reason: 'key-taken', line: taken.line + 1 };
   }
@@ -150,6 +147,11 @@ export function renameFrontmatterKey(content: string, from: string, to: string):
     return key ? `${to}${text.slice(nameOf(key).length)}` : text;
   });
   return replaceLines(note, { start, count: last - start + 1, next, line: last + 1 });
+}
+
+/** A written key's name, without its colon and the spaces before it. */
+function nameOf(key: WrittenKey): string {
+  return key.head.replace(/[ \t]*:$/, '');
 }
 
 /** A note's lines, and the line ending it writes them with. */
