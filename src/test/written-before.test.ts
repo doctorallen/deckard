@@ -4,11 +4,13 @@ import { performance } from 'perf_hooks';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import type { ParsedFile, WorkspaceIndex } from '../domain/model';
-import { getLineIndex } from '../domain/ranking/lineIndex';
+import { buildLineIndexSlice, getLineIndex, peekLineIndex } from '../domain/ranking/lineIndex';
+import { type AnswerOffer, findAnswerOffers, updateAnswerOffers } from '../domain/ranking/answerOffers';
 import {
   countLineWords,
   describeWrittenBeforeHint,
   findWrittenBefore,
+  keepWrittenBefore,
   linkItHere,
   notSameKey,
   WRITTEN_BEFORE_MIN_SCORE,
@@ -147,6 +149,94 @@ suite('You\'ve written this before: how long ranking takes', () => {
     });
     const median = [...timings].sort((left, right) => left - right)[Math.floor(timings.length / 2)];
     assert.ok(median < 15, `the median line took ${median.toFixed(2)} ms`);
+  });
+});
+
+suite('Lines like a line: what the first build and a save cost', () => {
+  const random = createRandom(7);
+  const vocabulary = Array.from({ length: 6000 }, (_, at) => `w${at.toString(36)}x`);
+  const weighted = vocabulary.flatMap((word, rank) => Array.from({ length: Math.max(1, Math.round(400 / (rank + 1))) }, () => word));
+  const lineOf = (): string => `- ${Array.from({ length: 8 + Math.floor(random() * 8) }, () => pick(random, random() < 0.5 ? weighted : vocabulary)).join(' ')}`;
+  let files: Map<string, ParsedFile>;
+
+  suiteSetup(function () {
+    this.timeout(120000);
+    files = new Map();
+    for (let note = 0; note < 3000; note += 1) {
+      const filePath = `notes/n${note}.md`;
+      files.set(filePath, parseMarkdown(filePath, `# Note ${note}\n## Part #topic/t${note % 40}\n${Array.from({ length: 30 }, lineOf).join('\n')}\n`));
+    }
+    // Two hundred open questions, asked on a day before every line.
+    const asked = `# Questions\n${Array.from({ length: 200 }, () => lineOf().replace('- ', '- [?] ')).join('\n')}\n`;
+    files.set('notes/2024-01-01.md', parseMarkdown('notes/2024-01-01.md', asked));
+  });
+
+  test('the first build reads the notes a slice at a time, each within its budget, and is then read at once', function () {
+    this.timeout(120000);
+    // Read again, so no note is the line index's already.
+    const index = buildWorkspaceIndex(new Map([...files].map(([filePath, file]) => [filePath, parseMarkdown(filePath, file.content)])));
+    assert.strictEqual(peekLineIndex(index), undefined, 'thousands of notes are not read at once');
+    const slices: number[] = [];
+    let done = false;
+    while (!done) {
+      const start = performance.now();
+      done = buildLineIndexSlice(index, () => performance.now() - start >= 15);
+      slices.push(performance.now() - start);
+    }
+    assert.ok(slices.length > 1, 'more than one slice');
+    // Each slice stops once 15 ms have passed, after a note; a pause for
+    // garbage collection can still land in one, so the bound is loose.
+    const median = [...slices].sort((left, right) => left - right)[Math.floor(slices.length / 2)];
+    const longest = Math.max(...slices);
+    assert.ok(median < 30 && longest < 150, `the median slice took ${median.toFixed(1)} ms, the longest ${longest.toFixed(1)} ms`);
+    assert.strictEqual(peekLineIndex(index), getLineIndex(index), 'built, it is read at once');
+    const one = buildWorkspaceIndex(new Map([...index.files, ['notes/n5.md', parseMarkdown('notes/n5.md', `# Note 5\n${lineOf()}\n`)]]));
+    assert.ok(peekLineIndex(one), 'a save is read at once');
+  });
+
+  test('after a save, the offers rank again only the questions it reaches, and match ranking them all', function () {
+    this.timeout(120000);
+    const index = buildWorkspaceIndex(files);
+    getLineIndex(index);
+    let start = performance.now();
+    const before = updateAnswerOffers(undefined, index, { rejected: new Set() });
+    const everyQuestion = performance.now() - start;
+    const saved = buildWorkspaceIndex(new Map([...files, ['notes/n5.md', parseMarkdown('notes/n5.md', `# Note 5\n${lineOf()}\n`)]]));
+    getLineIndex(saved);
+    start = performance.now();
+    const after = updateAnswerOffers(before, saved, { rejected: new Set() });
+    const oneSave = performance.now() - start;
+    const offered = (offers: Map<string, AnswerOffer>) => [...offers].map(([id, offer]) => `${id} ${offer.filePath}:${offer.line}`).sort();
+    assert.deepStrictEqual(offered(after.offers), offered(findAnswerOffers(saved, { rejected: new Set() })));
+    assert.ok(oneSave < 50 && oneSave < everyQuestion / 4, `a save took ${oneSave.toFixed(1)} ms; every question, ${everyQuestion.toFixed(1)} ms`);
+  });
+});
+
+suite('Lines like a line: matches kept across an index', () => {
+  const NOTES = {
+    'notes/offsite.md': `# Offsite\n${OTHER_LINES}\n`,
+    'notes/2026-03-12.md': '# 2026-03-12\n## Rates desk standup #team/rates\n- Same lag in the curve feed, fixed by restarting the loader\n',
+    'notes/2026-10-14.md': `# 2026-10-14\n${WRITING.text}\n`,
+  };
+  const found = new Map([['line', { filePath: WRITING.filePath, text: WRITING.text, matches: [] }]]);
+  const before = indexOf(NOTES);
+  /** The matches kept once `changes` are read: the other notes are the same notes as before, as a save leaves them. */
+  const kept = (changes: Record<string, string>) => {
+    const after = new Map(before.files);
+    Object.entries(changes).forEach(([filePath, text]) => after.set(filePath, parseMarkdown(filePath, text)));
+    return [...keepWrittenBefore(before, buildWorkspaceIndex(after), found).keys()];
+  };
+
+  test('are kept when the note being written is saved, or a note with no line sharing three of its words', () => {
+    assert.deepStrictEqual(kept({}), ['line']);
+    assert.deepStrictEqual(kept({ 'notes/2026-10-14.md': `# 2026-10-14\n${WRITING.text}\n- The curve feed lagged when the loader restarted\n` }), ['line']);
+    assert.deepStrictEqual(kept({ 'notes/other.md': '# Other\n- Lunch with the auditors on Friday\n' }), ['line']);
+    assert.deepStrictEqual(kept({ 'notes/2026-09-01.md': '# 2026-09-01\n- The loader restarted twice\n' }), ['line'], 'two words shared');
+  });
+
+  test('are found again when another note has, or had, a line sharing three of its words', () => {
+    assert.deepStrictEqual(kept({ 'notes/2026-09-01.md': '# 2026-09-01\n- The curve feed lagged when the loader restarted\n' }), []);
+    assert.deepStrictEqual(kept({ 'notes/2026-03-12.md': '# 2026-03-12\n## Rates desk standup #team/rates\n- Rewritten\n' }), [], 'the line it matched is gone');
   });
 });
 

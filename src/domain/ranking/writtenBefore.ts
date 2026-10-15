@@ -5,7 +5,16 @@
  */
 import { DAY_MS } from '../markdown/calendar';
 import type { WorkspaceIndex } from '../model';
-import { findLinesLike, getLineIndex, hashLine, lineWords } from './lineIndex';
+import {
+  findLinesLike,
+  getLineIndex,
+  hashLine,
+  isUncommonTerm,
+  lineWords,
+  listChangedNotes,
+  reachesSearch,
+  readChangedLines,
+} from './lineIndex';
 import { getLineTerms } from './wordSimilarity';
 
 /** How many words a line must have before it is compared at all. */
@@ -109,6 +118,51 @@ export function findWrittenBefore(index: WorkspaceIndex, line: WrittenLine, opti
     .filter((match) => !options.rejected.has(match.key))
     .sort((left, right) => right.score - left.score)
     .slice(0, WRITTEN_BEFORE_LIMIT);
+}
+
+/** The older lines found for one line of a note, as a cache of them keeps them. */
+export interface FoundWrittenBefore {
+  /** The note the line is written in, whose own lines never match it. */
+  filePath: string;
+  text: string;
+  matches: WrittenBeforeMatch[];
+}
+
+/**
+ * More notes changed than this, as after a settings change reads every
+ * note again, and nothing found before is kept.
+ */
+const KEEP_LIMIT = 200;
+
+/**
+ * Of the lines' matches found against `before`, those that still stand
+ * against `after`: a line's are kept when no line of a note that changed
+ * between the two, in either version, shares three of its uncommon words,
+ * since only such a line can have joined them or left them, leaving out
+ * the lines of its own note, which never match it: saving the note being
+ * written keeps them all. A word's weight, and whether it is uncommon, move
+ * a little with every line added anywhere; the matches kept are ranked as
+ * they were.
+ */
+export function keepWrittenBefore<K>(
+  before: WorkspaceIndex,
+  after: WorkspaceIndex,
+  found: ReadonlyMap<K, FoundWrittenBefore>,
+): Map<K, FoundWrittenBefore> {
+  const changed = listChangedNotes(before, after);
+  if (changed.length > KEEP_LIMIT) {
+    return new Map();
+  }
+  const changedLines = readChangedLines(before, after, changed);
+  const lines = getLineIndex(after);
+  const kept = new Map<K, FoundWrittenBefore>();
+  found.forEach((entry, key) => {
+    const terms = getLineTerms(entry.text).filter((term) => isUncommonTerm(lines, term));
+    if (!reachesSearch(changedLines, terms, WRITTEN_BEFORE_MIN_SHARED, (line) => line.filePath === entry.filePath)) {
+      kept.set(key, entry);
+    }
+  });
+  return kept;
 }
 
 /** How long the hint after a line may run, its date included. */

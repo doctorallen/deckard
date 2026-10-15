@@ -6,6 +6,7 @@ import { measure } from '../../shared/timing';
 import { escapeMarkdown, pluralize } from '../../shared/text';
 import type { WorkspaceIndex } from '../../domain/model';
 import { buildQuestionRows, describeQuestionRow, type QuestionOfferRow, type QuestionRow } from '../state/questionsState';
+import { onDidBuildLineIndex } from '../state/lineIndexBuild';
 import { DATE_FORMAT_SETTINGS, readDateFormats } from '../commands/datePrompt';
 import { speakRow } from './spokenRow';
 
@@ -56,6 +57,8 @@ export class QuestionsTreeProvider implements vscode.TreeDataProvider<QuestionsN
         () => this.refresh(),
       ),
       memory.onDidChange(() => this.refresh()),
+      // The offers are left out while the line index is first built.
+      onDidBuildLineIndex(() => this.refresh()),
       // What counts as today moves at midnight, and with it each question's age.
       vscode.window.onDidChangeWindowState((state) => {
         if (state.focused) {

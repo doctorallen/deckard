@@ -9,7 +9,8 @@ import { DAY_MS, startOfDay } from '../../domain/markdown/calendar';
 import { type DateFormats, DEFAULT_DATE_FORMATS, formatDisplayDate } from '../../domain/markdown/dateFormat';
 import { stripTags } from '../../domain/markdown/parser';
 import type { Question, WorkspaceIndex } from '../../domain/model';
-import { type AnswerOffer, findAnswerOffers } from '../../domain/ranking/answerOffers';
+import { type AnswerOffer, type AnswerOfferState, updateAnswerOffers } from '../../domain/ranking/answerOffers';
+import { readLineIndex } from './lineIndexBuild';
 import { pluralize } from '../../shared/text';
 import { measure } from '../../shared/timing';
 import type { SearchPageQuestion } from '../protocol/searchPage';
@@ -53,6 +54,9 @@ export interface QuestionRowOptions {
   showAnswered?: boolean;
 }
 
+/** The offers worked out last, which the next index's start from. */
+let lastOffers: AnswerOfferState | undefined;
+
 /** The offers last worked out, by index, with the pairs set aside they leave out. */
 const offersByIndex = new WeakMap<WorkspaceIndex, { rejected: ReadonlySet<string>; offers: Map<string, AnswerOffer> }>();
 
@@ -66,9 +70,19 @@ export function getAnswerOffers(index: WorkspaceIndex, rejected: ReadonlySet<str
   if (cached && cached.rejected === rejected) {
     return cached.offers;
   }
-  const offers = measure('Answer offers', () => findAnswerOffers(index, { rejected }), (found) => `${found.size} offers`);
-  offersByIndex.set(index, { rejected, offers });
-  return offers;
+  // While the line index is first built, no offer is made; the views
+  // redraw when it is ready (onDidBuildLineIndex).
+  if (!readLineIndex(index)) {
+    return new Map();
+  }
+  const state = measure(
+    'Answer offers',
+    () => updateAnswerOffers(lastOffers, index, { rejected }),
+    (found) => `${found.offers.size} offers`,
+  );
+  lastOffers = state;
+  offersByIndex.set(index, { rejected, offers: state.offers });
+  return state.offers;
 }
 
 /**

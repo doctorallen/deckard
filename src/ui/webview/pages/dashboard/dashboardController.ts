@@ -20,6 +20,7 @@ import type { TaskWrites } from '../../../commands/taskActions';
 import { collectTryNextInput, runTryNext, suggestTryNext, TryNextLedger } from '../../../commands/tryNext';
 import type { WhatsNew } from '../../../commands/whatsNew';
 import { createDashboardSnapshot, getSavedFilterQuery, mergeOrder } from '../../../state/dashboardState';
+import { onDidBuildLineIndex } from '../../../state/lineIndexBuild';
 import { createDashboardWidgets } from '../../../state/dashboardWidgets';
 import type { TryNextSuggestion } from '../../../state/tryNext';
 import type { ActiveHome, HomeSource, HomeWidgetChoice } from '../../activeHome';
@@ -208,7 +209,11 @@ export class DashboardController implements PageController<DashboardPageState, D
       disposables.push(tryNext.onDidChange(() => page.refresh()));
     }
     if (this.home.questions) {
-      disposables.push(this.home.questions.onDidChange(() => page.refresh()));
+      disposables.push(
+        this.home.questions.onDidChange(() => page.refresh()),
+        // Open questions leaves out its offers while the line index is first built.
+        onDidBuildLineIndex(() => page.refresh()),
+      );
     }
     disposables.push(
       // A visit is kept quietly; only Home's Recently opened shows it.

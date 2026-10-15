@@ -164,6 +164,32 @@ suite('You\'ve written this before in the editor', () => {
     assert.deepStrictEqual(errors.map(String), []);
   });
 
+  test('shows nothing while the line index is first built, then the hint, without holding the host up', async () => {
+    const { index, today } = await writeNotes();
+    // Hundreds of notes more than are read at once, so the lines are built a slice at a time.
+    const files = new Map(index.files);
+    for (let note = 0; note < 400; note += 1) {
+      const filePath = path.join(path.dirname(today.fsPath), `other-${note}.md`);
+      files.set(filePath, parseMarkdown(filePath, `# Other ${note}\n${OTHER_LINES}\n`));
+    }
+    const hints = await createHints(buildWorkspaceIndex(files));
+    try {
+      const editor = await vscode.window.showTextDocument(today);
+      editor.selection = new vscode.Selection(3, 0, 3, 0);
+      hints.update();
+      const current = () => hints.current;
+      assert.strictEqual(current(), undefined, 'nothing while the lines are read');
+      const until = Date.now() + 10000;
+      while (!current() && Date.now() < until) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      assert.strictEqual(current()?.line, 3, 'the hint once they are');
+    } finally {
+      hints.dispose();
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+    }
+  });
+
   test('Link it here appends a link to the older line\'s heading, and nothing when the line changed', async () => {
     const { index, today, older } = await writeNotes();
     const document = await vscode.workspace.openTextDocument(today);

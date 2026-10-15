@@ -242,3 +242,11 @@ Fixed after QA, before release:
   since indentation was compared in characters. The answer, and the lines
   that never answer a question, now compare it in columns, a tab reaching
   the next multiple of four, as list nesting does (`lineIndent`).
+- **Offers after a save.** Every index ranked every open question again,
+  about 760 ms for 200 questions over 10,000 notes. `updateAnswerOffers`
+  starts from the last index's offers and ranks again only the questions
+  whose note changed or that a changed note's line, old or new, shares three
+  uncommon words with (`reachesSearch`), so a save costs a few milliseconds;
+  more than 200 changed notes rank every question. While the line index is
+  first built (plan 39's As built) no offer is made, and the lens, the view,
+  and Home's widget redraw once it is.

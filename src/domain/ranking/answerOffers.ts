@@ -11,7 +11,17 @@ import { lineIndent } from '../markdown/listNesting';
 import type { Question, WorkspaceIndex } from '../model';
 import { answerQuestion } from '../types/typeAnswers';
 import { getTypeIndex, type TypeIndex } from '../types/typeIndex';
-import { findLinesLike, getLineIndex, hashLine, type IndexedLine, lineWords } from './lineIndex';
+import {
+  findLinesLike,
+  getLineIndex,
+  hashLine,
+  type IndexedLine,
+  isUncommonTerm,
+  lineWords,
+  listChangedNotes,
+  reachesSearch,
+  readChangedLines,
+} from './lineIndex';
 import { getLineTerms } from './wordSimilarity';
 
 /** How many of a question's uncommon words a line must share to be offered. */
@@ -63,17 +73,67 @@ export function notItKey(question: Pick<Question, 'filePath' | 'title'>, offerKe
  * never offered again.
  */
 export function findAnswerOffers(index: WorkspaceIndex, options: AnswerOfferOptions): Map<string, AnswerOffer> {
-  const offers = new Map<string, AnswerOffer>();
+  return updateAnswerOffers(undefined, index, options).offers;
+}
+
+/**
+ * The offers for one index, and each open question's lines that may answer
+ * it, best first, before Not it: what the next index starts from, so a save
+ * ranks again only the questions it can change.
+ */
+export interface AnswerOfferState {
+  readonly index: WorkspaceIndex;
+  readonly offers: Map<string, AnswerOffer>;
+  readonly lines: ReadonlyMap<string, readonly AnswerOffer[]>;
+}
+
+/**
+ * More notes changed than this, as after a settings change reads every
+ * note again, and every question is ranked again rather than checked.
+ */
+const RECHECK_LIMIT = 200;
+
+/**
+ * The offers for `index`, as `findAnswerOffers` finds them, starting from
+ * `previous`, the state of an earlier index: a question keeps the lines
+ * found for it when its note is unchanged and no line of a changed note,
+ * in either version, shares three of its uncommon words, since only such a
+ * line can have joined them or left them. Only the others are ranked again,
+ * so a save among hundreds of open questions costs the few it reaches. A
+ * word's weight, and whether it is uncommon, move a little with every line
+ * added anywhere; the lines kept are ranked as they were.
+ */
+export function updateAnswerOffers(
+  previous: AnswerOfferState | undefined,
+  index: WorkspaceIndex,
+  options: AnswerOfferOptions,
+): AnswerOfferState {
+  const changed = previous ? listChangedNotes(previous.index, index) : [];
+  const reusable = previous && changed.length <= RECHECK_LIMIT ? previous : undefined;
+  const changedFiles = new Set(changed);
+  const changedLines = reusable ? readChangedLines(reusable.index, index, changed) : new Map<string, IndexedLine[]>();
   const types = getTypeIndex(index);
+  const lineIndex = getLineIndex(index);
+  const reaches = (question: Question): boolean =>
+    reachesSearch(
+      changedLines,
+      getLineTerms(question.title).filter((term) => isUncommonTerm(lineIndex, term)),
+      ANSWER_MIN_SHARED,
+    );
+  const offers = new Map<string, AnswerOffer>();
+  const lines = new Map<string, readonly AnswerOffer[]>();
   listOpenQuestions(index).forEach((question) => {
-    const offer = [...offerField(types, question), ...offerLines(index, question)].find(
+    const kept = reusable?.lines.get(question.id);
+    const found = kept && !changedFiles.has(question.filePath) && !reaches(question) ? kept : offerLines(index, question);
+    lines.set(question.id, found);
+    const offer = [...offerField(types, question), ...found].find(
       (candidate) => !options.rejected.has(notItKey(question, candidate.key)),
     );
     if (offer) {
       offers.set(question.id, offer);
     }
   });
-  return offers;
+  return { index, offers, lines };
 }
 
 /**

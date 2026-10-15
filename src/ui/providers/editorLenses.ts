@@ -37,6 +37,7 @@ import { getTypeIndex } from '../../domain/types/typeIndex';
 import { describeNoteRows } from '../state/typeRows';
 import { countTypeProblems } from '../state/typeProblems';
 import { describeQuestionLenses, getAnswerOffers, toQuestionRow } from '../state/questionsState';
+import { onDidBuildLineIndex } from '../state/lineIndexBuild';
 import { readZen } from '../commands/displaySettings';
 
 /** What the lenses read from the indexer, and when they redraw. */
@@ -139,6 +140,8 @@ export class EditorLenses
       }),
       vscode.languages.registerCodeLensProvider({ pattern: '**/*.md' }, this),
       ...(this.questions ? [this.questions.onDidChange(() => this.changeEmitter.fire())] : []),
+      // A question's offer is left out while the line index is first built.
+      onDidBuildLineIndex(() => this.changeEmitter.fire()),
     );
     void whenPublished(this.indexer).then(() => {
       this.isReady = true;

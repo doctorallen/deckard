@@ -5,11 +5,18 @@ import { isMarkdownFile } from '../../core/workspace/scanner';
 import { extractTags } from '../../domain/markdown/parser';
 import type { ParsedFile, Section, WorkspaceIndex } from '../../domain/model';
 import { findUnindexedLines } from '../../domain/ranking/lineIndex';
-import { describeWrittenBeforeHint, findWrittenBefore, type WrittenBeforeMatch } from '../../domain/ranking/writtenBefore';
+import {
+  describeWrittenBeforeHint,
+  findWrittenBefore,
+  type FoundWrittenBefore,
+  keepWrittenBefore,
+  type WrittenBeforeMatch,
+} from '../../domain/ranking/writtenBefore';
 import { measure } from '../../shared/timing';
 import { readDateFormats } from '../commands/datePrompt';
 import { readZen } from '../commands/displaySettings';
 import { describeWrittenBeforeHover, toWrittenBeforeRow, type WrittenBeforeRow } from '../state/writtenBeforeState';
+import { onDidBuildLineIndex, readLineIndex } from '../state/lineIndexBuild';
 import { readEditorToggle } from './editorToggles';
 
 /**
@@ -88,8 +95,12 @@ export class WrittenBeforeHints implements vscode.HoverProvider, vscode.Disposab
   public readonly onDidChangeCursor = this.changeEmitter.event;
   private readonly disposables: vscode.Disposable[] = [this.hintType, this.changeEmitter];
   private timer: ReturnType<typeof setTimeout> | undefined;
-  /** Each line's matches, by its note and words, for the index and the pairs set aside they were found in. */
-  private found: { index?: WorkspaceIndex; rejected?: ReadonlySet<string>; byLine: Map<string, WrittenBeforeMatch[]> } = { byLine: new Map() };
+  /**
+   * Each line's matches, by its note and words, for the index and the pairs
+   * set aside they were found in. A newer index keeps those its changed
+   * notes cannot reach (`keepWrittenBefore`).
+   */
+  private found: { index?: WorkspaceIndex; rejected?: ReadonlySet<string>; byLine: Map<string, FoundWrittenBefore> } = { byLine: new Map() };
   /**
    * The lines of the active note that have matches, by line, for the
    * hover. Cleared when the note changes, since a line number then names
@@ -147,6 +158,8 @@ export class WrittenBeforeHints implements vscode.HoverProvider, vscode.Disposab
         this.schedule();
       }),
       this.indexer.onDidUpdate(() => this.schedule()),
+      // Nothing is shown while the line index is first built; then the hint is.
+      onDidBuildLineIndex(() => this.update()),
       this.memory.onDidChange(() => this.update()),
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (event.affectsConfiguration('deckard.editor') || event.affectsConfiguration('deckard.display')) {
@@ -230,6 +243,11 @@ export class WrittenBeforeHints implements vscode.HoverProvider, vscode.Disposab
       this.clearAll();
       return;
     }
+    // While the line index is first built, nothing is compared or shown.
+    if (!readLineIndex(this.indexer.getSnapshot())) {
+      this.clearAll();
+      return;
+    }
     const document = editor.document;
     const note = this.readNote(document);
     const line = editor.selection.active.line;
@@ -270,16 +288,24 @@ export class WrittenBeforeHints implements vscode.HoverProvider, vscode.Disposab
   private matchesFor(file: ParsedFile, line: number, text: string): WrittenBeforeMatch[] {
     const index = this.indexer.getSnapshot();
     const rejected = this.memory.rejected();
-    if (this.found.index !== index || this.found.rejected !== rejected) {
+    // A newer index a gutter pass meets is not ranked against until its
+    // lines are ready, which could take a rebuild after a settings change.
+    if (!readLineIndex(index)) {
+      return [];
+    }
+    if (this.found.rejected !== rejected || !this.found.index) {
       this.found = { index, rejected, byLine: new Map() };
+    } else if (this.found.index !== index) {
+      this.found = { index, rejected, byLine: keepWrittenBefore(this.found.index, index, this.found.byLine) };
     }
     const key = `${file.filePath}\u0000${text}`;
-    let matches = this.found.byLine.get(key);
-    if (!matches) {
-      matches = findWrittenBefore(index, { text, filePath: file.filePath, tags: lineTags(file, line, text) }, { now: Date.now(), rejected });
-      this.found.byLine.set(key, matches);
+    let found = this.found.byLine.get(key);
+    if (!found) {
+      const matches = findWrittenBefore(index, { text, filePath: file.filePath, tags: lineTags(file, line, text) }, { now: Date.now(), rejected });
+      found = { filePath: file.filePath, text, matches };
+      this.found.byLine.set(key, found);
     }
-    return matches;
+    return found.matches;
   }
 
   /** The hint after the cursor's line: the first older line, its day, and its words, or `↺` alone under Zen. */
