@@ -45,6 +45,7 @@ export function createVscodeWorkspace(options: { isPaused?: () => boolean } = {}
     readDirectory: (uri) => vscode.workspace.fs.readDirectory(uri),
     createDirectory: (uri) => vscode.workspace.fs.createDirectory(uri),
     delete: (uri) => vscode.workspace.fs.delete(uri),
+    rename: (source, target) => vscode.workspace.fs.rename(source, target, { overwrite: true }),
   };
 }
 

@@ -9,7 +9,7 @@
  * are counted after a pause, a few at a time, before the tree is drawn
  * again with them.
  */
-import type { TagVisit, TagVisits } from '../../core/storage/tagVisits';
+import type { TagVisits } from '../../core/storage/tagVisits';
 import type { WorkspaceIndex } from '../../domain/model';
 import type { QueryContext } from '../../domain/query/queryContext';
 import { Debouncer } from '../../shared/debounce';
@@ -23,10 +23,8 @@ export const HUB_NEWS_DELAY_MS = 300;
 /** How long one turn of counting may run before it lets the window have the thread back. */
 const TURN_MS = 30;
 
-/** What the reader reads the tags' visits through. */
-export type HubVisits = Pick<TagVisits, 'seenAt' | 'hubSort'> & {
-  get(tagKey: string): TagVisit | undefined | PromiseLike<TagVisit | undefined>;
-};
+/** What the reader reads the tags' visits through: their times at once, each snapshot from storage. */
+export type HubVisits = Pick<TagVisits, 'get' | 'seenAt' | 'hubSort'>;
 
 /** What was counted for one hub: against which visit, in which index. */
 interface Counted {

@@ -17,6 +17,7 @@ import { WebviewHost } from '../ui/webview/host/webviewHost';
 import { SearchIndexer, SearchPageController, SearchPageControllerOptions, VisitClock } from '../ui/webview/pages/searchPage/searchPageController';
 import { ThemePreview } from '../ui/webview/themePreview';
 import { FakeSurface } from './fakeWebview';
+import { FakeFileSystem, fileUri } from './fakeWorkspace';
 import { createPreferences, MemoryStore } from './preferenceServices';
 import { REPOSITORY_ROOT } from './pageWebview';
 
@@ -103,23 +104,28 @@ function openRatesPage(notes: Record<string, string>, visits: TagVisits, clock: 
   };
 }
 
-/** Lets the visit the timer started be written. */
+/** Visits kept in memory, their snapshots in a file system in memory. */
+function createVisits(): TagVisits {
+  return new TagVisits(new MemoryStore(), { storageUri: fileUri('/storage/workspace'), fileSystem: new FakeFileSystem() });
+}
+
+/** Lets the visit the timer started be written, or the last visit be read and the page drawn with it. */
 async function settle(): Promise<void> {
   await new Promise((resolve) => setImmediate(resolve));
 }
 
 suite('Since you last looked, counted', () => {
   test('a visit counts once the page has been in front for five seconds, and not before', async () => {
-    const visits = new TagVisits(new MemoryStore());
+    const visits = createVisits();
     const clock = createClock(NOW);
     const page = openRatesPage(THEN, visits, clock);
     try {
       clock.advance(VISIT_COUNTS_AFTER_MS - 1);
       await settle();
-      assert.strictEqual(visits.get('#team/rates'), undefined, 'not yet');
+      assert.strictEqual(await visits.get('#team/rates'), undefined, 'not yet');
       clock.advance(1);
       await settle();
-      assert.strictEqual(visits.get('#team/rates')?.seenAt, NOW + VISIT_COUNTS_AFTER_MS);
+      assert.strictEqual((await visits.get('#team/rates'))?.seenAt, NOW + VISIT_COUNTS_AFTER_MS);
       assert.strictEqual(clock.waiting(), 0, 'and once, while it stays in front');
     } finally {
       page.dispose();
@@ -127,7 +133,7 @@ suite('Since you last looked, counted', () => {
   });
 
   test('a page left before its five seconds counts nothing, and put in front again starts them again', async () => {
-    const visits = new TagVisits(new MemoryStore());
+    const visits = createVisits();
     const clock = createClock(NOW);
     const page = openRatesPage(THEN, visits, clock);
     try {
@@ -135,27 +141,29 @@ suite('Since you last looked, counted', () => {
       page.surface.setVisible(false);
       clock.advance(10_000);
       await settle();
-      assert.strictEqual(visits.get('#team/rates'), undefined);
+      assert.strictEqual(await visits.get('#team/rates'), undefined);
       page.surface.setVisible(true);
       clock.advance(VISIT_COUNTS_AFTER_MS);
       await settle();
-      assert.ok(visits.get('#team/rates'));
+      assert.ok(await visits.get('#team/rates'));
     } finally {
       page.dispose();
     }
   });
 
   test('draws the band from the last visit, keeps it through the visit counting, and clears it once the page is left and put in front again', async () => {
-    const visits = new TagVisits(new MemoryStore());
+    const visits = createVisits();
     const before = NOW - 12 * DAY_MS;
     await visits.record('#team/rates', toTagVisit(captureTagPageState(indexOf(THEN), '#team/rates', createQueryContext(before)), before));
     const clock = createClock(NOW);
     const page = openRatesPage(LATER, visits, clock);
     try {
+      // The last visit is read from storage, and the page drawn again with it.
+      await settle();
       assert.deepStrictEqual(page.last().since?.chips.map((chip) => chip.label), ['1 new mention']);
       clock.advance(VISIT_COUNTS_AFTER_MS);
       await settle();
-      assert.strictEqual(visits.get('#team/rates')?.seenAt, NOW + VISIT_COUNTS_AFTER_MS);
+      assert.strictEqual((await visits.get('#team/rates'))?.seenAt, NOW + VISIT_COUNTS_AFTER_MS);
       await page.send({ type: 'setSinceFilter', kind: 'mentions' });
       assert.ok(page.last().since, 'the band stays while the reader is on the page');
       assert.deepStrictEqual(page.last().sections.map((card) => card.filePath), ['notes/handover.md'], 'and its chip filters');
@@ -171,21 +179,22 @@ suite('Since you last looked, counted', () => {
   });
 
   test('Mark seen counts the visit now, and the band goes at once', async () => {
-    const visits = new TagVisits(new MemoryStore());
+    const visits = createVisits();
     const before = NOW - 12 * DAY_MS;
     await visits.record('#team/rates', toTagVisit(captureTagPageState(indexOf(THEN), '#team/rates', createQueryContext(before)), before));
     const clock = createClock(NOW);
     const page = openRatesPage(LATER, visits, clock);
     try {
+      await settle();
       assert.ok(page.last().since);
       clock.advance(1000);
       await page.send({ type: 'markSeen' });
-      assert.strictEqual(visits.get('#team/rates')?.seenAt, NOW + 1000);
+      assert.strictEqual((await visits.get('#team/rates'))?.seenAt, NOW + 1000);
       assert.strictEqual(page.last().since, undefined);
       assert.ok(page.last().sections.every((card) => !card.isNew));
       clock.advance(VISIT_COUNTS_AFTER_MS);
       await settle();
-      assert.strictEqual(visits.get('#team/rates')?.seenAt, NOW + 1000, 'the timer it replaced counts nothing more');
+      assert.strictEqual((await visits.get('#team/rates'))?.seenAt, NOW + 1000, 'the timer it replaced counts nothing more');
     } finally {
       page.dispose();
     }

@@ -193,6 +193,8 @@ export class SearchPageController implements PageController<SearchPageState, Sea
    * next draw, and not under the reader's eyes.
    */
   private sinceBaseline: { tagKey: string; visit: TagVisit | undefined } | undefined;
+  /** The page while it is open, which a visit read from storage draws again. */
+  private page: PageContext | undefined;
   /** The band's chip filtering the page, until it is chosen again or the search changes. */
   private sinceFilter: SinceChipKind | undefined;
   /**
@@ -383,16 +385,19 @@ export class SearchPageController implements PageController<SearchPageState, Sea
 
   /** The page is the active search while its panel is in front. */
   public onDidAttach(page: PageContext): void {
+    this.page = page;
     this.updateActivity(page.surface?.active === true);
   }
 
   /** The page is the active search while its panel is in front. */
   public onDidChangeViewState(page: PageContext): void {
+    this.page = page;
     this.updateActivity(page.surface?.active === true);
   }
 
   /** A page the reader closed is gone, and its search with it. */
   public onDidDetach(): void {
+    this.page = undefined;
     this.search.onDidClose();
   }
 
@@ -784,15 +789,35 @@ export class SearchPageController implements PageController<SearchPageState, Sea
   /**
    * What the band compares the page with: the tag's last visit, read when
    * the page first draws the tag, and again after the page is left and
-   * put in front again. A different tag lets the chip go.
+   * put in front again. A different tag lets the chip go. The visit is
+   * read from storage: the page draws without a band, and again with it
+   * once it is read.
    */
   private readSinceBaseline(): SearchPageOptions['since'] {
     const tagKey = this.visitTagKey();
     if (this.sinceBaseline?.tagKey !== tagKey) {
-      this.sinceBaseline = tagKey ? { tagKey, visit: this.search.visits?.get(tagKey) } : undefined;
+      const baseline = tagKey ? { tagKey, visit: undefined } : undefined;
+      this.sinceBaseline = baseline;
       this.sinceFilter = undefined;
+      if (baseline) {
+        void this.loadSinceBaseline(baseline);
+      }
     }
     return this.sinceBaseline ? { visit: this.sinceBaseline.visit, filter: this.sinceFilter } : undefined;
+  }
+
+  /**
+   * Reads a baseline's visit, and draws the page again with it while the
+   * baseline is still the page's and no visit took its place meanwhile,
+   * as Mark seen's does.
+   */
+  private async loadSinceBaseline(baseline: { tagKey: string; visit: TagVisit | undefined }): Promise<void> {
+    const visit = await this.search.visits?.get(baseline.tagKey);
+    if (!visit || this.sinceBaseline !== baseline || baseline.visit) {
+      return;
+    }
+    baseline.visit = visit;
+    this.page?.refresh();
   }
 
   /**

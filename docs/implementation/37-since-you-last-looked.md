@@ -105,11 +105,18 @@ Where the plan was silent, or the code made its words impractical:
     new;
   - each field by its name, its values as text: a typed row's fields and
     reverses, else the hub note's front matter.
-- **Where it is kept.** `src/core/storage/tagVisits.ts`, over the
-  workspace's `workspaceState`: each tag's visit under a key of its own,
-  `deckard.tagVisit:<tag>`, and a list of every tag's visit time,
-  `deckard.tagVisits`, so counting a visit writes one tag's snapshot and not
-  all 500. Tags the index no longer has lose their visits, and the cap of
+- **Where it is kept.** `src/core/storage/tagVisits.ts`: a list of every
+  tag's visit time, `deckard.tagVisits`, in the workspace's
+  `workspaceState`, and each tag's snapshot in a file of the workspace's
+  storage folder, `tag-visits/<hash>.json`, read when a page or the Hubs
+  view asks for it, written beside itself and moved over, so never read
+  half-written. The snapshots were first kept in `workspaceState` under
+  keys of their own, but VS Code writes the whole of it again at every
+  change, and one person's snapshot measured 52 KB, so 500 made every write
+  megabytes (QA). A window with no folder open keeps the times and no
+  snapshots, so it draws no band. The keys the first build wrote are
+  dropped at start, the times kept. A page's band is drawn once its
+  snapshot is read: the page draws, then draws again with it. Tags the index no longer has lose their visits, and the cap of
   500 drops the oldest, whenever a visit is written (two visits counted at
   once are written in turn, so neither's time is lost, QA), rather than in Tidy
   Preferences, which asks before it removes anything and lists favorites,

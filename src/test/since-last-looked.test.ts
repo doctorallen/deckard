@@ -8,6 +8,8 @@ import { HubNewsReader, type HubVisits } from '../ui/state/hubNews';
 import { buildHubTree, type HubTreeNode } from '../ui/state/hubTree';
 import { captureTagPageState, createSearchPageSnapshot } from '../ui/state/searchPageState';
 import { compareTagPage, isSinceShown, toTagVisit } from '../ui/state/sinceLastLooked';
+import type { KeyValueStore } from '../ports/keyValueStore';
+import { FakeFileSystem, fileUri } from './fakeWorkspace';
 import { createPreferences, MemoryStore } from './preferenceServices';
 import { indexOf } from './typedWorkspace';
 
@@ -17,6 +19,9 @@ const lines = (...text: string[]): string => text.join('\n');
 const now = new Date(2026, 9, 14, 12).getTime();
 const before = now - 12 * DAY_MS;
 const context = createQueryContext(now);
+
+/** The workspace's storage folder, where the snapshots' files go. */
+const STORAGE = fileUri('/storage/workspace');
 
 /** The Rates team's notes when the reader last looked: its hub, a standup, and two tasks. */
 const THEN: Record<string, string> = {
@@ -204,14 +209,15 @@ suite('Since you last looked', () => {
 
   test('keeps one visit a tag, replaced each time, drops a gone tag’s, and keeps at most 500, the oldest going first', async () => {
     const store = new MemoryStore();
-    const visits = new TagVisits(store);
+    const files = new FakeFileSystem();
+    const visits = new TagVisits(store, { storageUri: STORAGE, fileSystem: files });
     const visit = visitThen();
     await visits.record('#team/rates', visit);
-    assert.deepStrictEqual(visits.get('#team/rates'), visit);
+    assert.deepStrictEqual(await visits.get('#team/rates'), visit);
     await visits.record('#team/rates', { ...visit, seenAt: now });
-    assert.strictEqual(visits.get('#team/rates')?.seenAt, now, 'the last visit replaces the one before');
+    assert.strictEqual((await visits.get('#team/rates'))?.seenAt, now, 'the last visit replaces the one before');
     await visits.record('#team/fx', { ...visit, seenAt: now }, (key) => key !== '#team/rates');
-    assert.strictEqual(visits.get('#team/rates'), undefined, 'a tag the index no longer has loses its visit');
+    assert.strictEqual(await visits.get('#team/rates'), undefined, 'a tag the index no longer has loses its visit');
     for (let at = 0; at < TAG_VISIT_LIMIT + 2; at += 1) {
       await visits.record(`#t/${at}`, { ...visit, seenAt: before + at });
     }
@@ -219,8 +225,41 @@ suite('Since you last looked', () => {
     assert.strictEqual(kept.size, TAG_VISIT_LIMIT);
     assert.ok(!kept.has('#t/0') && !kept.has('#t/1'), 'the oldest went first');
     assert.ok(kept.has('#team/fx'), 'a later visit stays');
-    assert.strictEqual(store.get(`${TAG_VISIT_PREFIX}#t/0`), undefined);
+    assert.strictEqual(await visits.get('#t/0'), undefined);
     assert.ok(kept.has(`#t/${TAG_VISIT_LIMIT + 1}`));
+    assert.strictEqual([...files.files.keys()].length, TAG_VISIT_LIMIT, 'a file a snapshot, the dropped ones deleted, none left half-written');
+  });
+
+  test('keeps each snapshot in a file of the workspace’s storage, and only the times in workspace state', async () => {
+    const store = new MemoryStore();
+    const files = new FakeFileSystem();
+    const visits = new TagVisits(store, { storageUri: STORAGE, fileSystem: files });
+    await visits.record('#team/rates', visitThen());
+    const [written] = [...files.files.keys()];
+    assert.match(written, /^\/storage\/workspace\/tag-visits\/[0-9a-z]+\.json$/);
+    assert.deepStrictEqual(JSON.parse(Buffer.from(files.files.get(written) ?? []).toString('utf8')), { tag: '#team/rates', visit: visitThen() });
+    assert.deepStrictEqual(store.get(TAG_VISITS_KEY), { '#team/rates': before });
+    assert.strictEqual(store.get(`${TAG_VISIT_PREFIX}#team/rates`), undefined);
+    // Another tag whose hash met this one's reads as no visit.
+    files.files.set(written, Buffer.from(JSON.stringify({ tag: '#team/fx', visit: visitThen() })));
+    assert.strictEqual(await visits.get('#team/rates'), undefined);
+
+    // With no folder open, the times are kept, and no snapshot.
+    const windowOnly = new TagVisits(new MemoryStore(), { storageUri: undefined, fileSystem: files });
+    await windowOnly.record('#team/fx', visitThen());
+    assert.deepStrictEqual([...windowOnly.seenAt()], [['#team/fx', before]]);
+    assert.strictEqual(await windowOnly.get('#team/fx'), undefined);
+  });
+
+  test('drops the snapshots an earlier build kept in workspace state, and keeps their times', async () => {
+    const store = new MemoryStore();
+    await store.update(TAG_VISITS_KEY, { '#team/rates': before, '#team/fx': before });
+    await store.update(`${TAG_VISIT_PREFIX}#team/rates`, visitThen());
+    const visits = new TagVisits(store, { storageUri: STORAGE, fileSystem: new FakeFileSystem() });
+    await visits.dropStoredSnapshots();
+    assert.strictEqual(store.get(`${TAG_VISIT_PREFIX}#team/rates`), undefined);
+    assert.strictEqual(visits.seenAt().size, 2);
+    assert.strictEqual(await visits.get('#team/rates'), undefined);
   });
 
   test('two visits counted at once both keep their time', async () => {
@@ -231,7 +270,7 @@ suite('Since you last looked', () => {
         await new Promise((resolve) => setTimeout(resolve, 5));
       }
     }
-    const visits = new TagVisits(new SlowStore());
+    const visits = createVisits(new SlowStore());
     const empty = (seenAt: number): TagVisit => ({ seenAt, entries: {}, tasks: { open: [], done: [] }, fields: {} });
     await Promise.all([visits.record('#a', empty(now)), visits.record('#b', empty(now + 1))]);
     assert.deepStrictEqual([...visits.seenAt()].sort(), [['#a', now], ['#b', now + 1]]);
@@ -239,12 +278,19 @@ suite('Since you last looked', () => {
 
   test('reads a stored value that is no visit as none', async () => {
     const store = new MemoryStore();
-    await store.update(`${TAG_VISIT_PREFIX}#a`, { seenAt: 'yesterday', entries: {}, tasks: { open: [], done: [] }, fields: {} });
-    await store.update(`${TAG_VISIT_PREFIX}#b`, { seenAt: now, entries: {}, tasks: { open: [1], done: [] }, fields: {} });
+    const files = new FakeFileSystem();
+    const visits = new TagVisits(store, { storageUri: STORAGE, fileSystem: files });
+    await visits.record('#a', visitThen());
+    await visits.record('#b', visitThen());
+    await visits.record('#c', visitThen());
+    const [a, b, c] = [...files.files.keys()];
+    files.files.set(a, Buffer.from(JSON.stringify({ tag: '#a', visit: { seenAt: 'yesterday', entries: {}, tasks: { open: [], done: [] }, fields: {} } })));
+    files.files.set(b, Buffer.from(JSON.stringify({ tag: '#b', visit: { seenAt: now, entries: {}, tasks: { open: [1], done: [] }, fields: {} } })));
+    files.files.set(c, Buffer.from('{ not json'));
     await store.update(TAG_VISITS_KEY, { '#a': 'soon', '#b': now });
-    const visits = new TagVisits(store);
-    assert.strictEqual(visits.get('#a'), undefined);
-    assert.strictEqual(visits.get('#b'), undefined);
+    assert.strictEqual(await visits.get('#a'), undefined);
+    assert.strictEqual(await visits.get('#b'), undefined);
+    assert.strictEqual(await visits.get('#c'), undefined);
     assert.deepStrictEqual([...visits.seenAt()], [['#b', now]]);
     assert.strictEqual(visits.hubSort(), 'name');
   });
@@ -256,7 +302,7 @@ suite('Since you last looked', () => {
       'Teams/Credit.md': lines('---', 'describes: team/credit', '---', '# Credit desk'),
       'notes/fx.md': lines('# FX notes #team/fx', 'Fixings.'),
     });
-    const visits = new TagVisits(new MemoryStore());
+    const visits = createVisits();
     await visits.record('#team/rates', visitThen());
     await visits.record('#team/fx', toTagVisit(captureTagPageState(index, '#team/fx', context), now - 60_000));
     const reader = await readHubNews(index, visits);
@@ -268,7 +314,7 @@ suite('Since you last looked', () => {
     ]);
     await visits.setHubSort('new');
     assert.deepStrictEqual(hubs().map((hub) => hub.label), ['Rates desk', 'Credit desk', 'FX desk']);
-    const seenEarlier = new TagVisits(new MemoryStore());
+    const seenEarlier = createVisits();
     await seenEarlier.record('#team/fx', toTagVisit(captureTagPageState(index, '#team/fx', context), before));
     const earlier = await readHubNews(index, seenEarlier);
     const fx = buildHubTree(index, now, earlier.news(index, context))[0].children.find((hub) => hub.label === 'FX desk');
@@ -287,7 +333,7 @@ suite('Since you last looked', () => {
       notes[`notes/n${note}.md`] = lines(`# Note ${note} ${tag}`, 'Some words about the work.', `- [ ] Do the thing ${note} ${tag}`, '## Part', 'More words.');
     }
     const then = indexOf(notes);
-    const visits = new TagVisits(new MemoryStore());
+    const visits = createVisits();
     for (let hub = 0; hub < HUBS; hub += 1) {
       await visits.record(`#team/t${hub}`, toTagVisit(captureTagPageState(then, `#team/t${hub}`, context), before));
     }
@@ -316,6 +362,11 @@ suite('Since you last looked', () => {
     reader.dispose();
   });
 });
+
+/** Visits kept in `store`, with their snapshots in a file system in memory. */
+function createVisits(store: KeyValueStore = new MemoryStore()): TagVisits {
+  return new TagVisits(store, { storageUri: STORAGE, fileSystem: new FakeFileSystem() });
+}
 
 /** The hubs' news read through `visits`, once every hub of `index` is counted. */
 async function readHubNews(index: WorkspaceIndex, visits: HubVisits): Promise<HubNewsReader> {

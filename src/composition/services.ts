@@ -667,9 +667,11 @@ function createSearch(
   });
   const { repository, usage, savedSearches, display, pins, homeWidgets, tagRenames } = preferences;
   // What each tag's page held at the last visit, kept with the workspace
-  // whose notes it names, apart from the preferences blob.
-  const tagVisits = new TagVisits(context.workspaceState);
+  // whose notes it names, apart from the preferences blob: the times in
+  // workspace state, each snapshot a file in the workspace's storage.
+  const tagVisits = new TagVisits(context.workspaceState, { storageUri: context.storageUri, fileSystem: core.workspace });
   context.subscriptions.push(tagVisits);
+  void tagVisits.dropStoredSnapshots();
   const searchPanels = new SearchPanels({
     indexer,
     preferences: { reader: repository, usage, savedSearches, display, pins, homeWidgets, tagRenames },

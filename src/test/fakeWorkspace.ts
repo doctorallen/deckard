@@ -266,4 +266,11 @@ export class FakeFileSystem implements FileSystem {
       throw new Error(`ENOENT: ${FakeFileSystem.keyOf(uri)}`);
     }
   }
+
+  /** Moves a file over any at `target`; rejects for a missing one. */
+  public async rename(source: ResourceUri, target: ResourceUri): Promise<void> {
+    const bytes = await this.readFile(source);
+    await this.writeFile(target, bytes);
+    this.files.delete(FakeFileSystem.keyOf(source));
+  }
 }
