@@ -162,6 +162,12 @@ suite('A new note of a type', () => {
       planTypedNote(term, draft, { now: new Date(now) })?.content,
       '---\ntype: term\nterm: NDF\n---\n# NDF\n\nA non-deliverable forward.\n',
     );
+    // A template's own words come after it, so the definition is the note's first paragraph.
+    const template = '---\ntype: term\n---\n# {title}\n\nWhere it is used:\n\n## Notes\n';
+    assert.strictEqual(
+      planTypedNote(term, draft, { template, now: new Date(now) })?.content,
+      '---\ntype: term\nterm: NDF\n---\n# NDF\n\nA non-deliverable forward.\n\nWhere it is used:\n\n## Notes\n',
+    );
   });
 
   test('a template still applies, its questions answered, and the form\'s values take its keys\' place', () => {

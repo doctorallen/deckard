@@ -111,10 +111,16 @@ export class TermHovers implements vscode.HoverProvider, vscode.Disposable {
       editor.setDecorations(this.underlineType, []);
       return;
     }
+    // A file that is no note, or a note with no term in it, needs no table.
+    const written = this.read(document);
+    if (written.length === 0) {
+      editor.setDecorations(this.underlineType, []);
+      return;
+    }
     const { terms } = getTermTable(this.index.getSnapshot());
     editor.setDecorations(
       this.underlineType,
-      this.read(document)
+      written
         .filter((term) => isDefined(terms.get(term.term)))
         .map((term) => new vscode.Range(term.line, term.start, term.line, term.end)),
     );

@@ -115,7 +115,9 @@ made its words impractical:
 - **A term note's term** is its `term:` field, else its file name, in
   capitals; its definition is its first paragraph after the front matter
   and the headings, its lines joined.
-- **Hover and underline** are on defined terms only, as the plan's
+- **Hover and underline** read a file's terms, and the workspace's table
+  only when the file is a note with a term in it (QA: the table was built
+  for every editor). They are on defined terms only, as the plan's
   *defined term* says. The day is in the reader's short date format,
   *Defined Tue, Mar 3 in FX recon kickoff*, and *in* names the heading
   the definition is under, else the note. **Find uses** opens a search
@@ -126,7 +128,9 @@ made its words impractical:
   notes, in `Terms/`, with one field, `term`), as a quick fix's person
   falls back to one. The form starts with the title and `term:` filled in,
   and from an inline definition its words as the note's first paragraph:
-  `DraftStart` gained `values` and `body` for it.
+  `DraftStart` gained `values` and `body` for it. The words go right under
+  the title, before any words a type's template writes there, so they are
+  the term note's definition (QA: they were put after the template's).
 - **The setting** is one more `deckard.editor.*` switch the editor preset
   decides: on in Full, Tasks, and Writing, off in Off. Zen hides the
   line through `deckard.display.zen`. A new theme color,

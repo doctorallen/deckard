@@ -256,10 +256,28 @@ export function planTypedNote(type: DraftType, draft: TypedNoteDraft, options: O
     }
   });
   if (draft.body) {
-    content = `${content.replace(/\s*$/, '')}\n\n${draft.body}\n`;
+    content = placeBodyUnderTitle(content, draft.body);
   }
   const folder = readDraftFolder(draft.folder) ?? plan.folder;
   return { folder, fileName: plan.fileName, path: joinFolder(folder, plan.fileName), ...(plan.tag ? { tag: plan.tag } : {}), content, unwritten };
+}
+
+/**
+ * A note with words put right under its title, a blank line either side,
+ * so they are its first paragraph whatever a template writes after the
+ * title, as a term note's definition must be: under the first top-level
+ * heading after the front matter, or, with none, after the front matter.
+ */
+function placeBodyUnderTitle(content: string, body: string): string {
+  const lines = content.replace(/\s*$/, '').split('\n');
+  const start = (findFrontmatterEnd(lines) ?? -1) + 1;
+  const title = lines.findIndex((line, at) => at >= start && /^#[ \t]/.test(line));
+  const at = title >= 0 ? title + 1 : start;
+  const rest = lines.slice(at);
+  while (rest.length && rest[0].trim() === '') {
+    rest.shift();
+  }
+  return [...lines.slice(0, at), ...(at > 0 ? [''] : []), body, ...(rest.length ? ['', ...rest] : []), ''].join('\n');
 }
 
 /**

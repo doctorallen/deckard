@@ -67,4 +67,32 @@ suite('Terms in the editor', () => {
       rmSync(folder, { recursive: true, force: true });
     }
   });
+
+  test('a file that is no note is drawn without reading the workspace’s terms', async () => {
+    let read = 0;
+    const index = termIndex();
+    const changes = new vscode.EventEmitter<unknown>();
+    const hovers = new TermHovers({
+      getSnapshot: () => {
+        read += 1;
+        return index;
+      },
+      isNotesFile: () => false,
+      onDidUpdate: changes.event,
+    });
+    const folder = mkdtempSync(path.join(os.tmpdir(), 'deckard-terms-'));
+    const file = path.join(folder, 'Elsewhere.md');
+    writeFileSync(file, 'Price the NDF in UAT.');
+    try {
+      const editor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(file));
+      read = 0;
+      hovers.draw(editor);
+      assert.strictEqual(read, 0);
+    } finally {
+      hovers.dispose();
+      changes.dispose();
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      rmSync(folder, { recursive: true, force: true });
+    }
+  });
 });
