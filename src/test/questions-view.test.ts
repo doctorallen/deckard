@@ -291,8 +291,24 @@ suite('Find: Ask it beside a day and beside results with some of the words', () 
       '$(question) Ask it in today’s note',
     ]);
     // VS Code lifts a row whose label matches what is typed above the rest.
-    assert.ok(!items[1].label.toLowerCase().includes('curve'));
+    assert.ok(!items.some((item) => item.label.toLowerCase().includes('curve')), 'no row\'s label holds the words');
     assert.strictEqual(items[1].detail, '- [?] Curve zebra?');
+    const at = (found: (item: (typeof items)[number]) => unknown) => items.findIndex(found);
+    const note = at((item) => item.item?.kind === 'note');
+    assert.ok(note > 1 && at((item) => item.create) > note && at((item) => item.capture) > note, 'Create note and Add follow the results');
+    assert.deepStrictEqual(
+      [items[at((item) => item.create)].description, items[at((item) => item.capture)].detail],
+      ['“curve zebra”', '- [ ] curve zebra'],
+    );
+  });
+
+  test('with nothing found, Ask it, Create note, and Add come first', () => {
+    const items = rows('zebra crossing');
+    assert.deepStrictEqual(items.slice(0, 3).map((item) => item.label), [
+      '$(question) Ask it in today’s note',
+      '$(new-file) Create note',
+      '$(inbox) Add to today’s note',
+    ]);
   });
 });
 

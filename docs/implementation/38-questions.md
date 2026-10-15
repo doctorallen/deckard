@@ -250,3 +250,10 @@ Fixed after QA, before release:
   more than 200 changed notes rank every question. While the line index is
   first built (plan 39's As built) no offer is made, and the lens, the view,
   and Home's widget redraw once it is.
+- **Create note and Add** had the same fault as Ask it: their labels held
+  the words, so VS Code lifted them above results with some of the words,
+  where Enter created a note or added a task. Their labels are now *Create
+  note* and *Add to today's note*, the words in the description and the
+  task's line in the detail. They come first, after Ask it, when Find
+  found nothing (no answer, tag, saved search, note, task, or question),
+  and after the results otherwise.

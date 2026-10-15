@@ -17,10 +17,10 @@ Run `Deckard: Find in Notes`, or press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt<
 - Task rows have **Complete** (or **Reopen**), which redraws in place with **Undo**, and **Set due**: Today, Tomorrow, Next Monday, a date, or none.
 - **Answer.** In a workspace with [types](databases.md), words that name a row and a field, such as `checkout lead` or `who is on payments`, list up to three answers first, each with the path that reached it; see [Asking Find](databases.md#asking-find).
 - **A term.** A defined [term](notes-and-links.md#terms) typed alone, such as `NDF`, or asked about, `what is NDF`, lists its definition first, with where it was defined, which <kbd>Enter</kbd> opens.
-- **Create note “…”** appears for words that read as a name no note has.
+- **Create note**, with the words beside it, appears for words that read as a name no note has.
 - **Ask it in today's note** comes first when nothing has every word and you typed only words, tags, and people, with the line it writes under it: `- [?]` and your words, as a [question](tasks.md#questions), under today's note's **Questions** heading, or after its last list when it has none. When some notes have some of the words, it follows the line saying so, above them; when what you typed is a day, it is not offered, and Enter opens that day's note. When you have searched for the same words before and left Find without opening anything, it says how often, and since when: *You have searched for this 3 times since Fri, Oct 2*.
 - **Open questions** whose words hold every word you typed are listed with a **?**; <kbd>Enter</kbd> opens the line.
-- **Add “…” to today's note** appears when nothing has every word and you typed only words, tags, and people. It reads the line as [Add Task's quick add](tasks.md#adding-a-task) does: `Call Ren friday p2` becomes `- [ ] Call Ren ⏫ 📅 2026-10-02`.
+- **Add to today's note**, with the line it writes under it, appears when nothing has every word and you typed only words, tags, and people. With Ask it and Create note, it comes first when nothing has any of the words, and after the results when some notes have some of them. It reads the line as [Add Task's quick add](tasks.md#adding-a-task) does: `Call Ren friday p2` becomes `- [ ] Call Ren ⏫ 📅 2026-10-02`.
 - A day such as `friday`, `oct 3`, or `last friday` offers that day's note, creating it if needed. A short weekday alone, such as `fri`, is a word.
 - Opened with words selected on one line, Find starts with them as its search.
 

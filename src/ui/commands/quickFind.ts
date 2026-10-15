@@ -839,10 +839,29 @@ export function toPickItems(
   // results that have some of the words, it follows the message saying so,
   // and Enter never writes the words to today's note in their place.
   const ask = dateRow ? [] : askRows(results, misses);
-  const found = results.notes.length + results.tasks.length + (results.questions?.length ?? 0) > 0;
-  return found
-    ? [...leadingRows(results, dateRow), ...ask, ...resultRows(results, value), ...trailingRows(results, value, dateRow)]
-    : [...ask, ...leadingRows(results, dateRow), ...resultRows(results, value), ...trailingRows(results, value, dateRow)];
+  const offers = offerRows(results, value, dateRow);
+  const found = [results.answers ?? [], results.tags, results.savedViews, results.notes, results.tasks, results.questions ?? []].some(
+    (rows) => rows.length > 0,
+  );
+  if (found) {
+    return [
+      ...leadingRows(results, dateRow),
+      ...ask,
+      ...resultRows(results, value),
+      ...(offers.length > 0 ? [{ label: '', kind: vscode.QuickPickItemKind.Separator }, ...offers] : []),
+      ...showAllRows(results, value),
+    ];
+  }
+  // Nothing found: what Find can make of the words comes first, after a
+  // typed day's note.
+  return [
+    ...leadingRows(results, dateRow).filter((row) => row.openDate !== undefined),
+    ...ask,
+    ...offers,
+    ...leadingRows(results).filter((row) => row.openDate === undefined),
+    ...resultRows(results, value),
+    ...showAllRows(results, value),
+  ];
 }
 
 /**
@@ -958,14 +977,13 @@ function toPickItem(item: QuickFindItem): QuickFindPickItem {
 }
 
 /**
- * The rows below the results, each only when it applies: create a note by
- * the name typed, add what was typed as a task, and show every result.
+ * What Find can make of the words, each only when it applies: a note by
+ * the name typed, and the words added to today's note as a task. As Ask
+ * it's, their labels leave the words out, to their description and
+ * detail: VS Code lifts a row whose label matches what is typed above
+ * every row that does not, which put a write above the results.
  */
-function trailingRows(
-  results: QuickFindResults,
-  value: string,
-  dateRow?: DailyNoteRow,
-): QuickFindPickItem[] {
+function offerRows(results: QuickFindResults, value: string, dateRow?: DailyNoteRow): QuickFindPickItem[] {
   const items: QuickFindPickItem[] = [];
   // Plain words that no note is called can be the name of a new one, as a
   // quick switcher offers: Find finds, and makes what it did not find.
@@ -973,39 +991,41 @@ function trailingRows(
   const named = results.notes.some(
     (note) => note.label.trim().toLowerCase() === name.toLowerCase(),
   );
-  const offersCreate = Boolean(name) && !named && !dateRow && isNoteName(name);
-  if (offersCreate) {
-    items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
+  if (name && !named && !dateRow && isNoteName(name)) {
     items.push({
-      label: `$(new-file) Create note “${name}”`,
+      label: '$(new-file) Create note',
+      description: `“${name}”`,
       alwaysShow: true,
       create: name,
     });
   }
-
   // What could not be found may be something to do.
   if (name && results.capture) {
-    if (!offersCreate) {
-      items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
-    }
     items.push({
-      label: `$(inbox) Add “${results.capture.text}” to today’s note`,
+      label: '$(inbox) Add to today’s note',
+      description: `“${results.capture.text}”`,
       detail: results.capture.line,
       alwaysShow: true,
       capture: results.capture,
     });
   }
+  return items;
+}
 
+/** Show all, below everything, when the search found notes or tasks. */
+function showAllRows(results: QuickFindResults, value: string): QuickFindPickItem[] {
   const total = results.totals.notes + results.totals.tasks;
-  if (value.trim() && total > 0) {
-    items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
-    items.push({
+  if (!value.trim() || total === 0) {
+    return [];
+  }
+  return [
+    { label: '', kind: vscode.QuickPickItemKind.Separator },
+    {
       label: `$(list-flat) Show all ${total} ${total === 1 ? 'result' : 'results'} on a search page`,
       alwaysShow: true,
       showAll: true,
-    });
-  }
-  return items;
+    },
+  ];
 }
 
 /** A row's label in quotes, cut as a task's title is in a message. */
