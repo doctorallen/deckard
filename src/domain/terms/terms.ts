@@ -10,9 +10,9 @@ import type { ParsedFile, WorkspaceIndex } from '../model';
  * Terms (docs/implementation/42-terms.md): the short terms work notes are
  * full of, such as UAT, NDF, or RATES-UAT, how often each is used, and
  * where each was defined: by a term note (`type: term`), which wins, or
- * inline, the first time by date it was written as `NDF (non-deliverable
- * forward)`, `non-deliverable forward (NDF)`, `NDF: words`, or `NDF means
- * words`.
+ * inline, in the surest form it was written in, the first time by date it
+ * was: `NDF (non-deliverable forward)` or `non-deliverable forward (NDF)`,
+ * then `NDF means words`, then `NDF: words`.
  *
  * The table is read from the index: each note's terms once per version of
  * the note, and the table once per index, so hovering reads a table that
@@ -235,25 +235,35 @@ export function matchesInitials(term: string, phrase: string): boolean {
   return match(0, 0);
 }
 
-/** A definition written in one line: the term, and its words. */
+/** A definition written in one line: the term, its words, and how sure its form is. */
 export interface InlineDefinition {
   term: string;
   text: string;
+  /**
+   * 0 for a parenthesized form, whose initials match; 1 for `NDF means
+   * words`; 2 for `NDF: words`, which a status line is written in too. Of
+   * a term's definitions, the surest form wins, then the earliest.
+   */
+  rank: number;
 }
 
 /** `NDF (non-deliverable forward)`: a term, then a phrase in parentheses. */
 const TERM_THEN_PHRASE = /(?<![\p{L}\p{N}_#@/.-])([A-Z0-9]+(?:-[A-Z0-9]+)*)[ \t]*\(([^()]{3,120})\)/gu;
 /** `non-deliverable forward (NDF)`: a term alone in parentheses, after its phrase. */
 const PHRASE_THEN_TERM = /\(([A-Z0-9]+(?:-[A-Z0-9]+)*)\)/g;
-/** `NDF: words`, or `**NDF**: words`, as a line of its own, or a list item. */
-const TERM_COLON = /^[ \t]*(?:[-*+][ \t]+|\d+[.)][ \t]+)?(?:\*\*|__)?([A-Z0-9]+(?:-[A-Z0-9]+)*)(?:\*\*|__)?[ \t]*:[ \t]+(.+)$/;
+/** `NDF: words`, or `**NDF**: words`, as a line of its own, or a list item: its list mark, its emphasis, the term, and the words. */
+const TERM_COLON = /^[ \t]*((?:[-*+]|\d+[.)])[ \t]+)?(\*\*|__)?([A-Z0-9]+(?:-[A-Z0-9]+)*)(?:\*\*|__)?[ \t]*:[ \t]+(.+)$/;
 /** `NDF means words` and `NDF stands for words`. */
 const TERM_MEANS = /(?<![\p{L}\p{N}_#@/.-])([A-Z0-9]+(?:-[A-Z0-9]+)*)[ \t]+(?:means|stands for)[ \t]+([^.;!?]+)/gu;
 
 /**
  * The definitions a line writes, in the four forms; a parenthesized form
  * only when its phrase spells the term's initials. Code and links are
- * left out, and a task's line is no `NDF: words`.
+ * left out. `NDF: words` is read only when it reads as a definition and
+ * not as a status, *UAT: blocked*: never on a task's line, never a single
+ * word, and in a list item only when its term is emphasized, as a
+ * glossary's is, or its words spell its initials; elsewhere, three words
+ * or more, or words that spell its initials.
  */
 export function readInlineDefinitions(text: string): InlineDefinition[] {
   // Each form has a mark of its own; most lines have none, and are read no further.
@@ -265,25 +275,35 @@ export function readInlineDefinitions(text: string): InlineDefinition[] {
   }
   const skipped = findCodeAndLinkRanges(text);
   const found: InlineDefinition[] = [];
-  const add = (term: string, words: string, at: number): void => {
+  const add = (rank: number) => (term: string, words: string, at: number): void => {
     const definition = tidyDefinition(words);
     if (isTermToken(term) && definition && !isInRanges(skipped, at) && !found.some((known) => known.term === term)) {
-      found.push({ term, text: definition });
+      found.push({ term, text: definition, rank });
     }
   };
+  // The surest form first, so it is the one a line that writes two keeps.
   if (parenthesized) {
-    readParenthesized(text, add);
-  }
-  const line = colon && !isTaskLine(text) ? TERM_COLON.exec(text) : null;
-  if (line) {
-    add(line[1], line[2], text.indexOf(line[1]));
+    readParenthesized(text, add(0));
   }
   if (means) {
     for (const match of text.matchAll(TERM_MEANS)) {
-      add(match[1], match[2], match.index);
+      add(1)(match[1], match[2], match.index);
     }
   }
+  const line = colon && !isTaskLine(text) ? TERM_COLON.exec(text) : null;
+  if (line && isColonDefinition(line[3], line[4], { listItem: line[1] !== undefined, emphasized: line[2] !== undefined })) {
+    add(2)(line[3], line[4], text.indexOf(line[3]));
+  }
   return found;
+}
+
+/** Whether `NDF: words` reads as a definition rather than a status; see readInlineDefinitions. */
+function isColonDefinition(term: string, words: string, { listItem, emphasized }: { listItem: boolean; emphasized: boolean }): boolean {
+  const tidy = tidyDefinition(words);
+  if (matchesInitials(term, tidy)) {
+    return true;
+  }
+  return (!listItem || emphasized) && tidy.split(/\s+/).filter(Boolean).length >= 3;
 }
 
 /**
@@ -336,8 +356,8 @@ function tidyDefinition(words: string): string {
 interface FileTerms {
   /** Each term the note uses: how many of its entries, and the first line. */
   uses: Map<string, { entries: number; first: { line: number; heading: string | undefined } }>;
-  /** Each term the note defines inline, its first definition. */
-  inline: Map<string, { text: string; line: number; heading: string | undefined; quote: string }>;
+  /** Each term the note defines inline, its first definition in the surest form it is written in. */
+  inline: Map<string, { text: string; line: number; heading: string | undefined; quote: string; rank: number }>;
   /** The term the note is about, when it is a term note. */
   note?: { term: string; text: string; line: number };
 }
@@ -370,8 +390,8 @@ function readFileTerms(file: ParsedFile): FileTerms {
       }
     }
     for (const definition of readInlineDefinitions(text)) {
-      if (!inline.has(definition.term)) {
-        inline.set(definition.term, { text: definition.text, line, heading, quote: text.trim() });
+      if ((inline.get(definition.term)?.rank ?? Infinity) > definition.rank) {
+        inline.set(definition.term, { text: definition.text, line, heading, quote: text.trim(), rank: definition.rank });
       }
     }
   });
@@ -445,8 +465,8 @@ function placed<Place extends TermPlace>(place: Place): Place {
  * The workspace's terms, read once per index: every token used in at
  * least three entries, and every term a term note defines, each with its
  * count, first use, and definition. A term note's definition wins; failing
- * one, the first inline definition by date, for a term used often enough
- * to be one.
+ * one, the inline definition in the surest form, the first by date of
+ * those, for a term used often enough to be one.
  */
 export function getTermTable(index: WorkspaceIndex): TermTable {
   const cached = tables.get(index);
@@ -462,7 +482,7 @@ export function getTermTable(index: WorkspaceIndex): TermTable {
 export function buildTermTable(files: Iterable<ParsedFile>): TermTable {
   const counts = new Map<string, number>();
   const firstUses = new Map<string, TermPlace>();
-  const inline = new Map<string, TermDefinition>();
+  const inline = new Map<string, TermDefinition & { rank: number }>();
   const notes = new Map<string, TermDefinition>();
   for (const file of files) {
     const read = readFileTerms(file);
@@ -475,7 +495,8 @@ export function buildTermTable(files: Iterable<ParsedFile>): TermTable {
       }
     });
     read.inline.forEach((definition, term) => {
-      if (isEarlier(date, filePath, definition.line, inline.get(term))) {
+      const known = inline.get(term);
+      if (!known || definition.rank < known.rank || (definition.rank === known.rank && isEarlier(date, filePath, definition.line, known))) {
         inline.set(term, { filePath, date, source: 'inline', ...definition });
       }
     });
@@ -490,7 +511,7 @@ export function buildTermTable(files: Iterable<ParsedFile>): TermTable {
     if (count < TERM_MIN_ENTRIES && !notes.has(term)) {
       continue;
     }
-    const definition = notes.get(term) ?? inline.get(term);
+    const definition = notes.get(term) ?? withoutRank(inline.get(term));
     const firstUse = firstUses.get(term);
     terms.set(term, {
       term,
@@ -500,6 +521,15 @@ export function buildTermTable(files: Iterable<ParsedFile>): TermTable {
     });
   }
   return { terms };
+}
+
+/** An inline definition as the table gives it, without the rank it was chosen by. */
+function withoutRank(definition: (TermDefinition & { rank: number }) | undefined): TermDefinition | undefined {
+  if (!definition) {
+    return undefined;
+  }
+  const { rank: _rank, ...rest } = definition;
+  return rest;
 }
 
 /**

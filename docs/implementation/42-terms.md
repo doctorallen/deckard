@@ -94,7 +94,13 @@ made its words impractical:
   more.
 - **Inline definitions** make a term only of a token used in three entries
   or more; a term note defines its term however few use it. A task's line
-  is no `NDF: words`. `NDF means` and `stands for` read to the end of the
+  is no `NDF: words`. Nor is a status (QA: `- UAT: blocked on data`, being
+  earliest, defined UAT over a later `UAT (user acceptance testing)`): a
+  colon's words must spell the term's initials, or, outside a list item or
+  with the term in bold as a glossary writes it, be three words or more.
+  The forms are ranked: a term note, then a parenthesized form whose
+  initials match, then `means` or `stands for`, then a colon; the
+  earliest of the surest form wins. `NDF means` and `stands for` read to the end of the
   sentence. In the initials rule a digit counts as a letter, so `3-D
   Secure` is 3DS, and hyphens and slashes part words. A definition loses
   its Markdown bold and closing punctuation, and is cut at 200

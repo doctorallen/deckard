@@ -73,6 +73,10 @@ suite('Terms', () => {
     assert.deepStrictEqual(read('The NDF (see the deck) is late'), []);
     assert.deepStrictEqual(read('- [ ] UAT: sign off'), []);
     assert.deepStrictEqual(read('`NDF: not this`'), []);
+    // A status written as a list item, or a single word, is no definition.
+    assert.deepStrictEqual(read('- UAT: blocked on data'), []);
+    assert.deepStrictEqual(read('UAT: blocked'), []);
+    assert.deepStrictEqual(read('- UAT: user acceptance testing'), [['UAT', 'user acceptance testing']], 'unless its words spell it');
   });
 
   test('counts the entries that use a term, and keeps one used in three', () => {
@@ -117,6 +121,19 @@ suite('Terms', () => {
     assert.strictEqual(note?.filePath, 'Terms/NDF.md');
     assert.strictEqual(note?.text, 'A forward on a currency that cannot be delivered');
     assert.strictEqual(note?.line, 7);
+  });
+
+  test('takes the surest form over an earlier one: in parentheses, then means, then a colon', () => {
+    const table = (...notes: Array<[string, string, string]>) => getTermTable(indexOf(notes)).terms;
+    const uses: Array<[string, string, string]> = [['u1.md', '2026-03-05', 'UAT went fine'], ['u2.md', '2026-03-06', 'UAT again']];
+    const status = table(['a.md', '2026-03-01', lines('# Mon', 'UAT: the test phase we run')], ['b.md', '2026-03-02', lines('# Tue', 'We start UAT (user acceptance testing) Friday.')], ...uses);
+    assert.strictEqual(status.get('UAT')?.definition?.text, 'user acceptance testing');
+    assert.strictEqual(status.get('UAT')?.definition?.filePath, 'b.md');
+    assert.deepStrictEqual(Object.keys(status.get('UAT')?.definition ?? {}).sort(), ['date', 'filePath', 'heading', 'line', 'quote', 'source', 'text']);
+    const means = table(['a.md', '2026-03-01', 'UAT: the test phase we run'], ['b.md', '2026-03-02', 'UAT means user acceptance testing'], ...uses);
+    assert.strictEqual(means.get('UAT')?.definition?.filePath, 'b.md');
+    const blocked = table(['a.md', '2026-03-01', lines('# Mon', '- UAT: blocked on data')], ['c.md', '2026-03-03', 'UAT went fine'], ...uses);
+    assert.strictEqual(blocked.get('UAT')?.definition, undefined, 'a status is no definition');
   });
 
   test('a term note is read by its title when it has no term field, however few use it', () => {
