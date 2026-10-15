@@ -81,6 +81,7 @@ import {
   entryVisitKey,
   fileVisitKey,
   isSinceShown,
+  questionVisitKey,
   readFieldValues,
   SINCE_AFTER_MS,
   TagChanges,
@@ -237,7 +238,7 @@ export function createSearchPageSnapshot(
     notePaging,
     tasks: takePage(tasks, taskPaging).map(drawTask),
     taskPaging,
-    ...drawQuestions(index, results.questions, options.queryContext),
+    ...drawQuestions(index, since.questions(results.questions), options.queryContext),
     taskCounts: countTasks(tasks),
     pageSizes: SEARCH_PAGE_SIZES,
     ...(groups ? { groups } : {}),
@@ -460,6 +461,7 @@ interface SinceView {
   isNewTask: (task: Task) => boolean;
   notes: (keys: NoteKey[]) => NoteKey[];
   tasks: (tasks: Task[]) => Task[];
+  questions: (questions: readonly Question[]) => readonly Question[];
   band: (ranked: readonly NoteKey[], context: QueryContext) => Pick<SearchPageSnapshot, 'since'>;
 }
 
@@ -467,7 +469,7 @@ interface SinceView {
 function readSinceView(index: WorkspaceIndex, page: SearchPageResults, options: SearchPageOptions): SinceView {
   const changes = readTagChanges(index, page, options);
   if (!changes) {
-    return { isNewNote: () => false, isNewTask: () => false, notes: (keys) => keys, tasks: (tasks) => tasks, band: () => ({}) };
+    return { isNewNote: () => false, isNewTask: () => false, notes: (keys) => keys, tasks: (tasks) => tasks, questions: (questions) => questions, band: () => ({}) };
   }
   const filter = options.since?.filter;
   const isNewNote = (key: NoteKey): boolean => changes.newEntries.has(noteVisitKey(key));
@@ -483,6 +485,7 @@ function readSinceView(index: WorkspaceIndex, page: SearchPageResults, options: 
       }
       return filter !== 'added' || isNewTask(task);
     }),
+    questions: (questions) => (filter === 'answered' ? questions.filter((question) => changes.answeredQuestions.has(questionVisitKey(question))) : questions),
     band: (ranked, context) => ({ since: describeSince(changes, { filter, newNotes: ranked.filter(isNewNote).length }, context) }),
   };
 }

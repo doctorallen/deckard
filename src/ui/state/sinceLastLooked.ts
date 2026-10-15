@@ -16,13 +16,15 @@
  * of its lines says; a note's change time is its file's, so it cannot tell
  * one entry of a daily note from another. Its task lines are left out of
  * the hash: a task done or added is counted as a task, not again as a new
- * mention of the entry it is written in.
+ * mention of the entry it is written in. A question is known as a task is,
+ * by its note and its words (docs/implementation/38-questions.md).
  */
 import { DAY_MS } from '../../domain/markdown/calendar';
 import { describeDistance } from '../../domain/markdown/dates';
 import { formatDisplayDate } from '../../domain/markdown/dateFormat';
 import { getEntryTextOf, getFileEntryLines } from '../../domain/index/noteEntryIndex';
-import type { FrontmatterProperty, ParsedFile, Section, Task, WorkspaceIndex } from '../../domain/model';
+import { isAnswered } from '../../domain/index/questions';
+import type { FrontmatterProperty, ParsedFile, Question, Section, Task, WorkspaceIndex } from '../../domain/model';
 import type { QueryContext } from '../../domain/query/queryContext';
 import type { QueryResults } from '../../domain/query/queryEvaluator';
 import { isOpenTask } from '../../domain/tasks/taskStatuses';
@@ -75,8 +77,17 @@ export function taskVisitKey(task: Task): string {
 }
 
 /**
- * What a tag's page holds: the entries and tasks its search found, the hub
- * notes' own aside, since the hub's changes are its fields; and its fields.
+ * A question's key in a visit: its note and its words, as a task's is, so
+ * a line written above it, or its answer, does not make it another.
+ */
+export function questionVisitKey(question: Question): string {
+  return visitHash(`question\u0000${question.filePath}\u0000${question.title.trim()}`);
+}
+
+/**
+ * What a tag's page holds: the entries, tasks, and answered questions its
+ * search found, the hub notes' own aside, since the hub's changes are its
+ * fields; and its fields.
  */
 export function captureTagPage(
   index: WorkspaceIndex,
@@ -104,7 +115,8 @@ export function captureTagPage(
       open.add(taskVisitKey(task));
     }
   });
-  return { entries, tasks: { open: [...open], done: [...done] }, fields };
+  const answered = new Set(results.questions.filter(isAnswered).map(questionVisitKey));
+  return { entries, tasks: { open: [...open], done: [...done] }, fields, answered: [...answered] };
 }
 
 /** An entry's words as a visit keeps them: a hash of its lines, its task lines aside. */
@@ -143,6 +155,8 @@ export interface TagChanges {
   /** The tasks added since, and those done since, by visit key. */
   addedTasks: ReadonlySet<string>;
   doneTasks: ReadonlySet<string>;
+  /** The questions answered since, by visit key. */
+  answeredQuestions: ReadonlySet<string>;
   /** Each field whose value changed, by name, with the value it had; empty for one it did not have. */
   was: Readonly<Record<string, string>>;
   /** How many fields changed, those now gone among them. */
@@ -153,8 +167,10 @@ export interface TagChanges {
 
 /**
  * What changed between the last visit and now. A task added and done since
- * counts as done; a task open then and still open is neither. Plan 38
- * adds the questions answered since, from `answered`.
+ * counts as done; a task open then and still open is neither. A question is
+ * answered since when it is answered now and was not then, asked since or
+ * not; a visit kept before questions were, with no `answered`, counts none,
+ * rather than every answer the page holds.
  */
 export function compareTagPage(visit: TagVisit, now: TagPageState): TagChanges {
   const newEntries = new Set(Object.entries(now.entries).filter(([key, hash]) => visit.entries[key] !== hash).map(([key]) => key));
@@ -162,6 +178,8 @@ export function compareTagPage(visit: TagVisit, now: TagPageState): TagChanges {
   const doneBefore = new Set(visit.tasks.done);
   const addedTasks = new Set(now.tasks.open.filter((key) => !before.has(key)));
   const doneTasks = new Set(now.tasks.done.filter((key) => !doneBefore.has(key)));
+  const answeredBefore = visit.answered ? new Set(visit.answered) : undefined;
+  const answeredQuestions = new Set(answeredBefore ? (now.answered ?? []).filter((key) => !answeredBefore.has(key)) : []);
   const names = new Set([...Object.keys(visit.fields), ...Object.keys(now.fields)]);
   const changed = [...names].filter((name) => (visit.fields[name] ?? '') !== (now.fields[name] ?? ''));
   const was = Object.fromEntries(changed.filter((name) => name in now.fields).map((name) => [name, visit.fields[name] ?? '']));
@@ -170,9 +188,10 @@ export function compareTagPage(visit: TagVisit, now: TagPageState): TagChanges {
     newEntries,
     addedTasks,
     doneTasks,
+    answeredQuestions,
     was,
     fieldsChanged: changed.length,
-    total: newEntries.size + addedTasks.size + doneTasks.size + changed.length,
+    total: newEntries.size + addedTasks.size + doneTasks.size + answeredQuestions.size + changed.length,
   };
 }
 
@@ -202,6 +221,7 @@ export function describeSince(
     { kind: 'fields' as const, count: changes.fieldsChanged, label: counted(changes.fieldsChanged, 'field changed', 'fields changed') },
     { kind: 'done' as const, count: changes.doneTasks.size, label: counted(changes.doneTasks.size, 'task done', 'tasks done') },
     { kind: 'added' as const, count: changes.addedTasks.size, label: counted(changes.addedTasks.size, 'task added', 'tasks added') },
+    { kind: 'answered' as const, count: changes.answeredQuestions.size, label: counted(changes.answeredQuestions.size, 'question answered', 'questions answered') },
   ]
     .filter((chip) => chip.count > 0)
     .map((chip) => (chip.kind === filter ? { ...chip, active: true as const } : chip));

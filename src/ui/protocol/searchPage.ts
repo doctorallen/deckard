@@ -342,9 +342,10 @@ export interface SearchPageBetweenGroup {
 
 /**
  * A kind of change the Since you last looked band counts, each a chip that
- * filters the page to what it counts. Plan 38 adds questions answered.
+ * filters the page to what it counts: new mentions, fields changed, tasks
+ * done and added, and questions answered.
  */
-export type SinceChipKind = 'mentions' | 'fields' | 'done' | 'added';
+export type SinceChipKind = 'mentions' | 'fields' | 'done' | 'added' | 'answered';
 
 /**
  * What changed on a tag's page since the reader last had it open

@@ -375,7 +375,7 @@ suite('Search page messages', () => {
   test('Since you last looked: Mark seen carries nothing, and a chip names one kind of change or none', () => {
     assert.deepStrictEqual(narrowSearchPageMessage({ type: 'markSeen' }), { type: 'markSeen' });
     assert.strictEqual(narrowSearchPageMessage({ type: 'markSeen', seenAt: 1 }), undefined, 'the host says when');
-    for (const kind of ['mentions', 'fields', 'done', 'added']) {
+    for (const kind of ['mentions', 'fields', 'done', 'added', 'answered']) {
       assert.deepStrictEqual(narrowSearchPageMessage({ type: 'setSinceFilter', kind }), { type: 'setSinceFilter', kind });
     }
     assert.deepStrictEqual(narrowSearchPageMessage({ type: 'setSinceFilter' }), { type: 'setSinceFilter' });

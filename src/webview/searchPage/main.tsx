@@ -6,7 +6,7 @@
  * reader asked for.
  */
 import type { StateMessage } from '../../ui/protocol/messaging';
-import type { SearchPageMessage, SearchPageState } from '../../ui/protocol/searchPage';
+import type { SearchPageMessage, SearchPageState, SinceChipKind } from '../../ui/protocol/searchPage';
 import { installMenuKeys } from '../shared/menuKeys';
 import { markWords, type Unmark } from '../shared/markWords';
 import { openingOf, openSourceMessage } from '../shared/openSource';
@@ -699,10 +699,19 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   'copy-story': () => send({ type: 'copyStory' }),
 };
 
+/** The tab each chip of the Since you last looked band narrows, but fields, which open the hub card. */
+const SINCE_CHIP_TABS: Readonly<Record<Exclude<SinceChipKind, 'fields'>, ResultTabId>> = {
+  mentions: 'notes',
+  done: 'tasks',
+  added: 'tasks',
+  answered: 'questions',
+};
+
 /**
- * A chip of the Since you last looked band: new mentions, tasks done, and
- * tasks added narrow their tab to what they count, and show it; chosen
- * again, they let it go. Changed fields are in the hub card, which opens.
+ * A chip of the Since you last looked band: new mentions, tasks done, tasks
+ * added, and questions answered narrow their tab to what they count, and
+ * show it; chosen again, they let it go. Changed fields are in the hub
+ * card, which opens.
  */
 function chooseSinceChip(kind: string, snapshot: SearchPageState): void {
   const chip = snapshot.since ? snapshot.since.chips.find((candidate) => candidate.kind === kind) : undefined;
@@ -723,7 +732,7 @@ function chooseSinceChip(kind: string, snapshot: SearchPageState): void {
   if (!chip.active) {
     // The tab it narrows is shown, as the reader's choice, so the tab the
     // page would settle on does not take its place.
-    activeTab = chip.kind === 'mentions' ? 'notes' : 'tasks';
+    activeTab = SINCE_CHIP_TABS[chip.kind];
     tabChosen = true;
     saveState();
   }

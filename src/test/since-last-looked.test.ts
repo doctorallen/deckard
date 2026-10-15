@@ -124,6 +124,31 @@ suite('Since you last looked', () => {
     assert.deepStrictEqual(added.tasks.map((item) => item.task.title.trim()), ['Book the loader restart window #team/rates']);
   });
 
+  test('counts the questions answered since, whose chip narrows the Questions tab to them, and a visit kept before questions counts none', () => {
+    const asked = (...rows: string[]) => indexOf({ ...THEN, 'notes/asks.md': lines('# Asks #team/rates', ...rows) });
+    const then = asked('- [?] Who owns the curve feed?', '- [?] Where is the runbook?', '  - Answer: in the wiki', '- [?] When is the freeze?');
+    const visit = toTagVisit(captureTagPageState(then, '#team/rates', createQueryContext(before)), before);
+    const index = asked(
+      'A line written above them.',
+      '- [?] Who owns the curve feed?',
+      '  - Answer: Sam, from Monday',
+      '- [?] Where is the runbook?',
+      '  - Answer: in the wiki',
+      '- [?] When is the freeze?',
+    );
+    const changes = compareTagPage(visit, captureTagPageState(index, '#team/rates', context));
+    assert.strictEqual(changes.answeredQuestions.size, 1, 'the one answered since, though its line moved; not the one answered before');
+    const page = pageWith(index, '#team/rates', { visit });
+    assert.ok(page.since?.chips.some((chip) => chip.kind === 'answered' && chip.label === '1 question answered'));
+    assert.strictEqual(page.questions?.length, 3, 'unfiltered, the tab lists every question');
+    const answered = pageWith(index, '#team/rates', { visit, filter: 'answered' });
+    assert.deepStrictEqual(answered.questions?.map((question) => question.text), ['Who owns the curve feed?']);
+    assert.strictEqual(answered.since?.chips.find((chip) => chip.active)?.kind, 'answered');
+    assert.strictEqual(answered.tasks.length, page.tasks.length, 'the tasks are left as they are');
+    const { answered: _none, ...older } = visit;
+    assert.strictEqual(compareTagPage(older, captureTagPageState(index, '#team/rates', context)).answeredQuestions.size, 0);
+  });
+
   test('a search that narrows the tag, or is no tag’s, draws no band and marks nothing', () => {
     const visit = visitThen();
     const narrowed = pageWith(indexOf(NOW), '#team/rates is:open', { visit });

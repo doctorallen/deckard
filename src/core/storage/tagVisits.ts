@@ -27,7 +27,7 @@ export interface TagVisit {
   tasks: { open: string[]; done: string[] };
   /** The hub's own fields and reverses, by name, each as its values read. */
   fields: Record<string, string>;
-  /** The questions under the tag that were answered; plan 38 records them, and a visit before it has none. */
+  /** The page's questions that were answered, by a key that outlasts a line moving; a visit before questions has none. */
   answered?: string[];
 }
 

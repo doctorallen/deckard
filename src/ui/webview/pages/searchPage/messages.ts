@@ -261,7 +261,7 @@ function narrowTypeRow<T extends TypeRowMessage['type']>(type: T): Narrower<Type
 }
 
 /** The kinds of change a Since you last looked chip filters by. */
-const SINCE_CHIP_KINDS: readonly SinceChipKind[] = ['mentions', 'fields', 'done', 'added'];
+const SINCE_CHIP_KINDS: readonly SinceChipKind[] = ['mentions', 'fields', 'done', 'added', 'answered'];
 
 /** A chip of the Since you last looked band, or none to clear it, and nothing else. */
 const narrowSetSinceFilter: Narrower<SetSinceFilterMessage> = (value) => {

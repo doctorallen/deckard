@@ -2,9 +2,9 @@
  * Since you last looked (docs/implementation/37-since-you-last-looked.md):
  * the band under a tag's page's bar, when the reader last had the page
  * open over a day ago and something changed. It says when, and what
- * changed, each kind a chip: new mentions, changed fields, tasks done, and
- * tasks added. A chip filters the Notes or Tasks tab to what it counts, as
- * a Refine value does, and chosen again lets it go; the fields' chip opens
+ * changed, each kind a chip: new mentions, changed fields, tasks done,
+ * tasks added, and questions answered. A chip filters the Notes, Tasks, or
+ * Questions tab to what it counts, as a Refine value does, and chosen again lets it go; the fields' chip opens
  * the hub card, where each changed field shows its old value. Mark seen
  * counts the visit now. Under Zen the date and counts stay, and Mark seen
  * waits.
@@ -17,6 +17,7 @@ const CHIP_TIPS: Readonly<Record<SearchPageSince['chips'][number]['kind'], strin
   fields: 'Open the fields, each changed one with its old value',
   done: 'Show only the tasks done since',
   added: 'Show only the tasks added since',
+  answered: 'Show only the questions answered since',
 };
 
 /** The band, or nothing when the page has none. */

@@ -72,6 +72,31 @@ suite('Since you last looked, drawn', () => {
     assert.deepStrictEqual(filtered.lastPosted('setSinceFilter'), { type: 'setSinceFilter' });
   });
 
+  test('the questions answered chip asks for the Questions tab’s answered questions, and shows that tab', () => {
+    const asked = (...rows: string[]) => indexOf({ 'notes/asks.md': lines('# Asks #team/rates', ...rows) });
+    const then = toTagVisit(captureTagPageState(asked('- [?] Who owns the curve feed?'), '#team/rates', createQueryContext(before)), before);
+    const index = asked('- [?] Who owns the curve feed?', '  - Answer: Sam', '- [?] When is the freeze?');
+    const snapshot = (filter?: SinceChipKind) => ({
+      ...createSearchPageSnapshot(index, createPreferences(new MemoryStore()).reader.value, '#team/rates', {
+        queryContext: createQueryContext(now),
+        since: { visit: then, ...(filter ? { filter } : {}) },
+      }),
+      parkedTags: [],
+    });
+    const page = openWebviewPage(renderPage('searchPage'), snapshot());
+    pages.push(page);
+    const chip = page.find('.since-chip[data-kind="answered"]');
+    assert.strictEqual(chip.textContent, '1 question answered');
+    assert.strictEqual(chip.getAttribute('data-tip'), 'Show only the questions answered since');
+    page.click('.since-chip[data-kind="answered"]');
+    assert.deepStrictEqual(page.lastPosted('setSinceFilter'), { type: 'setSinceFilter', kind: 'answered' });
+    // The host answers with the page narrowed.
+    page.send(snapshot('answered'));
+    assert.strictEqual(page.find('.since-chip[data-kind="answered"]').getAttribute('aria-pressed'), 'true');
+    assert.strictEqual(page.find('[role="tab"][aria-selected="true"]').getAttribute('data-tab'), 'questions');
+    assert.deepStrictEqual(page.findAll('#result-panel-questions .search-question-text').map((text) => text.textContent), ['Who owns the curve feed?']);
+  });
+
   test('the fields’ chip opens the hub card, where the changed field shows its old value once', () => {
     const page = ratesPage();
     // The reader folds the hub, as the browser tells the page.
