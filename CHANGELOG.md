@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2.11.0 - 2026-10-24
+
+### Highlights
+
+- **Task board columns fit their cards**: never narrower than about five words a line, at any display scale.
+- A board column is its head over its cards, with no box; an empty column takes only the room it needs.
+
 ### Changed
 
 - **Task board columns fit their cards.** A column with cards is never
