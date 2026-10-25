@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### Changed
+
+- **Task board columns fit their cards.** A column with cards is never
+  narrower than about five words of a title a line, measured in the cards'
+  own font so it holds at any zoom or display scale; at Windows' larger
+  scaling the board had left room for a word or two a line, and it now
+  scrolls sideways instead. A column with no cards, or whose cards the
+  search hides, takes only the room its head needs, and the columns with
+  cards share the rest.
+- **A column is its head over its cards.** The box around each column is
+  gone: its name on one line, never broken, its count on a quieter line
+  under it, a rule beneath, and the cards edge to edge below. A column
+  under a held card takes a faint amber ground. A card has one even inset
+  all round and between its checkbox and its text, and the ⋯ keeps its
+  room on the title's first line only, so a title has more room on every
+  line.
+
 ## 2.10.0 - 2026-10-15
 
 ### Highlights

@@ -67,7 +67,7 @@ const LAYOUT_CONTRACTS = {
   taskBoard: [
     ['main', 'max-width', 'none'],
     ['main', 'border-top', 'var(--cyan)'],
-    ['.board', 'grid-auto-flow', 'column'],
+    ['.board', 'display', 'flex'],
     // A column that cannot shrink its cards row clips the tasks below the
     // fold with no way to reach them.
     ['.board-column', 'grid-template-rows', 'minmax(0, 1fr)'],
