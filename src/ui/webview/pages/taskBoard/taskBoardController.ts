@@ -24,6 +24,7 @@ import { clickTask, openTask, quoteTaskTitle, TaskWrites } from '../../../comman
 import { listPeopleRecency } from '../../../state/peopleRecency';
 import { moveTaskToColumn, readTaskBoardOptions } from '../../../commands/taskBoardActions';
 import { breakIntoStepsCommand } from '../../../commands/taskSteps';
+import { snoozeWithPicker } from '../../../commands/snooze';
 import { countStatusTagsLeft, describeStatusTagsLeft } from '../../../commands/statusMove';
 import { normalizeAgendaQuery } from '../../../state/agendaState';
 import { rankShown } from '../../../../domain/tasks/taskRank';
@@ -453,7 +454,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   /** What a card or row does to its task, and the page's Add task and a column's. */
   private taskHandlers(): Pick<
     Handlers,
-    'toggleTask' | 'moveTask' | 'pickTaskDate' | 'pickTaskAssignee' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps' | 'addTask' | 'addTaskToColumn'
+    'toggleTask' | 'moveTask' | 'pickTaskDate' | 'pickTaskAssignee' | 'snoozeTask' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps' | 'addTask' | 'addTaskToColumn'
   > {
     const { indexer, preferences, writes } = this.board;
     return {
@@ -500,6 +501,12 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         );
         if (picked) {
           await moveTaskToColumn(writes, task, `assignee:${picked.key}`, { index });
+        }
+      },
+      snoozeTask: async (message) => {
+        const task = indexer.getSnapshot().tasks.get(message.taskId);
+        if (task) {
+          await snoozeWithPicker(writes, [task], quoteTaskTitle(task));
         }
       },
       moveTaskTo: async (message) => {

@@ -213,7 +213,8 @@ export class TaskStatusBar implements vscode.Disposable {
       vscode.workspace.onDidChangeConfiguration((event) => {
         if (
           event.affectsConfiguration('deckard.tasks.viewQuery') ||
-          event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays')
+          event.affectsConfiguration('deckard.tasks.needsNewDateAfterDays') ||
+          event.affectsConfiguration('deckard.tasks.hideNotStarted')
         ) {
           this.refresh();
         }

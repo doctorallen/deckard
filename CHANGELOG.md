@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Added
+
+- **Snooze until…** puts a task off until tomorrow, next week, or a day
+  typed in plain words, by writing its start date, 🛫 or `[start:: …]` as
+  the line already writes dates, with Undo. It is
+  `Deckard: Snooze Task Until…` on the task at the cursor, in the palette
+  and the editor's right-click menu; **Snooze Until…** on a task's menu in
+  the Tasks view, for every task selected as one write; and **Snooze
+  until…** in a Task board card's and table row's **⋯** menu, or **z** on a
+  focused card. When the task is due before it starts, the message says it
+  is still due. `deckard.tasks.hideNotStarted`, off by default, leaves
+  tasks whose start date is still to come out of the Tasks view, Home's
+  agenda, the status bar's count, and the Task Board until that day; a
+  search that names start dates still finds them.
+
 ## 2.12.0 - 2026-10-27
 
 ### Highlights

@@ -95,6 +95,12 @@ suite('Task Board messages', () => {
     assert.strictEqual(narrowTaskBoardMessage({ type: 'breakIntoSteps', taskId: 'x', extra: 1 }), undefined);
   });
 
+  test('asks when to snooze with the task id alone', () => {
+    assert.deepStrictEqual(narrowTaskBoardMessage({ type: 'snoozeTask', taskId: 'task-1' }), { type: 'snoozeTask', taskId: 'task-1' });
+    assert.strictEqual(narrowTaskBoardMessage({ type: 'snoozeTask' }), undefined);
+    assert.strictEqual(narrowTaskBoardMessage({ type: 'snoozeTask', taskId: 'x', date: '2026-11-02' }), undefined);
+  });
+
   test('keeps a move’s number, and makes a move without one, or with one that is not a number', () => {
     assert.deepStrictEqual(
       narrowTaskBoardMessage({ type: 'moveTask', taskId: 'a', column: 'done', from: 'status:', requestId: 3 }),

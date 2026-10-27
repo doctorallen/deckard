@@ -405,6 +405,12 @@ export interface PickTaskAssigneeMessage {
   taskId: string;
 }
 
+/** The board's z key and its menu's Snooze until…: ask the host when the task starts. */
+export interface SnoozeTaskMessage {
+  type: 'snoozeTask';
+  taskId: string;
+}
+
 /** The card menu's Move to…: the task and its steps under another heading. */
 export interface MoveTaskToMessage {
   type: 'moveTaskTo';
@@ -442,6 +448,7 @@ export interface AddTaskToColumnMessage {
 export interface TaskBoardPageToHost {
   pickTaskDate: PickTaskDateMessage;
   pickTaskAssignee: PickTaskAssigneeMessage;
+  snoozeTask: SnoozeTaskMessage;
   moveTaskTo: MoveTaskToMessage;
   editTask: EditTaskMessage;
   breakIntoSteps: BreakIntoStepsMessage;

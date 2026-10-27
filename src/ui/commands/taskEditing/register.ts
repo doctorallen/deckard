@@ -8,13 +8,14 @@ import { startColumnTask } from '../taskBoardActions';
 import { breakIntoStepsCommand, readTaskArgument } from '../taskSteps';
 import { toggleTaskDoneCommand } from '../toggleTaskDone';
 import { setTaskStatusCommand } from '../setTaskStatus';
+import { snoozeTaskCommand } from '../snooze';
 import { importObsidianStatusesCommand, moveStatusTagsCommand } from '../statusMove';
 import { registerCommand } from '../runCommand';
 import { NOT_A_PROMISE_COMMAND, notAPromiseCommand, TRACK_PROMISE_COMMAND, trackPromiseCommand } from '../trackPromise';
 
 /**
  * Task editing: Edit Task and Add Task, Break into Steps, Toggle Task Done,
- * Set Task Status…, Move to…, and the lens and lightbulb's Track and Not a
+ * Set Task Status…, Snooze Task Until…, Move to…, and the lens and lightbulb's Track and Not a
  * promise on a promise in today's note.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
@@ -50,6 +51,10 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     // A card's menu passes the task it was opened on; the palette, nothing.
     registerCommand('deckard.setTaskStatus', (task?: unknown) =>
       setTaskStatusCommand(indexer, writes, readTaskArgument(task)),
+    ),
+    // A card's menu passes the task it was opened on; the palette, nothing.
+    registerCommand('deckard.snoozeTask', (task?: unknown) =>
+      snoozeTaskCommand(indexer, writes, readTaskArgument(task)),
     ),
     registerCommand('deckard.moveStatusTagsIntoCheckboxes', () => moveStatusTagsCommand(indexer, services.history, services.preferences.repository)),
     registerCommand('deckard.importObsidianStatuses', () => importObsidianStatusesCommand()),

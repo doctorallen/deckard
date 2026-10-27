@@ -13,6 +13,7 @@ import { findParentTag } from '../../domain/tasks/parentTag';
 import { drawTaskStatus } from './drawnStatus';
 import { describeStepParts, foldSteps } from '../../domain/markdown/taskSteps';
 import { mentionsParked, withoutParked } from '../../domain/index/parked';
+import { leaveOutNotStarted } from '../../domain/tasks/notStarted';
 import { hasAvailableTerm, toggleAvailable } from '../../domain/query/queryEdit';
 import { needsNewDate } from '../../domain/tasks/taskPolicy';
 import {
@@ -773,7 +774,8 @@ function refuseInherited(
 
 /**
  * The tasks the board's search finds, less the parked ones unless the search
- * asks about them, and how many open parked tasks that left out.
+ * asks about them, and how many open parked tasks that left out; less, too,
+ * the tasks not started yet when the task policy hides them.
  */
 function selectTasks(
   index: WorkspaceIndex,
@@ -781,9 +783,11 @@ function selectTasks(
   context: QueryContext,
 ): { tasks: Task[]; parkedLeftOut: number } {
   const parsed = query.trim() ? parseWorkspaceQuery(index, query) : undefined;
-  const found = parsed?.node
-    ? evaluateQuery(index, parsed.node, context).tasks
-    : [...index.tasks.values()];
+  const found = leaveOutNotStarted(
+    parsed?.node ? evaluateQuery(index, parsed.node, context).tasks : [...index.tasks.values()],
+    parsed?.node,
+    context,
+  );
   if (mentionsParked(parsed?.node) || !index.parked || index.parked.tasks.size === 0) {
     return { tasks: found, parkedLeftOut: 0 };
   }

@@ -557,6 +557,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.snoozeTask",
+        "title": "Snooze Task Until…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.moveStatusTagsIntoCheckboxes",
         "title": "Move Status Tags into Checkboxes…",
         "category": "Deckard"
@@ -957,6 +962,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.agenda.snooze",
+        "title": "Snooze Until…",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.agenda.moveTo",
         "title": "Move to…",
         "category": "Deckard"
@@ -1127,6 +1137,10 @@
           "when": "editorLangId == markdown && deckard.onTaskLine"
         },
         {
+          "command": "deckard.snoozeTask",
+          "when": "editorLangId == markdown && deckard.onTaskLine"
+        },
+        {
           "command": "deckard.agenda.setTaskStatus",
           "when": "false"
         },
@@ -1236,6 +1250,10 @@
         },
         {
           "command": "deckard.agenda.dueOnDate",
+          "when": "false"
+        },
+        {
+          "command": "deckard.agenda.snooze",
           "when": "false"
         },
         {
@@ -1392,13 +1410,18 @@
           "group": "1_task@3"
         },
         {
-          "command": "deckard.breakIntoSteps",
+          "command": "deckard.snoozeTask",
           "when": "deckard.onTaskLine",
           "group": "1_task@4"
         },
         {
-          "command": "deckard.addTask",
+          "command": "deckard.breakIntoSteps",
+          "when": "deckard.onTaskLine",
           "group": "1_task@5"
+        },
+        {
+          "command": "deckard.addTask",
+          "group": "1_task@6"
         },
         {
           "command": "deckard.renameHeading",
@@ -1724,6 +1747,11 @@
           "command": "deckard.agenda.dueOnDate",
           "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
           "group": "1_due@4"
+        },
+        {
+          "command": "deckard.agenda.snooze",
+          "when": "view == deckard.agenda && viewItem == deckardAgendaTask",
+          "group": "1_due@5"
         },
         {
           "command": "deckard.agenda.editTask",
@@ -2712,6 +2740,12 @@
             "type": "string",
             "default": "",
             "description": "A Deckard search that says which open tasks the Tasks view, Home's agenda, and the status bar's count are of, such as is:mine, is:available for what can be started now, or has:due OR has:scheduled OR has:start to leave out undated tasks. Empty means every open task.",
+            "order": 10
+          },
+          "deckard.tasks.hideNotStarted": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Leaves an open task whose start date (🛫 or `[start:: …]`) is still to come out of the Tasks view, Home's agenda, the status bar's count, and the Task Board until the day it starts, as **Snooze Task Until…** puts a task off. A search that names start dates, such as `has:start` or `start > today`, still finds them.",
             "order": 10
           },
           "deckard.board.limits": {

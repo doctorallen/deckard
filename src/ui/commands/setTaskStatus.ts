@@ -41,7 +41,7 @@ export async function setTaskStatusCommand(
  * the index read it. A task typed a moment ago is found once the index has
  * read it again.
  */
-function findCursorTask(indexer: Pick<IndexReader, 'getSnapshot' | 'getFilePath'>): Task | undefined {
+export function findCursorTask(indexer: Pick<IndexReader, 'getSnapshot' | 'getFilePath'>): Task | undefined {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== 'markdown') {
     return undefined;

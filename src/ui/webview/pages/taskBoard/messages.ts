@@ -16,6 +16,7 @@ import type {
   MoveTaskMessage,
   MoveTaskToMessage,
   PickTaskAssigneeMessage,
+  SnoozeTaskMessage,
   PickTaskDateMessage,
   ReorderTasksMessage,
   SaveBoardSearchMessage,
@@ -62,7 +63,7 @@ function isTaskSortMode(value: unknown): value is TaskSortMode {
 }
 
 /** The messages that name a task and nothing else. */
-type TaskOnlyMessage = PickTaskDateMessage | PickTaskAssigneeMessage | MoveTaskToMessage | EditTaskMessage | BreakIntoStepsMessage;
+type TaskOnlyMessage = PickTaskDateMessage | PickTaskAssigneeMessage | SnoozeTaskMessage | MoveTaskToMessage | EditTaskMessage | BreakIntoStepsMessage;
 
 /**
  * A card's or row's action on one task: its id, and nothing else. One check
@@ -219,6 +220,7 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   moveTask: narrowMoveTask,
   pickTaskDate: taskOnly('pickTaskDate'),
   pickTaskAssignee: taskOnly('pickTaskAssignee'),
+  snoozeTask: taskOnly('snoozeTask'),
   moveTaskTo: taskOnly('moveTaskTo'),
   editTask: taskOnly('editTask'),
   breakIntoSteps: taskOnly('breakIntoSteps'),

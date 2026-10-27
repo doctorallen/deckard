@@ -34,6 +34,8 @@ export type BulkEdit =
   /** A status of any type, as the task editor sets one. */
   | { kind: 'status'; status: TaskStatusDefinition }
   | { kind: 'due'; date: string | undefined }
+  /** A scheduled or start date, as Snooze until… writes a start date on several tasks. */
+  | { kind: 'date'; field: 'scheduled' | 'start'; date: string | undefined }
   /** A due date of its own for each task, by task id, as a spread writes. */
   | { kind: 'dueEach'; dates: ReadonlyMap<string, string> }
   | { kind: 'tag'; tag: string };
@@ -64,6 +66,13 @@ export interface BulkEditResult {
   unreadRules?: number;
 }
 
+/** What each date a bulk edit sets is called in its sentences. */
+const DATE_NAMES: Readonly<Record<'due' | 'scheduled' | 'start', string>> = {
+  due: 'due date',
+  scheduled: 'scheduled date',
+  start: 'start date',
+};
+
 /** What a bulk edit is called, in the preview and in the Undo prompt, its date in the reader's format. */
 export function describeBulkEdit(edit: BulkEdit, entries: number, formats: DateFormats = DEFAULT_DATE_FORMATS): string {
   const count = `${entries} ${entries === 1 ? 'result' : 'results'}`;
@@ -76,6 +85,10 @@ export function describeBulkEdit(edit: BulkEdit, entries: number, formats: DateF
       return edit.date
         ? `setting the due date of ${count} to ${formatDisplayDay(edit.date, formats)}`
         : `clearing the due date of ${count}`;
+    case 'date':
+      return edit.date
+        ? `setting the ${DATE_NAMES[edit.field]} of ${count} to ${formatDisplayDay(edit.date, formats)}`
+        : `clearing the ${DATE_NAMES[edit.field]} of ${count}`;
     case 'dueEach':
       return `spreading the due dates of ${count}`;
     case 'tag':
@@ -92,6 +105,10 @@ function verbFor(edit: BulkEdit, formats: DateFormats): string {
       return `Set the status to ${edit.status.name} on`;
     case 'due':
       return edit.date ? `Set the due date to ${formatDisplayDay(edit.date, formats)} on` : 'Cleared the due date on';
+    case 'date':
+      return edit.date
+        ? `Set the ${DATE_NAMES[edit.field]} to ${formatDisplayDay(edit.date, formats)} on`
+        : `Cleared the ${DATE_NAMES[edit.field]} on`;
     case 'dueEach':
       return 'Set a due date on';
     case 'tag':
@@ -313,6 +330,15 @@ function rewrite(
     return {
       text: setTaskDate(line, task.checkboxColumn, {
         field: 'due',
+        date: edit.date,
+        preferredFormat: options.format,
+      }),
+    };
+  }
+  if (edit.kind === 'date') {
+    return {
+      text: setTaskDate(line, task.checkboxColumn, {
+        field: edit.field,
         date: edit.date,
         preferredFormat: options.format,
       }),

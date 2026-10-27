@@ -285,10 +285,24 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
 - **Drag a task onto a group** to write that priority, status, due date (**Today**), tag, or person into it. **Overdue**, **Later**, and **Needs a new date** take no drops.
 - Check a task's box to complete it, with its ✅ date and next occurrence.
 - **Right-click** to make it due today, tomorrow, next Monday, or a date [in plain words](#dates-in-plain-words); to edit it (also the pencil); to [break it into steps](#breaking-a-task-into-steps); or for **Move to…**, which moves it with its steps under another heading, into today's note, or into a new note, leaving a link; see [Moving lines and tasks](organizing.md#moving-lines-and-tasks). Select several to act on them together, as one write, [previewed and undone](search-pages.md#previewing-and-undoing-a-write).
+- **Snooze Until…** puts a task off; see [Snoozing a task](#snoozing-a-task).
 - **Reschedule All…** on a group, the calendar button beside **Overdue**, or `Deckard: Reschedule Overdue Tasks…` dates many tasks at once. Each day shows how full it is, such as *Fri 2026-09-25 · 3 due · 1 scheduled*. For several tasks it also offers:
   - **Spread over the next 5 days**: the next five weekdays, oldest due first (17 tasks become 4, 4, 3, 3, 3).
   - **3 for today, the rest next week**, for four or more: the three most important stay today; the rest move to next Monday.
 - The badge counts tasks overdue or due today.
+
+### Snoozing a task
+
+A task you cannot do yet can wait for a day without a due date it does not have. **Snooze Until…** writes the day as its start date, 🛫, or `[start:: …]` on a [Dataview-format](#dataview-format) line:
+
+- **Tomorrow**.
+- **Next week**: next week's Monday, as `next week` reads in a date box, with weeks as `deckard.calendar.weekStart` draws them.
+- **Pick a date…**: a day [in plain words](#dates-in-plain-words).
+
+Each row shows its day. A message says when the task starts, *"Call Ren" starts Mon 2026-11-02.*, with **Undo**; when it is due before then, it adds that it is still due, since a snooze moves no due date. Snoozing it again moves the start date.
+
+- **Where:** `Deckard: Snooze Task Until…` on the task at the cursor, from the palette or the editor's right-click menu; **Snooze Until…** on a task's right-click menu in the Tasks view, for the tasks selected too, as one write; and **Snooze until…** in a [Task board](task-board.md#keyboard) card's or table row's **⋯** menu, or **z** on a focused card.
+- **Until it starts:** the Tasks view keeps a task that has not started out of **Today**, and lists it under **Upcoming** or **Later** by its start date, *starts Mon 2026-11-02*. Turn on `deckard.tasks.hideNotStarted` to leave it out of the Tasks view, Home's agenda, the status bar's count, and the Task Board until that day. A search that names start dates, such as `has:start` or `start > today`, still finds it.
 
 ## Status bar and reminders
 

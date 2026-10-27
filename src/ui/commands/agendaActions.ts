@@ -16,6 +16,7 @@ import { askForDate, readDateFormats } from './datePrompt';
 import { moveTasks } from './moveTo';
 import { breakIntoStepsCommand } from './taskSteps';
 import { setTaskStatusCommand } from './setTaskStatus';
+import { snoozeWithPicker } from './snooze';
 import {
   openTask,
   quoteTaskTitle,
@@ -522,7 +523,8 @@ export interface AgendaCommandServices {
 
 /**
  * The Tasks view's own menus: a date by name or in plain words, on one
- * task, on the tasks selected, or on every task in a group; Move to…,
+ * task, on the tasks selected, or on every task in a group; Snooze
+ * Until…; Move to…,
  * Reschedule…, Show More, Edit Task, and Break into Steps; and Reschedule
  * Overdue Tasks from the palette and the status bar.
  */
@@ -561,6 +563,15 @@ export function registerAgendaCommands(services: AgendaCommandServices): vscode.
         const tasks = view.tasksFor(node, selected);
         if (tasks.length > 0) {
           await moveTasks(indexer, preferences, writes, tasks);
+        }
+      },
+    ),
+    registerCommand(
+      'deckard.agenda.snooze',
+      async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
+        const tasks = view.tasksFor(node, selected);
+        if (tasks.length > 0) {
+          await snoozeWithPicker(writes, tasks, agenda.describeSubject(tasks));
         }
       },
     ),

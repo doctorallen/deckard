@@ -15,6 +15,7 @@ suite('Note Actions', () => {
       '$(check) Toggle Task Done',
       '$(edit) Edit Task',
       '$(circle-large-outline) Set Task Status…',
+      '$(clock) Snooze Task Until…',
       '$(list-ordered) Break into Steps…',
       '$(add) Add Task',
       '—',

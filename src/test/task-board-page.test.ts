@@ -98,7 +98,7 @@ suite('Task Board page', () => {
     assert.strictEqual(menu.hidden, false);
     assert.strictEqual(button.getAttribute('aria-expanded'), 'true');
     const headings = page.findAll('#action-menu .menu-heading').map((heading) => heading.textContent);
-    assert.deepStrictEqual(headings, ['Status', 'More statuses', 'Priority', 'Due', 'For', 'Steps', 'Done', 'Note']);
+    assert.deepStrictEqual(headings, ['Status', 'More statuses', 'Priority', 'Due', 'Snooze', 'For', 'Steps', 'Done', 'Note']);
     const labels = page.findAll('#action-menu [data-menu-value] .menu-label').map((item) => item.textContent);
     for (const label of ['Todo', 'In progress', 'High', 'Due tomorrow', 'No due date', 'Complete it']) {
       assert.ok(labels.includes(label), `offers ${label}`);
@@ -196,6 +196,20 @@ suite('Task Board page', () => {
     const table = show(boardOf(TWO, { taskBoardLayout: 'table' }));
     assert.deepStrictEqual(table.findAll('.query-status [data-action="set-task-layout"]').map((button) => button.getAttribute('aria-pressed')), ['false', 'true']);
     assert.strictEqual(table.findAll('.query-status select').length, 0, 'the table groups and sorts by its own headers');
+  });
+
+  test('Snooze until… is in a card\'s menu on z, and z on a card asks the host when', () => {
+    const { page, taskId } = open();
+    page.click('.board-card [data-action="board-menu"]');
+    const snooze = page.find('#action-menu [data-menu-value="snooze"]');
+    assert.strictEqual(snooze.querySelector('.menu-key')?.textContent, 'z');
+    page.click('#action-menu [data-menu-value="snooze"]');
+    assert.deepStrictEqual(page.lastPosted('snoozeTask'), { type: 'snoozeTask', taskId });
+    const card = page.find(`.board-card[data-task-id="${taskId}"]`) as HTMLElement;
+    card.focus();
+    page.posted.length = 0;
+    card.dispatchEvent(new page.window.KeyboardEvent('keydown', { key: 'z', bubbles: true }));
+    assert.deepStrictEqual(page.lastPosted('snoozeTask'), { type: 'snoozeTask', taskId });
   });
 
   test('a card moved from the keyboard moves at once, and says so if it could not be written', () => {
