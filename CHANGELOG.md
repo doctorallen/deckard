@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2.12.0 - 2026-10-27
+
+### Highlights
+
+- **Mimic, the new default theme**, takes every color and font from your VS Code theme.
+- **Corpo keeps VS Code's default colors**, Dark 2026 or Light 2026, whichever theme you use.
+
 ### Added
 
 - **Mimic, the new default theme**, is the plain look Corpo had: every
