@@ -1,5 +1,5 @@
 import { TaskPriority } from '../model';
-import { addDays, DAY_MS, formatIsoDate, parseIsoDate, startOfDay } from './calendar';
+import { addDays, DAY_MS, formatIsoDate, parseIsoDate, shiftDate, startOfDay } from './calendar';
 import { STATUS_CHARACTER, TaskLineShape } from './lineShapes';
 import { parseRecurrence, recurrenceReference } from './recurrence';
 import {
@@ -198,6 +198,28 @@ export function setTaskDate(
   }
   const format = parseTaskMetadata(text).format ?? preferredFormat;
   return prefix + appendToTaskText(text, formatTaskMetadata(field, date, format));
+}
+
+/** The dates shiftTaskDates moves, and by how many days. */
+export interface DateShift {
+  /** Whole days, later when positive and earlier when negative. */
+  days: number;
+  /** The dates to move; a date the line does not write is left unwritten. */
+  fields: readonly ('due' | 'scheduled' | 'start')[];
+}
+
+/**
+ * Moves each of a task's chosen dates by a number of days, where it is
+ * written and in the form it is written, as `📅 2026-10-02` or
+ * `[due:: 2026-10-02]`. A date the task does not write as metadata, such
+ * as one read from its words, has nothing to move.
+ */
+export function shiftTaskDates(line: string, checkboxColumn: number, { days, fields }: DateShift): string {
+  const [prefix, text] = splitTaskLine(line, checkboxColumn, line[checkboxColumn]);
+  return prefix + fields.reduce(
+    (result, field) => replaceDates(result, field, (date) => shiftDate(date, days)),
+    text,
+  );
 }
 
 /**

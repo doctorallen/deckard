@@ -16,6 +16,16 @@
   tasks whose start date is still to come out of the Tasks view, Home's
   agenda, the status bar's count, and the Task Board until that day; a
   search that names start dates still finds them.
+- **Bulk edit does more to a search's tasks.** Beside Complete, Reopen,
+  Set a status, Set a due date, and Add a tag, it now offers **Set a
+  scheduled date**, **Set a start date**, **Shift dates…** (the due,
+  scheduled, or start dates each task has, by whole days either way, with
+  how many of the results have each), **Set a priority**, **Remove a
+  tag**, **Replace a tag**, and **Move to…**, which moves the chosen tasks
+  and their steps under another heading or into another note, as Move to…
+  does. Notes take Remove and Replace a tag too. Remove and Replace list
+  the tags the results write on their own lines; an inherited tag is
+  changed where it is written.
 
 ## 2.12.0 - 2026-10-27
 
