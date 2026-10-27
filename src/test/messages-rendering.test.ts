@@ -243,8 +243,8 @@ suite('Webview contracts', () => {
     }
   });
 
-  test('Corpo takes every color from the VS Code theme and drops the chrome', () => {
-    const corpo = themeSheet('corpo');
+  test('Mimic takes every color from the VS Code theme and drops the chrome', () => {
+    const corpo = themeSheet('mimic');
     assert.strictEqual(corpo.includes('--bg: var(--vscode-editor-background);'), true);
     assert.strictEqual(corpo.includes('--text: var(--vscode-foreground);'), true);
     assert.strictEqual(corpo.includes('--grid-line: transparent;'), true);
@@ -268,8 +268,36 @@ suite('Webview contracts', () => {
     assert.strictEqual(corpo.includes('.view-options summary'), false);
   });
 
+  test('Corpo is Mimic in VS Code\'s default colors, one palette for a dark theme and one for a light', () => {
+    const corpo = themeSheet('corpo');
+    assert.match(corpo, /^@import "\.\/mimic\.css";$/m, 'Corpo draws with Mimic\'s rules');
+    const palette = (kind: string): Map<string, string> => {
+      const body = new RegExp(`:root:has\\(> body\\.vscode-${kind}\\) \\{([^}]*)\\}`).exec(corpo)?.[1] ?? '';
+      return new Map([...body.matchAll(/(--vscode-[\w-]+): ([^;]+);/g)].map((match) => [match[1], match[2]]));
+    };
+    const [dark, light] = [palette('dark'), palette('light')];
+    // Dark 2026 and Light 2026, VS Code's defaults.
+    assert.strictEqual(dark.get('--vscode-editor-background'), '#121314 !important');
+    assert.strictEqual(light.get('--vscode-button-background'), '#0069cc !important');
+    // Each palette pins the same tokens, every one marked important to
+    // outweigh the colors VS Code writes on the root element.
+    assert.deepStrictEqual([...dark.keys()], [...light.keys()]);
+    for (const [token, value] of [...dark, ...light]) {
+      assert.match(value, / !important$/, `${token} outweighs VS Code's`);
+    }
+    // Every VS Code token Mimic reads is pinned, so none of the reader's theme shows through.
+    for (const [, token] of themeSheet('mimic').matchAll(/var\((--vscode-[\w-]+)/g)) {
+      if (!/font/.test(token)) {
+        assert.ok(dark.has(token), `${token} is pinned`);
+      }
+    }
+    // A high contrast theme keeps its own colors.
+    assert.doesNotMatch(corpo, /body\.vscode-high-contrast/);
+  });
+
   test('defines theme overrides for each selectable webview theme', () => {
     assert.deepStrictEqual(deckardThemes, [
+      'mimic',
       'corpo',
       'replicant',
       'oblivion',

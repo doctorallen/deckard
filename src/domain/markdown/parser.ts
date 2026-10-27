@@ -1255,9 +1255,24 @@ export function stripTags(text: string, personMarker?: string): string {
 }
 
 /** A tag found in some text, with the columns of its marker and name. */
-interface TagMatch extends TagReference {
+/** A tag as written on a line, with where it starts and ends. */
+export interface TagMatch extends TagReference {
   start: number;
   end: number;
+}
+
+/**
+ * Every tag written in a text, each time it is written, with its offsets,
+ * read as `extractTags` reads them: code, links, and citations are skipped.
+ * An edit that takes a tag off a line or puts another in its place reads
+ * where it is from here.
+ */
+export function findTagSpans(
+  text: string,
+  entityNamespaceAliases?: EntityNamespaceAliases,
+  personMarker?: string,
+): TagMatch[] {
+  return findTagMatches(text, entityNamespaceAliases, personMarker);
 }
 
 /**

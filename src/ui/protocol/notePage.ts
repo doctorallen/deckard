@@ -56,6 +56,8 @@ export interface NoteQueryResult {
   table?: { noteHead: string[]; taskHead: string[] };
   notes: NoteQueryRow[];
   tasks: NoteQueryRow[];
+  /** With `group=`, the tasks under their groups' headings, in the grouping's order. */
+  taskGroups?: Array<{ label: string; tasks: NoteQueryRow[] }>;
   /** How many there are in all, before the block's `limit`. */
   noteCount: number;
   taskCount: number;

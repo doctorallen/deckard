@@ -4,16 +4,19 @@
 
 Run `Deckard: Choose Theme…`, or choose **Theme…** under **Appearance** in a page's **⋯**, at its top right. Moving through the list previews each theme on the open pages; Enter keeps it, and Escape goes back. The setting is `deckard.theme`.
 
-- **Corpo**, the default, takes its colors and fonts from your VS Code theme, light or dark.
+- **Mimic**, the default, takes its colors and fonts from your VS Code theme, light or dark, so Deckard's pages look like the rest of your editor.
+- **Corpo** is Mimic's plain look in VS Code's own default colors, whichever color theme you use: Dark 2026 while your theme is dark, and Light 2026 while it is light. Pick it when your color theme is busy, or low in contrast, and you want Deckard's pages plain. Fonts still come from your settings, and a high contrast theme keeps its own colors, as it does in every Deckard theme.
 - **Replicant**, **Oblivion**, **LCARS**, **Tomcat**, **Fellowship**, **Synthwave**, and **Cooper** are Deckard's film-inspired styles.
 
 In every theme, red means overdue or high priority, and nothing else.
 
 **Esper Themes** brings these looks to the whole editor, as VS Code color themes, from the same makers. Search for it in the Extensions view, or find it on the [Marketplace](https://marketplace.visualstudio.com/items?itemName=esperinnovations.esper-themes).
 
-| **Corpo** | **Corpo, in a light VS Code theme** | |
+| **Mimic, in Solarized Dark** | **Mimic, in Solarized Light** | |
 | --- | --- | --- |
-| <img src="../images/dashboard-corpo.png" alt="Corpo theme Home in a dark VS Code theme." width="220"> | <img src="../images/dashboard-corpo-light.png" alt="Corpo theme Home in a light VS Code theme." width="220"> | |
+| <img src="../images/dashboard-mimic.png" alt="Mimic theme Home in VS Code's Solarized Dark theme." width="220"> | <img src="../images/dashboard-mimic-light.png" alt="Mimic theme Home in VS Code's Solarized Light theme." width="220"> | |
+| **Corpo, with a dark VS Code theme** | **Corpo, with a light VS Code theme** | |
+| <img src="../images/dashboard-corpo.png" alt="Corpo theme Home in VS Code's Dark 2026 colors." width="220"> | <img src="../images/dashboard-corpo-light.png" alt="Corpo theme Home in VS Code's Light 2026 colors." width="220"> | |
 | **Replicant** | **Oblivion** | **LCARS** |
 | <img src="../images/dashboard-replicant.png" alt="Replicant theme Home." width="220"> | <img src="../images/dashboard-oblivion.png" alt="Oblivion theme Home." width="220"> | <img src="../images/dashboard-lcars.png" alt="LCARS theme Home." width="220"> |
 | **Tomcat** | **Fellowship** | **Synthwave** |

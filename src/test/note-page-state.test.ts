@@ -124,6 +124,21 @@ suite('The note page', () => {
     assert.ok(query.result.tasks.every((row) => row.task && row.cells?.length === 1));
   });
 
+  test('draws a grouped query block\'s tasks under their groups, and the page heads each one', () => {
+    const grouped = indexOf({
+      'notes/Plan.md': ['# Plan', '- [ ] Call Ren ⏫', '- [ ] Book the room', '', '```deckard group=priority', 'is:task', '```'].join('\n'),
+    });
+    const snapshot = createNotePageSnapshot(grouped, 'notes/Plan.md', options);
+    const query = snapshot.blocks.find((block) => block.kind === 'query');
+    assert.ok(query && query.kind === 'query');
+    assert.deepStrictEqual(
+      query.result.taskGroups?.map((group) => [group.label, group.tasks.map((row) => row.title)]),
+      [['High · 1', ['Call Ren']], ['No priority · 1', ['Book the room']]],
+    );
+    const view = openWebviewPage(renderPage('notePage'), snapshot);
+    assert.deepStrictEqual(view.findAll('.note-query-group-title').map((title) => title.textContent), ['High · 1', 'No priority · 1']);
+  });
+
   test('draws an embed as what it names, and a missing one as why', () => {
     const [found, missing] = page.blocks.filter((block) => block.kind === 'embed');
     assert.ok(found.kind === 'embed' && missing.kind === 'embed');

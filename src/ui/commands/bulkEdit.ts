@@ -12,9 +12,18 @@ import { resolveSourceUri } from './navigation';
 import { readTaskMetadataFormat } from './taskActions';
 import { WorkspaceWriteHistory } from './workspaceWrites';
 import { describeStale, noteName, openNoteAction, reportFailure } from './notify';
-import { Section, Task } from '../../domain/model';
+import { Section, Task, TaskPriority } from '../../domain/model';
 import { formatIsoDate } from '../../domain/markdown/calendar';
-import { CompletionWrite, setTaskDate, setTaskLineCompletion, writeCompletion } from '../../domain/markdown/taskLineEdits';
+import {
+  CompletionWrite,
+  DateShift,
+  setTaskDate,
+  setTaskLineCompletion,
+  setTaskPriority,
+  shiftTaskDates,
+  writeCompletion,
+} from '../../domain/markdown/taskLineEdits';
+import { removeTagFromLine, replaceTagOnLine } from '../../domain/markdown/tagLineEdits';
 import { type DateFormats, DEFAULT_DATE_FORMATS, formatDisplayDay } from '../../domain/markdown/dateFormat';
 import { readDateFormats } from './datePrompt';
 
@@ -34,9 +43,16 @@ export type BulkEdit =
   /** A status of any type, as the task editor sets one. */
   | { kind: 'status'; status: TaskStatusDefinition }
   | { kind: 'due'; date: string | undefined }
+  /** A scheduled or start date, as Snooze until… writes a start date on several tasks. */
+  | { kind: 'date'; field: 'scheduled' | 'start'; date: string | undefined }
   /** A due date of its own for each task, by task id, as a spread writes. */
   | { kind: 'dueEach'; dates: ReadonlyMap<string, string> }
-  | { kind: 'tag'; tag: string };
+  | { kind: 'priority'; priority: TaskPriority | undefined }
+  /** Each chosen date a task writes, moved by whole days. */
+  | { kind: 'shift'; shift: DateShift }
+  | { kind: 'tag'; tag: string }
+  | { kind: 'removeTag'; tag: string }
+  | { kind: 'replaceTag'; from: string; to: string };
 
 /** One result an edit can be made to. */
 export type BulkEntry =
@@ -64,6 +80,13 @@ export interface BulkEditResult {
   unreadRules?: number;
 }
 
+/** What each date a bulk edit sets is called in its sentences. */
+const DATE_NAMES: Readonly<Record<'due' | 'scheduled' | 'start', string>> = {
+  due: 'due date',
+  scheduled: 'scheduled date',
+  start: 'start date',
+};
+
 /** What a bulk edit is called, in the preview and in the Undo prompt, its date in the reader's format. */
 export function describeBulkEdit(edit: BulkEdit, entries: number, formats: DateFormats = DEFAULT_DATE_FORMATS): string {
   const count = `${entries} ${entries === 1 ? 'result' : 'results'}`;
@@ -76,10 +99,24 @@ export function describeBulkEdit(edit: BulkEdit, entries: number, formats: DateF
       return edit.date
         ? `setting the due date of ${count} to ${formatDisplayDay(edit.date, formats)}`
         : `clearing the due date of ${count}`;
+    case 'date':
+      return edit.date
+        ? `setting the ${DATE_NAMES[edit.field]} of ${count} to ${formatDisplayDay(edit.date, formats)}`
+        : `clearing the ${DATE_NAMES[edit.field]} of ${count}`;
     case 'dueEach':
       return `spreading the due dates of ${count}`;
+    case 'priority':
+      return edit.priority
+        ? `setting the priority of ${count} to ${PRIORITY_NAMES[edit.priority]}`
+        : `clearing the priority of ${count}`;
+    case 'shift':
+      return `moving the ${describeShiftedDates(edit.shift)} of ${count} ${describeDays(edit.shift.days)}`;
     case 'tag':
       return `adding ${edit.tag} to ${count}`;
+    case 'removeTag':
+      return `removing ${edit.tag} from ${count}`;
+    case 'replaceTag':
+      return `replacing ${edit.from} with ${edit.to} on ${count}`;
   }
 }
 
@@ -92,11 +129,46 @@ function verbFor(edit: BulkEdit, formats: DateFormats): string {
       return `Set the status to ${edit.status.name} on`;
     case 'due':
       return edit.date ? `Set the due date to ${formatDisplayDay(edit.date, formats)} on` : 'Cleared the due date on';
+    case 'date':
+      return edit.date
+        ? `Set the ${DATE_NAMES[edit.field]} to ${formatDisplayDay(edit.date, formats)} on`
+        : `Cleared the ${DATE_NAMES[edit.field]} on`;
     case 'dueEach':
       return 'Set a due date on';
+    case 'priority':
+      return edit.priority ? `Set the priority to ${PRIORITY_NAMES[edit.priority]} on` : 'Cleared the priority on';
+    case 'shift':
+      return `Moved the ${describeShiftedDates(edit.shift)} ${describeDays(edit.shift.days)} on`;
     case 'tag':
       return `Added ${edit.tag} to`;
+    case 'removeTag':
+      return `Removed ${edit.tag} from`;
+    case 'replaceTag':
+      return `Replaced ${edit.from} with ${edit.to} on`;
   }
+}
+
+/** Each priority as a sentence names it. */
+const PRIORITY_NAMES: Readonly<Record<TaskPriority, string>> = {
+  highest: 'Highest',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  lowest: 'Lowest',
+};
+
+/** The dates a shift moves, named in a sentence: `due and start dates`. */
+function describeShiftedDates({ fields }: DateShift): string {
+  const names = (['due', 'scheduled', 'start'] as const).filter((field) => fields.includes(field));
+  if (names.length === 1) {
+    return DATE_NAMES[names[0]];
+  }
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]} dates`;
+}
+
+/** How far a shift moves, in words: `3 days later`, `1 day earlier`. */
+function describeDays(days: number): string {
+  return `${pluralize(Math.abs(days), 'day')} ${days < 0 ? 'earlier' : 'later'}`;
 }
 
 /**
@@ -304,7 +376,13 @@ function rewrite(
   if (edit.kind === 'tag') {
     return { text: appendTagToLine(line, edit.tag, options) };
   }
-  // Only a task has a checkbox or a due date; a note section keeps its own.
+  if (edit.kind === 'removeTag') {
+    return { text: removeTagFromLine(line, edit.tag, options) };
+  }
+  if (edit.kind === 'replaceTag') {
+    return { text: replaceTagOnLine(line, edit.from, edit.to, options) };
+  }
+  // Only a task has a checkbox, dates, or a priority; a note section keeps its own.
   if (entry.kind !== 'task') {
     return undefined;
   }
@@ -317,6 +395,21 @@ function rewrite(
         preferredFormat: options.format,
       }),
     };
+  }
+  if (edit.kind === 'date') {
+    return {
+      text: setTaskDate(line, task.checkboxColumn, {
+        field: edit.field,
+        date: edit.date,
+        preferredFormat: options.format,
+      }),
+    };
+  }
+  if (edit.kind === 'priority') {
+    return { text: setTaskPriority(line, task.checkboxColumn, edit.priority, options.format) };
+  }
+  if (edit.kind === 'shift') {
+    return { text: shiftTaskDates(line, task.checkboxColumn, edit.shift) };
   }
   if (edit.kind === 'dueEach') {
     const date = edit.dates.get(task.id);

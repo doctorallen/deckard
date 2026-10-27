@@ -2,6 +2,72 @@
 
 ## Unreleased
 
+## 2.12.0 - 2026-10-27
+
+### Highlights
+
+- **Mimic, the new default theme**, takes every color and font from your VS Code theme.
+- **Corpo keeps VS Code's default colors**, Dark 2026 or Light 2026, whichever theme you use.
+- **Task tools**: Snooze until…, more bulk edits, `group=` in query blocks, and a Most urgent sort.
+
+### Added
+
+- **Mimic, the new default theme**, is the plain look Corpo had: every
+  color and font comes from your VS Code theme, light or dark, so Deckard's
+  pages read like the rest of the editor. If you never chose a theme, you
+  now have Mimic, and nothing changes.
+- **Snooze until…** puts a task off until tomorrow, next week, or a day
+  typed in plain words, by writing its start date, 🛫 or `[start:: …]` as
+  the line already writes dates, with Undo. It is
+  `Deckard: Snooze Task Until…` on the task at the cursor, in the palette
+  and the editor's right-click menu; **Snooze Until…** on a task's menu in
+  the Tasks view, for every task selected as one write; and **Snooze
+  until…** in a Task board card's and table row's **⋯** menu, or **z** on a
+  focused card. When the task is due before it starts, the message says it
+  is still due. `deckard.tasks.hideNotStarted`, off by default, leaves
+  tasks whose start date is still to come out of the Tasks view, Home's
+  agenda, the status bar's count, and the Task Board until that day; a
+  search that names start dates still finds them.
+- **Bulk edit does more to a search's tasks.** Beside Complete, Reopen,
+  Set a status, Set a due date, and Add a tag, it now offers **Set a
+  scheduled date**, **Set a start date**, **Shift dates…** (the due,
+  scheduled, or start dates each task has, by whole days either way, with
+  how many of the results have each), **Set a priority**, **Remove a
+  tag**, **Replace a tag**, and **Move to…**, which moves the chosen tasks
+  and their steps under another heading or into another note, as Move to…
+  does. Notes take Remove and Replace a tag too. Remove and Replace list
+  the tags the results write on their own lines; an inherited tag is
+  changed where it is written.
+- **`group=` in query blocks.** `group=due`, `scheduled`, `start`,
+  `priority`, `status`, `note`, `tag`, `for`, or a namespace such as
+  `group=#context` lists a block's tasks under a heading per group, each
+  with its count, in the order of the Task board's columns: by due date
+  Needs a new date, Overdue, Today, Tomorrow, Within a week, Later, and No
+  due date, with done and cancelled tasks last. It draws in a list or a
+  table, in the Markdown preview, on the Note page, and in Copy as Plain
+  Markdown, and `sort=` orders each group. Copy as live query block on the
+  Task board writes the board's grouping and Sort into the block.
+- **Most urgent.** A task sort, loosely after Taskwarrior's urgency, that
+  scores each open task by its due date (overdue highest, then the
+  nearest), a scheduled date that has come, a start date still to come,
+  its priority, and whether it is blocked, and puts the most urgent first.
+  It is in the Tasks view's Sort Tasks By…, the Task board's and Home's
+  task widgets' Sort, and a query block's `sort=urgency`; Copy as live
+  query block writes it.
+
+### Changed
+
+- **Corpo keeps VS Code's default colors**, whichever color theme you use:
+  Dark 2026 while your theme is dark, and Light 2026 while it is light. It
+  is Mimic's look, drawn as it is under VS Code's defaults, for when your
+  color theme is busy or low in contrast. A high contrast theme still keeps
+  its own colors, as in every theme. If you chose Corpo to follow your
+  theme, choose Mimic.
+- In Mimic and Corpo, a field's placeholder, the quieter text, links, tags,
+  search chips, and the green and amber accents take in a little of the
+  text color, so each reads at 4.5:1 or more on a hovered row too: several
+  of VS Code 2026's colors read under it, and its placeholder under 3:1.
+
 ## 2.11.0 - 2026-10-24
 
 ### Highlights

@@ -271,7 +271,7 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
 
 **What it lists.** Set `deckard.tasks.viewQuery` to any [query](search.md#query-language), such as `is:mine`, `#project/atlas`, or `has:due OR has:scheduled OR has:start`. Home's agenda widget and the [status bar](#status-bar-and-reminders) count the same list. **Edit What the Tasks View Lists…**, in the title's **⋯** menu, opens the search on the [Task board](task-board.md#editing-what-the-tasks-view-lists): change it there, then select **Save to Tasks view**, which keeps what the box shows. **List in Tasks view**, in the board's gear, makes the view list any board's search. **Show every open task** or **Clear the Tasks View's Search** (in the same **⋯** menu and the palette) clears it.
 
-**Group by**, in the title beside **Open Task Board**, chooses **Due status** (the groups above), **Priority**, **Status**, **Person**, or **Tag namespace…**; the view keeps your choice. **Sort Tasks By…**, in the title's **⋯** menu, orders each group: **Rank** (the default), **Newest created**, **Oldest created**, **Recently updated**, **Least recently updated**, **A-Z**, or **Z-A**; the view keeps that too. A tie keeps the group's own order, by date or priority.
+**Group by**, in the title beside **Open Task Board**, chooses **Due status** (the groups above), **Priority**, **Status**, **Person**, or **Tag namespace…**; the view keeps your choice. **Sort Tasks By…**, in the title's **⋯** menu, orders each group: **Rank** (the default), **[Most urgent](#most-urgent)**, **Newest created**, **Oldest created**, **Recently updated**, **Least recently updated**, **A-Z**, or **Z-A**; the view keeps that too. A tie keeps the group's own order, by date or priority.
 
 - **Tag namespace** groups by tags in one namespace, such as `#project/…`, busiest first, **No project** last. Inherited tags count. The namespace is kept with the workspace.
 - **Priority** runs highest to lowest, **No priority** last.
@@ -285,10 +285,38 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
 - **Drag a task onto a group** to write that priority, status, due date (**Today**), tag, or person into it. **Overdue**, **Later**, and **Needs a new date** take no drops.
 - Check a task's box to complete it, with its ✅ date and next occurrence.
 - **Right-click** to make it due today, tomorrow, next Monday, or a date [in plain words](#dates-in-plain-words); to edit it (also the pencil); to [break it into steps](#breaking-a-task-into-steps); or for **Move to…**, which moves it with its steps under another heading, into today's note, or into a new note, leaving a link; see [Moving lines and tasks](organizing.md#moving-lines-and-tasks). Select several to act on them together, as one write, [previewed and undone](search-pages.md#previewing-and-undoing-a-write).
+- **Snooze Until…** puts a task off; see [Snoozing a task](#snoozing-a-task).
 - **Reschedule All…** on a group, the calendar button beside **Overdue**, or `Deckard: Reschedule Overdue Tasks…` dates many tasks at once. Each day shows how full it is, such as *Fri 2026-09-25 · 3 due · 1 scheduled*. For several tasks it also offers:
   - **Spread over the next 5 days**: the next five weekdays, oldest due first (17 tasks become 4, 4, 3, 3, 3).
   - **3 for today, the rest next week**, for four or more: the three most important stay today; the rest move to next Monday.
 - The badge counts tasks overdue or due today.
+
+### Most urgent
+
+**Most urgent**, a sort in the Tasks view, on the [Task board](task-board.md#cards-and-columns), on Home's task widgets, and as `sort=urgency` in a [query block](query-blocks.md), puts first what most needs doing now. Loosely after [Taskwarrior's urgency](https://taskwarrior.org/docs/urgency/), each open task gets a score:
+
+| What | Points |
+| --- | --- |
+| Due | 12 at a week or more overdue, falling evenly to 2.4 two weeks ahead, and 2.4 for any due date further off |
+| Scheduled for today or earlier | +5 |
+| A start date still to come | −3 |
+| Priority | 🔺 +6, ⏫ +4, 🔼 +2, none 0, 🔽 −1, ⏬ −2 |
+| Blocked: waiting on an open task, or in the **Blocked** status | −5 |
+
+A tie goes to the sooner due date, then the higher priority. Done and cancelled tasks come after every open one. A [saved search](search.md#the-search-box) keeps its search, not a sort: it opens under the sort its page has.
+
+### Snoozing a task
+
+A task you cannot do yet can wait for a day without a due date it does not have. **Snooze Until…** writes the day as its start date, 🛫, or `[start:: …]` on a [Dataview-format](#dataview-format) line:
+
+- **Tomorrow**.
+- **Next week**: next week's Monday, as `next week` reads in a date box, with weeks as `deckard.calendar.weekStart` draws them.
+- **Pick a date…**: a day [in plain words](#dates-in-plain-words).
+
+Each row shows its day. A message says when the task starts, *"Call Ren" starts Mon 2026-11-02.*, with **Undo**; when it is due before then, it adds that it is still due, since a snooze moves no due date. Snoozing it again moves the start date.
+
+- **Where:** `Deckard: Snooze Task Until…` on the task at the cursor, from the palette or the editor's right-click menu; **Snooze Until…** on a task's right-click menu in the Tasks view, for the tasks selected too, as one write; and **Snooze until…** in a [Task board](task-board.md#keyboard) card's or table row's **⋯** menu, or **z** on a focused card.
+- **Until it starts:** the Tasks view keeps a task that has not started out of **Today**, and lists it under **Upcoming** or **Later** by its start date, *starts Mon 2026-11-02*. Turn on `deckard.tasks.hideNotStarted` to leave it out of the Tasks view, Home's agenda, the status bar's count, and the Task Board until that day. A search that names start dates, such as `has:start` or `start > today`, still finds it.
 
 ## Status bar and reminders
 

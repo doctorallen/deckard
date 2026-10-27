@@ -33,12 +33,17 @@ Opening a tag's page or a section records access for the access sort.
 
 | Results | What can be done to them |
 | --- | --- |
-| Tasks | **Complete**, **Reopen**, **Set a due date**, **Add a tag** |
-| Notes | **Add a tag**, written at the end of each heading line |
+| Tasks | **Complete**, **Reopen**, **Set a status**, **Set a due date**, **Set a scheduled date**, **Set a start date**, **Shift dates…**, **Set a priority**, **Add a tag**, **Remove a tag**, **Replace a tag**, **Move to…** |
+| Notes | **Add a tag**, **Remove a tag**, **Replace a tag**, on each heading line |
 
 - Deckard lists the results, all chosen; unpick any to leave alone.
 - Completing works as a checkbox does, including done dates and a repeating task's next occurrence.
+- A date takes [plain words](tasks.md#dates-in-plain-words), and an empty answer clears it. Each is written in the line's format, 📅 or `[due:: …]`.
+- **Shift dates…** asks which dates to move, **Due**, **Scheduled**, and **Start**, each saying how many of the results have one, then how many days: `3` or `+3` moves them later, `-2` earlier. Each task moves the chosen dates it has; a date read from a task's words has nothing to move.
+- **Set a priority** writes 🔺 to ⏬, or `[priority:: …]`, or takes it off with **No priority**.
 - A tag goes at the end of the line, and a line that already has it is left alone.
+- **Remove a tag** and **Replace a tag** list the tags the results write on their own lines, the most written first. A tag a result has from a heading above it or its note's front matter is written there, so it is not listed; change it where it is written. **Replace** writes the new tag where the old one stood, or only takes the old one off a line that already has the new one. A person in a task's 👤 field is who it is for, not a tag, and stays.
+- **Move to…** moves the chosen tasks and their steps under another heading, into today's note, or into a new note, leaving a link, as [Move to…](organizing.md#moving-lines-and-tasks) does, with its own **Undo**.
 - A task or heading edited since Deckard indexed it is skipped and counted.
 - The edit is one write: [previewed](#previewing-and-undoing-a-write) when it reaches more than one note, and undone by `Deckard: Undo Last Change`.
 - It applies to the whole search, not the page on screen. A page with no search of its own (every note) edits only the results shown.

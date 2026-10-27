@@ -75,11 +75,11 @@ function setup(options: { visible?: boolean } = {}) {
 }
 
 suite('Choose Theme', () => {
-  test('lists the eight themes, described as the setting describes them, the one in use first to hand', async () => {
+  test('lists the nine themes, described as the setting describes them, the one in use first to hand', async () => {
     const { pick, deps } = setup();
     const done = chooseTheme(manifest, deps);
     await wait(0);
-    assert.strictEqual(pick.items.length, 8);
+    assert.strictEqual(pick.items.length, 9);
     const descriptions = manifest.configuration
       ?.map((group) => group.properties?.['deckard.theme']?.enumDescriptions)
       .find(Boolean);
@@ -103,7 +103,7 @@ suite('Choose Theme', () => {
       assert.ok(redraws > 0, 'the pages redraw for a preview');
       pick.hide();
       assert.strictEqual(await done, undefined);
-      assert.strictEqual(getDeckardTheme(themePreview), 'corpo');
+      assert.strictEqual(getDeckardTheme(themePreview), 'mimic');
       assert.deepStrictEqual(written, []);
     } finally {
       listener.dispose();

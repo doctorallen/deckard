@@ -1,5 +1,6 @@
 import { formatNamespaceValue, labelValue, noValueLabel, readNamespaceValues } from './tagGrouping';
 import { mentionsParked, withoutParked } from '../../domain/index/parked';
+import { leaveOutNotStarted } from '../../domain/tasks/notStarted';
 import { describeSteps, isPlainStep } from '../../domain/markdown/taskSteps';
 import { addDays, formatIsoDate, startOfDay } from '../../domain/markdown/calendar';
 import { formatDisplayDate } from '../../domain/markdown/dateFormat';
@@ -13,7 +14,7 @@ import { Placement, placeTask } from '../../domain/tasks/agendaPlacement';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
 import { Task, TaskPriority, TaskSortMode, WorkspaceIndex } from '../../domain/model';
-import { createTaskComparator } from './entryCards';
+import { createTaskComparator, type TaskSortReading } from './entryCards';
 import { formatTaskMetadata, TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
 
 /**
@@ -164,27 +165,25 @@ export function normalizeAgendaQuery(query: string): string {
  * The tasks `deckard.tasks.viewQuery` chooses: every task for an empty query,
  * and every task, with the reason, for one that does not parse — a broken
  * setting should not empty the view. The query is evaluated in `context`.
+ * Parked tasks are left out unless the search asks about them, and so,
+ * when the context's task policy hides them, are tasks not started yet.
  */
 export function selectAgendaTasks(
   index: WorkspaceIndex,
   query: string,
   context: QueryContext,
 ): { tasks: Task[]; error?: string } {
-  // A list of things to do leaves parked tasks out, unless its own search
-  // asks about them.
   const text = query.trim();
-  if (!text) {
-    return { tasks: withoutParked([...index.tasks.values()], index) };
-  }
-  const parsed = parseWorkspaceQuery(index, text);
-  if (!parsed.node) {
+  const parsed = text ? parseWorkspaceQuery(index, text) : undefined;
+  if (!parsed?.node) {
+    const every = withoutParked([...index.tasks.values()], index);
     return {
-      tasks: withoutParked([...index.tasks.values()], index),
-      error: parsed.diagnostics[0]?.message ?? 'This search does not parse.',
+      tasks: leaveOutNotStarted(every, undefined, context),
+      ...(parsed ? { error: parsed.diagnostics[0]?.message ?? 'This search does not parse.' } : {}),
     };
   }
   const tasks = evaluateQuery(index, parsed.node, context).tasks;
-  return { tasks: mentionsParked(parsed.node) ? tasks : withoutParked(tasks, index) };
+  return { tasks: leaveOutNotStarted(mentionsParked(parsed.node) ? tasks : withoutParked(tasks, index), parsed.node, context) };
 }
 
 /**
@@ -278,7 +277,7 @@ export function createAgenda(
 ): AgendaGroup[] {
   const { tasks = index.tasks.values(), upcomingDays, groupBy = 'due', taskOrder = [], taskSortMode = 'rank' } = options;
   const listed = withoutPlainSteps([...tasks]);
-  const byRank = sortFirst(taskOrder, taskSortMode);
+  const byRank = sortFirst(taskOrder, taskSortMode, { now: context.now, index });
   const today = startOfDay(context.now);
   const tomorrow = addDays(today, 1);
   const window: AgendaWindow = {
@@ -334,8 +333,8 @@ function withoutPlainSteps(all: readonly Task[]): Task[] {
  * rank, the tasks a reader dragged into place come first, in the order they
  * left them; the rest follow in the group's order.
  */
-function sortFirst(taskOrder: readonly string[], mode: TaskSortMode): (fallback: EntryOrder) => EntryOrder {
-  const compare = createTaskComparator(taskOrder, mode);
+function sortFirst(taskOrder: readonly string[], mode: TaskSortMode, reading: TaskSortReading): (fallback: EntryOrder) => EntryOrder {
+  const compare = createTaskComparator(taskOrder, mode, reading);
   return (fallback) => (left, right) => compare(left.task, right.task) || fallback(left, right);
 }
 

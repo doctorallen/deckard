@@ -46,7 +46,7 @@ const { PNG } = require('pngjs');
 const pixelmatchModule = require('pixelmatch');
 const pixelmatch = pixelmatchModule.default ?? pixelmatchModule;
 
-const { renderPagesForTheme } = require('./pages.js');
+const { renderPagesForTheme, paletteFor } = require('./pages.js');
 const { surfaceHtml } = require('./surfaces.js');
 const { chrome, createSurfaces, buildPage } = require('./checkLayout.js');
 const { allPasses, announceShard, isPicked, passes, passLabel } = require('./passes.js');
@@ -195,7 +195,7 @@ async function drawSurface(surface, { label, theme, zen, rendered }, tally, log)
   const surfaceName = surface.name || surface.page;
   const name = `${label}-${surfaceName}`;
   const file = path.join(dir, `${name}.html`);
-  writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface, undefined, { css: HIDE_PROBE }));
+  writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface, undefined, { css: HIDE_PROBE, palette: paletteFor(theme) }));
   const shot = path.join(dir, `${name}.png`);
   const baseline = path.join(BASELINES, `${name}.png`);
   let drawn;
@@ -220,7 +220,7 @@ async function drawSurface(surface, { label, theme, zen, rendered }, tally, log)
 
 /**
  * The name of every baseline the whole matrix draws: each surface in each of
- * the sixteen passes, whatever the shard.
+ * the eighteen passes, whatever the shard.
  *
  * @returns {Set<string>} The file names, as `<pass>-<surface>.png`.
  */

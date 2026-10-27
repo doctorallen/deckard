@@ -195,7 +195,7 @@ export function createSearchPageSnapshot(
     isNew: since.isNewNote,
   });
   const tasks = since.tasks(parkedLast(
-    sortTasks([...results.tasks], preferences.taskOrder, preferences.taskSortMode),
+    sortTasks([...results.tasks], preferences.taskOrder, preferences.taskSortMode, { now: options.queryContext.now, index }),
     (task) => isParkedTask(index, task.id),
   ));
   const taskPaging = createPaging(tasks.length, pageSize, options.taskPage);

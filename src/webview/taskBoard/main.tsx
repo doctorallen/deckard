@@ -334,7 +334,7 @@ function rowAlreadyHas(row: HTMLElement, value: string): boolean {
 }
 
 /**
- * A table row's menu: the board card's status, priority, due,
+ * A table row's menu: the board card's status, priority, due, snooze,
  * steps, done, and Move to…, from what the host says the task has now. The
  * row is drawn again when the note is written, so nothing moves at once,
  * and a choice made before then waits for it, by which time the task may
@@ -347,8 +347,8 @@ function openRowMenu(opener: HTMLElement): boolean {
     return false;
   }
   openActionMenu(opener, groups, (value) => {
-    if (value === 'pick-date' || value === 'pick-assignee' || value === 'move-to' || value === 'break-steps') {
-      const types = { 'pick-date': 'pickTaskDate', 'pick-assignee': 'pickTaskAssignee', 'move-to': 'moveTaskTo', 'break-steps': 'breakIntoSteps' } as const;
+    if (value === 'pick-date' || value === 'pick-assignee' || value === 'snooze' || value === 'move-to' || value === 'break-steps') {
+      const types = { 'pick-date': 'pickTaskDate', 'pick-assignee': 'pickTaskAssignee', snooze: 'snoozeTask', 'move-to': 'moveTaskTo', 'break-steps': 'breakIntoSteps' } as const;
       editRow(row, (drawn) => ({ type: types[value], taskId: String(drawn.dataset.taskId) }), post);
       return;
     }
@@ -616,6 +616,7 @@ const BOARD_KEYS: KeySection = {
     ['t, m', 'Due today, due tomorrow'],
     ['d', 'Due on a date you type'],
     ['f', 'For someone: who it is for'],
+    ['z', 'Snooze it until a day you choose'],
     ['1 to 5, 0', 'Priority, highest to lowest; 0 clears it'],
     ['[ ]', 'Move it to the column on the left or right'],
     ['e', 'Edit the whole task'],

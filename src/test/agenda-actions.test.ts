@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import { describeLoad, describeLoadAfter, planSpread, planThreeToday } from '../ui/commands/agendaActions';
 import { validateDateInput } from '../ui/commands/datePrompt';
 import { countLoad, dueDateFor } from '../domain/tasks/reschedule';
+import { describeSnooze } from '../ui/commands/snooze';
 import { Task } from '../domain/model';
 
 suite('Dating tasks from the Tasks view', () => {
@@ -107,6 +108,19 @@ suite('Dating tasks from the Tasks view', () => {
     assert.strictEqual(
       describeLoadAfter('2026-09-28', friday, { today: 22, due: 9 }),
       'Mon 2026-09-28 now has 9 tasks due.',
+    );
+  });
+
+  test('a snooze says when the task starts, and that it is still due when it is due first', () => {
+    assert.strictEqual(describeSnooze('"Call Ren"', '2026-10-28', undefined), '"Call Ren" starts Wed 2026-10-28.');
+    assert.strictEqual(
+      describeSnooze('"Call Ren"', '2026-10-28', new Date(2026, 9, 30).getTime()),
+      '"Call Ren" starts Wed 2026-10-28.',
+      'a due date after the start says nothing',
+    );
+    assert.strictEqual(
+      describeSnooze('"Call Ren"', '2026-11-02', new Date(2026, 9, 27).getTime()),
+      '"Call Ren" starts Mon 2026-11-02. It is still due 2026-10-27.',
     );
   });
 });

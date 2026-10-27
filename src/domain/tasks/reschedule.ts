@@ -1,6 +1,7 @@
 import { Task } from '../model';
 import { isOpenTask } from './taskStatuses';
 import { addDays, formatIsoDate, startOfDay } from '../markdown/calendar';
+import { parseDatePhrase, Weekday } from '../markdown/dates';
 
 /**
  * Rescheduling tasks from where they are listed: the dates a choice names,
@@ -25,6 +26,22 @@ export function dueDateFor(choice: DueChoice, now: number): string {
   }
   const weekday = new Date(today).getDay();
   return formatIsoDate(addDays(today, ((8 - weekday) % 7) || 7));
+}
+
+/** The days Snooze until… offers by name, beside one typed in plain words. */
+export type SnoozeChoice = 'tomorrow' | 'nextWeek';
+
+/**
+ * The start date a named snooze means on the day of `now`, as
+ * `YYYY-MM-DD`. `nextWeek` is the day `next week` reads as in a date box:
+ * next week's Monday, with weeks as `weekStart` draws them, so the row and
+ * the words typed agree.
+ */
+export function snoozeDateFor(choice: SnoozeChoice, now: number, weekStart: Weekday = 0): string {
+  if (choice === 'tomorrow') {
+    return dueDateFor('tomorrow', now);
+  }
+  return parseDatePhrase('next week', now, { weekStart })?.date ?? dueDateFor('nextWeek', now);
 }
 
 /** How full a day is: the open tasks due on it and scheduled for it. */

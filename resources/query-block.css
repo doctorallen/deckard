@@ -58,6 +58,29 @@
   list-style: none;
 }
 
+/* group=: each group's name over its tasks, in the text's own color. */
+.deckard-query-subgroup-title {
+  margin: 0.6em 0 0.1em;
+  font-weight: 600;
+}
+
+.deckard-query-subgroup-count {
+  font-weight: normal;
+  color: var(--vscode-descriptionForeground, inherit);
+}
+
+.deckard-query-table tbody tr.deckard-query-subgroup-row:hover {
+  background: none;
+}
+
+.deckard-query-table .deckard-query-subgroup-row th {
+  padding-top: 0.7em;
+  font-size: 1em;
+  letter-spacing: normal;
+  text-transform: none;
+  color: inherit;
+}
+
 /* One row per result, separated by a rule, so where one ends is obvious. */
 .deckard-query-item {
   display: grid;

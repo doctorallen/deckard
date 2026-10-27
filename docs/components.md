@@ -298,7 +298,7 @@ the notes graph does exactly that to go full-bleed.
 
 Under plain type (`body[data-styling=plain]`, which Zen turns on) every element,
 chrome included, reads as written: `text-transform: none` and
-`letter-spacing: normal`, at the `!important` strength Corpo's own rule has.
+`letter-spacing: normal`, at the `!important` strength Mimic's own rule has.
 
 To make an element read as data rather than prose, add it to a page-local
 `font-family: var(--font-mono)` rule; do not restate the whole type scale.
@@ -432,7 +432,7 @@ Each keeps its own class for where it sits (`.tag-context-menu`,
 `.action-menu`, `.rank-context-menu`, `.view-options-menu`,
 `.home-widget-options-menu`, `.query-suggestions`, `.relevance-tooltip`),
 and none of those declares a border, ground, shadow, or z-index of its own.
-Corpo draws every popover in VS Code's widget colors, and a tip in its hover
+Mimic and Corpo draw every popover in VS Code's widget colors, and a tip in their hover
 widget colors.
 
 | Class | What it is |
@@ -833,7 +833,7 @@ two checks depend on:
 - `verifyWebviews.js` matches a layout contract by its **exact** selector
   string, so `body.zen .metric` is not `.metric` and cannot flip one.
 - `checkContrast.js` reads every declared rule whether or not the page renders
-  a match, so the zen rules get contrast cover across all eight themes with no
+  a match, so the zen rules get contrast cover across all nine themes with no
   second render pass.
 
 Scoping also keeps the `:root` count at two. Zen's token overrides go on
@@ -1052,7 +1052,7 @@ Buttons, menu items, and command titles follow one table, and
 **At most one filled control to a page, and only for an action that commits
 something.** `button.primary` in `shared/control.css` fills a button with the
 `--chosen-bg` / `--chosen-fg` pair, with a hover and focus of its own: VS
-Code's own button colors in Corpo, gold in Cooper, and in Fellowship a
+Code's own button colors in Mimic and Corpo, gold in Cooper, and in Fellowship a
 darker 1px edge, since its gold fill barely parts from the parchment. These
 are the only ones:
 

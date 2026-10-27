@@ -27,7 +27,7 @@ import type { PageChrome } from '../ui/webview/components';
 export interface PageOptions {
   /**
    * The look the page is written in, which a host reads from the settings
-   * and the theme preview; Corpo with zen off, the settings' defaults, when
+   * and the theme preview; Mimic with zen off, the settings' defaults, when
    * omitted.
    */
   chrome?: PageChrome;
@@ -82,7 +82,7 @@ export interface CatalogPage {
 }
 
 /** The look a page is written in when a test names none: the settings' defaults. */
-const DEFAULT_CHROME: PageChrome = { theme: 'corpo', zen: false };
+const DEFAULT_CHROME: PageChrome = { theme: 'mimic', zen: false };
 
 /** The Related Notes debug page needs an entry to diagnose; this is an empty one. */
 const EMPTY_DIAGNOSTIC = {

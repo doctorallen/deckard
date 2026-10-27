@@ -29,11 +29,11 @@
 | [**Types and fields**](docs/guide/databases.md) | Say in one note what a team, a person, or an incident is, and the front matter you already write becomes fields: every team as a table you sort and group, each row's fields on its page, and Find answering *who leads checkout?* |
 | [**Links and embeds**](docs/guide/notes-and-links.md#markdown-format) | `[[Note]]`, `[[Note#Heading]]`, and `[[Note#^line]]` complete and open; `![[Note#Heading]]` shows a section in place; **Copy as Plain Markdown** writes them out for a chat, an email, or a pull request. |
 | [**The / menu**](docs/guide/notes-and-links.md#editor-assistance) | A `/` at the start of a line offers a task, a heading, a link or an embed, a query block, a table of notes or tasks, or one of your templates. |
-| [**Tasks**](docs/guide/tasks.md) | Due, scheduled, and start dates, priorities, repeats, dependencies, steps, and who a task is for, in either Obsidian Tasks format — with a task editor that takes dates in plain words. |
-| [**Task board**](docs/guide/task-board.md) | Open tasks as columns by status, priority, due date, person, or any tag namespace; drag a card to rewrite the task. Or a ranked list, or a table. |
+| [**Tasks**](docs/guide/tasks.md) | Due, scheduled, and start dates, priorities, repeats, dependencies, steps, and who a task is for, in either Obsidian Tasks format — with a task editor that takes dates in plain words, and **Snooze until…** to put a task off to a day. |
+| [**Task board**](docs/guide/task-board.md) | Open tasks as columns by status, priority, due date, person, or any tag namespace; drag a card to rewrite the task. Sort by your own rank or Most urgent, or show a table. |
 | [**Search**](docs/guide/search.md) | Find in Notes searches notes, tasks, and tags as you type, and a small [query language](docs/guide/search.md#query-language) — `#project/atlas AND is:open AND due < 7d` — runs everywhere. |
 | [**Search pages**](docs/guide/search-pages.md) | A tag's page collects everything that uses it; any search opens the same page, and one edit can change everything it found. |
-| [**Query blocks**](docs/guide/query-blocks.md) | A `deckard` code fence keeps a live list or table of a search's notes and tasks inside a note; tick a task right in the preview. |
+| [**Query blocks**](docs/guide/query-blocks.md) | A `deckard` code fence keeps a live list or table of a search's notes and tasks inside a note, grouped by due date, priority, status, or tag if you like; tick a task right in the preview. |
 | [**Home and Stats**](docs/guide/home-and-stats.md) | What is overdue, due today, and open; a Home of widgets you arrange, with how far along each project is; the notes nothing links to and tags spelled two ways. |
 | [**Hubs**](docs/guide/search-pages.md#the-hubs-view) | A sidebar tree of your projects, people, and other topics, each with the notes about it filed underneath, like pages in Notion; a note's first line shows where it sits, such as *Projects › Atlas › Vendor review*. |
 | [**Related notes and the graph**](docs/guide/connections.md) | A sidebar ranks the notes most related to the one you are editing, and says why; the Notes Graph maps every connection. |
@@ -59,11 +59,13 @@
 
 ## Themes
 
-Pick one with `Deckard: Choose Theme…` or **Theme** in any page's gear; moving through the list previews it on the open pages. The default, **Corpo**, takes its colors and fonts from your VS Code theme, light or dark. [More on themes and Zen mode](docs/guide/themes-and-zen.md).
+Pick one with `Deckard: Choose Theme…` or **Theme** in any page's gear; moving through the list previews it on the open pages. The default, **Mimic**, takes its colors and fonts from your VS Code theme, light or dark. **Corpo** is the same plain look, always in VS Code's default colors: Dark 2026 when your theme is dark, Light 2026 when it is light. [More on themes and Zen mode](docs/guide/themes-and-zen.md).
 
-| **Corpo** | **Corpo, in a light VS Code theme** | **Cooper** |
+| **Mimic, in Solarized Dark** | **Mimic, in Solarized Light** | **Cooper** |
 | --- | --- | --- |
-| <img src="docs/images/dashboard-corpo.png" alt="Corpo theme Home in a dark VS Code theme." width="260"> | <img src="docs/images/dashboard-corpo-light.png" alt="Corpo theme Home in a light VS Code theme." width="260"> | <img src="docs/images/dashboard-cooper.png" alt="Cooper theme Home." width="260"> |
+| <img src="docs/images/dashboard-mimic.png" alt="Mimic theme Home in VS Code's Solarized Dark theme." width="260"> | <img src="docs/images/dashboard-mimic-light.png" alt="Mimic theme Home in VS Code's Solarized Light theme." width="260"> | <img src="docs/images/dashboard-cooper.png" alt="Cooper theme Home." width="260"> |
+| **Corpo, with a dark VS Code theme** | **Corpo, with a light VS Code theme** | |
+| <img src="docs/images/dashboard-corpo.png" alt="Corpo theme Home in VS Code's Dark 2026 colors." width="260"> | <img src="docs/images/dashboard-corpo-light.png" alt="Corpo theme Home in VS Code's Light 2026 colors." width="260"> | |
 | **Replicant** | **Oblivion** | **LCARS** |
 | <img src="docs/images/dashboard-replicant.png" alt="Replicant theme Home." width="260"> | <img src="docs/images/dashboard-oblivion.png" alt="Oblivion theme Home." width="260"> | <img src="docs/images/dashboard-lcars.png" alt="LCARS theme Home." width="260"> |
 | **Tomcat** | **Fellowship** | **Synthwave** |

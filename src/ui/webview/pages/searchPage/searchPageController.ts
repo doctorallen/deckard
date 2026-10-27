@@ -15,6 +15,7 @@ import type { EditFieldsMessage } from '../../../protocol/fields';
 import type { SearchPagePageToHost, SearchPageSnapshot, SearchPageState, SinceChipKind } from '../../../protocol/searchPage';
 import type { DashboardTask, SearchRefineState } from '../../../protocol/shared';
 import { editResults } from '../../../commands/bulkEditPrompts';
+import { moveTasks } from '../../../commands/moveTo';
 import { presentExport } from '../../../commands/exportResults';
 import { copyFieldValue } from '../../../commands/typeNotes';
 import { EDIT_TYPE_COMMAND } from '../../../commands/typeBuilder';
@@ -279,7 +280,10 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       // the file it is written in.
       pinNote: (message) => this.setPinned(message.filePath, message.line, true),
       unpinNote: (message) => this.setPinned(message.filePath, message.line, false),
-      editResults: (message) => editResults(search.writes.history, message.kind, this.currentResults()),
+      editResults: (message) =>
+        editResults(search.writes.history, message.kind, this.currentResults(), {
+          moveTasks: (tasks) => moveTasks(search.indexer, search.preferences, search.writes, tasks),
+        }),
       exportResults: (message) => this.exportResults(message.kind),
       openSource: (message) => this.openSource(message.filePath, message.line, message),
       // The question is read again from the index by the command, which

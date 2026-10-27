@@ -37,6 +37,9 @@ import { getTypeIndex } from '../../domain/types/typeIndex';
 import { resolveTypeQueryPath } from '../../domain/types/typeQueryFields';
 import { valueTitle } from './typeRows';
 import { isAnswered, questionText } from '../../domain/index/questions';
+import { compareUrgency, type UrgencyOrder } from '../../domain/tasks/urgency';
+import { scoreTaskUrgency } from './entryCards';
+import { groupBlockTasks, QueryBlockGroup, QueryBlockGroupBy, readQueryBlockGroup, writeQueryBlockGroup } from './queryBlockGroups';
 
 /**
  * Query blocks are fenced ```deckard blocks holding a Deckard query. The
@@ -51,10 +54,11 @@ import { isAnswered, questionText } from '../../domain/index/questions';
 export const QUERY_BLOCK_LANGUAGE = 'deckard';
 
 /**
- * What a block sorts by: any column a task or a note has. Each list sorts
- * by the columns it has, and keeps its own order under one it does not.
+ * What a block sorts by: any column a task or a note has, or a task's
+ * urgency. Each list sorts by what it has, and keeps its own order under
+ * one it does not.
  */
-export type QueryBlockSort = TaskColumnId | NoteColumnId;
+export type QueryBlockSort = TaskColumnId | NoteColumnId | 'urgency';
 
 /** How a block shows its tasks: rows of text, or a table of columns. */
 export type QueryBlockView = 'list' | 'table';
@@ -73,6 +77,8 @@ export interface QueryBlockOptions {
   direction?: TableSortDirection;
   /** Most items shown in each list. The totals still count every match. */
   limit?: number;
+  /** What the tasks are grouped by, each group under its heading; one list when omitted. */
+  group?: QueryBlockGroupBy;
   /** Notes and tasks as tables, with `noteColumns` and `columns`. Undefined is the list. */
   view?: QueryBlockView;
   /** The task table's columns, in order; the defaults when omitted. */
@@ -149,6 +155,8 @@ export interface QueryBlockItem {
    * the rows its tags are: `{ "team.lead": "Dana Whitfield" }`.
    */
   fieldValues?: Record<string, string>;
+  /** For an open task, how urgent it is, which `sort=urgency` orders by. */
+  urgency?: number;
   /** For a question, whether an `Answer:` line is under it, and what it says. */
   answered?: boolean;
   answer?: string;
@@ -171,6 +179,8 @@ export interface QueryBlockSnapshot {
   tasks: QueryBlockItem[];
   /** The `- [?]` lines it finds, which are not tasks. */
   questions: QueryBlockItem[];
+  /** With `group=`, the tasks shown under their groups, in the grouping's order. */
+  taskGroups?: QueryBlockGroup<QueryBlockItem>[];
   /** Totals before `limit` is applied. */
   noteCount: number;
   taskCount: number;
@@ -185,6 +195,7 @@ export interface QueryBlockWriteOptions {
   view?: 'list' | 'table';
   columns?: readonly string[];
   noteColumns?: readonly string[];
+  group?: QueryBlockGroupBy;
 }
 
 /**
@@ -208,6 +219,8 @@ export function queryBlockSortOf(
       return kind === 'tasks' ? { sort: 'title' } : {};
     case 'alphabeticalReverse':
       return { sort: 'title', direction: 'desc' };
+    case 'urgency':
+      return { sort: 'urgency' };
     case 'rank':
     case 'access':
       return {};
@@ -226,6 +239,7 @@ export function formatQueryBlock(query: string, options: QueryBlockWriteOptions 
     options.view ? `view=${options.view}` : '',
     options.columns?.length ? `columns=${options.columns.join(',')}` : '',
     options.noteColumns?.length ? `noteColumns=${options.noteColumns.join(',')}` : '',
+    options.group ? `group=${writeQueryBlockGroup(options.group)}` : '',
     options.sort ? `sort=${options.sort}` : '',
     options.direction ? `dir=${options.direction}` : '',
   ]
@@ -254,7 +268,7 @@ export function parseQueryBlockInfo(
     const read = name === undefined ? undefined : OPTION_READERS.get(name);
     const warning = read
       ? read(value, options, match?.[2] ?? '')
-      : `Unknown option "${attribute}". Use sort=, dir=, limit=, view=, columns=, or noteColumns=.`;
+      : `Unknown option "${attribute}". Use sort=, dir=, group=, limit=, view=, columns=, or noteColumns=.`;
     if (warning) {
       options.warnings.push(warning);
     }
@@ -275,11 +289,15 @@ type OptionReader = (value: string, options: QueryBlockOptions, written: string)
 /** The options a query block's info string may set, by lowercased name. */
 const OPTION_READERS = new Map<string, OptionReader>([
   ['sort', (value, options) => {
+    if (value === 'urgency') {
+      options.sort = 'urgency';
+      return undefined;
+    }
     // A task column by its id or a name it goes by, such as for, or a note's.
     const named = parseTaskColumns(value).columns.find((id) => id !== 'title');
     const column = isTaskColumnId(value) ? value : (named ?? readNoteColumn(value));
     if (!column) {
-      return `sort must be a column, such as title, due, priority, created, updated, or links, not "${value}".`;
+      return `sort must be urgency or a column, such as title, due, priority, created, updated, or links, not "${value}".`;
     }
     options.sort = column;
     return undefined;
@@ -315,6 +333,14 @@ const OPTION_READERS = new Map<string, OptionReader>([
       return undefined;
     }
     return describeUnknownNoteColumns(parsed.unknown);
+  }],
+  ['group', (value, options) => {
+    const group = readQueryBlockGroup(value);
+    if (!group) {
+      return `group must be due, scheduled, start, priority, status, note, tag, for, or a namespace such as #context, not "${value}".`;
+    }
+    options.group = group;
+    return undefined;
   }],
   ['limit', (value, options) => {
     if (!/^\d+$/.test(value) || Number(value) <= 0) {
@@ -519,18 +545,23 @@ export function createQueryBlockSnapshot(
     ...results.files.map((file) => withFieldValues(createFileItem(file, index, table), index, fields, now)),
   ].sort(createNoteComparator(options.sort, options.direction));
   const tasks = results.tasks
-    .map((task) => createTaskItem(task, index))
+    .map((task) => createTaskItem(task, index, options.sort === 'urgency' ? now : undefined))
     .sort(createTaskComparator(options.sort, options.direction));
   // Questions keep the order they are written in, as a note's lines do.
   const questions = results.questions.map((question) => createQuestionItem(question, index));
+  const shownTasks = tasks.slice(0, options.limit);
+  const byId = new Map(results.tasks.map((task) => [task.id, task]));
 
   return {
     query,
     messages,
     hasError: false,
     notes: notes.slice(0, options.limit),
-    tasks: tasks.slice(0, options.limit),
+    tasks: shownTasks,
     questions: questions.slice(0, options.limit),
+    ...(options.group
+      ? { taskGroups: groupBlockTasks(shownTasks, (item) => byId.get(item.id), options.group, { index, context: reading.queryContext }) }
+      : {}),
     noteCount: notes.length,
     taskCount: tasks.length,
     openTaskCount: tasks.filter((task) => !task.completed && !task.cancelled).length,
@@ -739,10 +770,14 @@ export function namespaceValues(item: Pick<QueryBlockItem, 'noteTags'>, namespac
   });
 }
 
-/** A matched task as a row, with its status's name: its checkbox's. */
+/**
+ * A matched task as a row, with its status's name: its checkbox's, and,
+ * read at `urgencyAt`, how urgent it is.
+ */
 function createTaskItem(
   task: Task,
   index: WorkspaceIndex,
+  urgencyAt?: number,
 ): QueryBlockItem {
   const section = task.sectionId
     ? index.sections.get(task.sectionId)
@@ -773,6 +808,7 @@ function createTaskItem(
     dependencyId: task.dependencyId,
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
+    ...(urgencyAt === undefined ? {} : { urgency: scoreTaskUrgency(task, urgencyAt, index) }),
   };
 }
 
@@ -781,7 +817,7 @@ function directionOf(
   sort: QueryBlockSort | undefined,
   direction: TableSortDirection | undefined,
 ): TableSortDirection {
-  return direction ?? (sort === 'created' || sort === 'updated' ? 'desc' : 'asc');
+  return direction ?? (sort === 'created' || sort === 'updated' || sort === 'urgency' ? 'desc' : 'asc');
 }
 
 /**
@@ -807,6 +843,14 @@ function createTaskComparator(
   sort: QueryBlockSort | undefined,
   direction: TableSortDirection | undefined,
 ): (left: QueryBlockItem, right: QueryBlockItem) => number {
+  if (sort === 'urgency') {
+    // Most urgent first, until dir=asc turns it around.
+    const sign = directionOf(sort, direction) === 'desc' ? 1 : -1;
+    return (left, right) =>
+      (left.completed ? 1 : 0) - (right.completed ? 1 : 0) ||
+      sign * compareUrgency(urgencyOf(left), urgencyOf(right)) ||
+      compareSource(left, right);
+  }
   // A column only notes have leaves the tasks in their own order.
   const byColumn =
     sort === undefined || !isTaskColumnId(sort)
@@ -820,6 +864,11 @@ function createTaskComparator(
         compareSource(left, right)
       : byColumn(toTableTask(left), toTableTask(right)) ||
         compareSource(left, right));
+}
+
+/** What urgency orders a block's task by. */
+function urgencyOf(item: QueryBlockItem): UrgencyOrder {
+  return { urgency: item.urgency ?? 0, dueAt: item.dueAt, priority: item.priority };
 }
 
 /** A block's item as the table model reads it. */

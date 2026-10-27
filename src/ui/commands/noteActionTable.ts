@@ -47,6 +47,7 @@ export const NOTE_ACTIONS: readonly NoteAction[] = [
   { command: 'deckard.toggleTaskDone', title: 'Toggle Task Done', icon: 'check', group: '1_task', when: 'onTaskLine' },
   { command: 'deckard.editTask', title: 'Edit Task', icon: 'edit', group: '1_task', when: 'onTaskLine' },
   { command: 'deckard.setTaskStatus', title: 'Set Task Status…', icon: 'circle-large-outline', group: '1_task', when: 'onTaskLine' },
+  { command: 'deckard.snoozeTask', title: 'Snooze Task Until…', icon: 'clock', group: '1_task', when: 'onTaskLine' },
   { command: 'deckard.breakIntoSteps', title: 'Break into Steps…', icon: 'list-ordered', group: '1_task', when: 'onTaskLine' },
   { command: 'deckard.addTask', title: 'Add Task', icon: 'add', group: '1_task' },
   { command: 'deckard.renameHeading', title: 'Rename Heading', icon: 'symbol-text', group: '2_heading', when: 'underHeading' },

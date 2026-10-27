@@ -36,8 +36,9 @@ suite('Extension Test Suite', () => {
         '1_task@1 deckard.toggleTaskDone',
         '1_task@2 deckard.editTask',
         '1_task@3 deckard.setTaskStatus',
-        '1_task@4 deckard.breakIntoSteps',
-        '1_task@5 deckard.addTask',
+        '1_task@4 deckard.snoozeTask',
+        '1_task@5 deckard.breakIntoSteps',
+        '1_task@6 deckard.addTask',
         '2_heading@1 deckard.renameHeading',
         '2_heading@2 deckard.extractHeading',
         '2_heading@3 deckard.linkCurrentHeading',
@@ -105,7 +106,8 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 55);
+    assert.strictEqual(Object.keys(settings).length, 56);
+    assert.strictEqual(settings['deckard.tasks.hideNotStarted'].default, false);
     assert.deepStrictEqual(settings['deckard.parked.tags'].default, ['parked']);
     assert.deepStrictEqual(settings['deckard.parked.folders'].default, {});
     assert.deepStrictEqual(settings['deckard.periodicNote.reviewSections'].default, []);
@@ -180,6 +182,7 @@ suite('Extension Test Suite', () => {
         'deckard.addTask',
         'deckard.toggleTaskDone',
         'deckard.setTaskStatus',
+        'deckard.snoozeTask',
         'deckard.moveStatusTagsIntoCheckboxes',
         'deckard.importObsidianStatuses',
         'deckard.editTaskStatuses',
@@ -256,6 +259,7 @@ suite('Extension Test Suite', () => {
         'deckard.agenda.dueTomorrow',
         'deckard.agenda.dueNextWeek',
         'deckard.agenda.dueOnDate',
+        'deckard.agenda.snooze',
         'deckard.agenda.moveTo',
         'deckard.agenda.reschedule',
         'deckard.rescheduleOverdue',

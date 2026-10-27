@@ -191,6 +191,7 @@ function buildTasksWidget({ index, preferences, options, config, widget, take }:
     mentionsParked(parsed.node) ? found : withoutParked(found, index),
     preferences.taskOrder,
     config.sort ?? preferences.taskSortMode,
+    { now: options.queryContext.now, index },
   );
   return {
     ...widget,

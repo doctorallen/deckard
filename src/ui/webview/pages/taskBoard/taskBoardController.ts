@@ -24,12 +24,14 @@ import { clickTask, openTask, quoteTaskTitle, TaskWrites } from '../../../comman
 import { listPeopleRecency } from '../../../state/peopleRecency';
 import { moveTaskToColumn, readTaskBoardOptions } from '../../../commands/taskBoardActions';
 import { breakIntoStepsCommand } from '../../../commands/taskSteps';
+import { snoozeWithPicker } from '../../../commands/snooze';
 import { countStatusTagsLeft, describeStatusTagsLeft } from '../../../commands/statusMove';
 import { normalizeAgendaQuery } from '../../../state/agendaState';
 import { rankShown } from '../../../../domain/tasks/taskRank';
 import { DEFAULT_HIDDEN_COLUMNS } from '../../../../domain/tasks/statusColumns';
 import { normalizeStatusName } from '../../../../domain/tasks/taskStatuses';
-import { formatQueryBlock, QueryBlockWriteOptions } from '../../../state/queryBlockState';
+import { formatQueryBlock, queryBlockSortOf, QueryBlockWriteOptions } from '../../../state/queryBlockState';
+import { queryBlockGroupOfBoard } from '../../../state/queryBlockGroups';
 import { createTaskBoard, searchBoardTasks } from '../../../state/taskBoardState';
 import type { ActiveSearch, SearchSource } from '../../activeSearch';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
@@ -453,7 +455,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   /** What a card or row does to its task, and the page's Add task and a column's. */
   private taskHandlers(): Pick<
     Handlers,
-    'toggleTask' | 'moveTask' | 'pickTaskDate' | 'pickTaskAssignee' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps' | 'addTask' | 'addTaskToColumn'
+    'toggleTask' | 'moveTask' | 'pickTaskDate' | 'pickTaskAssignee' | 'snoozeTask' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps' | 'addTask' | 'addTaskToColumn'
   > {
     const { indexer, preferences, writes } = this.board;
     return {
@@ -500,6 +502,12 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         );
         if (picked) {
           await moveTaskToColumn(writes, task, `assignee:${picked.key}`, { index });
+        }
+      },
+      snoozeTask: async (message) => {
+        const task = indexer.getSnapshot().tasks.get(message.taskId);
+        if (task) {
+          await snoozeWithPicker(writes, [task], quoteTaskTitle(task));
         }
       },
       moveTaskTo: async (message) => {
@@ -666,8 +674,8 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
 
   /**
    * How the board is laid out, as a query block's options: a table keeps
-   * its columns and sorted column, and the board's columns have no block of
-   * their own.
+   * its columns and sorted column; the board its grouping, as `group=`,
+   * and its Sort, when a block can sort by it.
    */
   private queryBlockOptions(): QueryBlockWriteOptions {
     const preferences = this.board.preferences.reader.value;
@@ -679,7 +687,10 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         ...(sort ? { sort: sort.column, direction: sort.direction } : {}),
       };
     }
-    return {};
+    return {
+      group: queryBlockGroupOfBoard(preferences.taskBoardGroup, preferences.taskBoardGroupNamespace),
+      ...queryBlockSortOf(preferences.taskSortMode, 'tasks'),
+    };
   }
 
   /**

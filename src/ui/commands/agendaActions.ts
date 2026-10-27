@@ -16,6 +16,7 @@ import { askForDate, readDateFormats } from './datePrompt';
 import { moveTasks } from './moveTo';
 import { breakIntoStepsCommand } from './taskSteps';
 import { setTaskStatusCommand } from './setTaskStatus';
+import { snoozeWithPicker } from './snooze';
 import {
   openTask,
   quoteTaskTitle,
@@ -437,7 +438,7 @@ export async function pickAgendaSort(agenda: Pick<AgendaService<AgendaGroup>, 'r
     TASK_SORT_MODES.map((mode) => ({
       label: TASK_SORT_LABELS[mode],
       description: mode === current ? 'Current' : undefined,
-      detail: mode === 'rank' ? 'The order you drag tasks into. Tasks you haven\'t placed follow in each group\'s own order.' : undefined,
+      detail: SORT_DETAILS[mode],
       mode,
     })),
     { title: 'Sort tasks by', placeHolder: 'Choose how each group orders its tasks' },
@@ -448,6 +449,12 @@ export async function pickAgendaSort(agenda: Pick<AgendaService<AgendaGroup>, 'r
   await agenda.setSort(chosen.mode);
   return chosen.mode;
 }
+
+/** What the sort picker says under a sort whose name does not say it all. */
+const SORT_DETAILS: Partial<Record<TaskSortMode, string>> = {
+  rank: 'The order you drag tasks into. Tasks you haven\'t placed follow in each group\'s own order.',
+  urgency: 'Overdue and due soon first, then scheduled, by priority; a task not started yet, or waiting on another, lower.',
+};
 
 /** What the picker says beside the grouping in force. */
 function describeCurrentGrouping(
@@ -522,7 +529,8 @@ export interface AgendaCommandServices {
 
 /**
  * The Tasks view's own menus: a date by name or in plain words, on one
- * task, on the tasks selected, or on every task in a group; Move to…,
+ * task, on the tasks selected, or on every task in a group; Snooze
+ * Until…; Move to…,
  * Reschedule…, Show More, Edit Task, and Break into Steps; and Reschedule
  * Overdue Tasks from the palette and the status bar.
  */
@@ -561,6 +569,15 @@ export function registerAgendaCommands(services: AgendaCommandServices): vscode.
         const tasks = view.tasksFor(node, selected);
         if (tasks.length > 0) {
           await moveTasks(indexer, preferences, writes, tasks);
+        }
+      },
+    ),
+    registerCommand(
+      'deckard.agenda.snooze',
+      async (node?: AgendaNode, selected?: readonly AgendaNode[]) => {
+        const tasks = view.tasksFor(node, selected);
+        if (tasks.length > 0) {
+          await snoozeWithPicker(writes, tasks, agenda.describeSubject(tasks));
         }
       },
     ),

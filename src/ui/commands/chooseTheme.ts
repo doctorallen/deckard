@@ -5,7 +5,7 @@ import { settingTarget, writeSetting } from './settings';
 import { deckardThemeNames, deckardThemes, DeckardTheme } from '../webview/themeNames';
 
 /**
- * Choose Theme…: a quick pick of Deckard's eight themes that shows each on
+ * Choose Theme…: a quick pick of Deckard's nine themes that shows each on
  * the open pages as it is moved through. Nothing is written until one is
  * kept; Escape puts back the theme that was in use.
  */
@@ -38,7 +38,7 @@ export interface ChooseThemeDeps {
   delay?: number;
 }
 
-/** The eight themes as the picker lists them, the one in use marked. */
+/** The nine themes as the picker lists them, the one in use marked. */
 export function createThemeItems(manifest: ThemeManifest, current: DeckardTheme): ThemeItem[] {
   const descriptions =
     (manifest.configuration ?? [])

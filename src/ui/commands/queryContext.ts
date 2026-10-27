@@ -33,7 +33,8 @@ export function readQueryContext(now: number = Date.now()): QueryContext {
 /**
  * How Deckard reads tasks, from settings: `deckard.tasks.needsNewDateAfterDays`
  * as a whole number of days, 0 or more (30 for anything that is not a
- * number); and `deckard.tasks.statuses` as readTaskStatusSettings reads it.
+ * number); `deckard.tasks.statuses` as readTaskStatusSettings reads it; and
+ * `deckard.tasks.hideNotStarted`, on only when it is `true`.
  */
 export function readTaskPolicy(): TaskPolicy {
   const configuration = vscode.workspace.getConfiguration('deckard');
@@ -41,5 +42,6 @@ export function readTaskPolicy(): TaskPolicy {
   return {
     needsNewDateAfterDays: Number.isFinite(days) ? Math.max(0, Math.round(days)) : 30,
     statuses: readTaskStatusSettings(configuration),
+    hideNotStarted: configuration.get<unknown>('tasks.hideNotStarted', false) === true,
   };
 }

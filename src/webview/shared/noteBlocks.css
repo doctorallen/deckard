@@ -41,6 +41,7 @@
 .note-query-text { color: var(--text); font-size: var(--text-sm); }
 .note-query-counts { margin-left: auto; color: var(--muted); font: var(--text-xs) var(--font-mono); }
 .note-query-list { margin: var(--space-2) 0 0; padding: 0; list-style: none; }
+.note-query-group-title { margin: var(--space-3) 0 0; font-weight: 600; }
 .note-query-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2); padding: 4px 0; }
 .note-query-row:not(:has(.note-task-box)) { grid-template-columns: minmax(0, 1fr); }
 .note-query-body { display: grid; }

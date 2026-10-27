@@ -16,11 +16,13 @@
 export type TagSortMode = 'alphabetical' | 'count' | 'access' | 'custom';
 
 /**
- * How a list of tasks is ordered: in the reader's own ranked order, by when
- * each was created or last updated, either way, or by title, either way.
+ * How a list of tasks is ordered: in the reader's own ranked order, most
+ * urgent first, by when each was created or last updated, either way, or
+ * by title, either way.
  */
 export const TASK_SORT_MODES = [
   'rank',
+  'urgency',
   'created',
   'createdOldest',
   'updated',

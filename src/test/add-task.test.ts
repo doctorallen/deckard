@@ -144,6 +144,21 @@ function contextOf(notes: Record<string, string>, { indexed = false }: { indexed
   };
 }
 
+/**
+ * Removes a test's folder, as far as Windows lets it: VS Code holds the
+ * folder of a file it has shown for a while after its editor closes, and the
+ * folder is in the system's temp folder, which the system clears.
+ */
+function removeFolder(folder: string): void {
+  try {
+    rmSync(folder, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  } catch (error) {
+    if (process.platform !== 'win32') {
+      throw error;
+    }
+  }
+}
+
 suite('Add Task', () => {
   // Friday 2026-09-25, noon.
   const now = new Date(2026, 8, 25, 12).getTime();
@@ -160,7 +175,7 @@ suite('Add Task', () => {
     restore?.();
     restore = undefined;
     await vscode.commands.executeCommand('workbench.action.closeAllEditors');
-    rmSync(directory, { recursive: true, force: true });
+    removeFolder(directory);
   });
 
   /** A note written to the temporary folder, and its path. */

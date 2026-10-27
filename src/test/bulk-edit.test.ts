@@ -16,6 +16,8 @@ import {
 import {
   describeEntry,
   listBulkEdits,
+  listWrittenTags,
+  readShiftDays,
 } from '../ui/commands/bulkEditPrompts';
 import { DATE_INPUT_ERROR, validateDateInput } from '../ui/commands/datePrompt';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
@@ -93,11 +95,28 @@ suite('Bulk edits', () => {
   test('offers notes only what a note can take', () => {
     assert.deepStrictEqual(
       listBulkEdits('notes').map((option) => option.label),
-      ['Add a tag'],
+      ['Add a tag', 'Remove a tag', 'Replace a tag'],
     );
     assert.deepStrictEqual(
       listBulkEdits('tasks').map((option) => option.label),
-      ['Complete', 'Reopen', 'Set a status', 'Set a due date', 'Add a tag'],
+      [
+        'Complete',
+        'Reopen',
+        'Set a status',
+        'Set a due date',
+        'Set a scheduled date',
+        'Set a start date',
+        'Shift dates…',
+        'Set a priority',
+        'Add a tag',
+        'Remove a tag',
+        'Replace a tag',
+      ],
+    );
+    assert.strictEqual(
+      listBulkEdits('tasks', { canMove: true }).at(-1)?.label,
+      'Move to…',
+      'a page that can move tasks offers Move to… last',
     );
   });
 
@@ -171,6 +190,85 @@ suite('Bulk edits', () => {
     assert.ok(after.includes('- [ ] Book the room 📅 2026-10-02'), after);
     assert.strictEqual(describeBulkEdit({ kind: 'dueEach', dates }, 3), 'spreading the due dates of 3 results');
     await clean();
+  });
+
+  test('sets a priority, a start date, and shifts the dates each task has, as one write each', async () => {
+    const dated = [
+      '# Atlas',
+      '- [ ] Chase the contractor 📅 2026-09-18 ⏳ 2026-09-16',
+      '- [ ] Book the room 🔽',
+      '- [ ] Water the plants [due:: 2026-09-19]',
+    ].join('\n');
+    const { file, read, clean } = await writeNote(dated);
+    const entries: BulkEntry[] = file.tasks.map((task) => ({ kind: 'task', task }));
+    assert.strictEqual((await applyBulkEdit(history, entries, { kind: 'priority', priority: 'high' }))?.changed, 3);
+    let after = await read();
+    assert.ok(after.includes('- [ ] Book the room ⏫'), after);
+    assert.ok(after.includes('- [ ] Water the plants [due:: 2026-09-19] [priority:: high]'), 'in the line\'s own format');
+    await history.undo();
+
+    const shift = { days: 3, fields: ['due', 'scheduled'] as const };
+    const shifted = await applyBulkEdit(history, entries, { kind: 'shift', shift: { ...shift, fields: [...shift.fields] } });
+    assert.deepStrictEqual({ changed: shifted?.changed, unchanged: shifted?.unchanged }, { changed: 2, unchanged: 1 }, 'an undated task is as asked');
+    after = await read();
+    assert.ok(after.includes('- [ ] Chase the contractor 📅 2026-09-21 ⏳ 2026-09-19'), after);
+    assert.ok(after.includes('[due:: 2026-09-22]'), after);
+    await history.undo();
+
+    assert.strictEqual((await applyBulkEdit(history, entries, { kind: 'date', field: 'start', date: '2026-09-20' }))?.changed, 3);
+    assert.ok((await read()).includes('- [ ] Book the room 🔽 🛫 2026-09-20'));
+    await history.undo();
+    assert.strictEqual(await read(), dated);
+
+    assert.strictEqual(describeBulkEdit({ kind: 'priority', priority: undefined }, 2), 'clearing the priority of 2 results');
+    assert.strictEqual(
+      describeBulkEdit({ kind: 'shift', shift: { days: -1, fields: ['due', 'start'] } }, 2),
+      'moving the due and start dates of 2 results 1 day earlier',
+    );
+    assert.strictEqual(
+      describeBulkEditResult({ kind: 'shift', shift: { days: 3, fields: ['scheduled'] } }, { changed: 2, skipped: 0, notes: 1 }),
+      'Moved the scheduled date 3 days later on 2 results in 1 note.',
+    );
+    await clean();
+  });
+
+  test('removes and replaces a tag the results write on their lines', async () => {
+    const tagged = [
+      '# Atlas #project/atlas',
+      '- [ ] Call Ren #context/phone',
+      '- [ ] Book the room #context/phone #context/computer',
+      '- [ ] Water the plants',
+    ].join('\n');
+    const { file, read, clean } = await writeNote(tagged);
+    const entries: BulkEntry[] = file.tasks.map((task) => ({ kind: 'task', task }));
+    assert.deepStrictEqual(listWrittenTags(entries), [
+      { label: '#context/phone', count: 2 },
+      { label: '#context/computer', count: 1 },
+    ], 'the heading\'s tag, which every task inherits, is not on their lines');
+    const replaced = await applyBulkEdit(history, entries, { kind: 'replaceTag', from: '#context/phone', to: '#context/computer' });
+    assert.deepStrictEqual({ changed: replaced?.changed, unchanged: replaced?.unchanged }, { changed: 2, unchanged: 1 });
+    let after = await read();
+    assert.ok(after.includes('- [ ] Call Ren #context/computer\n'), after);
+    assert.ok(after.includes('- [ ] Book the room #context/computer\n'), after);
+    await history.undo();
+    assert.strictEqual((await applyBulkEdit(history, entries, { kind: 'removeTag', tag: '#context/phone' }))?.changed, 2);
+    after = await read();
+    assert.ok(after.includes('- [ ] Call Ren\n'), after);
+    assert.ok(after.includes('# Atlas #project/atlas'), 'a heading is not a result here, and keeps its tag');
+    assert.strictEqual(describeBulkEdit({ kind: 'replaceTag', from: '#a', to: '#b' }, 1), 'replacing #a with #b on 1 result');
+    assert.strictEqual(describeBulkEdit({ kind: 'removeTag', tag: '#a' }, 2), 'removing #a from 2 results');
+    await clean();
+  });
+
+  test('reads a shift as whole days, either way', () => {
+    assert.strictEqual(readShiftDays('3'), 3);
+    assert.strictEqual(readShiftDays('+3'), 3);
+    assert.strictEqual(readShiftDays(' -2 days '), -2);
+    assert.strictEqual(readShiftDays('1d'), 1);
+    assert.strictEqual(readShiftDays('0'), undefined);
+    assert.strictEqual(readShiftDays('1.5'), undefined);
+    assert.strictEqual(readShiftDays('next week'), undefined);
+    assert.strictEqual(readShiftDays('99999'), undefined);
   });
 
   test('tags the notes a search found, headings and all', async () => {

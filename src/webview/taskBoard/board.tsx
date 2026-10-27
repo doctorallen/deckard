@@ -28,8 +28,8 @@ export interface MovableTask {
 /**
  * Every edit a card can make, whatever the board is grouped by: its status,
  * priority, and due date as single choices, each checked where the task is
- * and showing its key, the board's other columns, its steps, done, and Move
- * to… The menu used to offer the columns of the current grouping alone, so
+ * and showing its key, Snooze until…, the board's other columns, its steps,
+ * done, and Move to… The menu used to offer the columns of the current grouping alone, so
  * changing a due date meant regrouping the whole board first. The statuses
  * the board draws a column for come first; every other one is under More
  * statuses.
@@ -63,6 +63,7 @@ export function taskCardMoves(card: MovableTask, columnId: string, columns: read
     { label: 'More statuses', items: moreOptions },
     { label: 'Priority', items: priorityOptions },
     { label: 'Due', items: dueOptions },
+    { label: 'Snooze', items: card.completed ? [] : [{ value: 'snooze', label: 'Snooze until…', key: 'z' }] },
     { label: 'This board', items: others },
     { label: 'For', items: [{ value: 'pick-assignee', label: 'For someone…', key: 'f' }] },
     { label: 'Steps', items: [{ value: 'break-steps', label: card.steps ? 'Add steps…' : 'Break into steps…', key: 's' }] },

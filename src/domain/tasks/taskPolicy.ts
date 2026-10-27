@@ -14,6 +14,11 @@ export interface TaskPolicy {
   needsNewDateAfterDays: number;
   /** What each checkbox character means (`deckard.tasks.statuses`). */
   statuses: readonly TaskStatusDefinition[];
+  /**
+   * Whether the lists of what to do leave out open tasks whose start date
+   * is still to come (`deckard.tasks.hideNotStarted`). Off when omitted.
+   */
+  hideNotStarted?: boolean;
 }
 
 /**
@@ -23,6 +28,7 @@ export interface TaskPolicy {
 export const DEFAULT_TASK_POLICY: Readonly<TaskPolicy> = {
   needsNewDateAfterDays: 30,
   statuses: DEFAULT_TASK_STATUSES,
+  hideNotStarted: false,
 };
 
 /**
