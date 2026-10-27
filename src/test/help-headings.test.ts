@@ -23,7 +23,7 @@ suite('Help headings', () => {
     // h3 is --text-lg, a pixel over the reader's own size: under h2 for any
     // VS Code font size below 17px.
     assert.match(help, /\nh3 \{[^}]*font-size: var\(--text-lg\)/);
-    const full = [sizeIn(help, 'h1'), sizeIn(themeSheet('corpo'), 'h1')];
+    const full = [sizeIn(help, 'h1'), sizeIn(themeSheet('mimic'), 'h1')];
     for (const h1 of full) {
       assert.ok(h1 !== undefined && h1 > h2, `a Full h1 of ${h1}px is over h2`);
     }

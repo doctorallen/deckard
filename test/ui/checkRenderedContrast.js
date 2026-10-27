@@ -27,7 +27,7 @@ const path = require('node:path');
 const os = require('node:os');
 const { mkdtempSync, writeFileSync, rmSync } = require('node:fs');
 
-const { renderPagesForTheme } = require('./pages.js');
+const { renderPagesForTheme, paletteFor } = require('./pages.js');
 const { surfaceHtml } = require('./surfaces.js');
 const { chrome, createSurfaces, buildPage, measureAsync } = require('./checkLayout.js');
 const { announceShard, passes } = require('./passes.js');
@@ -245,16 +245,16 @@ const PROBE = `
 })();`;
 
 /**
- * What a surface draws below AA, less what Corpo's field edges and the known
+ * What a surface draws below AA, less what Mimic's and Corpo's field edges and the known
  * list excuse; a Chrome that fails is one failure of kind `error`.
  */
 async function surfaceFailures(file, surface, theme, log) {
   try {
     return (await measureAsync(file, surface.viewport, {}, log))[0].failures
-      // Corpo draws a field's edge in VS Code's own input border, the
-      // editor theme's choice and the edge its own fields have; its
-      // text is still Deckard's to get right.
-      .filter((failure) => !(theme === 'corpo' && failure.kind === 'edge'))
+      // Mimic and Corpo draw a field's edge in VS Code's own input
+      // border, the editor theme's choice and the edge its own fields
+      // have; their text is still Deckard's to get right.
+      .filter((failure) => !((theme === 'mimic' || theme === 'corpo') && failure.kind === 'edge'))
       .filter((failure) => !KNOWN.has(`${theme}:${surface.name || surface.page} ${failure.kind} ${failure.el}`));
   } catch (error) {
     return [{ kind: 'error', el: error.message }];
@@ -298,7 +298,7 @@ function* contrastJobs() {
 async function checkSurfaces(dir) {
   const verdicts = await runInOrder(contrastJobs(), async ({ surface, name, label, theme, zen, rendered }, log) => {
     const file = path.join(dir, `${label}-${name}.html`);
-    writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface, PROBE));
+    writeFileSync(file, buildPage(surfaceHtml(surface, rendered, { theme, zen }), surface, PROBE, { palette: paletteFor(theme) }));
     const failures = await surfaceFailures(file, surface, theme, log);
     if (failures.length === 0) {
       log(`  ok   ${label.padEnd(16)} ${name}`);

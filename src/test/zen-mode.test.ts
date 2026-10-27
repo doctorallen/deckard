@@ -159,8 +159,8 @@ suite('Zen mode', () => {
       assert.ok(page.find('.page-menu [aria-label="Appearance"] input[data-action="set-zen"]'), 'the Zen checkbox is in Appearance');
       assert.ok(!labels.includes('Display'), 'the three steps are gone');
       const button = page.find('[data-action="choose-theme"]');
-      assert.strictEqual(button.textContent, 'Corpo…');
-      assert.strictEqual(button.getAttribute('aria-label'), 'Theme: Corpo. Choose another');
+      assert.strictEqual(button.textContent, 'Mimic…');
+      assert.strictEqual(button.getAttribute('aria-label'), 'Theme: Mimic. Choose another');
       page.click('[data-action="choose-theme"]');
       assert.deepStrictEqual(page.lastPosted('chooseTheme'), { type: 'chooseTheme' });
     }

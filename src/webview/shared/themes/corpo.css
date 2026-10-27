@@ -1,114 +1,134 @@
 /*
- * Corpo, the plain default: every token comes from the VS Code color theme in
- * use, light or dark, and the page drops Deckard's grid, glows, clipped
- * corners, and uppercase monospace labels, so its views read like the rest of
- * the editor. The page itself is transparent, so VS Code's own editor or side
- * bar background shows through.
+ * Corpo: Mimic's plain interface, drawn in VS Code's own default colors,
+ * Dark 2026 or Light 2026, whichever color theme the reader has. A dark
+ * theme gives the dark palette and a light one the light, so the page looks
+ * as Mimic does under VS Code's defaults. A high contrast theme keeps its own
+ * colors, as it does in every Deckard theme (highContrast.css).
+ *
+ * VS Code writes its colors on the root element's style attribute, so each
+ * palette is marked important to outweigh them, and every rule, VS Code's
+ * own webview defaults included, reads these instead. A token VS Code's
+ * defaults leave unset, such as contrastBorder, is unset here too, in case
+ * the reader's theme sets it. The values are the themes' own, with VS Code's
+ * registered defaults where a theme names none (VS Code 1.141); the checks
+ * in test/ui read their palettes from this file.
  *
  * A theme sheet: linked after the page's own sheet and before the tail.
  */
-:root {
-  --bg: var(--vscode-editor-background);
-  --bg-dark: var(--vscode-editor-background);
-  --panel: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-  --panel-bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-  --panel-raised: var(--vscode-list-hoverBackground, var(--vscode-editorWidget-background));
-  /* VS Code has no divider color that reaches 3:1, so the text color is mixed into the panel. */
-  --divider: color-mix(in srgb, var(--vscode-foreground) 70%, var(--vscode-editorWidget-background, var(--vscode-editor-background)));
-  /* VS Code's own hover pair: its focus blue on its hover gray is about 3:1,
-     which is a border color, not a text one. */
-  --hover-bg: var(--vscode-list-hoverBackground, var(--vscode-editorWidget-background));
-  --hover-fg: var(--vscode-foreground);
-  /* A chosen tab or filter takes VS Code's own button colors, so Corpo keeps
-     looking like the editor around it. */
-  --chosen-bg: var(--vscode-button-background);
-  --chosen-fg: var(--vscode-button-foreground);
-  --panel-deep: var(--vscode-input-background, var(--vscode-editor-background));
-  --text: var(--vscode-foreground);
-  --muted: var(--vscode-descriptionForeground);
-  --line: var(--vscode-widget-border, var(--vscode-panel-border));
-  --slate-border: var(--vscode-widget-border, var(--vscode-panel-border));
-  --line-strong: var(--vscode-input-border, var(--vscode-panel-border));
-  /* VS Code's own input edge, which its themes leave transparent where the
-     field's ground already stands out. */
-  --control-line: var(--vscode-input-border, transparent);
-  --cyan: var(--vscode-textLink-foreground);
-  --cyan-bright: var(--vscode-textLink-foreground);
-  /* The accent is written as text in eyebrows, chips, and hovered controls,
-     and VS Code's focus blue is an edge color, about 3:1 on its own dark
-     grounds. Its link color is text, kept readable in every VS Code theme;
-     the focus blue stays on --amber-bright for edges and marks. */
-  --amber: var(--vscode-textLink-foreground);
-  --amber-bright: var(--vscode-focusBorder);
-  --amber-dim: var(--vscode-descriptionForeground);
-  --green: var(--vscode-charts-green);
-  --toxic-green: var(--vscode-charts-green);
-  --favorite-red: var(--vscode-charts-red);
-  --favorite: var(--vscode-textLink-foreground);
-  --warning-orange: var(--vscode-editorWarning-foreground);
-  /* VS Code's warning text in lists, readable on its light grounds, where
-     the editor's warning squiggle color is not. */
-  --due-today: var(--vscode-list-warningForeground, var(--vscode-editorWarning-foreground));
-  /* Overdue, written as text on a raised row as well as the page: VS Code's
-     list error color, where its chart red is under 4.5:1 on its hover gray. */
-  --danger: var(--vscode-list-errorForeground, var(--vscode-charts-red));
-  --slate-olive: var(--vscode-panel-border);
-  --grid-line: transparent;
-  --font-display: var(--vscode-font-family, system-ui, sans-serif);
-  --font-mono: var(--vscode-font-family, system-ui, sans-serif);
-  --edge: 1px;
-  --control-height: 26px;
+@import "./mimic.css";
+
+:root:has(> body.vscode-dark) {
+  --vscode-editor-background: #121314 !important;
+  --vscode-editor-foreground: #bbbebf !important;
+  --vscode-foreground: #bfbfbf !important;
+  --vscode-descriptionForeground: #8c8c8c !important;
+  --vscode-errorForeground: #f48771 !important;
+  --vscode-focusBorder: #3994bcb3 !important;
+  --vscode-contrastBorder: initial !important;
+  --vscode-contrastActiveBorder: initial !important;
+  --vscode-textLink-foreground: #48a0c7 !important;
+  --vscode-textLink-activeForeground: #53a5ca !important;
+  --vscode-textPreformat-foreground: #8c8c8c !important;
+  --vscode-textPreformat-background: #262626 !important;
+  --vscode-textBlockQuote-background: #242526 !important;
+  --vscode-textBlockQuote-border: #2a2b2c !important;
+  --vscode-textCodeBlock-background: #242526 !important;
+  --vscode-editorWidget-background: #202122 !important;
+  --vscode-editorWidget-foreground: #bfbfbf !important;
+  --vscode-editorHoverWidget-background: #202122 !important;
+  --vscode-editorHoverWidget-foreground: #bfbfbf !important;
+  --vscode-editorHoverWidget-border: #2a2b2c !important;
+  --vscode-editorWarning-foreground: #cca700 !important;
+  --vscode-sideBar-background: #191a1b !important;
+  --vscode-panel-border: #2a2b2c !important;
+  --vscode-widget-border: #2a2b2c !important;
+  --vscode-widget-shadow: #0000005c !important;
+  --vscode-list-hoverBackground: #ffffff14 !important;
+  --vscode-list-warningForeground: #e5ba7d !important;
+  --vscode-list-errorForeground: #f48771 !important;
+  --vscode-button-background: #297aa0 !important;
+  --vscode-button-foreground: #ffffff !important;
+  --vscode-button-hoverBackground: #2b7da3 !important;
+  --vscode-button-border: #297aa0 !important;
+  --vscode-button-secondaryBackground: #00000000 !important;
+  --vscode-button-secondaryForeground: #cccccc !important;
+  --vscode-button-secondaryHoverBackground: #ffffff10 !important;
+  --vscode-input-background: #191a1b !important;
+  --vscode-input-foreground: #bfbfbf !important;
+  --vscode-input-border: #333536 !important;
+  --vscode-input-placeholderForeground: #555555 !important;
+  --vscode-dropdown-background: #191a1b !important;
+  --vscode-dropdown-foreground: #bfbfbf !important;
+  --vscode-dropdown-border: #333536 !important;
+  --vscode-charts-green: #86cf86 !important;
+  --vscode-charts-red: #ef8773 !important;
+  --vscode-keybindingLabel-background: #8080802b !important;
+  --vscode-keybindingLabel-foreground: #cccccc !important;
+  --vscode-keybindingLabel-border: #33333399 !important;
+  --vscode-keybindingLabel-bottomBorder: #44444499 !important;
+  --vscode-scrollbarSlider-background: #a8a9aa85 !important;
+  --vscode-scrollbarSlider-hoverBackground: #a8a9aa90 !important;
+  --vscode-scrollbarSlider-activeBackground: #a8a9aa9c !important;
+  --vscode-editor-findMatchBackground: #27678290 !important;
+  --vscode-editor-findMatchHighlightBackground: #27678280 !important;
+  --vscode-deckard-promiseUnderline: #cca70080 !important;
+  --vscode-deckard-termUnderline: #8c8c8c !important;
 }
-/* A transparent page shows VS Code's own background only while its color
-   scheme matches the editor's; otherwise the browser paints a dark backdrop. */
-:root:has(> body.vscode-light), :root:has(> body.vscode-high-contrast-light) { color-scheme: light; }
-:root:has(> body.vscode-dark), :root:has(> body.vscode-high-contrast) { color-scheme: dark; }
-/* The page paints its own background: VS Code gives some webviews no backdrop
-   of their own, where a transparent page composites to nothing. */
-body { background: var(--vscode-editor-background); }
-body:has(> main[data-sidebar]) { background: var(--vscode-sideBar-background, var(--vscode-editor-background)); }
-main { border: 0; box-shadow: none; }
-header { border-bottom: 1px solid var(--line); }
-/* Corpo's eyebrows and titles read as written too; the working labels
-   already do in every theme. */
-body * { text-transform: none !important; letter-spacing: normal !important; }
-h1 { font-size: 20px; font-weight: 600; }
-.eyebrow { color: var(--muted); }
-code, pre, kbd, .markdown { font-family: var(--vscode-editor-font-family, monospace); }
-.metric::before { display: none; }
-.metric-value { color: var(--text); font-weight: 600; }
-.metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .stat-row, .empty, .view-panel, .query-workspace, .query-facets, .search-notice, .selected-task-tags, .board-column { clip-path: none; border-radius: 4px; box-shadow: none; }
-.tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--vscode-list-hoverBackground); transform: none; }
-.popover, .tag-filter-menu, .view-options-menu, .rank-context-menu, .tag-context-menu, .relevance-tooltip, .sidebar-association-tooltip, .query-suggestions { clip-path: none; border-radius: 4px; border-color: var(--vscode-widget-border, var(--line)); background: var(--vscode-editorWidget-background); color: var(--vscode-editorWidget-foreground, var(--text)); box-shadow: 0 2px 8px var(--vscode-widget-shadow); }
-.popover.is-tip { border-color: var(--vscode-editorHoverWidget-border, var(--vscode-widget-border, var(--line))); background: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background)); color: var(--vscode-editorHoverWidget-foreground, var(--vscode-editorWidget-foreground, var(--text))); }
-button, select, input[type="text"], input[type="search"], .tag-filter summary { border-radius: 2px; }
-button, .tag-filter summary { border: 1px solid var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
-button:hover:where(:not(:disabled):not([aria-disabled="true"])), .tag-filter summary:hover { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-secondaryHoverBackground); color: var(--vscode-button-secondaryForeground); }
-button.active, button.active:hover:where(:not(:disabled):not([aria-disabled="true"])), button[aria-selected="true"], .dashboard-tabs button[aria-selected="true"], .segmented button[aria-pressed="true"], .pagination .page-number.is-current { border-color: var(--vscode-focusBorder); background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); box-shadow: inset 0 -2px 0 var(--vscode-focusBorder); }
-/* The page's one primary action is VS Code's own primary button. */
-button.primary.primary { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
-/* A count inside a chosen button follows its text, not the muted color. */
-.active .filter-count, .active .query-facet-count, .active .tag-count, [aria-selected="true"] .filter-count, [aria-selected="true"] .tag-count { color: inherit; opacity: .75; }
-button.primary.primary:hover:where(:not(:disabled):not([aria-disabled="true"])) { border-color: var(--vscode-button-border, transparent); background: var(--vscode-button-hoverBackground); color: var(--vscode-button-foreground); filter: none; }
-input[type="text"], input[type="search"], textarea { border: 1px solid var(--vscode-input-border, transparent); background: var(--vscode-input-background); color: var(--vscode-input-foreground); }
-input[type="text"]:focus, input[type="search"]:focus { border-color: var(--vscode-focusBorder); background: var(--vscode-input-background); color: var(--vscode-input-foreground); }
-input::placeholder, textarea::placeholder { color: var(--vscode-input-placeholderForeground); }
-select, select:hover:where(:not(:disabled):not([aria-disabled="true"])) { border: 1px solid var(--vscode-dropdown-border, transparent); background: var(--vscode-dropdown-background); color: var(--vscode-dropdown-foreground); }
-button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: var(--focus-width) solid var(--vscode-focusBorder); outline-offset: calc(var(--focus-width) * -1); }
-input[type="checkbox"], .task input { accent-color: var(--vscode-button-background); }
-/* Tags read as links, as VS Code shows references, and a tag written inside
-   a title keeps a hairline so it stays distinct from the words around it. */
-.tag-open, .inline-tag, .task-title .inline-tag { background: transparent; color: var(--vscode-textLink-foreground); }
-.tag-open { border-color: transparent; }
-.inline-tag, .task-title .inline-tag { border-color: var(--vscode-widget-border, var(--vscode-panel-border)); border-radius: 3px; }
-.tag-open:hover, .inline-tag:hover, .task-title .inline-tag:hover { border-color: transparent; background: var(--vscode-list-hoverBackground); color: var(--vscode-textLink-activeForeground); }
-.query-suggestion:hover, .query-suggestion.active { background: var(--vscode-list-hoverBackground); color: var(--vscode-foreground); }
-.zoom-controls button, .zoom-readout, .reset-graph-settings { background: var(--vscode-editorWidget-background); }
-/* A day outside the month, hovered, sits on the button's hover ground, where
-   VS Code's description ink read at 4.07:1 in Dark Modern; it takes the
-   button's own hover ink, as a day in the month does: 6.9:1. */
-.day.outside:hover:where(:not(:disabled):not([aria-disabled="true"])) { color: var(--vscode-button-secondaryForeground); }
-/* The Notes Graph's note that it is simulating was in VS Code's focus blue,
-   at 3.64:1 on Dark Modern's editor; it takes the link blue, 6.65:1 there
-   and 6.31:1 on Light Modern's. */
-.status-line .sim-note { color: var(--amber); }
+
+:root:has(> body.vscode-light) {
+  --vscode-editor-background: #ffffff !important;
+  --vscode-editor-foreground: #202020 !important;
+  --vscode-foreground: #202020 !important;
+  --vscode-descriptionForeground: #606060 !important;
+  --vscode-errorForeground: #ad0707 !important;
+  --vscode-focusBorder: #0069cc !important;
+  --vscode-contrastBorder: initial !important;
+  --vscode-contrastActiveBorder: initial !important;
+  --vscode-textLink-foreground: #0069cc !important;
+  --vscode-textLink-activeForeground: #0069cc !important;
+  --vscode-textPreformat-foreground: #606060 !important;
+  --vscode-textPreformat-background: #ececec !important;
+  --vscode-textBlockQuote-background: #eaeaea !important;
+  --vscode-textBlockQuote-border: #f0f1f2 !important;
+  --vscode-textCodeBlock-background: #eaeaea !important;
+  --vscode-editorWidget-background: #fafafd !important;
+  --vscode-editorWidget-foreground: #202020 !important;
+  --vscode-editorHoverWidget-background: #fafafd !important;
+  --vscode-editorHoverWidget-foreground: #202020 !important;
+  --vscode-editorHoverWidget-border: #e4e5e6 !important;
+  --vscode-editorWarning-foreground: #bf8803 !important;
+  --vscode-sideBar-background: #fafafd !important;
+  --vscode-panel-border: #f0f1f2 !important;
+  --vscode-widget-border: #e2e2e5 !important;
+  --vscode-widget-shadow: #00000000 !important;
+  --vscode-list-hoverBackground: #00000014 !important;
+  --vscode-list-warningForeground: #667309 !important;
+  --vscode-list-errorForeground: #ad0707 !important;
+  --vscode-button-background: #0069cc !important;
+  --vscode-button-foreground: #ffffff !important;
+  --vscode-button-hoverBackground: #0063c1 !important;
+  --vscode-button-border: #0069cc !important;
+  --vscode-button-secondaryBackground: #eaeaea !important;
+  --vscode-button-secondaryForeground: #202020 !important;
+  --vscode-button-secondaryHoverBackground: #f2f3f4 !important;
+  --vscode-input-background: #ffffff !important;
+  --vscode-input-foreground: #202020 !important;
+  --vscode-input-border: #d8d8d866 !important;
+  --vscode-input-placeholderForeground: #999999 !important;
+  --vscode-dropdown-background: #ffffff !important;
+  --vscode-dropdown-foreground: #202020 !important;
+  --vscode-dropdown-border: #d8d8d8 !important;
+  --vscode-charts-green: #388a34 !important;
+  --vscode-charts-red: #ad0707 !important;
+  --vscode-keybindingLabel-background: #dddddd66 !important;
+  --vscode-keybindingLabel-foreground: #3b3b3b !important;
+  --vscode-keybindingLabel-border: #cccccc66 !important;
+  --vscode-keybindingLabel-bottomBorder: #bbbbbb66 !important;
+  --vscode-scrollbarSlider-background: #646464c0 !important;
+  --vscode-scrollbarSlider-hoverBackground: #646464d0 !important;
+  --vscode-scrollbarSlider-activeBackground: #646464e0 !important;
+  --vscode-editor-findMatchBackground: #0069cc40 !important;
+  --vscode-editor-findMatchHighlightBackground: #0069cc1a !important;
+  --vscode-deckard-promiseUnderline: #bf880380 !important;
+  --vscode-deckard-termUnderline: #606060 !important;
+}

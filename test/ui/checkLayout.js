@@ -49,7 +49,7 @@ if (!existsSync(compiled)) {
   console.error('Run "npm run compile-tests" first: out/ is missing.');
   process.exit(1);
 }
-const { renderPagesForTheme, vscodePaletteCss } = require('./pages.js');
+const { renderPagesForTheme, vscodePaletteCss, paletteFor } = require('./pages.js');
 const { readPageNonce } = require('../harness/loadPage.js');
 const { captureScript } = require('../harness/domSnapshot.js');
 const { createSurfaces, surfaceHtml } = require('./surfaces.js');
@@ -323,7 +323,9 @@ parent.document.getElementById('layout-probe').textContent = JSON.stringify([{ f
  * is the script that measures it, the layout probe unless another is given,
  * run a moment after the state has drawn, or, with `options.at` set to
  * `once-drawn`, at once, as LAYOUT_TIMING=1 needs. `options.css` is laid
- * down with the settling rules, before the surface's own.
+ * down with the settling rules, before the surface's own, and
+ * `options.palette` names the VS Code palette the page is drawn under, dark
+ * unless it says light (pages.js).
  */
 function buildPage(source, surface, probe = probeScript(surface), options = {}) {
   const html = allowHarnessScripts(source, readPageNonce(source));
@@ -354,7 +356,7 @@ ${state}${interactionScript(surface)}setTimeout(function () { ${probe} }, 50);
   // hidden canvas, comes after the settling rules.
   const inner = html
     // VS Code sets its tokens on the document; here a style block does.
-    .replace('<head>', () => `<head><style${nonced}>${vscodePaletteCss('dark')}${SETTLED}${options.css || ''}${surface.css || ''}</style>`)
+    .replace('<head>', () => `<head><style${nonced}>${vscodePaletteCss(options.palette || 'dark')}${SETTLED}${options.css || ''}${surface.css || ''}</style>`)
     .replace(/<script/, () => `${bridge}<script`)
     .replace(/<\/body>/, () => `${drive}</body>`);
   const [width, height] = surface.viewport;
@@ -655,7 +657,7 @@ async function checkSurfaces(dir) {
     const surfaceName = surface.name || surface.page;
     const html = surfaceHtml(surface, rendered, { theme, zen });
     const file = path.join(dir, `${label}-${surfaceName}.html`);
-    writeFileSync(file, buildPage(html, surface));
+    writeFileSync(file, buildPage(html, surface, undefined, { palette: paletteFor(theme) }));
     const { runs, problems } = await checkSurface(file, surface, label, log);
     return reportSurface({ file, label, surfaceName, runs, problems }, log);
   });

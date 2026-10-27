@@ -5,7 +5,7 @@ import type { DeckardTheme } from './themeNames';
 /**
  * A theme shown on the open pages while Choose Theme… is moved through, and
  * before anything is written: settings.json is not touched until one is
- * kept, so arrowing through eight themes makes no file writes.
+ * kept, so arrowing through nine themes makes no file writes.
  *
  * One is made where the extension starts and handed to Choose Theme… and to
  * every page, which draws with it and redraws when it changes, so a preview

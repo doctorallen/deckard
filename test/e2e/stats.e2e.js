@@ -94,11 +94,11 @@ test('a theme Choose Theme… previews redraws the page in it, and stopping puts
   // The page links its theme's sheet, and its head names the theme for a gear.
   const drawnIn = (theme, name) =>
     panel.webview.html.includes(`dist/webview/themes/${theme}.css`) && panel.webview.html.includes(`<meta name="deckard-theme" content="${name}">`);
-  assert.ok(drawnIn('corpo', 'Corpo'), 'the configured theme at first');
+  assert.ok(drawnIn('mimic', 'Mimic'), 'the configured theme at first');
   themePreview.show('cooper');
   assert.ok(drawnIn('cooper', 'Cooper'), 'the previewed theme');
   themePreview.show(undefined);
-  assert.ok(drawnIn('corpo', 'Corpo'), 'the configured theme again');
+  assert.ok(drawnIn('mimic', 'Mimic'), 'the configured theme again');
 });
 
 test('each most-viewed list renders an openable row', async () => {

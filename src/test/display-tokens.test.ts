@@ -7,8 +7,8 @@ import * as path from 'path';
  * `--tag-text`. Borders are decoration to the contrast check, so these two
  * are held here instead: in every theme, against every surface a row or a
  * tag sits on, the divider reaches 3:1 (a non-text edge) and the tag 4.5:1
- * (text). Corpo is read through VS Code's Dark and Light Modern palettes,
- * the two the contrast and layout checks draw with.
+ * (text). Mimic, and Corpo with it, is read through VS Code's Dark 2026
+ * and Light 2026 palettes, the two the contrast and layout checks draw with.
  */
 
 const ROOT = path.join(__dirname, '..', '..');
@@ -17,27 +17,25 @@ const SHARED = path.join(ROOT, 'src', 'webview', 'shared');
 /** The surfaces a row or a tag is drawn on. */
 const SURFACES = ['bg', 'panel', 'panel-raised', 'panel-deep'];
 
-/** VS Code's colors Corpo reads, in Dark and Light Modern (test/ui/pages.js). */
-const PALETTES: Record<string, Record<string, string>> = {
-  dark: {
-    '--vscode-editor-background': '#1f1f1f',
-    '--vscode-editorWidget-background': '#202020',
-    '--vscode-input-background': '#313131',
-    '--vscode-list-hoverBackground': '#2a2d2e',
-    '--vscode-foreground': '#cccccc',
-    '--vscode-descriptionForeground': '#9d9d9d',
-    '--vscode-textLink-foreground': '#4daafc',
-  },
-  light: {
-    '--vscode-editor-background': '#ffffff',
-    '--vscode-editorWidget-background': '#f8f8f8',
-    '--vscode-input-background': '#ffffff',
-    '--vscode-list-hoverBackground': '#e8e8e8',
-    '--vscode-foreground': '#3b3b3b',
-    '--vscode-descriptionForeground': '#3b3b3b',
-    '--vscode-textLink-foreground': '#005fb8',
-  },
-};
+/**
+ * VS Code's colors in Dark 2026 and Light 2026, as Corpo pins them, by theme
+ * kind: the palettes Mimic is read through, as test/ui/pages.js reads them.
+ */
+function readPalettes(): Record<string, Record<string, string>> {
+  const css = fs.readFileSync(path.join(SHARED, 'themes', 'corpo.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const palettes: Record<string, Record<string, string>> = {};
+  for (const [, kind, body] of css.matchAll(/:root:has\(> body\.vscode-(dark|light)\)\s*\{([^}]*)\}/g)) {
+    palettes[kind] = {};
+    for (const [, token, value] of body.matchAll(/(--vscode-[\w-]+)\s*:\s*([^;!]+?)\s*!important\s*;/g)) {
+      if (value !== 'initial') {
+        palettes[kind][token] = value;
+      }
+    }
+  }
+  return palettes;
+}
+
+const PALETTES = readPalettes();
 
 /** A sheet's `:root` custom properties, by name. */
 function readTokens(file: string): Record<string, string> {
@@ -54,6 +52,14 @@ function readTokens(file: string): Record<string, string> {
 function resolve(value: string, tokens: Record<string, string>, depth = 0): [number, number, number] {
   assert.ok(depth < 10, `${value} does not resolve`);
   const text = value.trim();
+  const translucent = /^#([0-9a-f]{6})([0-9a-f]{2})$/i.exec(text);
+  if (translucent) {
+    // A see-through VS Code color, such as Dark 2026's hover, over the editor's ground.
+    const alpha = parseInt(translucent[2], 16) / 255;
+    const over = resolve('var(--vscode-editor-background)', tokens, depth + 1);
+    const color = resolve(`#${translucent[1]}`, tokens, depth + 1);
+    return color.map((channel, at) => Math.round(channel * alpha + over[at] * (1 - alpha))) as [number, number, number];
+  }
   const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(text);
   if (hex) {
     const digits = hex[1].length === 3 ? hex[1].split('').map((digit) => digit + digit).join('') : hex[1];
@@ -88,16 +94,19 @@ function contrast(first: [number, number, number], second: [number, number, numb
   return (light + 0.05) / (dark + 0.05);
 }
 
-/** Each theme's tokens over the base sheet's, Corpo once per VS Code palette. */
+/** Each theme's tokens over the base sheet's, Mimic and Corpo once per VS Code palette. */
 function themes(): Array<[string, Record<string, string>]> {
   const base = readTokens(path.join(SHARED, 'designTokens.css'));
   const named = fs.readdirSync(path.join(SHARED, 'themes')).filter((file) => file.endsWith('.css'));
   const out: Array<[string, Record<string, string>]> = [['replicant (base)', base]];
   for (const file of named) {
     const tokens = { ...base, ...readTokens(path.join(SHARED, 'themes', file)) };
-    if (file === 'corpo.css') {
-      out.push(['corpo dark', { ...tokens, ...PALETTES.dark }], ['corpo light', { ...tokens, ...PALETTES.light }]);
-    } else if (file !== 'replicant.css') {
+    if (file === 'mimic.css') {
+      // Corpo is Mimic over its own palettes, which are the ones Mimic is read through.
+      for (const name of ['mimic', 'corpo']) {
+        out.push([`${name} dark`, { ...tokens, ...PALETTES.dark }], [`${name} light`, { ...tokens, ...PALETTES.light }]);
+      }
+    } else if (file !== 'replicant.css' && file !== 'corpo.css') {
       out.push([file.replace('.css', ''), tokens]);
     }
   }

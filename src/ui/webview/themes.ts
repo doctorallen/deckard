@@ -13,9 +13,9 @@ export function getDeckardTheme(preview?: { readonly current: DeckardTheme | und
   }
   const configuredTheme = vscode.workspace
     .getConfiguration('deckard')
-    .get<string>('theme', 'corpo');
+    .get<string>('theme', 'mimic');
 
-  return isDeckardTheme(configuredTheme) ? configuredTheme : 'corpo';
+  return isDeckardTheme(configuredTheme) ? configuredTheme : 'mimic';
 }
 
 function isDeckardTheme(value: string): value is DeckardTheme {

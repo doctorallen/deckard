@@ -43,10 +43,10 @@ suite('Note text is never transformed', () => {
     );
   });
 
-  test('plain type takes capitals and spacing off every element, chrome included, as Corpo does', () => {
+  test('plain type takes capitals and spacing off every element, chrome included, as Mimic does', () => {
     const sheet = readSheet('shared/display.css');
     assert.match(sheet, /body\[data-styling=plain\] \* \{ text-transform: none !important; letter-spacing: normal !important; \}/);
-    assert.ok(themeSheet('corpo').includes('body * { text-transform: none !important; letter-spacing: normal !important; }'));
+    assert.ok(themeSheet('mimic').includes('body * { text-transform: none !important; letter-spacing: normal !important; }'));
   });
 
   test('the Note page marks every place it draws the note\'s own words', () => {

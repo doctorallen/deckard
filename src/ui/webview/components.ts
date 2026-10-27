@@ -31,6 +31,7 @@ export interface PageChrome {
  * lays after a page's own rules, built from src/webview/shared/themes.
  */
 export const deckardThemeCss: Readonly<Record<DeckardTheme, string>> = {
+  mimic: 'themes/mimic.css',
   corpo: 'themes/corpo.css',
   replicant: 'themes/replicant.css',
   oblivion: 'themes/oblivion.css',

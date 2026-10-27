@@ -11,7 +11,7 @@ name: CI
 # as its slowest job, about 6 to 8 minutes, rather than the 18 to 27 one
 # job took: `checks` (types, lint, import rules), `core` (unit, host, page,
 # and end-to-end suites, and the VSIX), the Chrome checks in `browser`, each
-# in two shards of the sixteen theme-and-zen passes, and the extension's own
+# in two shards of the eighteen theme-and-zen passes, and the extension's own
 # tests on Windows and macOS. `validate` waits for all of them and passes
 # only when every one did. Nothing is sampled: every surface is drawn in
 # every theme, with zen off and on. The Nightly workflow runs the same set
@@ -153,7 +153,7 @@ jobs:
           retention-days: 7
 
   # The checks that draw the pages in Chrome. Layout, rendered contrast, and
-  # visual each take half of the sixteen theme-and-zen passes per job
+  # visual each take half of the eighteen theme-and-zen passes per job
   # (UI_SHARD, test/ui/passes.js); the DOM check draws Replicant alone, with
   # and without zen, in one. Each job draws two pages at once
   # (UI_CONCURRENCY, test/ui/chromePool.js): half the runner's four cores,

@@ -10,7 +10,7 @@
  * contracts in `test/ui/verifyWebviews.js` match a rule by its exact selector
  * string, so a marked selector cannot flip a contract, and
  * `test/ui/checkContrast.js` reads every declared rule whether or not the
- * page renders a match, so these get contrast cover in all eight themes.
+ * page renders a match, so these get contrast cover in all nine themes.
  *
  * Position still matters and is not replaced by the specificity: LCARS'
  * `.metric:nth-child(3n + 2)::before` ties with the plain marker's

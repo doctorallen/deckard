@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 
 const repositoryRoot = resolve(import.meta.dirname, '..');
 const themesSource = readFileSync(
-  resolve(repositoryRoot, 'src/ui/webview/themes.ts'),
+  resolve(repositoryRoot, 'src/ui/webview/themeNames.ts'),
   'utf8',
 );
 const manifest = themesSource.match(

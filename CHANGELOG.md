@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Added
+
+- **Mimic, the new default theme**, is the plain look Corpo had: every
+  color and font comes from your VS Code theme, light or dark, so Deckard's
+  pages read like the rest of the editor. If you never chose a theme, you
+  now have Mimic, and nothing changes.
+
+### Changed
+
+- **Corpo keeps VS Code's default colors**, whichever color theme you use:
+  Dark 2026 while your theme is dark, and Light 2026 while it is light. It
+  is Mimic's look, drawn as it is under VS Code's defaults, for when your
+  color theme is busy or low in contrast. A high contrast theme still keeps
+  its own colors, as in every theme. If you chose Corpo to follow your
+  theme, choose Mimic.
+- In Mimic and Corpo, a field's placeholder, the quieter text, links, tags,
+  search chips, and the green and amber accents take in a little of the
+  text color, so each reads at 4.5:1 or more on a hovered row too: several
+  of VS Code 2026's colors read under it, and its placeholder under 3:1.
+
 ## 2.11.0 - 2026-10-24
 
 ### Highlights

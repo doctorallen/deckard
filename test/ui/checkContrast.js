@@ -713,20 +713,34 @@ function isDecorative(selector, key) {
 /**
  * What a page in a theme is judged against: its rules, the tokens they
  * resolve to, every rule that declares a color or a background, and the
- * page's own color and ground.
+ * page's own color and ground. `kind` is the VS Code theme kind the page is
+ * drawn under, `dark` or `light`, or none outside VS Code: a `:root` rule
+ * kept to one kind, as Corpo's palettes are, counts only under that kind.
  */
-function buildContrastModel(html, palette, pageBackgroundToken) {
+function buildContrastModel(html, palette, pageBackgroundToken, kind) {
   const css = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)]
     .map((match) => match[1])
     .join('\n');
   const rules = parseRules(css);
   const tokens = { ...palette };
+  const underKind = (selector) => {
+    const named = /:has\(>\s*body\.vscode-([\w-]+)\)/.exec(selector);
+    return !named || named[1] === kind;
+  };
   rules.forEach((rule) => {
-    if (!rule.selectors.some((selector) => selector.includes(':root'))) {
+    if (!rule.selectors.some((selector) => selector.includes(':root') && underKind(selector))) {
       return;
     }
-    Object.entries(rule.declarations).forEach(([property, value]) => {
-      if (property.startsWith('--')) {
+    Object.entries(rule.declarations).forEach(([property, written]) => {
+      if (!property.startsWith('--')) {
+        return;
+      }
+      // Corpo marks its palette important to outweigh VS Code's, and unsets
+      // with `initial` what VS Code's defaults leave unset.
+      const value = written.replace(/\s*!important$/, '');
+      if (value === 'initial') {
+        delete tokens[property];
+      } else {
         tokens[property] = value;
       }
     });
@@ -825,8 +839,8 @@ function createProblemCollector(model) {
 }
 
 /** Every readability problem a page has in a theme. */
-function findProblems(html, { pageBackgroundToken = '--bg', shapes = [] } = {}, palette) {
-  const model = buildContrastModel(html, palette, pageBackgroundToken);
+function findProblems(html, { pageBackgroundToken = '--bg', shapes = [] } = {}, palette, kind) {
+  const model = buildContrastModel(html, palette, pageBackgroundToken, kind);
   const collector = createProblemCollector(model);
   for (const entry of model.declared) {
     // An element that declares only a background is checked too: its text
@@ -870,18 +884,19 @@ const BASELINE = path.join(__dirname, 'contrast-baseline.json');
 const SHAPES = path.join(__dirname, 'contrast-shapes.json');
 
 /**
- * The VS Code palettes a theme is checked against, by name. A theme that
- * follows VS Code is checked against both a light and a dark VS Code theme,
- * since it takes its colors from whichever is set; any other theme brings
- * its own, under no name.
+ * The VS Code palettes a theme is checked against, by name, each with the
+ * theme kind it is drawn under. Mimic follows VS Code, so it is checked
+ * against both a light and a dark VS Code theme, since it takes its colors
+ * from whichever is set; Corpo draws its own two, one for each kind. Any
+ * other theme brings its own colors, under no name.
  */
 function palettesFor(theme) {
-  return theme === 'corpo'
+  return theme === 'mimic' || theme === 'corpo'
     ? [
-        ['VS Code dark', vscodePalettes.dark],
-        ['VS Code light', vscodePalettes.light],
+        ['VS Code dark', vscodePalettes.dark, 'dark'],
+        ['VS Code light', vscodePalettes.light, 'light'],
       ]
-    : [['', {}]];
+    : [['', {}, undefined]];
 }
 
 /** Adds a page's problems to those found, keeping the first of each signature. */
@@ -900,10 +915,10 @@ function collect() {
   const found = new Map();
   const shapes = contrastShapes();
   for (const theme of themes) {
-    for (const [paletteName, palette] of palettesFor(theme)) {
+    for (const [paletteName, palette, kind] of palettesFor(theme)) {
       const where = paletteName ? `${theme} (${paletteName})` : theme;
       for (const [page, html] of renderPagesForTheme(theme)) {
-        addProblems(found, findProblems(html, { shapes: shapes.get(page) }, palette), { page, where });
+        addProblems(found, findProblems(html, { shapes: shapes.get(page) }, palette, kind), { page, where });
       }
     }
   }

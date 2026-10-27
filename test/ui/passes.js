@@ -2,7 +2,7 @@
 // takes.
 //
 // Every surface is drawn in every theme Deckard ships, with zen off and then
-// on: sixteen passes. The layout, rendered contrast, and visual checks walk
+// on: eighteen passes. The layout, rendered contrast, and visual checks walk
 // the same list. Sampling it is not safe (162a7c7c failed only in
 // corpo+zen), so CI splits it instead, between jobs that run at once:
 //
@@ -18,7 +18,7 @@ const { themes } = require('./pages.js');
  * Every pass, whatever the shard, as [theme, zen] pairs: each theme, without
  * zen and then with it.
  *
- * @returns {Array<[string, boolean]>} The sixteen passes, in order.
+ * @returns {Array<[string, boolean]>} The eighteen passes, in order.
  */
 function allPasses() {
   return themes.map((entry) => entry.id ?? entry).flatMap((theme) => [[theme, false], [theme, true]]);

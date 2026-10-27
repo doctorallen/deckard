@@ -6,7 +6,7 @@ Or add these options to your workspace settings:
 
 ```json
 {
-	"deckard.theme": "corpo",
+	"deckard.theme": "mimic",
 	"deckard.dashboard.openOnStartup": false,
 	"deckard.notesFolder": "notes",
 	"deckard.exclude": {
@@ -40,7 +40,7 @@ Or add these options to your workspace settings:
 | `deckard.exclude` | `{}` | Glob patterns, relative to the workspace folder and written like `files.exclude`, that Deckard leaves out of its index, such as `{ "**/archive": true, "drafts/*.md": true }`. Deckard also leaves out what `files.exclude` and `search.exclude` hide; set an inherited pattern to `false` to index it. In the Explorer, a folder's **Deckard → Exclude from Deckard** adds it, and **Include in Deckard** removes it from whichever settings set it, or sets it to `false` there when less specific settings set it too. To keep an archive searchable, park it instead. |
 | `deckard.parked.folders` | `{}` | Glob patterns of folders and notes to park, written like `deckard.exclude`. A parked note stays searchable with `is:parked` but is left out of to-do lists. `deckard.exclude` wins. |
 | `deckard.parked.tags` | `["parked"]` | Tags that park a note (in front matter), a heading and everything under it, or a task. Sub-tags park too, so `project/old` parks `#project/old/phase-1`. |
-| `deckard.theme` | `corpo` | The style for Deckard's pages: `corpo`, which follows your VS Code theme, or `replicant`, `oblivion`, `lcars`, `synthwave`, `tomcat`, `fellowship`, and `cooper`. |
+| `deckard.theme` | `mimic` | The style for Deckard's pages: `mimic`, which follows your VS Code theme; `corpo`, the same look always in VS Code's default colors, Dark 2026 or Light 2026; or `replicant`, `oblivion`, `lcars`, `synthwave`, `tomcat`, `fellowship`, and `cooper`. |
 | `deckard.display.zen` | `false` | Quiets every Deckard page: each theme's decoration and the lines that teach go, spacing is tighter, cards are flat, and tags are text. Every button, count, and date stays. The **Zen** checkbox in a page's **⋯** and `Deckard: Toggle Zen` set it. Yours alone, the same in every workspace. See [Zen](themes-and-zen.md#zen). |
 | `deckard.display.cardDetails` | file and line | Which details an entry shows on the one line it keeps for them under its dates, shown while the pointer is on it or it has focus: `fileAndLine` (where it is written, and the headings above it), then its `created` and `updated` dates, such as *atlas / line 4 · Created 2026-09-12*, on search cards, task rows, board cards, Home's note rows, and Related Notes. Tick them in Settings; untick all three to draw none and keep no line, which a screen reader still reads. A task's created date is its own `➕` date when it has one, else its note's; its updated date is its note's. |
 | `deckard.display.dateFormat` | `YYYY-MM-DD` | How Deckard writes a date for you to read, on pages, in views, in messages, and in the task editor, in the tokens Obsidian's daily notes use: `DD/MM/YYYY`, `D MMM YYYY`, `ddd, MMM D, YYYY`, or `L` and `LL`, your display language's own. Text in `[brackets]` is written as it is. Dates written into notes, file names, and searches stay `YYYY-MM-DD`. Empty, or a format with no date in it, reads as the default. `Deckard: Choose Date Format…` shows each with today's date. See [Dates](themes-and-zen.md#dates). |

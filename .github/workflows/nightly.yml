@@ -2,7 +2,7 @@ name: Nightly
 
 # Every suite CI runs, on dev, once a night, the slow way: the unit suites
 # one after another in one process (UNIT_SERIAL=1), and each Chrome check
-# over all sixteen theme-and-zen passes in one job. A pull request's run
+# over all eighteen theme-and-zen passes in one job. A pull request's run
 # splits the work to finish in minutes; this one catches what splitting can
 # hide, a suite that leans on what another file left behind or on the order
 # files run in, and what only shows on a later date, since it runs every day
