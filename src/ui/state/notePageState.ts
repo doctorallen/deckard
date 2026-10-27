@@ -374,6 +374,10 @@ function runQueryBlock(query: string, options: NonNullable<ReturnType<typeof par
       ? {}
       : { task: { taskId: item.id, completed: item.completed, ...(item.cancelled ? { status: { name: item.status ?? 'Cancelled', type: 'cancelled' as const } } : {}) } }),
   });
+  const taskRow = (item: QueryBlockItem): NoteQueryRow => ({
+    ...row(item),
+    ...(table ? { cells: createTaskCells(toTableTask(item), taskColumns, queryContext).map((cell) => cell.text) } : {}),
+  });
   return {
     counts: describeQueryBlockCounts(snapshot),
     ...(table
@@ -388,10 +392,10 @@ function runQueryBlock(query: string, options: NonNullable<ReturnType<typeof par
       ...row(item),
       ...(table ? { cells: noteColumns.map((column) => describeNoteCell(item, column, queryContext.dateFormats)) } : {}),
     })),
-    tasks: snapshot.tasks.map((item) => ({
-      ...row(item),
-      ...(table ? { cells: createTaskCells(toTableTask(item), taskColumns, queryContext).map((cell) => cell.text) } : {}),
-    })),
+    tasks: snapshot.tasks.map(taskRow),
+    ...(snapshot.taskGroups
+      ? { taskGroups: snapshot.taskGroups.map((group) => ({ label: `${group.label} · ${group.items.length}`, tasks: group.items.map(taskRow) })) }
+      : {}),
     noteCount: snapshot.noteCount,
     taskCount: snapshot.taskCount,
   };

@@ -154,8 +154,8 @@ function writeEmbed(target: string, documentSource: string, context: PlainMarkdo
 
 /**
  * A query block as its results stand: its notes and tasks as lists, or as
- * tables for `view=table`, and a line saying how many more there are when
- * `limit` hid some. A query that cannot run is its query, as code.
+ * tables for `view=table`, its tasks under their groups for `group=`, and a
+ * line saying how many more there are when `limit` hid some. A query that cannot run is its query, as code.
  */
 export function writeQueryBlock(query: string, options: QueryBlockOptions, context: PlainMarkdownContext): string {
   const snapshot = getQueryBlockSnapshot(context.index, query, options, {
@@ -172,10 +172,26 @@ export function writeQueryBlock(query: string, options: QueryBlockOptions, conte
   const parts = [
     ...(snapshot.notes.length ? [table ? writeNoteTable(snapshot.notes, options, context.queryContext.dateFormats) : snapshot.notes.map(writeNoteItem).join('\n')] : []),
     ...(snapshot.noteCount > snapshot.notes.length ? [`_Showing ${snapshot.notes.length} of ${snapshot.noteCount} notes._`] : []),
-    ...(snapshot.tasks.length ? [table ? writeTaskTable(snapshot.tasks, options, context) : snapshot.tasks.map((item) => writeTaskItem(item, context.queryContext.dateFormats)).join('\n')] : []),
+    ...(snapshot.tasks.length ? writeTasks(snapshot.taskGroups ?? [{ label: '', items: snapshot.tasks }], table, options, context) : []),
     ...(snapshot.taskCount > snapshot.tasks.length ? [`_Showing ${snapshot.tasks.length} of ${snapshot.taskCount} tasks._`] : []),
   ];
   return parts.join('\n\n');
+}
+
+/**
+ * The tasks as a list or a table, each group's under its name in bold
+ * when `group=` grouped them, `**Overdue · 3**`.
+ */
+function writeTasks(
+  groups: ReadonlyArray<{ label: string; items: readonly QueryBlockItem[] }>,
+  table: boolean,
+  options: QueryBlockOptions,
+  context: PlainMarkdownContext,
+): string[] {
+  return groups.flatMap((group) => [
+    ...(group.label ? [`**${group.label} · ${group.items.length}**`] : []),
+    table ? writeTaskTable(group.items, options, context) : group.items.map((item) => writeTaskItem(item, context.queryContext.dateFormats)).join('\n'),
+  ]);
 }
 
 /** A title with its `[[links]]` as their words, as the rest of the note is written. */

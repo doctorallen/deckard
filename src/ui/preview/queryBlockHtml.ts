@@ -13,6 +13,7 @@ import {
   QueryBlockSnapshot,
   toTableTask,
 } from '../state/queryBlockState';
+import type { QueryBlockGroup } from '../state/queryBlockGroups';
 import { createTaskCells, DEFAULT_TASK_COLUMNS, getTaskColumn } from '../state/resultTable';
 import { escapeHtml, escapeHtmlText } from '../../shared/html';
 import { tokenizeInlineWithoutWikiLinks } from '../../domain/markdown/inline';
@@ -182,7 +183,7 @@ function renderResults(
     ...(options.view === 'table'
       ? renderTaskTable(snapshot, options.columns ?? [...DEFAULT_TASK_COLUMNS], context, taskHref)
       : renderGroup(
-          { kind: 'tasks', label: 'Tasks', items: snapshot.tasks, total: snapshot.taskCount },
+          { kind: 'tasks', label: 'Tasks', items: snapshot.tasks, total: snapshot.taskCount, groups: snapshot.taskGroups },
           (item) => renderTask(item, context, taskHref),
         )),
     // Questions are a list in either view: a question has no columns.
@@ -239,7 +240,7 @@ function renderTaskTable(
   const head = columns
     .map((column) => `<th scope="col">${escapeHtml(getTaskColumn(column).label)}</th>`)
     .join('');
-  const rows = snapshot.tasks.map((item) => {
+  const row = (item: QueryBlockItem): string => {
     const done = item.completed === true;
     const cells = createTaskCells(toTableTask(item), columns, context).map((cell, at) => {
       const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '']
@@ -252,13 +253,21 @@ function renderTaskTable(
       return `${open}${escapeHtml(cell.text)}</td>`;
     });
     return `<tr class="deckard-query-row${done ? ' is-done' : ''}">${cells.join('')}</tr>`;
-  });
+  };
+  // Grouped, each group is a body of its own under a heading row that
+  // spans the columns, so a screen reader hears which group a row is in.
+  const bodies = snapshot.taskGroups
+    ? snapshot.taskGroups.map(
+        (group) =>
+          `<tbody><tr class="deckard-query-subgroup-row"><th scope="rowgroup" colspan="${columns.length}">${renderGroupHeading(group.label, group.items.length)}</th></tr>${group.items.map(row).join('')}</tbody>`,
+      )
+    : [`<tbody>${snapshot.tasks.map(row).join('')}</tbody>`];
   return [
     '<div class="deckard-query-group deckard-query-tasks">',
     '<div class="deckard-query-group-title">Tasks</div>',
     '<table class="deckard-query-table">',
     `<thead><tr>${head}</tr></thead>`,
-    `<tbody>${rows.join('')}</tbody>`,
+    ...bodies,
     '</table>',
     snapshot.taskCount > snapshot.tasks.length
       ? `<p class="deckard-query-message">Showing ${snapshot.tasks.length} of ${snapshot.taskCount} tasks.</p>`
@@ -267,31 +276,44 @@ function renderTaskTable(
   ];
 }
 
-/** One list of results: its kind, its label, the items shown, and how many matched. */
+/** A group's heading, its name and how many it holds: `Overdue · 3`. */
+function renderGroupHeading(label: string, count: number): string {
+  return `${escapeHtml(label)} <span class="deckard-query-subgroup-count">· ${count}</span>`;
+}
+
+/** One list of results: its kind, its label, the items shown, how many matched, and their groups when `group=` makes some. */
 interface ResultGroup {
   kind: 'notes' | 'tasks' | 'questions';
   label: string;
   items: QueryBlockItem[];
   total: number;
+  groups?: readonly QueryBlockGroup<QueryBlockItem>[];
 }
 
 /**
- * One labeled list. The label keeps notes and tasks apart, and the footer
- * says when `limit` has hidden some of them.
+ * One labeled list. The label keeps notes and tasks apart, a grouped list
+ * is a heading over each group's items, and the footer says when `limit`
+ * has hidden some of them.
  */
 function renderGroup(
-  { kind, label, items, total }: ResultGroup,
+  { kind, label, items, total, groups }: ResultGroup,
   renderItem: (item: QueryBlockItem) => string,
 ): string[] {
   if (items.length === 0) {
     return [];
   }
+  const lists = groups
+    ? groups.flatMap((group) => [
+        `<div class="deckard-query-subgroup-title" role="heading" aria-level="4">${renderGroupHeading(group.label, group.items.length)}</div>`,
+        '<ul class="deckard-query-list">',
+        ...group.items.map(renderItem),
+        '</ul>',
+      ])
+    : ['<ul class="deckard-query-list">', ...items.map(renderItem), '</ul>'];
   return [
     `<div class="deckard-query-group deckard-query-${kind}">`,
     `<div class="deckard-query-group-title">${label}</div>`,
-    '<ul class="deckard-query-list">',
-    ...items.map(renderItem),
-    '</ul>',
+    ...lists,
     total > items.length
       ? `<p class="deckard-query-message">Showing ${items.length} of ${total} ${label.toLowerCase()}.</p>`
       : '',

@@ -188,7 +188,7 @@ function QueryRows({ rows, head }: { readonly rows: readonly NoteQueryRow[]; rea
   return rows.length ? <ul class="note-query-list">{rows.map((row) => <QueryRow row={row} />)}</ul> : null;
 }
 
-/** A query block as its results: lists, or tables for `view=table`, or why it cannot run. */
+/** A query block as its results: lists, or tables for `view=table`, the tasks under headings for `group=`, or why it cannot run. */
 function QueryBlock({ query, result, line, context }: { readonly query: string; readonly result: NoteQueryResult; readonly line: number; readonly context: BodyContext }) {
   const more = (shown: number, total: number, noun: string): ComponentChild =>
     total > shown ? <p class="note-query-more">{`Showing ${shown} of ${total} ${noun}.`}</p> : null;
@@ -203,7 +203,14 @@ function QueryBlock({ query, result, line, context }: { readonly query: string; 
       {!result.error && !result.noteCount && !result.taskCount ? <p class="note-query-more">Nothing matches this query yet.</p> : null}
       <QueryRows rows={result.notes} head={result.table?.noteHead} />
       {more(result.notes.length, result.noteCount, 'notes')}
-      <QueryRows rows={result.tasks} head={result.table?.taskHead} />
+      {result.taskGroups
+        ? result.taskGroups.map((group) => (
+            <div class="note-query-group">
+              <p class="note-query-group-title" role="heading" aria-level={4}>{group.label}</p>
+              <QueryRows rows={group.tasks} head={result.table?.taskHead} />
+            </div>
+          ))
+        : <QueryRows rows={result.tasks} head={result.table?.taskHead} />}
       {more(result.tasks.length, result.taskCount, 'tasks')}
     </section>
   );

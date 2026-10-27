@@ -37,6 +37,7 @@ import { getTypeIndex } from '../../domain/types/typeIndex';
 import { resolveTypeQueryPath } from '../../domain/types/typeQueryFields';
 import { valueTitle } from './typeRows';
 import { isAnswered, questionText } from '../../domain/index/questions';
+import { groupBlockTasks, QueryBlockGroup, QueryBlockGroupBy, readQueryBlockGroup, writeQueryBlockGroup } from './queryBlockGroups';
 
 /**
  * Query blocks are fenced ```deckard blocks holding a Deckard query. The
@@ -73,6 +74,8 @@ export interface QueryBlockOptions {
   direction?: TableSortDirection;
   /** Most items shown in each list. The totals still count every match. */
   limit?: number;
+  /** What the tasks are grouped by, each group under its heading; one list when omitted. */
+  group?: QueryBlockGroupBy;
   /** Notes and tasks as tables, with `noteColumns` and `columns`. Undefined is the list. */
   view?: QueryBlockView;
   /** The task table's columns, in order; the defaults when omitted. */
@@ -171,6 +174,8 @@ export interface QueryBlockSnapshot {
   tasks: QueryBlockItem[];
   /** The `- [?]` lines it finds, which are not tasks. */
   questions: QueryBlockItem[];
+  /** With `group=`, the tasks shown under their groups, in the grouping's order. */
+  taskGroups?: QueryBlockGroup<QueryBlockItem>[];
   /** Totals before `limit` is applied. */
   noteCount: number;
   taskCount: number;
@@ -185,6 +190,7 @@ export interface QueryBlockWriteOptions {
   view?: 'list' | 'table';
   columns?: readonly string[];
   noteColumns?: readonly string[];
+  group?: QueryBlockGroupBy;
 }
 
 /**
@@ -226,6 +232,7 @@ export function formatQueryBlock(query: string, options: QueryBlockWriteOptions 
     options.view ? `view=${options.view}` : '',
     options.columns?.length ? `columns=${options.columns.join(',')}` : '',
     options.noteColumns?.length ? `noteColumns=${options.noteColumns.join(',')}` : '',
+    options.group ? `group=${writeQueryBlockGroup(options.group)}` : '',
     options.sort ? `sort=${options.sort}` : '',
     options.direction ? `dir=${options.direction}` : '',
   ]
@@ -254,7 +261,7 @@ export function parseQueryBlockInfo(
     const read = name === undefined ? undefined : OPTION_READERS.get(name);
     const warning = read
       ? read(value, options, match?.[2] ?? '')
-      : `Unknown option "${attribute}". Use sort=, dir=, limit=, view=, columns=, or noteColumns=.`;
+      : `Unknown option "${attribute}". Use sort=, dir=, group=, limit=, view=, columns=, or noteColumns=.`;
     if (warning) {
       options.warnings.push(warning);
     }
@@ -315,6 +322,14 @@ const OPTION_READERS = new Map<string, OptionReader>([
       return undefined;
     }
     return describeUnknownNoteColumns(parsed.unknown);
+  }],
+  ['group', (value, options) => {
+    const group = readQueryBlockGroup(value);
+    if (!group) {
+      return `group must be due, scheduled, start, priority, status, note, tag, for, or a namespace such as #context, not "${value}".`;
+    }
+    options.group = group;
+    return undefined;
   }],
   ['limit', (value, options) => {
     if (!/^\d+$/.test(value) || Number(value) <= 0) {
@@ -523,14 +538,19 @@ export function createQueryBlockSnapshot(
     .sort(createTaskComparator(options.sort, options.direction));
   // Questions keep the order they are written in, as a note's lines do.
   const questions = results.questions.map((question) => createQuestionItem(question, index));
+  const shownTasks = tasks.slice(0, options.limit);
+  const byId = new Map(results.tasks.map((task) => [task.id, task]));
 
   return {
     query,
     messages,
     hasError: false,
     notes: notes.slice(0, options.limit),
-    tasks: tasks.slice(0, options.limit),
+    tasks: shownTasks,
     questions: questions.slice(0, options.limit),
+    ...(options.group
+      ? { taskGroups: groupBlockTasks(shownTasks, (item) => byId.get(item.id), options.group, { index, context: reading.queryContext }) }
+      : {}),
     noteCount: notes.length,
     taskCount: tasks.length,
     openTaskCount: tasks.filter((task) => !task.completed && !task.cancelled).length,

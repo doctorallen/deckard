@@ -26,6 +26,15 @@
   does. Notes take Remove and Replace a tag too. Remove and Replace list
   the tags the results write on their own lines; an inherited tag is
   changed where it is written.
+- **`group=` in query blocks.** `group=due`, `scheduled`, `start`,
+  `priority`, `status`, `note`, `tag`, `for`, or a namespace such as
+  `group=#context` lists a block's tasks under a heading per group, each
+  with its count, in the order of the Task board's columns: by due date
+  Needs a new date, Overdue, Today, Tomorrow, Within a week, Later, and No
+  due date, with done and cancelled tasks last. It draws in a list or a
+  table, in the Markdown preview, on the Note page, and in Copy as Plain
+  Markdown, and `sort=` orders each group. Copy as live query block on the
+  Task board writes the board's grouping and Sort into the block.
 
 ## 2.12.0 - 2026-10-27
 

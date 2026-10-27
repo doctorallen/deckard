@@ -22,6 +22,16 @@ tag = #project/atlas AND is:open
 - **Tick a task in the preview.** Select a task's box to complete it, or a done task's box to reopen it, as its box on any page does, with **Undo** in the message. The first time, VS Code asks whether to let Deckard open the link; choose **Open**, and tick *Do not ask me again for this extension* to skip the question next time. A box drawn before Deckard last started, or for a task that has changed since, writes nothing and the preview is drawn again.
 - Notes are alphabetical. Tasks are open first, soonest due first, then in source order; done tasks are struck through and overdue dates highlighted.
 - `sort=` takes `title`, `due`, `scheduled`, `start`, `done`, `priority`, `for`, `status`, `note`, `created`, `updated`, or a notes table's `links`, `tasks`, `tags`, or `#namespace`, with `dir=asc` or `dir=desc`. Dates sort newest first by default, everything else ascending; empty values come last.
+- `group=` lists the tasks under a heading per group, each with its count, `Overdue · 3`, in the order of the [Task board's](task-board.md#groupings) columns:
+  - `due`: **Needs a new date**, **Overdue**, **Today**, **Tomorrow**, **Within a week**, **Later**, **No due date**. `scheduled` and `start` take the same days, with **Earlier** or **Started** before today and **No scheduled date** or **No start date**. Done and cancelled tasks are under **Done** and **Cancelled**, last.
+  - `priority`: **Highest** to **Lowest**, then **No priority**.
+  - `status`: your [statuses](tasks.md#task-statuses) in the order `deckard.tasks.statuses` lists them, a group for a character no status names, such as **Unknown [!]**, then **Done** and **Cancelled**.
+  - `note`: by note name.
+  - `tag`: each `#` tag a task has, its own or one it inherits, so a task with two is under both; **No tag** last.
+  - A namespace, such as `group=#context`: its tags by name, then **No context**, as the board's **Tag…** columns are.
+  - `for`: who each task is for, **Nobody named** last.
+
+  Done tasks stay in their group, after its open ones, except under the dates. `sort=` orders the tasks within each group, and `limit=` cuts the list before it is grouped. Notes are not grouped. **Copy as live query block** on the Task board writes the board's grouping as `group=`.
 - `limit=10` shows at most ten notes and ten tasks; the header still shows full totals.
 - `view=table` draws tasks as a table. `columns=due,priority,for,note` picks the columns after the title, from the `sort=` names plus `tags`, `blocked`, and `id`. The default is due date, priority, who it is for, and note.
 - `view=table` draws notes as a table too, above the tasks. `noteColumns=` picks their columns after the title: `note`, `created`, `updated`, `links` (how many other notes link to the entry's note), `tasks` (*1/4 done (25%)*, steps aside), `tags`, or a namespace such as `#status`, which shows the entry's `#status/…` tags by name. The default is note, updated, links, and tasks. A cell with nothing to show is left empty.
@@ -31,6 +41,14 @@ tag = #project/atlas AND is:open
 - Above the fence in the editor: totals and **Open search page**. Results refresh when any note changes, not only the one holding the block. Everywhere else, such as on GitHub, the fence stays ordinary fenced code.
 - A query that does not parse shows its error. An unknown option shows a warning and the rest runs.
 - Tags in a query block are not indexed, but typing `#` or `@` in one still suggests tags.
+
+A project's open tasks by when they are due, the most important first in each group:
+
+````markdown
+```deckard group=due sort=priority
+#project/atlas is:open
+```
+````
 
 A table of every project, its status, and how far along its tasks are:
 
