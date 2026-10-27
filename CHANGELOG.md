@@ -2,8 +2,20 @@
 
 ## Unreleased
 
+## 2.12.0 - 2026-10-27
+
+### Highlights
+
+- **Mimic, the new default theme**, takes every color and font from your VS Code theme.
+- **Corpo keeps VS Code's default colors**, Dark 2026 or Light 2026, whichever theme you use.
+- **Task tools**: Snooze until…, more bulk edits, `group=` in query blocks, and a Most urgent sort.
+
 ### Added
 
+- **Mimic, the new default theme**, is the plain look Corpo had: every
+  color and font comes from your VS Code theme, light or dark, so Deckard's
+  pages read like the rest of the editor. If you never chose a theme, you
+  now have Mimic, and nothing changes.
 - **Snooze until…** puts a task off until tomorrow, next week, or a day
   typed in plain words, by writing its start date, 🛫 or `[start:: …]` as
   the line already writes dates, with Undo. It is
@@ -42,20 +54,6 @@
   It is in the Tasks view's Sort Tasks By…, the Task board's and Home's
   task widgets' Sort, and a query block's `sort=urgency`; Copy as live
   query block writes it.
-
-## 2.12.0 - 2026-10-27
-
-### Highlights
-
-- **Mimic, the new default theme**, takes every color and font from your VS Code theme.
-- **Corpo keeps VS Code's default colors**, Dark 2026 or Light 2026, whichever theme you use.
-
-### Added
-
-- **Mimic, the new default theme**, is the plain look Corpo had: every
-  color and font comes from your VS Code theme, light or dark, so Deckard's
-  pages read like the rest of the editor. If you never chose a theme, you
-  now have Mimic, and nothing changes.
 
 ### Changed
 
