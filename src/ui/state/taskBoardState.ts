@@ -184,7 +184,7 @@ export function createTaskBoard({
           requestedGroupBy: groupBy,
           options: boardOptions,
           namespace: preferences.taskBoardGroupNamespace,
-          sort: createTaskComparator(preferences.taskOrder, preferences.taskSortMode),
+          sort: createTaskComparator(preferences.taskOrder, preferences.taskSortMode, { now: options.queryContext.now, index }),
         })
       : { groupBy, columns: [], taskCount: tasks.length };
   return {
@@ -234,7 +234,7 @@ export function createTaskBoard({
  */
 export function searchBoardTasks({ index, preferences, search, options }: TaskBoardRequest): Task[] {
   const tasks = foldSteps(selectTasks(index, search.query, options.queryContext).tasks);
-  return sortTasks(tasks, preferences.taskOrder, preferences.taskSortMode);
+  return sortTasks(tasks, preferences.taskOrder, preferences.taskSortMode, { now: options.queryContext.now, index });
 }
 
 /**

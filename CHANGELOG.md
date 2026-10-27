@@ -35,6 +35,13 @@
   table, in the Markdown preview, on the Note page, and in Copy as Plain
   Markdown, and `sort=` orders each group. Copy as live query block on the
   Task board writes the board's grouping and Sort into the block.
+- **Most urgent.** A task sort, loosely after Taskwarrior's urgency, that
+  scores each open task by its due date (overdue highest, then the
+  nearest), a scheduled date that has come, a start date still to come,
+  its priority, and whether it is blocked, and puts the most urgent first.
+  It is in the Tasks view's Sort Tasks By…, the Task board's and Home's
+  task widgets' Sort, and a query block's `sort=urgency`; Copy as live
+  query block writes it.
 
 ## 2.12.0 - 2026-10-27
 

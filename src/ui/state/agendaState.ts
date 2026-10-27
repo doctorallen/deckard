@@ -14,7 +14,7 @@ import { Placement, placeTask } from '../../domain/tasks/agendaPlacement';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
 import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
 import { Task, TaskPriority, TaskSortMode, WorkspaceIndex } from '../../domain/model';
-import { createTaskComparator } from './entryCards';
+import { createTaskComparator, type TaskSortReading } from './entryCards';
 import { formatTaskMetadata, TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
 
 /**
@@ -277,7 +277,7 @@ export function createAgenda(
 ): AgendaGroup[] {
   const { tasks = index.tasks.values(), upcomingDays, groupBy = 'due', taskOrder = [], taskSortMode = 'rank' } = options;
   const listed = withoutPlainSteps([...tasks]);
-  const byRank = sortFirst(taskOrder, taskSortMode);
+  const byRank = sortFirst(taskOrder, taskSortMode, { now: context.now, index });
   const today = startOfDay(context.now);
   const tomorrow = addDays(today, 1);
   const window: AgendaWindow = {
@@ -333,8 +333,8 @@ function withoutPlainSteps(all: readonly Task[]): Task[] {
  * rank, the tasks a reader dragged into place come first, in the order they
  * left them; the rest follow in the group's order.
  */
-function sortFirst(taskOrder: readonly string[], mode: TaskSortMode): (fallback: EntryOrder) => EntryOrder {
-  const compare = createTaskComparator(taskOrder, mode);
+function sortFirst(taskOrder: readonly string[], mode: TaskSortMode, reading: TaskSortReading): (fallback: EntryOrder) => EntryOrder {
+  const compare = createTaskComparator(taskOrder, mode, reading);
   return (fallback) => (left, right) => compare(left.task, right.task) || fallback(left, right);
 }
 

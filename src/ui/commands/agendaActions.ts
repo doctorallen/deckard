@@ -438,7 +438,7 @@ export async function pickAgendaSort(agenda: Pick<AgendaService<AgendaGroup>, 'r
     TASK_SORT_MODES.map((mode) => ({
       label: TASK_SORT_LABELS[mode],
       description: mode === current ? 'Current' : undefined,
-      detail: mode === 'rank' ? 'The order you drag tasks into. Tasks you haven\'t placed follow in each group\'s own order.' : undefined,
+      detail: SORT_DETAILS[mode],
       mode,
     })),
     { title: 'Sort tasks by', placeHolder: 'Choose how each group orders its tasks' },
@@ -449,6 +449,12 @@ export async function pickAgendaSort(agenda: Pick<AgendaService<AgendaGroup>, 'r
   await agenda.setSort(chosen.mode);
   return chosen.mode;
 }
+
+/** What the sort picker says under a sort whose name does not say it all. */
+const SORT_DETAILS: Partial<Record<TaskSortMode, string>> = {
+  rank: 'The order you drag tasks into. Tasks you haven\'t placed follow in each group\'s own order.',
+  urgency: 'Overdue and due soon first, then scheduled, by priority; a task not started yet, or waiting on another, lower.',
+};
 
 /** What the picker says beside the grouping in force. */
 function describeCurrentGrouping(

@@ -575,6 +575,18 @@ function getDependencyState(index: WorkspaceIndex): DependencyState {
 }
 
 /**
+ * Whether an open task is blocked, as `is:blocked` reads it: waiting on an
+ * open task, or in the Blocked status. A closed task is not.
+ */
+export function isTaskBlocked(index: WorkspaceIndex, task: Task): boolean {
+  if (!isOpenTask(task)) {
+    return false;
+  }
+  const waiting = task.dependsOn?.some((id) => getDependencyState(index).openIds.has(id)) ?? false;
+  return waiting || normalizeStatusName(task.status.name) === 'blocked';
+}
+
+/**
  * The daily notes, and the daily, weekly, and monthly notes, of an index, by
  * path: what `is:daily` and `is:periodic` ask of any entry, task, or note.
  */

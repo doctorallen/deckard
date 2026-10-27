@@ -8,6 +8,7 @@ import type { TagOverviewSortMode, TaskSortMode } from './preferences';
 /** The task sorts, in the order a menu offers them. */
 export const TASK_SORT_LABELS: Readonly<Record<TaskSortMode, string>> = {
   rank: 'Rank',
+  urgency: 'Most urgent',
   created: 'Newest created',
   createdOldest: 'Oldest created',
   updated: 'Recently updated',

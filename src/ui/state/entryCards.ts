@@ -16,7 +16,9 @@ import {
 import { describeDueDate } from '../../domain/markdown/dueWording';
 import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
 import { TagOverviewHub } from '../protocol/searchPage';
-import { ParsedFile, Section, Task, TagOverviewSortMode, TaskSortMode } from '../../domain/model';
+import { ParsedFile, Section, Task, TagOverviewSortMode, TaskSortMode, WorkspaceIndex } from '../../domain/model';
+import { isTaskBlocked } from '../../domain/query/queryEvaluator';
+import { compareUrgency, scoreUrgency, type UrgencyOrder } from '../../domain/tasks/urgency';
 import { DashboardTask, TagOverviewCard } from '../protocol/shared';
 import { DashboardNote } from '../protocol/dashboard';
 import { stripTags } from '../../domain/markdown/parser';
@@ -31,6 +33,15 @@ import type { EntryLine } from '../../domain/index/noteEntryIndex';
  */
 
 /**
+ * What a sort Most urgent reads besides the tasks: the moment it is read
+ * at, and the index, which says whether a task waits on another.
+ */
+export interface TaskSortReading {
+  now: number;
+  index?: WorkspaceIndex;
+}
+
+/**
  * Sorts tasks by the selected policy and falls back to source location.
  *
  * Missing filesystem dates sort last either way, and the path/line fallback
@@ -41,8 +52,9 @@ export function sortTasks(
   tasks: Task[],
   taskOrder: string[],
   taskSortMode: TaskSortMode = 'rank',
+  reading?: TaskSortReading,
 ): Task[] {
-  const compare = createTaskComparator(taskOrder, taskSortMode);
+  const compare = createTaskComparator(taskOrder, taskSortMode, reading);
   return tasks.sort((left, right) =>
     compare(left, right) ||
     left.filePath.localeCompare(right.filePath) ||
@@ -53,13 +65,17 @@ export function sortTasks(
 /**
  * How two tasks compare by the selected policy alone, 0 when it can't tell
  * them apart, so a caller can fall back to an order of its own, as the
- * board's columns fall back to due date and priority.
+ * board's columns fall back to due date and priority. Most urgent reads
+ * the moment and the index from `reading`, and without one is read now.
  */
 export function createTaskComparator(
   taskOrder: readonly string[],
   taskSortMode: TaskSortMode,
+  reading?: TaskSortReading,
 ): (left: Task, right: Task) => number {
   switch (taskSortMode) {
+    case 'urgency':
+      return createUrgencyComparator(reading ?? { now: Date.now() });
     case 'created':
       return (left, right) => compareDatesDescending(left.createdAt, right.createdAt);
     case 'createdOldest':
@@ -78,6 +94,29 @@ export function createTaskComparator(
         (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER);
     }
   }
+}
+
+/**
+ * Most urgent first, each task scored once: an open task by its dates,
+ * priority, and blocked state, and a closed one after every open one.
+ */
+function createUrgencyComparator({ now, index }: TaskSortReading): (left: Task, right: Task) => number {
+  const scores = new Map<string, number>();
+  const facts = (task: Task): UrgencyOrder => {
+    let urgency = scores.get(task.id);
+    if (urgency === undefined) {
+      urgency = scoreTaskUrgency(task, now, index);
+      scores.set(task.id, urgency);
+    }
+    return { urgency, dueAt: task.dueAt, priority: task.priority };
+  };
+  return (left, right) =>
+    Number(!isOpenTask(left)) - Number(!isOpenTask(right)) || compareUrgency(facts(left), facts(right));
+}
+
+/** A task's urgency on the day `now` falls on, blocked when the index says it waits on an open task. */
+export function scoreTaskUrgency(task: Task, now: number, index?: WorkspaceIndex): number {
+  return scoreUrgency({ ...task, blocked: index ? isTaskBlocked(index, task) : false }, now);
 }
 
 /**

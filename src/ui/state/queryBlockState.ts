@@ -37,6 +37,8 @@ import { getTypeIndex } from '../../domain/types/typeIndex';
 import { resolveTypeQueryPath } from '../../domain/types/typeQueryFields';
 import { valueTitle } from './typeRows';
 import { isAnswered, questionText } from '../../domain/index/questions';
+import { compareUrgency, type UrgencyOrder } from '../../domain/tasks/urgency';
+import { scoreTaskUrgency } from './entryCards';
 import { groupBlockTasks, QueryBlockGroup, QueryBlockGroupBy, readQueryBlockGroup, writeQueryBlockGroup } from './queryBlockGroups';
 
 /**
@@ -52,10 +54,11 @@ import { groupBlockTasks, QueryBlockGroup, QueryBlockGroupBy, readQueryBlockGrou
 export const QUERY_BLOCK_LANGUAGE = 'deckard';
 
 /**
- * What a block sorts by: any column a task or a note has. Each list sorts
- * by the columns it has, and keeps its own order under one it does not.
+ * What a block sorts by: any column a task or a note has, or a task's
+ * urgency. Each list sorts by what it has, and keeps its own order under
+ * one it does not.
  */
-export type QueryBlockSort = TaskColumnId | NoteColumnId;
+export type QueryBlockSort = TaskColumnId | NoteColumnId | 'urgency';
 
 /** How a block shows its tasks: rows of text, or a table of columns. */
 export type QueryBlockView = 'list' | 'table';
@@ -152,6 +155,8 @@ export interface QueryBlockItem {
    * the rows its tags are: `{ "team.lead": "Dana Whitfield" }`.
    */
   fieldValues?: Record<string, string>;
+  /** For an open task, how urgent it is, which `sort=urgency` orders by. */
+  urgency?: number;
   /** For a question, whether an `Answer:` line is under it, and what it says. */
   answered?: boolean;
   answer?: string;
@@ -214,6 +219,8 @@ export function queryBlockSortOf(
       return kind === 'tasks' ? { sort: 'title' } : {};
     case 'alphabeticalReverse':
       return { sort: 'title', direction: 'desc' };
+    case 'urgency':
+      return { sort: 'urgency' };
     case 'rank':
     case 'access':
       return {};
@@ -282,11 +289,15 @@ type OptionReader = (value: string, options: QueryBlockOptions, written: string)
 /** The options a query block's info string may set, by lowercased name. */
 const OPTION_READERS = new Map<string, OptionReader>([
   ['sort', (value, options) => {
+    if (value === 'urgency') {
+      options.sort = 'urgency';
+      return undefined;
+    }
     // A task column by its id or a name it goes by, such as for, or a note's.
     const named = parseTaskColumns(value).columns.find((id) => id !== 'title');
     const column = isTaskColumnId(value) ? value : (named ?? readNoteColumn(value));
     if (!column) {
-      return `sort must be a column, such as title, due, priority, created, updated, or links, not "${value}".`;
+      return `sort must be urgency or a column, such as title, due, priority, created, updated, or links, not "${value}".`;
     }
     options.sort = column;
     return undefined;
@@ -534,7 +545,7 @@ export function createQueryBlockSnapshot(
     ...results.files.map((file) => withFieldValues(createFileItem(file, index, table), index, fields, now)),
   ].sort(createNoteComparator(options.sort, options.direction));
   const tasks = results.tasks
-    .map((task) => createTaskItem(task, index))
+    .map((task) => createTaskItem(task, index, options.sort === 'urgency' ? now : undefined))
     .sort(createTaskComparator(options.sort, options.direction));
   // Questions keep the order they are written in, as a note's lines do.
   const questions = results.questions.map((question) => createQuestionItem(question, index));
@@ -759,10 +770,14 @@ export function namespaceValues(item: Pick<QueryBlockItem, 'noteTags'>, namespac
   });
 }
 
-/** A matched task as a row, with its status's name: its checkbox's. */
+/**
+ * A matched task as a row, with its status's name: its checkbox's, and,
+ * read at `urgencyAt`, how urgent it is.
+ */
 function createTaskItem(
   task: Task,
   index: WorkspaceIndex,
+  urgencyAt?: number,
 ): QueryBlockItem {
   const section = task.sectionId
     ? index.sections.get(task.sectionId)
@@ -793,6 +808,7 @@ function createTaskItem(
     dependencyId: task.dependencyId,
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
+    ...(urgencyAt === undefined ? {} : { urgency: scoreTaskUrgency(task, urgencyAt, index) }),
   };
 }
 
@@ -801,7 +817,7 @@ function directionOf(
   sort: QueryBlockSort | undefined,
   direction: TableSortDirection | undefined,
 ): TableSortDirection {
-  return direction ?? (sort === 'created' || sort === 'updated' ? 'desc' : 'asc');
+  return direction ?? (sort === 'created' || sort === 'updated' || sort === 'urgency' ? 'desc' : 'asc');
 }
 
 /**
@@ -827,6 +843,14 @@ function createTaskComparator(
   sort: QueryBlockSort | undefined,
   direction: TableSortDirection | undefined,
 ): (left: QueryBlockItem, right: QueryBlockItem) => number {
+  if (sort === 'urgency') {
+    // Most urgent first, until dir=asc turns it around.
+    const sign = directionOf(sort, direction) === 'desc' ? 1 : -1;
+    return (left, right) =>
+      (left.completed ? 1 : 0) - (right.completed ? 1 : 0) ||
+      sign * compareUrgency(urgencyOf(left), urgencyOf(right)) ||
+      compareSource(left, right);
+  }
   // A column only notes have leaves the tasks in their own order.
   const byColumn =
     sort === undefined || !isTaskColumnId(sort)
@@ -840,6 +864,11 @@ function createTaskComparator(
         compareSource(left, right)
       : byColumn(toTableTask(left), toTableTask(right)) ||
         compareSource(left, right));
+}
+
+/** What urgency orders a block's task by. */
+function urgencyOf(item: QueryBlockItem): UrgencyOrder {
+  return { urgency: item.urgency ?? 0, dueAt: item.dueAt, priority: item.priority };
 }
 
 /** A block's item as the table model reads it. */

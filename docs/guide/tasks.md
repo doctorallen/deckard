@@ -271,7 +271,7 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
 
 **What it lists.** Set `deckard.tasks.viewQuery` to any [query](search.md#query-language), such as `is:mine`, `#project/atlas`, or `has:due OR has:scheduled OR has:start`. Home's agenda widget and the [status bar](#status-bar-and-reminders) count the same list. **Edit What the Tasks View Lists…**, in the title's **⋯** menu, opens the search on the [Task board](task-board.md#editing-what-the-tasks-view-lists): change it there, then select **Save to Tasks view**, which keeps what the box shows. **List in Tasks view**, in the board's gear, makes the view list any board's search. **Show every open task** or **Clear the Tasks View's Search** (in the same **⋯** menu and the palette) clears it.
 
-**Group by**, in the title beside **Open Task Board**, chooses **Due status** (the groups above), **Priority**, **Status**, **Person**, or **Tag namespace…**; the view keeps your choice. **Sort Tasks By…**, in the title's **⋯** menu, orders each group: **Rank** (the default), **Newest created**, **Oldest created**, **Recently updated**, **Least recently updated**, **A-Z**, or **Z-A**; the view keeps that too. A tie keeps the group's own order, by date or priority.
+**Group by**, in the title beside **Open Task Board**, chooses **Due status** (the groups above), **Priority**, **Status**, **Person**, or **Tag namespace…**; the view keeps your choice. **Sort Tasks By…**, in the title's **⋯** menu, orders each group: **Rank** (the default), **[Most urgent](#most-urgent)**, **Newest created**, **Oldest created**, **Recently updated**, **Least recently updated**, **A-Z**, or **Z-A**; the view keeps that too. A tie keeps the group's own order, by date or priority.
 
 - **Tag namespace** groups by tags in one namespace, such as `#project/…`, busiest first, **No project** last. Inherited tags count. The namespace is kept with the workspace.
 - **Priority** runs highest to lowest, **No priority** last.
@@ -290,6 +290,20 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
   - **Spread over the next 5 days**: the next five weekdays, oldest due first (17 tasks become 4, 4, 3, 3, 3).
   - **3 for today, the rest next week**, for four or more: the three most important stay today; the rest move to next Monday.
 - The badge counts tasks overdue or due today.
+
+### Most urgent
+
+**Most urgent**, a sort in the Tasks view, on the [Task board](task-board.md#cards-and-columns), on Home's task widgets, and as `sort=urgency` in a [query block](query-blocks.md), puts first what most needs doing now. Loosely after [Taskwarrior's urgency](https://taskwarrior.org/docs/urgency/), each open task gets a score:
+
+| What | Points |
+| --- | --- |
+| Due | 12 at a week or more overdue, falling evenly to 2.4 two weeks ahead, and 2.4 for any due date further off |
+| Scheduled for today or earlier | +5 |
+| A start date still to come | −3 |
+| Priority | 🔺 +6, ⏫ +4, 🔼 +2, none 0, 🔽 −1, ⏬ −2 |
+| Blocked: waiting on an open task, or in the **Blocked** status | −5 |
+
+A tie goes to the sooner due date, then the higher priority. Done and cancelled tasks come after every open one. A [saved search](search.md#the-search-box) keeps its search, not a sort: it opens under the sort its page has.
 
 ### Snoozing a task
 
