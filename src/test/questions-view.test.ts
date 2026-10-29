@@ -99,7 +99,7 @@ suite('The Questions view', () => {
     );
   }
 
-  test('lists each open question with its age and tag, and under it the answer offered, with Use as answer and Not it', async () => {
+  test('lists each open question with its age, and under it the answer offered, with Use as answer and Not it', async () => {
     const { index } = await writeNotes(notes);
     const built = await index();
     const provider = viewOf(built, new QuestionMemory(memoryStore()));
@@ -107,7 +107,8 @@ suite('The Questions view', () => {
       const rows = provider.getChildren();
       assert.deepStrictEqual(rows.map((node) => provider.getTreeItem(node).label), ['Who approves access to the bond UAT environment? #team/rates']);
       const item = provider.getTreeItem(rows[0]);
-      assert.match(String(item.description), /^open \d+ days · #team\/rates$/);
+      // Its only tag is on its own line, so its label shows it, not its age.
+      assert.match(String(item.description), /^open \d+ days$/);
       assert.strictEqual(item.contextValue, 'deckardQuestion');
       assert.strictEqual(item.command?.command, 'vscode.open');
       const [offer] = provider.getChildren(rows[0]);
