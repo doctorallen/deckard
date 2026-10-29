@@ -2285,7 +2285,7 @@ function findTaskDate(written: string, anchor?: number): TaskDate | undefined {
 
 /**
  * The text with its code, links, and links' words turned to spaces, so a
- * date that names a note, such as `[[2026-10-01#Plans]]`, or sits in code
+ * date that names a note, such as `[[2026-11-04#Agenda]]`, or sits in code
  * or a web address, is never read as the day a task is due.
  */
 function blankCodeAndLinks(text: string): string {

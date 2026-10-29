@@ -12,13 +12,13 @@
 
 - **A task's `[[link]]` opens its note.** In a task's title on the Task
   board, its table, a search or tag page, Home, and the sidebar, a
-  `[[link]]` is drawn as the Note page draws one, `2026-10-01 › Priorities`
+  `[[link]]` is drawn as the Note page draws one, `2026-11-04 › Agenda`
   rather than its brackets, and selecting it opens the note, heading, or
   line it names; Shift opens it the other way, and Cmd/Ctrl beside.
 - **Written before's cards stand apart.** The sidebar's Written before cards
   have the same space between them as Related notes', rather than touching.
 - **A link's date is not a due date.** A task that links to a daily note,
-  such as `[[2026-10-01#Priorities after returning]]`, is no longer due on
+  such as `[[2026-11-04#Agenda for the review]]`, is no longer due on
   that day. Dates in links, link text, code, and web addresses are skipped;
   a date written beside them still counts.
 

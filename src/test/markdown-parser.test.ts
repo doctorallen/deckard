@@ -569,14 +569,14 @@ suite('Markdown parser', () => {
   test('reads no due date from a date that names a note, or sits in code or a web address', () => {
     const anchor = { updatedAt: new Date(2026, 9, 29).getTime() };
     const dueOf = (line: string) => parseMarkdown('atlas.md', line, anchor).tasks[0].dueText;
-    assert.strictEqual(dueOf('- [ ] AI skills for end users (see [[2026-10-01#Priorities after returning]])'), undefined);
-    assert.strictEqual(dueOf('- [ ] Read ![[2026-10-01]] again'), undefined);
-    assert.strictEqual(dueOf('- [ ] Reread [2026-10-01](2026-10-01.md)'), undefined);
+    assert.strictEqual(dueOf('- [ ] Draft the vendor summary (see [[2026-11-04#Agenda for the review]])'), undefined);
+    assert.strictEqual(dueOf('- [ ] Read ![[2026-11-04]] again'), undefined);
+    assert.strictEqual(dueOf('- [ ] Reread [2026-11-04](2026-11-04.md)'), undefined);
     assert.strictEqual(dueOf('- [ ] Fix the [Oct 3 notes](notes/oct-3.md)'), undefined);
-    assert.strictEqual(dueOf('- [ ] Run `backup --since 2026-10-01`'), undefined);
-    assert.strictEqual(dueOf('- [ ] Read https://example.com/2026-10-01/post'), undefined);
+    assert.strictEqual(dueOf('- [ ] Run `backup --since 2026-11-04`'), undefined);
+    assert.strictEqual(dueOf('- [ ] Read https://example.com/2026-11-04/post'), undefined);
     assert.strictEqual(dueOf('- [ ] Ask about [[next Friday standup]]'), undefined);
-    assert.strictEqual(dueOf('- [ ] Follow up on [[2026-10-01]] by 2026-11-02'), '2026-11-02', 'a date beside the link still counts');
+    assert.strictEqual(dueOf('- [ ] Follow up on [[2026-11-04]] by 2026-11-02'), '2026-11-02', 'a date beside the link still counts');
     assert.strictEqual(dueOf('- [ ] Send [[Q3 plan]] Nov 4'), 'Nov 4');
   });
 
