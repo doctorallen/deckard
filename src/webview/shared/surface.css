@@ -42,6 +42,11 @@
 .task input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--positive); }
 .task-title { color: var(--cyan); overflow-wrap: anywhere; }
 .task-title a { color: var(--cyan); }
+/* A `[[link]]`, a button that opens the note it names: in a note's words,
+   and in a task's title, where it takes a web link's color. */
+.note-link { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--cyan-bright); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
+.task-title .note-link { color: var(--cyan); }
+.note-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .note-link:focus-visible { color: var(--hover-fg); }
 .task.completed .task-title { color: var(--muted); text-decoration: line-through; }
 .task-summary { display: grid; gap: var(--space-2); }
 .heading-path-joiner { color: var(--cyan-bright, #63F2FF); font-weight: 700; }

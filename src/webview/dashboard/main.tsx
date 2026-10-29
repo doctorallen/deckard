@@ -17,6 +17,7 @@ import type {
 import type { StateMessage } from '../../ui/protocol/messaging';
 import { installMenuKeys } from '../shared/menuKeys';
 import { openSourceMessage } from '../shared/openSource';
+import { openWikiLinkMessage } from '../shared/wikiLink';
 import { onHostMessage, startPage } from '../shared/page';
 import { createQueryEditor } from '../shared/queryEditor';
 import { closeRankMenu, installRankedRows, moveKeyToEdge, rankKeys } from '../shared/rankedRows';
@@ -708,6 +709,8 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, event: MouseEvent) 
   'favorite-tag': (target) => send({ type: 'toggleFavorite', tagKey: data(target, 'tagKey') }),
   'favorite-entity': (target) => send({ type: 'toggleFavoriteEntity', entityKey: data(target, 'entityKey') }),
   'open-source': (target, event) => send(openSourceMessage(target, event)),
+  // A `[[link]]` in a task's title.
+  'open-link': (target, event) => send(openWikiLinkMessage(target, event)),
 };
 
 /** A row clicked or pressed outside its controls opens what it lists: a task, an entity, a tag, or a saved search. */

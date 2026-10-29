@@ -12,7 +12,6 @@
 import { isObject } from '../../../shared/guards';
 import type { EditFieldsMessage } from '../../protocol/fields';
 import type { MessageAs, MessageOf, PageMessage } from '../../protocol/messaging';
-import type { OpenWikiLinkMessage } from '../../protocol/notePage';
 import type {
   ExportResultsMessage,
   GearDisplaySetting,
@@ -20,6 +19,7 @@ import type {
   OpenSearchMessage,
   OpenSourceMessage,
   OpenTagMessage,
+  OpenWikiLinkMessage,
   ParkTagMessage,
   PinNoteMessage,
   QuestionActionMessage,

@@ -14,6 +14,7 @@ import type {
   OpenHelpMessage,
   OpenSourceMessage,
   OpenTagMessage,
+  OpenWikiLinkMessage,
   OpenTaskBoardMessage,
   ParkTagMessage,
   RenameTagMessage,
@@ -403,6 +404,7 @@ export interface SidebarNotesPageToHost {
   ready: SidebarReadyMessage;
   clearEntryRelatedNotes: ClearEntryRelatedNotesMessage;
   openSource: OpenSourceMessage;
+  openWikiLink: OpenWikiLinkMessage;
   activateNotesGraphNode: ActivateNotesGraphNodeMessage;
   hoverNotesGraphNode: HoverNotesGraphNodeMessage;
   openTag: OpenTagMessage;

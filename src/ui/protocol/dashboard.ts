@@ -31,6 +31,7 @@ import type {
   OpenSearchMessage,
   OpenSourceMessage,
   OpenTagMessage,
+  OpenWikiLinkMessage,
   OpenTaskBoardMessage,
   ParkTagMessage,
   PinNoteMessage,
@@ -370,6 +371,7 @@ export interface DashboardPageToHost {
   listGoTo: ListGoToMessage;
   goToPage: GoToPageMessage;
   openSource: OpenSourceMessage;
+  openWikiLink: OpenWikiLinkMessage;
   toggleTask: ToggleTaskMessage;
   toggleFavorite: ToggleFavoriteMessage;
   toggleFavoriteEntity: ToggleFavoriteEntityMessage;

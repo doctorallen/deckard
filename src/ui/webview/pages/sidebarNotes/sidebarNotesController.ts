@@ -46,7 +46,7 @@ import type { ActiveNotePage } from '../../activeNotePage';
 import type { ActiveSearch } from '../../activeSearch';
 import { onDidChangePageChrome } from '../../host/pageChrome';
 import type { MessageHandlers, PageContext, PageController, PageOptions } from '../../host/pageController';
-import { goToPage, openHelp, openTag, parkTag, renameTag } from '../../host/sharedHandlers';
+import { goToPage, openHelp, openTag, openWikiLink, parkTag, renameTag } from '../../host/sharedHandlers';
 import { readPageFacts, readPageInFront } from '../../../views/pagesTree';
 import { ViewSurface, WebviewSurface } from '../../host/surface';
 import { getSidebarNotesHtml } from '../../sidebarNotesHtml';
@@ -601,6 +601,8 @@ export class SidebarNotesController implements PageController<SidebarNotesPageSt
         vscode.commands.executeCommand('deckard.highlightNotesGraphNode', message.nodeId),
       openTag: openTag({ indexer, navigation, policy: 'lenient', openTag: openTagPage }),
       openSource: (message: SidebarNotesPageToHost['openSource']) => this.openSource(message),
+      // A `[[link]]` in a task's title.
+      openWikiLink: openWikiLink({ indexer }),
       openLinksSearch: () => this.openLinksSearch(),
       openSameTypeRow: (message: SidebarNotesPageToHost['openSameTypeRow']) => this.openSameTypeRow(message),
       openSameTypeSearch: (message: SidebarNotesPageToHost['openSameTypeSearch']) => this.openSameTypeSearch(message),

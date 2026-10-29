@@ -4,6 +4,7 @@ import type { InlineToken } from '../../ui/protocol/inline';
 import type { TagReference } from '../../ui/protocol/shared';
 import { Inline } from './inline';
 import { withTagButtons } from './tagButton';
+import { WikiLink } from './wikiLink';
 
 /**
  * A run of words as one text node draws it, with the tags written in it as
@@ -14,10 +15,11 @@ function decorate(text: string, tags: readonly TagReference[]): ComponentChild[]
 }
 
 /**
- * Tokens drawn as `Inline` draws them, with each run of words between two
+ * Tokens drawn as `Inline` draws them, but for a `[[link]]`, which is a
+ * control here, with each run of words between two
  * elements taken as the one text node markdown-it's HTML made of it, so a
  * tag is found in it where the template found it: in text and code, and
- * never inside a link.
+ * never inside a link or a `[[link]]`.
  */
 function drawWithTags(tokens: readonly InlineToken[], tags: readonly TagReference[]): ComponentChild[] {
   const drawn: ComponentChild[] = [];
@@ -31,8 +33,15 @@ function drawWithTags(tokens: readonly InlineToken[], tags: readonly TagReferenc
   for (const token of tokens) {
     switch (token.kind) {
       case 'text':
-      case 'wikiLink':
         run += token.text;
+        break;
+      case 'wikiLink':
+        if (token.embed) {
+          run += token.text;
+          break;
+        }
+        flush();
+        drawn.push(<WikiLink text={token.text} target={token.target} />);
         break;
       case 'image':
         // Only the Note page draws images; a title shows the alt text.
@@ -72,12 +81,10 @@ function drawWithTags(tokens: readonly InlineToken[], tags: readonly TagReferenc
 
 /**
  * A task's title: its inline Markdown, with the tags written in it drawn
- * as the controls that open them, where they are written. With no tags it
- * is the Markdown alone.
+ * as the controls that open them, where they are written, and each
+ * `[[link]]` as the control that opens the note it names. An embed is its
+ * words as written, as `Inline` draws one.
  */
-export function TaskTitle({ tokens, tags }: { readonly tokens: readonly InlineToken[]; readonly tags?: readonly TagReference[] }) {
-  if (!tags || !tags.length) {
-    return <Inline tokens={tokens} />;
-  }
+export function TaskTitle({ tokens, tags = [] }: { readonly tokens: readonly InlineToken[]; readonly tags?: readonly TagReference[] }) {
   return <>{drawWithTags(tokens, tags)}</>;
 }

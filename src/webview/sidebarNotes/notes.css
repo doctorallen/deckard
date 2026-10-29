@@ -165,6 +165,8 @@ button { min-height: 0; padding: 4px 6px; color: var(--cyan); }
 
 /* Written before: the older lines like the line at the cursor, above the related notes, each a card with what it shares and its two buttons. */
 .written-before { margin-bottom: 8px; }
+/* Its cards stand apart as Related notes' do in their list. */
+.written-before-card + .written-before-card { margin-top: 8px; }
 .written-before-card .note-excerpt { -webkit-line-clamp: 3; }
 .written-before-shares { margin-top: 2px; }
 .written-before-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }

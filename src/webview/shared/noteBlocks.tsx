@@ -12,6 +12,7 @@ import type { InlineToken } from '../../ui/protocol/inline';
 import type { NoteBlock, NoteEmbedBlock, NoteListItem, NoteQueryResult, NoteQueryRow, NoteTaskBox } from '../../ui/protocol/notePage';
 import type { TagReference } from '../../ui/protocol/shared';
 import { withTagButtons } from './tagButton';
+import { WikiLink } from './wikiLink';
 
 /** What drawing a note's blocks reads besides the blocks: its tags, and the note an embed's blocks are from. */
 export interface BodyContext {
@@ -25,32 +26,13 @@ function at(line: number, context: BodyContext): Record<string, string | number>
   return context.filePath ? { 'data-line': line, 'data-file-path': context.filePath } : { 'data-line': line };
 }
 
-/**
- * What a `[[link]]` reads as on the page: the words after its `|` when it
- * has them, or the note it names and the heading or line after "›".
- */
-function linkWords(written: string): string {
-  const inner = written.replace(/^\[\[|\]\]$/g, '');
-  const bar = inner.indexOf('|');
-  if (bar >= 0) {
-    return inner.slice(bar + 1).trim();
-  }
-  return inner.replace(/#\^?/, ' › ').replace(/^ › /, '');
-}
-
 /** One inline token as elements and text, a tag a button and a `[[link]]` a control that opens it. */
 function drawToken(token: InlineToken, context: BodyContext): ComponentChild {
   switch (token.kind) {
     case 'text':
       return withTagButtons(token.text, context.tags, false) ?? token.text;
     case 'wikiLink':
-      return token.embed
-        ? token.text
-        : (
-          <button type="button" class="note-link" data-action="open-link" data-target={token.target} data-from={context.filePath} data-tip={`Open ${token.target} · Shift-click: the other way`}>
-            {linkWords(token.text)}
-          </button>
-        );
+      return token.embed ? token.text : <WikiLink text={token.text} target={token.target} from={context.filePath} />;
     case 'code':
       return <code>{token.text}</code>;
     case 'break':

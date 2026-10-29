@@ -11,6 +11,7 @@ import { type ActionMenuGroup, closeActionMenu, openActionMenu } from '../shared
 import { installKeySheet, type KeySection } from '../shared/keySheet';
 import { installMenuKeys } from '../shared/menuKeys';
 import { openSourceMessage } from '../shared/openSource';
+import { openWikiLinkMessage } from '../shared/wikiLink';
 import { onHostMessage, startPage } from '../shared/page';
 import { PageBar } from '../shared/pageBar';
 import { closeRankMenu, installRankedRows, moveKeyToEdge, rankKeys } from '../shared/rankedRows';
@@ -460,6 +461,10 @@ document.addEventListener('click', (event) => {
     }
     if (action === 'refine-by-tag') {
       refineByTag(target, event);
+      return;
+    }
+    if (action === 'open-link') {
+      post(openWikiLinkMessage(target, event));
       return;
     }
     const snapshot = shown();

@@ -43,6 +43,7 @@ import {
   openHelp,
   openSource,
   openTag,
+  openWikiLink,
   ready,
   setDisplay,
   setZenMode,
@@ -353,7 +354,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   }
 
   /** The gear's theme, zen, and help, the page asking for its state, and a card's line and tags. */
-  private pageHandlers(): Pick<Handlers, 'setZenMode' | 'setDisplay' | 'chooseTheme' | 'ready' | 'openHelp' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'openTag'> {
+  private pageHandlers(): Pick<Handlers, 'setZenMode' | 'setDisplay' | 'chooseTheme' | 'ready' | 'openHelp' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'openWikiLink' | 'openTag'> {
     const { indexer, navigation } = this.board;
     return {
       setZenMode: setZenMode(),
@@ -367,6 +368,8 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       goToPage: goToPage(),
       // Only a task's own line opens: the board lists nothing else.
       openSource: openSource({ indexer, navigation, policy: 'tasks' }),
+      // A `[[link]]` in a card's title.
+      openWikiLink: openWikiLink({ indexer }),
       openTag: openTag({ indexer, navigation, policy: 'exact', openTag: (tagKey) => this.board.openTag(tagKey) }),
     };
   }

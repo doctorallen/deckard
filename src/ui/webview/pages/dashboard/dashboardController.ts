@@ -34,6 +34,7 @@ import {
   openHelp,
   openSource,
   openTag,
+  openWikiLink,
   parkTag,
   renameTag,
   setDisplay,
@@ -344,7 +345,7 @@ export class DashboardController implements PageController<DashboardPageState, D
 
   /** The ⋯, a row's line, a task's box, and a tag's menu, as other pages answer them. */
   private sharedHandlers(): Handlers<
-    'setZenMode' | 'setDisplay' | 'chooseTheme' | 'openHelp' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'toggleTask' | 'openTag' | 'renameTag' | 'parkTag' | 'unparkTag'
+    'setZenMode' | 'setDisplay' | 'chooseTheme' | 'openHelp' | 'openGoTo' | 'listGoTo' | 'goToPage' | 'openSource' | 'openWikiLink' | 'toggleTask' | 'openTag' | 'renameTag' | 'parkTag' | 'unparkTag'
   > {
     const { indexer, navigationService, preferences, navigation, writes } = this.home;
     return {
@@ -357,6 +358,8 @@ export class DashboardController implements PageController<DashboardPageState, D
       goToPage: goToPage(),
       // Only open a line that still identifies an indexed note or task.
       openSource: openSource({ indexer, navigation: navigationService, policy: 'entries', usage: preferences.usage }),
+      // A `[[link]]` in a task's title.
+      openWikiLink: openWikiLink({ indexer }),
       toggleTask: toggleTask({ writes, findTask: (taskId) => indexer.getSnapshot().tasks.get(taskId) }),
       openTag: openTag({
         indexer,
