@@ -2,11 +2,10 @@
 
 ## Unreleased
 
-## 2.12.1 - 2026-10-29
+## 2.12.2 - 2026-10-29
 
 ### Highlights
 
-- **A task's `[[link]]` opens its note**, on the Task board, Home, and search pages, and is no longer read as its due date.
 - **Task titles keep the tags at their end** on the Task board, in the Tasks view, and in query blocks.
 
 ### Changed
@@ -20,6 +19,12 @@
   is under**, is the nearest tagged heading's, or the note's front matter's:
   never one the line writes, since its title shows it. Hovering a tag in the
   editor still lists its entries without it.
+
+## 2.12.1 - 2026-10-29
+
+### Highlights
+
+- **A task's `[[link]]` opens its note**, on the Task board, Home, and search pages, and is no longer read as its due date.
 
 ### Fixed
 
