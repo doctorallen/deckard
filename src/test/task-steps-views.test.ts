@@ -58,7 +58,7 @@ suite('Steps in the views', () => {
     const titles = groups.flatMap((group) => group.entries.map((entry) => entry.title)).sort();
     assert.deepStrictEqual(titles, [
       'Call the caterer',
-      'Draft the email',
+      'Draft the email #project/atlas',
       'Left over',
       'Plan the offsite',
     ]);
@@ -80,7 +80,7 @@ suite('Steps in the views', () => {
       .columns.flatMap((column) => column.cards);
     assert.deepStrictEqual(cards.map((card) => card.title).sort(), [
       'Call the caterer',
-      'Draft the email',
+      'Draft the email #project/atlas',
       'Left over',
       'Plan the offsite',
     ]);
@@ -144,7 +144,7 @@ suite('Steps in the views', () => {
       const steps = await provider.getChildren(plan);
       assert.deepStrictEqual(
         steps.map((step) => provider.getTreeItem(step).label),
-        ['Book the venue', 'Draft the email', 'Send the invite', 'Call the caterer'],
+        ['Book the venue', 'Draft the email #project/atlas', 'Send the invite', 'Call the caterer'],
       );
       const first = provider.getTreeItem(steps[0]);
       assert.strictEqual(

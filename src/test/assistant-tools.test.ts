@@ -41,7 +41,7 @@ suite('Assistant tools', () => {
       text,
       /^- \[ \] Send the proposal — due 2026-09-20, high priority — notes\/atlas\.md:3 \(under Atlas launch\)$/m,
     );
-    assert.match(text, /^- \[ \] Call the vendor — notes\/vendor\.md:2/m);
+    assert.match(text, /^- \[ \] Call the vendor #project\/atlas — notes\/vendor\.md:2/m);
     assert.doesNotMatch(text, /Draft the brief/);
   });
 

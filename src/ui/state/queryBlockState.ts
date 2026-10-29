@@ -786,7 +786,7 @@ function createTaskItem(
   const status = task.completed ? undefined : nameTaskStatus(task);
   return {
     id: task.id,
-    title: stripTrailingTags(task.title) || task.title.trim(),
+    title: task.title.trim(),
     context: section ? getHeadingPath(section, index.sections) : [],
     filePath: task.filePath,
     fileName: getFileName(task.filePath),

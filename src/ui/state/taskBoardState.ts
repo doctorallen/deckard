@@ -42,7 +42,7 @@ import {
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { tokenizeInline } from '../../domain/markdown/inline';
-import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
+import { getHeadingPath } from '../../domain/ranking/entryLabels';
 import { createTaskComparator, sortTasks, withDrawnStatus } from './entryCards';
 import { createQueryViewState } from './querySuggestions';
 import { compareTasksByColumn, createTaskCells, DEFAULT_TASK_COLUMNS, getTaskColumn, TableTask } from './resultTable';
@@ -312,12 +312,11 @@ function withParentTag(
 
 /** A task as the column model reads it. */
 function toTableTask(task: Task): TableTask {
-  const title = stripTrailingTags(task.title) || task.title;
   return {
-    title,
+    title: task.title,
     // A task title is prose, and is written as Markdown everywhere else it is
     // shown. The table drew its source until now.
-    titleTokens: tokenizeInline(title),
+    titleTokens: tokenizeInline(task.title),
     completed: task.completed,
     dueAt: task.dueAt,
     dueText: task.dueText,
@@ -945,7 +944,7 @@ function createCard(
 ): TaskBoardCard {
   const status = describeCardStatus(task, column);
   const section = task.sectionId ? sections.get(task.sectionId) : undefined;
-  const title = stripTrailingTags(task.title) || task.title;
+  const title = task.title;
   const { now, taskPolicy } = context;
   const today = startOfDay(now);
   const open = !task.completed;

@@ -57,10 +57,10 @@ suite('Query blocks grouped by group=', () => {
   test('groups by due date as the board\'s due columns do, closed tasks last', () => {
     assert.deepStrictEqual(groups('deckard group=due'), [
       'Needs a new date: Call Ren',
-      'Overdue: Chase the contractor',
-      'Today: Book the room',
+      'Overdue: Chase the contractor #context/phone',
+      'Today: Book the room #context/computer',
       'Tomorrow: Draft the brief',
-      'No due date: Water the plants, Ask legal',
+      'No due date: Water the plants #context/phone #context/home, Ask legal',
       'Done: Filed the report',
       'Cancelled: Print the flyers',
     ]);
@@ -69,26 +69,26 @@ suite('Query blocks grouped by group=', () => {
   test('groups by scheduled and start dates under their own words', () => {
     assert.deepStrictEqual(groups('deckard group=scheduled', 'is:open'), [
       'Earlier: Draft the brief',
-      'No scheduled date: Call Ren, Chase the contractor, Book the room, Water the plants, Ask legal',
+      'No scheduled date: Call Ren, Chase the contractor #context/phone, Book the room #context/computer, Water the plants #context/phone #context/home, Ask legal',
     ]);
     assert.deepStrictEqual(groups('deckard group=start', 'is:open'), [
-      'Within a week: Water the plants',
-      'No start date: Call Ren, Chase the contractor, Book the room, Draft the brief, Ask legal',
+      'Within a week: Water the plants #context/phone #context/home',
+      'No start date: Call Ren, Chase the contractor #context/phone, Book the room #context/computer, Draft the brief, Ask legal',
     ]);
   });
 
   test('groups by priority, highest first and none last, sorting within each group', () => {
     assert.deepStrictEqual(groups('deckard group=priority sort=title', 'is:open'), [
       'Highest: Draft the brief',
-      'High: Chase the contractor',
+      'High: Chase the contractor #context/phone',
       'Low: Call Ren',
-      'No priority: Ask legal, Book the room, Water the plants',
+      'No priority: Ask legal, Book the room #context/computer, Water the plants #context/phone #context/home',
     ]);
   });
 
   test('groups by status in the statuses\' order, an unknown character after, then Done and Cancelled', () => {
     assert.deepStrictEqual(groups('deckard group=status'), [
-      'Todo: Call Ren, Chase the contractor, Book the room, Water the plants',
+      'Todo: Call Ren, Chase the contractor #context/phone, Book the room #context/computer, Water the plants #context/phone #context/home',
       'In progress: Draft the brief',
       'Unknown [!]: Ask legal',
       'Done: Filed the report',
@@ -98,25 +98,25 @@ suite('Query blocks grouped by group=', () => {
 
   test('groups by note, by tag, by a namespace, and by who a task is for', () => {
     assert.deepStrictEqual(groups('deckard group=note', 'is:open'), [
-      'Atlas: Chase the contractor, Book the room, Draft the brief, Water the plants',
+      'Atlas: Chase the contractor #context/phone, Book the room #context/computer, Draft the brief, Water the plants #context/phone #context/home',
       'Beacon: Call Ren, Ask legal',
     ]);
     assert.deepStrictEqual(groups('deckard group=#context', 'is:open'), [
-      'Computer: Book the room',
-      'Home: Water the plants',
-      'Phone: Chase the contractor, Water the plants',
+      'Computer: Book the room #context/computer',
+      'Home: Water the plants #context/phone #context/home',
+      'Phone: Chase the contractor #context/phone, Water the plants #context/phone #context/home',
       'No context: Call Ren, Draft the brief, Ask legal',
     ], 'a task with two is in both');
     assert.deepStrictEqual(groups('deckard group=tag', 'is:open #project/atlas'), [
-      '#context/computer: Book the room',
-      '#context/home: Water the plants',
-      '#context/phone: Chase the contractor, Water the plants',
-      '#project/atlas: Chase the contractor, Book the room, Draft the brief, Water the plants',
+      '#context/computer: Book the room #context/computer',
+      '#context/home: Water the plants #context/phone #context/home',
+      '#context/phone: Chase the contractor #context/phone, Water the plants #context/phone #context/home',
+      '#project/atlas: Chase the contractor #context/phone, Book the room #context/computer, Draft the brief, Water the plants #context/phone #context/home',
     ], 'an inherited tag counts');
     assert.deepStrictEqual(groups('deckard group=for', 'is:open'), [
-      '@dana: Chase the contractor',
+      '@dana: Chase the contractor #context/phone',
       '@ren: Call Ren',
-      'Nobody named: Book the room, Draft the brief, Water the plants, Ask legal',
+      'Nobody named: Book the room #context/computer, Draft the brief, Water the plants #context/phone #context/home, Ask legal',
     ]);
   });
 

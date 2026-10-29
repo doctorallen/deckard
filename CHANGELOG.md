@@ -7,6 +7,19 @@
 ### Highlights
 
 - **A task's `[[link]]` opens its note**, on the Task board, Home, and search pages, and is no longer read as its due date.
+- **Task titles keep the tags at their end** on the Task board, in the Tasks view, and in query blocks.
+
+### Changed
+
+- **A task's title keeps the tags written at its end.** The Task board's
+  cards and table, the Tasks view, query blocks, and questions show
+  `Call Ren #project/atlas` as written, as search pages and Home already
+  did, rather than `Call Ren`. A tag at the end of a line no longer goes
+  missing from a card, and a line reads the same whether or not a period
+  follows its last tag. The tag above a card, with **Show the tag each task
+  is under**, is the nearest tagged heading's, or the note's front matter's:
+  never one the line writes, since its title shows it. Hovering a tag in the
+  editor still lists its entries without it.
 
 ### Fixed
 

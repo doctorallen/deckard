@@ -4,6 +4,7 @@ import { formatIsoDate } from '../domain/markdown/calendar';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import {
+  firstQuestionTag,
   getQuestions,
   isAnswered,
   listOpenQuestions,
@@ -122,14 +123,21 @@ suite('Questions: across the workspace', () => {
     'notes/2026-09-20.md': '# 2026-09-20\n## Desk #team/rates\n- [?] Where is the curve loader? #infra\n  - Answer: on the grid box\n- [?] Why did the feed lag?\n',
   });
 
+  test('a row names a tag the question is under, never one its words already show', () => {
+    const tagOf = (title: string) => firstQuestionTag([...getQuestions(index).values()].find((question) => question.title === title)!);
+    assert.strictEqual(tagOf('Who approves access? @priya #team/rates'), undefined, 'its words show both');
+    assert.strictEqual(tagOf('Where is the curve loader? #infra'), '#team/rates', 'its heading\'s, not the #infra it writes');
+    assert.strictEqual(tagOf('Why did the feed lag?'), '#team/rates');
+  });
+
   test('lists the open ones, oldest first, and is not a task anywhere', () => {
     assert.strictEqual(getQuestions(index).size, 3);
-    assert.deepStrictEqual(listOpenQuestions(index).map(questionText), ['Why did the feed lag?', 'Who approves access?']);
+    assert.deepStrictEqual(listOpenQuestions(index).map(questionText), ['Why did the feed lag?', 'Who approves access? @priya #team/rates']);
     assert.strictEqual(index.tasks.size, 0);
   });
 
   test('lists the open questions that name a person', () => {
-    assert.deepStrictEqual(listQuestionsMentioning(index, '@priya').map(questionText), ['Who approves access?']);
+    assert.deepStrictEqual(listQuestionsMentioning(index, '@priya').map(questionText), ['Who approves access? @priya #team/rates']);
     assert.deepStrictEqual(listQuestionsMentioning(index, '#team/rates'), [], 'a tag that is not a person');
   });
 
@@ -216,7 +224,7 @@ suite('Questions: offering an answer', () => {
 
   test('offers a later line sharing three uncommon words, and a tag when the question has one', () => {
     assert.deepStrictEqual(offersOf().offers, [
-      ['Who approves access to the bond UAT environment?', 'Priya approves bond UAT environment access through the RATES-UAT group'],
+      ['Who approves access to the bond UAT environment? #team/rates', 'Priya approves bond UAT environment access through the RATES-UAT group'],
       ['Why did the curve loader lag on Monday?', 'The curve loader lag came from a stale cache on Monday'],
     ]);
   });

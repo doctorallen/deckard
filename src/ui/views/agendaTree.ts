@@ -9,7 +9,6 @@ import { rankShown } from '../../domain/tasks/taskRank';
 import { TASK_SORT_LABELS } from '../../domain/model/sortOrders';
 import { AgendaEntry, AgendaGroup } from '../state/agendaState';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
-import { stripTrailingTags } from '../../domain/ranking/entryLabels';
 import { Task, WorkspaceIndex } from '../../domain/model';
 import { speakRow } from './spokenRow';
 import { DATE_FORMAT_SETTINGS } from '../commands/datePrompt';
@@ -693,7 +692,7 @@ function createStepItem(node: {
 }): vscode.TreeItem {
   const { task } = node;
   const item = new vscode.TreeItem(
-    stripTrailingTags(task.title) || task.title,
+    task.title,
     vscode.TreeItemCollapsibleState.None,
   );
   item.id = `agenda:step:${node.groupId ?? ''}:${node.parentId}:${task.id}`;
