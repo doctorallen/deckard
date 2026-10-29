@@ -4,7 +4,6 @@
  */
 import type { Question, WorkspaceIndex } from '../model';
 import { isPersonTag } from '../markdown/parser';
-import { stripTrailingTags } from '../ranking/entryLabels';
 
 /**
  * Every question by id, in index order, worked out once per index: an
@@ -92,17 +91,21 @@ export function readQuestionTagKeys(index: WorkspaceIndex, question: Question): 
   return tagKeys;
 }
 
-/** A question's words as a list shows them: without the tags written after them. */
+/**
+ * A question's words as a list shows them: as written, the tags at the end
+ * included, as a task's title is shown.
+ */
 export function questionText(question: Pick<Question, 'title'>): string {
-  return stripTrailingTags(question.title) || question.title;
+  return question.title;
 }
 
-/** The first tag a question's own line carries, which a row shows beside its age. */
+/**
+ * The first tag a question is under that its own line does not write, which
+ * a row shows beside its age: the tags it writes are in its words already,
+ * as a card's are in its title.
+ */
 export function firstQuestionTag(question: Pick<Question, 'associationTagGroups' | 'tags' | 'tagLabels'>): string | undefined {
-  const own = question.associationTagGroups?.[0]?.[0];
-  if (own) {
-    return own.label;
-  }
-  const inherited = question.tags[0];
+  const own = new Set((question.associationTagGroups?.[0] ?? []).map((tag) => tag.key.toLowerCase()));
+  const inherited = question.tags.find((key) => !own.has(key.toLowerCase()));
   return inherited === undefined ? undefined : question.tagLabels[inherited] ?? inherited;
 }

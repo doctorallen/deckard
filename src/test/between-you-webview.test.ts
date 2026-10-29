@@ -75,7 +75,7 @@ suite('Between you, drawn', () => {
   test('To ask lists the questions as the Questions tab does: each opens its line and offers Answer…, quiet under Zen', () => {
     const page = searchPage('@sam-okafor');
     const rows = page.findAll('.between-group[data-group="toAsk"] .search-question');
-    assert.deepStrictEqual(rows.map((row) => row.querySelector('.search-question-text')?.textContent), ['Who approves access to the bond UAT?']);
+    assert.deepStrictEqual(rows.map((row) => row.querySelector('.search-question-text')?.textContent), ['Who approves access to the bond UAT? @sam-okafor']);
     page.click('.between-group[data-group="toAsk"] .search-question-open');
     assert.deepStrictEqual(page.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/2026-10-02.md', line: 5 });
     const answer = page.find('.between-group[data-group="toAsk"] [data-action="answer-question"]');

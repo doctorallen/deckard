@@ -50,7 +50,7 @@ suite('Search page: the hub note drawn as a note', () => {
     const shown = open();
     const query = shown.find('.hub .note-query');
     const titles = Array.from(query.querySelectorAll('.note-query-title')).map((title) => title.textContent);
-    assert.ok(titles.includes('Map the error codes'), titles.join(', '));
+    assert.ok(titles.includes('Map the error codes #project/checkout-v2'), titles.join(', '));
     assert.strictEqual(shown.findAll('.hub pre code.language-deckard, .hub .note-code').filter((code) => code.textContent?.includes('is:open')).length, 0, 'not shown as code');
   });
 

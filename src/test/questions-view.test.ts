@@ -99,15 +99,16 @@ suite('The Questions view', () => {
     );
   }
 
-  test('lists each open question with its age and tag, and under it the answer offered, with Use as answer and Not it', async () => {
+  test('lists each open question with its age, and under it the answer offered, with Use as answer and Not it', async () => {
     const { index } = await writeNotes(notes);
     const built = await index();
     const provider = viewOf(built, new QuestionMemory(memoryStore()));
     try {
       const rows = provider.getChildren();
-      assert.deepStrictEqual(rows.map((node) => provider.getTreeItem(node).label), ['Who approves access to the bond UAT environment?']);
+      assert.deepStrictEqual(rows.map((node) => provider.getTreeItem(node).label), ['Who approves access to the bond UAT environment? #team/rates']);
       const item = provider.getTreeItem(rows[0]);
-      assert.match(String(item.description), /^open \d+ days · #team\/rates$/);
+      // Its only tag is on its own line, so its label shows it, not its age.
+      assert.match(String(item.description), /^open \d+ days$/);
       assert.strictEqual(item.contextValue, 'deckardQuestion');
       assert.strictEqual(item.command?.command, 'vscode.open');
       const [offer] = provider.getChildren(rows[0]);
@@ -119,7 +120,7 @@ suite('The Questions view', () => {
       assert.deepStrictEqual(
         provider.getChildren().map((node) => [provider.getTreeItem(node).label, provider.getTreeItem(node).contextValue]),
         [
-          ['Who approves access to the bond UAT environment?', 'deckardQuestion'],
+          ['Who approves access to the bond UAT environment? #team/rates', 'deckardQuestion'],
           ['Where does the runbook live?', 'deckardAnsweredQuestion'],
         ],
       );
@@ -232,9 +233,9 @@ suite('Find and questions', () => {
 
   test('lists the open questions that match, with a ? icon', () => {
     const results = find('bond uat');
-    assert.deepStrictEqual(results.questions?.map((row) => [row.kind, row.label, row.line]), [['question', 'Who approves access to the bond UAT?', 2]]);
+    assert.deepStrictEqual(results.questions?.map((row) => [row.kind, row.label, row.line]), [['question', 'Who approves access to the bond UAT? #team/rates', 2]]);
     const rows = toPickItems(results, 'bond uat');
-    assert.ok(rows.some((row) => row.label === '$(question) Who approves access to the bond UAT?'));
+    assert.ok(rows.some((row) => row.label === '$(question) Who approves access to the bond UAT? #team/rates'));
   });
 
   test('offers Ask it first when nothing has every word, saying how often it was searched for', async () => {

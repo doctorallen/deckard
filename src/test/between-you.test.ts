@@ -81,8 +81,8 @@ suite('Between you', () => {
     const toAsk = describeBetween(index, '@sam', asDavid)?.groups.find((group) => group.kind === 'toAsk');
     assert.strictEqual(toAsk?.count, 2, 'a person with only questions open still has a card');
     assert.deepStrictEqual(toAsk?.questions?.map((question) => [question.text, question.filePath, question.line, question.answered]), [
-      ['Older one', 'notes/2026-10-01.md', 2, false],
-      ['Newer one', 'notes/2026-10-05.md', 2, false],
+      ['Older one @sam', 'notes/2026-10-01.md', 2, false],
+      ['Newer one @sam', 'notes/2026-10-05.md', 2, false],
     ]);
     assert.deepStrictEqual(toAsk?.tasks, []);
   });

@@ -53,7 +53,7 @@ suite('Copy as Plain Markdown', () => {
   test('escapes a table cell’s backslashes and pipes, so the cell stays one cell', () => {
     const odd = indexOf({ 'notes/Odd.md': '# Odd #odd\n- [ ] Path C:\\temp\\ | or a|b #odd' });
     const table = toPlainMarkdown('```deckard view=table columns=title\n#odd is:task\n```', { ...context, index: odd });
-    assert.ok(table.includes('| ☐ Path C:\\\\temp\\\\ \\| or a\\|b |'), table);
+    assert.ok(table.includes('| ☐ Path C:\\\\temp\\\\ \\| or a\\|b #odd |'), table);
   });
 
   test('keeps a blank line around what it writes in, so the next line stays its own', () => {

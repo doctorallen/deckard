@@ -236,7 +236,7 @@ suite('Task board', () => {
       { kind: 'text', text: ', and ' },
       { kind: 'link', url: 'https://example.com', children: [{ kind: 'text', text: 'the spec' }] },
       // Raw HTML in a task line stays text.
-      { kind: 'text', text: ' <b>now</b>' },
+      { kind: 'text', text: ' <b>now</b> #project/atlas' },
     ]);
     assert.match(card.title, /\*\*the brief\*\*/, 'the plain title is kept for search');
     assert.deepStrictEqual(card.titleTokens, tokenizeInline(card.title), 'and its tokens, for the page to draw');

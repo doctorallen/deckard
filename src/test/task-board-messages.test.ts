@@ -123,8 +123,8 @@ suite('Task Board messages', () => {
     assert.deepStrictEqual(narrowTaskBoardMessage({ type: 'openTag', tagKey: '#project/atlas', extra: 1 }), { type: 'openTag', tagKey: '#project/atlas' });
     // A card title's [[link]], read from the card's note.
     assert.deepStrictEqual(
-      narrowTaskBoardMessage({ type: 'openWikiLink', target: '2026-10-01#Plans', from: 'notes/tasks.md', beside: true, extra: 1 }),
-      { type: 'openWikiLink', target: '2026-10-01#Plans', from: 'notes/tasks.md', beside: true },
+      narrowTaskBoardMessage({ type: 'openWikiLink', target: '2026-11-04#Agenda', from: 'notes/tasks.md', beside: true, extra: 1 }),
+      { type: 'openWikiLink', target: '2026-11-04#Agenda', from: 'notes/tasks.md', beside: true },
     );
     assert.strictEqual(narrowTaskBoardMessage({ type: 'openWikiLink', target: '' }), undefined);
     assert.deepStrictEqual(narrowTaskBoardMessage({ type: 'toggleTask', taskId: 'a', completed: true, extra: 1 }), { type: 'toggleTask', taskId: 'a', completed: true });

@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 2.12.2 - 2026-10-29
+
+### Highlights
+
+- **Task titles keep the tags at their end** on the Task board, in the Tasks view, and in query blocks.
+
+### Changed
+
+- **A task's title keeps the tags written at its end.** The Task board's
+  cards and table, the Tasks view, query blocks, and questions show
+  `Call Ren #project/atlas` as written, as search pages and Home already
+  did, rather than `Call Ren`. A tag at the end of a line no longer goes
+  missing from a card, and a line reads the same whether or not a period
+  follows its last tag. The tag above a card, with **Show the tag each task
+  is under**, is the nearest tagged heading's, or the note's front matter's:
+  never one the line writes, since its title shows it. Hovering a tag in the
+  editor still lists its entries without it.
+
 ## 2.12.1 - 2026-10-29
 
 ### Highlights
@@ -12,13 +30,13 @@
 
 - **A task's `[[link]]` opens its note.** In a task's title on the Task
   board, its table, a search or tag page, Home, and the sidebar, a
-  `[[link]]` is drawn as the Note page draws one, `2026-10-01 › Priorities`
+  `[[link]]` is drawn as the Note page draws one, `2026-11-04 › Agenda`
   rather than its brackets, and selecting it opens the note, heading, or
   line it names; Shift opens it the other way, and Cmd/Ctrl beside.
 - **Written before's cards stand apart.** The sidebar's Written before cards
   have the same space between them as Related notes', rather than touching.
 - **A link's date is not a due date.** A task that links to a daily note,
-  such as `[[2026-10-01#Priorities after returning]]`, is no longer due on
+  such as `[[2026-11-04#Agenda for the review]]`, is no longer due on
   that day. Dates in links, link text, code, and web addresses are skipped;
   a date written beside them still counts.
 

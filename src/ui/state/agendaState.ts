@@ -12,7 +12,7 @@ import { listUnknownColumns, orderOpenStatuses, readTaskColumnKey } from '../../
 import type { TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { Placement, placeTask } from '../../domain/tasks/agendaPlacement';
 import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
-import { getHeadingPath, stripTrailingTags } from '../../domain/ranking/entryLabels';
+import { getHeadingPath } from '../../domain/ranking/entryLabels';
 import { Task, TaskPriority, TaskSortMode, WorkspaceIndex } from '../../domain/model';
 import { createTaskComparator, type TaskSortReading } from './entryCards';
 import { formatTaskMetadata, TASK_PRIORITY_RANKS } from '../../domain/markdown/taskFields';
@@ -603,7 +603,7 @@ function createEntry(
     .filter((step): step is Task => step !== undefined);
   return {
     task,
-    title: stripTrailingTags(task.title) || task.title,
+    title: task.title,
     context: section ? getHeadingPath(section, index.sections) : [],
     fileName,
     at: placement.at,

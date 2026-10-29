@@ -89,7 +89,7 @@ suite('Parent tags', () => {
   });
 });
 
-suite('Parent tags from the task line and hub notes', () => {
+suite('Parent tags beside the task line and hub notes', () => {
   const hubbed = indexOf({
     'Atlas.md': ['---', 'describes: project/atlas', '---', '# Atlas', '- [ ] in the hub'],
     '2026-10-13.md': [
@@ -111,29 +111,40 @@ suite('Parent tags from the task line and hub notes', () => {
     return findParentTag(hubbed, task, { ...(groupNamespace ? { groupNamespace } : {}) })?.key;
   }
 
-  test('a tag at the end of the line that has a hub note comes first, before a tagged heading', () => {
-    assert.strictEqual(parentIn('call'), '#project/atlas', 'a daily note needs no heading');
-    assert.strictEqual(parentIn('both'), '#project/atlas', 'the hub tag before another trailing tag');
-    assert.strictEqual(parentIn('hubbed'), '#project/atlas', 'nearer than the heading above it');
-  });
-
-  test('a trailing tag without a hub comes after what the task inherits, and stands alone otherwise', () => {
-    assert.strictEqual(parentIn('mixed'), '#team/web');
-    assert.strictEqual(parentIn('errand'), '#context/phone');
-  });
-
-  test('a tag the title shows is never lifted', () => {
+  test('a tag the line writes is never lifted, at its end or in its words, hub note or not', () => {
+    assert.strictEqual(parentIn('call'), undefined, 'a daily note with no heading has nothing above it');
+    assert.strictEqual(parentIn('both'), undefined);
+    assert.strictEqual(parentIn('errand'), undefined);
     assert.strictEqual(parentIn('pair'), undefined);
+  });
+
+  test('a task under a tagged heading takes the heading tag, whatever its line ends with', () => {
+    assert.strictEqual(parentIn('hubbed'), '#team/web', 'its own hub tag is in its title');
+    assert.strictEqual(parentIn('mixed'), '#team/web');
   });
 
   test('a task in a hub note is under the tag the note describes', () => {
     assert.strictEqual(parentIn('in the hub'), '#project/atlas');
   });
 
+  test('a card reads the same whether its line ends with its tag or with a period after it', () => {
+    const punctuated = indexOf({
+      'Atlas.md': ['---', 'describes: project/atlas', '---', '# Atlas'],
+      'work.md': ['# Work', '## Web #team/web', '- [ ] Ask the leads about #project/atlas', '- [ ] Ask the leads about #project/atlas.'],
+    });
+    const cards = layoutTaskBoard({ index: punctuated, tasks: [...punctuated.tasks.values()], requestedGroupBy: 'status', options: { ...options, parentTag: true } })
+      .columns.flatMap((column) => column.cards);
+    assert.deepStrictEqual(
+      cards.map((card) => [card.title, card.parentTag?.key, card.titleTags.map((tag) => tag.key)]),
+      [
+        ['Ask the leads about #project/atlas', '#team/web', ['#project/atlas']],
+        ['Ask the leads about #project/atlas.', '#team/web', ['#project/atlas']],
+      ],
+    );
+  });
+
   test('the grouped namespace is skipped in every step', () => {
-    assert.strictEqual(parentIn('call', 'project'), undefined);
-    assert.strictEqual(parentIn('both', 'project'), '#context/phone');
-    assert.strictEqual(parentIn('hubbed', 'project'), '#team/web');
+    assert.strictEqual(parentIn('hubbed', 'team'), undefined);
     assert.strictEqual(parentIn('in the hub', 'project'), undefined);
   });
 });

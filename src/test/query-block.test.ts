@@ -431,7 +431,7 @@ suite('Deckard query blocks', () => {
     assert.ok(html.includes('deckard-query-message is-error'));
   });
 
-  test('keeps tags inside a title and drops the ones that label it', () => {
+  test('keeps every tag a title writes, at its end too', () => {
     const index = createIndex();
     index.tasks.set(
       't-people',
@@ -446,7 +446,7 @@ suite('Deckard query blocks', () => {
     }, { queryContext: createQueryContext(Date.now()) });
     assert.deepStrictEqual(
       snapshot.tasks.map((task) => task.title),
-      ['Pair @ren with @dax on the audit.'],
+      ['Pair @ren with @dax on the audit. #project/atlas'],
     );
   });
 

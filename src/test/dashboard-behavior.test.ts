@@ -282,7 +282,7 @@ suite('Dashboard behavior', () => {
     const [question] = snapshot.widgets?.[0].questions ?? [];
     assert.ok(question?.offer, 'the question has a line that may answer it');
     assert.match(page.find('.home-widget[data-widget-id="q"] h2 .home-widget-link').textContent ?? '', /^Open questions 1›$/);
-    assert.strictEqual(page.find('.home-question .home-row-label').textContent, 'Who approves access to the bond UAT environment?');
+    assert.strictEqual(page.find('.home-question .home-row-label').textContent, 'Who approves access to the bond UAT environment? #team/rates');
     assert.match(page.find('.home-question-offer-where').textContent ?? '', /^May answer: .+ · Access$/);
     page.click('.home-question [data-action="open-source"]');
     assert.deepStrictEqual(page.lastPosted('openSource'), { type: 'openSource', filePath: 'notes/2026-10-01.md', line: 2 });
