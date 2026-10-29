@@ -31,6 +31,7 @@ import type {
   OpenSearchMessage,
   OpenSourceMessage,
   OpenTagMessage,
+  OpenWikiLinkMessage,
   ParkTagMessage,
   PinNoteMessage,
   QuestionActionMessage,
@@ -42,7 +43,7 @@ import type {
   TagReference,
   ToggleTaskMessage,
 } from './shared';
-import type { NoteBlock, OpenWikiLinkMessage } from './notePage';
+import type { NoteBlock } from './notePage';
 
 /** The tag a search page is about, as the page draws it. */
 export interface SearchPageTag {

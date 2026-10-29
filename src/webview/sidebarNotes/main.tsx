@@ -22,6 +22,7 @@ import { closeTagContextMenu, hasTagContextMenu, isTagContextMenuOpen, openTagCo
 import { installViewOptions } from '../shared/viewOptions';
 import { rememberScroll, restoreScroll } from '../shared/scroll';
 import { keepState, keptState, post, vscodeApi } from '../shared/vscode';
+import { openWikiLinkMessage } from '../shared/wikiLink';
 import { type CardDisplay, CustomizeHome, GraphConnections, NoTags, RankedNoteCards, Similar } from './cards';
 import { Context, RelatedNotesControls } from './context';
 import { Links } from './links';
@@ -289,7 +290,9 @@ function toggleLinkSection(expand: HTMLElement): void {
 
 /** What Links and the gear's rows ask for, by `data-action`. */
 const LINK_ACTIONS: ReadonlyArray<readonly [string, (element: HTMLElement, event: MouseEvent) => void]> = [
-  ['open-link', (link, event) => send({ type: 'openSource', filePath: String(link.dataset.filePath), line: Number(link.dataset.line), beside: Boolean(event.metaKey || event.ctrlKey), ...(event.shiftKey ? { opposite: true } : {}) })],
+  ['open-line', (link, event) => send({ type: 'openSource', filePath: String(link.dataset.filePath), line: Number(link.dataset.line), beside: Boolean(event.metaKey || event.ctrlKey), ...(event.shiftKey ? { opposite: true } : {}) })],
+  // A `[[link]]` in a task's title.
+  ['open-link', (link, event) => send(openWikiLinkMessage(link, event))],
   ['link-mention', (one) => send({ type: 'linkMention', filePath: String(one.dataset.filePath), line: Number(one.dataset.line), startColumn: Number(one.dataset.startColumn) })],
   ['toggle-link-section', toggleLinkSection],
   ['show-daily-notes', () => send({ type: 'setHideDailyNotes', hide: false })],

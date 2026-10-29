@@ -3,7 +3,7 @@
  * with the line it starts on, and the messages the page sends.
  */
 import type { DrawnFields, EditFieldsMessage } from './fields';
-import type { DrawnStatus } from './shared';
+import type { DrawnStatus, OpenWikiLinkMessage } from './shared';
 import type { InlineToken } from '../../domain/model/inline';
 import type { IndexingMessage, MessageOf, StateMessage } from './messaging';
 import type {
@@ -178,16 +178,6 @@ export interface OpenNoteMessage {
   filePath: string;
   line?: number;
   /** Shift was held: open it where the setting does not. */
-  opposite?: true;
-  beside?: true;
-}
-
-/** Follows a `[[link]]` written in the note, or in a note it embeds. */
-export interface OpenWikiLinkMessage {
-  type: 'openWikiLink';
-  target: string;
-  /** The note the link is written in, when it is an embedded note's rather than the one shown. */
-  from?: string;
   opposite?: true;
   beside?: true;
 }

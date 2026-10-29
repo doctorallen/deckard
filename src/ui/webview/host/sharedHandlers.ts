@@ -25,6 +25,7 @@ import type {
   OpenHelpMessage,
   OpenSourceMessage,
   OpenTagMessage,
+  OpenWikiLinkMessage,
   ParkTagMessage,
   RenameTagMessage,
   SetDisplayMessage,
@@ -32,6 +33,7 @@ import type {
   SidebarReadyMessage,
   ToggleTaskMessage,
 } from '../../protocol/shared';
+import { findWikiLinkPlace, parseWikiTarget } from '../../../domain/index/backlinks';
 import { openNoteAt } from '../../commands/noteOpening';
 import { renameIndexedTag, TagWrites } from '../../commands/renameTag';
 import { clickTask, TaskWrites } from '../../commands/taskActions';
@@ -169,6 +171,23 @@ export function openSource(open: NavigationRule<SourcePolicy> & {
     if (location.visit) {
       await open.usage?.recordSectionAccess(location.visit);
     }
+  };
+}
+
+/**
+ * A `[[link]]` in a task's title, followed to the note, heading, or line it
+ * names, read from the note the task is written in, and opened as a row's
+ * line opens. One that names no note, or a name several notes share, says
+ * so, as the Note page's does.
+ */
+export function openWikiLink(open: { indexer: { getSnapshot(): WorkspaceIndex } }): MessageHandler<OpenWikiLinkMessage> {
+  return async (message) => {
+    const place = findWikiLinkPlace(open.indexer.getSnapshot(), message.target, message.from);
+    if (!place) {
+      void vscode.window.showInformationMessage(`No note is named "${parseWikiTarget(message.target).note}" yet, or more than one is.`);
+      return;
+    }
+    await openNoteAt(place.filePath, place.line ?? 1, message);
   };
 }
 

@@ -130,6 +130,11 @@ suite('Dashboard messages', () => {
         { type: 'openSource', filePath: 'notes/a.md', line: 2, beside: true },
       ],
       [
+        { type: 'openWikiLink', target: 'Atlas', from: 'notes/a.md', extra: 1 },
+        { type: 'openWikiLink', target: 'Atlas', from: 'notes/a.md' },
+      ],
+      [{ type: 'openWikiLink', target: 'Atlas', from: 3 }, undefined],
+      [
         { type: 'toggleTask', taskId: 'a', completed: true, extra: 1 },
         { type: 'toggleTask', taskId: 'a', completed: true },
       ],

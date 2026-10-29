@@ -54,6 +54,10 @@ suite('Related Notes messages', () => {
       narrowSidebarNotesMessage({ type: 'openSource', filePath: 'notes/a.md', line: 3, beside: true, pin: false, extra: 1 }),
       { type: 'openSource', filePath: 'notes/a.md', line: 3, beside: true },
     );
+    assert.deepStrictEqual(
+      narrowSidebarNotesMessage({ type: 'openWikiLink', target: 'Atlas#^id', from: 'notes/a.md', opposite: true, extra: 1 }),
+      { type: 'openWikiLink', target: 'Atlas#^id', from: 'notes/a.md', opposite: true },
+    );
     assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'ready', now: 1 }), { type: 'ready' });
     assert.deepStrictEqual(narrowSidebarNotesMessage({ type: 'openTaskBoard', query: '#a' }), { type: 'openTaskBoard' });
     assert.deepStrictEqual(

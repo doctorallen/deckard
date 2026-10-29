@@ -10,6 +10,7 @@ import type { SearchPageMessage, SearchPageState, SinceChipKind } from '../../ui
 import { installMenuKeys } from '../shared/menuKeys';
 import { markWords, type Unmark } from '../shared/markWords';
 import { openingOf, openSourceMessage } from '../shared/openSource';
+import { openWikiLinkMessage } from '../shared/wikiLink';
 import { onHostMessage, startPage } from '../shared/page';
 import { createQueryEditor } from '../shared/queryEditor';
 import { installResultTabKeys } from '../shared/resultTabs';
@@ -629,16 +630,7 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
   'answer-question': (target) => send({ type: 'questionAction', action: 'answer', questionId: String(target.dataset.questionId) }),
   // The hub note's blocks, drawn as the note page draws them.
   'open-note': (target, _snapshot, event) => send(openSourceMessage(target, event)),
-  'open-link': (target, _snapshot, event) => {
-    const how = openingOf(event);
-    send({
-      type: 'openWikiLink',
-      target: String(target.dataset.target),
-      ...(target.dataset.from ? { from: target.dataset.from } : {}),
-      ...(how.opposite ? { opposite: true } : {}),
-      ...(how.beside ? { beside: true } : {}),
-    });
-  },
+  'open-link': (target, _snapshot, event) => send(openWikiLinkMessage(target, event)),
   'toggle-image-size': (target) => {
     const whole = target.classList.toggle('is-whole');
     const alt = target.querySelector('img')?.getAttribute('alt') || 'Image';

@@ -17,8 +17,6 @@
 .note-code { margin: 0 0 var(--space-3); padding: var(--space-3); overflow-x: auto; border: 1px solid var(--line); background: var(--panel); font-size: var(--text-sm); line-height: 1.45; white-space: pre; }
 .note-body :not(pre) > code { padding: 1px 4px; border: 1px solid var(--line); background: var(--panel-raised); font-size: .9em; }
 .note-body a { color: var(--cyan-bright); }
-.note-link { min-height: 0; padding: 0; border: 0; background: transparent; color: var(--cyan-bright); font: inherit; text-decoration: underline; text-decoration-color: var(--cyan); cursor: pointer; }
-.note-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .note-link:focus-visible { color: var(--hover-fg); }
 .note-body .inline-tag { vertical-align: baseline; }
 .note-table-scroll { margin: 0 0 var(--space-3); overflow-x: auto; }
 .note-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); line-height: 1.4; }

@@ -160,6 +160,22 @@ export interface OpenSourceMessage {
   opposite?: boolean;
 }
 
+/**
+ * Follows a `[[link]]` a page draws: in a note on the Note page, or in a
+ * task's title anywhere a task is drawn.
+ */
+export interface OpenWikiLinkMessage {
+  type: 'openWikiLink';
+  target: string;
+  /**
+   * The note the link is written in, which `[[#Heading]]` is read from: an
+   * embedded note's on the Note page, or a task's own note.
+   */
+  from?: string;
+  opposite?: true;
+  beside?: true;
+}
+
 /** Checks or unchecks a task's box. */
 export interface ToggleTaskMessage {
   type: 'toggleTask';

@@ -8,7 +8,7 @@ import { TASK_SORT_LABELS } from '../../domain/model/sortOrders';
 import type { TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
 import { IconButton } from '../shared/buttons';
 import { EmptyState } from '../shared/emptyState';
-import { Inline } from '../shared/inline';
+import { TaskTitle } from '../shared/taskTitle';
 import { EllipsisIcon, SortIcon } from '../shared/strokeIcons';
 import { ColumnPicker as SharedColumnPicker, SortHeader } from '../shared/resultTable';
 import { plainTitle } from '../shared/taskRow';
@@ -80,7 +80,7 @@ export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot
                 const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '', at === titleAt ? 'result-title' : ''].filter(Boolean).join(' ');
                 // A cell's Markdown is drawn from its tokens, as a board
                 // card's title is; everything else is data.
-                return <td class={classes || undefined}>{cell.tokens ? <Inline tokens={cell.tokens} /> : cell.text}</td>;
+                return <td class={classes || undefined}>{cell.tokens ? <TaskTitle tokens={cell.tokens} /> : cell.text}</td>;
               })}
               <td class="result-menu"><RowMenuButton taskId={row.taskId} title={title} /></td>
             </tr>

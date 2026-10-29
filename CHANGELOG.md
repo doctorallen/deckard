@@ -6,10 +6,15 @@
 
 ### Highlights
 
-- **A link's date is not a due date**: a task linking `[[2026-10-01#Plans]]` is no longer due that day.
+- **A task's `[[link]]` opens its note**, on the Task board, Home, and search pages, and is no longer read as its due date.
 
 ### Fixed
 
+- **A task's `[[link]]` opens its note.** In a task's title on the Task
+  board, its table, a search or tag page, Home, and the sidebar, a
+  `[[link]]` is drawn as the Note page draws one, `2026-10-01 › Priorities`
+  rather than its brackets, and selecting it opens the note, heading, or
+  line it names; Shift opens it the other way, and Cmd/Ctrl beside.
 - **A link's date is not a due date.** A task that links to a daily note,
   such as `[[2026-10-01#Priorities after returning]]`, is no longer due on
   that day. Dates in links, link text, code, and web addresses are skipped;

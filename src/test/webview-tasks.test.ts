@@ -128,7 +128,6 @@ suite('The shared task parts draw what the template script drew', () => {
       'Line one #project/atlas\nLine two #context/phone',
       '[A link #project/atlas](https://example.com) then #project/atlas',
       'Escapes \\*not em\\* &amp; #project/atlas',
-      'A [[Wiki #project/atlas]] stays',
       'Plain words',
     ];
     for (const title of titles) {
@@ -141,6 +140,22 @@ suite('The shared task parts draw what the template script drew', () => {
         );
       }
     }
+  });
+
+  test('a [[link]] in a task title is the control that opens it, and an embed its words', () => {
+    const tokens = JSON.parse(JSON.stringify(tokenizeInline('See [[2026-10-01#Priorities after returning]], [[Atlas|the plan]] #project/atlas and ![[map.png]]')));
+    for (const tags of [[ATLAS], []]) {
+      const now = drawnNow(element('TaskTitle', { tokens, tags }));
+      const links = Array.from(now.querySelectorAll<HTMLButtonElement>('button.note-link'));
+      assert.deepStrictEqual(
+        links.map((link) => [link.dataset.action, link.dataset.target, link.textContent]),
+        [['open-link', '2026-10-01#Priorities after returning', '2026-10-01 › Priorities after returning'], ['open-link', 'Atlas', 'the plan']],
+        `${tags.length} tags`,
+      );
+      assert.ok(now.textContent?.endsWith(' and ![[map.png]]'), 'an embed is its words as written');
+      assert.strictEqual(now.querySelectorAll('[data-action="open-tag"]').length, tags.length, 'a tag beside the links is still a control');
+    }
+    assert.strictEqual(shared().plainTitle(tokens), 'See 2026-10-01 › Priorities after returning, the plan #project/atlas and ![[map.png]]');
   });
 
   test('a task row, with each fact it can carry', () => {

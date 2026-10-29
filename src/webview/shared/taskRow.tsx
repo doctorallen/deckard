@@ -13,6 +13,7 @@ import { ParentTag } from './tagButton';
 import { formatPageDate } from './dateFormats';
 import { DueText } from './dueText';
 import { TaskTitle } from './taskTitle';
+import { wikiLinkWords } from './wikiLink';
 import { describeLocation, type EntryFacts, readEntryDetails } from './entryDetails';
 import { DetailsLine, entryDatesPart } from './detailsLine';
 
@@ -68,9 +69,10 @@ export function plainTitle(tokens: readonly InlineToken[]): string {
   const words = (run: readonly InlineToken[]): string => run.map((token) => {
     switch (token.kind) {
       case 'text':
-      case 'wikiLink':
       case 'code':
         return token.text;
+      case 'wikiLink':
+        return token.embed ? token.text : wikiLinkWords(token.text);
       case 'break':
         return ' ';
       case 'link':

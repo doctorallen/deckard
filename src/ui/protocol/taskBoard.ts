@@ -23,6 +23,7 @@ import type {
   OpenHelpMessage,
   OpenSourceMessage,
   OpenTagMessage,
+  OpenWikiLinkMessage,
   SetDisplayMessage,
   SetZenModeMessage,
   SidebarReadyMessage,
@@ -469,6 +470,7 @@ export interface TaskBoardPageToHost {
   leaveTasksViewMode: LeaveTasksViewModeMessage;
   ready: SidebarReadyMessage;
   openSource: OpenSourceMessage;
+  openWikiLink: OpenWikiLinkMessage;
   openTag: OpenTagMessage;
   toggleTask: ToggleTaskMessage;
   moveTask: MoveTaskMessage;
