@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.12.1 - 2026-10-29
+
+### Highlights
+
+- **A link's date is not a due date**: a task linking `[[2026-10-01#Plans]]` is no longer due that day.
+
 ### Fixed
 
 - **A link's date is not a due date.** A task that links to a daily note,
