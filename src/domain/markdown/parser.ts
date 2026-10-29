@@ -34,7 +34,7 @@ import {
   TaskLineMatch,
   TaskLineShape,
 } from './lineShapes';
-import { findCodeAndLinkRanges, isInRanges } from './inlineRanges';
+import { findCodeAndLinkRanges, findMarkdownLinkRanges, isInRanges } from './inlineRanges';
 import { findNoteLinkSpans, findWikiLinkSpans } from './wikiLinks';
 import { formatKeyWords, readTagNamespace } from './tagKeys';
 import { MIGRATED_TASK_LINE } from './taskLineEdits';
@@ -2245,7 +2245,8 @@ function omitUndefined<T extends object>(value: T): Partial<T> {
  * Resolves clear task dates without guessing when a relative date has no
  * trustworthy note timestamp to anchor it.
  */
-function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
+function findTaskDate(written: string, anchor?: number): TaskDate | undefined {
+  const text = blankCodeAndLinks(written);
   const explicit = text.match(explicitDatePattern);
   if (explicit) {
     const at = makeDay(
@@ -2280,6 +2281,20 @@ function findTaskDate(text: string, anchor?: number): TaskDate | undefined {
   }
 
   return undefined;
+}
+
+/**
+ * The text with its code, links, and links' words turned to spaces, so a
+ * date that names a note, such as `[[2026-10-01#Plans]]`, or sits in code
+ * or a web address, is never read as the day a task is due.
+ */
+function blankCodeAndLinks(text: string): string {
+  const codeAndLinks = findCodeAndLinkRanges(text);
+  const ranges = [...codeAndLinks, ...findMarkdownLinkRanges(text, codeAndLinks)];
+  return ranges.reduce(
+    (blanked, { start, end }) => blanked.slice(0, start) + ' '.repeat(end - start) + blanked.slice(end),
+    text,
+  );
 }
 
 /** How near New Year a month and day must be to be read in the year before or after: two months. */

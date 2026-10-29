@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Fixed
+
+- **A link's date is not a due date.** A task that links to a daily note,
+  such as `[[2026-10-01#Priorities after returning]]`, is no longer due on
+  that day. Dates in links, link text, code, and web addresses are skipped;
+  a date written beside them still counts.
+
 ## 2.12.0 - 2026-10-27
 
 ### Highlights
