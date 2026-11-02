@@ -61,7 +61,7 @@ section[aria-labelledby="tags-heading"] .control-row { gap: 2px; } section[aria-
 .query-field-group > .query-builder-toggle { border-radius: 15px 0 0 15px; }
 /* A button drawn as text keeps its own ground when lit and turns amber, so
    the fill's black ink never lands on black or plum. */
-button:is(.note-link, .note-crumb, .note-backlink-title, .note-backlink-line, .note-query-title, .note-embed-title, .tag-note-tag):is(:hover, :focus-visible):where(:not(:disabled):not([aria-disabled="true"])), button.field-link.field-link:is(:hover, :focus-visible) { border-color: transparent; background: transparent; color: var(--amber); }
+button:is(.note-link, .note-crumb, .note-backlink-title, .note-backlink-line, .note-query-title, .note-embed-title, .tag-note-tag):is(:hover, :focus-visible):where(:not(:disabled):not([aria-disabled="true"])), button.field-link.field-link:hover:where(:not(:disabled):not([aria-disabled="true"])), button.field-link.field-link:focus-visible:where(:not(:disabled):not([aria-disabled="true"])) { border-color: transparent; background: transparent; color: var(--amber); }
 /* Three states: a control rests blue, lights cream under the pointer, and is
    amber when on or chosen, with a black lamp before its label so the state
    does not rest on hue alone. The base sheet's foot bar would follow a

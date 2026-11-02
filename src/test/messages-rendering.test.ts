@@ -440,7 +440,7 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       themeSheet('lcars').includes(
-        '.favorite-toggle { background: var(--cyan); color: #7a1f1f; }',
+        '.favorite-toggle { border-radius: 14px; background: var(--cyan); color: #050505; }',
       ),
       true,
     );
@@ -464,13 +464,13 @@ suite('Webview contracts', () => {
     );
     assert.strictEqual(
       themeSheet('lcars').includes(
-        '.overview-tabs { gap: 0; } .overview-tabs button { border-radius: 0; } .overview-tabs button:first-child { border-radius: 15px 0 0 0; } .overview-tabs button:last-child { border-radius: 0 0 15px 0; }',
+        '.segmented > button { border-radius: 0; } .segmented > button:first-child { border-radius: 15px 0 0 15px; } .segmented > button:last-child { border-radius: 0 15px 15px 0; }',
       ),
       true,
     );
     assert.strictEqual(
       themeSheet('lcars').includes(
-        'section[aria-labelledby="tags-heading"] .control-row { gap: 2px; } section[aria-labelledby="tags-heading"] .control-row .control-icon select { border-radius: 0; } section[aria-labelledby="tags-heading"] .control-row .control-icon:first-child select { border-radius: 15px 0 0 0; } section[aria-labelledby="tags-heading"] .control-row .control-icon:last-child select { border-radius: 0 0 15px 0; }',
+        'section[aria-labelledby="tags-heading"] .control-row { gap: 2px; } section[aria-labelledby="tags-heading"] .control-row .control-icon select { border-radius: 0; } section[aria-labelledby="tags-heading"] .control-row .control-icon:first-child select { border-radius: 15px 0 0 15px; } section[aria-labelledby="tags-heading"] .control-row .control-icon:last-child select { border-radius: 0 15px 15px 0; }',
       ),
       true,
     );
@@ -493,10 +493,9 @@ suite('Webview contracts', () => {
       true,
     );
     assert.strictEqual(
-      themeSheet('lcars').includes(
-        '.dashboard-tabs button { border-radius: 0; } .dashboard-tabs button:first-child { border-radius: 15px 0 0 0; } .dashboard-tabs button:last-child { border-radius: 0 0 15px 0; }',
-      ),
-      true,
+      themeSheet('lcars').includes('border-radius: 15px 0 0 0'),
+      false,
+      'a group of buttons, the Home and result tabs among them, is a capsule, not cut on a diagonal',
     );
     assert.strictEqual(
       themeSheet('lcars').includes(
