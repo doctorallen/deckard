@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+### Highlights
+
+- **LCARS reads more like LCARS**: frames that meet in a split elbow, amber for what is chosen, and button groups capped at both ends.
+
+### Changed
+
+- **LCARS frames a page in a split elbow.** On the Search page and the Task
+  board, the page, its search, and its controls sit in a blue frame whose
+  bar turns along its foot; what the search finds sits in an amber one
+  whose bar turns along its head, the two bands a thin black seam apart and
+  ending in segments. On Home, every widget is an amber frame with its
+  title in the band, and Search turns over to meet the widgets below. Zen
+  leaves the frames on the Search page and the Task board out.
+- **LCARS hover is cream, and chosen is amber.** A chosen button, tab, or
+  segment is amber with a black lamp before its name, so it reads apart
+  from one under the pointer. Button groups, the calendar's month steps,
+  and the tags page's choices are one capsule, capped at both ends, and
+  Back is capped on its left.
+- **LCARS colors a row by what it is**, notes blue, tasks amber, and tags,
+  people, and saved searches lavender, and a row lights up where it is
+  rather than sliding.
+- **The rest of LCARS:** Home's tiles show their codes as colored blocks;
+  menus have an amber frame and no shadow; Task board columns are headed
+  by a blue rule, and an empty one is a plum block; the progress bar is
+  solid with a rounded end; tables have a blue header band; and the
+  favorite star is gold.
+
+### Fixed
+
+- **LCARS: the Task board's + shows**, and a link in a note, a backlink, or
+  a query block turns amber under the pointer, rather than black on black.
+
 ## 2.12.2 - 2026-10-29
 
 ### Highlights

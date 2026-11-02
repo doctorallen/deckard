@@ -19,6 +19,8 @@ body {
   font-size: var(--text-md);
 }
 main { position: relative; max-width: 1000px; margin: 0 auto; padding: var(--space-5); }
+/* A page's halves, what it is and searches, then what it finds: no box of their own unless a theme draws them. */
+.page-frame { display: contents; }
 header {
   display: flex;
   align-items: end;

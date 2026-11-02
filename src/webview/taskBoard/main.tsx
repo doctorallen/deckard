@@ -210,17 +210,20 @@ function BoardPage({ state }: { readonly state: DrawnBoard }) {
   const snapshot = state.snapshot;
   return (
     <>
-      <PageBar
-        trail="TASK BOARD"
-        lead={<h1>Task Board</h1>}
-        label="Task Board"
-        controls={<BoardControls snapshot={snapshot} />}
-        menu={{ actions: boardActions(snapshot), view: boardView(snapshot), keySheet: true }}
-      />
-      {snapshot.tasksViewMode ? <TasksViewStrip /> : null}
-      {snapshot.statusTagsLeft ? <StatusTagsStrip key="status-tags" text={snapshot.statusTagsLeft} /> : null}
-      {editor.bar(<StatusControls snapshot={snapshot} />)}
-      {editor.facets()}
+      {/* The page and its search, then the tasks: two frames a theme may draw, LCARS as a split elbow. */}
+      <div class="page-frame is-upper">
+        <PageBar
+          trail="TASK BOARD"
+          lead={<h1>Task Board</h1>}
+          label="Task Board"
+          controls={<BoardControls snapshot={snapshot} />}
+          menu={{ actions: boardActions(snapshot), view: boardView(snapshot), keySheet: true }}
+        />
+        {snapshot.tasksViewMode ? <TasksViewStrip /> : null}
+        {snapshot.statusTagsLeft ? <StatusTagsStrip key="status-tags" text={snapshot.statusTagsLeft} /> : null}
+        {editor.bar(<StatusControls snapshot={snapshot} />)}
+        {editor.facets()}
+      </div>
       <section key="tasks" class="board-area" aria-label="Tasks"><BoardContent snapshot={snapshot} /></section>
     </>
   );

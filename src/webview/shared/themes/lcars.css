@@ -33,29 +33,118 @@
   --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
   --divider: var(--line-strong);
 }
-body { background-image: none; } main { background: var(--panel-deep); border: 0; border-top: 7px solid var(--amber); border-radius: 0 0 26px 0; } header { border-color: var(--line); } button, select, .tag-open, .view-options summary { border-color: var(--panel-deep); border-radius: 0 15px 15px 0; background: var(--cyan); color: #050505; font-weight: 700; } select.related-notes-sort { background: var(--cyan); color: #050505; } button svg, button .toolbar-icon, .icon-button, .control-icon-svg, .tag-filter summary .control-icon-svg, .control-icon select:hover:where(:not(:disabled):not([aria-disabled="true"])) + .control-icon-svg, .related-notes-sort-icon { color: #050505; } button:hover:where(:not(:disabled):not([aria-disabled="true"])), button.active, select:hover:where(:not(:disabled):not([aria-disabled="true"])), .tag-open:hover, .view-options summary:hover, select.related-notes-sort:hover:where(:not(:disabled):not([aria-disabled="true"])) { border-color: var(--panel-deep); background: var(--amber); color: #050505; } :root { --hover-bg: var(--amber); --hover-fg: #050505; } .note .tag-list button, .search-notice button { background: var(--cyan); color: #050505; } .metrics { gap: 0; } .metric, .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .view-panel { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; --corner-br: 18px; background: var(--panel); clip-path: none; } .metric { border-radius: 0; } .metric:first-child { border-radius: 0 0 0 15px; } .metric:last-child { border-radius: 0 15px 15px 0; } .metric::before { border-bottom-color: var(--amber); } .metric:nth-child(3n + 2), .card:nth-child(3n + 2), .note:nth-child(3n + 2), .tag-row:nth-child(3n + 2), .entity-row:nth-child(3n + 2) { border-left-color: var(--cyan); } .metric:nth-child(3n + 2)::before { border-bottom-color: var(--cyan); } .metric:nth-child(3n), .card:nth-child(3n), .note:nth-child(3n), .tag-row:nth-child(3n), .entity-row:nth-child(3n) { border-left-color: var(--favorite-red); } .metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); } .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, transform 120ms ease; } .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); transform: translateX(3px); } .favorite-toggle { border-radius: 14px; background: var(--favorite-red); color: #050505; } .favorite-toggle:hover, .favorite-toggle:focus-visible { background: #f5cc72; color: #050505; } .favorite-toggle.favorite { background: #f5cc72; color: #050505; } .markdown, .rendered pre, .tag-filter-menu, .popover, .active-file, .empty { border-color: var(--panel-deep); background: var(--panel-deep); color: #f5cc72; }
+body { background-image: none; } main { background: var(--panel-deep); border: 0; border-top: 7px solid var(--amber); border-radius: 0 0 26px 0; } header { border-color: var(--line); } button, select, .tag-open, .view-options summary { border-color: var(--panel-deep); border-radius: 0 15px 15px 0; background: var(--cyan); color: #050505; font-weight: 700; } select.related-notes-sort { background: var(--cyan); color: #050505; } button svg, button .toolbar-icon, .icon-button, .control-icon-svg, .tag-filter summary .control-icon-svg, .control-icon select:hover:where(:not(:disabled):not([aria-disabled="true"])) + .control-icon-svg, .related-notes-sort-icon { color: #050505; } button:hover:where(:not(:disabled):not([aria-disabled="true"])), select:hover:where(:not(:disabled):not([aria-disabled="true"])), .tag-open:hover, .view-options summary:hover, select.related-notes-sort:hover:where(:not(:disabled):not([aria-disabled="true"])) { border-color: var(--panel-deep); background: var(--hover-bg); color: #050505; } :root { --hover-bg: var(--text); --hover-fg: #050505; --chosen-bg: var(--amber); --chosen-fg: #050505; } .note .tag-list button, .search-notice button { background: var(--cyan); color: #050505; } .metrics { gap: 0; } .metric, .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .view-panel { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; --corner-br: 18px; background: var(--panel); clip-path: none; } .metric { border-radius: 0; } .metric:first-child { border-radius: 0 0 0 15px; } .metric:last-child { border-radius: 0 15px 15px 0; } .metric::before { border-bottom-color: var(--amber); } .metric:nth-child(3n + 2) { border-left-color: var(--cyan); } .metric:nth-child(3n + 2)::before { border-bottom-color: var(--cyan); } .metric:nth-child(3n) { border-left-color: var(--favorite-red); } .metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); } .card, .note, .task, .tag-row, .task-row, .entity-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease, border-color 120ms ease; } .card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .entity-row:hover, .saved-filter-row:hover, .stat-row:hover { background: var(--panel-raised); border-left-color: var(--text); transform: none; } .markdown, .rendered pre, .tag-filter-menu, .popover, .active-file, .empty { border-color: var(--panel-deep); background: var(--panel-deep); color: #f5cc72; }
 .active-file .tag-list button { color: #050505; }
-.favorite-toggle { background: var(--cyan); color: #7a1f1f; } .favorite-toggle:hover, .favorite-toggle:focus-visible, .favorite-toggle.favorite { background: #f5cc72; color: #7a1f1f; }
+/* The favorite toggle: black on blue at rest, lit cream under the pointer, gold when chosen. Red is for overdue alone. */
+.favorite-toggle { border-radius: 14px; background: var(--cyan); color: #050505; } .favorite-toggle:hover, .favorite-toggle:focus-visible { background: var(--hover-bg); color: #050505; } .favorite-toggle.favorite { background: var(--green); color: #050505; }
 .dashboard-column-options button, .dashboard-column-options button:first-child, .dashboard-column-options button:last-child { border-radius: 0; }
 main { border-top: 0; }
-.sidebar-relationships { border: 0; border-left: 7px solid var(--amber); border-radius: 0; background: var(--panel); } .relationship-workspace { border-color: var(--line-strong); border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); } .sidebar-relationships-header, .relationship-workspace-header { border-bottom-color: var(--line-strong); } .sidebar-relationship-branch { border-bottom: 2px solid var(--line-strong); } .sidebar-relationship-branch summary { border-left: 5px solid var(--cyan); background: var(--panel); } .sidebar-relationship-namespace { border-top-color: var(--line-strong); } .sidebar-relationship-namespace summary { border-left: 3px solid var(--line-strong); } .sidebar-relationship-items { margin: 0 8px 5px; border-left: 0; } .relationship-tree-root { border-color: var(--cyan); } .relationship-tree-column, .relationship-graph-shell { border-color: var(--line-strong); } .relationship-tree-group { border-top-color: var(--line-strong); } .relationship-tree-group summary { border-left: 4px solid var(--cyan); padding-left: 6px; } .relationship-tree-items { margin-left: 8px; border-left: 3px solid var(--cyan); }
+.sidebar-relationships { border: 0; border-left: 7px solid var(--amber); border-radius: 0; background: var(--panel); } .sidebar-relationships-header { border-bottom-color: var(--line-strong); } .sidebar-relationship-branch { border-bottom: 2px solid var(--line-strong); } .sidebar-relationship-branch summary { border-left: 5px solid var(--cyan); background: var(--panel); } .sidebar-relationship-namespace { border-top-color: var(--line-strong); } .sidebar-relationship-namespace summary { border-left: 3px solid var(--line-strong); } .sidebar-relationship-items { margin: 0 8px 5px; border-left: 0; } .relationship-tree-root { border-color: var(--cyan); } .relationship-tree-column, .relationship-graph-shell { border-color: var(--line-strong); } .relationship-tree-group { border-top-color: var(--line-strong); } .relationship-tree-group summary { border-left: 4px solid var(--cyan); padding-left: 6px; } .relationship-tree-items { margin-left: 8px; border-left: 3px solid var(--cyan); }
 .inline-tag, .note-title .inline-tag, .task-title .inline-tag { color: #050505; }
 .active-name .active-filter-tag { color: #050505; }
 /* On a filled LCARS button the muted namespace and count vanish into the fill; they take the button's ink. */ button .tag-namespace, button .query-facet-count, button .menu-key, button .home-widget-choice-detail { color: inherit; }
-/* The calendar's week mark, the Task Board's move menu, Related Notes' link button, Refine's open-in-a-new-tab button, and the Notes Graph's zoom buttons are buttons drawn without the cyan fill, on black or plum, so each and its icon take the control's own ink, not the fill's black. */ .board-move { color: var(--muted); } .week-label svg, .board-move svg, .insert-link svg, .refine-open-tag svg, .zoom-controls button svg { color: inherit; }
+/* The calendar's week mark, the Task Board's move menu, Related Notes' link button, Refine's open-in-a-new-tab button, and the Notes Graph's zoom buttons are buttons drawn without the cyan fill, on black or plum, so each and its icon take the control's own ink, not the fill's black. */ .board-move { color: var(--muted); } .week-label svg, .board-move svg, .insert-link svg, .refine-open-tag svg, .zoom-controls button svg, .board-add svg { color: inherit; }
 .task-row .task-title, .task .task-title, .note-row .card-title { color: var(--cyan); font-family: inherit; font-size: inherit; line-height: inherit; } .task-row .task-title { font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); } .task-row .task-title a, .task .task-title a { color: inherit; } .task-row .task-meta, .task .source, .note-row .source { color: var(--muted); font-family: inherit; font-size: inherit; line-height: inherit; } .task-row .task-meta { font-family: var(--vscode-font-family, ui-sans-serif, sans-serif); }
-.note-row { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); clip-path: none; } .note-row:nth-child(3n + 2) { border-left-color: var(--cyan); } .note-row:nth-child(3n) { border-left-color: var(--favorite-red); } .note-row:hover { background: var(--panel-raised); transform: translateX(3px); }
-.overview-tabs-row { border-bottom-color: var(--line-strong); } .overview-tabs { gap: 0; } .overview-tabs button { border-radius: 0; } .overview-tabs button:first-child { border-radius: 15px 0 0 0; } .overview-tabs button:last-child { border-radius: 0 0 15px 0; }
+.note-row { border: 0; border-left: 7px solid var(--amber); border-radius: 0 18px 18px 0; background: var(--panel); clip-path: none; } .note-row:hover { background: var(--panel-raised); border-left-color: var(--text); transform: none; }
+.overview-tabs-row { border-bottom-color: var(--line-strong); } .overview-tabs { gap: 0; }
 .tag-filter summary, .tag-filter-search { border-color: var(--panel-deep); border-radius: 0 15px 15px 0; background: var(--cyan); color: #050505; } .tag-filter-search::placeholder { color: #050505; opacity: 1; } .tag-filter summary .control-icon-svg, .tag-filter-search-control .control-icon-svg, .tag-filter-clear { color: #050505; } .tag-filter summary:hover, .tag-filter summary:focus-visible, .tag-filter-search:focus { border-color: var(--panel-deep); background: var(--amber); color: #050505; }
 .overview-search, .catalog-search, .task-search, .note-search { border: 2px solid var(--cyan-bright); border-radius: 0 15px 15px 0; background: var(--panel); box-shadow: inset 0 0 0 1px var(--cyan-bright); color: var(--text); } .overview-search::placeholder, .catalog-search::placeholder, .task-search::placeholder, .note-search::placeholder { color: var(--muted); opacity: 1; } .overview-search:focus, .catalog-search:focus, .task-search:focus, .note-search:focus { border-color: var(--amber); box-shadow: inset 0 0 0 1px var(--amber); color: var(--text); background: var(--panel); } .save-filter.save-filter { border-color: var(--panel-deep); color: #050505; }
-.dashboard-tabs-row { border-bottom-color: var(--line-strong); } .dashboard-tabs button { border-radius: 0; } .dashboard-tabs button:first-child { border-radius: 15px 0 0 0; } .dashboard-tabs button:last-child { border-radius: 0 0 15px 0; }
-.browse-scope button { border-radius: 0; } .browse-scope button:first-child { border-radius: 15px 0 0 0; } .browse-scope button:last-child { border-radius: 0 0 15px 0; }
+.dashboard-tabs-row { border-bottom-color: var(--line-strong); }
 .saved-filter-remove.saved-filter-remove { color: #050505; } .saved-filter-remove.saved-filter-remove:hover, .saved-filter-remove.saved-filter-remove:focus-visible { color: #050505; }
 input.tag-filter-search { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } input.tag-filter-search::placeholder { color: #050505; opacity: 1; } input.tag-filter-search:focus { border-color: var(--panel-deep); background: var(--amber); color: #050505; } .selected-task-tag { background: var(--cyan); color: #050505; } .selected-task-tag::after { color: #050505; } button.clear-task-filters { border-color: var(--panel-deep); background: var(--cyan); color: #050505; } button.clear-task-filters:hover:where(:not(:disabled):not([aria-disabled="true"])), button.clear-task-filters:focus-visible { border-color: var(--panel-deep); background: var(--amber); color: #050505; }
-section[aria-labelledby="tags-heading"] .control-row { gap: 2px; } section[aria-labelledby="tags-heading"] .control-row .control-icon select { border-radius: 0; } section[aria-labelledby="tags-heading"] .control-row .control-icon:first-child select { border-radius: 15px 0 0 0; } section[aria-labelledby="tags-heading"] .control-row .control-icon:last-child select { border-radius: 0 0 15px 0; }
+section[aria-labelledby="tags-heading"] .control-row { gap: 2px; } section[aria-labelledby="tags-heading"] .control-row .control-icon select { border-radius: 0; } section[aria-labelledby="tags-heading"] .control-row .control-icon:first-child select { border-radius: 15px 0 0 15px; } section[aria-labelledby="tags-heading"] .control-row .control-icon:last-child select { border-radius: 0 15px 15px 0; }
 /* A day outside the month, hovered, sits on the amber hover ground, where
    the muted rose read at 1.08:1; it takes the raised panel's plum, 6.92:1. */
 .day.outside:hover:where(:not(:disabled):not([aria-disabled="true"])) { color: var(--panel-raised); }
 /* Builder, joined to the start of the search field, takes the rounded end
    on its left, where the field's own edge cannot. */
 .query-field-group > .query-builder-toggle { border-radius: 15px 0 0 15px; }
+/* A button drawn as text keeps its own ground when lit and turns amber, so
+   the fill's black ink never lands on black or plum. */
+button:is(.note-link, .note-crumb, .note-backlink-title, .note-backlink-line, .note-query-title, .note-embed-title, .tag-note-tag):is(:hover, :focus-visible):where(:not(:disabled):not([aria-disabled="true"])), button.field-link.field-link:is(:hover, :focus-visible) { border-color: transparent; background: transparent; color: var(--amber); }
+/* Three states: a control rests blue, lights cream under the pointer, and is
+   amber when on or chosen, with a black lamp before its label so the state
+   does not rest on hue alone. The base sheet's foot bar would follow a
+   capped end's curve, so it goes. */
+button.active, .segmented button:is(.active, [aria-pressed="true"], [aria-selected="true"]), .segmented button:is(.active, [aria-pressed="true"], [aria-selected="true"]):hover:where(:not(:disabled):not([aria-disabled="true"])) { border-color: var(--panel-deep); background: var(--chosen-bg); color: var(--chosen-fg); box-shadow: none; }
+button.active:not(.icon-button, .query-suggestion)::before, .segmented button:is([aria-pressed="true"], [aria-selected="true"]):not(.active)::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px; background: var(--panel-deep); vertical-align: middle; }
+/* A group of buttons is one capsule: capped at its outer ends, square at its joins. */
+.segmented > button { border-radius: 0; } .segmented > button:first-child { border-radius: 15px 0 0 15px; } .segmented > button:last-child { border-radius: 0 15px 15px 0; }
+.calendar-header > button { border-radius: 0; } .calendar-header > button:first-child { border-radius: 15px 0 0 15px; } .calendar-header > button:last-child { border-radius: 0 15px 15px 0; }
+.day { border-radius: 0; }
+/* A Home widget is a frame on black: its bar sweeps through an elbow into a
+   header band, and the rows inside are the plum blocks. */
+:root { --frame-bar: 22px; --frame-curve: 40px; }
+@media (max-width: 480px) { :root { --frame-bar: 12px; --frame-curve: 24px; } }
+.home-widget.view-panel { border: 0; border-left: var(--frame-bar) solid var(--amber); border-top: 30px solid var(--amber); border-radius: var(--frame-curve) 0 0 0; background: var(--panel-deep); padding: 18px 12px 8px 18px; }
+.home-widget-header { position: absolute; top: -30px; right: 0; left: 0; height: 30px; margin: 0; padding: 0 4px; background: var(--amber); }
+/* The title sits on the band, so the band's color is the header's own; arranging's hover leaves both alone. */
+.home-widget.view-panel.is-editing:hover { border-color: var(--amber); }
+/* Search turns over: its band runs along its foot and meets the band of the
+   widget below across a black seam, the split elbow, ending in segments. */
+.home-widget.view-panel[data-widget-kind="search"] { border-top: 0; border-bottom: 30px solid var(--cyan); border-left-color: var(--cyan); border-radius: 0 0 0 var(--frame-curve); margin-bottom: calc(6px - var(--space-3)); padding: 14px 12px 20px 18px; }
+.home-widget[data-widget-kind="search"] > .home-widget-header { top: auto; bottom: -30px; background: var(--cyan); }
+.home-widget.view-panel[data-widget-kind="search"].is-editing:hover { border-color: var(--cyan); }
+.home-widget-title, .home-widget-title > .home-widget-link, .home-widget-title .tag-count, .home-widget-grip { color: #050505; } .home-widget-title > .home-widget-link:focus-visible { outline-color: #050505; }
+.home-widget :is(.task-row, .saved-filter-row, .tag-row, .entity-row) { background: var(--panel); } .home-widget :is(.task-row, .saved-filter-row, .tag-row, .entity-row):hover { background: var(--panel-raised); }
+/* Color by kind, not by place in a list: notes blue, tasks amber, tags, people, and saved searches lavender. */
+.card, .note, .note-row { border-left-color: var(--cyan); }
+.tag-row, .entity-row, .saved-filter-row { border-left-color: var(--amber-dim); }
+/* The Home metrics as a readout: each code a filled block, black gutters, capped at both ends. */
+.metrics { gap: 3px; } .metric { border-radius: 0; } .metric:first-child { border-radius: 15px 0 0 15px; } .metric:last-child { border-radius: 0 15px 15px 0; }
+.metric[data-code] { border-left: 0; padding-top: 0; overflow: hidden; }
+.metric::before { margin: 0 -12px 8px; padding: 3px 12px; border: 0; background: var(--amber); color: #050505; font-weight: 700; letter-spacing: .06em; }
+.metric:nth-child(3n + 2)::before { background: var(--cyan); } .metric:nth-child(3n)::before { background: var(--favorite-red); }
+body[data-styling=plain] .metric[data-code] { padding-top: 10px; }
+/* A menu is an amber bracket on black, with no drop shadow; a tip keeps a blue bar. */
+.popover:not(.is-tip), .tag-filter-menu { border: 0; border-left: 7px solid var(--amber); border-block: 4px solid var(--amber); border-radius: 14px 0 0 14px; box-shadow: none; }
+.popover.is-tip { border: 0; border-left: 4px solid var(--cyan); box-shadow: none; }
+/* The board's lines are drawn in --line, black here: a column head takes a
+   capped blue rule (red when overdue, amber as a drop target), and an empty
+   column a plum block. */
+.board-column-head { border-bottom: 6px solid var(--cyan); border-bottom-right-radius: 3px; }
+.board-column.is-overdue .board-column-head, .board-column[data-column-id="due:needsdate"] .board-column-head { border-bottom-color: var(--danger); }
+.board-column.drop-target .board-column-head { border-bottom-color: var(--amber); }
+.board-empty { border: 0; border-radius: 0 15px 15px 0; background: var(--panel); color: var(--muted); }
+/* A progress bar is a solid gauge: a plum track, the fill, and a blue cap past a black gutter marking 100%. */
+.progress-bar { width: calc(100% - 15px); height: 10px; margin-right: 15px; overflow: visible; border: 0; border-radius: 5px 0 0 5px; background: var(--panel-raised); }
+.progress-bar-fill { border-radius: 5px 0 0 5px; }
+.progress-bar::after { content: ""; position: absolute; top: 0; right: -15px; width: 12px; height: 100%; border-radius: 0 5px 5px 0; background: var(--cyan); }
+/* A table's head is a blue band split by black gutters; its rows are plum blocks with black between them. */
+.note-table { border-collapse: separate; border-spacing: 0; } .note-table th, .note-table td { border: 0; }
+.note-table th { border-right: 3px solid var(--panel-deep); background: var(--cyan); color: #050505; font-weight: 700; }
+.note-table th:first-child { border-radius: 12px 0 0 12px; } .note-table th:last-child { border-right: 0; border-radius: 0 12px 12px 0; }
+.note-table td { border-bottom: 2px solid var(--panel-deep); background: var(--panel); }
+/* A back step caps toward the way it goes. */
+button[data-action="history-back"], button[data-action="step-calendar"][data-by="-1"] { border-radius: 15px 0 0 15px; }
+/* The Search page and the Task board as a split elbow: what the page is and
+   how it searches in a blue frame turning along its foot, what it finds in an
+   amber one turning along its head, the two bands a black seam apart. Zen
+   leaves the frames out. A band ends in segments cut by black. */
+body:not([data-styling="plain"]) :is(.page-frame, .board-area) { display: block; position: relative; min-width: 0; border-left: var(--frame-bar) solid var(--cyan); }
+body:not([data-styling="plain"]) .page-frame.is-upper { border-bottom: 14px solid var(--cyan); border-bottom-left-radius: var(--frame-curve); padding: 14px 0 20px 18px; }
+body:not([data-styling="plain"]) :is(.page-frame.is-lower, .board-area) { margin-top: 6px; border-top: 14px solid var(--amber); border-left-color: var(--amber); border-top-left-radius: var(--frame-curve); padding: 20px 0 14px 18px; }
+body:not([data-styling="plain"]) .page-frame.is-upper::before { content: ""; position: absolute; top: 0; left: calc(-1 * var(--frame-bar)); width: var(--frame-bar); height: 44px; border-bottom: 4px solid var(--panel-deep); background: var(--amber-dim); }
+body:not([data-styling="plain"]) .page-frame.is-lower .overview-tabs-row { border-bottom: 0; }
+/* The Search page's results bring their own space above them. */
+body:not([data-styling="plain"]) .page-frame.is-lower { padding-top: 4px; }
+body:not([data-styling="plain"]) .page-frame.is-upper::after, body:not([data-styling="plain"]) :is(.page-frame.is-lower, .board-area)::after, .home-widget[data-widget-kind="search"] > .home-widget-header::after {
+  --segments-end: 7px;
+  content: ""; position: absolute; right: 0; pointer-events: none;
+}
+body:not([data-styling="plain"]) .page-frame.is-upper::after, .home-widget[data-widget-kind="search"] > .home-widget-header::after {
+  width: 178px;
+  background:
+    radial-gradient(circle at calc(100% - var(--segments-end)) 50%, var(--green) calc(var(--segments-end) - .5px), transparent var(--segments-end)),
+    linear-gradient(to right, var(--panel-deep) 0 4px, var(--amber) 4px 34px, var(--panel-deep) 34px 38px, var(--amber-dim) 38px 148px, var(--panel-deep) 148px 152px, var(--green) 152px calc(100% - var(--segments-end)), var(--panel-deep) calc(100% - var(--segments-end)));
+}
+body:not([data-styling="plain"]) .page-frame.is-upper::after { bottom: -14px; height: 14px; }
+.home-widget[data-widget-kind="search"] > .home-widget-header::after { --segments-end: 15px; top: 0; bottom: 0; }
+/* Arranging puts its buttons where the segments are. */
+.home-widget.is-editing > .home-widget-header::after { content: none; }
+body:not([data-styling="plain"]) :is(.page-frame.is-lower, .board-area)::after {
+  top: -14px; width: 94px; height: 14px;
+  background:
+    radial-gradient(circle at calc(100% - 7px) 50%, var(--amber-dim) 6.5px, transparent 7px),
+    linear-gradient(to right, var(--panel-deep) 0 4px, var(--text) 4px 30px, var(--panel-deep) 30px 34px, var(--amber-dim) 34px calc(100% - 7px), var(--panel-deep) calc(100% - 7px));
+}

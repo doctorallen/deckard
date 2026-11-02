@@ -207,21 +207,26 @@ function SearchPage({ snapshot }: { readonly snapshot: SearchPageState }) {
   const invalid = (snapshot.query.diagnostics || []).some((diagnostic) => diagnostic.severity === 'error');
   return (
     <>
-      <PageHeader snapshot={snapshot} hasText={Boolean(editor.currentText().trim())} storyShown={isStoryShown(snapshot)} />
-      <SinceBand since={snapshot.since} />
-      {editor.bar()}
-      {editor.facets(tagRefineLines(snapshot))}
-      {/* How far along the tag's tasks are, with Refine, which narrows the same tasks, rather than under the hub. */}
-      <TagProgress snapshot={snapshot} />
-      <HubNote snapshot={snapshot} hubOpen={snapshot.tagPage?.filtered ? (filteredHubOpen ?? false) : hubOpen} />
-      <TagNotes snapshot={snapshot} />
-      <BetweenCard between={snapshot.between} />
-      {invalid ? <p class="stale-results">The search above has not run. These are the results of the last one that did.</p> : null}
-      {/* A search that found nothing, and a closer spelling that finds something, so the dead end has a way out of it. */}
-      {!invalid && snapshot.suggestion
-        ? <p class="did-you-mean">Nothing matched. Search for <button data-action="run-suggestion">{snapshot.suggestion}</button> instead?</p>
-        : null}
-      <Results view={{ snapshot, activeTab, openedCards }} />
+      {/* What the page is and how it is searched, then what it finds: two frames a theme may draw, LCARS as a split elbow. */}
+      <div class="page-frame is-upper">
+        <PageHeader snapshot={snapshot} hasText={Boolean(editor.currentText().trim())} storyShown={isStoryShown(snapshot)} />
+        <SinceBand since={snapshot.since} />
+        {editor.bar()}
+        {editor.facets(tagRefineLines(snapshot))}
+        {/* How far along the tag's tasks are, with Refine, which narrows the same tasks, rather than under the hub. */}
+        <TagProgress snapshot={snapshot} />
+      </div>
+      <div class="page-frame is-lower">
+        <HubNote snapshot={snapshot} hubOpen={snapshot.tagPage?.filtered ? (filteredHubOpen ?? false) : hubOpen} />
+        <TagNotes snapshot={snapshot} />
+        <BetweenCard between={snapshot.between} />
+        {invalid ? <p class="stale-results">The search above has not run. These are the results of the last one that did.</p> : null}
+        {/* A search that found nothing, and a closer spelling that finds something, so the dead end has a way out of it. */}
+        {!invalid && snapshot.suggestion
+          ? <p class="did-you-mean">Nothing matched. Search for <button data-action="run-suggestion">{snapshot.suggestion}</button> instead?</p>
+          : null}
+        <Results view={{ snapshot, activeTab, openedCards }} />
+      </div>
     </>
   );
 }
