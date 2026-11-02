@@ -23,7 +23,29 @@ vscode.workspace.openTextDocument = () => Promise.reject(new Error('The e2e stub
 vscode.window.showErrorMessage = () => Promise.resolve(undefined);
 vscode.window.showWarningMessage = () => Promise.resolve(undefined);
 
-// Dated from the real today, so the tests hold on any day.
+// The page draws one month, and these tests choose the days after today, which
+// near a month's end it does not draw. So this suite's clock reads the 15th of
+// this month, and still runs; each suite is a process of its own.
+const RealDate = Date;
+const offset = (() => {
+  const at = new RealDate();
+  return new RealDate(at.getFullYear(), at.getMonth(), 15, at.getHours(), at.getMinutes(), at.getSeconds()).getTime() - at.getTime();
+})();
+global.Date = class extends RealDate {
+  constructor(...args) {
+    if (args.length) {
+      super(...args);
+    } else {
+      super(RealDate.now() + offset);
+    }
+  }
+
+  static now() {
+    return RealDate.now() + offset;
+  }
+};
+
+// Dated from the suite's today, so the tests hold on any day.
 const shift = (days) => {
   const at = new Date();
   return formatLocalDate(new Date(at.getFullYear(), at.getMonth(), at.getDate() + days));

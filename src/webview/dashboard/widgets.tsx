@@ -298,6 +298,7 @@ export function HomeWidget({ widget, home }: WidgetProps) {
       tabIndex={home.editing ? 0 : undefined}
       data-tip={home.editing ? 'Drag to move, or press the menu key (Shift+F10) to move it first or last' : undefined}
       data-widget-id={widget.id}
+      data-widget-kind={widget.kind}
       aria-label={widget.title}
     >
       <div class="home-widget-header">
