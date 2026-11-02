@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.13.0 - 2026-11-02
+
 ### Highlights
 
 - **LCARS reads more like LCARS**: frames that meet in a split elbow, amber for what is chosen, and button groups capped at both ends.
