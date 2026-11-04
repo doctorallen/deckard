@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.14.0 - 2026-11-03
+
+### Highlights
+
+- **Task board cards name the person** a task is for, unless it is you or the board is grouped by person.
+
 ### Added
 
 - **A Task board card says who its task is for**, such as `for @dana`,
