@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Fixed
+
+- **LCARS: a Home widget's band follows its frame's rounded corner.** Its
+  square end showed above the curve, most plainly at Windows' 125% and
+  150% display scaling.
+
 ## 2.13.0 - 2026-11-02
 
 ### Highlights
