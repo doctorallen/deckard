@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 2.14.0 - 2026-11-03
+
+### Highlights
+
+- **Task board cards name the person** a task is for, unless it is you or the board is grouped by person.
+
+### Added
+
+- **A Task board card says who its task is for**, such as `for @dana`,
+  unless the board is grouped by Person or the task is yours, the person
+  `deckard.me` names.
+
+### Fixed
+
+- **LCARS: a Home widget's band follows its frame's rounded corner.** Its
+  square end showed above the curve, most plainly at Windows' 125% and
+  150% display scaling.
+
 ## 2.13.0 - 2026-11-02
 
 ### Highlights

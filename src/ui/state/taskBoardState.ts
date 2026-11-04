@@ -39,7 +39,7 @@ import {
   setTaskNamespaceTags,
   TaskMove,
 } from '../../domain/tasks/boardMoves';
-import { evaluateQuery } from '../../domain/query/queryEvaluator';
+import { evaluateQuery, matchesPerson } from '../../domain/query/queryEvaluator';
 import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { tokenizeInline } from '../../domain/markdown/inline';
 import { getHeadingPath } from '../../domain/ranking/entryLabels';
@@ -387,6 +387,7 @@ export function layoutTaskBoard({
       openDependencyIds,
       sections: index.sections,
       column: draft?.label,
+      person: namedPerson(task, index, groupBy, options.queryContext.identity),
     });
     const others = draft?.alsoIn?.get(task.id);
     const parent = withParentTag(index, task, options, groupBy === 'tag' ? namespace : undefined);
@@ -933,13 +934,15 @@ function createDueColumns(open: Task[], context: QueryContext): ColumnDraft[] {
 
 function createCard(
   task: Task,
-  { groupBy, context, openDependencyIds, sections, column }: {
+  { groupBy, context, openDependencyIds, sections, column, person }: {
     groupBy: TaskBoardGroupBy;
     context: QueryContext;
     openDependencyIds: ReadonlySet<string>;
     sections: ReadonlyMap<string, Section>;
     /** The heading of the column the card is in, when it is in one. */
     column?: string;
+    /** Who the task is for, when the card should say it. */
+    person?: string;
   },
 ): TaskBoardCard {
   const status = describeCardStatus(task, column);
@@ -966,7 +969,7 @@ function createCard(
     ...(task.updatedAt === undefined ? {} : { updatedAt: task.updatedAt }),
     overdue: open && task.dueAt !== undefined && task.dueAt < today && !needsNewDate(task.dueAt, now, taskPolicy),
     ...(open && needsNewDate(task.dueAt, now, taskPolicy) ? { stale: true } : {}),
-    ...withDetails([...(status ? [{ text: status }] : []), ...cardDetails(task, { groupBy, today, taskPolicy, blockers, formats: context.dateFormats })]),
+    ...withDetails([...(status ? [{ text: status }] : []), ...cardDetails(task, { groupBy, today, taskPolicy, blockers, person, formats: context.dateFormats })]),
     // Where the task is written folds under the card, as it does under a
     // row; it was the last detail on every card.
     headingPath: section ? getHeadingPath(section, sections) : [],
@@ -1017,11 +1020,12 @@ function datedDetail(words: string, at: number, formats: DateFormats): CardDetai
  */
 function cardDetails(
   task: Task,
-  { groupBy, today, taskPolicy, blockers, formats }: {
+  { groupBy, today, taskPolicy, blockers, person, formats }: {
     groupBy: TaskBoardGroupBy;
     today: number;
     taskPolicy: QueryContext['taskPolicy'];
     blockers: readonly string[];
+    person?: string;
     formats: DateFormats;
   },
 ): CardDetail[] {
@@ -1031,10 +1035,23 @@ function cardDetails(
     open ? dueDetail(task, today, taskPolicy, formats) : undefined,
     open && task.scheduledAt !== undefined ? datedDetail('scheduled', task.scheduledAt, formats) : undefined,
     open && task.startAt !== undefined && task.startAt > today ? datedDetail('starts', task.startAt, formats) : undefined,
+    person ? { text: `for ${person}` } : undefined,
     groupBy !== 'priority' && task.priority ? { text: `${task.priority} priority` } : undefined,
     task.recurrence ? { text: `repeats ${task.recurrence}` } : undefined,
     open && blockers.length > 0 ? { text: `blocked by ${blockers.join(', ')}` } : undefined,
   ].filter((detail): detail is CardDetail => detail !== undefined);
+}
+
+/**
+ * Who a task is for, by their tag's label, when a card should say so: not
+ * when the columns are people, which already say it, and not when it is
+ * you, which `deckard.me` names. With no one named as you, every person shows.
+ */
+function namedPerson(task: Task, index: WorkspaceIndex, groupBy: TaskBoardGroupBy, identity: string | undefined): string | undefined {
+  if (!task.assignee || groupBy === 'assignee' || (identity !== undefined && matchesPerson(identity, task.assignee))) {
+    return undefined;
+  }
+  return index.tags.get(task.assignee)?.label ?? task.assignee;
 }
 
 /**

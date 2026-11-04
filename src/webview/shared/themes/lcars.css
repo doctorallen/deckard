@@ -77,13 +77,16 @@ button.active:not(.icon-button, .query-suggestion)::before, .segmented button:is
 :root { --frame-bar: 22px; --frame-curve: 40px; }
 @media (max-width: 480px) { :root { --frame-bar: 12px; --frame-curve: 24px; } }
 .home-widget.view-panel { border: 0; border-left: var(--frame-bar) solid var(--amber); border-top: 30px solid var(--amber); border-radius: var(--frame-curve) 0 0 0; background: var(--panel-deep); padding: 18px 12px 8px 18px; }
-.home-widget-header { position: absolute; top: -30px; right: 0; left: 0; height: 30px; margin: 0; padding: 0 4px; background: var(--amber); }
+/* The band starts past the bar, where the frame's curve has not yet reached
+   the top; its corner rounds by the curve less the bar, which sits inside
+   that curve and touches it, so no square corner shows outside the frame. */
+.home-widget-header { position: absolute; top: -30px; right: 0; left: 0; height: 30px; margin: 0; padding: 0 4px; border-top-left-radius: calc(var(--frame-curve) - var(--frame-bar)); background: var(--amber); }
 /* The title sits on the band, so the band's color is the header's own; arranging's hover leaves both alone. */
 .home-widget.view-panel.is-editing:hover { border-color: var(--amber); }
 /* Search turns over: its band runs along its foot and meets the band of the
    widget below across a black seam, the split elbow, ending in segments. */
 .home-widget.view-panel[data-widget-kind="search"] { border-top: 0; border-bottom: 30px solid var(--cyan); border-left-color: var(--cyan); border-radius: 0 0 0 var(--frame-curve); margin-bottom: calc(6px - var(--space-3)); padding: 14px 12px 20px 18px; }
-.home-widget[data-widget-kind="search"] > .home-widget-header { top: auto; bottom: -30px; background: var(--cyan); }
+.home-widget[data-widget-kind="search"] > .home-widget-header { top: auto; bottom: -30px; border-top-left-radius: 0; border-bottom-left-radius: calc(var(--frame-curve) - var(--frame-bar)); background: var(--cyan); }
 .home-widget.view-panel[data-widget-kind="search"].is-editing:hover { border-color: var(--cyan); }
 .home-widget-title, .home-widget-title > .home-widget-link, .home-widget-title .tag-count, .home-widget-grip { color: #050505; } .home-widget-title > .home-widget-link:focus-visible { outline-color: #050505; }
 .home-widget :is(.task-row, .saved-filter-row, .tag-row, .entity-row) { background: var(--panel); } .home-widget :is(.task-row, .saved-filter-row, .tag-row, .entity-row):hover { background: var(--panel-raised); }

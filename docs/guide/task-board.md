@@ -16,6 +16,7 @@ Run `Deckard: Open Task Board`, or select **Task Board** at the top of the Conte
 - Every grouping ends with **Done**, showing the 20 most recently completed tasks. Drop a card there to complete it, with its done date and next occurrence; drag it out to reopen it.
 - **Cancelled**, ticked in **⋯**'s **Status columns**, draws a **Cancelled [-]** column after Done. Dropping a card there cancels it, with its ❌ date.
 - A card shows its status when its column doesn't, such as **In progress** on a card grouped by priority.
+- A card says who its task is for, such as **for @dana**, unless the board is grouped by **Person** or the task is yours: the person `deckard.me` names, as `is:mine` reads it. With no one named there, every card with a person shows it.
 
 ## Searching and filtering
 
