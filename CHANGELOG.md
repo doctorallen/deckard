@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- **A Task board card says who its task is for**, such as `for @dana`,
+  unless the board is grouped by Person or the task is yours, the person
+  `deckard.me` names.
+
 ### Fixed
 
 - **LCARS: a Home widget's band follows its frame's rounded corner.** Its

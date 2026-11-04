@@ -76,6 +76,26 @@ suite('Task board', () => {
     assert.deepStrictEqual(board(createIndex(), 'priority', '', options).columns.map((column) => column.symbol), [undefined, undefined, undefined, undefined, undefined, undefined, undefined], 'only status columns say one');
   });
 
+  test('a card says who it is for, unless that is you or the columns are people', () => {
+    const index = createIndex();
+    for (const task of [
+      createTask('chase', '- [ ] Chase the contractor', { assignee: '@dana' }),
+      createTask('send', '- [ ] Send the proposal', { assignee: '#person/ren-kade' }),
+    ]) {
+      index.tasks.set(task.id, task);
+    }
+    index.tags.set('#person/ren-kade', { key: '#person/ren-kade', label: '#person/Ren-Kade', sectionIds: [], taskIds: ['send'], filePaths: ['notes/tasks.md'], count: 1, isFavorite: false });
+    const details = (groupBy: TaskBoardGroupBy, identity?: string): Array<[string, string[]]> =>
+      board(index, groupBy, '', { ...options, queryContext: createQueryContext(at(9, 13), { identity }) })
+        .columns.flatMap((column) => column.cards)
+        .filter((card) => card.taskId === 'chase' || card.taskId === 'send')
+        .map((card): [string, string[]] => [card.taskId, card.details])
+        .sort(([left], [right]) => left.localeCompare(right));
+    assert.deepStrictEqual(details('status', 'ren-kade'), [['chase', ['for @dana']], ['send', []]], 'by the tag\'s label, and not you, however you are spelled');
+    assert.deepStrictEqual(details('status'), [['chase', ['for @dana']], ['send', ['for #person/Ren-Kade']]], 'with no one named as you, everyone shows');
+    assert.deepStrictEqual(details('assignee'), [['chase', []], ['send', []]], 'a Person column already says it');
+  });
+
   test('a long column draws its first hundred cards, and the rest on request', () => {
     const tasks = Array.from({ length: 250 }, (_, number) =>
       createTask(`t${number}`, `- [/] Task ${number}`, {}),
