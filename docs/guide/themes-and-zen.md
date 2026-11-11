@@ -6,7 +6,7 @@ Run `Deckard: Choose Theme…`, or choose **Theme…** under **Appearance** in a
 
 - **Mimic**, the default, takes its colors and fonts from your VS Code theme, light or dark, so Deckard's pages look like the rest of your editor.
 - **Corpo** is Mimic's plain look in VS Code's own default colors, whichever color theme you use: Dark 2026 while your theme is dark, and Light 2026 while it is light. Pick it when your color theme is busy, or low in contrast, and you want Deckard's pages plain. Fonts still come from your settings, and a high contrast theme keeps its own colors, as it does in every Deckard theme.
-- **Replicant**, **Oblivion**, **LCARS**, **Tomcat**, **Fellowship**, **Synthwave**, and **Cooper** are Deckard's film-inspired styles.
+- **Replicant**, **Oblivion**, **LCARS**, **Tomcat**, **Fellowship**, **Synthwave**, **Cooper**, and **Razorback** are Deckard's film-inspired styles. Razorback, after the nav displays in The Expanse, draws thin blue rules on blue-black and keeps gold for what is chosen or under the pointer.
 
 In every theme, red means overdue or high priority, and nothing else.
 
@@ -21,8 +21,8 @@ In every theme, red means overdue or high priority, and nothing else.
 | <img src="../images/dashboard-replicant.png" alt="Replicant theme Home." width="220"> | <img src="../images/dashboard-oblivion.png" alt="Oblivion theme Home." width="220"> | <img src="../images/dashboard-lcars.png" alt="LCARS theme Home." width="220"> |
 | **Tomcat** | **Fellowship** | **Synthwave** |
 | <img src="../images/dashboard-tomcat.png" alt="Tomcat theme Home." width="220"> | <img src="../images/dashboard-fellowship.png" alt="Fellowship theme Home." width="220"> | <img src="../images/dashboard-synthwave.png" alt="Synthwave theme Home." width="220"> |
-| **Cooper** | | |
-| <img src="../images/dashboard-cooper.png" alt="Cooper theme Home." width="220"> | | |
+| **Cooper** | **Razorback** | |
+| <img src="../images/dashboard-cooper.png" alt="Cooper theme Home." width="220"> | <img src="../images/dashboard-razorback.png" alt="Razorback theme Home." width="220"> | |
 
 ## Display
 

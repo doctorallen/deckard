@@ -1,0 +1,136 @@
+/*
+ * Razorback, after The Expanse's nav displays, the Razorback's map and the
+ * UNN consoles, by way of the tactical plot at davidrallen.com/map: a
+ * blue-black ground under faint range rings, thin console-blue rules with a
+ * short tab at the start of each, rounded blue keys, readouts as label and
+ * value, and one gold kept for the lock, the thing chosen or under the
+ * pointer. Written from the template Oblivion and LCARS share.
+ *
+ * A theme sheet: linked after the page's own sheet and before the tail.
+ */
+:root {
+  --bg-dark: #04060b;
+  --bg: #04060b;
+  --panel-bg: #070b12;
+  --panel: #070b12;
+  --panel-raised: #0d1420;
+  --panel-deep: #020409;
+  --text: #d9e0e4;
+  /* The plot's dim label blue, #4f7a99, lifted a step: there it is 4.4:1. */
+  --muted: #6f93ae;
+  --slate-border: #12263a;
+  --line: #1d3b52;
+  --line-strong: #2f5f80;
+  --control-line: #4a86ad;
+  --divider: #4a86ad;
+  --cyan-bright: #c3e6f6;
+  --cyan: #9ad0ea;
+  --amber-bright: #e8b75a;
+  --amber: #d4922c;
+  --amber-dim: #8a6424;
+  --green: #7ed37a;
+  --toxic-green: #7ed37a;
+  /* The plot has no red; this one is kept for overdue alone. */
+  --favorite-red: #ff5a4f;
+  --warning-orange: #f08a3c;
+  /* Gold is the lock here, so a task due today takes the paler amber. */
+  --due-today: var(--amber-bright);
+  --font-mono: var(--vscode-editor-font-family, ui-monospace, monospace);
+  /* A key lights solid blue under the pointer, and the chosen one is the
+     lock's gold tag: dark words on gold. */
+  --hover-bg: #9ad0ea;
+  --hover-fg: #04060b;
+  --chosen-bg: #d4922c;
+  --chosen-fg: #04060b;
+  --control-radius: 3px;
+}
+/* The plane behind the page's head: four range rings round a point at the
+   top right and a dash-dot crosshair through it, faint enough that the
+   ground still reads as empty space. Zen's plain styling takes them away. */
+body {
+  --ring: rgba(154, 208, 234, .09);
+  --ring-x: calc(100% - 180px);
+  background-color: var(--bg-dark);
+  background-image:
+    repeating-linear-gradient(90deg, var(--ring) 0 14px, transparent 14px 19px, var(--ring) 19px 21px, transparent 21px 26px),
+    repeating-linear-gradient(var(--ring) 0 14px, transparent 14px 19px, var(--ring) 19px 21px, transparent 21px 26px),
+    radial-gradient(ellipse 620px 290px at var(--ring-x) 150px, transparent 24.7%, var(--ring) 24.7% 25%, transparent 25% 49.7%, var(--ring) 49.7% 50%, transparent 50% 74.7%, var(--ring) 74.7% 75%, transparent 75% 99.7%, var(--ring) 99.7% 100%, transparent 100%);
+  background-size: 100% 1px, 1px 440px, 100% 100%;
+  background-position: 0 150px, var(--ring-x) 0, 0 0;
+  background-repeat: no-repeat;
+}
+/* The page is the plot's frame: a thin rule with square ticks along its head
+   and foot. */
+main { border-color: var(--line-strong); background: transparent; box-shadow: none; }
+body:not([data-styling="plain"]) main::before, body:not([data-styling="plain"]) main::after { content: ''; position: absolute; right: 24px; left: 24px; height: 4px; background-image: repeating-linear-gradient(90deg, var(--line-strong) 0 4px, transparent 4px 56px); pointer-events: none; }
+body:not([data-styling="plain"]) main::before { top: 0; }
+body:not([data-styling="plain"]) main::after { bottom: 0; }
+/* A heading sits on a hairline that starts with a short blue tab, as each of
+   the plot's panels does. */
+header { position: relative; border-color: var(--line-strong); }
+header::after { content: ''; position: absolute; bottom: calc(var(--edge) * -1 - 1px); left: 0; width: 28px; height: 3px; background: var(--cyan); }
+h1, h2, h3, .metric-label, .task-count, .section-count { font-family: var(--font-display); font-weight: 500; letter-spacing: .12em; text-transform: uppercase; }
+h2, h3 { color: var(--cyan); }
+.eyebrow, .source, .metric-label { color: var(--muted); font-family: var(--font-mono); letter-spacing: .16em; }
+.section-heading { position: relative; border-bottom: 1px solid var(--line-strong); padding-bottom: 6px; }
+.section-heading::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 28px; height: 3px; background: var(--cyan); }
+/* A Home widget is a panel of the plot: no box, its title on a ruled head. */
+.home-widget.view-panel { border-color: transparent; background: transparent; }
+.home-widget-header { position: relative; padding-bottom: 6px; border-bottom: 1px solid var(--line-strong); }
+.home-widget-header::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 28px; height: 3px; background: var(--cyan); }
+.home-widget-title, .tag-group h3, .refine-heading h2, .query-facets-heading { color: var(--cyan); }
+body[data-styling=plain] header::after, body[data-styling=plain] .section-heading::after, body[data-styling=plain] .home-widget-header::after { content: none; }
+/* Keys: a blue edge on a faint blue wash, rounded, set in the mono face. */
+button, select, .tag-open, .view-options summary { border-color: var(--cyan); border-radius: var(--control-radius); background: rgba(154, 208, 234, .13); color: var(--cyan); font-family: var(--font-mono); letter-spacing: .08em; }
+button, select { text-transform: uppercase; }
+button:hover:where(:not(:disabled):not([aria-disabled="true"])), select:hover:where(:not(:disabled):not([aria-disabled="true"])), .tag-open:hover, .view-options summary:hover { border-color: var(--cyan); background: var(--hover-bg); color: var(--hover-fg); }
+/* The chosen key is the lock's tag: gold, with a hex lamp before its label so
+   the state does not rest on hue alone. */
+button.active, .segmented button:is(.active, [aria-pressed="true"], [aria-selected="true"]), .segmented button:is(.active, [aria-pressed="true"], [aria-selected="true"]):hover:where(:not(:disabled):not([aria-disabled="true"])) { border-color: var(--chosen-bg); background: var(--chosen-bg); color: var(--chosen-fg); box-shadow: none; }
+button.active:not(.icon-button, .query-suggestion)::before, .segmented button:is([aria-pressed="true"], [aria-selected="true"]):not(.active)::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; background: var(--chosen-fg); clip-path: polygon(25% 4%, 75% 4%, 100% 50%, 75% 96%, 25% 96%, 0 50%); vertical-align: middle; }
+.dashboard-tabs button[aria-selected="true"] { background: var(--chosen-bg); color: var(--chosen-fg); box-shadow: none; }
+.dashboard-tabs button[aria-selected="true"] .tab-search-mark { color: var(--chosen-fg); }
+/* A button drawn as text keeps its own ground when lit and turns gold, so the
+   key's dark ink never lands on the page. */
+button:is(.note-link, .note-crumb, .note-backlink-title, .note-backlink-line, .note-query-title, .note-embed-title, .tag-note-tag):is(:hover, :focus-visible):where(:not(:disabled):not([aria-disabled="true"])), button.field-link.field-link:hover:where(:not(:disabled):not([aria-disabled="true"])), button.field-link.field-link:focus-visible:where(:not(:disabled):not([aria-disabled="true"])) { border-color: transparent; background: transparent; color: var(--amber-bright); }
+input[type='checkbox'] { accent-color: var(--cyan); }
+input[type="text"], input[type="search"] { border-radius: var(--control-radius); background: var(--panel); }
+input[type="text"]:focus, input[type="search"]:focus { border-color: var(--cyan); background: var(--panel); }
+/* Rows are entries in a contact table: hairlines on the ground, no fill. */
+.metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 0; background: rgba(7, 11, 18, .6); box-shadow: none; clip-path: none; }
+/* The lock: the row under the pointer takes a blue wash and gold brackets at
+   its four corners, drawn where its edge was. */
+.card:hover, .note:hover, .task:hover, .tag-row:hover, .task-row:hover, .note-row:hover, .entity-row:hover, .saved-filter-row:hover {
+  --lock: linear-gradient(var(--amber), var(--amber));
+  border-color: transparent;
+  background:
+    var(--lock) 0 0 / 10px 2px, var(--lock) 0 0 / 2px 10px,
+    var(--lock) 100% 0 / 10px 2px, var(--lock) 100% 0 / 2px 10px,
+    var(--lock) 0 100% / 10px 2px, var(--lock) 0 100% / 2px 10px,
+    var(--lock) 100% 100% / 10px 2px, var(--lock) 100% 100% / 2px 10px,
+    #101c29;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+  box-shadow: none;
+}
+.entity-row, .tag-row, .card, .note, .task, .task-row, .note-row, .saved-filter-row, .stat-row { transition: background-color 120ms ease; } .entity-row:hover, .tag-row:hover, .card:hover, .note:hover, .task:hover, .task-row:hover, .note-row:hover, .saved-filter-row:hover, .stat-row:hover { transform: none; } .card .tag-open:not(:hover):not(:focus-visible), .note-row .tag-open:not(:hover):not(:focus-visible) { color: var(--text); }
+/* The counts as a fire-control readout: no tile, a rule above, the code in
+   gold, the label small and the number white. */
+.metric { border-width: 1px 0 0; border-top-color: var(--line-strong); background: transparent; }
+.metric::before { border-bottom-color: transparent; color: var(--amber); }
+.metric-value { color: #fff; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.metric-open:hover, .metric-open:focus-visible { border-color: var(--cyan); background: #101c29; }
+.tag-name, .task-title a { color: var(--cyan); }
+.tag-namespace { color: var(--muted); }
+.empty { border-color: var(--slate-border); background: transparent; }
+.favorite-toggle { border-color: var(--slate-border); background: transparent; color: var(--amber); }
+.favorite-toggle.favorite { border-color: var(--amber); background: transparent; color: var(--amber-bright); }
+.favorite-toggle:hover, .favorite-toggle:focus-visible { border-color: var(--amber); background: rgba(212, 146, 44, .14); color: var(--amber-bright); }
+/* Body blocks and hub notes are marked with a thin blue rule; gold stays with
+   the lock. */
+.markdown, .note-row .markdown { border-left: 2px solid var(--line-strong); background: rgba(2, 4, 9, .8); }
+.hub { border-left: 2px solid var(--line-strong); background: transparent; }
+.hub-toggle { border-left-color: var(--line-strong); }
+/* A day outside the month, hovered, sits on the blue hover ground, where the
+   muted blue reads too faintly; it takes the ground's own dark. */
+.day.outside:hover:where(:not(:disabled):not([aria-disabled="true"])) { color: var(--panel-raised); }
