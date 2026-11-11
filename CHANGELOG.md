@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.15.0 - 2026-11-11
+
+### Highlights
+
+- **Razorback**, a tenth theme after The Expanse's nav displays: thin blue rules on blue-black, with gold kept for the lock.
+
 ### Added
 
 - **Razorback**, a tenth theme, after the nav displays in The Expanse: thin
