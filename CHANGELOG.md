@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- **Razorback**, a tenth theme, after the nav displays in The Expanse: thin
+  console-blue rules on a blue-black ground under faint range rings, rounded
+  blue keys, the Home counts as a readout, and gold kept for the lock, the
+  tab or filter in force and the row under the pointer, which takes gold
+  brackets at its corners. Red stays for overdue, and a task due today
+  takes a paler amber.
+
 ## 2.14.0 - 2026-11-03
 
 ### Highlights

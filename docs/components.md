@@ -833,7 +833,7 @@ two checks depend on:
 - `verifyWebviews.js` matches a layout contract by its **exact** selector
   string, so `body.zen .metric` is not `.metric` and cannot flip one.
 - `checkContrast.js` reads every declared rule whether or not the page renders
-  a match, so the zen rules get contrast cover across all nine themes with no
+  a match, so the zen rules get contrast cover across all ten themes with no
   second render pass.
 
 Scoping also keeps the `:root` count at two. Zen's token overrides go on

@@ -75,11 +75,11 @@ function setup(options: { visible?: boolean } = {}) {
 }
 
 suite('Choose Theme', () => {
-  test('lists the nine themes, described as the setting describes them, the one in use first to hand', async () => {
+  test('lists the ten themes, described as the setting describes them, the one in use first to hand', async () => {
     const { pick, deps } = setup();
     const done = chooseTheme(manifest, deps);
     await wait(0);
-    assert.strictEqual(pick.items.length, 9);
+    assert.strictEqual(pick.items.length, 10);
     const descriptions = manifest.configuration
       ?.map((group) => group.properties?.['deckard.theme']?.enumDescriptions)
       .find(Boolean);
