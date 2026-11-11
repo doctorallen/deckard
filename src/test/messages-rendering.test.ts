@@ -306,6 +306,7 @@ suite('Webview contracts', () => {
       'tomcat',
       'fellowship',
       'cooper',
+      'razorback',
     ]);
     assert.strictEqual(
       themeSheet('replicant').includes(
@@ -347,6 +348,10 @@ suite('Webview contracts', () => {
       ),
       true,
     );
+    assert.strictEqual(themeSheet('razorback').includes('#9ad0ea'), true);
+    // Gold is the lock: the chosen pair, and the brackets a row takes under the pointer.
+    assert.match(themeSheet('razorback'), /--chosen-bg: #d4922c;/);
+    assert.match(themeSheet('razorback'), /--lock: linear-gradient\(var\(--amber\), var\(--amber\)\);/);
     assert.strictEqual(themeSheet('lcars').includes('#211b25'), true);
     assert.strictEqual(
       themeSheet('lcars').includes('border-radius: 0 15px 15px 0'),

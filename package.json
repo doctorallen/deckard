@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "2.14.0",
+  "version": "2.15.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -2285,7 +2285,8 @@
               "synthwave",
               "tomcat",
               "fellowship",
-              "cooper"
+              "cooper",
+              "razorback"
             ],
             "enumDescriptions": [
               "A plain interface that takes its colors and fonts from your VS Code theme, light or dark.",
@@ -2296,7 +2297,8 @@
               "A neon grid interface inspired by 1980s synthwave and outrun aesthetics.",
               "A flight-display interface inspired by F-14 Tomcat HUD instrumentation.",
               "A woodland travel-journal interface inspired by The Lord of the Rings.",
-              "A spare mission-control interface inspired by the Endurance and TARS in Interstellar."
+              "A spare mission-control interface inspired by the Endurance and TARS in Interstellar.",
+              "A tactical-plot interface inspired by the nav displays in The Expanse."
             ],
             "default": "mimic",
             "description": "Visual theme used by Deckard webviews.",

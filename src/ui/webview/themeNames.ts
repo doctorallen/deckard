@@ -3,7 +3,7 @@
  * only needs to name a theme, such as the preview, does not load VS Code.
  */
 
-/** Deckard's nine themes, in the order the setting and the picker list them. */
+/** Deckard's ten themes, in the order the setting and the picker list them. */
 export const deckardThemes = [
   'mimic',
   'corpo',
@@ -14,6 +14,7 @@ export const deckardThemes = [
   'tomcat',
   'fellowship',
   'cooper',
+  'razorback',
 ] as const;
 
 /** One of Deckard's themes, as `deckard.theme` names it. */
@@ -30,4 +31,5 @@ export const deckardThemeNames: Readonly<Record<DeckardTheme, string>> = {
   tomcat: 'Tomcat',
   fellowship: 'Fellowship',
   cooper: 'Cooper',
+  razorback: 'Razorback',
 };

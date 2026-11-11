@@ -40,6 +40,7 @@ export const deckardThemeCss: Readonly<Record<DeckardTheme, string>> = {
   tomcat: 'themes/tomcat.css',
   fellowship: 'themes/fellowship.css',
   cooper: 'themes/cooper.css',
+  razorback: 'themes/razorback.css',
 };
 
 /**
