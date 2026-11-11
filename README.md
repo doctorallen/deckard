@@ -64,8 +64,8 @@ Pick one with `Deckard: Choose Theme…` or **Theme** in any page's gear; moving
 | **Mimic, in Solarized Dark** | **Mimic, in Solarized Light** | **Cooper** |
 | --- | --- | --- |
 | <img src="docs/images/dashboard-mimic.png" alt="Mimic theme Home in VS Code's Solarized Dark theme." width="260"> | <img src="docs/images/dashboard-mimic-light.png" alt="Mimic theme Home in VS Code's Solarized Light theme." width="260"> | <img src="docs/images/dashboard-cooper.png" alt="Cooper theme Home." width="260"> |
-| **Corpo, with a dark VS Code theme** | **Corpo, with a light VS Code theme** | |
-| <img src="docs/images/dashboard-corpo.png" alt="Corpo theme Home in VS Code's Dark 2026 colors." width="260"> | <img src="docs/images/dashboard-corpo-light.png" alt="Corpo theme Home in VS Code's Light 2026 colors." width="260"> | |
+| **Corpo, with a dark VS Code theme** | **Corpo, with a light VS Code theme** | **Razorback** |
+| <img src="docs/images/dashboard-corpo.png" alt="Corpo theme Home in VS Code's Dark 2026 colors." width="260"> | <img src="docs/images/dashboard-corpo-light.png" alt="Corpo theme Home in VS Code's Light 2026 colors." width="260"> | <img src="docs/images/dashboard-razorback.png" alt="Razorback theme Home." width="260"> |
 | **Replicant** | **Oblivion** | **LCARS** |
 | <img src="docs/images/dashboard-replicant.png" alt="Replicant theme Home." width="260"> | <img src="docs/images/dashboard-oblivion.png" alt="Oblivion theme Home." width="260"> | <img src="docs/images/dashboard-lcars.png" alt="LCARS theme Home." width="260"> |
 | **Tomcat** | **Fellowship** | **Synthwave** |

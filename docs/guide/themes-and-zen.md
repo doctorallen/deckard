@@ -21,8 +21,8 @@ In every theme, red means overdue or high priority, and nothing else.
 | <img src="../images/dashboard-replicant.png" alt="Replicant theme Home." width="220"> | <img src="../images/dashboard-oblivion.png" alt="Oblivion theme Home." width="220"> | <img src="../images/dashboard-lcars.png" alt="LCARS theme Home." width="220"> |
 | **Tomcat** | **Fellowship** | **Synthwave** |
 | <img src="../images/dashboard-tomcat.png" alt="Tomcat theme Home." width="220"> | <img src="../images/dashboard-fellowship.png" alt="Fellowship theme Home." width="220"> | <img src="../images/dashboard-synthwave.png" alt="Synthwave theme Home." width="220"> |
-| **Cooper** | | |
-| <img src="../images/dashboard-cooper.png" alt="Cooper theme Home." width="220"> | | |
+| **Cooper** | **Razorback** | |
+| <img src="../images/dashboard-cooper.png" alt="Cooper theme Home." width="220"> | <img src="../images/dashboard-razorback.png" alt="Razorback theme Home." width="220"> | |
 
 ## Display
 
