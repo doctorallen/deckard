@@ -255,6 +255,8 @@ header { position: relative; }
 .type-rows { overflow-x: auto; }
 .type-table.result-table td { overflow-wrap: break-word; }
 .type-figure { white-space: nowrap; }
+/* On a card too, where the board's details otherwise wrap anywhere. */
+.board-details .type-figure { white-space: nowrap; }
 .type-no-hub { display: block; color: var(--muted); font-size: var(--text-xs); }
 .type-create-hub.type-create-hub { min-height: 0; margin-left: var(--space-2); padding: 0 6px; font-size: var(--text-xs); }
 .type-more { color: var(--muted); }
