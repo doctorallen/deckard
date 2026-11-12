@@ -240,11 +240,76 @@ export interface SearchPageTypeRows {
   sort?: { column: string; direction: 'asc' | 'desc' };
   /** The rows, in order, when they are not grouped. */
   rows: TypeTableRow[];
-  /** The fields ⋯'s Group by offers: each select, person, and relation field, by key and name. */
+  /**
+   * The fields ⋯'s Group by offers, and the board's Group and Lanes: each
+   * select, person, and relation field, by key and name, then each reverse,
+   * by its query name and its name.
+   */
   groupFields: Array<{ id: string; label: string }>;
   /** The field the rows are grouped by, and the groups: a row in two groups is in both, and the rows with none last. */
   groupBy?: string;
   groups?: TypeTableGroup[];
+  /** Whether the rows are drawn as the table or as a board (docs/implementation/46-boards-and-lanes.md). */
+  view: 'table' | 'board';
+  /** The board, on Board, when the type has a field to group by; its cards are the rows above, in their order. */
+  board?: TypeBoard;
+}
+
+/**
+ * A type's rows as a board: columns by one field's values, and, with
+ * lanes, rows of cells by a second's. A row with two values of a field is
+ * a card in each of their cells.
+ */
+export interface TypeBoard {
+  /** What the columns are by, and the lanes, when there are lanes. */
+  group: TypeBoardAxis;
+  lanes?: TypeBoardAxis;
+  /** One card per cell a row is in, in the rows' order. */
+  cards: TypeBoardCard[];
+}
+
+/** One axis of a type's board: a field, and its values in order. */
+export interface TypeBoardAxis {
+  /** The field, by its id in `groupFields`, and its name, `state`. */
+  field: string;
+  name: string;
+  /**
+   * Whether a card dropped in another of its values writes the field: a
+   * schema field. A reverse is set by other notes, and takes no drop.
+   */
+  writable: boolean;
+  /** Each value: a select's options, a relation's rows, the people or values in use, then `No state`. */
+  values: TypeBoardValue[];
+}
+
+/** One column or lane of a type's board. */
+export interface TypeBoardValue {
+  /** What names it in a move: `option:proposed`, `row:#team/rates`, `text:<value>`, or `none`. */
+  id: string;
+  /** Its title, `Proposed`, `Rates`, or `No state`. */
+  label: string;
+  /** How many rows hold it, over the other axis's values. */
+  count: number;
+  /** The value as Deckard writes it in the field, `#team/rates`; none for `No …`. */
+  written?: string;
+}
+
+/** One card of a type's board: a row, in one cell. */
+export interface TypeBoardCard {
+  /** The row, one of the table's `rows`. */
+  rowId: string;
+  /** The ids of the column and the lane it is in. */
+  column: string;
+  lane?: string;
+  /** Up to three of the table's columns, as `label value`, leaving out the title and the axes' fields. */
+  details: TypeBoardDetail[];
+}
+
+/** A detail on a type's board card: a column's heading and its cell. */
+export interface TypeBoardDetail {
+  column: string;
+  label: string;
+  cell: TypeTableCell;
 }
 
 /** One column of a type's rows tab. */
@@ -697,13 +762,51 @@ export interface SetTypeGroupMessage {
   field?: string;
 }
 
+/** Draws a type's rows tab as the table or as a board. */
+export interface SetTypeViewMessage {
+  type: 'setTypeView';
+  typeKey: string;
+  view: 'table' | 'board';
+}
+
+/** Chooses the field a type's board's columns are by, or its lanes; no field for lanes is None. */
+export interface SetTypeBoardAxisMessage {
+  type: 'setTypeBoardAxis';
+  typeKey: string;
+  axis: 'group' | 'lanes';
+  field?: string;
+}
+
 /**
- * Something a type's page asks for of its type: Add <type>…, Open its
- * note, Edit type…, or Create type from the tag's namespace. The host asks
- * what it needs, such as the new row's title.
+ * A card of a type's board moved, dragged or from its ⋯: the row, the cell
+ * it leaves, and the cell it enters, each by its column's and lane's value
+ * ids. The host writes the fields the cell's values stand for.
+ */
+export interface MoveTypeRowMessage {
+  type: 'moveTypeRow';
+  typeKey: string;
+  rowId: string;
+  from: { column: string; lane?: string };
+  to: { column: string; lane?: string };
+}
+
+/**
+ * Add <type>…, from ⋯, or a board's + on a column or a lane: the form for
+ * a new row, with the column's and the lane's values filled in.
+ */
+export interface AddTypeRowMessage {
+  type: 'addTypeRow';
+  typeKey: string;
+  column?: string;
+  lane?: string;
+}
+
+/**
+ * Something a type's page asks for of its type: Open its note, Edit
+ * type…, or Create type from the tag's namespace.
  */
 export interface TypeActionMessage {
-  type: 'addTypeRow' | 'openTypeNote' | 'editType';
+  type: 'openTypeNote' | 'editType';
   typeKey: string;
 }
 
@@ -785,7 +888,10 @@ export interface SearchPagePageToHost {
   setTypeSort: SetTypeSortMessage;
   setTypeColumns: SetTypeColumnsMessage;
   setTypeGroup: SetTypeGroupMessage;
-  addTypeRow: MessageAs<TypeActionMessage, 'addTypeRow'>;
+  setTypeView: SetTypeViewMessage;
+  setTypeBoardAxis: SetTypeBoardAxisMessage;
+  moveTypeRow: MoveTypeRowMessage;
+  addTypeRow: AddTypeRowMessage;
   openTypeNote: MessageAs<TypeActionMessage, 'openTypeNote'>;
   editType: MessageAs<TypeActionMessage, 'editType'>;
   createTypeFromTag: CreateTypeFromTagMessage;

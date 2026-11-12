@@ -20,7 +20,9 @@ import { presentExport } from '../../../commands/exportResults';
 import { copyFieldValue } from '../../../commands/typeNotes';
 import { EDIT_TYPE_COMMAND } from '../../../commands/typeBuilder';
 import { createHubNoteForTag, openEditFieldsForm, openTypeNoteForm } from '../../../commands/typeNoteForm';
+import { moveTypeBoardRow } from '../../../commands/typeBoardMoves';
 import { renameTypeField, renameTypeOption } from '../../../commands/typeRenames';
+import { startValuesFor } from '../../../state/typeBoard';
 import { getTypeIndex, type TypeRow } from '../../../../domain/types/typeIndex';
 import { NoteOpening, openNoteAt } from '../../../commands/noteOpening';
 import { setPinned } from '../../../commands/pinNote';
@@ -891,7 +893,8 @@ export class SearchPageController implements PageController<SearchPageState, Sea
 
   /**
    * What a type's page asks of its host: its rows tab's sort, columns, and
-   * grouping; Add <type>…, its note, Edit type…, and Create type; the
+   * grouping; Table or Board, the board's Group and Lanes, and a card
+   * moved; Add <type>…, its note, Edit type…, and Create type; the
    * renames and Change field… a column's menu offers; and a row's hub note
    * and Copy.
    */
@@ -900,6 +903,9 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     | 'setTypeSort'
     | 'setTypeColumns'
     | 'setTypeGroup'
+    | 'setTypeView'
+    | 'setTypeBoardAxis'
+    | 'moveTypeRow'
     | 'addTypeRow'
     | 'openTypeNote'
     | 'editType'
@@ -919,7 +925,18 @@ export class SearchPageController implements PageController<SearchPageState, Sea
         }),
       setTypeColumns: (message) => preferences.display.setTypeTable(message.typeKey, { columns: message.columns }),
       setTypeGroup: (message) => preferences.display.setTypeTable(message.typeKey, { groupBy: message.field }),
-      addTypeRow: (message) => this.addTypeRow(message.typeKey),
+      setTypeView: (message) => preferences.display.setTypeTable(message.typeKey, { view: message.view === 'board' ? 'board' : undefined }),
+      setTypeBoardAxis: (message) =>
+        preferences.display.setTypeTable(message.typeKey, message.axis === 'group' ? { boardGroup: message.field } : { boardLanes: message.field }),
+      // A card moved on the board: written, or refused and said, and the
+      // page drawn again, which puts the card back where it was.
+      moveTypeRow: async (message, page) => {
+        const board = this.currentSnapshot().typeRows?.board;
+        if (!(await moveTypeBoardRow({ indexer, history: writes.history }, board, message))) {
+          page.refresh();
+        }
+      },
+      addTypeRow: (message) => this.addTypeRow(message.typeKey, message),
       openTypeNote: (message) => this.openTypeNote(message.typeKey),
       editType: async (message) => {
         await vscode.commands.executeCommand(EDIT_TYPE_COMMAND, message.typeKey);
@@ -979,13 +996,19 @@ export class SearchPageController implements PageController<SearchPageState, Sea
 
   /**
    * Add <type>…: the new note's form, its folder, title, tag, and fields,
-   * written into the type's folder when Create the note is chosen.
+   * written into the type's folder when Create the note is chosen. From a
+   * board's + , the column's and the lane's values are filled in.
    */
-  private async addTypeRow(typeKey: string): Promise<void> {
+  private async addTypeRow(typeKey: string, cell: { column?: string; lane?: string } = {}): Promise<void> {
     if (!getTypeIndex(this.search.indexer.getSnapshot()).registry.get(typeKey)) {
       return;
     }
-    await openTypeNoteForm({ indexer: this.search.indexer, history: this.search.writes.history }, { typeKey });
+    const table = this.currentSnapshot().typeRows;
+    const values = table?.key === typeKey && table.board ? startValuesFor(table.board, cell) : {};
+    await openTypeNoteForm(
+      { indexer: this.search.indexer, history: this.search.writes.history },
+      { typeKey, ...(Object.keys(values).length ? { start: { values } } : {}) },
+    );
   }
 
   /** Opens a type's note, at a field's row of its table when one is named, else at the top. */

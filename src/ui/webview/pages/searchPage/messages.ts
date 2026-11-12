@@ -26,11 +26,15 @@ import type {
   SetTagOverviewSortMessage,
   SinceChipKind,
   StoryFilter,
+  AddTypeRowMessage,
   CreateTypeFromTagMessage,
+  MoveTypeRowMessage,
   RenameTypeOptionMessage,
+  SetTypeBoardAxisMessage,
   SetTypeColumnsMessage,
   SetTypeGroupMessage,
   SetTypeSortMessage,
+  SetTypeViewMessage,
   TypeActionMessage,
   TypeFieldMessage,
   TypeRowMessage,
@@ -232,7 +236,73 @@ const narrowSetTypeGroup: Narrower<SetTypeGroupMessage> = (value) =>
     ? { type: 'setTypeGroup', typeKey: value.typeKey, ...(value.field === undefined ? {} : { field: value.field }) }
     : undefined;
 
-/** Add <type>… or Open its note, for one type. */
+/** A type's rows tab drawn as the table or as a board, and nothing else. */
+const narrowSetTypeView: Narrower<SetTypeViewMessage> = (value) =>
+  isTypeName(value.typeKey) && (value.view === 'table' || value.view === 'board') && Object.keys(value).length === 3
+    ? { type: 'setTypeView', typeKey: value.typeKey, view: value.view }
+    : undefined;
+
+/** A type's board's columns or lanes by a field, or its lanes by none. */
+const narrowSetTypeBoardAxis: Narrower<SetTypeBoardAxisMessage> = (value) =>
+  isTypeName(value.typeKey) && (value.axis === 'group' || value.axis === 'lanes') && (value.field === undefined || isTypeName(value.field))
+    ? { type: 'setTypeBoardAxis', typeKey: value.typeKey, axis: value.axis, ...(value.field === undefined ? {} : { field: value.field }) }
+    : undefined;
+
+/**
+ * The longest id of a board's column or lane: `row:` and a row's id, which
+ * for a note row is `file:` and its path.
+ */
+const MAX_BOARD_VALUE_LENGTH = MAX_FILE_PATH_LENGTH + 10;
+
+/** A column's or lane's value id: a string of a sensible length, not empty. */
+function isBoardValue(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_BOARD_VALUE_LENGTH;
+}
+
+/** A board's cell: a column's value id, and a lane's when the board has lanes, and nothing else. */
+function readBoardCell(value: unknown): { column: string; lane?: string } | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  const { column, lane, ...rest } = value as { column?: unknown; lane?: unknown };
+  if (!isBoardValue(column) || (lane !== undefined && !isBoardValue(lane)) || Object.keys(rest).length > 0) {
+    return undefined;
+  }
+  return { column, ...(lane === undefined ? {} : { lane }) };
+}
+
+/** A card of a type's board moved: the type, its row, and the cells it leaves and enters. */
+const narrowMoveTypeRow: Narrower<MoveTypeRowMessage> = (value) => {
+  const from = readBoardCell(value.from);
+  const to = readBoardCell(value.to);
+  if (!isTypeName(value.typeKey) || !isRowId(value.rowId) || !from || !to) {
+    return undefined;
+  }
+  return { type: 'moveTypeRow', typeKey: value.typeKey, rowId: value.rowId, from, to };
+};
+
+/** The keys Add <type>… may carry: the type, and a board's column and lane. */
+const ADD_TYPE_ROW_KEYS: ReadonlySet<string> = new Set(['type', 'typeKey', 'column', 'lane']);
+
+/** Add <type>…, with a board's column's and lane's values when it came from a +, and nothing else. */
+const narrowAddTypeRow: Narrower<AddTypeRowMessage> = (value) => {
+  if (
+    !isTypeName(value.typeKey) ||
+    (value.column !== undefined && !isBoardValue(value.column)) ||
+    (value.lane !== undefined && !isBoardValue(value.lane)) ||
+    Object.keys(value).some((key) => !ADD_TYPE_ROW_KEYS.has(key))
+  ) {
+    return undefined;
+  }
+  return {
+    type: 'addTypeRow',
+    typeKey: value.typeKey,
+    ...(value.column === undefined ? {} : { column: value.column }),
+    ...(value.lane === undefined ? {} : { lane: value.lane }),
+  };
+};
+
+/** Open its note or Edit type…, for one type. */
 function narrowTypeAction<T extends TypeActionMessage['type']>(type: T): Narrower<TypeActionMessage & { type: T }> {
   return (value) => (isTypeName(value.typeKey) && Object.keys(value).length === 2 ? { type, typeKey: value.typeKey } : undefined);
 }
@@ -252,12 +322,14 @@ const narrowRenameTypeOption: Narrower<RenameTypeOptionMessage> = (value) =>
     ? { type: 'renameTypeOption', typeKey: value.typeKey, field: value.field, option: value.option }
     : undefined;
 
+/** A row's id: a tag's key, or `file:` and a note's path. */
+function isRowId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_FILE_PATH_LENGTH + 5;
+}
+
 /** Create hub note or Copy, for one row of one type. */
 function narrowTypeRow<T extends TypeRowMessage['type']>(type: T): Narrower<TypeRowMessage & { type: T }> {
-  return (value) =>
-    isTypeName(value.typeKey) && typeof value.rowId === 'string' && value.rowId.length > 0 && value.rowId.length <= MAX_FILE_PATH_LENGTH + 5
-      ? { type, typeKey: value.typeKey, rowId: value.rowId }
-      : undefined;
+  return (value) => (isTypeName(value.typeKey) && isRowId(value.rowId) ? { type, typeKey: value.typeKey, rowId: value.rowId } : undefined);
 }
 
 /** The kinds of change a Since you last looked chip filters by. */
@@ -331,7 +403,10 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   setTypeSort: narrowSetTypeSort,
   setTypeColumns: narrowSetTypeColumns,
   setTypeGroup: narrowSetTypeGroup,
-  addTypeRow: narrowTypeAction('addTypeRow'),
+  setTypeView: narrowSetTypeView,
+  setTypeBoardAxis: narrowSetTypeBoardAxis,
+  moveTypeRow: narrowMoveTypeRow,
+  addTypeRow: narrowAddTypeRow,
   openTypeNote: narrowTypeAction('openTypeNote'),
   editType: narrowTypeAction('editType'),
   createTypeFromTag: narrowCreateTypeFromTag,

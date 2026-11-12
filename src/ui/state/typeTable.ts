@@ -14,6 +14,8 @@
  *   "4 · 1 overdue".
  * - A namespace row with no hub note says so, with how many entries carry
  *   its tag, so the gap reads as one.
+ *
+ * On Board, the rows are a board's cards instead (`typeBoard.ts`).
  */
 import { noteTitle } from '../../domain/index/backlinks';
 import { describeDistance } from '../../domain/markdown/dates';
@@ -31,6 +33,7 @@ import type {
   TypeTableRow,
   TypeTableValue,
 } from '../protocol/searchPage';
+import { createTypeBoard, listGroupFields, readRowAxisValues, type GroupField } from './typeBoard';
 import { rowTag } from './typeHover';
 import { valueTitle } from './typeRows';
 
@@ -88,10 +91,12 @@ export function createTypeTable(
   const built = rows.map((row) => buildRow(types, row, columns, options));
   const sort = readSort(options.view?.sort, columns);
   const ordered = sortRows(built, columns, sort);
-  const groupFields = type.fields
-    .filter((field) => field.kind.name === 'select' || field.kind.name === 'person' || field.kind.name === 'relation')
-    .map((field) => ({ id: field.key, label: field.name }));
-  const groupBy = groupFields.some((field) => field.id === options.view?.groupBy) ? options.view?.groupBy : undefined;
+  const fields = listGroupFields(types, type, rows);
+  const groupFields = fields.map((field) => ({ id: field.id, label: field.label }));
+  // On Board the rows are cards, and the table's grouping waits for the table.
+  const board = options.view?.view === 'board';
+  const group = board ? undefined : fields.find((field) => field.id === options.view?.groupBy);
+  const sources = new Map(rows.map((row) => [row.id, row]));
   return {
     key: type.key,
     name: type.name,
@@ -103,9 +108,26 @@ export function createTypeTable(
     columns,
     available,
     ...(sort ? { sort } : {}),
-    rows: groupBy ? [] : ordered.map((each) => each.row),
+    rows: group ? [] : ordered.map((each) => each.row),
     groupFields,
-    ...(groupBy ? { groupBy, groups: groupRows(types, type, groupBy, ordered) } : {}),
+    ...(group ? { groupBy: group.id, groups: groupRows(types, group, ordered) } : {}),
+    view: board ? 'board' : 'table',
+    ...(board
+      ? {
+          board: createTypeBoard(
+            types,
+            fields,
+            {
+              rows: ordered.flatMap((each) => {
+                const source = sources.get(each.row.id);
+                return source ? [{ source, drawn: each.row }] : [];
+              }),
+              columns,
+            },
+            options.view,
+          ),
+        }
+      : {}),
   };
 }
 
@@ -344,35 +366,26 @@ function sortRows(rows: readonly BuiltRow[], columns: readonly TypeTableColumn[]
 /**
  * The rows grouped by one field's values: each value a group, a row with
  * two values in both, in the select's order or by title; the rows with
- * none last, as "No team".
+ * none last, as "No team". A reverse groups as a relation does.
  */
-function groupRows(types: TypeIndex, type: TypeDefinition, key: string, rows: readonly BuiltRow[]): TypeTableGroup[] {
-  const field = type.fields.find((candidate) => candidate.key === key);
-  if (!field) {
-    return [];
-  }
+function groupRows(types: TypeIndex, field: GroupField, rows: readonly BuiltRow[]): TypeTableGroup[] {
   const groups = new Map<string, { label: string; rows: TypeTableRow[] }>();
   const none: TypeTableRow[] = [];
   rows.forEach(({ row }) => {
-    const values = types.field(row.id, `field.${field.name}`)?.values ?? [];
-    const keys = new Map<string, string>();
-    values.forEach((value) => {
-      const label = value.option ?? valueTitle(types, value);
-      keys.set(value.option?.toLowerCase() ?? value.rowId ?? value.text.toLowerCase(), label);
-    });
-    if (keys.size === 0) {
+    const values = readRowAxisValues(types, row.id, field);
+    if (values.length === 0) {
       none.push(row);
     }
-    keys.forEach((label, groupKey) => {
-      const group = groups.get(groupKey);
+    values.forEach(({ id, label }) => {
+      const group = groups.get(id);
       if (group) {
         group.rows.push(row);
       } else {
-        groups.set(groupKey, { label, rows: [row] });
+        groups.set(id, { label, rows: [row] });
       }
     });
   });
-  const options = (field.kind.options ?? []).map((option) => option.toLowerCase());
+  const options = (field.kind.options ?? []).map((option) => `option:${option.toLowerCase()}`);
   const order = (groupKey: string): number => {
     const at = options.indexOf(groupKey);
     return at < 0 ? options.length : at;
@@ -380,7 +393,7 @@ function groupRows(types: TypeIndex, type: TypeDefinition, key: string, rows: re
   const ordered = [...groups.entries()]
     .sort(([left, a], [right, b]) => order(left) - order(right) || a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
     .map(([, group]) => group);
-  return none.length ? [...ordered, { label: `No ${field.name}`, rows: none }] : ordered;
+  return none.length ? [...ordered, { label: `No ${field.label}`, rows: none }] : ordered;
 }
 
 /** A day in words and in full, `today · 2026-10-08`, or the full date alone beyond a month. */
