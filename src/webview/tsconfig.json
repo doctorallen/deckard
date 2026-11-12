@@ -33,7 +33,8 @@
         "../domain/markdown/tagKeys.ts",
         "../domain/tasks/taskColumns.ts",
         "../domain/tasks/progressCount.ts",
-        "../domain/tasks/statusChecks.ts"
+        "../domain/tasks/statusChecks.ts",
+        "../domain/tasks/boardLanes.ts"
     ],
     "include": [
         "**/*.ts",

@@ -6,6 +6,7 @@ import type {
   TaskLayout,
   TaskSortMode,
 } from '../../domain/model/preferences';
+import { isLaneAxisFor } from '../../domain/tasks/boardLanes';
 import type { PreferencesRepository } from './preferencesRepository';
 import { normalizeStatusNames, normalizeTableColumns, normalizeTableSort } from './preferencesSchema';
 
@@ -61,16 +62,38 @@ export class TaskLayoutService {
   /**
    * Chooses what the board's columns group by. A tag grouping takes the
    * namespace whose tags are the columns, kept lowercased; without one, the
-   * namespace chosen before is kept.
+   * namespace chosen before is kept. Columns by the lanes' own axis take
+   * the lanes away, since the two would draw the same values twice.
    */
   public async setTaskBoardGroup(
     taskBoardGroup: TaskBoardGroupBy,
     namespace?: string,
   ): Promise<void> {
-    await this.repository.update(
-      taskBoardGroup === 'tag' && namespace
+    const current = this.repository.current;
+    const group = { by: taskBoardGroup, namespace: taskBoardGroup === 'tag' ? namespace ?? current.taskBoardGroupNamespace : undefined };
+    const lanes = current.taskBoardLanes;
+    const clearLanes = lanes !== undefined && !isLaneAxisFor(group, { by: lanes, namespace: current.taskBoardLanesNamespace });
+    await this.repository.update({
+      ...(taskBoardGroup === 'tag' && namespace
         ? { taskBoardGroup, taskBoardGroupNamespace: namespace.toLowerCase() }
-        : { taskBoardGroup },
+        : { taskBoardGroup }),
+      ...(clearLanes ? { taskBoardLanes: undefined } : {}),
+    });
+  }
+
+  /**
+   * Chooses what the board's lanes are by, or none. Lanes by tag take the
+   * namespace whose tags are the lanes, kept lowercased; without one, the
+   * namespace chosen before is kept.
+   */
+  public async setTaskBoardLanes(
+    taskBoardLanes: TaskBoardGroupBy | undefined,
+    namespace?: string,
+  ): Promise<void> {
+    await this.repository.update(
+      taskBoardLanes === 'tag' && namespace
+        ? { taskBoardLanes, taskBoardLanesNamespace: namespace.toLowerCase() }
+        : { taskBoardLanes },
     );
   }
 

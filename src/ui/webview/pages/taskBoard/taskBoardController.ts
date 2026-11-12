@@ -22,7 +22,7 @@ import { offerSavedSearchOnHome } from '../../../commands/savedSearchHome';
 import { settingTarget, writeSetting } from '../../../commands/settings';
 import { clickTask, openTask, quoteTaskTitle, TaskWrites } from '../../../commands/taskActions';
 import { listPeopleRecency } from '../../../state/peopleRecency';
-import { moveTaskToColumn, readTaskBoardOptions } from '../../../commands/taskBoardActions';
+import { moveTaskToCell, moveTaskToColumn, readTaskBoardOptions } from '../../../commands/taskBoardActions';
 import { breakIntoStepsCommand } from '../../../commands/taskSteps';
 import { snoozeWithPicker } from '../../../commands/snooze';
 import { countStatusTagsLeft, describeStatusTagsLeft } from '../../../commands/statusMove';
@@ -379,6 +379,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     Handlers,
     | 'exportResults'
     | 'setBoardGroup'
+    | 'setBoardLanes'
     | 'showColumnRest'
     | 'setTaskLayout'
     | 'setTaskSort'
@@ -404,6 +405,11 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         // back to its short form.
         this.shownColumns = new Set();
         return taskLayout.setTaskBoardGroup(message.groupBy, message.namespace);
+      },
+      setBoardLanes: (message) => {
+        // Other lanes are another board; its cells go back to their short form.
+        this.shownColumns = new Set();
+        return taskLayout.setTaskBoardLanes(message.lanes === 'none' ? undefined : message.lanes, message.namespace);
       },
       showColumnRest: (message, page) => {
         this.shownColumns.add(message.columnId);
@@ -545,7 +551,11 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     const index = this.board.indexer.getSnapshot();
     const task = index.tasks.get(message.taskId);
     this.writeIndexAt = index.updatedAt;
-    if (task && (await moveTaskToColumn(this.board.writes, task, message.column, { index, from: message.from }))) {
+    // A card that changed lanes writes its column's edit and its lane's as one.
+    const moved = message.lane === undefined
+      ? task && moveTaskToColumn(this.board.writes, task, message.column, { index, from: message.from })
+      : task && moveTaskToCell(this.board.writes, task, message, index);
+    if (await moved) {
       return;
     }
     this.writeIndexAt = undefined;

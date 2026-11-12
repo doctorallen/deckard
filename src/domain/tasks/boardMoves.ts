@@ -317,6 +317,35 @@ export function refuseMove(reason: string): TaskMove {
   return { kind: 'refused', reason };
 }
 
+/**
+ * Two moves made by one drop, as one: a card dropped in another cell of a
+ * board with lanes moves to the cell's column and to its lane. Both edits
+ * go into one rewrite of the line, the column's first, so one Undo takes
+ * both back (plan 46, D7). Either refusal refuses both, so a drop never
+ * writes half of what it showed; a move with nothing to change leaves the
+ * other alone. A completion is a write of its own, with its done date and
+ * next occurrence, so it cannot share the line's rewrite with an edit.
+ */
+export function combineTaskMoves(first: TaskMove, second: TaskMove): TaskMove {
+  if (first.kind === 'refused') {
+    return first;
+  }
+  if (second.kind === 'refused' || first.kind === 'unchanged') {
+    return second;
+  }
+  if (second.kind === 'unchanged' || (first.kind === 'complete' && second.kind === 'complete')) {
+    return first;
+  }
+  if (first.kind === 'edit' && second.kind === 'edit') {
+    return {
+      kind: 'edit',
+      label: `${first.label}, ${second.label}`,
+      edit: (line) => second.edit(first.edit(line)),
+    };
+  }
+  return refuseMove('Completing a task is a change of its own, so a move cannot also put it in another lane. Move it to its lane first.');
+}
+
 /** What capturing a task into a column writes: its line, or why it cannot. */
 export type ColumnCapture =
   | { kind: 'capture'; line: string }

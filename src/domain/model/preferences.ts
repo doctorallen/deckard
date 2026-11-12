@@ -228,6 +228,13 @@ export interface PersistedPreferences {
   /** The namespace whose tags are the board's columns when grouped by tag. */
   taskBoardGroupNamespace?: string;
   /**
+   * What the Task Board's lanes are by, beside its columns: unset for none
+   * (plan 46). Its Dashboard layout draws no lanes.
+   */
+  taskBoardLanes?: TaskBoardGroupBy;
+  /** The namespace whose tags are the board's lanes when they are by tag. */
+  taskBoardLanesNamespace?: string;
+  /**
    * The order of the board's status columns, by status name, as its gear
    * sets it. A status not named follows those named, in the list's order.
    */

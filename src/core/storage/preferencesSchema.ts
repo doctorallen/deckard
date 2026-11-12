@@ -368,11 +368,17 @@ function normalizeTaskBoard(
   | 'taskTableSort'
   | 'taskBoardGroup'
   | 'taskBoardGroupNamespace'
+  | 'taskBoardLanes'
+  | 'taskBoardLanesNamespace'
   | 'taskBoardColumnOrder'
   | 'taskBoardHiddenColumns'
 > {
   const stored = source.taskBoardGroupNamespace;
   const namespace = isBoardNamespace(stored) ? stored.toLowerCase() : undefined;
+  const storedLanes = source.taskBoardLanesNamespace;
+  const lanesNamespace = isBoardNamespace(storedLanes) ? storedLanes.toLowerCase() : undefined;
+  // Lanes are none unless one of the board's axes was chosen; by tag only with a namespace.
+  const lanes = (lanesNamespace ? BOARD_GROUPS : BOARD_GROUPS_WITHOUT_TAG).find((axis) => axis === source.taskBoardLanes);
   const order = normalizeStatusNames(source.taskBoardColumnOrder);
   const hidden = normalizeStatusNames(source.taskBoardHiddenColumns);
   return {
@@ -383,6 +389,8 @@ function normalizeTaskBoard(
     taskTableSort: normalizeTableSort(source.taskTableSort),
     taskBoardGroup: oneOf(source.taskBoardGroup, namespace ? BOARD_GROUPS : BOARD_GROUPS_WITHOUT_TAG, 'status'),
     ...(namespace ? { taskBoardGroupNamespace: namespace } : {}),
+    ...(lanes ? { taskBoardLanes: lanes } : {}),
+    ...(lanesNamespace ? { taskBoardLanesNamespace: lanesNamespace } : {}),
     ...(order ? { taskBoardColumnOrder: order } : {}),
     ...(hidden ? { taskBoardHiddenColumns: hidden } : {}),
     ...(source.boardParentTag === true ? { boardParentTag: true as const } : {}),
