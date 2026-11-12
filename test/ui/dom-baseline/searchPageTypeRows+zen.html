@@ -295,6 +295,13 @@
                       data-value="field:on-call"
                       type="button"
                     >on-call</button
+                    ><button
+                      aria-label="members, the teams under each"
+                      aria-pressed="false"
+                      data-action="set-hierarchy"
+                      data-value="field:members"
+                      type="button"
+                    >members</button
                     ></div
                   ></div
                 ><div
@@ -1154,7 +1161,28 @@
           ></div
         ><div
           class="overview-pane-actions"
-        ></div
+        ><div
+            aria-label="Teams as"
+            class="segmented type-view"
+            data-zen-reveal=""
+            role="group"
+          ><button
+              aria-pressed="true"
+              class="active"
+              data-action="set-type-view"
+              data-tip="Teams as rows, with the columns you choose"
+              data-value="table"
+              type="button"
+            >Table</button
+            ><button
+              aria-pressed="false"
+              data-action="set-type-view"
+              data-tip="Teams as cards in columns by a field"
+              data-value="board"
+              type="button"
+            >Board</button
+            ></div
+          ></div
         ></div
       ><div
         aria-labelledby="result-tab-rows"
