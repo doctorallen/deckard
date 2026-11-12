@@ -4,6 +4,16 @@
 
 ### Added
 
+- **A type's rows as a board.** Table | Board, beside a type's rows tab's
+  sort note, shows the rows as cards in columns by a field, such as
+  initiatives by `state`, with **Lanes** by a second field, such as `team`,
+  each a row of cells across the columns that folds from its name. Every
+  option of a select is a column, empty ones too, and every row of a
+  relation's type. Dragging a card to another cell, or **Move to** in its
+  ⋯, writes the fields the cell stands for in the row's note, as one change
+  with Undo; a row with no hub note gets one. **+** on a column or a lane
+  opens the form for a new note with its values filled in. Group by on a
+  type's rows also offers its reverses, such as **members**.
 - **Move to… moves a section.** On a heading line, or a selection that
   starts on one, Move to… moves the heading and everything under it: under
   another note's heading, one level deeper than it (none deeper than

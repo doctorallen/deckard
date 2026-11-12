@@ -200,11 +200,24 @@ Search `type = team`, or select a namespace heading a type has in the [Hubs view
 - **⋯ on a row** opens it or its hub note, offers **Create hub note**, **Edit fields…** for a row with a note, and copies its email.
 - **Sorting.** Select a heading to sort by it, and again for the other way. While it is sorted, *Sorted by lead* and **Sort A-Z** sit beside the tab; **Sort A-Z** goes back to by title.
 - **A heading's menu**, by right-click or <kbd>Shift</kbd>+<kbd>F10</kbd>: **Sort A-Z**, **Sort Z-A**, **Hide column**, then **Change field…**, which opens the field's menu in the [type form](#building-a-type), **Rename field everywhere…**, and **Edit in Types/Team.md**. Right-click a select's value for **Rename option everywhere…**. A rename asks the new name, then shows every note it changes, the type's table among them, in the [refactor preview](search-pages.md#previewing-and-undoing-a-write), as one write.
-- **Group by**, in **⋯**, adds each select, person, and relation field. A row with two values is listed under both, and the rows with none come last, *No team*.
+- **Group by**, in **⋯**, adds each select, person, and relation field, then each reverse, such as **members**. A row with two values is listed under both, and the rows with none come last, *No team*.
 - **[Refine](search.md#refine)** offers each select field's options, counted over the rows.
 - **⋯** adds **Add team…**, which opens the [form for a new note](#adding-a-note-of-a-type) on the type, and **Open Types/Team.md**.
-- The columns, sort, and group are kept for each type in this workspace. **Save search…** puts the table's search on Home, as any search.
+- **Table | Board**, beside the sort note, shows the rows as the table or as a [board](#a-board-of-rows).
+- The columns, sort, group, and board are kept for each type in this workspace. **Save search…** puts the table's search on Home, as any search.
 - The Notes and Tasks tabs list what the search finds, as on any page: the notes and tasks in the rows' notes, and, for rows of a namespace, everything their tags are on.
+
+### A board of rows
+
+**Board** shows a type's rows as cards in columns, one column per value of a field, as the Task board shows tasks: initiatives by `state`, incidents by `severity`, teams by `tier`. Nothing is special about any type; any type with a select, person, or relation field has a board.
+
+- **Group** chooses the field the columns are by, and **Lanes** a second field, or **None**: each lane is a row of cells across the columns, one per value, so a board of initiatives can be by `state` and, down the page, by `team`. Both offer what **Group by** offers. Group starts as the table's Group by, or else the type's first select field, or else its first person or relation field; Lanes starts as None. Both are kept for each type.
+- **Columns and lanes.** A select's options, in the order the type lists them, empty ones too, so a card can be moved into an option no row has yet. A relation's rows, every row of the types it takes, by title. A person field's people, those some row names. A reverse's values, those some row has. Then *No state*, last, when a row has none or the field can be written. A row with two values of a field is a card in both.
+- **Heads.** The column heads are drawn once, at the top, each with its count over every lane and its **+**. A lane's head is its name, which folds and unfolds it while the page is open, its count, and its **+**.
+- **Cards.** A card is the row's title, which opens the row as the table's title does, then up to three of the table's columns, in its order, as `label value`, leaving out the two fields the board is by. Within a cell, cards follow the table's sort, by title when it has none. A row with no hub note says *No hub note · 2 entries*, with **Create hub note**.
+- **Moving a card.** Drag a card to another cell, or choose **Move to** a column or **Move to lane** in its **⋯**, and Deckard writes the fields the cell stands for in the row's note, as the [form](#editing-fields) writes them, as one write that `Deckard: Undo Last Change` takes back; the message offers **Undo** too. A field that holds one value takes the new one; one that holds several swaps the value the card left for the one it entered; *No state* takes the value out. A row with no hub note gets one, written at once with the field set. A reverse is set by other notes, so while a card is held its other cells fade and say *Set by other notes*. <kbd>Escape</kbd> lets go of a card.
+- **+** on a column or a lane opens the [form for a new note](#adding-a-note-of-a-type) with the column's and the lane's values filled in.
+- A type with no field to group by says so, with **Add a field…**, which opens its type note at its table.
 
 ## Fields on the Note page
 
@@ -295,7 +308,7 @@ type = decision AND project = this
 
 ## Zen
 
-With [Zen](themes-and-zen.md#zen) on, every name, value, count, and date stays drawn: each cell of a rows tab, its tab's count, *Sorted by lead* with its **Sort A-Z**, the fields on the Note page and a tag's page, their names, which still open the form from the keyboard, *From other notes*, and where each is set. Each row's **⋯** and **Create hub note** wait for the pointer or <kbd>Tab</kbd> on their row; **Edit fields…** waits for the pointer or <kbd>Tab</kbd> in the fields on the Note page, or in the hub card's header on a tag's page, and **Add fields…** in the Fields card.
+With [Zen](themes-and-zen.md#zen) on, every name, value, count, and date stays drawn: each cell of a rows tab, its tab's count, *Sorted by lead* with its **Sort A-Z**, a board's cards, counts, and lane names, the fields on the Note page and a tag's page, their names, which still open the form from the keyboard, *From other notes*, and where each is set. **Table | Board**, **Group**, and **Lanes** wait for the pointer on their row, and a board's **+** on its head. Each row's or card's **⋯** and **Create hub note** wait for the pointer or <kbd>Tab</kbd> on their row or card; **Edit fields…** waits for the pointer or <kbd>Tab</kbd> in the fields on the Note page, or in the hub card's header on a tag's page, and **Add fields…** in the Fields card.
 
 ---
 

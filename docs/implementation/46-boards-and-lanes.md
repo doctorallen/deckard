@@ -169,3 +169,67 @@ The Table layout is unchanged: lanes are a board's.
 - Messages: the new view, group, lane, and move messages are validated.
 - DOM goldens for the type board (with and without lanes) and the Task
   board with lanes; visual baselines for both.
+
+## As built
+
+Section 1 built on `feat/boards-lanes`. `src/ui/state/typeBoard.ts` makes
+the board from the rows tab's rows (its fields, values, cards, and what a
+move changes), `src/ui/commands/typeBoardMoves.ts` writes a move, and
+`src/webview/searchPage/typeBoard.tsx` draws it on the shared lane grid,
+`src/webview/shared/lanes.tsx` and `lanes.css`, which section 2 builds the
+Task board's lanes on. Where the plan was silent, or the code made its
+words impractical:
+
+- **Group by offers reverses.** D1 has Group and Lanes offer exactly the
+  table's Group by fields, and the plan's fields include a type's
+  reverses, which Group by did not offer. So Group by gained them too,
+  after the schema's fields, and the table groups by a reverse as by a
+  relation: Areas by **owned by**. Of the computed fields, only reverses
+  are offered; `parent`, `children`, and paths are not.
+- **Which values are columns.** A select's values in use that are no
+  option, such as a misspelling, are columns after the options, by title.
+  A relation's columns leave out a namespace level no tag is written for
+  (an implicit row), which no value names; a relation that also takes
+  people adds the people in use.
+- **Ids.** A column or lane is named in messages by its value:
+  `option:active`, `row:#team/rates`, `text:<value>`, or `none`. The host
+  finds the value, and what it writes, on the board it drew, never in the
+  message.
+- **A card's details** leave out an empty cell and a computed count of
+  nothing, `Open tasks 0`, and take the next column instead. A schema
+  field's label is its key, in monospace, as its heading is.
+- **Counts.** A head counts rows, so a row in two lanes of a column counts
+  once in the column.
+- **A move the note does not hold.** When the row's note does not write the
+  value the card left, because another note sets it (a relation written
+  from the other side) or the note changed since, nothing is written: a
+  warning says so, with Open Note, and the page draws the card back. A
+  refused move is not sent at all from the page.
+- **Reverses.** While a card is held, only the cells that would change a
+  reverse fade and say *Set by other notes*; on a board by a reverse with
+  select lanes, a card still moves between lanes. A reverse's heads have no
+  **+**, and a card's ⋯ lists no Move to for it.
+- **+ on No …** starts the form with that field empty, the other axis's
+  value filled in.
+- **Board and Group by.** On Board the rows are not grouped; the table's
+  Group by is kept for when it comes back, and is the board's Group until
+  one is chosen (D2).
+- **Columns line up.** Every column of the grid is as wide as the others,
+  at least a Task board column's width, so a column's cells line up down
+  the page; the Task board's narrower empty column would have broken that.
+  The grid scrolls sideways, a lane's head staying at its left edge.
+- **Cards as rows.** Each card is a Tab stop, opened by a click or
+  <kbd>Enter</kbd> and its menu by right-click or the menu keys, as a
+  table row is; the Task board's single roving Tab stop and its keys stay
+  the Task board's.
+- **Folding** is kept in the page while it is open, as the plan says, and
+  forgotten on reload.
+- **A new hub note** for a card moved from a row with none is written as
+  File this writes one (`writeRowHub`, generalized from File this's
+  `writeNewHub`), asking the type template's questions when it has any.
+- **Undo's words.** *Moved Swap pricing to active, Credit.*, and *Put Swap
+  pricing back.*
+- **Not unit-tested**: the write itself, which needs VS Code; the plan
+  for it (`planTypeBoardMove`, `moveFieldValues`) is. The DOM goldens and
+  visual baselines for `searchPageTypeBoard` and `searchPageTypeBoardLanes`
+  (test/ui/surfaces.js) are still to be made.
