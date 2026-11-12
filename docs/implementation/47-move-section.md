@@ -86,3 +86,66 @@ place (D4).
   order; the section's own note left out.
 - Host: Move to… on a heading moves the section under another note's
   heading and Undo restores both notes.
+
+## As built
+
+Built on `feat/move-section`. `src/domain/notes/moveSection.ts` holds the
+rules (the section a heading takes, the level shift, where it lands, the
+link left behind, the mentioned places); `MoveService` writes a section
+as it writes lines; `src/ui/commands/moveTo.ts` and `destinationPicker.ts`
+ask and say. Where the plan was silent, or the code made its words
+impractical:
+
+- **Where it lands under a heading.** After the last text of the heading's
+  whole section, its nested headings included, with a blank line before
+  it, and a blank line after it when the next heading follows straight
+  after. Lines moved with Move to… still go under the heading's own lines,
+  above any nested heading, as before.
+- **The level shift goes both ways.** The moved heading is always one level
+  deeper than the destination's, so a `####` section moved under `## Plan`
+  becomes `###`: its subheadings move up alike, none above `#`.
+- **New note.** Named from the heading as Extract Heading suggests, and
+  holding the section exactly as written, its heading the first line at
+  its own level, as Extract Heading writes it. The link left behind names
+  the note alone when the heading is named as the note is
+  (`[[Ledger cutover plan]]`), as Deckard's other links to a heading do.
+- **The Markdown link style** writes the heading's slug as the anchor,
+  `[Ledger migration#Ledger cutover plan](../Ledger%20migration.md#ledger-cutover-plan)`,
+  which Deckard resolves to the heading; File this's Markdown link names
+  only the note.
+- **Mentioned in this section.** A hub note is the first note whose
+  `describes:` names a tag or person written in the section, outside code,
+  in the order first written, tags and people together; a type row with no
+  hub note is not one. The links are `[[wiki]]` and `[text](note.md)`
+  links that name exactly one note. The ten places are counted as places,
+  so a note with many headings can fill the group. A heading listed there
+  is not listed again under the headings; the Recent group is unchanged.
+  The note's own row is `$(file) Ledger migration`, *at the end of the
+  note*, with its path below.
+- **The first mentioned place is highlighted** when there is one, so Enter
+  takes it (D1); otherwise the heading used last, as before. An unlabeled
+  separator divides the group from New note….
+- **Ways in.** VS Code has no Extract Heading lightbulb, so **Move section
+  to…** (kind `refactor.move`, running `deckard.moveTo`) is alone on a
+  heading's lightbulb, also on a selection that starts on a heading. The
+  Outline's right-click menu has no Extract Heading (it offers the tag's
+  actions and Focus Section), so nothing was added there. Extract Heading's
+  menus, the editor's **Deckard** submenu and Note Actions, already list
+  Move to…, which on a heading line now moves the section; no second entry
+  was added.
+- **Refusals.** A selection that holds a heading but does not start on one
+  is still refused, now with *The selection holds a heading. To move a
+  heading and everything under it, start the selection on the heading.*
+  The Extract Heading button on the old refusal is gone. A heading only in
+  looks, in code or front matter, is read as a line.
+- **Changed meanwhile.** The section is read again when the destination is
+  chosen, and nothing is written when it changed, saying so as for lines.
+  The destination heading is found again in its note as it is then, and
+  nothing is written when it is gone; other changes to the destination
+  note are written around, as for lines.
+- **The section's own note** is left out of Mentioned in this section only.
+  Elsewhere its other headings, today's note, and the end of its own note
+  stay on offer, as for lines; the section's own headings and the headings
+  it sits under are never offered.
+- **The announcement** names the section by its heading: *Moved "Ledger
+  cutover plan" to Ledger migration › Plan.*, with Open and Undo.

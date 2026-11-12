@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Added
+
+- **Move to… moves a section.** On a heading line, or a selection that
+  starts on one, Move to… moves the heading and everything under it: under
+  another note's heading, one level deeper than it (none deeper than
+  `######`), or to the end of a note or today's note with its levels kept,
+  or into a new note as Extract Heading makes one. One line is left where
+  it was, a link to its new place such as
+  `[[Ledger migration#Ledger cutover plan]]`, in `deckard.links.style`. The
+  list starts with the places the section mentions: the hub notes of its
+  tags and people and the notes it links, with their headings. One write
+  across both notes, with Undo; the lightbulb on a heading offers it as
+  **Move section to…**.
+
 ## 2.15.0 - 2026-11-11
 
 ### Highlights
