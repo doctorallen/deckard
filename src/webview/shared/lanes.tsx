@@ -25,7 +25,12 @@
  *    `drop` is told of a card put down in another cell that takes it. A
  *    board with drag code of its own can leave `drag` out and use the
  *    cells' `data-lane-column` and `data-lane-lane`.
- * 3. On a move, call `moveLaneCard(card, cell)` to show it at once,
+ * 3. A board whose heads say more than a name and a count, as the Task
+ *    board's limits and overdue counts do, draws them with
+ *    `renderColumnHead`, and what a cell holds after its cards, such as a
+ *    Show N more, with `renderCellEnd`; a head's `attributes` carry what
+ *    the board counts it again from.
+ * 4. On a move, call `moveLaneCard(card, cell)` to show it at once,
  *    pending, until the host's next state draws the board afresh; it bumps
  *    `laneGrid.generation`, which keys the grid, so that draw makes the
  *    cells anew rather than patching elements the page moved. Call
@@ -50,6 +55,8 @@ export interface LaneHead {
   readonly add?: string;
   /** Classes after its own, such as one a board colors by. */
   readonly className?: string;
+  /** Attributes of the board's own on a column's head or a lane's section, such as what its counts are recounted from. */
+  readonly attributes?: Readonly<Record<string, string>>;
 }
 
 /** A cell of the grid, by its column's id and its lane's, when there are lanes. */
@@ -79,6 +86,14 @@ export interface LaneGridProps<Card> {
   readonly level?: 2 | 3;
   /** Classes after `lane-grid`. */
   readonly className?: string;
+  /**
+   * What a column's head holds, in place of its name, count, and +, for a
+   * board whose heads say more, as the Task board's limits and overdue
+   * counts do.
+   */
+  readonly renderColumnHead?: (column: LaneHead) => ComponentChild;
+  /** What a cell holds after its cards, such as a Show N more. */
+  readonly renderCellEnd?: (cell: LaneCell) => ComponentChild;
 }
 
 /** What the grids on a page keep between draws: how many times a card was moved outside a draw, and the folded lanes. */
@@ -120,6 +135,7 @@ function Cell<Card>({ props, cell, column, lane }: { readonly props: LaneGridPro
       <div class="lane-cards" role="list" aria-label={name}>
         {cards.map((card) => <Fragment key={props.cardKey(card, cell)}>{props.renderCard(card, cell)}</Fragment>)}
       </div>
+      {props.renderCellEnd ? props.renderCellEnd(cell) : null}
     </div>
   );
 }
@@ -140,7 +156,7 @@ function CellRow<Card>({ props, lane, hidden }: { readonly props: LaneGridProps<
 function Lane<Card>({ props, lane, level }: { readonly props: LaneGridProps<Card>; readonly lane: LaneHead; readonly level: 2 | 3 }) {
   const folded = isLaneFolded(props.grid, lane.id);
   return (
-    <section class={lane.className ? `lane ${lane.className}` : 'lane'} data-lane-lane={lane.id} aria-label={`${lane.label}, ${lane.count}`}>
+    <section class={lane.className ? `lane ${lane.className}` : 'lane'} data-lane-lane={lane.id} aria-label={`${lane.label}, ${lane.count}`} {...lane.attributes}>
       <div class="lane-head" data-zen-region="">
         <Heading level={level} className="lane-title">
           <button type="button" class="lane-fold" data-lane-fold={lane.id} aria-expanded={!folded} data-tip={folded ? `Show ${lane.label}` : `Fold ${lane.label}`}>
@@ -172,12 +188,18 @@ export function LaneGrid<Card>(props: LaneGridProps<Card>) {
     >
       <div class="lane-heads">
         {props.columns.map((column) => (
-          <div key={column.id} class={column.className ? `lane-column-head ${column.className}` : 'lane-column-head'} data-lane-column={column.id} data-zen-region="">
-            <Heading level={level} className="lane-column-title">
-              <span class="lane-column-label">{column.label}</span>
-              <span class="lane-count" data-lane-count="">{String(column.count)}</span>
-            </Heading>
-            <AddButton action={props.addAction} label={column.add} attributes={{ 'data-lane-column': column.id }} />
+          <div key={column.id} class={column.className ? `lane-column-head ${column.className}` : 'lane-column-head'} data-lane-column={column.id} data-zen-region="" {...column.attributes}>
+            {props.renderColumnHead
+              ? props.renderColumnHead(column)
+              : (
+                <>
+                  <Heading level={level} className="lane-column-title">
+                    <span class="lane-column-label">{column.label}</span>
+                    <span class="lane-count" data-lane-count="">{String(column.count)}</span>
+                  </Heading>
+                  <AddButton action={props.addAction} label={column.add} attributes={{ 'data-lane-column': column.id }} />
+                </>
+              )}
           </div>
         ))}
       </div>

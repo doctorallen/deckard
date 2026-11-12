@@ -111,6 +111,7 @@ body[data-styling=plain] .metric[data-code] { padding-top: 10px; }
 /* A board with lanes (lanes.css) takes the same capped blue rule under each
    column head; its +, and a lane's fold mark, take the control's own ink. */
 .lane-column-head { border-bottom: 6px solid var(--cyan); border-bottom-right-radius: 3px; }
+.lane-column-head.is-overdue { border-bottom-color: var(--danger); }
 .lane-add svg, .lane-fold svg { color: inherit; }
 .board-empty { border: 0; border-radius: 0 15px 15px 0; background: var(--panel); color: var(--muted); }
 /* A progress bar is a solid gauge: a plum track, the fill, and a blue cap past a black gutter marking 100%. */

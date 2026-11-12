@@ -21,7 +21,8 @@ import { announce } from '../shared/status';
 import { taskTitleOf } from '../shared/taskRow';
 import { installViewOptions, type ViewOptionGroup, type ViewOptionItem } from '../shared/viewOptions';
 import { keptState, vscodeApi } from '../shared/vscode';
-import { GroupSelect, TaskBoard, taskCardMoves } from './board';
+import { GroupSelect, LanesSelect, TaskBoard, taskCardMoves } from './board';
+import { installLaneGrid } from '../shared/lanes';
 import { type BoardScroll, editRow, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll, sendHeldEdits, settleRefusedEdit } from './boardMoves';
 import { agendaRow, AvailableToggle, canRank, ColumnPicker, LayoutSwitch, ResultTable, saveSearchRow, SaveToTasksViewButton, SortControl, syncSaveToTasksView, TableSortNote, TasksViewStrip } from './layouts';
 import { board, type BoardPageState, type DrawnBoard, lingerRemaining } from './model';
@@ -182,7 +183,7 @@ function ParentTagToggle({ snapshot }: { readonly snapshot: TaskBoardSnapshot })
 function StatusControls({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   const control = snapshot.layout === 'table'
     ? <TableSortNote snapshot={snapshot} />
-    : <><GroupSelect snapshot={snapshot} /><SortControl snapshot={snapshot} /></>;
+    : <><GroupSelect snapshot={snapshot} /><LanesSelect snapshot={snapshot} /><SortControl snapshot={snapshot} /></>;
   return <><LayoutSwitch layout={snapshot.layout} />{control}<AvailableToggle pressed={Boolean(snapshot.availableOnly)} /></>;
 }
 
@@ -317,9 +318,24 @@ installBoardMoves({
     return {
       offered: snapshot?.tagNamespaces || [],
       current: snapshot?.groupBy === 'tag' ? snapshot.groupNamespace : undefined,
+      lanes: snapshot?.lanesBy === 'tag' ? snapshot.lanesNamespace : undefined,
     };
   },
   ranked: () => shown()?.taskSortMode === 'rank',
+  lanes: () => {
+    const snapshot = shown();
+    const head = ({ id, label, droppable }: { id: string; label: string; droppable: boolean }) => ({ id, label, droppable });
+    return snapshot?.lanes ? { columns: snapshot.columns.map(head), lanes: snapshot.lanes.map(head) } : undefined;
+  },
+});
+// A board with lanes folds a lane from its name, kept while the page is
+// open; its cards move by the board's own moves above. A folded lane's
+// cards are out of sight, so the Tab stop goes to a card that is not.
+installLaneGrid();
+document.addEventListener('click', (event) => {
+  if (event.target instanceof Element && event.target.closest('.task-board [data-lane-fold]')) {
+    followShownCards();
+  }
 });
 installViewOptions();
 
@@ -328,7 +344,7 @@ function rowMoves(row: HTMLElement): ActionMenuGroup[] | undefined {
   const snapshot = shown();
   const menu = snapshot && snapshot.taskMenus && snapshot.taskMenus[String(row.dataset.taskId)];
   return menu && snapshot
-    ? taskCardMoves({ current: menu.current, completed: row.classList.contains('completed'), steps: menu.steps }, '', [], snapshot.settings)
+    ? taskCardMoves({ current: menu.current, completed: row.classList.contains('completed'), steps: menu.steps }, '', [], { settings: snapshot.settings })
     : undefined;
 }
 

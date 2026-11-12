@@ -188,7 +188,7 @@ suite('Task Board page', () => {
     assert.ok(!shown.findAll('.view-options-group > span').some((label) => label.textContent === 'Layout'));
     shown.click('.query-status [data-action="set-task-layout"][data-value="table"]');
     assert.deepStrictEqual(shown.lastPosted('setTaskLayout'), { type: 'setTaskLayout', layout: 'table' });
-    assert.deepStrictEqual(shown.findAll('.query-status select').map((select) => select.getAttribute('data-action')), ['set-board-group', 'set-task-sort'], 'Group and Sort, both selects');
+    assert.deepStrictEqual(shown.findAll('.query-status select').map((select) => select.getAttribute('data-action')), ['set-board-group', 'set-board-lanes', 'set-task-sort'], 'Group, Lanes, and Sort, all selects');
     assert.strictEqual(shown.findAll('.query-status [data-action="set-board-group"] option[value="pick-namespace"]')[0]?.hasAttribute('disabled'), true, 'Tag… waits for a namespace in use');
     assert.ok(shown.find('.query-status [data-action="toggle-available"]'), 'Can start now stays');
     shown.dispose();
