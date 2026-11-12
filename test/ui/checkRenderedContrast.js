@@ -80,6 +80,11 @@ const PROBE = `
 (function () {
   // The class a hovered run puts in place of :hover; see below.
   const hoverClass = 'contrast-probe-hover';
+  // What a drag leaves inactive while a card is held over a board with
+  // lanes: the held card, and the cards of each cell that will not take
+  // it, faded to say so. None can be used until the card is let go, and
+  // WCAG exempts an inactive component as it does a disabled one.
+  const INACTIVE = '.lane-grid.is-dragging-card .lane-cell.is-refused .lane-cards, .lane-grid.is-dragging-card [data-lane-card].dragging';
   function parse(value) {
     const m = /rgba?\\(([^)]+)\\)/.exec(value || '');
     if (!m) return null;
@@ -143,6 +148,7 @@ const PROBE = `
     if (el.closest('[aria-hidden="true"], #layout-probe, script, style, svg, [hidden]')) return;
     // A control that cannot be used is exempt, as WCAG has it.
     if (el.closest('[disabled], [aria-disabled="true"]')) return;
+    if (el.closest(INACTIVE)) return;
     const own = [...el.childNodes].some(function (n) { return n.nodeType === 3 && n.textContent.trim(); });
     if (!own || !shown(el)) return;
     // Words drawn at no opacity are not shown yet, as a row's revealed
@@ -173,6 +179,7 @@ const PROBE = `
   function checkIcon(el, state) {
     const shape = el.querySelector('svg');
     if (!shape || !shown(el) || el.closest('[aria-hidden="true"], [hidden]')) return;
+    if (el.closest(INACTIVE)) return;
     if (opacity(shape) === 0) return;
     const style = getComputedStyle(shape);
     const paint = parse(style.stroke) || parse(style.fill);

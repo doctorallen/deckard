@@ -563,6 +563,8 @@ function createBoardSurfaces(boardIndex, preferences) {
       // column heads drawn once, counted over every lane, then a lane per
       // band, each a row of the board's own columns, Overdue's taking no
       // card and so having no +.
+      // The lane grid scrolls sideways before a column goes narrower, as the
+      // Task board's columns do, so only the page is held to none.
       name: 'taskBoardLanes',
       page: 'taskBoard',
       viewport: [1400, 900],
@@ -572,7 +574,7 @@ function createBoardSurfaces(boardIndex, preferences) {
         search: { query: '' },
         options: { queryContext: createQueryContext(NOW), format: 'emoji' },
       }),
-      scrollers: ['html', '.lane-grid'],
+      scrollers: ['html'],
       clippers: [],
       hovered: ['.board-card', '.lane-head'],
       zenHovered: ['.query-workspace[data-zen-region]', '.lane-column-head[data-zen-region]', '.lane-head[data-zen-region]'],
@@ -590,9 +592,9 @@ function createBoardSurfaces(boardIndex, preferences) {
         options: { queryContext: createQueryContext(NOW), format: 'emoji' },
       }),
       drive: [['dragstart', '.lane-cell .board-card']],
-      scrollers: ['html', '.lane-grid'],
+      scrollers: ['html'],
       clippers: [],
-      hovered: [],
+      hovered: ['.lane-column-head'],
     },
     {
       // Editing what the Tasks view lists: the strip above the search box,
@@ -1122,11 +1124,13 @@ function createTypedSurfaces(preferences) {
       // The rows tab on Board (plan 46): Group and Lanes over columns by
       // tier, every option drawn though bronze is empty, then No tier,
       // where Payments, with no hub note, offers one.
+      // The lane grid scrolls sideways before a column goes narrower, as the
+      // Task board's columns do, so only the page is held to none.
       name: 'searchPageTypeBoard',
       page: 'searchPage',
       viewport: [1000, 800],
       snapshot: search('type = team', { team: { view: 'board', boardGroup: 'tier' } }),
-      scrollers: ['html', '.lane-grid'],
+      scrollers: ['html'],
       clippers: [],
       hovered: ['.type-card', '.lane-column-head'],
       zenHovered: [...ZEN_REGIONS.searchPage, '.type-board-bar[data-zen-region]', '.lane-column-head[data-zen-region]'],
@@ -1138,7 +1142,7 @@ function createTypedSurfaces(preferences) {
       page: 'searchPage',
       viewport: [1000, 900],
       snapshot: search('type = team', { team: { view: 'board', boardGroup: 'tier', boardLanes: 'lead' } }),
-      scrollers: ['html', '.lane-grid'],
+      scrollers: ['html'],
       clippers: [],
       hovered: ['.type-card', '.lane-head'],
       zenHovered: [...ZEN_REGIONS.searchPage, '.type-board-bar[data-zen-region]', '.lane-head[data-zen-region]'],
