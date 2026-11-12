@@ -306,6 +306,8 @@ and drag code. Where the plan was silent, or impractical:
   its own drag, rank, and key code, which now works on a column or a cell
   (`.lane-cell[data-lane-column][data-lane-lane]`); a card carries
   `data-card-lane` beside `data-card-column`. The board stays one Tab stop.
+- **Saved searches and exported blocks** keep Group, as `group=`, and
+  not Lanes: a query block has no lanes to write.
 - **Not built, or still to do**: the DOM goldens and visual baselines for
   `taskBoardLanes` and `taskBoardLanesDragging` (test/ui/surfaces.js), and
   the Task board's existing goldens, which gain the Lanes select.
