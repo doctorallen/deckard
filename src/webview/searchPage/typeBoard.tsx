@@ -100,6 +100,7 @@ function BoardCard({ table, board, card, index }: { readonly table: SearchPageTy
       role="listitem"
       class="task board-card type-card"
       tabIndex={0}
+      data-tip-around=""
       data-reveal-region=""
       data-row-id={row.id}
       aria-label={`${row.title}, ${where}`}
