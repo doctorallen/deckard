@@ -516,14 +516,15 @@ function createRevealBoardSurfaces(boardIndex, preferences) {
 }
 
 /**
- * The Task Board, by status, grouped by a tag namespace, and opened from
- * the Tasks view's search icon to edit what the view lists.
+ * The Task Board, by status, grouped by a tag namespace, with lanes by due
+ * date, as drawn and with a card held over them, and opened from the Tasks
+ * view's search icon to edit what the view lists.
  * Only the board's surfaces carry steps, so no other page's pixels move
  * with them.
  *
  * @param {object} boardIndex The workspace, with steps on the first task.
  * @param {object} preferences The preference services, whose reader holds what is stored.
- * @returns {object[]} The four board surfaces.
+ * @returns {object[]} The five board surfaces.
  */
 function createBoardSurfaces(boardIndex, preferences) {
   return [
@@ -556,6 +557,44 @@ function createBoardSurfaces(boardIndex, preferences) {
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
       hovered: ['.board-card'],
+    },
+    {
+      // Lanes by due date beside Group's status columns (plan 46): the
+      // column heads drawn once, counted over every lane, then a lane per
+      // band, each a row of the board's own columns, Overdue's taking no
+      // card and so having no +.
+      // The lane grid scrolls sideways before a column goes narrower, as the
+      // Task board's columns do, so only the page is held to none.
+      name: 'taskBoardLanes',
+      page: 'taskBoard',
+      viewport: [1400, 900],
+      snapshot: () => createTaskBoard({
+        index: boardIndex,
+        preferences: { ...preferences.reader.value, taskBoardLanes: 'due' },
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
+      }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.board-card', '.lane-head'],
+      zenHovered: ['.query-workspace[data-zen-region]', '.lane-column-head[data-zen-region]', '.lane-head[data-zen-region]'],
+    },
+    {
+      // The same board with a card held over it: the cells that will not
+      // take it, Done's in another lane and Overdue's, fade and say why.
+      name: 'taskBoardLanesDragging',
+      page: 'taskBoard',
+      viewport: [1400, 900],
+      snapshot: () => createTaskBoard({
+        index: boardIndex,
+        preferences: { ...preferences.reader.value, taskBoardLanes: 'due' },
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
+      }),
+      drive: [['dragstart', '.lane-cell .board-card']],
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.lane-column-head'],
     },
     {
       // Editing what the Tasks view lists: the strip above the search box,
@@ -1052,16 +1091,17 @@ function createTypedIndex() {
 }
 
 /**
- * Plan 30's surfaces: a type's search page on its rows tab, a note-type
- * row on the Note page with its fields, and the page of a typed tag with
- * no hub note, whose Fields card holds the hub's place.
+ * Plan 30's surfaces: a type's search page on its rows tab, as a table and
+ * as plan 46's board, without lanes and with them, a note-type row on the
+ * Note page with its fields, and the page of a typed tag with no hub note,
+ * whose Fields card holds the hub's place.
  *
  * @param {object} preferences The preference services, whose reader holds what is stored.
- * @returns {object[]} The three surfaces.
+ * @returns {object[]} The five surfaces.
  */
 function createTypedSurfaces(preferences) {
   const index = createTypedIndex();
-  const search = (query) => () => createSearchPageSnapshot(index, preferences.reader.value, query, {
+  const search = (query, typeTables) => () => createSearchPageSnapshot(index, typeTables ? { ...preferences.reader.value, typeTables } : preferences.reader.value, query, {
     queryContext: createQueryContext(NOW),
     originQuery: query,
   });
@@ -1079,6 +1119,33 @@ function createTypedSurfaces(preferences) {
       clippers: [],
       hovered: ['.type-row'],
       zenHovered: [...ZEN_REGIONS.searchPage, '.type-rows[data-zen-region]'],
+    },
+    {
+      // The rows tab on Board (plan 46): Group and Lanes over columns by
+      // tier, every option drawn though bronze is empty, then No tier,
+      // where Payments, with no hub note, offers one.
+      // The lane grid scrolls sideways before a column goes narrower, as the
+      // Task board's columns do, so only the page is held to none.
+      name: 'searchPageTypeBoard',
+      page: 'searchPage',
+      viewport: [1000, 800],
+      snapshot: search('type = team', { team: { view: 'board', boardGroup: 'tier' } }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.type-card', '.lane-column-head'],
+      zenHovered: [...ZEN_REGIONS.searchPage, '.type-board-bar[data-zen-region]', '.lane-column-head[data-zen-region]'],
+    },
+    {
+      // The same board with lanes by lead: the column heads drawn once,
+      // then a lane per lead, each named, counted, and with its +.
+      name: 'searchPageTypeBoardLanes',
+      page: 'searchPage',
+      viewport: [1000, 900],
+      snapshot: search('type = team', { team: { view: 'board', boardGroup: 'tier', boardLanes: 'lead' } }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.type-card', '.lane-head'],
+      zenHovered: [...ZEN_REGIONS.searchPage, '.type-board-bar[data-zen-region]', '.lane-head[data-zen-region]'],
     },
     {
       // A note-type row on the Note page: its fields under the bar, each

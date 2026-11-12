@@ -8,15 +8,25 @@
 
 ## Extracting headings
 
-Run `Deckard: Extract Heading` with the cursor in a heading section. Deckard moves the whole section, nested headings included, into a new note and leaves a `[[link]]` to it. Outside a heading, it offers a picker of every heading. Existing notes are never overwritten.
+Run `Deckard: Extract Heading` with the cursor in a heading section. Deckard moves the whole section, nested headings included, into a new note and leaves a `[[link]]` to it. Outside a heading, it offers a picker of every heading. Existing notes are never overwritten. To move a section under a heading of a note you already have, use [Move to…](#moving-a-section) on the heading.
 
 ### Moving lines and tasks
 
-`Deckard: Move to…` moves what the cursor is on (a task or list item with everything nested under it, or one line of prose), or every line a selection touches, under another heading, into today's note, or into a new note. It does not move a heading, a blank line, front matter, or half a code block. Run it from the lightbulb, the palette, the Tasks view, a Task board card's menu, or Find.
+`Deckard: Move to…` moves what the cursor is on (a task or list item with everything nested under it, or one line of prose), or every line a selection touches, under another heading, into today's note, or into a new note. On a heading it moves the [whole section](#moving-a-section). It does not move a blank line, front matter, half a code block, or a selection that holds a heading it does not start on. Run it from the lightbulb, the palette, the Tasks view, a Task board card's menu, or Find.
 
 - The list starts with **New note…** and **Today's note**, then the five headings Add Task and Move to… used last, then every heading. Lines go under the heading's own lines, above any nested heading.
 - A task left behind becomes `- [>] Call Ren 📅 2026-09-20 → [[2026-09-25]]`; anything else becomes a `[[link]]` to where it went. A `[>]` line is not a task.
 - If the lines or heading changed before you chose, nothing is written. The move is not previewed: it is the one you chose. **Undo**, or `Deckard: Undo Last Change`, puts both notes back, or neither: if either changed since, nothing is put back.
+
+### Moving a section
+
+With the cursor on a heading line, or a selection that starts on one, `Deckard: Move to…` moves the heading and everything under it: its text, lists, tasks, code, and nested headings, up to the next heading at its level or above. The lightbulb on a heading offers it as **Move section to…**.
+
+- The list starts with **Mentioned in this section**: the hub notes of the section's tags and people, then the notes its links name, each with its headings and **at the end of the note**, at most ten places. **New note…**, **Today's note**, and the headings follow, as for lines. The section's own headings are never offered.
+- **Under a heading**, the section goes at the end of that heading's section, after a blank line, one level deeper than it: `## Ledger cutover plan` moved under `## Plan` becomes `### Ledger cutover plan`, and its own subheadings move down alike, none deeper than `######`.
+- **At the end of a note**, or in today's note, it goes after a blank line with its levels kept. A **new note** is named from the heading and holds the section as written, as Extract Heading makes it.
+- One line is left where it was: a link to the heading in its new note, `[[Ledger migration#Ledger cutover plan]]`, or `[Ledger migration#Ledger cutover plan](Ledger%20migration.md#ledger-cutover-plan)` when `deckard.links.style` is `markdown`. Links elsewhere to its old place, such as `[[2026-11-12#Ledger cutover plan]]`, are left as they are; the line left behind leads on.
+- As for lines, nothing is written if the section changed while you chose, and **Undo** puts both notes back.
 
 ## Parking notes
 

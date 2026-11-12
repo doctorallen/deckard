@@ -368,11 +368,17 @@ function normalizeTaskBoard(
   | 'taskTableSort'
   | 'taskBoardGroup'
   | 'taskBoardGroupNamespace'
+  | 'taskBoardLanes'
+  | 'taskBoardLanesNamespace'
   | 'taskBoardColumnOrder'
   | 'taskBoardHiddenColumns'
 > {
   const stored = source.taskBoardGroupNamespace;
   const namespace = isBoardNamespace(stored) ? stored.toLowerCase() : undefined;
+  const storedLanes = source.taskBoardLanesNamespace;
+  const lanesNamespace = isBoardNamespace(storedLanes) ? storedLanes.toLowerCase() : undefined;
+  // Lanes are none unless one of the board's axes was chosen; by tag only with a namespace.
+  const lanes = (lanesNamespace ? BOARD_GROUPS : BOARD_GROUPS_WITHOUT_TAG).find((axis) => axis === source.taskBoardLanes);
   const order = normalizeStatusNames(source.taskBoardColumnOrder);
   const hidden = normalizeStatusNames(source.taskBoardHiddenColumns);
   return {
@@ -383,6 +389,8 @@ function normalizeTaskBoard(
     taskTableSort: normalizeTableSort(source.taskTableSort),
     taskBoardGroup: oneOf(source.taskBoardGroup, namespace ? BOARD_GROUPS : BOARD_GROUPS_WITHOUT_TAG, 'status'),
     ...(namespace ? { taskBoardGroupNamespace: namespace } : {}),
+    ...(lanes ? { taskBoardLanes: lanes } : {}),
+    ...(lanesNamespace ? { taskBoardLanesNamespace: lanesNamespace } : {}),
     ...(order ? { taskBoardColumnOrder: order } : {}),
     ...(hidden ? { taskBoardHiddenColumns: hidden } : {}),
     ...(source.boardParentTag === true ? { boardParentTag: true as const } : {}),
@@ -1002,8 +1010,8 @@ const MAX_TYPE_COLUMNS = 60;
 const TYPE_COLUMN_ID = /^[\p{L}\p{N}][\p{L}\p{N}_.-]{0,79}$/u;
 
 /**
- * Each type's rows tab as stored: a type key to its columns, sort, and
- * group, each only when it is a usable value; a type with none is dropped,
+ * Each type's rows tab as stored: a type key to its columns, sort, group,
+ * and board, each only when it is a usable value; a type with none is dropped,
  * and so is a blob of none.
  */
 export function normalizeTypeTables(value: unknown): Pick<PersistedPreferences, 'typeTables'> {
@@ -1023,21 +1031,36 @@ export function normalizeTypeTables(value: unknown): Pick<PersistedPreferences, 
   return Object.keys(tables).length ? { typeTables: tables } : {};
 }
 
+/** A column, sort, or group id as a type's rows tab stores one. */
+function isTypeColumnId(id: unknown): id is string {
+  return typeof id === 'string' && TYPE_COLUMN_ID.test(id);
+}
+
 /** One type's rows tab view, or undefined when it holds nothing usable. */
 function normalizeTypeTableView(value: unknown): TypeTableView | undefined {
   if (!value || typeof value !== 'object') {
     return undefined;
   }
   const { columns, sort, groupBy } = value as { columns?: unknown; sort?: unknown; groupBy?: unknown };
-  const isId = (id: unknown): id is string => typeof id === 'string' && TYPE_COLUMN_ID.test(id);
-  const kept = Array.isArray(columns) ? [...new Set(columns.filter(isId))].slice(0, MAX_TYPE_COLUMNS) : undefined;
+  const kept = Array.isArray(columns) ? [...new Set(columns.filter(isTypeColumnId))].slice(0, MAX_TYPE_COLUMNS) : undefined;
   const sorted = sort && typeof sort === 'object' ? (sort as { column?: unknown; direction?: unknown }) : undefined;
   const view: TypeTableView = {
     ...(kept ? { columns: kept.includes('title') ? kept : ['title', ...kept] } : {}),
-    ...(sorted && isId(sorted.column) ? { sort: { column: sorted.column, direction: sorted.direction === 'desc' ? 'desc' : 'asc' } } : {}),
-    ...(isId(groupBy) ? { groupBy } : {}),
+    ...(sorted && isTypeColumnId(sorted.column) ? { sort: { column: sorted.column, direction: sorted.direction === 'desc' ? 'desc' : 'asc' } } : {}),
+    ...(isTypeColumnId(groupBy) ? { groupBy } : {}),
+    ...normalizeTypeBoardView(value),
   };
   return Object.keys(view).length ? view : undefined;
+}
+
+/** A type's board as stored: Board when chosen, and its Group and Lanes, Lanes never the same field. */
+function normalizeTypeBoardView(value: object): Pick<TypeTableView, 'view' | 'boardGroup' | 'boardLanes'> {
+  const { view, boardGroup, boardLanes } = value as { view?: unknown; boardGroup?: unknown; boardLanes?: unknown };
+  return {
+    ...(view === 'board' ? { view } : {}),
+    ...(isTypeColumnId(boardGroup) ? { boardGroup } : {}),
+    ...(isTypeColumnId(boardLanes) && boardLanes !== boardGroup ? { boardLanes } : {}),
+  };
 }
 
 /** The column a stored sort names and its direction, ascending unless it says otherwise. */

@@ -123,7 +123,7 @@ suite('Types as searches: the rows tab', () => {
       ['No owns', ['Credit']],
     ]);
     assert.deepStrictEqual(rowsTab('type = team', { groupBy: 'tier' }).groups?.map((group) => group.label), ['gold', 'silver']);
-    assert.deepStrictEqual(rowsTab('type = team').groupFields.map((field) => field.id), ['lead', 'owns', 'tier', 'on-call']);
+    assert.deepStrictEqual(rowsTab('type = team').groupFields.map((field) => field.id), ['lead', 'owns', 'tier', 'on-call', 'members', 'team-of']);
     assert.strictEqual(rowsTab('type = team', { groupBy: 'status' }).groups, undefined, 'a text field groups nothing');
   });
 

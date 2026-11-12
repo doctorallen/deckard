@@ -228,6 +228,13 @@ export interface PersistedPreferences {
   /** The namespace whose tags are the board's columns when grouped by tag. */
   taskBoardGroupNamespace?: string;
   /**
+   * What the Task Board's lanes are by, beside its columns: unset for none
+   * (plan 46). Its Dashboard layout draws no lanes.
+   */
+  taskBoardLanes?: TaskBoardGroupBy;
+  /** The namespace whose tags are the board's lanes when they are by tag. */
+  taskBoardLanesNamespace?: string;
+  /**
    * The order of the board's status columns, by status name, as its gear
    * sets it. A status not named follows those named, in the list's order.
    */
@@ -345,12 +352,18 @@ export type TableSortDirection = 'asc' | 'desc';
  * How a type's rows tab is drawn (docs/implementation/30-databases.md
  * § Types as searches): its columns by id (`title`, a schema field's key,
  * a reverse's or computed field's query name), the column it is sorted by,
- * and the field it groups by. Each is the default when unset.
+ * and the field it groups by; and whether it is drawn as a board, with the
+ * fields its columns and lanes are by (docs/implementation/46-boards-and-lanes.md).
+ * Each is the default when unset: a table, and a board by its default field
+ * with no lanes.
  */
 export interface TypeTableView {
   columns?: string[];
   sort?: { column: string; direction: TableSortDirection };
   groupBy?: string;
+  view?: 'board';
+  boardGroup?: string;
+  boardLanes?: string;
 }
 
 /** The column a task table is ordered by, and which way. */

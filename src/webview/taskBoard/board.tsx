@@ -7,11 +7,13 @@ import { speakProgressText } from '../../domain/tasks/progressCount';
 import { ProgressText } from '../shared/progressText';
 import type { ComponentChild } from 'preact';
 
-import type { CardDetailParts, TaskBoardCard, TaskBoardColumn, TaskBoardSettings, TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
+import type { CardDetailParts, TaskBoardCard, TaskBoardColumn, TaskBoardLane, TaskBoardSettings, TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
+import { listLaneAxes } from '../../domain/tasks/boardLanes';
 import type { ActionMenuGroup, ActionMenuItem } from '../shared/actionMenu';
 import { IconButton } from '../shared/buttons';
 import { DueText } from '../shared/dueText';
 import { EmptyState } from '../shared/emptyState';
+import { LaneGrid, laneCardAttributes, type LaneCell, type LaneHead } from '../shared/lanes';
 import { EllipsisIcon, PlusIcon } from '../shared/strokeIcons';
 import { formatSourceLocation, plainTitle, PriorityBadge, TaskDetails, trimHeadingPath } from '../shared/taskRow';
 import { ParentTag } from '../shared/tagButton';
@@ -25,6 +27,16 @@ export interface MovableTask {
   readonly steps?: unknown;
 }
 
+/** What a board's columns or lanes can be by: status, priority, due date, person, or tag. */
+type TaskBoardGroupBy = TaskBoardSnapshot['groupBy'];
+
+/** A card's lane, on a board with lanes: what they are by, every lane, and the card's own. */
+export interface CardLanes {
+  readonly by: TaskBoardGroupBy;
+  readonly lanes: readonly TaskBoardLane[];
+  readonly laneId: string;
+}
+
 /**
  * Every edit a card can make, whatever the board is grouped by: its status,
  * priority, and due date as single choices, each checked where the task is
@@ -34,12 +46,17 @@ export interface MovableTask {
  * the board draws a column for come first; every other one is under More
  * statuses.
  */
-export function taskCardMoves(card: MovableTask, columnId: string, columns: readonly TaskBoardColumn[], settings: TaskBoardSettings | undefined): ActionMenuGroup[] {
+export function taskCardMoves(
+  card: MovableTask,
+  columnId: string,
+  columns: readonly TaskBoardColumn[],
+  { settings, lanes }: { readonly settings: TaskBoardSettings | undefined; readonly lanes?: CardLanes },
+): ActionMenuGroup[] {
   const current = card.current || [];
   const option = (value: string, label: string, key?: string): ActionMenuItem => ({
     value,
     label,
-    checked: current.includes(value) || value === columnId,
+    checked: current.includes(value) || value === columnId || value === lanes?.laneId,
     ...(key ? { key } : {}),
   });
   // Done is its own choice, Complete it, below.
@@ -65,11 +82,19 @@ export function taskCardMoves(card: MovableTask, columnId: string, columns: read
     { label: 'Due', items: dueOptions },
     { label: 'Snooze', items: card.completed ? [] : [{ value: 'snooze', label: 'Snooze until…', key: 'z' }] },
     { label: 'This board', items: others },
+    // Lanes by tag or person have no moves of their own above; status,
+    // priority, and due date lanes are moved to by theirs.
+    { label: 'Move to lane', items: lanes && (lanes.by === 'tag' || lanes.by === 'assignee') ? laneMoves(lanes) : [] },
     { label: 'For', items: [{ value: 'pick-assignee', label: 'For someone…', key: 'f' }] },
     { label: 'Steps', items: [{ value: 'break-steps', label: card.steps ? 'Add steps…' : 'Break into steps…', key: 's' }] },
     { label: 'Done', items: card.completed ? [] : [{ value: 'done', label: 'Complete it', key: 'x' }] },
     { label: 'Note', items: [{ value: 'move-to', label: 'Move to…' }] },
   ];
+}
+
+/** The lanes a card can be moved to from its menu: every other lane that takes a card. */
+function laneMoves(lanes: CardLanes): ActionMenuItem[] {
+  return lanes.lanes.filter((lane) => lane.droppable && lane.id !== lanes.laneId).map((lane) => ({ value: lane.id, label: lane.label }));
 }
 
 /**
@@ -131,11 +156,12 @@ function CardDetails({ card }: { readonly card: TaskBoardCard }) {
   );
 }
 
-/** One card's draw: its task, the column it is in, and that column's place on the board. */
+/** One card's draw: its task, the column it is in, and that column's place on the board; on a board with lanes, its lane. */
 interface CardProps {
   readonly card: TaskBoardCard;
   readonly columnId: string;
   readonly columns: readonly TaskBoardColumn[];
+  readonly lane?: TaskBoardLane;
 }
 
 /** A card's classes: done, cancelled, or neither. */
@@ -152,7 +178,7 @@ function CardBox({ card, title }: { readonly card: TaskBoardCard; readonly title
 }
 
 /** One task card, with its checkbox and the menu that edits it. */
-function BoardCard({ card, columnId, columns }: CardProps) {
+function BoardCard({ card, columnId, columns, lane }: CardProps) {
   // The title as it reads names the card and its controls, not its Markdown.
   const title = plainTitle(card.titleTokens || []) || String(card.title || '');
   const fileName = String(card.filePath).split('/').pop() || card.filePath;
@@ -163,11 +189,12 @@ function BoardCard({ card, columnId, columns }: CardProps) {
   // full otherwise: its title, its column, and when it is due.
   const columnLabel = columns.find((column) => column.id === columnId)?.label;
   const dueDetail = (card.details || []).find((detail) => /^(due|overdue|was due)/i.test(detail));
-  const cardName = [title, columnLabel, dueDetail, card.steps ? speakProgressText(card.steps.label) : ''].filter(Boolean).join(', ');
+  const cardName = [title, columnLabel, lane?.label, dueDetail, card.steps ? speakProgressText(card.steps.label) : ''].filter(Boolean).join(', ');
   // The board is one Tab stop: the card last focused, or the first. Arrow
   // keys move between cards, and a card's checkbox and menu are keys of
   // their own, so neither is a Tab stop either.
-  const tabStop = boardCardKey(columnId, card.taskId) === board.tabStop;
+  const key = boardCardKey(columnId, card.taskId, lane?.id);
+  const tabStop = key === board.tabStop;
   // A list item in its column's list, so a screen reader says how many a
   // column holds and where in it the card is: "3 of 13".
   return (
@@ -182,8 +209,10 @@ function BoardCard({ card, columnId, columns }: CardProps) {
       aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
       data-task-id={card.taskId}
       data-card-column={columnId}
+      data-card-lane={lane?.id}
       data-file-path={card.filePath}
       data-line={card.line}
+      {...(lane ? laneCardAttributes(key, card.taskId) : {})}
     >
       <CardBox card={card} title={title} />
       <div class="task-summary">
@@ -290,6 +319,9 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
  * cards the words being typed leave out, and counts the columns again.
  */
 export function TaskBoard({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
+  if (snapshot.lanes && snapshot.lanesBy) {
+    return <LaneTaskBoard key={`lanes-${board.generation}`} snapshot={snapshot} lanes={snapshot.lanes} by={snapshot.lanesBy} />;
+  }
   board.moves = {};
   const drawn = snapshot.columns.flatMap((column) => column.cards.map((card) => boardCardKey(column.id, card.taskId)));
   if (board.tabStop === undefined || !drawn.includes(board.tabStop)) {
@@ -297,7 +329,7 @@ export function TaskBoard({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
   }
   for (const column of snapshot.columns) {
     for (const card of column.cards) {
-      board.moves[boardCardKey(column.id, card.taskId)] = taskCardMoves(card, column.id, snapshot.columns, snapshot.settings);
+      board.moves[boardCardKey(column.id, card.taskId)] = taskCardMoves(card, column.id, snapshot.columns, { settings: snapshot.settings });
     }
   }
   return (
@@ -327,6 +359,140 @@ function ColumnCards({ column, cards, columns }: { readonly column: TaskBoardCol
     <div class="board-cards" role="list" aria-label={column.label}>
       {cards.map((card) => <BoardCard key={boardCardKey(column.id, card.taskId)} card={card} columnId={column.id} columns={columns} />)}
     </div>
+  );
+}
+
+/**
+ * How many tasks some cells hold, each once, with the ones they hold back,
+ * and how many of the open ones are overdue: a column's head counts its
+ * cells in every lane, and a lane's its cells in every column.
+ */
+export function countCells(cells: readonly TaskBoardColumn[]): { count: number; overdue: number } {
+  const tasks = new Set<string>();
+  const overdue = new Set<string>();
+  let hidden = 0;
+  for (const cell of cells) {
+    hidden += cell.hiddenCount || 0;
+    for (const card of cell.cards) {
+      tasks.add(card.taskId);
+      if (card.overdue && !card.completed) {
+        overdue.add(card.taskId);
+      }
+    }
+  }
+  return { count: tasks.size + hidden, overdue: overdue.size };
+}
+
+/** A column's head on a board with lanes: its name and character, its counts over every lane, and its +. */
+function LaneColumnHead({ column, count }: { readonly column: TaskBoardColumn; readonly count: string }) {
+  return (
+    <>
+      <h2 class="lane-column-title">
+        <span class="lane-column-label">
+          {column.label}
+          {column.symbol === undefined ? null : <span key="symbol" class="board-column-symbol" aria-hidden="true">{`[${column.symbol}]`}</span>}
+        </span>
+        <span class="board-count">{count}</span>
+      </h2>
+      {column.droppable && column.id !== 'done'
+        ? (
+          <IconButton
+            key="add"
+            action="board-add-task"
+            className="board-add lane-add"
+            label={`Add a task to ${column.label}`}
+            icon={<PlusIcon />}
+            attributes={{ 'data-column-id': column.id, 'data-zen-reveal': '' }}
+          />
+        )
+        : null}
+    </>
+  );
+}
+
+/** The column heads of a board with lanes, as the lane grid draws them, each counted over every lane. */
+function laneColumnHeads(snapshot: TaskBoardSnapshot, lanes: readonly TaskBoardLane[]): { heads: LaneHead[]; counts: Map<string, string> } {
+  const counts = new Map<string, string>();
+  const heads = snapshot.columns.map((column, at): LaneHead => {
+    const counted = countCells(lanes.map((lane) => lane.cells[at]).filter(Boolean));
+    const overdue = column.id === 'done' || column.id === 'due:overdue' ? 0 : counted.overdue;
+    const described = describeBoardColumn(column, counted.count, column.limit, overdue);
+    counts.set(column.id, described.count);
+    const classes = [
+      column.id === 'due:overdue' || column.id === 'due:needsdate' ? 'is-overdue' : '',
+      column.limit !== undefined && counted.count > column.limit ? 'over-limit' : '',
+    ].filter(Boolean).join(' ');
+    return {
+      id: column.id,
+      label: column.label,
+      count: counted.count,
+      ...(classes ? { className: classes } : {}),
+      // What the page counts the head again from, once words hide cards or a card moves.
+      attributes: {
+        'data-label': column.label,
+        ...(column.symbol === undefined ? {} : { 'data-symbol': column.symbol }),
+        ...(column.limit === undefined ? {} : { 'data-limit': String(column.limit) }),
+      },
+    };
+  });
+  return { heads, counts };
+}
+
+/**
+ * The board with lanes (plan 46): the column heads once, counted over
+ * every lane, then a lane per value of the lanes' axis, each a row of the
+ * board's own columns, on the shared lane grid. A cell keeps its column's
+ * rules, and the page's own moves carry a card between cells.
+ */
+function LaneTaskBoard({ snapshot, lanes, by }: { readonly snapshot: TaskBoardSnapshot; readonly lanes: readonly TaskBoardLane[]; readonly by: TaskBoardGroupBy }) {
+  board.moves = {};
+  const at = new Map(snapshot.columns.map((column, index) => [column.id, index]));
+  const cellAt = (cell: LaneCell): { lane: TaskBoardLane; column: TaskBoardColumn } | undefined => {
+    const lane = lanes.find((candidate) => candidate.id === cell.lane);
+    const column = lane?.cells[at.get(cell.column) ?? -1];
+    return lane && column ? { lane, column } : undefined;
+  };
+  const drawn = lanes.flatMap((lane) => lane.cells.flatMap((cell) => cell.cards.map((card) => boardCardKey(cell.id, card.taskId, lane.id))));
+  if (board.tabStop === undefined || !drawn.includes(board.tabStop)) {
+    board.tabStop = drawn.length ? drawn[0] : undefined;
+  }
+  for (const lane of lanes) {
+    for (const cell of lane.cells) {
+      for (const card of cell.cards) {
+        board.moves[boardCardKey(cell.id, card.taskId, lane.id)] = taskCardMoves(card, cell.id, snapshot.columns, { settings: snapshot.settings, lanes: { by, lanes, laneId: lane.id } });
+      }
+    }
+  }
+  const { heads, counts } = laneColumnHeads(snapshot, lanes);
+  const laneHeads = lanes.map((lane): LaneHead => ({
+    id: lane.id,
+    label: lane.label,
+    count: countCells(lane.cells).count,
+    ...(lane.droppable && lane.id !== 'done' ? { add: `Add a task to ${lane.label}` } : {}),
+  }));
+  return (
+    <LaneGrid<TaskBoardCard>
+      grid="task-board"
+      label="Task board"
+      level={2}
+      className="task-board"
+      columns={heads}
+      lanes={laneHeads}
+      addAction="board-add-task"
+      cardsIn={(cell) => cellAt(cell)?.column.cards ?? []}
+      cardKey={(card, cell) => boardCardKey(cell.column, card.taskId, cell.lane)}
+      renderCard={(card, cell) => <BoardCard card={card} columnId={cell.column} columns={snapshot.columns} lane={cellAt(cell)?.lane} />}
+      renderColumnHead={(head) => {
+        const column = snapshot.columns[at.get(head.id) ?? -1];
+        return column ? <LaneColumnHead column={column} count={counts.get(column.id) ?? String(head.count)} /> : null;
+      }}
+      renderCellEnd={(cell) => {
+        const hidden = cellAt(cell)?.column.hiddenCount || 0;
+        return hidden
+          ? <p class="board-more" data-hidden-count={String(hidden)}><button data-action="show-column-rest" data-column-id={cell.column}>{`Show ${hidden} more`}</button></p>
+          : null;
+      }}
+    />
   );
 }
 
@@ -361,6 +527,44 @@ export function GroupSelect({ snapshot }: { readonly snapshot: TaskBoardSnapshot
         {GROUPINGS.map(([value, label]) => <option key={value} value={value} selected={current === value}>{label}</option>)}
         {byTag ? <option key="tag" value="tag" selected={true}>{`#${namespace}`}</option> : null}
         {/* Tag… is a menu of the namespaces in use, but the one chosen. */}
+        <option key="pick" value="pick-namespace" disabled={others.length === 0}>Tag…</option>
+      </select>
+    </label>
+  );
+}
+
+/** What each axis but tags is called in the Lanes select. */
+const LANE_NAMES: Readonly<Record<Exclude<TaskBoardGroupBy, 'tag'>, string>> = { status: 'Status', priority: 'Priority', due: 'Due date', assignee: 'Person' };
+
+/**
+ * The Lanes select beside Group: None, every axis but Group's, in Group's
+ * order, the namespace the lanes are the tags of, if any, and Tag…, which
+ * opens a menu of the namespaces in use but the ones the board's columns
+ * and lanes already are. Zen quiets it, as it does Group.
+ */
+export function LanesSelect({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
+  const namespace = snapshot.lanesNamespace;
+  const byTag = snapshot.lanesBy === 'tag' && Boolean(namespace);
+  const taken = new Set([namespace, snapshot.groupBy === 'tag' ? snapshot.groupNamespace : undefined]);
+  const others = (snapshot.tagNamespaces || []).filter((candidate) => !taken.has(candidate.name));
+  let current: string = snapshot.lanesBy ?? 'none';
+  if (current === 'tag' && !byTag) {
+    current = 'none';
+  }
+  const axes = listLaneAxes(snapshot.groupBy).filter((axis): axis is Exclude<TaskBoardGroupBy, 'tag'> => axis !== 'tag');
+  return (
+    <label class="control-label" data-zen-reveal="">
+      Lanes:
+      <select
+        class="task-board-lanes"
+        data-action="set-board-lanes"
+        data-current={current}
+        aria-label="Lanes by"
+        data-tip="Split the columns into lanes by status, priority, due date, person, or the tags of one namespace, such as #team/…"
+      >
+        <option key="none" value="none" selected={current === 'none'}>None</option>
+        {axes.map((axis) => <option key={axis} value={axis} selected={current === axis}>{LANE_NAMES[axis]}</option>)}
+        {byTag ? <option key="tag" value="tag" selected={true}>{`#${namespace}`}</option> : null}
         <option key="pick" value="pick-namespace" disabled={others.length === 0}>Tag…</option>
       </select>
     </label>

@@ -4,6 +4,7 @@
  */
 @import "../shared/base.css";
 @import "../shared/queryEditor.css";
+@import "../shared/lanes.css";
 
 /* The bar's count, Add task and ⋯ hold the header's top-right corner. */
 header { align-items: flex-start; }
@@ -35,3 +36,12 @@ header { align-items: flex-start; }
 
 /* The board is wide rather than a reading column, and leads with a cyan rule. */
 main { max-width: none; border-top: var(--edge) solid var(--cyan); }
+
+/* The board with lanes (plan 46) is the shared lane grid with the board's
+   own cards and heads: an overdue column's name is red, as a column's is,
+   and one over its limit takes the same dashed outline, on its head, since
+   its cells run on down the page. */
+.lane-grid.task-board .lane-column-head.is-overdue .lane-column-title { color: var(--danger); }
+.lane-grid.task-board .lane-column-head.over-limit { outline: var(--edge) dashed var(--line-strong); outline-offset: -1px; }
+.lane-grid.task-board .lane-column-head > .lane-column-title { flex: 1 1 auto; min-width: 0; }
+.lane-grid.task-board .lane-cell .board-more { margin: 0; }

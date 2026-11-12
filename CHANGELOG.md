@@ -2,6 +2,48 @@
 
 ## Unreleased
 
+## 2.16.0 - 2026-11-12
+
+### Highlights
+
+- **A type's rows as a board**: cards in columns by one field, lanes by another, such as initiatives by state and team.
+- **Lanes on the Task board** split its columns by status, priority, due date, person, or a tag namespace.
+- **Move to… on a heading** moves the whole section to another note, leaving a link where it was.
+
+### Added
+
+- **A type's rows as a board.** Table | Board, beside a type's rows tab's
+  sort note, shows the rows as cards in columns by a field, such as
+  initiatives by `state`, with **Lanes** by a second field, such as `team`,
+  each a row of cells across the columns that folds from its name. Every
+  option of a select is a column, empty ones too, and every row of a
+  relation's type. Dragging a card to another cell, or **Move to** in its
+  ⋯, writes the fields the cell stands for in the row's note, as one change
+  with Undo; a row with no hub note gets one. **+** on a column or a lane
+  opens the form for a new note with its values filled in. Group by on a
+  type's rows also offers its reverses, such as **members**.
+- **Move to… moves a section.** On a heading line, or a selection that
+  starts on one, Move to… moves the heading and everything under it: under
+  another note's heading, one level deeper than it (none deeper than
+  `######`), or to the end of a note or today's note with its levels kept,
+  or into a new note as Extract Heading makes one. One line is left where
+  it was, a link to its new place such as
+  `[[Ledger migration#Ledger cutover plan]]`, in `deckard.links.style`. The
+  list starts with the places the section mentions: the hub notes of its
+  tags and people and the notes it links, with their headings. One write
+  across both notes, with Undo; the lightbulb on a heading offers it as
+  **Move section to…**.
+- **Lanes on the Task board.** **Lanes**, beside **Group**, splits the
+  board into rows by a second axis: status, priority, due date, person, or
+  the tags of another namespace, such as `#team`. Each lane is a row of the
+  board's columns under column heads drawn once, counted over every lane,
+  and its name folds it. Dragging a card to another cell writes its column
+  and its lane in the task's line, as one change with one Undo; a cell that
+  will not take it, such as Overdue's, or Done's in another lane, fades and
+  says why. A card's ⋯ offers **Move to lane** when the lanes are tags or
+  people, and **+** on a lane starts a task with its value, such as
+  `#team/payments`. The choice is kept with Group; the table has no lanes.
+
 ## 2.15.0 - 2026-11-11
 
 ### Highlights

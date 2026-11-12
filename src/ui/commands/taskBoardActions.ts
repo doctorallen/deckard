@@ -2,9 +2,9 @@ import * as vscode from 'vscode';
 
 import { readCaptureText } from '../../domain/markdown/captureWords';
 import { readDateOptions } from './datePrompt';
-import { ColumnCapture, resolveColumnCapture } from '../../domain/tasks/boardMoves';
+import { ColumnCapture, resolveColumnCapture, TaskMove } from '../../domain/tasks/boardMoves';
 import { QueryContext } from '../../domain/query/queryContext';
-import { resolveTaskMove, TaskBoardOptions, TaskMoveContext } from '../state/taskBoardState';
+import { resolveCellMove, resolveTaskMove, TaskBoardOptions, TaskCellMove, TaskMoveContext } from '../state/taskBoardState';
 import {
   readTaskMetadataFormat,
   TaskWrites,
@@ -16,7 +16,7 @@ import { captureToToday } from './capture';
 import { appendTagToLine } from './bulkEdit';
 import { readQueryContext } from './queryContext';
 import { formatCaptureLine } from '../../domain/capture/captureLines';
-import { Task } from '../../domain/model';
+import { Task, WorkspaceIndex } from '../../domain/model';
 
 /**
  * Reads the task board settings. Every page that shows a board reads them
@@ -44,7 +44,25 @@ export async function moveTaskToColumn(
   columnId: string,
   context: TaskMoveContext = {},
 ): Promise<boolean> {
-  const move = resolveTaskMove(task, columnId, readTaskBoardOptions(readQueryContext()), context);
+  return writeTaskMove(writes, task, resolveTaskMove(task, columnId, readTaskBoardOptions(readQueryContext()), context));
+}
+
+/**
+ * Writes a card's move to another cell of a board with lanes: its column's
+ * edit and its lane's, as one rewrite of the line with one Undo. Returns
+ * false when nothing was saved, as a move to a column does.
+ */
+export async function moveTaskToCell(
+  writes: TaskWrites,
+  task: Task,
+  move: TaskCellMove,
+  index?: WorkspaceIndex,
+): Promise<boolean> {
+  return writeTaskMove(writes, task, resolveCellMove(task, move, readTaskBoardOptions(readQueryContext()), index));
+}
+
+/** Writes a move resolved for `task`, or says why it writes nothing. */
+async function writeTaskMove(writes: TaskWrites, task: Task, move: TaskMove): Promise<boolean> {
   switch (move.kind) {
     case 'unchanged':
       return false;

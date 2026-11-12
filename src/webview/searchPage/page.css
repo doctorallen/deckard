@@ -6,6 +6,7 @@
 @import "../shared/noteBlocks.css";
 @import "../shared/queryEditor.css";
 @import "../shared/fieldRows.css";
+@import "../shared/lanes.css";
 
 /* ‹ › and ⋯ sit in the bar's top-right corner, beside DECKARD ▾, however
    tall the title and the lines under it run. */
@@ -254,6 +255,8 @@ header { position: relative; }
 .type-rows { overflow-x: auto; }
 .type-table.result-table td { overflow-wrap: break-word; }
 .type-figure { white-space: nowrap; }
+/* On a card too, where the board's details otherwise wrap anywhere. */
+.board-details .type-figure { white-space: nowrap; }
 .type-no-hub { display: block; color: var(--muted); font-size: var(--text-xs); }
 .type-create-hub.type-create-hub { min-height: 0; margin-left: var(--space-2); padding: 0 6px; font-size: var(--text-xs); }
 .type-more { color: var(--muted); }
@@ -261,3 +264,17 @@ header { position: relative; }
 .type-group-row .display-count { color: var(--muted); font-weight: 400; }
 .type-sort-note { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .type-pane { margin-bottom: var(--space-4); }
+
+/* A type's rows on Board (typeBoard.tsx): Group and Lanes over the shared
+   lane grid (lanes.css), each card a Task board card holding a row, its
+   title in the cyan a task's title takes, then up to three `label value`
+   details, a schema field's key in monospace as its heading is. */
+.type-board { display: grid; gap: var(--space-3); }
+.type-board-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+.type-card.task { grid-template-columns: minmax(0, 1fr); }
+.type-card-title .field-link.field-link { color: var(--cyan); text-decoration-color: transparent; }
+.type-card-title .field-link.field-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .type-card-title .field-link.field-link:focus-visible { color: var(--hover-fg); text-decoration-color: currentColor; }
+.type-card-key { color: var(--muted); }
+.type-card-key.is-field { font-family: var(--font-mono); font-size: var(--text-xs); }
+.type-card .type-no-hub { display: flex; }
+.type-board-none { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }

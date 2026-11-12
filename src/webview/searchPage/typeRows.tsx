@@ -50,7 +50,7 @@ function CellValue({ value, field }: { readonly value: TypeTableValue; readonly 
  * text, a count or a date, kept to one line so a date is never broken at
  * its hyphens.
  */
-function CellBody({ cell, column }: { readonly cell: TypeTableCell; readonly column: TypeTableColumn }) {
+export function CellBody({ cell, column }: { readonly cell: TypeTableCell; readonly column: TypeTableColumn }) {
   if (!cell.values) {
     return cell.text ? <span class="type-figure">{cell.text}</span> : null;
   }

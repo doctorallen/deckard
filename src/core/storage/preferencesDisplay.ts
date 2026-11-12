@@ -86,8 +86,8 @@ export class DisplayService {
   }
 
   /**
-   * Changes how one type's rows tab is drawn: its columns, its sort, or the
-   * field it groups by, each left as it was when not given and put back to
+   * Changes how one type's rows tab is drawn: its columns, its sort, the
+   * field it groups by, or its board, each left as it was when not given and put back to
    * the default when given as undefined. Type keys name what is in one
    * workspace, so the workspace keeps these, unlike the rest here.
    */

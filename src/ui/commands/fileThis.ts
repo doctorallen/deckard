@@ -296,7 +296,13 @@ export async function setFieldFromLine(writes: FileThisWrites, ...args: unknown[
     reportChangedLine();
     return;
   }
-  const handle = reading.filePath ? await writeField(writes, reading, reading.filePath) : await writeNewHub(writes, reading, asked.uri);
+  const handle = reading.filePath
+    ? await writeField(writes, reading, reading.filePath)
+    : await writeRowHub(writes, reading.rowId, [{ key: reading.field.key, values: readingValues(reading) }], {
+        near: asked.uri,
+        notWritten: `${reading.field.name} was not set`,
+        gone: reportChangedLine,
+      });
   if (!handle) {
     return;
   }
@@ -356,8 +362,8 @@ function readWrittenValues(writes: Pick<FileThisWrites, 'indexer'>, uri: vscode.
   return property?.values.map((value) => value.text) ?? [];
 }
 
-/** A front-matter key's new lines as an edit of the document, replacing the lines they replace. */
-function frontmatterEdit(document: vscode.TextDocument, planned: Extract<FrontmatterFieldEdit, { kind: 'edit' }>): vscode.WorkspaceEdit {
+/** A front-matter key's new lines, or a save's, as an edit of the document, replacing the lines they replace. */
+export function frontmatterEdit(document: vscode.TextDocument, planned: Pick<Extract<FrontmatterFieldEdit, { kind: 'edit' }>, 'start' | 'deleted' | 'lines'>): vscode.WorkspaceEdit {
   const eol = document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n';
   const end = planned.start + planned.deleted;
   const atEnd = end >= document.lineCount;
@@ -370,18 +376,34 @@ function frontmatterEdit(document: vscode.TextDocument, planned: Extract<Frontma
   return edit;
 }
 
+/** What a new hub note is written near, what a failure says was not done, and what to say for a row no type has now. */
+export interface RowHubOptions {
+  /** A note in the workspace folder the hub belongs in; the first folder when absent. */
+  near?: vscode.Uri;
+  /** The end of a failure's words: `lead was not set`. */
+  notWritten: string;
+  gone: () => void;
+}
+
 /**
  * A row with no hub note gets one, as Create Hub Note writes it for a typed
  * row: in its type's folder, titled and tagged as the row, from the type's
- * template when it has one, with the field set. The write's handle.
+ * template when it has one, with `fields` set, each to its values as
+ * Deckard writes them. File this writes it for Set …, and a type's board
+ * for a card moved. The write's handle.
  */
-async function writeNewHub(writes: FileThisWrites, reading: FieldReading, near: vscode.Uri): Promise<WriteHandle | undefined> {
+export async function writeRowHub(
+  writes: Pick<FileThisWrites, 'indexer' | 'history'>,
+  rowId: string,
+  fields: ReadonlyArray<{ key: string; values: readonly string[] }>,
+  options: RowHubOptions,
+): Promise<WriteHandle | undefined> {
   const { indexer } = writes;
-  const start = findTypedHubStart(indexer.getSnapshot(), indexer.getTypeIndex(), reading.rowId);
+  const start = findTypedHubStart(indexer.getSnapshot(), indexer.getTypeIndex(), rowId);
   const type = start ? findRowNoteType(indexer.getTypeIndex().registry, start.typeKey) : undefined;
-  const folder = findWorkspaceFolder(near);
+  const folder = findWorkspaceFolder(options.near);
   if (!start || !type) {
-    reportChangedLine();
+    options.gone();
     return undefined;
   }
   if (!folder) {
@@ -393,7 +415,10 @@ async function writeNewHub(writes: FileThisWrites, reading: FieldReading, near: 
   if (template !== undefined && !answers) {
     return undefined;
   }
-  const draft = setDraftValues(startTypedNoteDraft(type, { title: start.title, tag: start.tag }), reading.field.key, readingValues(reading).map((text) => ({ text })));
+  const draft = fields.reduce(
+    (each, field) => setDraftValues(each, field.key, field.values.map((text) => ({ text }))),
+    startTypedNoteDraft(type, { title: start.title, tag: start.tag }),
+  );
   const plan = planTypedNote(type, draft, { template, now: new Date(), answers });
   if (!plan) {
     void reportFailure({ outcome: `"${start.title}" cannot name a note, so nothing was set.` });
@@ -406,7 +431,7 @@ async function writeNewHub(writes: FileThisWrites, reading: FieldReading, near: 
   }
   const handle = await writeNewNote(writes.history, uri, plan.content, `Create ${type.name} "${start.title}"`);
   if (!handle) {
-    void reportFailure({ outcome: `VS Code did not accept the new note, so ${reading.field.name} was not set.` });
+    void reportFailure({ outcome: `VS Code did not accept the new note, so ${options.notWritten}.` });
   }
   return handle;
 }

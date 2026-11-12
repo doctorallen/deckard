@@ -31,12 +31,20 @@ export interface MoveBlock {
    * its line and the column of its checkbox; otherwise undefined.
    */
   openTasks?: Array<{ line: number; checkboxColumn: number }>;
+  /**
+   * Present when the block is a heading and everything under it: the
+   * heading's level and its words as written, tags kept. Such a block is
+   * written with its headings shifted rather than dedented, and leaves one
+   * link to its new place behind (domain/notes/moveSection.ts).
+   */
+  section?: { level: number; heading: string };
 }
 
 /**
- * Why a move takes nothing: the block holds a heading, the cursor is on a
- * blank line, the block reaches into front matter, or it would cut a code
- * fence in two.
+ * Why a move takes nothing: the block holds a heading it does not start on
+ * (one it starts on moves its section, read by readSectionBlock in
+ * domain/notes/moveSection.ts), the cursor is on a blank line, the block
+ * reaches into front matter, or it would cut a code fence in two.
  */
 export type MoveRefusalReason = 'heading' | 'blank' | 'frontMatter' | 'splitFence';
 

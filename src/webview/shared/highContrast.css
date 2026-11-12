@@ -63,7 +63,7 @@ body.vscode-high-contrast button.active, body.vscode-high-contrast-light button.
   button.active, [aria-selected="true"], [aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
   /* A border color is all that marks a drop target and a focused search
      box; forced colors paint every border alike, so each gets an outline. */
-  .board-column.drop-target { outline: 3px dashed Highlight; outline-offset: -3px; }
+  .board-column.drop-target, .lane-cell.drop-target { outline: 3px dashed Highlight; outline-offset: -3px; }
   .query-bar-shell:focus-within { outline: 2px solid Highlight; }
   .legend-swatch, .note-dot, .tag-weight-rail-segment { forced-color-adjust: none; border: 1px solid CanvasText; }
 }

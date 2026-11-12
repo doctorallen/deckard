@@ -18,6 +18,19 @@ Run `Deckard: Open Task Board`, or select **Task Board** at the top of the Conte
 - A card shows its status when its column doesn't, such as **In progress** on a card grouped by priority.
 - A card says who its task is for, such as **for @dana**, unless the board is grouped by **Person** or the task is yours: the person `deckard.me` names, as `is:mine` reads it. With no one named there, every card with a person shows it.
 
+## Lanes
+
+**Lanes**, beside **Group**, splits the board into rows by a second axis: **None**, **Status**, **Priority**, **Due date**, **Person**, or **Tag…**, the tags of a namespace, such as **#team**. It offers every axis but the one **Group** uses; **Tag…** stays while the columns are a tag, for another namespace. The board keeps your choice with its grouping, and choosing for **Group** the axis the lanes are by sets **Lanes** back to **None**.
+
+- Each lane is a row of the board's columns, a cell in every column, so a column's cells line up down the page. The lanes are what **Group** would make columns of, in the same order: **Payments**, **Rates**, then **No team** last. A task with two of a namespace's tags is in both lanes.
+- The column heads are drawn once, at the top, and count over every lane, a task in two lanes once. A lane's head is its name, its count, and **+**; select its name to fold it or show it again, for as long as the board is open.
+- Drag a card to another cell to write both: the column's change, then the lane's, in one edit of the task's line, with one Undo. Dragged along its lane it changes its column; dragged up or down its column, its lane. On a board sorted by **Rank**, dragging it within its cell ranks it.
+- Each cell keeps its column's rules. While a card is held, a cell that will not take it fades and says why: the **Overdue** column or lane, and the other date ranges, which no single date stands for; **Done** in another lane, since completing a task cannot also change its lane; and, with lanes by status, any cell but where **Done** meets the **Done** lane for a done task.
+- **Done** shows the 20 most recently completed tasks of each lane, and **Show N more** in a cell shows the whole column.
+- **+** on a lane, **Add a task to Rates**, opens Add Task with the lane's value filled in, such as `#team/rates`, **for @dana**, or a priority; the **+** on a column head fills in the column's.
+- A card's **⋯** offers **Move to lane** when the lanes are tags or people; status, priority, and due date lanes are moved to by the menu's own choices. **[** and **]** move a card along its lane, and **↑** and **↓** go on past a cell's first or last card into the lane above or below.
+- The **Table** has no lanes.
+
 ## Searching and filtering
 
 - Search with the same [search box](search.md#the-search-box) as search pages, such as `#project/atlas`, `priority >= high`, or plain words. **Refine** counts only tasks. The board opens on `is:open`; clear the box for every task, or search `is:done`.

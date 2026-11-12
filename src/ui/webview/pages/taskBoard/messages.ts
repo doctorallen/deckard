@@ -22,6 +22,7 @@ import type {
   SaveBoardSearchMessage,
   SaveToTasksViewMessage,
   SetBoardGroupMessage,
+  SetBoardLanesMessage,
   SetBoardQueryMessage,
   EditTaskStatusesMessage,
   SetBoardColumnOrderMessage,
@@ -75,9 +76,15 @@ function taskOnly<T extends TaskOnlyMessage['type']>(type: T): Narrower<{ type: 
     typeof value.taskId === 'string' && Object.keys(value).length === 2 ? { type, taskId: value.taskId } : undefined;
 }
 
+/** Whether a value is a column or lane id that may be left out: absent, or some text. */
+function isOptionalId(value: unknown): boolean {
+  return value === undefined || (typeof value === 'string' && value.length > 0);
+}
+
 /**
  * A card moved to a column: the task, a non-empty column, and the column it
- * left when sent. The move's number is kept when it is one, and a move
+ * left when sent; on a board with lanes, the lane it went to and the one it
+ * left, when it changed lanes. The move's number is kept when it is one, and a move
  * without one, or with one that is not, is still made, as it was before
  * moves were numbered.
  */
@@ -85,7 +92,11 @@ const narrowMoveTask: Narrower<MoveTaskMessage> = (value) => {
   if (typeof value.taskId !== 'string' || typeof value.column !== 'string' || value.column.length === 0) {
     return undefined;
   }
-  if (value.from !== undefined && (typeof value.from !== 'string' || value.from.length === 0)) {
+  if (!isOptionalId(value.from) || !isOptionalId(value.lane) || !isOptionalId(value.fromLane)) {
+    return undefined;
+  }
+  // The lane a card left goes with the lane it went to.
+  if (value.fromLane !== undefined && value.lane === undefined) {
     return undefined;
   }
   return {
@@ -93,6 +104,8 @@ const narrowMoveTask: Narrower<MoveTaskMessage> = (value) => {
     taskId: value.taskId,
     column: value.column,
     ...(typeof value.from === 'string' ? { from: value.from } : {}),
+    ...(typeof value.lane === 'string' ? { lane: value.lane } : {}),
+    ...(typeof value.fromLane === 'string' ? { fromLane: value.fromLane } : {}),
     ...(isRequestId(value.requestId) ? { requestId: value.requestId } : {}),
   };
 };
@@ -114,6 +127,19 @@ const narrowSetBoardGroup: Narrower<SetBoardGroupMessage> = (value) => {
       : undefined;
   }
   return isTaskBoardGroupBy(value.groupBy) ? { type: 'setBoardGroup', groupBy: value.groupBy } : undefined;
+};
+
+/**
+ * Lanes by an axis the board can lay out, or none; lanes by tag name their
+ * namespace, which is kept in lower case.
+ */
+const narrowSetBoardLanes: Narrower<SetBoardLanesMessage> = (value) => {
+  if (value.lanes === 'tag') {
+    return isBoardNamespace(value.namespace)
+      ? { type: 'setBoardLanes', lanes: 'tag', namespace: value.namespace.toLowerCase() }
+      : undefined;
+  }
+  return value.lanes === 'none' || isTaskBoardGroupBy(value.lanes) ? { type: 'setBoardLanes', lanes: value.lanes } : undefined;
 };
 
 /** A column's Show N more: a non-empty column id. */
@@ -229,6 +255,7 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   addTask: exactlyType('addTask'),
   addTaskToColumn: narrowAddTaskToColumn,
   setBoardGroup: narrowSetBoardGroup,
+  setBoardLanes: narrowSetBoardLanes,
   showColumnRest: narrowShowColumnRest,
   openHelp: exactlyType('openHelp'),
   openGoTo: exactlyType('openGoTo'),

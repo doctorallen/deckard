@@ -1,0 +1,70 @@
+/*
+ * A board with lanes (lanes.tsx): column heads drawn once across the top,
+ * then each lane's head and its row of cells, a cell in every column, so a
+ * column's cells line up down the page. It is drawn as the Task board's
+ * columns are, a head over its cards with no box of its own, in theme
+ * tokens alone; the cards bring their own look.
+ */
+
+.lane-grid {
+  /* A column is never narrower than a Task board column with cards, and
+     every column is as wide as the others in every row, so the cells of a
+     column line up under its head. The grid scrolls sideways before it
+     goes narrower. */
+  --lane-column-min: calc(28ch + 3 * var(--space-2) + 16px + 2 * var(--edge));
+  display: grid;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  overflow-x: auto;
+}
+.lane-heads, .lane-row { display: flex; gap: var(--space-4); }
+.lane-heads > *, .lane-row > * { flex: 1 1 0; min-width: var(--lane-column-min); }
+.lane-row[hidden] { display: none; }
+
+/* A column's head, as a Task board column's: its name on a line of its
+   own, never broken, its count on a quieter line under it, then its +, over
+   a rule. */
+.lane-column-head { display: flex; align-items: center; gap: var(--space-1); min-height: calc(24px + 2 * var(--space-2) + 1px); padding: var(--space-2); border-bottom: 1px solid var(--line); }
+.lane-column-title { display: grid; flex: 1 1 auto; gap: 2px; min-width: 0; margin: 0; color: var(--cyan); font: var(--text-sm) var(--font-mono); }
+.lane-column-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.lane-count { color: var(--muted); font-size: var(--text-xs); font-weight: 400; white-space: nowrap; }
+
+/* A lane's head: its name, which folds it, its count, and its +. It stays
+   at the left edge while the grid is scrolled sideways. */
+.lane { display: grid; gap: var(--space-2); }
+.lane + .lane { margin-top: var(--space-2); }
+.lane-head { position: sticky; left: 0; display: flex; align-items: center; gap: var(--space-1); width: max-content; max-width: 100%; }
+.lane-title { margin: 0; font: inherit; }
+.lane-fold.lane-fold { display: inline-flex; align-items: baseline; gap: var(--space-2); min-height: 24px; padding: 2px var(--space-1); border-color: transparent; background: transparent; color: var(--text); font: 700 var(--text-sm) var(--font-display); text-align: left; text-transform: none; }
+.lane-fold.lane-fold:hover, .lane-fold.lane-fold:focus-visible { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
+.lane-fold svg { width: 12px; height: 12px; align-self: center; flex: none; color: var(--muted); transition: transform 120ms ease; }
+.lane-fold[aria-expanded="true"] svg { transform: rotate(90deg); }
+.lane-fold:hover svg, .lane-fold:focus-visible svg { color: inherit; }
+.lane-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* A head's +, quiet until hovered or focused, as a Task board column's is. */
+.lane-add.lane-add { flex: none; width: 24px; min-height: 24px; border-color: transparent; background: transparent; color: var(--muted); }
+.lane-add.lane-add:hover, .lane-add.lane-add:focus-visible { border-color: var(--amber); background: var(--hover-bg); color: var(--hover-fg); }
+
+/* A cell: its cards stacked, with room to drop one into an empty cell. A
+   lane's cells are separated from the next lane's by a rule as faint as a
+   column's. */
+.lane-cell { position: relative; display: grid; align-content: start; gap: var(--space-2); min-width: 0; padding-bottom: var(--space-2); border-bottom: 1px dashed var(--line); }
+.lane-cards { display: grid; align-content: start; gap: var(--space-2); min-height: 48px; }
+/* Themes slide a row right on hover, which in a column this narrow puts
+   the card out of it; it keeps the border and ground the hover gives. */
+.lane-cards > [data-lane-card]:hover { transform: none; }
+.lane-cards > [data-lane-card].dragging { opacity: .45; }
+.lane-cards > [data-lane-card].is-pending { opacity: .7; }
+
+/* Under a held card, a cell that takes it takes a faint amber ground and
+   its rule goes amber, as a Task board column does. */
+.lane-cell.drop-target { background: color-mix(in srgb, var(--amber) 8%, transparent); border-bottom-color: var(--amber); }
+/* One that will not take it fades its cards and says why, rather than
+   letting the drop fail without a word. */
+.lane-grid.is-dragging-card .lane-cell.is-refused .lane-cards { opacity: .45; }
+.lane-grid.is-dragging-card .lane-cell.is-refused::after { content: attr(data-refuses); margin: 0 var(--space-2); color: var(--muted); font-size: var(--text-xs); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lane-fold svg { transition: none; }
+}

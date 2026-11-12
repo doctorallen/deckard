@@ -387,6 +387,11 @@ module.exports = {
   EndOfLine: { LF: 1, CRLF: 2 },
   QuickPickItemKind: { Separator: -1, Default: 0 },
   TextEditorRevealType: { Default: 0, InCenter: 1, InCenterIfOutsideViewport: 2, AtTop: 3 },
+  /** A code action's kind by its dotted name, which File this makes its own kinds from as its module loads. */
+  CodeActionKind: (() => {
+    const kind = (value) => ({ value, append: (part) => kind(value ? `${value}.${part}` : part) });
+    return { Empty: kind(''), QuickFix: kind('quickfix'), Refactor: kind('refactor') };
+  })(),
   /** What a tab shows, which no tab here ever does: Context reads the active tab's to press the page in front. */
   TabInputWebview: class TabInputWebview {},
   TabInputText: class TabInputText {},

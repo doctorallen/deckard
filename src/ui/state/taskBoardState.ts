@@ -33,12 +33,14 @@ import {
 import { QueryContext } from '../../domain/query/queryContext';
 import { extractTags } from '../../domain/markdown/parser';
 import {
+  combineTaskMoves,
   getDueBand,
   refuseMove,
   resolveTaskMove as resolveColumnMove,
   setTaskNamespaceTags,
   TaskMove,
 } from '../../domain/tasks/boardMoves';
+import { type BoardAxis, isLaneAxisFor } from '../../domain/tasks/boardLanes';
 import { evaluateQuery, matchesPerson } from '../../domain/query/queryEvaluator';
 import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { tokenizeInline } from '../../domain/markdown/inline';
@@ -53,6 +55,7 @@ import {
   CardDetailParts,
   TaskBoardCard,
   TaskBoardColumn,
+  TaskBoardLane,
   TaskBoardLayout,
   TaskBoardSnapshot,
   TaskMenuState,
@@ -184,6 +187,10 @@ export function createTaskBoard({
           requestedGroupBy: groupBy,
           options: boardOptions,
           namespace: preferences.taskBoardGroupNamespace,
+          // Lanes are the page's alone: the Dashboard's board draws none (plan 46, D6).
+          ...(preferences.taskBoardLanes
+            ? { lanes: { by: preferences.taskBoardLanes, namespace: preferences.taskBoardLanesNamespace } }
+            : {}),
           sort: createTaskComparator(preferences.taskOrder, preferences.taskSortMode, { now: options.queryContext.now, index }),
         })
       : { groupBy, columns: [], taskCount: tasks.length };
@@ -346,6 +353,12 @@ export interface TaskBoardLayoutRequest {
   /** The tag namespace a tag grouping groups by. */
   namespace?: string;
   /**
+   * What the lanes are by, when the board has them: another axis than the
+   * columns', or another namespace's tags. Lanes by the columns' own axis,
+   * or by tag with no namespace, are none.
+   */
+  lanes?: BoardAxis;
+  /**
    * How an open column orders its cards before its own order, soonest due
    * then highest priority, decides: the reader's rank or another sort. Done
    * and Cancelled always list the most recently closed first.
@@ -364,74 +377,213 @@ export function layoutTaskBoard({
   requestedGroupBy,
   options,
   namespace,
+  lanes,
   sort,
 }: TaskBoardLayoutRequest): TaskBoardLayout {
   // A tag grouping without a namespace to group by lays out as status.
   const groupBy: TaskBoardGroupBy =
     requestedGroupBy === 'tag' && !isNamespaceName(namespace) ? 'status' : requestedGroupBy;
+  const laneAxis = readLaneAxis({ by: groupBy, namespace }, lanes);
   const open = tasks.filter(isOpenTask);
   const done = tasks.filter((task) => task.completed).sort(compareDone);
   const cancelled = tasks.filter(isCancelledTask).sort(compareDone);
-  const shown = options.shownColumns;
-  const doneLimit = shown?.has('done') ? Number.MAX_SAFE_INTEGER : options.doneLimit ?? DEFAULT_DONE_LIMIT;
-  const columnLimit = options.columnLimit ?? DEFAULT_COLUMN_LIMIT;
+  const { cutColumn, cutClosed } = createCutters(createCardMaker({ index, options, groupBy, namespace, laneAxis }), options);
+  const drafts = draftColumns({ groupBy, open, index, options, namespace });
+  drafts.forEach((draft) => draft.tasks.sort((left, right) => sort?.(left, right) || compareOpen(left, right)));
+  const statuses = options.queryContext.taskPolicy.statuses;
+  const hideCancelled = isCancelledHidden(statuses, readColumnChoices(options));
+  const closed = closedDrafts({ done, cancelled, statuses, showSymbols: groupBy === 'status', hideCancelled });
+  const board = {
+    groupBy,
+    taskCount: tasks.length,
+    ...(groupBy === 'tag' && namespace ? { groupNamespace: namespace.toLowerCase() } : {}),
+    tagNamespaces: listBoardNamespaces(index),
+  };
+  if (laneAxis) {
+    const laneList = laneDrafts(laneAxis, { open, done, cancelled }, { index, options, hideCancelled });
+    return {
+      ...board,
+      ...layoutLanes({ drafts, closed, lanes: laneList, cutColumn, cutClosed, limits: options.limits }),
+      lanesBy: laneAxis.by,
+      ...(laneAxis.namespace ? { lanesNamespace: laneAxis.namespace } : {}),
+    };
+  }
+  const columns: TaskBoardColumn[] = [
+    ...drafts.map((draft) => cutColumn(draft, draft.tasks)),
+    ...closed.map((draft) => cutClosed(draft, draft.tasks)),
+  ];
+  return { ...board, columns };
+}
+
+/** How a card is made from a task, in its column and lane, when there are lanes. */
+type CardMaker = (task: Task, draft?: ColumnDraft, lane?: ColumnDraft) => TaskBoardCard;
+
+/**
+ * Makes a board's cards: each says what its column and lane do not, and its
+ * menu checks the tags of the board's tag axes.
+ */
+function createCardMaker({ index, options, groupBy, namespace, laneAxis }: {
+  index: WorkspaceIndex;
+  options: TaskBoardOptions;
+  groupBy: TaskBoardGroupBy;
+  namespace: string | undefined;
+  laneAxis: BoardAxis | undefined;
+}): CardMaker {
+  const axes: TaskBoardGroupBy[] = laneAxis ? [groupBy, laneAxis.by] : [groupBy];
   const openDependencyIds = new Set(
     [...index.tasks.values()]
       .filter((task) => isOpenTask(task) && task.dependencyId)
       .map((task) => task.dependencyId as string),
   );
-  const toCard = (task: Task, draft?: ColumnDraft): TaskBoardCard => {
+  // The tag namespaces of the board's axes, whose tags a card's menu checks.
+  const tagAxes = [groupBy === 'tag' ? namespace : undefined, laneAxis?.namespace].filter((name): name is string => Boolean(name));
+  return (task, draft, lane) => {
     const card = createCard(task, {
-      groupBy,
+      axes,
       context: options.queryContext,
       openDependencyIds,
       sections: index.sections,
-      column: draft?.label,
-      person: namedPerson(task, index, groupBy, options.queryContext.identity),
+      // The status a card's column or lane already says, which it does not say again.
+      column: laneAxis?.by === 'status' ? lane?.label : draft?.label,
+      person: namedPerson(task, index, axes, options.queryContext.identity),
     });
-    const others = draft?.alsoIn?.get(task.id);
-    const parent = withParentTag(index, task, options, groupBy === 'tag' ? namespace : undefined);
-    const withTags =
-      groupBy === 'tag' && namespace
-        ? { ...card, ...parent, current: [...card.current, ...tagMoves(index, task, namespace)] }
-        : { ...card, ...parent };
-    return others && others.length > 0
+    const others = [...(draft?.alsoIn?.get(task.id) ?? []), ...(lane?.alsoIn?.get(task.id) ?? [])];
+    const parent = withParentTag(index, task, options, groupBy === 'tag' ? namespace : laneAxis?.namespace);
+    const withTags = tagAxes.length > 0
+      ? { ...card, ...parent, current: [...card.current, ...tagAxes.flatMap((name) => tagMoves(index, task, name))] }
+      : { ...card, ...parent };
+    return others.length > 0
       ? { ...withTags, details: [...withTags.details, `also in ${others.join(', ')}`] }
       : withTags;
   };
+}
 
-  const drafts = draftColumns({ groupBy, open, index, options, namespace });
-
-  const columns: TaskBoardColumn[] = [
-    ...drafts.map((draft) => {
+/**
+ * How a column, or a column's cell in a lane, is cut to what it draws: an
+ * open one to its first hundred, Done and Cancelled to their most recent
+ * handful, each saying how many it leaves out.
+ */
+function createCutters(toCard: CardMaker, options: TaskBoardOptions): {
+  cutColumn: (draft: ColumnDraft, tasks: Task[], lane?: ColumnDraft) => TaskBoardColumn;
+  cutClosed: (draft: ColumnDraft, tasks: Task[], lane?: ColumnDraft) => TaskBoardColumn;
+} {
+  const shown = options.shownColumns;
+  const doneLimit = shown?.has('done') ? Number.MAX_SAFE_INTEGER : options.doneLimit ?? DEFAULT_DONE_LIMIT;
+  const columnLimit = options.columnLimit ?? DEFAULT_COLUMN_LIMIT;
+  const symbolOf = (draft: ColumnDraft): Pick<TaskBoardColumn, 'symbol'> => (draft.symbol === undefined ? {} : { symbol: draft.symbol });
+  return {
+    cutColumn: (draft, tasksIn, lane) => {
       // A column of hundreds draws its first hundred, and the rest on
       // request: building thousands of cards made the whole board slow.
-      const sorted = draft.tasks.sort((left, right) => sort?.(left, right) || compareOpen(left, right));
-      const drawn = shown?.has(draft.id) ? sorted : sorted.slice(0, columnLimit);
-      const cards = drawn.map((task) => toCard(task, draft));
+      const drawn = shown?.has(draft.id) ? tasksIn : tasksIn.slice(0, columnLimit);
+      const cards = drawn.map((task) => toCard(task, draft, lane));
       const limit = findLimit(draft.id, options.limits);
       return {
         id: draft.id,
         label: draft.label,
-        ...(draft.symbol === undefined ? {} : { symbol: draft.symbol }),
+        ...symbolOf(draft),
         droppable: draft.droppable,
         cards: draft.id === 'due:overdue' ? cards : toneOverdue(cards, drawn),
-        hiddenCount: sorted.length - drawn.length,
+        hiddenCount: tasksIn.length - drawn.length,
         overdueCount:
           draft.id === 'due:overdue' ? 0 : cards.filter((card) => card.overdue).length,
         ...(limit === undefined ? {} : { limit }),
       };
+    },
+    cutClosed: (draft, tasksIn, lane) => ({
+      id: draft.id,
+      label: draft.label,
+      ...symbolOf(draft),
+      droppable: draft.droppable,
+      cards: tasksIn.slice(0, doneLimit).map((task) => toCard(task, undefined, lane)),
+      hiddenCount: Math.max(0, tasksIn.length - doneLimit),
     }),
-    ...closedColumns({ done, cancelled, statuses: options.queryContext.taskPolicy.statuses, showSymbols: groupBy === 'status', hideCancelled: isCancelledHidden(options.queryContext.taskPolicy.statuses, readColumnChoices(options)) }, doneLimit, toCard),
-  ];
-
-  return {
-    groupBy,
-    columns,
-    taskCount: tasks.length,
-    ...(groupBy === 'tag' && namespace ? { groupNamespace: namespace.toLowerCase() } : {}),
-    tagNamespaces: listBoardNamespaces(index),
   };
+}
+
+/**
+ * The lanes a board's tasks fall into on `axis`, as Group would draw them
+ * as columns. Every task is in the lanes its value says, closed ones too:
+ * by status, Done and Cancelled are lanes, as they are columns; by any other
+ * axis, a closed task is in the lane of its priority, due date, person, or
+ * tag.
+ */
+function laneDrafts(
+  axis: BoardAxis,
+  tasks: { open: Task[]; done: Task[]; cancelled: Task[] },
+  { index, options, hideCancelled }: { index: WorkspaceIndex; options: TaskBoardOptions; hideCancelled: boolean },
+): ColumnDraft[] {
+  if (axis.by === 'status') {
+    const statuses = options.queryContext.taskPolicy.statuses;
+    return [
+      ...createStatusColumns(tasks.open, options),
+      ...closedDrafts({ done: tasks.done, cancelled: tasks.cancelled, statuses, showSymbols: true, hideCancelled }),
+    ];
+  }
+  return draftColumns({
+    groupBy: axis.by,
+    open: [...tasks.open, ...tasks.done, ...tasks.cancelled],
+    index,
+    options,
+    namespace: axis.namespace,
+  });
+}
+
+/**
+ * The board cut into lanes (plan 46): each lane a cell per column, in the
+ * columns' order, holding the column's tasks that are in the lane, in the
+ * column's order and cut to its limit. The columns' own cards are left
+ * empty, since every card is in a cell; a head counts them from its cells.
+ */
+function layoutLanes({ drafts, closed, lanes, cutColumn, cutClosed, limits }: {
+  drafts: ColumnDraft[];
+  closed: ColumnDraft[];
+  lanes: ColumnDraft[];
+  cutColumn: (draft: ColumnDraft, tasks: Task[], lane: ColumnDraft) => TaskBoardColumn;
+  cutClosed: (draft: ColumnDraft, tasks: Task[], lane: ColumnDraft) => TaskBoardColumn;
+  limits: TaskBoardOptions['limits'];
+}): Pick<TaskBoardLayout, 'columns' | 'lanes'> {
+  const head = (draft: ColumnDraft): TaskBoardColumn => {
+    const limit = findLimit(draft.id, limits);
+    return {
+      id: draft.id,
+      label: draft.label,
+      ...(draft.symbol === undefined ? {} : { symbol: draft.symbol }),
+      droppable: draft.droppable,
+      cards: [],
+      hiddenCount: 0,
+      ...(limit === undefined ? {} : { limit }),
+    };
+  };
+  const laneOf = (lane: ColumnDraft): TaskBoardLane => {
+    const members = new Set(lane.tasks);
+    const inLane = (draft: ColumnDraft): Task[] => draft.tasks.filter((task) => members.has(task));
+    return {
+      id: lane.id,
+      label: lane.label,
+      droppable: lane.droppable,
+      cells: [
+        ...drafts.map((draft) => cutColumn(draft, inLane(draft), lane)),
+        ...closed.map((draft) => cutClosed(draft, inLane(draft), lane)),
+      ],
+    };
+  };
+  return { columns: [...drafts, ...closed].map(head), lanes: lanes.map(laneOf) };
+}
+
+/**
+ * The lanes asked for, when they can be drawn beside the columns: another
+ * axis, or another namespace's tags, which lanes by tag must name.
+ */
+function readLaneAxis(group: BoardAxis, lanes: BoardAxis | undefined): BoardAxis | undefined {
+  if (!lanes) {
+    return undefined;
+  }
+  if (lanes.by === 'tag' && !isNamespaceName(lanes.namespace)) {
+    return undefined;
+  }
+  const axis: BoardAxis = lanes.by === 'tag' ? { by: 'tag', namespace: (lanes.namespace as string).toLowerCase() } : { by: lanes.by };
+  return isLaneAxisFor(group, axis) ? axis : undefined;
 }
 
 /**
@@ -439,24 +591,18 @@ export function layoutTaskBoard({
  * recent first; and, unless the gear hides it, Cancelled, closed but not
  * done. Grouped by status, each says its status's character.
  */
-function closedColumns(
+function closedDrafts(
   tasks: { done: Task[]; cancelled: Task[]; statuses: QueryContext['taskPolicy']['statuses']; showSymbols: boolean; hideCancelled: boolean },
-  limit: number,
-  toCard: (task: Task) => TaskBoardCard,
-): TaskBoardColumn[] {
-  const drawn = (list: Task[], kept: number): Pick<TaskBoardColumn, 'cards' | 'hiddenCount'> => ({
-    cards: list.slice(0, kept).map((task) => toCard(task)),
-    hiddenCount: Math.max(0, list.length - kept),
-  });
-  const symbolOf = (type: 'done' | 'cancelled'): Pick<TaskBoardColumn, 'symbol'> => {
+): ColumnDraft[] {
+  const symbolOf = (type: 'done' | 'cancelled'): Pick<ColumnDraft, 'symbol'> => {
     const symbol = tasks.showSymbols ? findClosedStatus(tasks.statuses, type)?.symbol : undefined;
     return symbol === undefined ? {} : { symbol };
   };
   return [
-    { id: 'done', label: 'Done', ...symbolOf('done'), droppable: true, ...drawn(tasks.done, limit) },
+    { id: 'done', label: 'Done', ...symbolOf('done'), droppable: true, tasks: tasks.done },
     ...(tasks.hideCancelled
       ? []
-      : [{ id: 'cancelled', label: findClosedStatus(tasks.statuses, 'cancelled')?.name ?? 'Cancelled', ...symbolOf('cancelled'), droppable: true, ...drawn(tasks.cancelled, limit) }]),
+      : [{ id: 'cancelled', label: findClosedStatus(tasks.statuses, 'cancelled')?.name ?? 'Cancelled', ...symbolOf('cancelled'), droppable: true, tasks: tasks.cancelled }]),
   ];
 }
 
@@ -616,6 +762,43 @@ function toneOverdue(cards: TaskBoardCard[], tasks: readonly Task[]): TaskBoardC
 export interface TaskMoveContext {
   index?: WorkspaceIndex;
   from?: string;
+}
+
+/**
+ * Where a card goes on a board with lanes: a cell's column and lane, and
+ * the column and lane it left. A move that changes no lane is a move to a
+ * column, as on a board without lanes.
+ */
+export interface TaskCellMove {
+  column: string;
+  from?: string;
+  lane?: string;
+  fromLane?: string;
+}
+
+/**
+ * Decides what dropping `task` in a cell of a board with lanes writes: the
+ * column's edit, then the lane's, as one edit with one Undo (plan 46, D7).
+ * A card moved within its column changes its lane alone. The column's edit
+ * reopens a closed task, so the lane's is read as of an open one, whose
+ * own reopening would otherwise undo a status the column wrote.
+ */
+export function resolveCellMove(
+  task: Task,
+  move: TaskCellMove,
+  options: TaskBoardOptions,
+  index?: WorkspaceIndex,
+): TaskMove {
+  const lane = move.lane !== undefined && move.lane !== move.fromLane ? move.lane : undefined;
+  const columnMove: TaskMove = lane !== undefined && move.from === move.column
+    ? { kind: 'unchanged' }
+    : resolveTaskMove(task, move.column, options, { index, from: move.from });
+  // By status, Done is a lane and a column: a card dropped where they meet is completed once.
+  if (lane === undefined || lane === move.column) {
+    return columnMove;
+  }
+  const reopened = columnMove.kind === 'edit' && task.completed ? { ...task, completed: false } : task;
+  return combineTaskMoves(columnMove, resolveTaskMove(reopened, lane, options, { index, from: move.fromLane }));
 }
 
 /**
@@ -934,8 +1117,9 @@ function createDueColumns(open: Task[], context: QueryContext): ColumnDraft[] {
 
 function createCard(
   task: Task,
-  { groupBy, context, openDependencyIds, sections, column, person }: {
-    groupBy: TaskBoardGroupBy;
+  { axes, context, openDependencyIds, sections, column, person }: {
+    /** What the board's columns, and its lanes if any, are by, which a card does not say again. */
+    axes: readonly TaskBoardGroupBy[];
     context: QueryContext;
     openDependencyIds: ReadonlySet<string>;
     sections: ReadonlyMap<string, Section>;
@@ -969,7 +1153,7 @@ function createCard(
     ...(task.updatedAt === undefined ? {} : { updatedAt: task.updatedAt }),
     overdue: open && task.dueAt !== undefined && task.dueAt < today && !needsNewDate(task.dueAt, now, taskPolicy),
     ...(open && needsNewDate(task.dueAt, now, taskPolicy) ? { stale: true } : {}),
-    ...withDetails([...(status ? [{ text: status }] : []), ...cardDetails(task, { groupBy, today, taskPolicy, blockers, person, formats: context.dateFormats })]),
+    ...withDetails([...(status ? [{ text: status }] : []), ...cardDetails(task, { axes, today, taskPolicy, blockers, person, formats: context.dateFormats })]),
     // Where the task is written folds under the card, as it does under a
     // row; it was the last detail on every card.
     headingPath: section ? getHeadingPath(section, sections) : [],
@@ -1020,8 +1204,8 @@ function datedDetail(words: string, at: number, formats: DateFormats): CardDetai
  */
 function cardDetails(
   task: Task,
-  { groupBy, today, taskPolicy, blockers, person, formats }: {
-    groupBy: TaskBoardGroupBy;
+  { axes, today, taskPolicy, blockers, person, formats }: {
+    axes: readonly TaskBoardGroupBy[];
     today: number;
     taskPolicy: QueryContext['taskPolicy'];
     blockers: readonly string[];
@@ -1036,7 +1220,7 @@ function cardDetails(
     open && task.scheduledAt !== undefined ? datedDetail('scheduled', task.scheduledAt, formats) : undefined,
     open && task.startAt !== undefined && task.startAt > today ? datedDetail('starts', task.startAt, formats) : undefined,
     person ? { text: `for ${person}` } : undefined,
-    groupBy !== 'priority' && task.priority ? { text: `${task.priority} priority` } : undefined,
+    !axes.includes('priority') && task.priority ? { text: `${task.priority} priority` } : undefined,
     task.recurrence ? { text: `repeats ${task.recurrence}` } : undefined,
     open && blockers.length > 0 ? { text: `blocked by ${blockers.join(', ')}` } : undefined,
   ].filter((detail): detail is CardDetail => detail !== undefined);
@@ -1044,11 +1228,12 @@ function cardDetails(
 
 /**
  * Who a task is for, by their tag's label, when a card should say so: not
- * when the columns are people, which already say it, and not when it is
- * you, which `deckard.me` names. With no one named as you, every person shows.
+ * when the columns or the lanes are people, which already say it, and not
+ * when it is you, which `deckard.me` names. With no one named as you, every
+ * person shows.
  */
-function namedPerson(task: Task, index: WorkspaceIndex, groupBy: TaskBoardGroupBy, identity: string | undefined): string | undefined {
-  if (!task.assignee || groupBy === 'assignee' || (identity !== undefined && matchesPerson(identity, task.assignee))) {
+function namedPerson(task: Task, index: WorkspaceIndex, axes: readonly TaskBoardGroupBy[], identity: string | undefined): string | undefined {
+  if (!task.assignee || axes.includes('assignee') || (identity !== undefined && matchesPerson(identity, task.assignee))) {
     return undefined;
   }
   return index.tags.get(task.assignee)?.label ?? task.assignee;

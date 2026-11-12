@@ -376,6 +376,29 @@ test('a column that takes a card takes a new task, and a menu offers any date', 
   );
 });
 
+test('Lanes beside Group splits the board by priority, kept with it, and a lane’s + starts a task with its value', async () => {
+  const { view, preferences } = await openBoard();
+  view.change(view.find('[data-action="set-board-lanes"]'), 'priority');
+  await delay(10);
+  assert.strictEqual(preferences.reader.value.taskBoardLanes, 'priority');
+  assert.ok(view.find('.lane-grid.task-board'), 'the board draws its lanes');
+  assert.deepStrictEqual(view.findAll('.lane').map((lane) => lane.dataset.laneLane), ['priority:highest', 'priority:high', 'priority:medium', 'priority:', 'priority:low', 'priority:lowest']);
+  assert.ok(view.find('.lane-cell[data-lane-column="status:todo"][data-lane-lane="priority:"] .board-card[data-task-id="call"]'), 'a card is in its column’s cell in its lane');
+
+  vscode._test.executedCommands.length = 0;
+  view.click(view.find('.lane[data-lane-lane="priority:high"] .lane-head [data-action="board-add-task"]'));
+  await delay(10);
+  assert.deepStrictEqual(
+    vscode._test.executedCommands.filter((entry) => entry.command === 'deckard.addTask').map((entry) => entry.args),
+    [[{ column: 'priority:high' }]],
+  );
+
+  view.change(view.find('[data-action="set-board-group"]'), 'priority');
+  await delay(10);
+  assert.strictEqual(preferences.reader.value.taskBoardLanes, undefined, 'Group by the lanes’ axis takes them away');
+  assert.strictEqual(view.find('.lane-grid'), null);
+});
+
 test('the page’s Add task runs Add Task', async () => {
   const { view } = await openBoard();
   vscode._test.executedCommands.length = 0;

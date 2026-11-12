@@ -123,13 +123,41 @@ export interface TaskBoardColumn {
   limit?: number;
 }
 
+/**
+ * One lane of a board with lanes (plan 46): a value of the lanes' axis, as
+ * Group would draw it as a column, and a cell in every column.
+ */
+export interface TaskBoardLane {
+  /** Its column id on its own axis, which a move into it writes: `priority:high`, `tag:team/payments`, `done`. */
+  id: string;
+  label: string;
+  /** False for a lane that no single edit can move a task into, such as Overdue. */
+  droppable: boolean;
+  /**
+   * Its cells, one per column of the board and in the columns' order, each
+   * with its column's id and rules and the cards in both the column and
+   * the lane, cut to the column's limit.
+   */
+  cells: TaskBoardColumn[];
+}
+
 /** A task board's columns, whichever page chose its tasks. */
 export interface TaskBoardLayout {
   groupBy: TaskBoardGroupBy;
+  /**
+   * The columns, in order. On a board with lanes their cards are in their
+   * cells, each lane's, and a column's own `cards` are empty.
+   */
   columns: TaskBoardColumn[];
   taskCount: number;
   /** The namespace the columns are the tags of, when grouped by tag. */
   groupNamespace?: string;
+  /** What the lanes are by, when the board has lanes: the Task Board page's alone (plan 46, D6). */
+  lanesBy?: TaskBoardGroupBy;
+  /** The namespace the lanes are the tags of, when they are by tag. */
+  lanesNamespace?: string;
+  /** The lanes, top to bottom, when the board has lanes. */
+  lanes?: TaskBoardLane[];
   /** The namespaces open tasks carry, busiest first, for the Tag… menu. */
   tagNamespaces?: { name: string; openTasks: number }[];
 }
@@ -284,6 +312,15 @@ export interface MoveTaskMessage extends Partial<Correlated> {
   column: string;
   /** The column the card was moved from: a task with two tags has two cards. */
   from?: string;
+  /**
+   * On a board with lanes, the lane a card was moved to, when it changed
+   * lanes: its edit is written after the column's, in one rewrite of the
+   * line. A move within its column sends the card's own column as both
+   * `column` and `from`.
+   */
+  lane?: string;
+  /** The lane the card was moved from, with `lane`. */
+  fromLane?: string;
 }
 
 /**
@@ -312,6 +349,14 @@ export interface SetBoardGroupMessage {
   type: 'setBoardGroup';
   groupBy: TaskBoardGroupBy;
   /** The namespace, when grouping by tag. */
+  namespace?: string;
+}
+
+/** Chooses what the board's lanes are by, or none. */
+export interface SetBoardLanesMessage {
+  type: 'setBoardLanes';
+  lanes: TaskBoardGroupBy | 'none';
+  /** The namespace, when the lanes are by tag. */
   namespace?: string;
 }
 
@@ -435,7 +480,7 @@ export interface AddTaskMessage {
   type: 'addTask';
 }
 
-/** A column's +: Add Task, the task started in that column. */
+/** A column's or a lane's +: Add Task, the task started in that column, or with that lane's value, by the lane's column id. */
 export interface AddTaskToColumnMessage {
   type: 'addTaskToColumn';
   column: string;
@@ -475,6 +520,7 @@ export interface TaskBoardPageToHost {
   toggleTask: ToggleTaskMessage;
   moveTask: MoveTaskMessage;
   setBoardGroup: SetBoardGroupMessage;
+  setBoardLanes: SetBoardLanesMessage;
   setBoardQuery: SetBoardQueryMessage;
   setTaskLayout: SetTaskLayoutMessage;
   setTaskSort: SetTaskSortMessage;

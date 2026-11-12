@@ -19,6 +19,7 @@ import { announce } from '../shared/status';
 import { closeTagContextMenu, hasTagContextMenu, isTagContextMenuOpen, openContextMenu, openTagContextMenu, setParkedTags, tagContextKey } from '../shared/tagMenu';
 import { taskTitleOf } from '../shared/taskRow';
 import { installKeySheet } from '../shared/keySheet';
+import { installLaneGrid, keepLaneScroll, laneCellOf, moveLaneCard, type LaneCell } from '../shared/lanes';
 import { installViewOptions } from '../shared/viewOptions';
 import { vscodeApi } from '../shared/vscode';
 import { BetweenCard } from './between';
@@ -26,6 +27,7 @@ import { PageHeader } from './header';
 import { SinceBand } from './since';
 import { HubNote, tagRefineLines, TagNotes, TagProgress } from './hub';
 import { type ResultKind, type ResultTabId, resultCounts, Results } from './results';
+import { boardRefusal, cardMoves, cellForMove } from './typeBoard';
 import { columnMenu, findTypeRow, nextTypeSort, rowMenu } from './typeRows';
 
 /** What the page draws from: the host's last snapshot, once there is one. */
@@ -78,6 +80,9 @@ let filteredHubOpen: boolean | undefined;
 
 /** Where the window was scrolled when a draw began, put back after it. */
 let scrolledTo = { x: 0, y: 0 };
+
+/** Scrolls a type's board back across to where it was when a draw began. */
+let restoreLaneScroll: () => void = () => undefined;
 
 /** Takes out the marks the last state's words left, before the page is drawn again. */
 let unmark: Unmark = () => undefined;
@@ -266,6 +271,7 @@ const store = startPage<SearchStore>({
     dropFittingMore();
     editor.afterRender();
     window.scrollTo(scrolledTo.x, scrolledTo.y);
+    restoreLaneScroll();
     const snapshot = store.state.snapshot as SearchPageState;
     // Every draw is unmarked first, the page's own redraws included, such
     // as a tab or Show all, so every draw is marked again.
@@ -380,6 +386,7 @@ function redraw(change: Partial<SearchStore> = {}): void {
     editor.beforeRender();
     closeTagContextMenu();
     scrolledTo = { x: window.scrollX, y: window.scrollY };
+    restoreLaneScroll = keepLaneScroll();
   }
   putBackDrawn();
   store.update(change);
@@ -407,8 +414,11 @@ function saveState(): void {
 /** The result a card's menu is about, while the menu is open. */
 let cardContext: { filePath: string; line: number; pinned: boolean; parked: boolean } | null = null;
 
-/** What a type's menu is about, while it is open: a column's heading, a row, or a select's option. */
-let typeContext: { column?: string; rowId?: string; field?: string; option?: string } | null = null;
+/**
+ * What a type's menu is about, while it is open: a column's heading, a row,
+ * or a select's option; for a board's card, the cell it is in and its key.
+ */
+let typeContext: { column?: string; rowId?: string; field?: string; option?: string; cell?: LaneCell; card?: string } | null = null;
 
 /**
  * A column's menu, opened on its heading: its sorts, Hide column, and for
@@ -438,6 +448,54 @@ function openRowMenu(event: MouseEvent, rowId: string): void {
 function openRowMenuAt(button: HTMLElement): void {
   const bounds = button.getBoundingClientRect();
   openRowMenu(new MouseEvent('contextmenu', { clientX: bounds.left, clientY: bounds.bottom }), String(button.dataset.rowId));
+}
+
+/**
+ * A board card's menu, from its ⋯, a right-click on it, or its menu key:
+ * its row's menu, then Move to each other column, and Move to lane each
+ * other lane.
+ */
+function openCardMenu(event: MouseEvent, card: HTMLElement): void {
+  const table = latest && latest.typeRows;
+  const row = table ? findTypeRow(table, String(card.dataset.rowId)) : undefined;
+  const cell = laneCellOf(card);
+  if (!table || !table.board || !row || !cell) {
+    return;
+  }
+  openContextMenu(event, [...rowMenu(row), ...cardMoves(table.board, cell)]);
+  typeContext = { rowId: row.id, cell, card: card.dataset.laneCard };
+}
+
+/** A board card's menu from its ⋯, opened under the button. */
+function openCardMenuAt(button: HTMLElement): void {
+  const card = button.closest<HTMLElement>('.type-card');
+  const bounds = button.getBoundingClientRect();
+  if (card) {
+    openCardMenu(new MouseEvent('contextmenu', { clientX: bounds.left, clientY: bounds.bottom }), card);
+  }
+}
+
+/**
+ * Moves a board's card to another cell, dragged or from its ⋯: shown at
+ * once, pending, and sent, the host writing the fields the cell stands for
+ * and its next state settling the card, or drawing it back with the reason.
+ */
+function moveTypeCard(card: HTMLElement, from: LaneCell, to: LaneCell): void {
+  const table = latest && latest.typeRows;
+  const board = table && table.board;
+  if (!table || !board || (from.column === to.column && from.lane === to.lane)) {
+    return;
+  }
+  const refusal = boardRefusal(board, from, to);
+  const title = card.querySelector('.type-card-title')?.textContent ?? '';
+  if (refusal) {
+    announce(`${title} cannot move there: ${refusal.toLowerCase()}.`);
+    return;
+  }
+  moveLaneCard(card, to);
+  send({ type: 'moveTypeRow', typeKey: table.key, rowId: String(card.dataset.rowId), from, to });
+  const where = [board.group.values.find((value) => value.id === to.column)?.label, board.lanes?.values.find((value) => value.id === to.lane)?.label];
+  announce(`Moved ${title} to ${where.filter(Boolean).join(', ')}.`);
 }
 
 /** Opens a type's row: its tag's page, or its note. */
@@ -486,6 +544,13 @@ function chooseTypeAction(action: string, context: NonNullable<typeof typeContex
   };
   if (Object.prototype.hasOwnProperty.call(actions, action)) {
     actions[action]();
+    return;
+  }
+  // A board card's Move to, or Move to lane.
+  const to = context.cell ? cellForMove(action, context.cell) : undefined;
+  const card = context.card === undefined ? null : document.querySelector<HTMLElement>(`.type-card[data-lane-card="${CSS.escape(context.card)}"]`);
+  if (to && card && context.cell) {
+    moveTypeCard(card, context.cell, to);
   }
 }
 
@@ -653,11 +718,26 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: SearchPag
       send({ type: 'setTypeSort', typeKey: snapshot.typeRows.key });
     }
   },
-  'add-type-row': (_target, snapshot) => {
-    if (snapshot.typeRows) {
-      send({ type: 'addTypeRow', typeKey: snapshot.typeRows.key });
+  // Add <type>… in ⋯, or a board's + on a column or a lane, which fills in its value.
+  'add-type-row': (target, snapshot) => {
+    if (!snapshot.typeRows) {
+      return;
+    }
+    const { laneColumn, laneLane } = target.dataset;
+    send({
+      type: 'addTypeRow',
+      typeKey: snapshot.typeRows.key,
+      ...(laneColumn === undefined ? {} : { column: laneColumn }),
+      ...(laneLane === undefined ? {} : { lane: laneLane }),
+    });
+  },
+  'set-type-view': (target, snapshot) => {
+    const view = target.dataset.value === 'board' ? 'board' : 'table';
+    if (snapshot.typeRows && snapshot.typeRows.view !== view) {
+      send({ type: 'setTypeView', typeKey: snapshot.typeRows.key, view });
     }
   },
+  'type-card-menu': (target) => openCardMenuAt(target),
   'open-type-note': (_target, snapshot) => {
     if (snapshot.typeRows) {
       send({ type: 'openTypeNote', typeKey: snapshot.typeRows.key });
@@ -760,6 +840,15 @@ function setGrouping(value: string, snapshot: SearchPageState): void {
   send({ type: 'setSearchHierarchy', hierarchy: value as never });
 }
 
+/** Group or Lanes over a type's board: the field its columns are by, or its lanes', or None. */
+function chooseBoardAxis(target: HTMLInputElement): void {
+  const action = target.dataset.action;
+  if ((action !== 'set-type-board-group' && action !== 'set-type-board-lanes') || !latest || !latest.typeRows) {
+    return;
+  }
+  send({ type: 'setTypeBoardAxis', typeKey: latest.typeRows.key, axis: action === 'set-type-board-group' ? 'group' : 'lanes', ...(target.value ? { field: target.value } : {}) });
+}
+
 /**
  * A column ticked or cleared in ⋯'s list of a type's columns: added after
  * the last shown, or taken out.
@@ -775,6 +864,14 @@ function toggleTypeColumn(target: HTMLInputElement): void {
 }
 
 installViewOptions();
+// A type's board: a lane's name folds it, and a card dragged to another
+// cell is moved there, or, over a cell set by other notes, says so.
+installLaneGrid({
+  drag: {
+    refusal: (_card, from, to) => (latest && latest.typeRows && latest.typeRows.board ? boardRefusal(latest.typeRows.board, from, to) : undefined),
+    drop: (card, from, to) => moveTypeCard(card, from, to),
+  },
+});
 // The page's own keys, on ?, or Keyboard shortcuts in ⋯: / and the menu
 // keys every page with a search box shares, and the history's.
 installKeySheet([{
@@ -829,11 +926,25 @@ document.addEventListener('click', (event) => {
     send(openSourceMessage(entry, event));
     return;
   }
-  const typeRow = element.closest<HTMLElement>('.type-row');
+  const typeRow = element.closest<HTMLElement>('.type-row, .type-card');
   if (typeRow && !element.closest('button, input, a')) {
     openTypeRow(String(typeRow.dataset.rowId), event);
   }
 });
+
+/** A right-click on a type's row or board card, not on a tag in it: the row's menu, or the card's. True when one opened. */
+function openTypeRowMenu(event: MouseEvent, element: Element | null): boolean {
+  const target = element && !element.closest('[data-tag-key]') ? element.closest<HTMLElement>('.type-row, .type-card') : null;
+  if (!target) {
+    return false;
+  }
+  if (target.classList.contains('type-card')) {
+    openCardMenu(event, target);
+  } else {
+    openRowMenu(event, String(target.dataset.rowId));
+  }
+  return true;
+}
 
 document.addEventListener('contextmenu', (event) => {
   const element = event.target instanceof Element ? event.target : null;
@@ -849,9 +960,7 @@ document.addEventListener('contextmenu', (event) => {
     openColumnMenu(event, heading);
     return;
   }
-  const typeRow = element && !element.closest('[data-tag-key]') ? element.closest<HTMLElement>('.type-row') : null;
-  if (typeRow) {
-    openRowMenu(event, String(typeRow.dataset.rowId));
+  if (openTypeRowMenu(event, element)) {
     return;
   }
   const tag = element ? element.closest<HTMLElement>('[data-tag-key]') : null;
@@ -892,7 +1001,7 @@ function openEntryByKey(event: KeyboardEvent, element: Element | null): void {
   if ((event.key !== 'Enter' && event.key !== ' ') || !element || element.closest('[data-action], button, input, a')) {
     return;
   }
-  const typeRow = element.closest<HTMLElement>('.type-row');
+  const typeRow = element.closest<HTMLElement>('.type-row, .type-card');
   if (typeRow) {
     event.preventDefault();
     openTypeRow(String(typeRow.dataset.rowId), event);
@@ -929,6 +1038,7 @@ document.addEventListener('change', (event) => {
   if (target.dataset.action === 'toggle-type-column') {
     toggleTypeColumn(target);
   }
+  chooseBoardAxis(target);
   if (target.dataset.action === 'set-results-per-page') {
     send({ type: 'setResultsPerPage', size: Number(target.value) as never });
   }
