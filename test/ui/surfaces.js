@@ -1052,16 +1052,17 @@ function createTypedIndex() {
 }
 
 /**
- * Plan 30's surfaces: a type's search page on its rows tab, a note-type
- * row on the Note page with its fields, and the page of a typed tag with
- * no hub note, whose Fields card holds the hub's place.
+ * Plan 30's surfaces: a type's search page on its rows tab, as a table and
+ * as plan 46's board, without lanes and with them, a note-type row on the
+ * Note page with its fields, and the page of a typed tag with no hub note,
+ * whose Fields card holds the hub's place.
  *
  * @param {object} preferences The preference services, whose reader holds what is stored.
- * @returns {object[]} The three surfaces.
+ * @returns {object[]} The five surfaces.
  */
 function createTypedSurfaces(preferences) {
   const index = createTypedIndex();
-  const search = (query) => () => createSearchPageSnapshot(index, preferences.reader.value, query, {
+  const search = (query, typeTables) => () => createSearchPageSnapshot(index, typeTables ? { ...preferences.reader.value, typeTables } : preferences.reader.value, query, {
     queryContext: createQueryContext(NOW),
     originQuery: query,
   });
@@ -1079,6 +1080,31 @@ function createTypedSurfaces(preferences) {
       clippers: [],
       hovered: ['.type-row'],
       zenHovered: [...ZEN_REGIONS.searchPage, '.type-rows[data-zen-region]'],
+    },
+    {
+      // The rows tab on Board (plan 46): Group and Lanes over columns by
+      // tier, every option drawn though bronze is empty, then No tier,
+      // where Payments, with no hub note, offers one.
+      name: 'searchPageTypeBoard',
+      page: 'searchPage',
+      viewport: [1000, 800],
+      snapshot: search('type = team', { team: { view: 'board', boardGroup: 'tier' } }),
+      scrollers: ['html', '.lane-grid'],
+      clippers: [],
+      hovered: ['.type-card', '.lane-column-head'],
+      zenHovered: [...ZEN_REGIONS.searchPage, '.type-board-bar[data-zen-region]', '.lane-column-head[data-zen-region]'],
+    },
+    {
+      // The same board with lanes by lead: the column heads drawn once,
+      // then a lane per lead, each named, counted, and with its +.
+      name: 'searchPageTypeBoardLanes',
+      page: 'searchPage',
+      viewport: [1000, 900],
+      snapshot: search('type = team', { team: { view: 'board', boardGroup: 'tier', boardLanes: 'lead' } }),
+      scrollers: ['html', '.lane-grid'],
+      clippers: [],
+      hovered: ['.type-card', '.lane-head'],
+      zenHovered: [...ZEN_REGIONS.searchPage, '.type-board-bar[data-zen-region]', '.lane-head[data-zen-region]'],
     },
     {
       // A note-type row on the Note page: its fields under the bar, each

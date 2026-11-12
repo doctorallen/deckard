@@ -7,7 +7,7 @@
 import type { ComponentChild } from 'preact';
 
 import { NOTE_SORT_LABELS } from '../../domain/model/sortOrders';
-import type { SearchPageSnapshot } from '../../ui/protocol/searchPage';
+import type { SearchPageSnapshot, SearchPageTypeRows } from '../../ui/protocol/searchPage';
 import type { DashboardTask } from '../../ui/protocol/shared';
 import { ResultGroups } from './groups';
 import { QuestionRow } from './questionRow';
@@ -17,6 +17,7 @@ import { type CardDisplay, SearchCard } from '../shared/searchCard';
 import { LinesIcon } from '../shared/strokeIcons';
 import { TaskListRow } from '../shared/taskRow';
 import { StoryTab } from './story';
+import { TypeBoardView, TypeViewSwitch } from './typeBoard';
 import { TypeRowsTable, TypeSortNote } from './typeRows';
 
 /** A kind of result. */
@@ -290,9 +291,14 @@ function SplitGroups({ view }: { readonly view: ResultsView }) {
   );
 }
 
+/** A type's rows: the table, or, on Board, the board. */
+function TypeRows({ table }: { readonly table: SearchPageTypeRows }) {
+  return table.view === 'board' ? <TypeBoardView table={table} /> : <TypeRowsTable table={table} />;
+}
+
 /**
  * Side by side, a type's rows over the notes and tasks: their heading and
- * count, what they are sorted by, and the table.
+ * count, what they are sorted by, Table or Board, and the rows.
  */
 function RowsPane({ view }: { readonly view: ResultsView }) {
   const table = view.snapshot.typeRows;
@@ -303,9 +309,9 @@ function RowsPane({ view }: { readonly view: ResultsView }) {
     <section class="overview-pane type-pane" aria-labelledby="rows-heading">
       <div class="overview-pane-header" data-zen-region="">
         <h2 id="rows-heading" class="overview-pane-heading">{[`${table.plural} (`, <span data-search-count="rows">{table.count}</span>, ')']}</h2>
-        <div class="overview-pane-actions"><TypeSortNote table={table} /></div>
+        <div class="overview-pane-actions"><TypeSortNote table={table} /><TypeViewSwitch table={table} /></div>
       </div>
-      <TypeRowsTable table={table} />
+      <TypeRows table={table} />
     </section>
   );
 }
@@ -354,7 +360,7 @@ function StoryPane({ view }: { readonly view: ResultsView }) {
 function TabActions({ active, view }: { readonly active: ResultTabId; readonly view: ResultsView }) {
   const table = view.snapshot.typeRows;
   if (active === 'rows' && table) {
-    return <div class="overview-pane-actions"><TypeSortNote table={table} /></div>;
+    return <div class="overview-pane-actions"><TypeSortNote table={table} /><TypeViewSwitch table={table} /></div>;
   }
   return active === 'questions' || active === 'story' ? null : <PaneActions kind={active as ResultKind} view={view} />;
 }
@@ -403,7 +409,7 @@ export function Results({ view }: { readonly view: ResultsView }) {
         actions={<TabActions active={active} view={view} />}
       />
       {table
-        ? <div class="overview-tab-panel" {...resultPanelAttributes('rows')} hidden={active !== 'rows'}><TypeRowsTable table={table} /></div>
+        ? <div class="overview-tab-panel" {...resultPanelAttributes('rows')} hidden={active !== 'rows'}><TypeRows table={table} /></div>
         : null}
       <div class="overview-tab-panel" {...resultPanelAttributes('notes')} hidden={active !== 'notes'}><NotesPane view={view} /></div>
       <div class="overview-tab-panel" {...resultPanelAttributes('tasks')} hidden={active !== 'tasks'}><TasksPane view={view} /></div>
