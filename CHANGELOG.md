@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.16.0 - 2026-11-12
+
+### Highlights
+
+- **A type's rows as a board**: cards in columns by one field, lanes by another, such as initiatives by state and team.
+- **Lanes on the Task board** split its columns by status, priority, due date, person, or a tag namespace.
+- **Move to… on a heading** moves the whole section to another note, leaving a link where it was.
+
 ### Added
 
 - **A type's rows as a board.** Table | Board, beside a type's rows tab's
