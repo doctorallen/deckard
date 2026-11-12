@@ -233,3 +233,79 @@ words impractical:
   for it (`planTypeBoardMove`, `moveFieldValues`) is. The DOM goldens and
   visual baselines for `searchPageTypeBoard` and `searchPageTypeBoardLanes`
   (test/ui/surfaces.js) are still to be made.
+
+### Section 2: lanes on the Task board
+
+Section 2 built on `feat/boards-lanes` too. `src/domain/tasks/boardLanes.ts`
+holds the rules both sides read: the axes Lanes offers beside a Group
+(`listLaneAxes`), whether two axes can be columns and lanes
+(`isLaneAxisFor`), and why a cell refuses a card (`refuseCellMove`).
+`layoutTaskBoard` lays out the lanes when asked (`lanes`), `resolveCellMove`
+and `combineTaskMoves` make a drop's two edits one, and the page draws the
+lanes on the shared lane grid with the Task board's own cards, heads, keys,
+and drag code. Where the plan was silent, or impractical:
+
+- **The Lanes select** follows Group's order, so the two read alike: None,
+  Status, Priority, Due date, Person, the namespace in use, then Tag…,
+  whose menu leaves out Group's namespace and the lanes' own. It shows on
+  Board only, beside Group and before Sort.
+- **Group by the lanes' axis** sets Lanes back to None (the preference
+  service clears `taskBoardLanes`), rather than drawing the same values
+  twice or swapping the two.
+- **Ids.** A lane's id is its column id on its own axis, as columns are
+  named: `priority:high`, `assignee:@dana`, `tag:team/payments` (no `#`),
+  `due:today`, `done`.
+- **Closed tasks in lanes.** By status, Done and Cancelled are lanes as
+  they are columns, holding the closed tasks, so a done task sits where the
+  Done column meets the Done lane. By any other axis a closed task is in
+  the lane its value says: a done task in its priority's, its person's, or
+  its due band's lane. A lane is made from the tasks of every column, closed
+  ones too, so a person named only on done tasks still has a lane.
+- **What a cell refuses.** Beyond the columns' own rules (Overdue and the
+  other ranges of days), Done and Cancelled take a card only from its own
+  lane: completing a task is a write of its own, with its done date and
+  next occurrence, so it cannot share one line edit with a lane's change
+  (D7). By status, a cell where a closed column meets an open lane, or the
+  other way round, refuses and says where to drop instead: *Drop it in the
+  Done lane to complete it.* A done card dragged out of Done into another
+  lane is taken: its column's edit reopens it, and its lane's is resolved
+  as of an open task, so the lane's own reopening cannot undo a status the
+  column wrote.
+- **Menu and key moves.** A choice that is a lane's value moves the card
+  across lanes in its column, any other along its lane. A choice whose cell
+  refuses, such as Complete it with lanes by status, is written as before,
+  the card marked pending where it is until the host's next state puts it
+  in the Done lane. **[** and **]** go along the lane to the next cell that
+  takes the card; **↑** and **↓** go on past a cell's ends into the lane
+  above or below, past folded lanes. No new keys, so the ? sheet is as it
+  was.
+- **Limits.** A cell keeps its column's: Done's 20 most recent per lane,
+  and an open column's first 100 per lane. **Show N more** in a cell shows
+  the whole column in every lane (`showColumnRest` is by column). A
+  column's work-in-progress limit counts over every lane, and the dashed
+  outline goes on its head. Most of a cell overdue quiets its red, as a
+  column does.
+- **Counts.** On a board with lanes a column's own cards are empty in the
+  protocol, every card being in a cell; the page counts the heads from the
+  cells, a task in two lanes once, with what the cells hold back, and
+  counts again as words hide cards or a card moves.
+- **Cards.** A card leaves out what its lane says as well as its column:
+  its priority, its person, and its status. A task in two of a lane
+  namespace's tags says *also in Rates*, as it does in two columns.
+- **+ on a lane** sends the lane's id as the column `addTaskToColumn`
+  names, so Add Task opens with the lane's edit already made to the line:
+  `#team/payments`, the person, or the priority, in the reader's format.
+  Done has no +, as its column has none.
+- **D6 holds by itself.** The Dashboard no longer draws a task board at all;
+  `layoutTaskBoard` lays out lanes only when its caller asks, and only the
+  Task Board page asks.
+- **The shared grid** gained three optional hooks, which the type board
+  does not use: `renderColumnHead` (the Task board's heads say limits and
+  overdue counts), `renderCellEnd` (Show N more), and a head's
+  `attributes`. The Task board installs the grid's folding only, keeping
+  its own drag, rank, and key code, which now works on a column or a cell
+  (`.lane-cell[data-lane-column][data-lane-lane]`); a card carries
+  `data-card-lane` beside `data-card-column`. The board stays one Tab stop.
+- **Not built, or still to do**: the DOM goldens and visual baselines for
+  `taskBoardLanes` and `taskBoardLanesDragging` (test/ui/surfaces.js), and
+  the Task board's existing goldens, which gain the Lanes select.

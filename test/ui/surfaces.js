@@ -516,14 +516,15 @@ function createRevealBoardSurfaces(boardIndex, preferences) {
 }
 
 /**
- * The Task Board, by status, grouped by a tag namespace, and opened from
- * the Tasks view's search icon to edit what the view lists.
+ * The Task Board, by status, grouped by a tag namespace, with lanes by due
+ * date, as drawn and with a card held over them, and opened from the Tasks
+ * view's search icon to edit what the view lists.
  * Only the board's surfaces carry steps, so no other page's pixels move
  * with them.
  *
  * @param {object} boardIndex The workspace, with steps on the first task.
  * @param {object} preferences The preference services, whose reader holds what is stored.
- * @returns {object[]} The four board surfaces.
+ * @returns {object[]} The five board surfaces.
  */
 function createBoardSurfaces(boardIndex, preferences) {
   return [
@@ -556,6 +557,42 @@ function createBoardSurfaces(boardIndex, preferences) {
       scrollers: ['html', '.board-cards'],
       clippers: ['.board-column'],
       hovered: ['.board-card'],
+    },
+    {
+      // Lanes by due date beside Group's status columns (plan 46): the
+      // column heads drawn once, counted over every lane, then a lane per
+      // band, each a row of the board's own columns, Overdue's taking no
+      // card and so having no +.
+      name: 'taskBoardLanes',
+      page: 'taskBoard',
+      viewport: [1400, 900],
+      snapshot: () => createTaskBoard({
+        index: boardIndex,
+        preferences: { ...preferences.reader.value, taskBoardLanes: 'due' },
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
+      }),
+      scrollers: ['html', '.lane-grid'],
+      clippers: [],
+      hovered: ['.board-card', '.lane-head'],
+      zenHovered: ['.query-workspace[data-zen-region]', '.lane-column-head[data-zen-region]', '.lane-head[data-zen-region]'],
+    },
+    {
+      // The same board with a card held over it: the cells that will not
+      // take it, Done's in another lane and Overdue's, fade and say why.
+      name: 'taskBoardLanesDragging',
+      page: 'taskBoard',
+      viewport: [1400, 900],
+      snapshot: () => createTaskBoard({
+        index: boardIndex,
+        preferences: { ...preferences.reader.value, taskBoardLanes: 'due' },
+        search: { query: '' },
+        options: { queryContext: createQueryContext(NOW), format: 'emoji' },
+      }),
+      drive: [['dragstart', '.lane-cell .board-card']],
+      scrollers: ['html', '.lane-grid'],
+      clippers: [],
+      hovered: [],
     },
     {
       // Editing what the Tasks view lists: the strip above the search box,

@@ -25,6 +25,16 @@
   tags and people and the notes it links, with their headings. One write
   across both notes, with Undo; the lightbulb on a heading offers it as
   **Move section to…**.
+- **Lanes on the Task board.** **Lanes**, beside **Group**, splits the
+  board into rows by a second axis: status, priority, due date, person, or
+  the tags of another namespace, such as `#team`. Each lane is a row of the
+  board's columns under column heads drawn once, counted over every lane,
+  and its name folds it. Dragging a card to another cell writes its column
+  and its lane in the task's line, as one change with one Undo; a cell that
+  will not take it, such as Overdue's, or Done's in another lane, fades and
+  says why. A card's ⋯ offers **Move to lane** when the lanes are tags or
+  people, and **+** on a lane starts a task with its value, such as
+  `#team/payments`. The choice is kept with Group; the table has no lanes.
 
 ## 2.15.0 - 2026-11-11
 
