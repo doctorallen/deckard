@@ -7,6 +7,8 @@ import {
   readMoveBlock,
   TextSplice,
 } from '../domain/markdown/moveLines';
+import { formatSectionLink, nestingShift, placeSection, shiftHeadings } from '../domain/notes/moveSection';
+import type { NoteLinkStyle } from '../domain/markdown/wikiLinks';
 import { readTaskStatusSettings } from '../domain/tasks/taskStatuses';
 import { Section, Task } from '../domain/model';
 import { rankMoveTo } from '../domain/tasks/taskRank';
@@ -17,9 +19,10 @@ import type { ResourceUri } from '../ports/uri';
 import type { TaskRankKeeper } from './taskService';
 
 /**
- * Move to…: a line, a task and its steps, or a selection, taken from where
- * it is and put under another heading, into today's note, or into a new
- * note, with a link left behind.
+ * Move to…: a line, a task and its steps, a selection, or a heading and
+ * everything under it, taken from where it is and put under another
+ * heading, at the end of a note, into today's note, or into a new note,
+ * with a link left behind.
  *
  * What moves is read again once the destination is chosen; if it changed in
  * between, nothing is written. The move is one write that Undo takes back,
@@ -44,8 +47,13 @@ export interface MoveTarget<U> {
   link: string;
   /** How a message names the place. */
   name: string;
-  /** Under a heading: its own lines. Absent: the end of the note. */
-  section?: Pick<Section, 'startLine' | 'endLine'>;
+  /**
+   * Under a heading: its own lines, or for a section moved there, the
+   * heading's lines with everything nested under it, and its level, which
+   * the section's headings are nested one deeper than. Absent: the end of
+   * the note.
+   */
+  section?: Pick<Section, 'startLine' | 'endLine'> & Partial<Pick<Section, 'headingLevel'>>;
   /**
    * A note to create, with what it starts with before the moved lines. It is
    * written in the move's line ending, whichever it is given in.
@@ -175,14 +183,20 @@ export class MoveService<U extends ResourceUri, H = unknown> {
     if (!texts) {
       return { kind: 'stale' };
     }
-    const targetNote = target.create ? undefined : await this.options.notes.open(target.uri);
+    const targetNote = target.create === undefined ? await this.options.notes.open(target.uri) : undefined;
     const targetText = targetNote?.getText() ?? '';
     const eol = (targetNote ? targetText : texts.get(sources[0].uri.toString()) ?? '').includes('\r\n') ? '\r\n' : '\n';
-    const moved = sources.flatMap((source) => dedentBlock(source.block.lines)).join(eol);
+    const moved = sources.flatMap((source) => this.linesToWrite(source, target)).join(eol);
 
-    const splicesBy = this.takeOut(sources, texts, target.link);
+    const splicesBy = this.takeOut(sources, texts, target);
     const insertedAt = targetNote
-      ? this.putIn(splicesBy, { note: targetNote, text: targetText, moved, target })
+      ? this.putIn(splicesBy, {
+          note: targetNote,
+          text: targetText,
+          moved,
+          target,
+          section: sources.some((source) => source.block.section !== undefined),
+        })
       : undefined;
     const edits = await this.toEdits(splicesBy);
 
@@ -231,11 +245,47 @@ export class MoveService<U extends ResourceUri, H = unknown> {
     return texts;
   }
 
+  /**
+   * A block's lines as the target holds them: a section's with its headings
+   * nested under the target's heading, or kept at their levels at the end of
+   * a note; anything else dedented to the first line's indentation.
+   */
+  private linesToWrite(source: MoveSource<U>, target: MoveTarget<U>): string[] {
+    const section = source.block.section;
+    if (!section) {
+      return dedentBlock(source.block.lines);
+    }
+    const under = target.section?.headingLevel;
+    return shiftHeadings(source.block.lines, under === undefined ? 0 : nestingShift(section.level, under));
+  }
+
+  /**
+   * What a block leaves where it was: for a section, one line linking to its
+   * heading in the target, in `deckard.links.style`; for anything else, what
+   * leaveBehind says, linking to the target as `link` names it.
+   */
+  private leftBehind(source: MoveSource<U>, lines: readonly string[], target: MoveTarget<U>): string[] {
+    if (!source.block.section) {
+      return leaveBehind(source.block, lines, target.link);
+    }
+    const style = this.options.configuration
+      .getConfiguration('deckard', source.uri)
+      .get<NoteLinkStyle>('links.style', 'wiki');
+    return [
+      formatSectionLink({
+        heading: source.block.section.heading,
+        sourcePath: source.filePath,
+        targetPath: this.options.getFilePath(target.uri),
+        style: style === 'markdown' ? 'markdown' : 'wiki',
+      }),
+    ];
+  }
+
   /** The splice that takes each block out of its note, leaving a link to where it went. */
   private takeOut(
     sources: readonly MoveSource<U>[],
     texts: ReadonlyMap<string, string>,
-    link: string,
+    target: MoveTarget<U>,
   ): Map<string, NoteSplices<U>> {
     const splicesBy = new Map<string, NoteSplices<U>>();
     for (const source of sources) {
@@ -243,7 +293,7 @@ export class MoveService<U extends ResourceUri, H = unknown> {
       const text = texts.get(key) ?? '';
       const lines = text.split(/\r?\n/);
       const entry = splicesBy.get(key) ?? { uri: source.uri, text, splices: [] };
-      entry.splices.push(blockSplice(text, source.block, leaveBehind(source.block, lines, link)));
+      entry.splices.push(blockSplice(text, source.block, this.leftBehind(source, lines, target)));
       splicesBy.set(key, entry);
     }
     return splicesBy;
@@ -251,13 +301,16 @@ export class MoveService<U extends ResourceUri, H = unknown> {
 
   /**
    * Adds the splice that puts the moved lines into the target note, where
-   * Add Task would put a line, and returns the zero-based line they start on.
+   * Add Task would put a line, or a section at the end of the target's, and
+   * returns the zero-based line they start on.
    */
   private putIn(
     splicesBy: Map<string, NoteSplices<U>>,
-    into: { note: NoteText; text: string; moved: string; target: MoveTarget<U> },
+    into: { note: NoteText; text: string; moved: string; target: MoveTarget<U>; section: boolean },
   ): number {
-    const insertion = this.options.placeInsertion(into.text, into.moved, into.target.section);
+    const insertion = into.section
+      ? placeSection(into.text, into.moved, into.target.section)
+      : this.options.placeInsertion(into.text, into.moved, into.target.section);
     const offset = into.note.offsetAt({ line: insertion.line, character: insertion.character });
     const key = into.target.uri.toString();
     const entry = splicesBy.get(key) ?? { uri: into.target.uri, text: into.text, splices: [] };

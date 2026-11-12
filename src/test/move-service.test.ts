@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 
 import { MoveBlock, readMoveBlock } from '../domain/markdown/moveLines';
+import { readSectionBlock } from '../domain/notes/moveSection';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { Insertion, MoveService, MoveSource } from '../services/moveService';
 import type { ResourceUri } from '../ports/uri';
@@ -168,5 +169,71 @@ suite('Move service', () => {
     assert.strictEqual(result.kind, 'moved');
     assert.strictEqual(fake.text('inbox.md'), '# Inbox\n- [>] Plan trip 📅 2026-10-01 → [[plan]]\n- [ ] Other\n');
     assert.strictEqual(fake.text('plan.md'), '# Plan\n- [ ] Plan trip 📅 2026-10-01\n  - [ ] Book hotel 📅 2026-10-01\n');
+  });
+  test('moves a section under a heading, nested one deeper, leaving one link to it in the link style', async () => {
+    const day = '# 2026-11-12\n\n## Ledger cutover plan\nCut over Friday.\n\n### Steps\n- [ ] Freeze writes\n\n## Lunch\n';
+    const migration = '# Ledger migration\n\n## Plan\n- Draft\n\n## Risks\n- None yet\n';
+    const { fake, history, service } = setup(
+      { 'journal/2026-11-12.md': day, 'Ledger migration.md': migration },
+      { 'deckard.links.style': 'markdown' },
+    );
+    const block = readSectionBlock(day.split('\n'), { start: { line: 2, character: 0 }, end: { line: 2, character: 0 }, isEmpty: true });
+    assert.ok(block);
+    const result = await service.move([{ uri: noteUri('journal/2026-11-12.md'), filePath: 'journal/2026-11-12.md', block }], {
+      uri: noteUri('Ledger migration.md'),
+      link: 'Ledger migration#Plan',
+      name: 'Ledger migration › Plan',
+      section: { startLine: 3, endLine: 5, headingLevel: 2 },
+    });
+    assert.deepStrictEqual(result, { kind: 'moved', handle: 1, created: false });
+    assert.strictEqual(
+      fake.text('Ledger migration.md'),
+      '# Ledger migration\n\n## Plan\n- Draft\n\n### Ledger cutover plan\nCut over Friday.\n\n#### Steps\n- [ ] Freeze writes\n\n## Risks\n- None yet\n',
+    );
+    assert.strictEqual(
+      fake.text('journal/2026-11-12.md'),
+      '# 2026-11-12\n\n[Ledger migration#Ledger cutover plan](../Ledger%20migration.md#ledger-cutover-plan)\n\n## Lunch\n',
+    );
+    assert.strictEqual(history.writes[0].options.together, true, 'both notes go back on an Undo, or neither');
+  });
+
+  test('moves a section to the end of a note with its levels kept, and into a new note as it was written', async () => {
+    const day = '# 2026-11-12\n## Ledger cutover plan\n### Steps\n- [ ] Freeze writes\n';
+    const atEnd = setup({ 'day.md': day, 'Ledger migration.md': '# Ledger migration\n- Draft\n' });
+    const block = readSectionBlock(day.split('\n'), { start: { line: 1, character: 0 }, end: { line: 1, character: 0 }, isEmpty: true });
+    assert.ok(block);
+    await atEnd.service.move([{ uri: noteUri('day.md'), filePath: 'day.md', block }], {
+      uri: noteUri('Ledger migration.md'),
+      link: 'Ledger migration',
+      name: 'Ledger migration',
+    });
+    assert.strictEqual(atEnd.fake.text('Ledger migration.md'), '# Ledger migration\n- Draft\n\n## Ledger cutover plan\n### Steps\n- [ ] Freeze writes\n');
+    assert.strictEqual(atEnd.fake.text('day.md'), '# 2026-11-12\n[[Ledger migration#Ledger cutover plan]]\n');
+
+    const created = setup({ 'day.md': day });
+    await created.service.move([{ uri: noteUri('day.md'), filePath: 'day.md', block }], {
+      uri: noteUri('Ledger cutover plan.md'),
+      link: 'Ledger cutover plan',
+      name: 'Ledger cutover plan',
+      create: '',
+    });
+    assert.strictEqual(
+      new TextDecoder().decode(created.files.files.get('Ledger cutover plan.md')),
+      '## Ledger cutover plan\n### Steps\n- [ ] Freeze writes\n',
+    );
+    assert.strictEqual(created.fake.text('day.md'), '# 2026-11-12\n[[Ledger cutover plan]]\n');
+  });
+
+  test('writes nothing when the section changed while the destination was chosen', async () => {
+    const day = '# Day\n## Ledger cutover plan\n- Freeze writes\n';
+    const { fake, history, service } = setup({ 'day.md': day, 'plan.md': '# Plan\n' });
+    const block = readSectionBlock(day.split('\n'), { start: { line: 1, character: 0 }, end: { line: 1, character: 0 }, isEmpty: true });
+    assert.ok(block);
+    fake.texts.set(noteUri('day.md').toString(), '# Day\n## Ledger cutover plan\n- Freeze writes Friday\n');
+    assert.deepStrictEqual(
+      await service.move([{ uri: noteUri('day.md'), filePath: 'day.md', block }], { uri: noteUri('plan.md'), link: 'plan', name: 'plan' }),
+      { kind: 'stale' },
+    );
+    assert.strictEqual(history.writes.length, 0);
   });
 });
