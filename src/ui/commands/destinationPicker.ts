@@ -3,6 +3,8 @@ import * as vscode from 'vscode';
 import { stripTags } from '../../domain/markdown/parser';
 import { showQuickPickUntilHidden } from './prompts';
 import { findPinnedSection } from '../../domain/notes/pins';
+import type { MentionedPlace } from '../../domain/notes/moveSection';
+import { noteTitle } from '../../domain/index/backlinks';
 import { frecencyScore } from '../../domain/ranking/frecency';
 import { getHeadingPath } from '../../domain/ranking/entryLabels';
 import { PersistedPreferences, Section, WorkspaceIndex } from '../../domain/model';
@@ -10,11 +12,13 @@ import { PreferencesReader } from '../../core/storage/preferencesRepository';
 
 /**
  * Where Add Task's Under a heading… and Move to… put something: a heading, and
- * for Move to…, today's note or a new note. One list for both, so the
- * headings they went under last come first in each.
+ * for Move to…, today's note or a new note, and for a section, the end of a
+ * note it mentions. One list for both, so the headings they went under last
+ * come first in each.
  */
 export type Destination =
   | { kind: 'heading'; filePath: string; section: Section }
+  | { kind: 'note'; filePath: string }
   | { kind: 'today' }
   | { kind: 'newNote' };
 
@@ -31,15 +35,24 @@ export interface DestinationOptions {
   newNote?: boolean;
   /** Headings not to offer, such as the ones a moved block holds. */
   exclude?: (section: Section) => boolean;
+  /**
+   * The places a moved section mentions, offered first, under Mentioned in
+   * this section; their headings are not listed again under the headings.
+   */
+  mentioned?: readonly MentionedPlace[];
   now?: number;
 }
 
 const DAY_ICON = '$(calendar)';
 
+/** The separator above the places a moved section mentions. */
+export const MENTIONED_GROUP = 'Mentioned in this section';
+
 /**
- * The list: New note… and Today's note when offered, then the headings used
- * last, newest first, then every heading, from the notes opened most and
- * most lately, then the notes updated last.
+ * The list: the places a moved section mentions, when there are any, then
+ * New note… and Today's note when offered, then the headings used last,
+ * newest first, then every heading, from the notes opened most and most
+ * lately, then the notes updated last.
  */
 export function buildDestinationItems(
   index: WorkspaceIndex,
@@ -49,6 +62,16 @@ export function buildDestinationItems(
   const now = options.now ?? Date.now();
   const items: DestinationItem[] = [];
   const excluded = options.exclude ?? (() => false);
+  const headingItem = (section: Section): DestinationItem => createHeadingItem(index, section);
+
+  const mentioned = (options.mentioned ?? []).filter((place) => !place.section || !excluded(place.section));
+  const mentionedIds = new Set(mentioned.flatMap((place) => place.section?.id ?? []));
+  if (mentioned.length > 0) {
+    items.push(...createMentionedItems(index, mentioned));
+    if (options.newNote || options.today) {
+      items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
+    }
+  }
   if (options.newNote) {
     items.push({ label: '$(new-file) New note…', destination: { kind: 'newNote' } });
   }
@@ -59,16 +82,6 @@ export function buildDestinationItems(
       destination: { kind: 'today' },
     });
   }
-  const headingItem = (section: Section): DestinationItem => {
-    const path = getHeadingPath(section, index.sections);
-    return {
-      label: stripTags(section.heading).trim() || section.heading,
-      description: section.filePath,
-      detail: path.length > 1 ? path.join(' › ') : undefined,
-      destination: { kind: 'heading', filePath: section.filePath, section },
-    };
-  };
-
   const listed = new Set<string>();
   const recent = (preferences.recentHeadings ?? []).flatMap((pin) => {
     const file = index.files.get(pin.filePath);
@@ -100,7 +113,9 @@ export function buildDestinationItems(
   );
   const all = files.flatMap((file) =>
     file.sections
-      .filter((section) => !section.isInline && !listed.has(section.id) && !excluded(section))
+      .filter(
+        (section) => !section.isInline && !listed.has(section.id) && !mentionedIds.has(section.id) && !excluded(section),
+      )
       .sort((left, right) => left.startLine - right.startLine)
       .map(headingItem),
   );
@@ -113,9 +128,41 @@ export function buildDestinationItems(
   return items;
 }
 
+/** A heading's row: its words, its note, and the headings it is under. */
+function createHeadingItem(index: WorkspaceIndex, section: Section): DestinationItem {
+  const path = getHeadingPath(section, index.sections);
+  return {
+    label: stripTags(section.heading).trim() || section.heading,
+    description: section.filePath,
+    detail: path.length > 1 ? path.join(' › ') : undefined,
+    destination: { kind: 'heading', filePath: section.filePath, section },
+  };
+}
+
 /**
- * Asks where something goes. The heading used last is highlighted when
- * there is one, so Enter repeats it.
+ * The Mentioned in this section group: its separator, then each place, a
+ * heading as every heading is listed, and a note's end by the note's title.
+ */
+function createMentionedItems(index: WorkspaceIndex, mentioned: readonly MentionedPlace[]): DestinationItem[] {
+  return [
+    { label: MENTIONED_GROUP, kind: vscode.QuickPickItemKind.Separator },
+    ...mentioned.map((place): DestinationItem =>
+      place.section
+        ? createHeadingItem(index, place.section)
+        : {
+            label: `$(file) ${noteTitle(place.filePath)}`,
+            description: 'at the end of the note',
+            detail: place.filePath,
+            destination: { kind: 'note', filePath: place.filePath },
+          },
+    ),
+  ];
+}
+
+/**
+ * Asks where something goes. The first place a moved section mentions is
+ * highlighted when there is one, or else the heading used last, so Enter
+ * takes it.
  */
 export function pickDestination(
   index: WorkspaceIndex,
@@ -133,9 +180,11 @@ export function pickDestination(
       picker.placeholder = options.placeholder;
       picker.matchOnDescription = true;
       picker.items = items;
-      const firstRecent = items.findIndex((item) => item.label === 'Recent');
-      if (firstRecent >= 0 && items[firstRecent + 1]) {
-        picker.activeItems = [items[firstRecent + 1]];
+      const first = [MENTIONED_GROUP, 'Recent']
+        .map((group) => items.findIndex((item) => item.label === group && item.kind === vscode.QuickPickItemKind.Separator))
+        .find((at) => at >= 0 && items[at + 1]?.destination);
+      if (first !== undefined) {
+        picker.activeItems = [items[first + 1]];
       }
     },
     accept: (picker) => picker.activeItems[0]?.destination,

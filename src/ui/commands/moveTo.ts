@@ -2,10 +2,12 @@ import * as vscode from 'vscode';
 import { fileExists } from './fs';
 
 import { MoveRefusalReason, readMoveBlock } from '../../domain/markdown/moveLines';
+import { isHeading } from '../../domain/markdown/lineShapes';
+import { listMentionedPlaces, MentionedPlace, readSectionBlock } from '../../domain/notes/moveSection';
 import { getLinkableNoteFileName } from '../../domain/markdown/noteNames';
 import { parseTaskDraft } from '../../domain/markdown/taskDraft';
 import { STATUS_CHARACTER } from '../../domain/markdown/lineShapes';
-import { readTaskStatusOptions } from './parseSettings';
+import { readEntityNamespaceAliases, readTaskStatusOptions } from './parseSettings';
 import { stripTags } from '../../domain/markdown/parser';
 import { PreferenceServices } from '../../core/storage/preferences';
 import { noteTitle } from '../../domain/index/backlinks';
@@ -13,7 +15,7 @@ import type { IndexReader } from '../../core/workspace/indexReader';
 import { chooseTargetFolder, ensureDailyNote } from './dailyNote';
 import { readWeekStart } from './datePrompt';
 import { Destination, pickDestination } from './destinationPicker';
-import { validateExtractedNoteName } from './extractHeading';
+import { getSuggestedNoteName, validateExtractedNoteName } from './extractHeading';
 import { MoveSource as ServiceMoveSource, MoveTarget } from '../../services/moveService';
 import { TaskWrites } from './taskActions';
 import { createWikiLinkToSection } from './insertLink';
@@ -29,7 +31,10 @@ import { PreferencesReader } from '../../core/storage/preferencesRepository';
 /**
  * Deckard: Move to… — a line, a task and its steps, or a selection, taken
  * from where it is and put under another heading, into today's note, or
- * into a new note, with a link left behind.
+ * into a new note, with a link left behind. On a heading line, or a
+ * selection that starts on one, the heading and everything under it moves,
+ * and can also go to the end of a note it mentions
+ * (docs/implementation/47-move-section.md).
  *
  * What moves is read from the note as it is, and read again once the
  * destination is chosen; if it changed in between, nothing is written. The
@@ -47,7 +52,7 @@ export type MovePreferences = Pick<PreferenceServices, 'reader' | 'usage'>;
 
 /** The words each refusal says. */
 const REFUSALS: Readonly<Record<MoveRefusalReason, string>> = {
-  heading: 'Move to… moves lines and tasks. To move a heading and everything under it, use Extract Heading.',
+  heading: 'The selection holds a heading. To move a heading and everything under it, start the selection on the heading.',
   blank: 'Put the cursor on the line to move, or select the lines.',
   frontMatter: 'Front matter stays with its note. Select the lines below it.',
   splitFence: 'The selection ends inside a code block. Select the whole block to move it.',
@@ -65,25 +70,24 @@ export async function moveToCommand(
     void vscode.window.showInformationMessage('Open a note in your notes folder to move lines from it.');
     return;
   }
+  const { uri } = editor.document;
+  const filePath = indexer.getFilePath(uri);
   const lines = editor.document.getText().split(/\r?\n/);
-  const read = readMoveBlock(lines, editor.selection, readTaskStatusOptions(editor.document.uri));
-  if ('refused' in read) {
-    if (read.refused === 'heading') {
-      void vscode.window
-        .showInformationMessage(REFUSALS.heading, 'Extract Heading')
-        .then((choice) => {
-          if (choice === 'Extract Heading') {
-            void vscode.commands.executeCommand('deckard.extractHeading');
-          }
-        });
-    } else {
-      void vscode.window.showInformationMessage(REFUSALS[read.refused]);
-    }
+  const section = readSectionBlock(lines, editor.selection);
+  if (section) {
+    const mentioned = listMentionedPlaces(indexer.getSnapshot(), section.lines, {
+      sourcePath: filePath,
+      aliases: readEntityNamespaceAliases(uri),
+    });
+    await moveBlocks(indexer, preferences, writes, { sources: [{ uri, filePath, block: section }], mentioned });
     return;
   }
-  await moveBlocks(indexer, preferences, writes, [
-    { uri: editor.document.uri, filePath: indexer.getFilePath(editor.document.uri), block: read },
-  ]);
+  const read = readMoveBlock(lines, editor.selection, readTaskStatusOptions(uri));
+  if ('refused' in read) {
+    void vscode.window.showInformationMessage(REFUSALS[read.refused]);
+    return;
+  }
+  await moveBlocks(indexer, preferences, writes, { sources: [{ uri, filePath, block: read }] });
 }
 
 /**
@@ -102,7 +106,7 @@ export async function moveTasks(
     return;
   }
   if (read.sources.length > 0) {
-    await moveBlocks(indexer, preferences, writes, read.sources);
+    await moveBlocks(indexer, preferences, writes, { sources: read.sources });
   }
 }
 
@@ -115,14 +119,15 @@ interface ResolvedTarget extends MoveTarget<vscode.Uri> {
 /**
  * Moves the blocks where the reader chooses: the destination is picked and
  * found again here, the move is MoveService's, and what moved is said here.
+ * A section moved is offered the places it mentions first.
  */
 async function moveBlocks(
   indexer: IndexReader<vscode.Uri>,
   preferences: MovePreferences,
   writes: TaskWrites,
-  sources: readonly MoveSource[],
+  { sources, mentioned = [] }: { sources: readonly MoveSource[]; mentioned?: readonly MentionedPlace[] },
 ): Promise<void> {
-  const destination = await pickMoveDestination(indexer, preferences.reader, sources);
+  const destination = await pickMoveDestination(indexer, preferences.reader, sources, mentioned);
   if (!destination) {
     return;
   }
@@ -146,22 +151,28 @@ async function moveBlocks(
 }
 
 /**
- * Asks where the blocks go: a heading, today's note, or a new note, never a
- * heading inside what moves or the one whose own lines hold it.
+ * Asks where the blocks go: a heading, today's note, or a new note, or for
+ * a section, first the places it mentions; never a heading inside what
+ * moves or one whose lines hold it.
  */
 function pickMoveDestination(
   indexer: IndexReader<vscode.Uri>,
   preferences: Pick<PreferencesReader, 'value'>,
   sources: readonly MoveSource[],
+  mentioned: readonly MentionedPlace[],
 ): Promise<Destination | undefined> {
   const index = indexer.getSnapshot();
   const todayName = getPeriodicNote('day', new Date(), readWeekStart()).name;
   const sourceFiles = new Set(sources.map((source) => source.filePath));
+  const section = isSectionMove(sources);
   return pickDestination(index, preferences, {
     title: 'Deckard: Move to…',
-    placeholder: 'Choose where it goes: a heading, today’s note, or a new note',
+    placeholder: section
+      ? 'Choose where the section goes: under a heading, at the end of a note, or a new note'
+      : 'Choose where it goes: a heading, today’s note, or a new note',
     today: { fileName: `${todayName}.md` },
     newNote: true,
+    mentioned,
     exclude: (section) =>
       sourceFiles.has(section.filePath) &&
       sources.some(
@@ -174,19 +185,38 @@ function pickMoveDestination(
   });
 }
 
+/** Whether what moves is a heading and everything under it. */
+function isSectionMove(sources: readonly MoveSource[]): boolean {
+  return sources.some((source) => source.block.section !== undefined);
+}
+
 /** Finds the chosen destination again, as a place a move can write. */
 async function resolveTarget(
   indexer: IndexReader<vscode.Uri>,
   destination: Destination,
   sources: readonly MoveSource[],
 ): Promise<ResolvedTarget | undefined> {
-  if (destination.kind === 'today') {
-    return resolveToday();
+  switch (destination.kind) {
+    case 'today':
+      return resolveToday();
+    case 'newNote':
+      return resolveNewNote(indexer, sources);
+    case 'note':
+      return resolveNote(destination.filePath);
+    case 'heading':
+      return resolveSection(indexer, destination, isSectionMove(sources));
   }
-  if (destination.kind === 'newNote') {
-    return resolveNewNote(indexer, sources);
+}
+
+/** A note a section mentions, at its end. */
+async function resolveNote(filePath: string): Promise<ResolvedTarget | undefined> {
+  const uri = await resolveSourceUri(filePath);
+  if (!uri || !(await fileExists(uri))) {
+    void reportFailure({ outcome: `Deckard could not find ${filePath}, so nothing was moved.` });
+    return undefined;
   }
-  return resolveSection(indexer, destination);
+  const title = noteTitle(filePath);
+  return { uri, link: title, name: title };
 }
 
 /** Today's note, made if it is missing, in the folder the reader picks. */
@@ -200,16 +230,21 @@ async function resolveToday(): Promise<ResolvedTarget | undefined> {
   return { uri, link: title, name: title };
 }
 
-/** A new note, named by the reader, which must not exist yet. */
+/**
+ * A new note, named by the reader, which must not exist yet. A section's
+ * note is named as Extract Heading names it, from its heading, and holds
+ * the section as it was written, its heading the note's first line.
+ */
 async function resolveNewNote(
   indexer: IndexReader<vscode.Uri>,
   sources: readonly MoveSource[],
 ): Promise<ResolvedTarget | undefined> {
   const first = sources[0].block.lines[0] ?? '';
+  const section = sources[0].block.section;
   const name = await vscode.window.showInputBox({
     title: 'Deckard: Move to…',
     prompt: 'Name the new note',
-    value: suggestNoteName(first),
+    value: section ? getSuggestedNoteName(section.heading) : suggestNoteName(first),
     validateInput: async (value) => {
       const invalid = validateExtractedNoteName(value);
       if (invalid) {
@@ -228,13 +263,18 @@ async function resolveNewNote(
   }
   const title = noteTitle(uri.path);
   // The move writes the new note in its source's line ending.
-  return { uri, link: title, name: title, create: `# ${name.trim()}\n\n` };
+  return { uri, link: title, name: title, create: section ? '' : `# ${name.trim()}\n\n` };
 }
 
-/** A heading the index knows, found again in its note as the note is now. */
+/**
+ * A heading the index knows, found again in its note as the note is now:
+ * its own lines, where lines go, or for a section, `whole`, its lines with
+ * everything nested under it, and its level.
+ */
 async function resolveSection(
   indexer: IndexReader<vscode.Uri>,
   destination: Extract<Destination, { kind: 'heading' }>,
+  whole: boolean,
 ): Promise<ResolvedTarget | undefined> {
   const uri = await resolveSourceUri(destination.filePath);
   if (!uri) {
@@ -259,7 +299,9 @@ async function resolveSection(
     uri,
     link: found.link,
     name: `${noteTitle(destination.filePath)} › ${heading}`,
-    section: { startLine: found.section.startLine, endLine: found.section.bodyEndLine },
+    section: whole
+      ? { startLine: found.section.startLine, endLine: found.section.endLine, headingLevel: found.section.headingLevel }
+      : { startLine: found.section.startLine, endLine: found.section.bodyEndLine },
     recent: found.recent,
   };
 }
@@ -358,11 +400,16 @@ function announceMove(
 }
 
 /**
- * What moved, as the announcement names it: one task by its title, several
- * by their count, and anything else, or anything moved into a new note, by
- * its lines.
+ * What moved, as the announcement names it: a section by its heading, one
+ * task by its title, several by their count, and anything else, or anything
+ * moved into a new note, by its lines.
  */
 function describeMoved(sources: readonly MoveSource[], created: boolean): string {
+  const section = sources[0]?.block.section;
+  if (section) {
+    const words = (stripTags(section.heading) || section.heading).replace(/\s+/g, ' ').trim();
+    return `"${words.length > 60 ? `${words.slice(0, 57)}…` : words}"`;
+  }
   const tasks = sources.flatMap((source) => source.block.openTasks ?? []);
   const lineCount = sources.reduce((total, source) => total + source.block.lines.length, 0);
   const allTasks = sources.every((source) => source.block.openTasks !== undefined);
@@ -386,16 +433,19 @@ const TASK_START = new RegExp(String.raw`^\s*[-*+][ \t]+\[${STATUS_CHARACTER}\]`
 
 /**
  * The lightbulb's Move to…: on a task line, or on a selection, in a note in
- * the notes folder. Not on every line of prose, which would put a lightbulb
- * on almost every line.
+ * the notes folder, and Move section to… on a heading line or a selection
+ * that starts on one. Not on every line of prose, which would put a
+ * lightbulb on almost every line.
  */
 export class MoveToActions implements vscode.CodeActionProvider {
   /** Offers the action only in notes `indexer` counts as being in the notes folder. */
   public constructor(private readonly indexer: Pick<IndexReader, 'isNotesFile'>) {}
 
   /**
-   * Move to… on a task line, or on any selection, in a note; nothing on an
-   * empty cursor on a line that is not a task, or outside the notes folder.
+   * Move section to… on a heading, Move to… on a task line or on any other
+   * selection, in a note; nothing on an empty cursor on a line that is
+   * neither, or outside the notes folder. Both run Move to…, which reads
+   * the cursor the same way.
    */
   public provideCodeActions(
     document: vscode.TextDocument,
@@ -405,11 +455,20 @@ export class MoveToActions implements vscode.CodeActionProvider {
       return [];
     }
     const line = document.lineAt(range.start.line).text;
-    if (range.isEmpty && !TASK_START.test(line)) {
+    // A heading only in looks, in code or front matter, is read as a line.
+    const onHeading =
+      isHeading(line) &&
+      readSectionBlock(document.getText().split(/\r?\n/), {
+        start: range.start,
+        end: range.end,
+        isEmpty: range.isEmpty,
+      }) !== undefined;
+    if (range.isEmpty && !onHeading && !TASK_START.test(line)) {
       return [];
     }
-    const action = new vscode.CodeAction('Move to…', vscode.CodeActionKind.RefactorMove);
-    action.command = { command: 'deckard.moveTo', title: 'Move to…' };
+    const title = onHeading ? 'Move section to…' : 'Move to…';
+    const action = new vscode.CodeAction(title, vscode.CodeActionKind.RefactorMove);
+    action.command = { command: 'deckard.moveTo', title };
     return [action];
   }
 }
