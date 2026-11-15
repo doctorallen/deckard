@@ -87,8 +87,13 @@ export function openGoTo(): MessageHandler<OpenGoToMessage> {
  * page asked so This page can explain it (plan 48).
  */
 export function openHelp(section?: string): MessageHandler<OpenHelpMessage> {
-  return (_message, page) =>
-    vscode.commands.executeCommand('deckard.showHelp', section, page.name ? { forPage: page.name } : undefined);
+  return (_message, page) => {
+    const args: unknown[] = section === undefined && !page.name ? [] : [section];
+    if (page.name) {
+      args.push({ forPage: page.name });
+    }
+    return vscode.commands.executeCommand('deckard.showHelp', ...args);
+  };
 }
 
 /**

@@ -38,7 +38,7 @@ The tour runs on the work sample. In another folder, the **Tour** tab offers to 
 
 To show Deckard to someone, choose the scenes for the demo with the boxes beside them, then **Present**. **Reset the sample to today** first makes it again, dated from today.
 
-- A status bar item names the scene, such as **Tour 7/15 · The Task board**; its tooltip holds the scene's talking point, for you.
+- A status bar item names the scene, such as **Tour 7/15 · The Task board**; its tooltip holds the scene's talking point, for you, and `Deckard: Read the Talking Point` shows it as a message.
 - `Deckard: Next Tour Scene` and `Deckard: Previous Tour Scene` move through the scenes you chose: <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>]</kbd> and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>[</kbd> while presenting. Nothing moves on by itself.
 - **Hide Help while presenting** closes Help so the page has the window; the keys and the status bar run the tour.
 - `Deckard: End Presenting`, or the status bar item's **End**, stops.

@@ -78,6 +78,15 @@ export function findSpotlightTarget(root: ParentNode, message: Pick<SpotlightMes
   return best;
 }
 
+/** Marks each element with a `data-help-id` as pickable, as a redraw makes new ones. */
+function markEveryPickable(root: Document): void {
+  root.querySelectorAll('[data-help-id]').forEach((element) => {
+    if (!element.classList.contains(PICKABLE_CLASS)) {
+      element.classList.add(PICKABLE_CLASS);
+    }
+  });
+}
+
 /**
  * Listens for `spotlight` and `explore` from the host, and tells it what a
  * click picks in explore mode. Installed once per page, by `startPage` for
@@ -106,13 +115,7 @@ export function installSpotlight(send: SendPicked, root: Document = document, wi
     }
   };
 
-  const markPickable = (): void => {
-    root.querySelectorAll('[data-help-id]').forEach((element) => {
-      if (!element.classList.contains(PICKABLE_CLASS)) {
-        element.classList.add(PICKABLE_CLASS);
-      }
-    });
-  };
+  const markPickable = (): void => markEveryPickable(root);
 
   const setExploring = (on: boolean): void => {
     exploring = on;

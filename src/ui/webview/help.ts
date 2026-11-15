@@ -73,18 +73,24 @@ export class HelpPanel implements vscode.Disposable {
     if (!panel) {
       await this.controller.loadReleases();
       this.controller.drawingAt(place, () => this.page.open(beside ? { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true } : vscode.ViewColumn.Active), tab);
-      return;
-    }
-    if (!panel.visible) {
-      this.controller.drawingAt(place, () => this.page.host.renderHtml(), tab);
     } else if (place || tab !== 'guide') {
-      const reveal: HelpRevealMessage = { type: 'reveal', ...(place ?? { page: '' }), tab };
-      this.page.host.post(reveal);
+      if (panel.visible) {
+        const reveal: HelpRevealMessage = { type: 'reveal', ...(place ?? { page: '' }), ...(tab === 'guide' ? {} : { tab }) };
+        this.page.host.post(reveal);
+      } else {
+        this.controller.drawingAt(place, () => this.page.host.renderHtml(), tab);
+      }
     }
+    this.bringForward(beside);
+  }
+
+  /** Brings Help's panel forward: beside the page, where it is, keeping the focus there; or in the active group. */
+  private bringForward(beside: boolean): void {
+    const shown = this.page.panel;
     if (beside) {
-      panel.reveal(panel.viewColumn ?? vscode.ViewColumn.Beside, true);
+      shown?.reveal(shown.viewColumn ?? vscode.ViewColumn.Beside, true);
     } else {
-      panel.reveal(vscode.ViewColumn.Active);
+      shown?.reveal(vscode.ViewColumn.Active);
     }
   }
 

@@ -23,6 +23,8 @@ const PROGRESS_KEY = 'deckard.tour.progress';
 const DEMO_KEY = 'deckard.tour.demoScenes';
 /** Whether Help closes while presenting, in Deckard's global state. */
 const HIDE_HELP_KEY = 'deckard.tour.hideHelp';
+/** The command that ends presenting, which the status bar item's tooltip links. */
+const END_PRESENTING = 'deckard.tour.endPresenting';
 /** When a page a scene opened is rung, in milliseconds after it opens: a page takes a moment to draw. */
 const RING_AFTER = [400, 1200, 2500];
 
@@ -421,8 +423,8 @@ export class TourService implements vscode.Disposable {
     const scene = TOUR_SCENES[this.progress.scene];
     this.statusItem ??= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1000);
     this.statusItem.text = `$(play) Tour ${order.indexOf(this.progress.scene) + 1}/${order.length} · ${scene.title}`;
-    const tooltip = new vscode.MarkdownString(`**${scene.title}**\n\n${scene.note}\n\nNext: Ctrl+Alt+] · Previous: Ctrl+Alt+[ · [End](command:deckard.tour.endPresenting)`);
-    tooltip.isTrusted = { enabledCommands: ['deckard.tour.endPresenting'] };
+    const tooltip = new vscode.MarkdownString(`**${scene.title}**\n\n${scene.note}\n\nNext: Ctrl+Alt+] · Previous: Ctrl+Alt+[ · [End](command:${END_PRESENTING})`);
+    tooltip.isTrusted = { enabledCommands: [END_PRESENTING] };
     this.statusItem.tooltip = tooltip;
     this.statusItem.command = 'deckard.tour.next';
     this.statusItem.accessibilityInformation = { label: `Tour scene ${order.indexOf(this.progress.scene) + 1} of ${order.length}: ${scene.title}. Select for the next scene.` };
