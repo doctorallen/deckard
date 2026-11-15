@@ -89,31 +89,36 @@ To change a page:
 - **Reuse a component** from `shared/` rather than drawing a look of your
   own, and move one there once a second page needs it. A component in
   `shared/` changes every page that draws it.
-- **Keep the markup.** `npm run test:dom` compares every surface's DOM with
-  its golden, and a change in what a reader sees is named in its commit and
-  re-recorded there with `npm run test:dom -- --update`.
+- **Name a change in markup.** A change in what a reader sees is named in
+  its commit. The layout check holds what each surface draws to a few rules
+  (`test/ui/drawnDomRules.js`), and the contrast check judges the elements
+  it draws.
 
 `npm run check-types` checks the page code against the DOM, and
 `npm run lint` keeps a page from importing host code, another page, or any
 package but Preact. Neither can see a sheet, so run `npm run test:ui` after
 changing one, `npm run test:layout` when the change touches layout — a
 scroll container, a column, a hover — since only that suite lays the pages
-out, and `npm run test:visual` when it touches how anything looks, since only
-that one sees a backdrop, a glow, or a control that moved. When the change in
-looks is meant, record it with `npm run test:visual -- --update` and commit
-the baselines it rewrites.
+out. The visual check, the only one that sees a backdrop, a glow, or a
+control that moved, compares a short list of screenshots with Linux
+baselines, so on macOS `npm run test:visual` skips. When a change in looks
+is meant, run the Nightly workflow by hand on the branch with **Only the
+visual check** ticked, look at the images its artifact holds, and commit the
+ones meant to `test/ui/visual-baseline/linux/`
+([Visual baselines](architecture/testing.md#visual-baselines)).
 
-CI runs every suite on each pull request, split between jobs that run at
-once ([Continuous integration](architecture/testing.md#continuous-integration)):
+CI runs every suite but the visual check on each pull request, split
+between jobs that run at once
+([Continuous integration](architecture/testing.md#continuous-integration)):
 types, lint, and the import rules in one; the unit, host, page, and
-end-to-end suites and the VSIX in another; each Chrome check in two shards
-of the theme-and-zen passes; the DOM check; and the unit and host suites on
-Windows and macOS. Its `validate` check passes only when every job did. The
-Linux visual baselines come from CI, drawn in the Chrome version `ci.yml`
-pins: a failed visual shard uploads each image that differs or had no
-baseline, under its baseline's name, ready to commit once looked at. A
-nightly run tests `dev` again with every suite one after another, and in
-the oldest VS Code `engines` allows.
+end-to-end suites and the VSIX in another; the layout and rendered contrast
+checks in two shards each of the theme-and-zen passes, and the contrast
+check; and the unit and host suites on Windows and macOS. Its `validate`
+check passes only when every job did. A nightly run tests `dev` again with
+every suite one after another, in the oldest VS Code `engines` allows, and
+runs the visual check, in the Chrome version the workflows pin: a failed run
+uploads each image that differs or had no baseline, under its baseline's
+name, ready to commit once looked at.
 
 ## Running the development host
 
