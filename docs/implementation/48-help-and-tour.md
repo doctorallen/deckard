@@ -167,7 +167,9 @@ bidding, accepted, underway, delivered), System, Decision, and Term.
 - **D4. `helpPicked` is answered by the host base,** not each page's
   protocol, so a page joins explore mode by carrying `data-help-id` alone.
 - **D5. No new screenshot baselines.** The new Help tabs are covered by
-  page and host tests and the contrast suite; see the testing discussion.
+  page and host tests and the rendered contrast suite. The same change
+  retires the whole-page DOM goldens and cuts the screenshot baselines to a
+  short Linux set (see [testing](../architecture/testing.md)).
 
 ## Tests
 
@@ -183,3 +185,40 @@ bidding, accepted, underway, delivered), System, Decision, and Term.
 - `tour.test.ts`: every scene's command is contributed or built in, every
   file and text it names is in the sample, and the done rules.
 - `sample-workspace.test.ts`, `sample-work-types.test.ts`: the new sample.
+
+## As built
+
+- **Help's page stays host-drawn.** This page and the Tour are HTML the
+  host builds (`thisPageHtml.ts`, `tourHtml.ts`) and posts as `helpPanel`
+  when their tab shows, as the guide's pages are; the page script only
+  switches tabs and sends `helpTab`, `helpAction`, and `helpSetting`.
+- **The guide is cut on the host** (`guideSections.ts`): each rendered page
+  is split at its headings' anchors, and an entry's name, words, and line
+  in the list come from its section. The board's line about a shared
+  control is the sentence of its section that names the control.
+- **`openHelp` passes the page's name** (`PageContext.name`), so every
+  page's Help on this page opens Help beside it; only the Task board has a
+  map, and the others open on Guide.
+- **Settings** are read from `contributes.configuration` and written with
+  `settingTarget` and `writeSetting`; `display.zen` goes through
+  `setZenMode`. `board.limits` and `tasks.statuses` are not edited in
+  place. The label is the Settings editor's (`ui/state/settingLabel.ts`,
+  moved out of `notify.ts` so Help's settings module needs no `vscode`).
+- **Can start now** is toggled through `TaskBoardPanel.toggleAvailable`,
+  which applies the board's own search with `is:available` added or taken
+  out.
+- **The Tour ticks a step** when a line of its file holds every word named
+  (`line`), when the line holding its words changed since the scene began
+  (`changed`), or when a note matching a pattern opens (`opened`); a scene
+  without one is ticked by its **Do it** or by hand. A page ring is sent
+  three times while the page draws, held until the scene changes.
+- **The sample's terms** are EVA, RCS, and TCM: Deckard counts terms
+  written in capitals, so Delta-v, Burn window, and Scrubber could not be.
+  A System's keeper is `keeper` (reverse `keeps`), since `owner` is a
+  built-in search field. The contract template is `templates/contract.md`,
+  the name New Note from Type reads. The Hubs view's groups come from the
+  namespaces: Contracts, People, Systems, Teams.
+- **The people table's scene rings "No hub note"**, the words the table
+  writes beside a person with no note; the sample has two, Lio Marsh and
+  Amara Kibet.
+
