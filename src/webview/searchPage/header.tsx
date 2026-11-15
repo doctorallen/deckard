@@ -164,14 +164,31 @@ function typeRows(snapshot: SearchPageSnapshot): ViewOptionItem[] {
 /**
  * Group by: None, Tag, and Heading, and on a type's page each of its
  * select, person, and relation fields, which group its rows. A field
- * chosen is shown as the choice while it groups the rows.
+ * chosen is shown as the choice while it groups the rows. With fields to
+ * offer it is a dropdown, as a type's board's Group is; the three choices
+ * alone stay buttons.
  */
 function groupByRow(snapshot: SearchPageSnapshot): ViewOptionGroup {
   const table = snapshot.typeRows;
   const fields = table ? table.groupFields.map((field) => [`field:${field.id}`, field.label, `${field.label}, the ${table.plural.toLowerCase()} under each`] as const) : [];
+  if (table && fields.length) {
+    const selected = table.groupBy ? `field:${table.groupBy}` : snapshot.hierarchy || 'off';
+    return {
+      label: 'Group by',
+      content: (
+        <select data-action="choose-hierarchy" aria-label="Group the results by" data-tip={`Group the results, or the ${table.plural.toLowerCase()} by a field`}>
+          <option value="off" selected={selected === 'off'}>None</option>
+          <option value="tags" selected={selected === 'tags'}>Tag</option>
+          <option value="headings" selected={selected === 'headings'}>Heading</option>
+          <optgroup label={`${table.name} fields`}>
+            {fields.map(([value, label]) => <option key={value} value={value} selected={selected === value}>{label}</option>)}
+          </optgroup>
+        </select>
+      ),
+    };
+  }
   return {
     label: 'Group by',
-    ...(fields.length ? { stacked: true } : {}),
     content: (
       <ViewOptionChoices
         action="set-hierarchy"

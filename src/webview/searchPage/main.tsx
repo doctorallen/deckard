@@ -1039,6 +1039,9 @@ document.addEventListener('change', (event) => {
     toggleTypeColumn(target);
   }
   chooseBoardAxis(target);
+  if (target.dataset.action === 'choose-hierarchy' && latest) {
+    setGrouping(target.value, latest);
+  }
   if (target.dataset.action === 'set-results-per-page') {
     send({ type: 'setResultsPerPage', size: Number(target.value) as never });
   }
