@@ -3,7 +3,7 @@ describes: "@dev-laurent"
 role: Mechanic
 team: "#team/engineering"
 reports-to: "@juno-achterberg"
-email: dev@corvid.example
+email: dev@petrel.example
 ---
 # Dev Laurent @dev-laurent
 

@@ -67,7 +67,7 @@ suite('Work sample', () => {
     return { parsed, index: buildWorkspaceIndex(parsed) };
   }
 
-  test('the work sample is six weeks aboard the Corvid: every link opens a note, and today has work due', async () => {
+  test('the work sample is six weeks aboard the Petrel: every link opens a note, and today has work due', async () => {
     const { target, notes } = await installSample({ extensionUri, storageUri: storage, today });
     assert.strictEqual(path.basename(target.fsPath), WORK_SAMPLE_FOLDER_NAME);
     const files = await installed(target);

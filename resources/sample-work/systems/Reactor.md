@@ -6,7 +6,7 @@ interval: every six months
 ---
 # Reactor
 
-The Corvid's power. Serviced at Pallas Yard during the refit for the
+The Petrel's power. Serviced at Pallas Yard during the refit for the
 [[Relay survey]]. Its coolant pump ran hot from leg one and is out for a
 rebuild; until it is back, the reactor runs on the backup pump at reduced
 power.

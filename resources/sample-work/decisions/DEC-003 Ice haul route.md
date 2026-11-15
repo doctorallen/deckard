@@ -7,7 +7,7 @@ contract: "[[Ice haul]]"
 # DEC-003 Ice haul route #decision #contract/ice-haul
 
 ## Context
-Forty tonnes of ice is the heaviest load the Corvid has carried. The fast
+Forty tonnes of ice is the heaviest load the Petrel has carried. The fast
 route has narrow burn windows; the slow one adds four days.
 
 ## Options

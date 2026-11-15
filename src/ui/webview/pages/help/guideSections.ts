@@ -54,12 +54,27 @@ export function findGuideSection(html: string, id: string): GuideSection | undef
   return cutGuideSections(html).find((section) => section.id === id);
 }
 
-/** The words of some HTML, its blocks parted by a space and its entities read. */
+/**
+ * Some HTML with its tags taken out, again until none is left, so taking one
+ * out cannot join the text either side of it into another.
+ */
+function withoutTags(html: string): string {
+  let text = html;
+  let before: string;
+  do {
+    before = text;
+    text = text.replace(/<[^<>]*>/g, '');
+  } while (text !== before);
+  return text;
+}
+
+/**
+ * The words of some HTML, its blocks parted by a space and its entities
+ * read. The result is text, not HTML: whoever draws it escapes it.
+ */
 export function textOf(html: string): string {
-  return html
-    .replace(/<button\b[\s\S]*?<\/button>/g, (button) => button.replace(/<[^>]+>/g, ''))
-    .replace(/<\/(p|li|td|th|tr|h[1-6]|pre|blockquote)>/g, ' ')
-    .replace(/<[^>]+>/g, '')
+  const parted = html.replace(/<\/(p|li|td|th|tr|h[1-6]|pre|blockquote)>/g, ' ');
+  return withoutTags(parted)
     .replace(/&nbsp;/g, ' ')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')

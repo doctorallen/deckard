@@ -17,10 +17,19 @@ suite('Help’s tabs', () => {
         data: {
           type: 'helpPanel',
           tab: 'page',
-          html: '<button type="button" data-help-action="select" data-id="lanes">Lanes</button>'
-            + '<select data-help-setting="theme"><option value="mimic">Mimic</option><option value="cooper">Cooper</option></select>'
-            + '<input type="checkbox" data-help-setting="display.cardDetails" data-help-flag="created">'
-            + '<button type="button" data-help-action="open-guide" data-page="task-board" data-anchor="lanes">Open in the guide</button>',
+          view: [
+            { tag: 'button', attrs: { type: 'button', 'data-help-action': 'select', 'data-id': 'lanes' }, children: ['Lanes'] },
+            {
+              tag: 'select',
+              attrs: { 'data-help-setting': 'theme' },
+              children: [
+                { tag: 'option', attrs: { value: 'mimic' }, children: ['Mimic'] },
+                { tag: 'option', attrs: { value: 'cooper' }, children: ['Cooper'] },
+              ],
+            },
+            { tag: 'input', attrs: { type: 'checkbox', 'data-help-setting': 'display.cardDetails', 'data-help-flag': 'created' } },
+            { tag: 'button', attrs: { type: 'button', 'data-help-action': 'open-guide', 'data-page': 'task-board', 'data-anchor': 'lanes' }, children: ['Open in the guide'] },
+          ],
         },
       }));
       page.posted.length = 0;

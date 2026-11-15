@@ -263,7 +263,7 @@ function createDiagnostic(index, files) {
  * with values set the way a reader might have them.
  *
  * @param {string | undefined} selected The entry shown, or the list.
- * @returns {string} The tab's HTML.
+ * @returns {object[]} The tab's content, as the tree the host sends.
  */
 function thisPageFixture(selected) {
   const { TASK_BOARD_HELP, splitGuideRef } = modules.pageHelp;
@@ -297,24 +297,22 @@ function thisPageFixture(selected) {
   const choices = {
     lanes: { current: 'tag', options: [{ value: 'none', label: 'None' }, { value: 'priority', label: 'Priority' }, { value: 'due', label: 'Due date' }, { value: 'assignee', label: 'Person' }, { value: 'tag', label: '#team' }], kept: 'Not a setting: the board keeps your choice, on this machine.' },
   };
-  return modules.helpThisPageHtml.renderThisPage({ map: TASK_BOARD_HELP, entries, settings, choices, ...(selected ? { selected } : {}), exploring: false, pageOpen: true });
+  return modules.helpThisPageView.renderThisPage({ map: TASK_BOARD_HELP, entries, settings, choices, ...(selected ? { selected } : {}), exploring: false, pageOpen: true });
 }
 
 /**
- * Help's Tour tab at the Task board's scene, with three scenes done and
- * every scene picked for the demo.
+ * Help's Tour tab at the Task board's scene, with three scenes done.
  *
- * @returns {string} The tab's HTML.
+ * @returns {object[]} The tab's content, as the tree the host sends.
  */
 function tourFixture() {
   const { TOUR_SCENES } = modules.tourScenes;
   const board = TOUR_SCENES.findIndex((scene) => scene.id === 'board');
-  return modules.helpTourHtml.renderTour({
+  return modules.helpTourView.renderTour({
     inSample: true,
     started: true,
     progress: { scene: board, done: TOUR_SCENES.slice(0, 3).map((scene) => scene.id) },
     presenting: false,
-    demo: TOUR_SCENES.map((scene) => scene.id),
     hideHelp: true,
   });
 }
@@ -346,7 +344,7 @@ function createReferenceSurfaces(index, files) {
       name: 'helpThisPage',
       page: 'help',
       viewport: [480, 900],
-      messages: () => [{ type: 'reveal', page: '', tab: 'page' }, { type: 'helpPanel', tab: 'page', html: thisPageFixture() }],
+      messages: () => [{ type: 'reveal', page: '', tab: 'page' }, { type: 'helpPanel', tab: 'page', view: thisPageFixture() }],
       scrollers: ['html'],
       clippers: [],
       hovered: ['.help-entry'],
@@ -355,7 +353,7 @@ function createReferenceSurfaces(index, files) {
       name: 'helpThisPageEntry',
       page: 'help',
       viewport: [480, 900],
-      messages: () => [{ type: 'reveal', page: '', tab: 'page' }, { type: 'helpPanel', tab: 'page', html: thisPageFixture('lanes') }],
+      messages: () => [{ type: 'reveal', page: '', tab: 'page' }, { type: 'helpPanel', tab: 'page', view: thisPageFixture('lanes') }],
       scrollers: ['html'],
       clippers: [],
       hovered: ['.help-choices button'],
@@ -364,10 +362,10 @@ function createReferenceSurfaces(index, files) {
       name: 'helpTour',
       page: 'help',
       viewport: [480, 900],
-      messages: () => [{ type: 'reveal', page: '', tab: 'tour' }, { type: 'helpPanel', tab: 'tour', html: tourFixture() }],
+      messages: () => [{ type: 'reveal', page: '', tab: 'tour' }, { type: 'helpPanel', tab: 'tour', view: tourFixture() }],
       scrollers: ['html'],
       clippers: [],
-      hovered: ['.tour-scenes .help-link'],
+      hovered: ['.help-actions button'],
     },
     {
       name: 'helpGuide',

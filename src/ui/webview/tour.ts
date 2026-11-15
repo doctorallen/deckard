@@ -5,7 +5,6 @@ import {
   hasLineWithAll,
   lineChanged,
   lineHolding,
-  readDemoScenes,
   readTourProgress,
   resolveTourPath,
   TOUR_SCENES,
@@ -19,8 +18,6 @@ import { pageRegistry } from './host/pageRegistry';
 export const TOUR_PRESENTING_KEY = 'deckard.tourPresenting';
 /** Where the Tour keeps its place, in the sample's workspace state. */
 const PROGRESS_KEY = 'deckard.tour.progress';
-/** The scenes picked for a demo, in Deckard's global state: a presenter's choice, whatever the folder. */
-const DEMO_KEY = 'deckard.tour.demoScenes';
 /** Whether Help closes while presenting, in Deckard's global state. */
 const HIDE_HELP_KEY = 'deckard.tour.hideHelp';
 /** The command that ends presenting, which the status bar item's tooltip links. */
@@ -47,7 +44,6 @@ export interface TourState {
   started: boolean;
   progress: TourProgress;
   presenting: boolean;
-  demo: readonly string[];
   hideHelp: boolean;
 }
 
@@ -106,7 +102,6 @@ export class TourService implements vscode.Disposable {
       started: this.started,
       progress: this.progress,
       presenting: this.presenting,
-      demo: readDemoScenes(this.options.globalState.get(DEMO_KEY)),
       hideHelp: this.options.globalState.get(HIDE_HELP_KEY) === true,
     };
   }
@@ -141,12 +136,10 @@ export class TourService implements vscode.Disposable {
     this.changeEmitter.fire();
   }
 
-  /** The next scene: the next of the demo's while presenting. */
+  /** The next scene; past the last, presenting stops. */
   public async next(): Promise<void> {
-    const order = this.order();
-    const at = order.indexOf(this.progress.scene);
-    const next = at < 0 ? order.find((index) => index > this.progress.scene) : order[at + 1];
-    if (next === undefined) {
+    const next = this.progress.scene + 1;
+    if (next >= TOUR_SCENES.length) {
       if (this.presenting) {
         await this.stopPresenting();
       }
@@ -155,13 +148,10 @@ export class TourService implements vscode.Disposable {
     await this.go(next);
   }
 
-  /** The scene before: the demo's before while presenting. */
+  /** The scene before, if there is one. */
   public async previous(): Promise<void> {
-    const order = this.order();
-    const at = order.indexOf(this.progress.scene);
-    const previous = at < 0 ? [...order].reverse().find((index) => index < this.progress.scene) : order[at - 1];
-    if (previous !== undefined) {
-      await this.go(previous);
+    if (this.progress.scene > 0) {
+      await this.go(this.progress.scene - 1);
     }
   }
 
@@ -209,28 +199,15 @@ export class TourService implements vscode.Disposable {
     }
   }
 
-  /** Picks a scene for the demo, or leaves it out. */
-  public async setDemo(id: string, on: boolean): Promise<void> {
-    const picked = new Set(readDemoScenes(this.options.globalState.get(DEMO_KEY)));
-    if (on) {
-      picked.add(id);
-    } else if (picked.size > 1) {
-      picked.delete(id);
-    }
-    await this.options.globalState.update(DEMO_KEY, TOUR_SCENES.map((scene) => scene.id).filter((sceneId) => picked.has(sceneId)));
-    this.changeEmitter.fire();
-  }
-
   /** Whether Help closes while presenting. */
   public async setHideHelp(on: boolean): Promise<void> {
     await this.options.globalState.update(HIDE_HELP_KEY, on);
     this.changeEmitter.fire();
   }
 
-  /** Starts presenting the demo's scenes, from its first. */
+  /** Starts presenting the scenes, from the first. */
   public async present(): Promise<void> {
-    const order = this.order(true);
-    if (order.length === 0 || !this.sampleRoot()) {
+    if (!this.sampleRoot()) {
       return;
     }
     this.presenting = true;
@@ -238,7 +215,7 @@ export class TourService implements vscode.Disposable {
     if (this.state.hideHelp) {
       this.options.closeHelp();
     }
-    await this.go(order[0]);
+    await this.go(0);
   }
 
   /** Stops presenting. */
@@ -273,15 +250,6 @@ export class TourService implements vscode.Disposable {
     clearTimeout(this.checkTimer);
     this.statusItem?.dispose();
     this.disposables.splice(0).forEach((disposable) => disposable.dispose());
-  }
-
-  /** The scenes in order: while presenting, or asked for the demo, only those picked. */
-  private order(forDemo = this.presenting): number[] {
-    if (!forDemo) {
-      return TOUR_SCENES.map((_scene, index) => index);
-    }
-    const picked = new Set(readDemoScenes(this.options.globalState.get(DEMO_KEY)));
-    return TOUR_SCENES.map((scene, index) => (picked.has(scene.id) ? index : -1)).filter((index) => index >= 0);
   }
 
   private async setProgress(progress: TourProgress): Promise<void> {
@@ -419,15 +387,14 @@ export class TourService implements vscode.Disposable {
     if (!this.presenting) {
       return;
     }
-    const order = this.order();
     const scene = TOUR_SCENES[this.progress.scene];
     this.statusItem ??= vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1000);
-    this.statusItem.text = `$(play) Tour ${order.indexOf(this.progress.scene) + 1}/${order.length} · ${scene.title}`;
+    this.statusItem.text = `$(play) Tour ${this.progress.scene + 1}/${TOUR_SCENES.length} · ${scene.title}`;
     const tooltip = new vscode.MarkdownString(`**${scene.title}**\n\n${scene.note}\n\nNext: Ctrl+Alt+] · Previous: Ctrl+Alt+[ · [End](command:${END_PRESENTING})`);
     tooltip.isTrusted = { enabledCommands: [END_PRESENTING] };
     this.statusItem.tooltip = tooltip;
     this.statusItem.command = 'deckard.tour.next';
-    this.statusItem.accessibilityInformation = { label: `Tour scene ${order.indexOf(this.progress.scene) + 1} of ${order.length}: ${scene.title}. Select for the next scene.` };
+    this.statusItem.accessibilityInformation = { label: `Tour scene ${this.progress.scene + 1} of ${TOUR_SCENES.length}: ${scene.title}. Select for the next scene.` };
     this.statusItem.show();
   }
 }

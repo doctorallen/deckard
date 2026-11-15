@@ -3,7 +3,7 @@ describes: "@ottilie-brandt"
 role: Comms and contracts
 team: "#team/command"
 reports-to: "@rhea-calder"
-email: ottilie@corvid.example
+email: ottilie@petrel.example
 ---
 # Ottilie Brandt @ottilie-brandt
 

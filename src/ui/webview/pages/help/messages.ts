@@ -27,7 +27,7 @@ const narrowHelpTab: Narrower<HelpTabMessage> = (value) =>
 const HELP_ACTIONS: readonly HelpAction[] = [
   'select', 'back', 'explore', 'show-me', 'choose', 'open-setting', 'edit-statuses', 'open-board',
   'tour-go', 'tour-next', 'tour-previous', 'tour-again', 'tour-do', 'tour-tick', 'tour-end',
-  'tour-present', 'tour-stop', 'tour-reset', 'tour-demo', 'tour-hide-help', 'tour-create-sample',
+  'tour-present', 'tour-stop', 'tour-reset', 'tour-hide-help', 'tour-create-sample',
 ];
 
 /** A short word, as an entry's, a scene's, a choice's, or a value's name may be. */

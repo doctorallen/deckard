@@ -5,7 +5,7 @@ channel: bridge
 ---
 # Command
 
-The captain and contracts: which jobs the Corvid takes, where it goes, and
+The captain and contracts: which jobs the Petrel takes, where it goes, and
 the paperwork at every port. Its people are the notes whose `team:` names
 it; the team's page lists them as **members**.
 

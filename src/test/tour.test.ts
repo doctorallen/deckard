@@ -7,7 +7,6 @@ import { guideSlug } from '../ui/webview/guide';
 import {
   hasLineWithAll,
   lineChanged,
-  readDemoScenes,
   readTourProgress,
   TOUR_CHAPTERS,
   TOUR_SCENES,
@@ -107,13 +106,10 @@ suite('The Tour', () => {
     assert.ok(!lineChanged(undefined, before, 'Recalibrate'), 'nothing to compare with');
   });
 
-  test('where the Tour was and what a demo shows are read back safely', () => {
+  test('where the Tour was is read back safely', () => {
     assert.deepStrictEqual(readTourProgress({ scene: 6, done: ['board', 'nonsense', 3] }), { scene: 6, done: ['board'] });
     assert.deepStrictEqual(readTourProgress({ scene: 99 }), { scene: 0, done: [] });
     assert.deepStrictEqual(readTourProgress('junk'), { scene: 0, done: [] });
-    assert.deepStrictEqual(readDemoScenes(['board', 'today', 'gone']), ['today', 'board'], 'in the scenes’ order');
-    assert.strictEqual(readDemoScenes(undefined).length, TOUR_SCENES.length);
-    assert.strictEqual(readDemoScenes([]).length, TOUR_SCENES.length, 'an empty pick is every scene');
   });
 
   test('This page marks the board’s entry the Tour shows', () => {

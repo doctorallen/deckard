@@ -10,7 +10,7 @@ for demonstrations; and **Guide**, the guide Help shows today. Mockups: the
 "Deckard Tour" artifact, version 5
 (https://claude.ai/artifact/Mab8pjqe8HmLKAg97Y4XjD).
 
-The work sample is rewritten for the Tour: six weeks aboard the Corvid, a
+The work sample is rewritten for the Tour: six weeks aboard the Petrel, a
 small independent ship that takes survey and hauling contracts. Its crew
 does repairs, upkeep, burns, and port paperwork; nothing in it is violent.
 
@@ -128,7 +128,7 @@ the Task board; the calendar; what someone owes you; types as a table; a
 type as a board; hub notes; the Hubs view; and, optional, carrying tasks
 forward and weekly and monthly reviews.
 
-**Presenting.** **Present** runs the scenes ticked for the demo. A status
+**Presenting.** **Present** runs every scene, from the first. A status
 bar item names the scene and carries its talking point in its tooltip;
 `Deckard: Next Tour Scene`, `Previous`, and `End Presenting` have keys while
 presenting (Ctrl+Alt+] and Ctrl+Alt+[). With **Hide Help while presenting**,
@@ -188,10 +188,21 @@ bidding, accepted, underway, delivered), System, Decision, and Term.
 
 ## As built
 
-- **Help's page stays host-drawn.** This page and the Tour are HTML the
-  host builds (`thisPageHtml.ts`, `tourHtml.ts`) and posts as `helpPanel`
-  when their tab shows, as the guide's pages are; the page script only
+- **Help's page stays host-described.** This page and the Tour are a tree
+  of elements the host builds (`thisPageView.ts`, `tourView.ts`, with `h`
+  from `helpView.ts`) and posts as `helpPanel` when their tab shows. The
+  page builds it with the DOM (`src/webview/help/view.ts`), never as HTML,
+  and builds only an allowlist of tags and attributes: no event handler,
+  link, source, or style attribute. A guide section's HTML, rendered from
+  the guide the VSIX ships, goes through `setGuideHtml`, the one place the
+  page sets HTML, as the guide's pages do. This replaced posting HTML,
+  which CodeQL flagged as `js/xss` on PR #73. The page script also
   switches tabs and sends `helpTab`, `helpAction`, and `helpSetting`.
+- **No scene picking.** The Tour first had a list of every scene with a box
+  to pick each for the demo. On review it read as noise: the progress bar
+  already goes to any scene, and **Present** runs them all.
+- **The ship is the Petrel.** The sample's ship was first the Corvid,
+  which read too close to "covid".
 - **The guide is cut on the host** (`guideSections.ts`): each rendered page
   is split at its headings' anchors, and an entry's name, words, and line
   in the list come from its section. The board's line about a shared

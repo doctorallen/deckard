@@ -10,8 +10,9 @@
  * again when it is shown. What it saves with `setState` brings it back where
  * it was: the page it showed, and how far down it was scrolled.
  */
-import type { HelpAction, HelpGuideMessage, HelpHostToPage, HelpMessage, HelpTab } from '../../ui/protocol/help';
+import type { HelpAction, HelpGuideMessage, HelpHostToPage, HelpMessage, HelpTab, HelpViewNode } from '../../ui/protocol/help';
 import { installGoToMenu } from '../shared/goToMenu';
+import { buildView } from './view';
 
 /** What VS Code gives a webview's script. */
 interface VsCodeApi {
@@ -112,19 +113,19 @@ function showTab(next: HelpTab, focus = false, announce = true): void {
 }
 
 /**
- * This page's or the Tour's content, which the host drew, in its panel. The
- * HTML is trusted as the guide's is: the host built it from the guide the
- * VSIX ships and the extension's own settings, escaping every value.
- * Focus goes back to the control that had it, if it is drawn again.
+ * This page's or the Tour's content, which the host described, built in its
+ * panel with the DOM (see view.ts): only a guide section's own HTML is set
+ * as HTML, by `setGuideHtml`. Focus goes back to the control that had it, if
+ * it is drawn again.
  */
-function setPanelHtml(name: Exclude<HelpTab, 'guide'>, html: string): void {
+function setPanelView(name: Exclude<HelpTab, 'guide'>, view: readonly HelpViewNode[]): void {
   const panel = document.getElementById(`help-panel-${name}`);
   if (!panel) {
     return;
   }
   const active = document.activeElement instanceof HTMLElement && panel.contains(document.activeElement) ? document.activeElement : undefined;
   const again = active ? focusKey(active) : undefined;
-  panel.innerHTML = html;
+  panel.replaceChildren(...buildView(view, document, setGuideHtml));
   if (again) {
     panel.querySelector<HTMLElement>(again)?.focus();
   }
@@ -135,7 +136,7 @@ function focusKey(element: HTMLElement): string | undefined {
   if (element.id) {
     return `#${CSS.escape(element.id)}`;
   }
-  const names = ['data-help-action', 'data-id', 'data-index', 'data-choice', 'data-value', 'data-help-setting', 'data-help-flag', 'data-tour-tick', 'data-tour-demo', 'data-tour-option'];
+  const names = ['data-help-action', 'data-id', 'data-index', 'data-choice', 'data-value', 'data-help-setting', 'data-help-flag', 'data-tour-tick', 'data-tour-option'];
   const parts = names
     .filter((name) => element.hasAttribute(name))
     .map((name) => `[${name}="${CSS.escape(element.getAttribute(name) ?? '')}"]`);
@@ -188,11 +189,6 @@ function onChange(event: Event): void {
   const tick = target.getAttribute('data-tour-tick');
   if (tick) {
     vscode.postMessage({ type: 'helpAction', action: 'tour-tick', id: tick, on: checked === true });
-    return;
-  }
-  const demo = target.getAttribute('data-tour-demo');
-  if (demo) {
-    vscode.postMessage({ type: 'helpAction', action: 'tour-demo', id: demo, on: checked === true });
     return;
   }
   if (target.getAttribute('data-tour-option') === 'hide-help') {
@@ -433,8 +429,8 @@ function onMessage(event: MessageEvent<HelpHostToPage[keyof HelpHostToPage] | un
       go({ page: message.page, ...(message.anchor ? { anchor: message.anchor } : {}) });
     }
   }
-  if (message?.type === 'helpPanel') {
-    setPanelHtml(message.tab, message.html);
+  if (message?.type === 'helpPanel' && Array.isArray(message.view)) {
+    setPanelView(message.tab, message.view);
   }
   if (message?.type === 'guide') {
     showGuide(message);

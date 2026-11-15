@@ -149,9 +149,5 @@ body:not([data-tab="guide"]) nav { display: none; }
 .tour-tick { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
 .tour-tick input { margin-top: 3px; }
 .tour-step.is-done .tour-tick span { color: var(--muted); }
-.tour-scenes { margin: 18px 0; }
-.tour-scenes summary { cursor: pointer; color: var(--text); }
-.tour-scenes ul { list-style: none; margin: 0; padding: 0; }
-.tour-scenes li { display: flex; gap: 6px; align-items: center; }
 .tour-done { color: var(--cyan); }
 .tour-present { margin-top: 22px; padding-top: 4px; border-top: 1px solid var(--line); }

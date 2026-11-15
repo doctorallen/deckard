@@ -3,7 +3,7 @@ describes: "@tomas-vey"
 role: Pilot
 team: "#team/flight"
 reports-to: "@rhea-calder"
-email: tomas@corvid.example
+email: tomas@petrel.example
 ---
 # Tomas Vey @tomas-vey
 

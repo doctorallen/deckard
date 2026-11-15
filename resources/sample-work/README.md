@@ -1,6 +1,6 @@
 # Start here
 
-Six weeks of notes from aboard the **Corvid**, a small independent ship
+Six weeks of notes from aboard the **Petrel**, a small independent ship
 that takes survey and hauling contracts and keeps itself running. You are
 **Rhea Calder**, its captain. The crew is in the middle of the **Relay
 survey**, docked at Pallas Yard between legs while the chief engineer

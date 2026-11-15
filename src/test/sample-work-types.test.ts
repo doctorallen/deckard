@@ -115,7 +115,7 @@ suite('The work sample’s types', () => {
       ['Ottilie Brandt', 'Rhea Calder › reports'],
       ['Tomas Vey', 'Rhea Calder › reports'],
     ]);
-    const email = [['juno@corvid.example', 'Juno Achterberg › email']];
+    const email = [['juno@petrel.example', 'Juno Achterberg › email']];
     assert.deepStrictEqual(answers('juno achterberg email'), email);
     assert.deepStrictEqual(answers('juno email'), email);
     assert.deepStrictEqual(answers('dev team'), [['Engineering', 'Dev Laurent › team']]);

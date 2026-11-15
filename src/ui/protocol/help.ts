@@ -56,7 +56,6 @@ export type HelpAction =
   | 'tour-present'
   | 'tour-stop'
   | 'tour-reset'
-  | 'tour-demo'
   | 'tour-hide-help'
   | 'tour-create-sample';
 
@@ -112,11 +111,55 @@ export interface HelpRevealMessage {
   tab?: HelpTab;
 }
 
-/** This page's or the Tour's content, drawn by the host, for its tab. */
+/**
+ * The tags This page and the Tour are built from. The page builds only
+ * these, and only the attributes it allows, so nothing the host sends can
+ * run script or load anything.
+ */
+export type HelpViewTag =
+  | 'aside'
+  | 'b'
+  | 'button'
+  | 'code'
+  | 'details'
+  | 'div'
+  | 'h1'
+  | 'h2'
+  | 'h3'
+  | 'input'
+  | 'kbd'
+  | 'label'
+  | 'li'
+  | 'option'
+  | 'p'
+  | 'section'
+  | 'select'
+  | 'span'
+  | 'summary'
+  | 'ul';
+
+/** One element of This page or the Tour, as the page is to build it. */
+export interface HelpViewElement {
+  tag: HelpViewTag;
+  attrs?: Record<string, string>;
+  children?: HelpViewNode[];
+  /** Its share of a flex row, set as a style property, which the page's CSP allows where a style attribute is not. */
+  flex?: number;
+  /** A guide section, rendered from the guide the VSIX ships, as its content in place of children. */
+  guideHtml?: string;
+}
+
+/** An element, or text. */
+export type HelpViewNode = string | HelpViewElement;
+
+/**
+ * This page's or the Tour's content, described by the host, for its tab. It
+ * is a tree of elements the page builds with the DOM, never HTML.
+ */
 export interface HelpPanelMessage {
   type: 'helpPanel';
   tab: Exclude<HelpTab, 'guide'>;
-  html: string;
+  view: HelpViewNode[];
 }
 
 /**

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import type { Release } from '../../../../core/changelog';
-import type { HelpAction, HelpActionMessage, HelpGuideMessage, HelpPageToHost, HelpPanelMessage, HelpRevealMessage, HelpSettingMessage, HelpTab } from '../../../protocol/help';
+import type { HelpAction, HelpActionMessage, HelpGuideMessage, HelpPageToHost, HelpPanelMessage, HelpRevealMessage, HelpSettingMessage, HelpTab, HelpViewNode } from '../../../protocol/help';
 import type { WhatsNew } from '../../../commands/whatsNew';
 import { GUIDE_PAGES, type HelpPlace, isGuidePage } from '../../guide';
 import { getHelpHtml } from '../../helpHtml';
@@ -23,8 +23,9 @@ import { setZenMode } from '../../zenMode';
 import type { TourService } from '../../tour';
 import { findGuideSection, firstSentence, sentenceNaming } from './guideSections';
 import { describeSetting, listSettingSchemas, readSettingWrite, type SettingSchema, type SettingView } from './helpSettings';
-import { renderThisPage, type ThisPageChoice, type ThisPageEntry, type ThisPageModel } from './thisPageHtml';
-import { renderTour } from './tourHtml';
+import { renderThisPage, type ThisPageChoice, type ThisPageEntry, type ThisPageModel } from './thisPageView';
+import { renderTour } from './tourView';
+import { h } from './helpView';
 
 /** What This page reads and changes besides the guide and VS Code's settings. */
 export interface HelpThisPagePort {
@@ -43,7 +44,7 @@ export interface HelpThisPagePort {
 /** The Tour, as Help's Tour tab drives it. */
 export type HelpTourPort = Pick<
   TourService,
-  'state' | 'onDidChange' | 'go' | 'next' | 'previous' | 'again' | 'doIt' | 'tick' | 'end' | 'present' | 'stopPresenting' | 'setDemo' | 'setHideHelp'
+  'state' | 'onDidChange' | 'go' | 'next' | 'previous' | 'again' | 'doIt' | 'tick' | 'end' | 'present' | 'stopPresenting' | 'setHideHelp'
 >;
 
 /** What each axis is called in the board's Group and Lanes, but tags. */
@@ -74,11 +75,6 @@ const TOUR_ACTIONS: Partial<Record<HelpAction, (tour: HelpTourPort, message: Hel
   'tour-end': (tour) => tour.end(),
   'tour-present': (tour) => tour.present(),
   'tour-stop': (tour) => tour.stopPresenting(),
-  'tour-demo': async (tour, message) => {
-    if (message.id) {
-      await tour.setDemo(message.id, message.on === true);
-    }
-  },
   'tour-hide-help': (tour, message) => tour.setHideHelp(message.on === true),
 };
 
@@ -298,17 +294,15 @@ export class HelpController implements PageController<never, HelpPageToHost> {
     if (!page.surface?.visible || this.tab === 'guide') {
       return;
     }
-    const html = this.tab === 'page' ? renderThisPage(await this.thisPageModel()) : this.tourHtml();
-    const message: HelpPanelMessage = { type: 'helpPanel', tab: this.tab, html };
+    const view = this.tab === 'page' ? renderThisPage(await this.thisPageModel()) : this.tourView();
+    const message: HelpPanelMessage = { type: 'helpPanel', tab: this.tab, view };
     page.post(message);
   }
 
-  /** The Tour tab's HTML. */
-  private tourHtml(): string {
+  /** The Tour tab's content. */
+  private tourView(): HelpViewNode[] {
     const tour = this.tourPort;
-    return tour
-      ? renderTour(tour.state)
-      : '<p>The tour is not available in this window.</p>';
+    return tour ? renderTour(tour.state) : [h('p', null, 'The tour is not available in this window.')];
   }
 
   /** A guide page as Help renders it, once. */

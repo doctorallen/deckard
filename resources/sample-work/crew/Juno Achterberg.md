@@ -3,7 +3,7 @@ describes: "@juno-achterberg"
 role: Chief engineer
 team: "#team/engineering"
 reports-to: "@rhea-calder"
-email: juno@corvid.example
+email: juno@petrel.example
 ---
 # Juno Achterberg @juno-achterberg
 

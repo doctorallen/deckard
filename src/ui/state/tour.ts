@@ -1,6 +1,6 @@
 /**
  * The Tour (plan 48, section 4): fifteen scenes on the work sample, the
- * crew of the Corvid. A scene opens a real page or note, rings one thing
+ * crew of the Petrel. A scene opens a real page or note, rings one thing
  * on it, and gives the reader one step to try, which is seen to be done
  * from the files the step changes. Nothing here draws a page; the scenes'
  * words narrate the sample, and each points at the guide for the rest.
@@ -77,7 +77,7 @@ export const TOUR_SCENES: readonly TourScene[] = [
     id: 'today',
     chapter: 'The daily note',
     title: 'Start in today’s note',
-    body: 'You are **Rhea Calder**, captain of the **Corvid**, a small survey and hauling ship. Each day has a note named for its date, made from your template. Write the way you already do: lines, tasks, tags, and people. Everything else in Deckard reads from notes like this one.',
+    body: 'You are **Rhea Calder**, captain of the **Petrel**, a small survey and hauling ship. Each day has a note named for its date, made from your template. Write the way you already do: lines, tasks, tags, and people. Everything else in Deckard reads from notes like this one.',
     note: 'Everything aboard today is one Markdown file in a folder. Nothing in their own workspace changed.',
     open: [{ kind: 'note', file: TODAY, at: '## Morning briefing' }],
     ring: { kind: 'line', text: '## Morning briefing' },
@@ -145,7 +145,7 @@ export const TOUR_SCENES: readonly TourScene[] = [
     body: 'Say it the way you would say it. A day is a due date, a person is who it is for, and the editor names the note it will write to, today’s unless you choose another. The task is an ordinary checkbox line in that note.',
     note: 'Type it slowly so they see the date and the person picked out.',
     open: [{ kind: 'note', file: TODAY }],
-    step: 'In **Add Task**, type **Inspect Dev’s hull patch for @dev-laurent monday**, then **Write the task**.',
+    step: 'In **Add Task**, type **Inspect Dev’s hull patch for @dev-laurent monday** and press Enter.',
     done: { kind: 'line', file: TODAY, all: ['hull patch', '@dev-laurent'] },
     do: { kind: 'command', label: 'Open Add Task', command: 'deckard.addTask' },
     guide: 'tasks#adding-a-task',
@@ -183,7 +183,7 @@ export const TOUR_SCENES: readonly TourScene[] = [
     note: 'Nobody wrote a task. Deckard noticed a promise, and it will be waiting at the next one-to-one.',
     open: [{ kind: 'note', file: TODAY, at: 'coolant pump rebuild is done' }],
     ring: { kind: 'line', text: 'coolant pump rebuild is done' },
-    step: 'Choose **Track as waiting on Juno** from the lightbulb on the ringed line.',
+    step: 'Choose **Track** above the ringed line, or click the line and choose **Track as waiting on Juno** from its lightbulb.',
     done: { kind: 'line', file: TODAY, all: ['[w]', 'coolant pump rebuild', '@juno-achterberg'] },
     do: { kind: 'lightbulb', label: 'Show the lightbulb', text: 'coolant pump rebuild is done' },
     guide: 'daily-notes#promises-in-todays-note',
@@ -311,14 +311,4 @@ export function readTourProgress(kept: unknown): TourProgress {
   const ids = new Set(TOUR_SCENES.map((item) => item.id));
   const done = Array.isArray(value.done) ? value.done.filter((id): id is string => typeof id === 'string' && ids.has(id)) : [];
   return { scene, done };
-}
-
-/** The scenes picked for a demo, read back safely: every scene when nothing fits. */
-export function readDemoScenes(kept: unknown): string[] {
-  const ids = TOUR_SCENES.map((scene) => scene.id);
-  if (!Array.isArray(kept)) {
-    return ids;
-  }
-  const picked = kept.filter((id): id is string => typeof id === 'string' && ids.includes(id));
-  return picked.length > 0 ? ids.filter((id) => picked.includes(id)) : ids;
 }
