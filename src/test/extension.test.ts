@@ -142,6 +142,11 @@ suite('Extension Test Suite', () => {
         'deckard.calendar.openInEditor',
         'deckard.showStats',
         'deckard.showHelp',
+        'deckard.takeTour',
+        'deckard.tour.next',
+        'deckard.tour.previous',
+        'deckard.tour.endPresenting',
+        'deckard.tour.talkingPoint',
         'deckard.chooseContextPages',
         'deckard.contextPagesAsList',
         'deckard.contextPagesAsIcons',
@@ -321,7 +326,7 @@ suite('Extension Test Suite', () => {
     }> = contributes.walkthroughs[0].steps;
     assert.deepStrictEqual(
       steps.map((step) => step.id.replace('deckard.walkthrough.', '')),
-      ['openNote', 'addTags', 'linkNotes', 'search', 'captureTask', 'openHome'],
+      ['openNote', 'addTags', 'linkNotes', 'search', 'captureTask', 'openHome', 'takeTour'],
     );
     const commands = new Set<string>(contributes.commands.map((command: { command: string }) => command.command));
     const views = new Set<string>(

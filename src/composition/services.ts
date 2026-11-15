@@ -99,7 +99,8 @@ import { SearchPanels } from '../ui/webview/searchPage';
 import { TagVisits } from '../core/storage/tagVisits';
 import { PromiseDismissals } from '../core/storage/promiseDismissals';
 import { setZenMode, startZenMode, toggleZenMode } from '../ui/webview/zenMode';
-import { getSampleStorageUri, SAMPLE_FOLDER_NAMES, showSampleReadmeOnce } from '../ui/commands/sampleWorkspace';
+import { getSampleStorageUri, SAMPLE_FOLDER_NAMES, showSampleReadmeOnce, WORK_SAMPLE_FOLDER_NAME } from '../ui/commands/sampleWorkspace';
+import { TourService } from '../ui/webview/tour';
 import { LARGE_WORKSPACE_NOTES, summarizeFirstIndex } from '../ui/commands/firstIndex';
 import { initWriteTarget, isPausedHere, looksLikeCodeRepository, onDidChangePaused, readNotesFolder } from '../ui/commands/writeTarget';
 import { ScopeStatusBar } from '../ui/views/scopeStatusBar';
@@ -227,6 +228,8 @@ export interface Services {
   /** The theme Choose Theme… shows on the open pages before one is kept. */
   themePreview: ThemePreview;
   pages: Pages;
+  /** The Tour on the work sample (plan 48). */
+  tour: TourService;
   pageCommands: PageCommands;
   views: Views;
   /** The Tasks view's decisions. */
@@ -295,7 +298,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     whatsNew,
     tryNext,
   });
-  const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, dashboard: home.dashboard, whatsNew, writes, writtenBefore: editor.writtenBefore.hints });
+  const sidebar = createSidebarAndPages(context, { core, preferences, search, calendar, dashboard: home.dashboard, taskBoard: home.taskBoard, whatsNew, writes, writtenBefore: editor.writtenBefore.hints });
   const trees = createTreesAndAddTask(context, core, preferences, writes);
   // With the note page in front, the Outline lists its note's headings.
   trees.outline.followNotePage(sidebar.activeNotePage);
@@ -318,6 +321,7 @@ export function createServices(context: vscode.ExtensionContext): Services {
     links: { service: assistance.links, notes: assistance.linkNotes },
     themePreview: search.themePreview,
     pages,
+    tour: sidebar.tour,
     pageCommands: { readNotesGraphOptions, setZenMode, toggleZenMode },
     views: {
       sidebarNotes: sidebar.sidebarNotes,
@@ -1034,10 +1038,29 @@ interface SidebarParts {
   search: ReturnType<typeof createSearch>;
   calendar: ReturnType<typeof createCalendar>;
   dashboard: DashboardPanel;
+  /** The Task board, which Help's This page explains and changes (plan 48). */
+  taskBoard: TaskBoardPanel;
   whatsNew: WhatsNew;
   writes: Omit<Writes, 'addTask'>;
   /** The older lines like the line at the cursor, which Context lists. */
   writtenBefore: WrittenBeforeHints;
+}
+
+/**
+ * The Tour on the work sample (plan 48): it opens Help on its tab beside
+ * the page, and closes Help while presenting with Help hidden.
+ */
+function createTour(context: vscode.ExtensionContext, help: HelpPanel): TourService {
+  const tour = new TourService({
+    workspaceState: context.workspaceState,
+    globalState: context.globalState,
+    sampleFolderName: WORK_SAMPLE_FOLDER_NAME,
+    showHelp: () => help.show(undefined, { tab: 'tour' }),
+    closeHelp: () => help.close(),
+  });
+  help.setTour(tour);
+  context.subscriptions.push(tour);
+  return tour;
 }
 
 /** Related Notes in the sidebar, and Stats, Help, the Notes Graph, the note page, and the debug page. */
@@ -1083,7 +1106,9 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     manifest: context.extension.packageJSON.contributes,
     whatsNew: parts.whatsNew,
     indexer,
+    thisPage: { preferences: repository, taskLayout: parts.preferences.taskLayout, taskBoard: parts.taskBoard },
   });
+  const tour = createTour(context, help);
   const notesGraph = new NotesGraphPanel({
     indexer,
     extensionUri: context.extensionUri,
@@ -1114,7 +1139,7 @@ function createSidebarAndPages(context: vscode.ExtensionContext, parts: SidebarP
     isNotePinned: (filePath) => notePins.isLinePinned(filePath, 1),
   });
   const taskStatuses = new TaskStatusesPanel({ indexer, preferences: repository, history, extensionUri: context.extensionUri, themePreview });
-  return { sidebarNotes, stats, help, notesGraph, relatedNotesDebug, notePage, activeNotePage, taskStatuses };
+  return { sidebarNotes, stats, help, tour, notesGraph, relatedNotesDebug, notePage, activeNotePage, taskStatuses };
 }
 
 /** The Outline, the query blocks, the Tasks view and its service, the status bar, and Add Task. */

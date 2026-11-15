@@ -233,6 +233,17 @@
             "completionEvents": [
               "onCommand:deckard.showDashboard"
             ]
+          },
+          {
+            "id": "deckard.walkthrough.takeTour",
+            "title": "Take the tour",
+            "description": "A guided walk through Deckard on the work sample: today's note, tags and people, tasks and the board, types, and hubs. Each scene opens a real page beside Help and gives you one thing to try.\n[Take the Tour](command:deckard.takeTour)",
+            "media": {
+              "markdown": "resources/walkthrough/tour.md"
+            },
+            "completionEvents": [
+              "onCommand:deckard.takeTour"
+            ]
           }
         ],
         "featuredFor": [
@@ -341,6 +352,31 @@
           "light": "resources/pages/help-light.svg",
           "dark": "resources/pages/help-dark.svg"
         }
+      },
+      {
+        "command": "deckard.takeTour",
+        "title": "Take the Tour",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.tour.next",
+        "title": "Next Tour Scene",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.tour.previous",
+        "title": "Previous Tour Scene",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.tour.endPresenting",
+        "title": "End Presenting",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.tour.talkingPoint",
+        "title": "Show the Talking Point",
+        "category": "Deckard"
       },
       {
         "command": "deckard.chooseContextPages",
@@ -1000,6 +1036,22 @@
     ],
     "menus": {
       "commandPalette": [
+        {
+          "command": "deckard.tour.next",
+          "when": "deckard.tourPresenting"
+        },
+        {
+          "command": "deckard.tour.previous",
+          "when": "deckard.tourPresenting"
+        },
+        {
+          "command": "deckard.tour.endPresenting",
+          "when": "deckard.tourPresenting"
+        },
+        {
+          "command": "deckard.tour.talkingPoint",
+          "when": "deckard.tourPresenting"
+        },
         {
           "command": "deckard.search",
           "when": "false"
@@ -1833,6 +1885,16 @@
       ]
     },
     "keybindings": [
+      {
+        "command": "deckard.tour.next",
+        "key": "ctrl+alt+]",
+        "when": "deckard.tourPresenting"
+      },
+      {
+        "command": "deckard.tour.previous",
+        "key": "ctrl+alt+[",
+        "when": "deckard.tourPresenting"
+      },
       {
         "command": "deckard.goTo",
         "key": "ctrl+shift+alt+p",

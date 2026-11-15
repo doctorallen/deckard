@@ -4,6 +4,7 @@ import { buildPageShell, type ShellUri, type ShellWebview } from './host/pageShe
 import { compareVersions, Release, releasesWithHighlights, renderHighlightHtml } from '../../core/changelog';
 import { escapeHtml } from '../../shared/html';
 import { GUIDE_IMAGE_BASE } from './pages/help/guideLinks';
+import type { HelpTab } from '../protocol/help';
 
 /** What a Help page is drawn for: the look it is drawn in, What's new's releases, and where it opens. */
 export interface HelpOptions {
@@ -13,6 +14,8 @@ export interface HelpOptions {
   newSince?: string;
   /** Where the page opens once it has loaded; the guide's contents without. */
   place?: HelpPlace;
+  /** The tab it opens on; the guide's without. */
+  tab?: HelpTab;
   /** The look its host read: the theme, preview and all, and zen. */
   chrome: PageChrome;
 }
@@ -64,12 +67,28 @@ ${contentsLink('README', false)}${GUIDE_CONTENTS.map(
 `;
 }
 
-/** The place the page opens at, as the body's attributes the page script reads. */
-function placeAttributes(place: HelpPlace | undefined): string {
-  if (!place) {
-    return '';
-  }
-  return ` data-page="${escapeHtml(place.page)}"${place.anchor ? ` data-anchor="${escapeHtml(place.anchor)}"` : ''}`;
+/** The place and tab the page opens at, as the body's attributes the page script reads. */
+function placeAttributes(place: HelpPlace | undefined, tab: HelpTab): string {
+  const at = place ? ` data-page="${escapeHtml(place.page)}"${place.anchor ? ` data-anchor="${escapeHtml(place.anchor)}"` : ''}` : '';
+  return `${at} data-tab="${tab}"`;
+}
+
+/** Help's tabs (plan 48): This page, the Tour, and the guide. */
+const HELP_TABS: ReadonlyArray<readonly [HelpTab, string]> = [
+  ['page', 'This page'],
+  ['tour', 'Tour'],
+  ['guide', 'Guide'],
+];
+
+/** The tab row under Help's bar. */
+function renderTabs(tab: HelpTab): string {
+  return `    <div class="help-tabs" role="tablist" aria-label="Help">
+${HELP_TABS.map(
+    ([name, label]) =>
+      `      <button type="button" role="tab" id="help-tab-${name}" data-help-tab="${name}" aria-controls="help-panel-${name}" aria-selected="${name === tab}" tabindex="${name === tab ? 0 : -1}">${label}</button>`,
+  ).join('\n')}
+    </div>
+`;
 }
 
 /**
@@ -88,7 +107,7 @@ export function getHelpHtml(webview: ShellWebview, extensionUri: ShellUri, optio
     zen: options.chrome.zen,
     display: options.chrome.display,
     csp: { images: [new URL(GUIDE_IMAGE_BASE).origin] },
-    bodyAttributes: placeAttributes(options.place),
+    bodyAttributes: placeAttributes(options.place, options.tab ?? 'guide'),
     // src/webview/help/main.ts: the contents, the guide's pages, and What's new.
     bundle: true,
     body: `
@@ -97,11 +116,15 @@ ${renderContents()}  <article>
     <header class="page-bar">
       <div class="page-bar-lead"><p class="eyebrow"><button type="button" class="eyebrow-home" data-go-to="" aria-haspopup="menu" aria-expanded="false" aria-label="Deckard: go to another page">DECKARD ▾</button><span class="eyebrow-trail"> / HELP</span></p></div>
     </header>
+${renderTabs(options.tab ?? 'guide')}    <div id="help-panel-page" class="help-panel" role="tabpanel" aria-labelledby="help-tab-page" tabindex="-1"${options.tab === 'page' ? '' : ' hidden'}></div>
+    <div id="help-panel-tour" class="help-panel" role="tabpanel" aria-labelledby="help-tab-tour" tabindex="-1"${options.tab === 'tour' ? '' : ' hidden'}></div>
+    <div id="help-panel-guide" role="tabpanel" aria-labelledby="help-tab-guide"${(options.tab ?? 'guide') === 'guide' ? '' : ' hidden'}>
     <div id="guide-view"></div>
     <section id="${WHATS_NEW}" hidden>
       <h1>Changelog</h1>
       ${renderWhatsNew(options.releases ?? [], options.newSince)}
     </section>
+    </div>
   </article>
 </main>
 `,

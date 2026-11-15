@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import type { HelpMessage, HelpPageToHost, HelpRevealMessage } from '../protocol/help';
+import type { HelpMessage, HelpPageToHost, HelpRevealMessage, HelpTab } from '../protocol/help';
 import type { IndexReader } from '../../core/workspace/indexReader';
 import type { WhatsNew } from '../commands/whatsNew';
 import { helpPlace } from './guide';
@@ -8,7 +8,7 @@ import type { HelpManifest } from './pages/help/helpManifest';
 import type { MessageHandler } from './host/pageController';
 import { PanelAdapter } from './host/panelAdapter';
 import { WebviewHost } from './host/webviewHost';
-import { HelpController } from './pages/help/helpController';
+import { HelpController, type HelpThisPagePort, type HelpTourPort } from './pages/help/helpController';
 import type { ThemePreview } from './themePreview';
 
 /** What Help is drawn from. */
@@ -25,6 +25,15 @@ export interface HelpPanelOptions {
   whatsNew?: Pick<WhatsNew, 'releases' | 'newSince'>;
   /** What DECKARD's menu at the top of Help reads its hints from. */
   indexer?: Pick<IndexReader, 'getSnapshot'>;
+  /** What This page reads and changes (plan 48). */
+  thisPage?: HelpThisPagePort;
+}
+
+/** Where Help opens: for a page, which This page explains, or on a tab. */
+export interface HelpShowOptions {
+  /** The page that asked, by its host's name: Help opens beside it, on This page when it has a map. */
+  forPage?: string;
+  tab?: HelpTab;
 }
 
 /**
@@ -38,8 +47,8 @@ export class HelpPanel implements vscode.Disposable {
   private readonly page: PanelAdapter<never, HelpPageToHost>;
 
   /** Builds the page; nothing is shown until `show` or `restore`. */
-  public constructor({ extensionUri, themePreview, manifest = {}, whatsNew, indexer }: HelpPanelOptions) {
-    this.controller = new HelpController({ extensionUri, manifest, whatsNew, indexer });
+  public constructor({ extensionUri, themePreview, manifest = {}, whatsNew, indexer, thisPage }: HelpPanelOptions) {
+    this.controller = new HelpController({ extensionUri, manifest, whatsNew, indexer, thisPage });
     this.page = new PanelAdapter(
       new WebviewHost<never, HelpPageToHost>(this.controller, { themePreview }),
       { viewType: 'deckard.help', title: 'Deckard Help', extensionUri, icon: ['resources', 'deckard.svg'] },
@@ -54,19 +63,39 @@ export class HelpPanel implements vscode.Disposable {
    * to be asked and is loaded again when shown; a visible one is asked to
    * show it.
    */
-  public async show(anchor?: string): Promise<void> {
+  public async show(anchor?: string, options: HelpShowOptions = {}): Promise<void> {
     const panel = this.page.panel;
     const place = anchor ? helpPlace(anchor) : undefined;
+    const hasMap = options.forPage !== undefined && this.controller.askFrom(options.forPage);
+    const tab: HelpTab = options.tab ?? (hasMap ? 'page' : 'guide');
+    // Asked from a page, or for the Tour, Help docks beside the page so it stays in view.
+    const beside = options.forPage !== undefined || tab === 'tour';
     if (!panel) {
       await this.controller.loadReleases();
-      this.controller.drawingAt(place, () => this.page.open());
-    } else if (place && !panel.visible) {
-      this.controller.drawingAt(place, () => this.page.host.renderHtml());
-    } else if (place) {
-      const reveal: HelpRevealMessage = { type: 'reveal', ...place };
+      this.controller.drawingAt(place, () => this.page.open(beside ? { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true } : vscode.ViewColumn.Active), tab);
+      return;
+    }
+    if (!panel.visible) {
+      this.controller.drawingAt(place, () => this.page.host.renderHtml(), tab);
+    } else if (place || tab !== 'guide') {
+      const reveal: HelpRevealMessage = { type: 'reveal', ...(place ?? { page: '' }), tab };
       this.page.host.post(reveal);
     }
-    this.page.panel?.reveal(vscode.ViewColumn.Active);
+    if (beside) {
+      panel.reveal(panel.viewColumn ?? vscode.ViewColumn.Beside, true);
+    } else {
+      panel.reveal(vscode.ViewColumn.Active);
+    }
+  }
+
+  /** Closes Help's panel, keeping the page ready to open again, as the Tour does while presenting. */
+  public close(): void {
+    this.page.panel?.dispose();
+  }
+
+  /** Gives Help the Tour, which is made after it. */
+  public setTour(tour: HelpTourPort): void {
+    this.controller.setTour(tour);
   }
 
   /** Takes back the Help panel VS Code kept across a reload, with What's new read again. */
