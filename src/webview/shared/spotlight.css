@@ -1,0 +1,20 @@
+/*
+ * Help's ring and Point at something (spotlight.ts): the ring a Tour scene
+ * or Show me puts on one thing, and the outline each pickable thing shows
+ * while Point at something is on. Drawn in the focus color, outside the
+ * element, so nothing moves.
+ */
+.help-spotlight {
+  outline: var(--focus-width) solid var(--focus) !important;
+  outline-offset: 3px;
+  animation: help-spotlight-pulse 1.6s ease-out 3;
+}
+@keyframes help-spotlight-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--focus) 45%, transparent); }
+  100% { box-shadow: 0 0 0 10px transparent; }
+}
+body.help-exploring .help-pickable { outline: 1px dashed var(--focus); outline-offset: 2px; cursor: help; }
+body.help-exploring .help-pickable:hover { outline-style: solid; outline-width: var(--focus-width); }
+@media (prefers-reduced-motion: reduce) {
+  .help-spotlight { animation: none; }
+}

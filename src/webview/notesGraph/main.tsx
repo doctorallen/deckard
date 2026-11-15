@@ -19,6 +19,7 @@ import { createRef, render } from 'preact';
 import type { MessageOf } from '../../ui/protocol/messaging';
 import type { NotesGraphHostToPage, NotesGraphWireSnapshot } from '../../ui/protocol/notesGraph';
 import { installGoToMenu } from '../shared/goToMenu';
+import { installSpotlight } from '../shared/spotlight';
 import { installTip } from '../shared/tip';
 import { installViewOptions } from '../shared/viewOptions';
 import { post } from '../shared/vscode';
@@ -54,6 +55,7 @@ import { findNodeIndex, recomputeSearchMatches, recomputeTagMatches, setHoverInd
 installTip();
 // The bar's DECKARD ▾ and ⋯, as every other page has them.
 installGoToMenu(post);
+installSpotlight(post);
 installViewOptions();
 
 /**

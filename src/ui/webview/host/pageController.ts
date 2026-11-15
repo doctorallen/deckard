@@ -31,6 +31,8 @@ export interface PageContext<TSnapshot = unknown> {
   renderHtml(): void;
   /** The panel or view the page is shown in, while it is open. */
   readonly surface: WebviewSurface | undefined;
+  /** The page's name, as its controller gives it: what Help is told a page asked from. */
+  readonly name?: string;
 }
 
 /**

@@ -268,6 +268,41 @@ export interface OpenHelpMessage {
   type: 'openHelp';
 }
 
+/**
+ * Help or the Tour pointing at one thing on a page: the element whose
+ * `data-help-id` is `id`, or the smallest whose text holds `text`. Sent to
+ * every visible page; only one that has the target rings it. With neither,
+ * the ring a page shows is taken away. `hold` keeps the ring until the
+ * next spotlight, as a Tour scene does; without it, it fades after a few
+ * seconds.
+ */
+export interface SpotlightMessage {
+  type: 'spotlight';
+  id?: string;
+  text?: string;
+  hold?: boolean;
+}
+
+/**
+ * Help's Point at something, on or off: while on, a click on an element
+ * with a `data-help-id` picks it for Help rather than acting.
+ */
+export interface ExploreMessage {
+  type: 'explore';
+  on: boolean;
+}
+
+/**
+ * What a page in explore mode tells its host: the `data-help-id` picked,
+ * or none when the reader left explore mode on the page with Escape. Every
+ * host answers it before its page's own messages are narrowed
+ * (`WebviewHost`), so a page joins explore mode by its attributes alone.
+ */
+export interface HelpPickedMessage {
+  type: 'helpPicked';
+  id?: string;
+}
+
 /** Take everything a search found out, as Markdown or CSV. */
 export interface ExportResultsMessage {
   type: 'exportResults';

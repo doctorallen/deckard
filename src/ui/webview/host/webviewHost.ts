@@ -9,6 +9,7 @@ import { followIndexing } from '../indexingProgress';
 import type { ThemePreview } from '../themePreview';
 import type { MessageHandler, PageContext, PageController } from './pageController';
 import type { WebviewSurface } from './surface';
+import { narrowHelpPicked, pageRegistry } from './pageRegistry';
 
 /**
  * The index a page is drawn from, as its host needs it: updates to redraw
@@ -102,6 +103,11 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
     this.disposables.push(...(controller.subscribe?.(this) ?? []));
   }
 
+  /** The page's name, as its controller gives it. */
+  public get name(): string {
+    return this.controller.name;
+  }
+
   /** The panel or view the page is shown in, while it is open. */
   public get surface(): WebviewSurface | undefined {
     return this.current;
@@ -124,6 +130,12 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
         this.detach();
       }),
       surface.webview.onDidReceiveMessage((value: unknown) => this.receive(value)),
+      // Help and the Tour reach every open page through the registry.
+      pageRegistry.add({
+        name: this.controller.name,
+        visible: () => surface.visible,
+        post: (message) => void surface.webview.postMessage(message),
+      }),
       surface.onDidChangeViewState(() => {
         if (surface.visible && this.isOutOfDate()) {
           this.refresh();
@@ -288,6 +300,13 @@ export class WebviewHost<TSnapshot, TPageToHost extends MessageMap<TPageToHost>>
    * checks what the message names against the index as it is now.
    */
   private async receive(value: unknown): Promise<void> {
+    // What a page picked for Help in explore mode is every page's message,
+    // answered here rather than in each page's table (plan 48, D4).
+    const picked = narrowHelpPicked(value);
+    if (picked) {
+      pageRegistry.picked({ page: this.controller.name, ...(picked.id ? { id: picked.id } : {}) });
+      return;
+    }
     const message = this.controller.narrow(value);
     if (!message) {
       return;
