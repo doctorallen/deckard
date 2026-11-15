@@ -65,6 +65,8 @@ interface FieldRow extends vscode.QuickPickItem {
   /** The field the row edits, or `note`, Add Task's choice of where the task goes. */
   field?: DraftField | 'note';
   done?: boolean;
+  /** The draft that words typed into the pick make, on the rows that offer them as the description. */
+  typed?: TaskDraft;
 }
 
 /**
@@ -222,19 +224,27 @@ export async function editTaskDraft(
     if (!chosen) {
       return undefined;
     }
-    if (chosen.done) {
-      return draft;
-    }
-    if (chosen.field === 'note') {
-      await options.note?.choose();
-      continue;
-    }
-    const next = await readField(draft, chosen.field, options);
+    const next = chosen.typed ?? (await readChosen(draft, chosen, options));
     if (next) {
       draft = next;
       options.note?.follow?.(draft);
     }
+    if (chosen.done) {
+      return draft;
+    }
   }
+}
+
+/** What a chosen row makes of the draft: Note chooses where it goes and changes nothing, a field asks for its value. */
+async function readChosen(draft: TaskDraft, chosen: FieldRow, options: EditorOptions): Promise<TaskDraft | undefined> {
+  if (chosen.done) {
+    return undefined;
+  }
+  if (chosen.field === 'note') {
+    await options.note?.choose();
+    return undefined;
+  }
+  return readField(draft, chosen.field, options);
 }
 
 /** How the editor is opened: its title, what its rows read with, and Add Task's own parts. */
@@ -255,27 +265,91 @@ export interface EditorOptions {
 
 /**
  * One turn of the editor: the fields, headed by the line so far. With a
- * Note row, Description is the row Enter opens, as it is without one.
+ * Note row, Description is the row Enter opens, as it is without one. A new
+ * task's editor also takes words typed straight into it, as they would be
+ * written in a note: see `createTypedRows`.
  */
 function pickField(draft: TaskDraft, options: EditorOptions): Promise<FieldRow | undefined> {
   return showQuickPickUntilHidden<FieldRow, FieldRow>({
     configure: (pick) => {
       pick.title = options.note ? options.note.title() : options.title;
       pick.placeholder = (options.preview ? options.preview(draft) : formatTaskDraft(draft)).trim();
-      pick.items = createEditorRows(
+      const rows = createEditorRows(
         draft,
         options.status ?? DEFAULT_STATUS_READING,
         readDateFormats(),
         options.note?.describe(),
       );
-      const description = pick.items.find((row) => row.field === 'description');
+      pick.items = rows;
+      const description = rows.find((row) => row.field === 'description');
       if (options.note && description) {
         pick.activeItems = [description];
       }
       pick.ignoreFocusOut = true;
+      if (!options.readWords) {
+        return;
+      }
+      // Typed words lead the rows; VS Code keeps this order where none of them matches.
+      pick.onDidChangeValue((value) => {
+        const typed = createTypedRows(draft, value, options);
+        pick.items = [...typed, ...rows];
+        const field = findFieldRow(rows, value);
+        pick.activeItems = [field ?? typed[0] ?? description].filter((row): row is FieldRow => row !== undefined);
+      });
     },
     accept: (pick) => pick.selectedItems[0],
   });
+}
+
+/**
+ * The field row whose name starts with or holds the words typed, so typing
+ * `due` still reaches Due; undefined when they name no field.
+ */
+export function findFieldRow(rows: readonly FieldRow[], value: string): FieldRow | undefined {
+  const typed = value.trim().toLowerCase();
+  if (typed === '') {
+    return undefined;
+  }
+  return rows.find((row) => row.field !== undefined && row.label.replace(/^\$\([^)]*\)\s*/, '').toLowerCase().includes(typed));
+}
+
+/**
+ * The rows words typed into a new task's editor make: **Write the task**
+ * with those words as its description, read as Quick add reads them, so a
+ * whole line typed and Enter writes it; and **Set as the description**,
+ * to go on to other fields. A description that is only a column's tags
+ * keeps them after the words. None while nothing is typed.
+ */
+export function createTypedRows(
+  draft: TaskDraft,
+  value: string,
+  options: Pick<EditorOptions, 'now' | 'preview' | 'note'> & { dateOptions?: DatePhraseOptions; formats?: DateFormats },
+): FieldRow[] {
+  const words = value.trim();
+  if (words === '') {
+    return [];
+  }
+  const dateOptions = options.dateOptions ?? readDateOptions();
+  const formats = options.formats ?? readDateFormats();
+  const written = ONLY_TAGS.test(draft.description) ? `${words} ${draft.description}` : words;
+  const reading = readDraftWords(draft, written, options.now ?? Date.now(), dateOptions);
+  const line = (options.preview ? options.preview(reading.draft) : formatTaskDraft(reading.draft)).trim();
+  const said = [describeWordsReading(reading, formats), options.note?.sayWords?.(written)].filter((part): part is string => part !== undefined);
+  return [
+    {
+      label: `$(save) Write the task: ${line}`,
+      description: 'Enter',
+      ...(said.length > 0 ? { detail: said.join(' · ') } : {}),
+      alwaysShow: true,
+      done: true,
+      typed: reading.draft,
+    },
+    {
+      label: '$(edit) Set as the description, and keep editing',
+      alwaysShow: true,
+      typed: reading.draft,
+    },
+  ];
 }
 
 /**
