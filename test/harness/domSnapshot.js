@@ -26,7 +26,7 @@
 // attribute starts a line of its own, with the line breaks inside the tags
 // where the parser ignores them, so a diff of two drawings reads line by line.
 //
-// Chrome (test/ui/checkDom.js) cannot hand a live element to Node, so its
+// Chrome (test/ui/drawnSurfaces.js) cannot hand a live element to Node, so its
 // probe copies the control state and styles onto a clone, which is then read
 // here as `captured`. jsdom (the recorder in src/test/webviewPage.ts and
 // test/e2e/support.js) hands over the live body.

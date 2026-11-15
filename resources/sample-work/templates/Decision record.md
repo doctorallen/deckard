@@ -3,7 +3,7 @@ type: decision
 date: {date}
 state: proposed
 decided-by:
-project:
+contract:
 ---
 # {title} #decision
 

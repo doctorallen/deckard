@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { hasAvailableTerm, toggleAvailable } from '../../domain/query/queryEdit';
 import type { IndexReader, IndexScanStatus, IndexUpdates } from '../../core/workspace/indexReader';
 import type { ExportService } from '../../services/exportService';
 import { NavigationService } from '../../services/navigationService';
@@ -94,6 +95,21 @@ export class TaskBoardPanel implements SearchSource, vscode.Disposable {
   /** Runs a search from the sidebar's Refine, as the board's own box does. */
   public applySearch(queryText: string): Promise<void> {
     return this.controller.applySearch(queryText, this.page.host);
+  }
+
+  /** Whether the board is open, in front or not. */
+  public isOpen(): boolean {
+    return Boolean(this.page.panel);
+  }
+
+  /** Whether the board's search keeps only what can start now (`is:available`). */
+  public isAvailableOnly(): boolean {
+    return hasAvailableTerm(this.controller.currentQuery());
+  }
+
+  /** Can start now, pressed from Help: the board's search with `is:available` added or taken out. */
+  public toggleAvailable(): Promise<void> {
+    return this.controller.applySearch(toggleAvailable(this.controller.currentQuery()), this.page.host);
   }
 
   /** Reopens a board VS Code kept across a reload, with its search. */

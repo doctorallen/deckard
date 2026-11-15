@@ -13,8 +13,15 @@
 // carry, so no debugger protocol is needed. CHROME_PATH names the browser;
 // otherwise the usual names are tried. When none is found the check is
 // skipped with a message on a machine without one, but fails on CI (CI is
-// set), where a check that drew nothing must not pass; the visual, rendered
-// contrast, and DOM checks load this file, so the same holds for them.
+// set), where a check that drew nothing must not pass; the visual and
+// rendered contrast checks load this file, so the same holds for them.
+//
+// The probe also captures each surface's body before it touches anything,
+// and the check holds that DOM to the rules a compiled page leaves no text
+// to read them from (test/ui/drawnDomRules.js): every content row carries a
+// shared surface, no control carries a native title, a page fills at most
+// one control, one that commits something, and a card that opens on hover
+// says so to the tip.
 //
 //   npm run test:layout
 //   LAYOUT_ONLY=oblivion:taskBoard npm run test:layout   one surface, or a theme, or a page
@@ -42,7 +49,8 @@ const path = require('node:path');
 const os = require('node:os');
 const { existsSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } = require('node:fs');
 const { spawnSync } = require('node:child_process');
-const { runChromeAsync, runInOrder } = require('./chromePool.js');
+const { JSDOM } = require('jsdom');
+const { findChrome, runChromeAsync, runInOrder } = require('./chromePool.js');
 
 const compiled = path.join(__dirname, '..', '..', 'out');
 if (!existsSync(compiled)) {
@@ -53,6 +61,7 @@ const { renderPagesForTheme, vscodePaletteCss, paletteFor } = require('./pages.j
 const { readPageNonce } = require('../harness/loadPage.js');
 const { captureScript } = require('../harness/domSnapshot.js');
 const { createSurfaces, surfaceHtml } = require('./surfaces.js');
+const { drawnDomProblems } = require('./drawnDomRules.js');
 const { announceShard, isPicked, passes } = require('./passes.js');
 
 const chrome = findChrome();
@@ -66,7 +75,7 @@ if (!chrome) {
 }
 
 /**
- * What test:dom adds to the probe: its body, captured before the probe
+ * What capturing the DOM adds to the probe: its body, captured before the probe
  * touches anything, and the report written in ASCII, since Chrome's dump
  * writes a no-break space in the captured text back as an entity the
  * report's reader does not decode.
@@ -89,7 +98,8 @@ function domProbeParts(options) {
 /**
  * What the page measures about itself once its script has drawn the
  * snapshot, written into #layout-probe for the DOM dump to carry out.
- * With `captureDom`, the report carries the page's body too (test:dom).
+ * With `captureDom`, the report carries the page's body too, as the layout
+ * check and the contrast check's drawn shapes (drawnSurfaces.js) read it.
  */
 function probeScript(surface, options = {}) {
   const dom = domProbeParts(options);
@@ -433,8 +443,7 @@ function wedgedTwice(file) {
 /**
  * Opens a page in Chrome and returns what its probe reported. With
  * `options.realTime`, time is not virtual, as LAYOUT_TIMING=1 needs. One at
- * a time: test:dom and LAYOUT_TIMING=1 use it, the latter so its runs do not
- * compete.
+ * a time, so LAYOUT_TIMING=1's runs do not compete.
  */
 function measure(file, viewport, options = {}) {
   let result = runChrome(file, viewport, options);
@@ -464,35 +473,6 @@ async function measureAsync(file, viewport, options = {}, log = console.log) {
     throw wedgedTwice(file);
   }
   return readProbe(result);
-}
-
-/**
- * The Chrome to lay pages out in: CHROME_PATH, or the first of the usual
- * names found, or undefined. A CHROME_PATH that names nothing finds nothing,
- * rather than falling back to another Chrome: CI pins the Chrome its Linux
- * baselines were drawn in, and a page drawn in any other must not pass.
- */
-function findChrome() {
-  if (process.env.CHROME_PATH) {
-    return existsSync(process.env.CHROME_PATH) ? process.env.CHROME_PATH : undefined;
-  }
-  const candidates = [
-    'google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser',
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  ];
-  for (const candidate of candidates) {
-    if (candidate.includes('/')) {
-      if (existsSync(candidate)) {
-        return candidate;
-      }
-      continue;
-    }
-    const found = spawnSync('which', [candidate], { encoding: 'utf8' });
-    if (found.status === 0 && found.stdout.trim()) {
-      return found.stdout.trim();
-    }
-  }
-  return undefined;
 }
 
 // The surfaces, the page builder and the browser are shared with the visual
@@ -590,6 +570,8 @@ async function checkSurface(file, surface, label, log) {
     problems.push(error.message);
     runs = [];
   }
+  const drawn = checkDrawnDom(runs[0], surface.page);
+  problems.push(...drawn.problems);
   if (process.env.LAYOUT_DEBUG) {
     log(JSON.stringify({ theme: label, page: surface.page, runs }, null, 1));
   }
@@ -602,7 +584,33 @@ async function checkSurface(file, surface, label, log) {
   for (const run of runs) {
     problems.push(...describeRun(run));
   }
-  return { runs, problems };
+  return { runs, problems, filled: drawn.filled, cards: drawn.cards };
+}
+
+/**
+ * Holds the body a probe captured to the drawn DOM's rules, and takes it off
+ * the report, which LAYOUT_DEBUG prints.
+ *
+ * @param {{ dom?: string } | undefined} report The probe's first run, if Chrome drew the page.
+ * @param {string} page The surface's page.
+ * @returns {{ problems: string[], filled: number, cards: number }} What the
+ *   body breaks, and how many controls it fills and cards it opens on hover.
+ */
+function checkDrawnDom(report, page) {
+  if (!report) {
+    return { problems: [], filled: 0, cards: 0 };
+  }
+  const { dom } = report;
+  delete report.dom;
+  if (typeof dom !== 'string') {
+    return { problems: ['the probe reported no DOM'], filled: 0, cards: 0 };
+  }
+  const { window } = new JSDOM(`<!DOCTYPE html><html><head></head>${dom}</html>`);
+  try {
+    return drawnDomProblems(window.document.body, page);
+  } finally {
+    window.close();
+  }
 }
 
 /**
@@ -650,18 +658,50 @@ function* layoutJobs() {
  * on, writing each page into `dir`, several at once (UI_CONCURRENCY), and
  * reports each in turn.
  *
- * @returns {Promise<number>} How many surfaces failed.
+ * @returns {Promise<{ failed: number, filled: number, cards: number }>} How
+ *   many surfaces failed, and how many filled controls and cards that open
+ *   on hover they drew between them.
  */
 async function checkSurfaces(dir) {
   const verdicts = await runInOrder(layoutJobs(), async ({ surface, label, theme, zen, rendered }, log) => {
     const surfaceName = surface.name || surface.page;
     const html = surfaceHtml(surface, rendered, { theme, zen });
     const file = path.join(dir, `${label}-${surfaceName}.html`);
-    writeFileSync(file, buildPage(html, surface, undefined, { palette: paletteFor(theme) }));
-    const { runs, problems } = await checkSurface(file, surface, label, log);
-    return reportSurface({ file, label, surfaceName, runs, problems }, log);
+    writeFileSync(file, buildPage(html, surface, probeScript(surface, { captureDom: true }), { palette: paletteFor(theme) }));
+    const { runs, problems, filled, cards } = await checkSurface(file, surface, label, log);
+    return { failed: reportSurface({ file, label, surfaceName, runs, problems }, log), filled, cards };
   });
-  return verdicts.filter(Boolean).length;
+  return {
+    failed: verdicts.filter((verdict) => verdict.failed).length,
+    filled: verdicts.reduce((sum, verdict) => sum + verdict.filled, 0),
+    cards: verdicts.reduce((sum, verdict) => sum + verdict.cards, 0),
+  };
+}
+
+/**
+ * The fewest filled controls and cards that open on hover a run that draws
+ * every surface in at least one pass may find. One pass drew 17 and 1,052
+ * when the rules arrived, so a run that finds fewer is reading nothing
+ * rather than finding every page clean.
+ */
+const FEWEST_DRAWN = { filled: 5, cards: 20 };
+
+/**
+ * Says whether a run found too few filled controls or cards that open on
+ * hover for the drawn DOM's rules to be reading anything.
+ *
+ * @param {{ filled: number, cards: number }} drawn What the run found.
+ * @returns {number} How many of the two it found too few of.
+ */
+function tooFewDrawn(drawn) {
+  let failed = 0;
+  for (const [kind, fewest] of Object.entries(FEWEST_DRAWN)) {
+    if (drawn[kind] < fewest) {
+      failed += 1;
+      console.log(`  FAIL the surfaces drew ${drawn[kind]} ${kind === 'filled' ? 'filled control(s)' : 'card(s) that open on hover'}, fewer than ${fewest}: the drawn DOM's rules are reading nothing`);
+    }
+  }
+  return failed;
 }
 
 /** The layout check: every surface laid out and measured, exiting 1 when any fails. */
@@ -675,7 +715,11 @@ async function run() {
   announceShard('layout check');
   let failed = 0;
   try {
-    failed = await checkSurfaces(dir);
+    const drawn = await checkSurfaces(dir);
+    failed = drawn.failed;
+    if (!process.env.LAYOUT_ONLY && !process.env.LAYOUT_DRY) {
+      failed += tooFewDrawn(drawn);
+    }
   } finally {
     if (!keep) {
       rmSync(dir, { recursive: true, force: true });

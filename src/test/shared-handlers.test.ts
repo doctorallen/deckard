@@ -134,6 +134,18 @@ suite('Shared page message handlers', () => {
     assert.deepStrictEqual(ran, [['deckard.showTaskBoard']]);
   });
 
+  test('Help on this page tells Help which page asked, so it opens beside it', async () => {
+    const page = { ...createPage(), name: 'Task board' };
+    const ran = await recordCommands(async () => {
+      await openHelp('task-views')({ type: 'openHelp' }, page);
+      await openHelp()({ type: 'openHelp' }, page);
+    });
+    assert.deepStrictEqual(ran, [
+      ['deckard.showHelp', 'task-views', { forPage: 'Task board' }],
+      ['deckard.showHelp', undefined, { forPage: 'Task board' }],
+    ]);
+  });
+
   test('run the gear\'s and the tag menu\'s commands, and Help at a section when one is named, and Go to… from the eyebrow', async () => {
     const page = createPage();
     const ran = await recordCommands(async () => {

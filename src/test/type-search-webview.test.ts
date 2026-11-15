@@ -47,6 +47,13 @@ function choose(page: WebviewPage, label: string): void {
   (row as HTMLElement).click();
 }
 
+/** Chooses a grouping from a type page's Group by dropdown, as the reader does. */
+function chooseGrouping(page: WebviewPage, value: string): void {
+  const select = page.find('select[data-action="choose-hierarchy"]') as HTMLSelectElement;
+  select.value = value;
+  select.dispatchEvent(new page.window.Event('change', { bubbles: true }));
+}
+
 suite('Types as searches, drawn', () => {
   teardown(() => pages.splice(0).forEach((page) => page.dispose()));
 
@@ -169,15 +176,19 @@ suite('Types as searches, drawn', () => {
       columns: ['title', 'lead', 'owns', 'tier', 'headcount', 'on-call', 'status', 'open-tasks', 'last-mentioned', 'members'],
     });
     assert.ok(page.findAll('.view-options-group > span').some((label) => label.textContent === 'Team columns'));
-    page.click('[data-action="set-hierarchy"][data-value="field:tier"]');
+    chooseGrouping(page, 'field:tier');
     assert.deepStrictEqual(page.lastPosted('setTypeGroup'), { type: 'setTypeGroup', typeKey: 'team', field: 'tier' });
   });
 
   test('grouped, each group is headed by its value and count, the rows with none last', () => {
     const page = typePage('type = team', { groupBy: 'owns' });
     assert.deepStrictEqual(page.findAll('.type-group-row th').map((head) => head.textContent), ['Bond Trading 1', 'Fx 1', 'No owns 1']);
-    assert.strictEqual(page.find('[data-action="set-hierarchy"][data-value="field:owns"]').getAttribute('aria-pressed'), 'true');
-    page.click('[data-action="set-hierarchy"][data-value="tags"]');
+    const group = page.find('select[data-action="choose-hierarchy"]') as HTMLSelectElement;
+    assert.strictEqual(group.value, 'field:owns', 'Group by is a dropdown on a type’s page, showing the field');
+    const options = [...group.options].map((option) => option.text);
+    assert.deepStrictEqual(options.slice(0, 3), ['None', 'Tag', 'Heading']);
+    assert.ok(options.includes('owns') && options.includes('tier'), 'then the type’s fields');
+    chooseGrouping(page, 'tags');
     assert.deepStrictEqual(page.lastPosted('setTypeGroup'), { type: 'setTypeGroup', typeKey: 'team' }, 'another grouping lets go of the field');
     assert.deepStrictEqual(page.lastPosted('setSearchHierarchy'), { type: 'setSearchHierarchy', hierarchy: 'tags' });
   });

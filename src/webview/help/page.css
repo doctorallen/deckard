@@ -91,3 +91,63 @@ body[data-styling=plain] main h1 { font-size: 22px; }
 #guide-view h2, #guide-view h3, #guide-view h4 { scroll-margin-top: 20px; }
 #guide-view h3 { margin-top: 20px; }
 #whats-new h1 { margin-top: 12px; }
+
+/* Help's tabs (plan 48): This page and the Tour use the whole width; the
+   guide keeps its contents beside it. Beside a page, Help is narrow, and
+   the 900px rule already stacks the guide's contents above it. */
+.help-tabs { display: flex; gap: 2px; margin: 4px 0 18px; border-bottom: 1px solid var(--line); }
+.help-tabs [role="tab"] { min-height: var(--control-height); padding: 6px 12px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent; color: var(--muted); font: inherit; cursor: pointer; }
+.help-tabs [role="tab"][aria-selected="true"] { border-bottom-color: var(--focus); color: var(--text); }
+.help-tabs [role="tab"]:hover { color: var(--text); }
+.help-tabs [role="tab"]:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: -2px; }
+body:not([data-tab="guide"]) main { grid-template-columns: minmax(0, 800px); }
+body:not([data-tab="guide"]) nav { display: none; }
+.help-panel h1 { font-size: 22px; margin: 4px 0 8px; }
+.help-panel h2 { margin: 22px 0 8px; font-size: 15px; }
+.help-panel h3 { margin: 14px 0 4px; font-size: var(--text-sm); color: var(--muted); }
+.help-this-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: flex-start; justify-content: space-between; }
+.help-this-head > div { min-width: 0; }
+.help-eyebrow { margin: 0; color: var(--muted); font: var(--text-xs) var(--font-mono); letter-spacing: .08em; }
+.help-count { color: var(--muted); font-weight: normal; font-size: var(--text-sm); }
+.help-note { color: var(--muted); font-size: var(--text-sm); }
+.help-entries { list-style: none; margin: 0; padding: 0; }
+.help-entries li + li { margin-top: 0; }
+.help-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; width: 100%; padding: 8px 6px; border: 0; border-top: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.help-entry:hover, .help-entry:focus-visible { background: var(--panel); color: var(--text); }
+.help-entry:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: -2px; }
+.help-entry-name { font-weight: 600; }
+.help-entry-value { color: var(--muted); font-size: var(--text-sm); }
+.help-entry-summary { grid-column: 1 / -1; color: var(--muted); font-size: var(--text-sm); }
+.help-chip { display: inline-block; margin-left: 4px; padding: 0 6px; border: 1px solid var(--line); color: var(--cyan); font: var(--text-xs) var(--font-mono); font-weight: normal; }
+.help-section { border-left: 2px solid var(--line); padding-left: 12px; }
+.help-section h3, .help-section h4 { margin-top: 12px; }
+.help-on-this-page { margin: 12px 0; padding: 8px 12px; border: 1px solid var(--line); background: var(--panel); }
+.help-on-this-page p { margin: 0 0 4px; }
+.help-from { color: var(--muted); font-size: var(--text-sm); }
+.help-link { display: inline; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--cyan); font: inherit; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.help-link:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 1px; }
+.help-choices, .help-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.help-choices [aria-pressed="true"] { border-color: var(--focus); }
+.help-setting { padding: 10px 0; border-top: 1px solid var(--line); }
+.help-setting-head { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.help-setting-source { padding: 0 5px; border: 1px solid var(--line); color: var(--muted); font: var(--text-xs) var(--font-mono); }
+.help-setting-words { margin: 4px 0; color: var(--muted); font-size: var(--text-sm); }
+.help-setting-editor { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: 6px 0 4px; }
+.help-setting-editor input[type="number"] { width: 7ch; }
+.setting-check { display: inline-flex; gap: 6px; align-items: center; }
+.setting-summary { color: var(--muted); font-size: var(--text-sm); }
+.tour-progress { display: flex; gap: 6px; margin: 4px 0 14px; }
+.tour-progress-chapter { display: flex; gap: 2px; }
+/* A step is its top border, not a fill: it holds no text, and a fill would read as a ground for some. */
+.tour-progress-step { flex: 1; min-width: 6px; height: 10px; min-height: 0; padding: 0; border: 0; border-top: 6px solid var(--line); background: transparent; cursor: pointer; }
+.tour-progress-step:hover { background: transparent; }
+.tour-progress-step.is-done { border-top-color: color-mix(in srgb, var(--cyan) 60%, var(--line)); }
+.tour-progress-step.is-current { border-top-color: var(--focus); }
+.tour-progress-step:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
+.tour-step { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--line); background: var(--panel); }
+.tour-step .help-eyebrow { margin-bottom: 6px; }
+.tour-tick { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
+.tour-tick input { margin-top: 3px; }
+.tour-step.is-done .tour-tick span { color: var(--muted); }
+.tour-done { color: var(--cyan); }
+.tour-present { margin-top: 22px; padding-top: 4px; border-top: 1px solid var(--line); }

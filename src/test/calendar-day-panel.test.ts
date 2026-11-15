@@ -13,8 +13,8 @@ import { openWebviewPage, WebviewPage } from './webviewPage';
  * the calendars and Related Notes draw it: every kind of row and group a
  * day can hold. It was held here, node for node, to the template script it
  * replaced (calendarDay.ts) until Related Notes, the last page to draw that
- * script, moved; test:dom's sidebarNotesCalendarDay surface and the
- * recorded suites hold it now.
+ * script, moved; the sidebarNotesCalendarDay surface, which the layout and
+ * contrast checks draw, and the recorded suites hold it now.
  */
 
 /** Friday 2026-09-25, mid-morning. */

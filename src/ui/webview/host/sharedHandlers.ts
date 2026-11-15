@@ -82,14 +82,18 @@ export function openGoTo(): MessageHandler<OpenGoToMessage> {
 }
 
 /**
- * The page's help button: Help, at a section when the page names one, as
- * the Calendar page names `periodic`.
+ * Help on this page, in a page's ⋯: Help beside the page, at a section when
+ * the page names one, as the Calendar page names `periodic`, told which
+ * page asked so This page can explain it (plan 48).
  */
 export function openHelp(section?: string): MessageHandler<OpenHelpMessage> {
-  return () =>
-    section === undefined
-      ? vscode.commands.executeCommand('deckard.showHelp')
-      : vscode.commands.executeCommand('deckard.showHelp', section);
+  return (_message, page) => {
+    const args: unknown[] = section === undefined && !page.name ? [] : [section];
+    if (page.name) {
+      args.push({ forPage: page.name });
+    }
+    return vscode.commands.executeCommand('deckard.showHelp', ...args);
+  };
 }
 
 /**

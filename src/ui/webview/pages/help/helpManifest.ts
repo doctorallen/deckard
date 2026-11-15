@@ -14,6 +14,8 @@ import { escapeHtml } from '../../../../shared/html';
 export interface HelpManifest {
   commands?: { command: string; title: string; category?: string }[];
   menus?: { commandPalette?: { command: string; when?: string }[] };
+  /** The settings, which This page lists and edits (plan 48). */
+  configuration?: unknown;
 }
 
 /** A Deckard command as Help names it, and whether Help can run it. */

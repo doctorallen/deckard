@@ -8,12 +8,16 @@
 | **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, due date, person, or any tag namespace. |
 | **Deckard: Open Stats** | Opens index totals and local view-count statistics. |
 | **Deckard: Open Calendar** | Opens the calendar across the editor, each day listing its tasks; see [Calendar](daily-notes.md#calendar). |
-| **Deckard: Open Help** | Opens this guide inside VS Code, its pages down the side; see [Reading this guide](getting-started.md#reading-this-guide). |
+| **Deckard: Open Help** | Opens this guide inside VS Code, its pages down the side; see [Reading this guide](getting-started.md#reading-this-guide). **Help on this page**, in a page's **⋯**, opens it beside the page, on **This page**; see [Help and the tour](help-and-tour.md). |
+| **Deckard: Take the Tour** | Opens Help on **Tour**: fifteen scenes on the work sample, each opening a real page beside Help; see [The tour](help-and-tour.md#the-tour). |
+| **Deckard: Next Tour Scene**, **Deckard: Previous Tour Scene** | While presenting the tour, the next or the scene before, of those picked for the demo: <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>]</kbd> and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>[</kbd>; see [Presenting](help-and-tour.md#presenting). |
+| **Deckard: Read the Talking Point** | While presenting, shows the scene's talking point as a message, for the presenter. |
+| **Deckard: End Presenting** | Stops presenting the tour. |
 | **Deckard: Choose Pages…** | Picks which of Deckard's pages the Context view keeps, as icons in its title bar or as a list; also in the title bar's **⋯**, with **List Pages in Context** and **Move Pages to the Title Bar**; see [Finding your way](getting-started.md#finding-your-way). |
 | **Deckard: Choose Theme…** | Previews each theme on the open pages; Enter keeps one, Escape goes back. |
 | **Deckard: Toggle Zen** | Turns Zen on or off on every Deckard page, as the **Zen** checkbox in a page's **⋯** does; see [Zen](themes-and-zen.md#zen). |
 | **Deckard: Choose Date Format…** | Shows today in each format; **Custom…** says it back as you type; see [Dates](themes-and-zen.md#dates). |
-| **Deckard: Get Started** | Opens the walkthrough: six steps, each checked off as you do it. |
+| **Deckard: Get Started** | Opens the walkthrough: seven steps, each checked off as you do it, the last of them the tour. |
 | **Deckard: What's New** | Opens Help at **Changelog**: the highlights of recent releases, newest first. |
 | **Deckard: Open Log** | Opens Deckard's log, including timings. |
 | **Deckard: Reindex Workspace** | Reads and parses every note again. |
@@ -34,7 +38,7 @@
 | **Deckard: Manage Favorites, Pins, and Searches…** | Lists the upkeep of what Deckard remembers about this workspace: **Tidy…** removes favorites, pins, and tag-set searches that point at nothing, if you confirm; **Export…** writes it all to a JSON file; **Import…** reads one back and, after asking, replaces it; **Restore from a Copy…** takes back one of Deckard's automatic copies, after asking. |
 | **Deckard: Export Tasks as Calendar…** | Writes your dated tasks to a calendar file to import into a calendar app; see [Tasks in your calendar app](daily-notes.md#tasks-in-your-calendar-app). |
 | **Deckard: Check My Setup** | Writes a Markdown report of your resolved settings, what the last scan found and kept out, what the index holds, and whether `deckard.me` names anyone, with fixes. |
-| **Deckard: Create a Work Sample** | Writes a week of a team lead's notes, dated from today, into Deckard's storage and opens it. Run again, it offers a fresh copy. |
+| **Deckard: Create a Work Sample** | Writes six weeks of a ship captain's notes, dated from today, into Deckard's storage and opens it. Run again, it offers a fresh copy. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
 | **Deckard: Note Actions…** | The Deckard button in a note's title bar: lists what the editor's **Deckard** submenu lists, in the same order, for the cursor's position: the task on the line, the heading, the note (open as a page, Related Notes, the Notes Graph, Move to…, copy, tags to front matter), then pin and park. |

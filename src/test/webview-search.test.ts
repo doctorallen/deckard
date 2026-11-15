@@ -20,11 +20,11 @@ import type { ParsedFile } from '../domain/model';
  * tokens must be the DOM markdown-it and the sanitizer made of it (as
  * legacyMarkdown.ts writes it, since the sanitizer left), over every
  * excerpt the sample workspace, the development notes, and the fixtures
- * hold, and the tag menu the one the template script opened, as test:dom
- * normalizes both. The template script was deleted in Phase 6 step 7; the
+ * hold, and the tag menu the one the template script opened, as
+ * test/harness/domSnapshot.js normalizes both. The template script was deleted in Phase 6 step 7; the
  * menu it opened is its recording (templateRecords.ts). The cards were held to the search page's template here
- * until the page moved; the page itself is now held by test:dom and the
- * recorded suites.
+ * until the page moved; the page itself is now held by the checks that draw
+ * its surfaces and the recorded suites.
  *
  * Three differences are decided (Q8 of docs/implementation/20-webviews.md):
  * a link to anything but http, https, or mailto draws as its words;

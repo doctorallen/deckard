@@ -20,6 +20,7 @@ nav:
   - title: Start
     pages:
       - { title: Getting started, url: /getting-started.html }
+      - { title: Help and the tour, url: /help-and-tour.html }
       - { title: Themes and Display, url: /themes-and-zen.html }
   - title: Writing
     pages:

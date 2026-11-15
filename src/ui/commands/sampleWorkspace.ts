@@ -9,7 +9,8 @@ import { TYPES_FOLDER } from '../../domain/types/typeNotes';
  * Somewhere to start.
  *
  * The walkthrough says what a tag and a hub note are; it cannot show one
- * being found. The Work Sample is a week of a team lead's notes, with a
+ * being found. The Work Sample is six weeks of notes from aboard the
+ * Petrel, a small survey and hauling ship, as its captain keeps them, with a
  * README that says what to try. It is written into Deckard's own storage,
  * dated from the day it is made so its tasks are overdue, due today, and
  * due later as the notes say, and opened, with the README shown once the

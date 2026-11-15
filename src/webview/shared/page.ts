@@ -22,6 +22,7 @@ import { type ComponentChild, render } from 'preact';
 import { readPlace, restorePlace } from './place';
 import { followIndexing, watchBusy } from './status';
 import { installGoToMenu } from './goToMenu';
+import { installSpotlight } from './spotlight';
 import { installTip } from './tip';
 import { post } from './vscode';
 
@@ -153,8 +154,8 @@ export function onHostMessage<M extends { type: string }>(type: M['type'], handl
 /**
  * What every page has done since its script was a template the host wrote:
  * the indexing line and the busy mark, a control held with `aria-disabled`
- * that ignores clicks, and tips. Installed before any listener of the
- * page's own.
+ * that ignores clicks, tips, DECKARD's menu, and Help's spotlight and
+ * Point at something. Installed before any listener of the page's own.
  */
 function installSharedBehavior(): void {
   followIndexing();
@@ -162,6 +163,7 @@ function installSharedBehavior(): void {
   guardDisabledControls();
   installTip();
   installGoToMenu(post);
+  installSpotlight(post);
 }
 
 

@@ -7,6 +7,7 @@ Everything Deckard does, one topic to a page. The [README](../../README.md) is t
 ## Start
 
 - [Getting started](getting-started.md): requirements, installing, the sample workspace, and the walkthrough.
+- [Help and the tour](help-and-tour.md): Help beside the page, what This page explains, and the guided tour.
 - [Themes and Display](themes-and-zen.md): the ten themes, and turning Deckard's chrome down.
 
 ## Writing

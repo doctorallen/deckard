@@ -41,9 +41,15 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     // move into checkboxes, open it on a new row.
     registerCommand('deckard.editTaskStatuses', (options?: unknown) => taskStatuses.show(readNewStatusRow(options))),
     // A page may open Help at the section about it, such as the calendar's.
-    registerCommand('deckard.showHelp', (anchor?: unknown) =>
-      help.show(typeof anchor === 'string' && /^[\w-]+$/.test(anchor) ? anchor : undefined),
+    registerCommand('deckard.showHelp', (anchor?: unknown, options?: unknown) =>
+      help.show(typeof anchor === 'string' && /^[\w-]+$/.test(anchor) ? anchor : undefined, readHelpFor(options)),
     ),
+    // The Tour on the work sample (plan 48), and its keys while presenting.
+    registerCommand('deckard.takeTour', () => services.tour.open()),
+    registerCommand('deckard.tour.next', () => services.tour.next()),
+    registerCommand('deckard.tour.previous', () => services.tour.previous()),
+    registerCommand('deckard.tour.endPresenting', () => services.tour.stopPresenting()),
+    registerCommand('deckard.tour.talkingPoint', () => services.tour.showTalkingPoint()),
     registerCommand('deckard.openWhatsNew', async () => {
       await help.show('whats-new');
       await whatsNew.clear();
@@ -258,4 +264,10 @@ function readEntryArguments(documentUri: unknown, sourceLine: unknown): { uri: v
   return typeof documentUri === 'string' && typeof sourceLine === 'number' && Number.isInteger(sourceLine) && sourceLine >= 1
     ? { uri: vscode.Uri.parse(documentUri), line: sourceLine }
     : undefined;
+}
+
+/** What a page asking for Help says of itself: its name, which This page explains. */
+function readHelpFor(options: unknown): { forPage?: string } {
+  const forPage = options && typeof options === 'object' ? (options as { forPage?: unknown }).forPage : undefined;
+  return typeof forPage === 'string' && /^[\w ]{1,40}$/.test(forPage) ? { forPage } : {};
 }

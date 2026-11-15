@@ -14,7 +14,9 @@ import {
   appendTag,
   completeDraft,
   createEditorRows,
+  createTypedRows,
   editTaskCommand,
+  findFieldRow,
   setDraftDate,
   setDraftDependencies,
   TaskEditorActions,
@@ -51,6 +53,27 @@ suite('Task editor', () => {
         'Write the task: Enter',
       ],
     );
+  });
+
+  test('a whole line typed into a new task’s editor is a row Enter writes, read as Quick add reads it', () => {
+    const empty = parseTaskDraft('- [ ] ');
+    const [write, keep] = createTypedRows(empty, 'Inspect the hull patch for @dev-laurent friday', { now, dateOptions: {} });
+    assert.strictEqual(write.label, '$(save) Write the task: - [ ] Inspect the hull patch 📅 2026-09-25 👤 @dev-laurent');
+    assert.strictEqual(write.done, true);
+    assert.strictEqual(write.alwaysShow, true);
+    assert.match(write.detail ?? '', /^Due .*2026-09-25 · For @dev-laurent$/);
+    assert.strictEqual(keep.done, undefined, 'Set as the description goes back to the fields');
+    assert.deepStrictEqual(keep.typed, write.typed);
+    assert.deepStrictEqual(createTypedRows(empty, '   ', { now }), [], 'nothing typed, nothing offered');
+  });
+
+  test('typed words go before a column’s tags, and words naming a field still reach it', () => {
+    const [write] = createTypedRows(parseTaskDraft('- [ ] #team/flight'), 'Check the RCS quads', { now, dateOptions: {} });
+    assert.strictEqual(write.typed?.description, 'Check the RCS quads #team/flight');
+    const fields = createEditorRows(parseTaskDraft('- [ ] '));
+    assert.strictEqual(findFieldRow(fields, 'due')?.field, 'due');
+    assert.strictEqual(findFieldRow(fields, 'Inspect the hull patch'), undefined);
+    assert.strictEqual(findFieldRow(fields, ''), undefined);
   });
 
   test('reads an empty task as one waiting to be written', () => {

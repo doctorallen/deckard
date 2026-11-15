@@ -10,8 +10,9 @@
  * again when it is shown. What it saves with `setState` brings it back where
  * it was: the page it showed, and how far down it was scrolled.
  */
-import type { HelpGuideMessage, HelpHostToPage, HelpMessage } from '../../ui/protocol/help';
+import type { HelpAction, HelpGuideMessage, HelpHostToPage, HelpMessage, HelpTab, HelpViewNode } from '../../ui/protocol/help';
 import { installGoToMenu } from '../shared/goToMenu';
+import { buildView } from './view';
 
 /** What VS Code gives a webview's script. */
 interface VsCodeApi {
@@ -39,6 +40,8 @@ interface Place {
  */
 interface HelpState {
   place: Place;
+  /** The tab shown. */
+  tab?: HelpTab;
   scrollY: number;
   /** The drawing of the page that saved it, from the nonce the host drew it with. */
   drawn: string;
@@ -57,6 +60,8 @@ const whatsNew = document.getElementById(WHATS_NEW);
 const drawn = drawingOf(document.currentScript);
 /** The place shown, once one is. */
 let shown: Place | undefined;
+/** The tab shown: This page, the Tour, or the guide. */
+let tab: HelpTab = readTab(document.body.getAttribute('data-tab'));
 /** The guide page asked for to come back to, and where it was scrolled. */
 let restoring: { page: string; scrollY: number } | undefined;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -75,6 +80,136 @@ function drawingOf(script: HTMLOrSVGScriptElement | null): string {
   return (hash >>> 0).toString(16);
 }
 
+/** A tab by name; the guide's for anything else. */
+function readTab(value: unknown): HelpTab {
+  return value === 'page' || value === 'tour' ? value : 'guide';
+}
+
+/**
+ * Shows a tab and hides the others. This page and the Tour are drawn by
+ * the host, so showing one asks for its content; the guide's is here.
+ */
+function showTab(next: HelpTab, focus = false, announce = true): void {
+  tab = next;
+  document.body.setAttribute('data-tab', next);
+  document.querySelectorAll<HTMLElement>('[data-help-tab]').forEach((button) => {
+    const on = button.getAttribute('data-help-tab') === next;
+    button.setAttribute('aria-selected', String(on));
+    button.setAttribute('tabindex', on ? '0' : '-1');
+    if (on && focus) {
+      button.focus();
+    }
+  });
+  (['page', 'tour', 'guide'] as const).forEach((name) => {
+    const panel = document.getElementById(`help-panel-${name}`);
+    if (panel) {
+      panel.hidden = name !== next;
+    }
+  });
+  if (announce) {
+    vscode?.postMessage({ type: 'helpTab', tab: next });
+  }
+  save();
+}
+
+/**
+ * This page's or the Tour's content, which the host described, built in its
+ * panel with the DOM (see view.ts): only a guide section's own HTML is set
+ * as HTML, by `setGuideHtml`. Focus goes back to the control that had it, if
+ * it is drawn again.
+ */
+function setPanelView(name: Exclude<HelpTab, 'guide'>, view: readonly HelpViewNode[]): void {
+  const panel = document.getElementById(`help-panel-${name}`);
+  if (!panel) {
+    return;
+  }
+  const active = document.activeElement instanceof HTMLElement && panel.contains(document.activeElement) ? document.activeElement : undefined;
+  const again = active ? focusKey(active) : undefined;
+  panel.replaceChildren(...buildView(view, document, setGuideHtml));
+  if (again) {
+    panel.querySelector<HTMLElement>(again)?.focus();
+  }
+}
+
+/** A selector that finds a control again after its panel is drawn anew. */
+function focusKey(element: HTMLElement): string | undefined {
+  if (element.id) {
+    return `#${CSS.escape(element.id)}`;
+  }
+  const names = ['data-help-action', 'data-id', 'data-index', 'data-choice', 'data-value', 'data-help-setting', 'data-help-flag', 'data-tour-tick', 'data-tour-option'];
+  const parts = names
+    .filter((name) => element.hasAttribute(name))
+    .map((name) => `[${name}="${CSS.escape(element.getAttribute(name) ?? '')}"]`);
+  return parts.length ? parts.join('') : undefined;
+}
+
+/** A control of This page or the Tour: sent to the host with what it names. */
+function sendAction(element: Element, extra: { on?: boolean } = {}): void {
+  const action = element.getAttribute('data-help-action') as HelpAction | null;
+  if (!action || !vscode) {
+    return;
+  }
+  const index = element.getAttribute('data-index');
+  const field = (name: string): string | undefined => element.getAttribute(name) ?? undefined;
+  const id = field('data-id');
+  const choice = field('data-choice');
+  const value = field('data-value');
+  const key = field('data-key');
+  vscode.postMessage({
+    type: 'helpAction',
+    action,
+    ...(id ? { id } : {}),
+    ...(index !== null && /^\d+$/.test(index) ? { index: Number(index) } : {}),
+    ...(choice ? { choice } : {}),
+    ...(value ? { value } : {}),
+    ...(key ? { key } : {}),
+    ...extra,
+  });
+}
+
+/** What a field holds: a number field's number, else its text. */
+function fieldValue(target: HTMLInputElement | HTMLSelectElement): string | number {
+  return target instanceof HTMLInputElement && target.type === 'number' ? Number(target.value) : target.value;
+}
+
+/** A setting or a box of This page or the Tour changed. */
+function onChange(event: Event): void {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement) || !vscode) {
+    return;
+  }
+  const checked = target instanceof HTMLInputElement && target.type === 'checkbox' ? target.checked : undefined;
+  const setting = target.getAttribute('data-help-setting');
+  if (setting) {
+    const flag = target.getAttribute('data-help-flag');
+    const value = flag ? { name: flag, on: checked === true } : checked ?? fieldValue(target);
+    vscode.postMessage({ type: 'helpSetting', key: setting, value });
+    return;
+  }
+  const tick = target.getAttribute('data-tour-tick');
+  if (tick) {
+    vscode.postMessage({ type: 'helpAction', action: 'tour-tick', id: tick, on: checked === true });
+    return;
+  }
+  if (target.getAttribute('data-tour-option') === 'hide-help') {
+    vscode.postMessage({ type: 'helpAction', action: 'tour-hide-help', on: checked === true });
+  }
+}
+
+/** Left and Right move between the tabs, as a tab list's keys do. */
+function onTabKey(event: KeyboardEvent): void {
+  const target = event.target instanceof Element ? event.target.closest('[data-help-tab]') : null;
+  if (!target || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight' && event.key !== 'Home' && event.key !== 'End')) {
+    return;
+  }
+  const tabs: HelpTab[] = ['page', 'tour', 'guide'];
+  const at = tabs.indexOf(readTab(target.getAttribute('data-help-tab')));
+  const steps: Record<string, number> = { Home: 0, End: tabs.length - 1, ArrowRight: (at + 1) % tabs.length, ArrowLeft: (at + tabs.length - 1) % tabs.length };
+  const next = steps[event.key];
+  event.preventDefault();
+  showTab(tabs[next], true);
+}
+
 /** What this drawing of the page saved, or undefined when it saved nothing. */
 function readState(): HelpState | undefined {
   const state = vscode?.getState() as Partial<HelpState> | undefined;
@@ -82,13 +217,13 @@ function readState(): HelpState | undefined {
     return undefined;
   }
   const { page, anchor } = state.place;
-  return { place: { page, ...(typeof anchor === 'string' ? { anchor } : {}) }, scrollY: state.scrollY, drawn };
+  return { place: { page, ...(typeof anchor === 'string' ? { anchor } : {}) }, tab: readTab(state.tab), scrollY: state.scrollY, drawn };
 }
 
 /** Saves which page is shown, and how far down the window is. */
 function save(): void {
   if (shown) {
-    vscode?.setState({ place: shown, scrollY: window.scrollY, drawn });
+    vscode?.setState({ place: shown, tab, scrollY: window.scrollY, drawn });
   }
 }
 
@@ -200,6 +335,9 @@ function go({ page, anchor }: Place): void {
 /** A link to a guide page, or to a heading on the page shown. */
 function followGuideLink(event: Event, link: Element): void {
   event.preventDefault();
+  if (tab !== 'guide') {
+    showTab('guide');
+  }
   const page = link.getAttribute('data-guide-page');
   const anchor = link.getAttribute('data-guide-anchor') || undefined;
   if (page) {
@@ -207,6 +345,32 @@ function followGuideLink(event: Event, link: Element): void {
   } else {
     revealHeading(anchor);
   }
+}
+
+/** A click on This page's or the Tour's controls, or on a tab: true when it was one. */
+function onTabsClick(event: MouseEvent, target: Element): boolean {
+  const tabButton = target.closest('[data-help-tab]');
+  if (tabButton) {
+    showTab(readTab(tabButton.getAttribute('data-help-tab')));
+    return true;
+  }
+  const action = target.closest('[data-help-action]');
+  if (!action || (action instanceof HTMLButtonElement && action.disabled)) {
+    return false;
+  }
+  event.preventDefault();
+  const name = action.getAttribute('data-help-action');
+  if (name === 'open-tab') {
+    showTab(readTab(action.getAttribute('data-tab')));
+  } else if (name === 'open-guide') {
+    showTab('guide');
+    const page = action.getAttribute('data-page') || CONTENTS;
+    const anchor = action.getAttribute('data-anchor') || undefined;
+    go({ page, ...(anchor ? { anchor } : {}) });
+  } else {
+    sendAction(action);
+  }
+  return true;
 }
 
 /** A click on a command, the changelog, a guide link, or the contents' button. */
@@ -223,6 +387,9 @@ function onClick(event: MouseEvent): void {
   if (target.closest('[data-action="open-changelog"]') && vscode) {
     event.preventDefault();
     vscode.postMessage({ type: 'openChangelog' });
+  }
+  if (onTabsClick(event, target)) {
+    return;
   }
   const toggle = target.closest('.nav-toggle');
   if (toggle) {
@@ -254,7 +421,16 @@ function setContentsOpen(open: boolean): void {
 function onMessage(event: MessageEvent<HelpHostToPage[keyof HelpHostToPage] | undefined>): void {
   const message = event.data;
   if (message?.type === 'reveal') {
-    go({ page: message.page, ...(message.anchor ? { anchor: message.anchor } : {}) });
+    const next = readTab(message.tab);
+    if (next !== tab) {
+      showTab(next);
+    }
+    if (next === 'guide' && message.page) {
+      go({ page: message.page, ...(message.anchor ? { anchor: message.anchor } : {}) });
+    }
+  }
+  if (message?.type === 'helpPanel' && Array.isArray(message.view)) {
+    setPanelView(message.tab, message.view);
   }
   if (message?.type === 'guide') {
     showGuide(message);
@@ -269,6 +445,11 @@ function onMessage(event: MessageEvent<HelpHostToPage[keyof HelpHostToPage] | un
  */
 function open(): void {
   const saved = readState();
+  if (saved?.tab && saved.tab !== tab) {
+    tab = saved.tab;
+  }
+  // The host drew the page on this tab; only another one it has to be told of.
+  showTab(tab, false, tab !== readTab(document.body.getAttribute('data-tab')) || tab !== 'guide');
   if (saved?.place.page === WHATS_NEW) {
     showWhatsNew(saved.scrollY);
     return;
@@ -284,6 +465,8 @@ function open(): void {
 }
 
 document.addEventListener('click', onClick);
+document.addEventListener('change', onChange);
+document.addEventListener('keydown', onTabKey);
 // DECKARD ▾ at the top drops the menu of every other page, as on every page.
 if (vscode) {
   const host = vscode;

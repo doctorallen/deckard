@@ -214,7 +214,7 @@ suite('Help page', () => {
       saved = first.savedState();
       const { drawn, ...place } = saved as { drawn: unknown };
       assert.strictEqual(typeof drawn, 'string');
-      assert.deepStrictEqual(place, { place: { page: 'search', anchor: 'query-language' }, scrollY: 0 });
+      assert.deepStrictEqual(place, { place: { page: 'search', anchor: 'query-language' }, tab: 'guide', scrollY: 0 });
     } finally {
       first.dispose();
     }

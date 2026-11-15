@@ -50,10 +50,18 @@ function indexSample(): { index: WorkspaceIndex; texts: Map<string, string> } {
 suite('The work sample’s types', () => {
   const { index, texts } = indexSample();
   const types = getTypeIndex(index);
-  const context = createQueryContext(now, { identity: '@alex-rivera' });
+  const context = createQueryContext(now, { identity: '@rhea-calder' });
+  const answers = (question: string) => listAnswerItems(index, question, now).map((item) => [item.label, item.detail]);
 
-  test('defines a person, a team, an area, a decision, and a term, with nothing to mark', () => {
-    assert.deepStrictEqual([...(index.typeNotes?.keys() ?? [])].sort(), ['Types/Area.md', 'Types/Decision.md', 'Types/Person.md', 'Types/Team.md', 'Types/Term.md']);
+  test('defines a person, a team, a contract, a system, a decision, and a term, with nothing to mark', () => {
+    assert.deepStrictEqual([...(index.typeNotes?.keys() ?? [])].sort(), [
+      'Types/Contract.md',
+      'Types/Decision.md',
+      'Types/Person.md',
+      'Types/System.md',
+      'Types/Team.md',
+      'Types/Term.md',
+    ]);
     assert.deepStrictEqual(types.problems, [], 'no value names nothing, and no field takes a built-in’s name');
   });
 
@@ -63,42 +71,57 @@ suite('The work sample’s types', () => {
       assert.deepStrictEqual(parsed.diagnostics.filter((diagnostic) => diagnostic.severity === 'error'), [], query);
       return [...evaluateTypeRows(index, parsed.node!, context)].sort();
     };
-    assert.deepStrictEqual(rows('type = person'), ['@alex-rivera', '@ines-duarte', '@noor-haddad', '@sam-okafor', '@theo-park']);
-    assert.deepStrictEqual(rows('type = team'), ['#team/payments']);
-    assert.deepStrictEqual(rows('type = area'), ['#area/card-payments', '#area/checkout']);
-    assert.deepStrictEqual(rows('owned-by.lead = @alex-rivera'), ['#area/card-payments', '#area/checkout'], 'a path through a reverse');
+    assert.deepStrictEqual(rows('type = person'), [
+      '@amara-kibet',
+      '@dev-laurent',
+      '@juno-achterberg',
+      '@lio-marsh',
+      '@ottilie-brandt',
+      '@rhea-calder',
+      '@tomas-vey',
+    ]);
+    assert.deepStrictEqual(rows('type = team'), ['#team/command', '#team/engineering', '#team/flight']);
+    assert.deepStrictEqual(rows('type = contract'), [
+      '#contract/comet-sample-return',
+      '#contract/ice-haul',
+      '#contract/medical-supply-run',
+      '#contract/probe-recovery',
+      '#contract/relay-survey',
+    ]);
+    assert.deepStrictEqual(rows('type = contract AND state = bidding'), ['#contract/comet-sample-return', '#contract/medical-supply-run']);
+    assert.deepStrictEqual(rows('type = system'), ['#system/drive', '#system/hull', '#system/life-support', '#system/reactor']);
+    assert.deepStrictEqual(rows('members.reports-to = @juno-achterberg'), ['#team/engineering'], 'a path through a reverse');
     assert.deepStrictEqual(rows('type = decision AND state = accepted').length, 2);
-    assert.strictEqual(types.rowOfTag('@ines-duarte')?.filePath, undefined, 'Ines has no note, and the rows tab says so');
+    assert.strictEqual(types.rowOfTag('@lio-marsh')?.filePath, undefined, 'Lio has no note, and the rows tab says so');
   });
 
-  test('Find answers who leads checkout, who is on payments, and its channel, as the README says', () => {
-    const answers = (question: string) => listAnswerItems(index, question, now).map((item) => [item.label, item.detail]);
-    assert.deepStrictEqual(answers('checkout lead'), [['Alex Rivera', 'Checkout › owned by Payments › lead']]);
-    assert.deepStrictEqual(answers('who is on payments').map(([label]) => label).sort(), ['Noor Haddad', 'Theo Park']);
-    assert.deepStrictEqual(answers('payments channel'), [['payments-eng', 'Payments › channel']]);
+  test('Find answers who leads engineering, who is on it, and its channel, as the README says', () => {
+    assert.deepStrictEqual(answers('engineering lead'), [['Juno Achterberg', 'Engineering › lead']]);
+    assert.deepStrictEqual(answers('who is on engineering').map(([label]) => label).sort(), ['Dev Laurent', 'Juno Achterberg']);
+    assert.deepStrictEqual(answers('engineering channel'), [['engine-room', 'Engineering › channel']]);
+    assert.deepStrictEqual(answers('relay survey lead'), [['Tomas Vey', 'Relay survey › lead']]);
   });
 
-  test('Find answers who owns checkout from the team that owns it, and knows Noor by a first name', () => {
-    const answers = (question: string) => listAnswerItems(index, question, now).map((item) => [item.label, item.detail]);
-    const owner = [['Payments', 'Checkout › owned by']];
-    assert.deepStrictEqual(answers('who owns checkout'), owner);
-    assert.deepStrictEqual(answers('which team owns checkout'), owner);
-    assert.deepStrictEqual(answers('checkout owned by'), owner);
-    assert.deepStrictEqual(answers('who is responsible for checkout'), owner);
-    assert.deepStrictEqual(answers('what does payments own'), [
-      ['Checkout', 'Payments › owns'],
-      ['Card Payments', 'Payments › owns'],
+  test('Find answers what Juno keeps from the systems that name Juno, and knows Juno by a first name', () => {
+    // The order of answers follows the order the notes were read in, which differs by platform.
+    const sorted = (rows: Array<Array<string | undefined>>): Array<Array<string | undefined>> => [...rows].sort(([a], [b]) => String(a).localeCompare(String(b)));
+    assert.deepStrictEqual(sorted(answers('what does juno keep')), [
+      ['Drive', 'Juno Achterberg › keeps'],
+      ['Reactor', 'Juno Achterberg › keeps'],
     ]);
-    const email = [['noor@example.com', 'Noor Haddad › email']];
-    assert.deepStrictEqual(answers('noor haddad email'), email);
-    assert.deepStrictEqual(answers('noor email'), email);
-    assert.deepStrictEqual(answers('what does noor own'), [
-      ['Checkout', 'Noor Haddad › team Payments › owns'],
-      ['Card Payments', 'Noor Haddad › team Payments › owns'],
+    assert.deepStrictEqual(answers('reactor owner'), [['Juno Achterberg', 'Reactor › keeper']], 'a field by a word it is also called');
+    assert.deepStrictEqual(sorted(answers('who reports to rhea calder')), [
+      ['Juno Achterberg', 'Rhea Calder › reports'],
+      ['Ottilie Brandt', 'Rhea Calder › reports'],
+      ['Tomas Vey', 'Rhea Calder › reports'],
     ]);
+    const email = [['juno@petrel.example', 'Juno Achterberg › email']];
+    assert.deepStrictEqual(answers('juno achterberg email'), email);
+    assert.deepStrictEqual(answers('juno email'), email);
+    assert.deepStrictEqual(answers('dev team'), [['Engineering', 'Dev Laurent › team']]);
   });
 
-  test('every query block parses and runs, and the two typed ones list what they say', () => {
+  test('every query block parses and runs, and the typed ones list what they say', () => {
     const results = new Map<string, ReturnType<typeof createQueryBlockSnapshot>[]>();
     texts.forEach((text, filePath) => {
       findQueryBlocks(text).forEach((block) => {
@@ -107,31 +130,41 @@ suite('The work sample’s types', () => {
         results.set(filePath, [...(results.get(filePath) ?? []), snapshot]);
       });
     });
-    const decisions = results.get('projects/Checkout v2.md')?.find((snapshot) => snapshot.query.startsWith('type = decision'));
+    const decisions = results.get('contracts/Relay survey.md')?.find((snapshot) => snapshot.query.startsWith('type = decision'));
     assert.deepStrictEqual(
       decisions?.notes.map((note) => [note.title, note.fieldValues?.state, note.fieldValues?.['decided-by']]),
-      [['ADR-001 Card form', 'accepted', 'Alex Rivera, Noor Haddad'], ['ADR-002 Feature flags', 'accepted', 'Alex Rivera, Theo Park']],
+      [['DEC-001 Survey route', 'accepted', 'Rhea Calder, Ottilie Brandt'], ['DEC-002 Burn profile', 'accepted', 'Rhea Calder, Tomas Vey']],
     );
-    const team = results.get('teams/Payments.md')?.[0];
-    assert.strictEqual(team?.tasks.length, 4, 'the open tasks in the notes of the people on the team');
+    const proposed = results.get('contracts/Ice haul.md')?.find((snapshot) => snapshot.query.startsWith('type = decision'));
+    assert.deepStrictEqual(proposed?.notes.map((note) => [note.title, note.fieldValues?.state]), [['DEC-003 Ice haul route', 'proposed']]);
+    const team = results.get('teams/Engineering.md')?.[0];
+    assert.strictEqual(team?.tasks.length, 3, 'the open tasks in the notes of the people on the team');
   });
 
-  test('3DS is a term its term note defines, which the README says to hover and Find answers', () => {
-    const entry = getTermTable(index).terms.get('3DS');
+  test('EVA is a term its term note defines, which the README says to hover and Find answers', () => {
+    const entry = getTermTable(index).terms.get('EVA');
     assert.strictEqual(entry?.definition?.source, 'note');
-    assert.strictEqual(entry?.definition?.filePath, 'terms/3DS.md');
-    assert.match(entry?.definition?.text ?? '', /^3-D Secure: the card issuer's check/);
-    assert.ok((entry?.count ?? 0) >= 3, 'used across the standups and the project');
-    assert.deepStrictEqual(listAnswerItems(index, 'what is 3DS', now).map((item) => [item.answer, item.filePath]), [['term', 'terms/3DS.md']]);
-    assert.match(texts.get('README.md') ?? '', /Point at `3DS`/);
+    assert.strictEqual(entry?.definition?.filePath, 'terms/EVA.md');
+    assert.match(entry?.definition?.text ?? '', /^Extravehicular activity: time outside the ship/);
+    assert.ok((entry?.count ?? 0) >= 3, 'used across the briefings, the crew, and the contract');
+    assert.deepStrictEqual(listAnswerItems(index, 'what is EVA', now).map((item) => [item.answer, item.filePath]), [['term', 'terms/EVA.md']]);
+    assert.match(texts.get('README.md') ?? '', /Point at `EVA`/);
   });
 
-  test('File this reads the sample’s Words: is on call for sets a team’s on-call, and reports to only the person’s own manager', () => {
+  test('RCS and TCM are terms their notes define, each used three times or more', () => {
+    for (const term of ['RCS', 'TCM']) {
+      const entry = getTermTable(index).terms.get(term);
+      assert.strictEqual(entry?.definition?.filePath, `terms/${term}.md`, term);
+      assert.ok((entry?.count ?? 0) >= 3, `${term} used three times`);
+    }
+  });
+
+  test('File this reads the sample’s Words: is on point for sets a contract’s lead, and reports to only the person’s own field', () => {
     const offers = (line: string): string[] =>
       findFieldReadings(types, line, findLineMentions(index, types, line, { sourcePath: 'notes/day.md', aliases: getEntityNamespaceAliases(undefined) })).map(describeReading);
-    // Not Noor's team set to Payments by *is on*, which *is on call for* starts with.
-    assert.deepStrictEqual(offers('- @noor-haddad is on call for #team/payments this week'), ['Set Payments’ on-call to Noor Haddad (was Sam Okafor)']);
-    // Not Noor's manager set to Theo the other way round.
-    assert.deepStrictEqual(offers('- @theo-park now reports to @noor-haddad'), ['Set Theo Park’s manager to Noor Haddad (was Alex Rivera)']);
+    // Not Dev's team set to Ice haul by *is on*, which *is on point for* starts with.
+    assert.deepStrictEqual(offers('- @dev-laurent is on point for #contract/ice-haul this week'), ['Set Ice haul’s lead to Dev Laurent (was Ottilie Brandt)']);
+    // Not Juno's reports-to set to Tomas the other way round.
+    assert.deepStrictEqual(offers('- @tomas-vey now reports to @juno-achterberg'), ['Set Tomas Vey’s reports-to to Juno Achterberg (was Rhea Calder)']);
   });
 });

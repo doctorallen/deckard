@@ -254,6 +254,11 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     };
   }
 
+  /** The board's search now, as its box holds it. */
+  public currentQuery(): string {
+    return this.query;
+  }
+
   /**
    * Runs a search on the board, as its own box does, and keeps it among the
    * recent searches when it parses.

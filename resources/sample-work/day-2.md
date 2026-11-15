@@ -1,8 +1,10 @@
 # {{date-2}}
 
-## Standup #meeting/standup
-- Sam is on call this week.
-- Noor is pairing with Theo on the flag plan in [[ADR-002 Feature flags]].
+## Morning briefing #meeting/briefing
+- @juno-achterberg: the pump's seals are worn through; the impeller is fine.
+  #system/reactor
+- @dev-laurent: life support passed its annual certification. #system/life-support
+- @tomas-vey: leg three burns are half plotted. #contract/relay-survey
 
-- [x] Write ADR-002 #decision ✅ {{date-2}}
-- [x] Send the staging checklist to Ines ✅ {{date-2}}
+## Flight #team/flight
+- [x] Walk Tomas through the co-op's notes on leg two ✅ {{date-2}}

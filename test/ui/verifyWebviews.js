@@ -8,17 +8,17 @@
 // tokens are present, the page's layout survives the cascade, zen is the
 // last layer, and the page's nonce gates every style and script.
 //
-// Every row a reader can open carries a shared surface. That rule reads the
-// page text, which holds the body of a page whose host builds it (Help and
-// the debug page), and the DOM each surface draws (the test:dom goldens),
-// which is all a compiled page leaves to read. A page's state in an
-// application/json block is data, not script, so it is neither parsed nor
-// held to the nonce.
+// Every row a reader can open carries a shared surface. This reads that rule
+// in the page text, which holds the body of a page whose host builds it
+// (Help and the debug page); the layout check holds the DOM each surface
+// draws to it, which is all a compiled page leaves to read
+// (test/ui/drawnDomRules.js). A page's state in an application/json block
+// is data, not script, so it is neither parsed nor held to the nonce.
 //
 //   npm run test:ui
 const { pages } = require('./pages.js');
 const { readPageNonce } = require('../harness/loadPage.js');
-const { readGoldens } = require('../harness/domGoldens.js');
+const { CONTENT_ROWS, hasSharedSurface } = require('./drawnDomRules.js');
 const path = require('node:path');
 const { readFileSync } = require('node:fs');
 const esbuild = require('esbuild');
@@ -104,31 +104,6 @@ function effectiveValue(css, selector, property) {
     }
   }
   return value;
-}
-
-/** Classes that render a row a reader can open. */
-const CONTENT_ROWS = [
-  'tag-row', 'entity-row', 'note-row', 'task-row', 'saved-filter-row',
-  'board-card', 'stat-row',
-];
-/** Whether a row's classes include the shared surface every content row needs. */
-function hasSharedSurface(classes) {
-  return classes.includes('row') || classes.includes('card') || classes.includes('task');
-}
-
-/**
- * The content rows in a drawn body that carry no shared surface.
- *
- * @param {object} body A golden's body element.
- * @returns {string[]} Each such row's class attribute.
- */
-function bareDrawnRows(body) {
-  return [...body.querySelectorAll('[class]')]
-    .map((element) => element.getAttribute('class'))
-    .filter((written) => {
-      const classes = written.split(/\s+/);
-      return CONTENT_ROWS.some((rowClass) => classes.includes(rowClass)) && !hasSharedSurface(classes);
-    });
 }
 
 /**
@@ -272,21 +247,6 @@ for (const [name, render] of pages) {
   else {
     console.log(`  ok   ${name}  (${(html.length/1024).toFixed(0)}kb, ${scripts.length} script)`);
   }
-}
-// The same rule over what each surface draws, so it still holds once a
-// page's markup is no longer text.
-let bareSurfaces = 0;
-const goldens = readGoldens((surface, body) => {
-  const bare = bareDrawnRows(body);
-  if (!bare.length) {
-    return;
-  }
-  bareSurfaces++;
-  console.log(`  FAIL ${surface} (as drawn)\n       ` + bare.map((written) => `a content row is missing a shared surface (.row/.card): "${written}"`).join('\n       '));
-});
-fail += bareSurfaces;
-if (!bareSurfaces) {
-  console.log(`  ok   the content rows of ${goldens} drawn surfaces carry a shared surface`);
 }
 console.log(fail ? `\n${fail} failed` : '\nall webviews render');
 process.exit(fail ? 1 : 0);

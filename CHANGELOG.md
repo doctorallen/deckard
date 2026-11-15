@@ -2,6 +2,59 @@
 
 ## Unreleased
 
+## 2.17.0 - 2026-11-15
+
+### Highlights
+
+- **Help beside the page**: This page explains the Task board's controls and settings in the guide's own words, and changes them in place.
+- **`Deckard: Take the Tour`** walks through Deckard on a new work sample, six weeks aboard the Petrel; **Present** runs it for a demo.
+
+### Added
+
+- **Help beside the page.** **Help on this page**, in a page's ⋯, opens
+  Help in the group beside the page, with three tabs: **This page**,
+  **Tour**, and **Guide**. On the Task board, This page lists what you can
+  do there, every control with what it is set to, and the settings that
+  change the board, each with its value and where it is set; selecting one
+  shows its section of the guide, the board's own line about a control the
+  same on every page, its choices, and **Show me**, which rings it on the
+  board. Choices and settings change in place. **Point at something** lets
+  you click a control on the board to read about it. The words are the
+  guide's, so This page and the guide never disagree.
+- **The tour.** `Deckard: Take the Tour` walks through Deckard on the work
+  sample in fifteen scenes: today's note, tags and namespaces, `@` for
+  people, searching by tag, Related notes, Add Task, the Task board, the
+  calendar, what someone owes you, a type as a table and as a board, hub
+  notes, the Hubs view, and, optionally, carrying tasks forward and reviews.
+  Each scene opens a real page beside Help, rings one thing on it, and ticks
+  its step when the note shows it done. **Present** runs it for a demo: a
+  status bar item holds each scene's talking point, and
+  <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>]</kbd> and
+  <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>[</kbd> move on and back. Get Started
+  gains a last step, **Take the tour**.
+
+### Changed
+
+- **The work sample is six weeks aboard the Petrel,** a small survey and
+  hauling ship: its captain's daily briefings, one-on-ones with the crew,
+  contracts as a type with a state, the ship's systems and their upkeep,
+  decisions, and terms, written so every scene of the tour has something to
+  show. `Deckard: Create a Work Sample` offers a fresh copy of an older one.
+- **Add Task takes the whole line.** Type the task straight into Add
+  Task, as you would write it in a note, and press Enter: the first row is
+  **Write the task** with the line as it will be written, its day, priority,
+  and person read from the words. **Set as the description, and keep
+  editing** goes on to the other fields. Before, the typed words only
+  filtered the fields, and Enter did nothing until **Description** was
+  chosen.
+- **Group by on a type's page is a dropdown,** None, Tag, and Heading
+  first and the type's fields after, where its buttons ran off the menu.
+  A search with no type keeps its three buttons.
+- **The Task board's guide** gives each control a section of its own:
+  moving a card, Can start now, keeping a search, adding a task,
+  work-in-progress limits, sorting and ranking, a card's menu, and the
+  board's menu.
+
 ## 2.16.0 - 2026-11-12
 
 ### Highlights

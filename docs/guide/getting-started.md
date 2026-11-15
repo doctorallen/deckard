@@ -15,9 +15,9 @@ Each [GitHub release](https://github.com/doctorallen/deckard/releases) also carr
 
 ## Get started
 
-**Sample:** `Deckard: Create a Work Sample` writes a week of a team lead's notes: standups, two 1:1s, a project hub, a team, and two decision records, with **Try it** in its README. Its `Types` folder makes the people, the team, its areas, and the decisions [types](databases.md), so Find answers `checkout lead`. It opens in this window when no folder is open, and otherwise in a new window or this one, as you choose; its notes are dated from the day you make it, and running the command again offers a fresh copy.
+**Sample:** `Deckard: Create a Work Sample` writes six weeks of notes from aboard the Petrel, a small ship that takes survey and hauling contracts, as its captain keeps them: daily briefings, one-on-ones with the crew, hubs for its contracts, systems, and teams, and three decision records, with **Try it** in its README and a guided walk in `Deckard: Take the Tour`. Its `Types` folder makes the crew, the teams, the contracts, the ship's systems, the decisions, and its terms [types](databases.md), so Find answers `engineering lead`. It opens in this window when no folder is open, and otherwise in a new window or this one, as you choose; its notes are dated from the day you make it, and running the command again offers a fresh copy.
 
-**Walkthrough:** `Deckard: Get Started`, or **Walkthrough** in Home's **⋯**, opens six steps: write a note, tag it and mention a person, link two notes, find anything, add a task, and see the workspace. Each is checked off as you do it. It is the place to start: the work sample is offered from its first step.
+**Walkthrough:** `Deckard: Get Started`, or **Walkthrough** in Home's **⋯**, opens seven steps: write a note, tag it and mention a person, link two notes, find anything, add a task, see the workspace, and take the tour. Each is checked off as you do it. It is the place to start: the work sample is offered from its first step, and the [tour](help-and-tour.md#the-tour) walks through it.
 
 **In your own notes:**
 

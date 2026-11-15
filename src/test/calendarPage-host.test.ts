@@ -183,7 +183,7 @@ suite('Calendar page host', () => {
         await page.send({ type: 'openHelp' });
         await page.send({ type: 'setShowWeekends', show: true });
       });
-      assert.deepStrictEqual(calls, [['deckard.chooseTheme'], ['deckard.showHelp', 'periodic']]);
+      assert.deepStrictEqual(calls, [['deckard.chooseTheme'], ['deckard.showHelp', 'periodic', { forPage: 'Calendar page' }]]);
     } finally {
       page.dispose();
     }

@@ -118,7 +118,7 @@ export function TableSortNote({ snapshot }: { readonly snapshot: TaskBoardSnapsh
 export function SortControl({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
   const ranked = (snapshot.taskSortMode || 'rank') === 'rank';
   return (
-    <label class="control-label" data-zen-reveal="" data-reveal-keep={ranked ? undefined : ''}>
+    <label class="control-label" data-zen-reveal="" data-reveal-keep={ranked ? undefined : ''} data-help-id="sort">
       Sort:
       <span class="control-icon">
         <select data-action="set-task-sort" aria-label="Sort tasks">
@@ -138,7 +138,7 @@ export function SortControl({ snapshot }: { readonly snapshot: TaskBoardSnapshot
  */
 export function LayoutSwitch({ layout }: { readonly layout: TaskBoardSnapshot['layout'] }) {
   return (
-    <div class="segmented task-layout" role="group" aria-label="Task layout" data-zen-reveal="">
+    <div class="segmented task-layout" role="group" aria-label="Task layout" data-zen-reveal="" data-help-id="view">
       {([['board', 'Board', 'Tasks as columns of cards'], ['table', 'Table', 'Tasks as rows, with the columns you choose']] as const).map(([value, label, tip]) => {
         const active = value === layout;
         return <button key={value} type="button" class={active ? 'active' : undefined} data-action="set-task-layout" data-value={value} aria-pressed={active} data-tip={tip}>{label}</button>;
@@ -154,7 +154,7 @@ export function LayoutSwitch({ layout }: { readonly layout: TaskBoardSnapshot['l
  */
 export function AvailableToggle({ pressed }: { readonly pressed: boolean }) {
   return (
-    <button type="button" class={pressed ? 'board-available active' : 'board-available'} data-action="toggle-available" aria-pressed={pressed} data-zen-reveal="" data-reveal-keep={pressed ? '' : undefined} data-tip="Leave out blocked, not-yet-started, and waiting or someday tasks (is:available)">
+    <button type="button" class={pressed ? 'board-available active' : 'board-available'} data-action="toggle-available" data-help-id="canstart" aria-pressed={pressed} data-zen-reveal="" data-reveal-keep={pressed ? '' : undefined} data-tip="Leave out blocked, not-yet-started, and waiting or someday tasks (is:available)">
       Can start now
     </button>
   );

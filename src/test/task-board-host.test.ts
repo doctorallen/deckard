@@ -528,7 +528,7 @@ suite('Task Board host', () => {
     commands.executeCommand = async (...args: unknown[]) => void calls.push(args);
     try {
       await board.send({ type: 'openHelp' });
-      assert.deepStrictEqual(calls, [['deckard.showHelp', 'task-views']]);
+      assert.deepStrictEqual(calls, [['deckard.showHelp', 'task-views', { forPage: 'Task board' }]]);
     } finally {
       commands.executeCommand = executeCommand;
       board.dispose();

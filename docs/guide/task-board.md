@@ -4,6 +4,13 @@ Run `Deckard: Open Task Board`, or select **Task Board** at the top of the Conte
 
 ![Deckard Task Board showing tasks in status columns that end with Done.](../images/task-board.png)
 
+## Moving a card
+
+Drag a card to another column, or choose one from its **⋯** menu, to change the task in its note. The menu's **Move to…** moves the task and its steps under another heading. Deckard rewrites only that task's line, with one Undo.
+
+- Every move is checked against the indexed line first, so a newer edit is never overwritten.
+- Select a card to open its line, or a tag to open its overview.
+
 ## Groupings
 
 **Group**, under the search box, chooses the columns:
@@ -33,9 +40,16 @@ Run `Deckard: Open Task Board`, or select **Task Board** at the top of the Conte
 
 ## Searching and filtering
 
-- Search with the same [search box](search.md#the-search-box) as search pages, such as `#project/atlas`, `priority >= high`, or plain words. **Refine** counts only tasks. The board opens on `is:open`; clear the box for every task, or search `is:done`.
-- **Can start now** narrows to `is:available`, leaving out tasks that are blocked, not started, or on hold (Waiting, Someday, Blocked). Press it again for `is:open`.
-- **Save search…**, in **⋯**, keeps the search in the box, whether or not Enter has run it, as a saved search that reopens on the board. **List in Tasks view**, in **⋯**, makes the [Tasks view](tasks.md#tasks-view) list it, and is checked while it does; select it again to list every open task.
+Search with the same [search box](search.md#the-search-box) as search pages, such as `#project/atlas`, `priority >= high`, or plain words. **Refine** counts only tasks. The board opens on `is:open`; clear the box for every task, or search `is:done`.
+
+## Can start now
+
+**Can start now** narrows to `is:available`, leaving out tasks that are blocked, not started, or on hold (Waiting, Someday, Blocked). Press it again for `is:open`.
+
+## Keeping a search
+
+**Save search…**, in **⋯**, keeps the search in the box, whether or not Enter has run it, as a saved search that reopens on the board. **List in Tasks view**, in **⋯**, makes the [Tasks view](tasks.md#tasks-view) list it, and is checked while it does; select it again to list every open task.
+
 - **Export tasks…**, in **⋯**, copies or saves every task the search found as a Markdown table, a Markdown list, or CSV.
 
 ## Editing what the Tasks view lists
@@ -53,14 +67,30 @@ Run `Deckard: Open Task Board`, or select **Task Board** at the top of the Conte
 
 - Due dates read by distance, such as **Overdue 15 days · 2026-09-08** or **Due tomorrow · 2026-09-24**; beyond a month only the date shows. A task more than `deckard.tasks.needsNewDateAfterDays` (30) days overdue reads **was due 2026-07-01** in muted text.
 - Column headers count cards and overdue ones: **40 · 38 overdue**.
-- `deckard.board.limits` sets work-in-progress limits by status, its name with a hyphen for a space, such as `{ "in-progress": 3 }` for **In progress**. The header reads **5 / 3**, and a column over its limit gets a dashed outline. Drops are never refused.
 - A column over 100 cards shows **Show N more**.
-- **Add task**, the filled button at the top right, runs [Add Task](tasks.md#adding-a-task): its editor names the note the task goes to, today's by default, and you can choose another. The **+** at the end of a column's title, **Add a task to In progress**, opens the same editor with that column's status, priority, date, person, or tag already filled in. **Done** has none. A card's **⋯** menu offers **Due on a date…** for any day, and **Snooze until…**, which puts the task off by its start date.
-- Select a card to open its line, or a tag to open its overview.
 - **Show the tag each task is under**, in **⋯**'s **Cards**, puts the tag the task is part of above its title on cards, and the board keeps your choice. Nearest first: the first tag on the nearest tagged heading above it, then its note's front-matter tag, which in a [hub note](search-pages.md#hub-notes) is the tag it describes. A tag the task's own line writes is skipped, since its title shows it, wherever on the line it is written, and so is a tag of the namespace the board is grouped by. A task under `## Launch #project/atlas` shows `#project/atlas`; `- [ ] Call Ren #project/atlas` shows the tag in its title instead. Select the tag to add it to the board's search, as **Refine** does: Shift-click adds it with OR, beside a tag of the same namespace the search already has, and Alt-click leaves it out. Cmd/Ctrl-click opens the tag's page in a new tab.
-- **Sort**, beside **Group**, orders the cards in each column: **Rank** (the default), **[Most urgent](tasks.md#most-urgent)**, **Newest created**, **Oldest created**, **Recently updated**, **Least recently updated**, **A-Z**, or **Z-A**. A tie, and every card you haven't ranked, goes by due date, then priority. **Done** and **Cancelled** always list the most recently closed first.
+
+## Adding a task
+
+**Add task**, the filled button at the top right, runs [Add Task](tasks.md#adding-a-task): its editor names the note the task goes to, today's by default, and you can choose another. The **+** at the end of a column's title, **Add a task to In progress**, opens the same editor with that column's status, priority, date, person, or tag already filled in. **Done** has none. A card's **⋯** menu offers **Due on a date…** for any day, and **Snooze until…**, which puts the task off by its start date.
+
+## Work-in-progress limits
+
+A limit on a status makes its column say when it holds too many cards. `deckard.board.limits` sets work-in-progress limits by status, its name with a hyphen for a space, such as `{ "in-progress": 3 }` for **In progress**. The header reads **5 / 3**, and a column over its limit gets a dashed outline. Drops are never refused.
+
+## Sorting and ranking
+
+**Sort**, beside **Group**, orders the cards in each column: **Rank** (the default), **[Most urgent](tasks.md#most-urgent)**, **Newest created**, **Oldest created**, **Recently updated**, **Least recently updated**, **A-Z**, or **Z-A**. A tie, and every card you haven't ranked, goes by due date, then priority. **Done** and **Cancelled** always list the most recently closed first.
+
 - **Rank a card** by dragging it up or down its own column, or with <kbd>Alt</kbd>+<kbd>↑</kbd> and <kbd>Alt</kbd>+<kbd>↓</kbd>, while the board is sorted by **Rank**. A line shows where it will land. There is one rank for all your tasks, kept outside your notes, shared with the table and the [Tasks view](tasks.md#tasks-view): grouped by priority or by tag, the cards you ranked keep their order among themselves. Dragging a card to another column still changes the task, and it keeps its rank.
-- Every move is checked against the indexed line first, so a newer edit is never overwritten.
+
+## A card's menu
+
+A card's **⋯** menu changes the task without opening its note: status, priority, due date or **Due on a date…**, **For someone…**, **Snooze until…**, **Move to…**, and **Move to lane** when the lanes are tags or people. It checks the task's current status, priority, and due date, and shows the key for each choice; the keys work in the menu too. Right-click a card, or press <kbd>Shift</kbd>+<kbd>F10</kbd>, the menu key, or <kbd>Alt</kbd>+<kbd>Enter</kbd> on a focused one, to open the same menu.
+
+## The board's menu
+
+**⋯**, at the board's top right, holds what changes the whole board: **Save search…**, **List in Tasks view**, and **Export tasks…**; **Status columns** and **Cards** on the board, or **Columns** on the table; **Theme…** and **Zen** under **Appearance**; and **Help on this page** and **Keyboard shortcuts**.
 
 ## Table
 
@@ -70,7 +100,7 @@ Run `Deckard: Open Task Board`, or select **Task Board** at the top of the Conte
 
 ## Keyboard
 
-The board is one Tab stop. Arrow keys move between cards and columns. On a focused card:
+Every card can be moved and changed from the keyboard. The board is one Tab stop. Arrow keys move between cards and columns. On a focused card:
 
 - **x** completes it; **t** and **m** make it due today or tomorrow; **d** asks for a date in plain words; **f** asks who it is for; **z** [snoozes it](tasks.md#snoozing-a-task) until tomorrow, next week, or a day you type.
 - **1** to **5** set priority; **0** clears it.
@@ -78,7 +108,7 @@ The board is one Tab stop. Arrow keys move between cards and columns. On a focus
 - **e** opens the task editor; **s** [breaks it into steps](tasks.md#breaking-a-task-into-steps); **Enter** opens its line, and **Cmd+Enter** (Ctrl+Enter on Windows and Linux) opens it beside the board.
 - **?**, or **Keyboard shortcuts** in **⋯**, lists the keys.
 
-A card's **⋯** menu checks the task's current status, priority, and due date, and shows the key for each choice; the keys work in the menu too. The **⋯** shows on the card under the pointer or with focus, and on a touch screen always. Right-click a card, or press <kbd>Shift</kbd>+<kbd>F10</kbd>, the menu key, or <kbd>Alt</kbd>+<kbd>Enter</kbd> on a focused one, to open the same menu. A table row's **⋯** shows the same way, and stays a <kbd>Tab</kbd> stop.
+A card's **⋯** shows under the pointer or with focus, and on a touch screen always; [A card's menu](#a-cards-menu) says what it holds. A table row's **⋯** shows the same way, and stays a <kbd>Tab</kbd> stop.
 
 ### Contexts, areas, and projects
 

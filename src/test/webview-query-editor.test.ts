@@ -14,8 +14,8 @@ import { createQueryViewState } from '../ui/state/querySuggestions';
 /**
  * The shared search box (src/webview/shared/queryEditor.tsx) against the
  * template script it replaced (getQueryEditorScript, deleted in Phase 6
- * step 7): each state must be the DOM the template drew, as test:dom
- * normalizes it, and the same keys, clicks, and typing must draw the same,
+ * step 7): each state must be the DOM the template drew, as
+ * test/harness/domSnapshot.js normalizes it, and the same keys, clicks, and typing must draw the same,
  * run the same searches, and leave focus in the same place. The template's
  * side is its recording (templateRecords.ts), taken at each comparison as
  * the Task Board's template ran it, with a Save button and a Sorted label.
@@ -70,7 +70,8 @@ const HAMMER = '<svg class="toolbar-icon query-builder-icon" viewBox="0 0 16 16"
  * the region Zen shows its status line's tools from (R22); and Refine's
  * facets in a fold, whose summary and whether it is open are read from the
  * page, since the zen-controls suite checks them (R23). Everything else is
- * held to the recording as it was.
+ * held to the recording as it was. The search box and Refine carry the
+ * data-help-id Help points at (plan 48).
  */
 function asDrawnSinceTemplate(page: WebviewPage, recorded: string): string {
   const holder = page.document.createElement('div');
@@ -80,8 +81,13 @@ function asDrawnSinceTemplate(page: WebviewPage, recorded: string): string {
     made.innerHTML = html;
     return made.firstElementChild as Element;
   };
+  // Help points at the search box and Refine by their data-help-id (plan 48).
+  for (const facets of holder.querySelectorAll('.query-facets')) {
+    facets.setAttribute('data-help-id', 'refine');
+  }
   for (const workspace of holder.querySelectorAll('.query-workspace')) {
     workspace.setAttribute('data-zen-region', '');
+    workspace.setAttribute('data-help-id', 'search');
     const row = workspace.querySelector(':scope > .query-bar-row') as Element;
     const shell = row.querySelector(':scope > .query-bar-shell') as Element;
     const clear = row.querySelector(':scope > [data-action="clear-query"]') as Element;
