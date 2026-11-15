@@ -12,6 +12,12 @@
 // active, and focused — including the text of its descendants, which is what
 // a hover background strands.
 //
+// The elements it judges are the ones each page draws, which it asks Chrome
+// for at check time (test/ui/drawnSurfaces.js), and the shapes frozen in
+// contrast-shapes.json for the states no surface draws (see contrastShapes).
+// With no Chrome it judges the frozen shapes alone and says so, except on
+// CI, where it fails.
+//
 //   npm run test:contrast
 const { renderPagesForTheme, themes, vscodePalettes } = require('./pages.js');
 
@@ -650,7 +656,7 @@ function elementShapes(shapes, wantedAttributes) {
  * the frozen shapes are: the tag, its classes in the order written with each
  * once, and its attributes.
  *
- * @param {object} body A golden's body element.
+ * @param {object} body A drawn surface's body element.
  * @returns {Array<[string, Array<[string, string]>]>} Each classed element's tag and classes, with its attributes.
  */
 function drawnShapes(body) {
@@ -674,21 +680,22 @@ function drawnShapes(body) {
  * no such text, so those shapes were frozen in contrast-shapes.json, from
  * the pages as they were, keeping each attribute some rule could ask about.
  * The rewrite keeps the same classes, so a frozen shape still describes a
- * real element. The drawn shapes come from the DOM goldens, which
- * test:dom holds to what each surface draws now.
+ * real element. The drawn shapes are what each surface draws now, in
+ * Chrome, at check time (drawnSurfaces.js). The file is an input, never
+ * rewritten by a run: nothing it holds needs to match what is drawn.
  *
+ * @param {Array<{ name: string, page: string, body: string }> | undefined} drawn
+ *   What every surface drew, or undefined to judge the frozen shapes alone.
  * @returns {Map<string, Array<[string, Array<[string, string]>]>>} The shapes, by page.
  */
-function contrastShapes() {
+function contrastShapes(drawn) {
   const { pages } = JSON.parse(readFileSync(SHAPES, 'utf8'));
   const shapes = new Map(Object.entries(pages));
-  const pageOf = new Map(createSurfaces().map((surface) => [surface.name || surface.page, surface.page]));
-  readGoldens((name, body) => {
-    const page = pageOf.get(name.replace(/\+zen$/, ''));
-    if (page) {
+  if (drawn) {
+    visitDrawn(drawn, ({ page }, body) => {
       shapes.set(page, [...(shapes.get(page) ?? []), ...drawnShapes(body)]);
-    }
-  });
+    });
+  }
   return shapes;
 }
 
@@ -864,8 +871,7 @@ function findProblems(html, { pageBackgroundToken = '--bg', shapes = [] } = {}, 
 // ---- the check ------------------------------------------------------------
 
 const { readFileSync, writeFileSync } = require('node:fs');
-const { createSurfaces } = require('./surfaces.js');
-const { readGoldens } = require('../harness/domGoldens.js');
+const { drawSurfaces, visitDrawn } = require('./drawnSurfaces.js');
 const path = require('node:path');
 
 /**
@@ -910,10 +916,15 @@ function addProblems(found, problems, { page, where }) {
   }
 }
 
-/** Every problem in every theme, as [signature, problem] pairs. */
-function collect() {
+/**
+ * Every problem in every theme, as [signature, problem] pairs.
+ *
+ * @param {Array<{ name: string, page: string, body: string }> | undefined} drawn
+ *   What every surface drew (drawnSurfaces.js), or undefined for the frozen shapes alone.
+ */
+function collect(drawn) {
   const found = new Map();
-  const shapes = contrastShapes();
+  const shapes = contrastShapes(drawn);
   for (const theme of themes) {
     for (const [paletteName, palette, kind] of palettesFor(theme)) {
       const where = paletteName ? `${theme} (${paletteName})` : theme;
@@ -938,8 +949,17 @@ function describe(signature, problem) {
  * Compares what is found with the recorded baseline, or records it with
  * --update, and exits 1 when a problem is new.
  */
-function run() {
-  const found = collect();
+async function run() {
+  const drawn = await drawSurfaces();
+  if (drawn) {
+    console.log(`judging what ${drawn.length} surfaces drew, with the frozen shapes`);
+  } else if (process.env.CI) {
+    console.error(`no Chrome found${process.env.CHROME_PATH ? ` at CHROME_PATH (${process.env.CHROME_PATH})` : ' (set CHROME_PATH)'}: on CI the contrast check judges what the pages draw, so it fails`);
+    process.exit(1);
+  } else {
+    console.log('no Chrome found (set CHROME_PATH): judging the frozen shapes alone, not what the surfaces draw');
+  }
+  const found = collect(drawn);
   const updating = process.argv.includes('--update');
   if (updating) {
     const baseline = [...found.keys()].sort();
@@ -981,7 +1001,10 @@ function run() {
 }
 
 if (require.main === module) {
-  run();
+  run().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
 }
 
 module.exports = { findProblems, contrastRatio, parseColor, parseRules, collect };

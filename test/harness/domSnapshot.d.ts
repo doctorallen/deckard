@@ -1,6 +1,6 @@
 /**
- * An element and everything under it as normalized HTML, as test:dom and
- * the DOM recorder compare two drawings. See domSnapshot.js.
+ * An element and everything under it as normalized HTML, as the DOM recorder
+ * and the contrast check's drawn surfaces read it. See domSnapshot.js.
  */
 export function normalizeBody(body: Element, options?: { nonce?: string; captured?: boolean }): string;
 

@@ -14,8 +14,8 @@ import { createQueryViewState } from '../ui/state/querySuggestions';
 /**
  * The shared search box (src/webview/shared/queryEditor.tsx) against the
  * template script it replaced (getQueryEditorScript, deleted in Phase 6
- * step 7): each state must be the DOM the template drew, as test:dom
- * normalizes it, and the same keys, clicks, and typing must draw the same,
+ * step 7): each state must be the DOM the template drew, as
+ * test/harness/domSnapshot.js normalizes it, and the same keys, clicks, and typing must draw the same,
  * run the same searches, and leave focus in the same place. The template's
  * side is its recording (templateRecords.ts), taken at each comparison as
  * the Task Board's template ran it, with a Save button and a Sorted label.

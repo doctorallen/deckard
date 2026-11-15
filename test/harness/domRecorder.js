@@ -1,8 +1,8 @@
 // Records the DOM a page draws at each step a suite drives it through, so the
 // same suites run on two commits can be compared state by state.
 //
-// The DOM goldens of test:dom cover the states a surface draws. Most of what
-// Phase 6 rewrites is only reached by driving a page: a menu opened, a
+// The checks that draw in Chrome cover the states a surface draws. Most of
+// what Phase 6 rewrote is only reached by driving a page: a menu opened, a
 // builder row added, a column removed. The page-driving suites already reach
 // those states, so with DECKARD_DOM_RECORD=<dir> each page they mount writes
 // its normalized body (test/harness/domSnapshot.js) after every message it is

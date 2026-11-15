@@ -13,7 +13,7 @@ const FOLDER = path.resolve(__dirname, '..', '..', 'src', 'test', 'fixtures', 't
  * the template helper it replaced; the helper's side is now this recording,
  * so a component that stops drawing what the template drew still fails.
  *
- * A recording is HTML as the helper wrote it, a body as test:dom normalizes
+ * A recording is HTML as the helper wrote it, a body as domSnapshot.js normalizes
  * it, or a value, under the name the suite gives the case. Asking for a name
  * that was never recorded fails, so a case cannot pass by having nothing to
  * compare with. The recordings are never rewritten: they are the template's,

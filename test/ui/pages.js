@@ -30,7 +30,7 @@ const { loadPage } = require('../harness/loadPage.js');
  * test/ui/fixtures/changelog.md, so What's new is measured too. The copy is
  * frozen because a release cuts the changelog, and the release job runs
  * every check on what it releases: drawn from the live
- * changelog, Help's goldens and screenshots would change with each release
+ * changelog, Help's screenshots would change with each release
  * and fail its own check. Every page renders against the one stand-in
  * webview of src/test/pageWebview.ts, as the mocha suites do.
  */

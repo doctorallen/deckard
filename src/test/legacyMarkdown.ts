@@ -15,7 +15,8 @@ import MarkdownIt = require('markdown-it');
  *   with `//`.
  *
  * Before rendering.ts was deleted, this and it were compared over every
- * excerpt and title those suites draw, as the DOM test:dom normalizes, and
+ * excerpt and title those suites draw, as test/harness/domSnapshot.js
+ * normalizes the DOM, and
  * agreed on all of them. It is a test oracle only; nothing ships it.
  */
 const markdown = new MarkdownIt({
