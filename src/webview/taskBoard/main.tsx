@@ -161,7 +161,7 @@ function BoardControls({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
     <>
       <span class="board-total">{`${shown}${shown === 1 ? ' task' : ' tasks'}`}</span>
       {editing ? <SaveToTasksViewButton listed={tasksViewListsBox()} /> : null}
-      <button type="button" class={editing ? undefined : 'primary'} data-action="add-task" data-tip="Write a new task in the task editor, into today's note or another you choose">Add task</button>
+      <button type="button" class={editing ? undefined : 'primary'} data-action="add-task" data-help-id="add" data-tip="Write a new task in the task editor, into today's note or another you choose">Add task</button>
     </>
   );
 }

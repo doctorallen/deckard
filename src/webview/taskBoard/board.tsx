@@ -235,7 +235,7 @@ function BoardCard({ card, columnId, columns, lane }: CardProps) {
           label={`Change ${title}: status, priority, or due date`}
           tip="Change this task"
           icon={<EllipsisIcon />}
-          attributes={{ tabindex: '-1', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'data-reveal': '' }}
+          attributes={{ tabindex: '-1', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'data-reveal': '', 'data-help-id': 'card-menu' }}
         />
       </div>
     </article>
@@ -286,7 +286,7 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
             {/* The status's character, said once, in the column's name. */}
             {column.symbol === undefined ? null : <span key="symbol" class="board-column-symbol" aria-hidden="true">{`[${column.symbol}]`}</span>}
           </span>
-          <span class="board-count">{described.count}</span>
+          <span class="board-count" data-help-id={limit === undefined ? undefined : 'limits'}>{described.count}</span>
         </h2>
         {/* A column that takes a drop takes a new task the same way, from
             its head: the one way to add a task into a column in one step,
@@ -300,7 +300,7 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
               className="board-add"
               label={`Add a task to ${column.label}`}
               icon={<PlusIcon />}
-              attributes={{ 'data-column-id': column.id, 'data-zen-reveal': '' }}
+              attributes={{ 'data-column-id': column.id, 'data-zen-reveal': '', 'data-help-id': 'column-add' }}
             />
           )
           : null}
@@ -402,7 +402,7 @@ function LaneColumnHead({ column, count }: { readonly column: TaskBoardColumn; r
             className="board-add lane-add"
             label={`Add a task to ${column.label}`}
             icon={<PlusIcon />}
-            attributes={{ 'data-column-id': column.id, 'data-zen-reveal': '' }}
+            attributes={{ 'data-column-id': column.id, 'data-zen-reveal': '', 'data-help-id': 'column-add' }}
           />
         )
         : null}
@@ -431,7 +431,7 @@ function laneColumnHeads(snapshot: TaskBoardSnapshot, lanes: readonly TaskBoardL
       attributes: {
         'data-label': column.label,
         ...(column.symbol === undefined ? {} : { 'data-symbol': column.symbol }),
-        ...(column.limit === undefined ? {} : { 'data-limit': String(column.limit) }),
+        ...(column.limit === undefined ? {} : { 'data-limit': String(column.limit), 'data-help-id': 'limits' }),
       },
     };
   });
@@ -515,7 +515,7 @@ export function GroupSelect({ snapshot }: { readonly snapshot: TaskBoardSnapshot
     current = 'status';
   }
   return (
-    <label class="control-label" data-zen-reveal="">
+    <label class="control-label" data-zen-reveal="" data-help-id="group">
       Group:
       <select
         class="task-board-group"
@@ -553,7 +553,7 @@ export function LanesSelect({ snapshot }: { readonly snapshot: TaskBoardSnapshot
   }
   const axes = listLaneAxes(snapshot.groupBy).filter((axis): axis is Exclude<TaskBoardGroupBy, 'tag'> => axis !== 'tag');
   return (
-    <label class="control-label" data-zen-reveal="">
+    <label class="control-label" data-zen-reveal="" data-help-id="lanes">
       Lanes:
       <select
         class="task-board-lanes"

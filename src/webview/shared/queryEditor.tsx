@@ -676,7 +676,7 @@ class SearchBox implements QueryEditor {
     // status line show from (shared/reveal.css); the field, its glyphs and
     // Builder are never quieted.
     return (
-      <section class={searchInFlight ? 'query-workspace is-searching' : 'query-workspace'} data-has-text={hasText ? '' : undefined} data-zen-region="" aria-label={label}>
+      <section class={searchInFlight ? 'query-workspace is-searching' : 'query-workspace'} data-has-text={hasText ? '' : undefined} data-zen-region="" data-help-id="search" aria-label={label}>
         <div class="query-bar-row">
           <div class="query-field-group">
             <button class={this.builderOpen ? 'query-builder-toggle active' : 'query-builder-toggle'} data-action="toggle-builder" aria-expanded={this.builderOpen} data-tip="Build the search one condition at a time"><HammerIcon />Builder</button>
@@ -825,7 +825,7 @@ class SearchBox implements QueryEditor {
     if (!facets.length) {
       // Nothing to fold: what is left is a state line and the ways out.
       return (
-        <section class="query-facets" aria-label="Refine these results">
+        <section class="query-facets" data-help-id="refine" aria-label="Refine these results">
           {top}
           <div class="query-facets-groups">
             <span class="query-facets-heading">Refine</span>
@@ -839,7 +839,7 @@ class SearchBox implements QueryEditor {
     const shown = document.querySelector<HTMLDetailsElement>('.query-facets-fold');
     const open = shown ? shown.open : !document.body.classList.contains('zen');
     return (
-      <section class="query-facets" aria-label="Refine these results">
+      <section class="query-facets" data-help-id="refine" aria-label="Refine these results">
         {top}
         <details class="query-facets-fold" open={open}>
           <summary class="query-facets-heading">{set ? `Refine · ${set} set` : 'Refine'}</summary>

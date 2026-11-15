@@ -75,7 +75,7 @@ export function describePageMenu(sections: readonly ViewOptionSection[]): string
 /** The page's ⋯, drawn with its sections. */
 export function PageMenu(options: PageMenuOptions) {
   const sections = pageMenuSections(options);
-  return <ViewOptions sections={sections} label={describePageMenu(sections)} icon={<EllipsisIcon />} className="page-menu" />;
+  return <ViewOptions sections={sections} label={describePageMenu(sections)} icon={<EllipsisIcon />} className="page-menu" attributes={{ 'data-help-id': 'page-menu' }} />;
 }
 
 /** What a page's bar is drawn from. */
