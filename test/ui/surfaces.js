@@ -257,6 +257,69 @@ function createDiagnostic(index, files) {
 }
 
 /**
+ * Help's This page for the Task board, as its host draws it (plan 48): each
+ * entry named by its guide heading and listed by the section's first
+ * paragraph, and the board's settings from the extension's own manifest,
+ * with values set the way a reader might have them.
+ *
+ * @param {string | undefined} selected The entry shown, or the list.
+ * @returns {string} The tab's HTML.
+ */
+function thisPageFixture(selected) {
+  const { TASK_BOARD_HELP, splitGuideRef } = modules.pageHelp;
+  const { describeSetting, listSettingSchemas } = modules.helpSettings;
+  const { guideSlug } = modules.guide;
+  const manifest = JSON.parse(readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8')).contributes;
+  const sections = (page) => {
+    const found = new Map();
+    const lines = readFileSync(path.join(__dirname, '..', '..', 'docs', 'guide', `${page}.md`), 'utf8').split('\n');
+    lines.forEach((line, at) => {
+      const heading = /^#{2,3} (.*)$/.exec(line);
+      if (!heading) {
+        return;
+      }
+      const body = lines.slice(at + 1).find((next) => next.trim() && !next.startsWith('#')) ?? '';
+      found.set(guideSlug(heading[1]), { title: heading[1], body: body.replace(/^- /, '').replace(/\*\*/g, '') });
+    });
+    return found;
+  };
+  const entries = TASK_BOARD_HELP.entries.map((entry) => {
+    const { page, anchor } = splitGuideRef(entry.guide);
+    const section = sections(page).get(anchor) ?? { title: entry.id, body: '' };
+    return { entry, title: section.title, summary: section.body.split('. ')[0], sectionHtml: `<p>${section.body}</p>`, from: `Task board › ${section.title}`, ...(entry.id === 'lanes' ? { current: '#team', tourScene: undefined } : {}), ...(entry.id === 'move' ? { tourScene: 7 } : {}) };
+  });
+  const schemas = listSettingSchemas(manifest);
+  const values = { 'board.limits': { globalValue: { 'in-progress': 3 } }, 'display.cardDetails': { globalValue: { fileAndLine: true, created: true } }, me: { workspaceValue: '@rhea-calder' } };
+  const settings = TASK_BOARD_HELP.settings.map((key) => {
+    const schema = schemas.get(`deckard.${key}`);
+    return describeSetting(key, schema, { defaultValue: schema.default, ...(values[key] ?? {}) });
+  });
+  const choices = {
+    lanes: { current: 'tag', options: [{ value: 'none', label: 'None' }, { value: 'priority', label: 'Priority' }, { value: 'due', label: 'Due date' }, { value: 'assignee', label: 'Person' }, { value: 'tag', label: '#team' }], kept: 'Not a setting: the board keeps your choice, on this machine.' },
+  };
+  return modules.helpThisPageHtml.renderThisPage({ map: TASK_BOARD_HELP, entries, settings, choices, ...(selected ? { selected } : {}), exploring: false, pageOpen: true });
+}
+
+/**
+ * Help's Tour tab at the Task board's scene, with three scenes done and
+ * every scene picked for the demo.
+ *
+ * @returns {string} The tab's HTML.
+ */
+function tourFixture() {
+  const { TOUR_SCENES } = modules.tourScenes;
+  const board = TOUR_SCENES.findIndex((scene) => scene.id === 'board');
+  return modules.helpTourHtml.renderTour({
+    inSample: true,
+    started: true,
+    progress: { scene: board, done: TOUR_SCENES.slice(0, 3).map((scene) => scene.id) },
+    presenting: false,
+    demo: TOUR_SCENES.map((scene) => scene.id),
+    hideHelp: true,
+  });
+}
+
+/**
  * Help at What's new, a guide page shown in Help, the Notes Graph's
  * controls, and the Related Notes debug page: the pages that had no surface
  * before Phase 6.
@@ -277,6 +340,34 @@ function createReferenceSurfaces(index, files) {
       scrollers: ['html'],
       clippers: [],
       hovered: ['nav a'],
+    },
+    // Help beside the Task board, on This page: the list, and one control (plan 48).
+    {
+      name: 'helpThisPage',
+      page: 'help',
+      viewport: [480, 900],
+      messages: () => [{ type: 'reveal', page: '', tab: 'page' }, { type: 'helpPanel', tab: 'page', html: thisPageFixture() }],
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.help-entry'],
+    },
+    {
+      name: 'helpThisPageEntry',
+      page: 'help',
+      viewport: [480, 900],
+      messages: () => [{ type: 'reveal', page: '', tab: 'page' }, { type: 'helpPanel', tab: 'page', html: thisPageFixture('lanes') }],
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.help-choices button'],
+    },
+    {
+      name: 'helpTour',
+      page: 'help',
+      viewport: [480, 900],
+      messages: () => [{ type: 'reveal', page: '', tab: 'tour' }, { type: 'helpPanel', tab: 'tour', html: tourFixture() }],
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.tour-scenes .help-link'],
     },
     {
       name: 'helpGuide',
