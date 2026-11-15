@@ -2,7 +2,7 @@
 
 A type says what a kind of thing in your notes is, such as a person, a team, or an incident, and which fields it has: a team's lead, the areas it owns, who is on call. The fields are front matter you write, or already wrote, in plain Markdown. Deckard reads them as a table you can search, sort, and group, works out the other side of each relation, and answers questions such as *who leads the team that owns checkout?* from Find, a hover, a page, or an assistant.
 
-A workspace with no types works as it always has. The [work sample](getting-started.md#get-started) ships five types to try: Person, Team, Area, Decision, and Term.
+A workspace with no types works as it always has. The [work sample](getting-started.md#get-started) ships six types to try: Person, Team, Contract, System, Decision, and Term.
 
 ## Two kinds of type
 
@@ -162,7 +162,7 @@ notes: terms/
 | term  | Text |         | acronym, abbreviation |
 ```
 
-Its rows are the notes whose front matter says `type: term`, such as `terms/3DS.md`, whose first paragraph is the definition. Deckard reads a term note with or without the type, and **Make a term note** on a term's hover, or **Define…** on Stats, opens the form for one either way.
+Its rows are the notes whose front matter says `type: term`, such as the work sample's `terms/EVA.md`, whose first paragraph is the definition. Deckard reads a term note with or without the type, and **Make a term note** on a term's hover, or **Define…** on Stats, opens the form for one either way.
 
 ## Adding a note of a type
 
@@ -294,11 +294,11 @@ After `type = team`, the search box offers the type's fields, its reverses, and 
 
 ## In query blocks
 
-`noteColumns=` in a [query block](query-blocks.md#query-blocks) takes a field, a path, a reverse, or a computed field, headed as you write it, read from the row each note is, or else the rows its tags are. `this` is the note the block is in, in the editor, the Markdown preview, the note page, and **Copy as Plain Markdown**. The work sample's Checkout v2 lists its decisions:
+`noteColumns=` in a [query block](query-blocks.md#query-blocks) takes a field, a path, a reverse, or a computed field, headed as you write it, read from the row each note is, or else the rows its tags are. `this` is the note the block is in, in the editor, the Markdown preview, the note page, and **Copy as Plain Markdown**. The work sample's Relay survey lists its decisions:
 
 ````markdown
 ```deckard view=table noteColumns=date,state,decided-by
-type = decision AND project = this
+type = decision AND contract = this
 ```
 ````
 

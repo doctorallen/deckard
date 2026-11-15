@@ -34,7 +34,7 @@
 | **Deckard: Manage Favorites, Pins, and Searches…** | Lists the upkeep of what Deckard remembers about this workspace: **Tidy…** removes favorites, pins, and tag-set searches that point at nothing, if you confirm; **Export…** writes it all to a JSON file; **Import…** reads one back and, after asking, replaces it; **Restore from a Copy…** takes back one of Deckard's automatic copies, after asking. |
 | **Deckard: Export Tasks as Calendar…** | Writes your dated tasks to a calendar file to import into a calendar app; see [Tasks in your calendar app](daily-notes.md#tasks-in-your-calendar-app). |
 | **Deckard: Check My Setup** | Writes a Markdown report of your resolved settings, what the last scan found and kept out, what the index holds, and whether `deckard.me` names anyone, with fixes. |
-| **Deckard: Create a Work Sample** | Writes a week of a team lead's notes, dated from today, into Deckard's storage and opens it. Run again, it offers a fresh copy. |
+| **Deckard: Create a Work Sample** | Writes six weeks of a ship captain's notes, dated from today, into Deckard's storage and opens it. Run again, it offers a fresh copy. |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
 | **Deckard: Note Actions…** | The Deckard button in a note's title bar: lists what the editor's **Deckard** submenu lists, in the same order, for the cursor's position: the task on the line, the heading, the note (open as a page, Related Notes, the Notes Graph, Move to…, copy, tags to front matter), then pin and park. |
