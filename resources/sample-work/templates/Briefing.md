@@ -1,10 +1,10 @@
-# {title} #meeting
+# {title} #meeting/briefing
 
 {date} · {ask:Who was there?}
 
-## Agenda
+## Ship status
 
-## Notes
+## Contracts
 
 ## Decisions
 

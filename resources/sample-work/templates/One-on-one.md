@@ -1,6 +1,6 @@
-# {title} #meeting/1-1
+# {title} #meeting/one-on-one
 
-{date} with @{ask:Who is the 1:1 with?}
+{date} with @{ask:Who is the one-on-one with?}
 
 ## Their topics
 
