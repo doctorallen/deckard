@@ -103,15 +103,17 @@ suite('The work sample’s types', () => {
   });
 
   test('Find answers what Juno keeps from the systems that name Juno, and knows Juno by a first name', () => {
-    assert.deepStrictEqual(answers('what does juno keep'), [
-      ['Reactor', 'Juno Achterberg › keeps'],
+    // The order of answers follows the order the notes were read in, which differs by platform.
+    const sorted = (rows: Array<Array<string | undefined>>): Array<Array<string | undefined>> => [...rows].sort(([a], [b]) => String(a).localeCompare(String(b)));
+    assert.deepStrictEqual(sorted(answers('what does juno keep')), [
       ['Drive', 'Juno Achterberg › keeps'],
+      ['Reactor', 'Juno Achterberg › keeps'],
     ]);
     assert.deepStrictEqual(answers('reactor owner'), [['Juno Achterberg', 'Reactor › keeper']], 'a field by a word it is also called');
-    assert.deepStrictEqual(answers('who reports to rhea calder'), [
+    assert.deepStrictEqual(sorted(answers('who reports to rhea calder')), [
       ['Juno Achterberg', 'Rhea Calder › reports'],
-      ['Tomas Vey', 'Rhea Calder › reports'],
       ['Ottilie Brandt', 'Rhea Calder › reports'],
+      ['Tomas Vey', 'Rhea Calder › reports'],
     ]);
     const email = [['juno@corvid.example', 'Juno Achterberg › email']];
     assert.deepStrictEqual(answers('juno achterberg email'), email);
