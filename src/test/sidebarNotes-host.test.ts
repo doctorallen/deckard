@@ -620,7 +620,7 @@ suite('Related Notes controller', () => {
         ['deckard.showNotesGraph'],
         ['deckard.showTaskBoard'],
         ['deckard.createDailyNote'],
-        ['deckard.showHelp'],
+        ['deckard.showHelp', undefined, { forPage: 'Related Notes' }],
         ['deckard.activateNotesGraphNode', 'note:a', true],
         ['deckard.highlightNotesGraphNode', 'note:a'],
         ['deckard.highlightNotesGraphNode', undefined],

@@ -113,7 +113,7 @@ body:not([data-tab="guide"]) nav { display: none; }
 .help-entries { list-style: none; margin: 0; padding: 0; }
 .help-entries li + li { margin-top: 0; }
 .help-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; width: 100%; padding: 8px 6px; border: 0; border-top: 1px solid var(--line); background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
-.help-entry:hover, .help-entry:focus-visible { background: var(--panel); }
+.help-entry:hover, .help-entry:focus-visible { background: var(--panel); color: var(--text); }
 .help-entry:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: -2px; }
 .help-entry-name { font-weight: 600; }
 .help-entry-value { color: var(--muted); font-size: var(--text-sm); }
@@ -138,9 +138,11 @@ body:not([data-tab="guide"]) nav { display: none; }
 .setting-summary { color: var(--muted); font-size: var(--text-sm); }
 .tour-progress { display: flex; gap: 6px; margin: 4px 0 14px; }
 .tour-progress-chapter { display: flex; gap: 2px; }
-.tour-progress-step { flex: 1; min-width: 6px; height: 6px; min-height: 6px; padding: 0; border: 0; background: var(--line); cursor: pointer; }
-.tour-progress-step.is-done { background: color-mix(in srgb, var(--cyan) 60%, var(--line)); }
-.tour-progress-step.is-current { background: var(--focus); }
+/* A step is its top border, not a fill: it holds no text, and a fill would read as a ground for some. */
+.tour-progress-step { flex: 1; min-width: 6px; height: 10px; min-height: 0; padding: 0; border: 0; border-top: 6px solid var(--line); background: transparent; cursor: pointer; }
+.tour-progress-step:hover { background: transparent; }
+.tour-progress-step.is-done { border-top-color: color-mix(in srgb, var(--cyan) 60%, var(--line)); }
+.tour-progress-step.is-current { border-top-color: var(--focus); }
 .tour-progress-step:focus-visible { outline: var(--focus-width) solid var(--focus); outline-offset: 2px; }
 .tour-step { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--line); background: var(--panel); }
 .tour-step .help-eyebrow { margin-bottom: 6px; }

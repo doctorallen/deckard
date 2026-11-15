@@ -57,7 +57,7 @@ function sceneView(state: TourState, scene: TourScene, index: number): string {
 <div class="help-actions">
   <button type="button" data-help-action="tour-again">Show me again</button>
   <button type="button" data-help-action="tour-previous"${index === 0 ? ' disabled' : ''}>Back</button>
-  <button type="button" class="primary" data-help-action="${last ? 'tour-end' : 'tour-next'}">${forwardLabel(last, done)}</button>
+  <button type="button" data-help-action="${last ? 'tour-end' : 'tour-next'}">${forwardLabel(last, done)}</button>
 </div>
 <button type="button" class="help-link" data-help-action="open-guide" data-page="${escapeHtml(page)}" data-anchor="${escapeHtml(anchor ?? '')}">More in the guide</button>
 ${scenesList(state)}`;
@@ -82,7 +82,7 @@ function presenting(state: TourState): string {
 <label class="setting-check"><input type="checkbox" data-tour-option="hide-help"${state.hideHelp ? ' checked' : ''}> Hide Help while presenting</label>
 <div class="help-actions">${state.presenting
     ? '<button type="button" data-help-action="tour-stop">End presenting</button>'
-    : `<button type="button" data-help-action="tour-reset">Reset the sample to today</button><button type="button" class="primary" data-help-action="tour-present">Present ${state.demo.length} scenes</button>`}</div></section>`;
+    : `<button type="button" data-help-action="tour-reset">Reset the sample to today</button><button type="button" data-help-action="tour-present">Present ${state.demo.length} scenes</button>`}</div></section>`;
 }
 
 /** The Tour tab's HTML. */
@@ -98,7 +98,7 @@ export function renderTour(state: TourState): string {
   const resume = state.progress.scene > 0 || state.progress.done.length > 0;
   return `<div class="help-this-head"><div><p class="help-eyebrow">Tour</p><h1>Introduction to Deckard</h1></div></div>
 <p>${TOUR_SCENES.length} short scenes aboard the Corvid, about twelve minutes. Each opens a real page beside Help and gives you one thing to try. The last ${TOUR_SCENES.filter((scene) => scene.optional).length} are optional.</p>
-<div class="help-actions"><button type="button" class="primary" data-help-action="tour-go" data-index="${resume ? state.progress.scene : 0}">${resume ? `Continue at scene ${state.progress.scene + 1}` : 'Start the tour'}</button>${resume ? '<button type="button" data-help-action="tour-go" data-index="0">Start over</button>' : ''}</div>
+<div class="help-actions"><button type="button" data-help-action="tour-go" data-index="${resume ? state.progress.scene : 0}">${resume ? `Continue at scene ${state.progress.scene + 1}` : 'Start the tour'}</button>${resume ? '<button type="button" data-help-action="tour-go" data-index="0">Start over</button>' : ''}</div>
 ${presenting(state)}
 ${scenesList(state)}`;
 }
