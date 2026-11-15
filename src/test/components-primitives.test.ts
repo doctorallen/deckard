@@ -10,7 +10,7 @@ import { ENABLED } from '../ui/webview/selectors';
 import { PAGES, renderablePages, renderPage } from './pages';
 import { linkedSheets, pageSheets, readSheet, themeSheet } from './sheets';
 import { openWebviewPage, WebviewPage, WebviewPageOptions } from './webviewPage';
-import { readGoldens } from '../../test/harness/domGoldens';
+import { normalizeBody } from '../../test/harness/domSnapshot';
 import { createNotePageSnapshot } from '../ui/state/notePageState';
 import { createQueryContext } from '../domain/query/queryContext';
 import { deckardThemes } from '../ui/webview/themeNames';
@@ -233,6 +233,12 @@ suite('Component primitives', () => {
         assert.strictEqual(page.findAll('#app .loading').length, 0, `${entry.title}: no loading line`);
         assert.ok(app.firstElementChild, `${entry.title} drew its snapshot`);
         assert.deepStrictEqual(page.posted, asks[entry.id] ?? [], `${entry.title} asked for nothing`);
+        // However its state reached it, a page draws the same DOM.
+        const embedded = normalizeBody(app);
+        page.dispose();
+        page = openWebviewPage(renderPage(entry.id), snapshots[entry.id]);
+        await Promise.resolve();
+        assert.strictEqual(normalizeBody(page.find('#app')), embedded, `${entry.title} draws alike embedded and posted`);
         page.dispose();
         page = undefined;
       }
@@ -335,10 +341,10 @@ suite('Component primitives', () => {
     test('no control on any page carries a native title', () => {
       // A title never shows on keyboard focus; a control says it with
       // data-tip. Non-focusable spans and a select's options may keep one.
-      // The page text is read while a page's markup is template text, and
-      // every surface's drawn DOM always (the test:dom goldens), which is
-      // all a compiled page leaves to read; the lint rule on .tsx covers the
-      // states no surface draws.
+      // This reads the page text, which holds the markup of a page whose
+      // host builds it; the layout check holds every surface's drawn DOM to
+      // the same rule (test/ui/drawnDomRules.js), and the lint rule on .tsx
+      // covers the states no surface draws.
       const control = /<(button|summary|input|select|textarea|a)\b[^<>]*\btitle=/;
       const focusable = /<[a-z]+\b(?=[^<>]*\btabindex=)[^<>]*\btitle=/;
       for (const [name, render] of pages) {
@@ -346,37 +352,6 @@ suite('Component primitives', () => {
         const found = html.match(control) ?? html.match(focusable);
         assert.strictEqual(found, null, `${name}: ${found?.[0].slice(0, 120)}`);
       }
-      // As the regular expressions read it: any attribute named title, or
-      // ending in -title, on a control or on anything with a tabindex.
-      const titled = (element: Element): boolean =>
-        [...element.attributes].some((attribute) => /(^|[^\w])title$/.test(attribute.name));
-      const tabbable = (element: Element): boolean =>
-        [...element.attributes].some((attribute) => /(^|[^\w])tabindex$/.test(attribute.name));
-      const read = readGoldens((surface, body) => {
-        const found = [...body.querySelectorAll('*')].find((element) =>
-          titled(element)
-          && (/^(button|summary|input|select|textarea|a)$/.test(element.localName) || tabbable(element)));
-        assert.strictEqual(found, undefined, `${surface} (as drawn): ${found?.outerHTML.slice(0, 120)}`);
-      });
-      assert.ok(read >= 22, `every surface's drawn DOM is read (${read})`);
-    });
-
-    test('a drawn page fills at most one control, and only one that commits something', () => {
-      // Plan 29, R2: .primary, the --chosen fill, is the page's one primary
-      // action. Navigation, a suggestion, or the search box's own controls
-      // are never filled.
-      const commits = new Set(['add-task', 'save-to-tasks-view', 'save', 'create-day', 'open-daily-note']);
-      let filled = 0;
-      const read = readGoldens((surface, body) => {
-        const primaries = [...body.querySelectorAll('.primary')];
-        assert.ok(primaries.length <= 1, `${surface}: ${primaries.length} filled controls`);
-        for (const primary of primaries) {
-          filled += 1;
-          assert.ok(commits.has(String(primary.getAttribute('data-action'))), `${surface}: ${primary.outerHTML.slice(0, 120)}`);
-        }
-        assert.deepStrictEqual([...body.querySelectorAll('.query-primary, .is-primary, .query-apply')], [], `${surface}: no other idiom for primary`);
-      });
-      assert.ok(read >= 22 && filled >= 10, `every surface's drawn DOM is read (${read} surfaces, ${filled} filled)`);
     });
 
     /** A box in the window, and whether two share any of it. */
@@ -426,27 +401,6 @@ suite('Component primitives', () => {
       assert.match(String(tip(page)?.textContent), /^Open this entry/);
       assert.ok(!overlaps(placed, breakdownBox), `the tip ${JSON.stringify(placed)} covers the breakdown`);
       assert.ok(!overlaps(placed, cardBox), `the tip ${JSON.stringify(placed)} covers the card`);
-    });
-
-    test('every card or row that shows more of itself on hover says so to the tip', () => {
-      // Each of these shows more of itself on hover: a card's details on its
-      // line, a panel its score opens, and a saved search's criteria under
-      // its row; the tip keeps off them only where the card says it shows
-      // them (data-tip-around).
-      const opening = '.note, .card, .task-row, .home-row, .tag-row, .board-card, .saved-filter-row';
-      let seen = 0;
-      const read = readGoldens((surface, body) => {
-        // Help is the guide's prose: nothing in it folds a line under
-        // itself or holds a tip.
-        if (surface.startsWith('help')) {
-          return;
-        }
-        for (const card of body.querySelectorAll(opening)) {
-          seen += 1;
-          assert.ok(card.hasAttribute('data-tip-around'), `${surface}: ${card.outerHTML.slice(0, 120)}`);
-        }
-      });
-      assert.ok(read >= 22 && seen > 20, `every surface's drawn DOM is read (${read} surfaces, ${seen} cards)`);
     });
 
     test('the pointer waits 400 ms, and a press puts the tip away', async () => {

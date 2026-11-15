@@ -75,8 +75,9 @@ export interface CatalogPage {
   render(context: PageContext): string;
   /**
    * Whether the page draws a snapshot its shell carries as inert JSON, so
-   * test:dom draws its surfaces both ways, embedded and posted, and holds
-   * the two to the same DOM (docs/implementation/20-webviews.md §2.3).
+   * components-primitives.test.ts draws it both ways, embedded and posted,
+   * and holds the two to the same DOM (docs/implementation/20-webviews.md
+   * §2.3).
    */
   readsInertState?: true;
 }

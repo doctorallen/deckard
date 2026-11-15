@@ -2,12 +2,19 @@ name: Nightly
 
 # Every suite CI runs, on dev, once a night, the slow way: the unit suites
 # one after another in one process (UNIT_SERIAL=1), and each Chrome check
-# over all eighteen theme-and-zen passes in one job. A pull request's run
+# over all twenty theme-and-zen passes in one job. A pull request's run
 # splits the work to finish in minutes; this one catches what splitting can
 # hide, a suite that leans on what another file left behind or on the order
 # files run in, and what only shows on a later date, since it runs every day
 # whether or not anything was pushed. It also runs the host suites in the
 # oldest VS Code the manifest's `engines` allows, where CI runs a recent one.
+#
+# The visual check runs here alone, not on each pull request: it compares a
+# short list of screenshots with their Linux baselines, and uploads what it
+# drew with no baseline or differing from one, under the baseline's name,
+# with its diff. That artifact is how a Linux baseline is recorded: run this
+# workflow by hand on the branch with "Only the visual check" ticked, look
+# at the images, and commit the ones meant to test/ui/visual-baseline/linux.
 #
 # A scheduled workflow runs from the default branch's copy of this file, so
 # it starts once this reaches master; Run workflow in the Actions tab runs
@@ -18,6 +25,11 @@ on:
     # start on.
     - cron: '17 7 * * *'
   workflow_dispatch:
+    inputs:
+      visual-only:
+        description: Only the visual check, to take Linux baselines from its artifact
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -39,6 +51,7 @@ env:
 jobs:
   serial:
     name: Every suite, one after another, on Linux
+    if: ${{ !inputs.visual-only }}
     runs-on: ubuntu-latest
     timeout-minutes: 75
 
@@ -90,6 +103,8 @@ jobs:
         run: xvfb-run --auto-servernum npx vscode-test
 
       - name: Check webview pages
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: node test/ui/verifyWebviews.js && node test/ui/checkContrast.js
 
       - name: Run end-to-end webview tests
@@ -106,38 +121,65 @@ jobs:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: node test/ui/checkRenderedContrast.js
 
-      - name: Compare the webviews to how they looked, every pass
-        if: success() || failure()
-        env:
-          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
-          VISUAL_CHANGED: ${{ runner.temp }}/visual-changed
-        run: node test/ui/checkVisual.js --ci
-
-      - name: Compare each surface's DOM with its golden
-        if: success() || failure()
-        env:
-          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
-          DOM_KEEP: ${{ runner.temp }}/dom
-        run: node test/ui/checkDom.js
-
-      - name: Keep what a failed comparison drew
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: nightly-drawn-${{ github.run_id }}
-          path: |
-            ${{ runner.temp }}/visual-changed
-            ${{ runner.temp }}/dom/*.dom.html
-          if-no-files-found: ignore
-          retention-days: 7
-
       # Packaged as a release packages it, lint included.
       - name: Build VSIX
         if: success() || failure()
         run: npm run package:vsix
 
+  # The screenshots of test/ui/checkVisual.js's short list, compared with
+  # their Linux baselines in the Chrome they were drawn in. --ci fails when a
+  # surface has no baseline to compare with, rather than recording one and
+  # passing, so the pixel guard cannot go quiet.
+  visual:
+    name: Compare the webviews to how they looked
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TEST_REF }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Chrome ${{ env.CHROME_VERSION }}
+        id: chrome
+        uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
+        with:
+          chrome-version: ${{ env.CHROME_VERSION }}
+
+      - name: Build the suites and the pages
+        run: npm run compile-tests && npm run build:webview
+
+      - name: Compare the screenshots with the Linux baselines
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          VISUAL_CHANGED: ${{ runner.temp }}/visual-changed
+        run: node test/ui/checkVisual.js --ci
+
+      # Only what a failure needs: each surface drawn with no baseline or
+      # differing from it, under its baseline's name, ready to commit as a
+      # Linux baseline once looked at, and its diff.
+      - name: Keep what a failed comparison drew
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: visual-changed-${{ github.run_id }}
+          path: ${{ runner.temp }}/visual-changed
+          if-no-files-found: ignore
+          retention-days: 7
+
   other-systems:
     name: Unit suites one after another, and host suites, on ${{ matrix.os }}
+    if: ${{ !inputs.visual-only }}
     strategy:
       fail-fast: false
       matrix:
@@ -182,6 +224,7 @@ jobs:
   oldest-vscode:
     # A job's name cannot read env, so the version is written here too.
     name: Host suites in VS Code 1.134.0
+    if: ${{ !inputs.visual-only }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 

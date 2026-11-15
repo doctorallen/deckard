@@ -28,8 +28,8 @@
 // started are ever killed.
 const os = require('node:os');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
-const { mkdtempSync, rmSync } = require('node:fs');
+const { spawn, spawnSync } = require('node:child_process');
+const { existsSync, mkdtempSync, rmSync } = require('node:fs');
 
 /**
  * How many Chromes draw at once: UI_CONCURRENCY, or half the logical
@@ -206,4 +206,33 @@ async function runInOrder(jobs, work, size = concurrency()) {
   return results;
 }
 
-module.exports = { concurrency, runChromeAsync, runInOrder };
+/**
+ * The Chrome the checks draw in: CHROME_PATH, or the first of the usual
+ * names found, or undefined. A CHROME_PATH that names nothing finds nothing,
+ * rather than falling back to another Chrome: CI pins the Chrome its Linux
+ * baselines were drawn in, and a page drawn in any other must not pass.
+ */
+function findChrome() {
+  if (process.env.CHROME_PATH) {
+    return existsSync(process.env.CHROME_PATH) ? process.env.CHROME_PATH : undefined;
+  }
+  const candidates = [
+    'google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  ];
+  for (const candidate of candidates) {
+    if (candidate.includes('/')) {
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+      continue;
+    }
+    const found = spawnSync('which', [candidate], { encoding: 'utf8' });
+    if (found.status === 0 && found.stdout.trim()) {
+      return found.stdout.trim();
+    }
+  }
+  return undefined;
+}
+
+module.exports = { concurrency, findChrome, runChromeAsync, runInOrder };

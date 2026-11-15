@@ -11,8 +11,8 @@ import { openWebviewPage, WebviewPage } from './webviewPage';
 /**
  * The shared task parts (src/webview/shared: taskRow, taskTitle, tagButton)
  * against the template script they replaced (deleted in Phase 6 step 7):
- * each must draw the DOM the template's helper drew, as test:dom normalizes
- * it, so the Task Board, a search's tasks, Home, and the calendar's day draw
+ * each must draw the DOM the template's helper drew, as
+ * test/harness/domSnapshot.js normalizes it, so the Task Board, a search's tasks, Home, and the calendar's day draw
  * what they drew. The template's side is its recording (templateRecords.ts);
  * the title it was handed was the HTML legacyMarkdown.ts writes.
  *
