@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2.17.0 - 2026-11-15
+
+### Highlights
+
+- **Help beside the page**: This page explains the Task board's controls and settings in the guide's own words, and changes them in place.
+- **`Deckard: Take the Tour`** walks through Deckard on a new work sample, six weeks aboard the Corvid; **Present** runs it for a demo.
+
 ### Added
 
 - **Help beside the page.** **Help on this page**, in a page's ⋯, opens
