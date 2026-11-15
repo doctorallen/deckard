@@ -165,14 +165,14 @@ test('⋯\'s Theme row runs Choose Theme', async () => {
   assert.ok(vscode._test.executedCommands.some((entry) => entry.command === 'deckard.chooseTheme'));
 });
 
-test('Help on this page, in ⋯, opens at Search', async () => {
+test('Help on this page, in ⋯, opens at Search, beside the page that asked', async () => {
   const { view } = await openSearch('planning');
   vscode._test.executedCommands.length = 0;
   view.click(view.find('.page-menu [data-action="page-help"]'));
   await settle();
   assert.deepStrictEqual(
     vscode._test.executedCommands.filter((entry) => entry.command === 'deckard.showHelp'),
-    [{ command: 'deckard.showHelp', args: ['search'] }],
+    [{ command: 'deckard.showHelp', args: ['search', { forPage: 'search page' }] }],
   );
 });
 
