@@ -40,6 +40,7 @@
 | [**Daily notes and reviews**](docs/guide/daily-notes.md) | Today's note from your template, yesterday's unfinished tasks carried in, weekly and monthly reviews written for you, a calendar page where you drag a task to another day, and your dated tasks in your own calendar app. |
 | [**Renaming and tidying**](docs/guide/organizing.md) | Rename a tag, note, or heading everywhere it is written; merge lookalike tags; park what you are not working on. |
 | [**AI assistants**](docs/guide/ai-assistants.md) | Copilot, Claude Code, and other MCP clients can search your notes and tasks with Deckard's queries, and describe a tag and its fields. |
+| [**Help and the tour**](docs/guide/help-and-tour.md) | **Help on this page** opens Help beside the page: what you can do there, what each control does, and the settings that change it, which you can change in place. `Deckard: Take the Tour` walks through Deckard on the work sample, and **Present** runs it for a demo. |
 | [**Themes and Zen**](docs/guide/themes-and-zen.md) | Eight looks for Deckard's pages, and a Zen mode that turns the chrome down in any of them. |
 
 <table>
@@ -74,9 +75,9 @@ Pick one with `Deckard: Choose Theme…` or **Theme** in any page's gear; moving
 ## Quick start
 
 1. Install [Deckard from the Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=esperinnovations.deckard-notes): search for **Deckard** in the Extensions view, or run `code --install-extension esperinnovations.deckard-notes`. Deckard needs VS Code 1.134.0 or newer.
-2. Run **`Deckard: Get Started`** for a walkthrough of six steps you check off as you go, in your own notes or in a sample workspace it offers to make.
+2. Run **`Deckard: Get Started`** for a walkthrough of seven steps you check off as you go, in your own notes or in a sample workspace it offers to make, then **`Deckard: Take the Tour`** for a guided walk through Deckard on that sample.
 3. Run **`Deckard: Open Home`**, and select the Deckard icon in the Activity Bar for Context (related notes and more), the Tasks view, the Outline, and the calendar.
-4. Press the **?** on any Deckard page, or run `Deckard: Open Help`, to read the [guide](docs/guide/README.md) inside VS Code, its pages down the side.
+4. Choose **Help on this page** in any Deckard page's **⋯** for Help beside the page: what each control does and the settings that change it. `Deckard: Open Help` reads the [guide](docs/guide/README.md) inside VS Code, its pages down the side.
 
 A note is written the way you already write:
 

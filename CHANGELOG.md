@@ -2,6 +2,42 @@
 
 ## Unreleased
 
+### Added
+
+- **Help beside the page.** **Help on this page**, in a page's ⋯, opens
+  Help in the group beside the page, with three tabs: **This page**,
+  **Tour**, and **Guide**. On the Task board, This page lists what you can
+  do there, every control with what it is set to, and the settings that
+  change the board, each with its value and where it is set; selecting one
+  shows its section of the guide, the board's own line about a control the
+  same on every page, its choices, and **Show me**, which rings it on the
+  board. Choices and settings change in place. **Point at something** lets
+  you click a control on the board to read about it. The words are the
+  guide's, so This page and the guide never disagree.
+- **The tour.** `Deckard: Take the Tour` walks through Deckard on the work
+  sample in fifteen scenes: today's note, tags and namespaces, `@` for
+  people, searching by tag, Related notes, Add Task, the Task board, the
+  calendar, what someone owes you, a type as a table and as a board, hub
+  notes, the Hubs view, and, optionally, carrying tasks forward and reviews.
+  Each scene opens a real page beside Help, rings one thing on it, and ticks
+  its step when the note shows it done. **Present** runs the scenes picked
+  for a demo: a status bar item holds each scene's talking point, and
+  <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>]</kbd> and
+  <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>[</kbd> move on and back. Get Started
+  gains a last step, **Take the tour**.
+
+### Changed
+
+- **The work sample is six weeks aboard the Corvid,** a small survey and
+  hauling ship: its captain's daily briefings, one-on-ones with the crew,
+  contracts as a type with a state, the ship's systems and their upkeep,
+  decisions, and terms, written so every scene of the tour has something to
+  show. `Deckard: Create a Work Sample` offers a fresh copy of an older one.
+- **The Task board's guide** gives each control a section of its own:
+  moving a card, Can start now, keeping a search, adding a task,
+  work-in-progress limits, sorting and ranking, a card's menu, and the
+  board's menu.
+
 ## 2.16.0 - 2026-11-12
 
 ### Highlights
