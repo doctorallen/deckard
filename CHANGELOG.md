@@ -29,6 +29,18 @@
   the heading it came from:
   `- The gateway is included ([[2026-11-16#Vendor sync]])`.
 
+- **A Types tab on Home**, after Home and Tags: every type as one row,
+  with what its rows are, how many it has and how many have a note, its
+  open tasks and how many are overdue, and when it was last mentioned.
+  Select a type to open its rows; the arrow before it lists its rows in
+  place; **Add person…** starts a new row; the headings sort.
+  `Deckard: Open Types` opens Home on the tab.
+- **New type…** on the Types tab, and with no type yet, **Create type from
+  tags…** beside it.
+- **Hub notes outside a type**, under the Types tab's table: the hub notes
+  no type's rows cover, a namespace of them as one line with **Create type
+  from tags…**.
+
 ### Changed
 
 - **A section moved out of a daily note keeps its day.** Move to… puts the
@@ -43,6 +55,14 @@
   `([[2026-11-13#Vendor sync]])`. The task is still listed for the project
   and the person, and the link leads back to the meeting however many days
   the task waits. Tasks under no heading go under Carried over as before.
+- The Tour's Hubs scene is now the Types tab.
+- The Left and Right Arrow keys go round Home's three tabs.
+
+### Removed
+
+- The **Hubs** sidebar view, with **Sort Hubs By…** and its per-hub "new"
+  counts. `up:` front matter, the breadcrumb above a note, hub notes, and
+  **Create Hub Note for Tag** stay; a type's rows are on the Types tab.
 
 ## 2.17.0 - 2026-11-15
 
