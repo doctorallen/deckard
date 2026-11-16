@@ -194,6 +194,7 @@ suite('Extension Test Suite', () => {
         'deckard.agenda.setTaskStatus',
         'deckard.writeReview',
         'deckard.rollTasksForward',
+        'deckard.startMeeting',
         'deckard.newNoteFromTemplate',
         'deckard.newNoteFromTemplateHere',
         'deckard.excludeFromIndex',

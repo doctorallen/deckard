@@ -189,6 +189,26 @@ export async function applyRollover(
 }
 
 /**
+ * Today's note, made when it is not there yet and not opened, with the
+ * tasks a note Deckard creates rolls in: what a command that writes into
+ * today's note without showing it calls, so the day's first write does not
+ * cost the day its rollover.
+ */
+export async function ensureDailyNoteWithRollover(
+  indexer: Pick<IndexReader & IndexControl, 'ready' | 'getSnapshot' | 'refresh'>,
+  rollover: VscodeRolloverService,
+  folder: vscode.WorkspaceFolder,
+): Promise<vscode.Uri> {
+  const mode = getRolloverMode(folder.uri);
+  const isNew = !(await fileExists(getPeriodicNoteUri(folder, 'day', new Date())));
+  const uri = await ensureDailyNote(folder);
+  if (isNew && mode !== 'off') {
+    await rollTasksForward(indexer, rollover, { mode, silent: true });
+  }
+  return uri;
+}
+
+/**
  * Carries the unfinished tasks of the last daily note into today's, creating
  * today's note when it is not there yet.
  */

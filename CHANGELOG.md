@@ -14,6 +14,14 @@
   its tag's page without its dated headings, so it stays the description
   of the project or person, and each meeting is listed below it under its
   day.
+- **Start a Meeting.** `Deckard: Start a Meeting` asks what a meeting is
+  about, offering the projects and people you wrote about most lately, and
+  its name, then writes `## 2026-11-16 10:00 Vendor sync` at the end of
+  that project's or person's note and puts the cursor under it. Today's
+  note keeps a line linking to it. Check several and the first is where the
+  notes go, the others tags on the heading; **No one thing** writes it in
+  today's note; **A note of its own…** keeps a meeting that recurs in a
+  note named for it, a dated heading for each time it is held.
 - **Copy to….** `Deckard: Copy to…`, and **Copy instead of moving** in Move
   to…'s list, write a line, a task, a selection, or a heading's section
   where you choose and leave it where it was, so something said in a

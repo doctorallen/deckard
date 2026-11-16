@@ -628,6 +628,11 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.startMeeting",
+        "title": "Start a Meeting",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.newNoteFromTemplate",
         "title": "New Note from Template",
         "category": "Deckard"
