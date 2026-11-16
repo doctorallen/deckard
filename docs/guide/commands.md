@@ -67,6 +67,7 @@
 | **Deckard: Copy MCP Server Setup** | Copies the command that adds Deckard's [MCP server](ai-assistants.md#claude-code-and-other-mcp-clients) to Claude Code, and offers to turn the server on when it is off. Listed while `deckard.assistantTools` is on. |
 | **Deckard: Reset MCP Server Token** | Makes a new MCP server token, invalidating copied setups. Listed while the server is on. |
 | **Deckard: Move to…** | Moves the line, task, or selection under another heading or into a new note, and leaves a link behind. On a heading, moves the heading and everything under it. |
+| **Deckard: Copy to…** | Copies the line, task, selection, or a heading's section under another heading or into a new note, with a link to where it came from, and leaves it where it was. Move to…'s list offers it as **Copy instead of moving**. |
 | **Deckard: Open Note as Page** | The unicorn button in a note's title bar: opens the note in the editor on a page of its own, its links, tags, tasks, and query blocks working; see [Reading a note as a page](notes-and-links.md#reading-a-note-as-a-page). |
 | **Deckard: Copy as Plain Markdown** | Copies the note, or the selection, with its embeds, query results, and links written out; see [Copying a note for elsewhere](notes-and-links.md#copying-a-note-for-elsewhere). |
 | **Deckard: Extract Heading** | Moves a heading section into a newly named note and leaves a `[[link]]` to it. |

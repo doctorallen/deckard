@@ -207,6 +207,7 @@ suite('Extension Test Suite', () => {
         'deckard.copyMcpSetup',
         'deckard.resetMcpToken',
         'deckard.moveTo',
+        'deckard.copyTo',
         'deckard.extractHeading',
         'deckard.copyAsPlainMarkdown',
         'deckard.openNotePage',

@@ -224,6 +224,114 @@ suite('Move service', () => {
     assert.strictEqual(created.fake.text('day.md'), '# 2026-11-12\n[[Ledger cutover plan]]\n');
   });
 
+  test('a section that leaves a daily note takes the day into its heading, and the link left names it so', async () => {
+    const day = '# 2026-11-16\n\n## Vendor sync #project/borealis @dana\n- The gateway is included\n\n### Pricing\n- [ ] Send the quote\n';
+    const hub = '---\ndescribes: project/borealis\n---\n# Borealis\n\nThe ledger migration.\n';
+    const section = (text: string, line: number): MoveBlock => {
+      const block = readSectionBlock(text.split('\n'), { start: { line, character: 0 }, end: { line, character: 0 }, isEmpty: true });
+      assert.ok(block);
+      return block;
+    };
+    const source = { uri: noteUri('2026-11-16.md'), filePath: '2026-11-16.md', block: section(day, 2), day: '2026-11-16' };
+
+    const atEnd = setup({ '2026-11-16.md': day, 'Borealis.md': hub });
+    await atEnd.service.move([source], { uri: noteUri('Borealis.md'), link: 'Borealis', name: 'Borealis' });
+    assert.strictEqual(
+      atEnd.fake.text('Borealis.md'),
+      `${hub}\n## 2026-11-16 Vendor sync #project/borealis @dana\n- The gateway is included\n\n### Pricing\n- [ ] Send the quote\n`,
+    );
+    assert.strictEqual(atEnd.fake.text('2026-11-16.md'), '# 2026-11-16\n\n[[Borealis#2026-11-16 Vendor sync]]\n');
+    const moved = parseMarkdown('Borealis.md', atEnd.fake.text('Borealis.md') ?? '');
+    assert.strictEqual(moved.sections.find((entry) => entry.heading.includes('Vendor sync'))?.dated, '2026-11-16');
+
+    // Under a heading it is one level deeper, and dated all the same.
+    const nested = setup({ '2026-11-16.md': day, 'Borealis.md': `${hub}\n## Meetings\n` });
+    await nested.service.move([source], {
+      uri: noteUri('Borealis.md'),
+      link: 'Borealis#Meetings',
+      name: 'Borealis › Meetings',
+      section: { startLine: 8, endLine: 8, headingLevel: 2 },
+    });
+    assert.match(nested.fake.text('Borealis.md') ?? '', /\n### 2026-11-16 Vendor sync #project\/borealis @dana\n/);
+
+    // Another daily note dates it already, and so does a day of its own.
+    const daily = setup({ '2026-11-16.md': day, '2026-11-17.md': '# 2026-11-17\n' });
+    await daily.service.move([source], { uri: noteUri('2026-11-17.md'), link: '2026-11-17', name: '2026-11-17', daily: true });
+    assert.match(daily.fake.text('2026-11-17.md') ?? '', /\n## Vendor sync #project\/borealis @dana\n/);
+    const dated = '# 2026-11-16\n\n## 2026-11-13 Kickoff\n- Late notes\n';
+    const kept = setup({ '2026-11-16.md': dated, 'Borealis.md': hub });
+    await kept.service.move(
+      [{ uri: noteUri('2026-11-16.md'), filePath: '2026-11-16.md', block: section(dated, 2), day: '2026-11-16' }],
+      { uri: noteUri('Borealis.md'), link: 'Borealis', name: 'Borealis' },
+    );
+    assert.match(kept.fake.text('Borealis.md') ?? '', /\n## 2026-11-13 Kickoff\n/);
+
+    // A top-level heading is left as written: with a day in it, its new note would be a daily note.
+    const top = '# Vendor sync\n- Notes\n';
+    const whole = setup({ '2026-11-16.md': top });
+    await whole.service.move(
+      [{ uri: noteUri('2026-11-16.md'), filePath: '2026-11-16.md', block: section(top, 0), day: '2026-11-16' }],
+      { uri: noteUri('Vendor sync.md'), link: 'Vendor sync', name: 'Vendor sync', create: '' },
+    );
+    assert.strictEqual(new TextDecoder().decode(whole.files.files.get('Vendor sync.md')), '# Vendor sync\n- Notes\n');
+  });
+
+  test('copies lines where they are sent with a link to the heading they were under, and leaves them', async () => {
+    const day = '# 2026-11-16\n\n## Vendor sync #project/borealis\n- The gateway is included in the base price ^gateway\n  - Confirmed by Dana\n- [ ] Send the quote\n';
+    const wiki = '# Pricing\n\n## Vendors\n- Quotes are good for 30 days\n';
+    const { fake, history, ranks, service } = setup({ '2026-11-16.md': day, 'wiki/Pricing.md': wiki });
+    const target = {
+      uri: noteUri('wiki/Pricing.md'),
+      link: 'Pricing#Vendors',
+      name: 'Pricing › Vendors',
+      section: { startLine: 3, endLine: 4, headingLevel: 2 },
+    };
+    const result = await service.move(
+      [{ uri: noteUri('2026-11-16.md'), filePath: '2026-11-16.md', block: blockAt(day, 3) }],
+      target,
+      { copy: true },
+    );
+    assert.deepStrictEqual(result, { kind: 'moved', handle: 1, created: false });
+    assert.strictEqual(fake.text('2026-11-16.md'), day, 'what was copied stays as it was');
+    assert.strictEqual(
+      fake.text('wiki/Pricing.md'),
+      `${wiki}- The gateway is included in the base price ([[2026-11-16#Vendor sync]]) ^gateway\n  - Confirmed by Dana\n`,
+    );
+    assert.strictEqual(history.writes[0].options.label, 'Copy to…');
+    assert.strictEqual(history.writes[0].options.description, 'Copied to Pricing › Vendors');
+
+    // A copied task is a second task, with no rank to carry.
+    const [task] = parseMarkdown('2026-11-16.md', day).tasks;
+    await service.move(
+      [{ uri: noteUri('2026-11-16.md'), filePath: '2026-11-16.md', block: blockAt(day, 5), task }],
+      { ...target, section: { startLine: 3, endLine: 6, headingLevel: 2 } },
+      { copy: true },
+    );
+    assert.match(fake.text('wiki/Pricing.md') ?? '', /\n- \[ \] Send the quote \(\[\[2026-11-16#Vendor sync\]\]\)\n$/);
+    assert.strictEqual(fake.text('2026-11-16.md'), day);
+    assert.deepStrictEqual(ranks, []);
+  });
+
+  test('copies a section with the link under its heading, in the link style of the note it goes to', async () => {
+    const day = '# 2026-11-16\n\n## Vendor sync #project/borealis\n- The gateway is included\n';
+    const { fake, service } = setup(
+      { 'journal/2026-11-16.md': day, 'Borealis.md': '# Borealis\n' },
+      { 'deckard.links.style': 'markdown' },
+    );
+    const block = readSectionBlock(day.split('\n'), { start: { line: 2, character: 0 }, end: { line: 2, character: 0 }, isEmpty: true });
+    assert.ok(block);
+    await service.move(
+      [{ uri: noteUri('journal/2026-11-16.md'), filePath: 'journal/2026-11-16.md', block, day: '2026-11-16' }],
+      { uri: noteUri('Borealis.md'), link: 'Borealis', name: 'Borealis' },
+      { copy: true },
+    );
+    assert.strictEqual(fake.text('journal/2026-11-16.md'), day);
+    assert.strictEqual(
+      fake.text('Borealis.md'),
+      '# Borealis\n\n## 2026-11-16 Vendor sync #project/borealis\n([2026-11-16#Vendor sync](journal/2026-11-16.md#vendor-sync))\n- The gateway is included\n',
+    );
+  });
+
   test('writes nothing when the section changed while the destination was chosen', async () => {
     const day = '# Day\n## Ledger cutover plan\n- Freeze writes\n';
     const { fake, history, service } = setup({ 'day.md': day, 'plan.md': '# Plan\n' });

@@ -14,6 +14,20 @@
   its tag's page without its dated headings, so it stays the description
   of the project or person, and each meeting is listed below it under its
   day.
+- **Copy to….** `Deckard: Copy to…`, and **Copy instead of moving** in Move
+  to…'s list, write a line, a task, a selection, or a heading's section
+  where you choose and leave it where it was, so something said in a
+  meeting can go into the note that keeps such things. The copy links to
+  the heading it came from:
+  `- The gateway is included ([[2026-11-16#Vendor sync]])`.
+
+### Changed
+
+- **A section moved out of a daily note keeps its day.** Move to… puts the
+  daily note's day first in the heading, `## 2026-11-16 Vendor sync`, when
+  the section goes to a note that is not a daily note, so it is a dated
+  heading where it lands. A heading that starts with a day already, and one
+  written at the top level of its new note, are left as written.
 
 ## 2.17.0 - 2026-11-15
 

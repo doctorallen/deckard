@@ -694,6 +694,12 @@
         "icon": "$(arrow-right)"
       },
       {
+        "command": "deckard.copyTo",
+        "title": "Copy to…",
+        "category": "Deckard",
+        "icon": "$(copy)"
+      },
+      {
         "command": "deckard.extractHeading",
         "title": "Extract Heading",
         "category": "Deckard"
@@ -1254,6 +1260,10 @@
         },
         {
           "command": "deckard.moveTo",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "deckard.copyTo",
           "when": "editorLangId == markdown"
         },
         {

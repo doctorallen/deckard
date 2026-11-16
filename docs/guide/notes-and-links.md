@@ -33,11 +33,11 @@ The new ledger ships in December.
 - [ ] Ask about the cutover next Friday
 ```
 
-- **The day.** A heading is dated when its words start with `YYYY-MM-DD`, with a time of day after it if you like, `10:00`. A day written later in the heading, or one no calendar has, dates nothing.
+- **The day.** A heading is dated when its words start with `YYYY-MM-DD`, with a time of day after it if you like, `10:00`. A day written later in the heading, or one no calendar has, dates nothing. The heading is `##` or deeper: a `#` heading with a day in it makes its note a [daily note](daily-notes.md).
 - **What it dates.** The heading, the headings under it, and their tasks and [questions](tasks.md#questions) are created and updated on that day, whatever the file says: `created:2026-11-16` finds the vendor sync, lists sort it by that day, and its "next Friday" counts from the meeting, not from the day the note was saved. A task's own `➕` date still wins.
 - **One note each.** A dated heading is a note of its own with every untagged heading under it, as a heading with tags is, and it carries its note's tags, so each meeting is one card on `#project/atlas`'s page.
 - **Where the description stops.** What is written outside the dated headings describes the project: a [hub note](search-pages.md#hub-notes) is drawn on its tag's page without them, and they are listed below it with the tag's other notes.
-- A daily note is about one day already, so a heading in it that starts with another day is an ordinary heading.
+- A daily note is about one day already, so a heading in it that starts with another day is an ordinary heading. A section [moved out of a daily note](organizing.md#moving-a-section) takes the day into its heading.
 
 ## Markdown format
 

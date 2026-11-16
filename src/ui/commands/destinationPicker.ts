@@ -20,7 +20,9 @@ export type Destination =
   | { kind: 'heading'; filePath: string; section: Section }
   | { kind: 'note'; filePath: string }
   | { kind: 'today' }
-  | { kind: 'newNote' };
+  | { kind: 'newNote' }
+  /** Not a place: the list's other way of going there, as Move to…'s Copy instead is. */
+  | { kind: 'otherWay' };
 
 /** A picker row, and the place it stands for; separators carry none. */
 export interface DestinationItem extends vscode.QuickPickItem {
@@ -40,6 +42,12 @@ export interface DestinationOptions {
    * this section; their headings are not listed again under the headings.
    */
   mentioned?: readonly MentionedPlace[];
+  /**
+   * A row that changes how the thing goes rather than where, such as Move
+   * to…'s **Copy instead of moving**: chosen, the list is asked again the
+   * other way. Listed after New note… and Today's note.
+   */
+  otherWay?: { label: string; description: string };
   now?: number;
 }
 
@@ -48,9 +56,29 @@ const DAY_ICON = '$(calendar)';
 /** The separator above the places a moved section mentions. */
 export const MENTIONED_GROUP = 'Mentioned in this section';
 
+/** The rows that are not headings: New note…, Today's note, and the other way of going, as each is offered. */
+function createOfferedItems(options: DestinationOptions): DestinationItem[] {
+  const items: DestinationItem[] = [];
+  if (options.newNote) {
+    items.push({ label: '$(new-file) New note…', destination: { kind: 'newNote' } });
+  }
+  if (options.today) {
+    items.push({
+      label: `${DAY_ICON} Today’s note`,
+      description: options.today.fileName,
+      destination: { kind: 'today' },
+    });
+  }
+  if (options.otherWay) {
+    items.push({ ...options.otherWay, destination: { kind: 'otherWay' } });
+  }
+  return items;
+}
+
 /**
  * The list: the places a moved section mentions, when there are any, then
- * New note… and Today's note when offered, then the headings used last,
+ * New note… and Today's note when offered, and the other way of going
+ * when there is one, then the headings used last,
  * newest first, then every heading, from the notes opened most and most
  * lately, then the notes updated last.
  */
@@ -66,22 +94,14 @@ export function buildDestinationItems(
 
   const mentioned = (options.mentioned ?? []).filter((place) => !place.section || !excluded(place.section));
   const mentionedIds = new Set(mentioned.flatMap((place) => place.section?.id ?? []));
+  const offered = createOfferedItems(options);
   if (mentioned.length > 0) {
     items.push(...createMentionedItems(index, mentioned));
-    if (options.newNote || options.today) {
+    if (offered.length > 0) {
       items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
     }
   }
-  if (options.newNote) {
-    items.push({ label: '$(new-file) New note…', destination: { kind: 'newNote' } });
-  }
-  if (options.today) {
-    items.push({
-      label: `${DAY_ICON} Today’s note`,
-      description: options.today.fileName,
-      destination: { kind: 'today' },
-    });
-  }
+  items.push(...offered);
   const listed = new Set<string>();
   const recent = (preferences.recentHeadings ?? []).flatMap((pin) => {
     const file = index.files.get(pin.filePath);

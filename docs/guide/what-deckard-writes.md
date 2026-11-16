@@ -20,7 +20,8 @@ Every change Deckard makes to your files, what starts it, and the setting that c
 | `[[links]]` rewritten to a renamed note or heading | Renaming a note in the Explorer, or `Deckard: Rename Heading` | |
 | A mention turned into a link | **Link mentions** on a note's first line, or **Link** in the Context view | `deckard.links.style`: `[[Name]]` or `[Name](path.md)` |
 | A section moved out to a new note, leaving a link | `Deckard: Extract Heading` | |
-| A task, lines, or a heading's section moved under another heading or to the end of a note, leaving a link | **Move to…** | `deckard.links.style`, for a section's link |
+| A task, lines, or a heading's section moved under another heading or to the end of a note, leaving a link; a section that leaves a daily note with the day put first in its heading | **Move to…** | `deckard.links.style`, for a section's link |
+| A copy of a task, lines, or a heading's section under another heading or at the end of a note, with a link to where it came from | **Copy to…** | `deckard.links.style` |
 | The front-matter keys you changed, set or cleared, every other line left as written, as one change | **Save changes** in the [form that edits a typed note's fields](databases.md#editing-fields), from **Edit fields…** or `Deckard: Edit Fields…` | Not written when the front matter changed since the form opened |
 | A field's key, or a select's option, renamed in every note that writes it, and in the type's table | **Rename field everywhere…** or **Rename option everywhere…** on a [type's rows](databases.md#a-types-rows) | Shown first |
 | A field's value, or a type's Kind cell, changed in place | A quick fix on a [marked field](databases.md#in-the-editor), such as **Change to @omar (Omar Haddad)** or **Allow Area or System** | `deckard.editor.linkDiagnostics` |

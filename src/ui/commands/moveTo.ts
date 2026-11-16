@@ -8,7 +8,7 @@ import { getLinkableNoteFileName } from '../../domain/markdown/noteNames';
 import { parseTaskDraft } from '../../domain/markdown/taskDraft';
 import { STATUS_CHARACTER } from '../../domain/markdown/lineShapes';
 import { readEntityNamespaceAliases, readTaskStatusOptions } from './parseSettings';
-import { stripTags } from '../../domain/markdown/parser';
+import { findDailyNoteDate, findFileDailyNoteDate, isDailyNoteFile, stripTags } from '../../domain/markdown/parser';
 import { PreferenceServices } from '../../core/storage/preferences';
 import { noteTitle } from '../../domain/index/backlinks';
 import type { IndexReader } from '../../core/workspace/indexReader';
@@ -39,6 +39,11 @@ import { PreferencesReader } from '../../core/storage/preferencesRepository';
  * What moves is read from the note as it is, and read again once the
  * destination is chosen; if it changed in between, nothing is written. The
  * move is one write that Undo takes back, in both notes.
+ *
+ * Deckard: Copy to… is the same command the other way: the lines are
+ * written where the reader chooses, with a link to where they came from,
+ * and stay where they were. Move to…'s list offers it as **Copy instead of
+ * moving** (docs/implementation/49-meetings-and-types.md).
  */
 
 /** One block to move, from one note. */
@@ -58,16 +63,20 @@ const REFUSALS: Readonly<Record<MoveRefusalReason, string>> = {
   splitFence: 'The selection ends inside a code block. Select the whole block to move it.',
 };
 
-/** Move to… from the editor: the line, item, or selection under the cursor. */
+/**
+ * Move to… from the editor: the line, item, or selection under the cursor;
+ * with `copy`, Copy to…, which starts the list the other way.
+ */
 export async function moveToCommand(
   indexer: IndexReader<vscode.Uri>,
   preferences: MovePreferences,
   writes: TaskWrites,
+  { copy = false }: { copy?: boolean } = {},
 ): Promise<void> {
   await indexer.ready;
   const editor = vscode.window.activeTextEditor;
   if (!editor || !indexer.isNotesFile(editor.document.uri)) {
-    void vscode.window.showInformationMessage('Open a note in your notes folder to move lines from it.');
+    void vscode.window.showInformationMessage(`Open a note in your notes folder to ${copy ? 'copy' : 'move'} lines from it.`);
     return;
   }
   const { uri } = editor.document;
@@ -79,7 +88,9 @@ export async function moveToCommand(
       sourcePath: filePath,
       aliases: readEntityNamespaceAliases(uri),
     });
-    await moveBlocks(indexer, preferences, writes, { sources: [{ uri, filePath, block: section }], mentioned });
+    // A section that leaves a daily note takes the note's day into its heading.
+    const day = findFileDailyNoteDate(indexer.parse(uri, editor.document.getText()));
+    await moveBlocks(indexer, preferences, writes, { sources: [{ uri, filePath, block: section, day }], mentioned, copy });
     return;
   }
   const read = readMoveBlock(lines, editor.selection, readTaskStatusOptions(uri));
@@ -87,7 +98,7 @@ export async function moveToCommand(
     void vscode.window.showInformationMessage(REFUSALS[read.refused]);
     return;
   }
-  await moveBlocks(indexer, preferences, writes, { sources: [{ uri, filePath, block: read }] });
+  await moveBlocks(indexer, preferences, writes, { sources: [{ uri, filePath, block: read }], copy });
 }
 
 /**
@@ -116,60 +127,89 @@ interface ResolvedTarget extends MoveTarget<vscode.Uri> {
   recent?: PinnedNote;
 }
 
+/** What is moved, the places it mentions, and whether it is copied rather than moved. */
+interface MoveRequest {
+  sources: readonly MoveSource[];
+  mentioned?: readonly MentionedPlace[];
+  copy?: boolean;
+}
+
 /**
- * Moves the blocks where the reader chooses: the destination is picked and
- * found again here, the move is MoveService's, and what moved is said here.
- * A section moved is offered the places it mentions first.
+ * Moves the blocks where the reader chooses, or copies them there: the
+ * destination is picked and found again here, the move is MoveService's,
+ * and what moved is said here. A section moved is offered the places it
+ * mentions first.
  */
 async function moveBlocks(
   indexer: IndexReader<vscode.Uri>,
   preferences: MovePreferences,
   writes: TaskWrites,
-  { sources, mentioned = [] }: { sources: readonly MoveSource[]; mentioned?: readonly MentionedPlace[] },
+  { sources, mentioned = [], copy = false }: MoveRequest,
 ): Promise<void> {
-  const destination = await pickMoveDestination(indexer, preferences.reader, sources, mentioned);
+  const destination = await pickMoveDestination(indexer, preferences.reader, { sources, mentioned, copy });
   if (!destination) {
+    return;
+  }
+  if (destination.kind === 'otherWay') {
+    // Asked again the other way: the list is the same, and says which it is.
+    await moveBlocks(indexer, preferences, writes, { sources, mentioned, copy: !copy });
     return;
   }
   const target = await resolveTarget(indexer, destination, sources);
   if (!target) {
     return;
   }
-  const result = await writes.moves.move(sources, target);
+  const result = await writes.moves.move(sources, target, { copy });
   if (result.kind === 'stale') {
-    void reportStaleMove();
+    void reportStaleMove(copy);
     return;
   }
   if (result.kind === 'failed') {
-    void reportFailure({ outcome: 'Deckard could not move it, so nothing was written.' });
+    void reportFailure({ outcome: `Deckard could not ${copy ? 'copy' : 'move'} it, so nothing was written.` });
     return;
   }
   if (target.recent) {
     await preferences.usage.recordRecentHeading(target.recent);
   }
-  announceMove(sources, target, result.created, result.handle);
+  announceMove(sources, target, { created: result.created, copy }, result.handle);
+}
+
+/** The words Move to…'s list is asked in, moving or copying, for lines or for a section. */
+export function describeMovePicker(copy: boolean, section: boolean): Pick<
+  Parameters<typeof pickDestination>[2],
+  'title' | 'placeholder' | 'otherWay'
+> {
+  const what = section ? 'the section' : 'it';
+  const places = section ? 'under a heading, at the end of a note, or a new note' : 'a heading, today’s note, or a new note';
+  return copy
+    ? {
+        title: 'Deckard: Copy to…',
+        placeholder: `Choose where the copy of ${what} goes: ${places}`,
+        otherWay: { label: '$(arrow-right) Move instead of copying', description: 'leaves a link where it was' },
+      }
+    : {
+        title: 'Deckard: Move to…',
+        placeholder: `Choose where ${what} goes: ${places}`,
+        otherWay: { label: '$(copy) Copy instead of moving', description: 'leaves it where it is' },
+      };
 }
 
 /**
  * Asks where the blocks go: a heading, today's note, or a new note, or for
  * a section, first the places it mentions; never a heading inside what
- * moves or one whose lines hold it.
+ * moves or one whose lines hold it. The list also offers to go the other
+ * way, copying what it would move or moving what it would copy.
  */
 function pickMoveDestination(
   indexer: IndexReader<vscode.Uri>,
   preferences: Pick<PreferencesReader, 'value'>,
-  sources: readonly MoveSource[],
-  mentioned: readonly MentionedPlace[],
+  { sources, mentioned = [], copy = false }: MoveRequest,
 ): Promise<Destination | undefined> {
   const index = indexer.getSnapshot();
   const todayName = getPeriodicNote('day', new Date(), readWeekStart()).name;
   const sourceFiles = new Set(sources.map((source) => source.filePath));
-  const section = isSectionMove(sources);
   return pickDestination(index, preferences, {
-    title: 'Deckard: Move to…',
-    placeholder: section
-      ? 'Choose where the section goes: under a heading, at the end of a note, or a new note'
-      : 'Choose where it goes: a heading, today’s note, or a new note',
+    ...describeMovePicker(copy, isSectionMove(sources)),
     today: { fileName: `${todayName}.md` },
     newNote: true,
     mentioned,
@@ -202,21 +242,25 @@ async function resolveTarget(
     case 'newNote':
       return resolveNewNote(indexer, sources);
     case 'note':
-      return resolveNote(destination.filePath);
+      return resolveNote(indexer, destination.filePath);
     case 'heading':
       return resolveSection(indexer, destination, isSectionMove(sources));
+    case 'otherWay':
+      // Not a place: moveBlocks asks again before it gets here.
+      return undefined;
   }
 }
 
 /** A note a section mentions, at its end. */
-async function resolveNote(filePath: string): Promise<ResolvedTarget | undefined> {
+async function resolveNote(indexer: IndexReader<vscode.Uri>, filePath: string): Promise<ResolvedTarget | undefined> {
   const uri = await resolveSourceUri(filePath);
   if (!uri || !(await fileExists(uri))) {
     void reportFailure({ outcome: `Deckard could not find ${filePath}, so nothing was moved.` });
     return undefined;
   }
   const title = noteTitle(filePath);
-  return { uri, link: title, name: title };
+  const file = indexer.getSnapshot().files.get(filePath);
+  return { uri, link: title, name: title, daily: file !== undefined && isDailyNoteFile(file) };
 }
 
 /** Today's note, made if it is missing, in the folder the reader picks. */
@@ -227,7 +271,7 @@ async function resolveToday(): Promise<ResolvedTarget | undefined> {
   }
   const uri = await ensureDailyNote(folder);
   const title = noteTitle(uri.path);
-  return { uri, link: title, name: title };
+  return { uri, link: title, name: title, daily: true };
 }
 
 /**
@@ -263,7 +307,14 @@ async function resolveNewNote(
   }
   const title = noteTitle(uri.path);
   // The move writes the new note in its source's line ending.
-  return { uri, link: title, name: title, create: section ? '' : `# ${name.trim()}\n\n` };
+  return {
+    uri,
+    link: title,
+    name: title,
+    create: section ? '' : `# ${name.trim()}\n\n`,
+    // Named for a day, the new note is a daily note.
+    daily: findDailyNoteDate(indexer.getFilePath(uri), []) !== undefined,
+  };
 }
 
 /**
@@ -282,12 +333,8 @@ async function resolveSection(
     return undefined;
   }
   const document = await vscode.workspace.openTextDocument(uri);
-  const found = readSectionTarget(
-    indexer.getSnapshot(),
-    destination.filePath,
-    destination.section,
-    indexer.parse(uri, document.getText()).sections,
-  );
+  const live = indexer.parse(uri, document.getText());
+  const found = readSectionTarget(indexer.getSnapshot(), destination.filePath, destination.section, live.sections);
   const heading = stripTags(destination.section.heading).trim() || destination.section.heading;
   if (!found) {
     void reportFailure({
@@ -303,6 +350,7 @@ async function resolveSection(
       ? { startLine: found.section.startLine, endLine: found.section.endLine, headingLevel: found.section.headingLevel }
       : { startLine: found.section.startLine, endLine: found.section.bodyEndLine },
     recent: found.recent,
+    daily: isDailyNoteFile(live),
   };
 }
 
@@ -371,25 +419,25 @@ async function newNoteUri(
   return fileName && folder ? vscode.Uri.joinPath(indexer.getNotesFolderUri(folder), fileName) : undefined;
 }
 
-/** Says nothing was moved because the lines changed while the destination was being chosen. */
-function reportStaleMove(): Thenable<unknown> {
+/** Says nothing was moved, or copied, because the lines changed while the destination was being chosen. */
+function reportStaleMove(copy = false): Thenable<unknown> {
   return reportFailure({
-    outcome: 'Deckard did not move it: the lines changed while you were choosing where.',
+    outcome: `Deckard did not ${copy ? 'copy' : 'move'} it: the lines changed while you were choosing where.`,
   });
 }
 
-/** Says what moved and where, with Open and Undo. */
+/** Says what moved, or was copied, and where, with Open and Undo. */
 function announceMove(
   sources: readonly MoveSource[],
   target: ResolvedTarget,
-  created: boolean,
+  { created, copy }: { created: boolean; copy: boolean },
   handle: WriteHandle,
 ): void {
   const what = describeMoved(sources, created);
   const where = created ? `a new note, ${target.name}` : target.name;
   handle.offerUndo(
-    `Moved ${what} to ${where}.`,
-    { guard: 'latest', done: 'Put it back.' },
+    `${copy ? 'Copied' : 'Moved'} ${what} to ${where}.`,
+    { guard: 'latest', done: copy ? 'Took the copy out.' : 'Put it back.' },
     {
       label: 'Open',
       run: async () => {
