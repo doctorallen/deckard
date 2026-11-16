@@ -59,6 +59,19 @@ A new daily, weekly, or monthly note starts from a file in the templates folder 
 
 - Tasks come from **every earlier daily note**, oldest first, within the last week. Other notes are left alone.
 - Tasks are written exactly as they were, in order, under a **Carried over** heading at the end of today's note, one level below its first heading (`## Carried over` under `# {date}`). A second rollover adds to it.
+- **A task keeps its meeting.** A task that was written under a heading is carried under that heading, written again one level below Carried over with its tags, so the task is still about the project and the person. The line under it links to the heading the task was first written under, and stays the same however many days the task is carried:
+
+  ```markdown
+  ## Carried over
+
+  - [ ] Book travel
+
+  ### Vendor sync #project/borealis @dana
+  ([[2026-11-13#Vendor sync]])
+  - [ ] Send the quote
+  ```
+
+  The heading is the nearest one above the task with tags of its own, with the tags of the headings above it added; where none has tags, the outermost below the note's title. Tasks under the note's title alone go under Carried over itself, above the headings. The link is written as `deckard.links.style` says. With `move`, a carried heading left with nothing but its link is taken out of the earlier note.
 - [Steps](tasks.md#breaking-a-task-into-steps) travel with their task. `move` takes everything under the task; `migrate` copies its open steps and marks each line it leaves. A step whose task is not carried comes forward on its own at the top level.
 - A `[>]` line is not a task, so it stops counting as open, and its link gives today's note a backlink.
 - A task is carried only if its line is unchanged since indexing and not already in today's note. In `migrate` mode, a task in several notes is carried once, from the newest. Only a note Deckard creates rolls tasks in.

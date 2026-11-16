@@ -24,6 +24,11 @@ suite('Copy to… and dated moves', () => {
       '([[2026-11-16#Vendor sync]])',
       '- Notes',
     ]);
+    assert.deepStrictEqual(
+      sectionWithSourceLink(['## Vendor sync', 'The gateway is included.'], '[[2026-11-16#Vendor sync]]'),
+      ['## Vendor sync', '([[2026-11-16#Vendor sync]])', '', 'The gateway is included.'],
+      'a blank line keeps the link out of the paragraph under it',
+    );
   });
 
   test('puts the day before a heading’s words, once', () => {

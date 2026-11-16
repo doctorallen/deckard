@@ -52,9 +52,16 @@ export function withSourceLink(lines: readonly string[], link: string): string[]
 /**
  * A copied section with the link to the one it was copied from: on a line
  * of its own under its heading, so the heading keeps its words and the
- * links that name it.
+ * links that name it. A blank line follows it unless a list or a blank
+ * line does, since any other line would be read as more of the link's
+ * paragraph.
  */
 export function sectionWithSourceLink(lines: readonly string[], link: string): string[] {
   const [heading = '', ...rest] = lines;
-  return [heading, `(${link})`, ...rest];
+  const next = rest[0] ?? '';
+  const gap = next.trim() === '' || LIST_ITEM.test(next) ? [] : [''];
+  return [heading, `(${link})`, ...gap, ...rest];
 }
+
+/** A list item's line. */
+const LIST_ITEM = /^\s*(?:[-*+]|\d{1,9}[.)])\s/;

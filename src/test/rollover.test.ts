@@ -9,6 +9,7 @@ import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { applyRollover, describeRollover, placeCarriedOver, ROLLOVER_LOOKBACK_DAYS } from '../ui/commands/rollover';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { planRollover } from '../domain/notes/rolloverPlan';
+import type { CarriedGroup } from '../domain/notes/carriedHeadings';
 import { markMigrated } from '../domain/markdown/taskLineEdits';
 import { WorkspaceIndex } from '../domain/model';
 import { useDiskWorkspace } from './diskWorkspace';
@@ -36,6 +37,19 @@ const yesterday = [
   'It rained.',
   '',
 ].join('\n');
+
+/** Today's note with lines, or groups, carried into it as `placeCarriedOver` places them. */
+function carriedInto(content: string, carried: readonly string[] | readonly CarriedGroup[]): string {
+  const groups = carried.every((entry) => typeof entry === 'string')
+    ? [{ lines: carried as string[] }]
+    : (carried as CarriedGroup[]);
+  const placed = placeCarriedOver(content, groups);
+  const eol = content.includes('\r\n') ? '\r\n' : '\n';
+  const lines = content.split(/\r?\n/);
+  const before = [...lines.slice(0, placed.start.line), lines[placed.start.line].slice(0, placed.start.character)].join(eol);
+  const after = [lines[placed.end.line].slice(placed.end.character), ...lines.slice(placed.end.line + 1)].join(eol);
+  return `${before}${placed.text}${after}`;
+}
 
 suite('Task rollover', () => {
   // In the extension host the suite runs against VS Code; under the e2e
@@ -317,6 +331,52 @@ suite('Task rollover', () => {
     await deleteTemporaryRoot(root);
   });
 
+  test('a task written under a meeting is carried under it, with a link to the meeting', async () => {
+    const root = await createTemporaryRoot();
+    const fromUri = vscode.Uri.joinPath(root, '2026-11-13.md');
+    const todayUri = vscode.Uri.joinPath(root, '2026-11-16.md');
+    const friday = [
+      '# 2026-11-13',
+      '',
+      '- [ ] Book travel',
+      '',
+      '## Vendor sync #project/borealis @dana',
+      '',
+      'The gateway is included.',
+      '',
+      '- [ ] Send the quote',
+      '',
+    ].join('\n');
+    await write(fromUri, friday);
+    await write(todayUri, '# 2026-11-16\n\n');
+    const plan = planRollover(indexOf({ [fromUri.fsPath]: friday }), '2026-11-16');
+    assert.ok(plan);
+
+    const result = await applyRollover(plan, todayUri, 'move', { history });
+    assert.strictEqual(result?.carried, 2);
+    assert.strictEqual(
+      await read(todayUri),
+      [
+        '# 2026-11-16',
+        '',
+        '## Carried over',
+        '',
+        '- [ ] Book travel',
+        '',
+        '### Vendor sync #project/borealis @dana',
+        '([[2026-11-13#Vendor sync]])',
+        '- [ ] Send the quote',
+        '',
+      ].join('\n'),
+      'the heading with its tags, so the task is still about the project and the person',
+    );
+    assert.strictEqual(
+      await read(fromUri),
+      ['# 2026-11-13', '', '', '## Vendor sync #project/borealis @dana', '', 'The gateway is included.', '', ''].join('\n'),
+      'the meeting stays where it was held',
+    );
+  });
+
   test('an Undo puts a moved task back in both notes or neither', async () => {
     const root = await createTemporaryRoot();
     const fromUri = vscode.Uri.joinPath(root, '2026-09-18.md');
@@ -410,16 +470,21 @@ suite('Task rollover', () => {
   });
 
   test('adds to Carried over when it is there, and follows the note\'s heading level', () => {
-    assert.deepStrictEqual(
-      placeCarriedOver('# 2026-09-25\n\nMorning.\n\n## Carried over\n\n- [ ] One\n\n## Evening\n', ['- [ ] Two']),
-      { start: { line: 7, character: 0 }, end: { line: 7, character: 0 }, text: '- [ ] Two\n' },
+    assert.strictEqual(
+      carriedInto('# 2026-09-25\n\nMorning.\n\n## Carried over\n\n- [ ] One\n\n## Evening\n', ['- [ ] Two']),
+      '# 2026-09-25\n\nMorning.\n\n## Carried over\n\n- [ ] One\n- [ ] Two\n\n## Evening\n',
       'after what the heading already holds, before the next heading',
     );
     assert.strictEqual(
-      placeCarriedOver('## 2026-09-25\n', ['- [ ] Two']).text,
+      placeCarriedOver('## 2026-09-25\n', [{ lines: ['- [ ] Two'] }]).text,
       '\n\n### Carried over\n\n- [ ] Two\n',
     );
-    assert.strictEqual(placeCarriedOver('', ['- [ ] Two']).text, '## Carried over\n\n- [ ] Two\n');
+    assert.strictEqual(placeCarriedOver('', [{ lines: ['- [ ] Two'] }]).text, '## Carried over\n\n- [ ] Two\n');
+    assert.strictEqual(
+      carriedInto('# 2026-09-25\r\n\r\n## Carried over\r\n', ['- [ ] Two']),
+      '# 2026-09-25\r\n\r\n## Carried over\r\n\r\n- [ ] Two\r\n',
+      'in the note\'s line endings',
+    );
     assert.strictEqual(
       markMigrated('- [ ] Ship it 📅 2026-09-20 ^ship', 3, '2026-09-25'),
       '- [>] Ship it 📅 2026-09-20 → [[2026-09-25]] ^ship',
@@ -428,25 +493,46 @@ suite('Task rollover', () => {
   });
 
   test('reads Carried over\'s section as the parser does: a bare # ends it, and code does not', () => {
-    assert.deepStrictEqual(
-      placeCarriedOver('# 2026-09-25\n\n## Carried over\n\n- [ ] One\n\n#\n\nAfter.\n', ['- [ ] Two']),
-      { start: { line: 5, character: 0 }, end: { line: 5, character: 0 }, text: '- [ ] Two\n' },
+    assert.strictEqual(
+      carriedInto('# 2026-09-25\n\n## Carried over\n\n- [ ] One\n\n#\n\nAfter.\n', ['- [ ] Two']),
+      '# 2026-09-25\n\n## Carried over\n\n- [ ] One\n- [ ] Two\n\n#\n\nAfter.\n',
       'before the bare # that ends the section',
     );
-    assert.deepStrictEqual(
-      placeCarriedOver('# 2026-09-25\n\n## Carried over\n\n- [ ] One\n\n```\n# not a heading\n```\n', ['- [ ] Two']),
-      { start: { line: 9, character: 0 }, end: { line: 9, character: 0 }, text: '\n- [ ] Two\n' },
+    assert.strictEqual(
+      carriedInto('# 2026-09-25\n\n## Carried over\n\n- [ ] One\n\n```\n# not a heading\n```\n', ['- [ ] Two']),
+      '# 2026-09-25\n\n## Carried over\n\n- [ ] One\n\n```\n# not a heading\n```\n\n- [ ] Two\n',
       'after the code block, which is part of the section',
     );
     assert.strictEqual(
-      placeCarriedOver('# 2026-09-25\n\n```\n## Carried over\n```\n', ['- [ ] Two']).text,
+      placeCarriedOver('# 2026-09-25\n\n```\n## Carried over\n```\n', [{ lines: ['- [ ] Two'] }]).text,
       '\n\n## Carried over\n\n- [ ] Two\n',
       'a Carried over heading in code is not one',
     );
     assert.strictEqual(
-      placeCarriedOver('```\n# Example\n```\n## 2026-09-25\n', ['- [ ] Two']).text,
+      placeCarriedOver('```\n# Example\n```\n## 2026-09-25\n', [{ lines: ['- [ ] Two'] }]).text,
       '\n\n### Carried over\n\n- [ ] Two\n',
       'the first heading outside code sets the level',
+    );
+  });
+
+  test('writes tasks that were under a heading under that heading, with its link, below Carried over\'s own', () => {
+    const sync = { heading: 'Vendor sync #project/borealis @dana', link: '([[2026-11-13#Vendor sync]])' };
+    const fresh = carriedInto('# 2026-11-16\n', [
+      { lines: ['- [ ] Book travel'] },
+      { under: sync, lines: ['- [ ] Send the quote', '  - [ ] Ask for the gateway price'] },
+    ]);
+    assert.strictEqual(
+      fresh,
+      '# 2026-11-16\n\n## Carried over\n\n- [ ] Book travel\n\n### Vendor sync #project/borealis @dana\n([[2026-11-13#Vendor sync]])\n- [ ] Send the quote\n  - [ ] Ask for the gateway price\n',
+    );
+    // A second rollover adds to the heading that is there, and to Carried over's own lines above it.
+    assert.strictEqual(
+      carriedInto(`${fresh}\n## Evening\n`, [
+        { lines: ['- [ ] Pay rent'] },
+        { under: sync, lines: ['- [ ] Confirm the dates'] },
+        { under: { heading: 'Notes', link: '([[2026-11-14#Notes]])' }, lines: ['- [ ] File the survey'] },
+      ]),
+      '# 2026-11-16\n\n## Carried over\n\n- [ ] Book travel\n- [ ] Pay rent\n\n### Vendor sync #project/borealis @dana\n([[2026-11-13#Vendor sync]])\n- [ ] Send the quote\n  - [ ] Ask for the gateway price\n- [ ] Confirm the dates\n\n### Notes\n([[2026-11-14#Notes]])\n- [ ] File the survey\n\n## Evening\n',
     );
   });
 

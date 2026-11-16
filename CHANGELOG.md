@@ -28,6 +28,13 @@
   the section goes to a note that is not a daily note, so it is a dated
   heading where it lands. A heading that starts with a day already, and one
   written at the top level of its new note, are left as written.
+- **Carried tasks keep their meeting.** The rollover writes a task that
+  was under a heading, such as `## Vendor sync #project/borealis @dana`,
+  under that heading again, one level below **Carried over**, with its tags
+  and a link to the heading it was first written under:
+  `([[2026-11-13#Vendor sync]])`. The task is still listed for the project
+  and the person, and the link leads back to the meeting however many days
+  the task waits. Tasks under no heading go under Carried over as before.
 
 ## 2.17.0 - 2026-11-15
 

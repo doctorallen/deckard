@@ -1,5 +1,7 @@
 import { findLastDescendantLine } from '../markdown/taskSteps';
 import type { Task } from '../model';
+import type { NoteLinkStyle } from '../markdown/wikiLinks';
+import { type CarriedGroup, type CarriedHeading, findCarriedHeading, findCarriedLinkLine } from './carriedHeadings';
 import type { RolloverMode } from './rolloverPlan';
 import { markMigrated } from '../markdown/taskLineEdits';
 
@@ -35,8 +37,11 @@ export interface CarriedTasks {
   carried: Task[];
   /** Tasks left behind: already in today's note, or changed since indexing. */
   skipped: number;
-  /** The lines written under Carried over, outdented, block after block. */
-  lines: string[];
+  /**
+   * What is written under Carried over: first the tasks that were under no
+   * heading, then those of each heading, in the order they are carried.
+   */
+  groups: CarriedGroup[];
   /** The marks a migrate leaves, or the blocks a move takes out, in order. */
   sourceEdits: SourceEdit[];
   /** How many notes gave a task up. */
@@ -48,6 +53,10 @@ export interface CarryOptions {
   mode: Exclude<RolloverMode, 'off'>;
   /** Today's note's name, which a migrated line links to. */
   target: string;
+  /** Today's note's path, which a carried heading's link is written from; absent, tasks are carried without their headings. */
+  todayPath?: string;
+  /** How that link is written; a wiki link when absent. */
+  linkStyle?: NoteLinkStyle;
 }
 
 /** A task with the steps written under it that go along, and the lines they fill. */
@@ -58,6 +67,8 @@ interface CarriedBlock {
   first: number;
   last: number;
   lines: string[];
+  /** The heading it is carried under, when it was written under one. */
+  under?: CarriedHeading;
 }
 
 /**
@@ -107,13 +118,13 @@ export function planCarriedTasks(
   });
   const carried = kept.flatMap((group) => [group.root, ...group.steps]);
   if (carried.length === 0) {
-    return { carried, skipped, lines: [], sourceEdits: [], notes: 0 };
+    return { carried, skipped, groups: [], sourceEdits: [], notes: 0 };
   }
-  const blocks = withoutNestedBlocks(kept.map((group) => toBlock(group, sources, options.mode)));
+  const blocks = withoutNestedBlocks(kept.map((group) => toBlock(group, sources, options)));
   return {
     carried,
     skipped,
-    lines: blocks.flatMap((block) => block.lines),
+    groups: groupByHeading(blocks),
     sourceEdits:
       options.mode === 'migrate'
         ? migrateMarks(carried, options.target)
@@ -158,10 +169,14 @@ function groupSteps(tasks: readonly Task[]): { root: Task; steps: Task[] }[] {
 function toBlock(
   group: { root: Task; steps: Task[] },
   sources: ReadonlyMap<string, readonly string[]>,
-  mode: Exclude<RolloverMode, 'off'>,
+  { mode, todayPath, linkStyle = 'wiki' }: CarryOptions,
 ): CarriedBlock {
   const lines = sources.get(group.root.filePath) ?? [];
   const first = group.root.lineNumber - 1;
+  const under =
+    todayPath === undefined
+      ? undefined
+      : findCarriedHeading(lines, first, { filePath: group.root.filePath, todayPath, style: linkStyle });
   const last = mode === 'move' ? findLastDescendantLine(lines, first) : first;
   const written =
     mode === 'move'
@@ -172,7 +187,30 @@ function toBlock(
             .sort((left, right) => left.lineNumber - right.lineNumber)
             .map((step) => step.sourceLineText),
         ];
-  return { ...group, first, last, lines: outdent(written) };
+  return { ...group, first, last, lines: outdent(written), under };
+}
+
+/**
+ * The blocks as they are written under Carried over: those under no
+ * heading first, then each heading's, a heading's blocks together however
+ * the plan orders them. Two headings are one when their words and their
+ * links are the same, so a meeting carried twice is one heading, and two
+ * days' `Notes` are two.
+ */
+function groupByHeading(blocks: readonly CarriedBlock[]): CarriedGroup[] {
+  const loose: CarriedGroup = { lines: [] };
+  const groups = new Map<string, CarriedGroup>();
+  for (const block of blocks) {
+    if (!block.under) {
+      loose.lines.push(...block.lines);
+      continue;
+    }
+    const key = `${block.under.heading}\n${block.under.link}`;
+    const group = groups.get(key) ?? { under: { heading: block.under.heading, link: block.under.link }, lines: [] };
+    group.lines.push(...block.lines);
+    groups.set(key, group);
+  }
+  return [...(loose.lines.length > 0 ? [loose] : []), ...groups.values()];
 }
 
 /**
@@ -211,6 +249,10 @@ function migrateMarks(carried: readonly Task[], target: string): SourceEdit[] {
  * another ends, go as one stretch: at the end of a note with no final line
  * break, the last block takes the break before it, which the block above
  * already takes, and an editor refuses two changes that overlap.
+ *
+ * A heading under Carried over that a move leaves with nothing under it
+ * but its link goes too, with the blank lines above it: it was written by
+ * an earlier rollover to hold the tasks that have now gone on.
  */
 function moveDeletions(
   blocks: readonly CarriedBlock[],
@@ -221,6 +263,12 @@ function moveDeletions(
     const spans = spansBy.get(block.root.filePath) ?? [];
     spans.push({ first: block.first, last: block.last });
     spansBy.set(block.root.filePath, spans);
+  }
+  for (const [filePath, spans] of spansBy) {
+    const carried = blocks.flatMap((block) =>
+      block.root.filePath === filePath && block.under?.carried ? [block.under.carried] : [],
+    );
+    spans.push(...emptiedHeadings(carried, spans, sources.get(filePath) ?? []));
   }
   return [...spansBy].flatMap(([filePath, spans]) => {
     const merged: { first: number; last: number }[] = [];
@@ -233,6 +281,37 @@ function moveDeletions(
       }
     }
     return merged.map((span) => moveDeletion(filePath, span, sources.get(filePath) ?? []));
+  });
+}
+
+/**
+ * The headings under Carried over that the spans taken out leave empty:
+ * each from the blank lines above it to its last line, when every line
+ * under it that has text is taken, its link line aside.
+ */
+function emptiedHeadings(
+  carried: readonly { first: number; last: number }[],
+  spans: readonly { first: number; last: number }[],
+  lines: readonly string[],
+): { first: number; last: number }[] {
+  const taken = (line: number): boolean => spans.some((span) => line >= span.first && line <= span.last);
+  const seen = new Set<number>();
+  return carried.flatMap((section) => {
+    if (seen.has(section.first)) {
+      return [];
+    }
+    seen.add(section.first);
+    const link = findCarriedLinkLine(lines, section.first);
+    for (let line = section.first + 1; line <= section.last; line += 1) {
+      if (lines[line].trim() !== '' && line !== link && !taken(line)) {
+        return [];
+      }
+    }
+    let first = section.first;
+    while (first > 0 && lines[first - 1].trim() === '') {
+      first -= 1;
+    }
+    return [{ first, last: section.last }];
   });
 }
 

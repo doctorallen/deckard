@@ -57,9 +57,10 @@ class FakeNotes implements RolloverNotes<ResourceUri, string> {
 }
 
 /** Where the carried lines go: appended at the end of today's note, which is all these tests need. */
-const appendAtEnd: PlaceCarriedOver = (content, lines) => {
+const appendAtEnd: PlaceCarriedOver = (content, groups) => {
   const noteLines = content.split('\n');
   const end = { line: noteLines.length - 1, character: noteLines[noteLines.length - 1].length };
+  const lines = groups.flatMap((group) => [...(group.under ? [`### ${group.under.heading}`, group.under.link] : []), ...group.lines]);
   return { start: end, end, text: lines.join('\n') };
 };
 

@@ -22,7 +22,7 @@ Run `Deckard: Extract Heading` with the cursor in a heading section. Deckard mov
 
 `Deckard: Copy to…` writes the same lines in the place you choose and leaves them where they were, so something said in a meeting can go into the note that keeps such things without leaving the meeting. Move to…'s list offers it as **Copy instead of moving**, after **Today's note**, and Copy to…'s list offers **Move instead of copying**.
 
-- The copy says where it came from: a link to the heading the lines were under, after the first line, `- The gateway is included in the base price ([[2026-11-16#Vendor sync]])`. A code block or a table is copied as written, with the link on a line above it. A copied section has the link on a line under its heading.
+- The copy says where it came from: a link to the heading the lines were under, after the first line, `- The gateway is included in the base price ([[2026-11-16#Vendor sync]])`. A code block or a table is copied as written, with the link on a line above it. A copied section has the link on a line under its heading, with a blank line after it when text follows.
 - The link is written as `deckard.links.style` says for the note the copy goes to.
 - A copied task is a second task. Nothing is left behind, and **Undo** takes the copy out.
 
