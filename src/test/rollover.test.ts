@@ -349,7 +349,8 @@ suite('Task rollover', () => {
     ].join('\n');
     await write(fromUri, friday);
     await write(todayUri, '# 2026-11-16\n\n');
-    const plan = planRollover(indexOf({ [fromUri.fsPath]: friday }), '2026-11-16');
+    // Written with `/`, as an index keeps its paths, on Windows too: the link names the note by its path.
+    const plan = planRollover(indexOf({ [fromUri.fsPath.split('\\').join('/')]: friday }), '2026-11-16');
     assert.ok(plan);
 
     const result = await applyRollover(plan, todayUri, 'move', { history });

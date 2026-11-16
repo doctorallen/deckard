@@ -90,7 +90,8 @@ suite('Start a Meeting: its list and what it writes', () => {
           '# 2026-11-16\n\n- [ ] Send the depot list\n- 10:00 [[Borealis#2026-11-16 10:00 Vendor sync]]\n',
         );
         assert.strictEqual(written?.cursorLine, 8, 'the empty line under the heading, where its notes begin');
-        assert.strictEqual(written?.document.uri.path, uriOf('projects/Borealis.md').path);
+        // Windows writes the drive's letter in either case.
+        assert.strictEqual(written?.document.uri.fsPath.toLowerCase(), uriOf('projects/Borealis.md').fsPath.toLowerCase());
 
         assert.ok(await history.undo(), 'one Undo takes back both notes');
         assert.strictEqual(await read('projects/Borealis.md'), '# Borealis\nThe cold-chain tracker.\n\n## 2026-11-09 Kickoff\nTwo depots.\n');
