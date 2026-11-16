@@ -1,3 +1,5 @@
+import type { NoteLinkStyle } from '../domain/markdown/wikiLinks';
+import type { CarriedGroup } from '../domain/notes/carriedHeadings';
 import { NoteRange, planCarriedTasks } from '../domain/notes/carryForward';
 import { formatLocalDate } from '../domain/notes/periodicNotes';
 import { planRollover, RolloverMode, RolloverPlan } from '../domain/notes/rolloverPlan';
@@ -10,7 +12,8 @@ import type { ResourceUri } from '../ports/uri';
  *
  * A daily note that starts empty every morning loses what was still open the
  * night before, so the tasks are written into today's note, under Carried
- * over, as they were written yesterday, metadata and all. Moving them takes
+ * over, as they were written yesterday, metadata and all, each under the
+ * heading it was written under, with a link to it. Moving them takes
  * them out of the note they came from; migrating marks the line left behind
  * `[>]` with a link to today. The whole rollover is one write, so Undo Last
  * Change takes it back.
@@ -48,12 +51,22 @@ export interface RolloverNotes<U extends ResourceUri, Handle> {
  * what replaces it. It shares capture's rule for where a line goes under a
  * heading, which lives with capture, so the service is handed it.
  */
-export type PlaceCarriedOver = (content: string, lines: readonly string[]) => NoteRange & { text: string };
+export type PlaceCarriedOver = (content: string, groups: readonly CarriedGroup[]) => NoteRange & { text: string };
+
+/** How a carried heading's link to where its tasks were written is made. */
+export interface RolloverLinks<U extends ResourceUri> {
+  /** A note's path as the index names it, which a link's path is worked out from. */
+  pathOf(uri: U): string;
+  /** `deckard.links.style` for a note. */
+  styleFor(uri: U): NoteLinkStyle;
+}
 
 /** What RolloverService works through. */
 export interface RolloverCollaborators<U extends ResourceUri, Handle> {
   notes: RolloverNotes<U, Handle>;
   place: PlaceCarriedOver;
+  /** Absent, a link is a wiki link, and today's note is named by its URI's path. */
+  links?: RolloverLinks<U>;
   /** What reads the notes again once a rollover is written. */
   index: { refresh(): Promise<void> };
   clock: Clock;
@@ -153,7 +166,7 @@ export class RolloverService<U extends ResourceUri, Handle> {
   public async apply(request: RolloverRequest<U>): Promise<RolloverOutcome<Handle>> {
     const { plan, todayUri, todayName } = request;
     const mode = request.mode === 'copy' ? 'migrate' : request.mode;
-    const { notes, place } = this.collaborators;
+    const { notes, place, links } = this.collaborators;
     const todayText = await notes.readToday(todayUri);
     const sources = new Map<string, RolloverSource<U>>();
     for (const filePath of new Set(plan.tasks.map((task) => task.filePath))) {
@@ -167,13 +180,18 @@ export class RolloverService<U extends ResourceUri, Handle> {
       plan.tasks,
       new Map([...sources].map(([filePath, source]) => [filePath, source.text().split(/\r?\n/)])),
       todayText,
-      { mode, target: todayName ?? todayUri.path.split('/').pop()?.replace(/\.md$/i, '') ?? '' },
+      {
+        mode,
+        target: todayName ?? todayUri.path.split('/').pop()?.replace(/\.md$/i, '') ?? '',
+        todayPath: links?.pathOf(todayUri) ?? todayUri.path.replace(/^\/+/, ''),
+        linkStyle: links?.styleFor(todayUri),
+      },
     );
     if (planned.carried.length === 0) {
       return { kind: 'nothing-carried', skipped: planned.skipped, fromDates: plan.fromDates };
     }
 
-    const placed = place(todayText, planned.lines);
+    const placed = place(todayText, planned.groups);
     const edits: RolloverEdit<U>[] = [
       { uri: todayUri, range: { start: placed.start, end: placed.end }, text: placed.text },
       ...planned.sourceEdits.flatMap((edit) => {

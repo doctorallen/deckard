@@ -11,7 +11,7 @@ import type { TaskStatusType } from '../../../domain/model';
 import { isTaskStatusType } from '../../../domain/tasks/taskStatuses';
 
 /**
- * Opening the pages: Go to…, Home, Stats, Help and
+ * Opening the pages: Go to…, Home and its Types tab, Stats, Help and
  * What's new, the Notes Graph and its nodes, the Calendar page, the Task
  * Board, the note page, and Related Notes for one entry.
  */
@@ -36,6 +36,12 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.showDashboard', () =>
       dashboard.show(),
     ),
+    // Home on its Types tab: the stored tab is set first, which an open
+    // Home follows, and a closed one opens on.
+    registerCommand('deckard.openTypes', async () => {
+      await services.preferences.homeWidgets.setDashboardMode('types');
+      await dashboard.show();
+    }),
     registerCommand('deckard.showStats', () => stats.show()),
     // New status… on the board's gear, and Give It a Character after the
     // move into checkboxes, open it on a new row.

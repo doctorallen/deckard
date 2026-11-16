@@ -1,4 +1,5 @@
 import { createNoteTitleMap, noteTitle, normalizeHeading, parseWikiTarget, resolveWikiTarget } from '../index/backlinks';
+import { readHeadingDate } from '../markdown/datedHeadings';
 import { findFrontmatterEnd } from '../markdown/frontmatter';
 import { findFencedLines, readHeading } from '../markdown/lineShapes';
 import type { MoveBlock, MoveSelection } from '../markdown/moveLines';
@@ -88,6 +89,26 @@ export function shiftHeadings(lines: readonly string[], shift: number): string[]
           return `${indent}${'#'.repeat(level)}`;
         }),
   );
+}
+
+/**
+ * A section's heading as it is written when the section leaves a daily
+ * note for a note that is not one: the day first, `2026-11-16 Vendor sync`,
+ * so the section is still dated by the day it was written
+ * (domain/markdown/datedHeadings.ts). A heading that starts with a day
+ * already keeps its own.
+ */
+export function dateHeading(heading: string, day: string): string {
+  return readHeadingDate(heading) ? heading : `${day} ${heading}`.trim();
+}
+
+/** A heading line with the day put before its words, as {@link dateHeading} writes them. */
+export function dateHeadingLine(line: string, day: string): string {
+  const heading = readHeading(line);
+  if (!heading || readHeadingDate(heading.text)) {
+    return line;
+  }
+  return line.replace(/^( {0,3}#{1,6})[ \t]*/, (_, hashes: string) => `${hashes} ${day} `).replace(/[ \t]+$/, '');
 }
 
 /** Where a moved section goes in a note, as moveService's Insertion is read. */

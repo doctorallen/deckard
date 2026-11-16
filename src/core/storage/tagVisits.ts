@@ -7,14 +7,13 @@
  * them, only the last visit, replaced each time a visit counts.
  *
  * Each snapshot is a file of its own in the workspace's storage folder,
- * `tag-visits/<hash>.json`, read when a page or the Hubs view asks for it:
+ * `tag-visits/<hash>.json`, read when a tag's page asks for it:
  * a person's page can hold some 50 KB of keys, and VS Code writes the whole
  * of `workspaceState` again at every change, so 500 of them there would
  * make every write megabytes. Only a list of every tag's visit time is kept
- * in `workspaceState`, which says which to drop past the cap, oldest first,
- * and which the Hubs view reads. A window with no folder open has no
- * storage folder, and keeps the times without the snapshots. The Hubs
- * view's sort is kept here too, with the workspace whose hubs it sorts.
+ * in `workspaceState`, which says which to drop past the cap, oldest
+ * first. A window with no folder open has no storage folder, and keeps the
+ * times without the snapshots.
  */
 import { Emitter } from '../../shared/emitter';
 import { isRecord } from '../../shared/guards';
@@ -44,9 +43,6 @@ export interface TagVisit {
   ordinals?: true;
 }
 
-/** How the Hubs view orders each level: by name, or the hubs with the most new since their last visit first. */
-export type HubSort = 'name' | 'new';
-
 /** The list of every tag's visit time, by tag key. */
 export const TAG_VISITS_KEY = 'deckard.tagVisits';
 /**
@@ -56,8 +52,6 @@ export const TAG_VISITS_KEY = 'deckard.tagVisits';
 export const TAG_VISIT_PREFIX = 'deckard.tagVisit:';
 /** The folder in the workspace's storage the snapshots are kept in. */
 export const TAG_VISIT_FOLDER = 'tag-visits';
-/** The Hubs view's sort. */
-export const HUB_SORT_KEY = 'deckard.hubs.sort';
 /** The most snapshots kept; past it, the oldest visits go first. */
 export const TAG_VISIT_LIMIT = 500;
 
@@ -81,7 +75,7 @@ interface VisitFile {
  */
 export class TagVisits<U extends ResourceUri = ResourceUri> {
   private readonly changeEmitter = new Emitter<void>();
-  /** Fires when a visit is counted, or the Hubs view's sort changes, so the views that show them redraw. */
+  /** Fires when a visit is counted, so what shows the visits redraws. */
   public readonly onDidChange: Event<void> = this.changeEmitter.event;
   /** The visits being written, one after another, so one never reads the list before another has written it. */
   private writing: Promise<void> = Promise.resolve();
@@ -171,7 +165,7 @@ export class TagVisits<U extends ResourceUri = ResourceUri> {
       await fileSystem.writeFile(beside, new TextEncoder().encode(JSON.stringify(written)));
       await fileSystem.rename(beside, uri);
     } catch {
-      // The band and the Hubs view read a missing snapshot as no visit.
+      // The band reads a missing snapshot as no visit.
     }
   }
 
@@ -204,17 +198,6 @@ export class TagVisits<U extends ResourceUri = ResourceUri> {
     } catch {
       // Left for the next start.
     }
-  }
-
-  /** The Hubs view's sort: by name until the reader chooses What's new. */
-  public hubSort(): HubSort {
-    return this.store.get<unknown>(HUB_SORT_KEY) === 'new' ? 'new' : 'name';
-  }
-
-  /** Keeps the Hubs view's sort; by name is kept as nothing. */
-  public async setHubSort(sort: HubSort): Promise<void> {
-    await this.store.update(HUB_SORT_KEY, sort === 'new' ? 'new' : undefined);
-    this.changeEmitter.fire();
   }
 
   /** Stops telling listeners; what was stored stays. */

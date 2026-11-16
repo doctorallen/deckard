@@ -6,10 +6,38 @@ Tags decide where a note starts and ends:
 
 - A heading with tags of its own is a note, with every untagged heading under it, down to the next heading with tags of its own, which is a note of its own and also carries the tags above it. In `# ADR-001 #decision` with untagged `## Context` and `## Consequences` under it, the ADR is one note; a `## Decision #decision/accepted` among them would be a second.
 - A note tagged in its front matter is one note, apart from any heading in it with tags of its own.
+- A heading that starts with a day, such as `## 2026-11-16 Vendor sync`, is a note with every heading under it, tagged or not, wherever it is written but in a daily note; see [Dated headings](#dated-headings).
 - Where no tag reaches, such as a daily note with no tags, each heading is a note, so a search lands on the right section.
 - A task is always an entry of its own, and it carries the tags of the headings above it.
 
 A search lists notes: a word written under `## Context` finds the ADR, and the ADR's card shows its whole text. Home's and Stats' **Notes**, a tag's count, Related Notes, and the Notes Graph count notes the same way.
+
+## Dated headings
+
+A project's or a person's note can hold its meetings, each under a heading that starts with the day it happened:
+
+```markdown
+---
+describes: project/atlas
+---
+# Atlas
+
+Migration of billing onto the new ledger.
+
+## 2026-11-09 Kickoff
+Two regions in the pilot.
+- [ ] Send the region list @priya
+
+## 2026-11-16 10:00 Vendor sync @dana
+The new ledger ships in December.
+- [ ] Ask about the cutover next Friday
+```
+
+- **The day.** A heading is dated when its words start with `YYYY-MM-DD`, with a time of day after it if you like, `10:00`. A day written later in the heading, or one no calendar has, dates nothing. The heading is `##` or deeper: a `#` heading with a day in it makes its note a [daily note](daily-notes.md).
+- **What it dates.** The heading, the headings under it, and their tasks and [questions](tasks.md#questions) are created and updated on that day, whatever the file says: `created:2026-11-16` finds the vendor sync, lists sort it by that day, and its "next Friday" counts from the meeting, not from the day the note was saved. A task's own `➕` date still wins.
+- **One note each.** A dated heading is a note of its own with every untagged heading under it, as a heading with tags is, and it carries its note's tags, so each meeting is one card on `#project/atlas`'s page.
+- **Where the description stops.** What is written outside the dated headings describes the project: a [hub note](search-pages.md#hub-notes) is drawn on its tag's page without them, and they are listed below it with the tag's other notes.
+- A daily note is about one day already, so a heading in it that starts with another day is an ordinary heading. A section [moved out of a daily note](organizing.md#moving-a-section) takes the day into its heading.
 
 ## Markdown format
 
@@ -73,17 +101,17 @@ Write `![[Note]]` on a line of its own and VS Code's Markdown preview draws that
 - **Query blocks** draw their results live, a list or a table, and each row opens what it lists. **Embeds** draw what they name, with a title that opens it.
 - **Images**, `![alt](img/flow.png)` or `![[flow.png]]`, are drawn at the page's width; select one to see it at full size. Deckard reads each from beside the note, or from the workspace folder's top, and draws nothing from the web or from outside the workspace folder; an image it cannot draw says why, such as one larger than 4 MB.
 - **Front matter** names what Deckard reads as a reader would: **About** for `describes`, **Filed under** for `up`, **Also called** for `aliases`.
-- **Front matter** is listed under the page's bar, one property to a line, a tag among the values a button. A note whose front matter says `type:`, such as a decision, lists its [fields](databases.md#fields-on-the-note-page) there, then **Edit fields…**, which opens the [form](databases.md#editing-fields) that edits them, as **⋯** does; a hub note's fields are shown on [its tag's page](databases.md#fields-on-a-tags-page), since a hub note opens there. A note under a [hub](search-pages.md#the-hubs-view) shows where it sits.
+- **Front matter** is listed under the page's bar, one property to a line, a tag among the values a button. A note whose front matter says `type:`, such as a decision, lists its [fields](databases.md#fields-on-the-note-page) there, then **Edit fields…**, which opens the [form](databases.md#editing-fields) that edits them, as **⋯** does; a hub note's fields are shown on [its tag's page](databases.md#fields-on-a-tags-page), since a hub note opens there. A note under a [hub](search-pages.md#notes-under-a-hub) shows where it sits.
 - **Progress.** A note with tasks shows a **Tasks** bar under its title: how many of its own tasks are done, how many are overdue, and when the next is due, steps aside. A hub note shows a bar above it too, for every task its tag finds in any note, labeled by what the tag names, such as **Project**, **Team**, or **Person**, with a button to the tag's page.
 - **Linked from** lists the notes that link here, each with the lines that do.
 - **The bar** is laid out as every Deckard page's: **DECKARD ▾**, the note's folder, and its title at the left; **‹** **›**, **Open in Editor**, and **⋯** at the right. **⋯** holds **Open Related Notes**, **Open Notes Graph Around This Note**, **Pin Note to Home** or **Unpin**, and **Park Note** or **Unpark**, then **Theme…**, **Zen**, **Page width** and **Help on this page**.
 - **Open in Editor** opens the note at the line in view, and a double-click on a paragraph, a task, or a block opens the editor at its line. Shift-click a link to open its note in the editor instead.
 
-A [hub note](search-pages.md#the-hubs-view) opens as its tag's search page instead, which draws the note at its top with the tag's progress, notes, and tasks under it; the editor still opens its Markdown. The page is one tab, reused for each note as VS Code's preview tab is, and it is reopened on the note it showed after a reload. It follows each save. The unicorn button opens it in the note's own editor group, in front of the note's editor, as Markdown's **Open Preview** does; **Open in Editor** switches back. While the page is in front, the Context view's Related Notes follows the note it shows, as it follows a note in the editor, and picks the entry at the line the page was opened at.
+A [hub note](search-pages.md#hub-notes) opens as its tag's search page instead, which draws the note at its top with the tag's progress, notes, and tasks under it; the editor still opens its Markdown. The page is one tab, reused for each note as VS Code's preview tab is, and it is reopened on the note it showed after a reload. It follows each save. The unicorn button opens it in the note's own editor group, in front of the note's editor, as Markdown's **Open Preview** does; **Open in Editor** switches back. While the page is in front, the Context view's Related Notes follows the note it shows, as it follows a note in the editor, and picks the entry at the line the page was opened at.
 
-**Opening every note there.** Set `deckard.openNotesIn` to `page` and a note or task opened from any Deckard page opens on the note page, scrolled to its line, which is marked for a moment: a search page's cards and tasks, Related Notes, Home, the Task Board, the calendars, Stats, the Notes Graph, Find, the Hubs view, and the breadcrumb lens. The default, `editor`, opens them in the editor as before.
+**Opening every note there.** Set `deckard.openNotesIn` to `page` and a note or task opened from any Deckard page opens on the note page, scrolled to its line, which is marked for a moment: a search page's cards and tasks, Related Notes, Home, the Task Board, the calendars, Stats, the Notes Graph, Find, and the breadcrumb lens. The default, `editor`, opens them in the editor as before.
 
-**The other way, one key away.** Whichever the setting says, **Shift**-click a note or a task to open it the other way, and **Shift+Enter** from the keyboard, Find included. **Cmd/Ctrl+Shift**-click opens it the other way beside the page. A tree row and a lens cannot tell which keys were held, so the Hubs view's notes, hub notes included, offer the other way on their right-click menu, **Open in Editor** or **Open as Page**. A link followed in the editor, the Tasks view, and the Outline always stay in the editor.
+**The other way, one key away.** Whichever the setting says, **Shift**-click a note or a task to open it the other way, and **Shift+Enter** from the keyboard, Find included. **Cmd/Ctrl+Shift**-click opens it the other way beside the page. A link followed in the editor, the Tasks view, and the Outline always stay in the editor.
 
 ### Copying a note for elsewhere
 
@@ -186,7 +214,7 @@ Work notes are full of short terms: UAT, NDF, RATES-UAT. Deckard reads where eac
 - **Broken [embeds](#embeds)** say why above their line, such as **Embed: Atlas has no heading "Decision"** or **Embed: Nothing in Atlas is marked ^choice**. `deckard.editor.embedProblems` turns these off.
 - **Problems:** when something about a note is wrong, its first line has one lens that counts it, such as **2 missing · 1 ambiguous · 4 unlinked**: links that name no note, links that name a note several notes share, and mentions, other notes that write its title or an alias as plain text without a link. With one kind of problem, selecting the lens fixes it: it creates a note in your notes folder for each missing name (a shared name is not created, and when every broken link names a shared one, it shows them instead), or it turns each mention into a `[[link]]`, [previewed and undoable](search-pages.md#previewing-and-undoing-a-write). With both kinds, it lists each fix: **Show broken links**, **Create missing notes**, **Show unlinked mentions**, and **Link mentions**. In a [typed](databases.md) note it also counts the fields whose values name nothing, **2 unresolved**, and other field problems, **1 field problem**; **Show field problems** lists them in the references view, each offering its fixes. Names under three characters, and names another note also uses, are not looked for as mentions, and a note that cannot be opened is left as it is. The Context sidebar's **Mentioned without a link** lists each mention with its own **Link**, and **Link all**; see [Connections](connections.md). `deckard.editor.linkProblems` counts broken links and `deckard.editor.unlinkedMentions` counts mentions.
 - **Step progress:** a task with [steps](tasks.md#breaking-a-task-into-steps) has a lens above it with a bar of how many are done and the next one, **███░░░░░░░ Steps 1/3 done (33%) · next: Pack the rain shells**, which goes to that step. `deckard.editor.stepProgress` turns it off.
-- **Breadcrumbs:** a note under a hub says where it sits on its first line, such as **Projects › Atlas › Vendor review**, which opens the note above it; see [the Hubs view](search-pages.md#the-hubs-view). `deckard.editor.breadcrumbs` turns them off.
+- **Breadcrumbs:** a note under a hub says where it sits on its first line, such as **Projects › Atlas › Vendor review**, which opens the note above it; see [Notes under a hub](search-pages.md#notes-under-a-hub). `deckard.editor.breadcrumbs` turns them off.
 - **Hub progress:** a [hub note](search-pages.md#hub-notes)'s first line says how far along the tasks of the tag it describes are, such as **Progress: 2/6 done (33%) · 1 overdue · next due in 3 days**, which opens the tag's page. A typed row's leads with its type and first relation, **Person · Payments | 1/3 done (33%)**. `deckard.editor.hubProgress` turns this off.
 - **Hovering a tag** shows its note and task counts, its [hub note](search-pages.md#hub-notes), its five most recently updated entries, **Open overview**, and **Rename**. A [typed](databases.md#in-the-editor) tag, or a link to a typed note, also names its type, its relations, and how to reach it. `deckard.editor.hoverPreviews` set to `false` turns previews off.
 

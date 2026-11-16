@@ -30,7 +30,7 @@ A setting is changed where it is set already: in the workspace's settings when t
 
 `Deckard: Take the Tour` opens Help on **Tour**: fifteen short scenes on the [work sample](getting-started.md#get-started), about twelve minutes. Each scene opens a real page or note in the editor group beside Help, rings one thing on it, and gives you one thing to try. The step ticks itself when Deckard sees it done, such as a card moved or a task written; **Do it** runs it for you, and you can tick any step yourself.
 
-The scenes, in order: today's note; tags and namespaces; `@` for people and `#` for things; every tag is a search; Related notes; Add Task in plain words; the Task board; the calendar; what someone owes you; a type as a table; a type as a board; hub notes; and the Hubs view. The last two, carrying unfinished tasks forward and weekly and monthly reviews, are optional.
+The scenes, in order: today's note; tags and namespaces; `@` for people and `#` for things; every tag is a search; Related notes; Add Task in plain words; the Task board; the calendar; what someone owes you; a type as a table; a type as a board; every type on Home's Types tab; and hub notes. The last two, carrying unfinished tasks forward and weekly and monthly reviews, are optional.
 
 The tour runs on the work sample. In another folder, the **Tour** tab offers to make one with `Deckard: Create a Work Sample`. Where you are in the tour is kept with the sample.
 

@@ -4,10 +4,10 @@ import { parseMarkdown } from '../domain/markdown/parser';
 import { evaluateQuery } from '../domain/query/queryEvaluator';
 import { parseQuery } from '../domain/query/queryParser';
 import { QUERY_FIELDS, QUERY_HAS_VALUES, QUERY_IS_VALUES, QueryNode } from '../domain/query/queryTypes';
-import { findMissingLinkTargets } from '../domain/index/backlinks';
+import { findMissingLinkTargets, noteTitle } from '../domain/index/backlinks';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { computeParked } from '../domain/index/parked';
-import { buildHubTree, findBreadcrumbs } from '../ui/state/hubTree';
+import { findBreadcrumbs, getHubGraph } from '../ui/state/hubTree';
 import { computeTagProgress, describeTagProgress } from '../domain/tasks/tagProgress';
 import { createAgenda } from '../ui/state/agendaState';
 import { rankSimilarWording } from '../ui/state/relatedNotesRanking';
@@ -241,23 +241,16 @@ suite('Sample corpus', () => {
     ]);
     assert.ok((index.tags.get('#project/ashen-mirror')?.count ?? 0) >= 3, 'Ashen Mirror is used enough to want a hub');
 
-    // The Hubs view, as the Tags note draws it: a sub-project by up:, a note
-    // under it by up: alone, and a note under the relay by its tag.
-    const tree = (nodes: ReturnType<typeof buildHubTree>, depth = 0): string[] =>
-      nodes.flatMap((node) => [`${'  '.repeat(depth)}${node.label}${node.description ? `: ${node.description}` : ''}`, ...tree(node.children, depth + 1)]);
-    assert.deepStrictEqual(tree(buildHubTree(index, Date.now())), [
-      'People',
-      '  Sable Ortiz',
-      'Projects',
-      '  Argent Protocol: 1/3 done (33%)',
-      '  Ghostline Relay: 3/23 done (13%)',
-      '    Receiver firmware',
-      '      Firmware bench log',
-      '    Relay route survey',
-      'Teams',
-      '  Harbor: 0/2 done (0%)',
-      '  Wardens: 3/21 done (14%)',
-    ]);
+    // How the notes hang, as the Tags note says: a sub-project by up:, a
+    // note under it by up: alone, and a note under the relay by its tag.
+    assert.deepStrictEqual(
+      [...getHubGraph(index).parents].map(([note, parents]) => `${noteTitle(note)} < ${parents.map((parent) => noteTitle(parent)).join(', ')}`).sort(),
+      [
+        'Firmware bench log < Receiver firmware',
+        'Receiver firmware < Ghostline Relay',
+        'Relay route survey < Ghostline Relay',
+      ],
+    );
     assert.deepStrictEqual(findBreadcrumbs(index, 'projects/Firmware bench log.md').map((crumb) => crumb.labels.join(' › ')), [
       'Projects › Ghostline Relay › Receiver firmware › Firmware bench log',
     ]);

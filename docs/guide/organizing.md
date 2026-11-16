@@ -18,6 +18,14 @@ Run `Deckard: Extract Heading` with the cursor in a heading section. Deckard mov
 - A task left behind becomes `- [>] Call Ren 📅 2026-09-20 → [[2026-09-25]]`; anything else becomes a `[[link]]` to where it went. A `[>]` line is not a task.
 - If the lines or heading changed before you chose, nothing is written. The move is not previewed: it is the one you chose. **Undo**, or `Deckard: Undo Last Change`, puts both notes back, or neither: if either changed since, nothing is put back.
 
+### Copying instead
+
+`Deckard: Copy to…` writes the same lines in the place you choose and leaves them where they were, so something said in a meeting can go into the note that keeps such things without leaving the meeting. Move to…'s list offers it as **Copy instead of moving**, after **Today's note**, and Copy to…'s list offers **Move instead of copying**.
+
+- The copy says where it came from: a link to the heading the lines were under, after the first line, `- The gateway is included in the base price ([[2026-11-16#Vendor sync]])`. A code block or a table is copied as written, with the link on a line above it. A copied section has the link on a line under its heading, with a blank line after it when text follows.
+- The link is written as `deckard.links.style` says for the note the copy goes to.
+- A copied task is a second task. Nothing is left behind, and **Undo** takes the copy out.
+
 ### Moving a section
 
 With the cursor on a heading line, or a selection that starts on one, `Deckard: Move to…` moves the heading and everything under it: its text, lists, tasks, code, and nested headings, up to the next heading at its level or above. The lightbulb on a heading offers it as **Move section to…**.
@@ -25,6 +33,7 @@ With the cursor on a heading line, or a selection that starts on one, `Deckard: 
 - The list starts with **Mentioned in this section**: the hub notes of the section's tags and people, then the notes its links name, each with its headings and **at the end of the note**, at most ten places. **New note…**, **Today's note**, and the headings follow, as for lines. The section's own headings are never offered.
 - **Under a heading**, the section goes at the end of that heading's section, after a blank line, one level deeper than it: `## Ledger cutover plan` moved under `## Plan` becomes `### Ledger cutover plan`, and its own subheadings move down alike, none deeper than `######`.
 - **At the end of a note**, or in today's note, it goes after a blank line with its levels kept. A **new note** is named from the heading and holds the section as written, as Extract Heading makes it.
+- **Out of a daily note**, the heading takes the note's day: `## Vendor sync #project/borealis` in `2026-11-16.md`, moved to the end of `Borealis.md`, becomes `## 2026-11-16 Vendor sync #project/borealis`, a [dated heading](notes-and-links.md#dated-headings), so the meeting is still found and sorted by the day it happened. A heading that already starts with a day keeps it, a section moved to another daily note is left as written, and so is one written at the top level (`#`) of its new note.
 - One line is left where it was: a link to the heading in its new note, `[[Ledger migration#Ledger cutover plan]]`, or `[Ledger migration#Ledger cutover plan](Ledger%20migration.md#ledger-cutover-plan)` when `deckard.links.style` is `markdown`. Links elsewhere to its old place, such as `[[2026-11-12#Ledger cutover plan]]`, are left as they are; the line left behind leads on.
 - As for lines, nothing is written if the section changed while you chose, and **Undo** puts both notes back.
 

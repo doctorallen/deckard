@@ -1,4 +1,3 @@
-import { formatProgressCount } from '../../domain/tasks/progressCount';
 import {
   createNoteTitleMap,
   noteTitle,
@@ -8,15 +7,12 @@ import {
 import { findFrontmatterEnd, splitFrontmatterValues } from '../../domain/markdown/frontmatter';
 import { stripTags } from '../../domain/markdown/parser';
 import { formatKeyWords, readTagNamespace } from '../../domain/markdown/tagKeys';
-import { collectTagProgress } from '../../domain/tasks/tagProgress';
 import { ParsedFile, WorkspaceIndex } from '../../domain/model';
-import { getTypeIndex } from '../../domain/types/typeIndex';
-import type { HubSort } from '../../core/storage/tagVisits';
 
 /**
- * Notes under their hubs, as Notion's sidebar keeps pages under the pages
- * they belong to: each tag namespace with a hub note, each hub under it,
- * and under each hub the notes about its tag.
+ * How notes hang under their hubs, which a note's breadcrumbs walk and
+ * Home's Types tab reads its hub notes from: each hub note by the tag it
+ * describes, and each note's parents.
  *
  * A note is about a tag when its front matter or its first heading carries
  * the tag: what the whole note is about, not a line that mentions it in
@@ -29,26 +25,6 @@ import type { HubSort } from '../../core/storage/tagVisits';
  * person and the person naming the team would each sit under the other.
  */
 
-/** One row of the tree: a namespace, or a note. */
-export interface HubTreeNode {
-  /** Unique in the tree: the path of notes from its root. */
-  id: string;
-  kind: 'namespace' | 'note';
-  label: string;
-  /** Said beside the label: a hub's progress. */
-  description?: string;
-  /** For a note, its index path. */
-  filePath?: string;
-  /** For a hub, the tag it describes, whose page it can open. */
-  tagKey?: string;
-  /**
-   * For a namespace whose tags a type has as rows, the search that lists
-   * them, `type = team`, which selecting its heading opens.
-   */
-  typeQuery?: string;
-  children: HubTreeNode[];
-}
-
 /** How notes hang together: each note's parents, and the hubs by note. */
 export interface HubGraph {
   /** Each note's parents, by index path: `up:` targets, else the hubs of the tags it is about. */
@@ -57,22 +33,7 @@ export interface HubGraph {
   hubTags: ReadonlyMap<string, string>;
 }
 
-/**
- * What the tree says of each hub since the reader last had its tag's page
- * open (docs/implementation/37-since-you-last-looked.md), and how it orders
- * the hubs on each level.
- */
-export interface HubNews {
-  /**
-   * A hub's tag's news: `9 new`, `seen today`, `seen Fri, Oct 9`, or
-   * `never opened`, and how much is new, which What's new sorts by.
-   */
-  describe(tagKey: string): { label: string; count: number };
-  /** By name, or the hubs with the most new first, then by name. */
-  sort: HubSort;
-}
-
-/** How many levels of notes the tree goes down before it stops, so no chain runs away. */
+/** How many levels of notes a breadcrumb goes up before it stops, so no chain runs away. */
 const MAX_DEPTH = 8;
 
 /** How many paths a note's breadcrumbs give at most. */
@@ -80,7 +41,7 @@ const MAX_PATHS = 3;
 
 const graphs = new WeakMap<WorkspaceIndex, HubGraph>();
 
-/** The graph of one index, built once and shared by the tree and the breadcrumbs. */
+/** The graph of one index, built once and shared by the breadcrumbs and the Types tab. */
 export function getHubGraph(index: WorkspaceIndex): HubGraph {
   let graph = graphs.get(index);
   if (!graph) {
@@ -101,7 +62,7 @@ export function buildHubGraph(index: WorkspaceIndex): HubGraph {
       hubByTag.set(tag.key, hub);
     }
   }
-  // A parked note is left out of the tree, as a search leaves it out: no
+  // A parked note is left out of the graph, as a search leaves it out: no
   // hub, no parent, and filed under nothing.
   const parked = (filePath: string): boolean => index.parked?.files.has(filePath) ?? false;
   for (const [filePath, file] of index.files) {
@@ -186,14 +147,14 @@ export function findHubTagKey(index: WorkspaceIndex, filePath: string): string |
   return describes.find((tag) => index.tags.get(tag.key)?.hubFilePaths?.[0] === filePath)?.key;
 }
 
-/** A note's name in the tree: its first heading without tags, or its file name. */
+/** A note's name in a breadcrumb or a list of hub notes: its first heading without tags, or its file name. */
 export function hubNoteLabel(index: WorkspaceIndex, filePath: string): string {
   const heading = index.files.get(filePath)?.sections.find((section) => !section.isInline);
   return (heading ? stripTags(heading.heading).trim() : '') || noteTitle(filePath);
 }
 
 /**
- * A namespace as the tree heads it: its words, made plural unless they
+ * A namespace as a breadcrumb and the Types tab name it: its words, made plural unless they
  * already are, People for person.
  */
 export function namespaceLabel(namespace: string): string {
@@ -216,189 +177,6 @@ function namespaceOf(tagKey: string): string | undefined {
     return 'person';
   }
   return readTagNamespace(tagKey)?.toLowerCase();
-}
-
-/**
- * The group a note at the top goes in, by the tag it is the hub of: its
- * namespace, Other tags for a tag with none, or Other notes for no hub. The
- * ids of the last two start `group:`, which no namespace can.
- */
-function groupOf(tagKey: string | undefined): [id: string, heading: string] {
-  if (!tagKey) {
-    return ['group:other-notes', 'Other notes'];
-  }
-  const namespace = namespaceOf(tagKey);
-  return namespace ? [`namespace:${namespace}`, namespaceLabel(namespace)] : ['group:other-tags', 'Other tags'];
-}
-
-/** One group at the top of the tree: its id, which no namespace can collide with, its heading, and its notes. */
-interface HubGroup {
-  id: string;
-  heading: string;
-  notes: string[];
-}
-
-/** How each level is ordered: by name, or by What's new, the most new first and then by name. */
-function levelOrder(
-  sort: HubSort | undefined,
-  newCount: (filePath: string) => number,
-  byName: (left: string, right: string) => number,
-): (left: string, right: string) => number {
-  return sort === 'new' ? (left, right) => newCount(right) - newCount(left) || byName(left, right) : byName;
-}
-
-/** Each hub's news, asked once for each tag, since sorting asks for it again and again; nothing without news. */
-function newsReader(news: HubNews | undefined): (tagKey: string) => { label: string; count: number } | undefined {
-  const read = new Map<string, { label: string; count: number }>();
-  return (tagKey) => {
-    if (!news) {
-      return undefined;
-    }
-    let found = read.get(tagKey);
-    if (!found) {
-      found = news.describe(tagKey);
-      read.set(tagKey, found);
-    }
-    return found;
-  };
-}
-
-/** Each note's children, by path: the notes whose parents name it. */
-function listChildren(graph: HubGraph): Map<string, string[]> {
-  const children = new Map<string, string[]>();
-  for (const [child, parents] of graph.parents) {
-    for (const parent of parents) {
-      const list = children.get(parent);
-      if (list) {
-        list.push(child);
-      } else {
-        children.set(parent, [child]);
-      }
-    }
-  }
-  return children;
-}
-
-/** A note's label, read once for each note, since sorting asks for it again and again. */
-function labelReader(index: WorkspaceIndex): (filePath: string) => string {
-  const labels = new Map<string, string>();
-  return (filePath) => {
-    let found = labels.get(filePath);
-    if (found === undefined) {
-      found = hubNoteLabel(index, filePath);
-      labels.set(filePath, found);
-    }
-    return found;
-  };
-}
-
-/**
- * The tree: each namespace with a hub at the top, its hubs that have no
- * parent of their own, and under every note the notes whose parent it is.
- * A note that is the parent of others but is no hub and has no parent is
- * listed under Other notes. A note the tree would otherwise never reach, in
- * a loop of `up:` or below a chain deeper than it draws, is listed at the
- * top too: a hub in its namespace, any other note under Other notes. Each
- * level is alphabetical, or, sorted by What's new, the hubs with the most
- * new since their last visit first. With `news`, each hub says what is new
- * before its progress.
- */
-export function buildHubTree(index: WorkspaceIndex, now: number, news?: HubNews): HubTreeNode[] {
-  const graph = getHubGraph(index);
-  const children = listChildren(graph);
-  const progress = collectTagProgress(index, now, new Set(graph.hubTags.values()));
-  const label = labelReader(index);
-  const collator = new Intl.Collator(undefined, { sensitivity: 'base' });
-  const newsOf = newsReader(news);
-  const byLabel = levelOrder(news?.sort, (filePath) => {
-    const tagKey = graph.hubTags.get(filePath);
-    return tagKey ? (newsOf(tagKey)?.count ?? 0) : 0;
-  }, (left, right) => collator.compare(label(left), label(right)) || left.localeCompare(right));
-  const reached = new Set<string>();
-
-  const buildNote = (filePath: string, path: readonly string[]): HubTreeNode => {
-    reached.add(filePath);
-    const id = [...path, filePath].join('\u0000');
-    const tagKey = graph.hubTags.get(filePath);
-    const counted = tagKey ? progress.get(tagKey) : undefined;
-    const description = [
-      tagKey ? newsOf(tagKey)?.label : undefined,
-      counted ? formatProgressCount(counted.done, counted.total) : undefined,
-    ].filter(Boolean).join(' · ');
-    const below =
-      path.length >= MAX_DEPTH || path.includes(filePath)
-        ? []
-        : (children.get(filePath) ?? []).filter((child) => !path.includes(child)).sort(byLabel);
-    return {
-      id,
-      kind: 'note',
-      label: label(filePath),
-      filePath,
-      ...(tagKey ? { tagKey } : {}),
-      ...(description ? { description } : {}),
-      children: below.map((child) => buildNote(child, [...path, filePath])),
-    };
-  };
-
-  const groups = new Map<string, HubGroup>();
-  const groupFor = (filePath: string): HubGroup => {
-    const [id, heading] = groupOf(graph.hubTags.get(filePath));
-    let group = groups.get(id);
-    if (!group) {
-      group = { id, heading, notes: [] };
-      groups.set(id, group);
-    }
-    return group;
-  };
-  const tops: string[] = [
-    ...[...graph.hubTags.keys()].filter((filePath) => !graph.parents.has(filePath)),
-    ...[...children.keys()].filter((filePath) => index.files.has(filePath) && !graph.hubTags.has(filePath) && !graph.parents.has(filePath)),
-  ];
-  const built = new Map<string, HubTreeNode>();
-  const place = (filePath: string): void => {
-    groupFor(filePath).notes.push(filePath);
-    built.set(filePath, buildNote(filePath, [groupFor(filePath).id]));
-  };
-  [...tops].sort(byLabel).forEach(place);
-  // What no top reaches is listed at the top as well, hubs first, until every
-  // note the tree files is somewhere.
-  const filed = [...new Set([...graph.hubTags.keys(), ...graph.parents.keys()])].filter((filePath) => index.files.has(filePath));
-  for (let missing = filed.filter((filePath) => !reached.has(filePath)); missing.length; missing = missing.filter((filePath) => !reached.has(filePath))) {
-    const next = [...missing].sort((left, right) => Number(!graph.hubTags.has(left)) - Number(!graph.hubTags.has(right)) || byLabel(left, right))[0];
-    place(next);
-  }
-  const order = (group: HubGroup): [number, string] => {
-    if (group.id === 'group:other-notes') {
-      return [2, ''];
-    }
-    return group.id === 'group:other-tags' ? [1, ''] : [0, group.heading];
-  };
-  return [...groups.values()]
-    .sort((left, right) => order(left)[0] - order(right)[0] || collator.compare(order(left)[1], order(right)[1]))
-    .map((group) => {
-      const typeKey = findGroupType(index, group.id);
-      return {
-        id: group.id,
-        kind: 'namespace' as const,
-        label: group.heading,
-        ...(typeKey ? { typeQuery: `type = ${typeKey}` } : {}),
-        children: [...group.notes].sort(byLabel).map((filePath) => built.get(filePath) as HubTreeNode),
-      };
-    });
-}
-
-/**
- * The type whose rows a namespace group's tags are, by key: the people
- * type for People; undefined for Other tags, Other notes, or a namespace
- * no type has.
- */
-function findGroupType(index: WorkspaceIndex, groupId: string): string | undefined {
-  if (!groupId.startsWith('namespace:')) {
-    return undefined;
-  }
-  const namespace = groupId.slice('namespace:'.length);
-  const sample = namespace === 'person' ? '@a' : `#${namespace}/a`;
-  return getTypeIndex(index).registry.forTag(sample)?.key;
 }
 
 /**
@@ -445,4 +223,14 @@ export function findBreadcrumbs(
         notes: path,
       };
     });
+}
+
+/** The tags no hub note describes yet, the most used first, which Create Hub Note for Tag… offers. */
+export function listTagsWithoutHub(index: WorkspaceIndex): Array<{ key: string; label: string; count: number }> {
+  const described = new Set<string>();
+  index.files.forEach((file) => file.hub?.describes.forEach((tag) => described.add(tag.key)));
+  return [...index.tags.values()]
+    .filter((tag) => !described.has(tag.key))
+    .map((tag) => ({ key: tag.key, label: tag.label, count: tag.count }))
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
 }

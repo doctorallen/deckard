@@ -26,6 +26,7 @@ const { toTagVisit } = modules.sinceLastLooked;
 const { createDeckardStatsSnapshot, listTerms } = modules.statsState;
 const { createNotePageSnapshot } = modules.notePageState;
 const { createDashboardWidgets } = modules.dashboardWidgets;
+const { createTypesTab } = modules.typesTab;
 const { createNotesGraphSnapshot } = modules.graphBuild;
 const { toWire } = modules.notesGraphState;
 const { createCalendar } = modules.calendarState;
@@ -161,10 +162,11 @@ const DATED = { dateFormat: 'ddd D MMMM YYYY', shortDateFormat: 'ddd D MMM' };
  *
  * @param {object} index The workspace.
  * @param {object} preferences The stored preferences.
- * @param {'home' | 'browse'} mode Home, or the Tags mode.
+ * @param {'home' | 'browse' | 'types'} mode Home, the Tags mode, or the Types mode.
+ * @param {string[]} [openTypes] On Types, the types whose rows are sent, as a reader who opened them is sent them.
  * @returns {object} The state message's data.
  */
-function createDashboardState(index, preferences, mode) {
+function createDashboardState(index, preferences, mode, openTypes = []) {
   const queryContext = createQueryContext(NOW);
   const viewPreferences = { ...preferences, dashboardViewState: { ...preferences.dashboardViewState, mode } };
   return {
@@ -173,6 +175,7 @@ function createDashboardState(index, preferences, mode) {
     ...(mode === 'home'
       ? { widgets: createDashboardWidgets(index, viewPreferences, { queryContext, agendaQuery: '' }) }
       : {}),
+    ...(mode === 'types' ? { types: createTypesTab(index, { now: NOW, opened: new Set(openTypes) }) } : {}),
     parkedTags: [],
   };
 }
@@ -1269,6 +1272,52 @@ function createTypedSurfaces(preferences) {
   ];
 }
 
+/**
+ * Home's Types tab, on plan 30's knowledge base: every type closed, and two
+ * opened in place.
+ *
+ * @param {object} preferences The preference services, whose reader holds what is stored.
+ * @returns {object[]} The two surfaces.
+ */
+function createTypesTabSurfaces(preferences) {
+  const index = createTypedIndex();
+  return [
+    {
+      // Home's Types tab: every type as one row, what its rows are, its
+      // counts, and Add …, which a row shows while it is pointed at.
+      // Narrow, so the table must fit or scroll in its own box rather
+      // than push the page sideways: only the page is held to none, since
+      // a theme with wide letters, Tomcat, scrolls the table here, as the
+      // Task board's lanes scroll theirs.
+      name: 'dashboardTypes',
+      page: 'dashboard',
+      viewport: [800, 700],
+      snapshot: () => createDashboardState(index, preferences.reader.value, 'types'),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.types-row'],
+      zenHovered: [...ZEN_REGIONS.dashboard, '.types-row[data-zen-region]'],
+    },
+    {
+      // Two types opened in place: the teams, one muted for having no hub
+      // note, under what the muting means; and the decisions, which are
+      // notes. The host has sent both lists, as it does once a type opens.
+      name: 'dashboardTypesOpen',
+      page: 'dashboard',
+      viewport: [1100, 800],
+      snapshot: () => createDashboardState(index, preferences.reader.value, 'types', ['team', 'decision']),
+      drive: [
+        ['click', '.types-toggle[data-type-key="team"]'],
+        ['click', '.types-toggle[data-type-key="decision"]'],
+      ],
+      scrollers: ['html', '.types-scroll'],
+      clippers: [],
+      hovered: ['.types-listed .types-link', '.types-row'],
+      zenHovered: [...ZEN_REGIONS.dashboard, '.types-row[data-zen-region]'],
+    },
+  ];
+}
+
 /** When the reader last looked at Sam's page: twelve days before NOW. */
 const LAST_LOOKED = NOW - 12 * 24 * 60 * 60 * 1000;
 
@@ -1421,6 +1470,7 @@ function createSurfaces() {
     ...createNotePageSurfaces(),
     ...createTaskStatusesSurfaces(),
     ...createTypedSurfaces(preferences),
+    ...createTypesTabSurfaces(preferences),
     ...createPersonSurfaces(preferences),
   ];
   return [

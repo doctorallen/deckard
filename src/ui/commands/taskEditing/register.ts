@@ -61,6 +61,9 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.moveTo', () =>
       moveToCommand(indexer, services.preferences.move, writes),
     ),
+    registerCommand('deckard.copyTo', () =>
+      moveToCommand(indexer, services.preferences.move, writes, { copy: true }),
+    ),
     // A promise's lens and lightbulb pass its note, its line, the line's
     // words, which must still read so, and the day they said; Track… asks
     // for the editor.

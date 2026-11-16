@@ -14,6 +14,7 @@ import {
   getTitleTags,
 } from '../../domain/ranking/entryLabels';
 import { describeDueDate } from '../../domain/markdown/dueWording';
+import { withoutDatedEntries } from '../../domain/markdown/datedHeadings';
 import { findFrontmatterEnd } from '../../domain/markdown/frontmatter';
 import { TagOverviewHub } from '../protocol/searchPage';
 import { ParsedFile, Section, Task, TagOverviewSortMode, TaskSortMode, WorkspaceIndex } from '../../domain/model';
@@ -299,13 +300,15 @@ export function createFileOverviewCard(file: ParsedFile, lines?: readonly EntryL
 }
 
 /**
- * The note that describes a tag, shown above the tag's overview entries.
+ * The note that describes a tag, shown above the tag's overview entries:
+ * the note without its dated entries, which the overview lists as entries
+ * of their own, each under its day.
  */
 export function createTagOverviewHub(
   file: ParsedFile,
   otherFilePaths: string[],
 ): TagOverviewHub {
-  const rawContent = getFrontmatterBody(file.content);
+  const rawContent = getFrontmatterBody(withoutDatedEntries(file.content.split(/\r?\n/), file.sections).join('\n'));
   return {
     filePath: file.filePath,
     fileName: getFileName(file.filePath) ?? file.filePath,

@@ -5,6 +5,8 @@ import { fileExists } from './fs';
 import { pluralize } from '../../shared/text';
 import type { IndexControl, IndexReader } from '../../core/workspace/indexReader';
 import { readRolloverMode } from '../../domain/notes/carryForward';
+import { CARRIED_OVER_HEADING, type CarriedGroup, isCarriedOver, mergeCarriedOver } from '../../domain/notes/carriedHeadings';
+import type { NoteLinkStyle } from '../../domain/markdown/wikiLinks';
 import {
   RolloverMode,
   RolloverPlan,
@@ -26,7 +28,6 @@ import {
 } from './dailyNote';
 import { resolveSourceUri } from './navigation';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
-import { getCaptureInsertion } from '../../domain/capture/captureLines';
 import { findFencedLines, readHeading } from '../../domain/markdown/lineShapes';
 import { type DateFormats, DEFAULT_DATE_FORMATS, formatDisplayDay } from '../../domain/markdown/dateFormat';
 import { readDateFormats } from './datePrompt';
@@ -46,8 +47,7 @@ export function getRolloverMode(uri?: vscode.Uri): RolloverMode {
   );
 }
 
-/** The heading carried tasks go under, in today's note. */
-export const CARRIED_OVER_HEADING = 'Carried over';
+export { CARRIED_OVER_HEADING };
 
 /** What a rollover did, so the command can say it in one sentence. */
 export interface RolloverResult {
@@ -76,11 +76,19 @@ export type VscodeRolloverService = RolloverService<vscode.Uri, WriteHandle>;
  */
 export function createRolloverService(
   history: WorkspaceWriteHistory,
-  index: { refresh(): Promise<void> },
+  index: { refresh(): Promise<void>; getFilePath?(uri: vscode.Uri): string },
 ): VscodeRolloverService {
   return new RolloverService<vscode.Uri, WriteHandle>({
     notes: new RolloverDocuments(history),
     place: placeCarriedOver,
+    links: {
+      // The index's name for the note, or its path in the workspace when there is no index to ask.
+      pathOf: (uri) => index.getFilePath?.(uri) ?? vscode.workspace.asRelativePath(uri, false),
+      styleFor: (uri) =>
+        vscode.workspace.getConfiguration('deckard', uri).get<NoteLinkStyle>('links.style', 'wiki') === 'markdown'
+          ? 'markdown'
+          : 'wiki',
+    },
     index,
     clock: { now: () => Date.now() },
   });
@@ -178,6 +186,26 @@ export async function applyRollover(
   // is given nothing to refresh.
   const rollover = createRolloverService(options.history, { refresh: () => Promise.resolve() });
   return toRolloverWrite(await rollover.apply({ plan, todayUri, mode, todayName: options.todayName }));
+}
+
+/**
+ * Today's note, made when it is not there yet and not opened, with the
+ * tasks a note Deckard creates rolls in: what a command that writes into
+ * today's note without showing it calls, so the day's first write does not
+ * cost the day its rollover.
+ */
+export async function ensureDailyNoteWithRollover(
+  indexer: Pick<IndexReader & IndexControl, 'ready' | 'getSnapshot' | 'refresh'>,
+  rollover: VscodeRolloverService,
+  folder: vscode.WorkspaceFolder,
+): Promise<vscode.Uri> {
+  const mode = getRolloverMode(folder.uri);
+  const isNew = !(await fileExists(getPeriodicNoteUri(folder, 'day', new Date())));
+  const uri = await ensureDailyNote(folder);
+  if (isNew && mode !== 'off') {
+    await rollTasksForward(indexer, rollover, { mode, silent: true });
+  }
+  return uri;
 }
 
 /**
@@ -293,16 +321,19 @@ export function describeRollover(
 
 /**
  * Where carried tasks go in today's note: under its Carried over heading,
- * after what is already there, or under a new one at the end of the note,
+ * with what is already there, or under a new one at the end of the note,
  * one level deeper than the note's first heading (`##` under `# {date}`).
- * Returns the stretch of the note to replace and what replaces it.
+ * Tasks that were written under a heading go under that heading, one level
+ * deeper again, as `mergeCarriedOver` lays them out. Returns the stretch
+ * of the note to replace and what replaces it: for a Carried over that is
+ * there, everything under it.
  *
  * A heading is one as the parser reads it, `#` alone included, and a line
  * in fenced code is never one, so the section ends where the Outline says.
  */
 export function placeCarriedOver(
   content: string,
-  lines: readonly string[],
+  groups: readonly CarriedGroup[],
 ): {
   start: { line: number; character: number };
   end: { line: number; character: number };
@@ -312,25 +343,18 @@ export function placeCarriedOver(
   const noteLines = content.split(/\r?\n/);
   const fenced = findFencedLines(noteLines);
   const headings = noteLines.map((text, line) => (fenced.has(line) ? undefined : readHeading(text)));
-  const existing = headings.findIndex(
-    (heading) => heading?.text.toLowerCase() === CARRIED_OVER_HEADING.toLowerCase(),
-  );
+  const existing = headings.findIndex((heading) => heading !== undefined && isCarriedOver(heading.text));
+  const noteEnd = { line: noteLines.length - 1, character: noteLines[noteLines.length - 1].length };
   if (existing >= 0) {
     const level = headings[existing]!.level;
-    let endLine = noteLines.length;
-    for (let at = existing + 1; at < noteLines.length; at += 1) {
-      const next = headings[at];
-      if (next && next.level <= level) {
-        endLine = at;
-        break;
-      }
-    }
-    const insertion = getCaptureInsertion(content, lines.join(eol), {
-      startLine: existing + 1,
-      endLine,
-    });
-    const at = { line: insertion.line, character: insertion.character };
-    return { start: at, end: at, text: insertion.text };
+    const next = headings.findIndex((heading, at) => at > existing && heading !== undefined && heading.level <= level);
+    const endLine = next < 0 ? noteLines.length : next;
+    const merged = mergeCarriedOver(noteLines.slice(existing + 1, endLine), level, groups);
+    return {
+      start: { line: existing, character: noteLines[existing].length },
+      end: next < 0 ? noteEnd : { line: next - 1, character: noteLines[next - 1].length },
+      text: merged.map((line) => `${eol}${line}`).join(''),
+    };
   }
   const first = headings.find(Boolean);
   const level = first ? Math.min(first.level + 1, 6) : 2;
@@ -338,19 +362,12 @@ export function placeCarriedOver(
   while (last >= 0 && noteLines[last].trim() === '') {
     last -= 1;
   }
-  const block = `${'#'.repeat(level)} ${CARRIED_OVER_HEADING}${eol}${eol}${lines.join(eol)}${eol}`;
+  const block = [`${'#'.repeat(level)} ${CARRIED_OVER_HEADING}`, ...mergeCarriedOver([], level, groups), '']
+    .join(eol);
   if (last < 0) {
-    return {
-      start: { line: 0, character: 0 },
-      end: { line: noteLines.length - 1, character: noteLines[noteLines.length - 1].length },
-      text: block,
-    };
+    return { start: { line: 0, character: 0 }, end: noteEnd, text: block };
   }
-  return {
-    start: { line: last, character: noteLines[last].length },
-    end: { line: noteLines.length - 1, character: noteLines[noteLines.length - 1].length },
-    text: `${eol}${eol}${block}`,
-  };
+  return { start: { line: last, character: noteLines[last].length }, end: noteEnd, text: `${eol}${eol}${block}` };
 }
 
 /** How far back a rollover looks for unfinished tasks, in days: a week. */

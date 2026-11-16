@@ -10,7 +10,7 @@ import {
 } from '../domain/markdown/moveLines';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
-import { readSectionTarget, suggestNoteName } from '../ui/commands/moveTo';
+import { describeMovePicker, readSectionTarget, suggestNoteName } from '../ui/commands/moveTo';
 import { validateExtractedNoteName } from '../ui/commands/extractHeading';
 
 const cursor = (line: number) => ({ start: { line, character: 0 }, end: { line, character: 0 }, isEmpty: true });
@@ -111,6 +111,16 @@ suite('What Move to… moves', () => {
     const last = '# A\n- one\n- two';
     const tail = block(last.split('\n'), cursor(2));
     assert.strictEqual(applySplices(last, [blockSplice(last, tail, [])]), '# A\n- one');
+  });
+
+  test('asks where it goes as a move or as a copy, and offers the other', () => {
+    const move = describeMovePicker(false, false);
+    assert.strictEqual(move.title, 'Deckard: Move to…');
+    assert.strictEqual(move.otherWay?.label, '$(copy) Copy instead of moving');
+    const copy = describeMovePicker(true, true);
+    assert.strictEqual(copy.title, 'Deckard: Copy to…');
+    assert.match(copy.placeholder ?? '', /^Choose where the copy of the section goes/);
+    assert.strictEqual(copy.otherWay?.label, '$(arrow-right) Move instead of copying');
   });
 
   test('names a new note from the first eight words of the line', () => {

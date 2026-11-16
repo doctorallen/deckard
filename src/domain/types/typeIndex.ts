@@ -141,6 +141,16 @@ export interface ComputedFields {
   children: string[];
 }
 
+/** A whole type's figures at one moment, each task counted once however many of its rows it names. */
+export interface TypeTotals {
+  /** Open tasks any of the type's rows finds or holds; steps, cancelled, and parked tasks aside. */
+  openTasks: number;
+  /** Of those, how many are past their due date. */
+  overdue: number;
+  /** When the latest entry that mentions any of its rows was updated. */
+  lastMentioned?: number;
+}
+
 /** A value a path ends at, with the rows it went through to get there, by id. */
 export interface PathValue extends FieldValue {
   trail: string[];
@@ -311,10 +321,7 @@ export class TypeIndex {
     });
     const mentions = row ? this.findMentions(row) : [];
     const since = addDays(today, -MENTION_DAYS);
-    const lastMentioned = mentions.reduce<number | undefined>(
-      (latest, at) => (at !== undefined && (latest === undefined || at > latest) ? at : latest),
-      undefined,
-    );
+    const lastMentioned = latestOf(mentions);
     return {
       openTasks,
       overdue,
@@ -324,6 +331,38 @@ export class TypeIndex {
       ...(row?.parentId ? { parent: row.parentId } : {}),
       children: [...(this.childrenById.get(rowId) ?? [])],
     };
+  }
+
+  /** When a row was last mentioned, as its `lastMentioned` reads, without its other computed fields. */
+  public lastMentioned(rowId: string): number | undefined {
+    const row = this.rowsById.get(rowId);
+    return row ? latestOf(this.findMentions(row)) : undefined;
+  }
+
+  /**
+   * A whole type's open tasks at `now`, and when any of its rows was last
+   * mentioned. A task that names two of the type's rows is one task here,
+   * where adding the rows' own counts would make it two.
+   */
+  public totals(typeKey: string, now: number = Date.now()): TypeTotals {
+    const today = startOfDay(now);
+    const tasksByRow = this.getTasksByRow();
+    const open = new Set<string>();
+    const late = new Set<string>();
+    let lastMentioned: number | undefined;
+    this.rows(typeKey).forEach((row) => {
+      tasksByRow.get(row.id)?.forEach((task) => {
+        if (task.completed || task.status.type === 'cancelled') {
+          return;
+        }
+        open.add(task.id);
+        if (task.dueAt !== undefined && task.dueAt < today) {
+          late.add(task.id);
+        }
+      });
+      lastMentioned = latestOf([lastMentioned, ...this.findMentions(row)]);
+    });
+    return { openTasks: open.size, overdue: late.size, ...(lastMentioned === undefined ? {} : { lastMentioned }) };
   }
 
   /**
@@ -1106,6 +1145,14 @@ export function getTypeIndex(index: WorkspaceIndex): TypeIndex {
     typeIndexes.set(index, types);
   }
   return types;
+}
+
+/** The latest of some times, the unknown ones aside; nothing when none is known. */
+function latestOf(times: ReadonlyArray<number | undefined>): number | undefined {
+  return times.reduce<number | undefined>(
+    (latest, at) => (at !== undefined && (latest === undefined || at > latest) ? at : latest),
+    undefined,
+  );
 }
 
 /** The row id a tag is: a person's `@name`, however written; any other tag's own key. */

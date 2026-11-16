@@ -40,6 +40,7 @@ import { formatKeyWords, readTagNamespace } from './tagKeys';
 import { MIGRATED_TASK_LINE } from './taskLineEdits';
 import { BLOCK_ID_PATTERN, parseTaskMetadata } from './taskFields';
 import { assignNoteEntries } from './noteEntries';
+import { dateSections } from './datedHeadings';
 import { DEFAULT_TASK_STATUSES, isNonTaskSymbol, isQuestionSymbol, statusForSymbol, type TaskStatusDefinition } from '../tasks/taskStatuses';
 import { parseTypeNote } from '../types/typeNotes';
 
@@ -48,7 +49,7 @@ import { parseTypeNote } from '../types/typeNotes';
  * (steps' parent links, say) changes it, so the local cache, which keeps
  * parsed notes, is rebuilt rather than served in the old shape.
  */
-export const PARSE_FORMAT = 'type-words-questions-assignees';
+export const PARSE_FORMAT = 'type-words-questions-assignees-dated';
 
 /** A heading as the parser found it: its 1-based line, its level, and its words. */
 interface HeadingMatch {
@@ -152,6 +153,11 @@ interface NoteContext {
   frontmatterTags: TagReference[];
   personMarker: string;
   taskStatuses: readonly TaskStatusDefinition[];
+  /**
+   * The time each section under a dated heading counts from, by section id,
+   * once the sections are built; absent in a daily note, which has none.
+   */
+  sectionDates?: ReadonlyMap<string, number>;
 }
 
 /**
@@ -306,6 +312,11 @@ export function parseMarkdown(
       ? 'heading'
       : options.noteBoundaries ?? 'line';
   const sections = buildSections(context, headings, boundaries);
+  // A daily note is about one day already; any other note's headings that
+  // start with a day date what is written under them.
+  if (dailyDate === undefined) {
+    context.sectionDates = dateSections(sections);
+  }
   const tasks = findTasks(context, sections, {
     dateAnchor,
     assigneeFromPersonTag: options.assigneeFromPersonTag ?? false,
@@ -1964,6 +1975,23 @@ interface FoundTask {
 }
 
 /**
+ * The times a task or a question written in a section counts from. Under a
+ * dated heading, the day the heading names is the day it was written and
+ * last touched, and the day "next Friday" counts from; anywhere else, the
+ * note's own times and the anchor the note gives.
+ */
+function sectionTimes(
+  context: NoteContext,
+  section: Section | undefined,
+  dateAnchor: number | undefined,
+): { anchor?: number; createdAt?: number; updatedAt?: number } {
+  const datedAt = section ? context.sectionDates?.get(section.id) : undefined;
+  return datedAt === undefined
+    ? { anchor: dateAnchor, createdAt: context.dates.createdAt, updatedAt: context.dates.updatedAt }
+    : { anchor: datedAt, createdAt: datedAt, updatedAt: datedAt };
+}
+
+/**
  * One task line as a task: its own tags with those of the section around
  * it, or the front matter's when no section holds it, and the fields its
  * metadata gives it.
@@ -1974,7 +2002,7 @@ function readTask(
   found: FoundTask,
   options: TaskReadOptions,
 ): Task {
-  const { filePath, frontmatterTags, personMarker, dates } = context;
+  const { filePath, frontmatterTags, personMarker } = context;
   const { line, lineIndex, match, id, parentTaskId } = found;
   const lineNumber = lineIndex + 1;
   const section = findNearestSection(sections, lineNumber);
@@ -1993,9 +2021,10 @@ function readTask(
   // Obsidian Tasks markers become fields and leave the title, so a ✅ date
   // is never read as a due date and titles read the way Tasks shows them.
   const { metadata: fields, title } = parseTaskMetadata(match.body);
+  const times = sectionTimes(context, section, options.dateAnchor);
   const dueDate =
     fields.due === undefined
-      ? findTaskDate(title, options.dateAnchor)
+      ? findTaskDate(title, times.anchor)
       : toTaskDate(fields.due);
 
   return {
@@ -2028,9 +2057,9 @@ function readTask(
     checkboxColumn,
     status,
     sourceLineText: line,
-    // Its own ➕ date when it has one, else its note's.
-    createdAt: parseIsoDate(fields.created) ?? dates.createdAt,
-    updatedAt: dates.updatedAt,
+    // Its own ➕ date when it has one, else its dated heading's, else its note's.
+    createdAt: parseIsoDate(fields.created) ?? times.createdAt,
+    updatedAt: times.updatedAt,
     ...(parentTaskId === undefined ? {} : { parentTaskId }),
   };
 }
@@ -2041,7 +2070,7 @@ function readTask(
  * indented line under it that starts with `Answer:`, in any case.
  */
 function findQuestions(context: NoteContext, sections: Section[], dateAnchor: number | undefined): Question[] {
-  const { filePath, lines, fencedLines, frontmatterTags, personMarker, dates } = context;
+  const { filePath, lines, fencedLines, frontmatterTags, personMarker } = context;
   return lines.flatMap((line, lineIndex): Question[] => {
     const match = fencedLines.has(lineIndex) ? undefined : matchQuestion(context, line);
     if (!match) {
@@ -2053,7 +2082,8 @@ function findQuestions(context: NoteContext, sections: Section[], dateAnchor: nu
     const inheritedLabels =
       section?.tagLabels ?? Object.fromEntries(frontmatterTags.map((tag) => [tag.key, tag.label]));
     const { metadata: fields, title } = parseTaskMetadata(match.body);
-    const answer = findQuestionAnswer(context, lineIndex, dateAnchor);
+    const times = sectionTimes(context, section, dateAnchor);
+    const answer = findQuestionAnswer(context, lineIndex, times.anchor);
     return [
       {
         id: createId('question', `${filePath}:${lineNumber}:${match.body}`),
@@ -2069,8 +2099,8 @@ function findQuestions(context: NoteContext, sections: Section[], dateAnchor: nu
         sourceLineText: line,
         ...(answer ? { answer } : {}),
         ...omitUndefined({
-          createdAt: parseIsoDate(fields.created) ?? dates.createdAt,
-          updatedAt: dates.updatedAt,
+          createdAt: parseIsoDate(fields.created) ?? times.createdAt,
+          updatedAt: times.updatedAt,
         }),
       },
     ];

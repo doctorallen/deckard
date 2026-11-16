@@ -7,6 +7,7 @@ import { listedParkedTags } from '../../../../domain/index/parked';
 import { readAgendaQuery } from '../../../../domain/tasks/agendaGroups';
 import type { DashboardColumnCount, DashboardMode, PersistedPreferences } from '../../../../domain/model/preferences';
 import type { WorkspaceIndex } from '../../../../domain/model';
+import { getTypeIndex } from '../../../../domain/types/typeIndex';
 import type { QueryContext } from '../../../../domain/query/queryContext';
 import type { NavigationService } from '../../../../services/navigationService';
 import type {
@@ -22,6 +23,7 @@ import type { WhatsNew } from '../../../commands/whatsNew';
 import { createDashboardSnapshot, getSavedFilterQuery, mergeOrder } from '../../../state/dashboardState';
 import { onDidBuildLineIndex } from '../../../state/lineIndexBuild';
 import { createDashboardWidgets } from '../../../state/dashboardWidgets';
+import { createTypesTab, OPEN_TYPE_LIMIT } from '../../../state/typesTab';
 import type { TryNextSuggestion } from '../../../state/tryNext';
 import type { ActiveHome, HomeSource, HomeWidgetChoice } from '../../activeHome';
 import { getDashboardHtml } from '../../dashboardHtml';
@@ -60,6 +62,8 @@ export interface DashboardNavigation {
   openDailyNote(): void | Promise<void>;
   /** Asks for a next action for a tag, and captures it to today's note. */
   addNextAction?(tagLabel: string): void | Promise<unknown>;
+  /** Opens the form a new row of a type is written from, as its rows page's Add button does. */
+  addTypeRow?(typeKey: string): void | Promise<unknown>;
 }
 
 /**
@@ -97,8 +101,9 @@ export interface DashboardControllerOptions {
 type Handlers<K extends keyof DashboardPageToHost> = Pick<MessageHandlers<DashboardPageToHost>, K>;
 
 /**
- * Home and the Tags tab: translates validated page messages into domain
- * actions, keeping the tab shown and the tag columns local to the page.
+ * Home, the Tags tab, and the Types tab: translates validated page messages
+ * into domain actions, keeping the tab shown, the tag columns, and the types
+ * the reader has opened local to the page.
  * Each handler checks what a message names against the index as it is now,
  * since the page may hold a snapshot from before a note changed, so old ids
  * and paths cannot change unrelated state.
@@ -122,6 +127,11 @@ export class DashboardController implements PageController<DashboardPageState, D
   private widgetChoices: HomeWidgetChoice[] = [];
   private dashboardMode: DashboardMode;
   private dashboardTagColumns: DashboardColumnCount;
+  /**
+   * The types the reader has opened on the Types tab, by key. Their rows are
+   * sent and no others'; the set lasts as long as the page, and is not saved.
+   */
+  private openTypes: ReadonlySet<string> = new Set();
   /** The day the widgets were built for: Today goes stale when it turns. */
   private publishedOn = startOfToday();
   /**
@@ -141,6 +151,7 @@ export class DashboardController implements PageController<DashboardPageState, D
       ...this.tagsTabHandlers(),
       ...this.searchHandlers(),
       ...this.widgetHandlers(),
+      ...this.typesTabHandlers(),
       ...this.tryNextHandlers(),
     };
   }
@@ -157,8 +168,9 @@ export class DashboardController implements PageController<DashboardPageState, D
 
   /**
    * Everything Home draws, as of now: the tags and entities, the saved
-   * searches, Home's widgets while Home is the tab shown, and the parked
-   * tags. Building it marks today as the day the widgets were built for.
+   * searches, Home's widgets while Home is the tab shown, the types while
+   * Types is, and the parked tags. Building it marks today as the day the
+   * widgets were built for.
    */
   public buildSnapshot(): DashboardPageState {
     this.publishedOn = startOfToday();
@@ -188,6 +200,10 @@ export class DashboardController implements PageController<DashboardPageState, D
       // Switching tabs asks the host again, so only Home gets its widgets.
       ...(this.dashboardMode === 'home'
         ? { widgets: this.buildWidgets(index, viewPreferences, configuration, { queryContext, tryNext }) }
+        : {}),
+      // The types are read only for the tab that lists them, and their rows only for the types opened.
+      ...(this.dashboardMode === 'types'
+        ? { types: createTypesTab(index, { now: queryContext.now, dateFormats: queryContext.dateFormats, opened: this.openTypes }) }
         : {}),
     };
     return { ...data, parkedTags: listedParkedTags(indexer) };
@@ -455,6 +471,34 @@ export class DashboardController implements PageController<DashboardPageState, D
         }
       },
       openTaskBoard: (message) => navigation.openTaskBoard(message.query),
+    };
+  }
+
+  /**
+   * The Types tab: which types are opened, a new row of one, and a new
+   * type. A type a message names is checked against the types as they are
+   * now, and a namespace is handed to the command, which offers only what
+   * the notes hold.
+   */
+  private typesTabHandlers(): Handlers<'setOpenTypes' | 'addTypeRow' | 'newType' | 'createTypeFromTags'> {
+    const { indexer, navigation } = this.home;
+    const registry = () => getTypeIndex(indexer.getSnapshot()).registry;
+    return {
+      setOpenTypes: (message, page) => {
+        const types = registry();
+        this.openTypes = new Set(message.typeKeys.filter((key) => types.get(key) !== undefined).slice(0, OPEN_TYPE_LIMIT));
+        page.refresh();
+      },
+      addTypeRow: async (message) => {
+        if (registry().get(message.typeKey)) {
+          await navigation.addTypeRow?.(message.typeKey);
+        }
+      },
+      newType: () => vscode.commands.executeCommand('deckard.newType'),
+      createTypeFromTags: (message) =>
+        message.namespace === undefined
+          ? vscode.commands.executeCommand('deckard.createTypeFromTags')
+          : vscode.commands.executeCommand('deckard.createTypeFromTags', message.namespace),
     };
   }
 

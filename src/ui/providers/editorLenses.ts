@@ -372,7 +372,7 @@ function provideQuestionLenses({ document, file, index }: LensContext, memory: Q
 
 /**
  * On a note's first line: where it sits under its hubs, from the namespace
- * down, as the Hubs view files it, which opens the note above it. A note no
+ * down, by its hub notes and its up:, which opens the note above it. A note no
  * hub holds has none.
  */
 function provideBreadcrumbLenses({ file, index, isNotesFile }: LensContext): LazyCodeLens[] {

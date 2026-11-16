@@ -22,7 +22,7 @@ import { ParsedFile, WorkspaceIndex } from '../domain/model';
 import { findPromises } from '../domain/tasks/promises';
 import { planRollover } from '../domain/notes/rolloverPlan';
 import { ROLLOVER_LOOKBACK_DAYS } from '../ui/commands/rollover';
-import { buildHubTree, HubTreeNode } from '../ui/state/hubTree';
+import { getHubGraph, hubNoteLabel } from '../ui/state/hubTree';
 
 suite('Work sample', () => {
   const extensionUri = vscode.Uri.file(path.resolve(__dirname, '..', '..'));
@@ -145,11 +145,11 @@ suite('Work sample', () => {
     );
     assert.ok(find('#contract/relay-survey is:overdue').length >= 1, 'a survey task is overdue');
     assert.ok(find('#contract/relay-survey assignee = @tomas-vey is:open').length >= 3, 'three open for Tomas');
-    const relayHub = buildHubTree(index, now)
-      .find((group) => group.label === 'Contracts')
-      ?.children.find((hub: HubTreeNode) => hub.label === 'Relay survey');
+    const graph = getHubGraph(index);
+    const relayHub = [...graph.hubTags].find(([, tagKey]) => tagKey === '#contract/relay-survey')?.[0];
+    const underRelay = [...graph.parents].filter(([, parents]) => relayHub !== undefined && parents.includes(relayHub)).map(([note]) => hubNoteLabel(index, note));
     assert.deepStrictEqual(
-      ['Survey flight plan', 'Buoy checklist'].filter((label) => !relayHub?.children.some((note) => note.label === label)),
+      ['Survey flight plan', 'Buoy checklist'].filter((label) => !underRelay.includes(label)),
       [],
       'the flight plan and the checklist filed under the Relay survey',
     );

@@ -42,6 +42,7 @@ const MODULES = {
   statsState: 'ui/state/statsState.js',
   notePageState: 'ui/state/notePageState.js',
   dashboardWidgets: 'ui/state/dashboardWidgets.js',
+  typesTab: 'ui/state/typesTab.js',
   noteLinks: 'ui/state/noteLinks.js',
   notesGraphState: 'ui/state/notesGraphState.js',
   relatedNotesRanking: 'ui/state/relatedNotesRanking.js',

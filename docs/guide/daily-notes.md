@@ -59,11 +59,38 @@ A new daily, weekly, or monthly note starts from a file in the templates folder 
 
 - Tasks come from **every earlier daily note**, oldest first, within the last week. Other notes are left alone.
 - Tasks are written exactly as they were, in order, under a **Carried over** heading at the end of today's note, one level below its first heading (`## Carried over` under `# {date}`). A second rollover adds to it.
+- **A task keeps its meeting.** A task that was written under a heading is carried under that heading, written again one level below Carried over with its tags, so the task is still about the project and the person. The line under it links to the heading the task was first written under, and stays the same however many days the task is carried:
+
+  ```markdown
+  ## Carried over
+
+  - [ ] Book travel
+
+  ### Vendor sync #project/borealis @dana
+  ([[2026-11-13#Vendor sync]])
+  - [ ] Send the quote
+  ```
+
+  The heading is the nearest one above the task with tags of its own, with the tags of the headings above it added; where none has tags, the outermost below the note's title. Tasks under the note's title alone go under Carried over itself, above the headings. The link is written as `deckard.links.style` says. With `move`, a carried heading left with nothing but its link is taken out of the earlier note.
 - [Steps](tasks.md#breaking-a-task-into-steps) travel with their task. `move` takes everything under the task; `migrate` copies its open steps and marks each line it leaves. A step whose task is not carried comes forward on its own at the top level.
 - A `[>]` line is not a task, so it stops counting as open, and its link gives today's note a backlink.
 - A task is carried only if its line is unchanged since indexing and not already in today's note. In `migrate` mode, a task in several notes is carried once, from the newest. Only a note Deckard creates rolls tasks in.
 - `Deckard: Roll Unfinished Tasks Forward` does it on demand, whatever the setting, creating today's note if needed. It moves tasks unless the setting is `migrate` or `copy`.
 - The rollover is one write, with **Open** and **Undo** afterward. `Deckard: Undo Last Change` also undoes it. Its notes go back together or not at all: if one changed since, Undo puts nothing back and names that note.
+
+### Starting a meeting
+
+`Deckard: Start a Meeting` writes a meeting's heading where the meeting belongs and puts the cursor under it, so its notes sit with the project or the person they are about and today's note still lists it.
+
+- **What it is about.** A list offers **No one thing**, for today's note; then the projects, people, and other subjects you wrote about lately, most first; then the notes that already hold meetings; then **A note of its own…**. Type to narrow it, and press <kbd>Enter</kbd> on a row to choose it.
+- **Its name.** Then type the meeting's name, or leave it empty.
+- **What is written.** In `Borealis.md`, the hub note of `#project/borealis`, at the end: `## 2026-11-16 10:00 Vendor sync`, a [dated heading](notes-and-links.md#dated-headings), so the note keeps the project's meetings in order under what describes it, and each is found by its day. The time is the clock's, to the nearest five minutes. Today's note gains `- 10:00 [[Borealis#2026-11-16 10:00 Vendor sync]]` at its end, and is created if it is not there, with the tasks a [rollover](#carrying-unfinished-tasks-forward) carries in.
+- **About several things.** Check more than one row: the first you check is where the notes go, and the others end the heading as tags, `## 2026-11-16 10:00 Vendor sync @priya`, so the meeting is on Priya's page too. A note checked after the first is left out, since a meeting is written in one place.
+- **About no one thing.** In today's note the heading is `## 10:00 Vendor sync`, with the tags of anything else you checked, and no link is written. [Move to…](organizing.md#moving-a-section) files it later, putting the day in its heading.
+- **A subject with no hub note** gets one, as [Create Hub Note for Tag](search-pages.md#hub-notes) makes it, and the meeting is written there.
+- **A meeting that recurs.** **A note of its own…** makes a note with the meeting's name, such as `Weekly staff.md`, or uses the one there is, and heads each time it is held with its day and time alone: `## 2026-11-16 10:00`. From then on the note is in the list under **Meeting notes**.
+- **What is offered.** A tag that names a person, sits in a namespace such as `#project/…`, or has a hub note, by how many headings carry it and how lately: one written two weeks ago counts half of one written today, and nothing counts after 60 days. The 12 that count most are listed. The notes under **Meeting notes** are the five with the latest [dated heading](notes-and-links.md#dated-headings) in those 60 days.
+- It is one write, and `Deckard: Undo Last Change` takes back the heading and the link together.
 
 ### Promises in today's note
 

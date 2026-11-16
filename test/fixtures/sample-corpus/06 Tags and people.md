@@ -53,22 +53,24 @@ hub, so Home's **Tags without a hub** widget lists it, with **Create hub**.
 
 ## Hubs, and where a note sits
 
-The **Hubs** view in the Deckard sidebar is a tree of the topics that have a
-hub note, each with the notes about it filed underneath:
+The topics that have a hub note, and the notes about each, hang together
+like pages under pages:
 
 ```text
 People
   Sable Ortiz
 Projects
-  Argent Protocol            1/3 done (33%)
-  Ghostline Relay            3/23 done (13%)
+  Argent Protocol
+  Ghostline Relay
     Receiver firmware
       Firmware bench log
     Relay route survey
 Teams
-  Harbor                     0/2 done (0%)
-  Wardens                    3/21 done (14%)
+  Harbor
+  Wardens
 ```
+
+A note under a hub says where it sits on its first line in the editor.
 
 A note is filed under a hub when its front matter or its first heading
 carries the hub's tag: the Relay route survey's front matter names the relay
@@ -78,8 +80,8 @@ Relay, so it is a sub-project; the Firmware bench log carries no tag at all,
 and its `up:` names Receiver firmware.
 
 A line that mentions a tag in passing, as the daily notes do, does not file
-its note there. Each hub shows how far along its tag's tasks are, the same
-figure its page and its first line in the editor give.
+its note there. Each hub's page shows how far along its tag's tasks are, the
+same figure its first line in the editor gives.
 
 ## Try it
 
@@ -106,16 +108,12 @@ figure its page and its first line in the editor give.
    people, busiest first. Home's **Gone quiet** widget, which you can add with
    **Customize → Add widget**, lists the people you have not written about
    for 30 days or more: nobody yet in a sample this new.
-9. Expand the **Hubs** view in the Deckard sidebar, then **Ghostline Relay**
-   and **Receiver firmware** under it. Select **Firmware bench log**: its
+9. Open the **Firmware bench log** note, in the projects folder: its
    first line reads *Projects › Ghostline Relay › Receiver firmware ›
    Firmware bench log*, and selecting that opens Receiver firmware.
 10. Open the Ghostline Relay note. Its first line says how far along the
     relay's tasks are: *Progress: 3/23 done (13%) · 2 overdue · 1 needs a new
     date · next due today*. Selecting it opens the tag's page, where the same
     bar sits under the hub with **Show overdue**.
-11. Select **Wardens** in the Hubs view: a hub opens its tag's search page.
-    The file button beside it (**Open Hub Note**) opens the Wardens note's
-    Markdown instead.
 
 Next: [[07 Links]]

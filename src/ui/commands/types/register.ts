@@ -10,9 +10,10 @@ import {
   createTypeFromTags,
   createTypeNote,
 } from '../typeNotes';
-import { editActiveNoteFields, newTypedNote, openTypeNoteForm } from '../typeNoteForm';
+import { createHubNoteForTag, editActiveNoteFields, newTypedNote, openTypeNoteForm } from '../typeNoteForm';
 import { EDIT_TYPE_COMMAND, editType, newType } from '../typeBuilder';
 import { makeTermNote } from '../termNotes';
+import { listTagsWithoutHub } from '../../state/hubTree';
 import { MAKE_TERM_NOTE_COMMAND } from '../../state/termHover';
 
 /**
@@ -22,8 +23,9 @@ import { MAKE_TERM_NOTE_COMMAND } from '../../state/termHover';
  * (docs/implementation/34-edit-fields-form.md), and the commands the
  * type quick fixes and hovers run: Create person "Omar H"…, which opens
  * the new note's form on its title, Create a <Type> type, and Copy email
- * (docs/implementation/30-databases.md, 31-type-note-form.md); and Make a
- * term note, from a term's hover and Stats (42-terms.md).
+ * (docs/implementation/30-databases.md, 31-type-note-form.md); Make a
+ * term note, from a term's hover and Stats (42-terms.md); and Create Hub
+ * Note for Tag…, the palette's way to a note for a tag that has none.
  */
 export function register(context: vscode.ExtensionContext, services: Services): void {
   const writes = { indexer: services.indexer, history: services.history };
@@ -53,6 +55,22 @@ export function register(context: vscode.ExtensionContext, services: Services): 
         : undefined;
     }),
     registerCommand(COPY_FIELD_VALUE_COMMAND, (value: unknown) => copyFieldValue(value)),
+    // The palette's way to the offer a tag's page makes under its title: a
+    // tag a type has rows of gets the new note's form, any other its hub note.
+    registerCommand('deckard.createHubNoteForTag', async () => {
+      await services.indexer.ready;
+      const picked = await vscode.window.showQuickPick(
+        listTagsWithoutHub(services.indexer.getSnapshot()).map((tag) => ({
+          label: tag.label,
+          description: `${tag.count} ${tag.count === 1 ? 'entry' : 'entries'}`,
+          key: tag.key,
+        })),
+        { title: 'Deckard: Create Hub Note for Tag', placeHolder: 'Choose a tag with no hub note yet' },
+      );
+      if (picked) {
+        await createHubNoteForTag(writes, picked.key);
+      }
+    }),
     // A term's hover passes the term and its inline definition; Stats' Define…, the term alone.
     registerCommand(MAKE_TERM_NOTE_COMMAND, (term: unknown, definition: unknown) =>
       typeof term === 'string' ? makeTermNote(writes, term, typeof definition === 'string' ? definition : undefined) : undefined,

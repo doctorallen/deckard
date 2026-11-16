@@ -192,7 +192,7 @@ Leaving the form for another note with changes not saved asks first. <kbd>Escape
 
 ## A type's rows
 
-Search `type = team`, or select a namespace heading a type has in the [Hubs view](search-pages.md#the-hubs-view), and the [search page](search-pages.md#search-pages) is titled with the type's plural name, **Teams**, and under it what its rows are, `#team/*`, or `type: incident · Incidents/`. A new first tab, **Teams (4)**, beside **Notes** and **Tasks**, is a table of the rows the search finds; side by side, the table is above both.
+Search `type = team`, or select the type on Home's [Types tab](home-and-stats.md#the-types-tab), and the [search page](search-pages.md#search-pages) is titled with the type's plural name, **Teams**, and under it what its rows are, `#team/*`, or `type: incident · Incidents/`. A new first tab, **Teams (4)**, beside **Notes** and **Tasks**, is a table of the rows the search finds; side by side, the table is above both.
 
 - **Columns.** The title, then each field, headed by its key in monospace, then **Open tasks** and **Last mentioned**, headed in muted sentence case: *Computed: not written in the note*. **Team columns**, in **⋯**, adds or removes any of them: the reverses, such as **Members**, **Mentions**, a nested row's **Parent** and **Children**, and a note row's **Linked from**.
 - **Cells.** A person or a related row is a link by its title. A reverse of people lists three by first name and how many more, *Dana, Sam, Lena +2*. A date reads *today · 2026-10-08*, and open tasks *4 · 1 overdue*.

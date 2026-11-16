@@ -2,7 +2,8 @@
 
 | Command | Description |
 | --- | --- |
-| **Deckard: Open Home** | Opens Home, with workspace totals, your widgets, and the Tags tab. It was called Open Dashboard; type *home*. |
+| **Deckard: Open Home** | Opens Home, with workspace totals, your widgets, and the Tags and Types tabs. It was called Open Dashboard; type *home*. |
+| **Deckard: Open Types** | Opens Home on its [Types tab](home-and-stats.md#the-types-tab): every type as one row, with its rows, open tasks, and when it was last mentioned. |
 | **Deckard: Go to…** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> elsewhere, or **Go to…** at the foot of the menu **DECKARD ▾** drops at the top of any page. Lists every page, as the top of the Context view does, and opens the one you choose; see [Finding your way](getting-started.md#finding-your-way). |
 | **Deckard: Open Notes Graph** | Opens a map of every note, task, and tag connection. |
 | **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, due date, person, or any tag namespace. |
@@ -39,6 +40,7 @@
 | **Deckard: Export Tasks as Calendar…** | Writes your dated tasks to a calendar file to import into a calendar app; see [Tasks in your calendar app](daily-notes.md#tasks-in-your-calendar-app). |
 | **Deckard: Check My Setup** | Writes a Markdown report of your resolved settings, what the last scan found and kept out, what the index holds, and whether `deckard.me` names anyone, with fixes. |
 | **Deckard: Create a Work Sample** | Writes six weeks of a ship captain's notes, dated from today, into Deckard's storage and opens it. Run again, it offers a fresh copy. |
+| **Deckard: Start a Meeting** | Asks what a meeting is about, offering the projects and people you wrote about lately, and its name; writes its heading in that note with the day and time, links today's note to it, and puts the cursor under it; see [Starting a meeting](daily-notes.md#starting-a-meeting). |
 | **Deckard: Open Previous Daily Note** | Opens the nearest daily note before the one in the editor, or before today. |
 | **Deckard: Open Next Daily Note** | Opens the nearest daily note after the one in the editor, or after today. |
 | **Deckard: Note Actions…** | The Deckard button in a note's title bar: lists what the editor's **Deckard** submenu lists, in the same order, for the cursor's position: the task on the line, the heading, the note (open as a page, Related Notes, the Notes Graph, Move to…, copy, tags to front matter), then pin and park. |
@@ -60,13 +62,13 @@
 | **Deckard: Clear the Tasks View's Search** | Lets the Tasks view list every open task again. |
 | **Deckard: Group Tasks By…** | Chooses the Tasks view's groups: due status, priority, status, person, or a tag namespace. |
 | **Deckard: Sort Tasks By…** | Orders each of the Tasks view's groups: by rank, created or updated date, or title. |
-| **Deckard: Sort Hubs By…** | Orders each level of the Hubs view: by name, or **What's new**, the hubs with the most new since you last opened their page first; see [The Hubs view](search-pages.md#the-hubs-view). |
 | **Deckard: New Note from Template** | Creates a note from a template in your templates folder. |
 | **Deckard: New Note from Template Here…** | The same, in the folder right-clicked in the Explorer, from its **Deckard** menu. |
 | **Deckard: Exclude from Deckard** | On a folder's **Deckard** menu in the Explorer: leaves the folder out of the index. **Deckard: Include in Deckard** brings a folder left out by name back. |
 | **Deckard: Copy MCP Server Setup** | Copies the command that adds Deckard's [MCP server](ai-assistants.md#claude-code-and-other-mcp-clients) to Claude Code, and offers to turn the server on when it is off. Listed while `deckard.assistantTools` is on. |
 | **Deckard: Reset MCP Server Token** | Makes a new MCP server token, invalidating copied setups. Listed while the server is on. |
 | **Deckard: Move to…** | Moves the line, task, or selection under another heading or into a new note, and leaves a link behind. On a heading, moves the heading and everything under it. |
+| **Deckard: Copy to…** | Copies the line, task, selection, or a heading's section under another heading or into a new note, with a link to where it came from, and leaves it where it was. Move to…'s list offers it as **Copy instead of moving**. |
 | **Deckard: Open Note as Page** | The unicorn button in a note's title bar: opens the note in the editor on a page of its own, its links, tags, tasks, and query blocks working; see [Reading a note as a page](notes-and-links.md#reading-a-note-as-a-page). |
 | **Deckard: Copy as Plain Markdown** | Copies the note, or the selection, with its embeds, query results, and links written out; see [Copying a note for elsewhere](notes-and-links.md#copying-a-note-for-elsewhere). |
 | **Deckard: Extract Heading** | Moves a heading section into a newly named note and leaves a `[[link]]` to it. |

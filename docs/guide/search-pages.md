@@ -65,6 +65,7 @@ Migration of billing onto the new ledger.
 ```
 
 - The `#project/atlas` overview shows the note first, with its other front-matter fields as properties. Tag values such as `@dana` open their own overviews. The hub's entries are not listed again below.
+- A hub note can hold the project's meetings under [dated headings](notes-and-links.md#dated-headings), such as `## 2026-11-16 Vendor sync`. The hub is drawn without them, so it stays the description of the project, and each meeting is listed below as a note of its own, under its day.
 - A [typed](databases.md) tag's hub shows its fields as the Note page does, then, under **From other notes**, reverses such as a team's **members**, each saying where it is set. **Edit fields…**, beside **Open** in the card's header, opens the [form](databases.md#editing-fields) that edits them, and a field's name opens it at that field. A typed tag with no hub note gets a **Fields** card in the hub's place: *No note describes @alex-rivera yet.* with **Add fields…**, which opens the form for its hub note, then what other rows say of it: *owned by: Payments (lead Alex Rivera · on-call Sam Okafor)*. See [Fields on a tag's page](databases.md#fields-on-a-tags-page).
 - Write the tag without `#`, or quote it; YAML reads an unquoted `#` as a comment. Quote people: `describes: "@dana"`. A list such as `describes: [project/atlas, proj/atlas]` describes several tags.
 - An overview without a hub offers a **Create hub note** link under its title, which also says the tag has no hub; Zen leaves it drawn, and `Deckard: Create Hub Note for Tag…` does the same from the palette. It writes one to the notes folder, never overwriting a note, starting from a template named after the tag's namespace (such as `project.md`) if there is one; see [Templates](notes-and-links.md#templates).
@@ -82,7 +83,7 @@ Migration of billing onto the new ledger.
 A tag's page remembers what it held when you last had it open. Come back more than a day later, and if something changed, a band under the page's bar says so: **Since you last looked · Fri, Oct 2, 12 days ago**, then a chip for each kind of change, such as *4 new mentions*, *1 field changed*, *2 tasks done*, *1 task added*, and *1 question answered*.
 
 - A visit counts once the page has been in front for five seconds; **Mark seen** counts it at once and clears the band. Leaving a page after that marks it seen: the band is gone the next time you come back.
-- A **new mention** is an entry with the tag written or changed since, its tasks aside. A task is **added** or **done** since. A [question](tasks.md#questions) is **answered** since when an `Answer:` line was written under it, whenever it was asked. A **field** is a value in the hub's front matter or a typed row's fields, its reverses among them.
+- A **new mention** is an entry with the tag written or changed since, its tasks aside; a meeting written under a [dated heading](notes-and-links.md#dated-headings) in the hub note is one too. A task is **added** or **done** since. A [question](tasks.md#questions) is **answered** since when an `Answer:` line was written under it, whenever it was asked. A **field** is a value in the hub's front matter or a typed row's fields, its reverses among them.
 - A chip narrows the Notes, Tasks, or Questions tab to what it counts, as a Refine value does, and shows that tab; select it again to show everything. **N fields changed** opens the hub card instead.
 - Notes new since then are listed first, under **New since Fri, Oct 2**, the rest under **Earlier**, each with a **New** mark; an added task has one too. A changed field shows its old value once, after its value now: *changed · was Alex Rivera*.
 - Only the page of one tag on its own has the band. A first visit draws none; it only records.
@@ -119,29 +120,14 @@ A tag's page has a **Story** tab after Notes and Tasks, **Story (48)**: every li
 - Side by side, the story is drawn under the notes and tasks.
 - With [Zen](themes-and-zen.md#zen) on, the dates, marks, counts, and filters all stay.
 
-## The Hubs view
+## Notes under a hub
 
-The **Hubs** view in the Deckard sidebar is a tree of your projects, people, and other topics, each with the notes about it filed underneath, like pages under pages in Notion's sidebar. A topic appears once it has a [hub note](#hub-notes). It starts collapsed; expand it, or drag it where you like. With no hub note yet, it says *A hub note gathers a project's or person's notes.*, with **Create Hub Note for Tag…**.
+A hub note can hold other notes under it, like pages under pages, and a note says where it sits on its first line. Home's [Types tab](home-and-stats.md#the-types-tab) lists every type with its rows, and the hub notes no type covers.
 
-```
-HUBS
-▾ People
-  ▸ Dana Reyes
-▾ Projects
-  ▾ Atlas                    1/2 done (50%)
-      Kickoff
-    ▸ Ledger migration
-      Vendor review
-  ▸ Borealis
-```
-
-- Each tag namespace with a hub note heads a group: **Projects** for `#project/…`, **People** for `@` tags, and **Other tags** for a hub of a tag without one. Select the heading of a namespace a [type](databases.md) has, such as **Teams**, to open the type's rows.
-- Under each hub are the notes about its tag: those whose front matter or first heading carries it. A line that mentions the tag in passing, such as in a daily note, does not file its note there; the tag's page still finds it.
-- A note can name its place outright with `up:` in its front matter, such as `up: "[[Ledger migration]]"` or a list of several. It is then filed only there, whatever its tags. A note named by `up:` that is no hub is listed under **Other notes**.
+- Under a hub are the notes about its tag: those whose front matter or first heading carries it. A line that mentions the tag in passing, such as in a daily note, does not file its note there; the tag's page still finds it.
+- A note can name its place outright with `up:` in its front matter, such as `up: "[[Ledger migration]]"` or a list of several. It is then filed only there, whatever its tags.
 - A hub goes under another hub only when its `up:` names it, as a sub-project's does. The tags in a hub's own front matter, such as a team's `regulars:` or a person's `team:`, describe it and do not move it. A note about two projects is under both.
-- A [parked](organizing.md#parking-notes) note is left out of the tree, and a parked task out of a hub's count, as a search leaves them out.
-- Select a hub to open its tag's search page, with the hub note on top and everything the tag finds under it; the hub's **Open Hub Note** button opens the note itself, in the editor or on the note page as `deckard.openNotesIn` says, and its right-click menu offers the other way. Select any other note to open it. A hub shows how far along its tag's tasks are.
-- **What's new.** Each hub says how much is new since you last opened its page, as its [band](#since-you-last-looked) counts it, *9 new*, or else when you saw it, *seen today* or *seen Fri, Oct 9*, or *never opened*. **Sort Hubs By…**, in the view's **⋯**, puts the hubs with the most new first on each level, or goes back to **Name**.
+- A [parked](organizing.md#parking-notes) note is filed under nothing, as a search leaves it out.
 - **Breadcrumbs.** A note's first line says where it sits, such as **Projects › Atlas › Ledger migration › Cutover plan**, and opens the note above it. `deckard.editor.breadcrumbs` turns them off.
 
 ## Merging tags

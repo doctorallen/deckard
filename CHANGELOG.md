@@ -2,6 +2,76 @@
 
 ## Unreleased
 
+## 2.18.0 - 2026-11-15
+
+### Highlights
+
+- **`Deckard: Start a Meeting`** writes a meeting's dated heading in its project's or person's note and links today's note to it.
+- **Dated headings**: `## 2026-11-16 Vendor sync` dates what is under it, and a carried task keeps the meeting it came from.
+- **A Types tab on Home** lists every type with its rows, open tasks, and last mention; the Hubs view is gone.
+
+### Added
+
+- **Dated headings.** A heading that starts with a day, such as
+  `## 2026-11-16 10:00 Vendor sync`, begins a dated entry in any note but a
+  daily note. The heading, the headings under it, and their tasks and
+  questions are created and updated on that day, whatever the file says, so
+  a search by date finds the meeting, lists sort it by the day it happened,
+  and its "next Friday" counts from the meeting. Each dated heading is one
+  note, with the tags of the note it is written in. A hub note is drawn on
+  its tag's page without its dated headings, so it stays the description
+  of the project or person, and each meeting is listed below it under its
+  day.
+- **Start a Meeting.** `Deckard: Start a Meeting` asks what a meeting is
+  about, offering the projects and people you wrote about most lately, and
+  its name, then writes `## 2026-11-16 10:00 Vendor sync` at the end of
+  that project's or person's note and puts the cursor under it. Today's
+  note keeps a line linking to it. Check several and the first is where the
+  notes go, the others tags on the heading; **No one thing** writes it in
+  today's note; **A note of its own…** keeps a meeting that recurs in a
+  note named for it, a dated heading for each time it is held.
+- **Copy to….** `Deckard: Copy to…`, and **Copy instead of moving** in Move
+  to…'s list, write a line, a task, a selection, or a heading's section
+  where you choose and leave it where it was, so something said in a
+  meeting can go into the note that keeps such things. The copy links to
+  the heading it came from:
+  `- The gateway is included ([[2026-11-16#Vendor sync]])`.
+
+- **A Types tab on Home**, after Home and Tags: every type as one row,
+  with what its rows are, how many it has and how many have a note, its
+  open tasks and how many are overdue, and when it was last mentioned.
+  Select a type to open its rows; the arrow before it lists its rows in
+  place; **Add person…** starts a new row; the headings sort.
+  `Deckard: Open Types` opens Home on the tab.
+- **New type…** on the Types tab, and with no type yet, **Create type from
+  tags…** beside it.
+- **Hub notes outside a type**, under the Types tab's table: the hub notes
+  no type's rows cover, a namespace of them as one line with **Create type
+  from tags…**.
+
+### Changed
+
+- **A section moved out of a daily note keeps its day.** Move to… puts the
+  daily note's day first in the heading, `## 2026-11-16 Vendor sync`, when
+  the section goes to a note that is not a daily note, so it is a dated
+  heading where it lands. A heading that starts with a day already, and one
+  written at the top level of its new note, are left as written.
+- **Carried tasks keep their meeting.** The rollover writes a task that
+  was under a heading, such as `## Vendor sync #project/borealis @dana`,
+  under that heading again, one level below **Carried over**, with its tags
+  and a link to the heading it was first written under:
+  `([[2026-11-13#Vendor sync]])`. The task is still listed for the project
+  and the person, and the link leads back to the meeting however many days
+  the task waits. Tasks under no heading go under Carried over as before.
+- The Tour's Hubs scene is now the Types tab.
+- The Left and Right Arrow keys go round Home's three tabs.
+
+### Removed
+
+- The **Hubs** sidebar view, with **Sort Hubs By…** and its per-hub "new"
+  counts. `up:` front matter, the breadcrumb above a note, hub notes, and
+  **Create Hub Note for Tag** stay; a type's rows are on the Types tab.
+
 ## 2.17.0 - 2026-11-15
 
 ### Highlights

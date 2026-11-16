@@ -1,6 +1,6 @@
 /**
- * The Dashboard's protocol: what Home and the Tags tab draw, and the messages
- * the page sends.
+ * The Dashboard's protocol: what Home, the Tags tab, and the Types tab draw,
+ * and the messages the page sends.
  */
 import type {
   DashboardColumnCount,
@@ -112,6 +112,8 @@ export interface DashboardSnapshot {
   widgetConfig: DashboardWidgetConfig[];
   /** What each widget shows, sent while Home is the tab shown. */
   widgets?: DashboardWidget[];
+  /** Every type and the hub notes outside one, sent while Types is the tab shown. */
+  types?: DashboardTypesTab;
   /**
    * Whether Home's widgets differ from the ones it started with. While they
    * do not, Home says it can be arranged; once they do, the reader knows.
@@ -119,6 +121,86 @@ export interface DashboardSnapshot {
   homeArranged?: boolean;
   /** After a feature update, the version Home says it was updated to, such as `1.23`. */
   whatsNew?: { version: string };
+}
+
+/** A day the Types tab names: when, to sort by, and in words and in full, `today · 2026-10-08`. */
+export interface DashboardDay {
+  at: number;
+  text: string;
+}
+
+/** One of a type's rows, as the Types tab lists it under an opened type. */
+export interface DashboardTypeRow {
+  title: string;
+  /** For a tag row, the tag whose page it opens. */
+  tagKey?: string;
+  /** For a note row, the note it opens. */
+  filePath?: string;
+  /** Set on a tag row with no hub note, which is drawn muted. */
+  noNote?: true;
+}
+
+/** The rows an opened type lists in place, and what the list says of itself. */
+export interface DashboardTypeRows {
+  rows: DashboardTypeRow[];
+  /** What the list is and what its muted names mean: "The 12 mentioned most recently. Muted names have no note yet." */
+  note: string;
+}
+
+/** One type, as a row of the Types tab. */
+export interface DashboardType {
+  key: string;
+  /** Its name, `Person`, which Add person… words. */
+  name: string;
+  /** Its name for many, `People`, which the row is called by. */
+  plural: string;
+  /** What its rows are: `#team/*`, `@*`, or `type: incident · Incidents/`. */
+  rule: string;
+  rowsKind: 'tags' | 'notes';
+  /** The search its rows page is, `type = team`. */
+  query: string;
+  /** How many rows its page lists. */
+  rows: number;
+  /** For a type whose rows are tags, how many have a hub note. */
+  withNote?: number;
+  /** Open tasks across its rows, each counted once. */
+  openTasks: number;
+  /** Of those, how many are past their due date. */
+  overdue: number;
+  /** When any of its rows was last mentioned. */
+  lastMentioned?: DashboardDay;
+  /** Its rows, sent only while the reader has the type opened. */
+  listed?: DashboardTypeRows;
+}
+
+/**
+ * A hub note no type's rows cover, or a namespace of them: a namespace
+ * with no type is one line, which Create type from tags… makes a type of;
+ * a tag with no namespace is its hub note's own line.
+ */
+export interface DashboardOutsideHub {
+  /** The namespace's name for many, `Vendors`, or the hub note's title. */
+  label: string;
+  /** The tags it stands for, as written: `#vendor/*`, or `#onboarding`. */
+  written: string;
+  /** For a namespace, how many tags it has and how many have a note: "5 tags, 2 with a note". */
+  detail?: string;
+  /** For a hub note, the tag whose page it opens. */
+  tagKey?: string;
+  /** For a namespace, the search that finds what its tags are on, `kind = vendor`. */
+  query?: string;
+  /** For a namespace of `#` tags, its name, which Create type from tags… starts from. */
+  namespace?: string;
+  /** Set on a namespace line, which offers Create type from tags…. */
+  canBeType?: true;
+  /** For a hub note, when its tag was last mentioned. */
+  lastMentioned?: DashboardDay;
+}
+
+/** What the Types tab draws: every type, and the hub notes outside one. */
+export interface DashboardTypesTab {
+  types: DashboardType[];
+  outside: DashboardOutsideHub[];
 }
 
 /** A tag a Home widget lists, with what searching for it finds. */
@@ -241,7 +323,7 @@ export interface SetEntitySortMessage {
   mode: TagSortMode;
 }
 
-/** Switches the Dashboard between Home and Tags. */
+/** Switches the Dashboard between Home, Tags, and Types. */
 export interface SetDashboardModeMessage {
   type: 'setDashboardMode';
   mode: DashboardMode;
@@ -295,6 +377,28 @@ export interface OpenNoteMessage {
   filePath: string;
   /** Shift was held: open it where `deckard.openNotesIn` does not. */
   opposite?: boolean;
+}
+
+/**
+ * Says which types the reader has opened on the Types tab, so the host
+ * sends those types' rows and no others.
+ */
+export interface SetOpenTypesMessage {
+  type: 'setOpenTypes';
+  typeKeys: string[];
+}
+
+/** Starts a new row of a type, as its rows page's Add button does. */
+export interface AddTypeRowMessage {
+  type: 'addTypeRow';
+  typeKey: string;
+}
+
+/** Starts a new type: from nothing, or from the tags of a namespace, which is asked for when none is named. */
+export interface NewTypeMessage {
+  type: 'newType' | 'createTypeFromTags';
+  /** For Create type from tags…, the namespace to start from. */
+  namespace?: string;
 }
 
 /** Runs, puts off for a week, or retires Try next's suggestion. */
@@ -405,6 +509,10 @@ export interface DashboardPageToHost {
   addNextAction: AddNextActionMessage;
   questionAction: QuestionActionMessage;
   openNote: OpenNoteMessage;
+  setOpenTypes: SetOpenTypesMessage;
+  addTypeRow: AddTypeRowMessage;
+  newType: MessageAs<NewTypeMessage, 'newType'>;
+  createTypeFromTags: MessageAs<NewTypeMessage, 'createTypeFromTags'>;
   pinNote: MessageAs<PinNoteMessage, 'pinNote'>;
   unpinNote: MessageAs<PinNoteMessage, 'unpinNote'>;
 }

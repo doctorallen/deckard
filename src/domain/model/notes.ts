@@ -62,6 +62,13 @@ export interface Section {
    * itself, and a match can say which line answered it.
    */
   bodyTags?: SectionBodyTag[];
+  /**
+   * The day, `YYYY-MM-DD`, of the dated heading this section is or is
+   * written under, in a note that is not a daily note. Such a section is
+   * created and updated on that day, whatever its note's own times say
+   * (domain/markdown/datedHeadings.ts).
+   */
+  dated?: string;
   createdAt?: number;
   updatedAt?: number;
 }

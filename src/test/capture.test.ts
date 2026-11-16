@@ -32,6 +32,11 @@ suite('Quick capture', () => {
     assert.ok(!labels.slice(4).includes('Calls'), 'a recent heading is listed once');
     const withMore = buildDestinationItems(index, {}, { newNote: true, today: { fileName: '2026-09-26.md' } });
     assert.deepStrictEqual(withMore.slice(0, 3).map((item) => item.label), ['$(new-file) New note…', '$(calendar) Today’s note', 'Headings']);
+    // The other way of going, as Move to… offers a copy, is listed after them.
+    const otherWay = { label: '$(copy) Copy instead of moving', description: 'leaves it where it is' };
+    const withWay = buildDestinationItems(index, {}, { newNote: true, today: { fileName: '2026-09-26.md' }, otherWay });
+    assert.deepStrictEqual(withWay[2], { ...otherWay, destination: { kind: 'otherWay' } });
+    assert.strictEqual(withWay[3].label, 'Headings');
   });
 
   test('adds the task through the editor copy, keeping unsaved changes, and saves', async () => {

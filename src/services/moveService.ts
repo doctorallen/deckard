@@ -7,7 +7,15 @@ import {
   readMoveBlock,
   TextSplice,
 } from '../domain/markdown/moveLines';
-import { formatSectionLink, nestingShift, placeSection, shiftHeadings } from '../domain/notes/moveSection';
+import { headingAbove, sectionWithSourceLink, withSourceLink } from '../domain/notes/copyLines';
+import {
+  dateHeading,
+  dateHeadingLine,
+  formatSectionLink,
+  nestingShift,
+  placeSection,
+  shiftHeadings,
+} from '../domain/notes/moveSection';
 import type { NoteLinkStyle } from '../domain/markdown/wikiLinks';
 import { readTaskStatusSettings } from '../domain/tasks/taskStatuses';
 import { Section, Task } from '../domain/model';
@@ -29,6 +37,12 @@ import type { TaskRankKeeper } from './taskService';
  * in both notes, and a note it created is deleted again by that Undo. Which
  * destination is the reader's choice, made before the move; saying what
  * moved is the command's, after it.
+ *
+ * A section that leaves a daily note for a note that is not one takes the
+ * day into its heading, so it is still dated where it lands. Copy to… is
+ * the same move without the taking out: the lines are written where the
+ * reader chose, with a link to where they came from, and stay where they
+ * were (docs/implementation/49-meetings-and-types.md).
  */
 
 /** One block to move, from one note. */
@@ -38,6 +52,8 @@ export interface MoveSource<U> {
   block: MoveBlock;
   /** From the index: the line must still be the task it knows. */
   task?: Task;
+  /** The day, `YYYY-MM-DD`, of the daily note the block is in, when it is in one. */
+  day?: string;
 }
 
 /** Where a move writes, once chosen and found again. */
@@ -59,6 +75,14 @@ export interface MoveTarget<U> {
    * written in the move's line ending, whichever it is given in.
    */
   create?: string;
+  /** The note is a daily note, whose day dates what is in it: a section moved there keeps its heading as written. */
+  daily?: boolean;
+}
+
+/** How a move is made: taken out and left behind as a link, or copied and left where it was. */
+export interface MoveOptions {
+  /** Write the lines at the target and leave the source as it is. */
+  copy?: boolean;
 }
 
 /** Where the moved lines go in a note, as Add Task places a line. */
@@ -111,6 +135,18 @@ interface NoteSplices<U> {
   uri: U;
   text: string;
   splices: TextSplice[];
+}
+
+/** The line ending a note is written in: CRLF when it has one, LF otherwise. */
+function readEol(text = ''): string {
+  return text.includes('\r\n') ? '\r\n' : '\n';
+}
+
+/** What the history calls the write: a move, or a copy, and where to. */
+function describeWrite(copy: boolean, where: string): { label: string; description: string } {
+  return copy
+    ? { label: 'Copy to…', description: `Copied to ${where}` }
+    : { label: 'Move to…', description: `Moved to ${where}` };
 }
 
 /**
@@ -178,6 +214,7 @@ export class MoveService<U extends ResourceUri, H = unknown> {
   public async move(
     sources: readonly MoveSource<U>[],
     target: MoveTarget<U>,
+    { copy = false }: MoveOptions = {},
   ): Promise<MoveResult<H>> {
     const texts = await this.readSourcesAgain(sources);
     if (!texts) {
@@ -185,10 +222,10 @@ export class MoveService<U extends ResourceUri, H = unknown> {
     }
     const targetNote = target.create === undefined ? await this.options.notes.open(target.uri) : undefined;
     const targetText = targetNote?.getText() ?? '';
-    const eol = (targetNote ? targetText : texts.get(sources[0].uri.toString()) ?? '').includes('\r\n') ? '\r\n' : '\n';
-    const moved = sources.flatMap((source) => this.linesToWrite(source, target)).join(eol);
+    const eol = readEol(targetNote ? targetText : texts.get(sources[0].uri.toString()));
+    const moved = sources.flatMap((source) => this.linesToWrite(source, target, copy ? texts : undefined)).join(eol);
 
-    const splicesBy = this.takeOut(sources, texts, target);
+    const splicesBy = copy ? new Map<string, NoteSplices<U>>() : this.takeOut(sources, texts, target);
     const insertedAt = targetNote
       ? this.putIn(splicesBy, {
           note: targetNote,
@@ -206,8 +243,7 @@ export class MoveService<U extends ResourceUri, H = unknown> {
         : await this.create(target.uri, `${target.create.replace(/\r?\n/g, eol)}${moved}${eol}`);
     const deleteCreated = (): Promise<void> => this.deleteCreated(created);
     const write = await this.options.history.write(edits, {
-      label: 'Move to…',
-      description: `Moved to ${target.name}`,
+      ...describeWrite(copy, target.name),
       // One move the reader already chose, however many notes it touches.
       preview: 'never',
       restore: deleteCreated,
@@ -219,7 +255,8 @@ export class MoveService<U extends ResourceUri, H = unknown> {
       await deleteCreated();
       return { kind: 'failed' };
     }
-    if (insertedAt !== undefined && sources.every((source) => source.uri.toString() !== target.uri.toString())) {
+    // A copied task is a second task: the one it was copied from keeps its place.
+    if (!copy && insertedAt !== undefined) {
       this.carryRanks(sources, target.uri, insertedAt);
     }
     return { kind: 'moved', handle: write.handle, created: created !== undefined };
@@ -248,15 +285,75 @@ export class MoveService<U extends ResourceUri, H = unknown> {
   /**
    * A block's lines as the target holds them: a section's with its headings
    * nested under the target's heading, or kept at their levels at the end of
-   * a note; anything else dedented to the first line's indentation.
+   * a note, and its own heading dated when it leaves a daily note; anything
+   * else dedented to the first line's indentation. A copy, which is given
+   * the notes it is copied from, says where it came from.
    */
-  private linesToWrite(source: MoveSource<U>, target: MoveTarget<U>): string[] {
+  private linesToWrite(
+    source: MoveSource<U>,
+    target: MoveTarget<U>,
+    copiedFrom?: ReadonlyMap<string, string>,
+  ): string[] {
+    const lines = this.linesAsHeld(source, target);
+    return copiedFrom ? this.withSource(source, lines, { texts: copiedFrom, target }) : lines;
+  }
+
+  /** A block's lines at the target's levels and indentation, a section's heading dated when it leaves a daily note. */
+  private linesAsHeld(source: MoveSource<U>, target: MoveTarget<U>): string[] {
     const section = source.block.section;
     if (!section) {
       return dedentBlock(source.block.lines);
     }
     const under = target.section?.headingLevel;
-    return shiftHeadings(source.block.lines, under === undefined ? 0 : nestingShift(section.level, under));
+    const [heading, ...rest] = shiftHeadings(source.block.lines, under === undefined ? 0 : nestingShift(section.level, under));
+    const day = this.dayToWrite(source, target);
+    return [day === undefined ? heading : dateHeadingLine(heading, day), ...rest];
+  }
+
+  /**
+   * The day a moved section's heading takes: its daily note's, when it goes
+   * to a note that is not a daily note. Not for a heading that is written at
+   * the top level there, which would make the note it lands in a daily note.
+   */
+  private dayToWrite(source: MoveSource<U>, target: MoveTarget<U>): string | undefined {
+    const section = source.block.section;
+    if (!section || source.day === undefined || target.daily) {
+      return undefined;
+    }
+    // Under a heading, it is written one level deeper than that heading.
+    const level = target.section?.headingLevel === undefined ? section.level : target.section.headingLevel + 1;
+    return level > 1 ? source.day : undefined;
+  }
+
+  /** A moved section's heading as the target holds it, tags kept: dated when it leaves a daily note. */
+  private headingToWrite(source: MoveSource<U>, target: MoveTarget<U>): string {
+    const heading = source.block.section?.heading ?? '';
+    const day = this.dayToWrite(source, target);
+    return day === undefined ? heading : dateHeading(heading, day);
+  }
+
+  /**
+   * A copy's lines with the link to where they came from, written as
+   * `deckard.links.style` says for the note they go to: a section's to the
+   * section it copies, anything else's to the heading it was written under,
+   * or to its note when it is under none.
+   */
+  private withSource(
+    source: MoveSource<U>,
+    lines: readonly string[],
+    { texts, target }: { texts: ReadonlyMap<string, string>; target: MoveTarget<U> },
+  ): string[] {
+    const style = this.options.configuration
+      .getConfiguration('deckard', target.uri)
+      .get<NoteLinkStyle>('links.style', 'wiki');
+    const from = (texts.get(source.uri.toString()) ?? '').split(/\r?\n/);
+    const link = formatSectionLink({
+      heading: source.block.section?.heading ?? headingAbove(from, source.block.start) ?? '',
+      sourcePath: this.options.getFilePath(target.uri),
+      targetPath: source.filePath,
+      style: style === 'markdown' ? 'markdown' : 'wiki',
+    });
+    return source.block.section ? sectionWithSourceLink(lines, link) : withSourceLink(lines, link);
   }
 
   /**
@@ -273,7 +370,7 @@ export class MoveService<U extends ResourceUri, H = unknown> {
       .get<NoteLinkStyle>('links.style', 'wiki');
     return [
       formatSectionLink({
-        heading: source.block.section.heading,
+        heading: this.headingToWrite(source, target),
         sourcePath: source.filePath,
         targetPath: this.options.getFilePath(target.uri),
         style: style === 'markdown' ? 'markdown' : 'wiki',
@@ -361,8 +458,14 @@ export class MoveService<U extends ResourceUri, H = unknown> {
     }
   }
 
-  /** Each moved task's rank, carried to the line it now starts on in the target. */
+  /**
+   * Each moved task's rank, carried to the line it now starts on in the
+   * target; not for a move within one note, whose tasks the index follows.
+   */
   private carryRanks(sources: readonly MoveSource<U>[], targetUri: U, insertedAt: number): void {
+    if (sources.some((source) => source.uri.toString() === targetUri.toString())) {
+      return;
+    }
     const targetPath = this.options.getFilePath(targetUri);
     let line = insertedAt;
     for (const source of sources) {

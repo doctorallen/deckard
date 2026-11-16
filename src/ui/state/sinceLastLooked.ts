@@ -2,8 +2,7 @@
  * Since you last looked (docs/implementation/37-since-you-last-looked.md):
  * what a tag's page holds now, set beside what it held at the reader's
  * last visit. The page draws a band of what changed, marks the new rows,
- * and a changed field shows its old value once (D9); the Hubs view says
- * how much is new under each hub.
+ * and a changed field shows its old value once (D9).
  *
  * A visit counts once the page has been in front for five seconds (D7),
  * and the band shows only when something changed and the last visit was
@@ -159,7 +158,8 @@ export function captureTagPage(
   const hubs = new Set(hubPaths);
   const entries: Record<string, string> = {};
   results.sections
-    .filter((section) => !hubs.has(section.filePath))
+    // A dated entry in the hub note is an entry like any other, not the hub's description.
+    .filter((section) => !hubs.has(section.filePath) || section.dated !== undefined)
     .forEach((section) => {
       entries[entryVisitKey(index, section)] = hashWords(getEntryTextOf(index, section).split(/\r?\n/));
     });
@@ -220,7 +220,7 @@ export interface TagChanges {
   was: Readonly<Record<string, string>>;
   /** How many fields changed, those now gone among them. */
   fieldsChanged: number;
-  /** Everything counted: what the band adds up, and the Hubs view says is new. */
+  /** Everything counted: what the band adds up. */
   total: number;
 }
 
@@ -307,25 +307,4 @@ export function describeSince(
     was: { ...changes.was },
     newNotes,
   };
-}
-
-/**
- * A hub's row in the Hubs view says how much is new since its page was last
- * open, `9 new`, under the band's rule; else when it was seen, `seen
- * today`, `seen Fri, Oct 9`; or `never opened`.
- */
-export function describeHubSeen(
-  seenAt: number | undefined,
-  changes: TagChanges | undefined,
-  context: Pick<QueryContext, 'now' | 'dateFormats'>,
-): string {
-  if (seenAt === undefined) {
-    return 'never opened';
-  }
-  if (isSinceShown(changes, context.now)) {
-    return `${changes.total} new`;
-  }
-  return describeDistance(seenAt, context.now) === 'today'
-    ? 'seen today'
-    : `seen ${formatDisplayDate(seenAt, context.dateFormats, 'short', context.now)}`;
 }

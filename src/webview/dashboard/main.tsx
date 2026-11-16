@@ -1,8 +1,9 @@
 /**
- * The Dashboard page: Home, the widgets the reader arranges, and the Tags
- * tab, every tag with its search, filter, sort, and favorites. The host
- * sends Home's widgets as it built them; the page draws them, arranges them,
- * and sends each change back, which the host answers with the whole state.
+ * The Dashboard page: Home, the widgets the reader arranges; the Tags tab,
+ * every tag with its search, filter, sort, and favorites; and the Types
+ * tab, every type as a row. The host sends Home's widgets as it built them;
+ * the page draws them, arranges them, and sends each change back, which the
+ * host answers with the whole state.
  */
 import { isWidgetKind, WIDGET_KINDS } from '../../domain/dashboard/widgetCatalog';
 import type {
@@ -31,9 +32,10 @@ import { ModeTabs, PageHeader } from './header';
 import { HOME_FULL_MESSAGE, HomePanel, isHomeFull, widgetChoices } from './home';
 import type { HomeContext } from './homeContext';
 import { keepView, readKeptView } from './keptView';
-import type { DashboardView } from './model';
+import { MODES, readMode, type DashboardView } from './model';
 import { filterTags } from './tagNames';
 import { TagsPanel } from './tagsTab';
+import { TYPES_COLUMNS, TypesPanel } from './typesTab';
 
 /** Sends the host one message. */
 function send(message: DashboardMessage): void {
@@ -50,6 +52,8 @@ const view: DashboardView = {
   ...readKeptView(),
   openWidgetOptions: undefined,
   widgetQueryDrafts: {},
+  typesSort: { column: 'name', direction: 'asc' },
+  openTypes: [],
 };
 
 /**
@@ -92,7 +96,7 @@ function homeContext(snapshot: DashboardPageState): HomeContext {
   };
 }
 
-/** The whole page: its header and tiles, the Home and Tags tabs, and the panel of each. */
+/** The whole page: its header and tiles, the Home, Tags, and Types tabs, and the panel of each. */
 function DashboardPage({ snapshot }: { readonly snapshot: DashboardPageState }) {
   const filter = filterTags(snapshot.tags, view.browseQuery, view.tagNamespaceFilter);
   return (
@@ -107,6 +111,7 @@ function DashboardPage({ snapshot }: { readonly snapshot: DashboardPageState }) 
         generation={lists.generation}
       />
       <TagsPanel snapshot={snapshot} view={view} filter={filter} generation={lists.generation} />
+      <TypesPanel snapshot={snapshot} view={view} />
     </>
   );
 }
@@ -226,11 +231,43 @@ function acceptHostSearch(hostQuery: string, localQuery: string): string {
   return localQuery;
 }
 
+// ----- The Types tab ---------------------------------------------------------
+
+/**
+ * Sorts the Types tab's table by a heading: A-Z or smallest first the
+ * first time, the other way when it is chosen again.
+ */
+function sortTypesBy(column: string | undefined): void {
+  const chosen = TYPES_COLUMNS.find((candidate) => candidate.id === column);
+  if (!chosen) {
+    return;
+  }
+  const again = view.typesSort.column === chosen.id && view.typesSort.direction === 'asc';
+  view.typesSort = { column: chosen.id, direction: again ? 'desc' : 'asc' };
+  redraw();
+}
+
+/**
+ * Opens a type in place, or closes it, and tells the host which types are
+ * open, since it sends the rows of those alone.
+ */
+function toggleType(typeKey: string | undefined): void {
+  if (!typeKey) {
+    return;
+  }
+  view.openTypes = view.openTypes.includes(typeKey) ? view.openTypes.filter((key) => key !== typeKey) : [...view.openTypes, typeKey];
+  send({ type: 'setOpenTypes', typeKeys: view.openTypes });
+  redraw();
+}
+
 // ----- Modes -----------------------------------------------------------------
 
-/** Shows Home or the Tags tab, and tells the host, which sends Home its widgets. */
+/**
+ * Shows Home, the Tags tab, or the Types tab, and tells the host, which
+ * sends Home its widgets and the Types tab its types.
+ */
 function setDashboardMode(mode: string | undefined, focusTab: boolean): void {
-  view.mode = mode === 'browse' ? 'browse' : 'home';
+  view.mode = readMode(mode);
   saveView();
   send({ type: 'setDashboardMode', mode: view.mode });
   redraw();
@@ -704,6 +741,11 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, event: MouseEvent) 
   'open-view': (target) => send({ type: 'openView', view: data(target, 'view') as OpenDeckardViewMessage['view'] }),
   'open-search-page': () => send({ type: 'openSearch', query: '' }),
   'open-tag': (target) => send({ type: 'openTag', tagKey: data(target, 'tagKey') }),
+  'sort-types': (target) => sortTypesBy(target.dataset.value),
+  'toggle-type': (target) => toggleType(target.dataset.typeKey),
+  'add-type-row': (target) => send({ type: 'addTypeRow', typeKey: data(target, 'typeKey') }),
+  'new-type': () => send({ type: 'newType' }),
+  'create-type-from-tags': (target) => send({ type: 'createTypeFromTags', ...(target.dataset.namespace ? { namespace: target.dataset.namespace } : {}) }),
   'remove-saved-filter': (target) => send({ type: 'removeSavedFilter', filterId: data(target, 'savedFilterId') }),
   'add-saved-search-widget': (target) => send({ type: 'addSavedSearchWidget', filterId: data(target, 'savedFilterId') }),
   'favorite-tag': (target) => send({ type: 'toggleFavorite', tagKey: data(target, 'tagKey') }),
@@ -713,7 +755,7 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, event: MouseEvent) 
   'open-link': (target, event) => send(openWikiLinkMessage(target, event)),
 };
 
-/** A row clicked or pressed outside its controls opens what it lists: a task, an entity, a tag, or a saved search. */
+/** A row clicked or pressed outside its controls opens what it lists: a task, an entity, a tag, a saved search, or a type's rows. */
 function openRow(element: Element, event: MouseEvent | KeyboardEvent): void {
   const taskRow = element.closest<HTMLElement>('.task-row');
   if (taskRow) {
@@ -730,6 +772,10 @@ function openRow(element: Element, event: MouseEvent | KeyboardEvent): void {
   const savedFilterRow = element.closest<HTMLElement>('.saved-filter-row[data-saved-filter-id]');
   if (savedFilterRow) {
     send({ type: 'openSavedFilter', filterId: data(savedFilterRow, 'savedFilterId') });
+  }
+  const typeRow = element.closest<HTMLElement>('.types-row[data-query]');
+  if (typeRow) {
+    send({ type: 'openSearch', query: data(typeRow, 'query') });
   }
 }
 
@@ -795,9 +841,6 @@ document.addEventListener('submit', (event) => {
     updateWidget(form.dataset.widgetId, { query: query.trim() });
   }
 });
-
-/** The Dashboard's tabs in order, for the arrow keys between them. */
-const MODES = ['home', 'browse'] as const;
 
 /** Left and Right move between the tabs and choose, Home and End go to the ends; true when the key was one. */
 function moveBetweenTabs(event: KeyboardEvent, element: Element): boolean {
@@ -940,20 +983,24 @@ onHostMessage<{ type: 'addWidget'; value: unknown }>('addWidget', (message) => {
  * and the tag search it keeps unless the page holds newer typing, and Home's
  * widgets, which are sent only while Home is showing; the last set is kept,
  * so Home does not blank to "Loading Home…" on every return from the Tags
- * tab. The search box is told, the page is drawn, and a widget just added is
+ * tab. The types are sent only while the Types tab is showing, and kept the
+ * same way. The search box is told, the page is drawn, and a widget just added is
  * shown.
  */
 function receiveState(incoming: DashboardPageState): void {
   setParkedTags(incoming.parkedTags);
   view.tagColumns = incoming.tagColumns ?? view.tagColumns ?? 2;
   if (incoming.viewState) {
-    view.mode = incoming.viewState.mode === 'browse' ? 'browse' : 'home';
+    view.mode = readMode(incoming.viewState.mode);
     view.browseQuery = acceptHostSearch(incoming.viewState.tagSearchQuery, view.browseQuery);
   }
   incoming.tagColumns = view.tagColumns;
   const previous = shown();
   if (!incoming.widgets && previous && previous.widgets) {
     incoming.widgets = previous.widgets;
+  }
+  if (!incoming.types && previous && previous.types) {
+    incoming.types = previous.types;
   }
   latest = incoming;
   editor.receive();

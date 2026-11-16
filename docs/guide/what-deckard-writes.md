@@ -20,7 +20,9 @@ Every change Deckard makes to your files, what starts it, and the setting that c
 | `[[links]]` rewritten to a renamed note or heading | Renaming a note in the Explorer, or `Deckard: Rename Heading` | |
 | A mention turned into a link | **Link mentions** on a note's first line, or **Link** in the Context view | `deckard.links.style`: `[[Name]]` or `[Name](path.md)` |
 | A section moved out to a new note, leaving a link | `Deckard: Extract Heading` | |
-| A task, lines, or a heading's section moved under another heading or to the end of a note, leaving a link | **Move to…** | `deckard.links.style`, for a section's link |
+| A task, lines, or a heading's section moved under another heading or to the end of a note, leaving a link; a section that leaves a daily note with the day put first in its heading | **Move to…** | `deckard.links.style`, for a section's link |
+| A copy of a task, lines, or a heading's section under another heading or at the end of a note, with a link to where it came from | **Copy to…** | `deckard.links.style` |
+| A meeting's heading, with its day, time, name, and tags, at the end of a project's, a person's, or a meeting's note, and a line linking to it at the end of today's note; or the heading alone in today's note | `Deckard: Start a Meeting` | `deckard.links.style`, for the link |
 | The front-matter keys you changed, set or cleared, every other line left as written, as one change | **Save changes** in the [form that edits a typed note's fields](databases.md#editing-fields), from **Edit fields…** or `Deckard: Edit Fields…` | Not written when the front matter changed since the form opened |
 | A field's key, or a select's option, renamed in every note that writes it, and in the type's table | **Rename field everywhere…** or **Rename option everywhere…** on a [type's rows](databases.md#a-types-rows) | Shown first |
 | A field's value, or a type's Kind cell, changed in place | A quick fix on a [marked field](databases.md#in-the-editor), such as **Change to @omar (Omar Haddad)** or **Allow Area or System** | `deckard.editor.linkDiagnostics` |
@@ -32,12 +34,13 @@ Every change Deckard makes to your files, what starts it, and the setting that c
 
 | File | Started by | Controlled by |
 | --- | --- | --- |
-| Today's daily note, from its template | Opening or creating today's note, Add Task, rollover | [`Daily.md`](daily-notes.md#templates) in `deckard.templatesFolder`, `deckard.notesFolder` |
+| Today's daily note, from its template | Opening or creating today's note, Add Task, Start a Meeting, rollover | [`Daily.md`](daily-notes.md#templates) in `deckard.templatesFolder`, `deckard.notesFolder` |
 | Unfinished tasks carried into a new daily note (*automatic*, when the note is made) | Creating a daily note | `deckard.dailyNote.rollover`, `off` by default |
 | A weekly or monthly note, and a review written into it (*automatic*, when the note is made) | Opening the week's or month's note | `deckard.periodicNote.review`; [`Weekly.md` and `Monthly.md`](daily-notes.md#templates) |
 | A note from a template | `Deckard: New Note from Template` | `deckard.templatesFolder` |
 | Three starter templates | **Create Starter Templates**, offered when the templates folder is empty | |
-| A hub note for a tag | **Create hub note** on a tag's page, or `Deckard: Create Hub Note for Tag…` | A template named after the tag's namespace |
+| A hub note for a tag | **Create hub note** on a tag's page, `Deckard: Create Hub Note for Tag…`, or `Deckard: Start a Meeting` about a tag with no hub note | A template named after the tag's namespace |
+| A note named for a meeting that recurs, holding its title | `Deckard: Start a Meeting`, **A note of its own…** | `deckard.notesFolder` |
 | A type, `Types/Team.md`, from the fields your notes already write | `Deckard: Create Type from Tags…`, **Create type from #team…** on a tag's page, or the **Create a System type** quick fix | |
 | A row's note, in the type's `notes:` folder or the one you choose, with the fields you set | `Deckard: New Note from Type…`, **Add team…** on a type's rows, the **Create person "Omar H"…** quick fix, or **Create hub note** on a typed tag | A template named after the type's key |
 | A note a link names | **Create note** on a `[[link]]` that opens none, or **Create missing notes** from the problems lens above the note | |

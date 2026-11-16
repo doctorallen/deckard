@@ -106,7 +106,7 @@ export interface NoteBacklink {
   count: number;
 }
 
-/** A way up from the note to its hubs, as the Hubs view files it. */
+/** A way up from the note to its hubs, by the tags it is about or its up:. */
 export interface NoteBreadcrumb {
   /** Each step's words, the namespace first when there is one. */
   labels: string[];

@@ -145,8 +145,8 @@ const indexUnits = new WeakMap<WorkspaceIndex, CachedUnits>();
 /**
  * The units every search of an index tests, in index order, built once for
  * each snapshot, since a unit is read from the index alone and a page that
- * runs several searches, or the Hubs view that runs one for each hub, would
- * otherwise read and lowercase every note's text for each: every entry,
+ * runs several searches would otherwise read and lowercase every note's
+ * text for each: every entry,
  * every task, every note, and every question. A note is an entry: an
  * untagged heading under a tagged one is part of it, never a result of its
  * own (noteEntries.ts).
