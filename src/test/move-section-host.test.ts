@@ -163,7 +163,7 @@ suite('Move to… on a heading', () => {
         '## Plan',
         '- Draft the runbook',
         '',
-        '### Ledger cutover plan',
+        '### 2026-11-12 Ledger cutover plan',
         'Talked it through; see [[Ledger migration]].',
         '',
         '#### Steps',
@@ -176,7 +176,7 @@ suite('Move to… on a heading', () => {
     );
     assert.strictEqual(
       await text(day),
-      lines('# 2026-11-12', '', '## Standup', '- Nothing blocked', '', '[[Ledger migration#Ledger cutover plan]]', '', '## Lunch', '- Tacos', ''),
+      lines('# 2026-11-12', '', '## Standup', '- Nothing blocked', '', '[[Ledger migration#2026-11-12 Ledger cutover plan]]', '', '## Lunch', '- Tacos', ''),
     );
     assert.deepStrictEqual(said[0]?.slice(0, 1), ['Moved "Ledger cutover plan" to Ledger migration › Plan.']);
 
