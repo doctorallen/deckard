@@ -556,7 +556,7 @@ function isParkedKey(index: WorkspaceIndex, key: NoteKey): boolean {
  * Every note the search lists, as keys in the reader's sort order. A search
  * of plain words matches each note's title, file name, body, and tags; any
  * other search lists what it found, the tag's hub note aside, since the hub
- * is drawn above the list. Parked results are kept, after the rest, so the
+ * is drawn above the list, and the hub's dated entries with the rest. Parked results are kept, after the rest, so the
  * page before them is the unparked ones whatever the sort.
  */
 function rankNoteKeys(
@@ -573,7 +573,8 @@ function rankNoteKeys(
       ].filter((key) => matchesNoteWords(index, key, plainTerms))
     : [
         ...results.sections
-          .filter((section) => section.filePath !== hubFile?.filePath)
+          // The hub's dated entries are listed: the hub drawn above is the note without them.
+          .filter((section) => section.filePath !== hubFile?.filePath || section.dated !== undefined)
           .map(sectionKey),
         ...results.files
           .filter((file) => file.filePath !== hubFile?.filePath)
@@ -718,7 +719,7 @@ function buildTagPageBlock(
           hub: {
             ...createTagOverviewHub(hubFile, focusTag.hubFilePaths?.slice(1) ?? []),
             // Drawn as the note page draws it, its query blocks run.
-            ...readNoteBody(index, hubFile.filePath, { queryContext: context }),
+            ...readNoteBody(index, hubFile.filePath, { queryContext: context, withoutDated: true }),
             ...fields.hub,
           },
         }

@@ -159,7 +159,8 @@ export function captureTagPage(
   const hubs = new Set(hubPaths);
   const entries: Record<string, string> = {};
   results.sections
-    .filter((section) => !hubs.has(section.filePath))
+    // A dated entry in the hub note is an entry like any other, not the hub's description.
+    .filter((section) => !hubs.has(section.filePath) || section.dated !== undefined)
     .forEach((section) => {
       entries[entryVisitKey(index, section)] = hashWords(getEntryTextOf(index, section).split(/\r?\n/));
     });

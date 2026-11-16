@@ -1,4 +1,5 @@
 import type { Section, Task } from '../model';
+import { isDatedHeading } from './datedHeadings';
 
 /**
  * What counts as one note (an entry): a heading with tags of its own and
@@ -9,7 +10,17 @@ import type { Section, Task } from '../model';
  * marked with the entry that owns it, so search, a tag's page, and every
  * count of notes read one note where the note is written as one
  * (docs/implementation/24-note-entries.md).
+ *
+ * A dated heading, one that starts with a day in a note that is not a daily
+ * note, owns what is under it exactly as a heading with tags of its own
+ * does, so a meeting written into a project's note is one entry, apart from
+ * the note that describes the project (domain/markdown/datedHeadings.ts).
  */
+
+/** Whether a heading starts an entry of its own: it has tags of its own, or it is a dated heading. */
+function startsEntry(section: Section): boolean {
+  return !section.isInline && (Boolean(section.headingTags?.length) || isDatedHeading(section));
+}
 
 /** The id a note tagged in its front matter is known by as an entry. */
 export function fileEntryId(filePath: string): string {
@@ -29,9 +40,9 @@ export function isEntrySection(section: Pick<Section, 'id' | 'entryId'>): boolea
 /**
  * Marks each of a note's sections and tasks with the entry that owns it,
  * leaving `entryId` unset where a section is its own entry. A heading is
- * owned by itself when it has tags of its own, else by the nearest heading
- * above it with tags of its own, else by the note when its front matter has
- * tags, else by itself. A tagged line that is a note of its own owns itself;
+ * owned by itself when it has tags of its own or is a dated heading, else
+ * by the nearest such heading above it, else by the note when its front
+ * matter has tags, else by itself. A tagged line that is a note of its own owns itself;
  * a task is owned by the entry that owns the heading it is under, or by the
  * note above the first heading.
  */
@@ -43,7 +54,7 @@ export function assignNoteEntries(
 ): void {
   const byId = new Map(sections.map((section) => [section.id, section]));
   const ownerOf = (section: Section): string => {
-    if (section.isInline || section.headingTags?.length) {
+    if (section.isInline || startsEntry(section)) {
       return section.id;
     }
     const seen = new Set<string>();
@@ -54,7 +65,7 @@ export function assignNoteEntries(
       if (!parent) {
         break;
       }
-      if (!parent.isInline && parent.headingTags?.length) {
+      if (startsEntry(parent)) {
         return parent.id;
       }
       parentId = parent.parentSectionId;

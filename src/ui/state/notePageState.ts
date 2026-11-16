@@ -2,6 +2,7 @@ import { findLinkedBlock, findLinkedSection, getBacklinkIndex, noteTitle, parseW
 import { drawTaskStatus } from './drawnStatus';
 import { withDrawnStatus } from './entryCards';
 import { FRONTMATTER_KEY_SOURCE, findFrontmatterEnd, splitFrontmatterValues } from '../../domain/markdown/frontmatter';
+import { withoutDatedEntries } from '../../domain/markdown/datedHeadings';
 import { mapInlineTokens, tokenizeInline } from '../../domain/markdown/inline';
 import { readFrontmatterValueTag, stripTags } from '../../domain/markdown/parser';
 import { STATUS_CHARACTER } from '../../domain/markdown/lineShapes';
@@ -125,14 +126,23 @@ export function createNotePageSnapshot(
 export function readNoteBody(
   index: WorkspaceIndex,
   filePath: string,
-  options: Pick<NotePageOptions, 'queryContext'>,
+  options: Pick<NotePageOptions, 'queryContext'> & {
+    /** Leave the note's dated entries out: a tag's page lists each as a card of its own under the hub. */
+    withoutDated?: boolean;
+  },
 ): { blocks: NoteBlock[]; tags: Array<{ key: string; label: string }> } | undefined {
   const file = index.files.get(filePath);
   if (!file) {
     return undefined;
   }
-  const reading: Reading = { index, file, options: { ...options, history: { back: false, forward: false }, visit: 0 }, depth: 0 };
-  const lines = file.content.split(/\r?\n/);
+  const reading: Reading = {
+    index,
+    file,
+    options: { queryContext: options.queryContext, history: { back: false, forward: false }, visit: 0 },
+    depth: 0,
+  };
+  const written = file.content.split(/\r?\n/);
+  const lines = options.withoutDated ? withoutDatedEntries(written, file.sections) : written;
   const frontmatterEnd = findFrontmatterEnd(lines);
   const bodyStart = frontmatterEnd === undefined ? 0 : frontmatterEnd + 1;
   return { blocks: readNoteBlocks(lines.slice(bodyStart).join('\n'), bodyStart, reading), tags: collectTags(file) };

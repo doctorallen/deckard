@@ -6,10 +6,38 @@ Tags decide where a note starts and ends:
 
 - A heading with tags of its own is a note, with every untagged heading under it, down to the next heading with tags of its own, which is a note of its own and also carries the tags above it. In `# ADR-001 #decision` with untagged `## Context` and `## Consequences` under it, the ADR is one note; a `## Decision #decision/accepted` among them would be a second.
 - A note tagged in its front matter is one note, apart from any heading in it with tags of its own.
+- A heading that starts with a day, such as `## 2026-11-16 Vendor sync`, is a note with every heading under it, tagged or not, wherever it is written but in a daily note; see [Dated headings](#dated-headings).
 - Where no tag reaches, such as a daily note with no tags, each heading is a note, so a search lands on the right section.
 - A task is always an entry of its own, and it carries the tags of the headings above it.
 
 A search lists notes: a word written under `## Context` finds the ADR, and the ADR's card shows its whole text. Home's and Stats' **Notes**, a tag's count, Related Notes, and the Notes Graph count notes the same way.
+
+## Dated headings
+
+A project's or a person's note can hold its meetings, each under a heading that starts with the day it happened:
+
+```markdown
+---
+describes: project/atlas
+---
+# Atlas
+
+Migration of billing onto the new ledger.
+
+## 2026-11-09 Kickoff
+Two regions in the pilot.
+- [ ] Send the region list @priya
+
+## 2026-11-16 10:00 Vendor sync @dana
+The new ledger ships in December.
+- [ ] Ask about the cutover next Friday
+```
+
+- **The day.** A heading is dated when its words start with `YYYY-MM-DD`, with a time of day after it if you like, `10:00`. A day written later in the heading, or one no calendar has, dates nothing.
+- **What it dates.** The heading, the headings under it, and their tasks and [questions](tasks.md#questions) are created and updated on that day, whatever the file says: `created:2026-11-16` finds the vendor sync, lists sort it by that day, and its "next Friday" counts from the meeting, not from the day the note was saved. A task's own `➕` date still wins.
+- **One note each.** A dated heading is a note of its own with every untagged heading under it, as a heading with tags is, and it carries its note's tags, so each meeting is one card on `#project/atlas`'s page.
+- **Where the description stops.** What is written outside the dated headings describes the project: a [hub note](search-pages.md#hub-notes) is drawn on its tag's page without them, and they are listed below it with the tag's other notes.
+- A daily note is about one day already, so a heading in it that starts with another day is an ordinary heading.
 
 ## Markdown format
 

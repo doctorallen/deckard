@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Added
+
+- **Dated headings.** A heading that starts with a day, such as
+  `## 2026-11-16 10:00 Vendor sync`, begins a dated entry in any note but a
+  daily note. The heading, the headings under it, and their tasks and
+  questions are created and updated on that day, whatever the file says, so
+  a search by date finds the meeting, lists sort it by the day it happened,
+  and its "next Friday" counts from the meeting. Each dated heading is one
+  note, with the tags of the note it is written in. A hub note is drawn on
+  its tag's page without its dated headings, so it stays the description
+  of the project or person, and each meeting is listed below it under its
+  day.
+
 ## 2.17.0 - 2026-11-15
 
 ### Highlights
