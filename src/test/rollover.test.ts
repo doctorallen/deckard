@@ -375,6 +375,7 @@ suite('Task rollover', () => {
       ['# 2026-11-13', '', '', '## Vendor sync #project/borealis @dana', '', 'The gateway is included.', '', ''].join('\n'),
       'the meeting stays where it was held',
     );
+    await deleteTemporaryRoot(root);
   });
 
   test('an Undo puts a moved task back in both notes or neither', async () => {
