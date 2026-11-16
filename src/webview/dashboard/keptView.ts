@@ -6,13 +6,13 @@
  *
  * The record a release wrote must keep reopening the page it was written
  * from, so each field is read as the template read it: the tab only as
- * `browse`, the columns only as 1 to 4, the filter only as a string, the
+ * `browse` or `types`, the columns only as 1 to 4, the filter only as a string, the
  * two flags as anything truthy. The Tags tab's search is written, and never
  * read back; the host keeps the search the page draws.
  */
 import type { DashboardColumnCount } from '../../ui/protocol/dashboard';
 import { keptState, vscodeApi } from '../shared/vscode';
-import type { DashboardView } from './model';
+import { readMode, type DashboardView } from './model';
 
 /** The fields of the view the page keeps. */
 type KeptFields = Pick<DashboardView, 'mode' | 'tagColumns' | 'browseQuery' | 'tagNamespaceFilter' | 'editingHome' | 'homeHintDismissed'>;
@@ -26,7 +26,7 @@ function readColumns(value: unknown): DashboardColumnCount | undefined {
 export function readKeptView(): KeptFields {
   const kept = keptState();
   return {
-    mode: kept.dashboardMode === 'browse' ? 'browse' : 'home',
+    mode: readMode(kept.dashboardMode),
     tagColumns: readColumns(kept.tagColumns),
     // The search is written but never read back.
     browseQuery: '',

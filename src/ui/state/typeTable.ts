@@ -397,7 +397,7 @@ function groupRows(types: TypeIndex, field: GroupField, rows: readonly BuiltRow[
 }
 
 /** A day in words and in full, `today · 2026-10-08`, or the full date alone beyond a month. */
-function describeDay(at: number, options: TypeTableOptions): string {
+export function describeDay(at: number, options: Pick<TypeTableOptions, 'now' | 'dateFormats'>): string {
   const date = formatDisplayDate(at, options.dateFormats);
   const words = describeDistance(at, options.now);
   return words ? `${words} · ${date}` : date;

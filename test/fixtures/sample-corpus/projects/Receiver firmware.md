@@ -8,8 +8,8 @@ status: bench testing
 The firmware the relay's passive receivers run: what they listen for, how
 long they keep a reading, and the confidence a range ping needs before it
 raises anything. It is a project of its own, but it exists only for the
-relay, so its `up:` front matter files it under Ghostline Relay. In the
-**Hubs** view it sits one level down: Projects › Ghostline Relay › Receiver
+relay, so its `up:` front matter files it under Ghostline Relay. Its first
+line says so, one level down: Projects › Ghostline Relay › Receiver
 firmware.
 
 ## Constraints

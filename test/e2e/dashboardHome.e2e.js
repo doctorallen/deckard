@@ -1,5 +1,5 @@
-// End-to-end: the Dashboard's Home and Tags tabs against the real host and
-// script.
+// End-to-end: the Dashboard's Home, Tags, and Types tabs against the real
+// host and script.
 //
 // Home's widgets are arranged on the page and kept by the host, which answers
 // each change with the whole state. Storing a tag search does the same, so
@@ -114,6 +114,9 @@ function createNavigation() {
   const opened = [];
   return {
     opened,
+    addTypeRow: (typeKey) => {
+      opened.push(`add ${typeKey}`);
+    },
     openTag: (tagKey) => {
       opened.push(`tag ${tagKey}`);
     },
@@ -170,7 +173,7 @@ test('opens on Home, even when it was left on Search or Tasks', async () => {
 
     assert.deepStrictEqual(
       view.findAll('[role="tab"][data-dashboard-mode]').map((tab) => tab.dataset.dashboardMode),
-      ['home', 'browse'],
+      ['home', 'browse', 'types'],
     );
     assert.strictEqual(view.find('[data-dashboard-mode="home"]').getAttribute('aria-selected'), 'true');
     assert.strictEqual(view.find('h1').textContent, 'Home');
@@ -275,6 +278,81 @@ test('only Home is sent its widgets', async () => {
     ['audit', 'room', 'call'],
     'the tasks widget lists the open tasks, as the Task Board ranks them',
   );
+});
+
+/** Two teams, one with a hub note and an open task, under a Team type; and a hub note no type covers. */
+function createTypedIndex() {
+  const note = (filePath, content) =>
+    parseMarkdown(filePath, content, { createdAt: 1, updatedAt: 2 }, { typeNote: filePath.startsWith('Types/') });
+  const files = [
+    note('Types/Team.md', '---\ndeckard-type: team\nrows: "#team/*"\n---\n# Team'),
+    note('Teams/Rates.md', '---\ndescribes: "#team/rates"\n---\n# Rates\nThe rates desk.'),
+    note('notes/sync.md', '# Sync #team/rates #team/credit\n- [ ] Agree the budget'),
+    note('Onboarding.md', '---\ndescribes: "#onboarding"\n---\n# Onboarding\nWhat a new starter needs.'),
+  ];
+  return buildWorkspaceIndex(new Map(files.map((file) => [file.filePath, file])));
+}
+
+test('the Types tab is sent its types only while it shows, and a type\'s rows once it is opened', async () => {
+  const { view, lastState, navigation, preferences } = await openDashboard(createTypedIndex());
+  assert.strictEqual(lastState().data.types, undefined, 'Home is sent no types');
+
+  view.click(view.find('[data-dashboard-mode="types"]'));
+  await delay(20);
+  assert.strictEqual(preferences.reader.value.dashboardViewState.mode, 'types', 'the host keeps the tab');
+  assert.deepStrictEqual(
+    lastState().data.types.types.map((type) => [type.plural, type.rule, type.rows, type.withNote, type.openTasks, type.listed]),
+    [['Teams', '#team/*', 2, 1, 1, undefined]],
+  );
+  assert.strictEqual(lastState().data.widgets, undefined, 'and no widgets with them');
+  assert.deepStrictEqual(
+    view.findAll('.types-row td').map((cell) => cell.textContent),
+    ['▸Teams', '#team/*', '2 · 1 with a note', '1', lastState().data.types.types[0].lastMentioned.text, 'Add team…'],
+  );
+  assert.deepStrictEqual(view.findAll('.types-outside-row .result-title').map((hub) => hub.textContent), ['Onboarding']);
+
+  // Opening a type asks the host for its rows, which come with the next state.
+  view.click(view.find('.types-toggle[data-type-key="team"]'));
+  await delay(20);
+  assert.deepStrictEqual(lastState().data.types.types[0].listed.rows, [
+    { title: 'Credit', tagKey: '#team/credit', noNote: true },
+    { title: 'Rates', tagKey: '#team/rates' },
+  ]);
+  assert.deepStrictEqual(view.findAll('#type-rows-team .types-listed-rows li').map((row) => row.textContent), ['Credit', 'Rates']);
+  view.click(view.find('.types-toggle[data-type-key="team"]'));
+  await delay(20);
+  assert.strictEqual(lastState().data.types.types[0].listed, undefined, 'and stop coming once it is closed');
+  assert.strictEqual(view.findAll('#type-rows-team').length, 0);
+
+  // A type opens its rows page, a hub outside one its tag's page, and Add … the form for a new row.
+  view.click(view.find('.types-row .result-title'));
+  view.click(view.find('.types-outside-row .result-title'));
+  view.click(view.find('.types-row [data-action="add-type-row"]'));
+  await delay(20);
+  assert.deepStrictEqual(navigation.opened, ['search type = team', 'tag #onboarding', 'add team']);
+
+  vscode._test.executedCommands.length = 0;
+  view.click(view.find('#types-panel [data-action="new-type"]'));
+  await delay(20);
+  assert.deepStrictEqual(vscode._test.executedCommands.map((entry) => entry.command), ['deckard.newType']);
+
+  view.click(view.find('[data-dashboard-mode="home"]'));
+  await delay(20);
+  assert.strictEqual(lastState().data.types, undefined, 'Home is sent none again');
+});
+
+test('the Types tab acts on nothing about a type the workspace does not have', async () => {
+  const { panel, lastState, navigation } = await openDashboard(createTypedIndex(), (preferences) =>
+    preferences.homeWidgets.setDashboardMode('types'),
+  );
+  assert.strictEqual(lastState().data.types.types.length, 1, 'opened on Types, it is sent them at once');
+  const before = panel._toWebview.length;
+  await panel._onWebviewMessage({ type: 'addTypeRow', typeKey: 'vendor' });
+  await panel._onWebviewMessage({ type: 'setOpenTypes', typeKeys: ['vendor'] });
+  await delay(20);
+  assert.deepStrictEqual(navigation.opened, []);
+  assert.ok(panel._toWebview.length >= before);
+  assert.strictEqual(lastState().data.types.types[0].listed, undefined, 'a type it does not have opens nothing');
 });
 
 test('a Dashboard opened on the Tags tab tells Related Notes what Home can add', async () => {

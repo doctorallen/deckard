@@ -1,14 +1,16 @@
 /**
- * The Dashboard's narrowing table: what each message Home and the Tags tab
- * may send must hold. The host still checks each tag, line, and saved search
+ * The Dashboard's narrowing table: what each message Home, the Tags tab, and
+ * the Types tab may send must hold. The host still checks each tag, line, and saved search
  * a message names against the index and preferences as they are now.
  */
-import type { DashboardMode, DashboardSearchField, TagSortMode } from '../../../../domain/model/preferences';
+import { DASHBOARD_MODES, type DashboardMode, type DashboardSearchField, type TagSortMode } from '../../../../domain/model/preferences';
 import { isObject } from '../../../../shared/guards';
 import type {
   AddNextActionMessage,
+  AddTypeRowMessage,
   DashboardPageToHost,
   DashboardWidgetChoicesMessage,
+  NewTypeMessage,
   OpenDeckardViewMessage,
   OpenNoteMessage,
   RecordRecentQueryMessage,
@@ -19,11 +21,13 @@ import type {
   SetDashboardSearchMessage,
   SetDashboardWidgetsMessage,
   SetEntitySortMessage,
+  SetOpenTypesMessage,
   SetTagSortMessage,
   ToggleFavoriteEntityMessage,
   ToggleFavoriteMessage,
   TryNextMessage,
 } from '../../../protocol/dashboard';
+import type { MessageAs } from '../../../protocol/messaging';
 import type { OpenTaskBoardMessage } from '../../../protocol/shared';
 import {
   isStringArray,
@@ -67,9 +71,9 @@ function isTagSortMode(value: unknown): value is TagSortMode {
   return value === 'alphabetical' || value === 'count' || value === 'access' || value === 'custom';
 }
 
-/** Home or the Tags tab. */
+/** Home, the Tags tab, or the Types tab. */
 function isDashboardMode(value: unknown): value is DashboardMode {
-  return value === 'home' || value === 'browse';
+  return DASHBOARD_MODES.some((mode) => mode === value);
 }
 
 /** The one list whose search box the Dashboard keeps: its tags. */
@@ -98,7 +102,7 @@ const narrowSetTagSort: Narrower<SetTagSortMessage> = (value) =>
 const narrowSetEntitySort: Narrower<SetEntitySortMessage> = (value) =>
   isTagSortMode(value.mode) ? { type: 'setEntitySort', mode: value.mode } : undefined;
 
-/** Home or the Tags tab. */
+/** Home, the Tags tab, or the Types tab. */
 const narrowSetDashboardMode: Narrower<SetDashboardModeMessage> = (value) =>
   isDashboardMode(value.mode) ? { type: 'setDashboardMode', mode: value.mode } : undefined;
 
@@ -207,6 +211,35 @@ const narrowOpenNote: Narrower<OpenNoteMessage> = (value) =>
     ? { type: 'openNote', filePath: value.filePath, ...(value.opposite === true ? { opposite: true } : {}) }
     : undefined;
 
+/** How long a type's key or a namespace's name may be. */
+const MAX_TYPE_KEY_LENGTH = 200;
+
+/** How many opened types a message may name. */
+const MAX_OPEN_TYPES = 200;
+
+/** A type's key, or a namespace's name: some text, and no longer than either gets. */
+function isTypeKey(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_TYPE_KEY_LENGTH;
+}
+
+/** The types opened on the Types tab, by key. */
+const narrowSetOpenTypes: Narrower<SetOpenTypesMessage> = (value) =>
+  isStringArray(value.typeKeys) && value.typeKeys.length <= MAX_OPEN_TYPES && value.typeKeys.every(isTypeKey)
+    ? { type: 'setOpenTypes', typeKeys: value.typeKeys }
+    : undefined;
+
+/** A type to add a row to. */
+const narrowAddTypeRow: Narrower<AddTypeRowMessage> = (value) =>
+  isTypeKey(value.typeKey) ? { type: 'addTypeRow', typeKey: value.typeKey } : undefined;
+
+/** Create type from tags…, with the namespace to start from, or none to be asked. */
+const narrowCreateTypeFromTags: Narrower<MessageAs<NewTypeMessage, 'createTypeFromTags'>> = (value) => {
+  if (value.namespace === undefined) {
+    return { type: 'createTypeFromTags' };
+  }
+  return isTypeKey(value.namespace) ? { type: 'createTypeFromTags', namespace: value.namespace } : undefined;
+};
+
 /** Each message the Dashboard may send, and what it must hold. */
 export const DASHBOARD_MESSAGES: NarrowingTable<DashboardPageToHost> = {
   setZenMode: narrowSetZenMode,
@@ -251,6 +284,10 @@ export const DASHBOARD_MESSAGES: NarrowingTable<DashboardPageToHost> = {
   addNextAction: narrowAddNextAction,
   questionAction: narrowQuestionAction,
   openNote: narrowOpenNote,
+  setOpenTypes: narrowSetOpenTypes,
+  addTypeRow: narrowAddTypeRow,
+  newType: onlyType('newType'),
+  createTypeFromTags: narrowCreateTypeFromTags,
   pinNote: narrowAs('pinNote', narrowPinNote),
   unpinNote: narrowAs('unpinNote', narrowPinNote),
 };

@@ -5,8 +5,8 @@ created: {{date-8}}
 # Relay route survey
 
 A walk of the pilot route beneath the monorail, receiver site by receiver
-site. Its front matter carries the relay's project tag, so the **Hubs** view
-files it under Ghostline Relay, and its first line in the editor says so.
+site. Its front matter carries the relay's project tag, which files it
+under Ghostline Relay, and its first line in the editor says so.
 
 ## Sites
 

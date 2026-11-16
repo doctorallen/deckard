@@ -22,6 +22,7 @@ import {
   FindChoice,
   PersistedPreferences,
   PinnedNote,
+  readDashboardMode,
   RelatedNotesSortMode,
   SavedFilter,
   SEARCH_PAGE_SIZES,
@@ -764,7 +765,7 @@ export function normalizeDashboardViewState(
   value: Partial<DashboardViewState> | undefined,
 ): DashboardViewState {
   return {
-    mode: value?.mode === 'browse' ? 'browse' : 'home',
+    mode: readDashboardMode(value?.mode),
     tagSearchQuery: normalizeSearchQuery(value?.tagSearchQuery),
   };
 }

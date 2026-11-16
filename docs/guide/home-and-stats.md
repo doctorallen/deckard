@@ -2,7 +2,7 @@
 
 ## Home
 
-Run `Deckard: Open Home`, or select **Home** at the top of the Context view or in **DECKARD ▾**, to open Home, with its **Home** and **Tags** tabs. Left/Right Arrow switches tabs. Searches open [search pages](search-pages.md#search-pages), and tasks have the [Task board](task-board.md#task-board).
+Run `Deckard: Open Home`, or select **Home** at the top of the Context view or in **DECKARD ▾**, to open Home, with its **Home**, **Tags**, and **Types** tabs. Left/Right Arrow switches tabs. Searches open [search pages](search-pages.md#search-pages), and tasks have the [Task board](task-board.md#task-board).
 
 ![Deckard Home showing workspace totals, saved searches, and active tasks.](../images/dashboard.png)
 
@@ -74,6 +74,21 @@ The arrangement is kept in VS Code's preferences, not your notes.
 - **Tag columns**, in **⋯**, sets one through four columns.
 - Select a tag to open its [page](search-pages.md#search-pages).
 - Right-click a tag or entity row, or press <kbd>Shift</kbd>+<kbd>F10</kbd> or the menu key, for **Rename tag**. Every right-click menu in Deckard opens from the keyboard this way.
+
+### The Types tab
+
+**Types** lists every [type](databases.md#types-and-fields) as one row of a table, so one page shows each kind of thing your notes are about. `Deckard: Open Types` opens Home on this tab.
+
+- **Type** is the type's plural name, such as **People**. Select it, or its row, to open [its rows](databases.md#a-types-rows), the search `type = person`.
+- **Its rows are** says what makes a row: `@*`, `#team/*`, or `type: incident · Incidents/`.
+- **Rows** counts them, and for a type whose rows are tags how many have a note: *38 · 12 with a note*.
+- **Open tasks** counts the open tasks of all its rows, each task once, and how many are overdue: *21 · 2 overdue*. **Last mentioned** is the day any of its rows was last written about.
+- **Add person…**, on the row under the pointer or with focus, opens the [form for a new note](databases.md#adding-a-note-of-a-type) of that type.
+- Select a heading to sort by it, and again to sort the other way. The table is sorted by name at first.
+- The arrow before a type's name lists its rows in place: all of them when they are few, else the 12 mentioned most recently, or, for a type whose rows are notes, the 5 written most recently, then **Open all 38 people**. A muted name has no note yet. Select a name to open its tag's page, or its note.
+- **New type…** runs [`Deckard: New Type…`](databases.md#building-a-type). With no type yet, the tab says what a type is and offers **Create type from tags…** and **New type…**.
+- **Hub notes outside a type**, under the table, lists the [hub notes](search-pages.md#hub-notes) whose tag no type's rows cover. Those of one namespace are one line, such as **Vendors** `#vendor/*` *· 5 tags, 2 with a note*, which opens a search of the namespace's tags and offers [**Create type from tags…**](databases.md#create-type-from-tags). The hub note of a tag with no namespace is a line of its own, which opens the tag's page.
+- With [Zen](themes-and-zen.md#zen) on, the line under the heading is hidden.
 
 ## Stats
 

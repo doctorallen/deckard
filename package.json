@@ -237,7 +237,7 @@
           {
             "id": "deckard.walkthrough.takeTour",
             "title": "Take the tour",
-            "description": "A guided walk through Deckard on the work sample: today's note, tags and people, tasks and the board, types, and hubs. Each scene opens a real page beside Help and gives you one thing to try.\n[Take the Tour](command:deckard.takeTour)",
+            "description": "A guided walk through Deckard on the work sample: today's note, tags and people, tasks and the board, and types. Each scene opens a real page beside Help and gives you one thing to try.\n[Take the Tour](command:deckard.takeTour)",
             "media": {
               "markdown": "resources/walkthrough/tour.md"
             },
@@ -252,10 +252,6 @@
       }
     ],
     "viewsWelcome": [
-      {
-        "view": "deckard.hubs",
-        "contents": "A hub note gathers a project's or person's notes.\n[Create Hub Note for Tag…](command:deckard.createHubNoteForTag)"
-      },
       {
         "view": "deckard.outline",
         "contents": "Open a Markdown note to see its headings."
@@ -284,6 +280,11 @@
           "light": "resources/pages/home-light.svg",
           "dark": "resources/pages/home-dark.svg"
         }
+      },
+      {
+        "command": "deckard.openTypes",
+        "title": "Open Types",
+        "category": "Deckard"
       },
       {
         "command": "deckard.goTo",
@@ -729,14 +730,6 @@
         "category": "Deckard"
       },
       {
-        "command": "deckard.hubs.openInEditor",
-        "title": "Open in Editor"
-      },
-      {
-        "command": "deckard.hubs.openAsPage",
-        "title": "Open as Page"
-      },
-      {
         "command": "deckard.quickFind.openOther",
         "title": "Open the Other Way",
         "category": "Deckard"
@@ -839,11 +832,6 @@
         "title": "Rename Tag…"
       },
       {
-        "command": "deckard.hubs.openHubNote",
-        "title": "Open Hub Note",
-        "icon": "$(go-to-file)"
-      },
-      {
         "command": "deckard.agenda.editQuery",
         "title": "Edit What the Tasks View Lists…",
         "category": "Deckard",
@@ -864,12 +852,6 @@
       {
         "command": "deckard.agenda.setSort",
         "title": "Sort Tasks By…",
-        "category": "Deckard",
-        "icon": "$(sort-precedence)"
-      },
-      {
-        "command": "deckard.hubs.setSort",
-        "title": "Sort Hubs By…",
         "category": "Deckard",
         "icon": "$(sort-precedence)"
       },
@@ -1144,19 +1126,7 @@
           "when": "false"
         },
         {
-          "command": "deckard.hubs.openHubNote",
-          "when": "false"
-        },
-        {
           "command": "deckard.openNote",
-          "when": "false"
-        },
-        {
-          "command": "deckard.hubs.openInEditor",
-          "when": "false"
-        },
-        {
-          "command": "deckard.hubs.openAsPage",
           "when": "false"
         },
         {
@@ -1629,11 +1599,6 @@
           "group": "1_sort@1"
         },
         {
-          "command": "deckard.hubs.setSort",
-          "when": "view == deckard.hubs",
-          "group": "1_sort@1"
-        },
-        {
           "command": "deckard.showTaskBoard",
           "when": "view == deckard.agenda",
           "group": "navigation@2"
@@ -1740,26 +1705,6 @@
         }
       ],
       "view/item/context": [
-        {
-          "command": "deckard.hubs.openHubNote",
-          "when": "view == deckard.hubs && viewItem == hubNote",
-          "group": "inline"
-        },
-        {
-          "command": "deckard.hubs.openHubNote",
-          "when": "view == deckard.hubs && viewItem == hubNote",
-          "group": "deckard@1"
-        },
-        {
-          "command": "deckard.hubs.openInEditor",
-          "when": "view == deckard.hubs && (viewItem == hubNote || viewItem == hubChild) && config.deckard.openNotesIn == page",
-          "group": "deckard@2"
-        },
-        {
-          "command": "deckard.hubs.openAsPage",
-          "when": "view == deckard.hubs && (viewItem == hubNote || viewItem == hubChild) && config.deckard.openNotesIn != page",
-          "group": "deckard@2"
-        },
         {
           "command": "deckard.outline.openTagOverview",
           "when": "view == deckard.outline && viewItem == deckardOutlineTagged",
@@ -2011,13 +1956,6 @@
           "name": "Questions",
           "icon": "resources/views/questions.svg",
           "contextualTitle": "Deckard Questions"
-        },
-        {
-          "id": "deckard.hubs",
-          "name": "Hubs",
-          "icon": "resources/views/hubs.svg",
-          "contextualTitle": "Deckard Hubs",
-          "visibility": "collapsed"
         },
         {
           "id": "deckard.calendar",
@@ -2413,7 +2351,7 @@
             "default": "editor",
             "scope": "window",
             "order": 1,
-            "markdownDescription": "Where a note or task opens from Deckard's pages, the Hubs view, Find, and the breadcrumb lens. **Shift**-click, or Shift+Enter, opens it the other way. A link followed in the editor, the Tasks view, and the Outline stay in the editor."
+            "markdownDescription": "Where a note or task opens from Deckard's pages, Find, and the breadcrumb lens. **Shift**-click, or Shift+Enter, opens it the other way. A link followed in the editor, the Tasks view, and the Outline stay in the editor."
           },
           "deckard.display.zen": {
             "type": "boolean",
@@ -2727,7 +2665,7 @@
           "deckard.editor.breadcrumbs": {
             "type": "boolean",
             "scope": "resource",
-            "description": "Show, on a note's first line, where it sits under its hub notes, such as Projects › Atlas › Vendor review, as the Hubs view files it; selecting it opens the note above. A note no hub holds shows nothing. Left unset, it follows the editor preset: on in Full, off in Tasks, Writing and Off. Set it here to override the preset.",
+            "description": "Show, on a note's first line, where it sits under its hub notes, such as Projects › Atlas › Vendor review, by the hub note of the tag it is about or the note its up: names; selecting it opens the note above. A note no hub holds shows nothing. Left unset, it follows the editor preset: on in Full, off in Tasks, Writing and Off. Set it here to override the preset.",
             "order": 10
           },
           "deckard.editor.hubProgress": {

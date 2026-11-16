@@ -74,6 +74,15 @@ suite('Preferences schema', () => {
     assert.deepStrictEqual(omitWorkspacePreferences(undefined), {});
   });
 
+  test('keeps the Dashboard tab that was shown, Types among them, and reads anything else as Home', () => {
+    for (const mode of ['home', 'browse', 'types'] as const) {
+      assert.strictEqual(normalizePreferences({ dashboardViewState: { mode, tagSearchQuery: '' } }).dashboardViewState.mode, mode);
+    }
+    for (const mode of ['Types', 'tags', '', undefined, null, 2, ['types']]) {
+      assert.strictEqual(normalizePreferences({ dashboardViewState: { mode, tagSearchQuery: '' } } as never).dashboardViewState.mode, 'home', JSON.stringify(mode));
+    }
+  });
+
   test('carryLegacyIds leaves a blob with no old ids as it is', () => {
     const kept = { taskOrder: ['task-a1-b2'], sectionAccessCounts: { 'section-c3-d4': 1 }, sectionAccessTimes: {} };
     assert.strictEqual(carryLegacyIds(kept, new Set(['task-a1-b2']), new Set(['section-c3-d4'])), kept);

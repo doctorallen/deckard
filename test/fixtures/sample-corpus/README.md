@@ -31,8 +31,8 @@ Windows and Linux.
    a search to run for every field.
 5. [Query blocks](<05 Query blocks.md>): live search results inside a note,
    a table of notes, and tasks you tick right in the preview.
-6. [Tags and people](<06 Tags and people.md>): namespaces, hub notes and the
-   Hubs view, a project's progress, a misspelled tag to merge, and a name
+6. [Tags and people](<06 Tags and people.md>): namespaces, hub notes and
+   where a note sits, a project's progress, a misspelled tag to merge, and a name
    written without its tag.
 7. [Links](<07 Links.md>): links to notes, headings, and lines, embeds, a
    link to a note that does not exist yet, and copying a note for elsewhere.
@@ -58,7 +58,7 @@ Windows and Linux.
   [Harbor](<teams/Harbor.md>) and [Wardens](<teams/Wardens.md>) for the
   teams, and [Sable Ortiz](<people/Sable Ortiz.md>) for a person.
   [Receiver firmware](<projects/Receiver firmware.md>) is a sub-project,
-  filed under Ghostline Relay in the **Hubs** view by its `up:` front matter.
+  filed under Ghostline Relay by its `up:` front matter.
 - **Notes filed under the hubs**: the
   [Relay route survey](<projects/Relay route survey.md>), under Ghostline
   Relay by its project tag, and the

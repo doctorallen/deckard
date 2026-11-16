@@ -2,7 +2,8 @@
 
 | Command | Description |
 | --- | --- |
-| **Deckard: Open Home** | Opens Home, with workspace totals, your widgets, and the Tags tab. It was called Open Dashboard; type *home*. |
+| **Deckard: Open Home** | Opens Home, with workspace totals, your widgets, and the Tags and Types tabs. It was called Open Dashboard; type *home*. |
+| **Deckard: Open Types** | Opens Home on its [Types tab](home-and-stats.md#the-types-tab): every type as one row, with its rows, open tasks, and when it was last mentioned. |
 | **Deckard: Go to…** | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> on macOS, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd> elsewhere, or **Go to…** at the foot of the menu **DECKARD ▾** drops at the top of any page. Lists every page, as the top of the Context view does, and opens the one you choose; see [Finding your way](getting-started.md#finding-your-way). |
 | **Deckard: Open Notes Graph** | Opens a map of every note, task, and tag connection. |
 | **Deckard: Open Task Board** | Opens tasks as a Kanban board grouped by status, priority, due date, person, or any tag namespace. |
@@ -61,7 +62,6 @@
 | **Deckard: Clear the Tasks View's Search** | Lets the Tasks view list every open task again. |
 | **Deckard: Group Tasks By…** | Chooses the Tasks view's groups: due status, priority, status, person, or a tag namespace. |
 | **Deckard: Sort Tasks By…** | Orders each of the Tasks view's groups: by rank, created or updated date, or title. |
-| **Deckard: Sort Hubs By…** | Orders each level of the Hubs view: by name, or **What's new**, the hubs with the most new since you last opened their page first; see [The Hubs view](search-pages.md#the-hubs-view). |
 | **Deckard: New Note from Template** | Creates a note from a template in your templates folder. |
 | **Deckard: New Note from Template Here…** | The same, in the folder right-clicked in the Explorer, from its **Deckard** menu. |
 | **Deckard: Exclude from Deckard** | On a folder's **Deckard** menu in the Explorer: leaves the folder out of the index. **Deckard: Include in Deckard** brings a folder left out by name back. |

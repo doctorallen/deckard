@@ -6,7 +6,6 @@ import { renameFrontmatterKey, type FrontmatterFieldEdit } from '../domain/types
 import { planFieldRename, planOptionRename, renameKindOption, rewriteTableCell } from '../domain/types/typeRenames';
 import type { TypeTableView } from '../domain/model';
 import type { SearchPageTypeRows } from '../ui/protocol/searchPage';
-import { buildHubTree } from '../ui/state/hubTree';
 import { createQueryBlockSnapshot, describeNoteCell, parseQueryBlockInfo } from '../ui/state/queryBlockState';
 import { createSearchPageSnapshot } from '../ui/state/searchPageState';
 import { createPreferences } from './preferenceServices';
@@ -234,15 +233,7 @@ suite('Types as searches: renames', () => {
   });
 });
 
-suite('Types as searches: the Hubs view and query blocks', () => {
-  test('a namespace heading a type has opens its search', () => {
-    const groups = buildHubTree(typedWorkspace(), now);
-    assert.deepStrictEqual(groups.map((group) => [group.label, group.typeQuery]), [
-      ['People', 'type = person'],
-      ['Teams', 'type = team'],
-    ]);
-  });
-
+suite('Types as searches: query blocks', () => {
   test('noteColumns= reads any field, path, reverse, or computed name, headed as written', () => {
     const options = parseQueryBlockInfo('deckard view=table noteColumns=lead,Team.Lead,owned-by,open-tasks,nonsense');
     assert.ok(options);

@@ -2,7 +2,6 @@ import { register as assistant } from '../ui/commands/assistant/register';
 import { register as dailyNotes } from '../ui/commands/dailyNotes/register';
 import { register as filing } from '../ui/commands/filing/register';
 import { register as find } from '../ui/commands/find/register';
-import { register as hubs } from '../ui/commands/hubs/register';
 import { register as links } from '../ui/commands/links/register';
 import { register as notes } from '../ui/commands/notes/register';
 import { register as noteTemplates } from '../ui/commands/noteTemplates/register';
@@ -52,7 +51,6 @@ export const features: readonly NamedFeature[] = [
   { name: 'Find', register: find },
   { name: 'tag editing', register: tagEditing },
   { name: 'Undo Last Change', register: undo },
-  { name: 'the Hubs view', register: hubs },
   { name: 'types', register: types },
   { name: 'File this', register: filing },
   { name: 'questions', register: questions },

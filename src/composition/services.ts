@@ -30,6 +30,7 @@ import { CaptureService } from '../services/captureService';
 import { createDailyNoteWithRollover, createRolloverService, VscodeRolloverService } from '../ui/commands/rollover';
 import { createReviewService, ReviewWrites } from '../ui/commands/review';
 import { TaskWrites } from '../ui/commands/taskActions';
+import { openTypeNoteForm } from '../ui/commands/typeNoteForm';
 import { MoveService } from '../services/moveService';
 import { TaskService, TaskRankKeeper } from '../services/taskService';
 import { QuestionService } from '../services/questionService';
@@ -241,7 +242,7 @@ export interface Services {
   /** The older lines like the one being written, and the pairs set aside with Not the same. */
   writtenBefore: { hints: WrittenBeforeHints; memory: WrittenBeforeMemory };
   sectionFocus: SectionFocus;
-  /** What each tag's page held at the reader's last visit, which its band and the Hubs view read. */
+  /** What each tag's page held at the reader's last visit, which its band reads. */
   tagVisits: TagVisits;
   /** The lines of today's note the reader said are no promise, which Not a promise marks. */
   promiseMarks: PromiseDismissals;
@@ -1007,6 +1008,7 @@ function createHome(context: vscode.ExtensionContext, parts: HomeParts) {
         await createDailyNoteWithRollover(indexer, history, undefined, writes.rollover);
       },
       addNextAction: (tagLabel) => captureNextAction(tagLabel),
+      addTypeRow: (typeKey) => openTypeNoteForm({ indexer, history }, { typeKey }),
     },
     whatsNew,
     tryNext,

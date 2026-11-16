@@ -119,6 +119,32 @@ suite('Dashboard messages', () => {
     ]);
   });
 
+  test('takes the Types tab: its tab, the types opened, a new row, and a new type', () => {
+    check([
+      [{ type: 'setDashboardMode', mode: 'types' }, { type: 'setDashboardMode', mode: 'types' }],
+      [{ type: 'setDashboardMode', mode: 'Types' }, undefined],
+      [{ type: 'setOpenTypes', typeKeys: [] }, { type: 'setOpenTypes', typeKeys: [] }],
+      [{ type: 'setOpenTypes', typeKeys: ['team', 'person'] }, { type: 'setOpenTypes', typeKeys: ['team', 'person'] }],
+      [{ type: 'setOpenTypes', typeKeys: ['team'], rows: 9 }, { type: 'setOpenTypes', typeKeys: ['team'] }],
+      [{ type: 'setOpenTypes' }, undefined],
+      [{ type: 'setOpenTypes', typeKeys: 'team' }, undefined],
+      [{ type: 'setOpenTypes', typeKeys: ['team', 7] }, undefined],
+      [{ type: 'setOpenTypes', typeKeys: [''] }, undefined],
+      [{ type: 'setOpenTypes', typeKeys: ['t'.repeat(201)] }, undefined],
+      [{ type: 'setOpenTypes', typeKeys: Array.from({ length: 201 }, (_, at) => `type-${at}`) }, undefined],
+      [{ type: 'addTypeRow', typeKey: 'team' }, { type: 'addTypeRow', typeKey: 'team' }],
+      [{ type: 'addTypeRow' }, undefined],
+      [{ type: 'addTypeRow', typeKey: '' }, undefined],
+      [{ type: 'addTypeRow', typeKey: ['team'] }, undefined],
+      [{ type: 'newType' }, { type: 'newType' }],
+      [{ type: 'newType', name: 'Team' }, { type: 'newType' }],
+      [{ type: 'createTypeFromTags' }, { type: 'createTypeFromTags' }],
+      [{ type: 'createTypeFromTags', namespace: 'vendor' }, { type: 'createTypeFromTags', namespace: 'vendor' }],
+      [{ type: 'createTypeFromTags', namespace: '' }, undefined],
+      [{ type: 'createTypeFromTags', namespace: 7 }, undefined],
+    ]);
+  });
+
   test('refuses anything that is not a message of a type the table names', () => {
     refuses([undefined, null, 'openTag', { tagKey: '#a' }, { type: 7 }, { type: 'constructor' }, { type: 'toString' }]);
   });

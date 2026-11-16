@@ -69,7 +69,7 @@ suite('View toggles', () => {
     assert.deepStrictEqual(title('deckard.outline', false), ['deckard.outline.enableFollowCursor', 'deckard.outline.disableFollowCursor']);
     const welcome = new Map(manifest.contributes.viewsWelcome.map((entry) => [entry.view, entry.contents]));
     assert.strictEqual(welcome.get('deckard.outline'), 'Open a Markdown note to see its headings.');
-    assert.strictEqual(welcome.get('deckard.hubs'), 'A hub note gathers a project\'s or person\'s notes.\n[Create Hub Note for Tag…](command:deckard.createHubNoteForTag)');
+    assert.strictEqual(welcome.has('deckard.hubs'), false, 'the Hubs view is gone');
   });
 
   test('keeps each choice only away from its default, and reads it back', () => {

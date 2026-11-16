@@ -82,10 +82,18 @@ export const DEFAULT_SEARCH_PAGE_SIZE: SearchPageSize = 30;
 export type RelatedNotesSortMode = 'newest' | 'oldest' | 'tags' | 'access';
 
 /**
- * The Dashboard's tabs: Home, and Tags. Searches open search pages, and tasks
- * have the Task Board.
+ * The Dashboard's tabs: Home, Tags, and Types. Searches open search pages,
+ * and tasks have the Task Board.
  */
-export type DashboardMode = 'home' | 'browse';
+export type DashboardMode = 'home' | 'browse' | 'types';
+
+/** Every Dashboard tab, in the order the page draws them. */
+export const DASHBOARD_MODES: readonly DashboardMode[] = ['home', 'browse', 'types'];
+
+/** The tab a stored or sent value names, or Home for anything else. */
+export function readDashboardMode(value: unknown): DashboardMode {
+  return DASHBOARD_MODES.find((mode) => mode === value) ?? 'home';
+}
 
 /** The Dashboard lists a search box can filter: only the Tags tab has one. */
 export type DashboardSearchField = 'tags';

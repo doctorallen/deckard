@@ -18,7 +18,7 @@ export function readOpenNotesIn(): NoteTarget {
  * Opens a note or an entry where the reader reads them: in the editor at
  * its line, as a result has always opened, or on the note page scrolled to
  * it, as `deckard.openNotesIn` says, the other way when Shift was held.
- * Every page, the Hubs view, Find, and the breadcrumb lens open a note
+ * Every page, Find, and the breadcrumb lens open a note
  * through here.
  */
 export async function openNoteAt(filePath: string, line: number, how: NoteOpening = {}): Promise<void> {

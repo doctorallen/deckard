@@ -1,5 +1,5 @@
 /*
- * The Dashboard, Home and Tags, with the query editor of Home's search.
+ * The Dashboard, Home, Tags, and Types, with the query editor of Home's search.
  * The favorite heart is drawn from resources/, named from dist/webview/,
  * where this sheet is served from.
  * Its own rules follow the base sheet; the page shell links its theme and the tail after it.
@@ -232,3 +232,31 @@ h2 { margin: 0 0 4px; }
 @media (max-width: 700px) {
   .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; }
 }
+/* The Types tab: every type a row of one table, which scrolls sideways in a
+   narrow panel rather than squeezing its figures. A link here is a name the
+   row opens, drawn as text; the doubled class outweighs each theme's button
+   and hover rules, as Customize's does. */
+.types-help { margin: 0 0 var(--space-3); color: var(--muted); }
+.types-scroll { overflow-x: auto; }
+.types-table { width: 100%; }
+.types-table th:last-child { width: 1%; }
+.types-name { white-space: nowrap; }
+.types-figure { color: var(--text); white-space: nowrap; }
+.types-rule { color: var(--muted); font: var(--text-sm) var(--font-mono); }
+.types-link.types-link, .types-toggle.types-toggle { min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; clip-path: none; font: inherit; text-align: left; cursor: pointer; }
+.types-link.types-link { color: var(--cyan); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
+.types-link.types-link.is-muted, .types-listed-rows .is-muted { color: var(--muted); }
+.types-link.types-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .types-link.types-link:focus-visible { border: 0; background: none; color: var(--hover-fg); text-decoration-color: currentColor; }
+.types-toggle.types-toggle { width: 1.5em; margin-right: var(--space-1); color: var(--muted); text-align: center; }
+.types-toggle.types-toggle:hover:where(:not(:disabled):not([aria-disabled="true"])), .types-toggle.types-toggle:focus-visible { border: 0; background: none; color: var(--hover-fg); }
+.types-add { text-align: right; white-space: nowrap; }
+.types-add button { min-height: 0; padding: 2px var(--space-2); font-size: var(--text-sm); }
+/* An opened type's rows, in the row under it: names side by side, wrapping. */
+.result-table .types-listed td { padding: var(--space-2) var(--space-3) var(--space-3) calc(var(--space-3) + 1.5em + var(--space-1)); background: var(--panel-bg); }
+.types-listed-rows { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: 0 0 var(--space-2); padding: 0; list-style: none; }
+.types-listed-foot { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin: 0; color: var(--muted); font-size: var(--text-sm); }
+.types-empty-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.types-outside { padding-top: var(--space-5, 24px); }
+.types-outside-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.types-outside-row { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); align-items: baseline; padding: var(--space-2) var(--space-3); border-bottom: var(--edge) solid var(--line); }
+.types-outside-action { min-height: 0; margin-left: auto; padding: 2px var(--space-2); font-size: var(--text-sm); }

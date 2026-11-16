@@ -4,7 +4,7 @@ import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { STARTER_TEMPLATES } from '../domain/notes/starterTemplates';
 import { fillTemplate, findTemplatePrompts, getTemplateVariables } from '../domain/notes/templates';
-import { listTagsWithoutHub } from '../ui/commands/hubs/register';
+import { listTagsWithoutHub } from '../ui/state/hubTree';
 
 suite('Starter templates and hub notes for tags', () => {
   test('each starter template asks its questions and fills to a tagged note', () => {
