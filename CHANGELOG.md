@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.18.0 - 2026-11-15
+
+### Highlights
+
+- **`Deckard: Start a Meeting`** writes a meeting's dated heading in its project's or person's note and links today's note to it.
+- **Dated headings**: `## 2026-11-16 Vendor sync` dates what is under it, and a carried task keeps the meeting it came from.
+- **A Types tab on Home** lists every type with its rows, open tasks, and last mention; the Hubs view is gone.
+
 ### Added
 
 - **Dated headings.** A heading that starts with a day, such as
