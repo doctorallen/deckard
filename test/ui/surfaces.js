@@ -1286,12 +1286,14 @@ function createTypesTabSurfaces(preferences) {
       // Home's Types tab: every type as one row, what its rows are, its
       // counts, and Add …, which a row shows while it is pointed at.
       // Narrow, so the table must fit or scroll in its own box rather
-      // than push the page sideways.
+      // than push the page sideways: only the page is held to none, since
+      // a theme with wide letters, Tomcat, scrolls the table here, as the
+      // Task board's lanes scroll theirs.
       name: 'dashboardTypes',
       page: 'dashboard',
       viewport: [800, 700],
       snapshot: () => createDashboardState(index, preferences.reader.value, 'types'),
-      scrollers: ['html', '.types-scroll'],
+      scrollers: ['html'],
       clippers: [],
       hovered: ['.types-row'],
       zenHovered: [...ZEN_REGIONS.dashboard, '.types-row[data-zen-region]'],
