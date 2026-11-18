@@ -6,6 +6,7 @@
  */
 @import "../shared/base.css";
 @import "../shared/queryEditor.css";
+@import "../shared/fieldRows.css";
 
 .tag-name, .telemetry-line, .section-readout { font-family: var(--font-mono); }
 /* The first step, on a Home with no notes to show yet. */
@@ -245,15 +246,27 @@ h2 { margin: 0 0 4px; }
 .types-rule { color: var(--muted); font: var(--text-sm) var(--font-mono); }
 .types-link.types-link, .types-toggle.types-toggle { min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; clip-path: none; font: inherit; text-align: left; cursor: pointer; }
 .types-link.types-link { color: var(--cyan); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
-.types-link.types-link.is-muted, .types-listed-rows .is-muted { color: var(--muted); }
-.types-link.types-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .types-link.types-link:focus-visible { border: 0; background: none; color: var(--hover-fg); text-decoration-color: currentColor; }
+.types-link.types-link.is-muted { color: var(--muted); }
+.types-link.types-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .types-link.types-link:focus-visible { border: 0; background: none; color: var(--link-hover-fg); text-decoration-color: currentColor; }
 .types-toggle.types-toggle { width: 1.5em; margin-right: var(--space-1); color: var(--muted); text-align: center; }
-.types-toggle.types-toggle:hover:where(:not(:disabled):not([aria-disabled="true"])), .types-toggle.types-toggle:focus-visible { border: 0; background: none; color: var(--hover-fg); }
+.types-toggle.types-toggle:hover:where(:not(:disabled):not([aria-disabled="true"])), .types-toggle.types-toggle:focus-visible { border: 0; background: none; color: var(--link-hover-fg); }
 .types-add { text-align: right; white-space: nowrap; }
 .types-add button { min-height: 0; padding: 2px var(--space-2); font-size: var(--text-sm); }
-/* An opened type's rows, in the row under it: names side by side, wrapping. */
-.result-table .types-listed td { padding: var(--space-2) var(--space-3) var(--space-3) calc(var(--space-3) + 1.5em + var(--space-1)); background: var(--panel-bg); }
-.types-listed-rows { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: 0 0 var(--space-2); padding: 0; list-style: none; }
+/* An opened type's rows, in the row under it, indented past its arrow. */
+.result-table .types-listed > td { padding: var(--space-2) var(--space-3) var(--space-3) calc(var(--space-3) + 1.5em + var(--space-1)); background: var(--panel-bg); }
+/* An opened type's child table: the columns its rows page shows, a schema
+   field's heading its key in monospace and in the text's ink, a computed
+   one's in sentence case and muted, as that page draws them. It scrolls in
+   its own box when wider than the row it sits in. */
+.types-listed-scroll { overflow-x: auto; margin: 0 0 var(--space-2); }
+.result-table.types-listed-table { width: 100%; }
+.types-listed-table th { padding: var(--space-2) var(--space-3); }
+.types-listed-table th.is-field { color: var(--text); font-family: var(--font-mono); text-transform: none; letter-spacing: normal; }
+.types-listed-table th.is-computed, .types-listed-table th.is-title { font-family: var(--font-display); text-transform: none; letter-spacing: normal; }
+.types-listed-table td { overflow-wrap: break-word; }
+.types-listed-table .is-muted { color: var(--muted); }
+.type-figure { white-space: nowrap; }
+.type-more { color: var(--muted); }
 .types-listed-foot { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin: 0; color: var(--muted); font-size: var(--text-sm); }
 .types-empty-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
 .types-outside { padding-top: var(--space-5, 24px); }

@@ -190,6 +190,8 @@ export function createTypeBoard(
   if (!group) {
     return undefined;
   }
+  const hideEmptyGroups = view?.hideEmptyGroups === true;
+  const hideEmptyLanes = view?.hideEmptyLanes === true;
   const lanes = chooseBoardLanes(fields, group, view);
   const groupHeld = rows.map((row) => readRowAxisValues(types, row.source.id, group));
   const laneHeld = lanes ? rows.map((row) => readRowAxisValues(types, row.source.id, lanes)) : undefined;
@@ -211,8 +213,10 @@ export function createTypeBoard(
     });
   });
   return {
-    group: describeAxis(types, group, groupHeld),
-    ...(lanes && laneHeld ? { lanes: describeAxis(types, lanes, laneHeld) } : {}),
+    group: describeAxis(types, group, groupHeld, hideEmptyGroups),
+    ...(lanes && laneHeld ? { lanes: describeAxis(types, lanes, laneHeld, hideEmptyLanes) } : {}),
+    ...(hideEmptyGroups ? { hideEmptyGroups } : {}),
+    ...(hideEmptyLanes ? { hideEmptyLanes } : {}),
     cards,
   };
 }
@@ -225,9 +229,10 @@ function isWorthSaying(column: TypeTableColumn, text: string | undefined): boole
   return Boolean(text) && !(column.source === 'computed' && text === '0');
 }
 
-/** One axis of the board: its field, whether a drop writes it, and its values. */
-function describeAxis(types: TypeIndex, field: GroupField, held: readonly (readonly AxisValue[])[]): TypeBoardAxis {
-  return { field: field.id, name: field.label, writable: Boolean(field.field), values: listAxisValues(types, field, held) };
+/** One axis of the board: its field, whether a drop writes it, and its values, those no row holds left out when asked. */
+function describeAxis(types: TypeIndex, field: GroupField, held: readonly (readonly AxisValue[])[], hideEmpty = false): TypeBoardAxis {
+  const values = listAxisValues(types, field, held);
+  return { field: field.id, name: field.label, writable: Boolean(field.field), values: hideEmpty ? values.filter((value) => value.count > 0) : values };
 }
 
 /** Whether a table's column is an axis's own field, which its column or lane already says. */

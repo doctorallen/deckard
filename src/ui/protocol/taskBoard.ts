@@ -250,6 +250,8 @@ export interface TaskBoardSettings {
   columns: BoardStatusColumn[];
   /** Whether each card and row shows its task's nearest parent tag. */
   parentTag?: boolean;
+  /** Whether done tasks are left off the board and the table, and Done drawn no column. */
+  hideDone?: boolean;
 }
 
 /** One status as the gear lists it, a column or not. */
@@ -396,6 +398,12 @@ export interface SetBoardParentTagMessage {
   show: boolean;
 }
 
+/** Hides or shows the done tasks. */
+export interface SetBoardHideDoneMessage {
+  type: 'setBoardHideDone';
+  hide: boolean;
+}
+
 /**
  * Names the Task Board's search and keeps it as a saved view: the search
  * the box shows, typed or run, or the board's own search when it sends none.
@@ -532,6 +540,7 @@ export interface TaskBoardPageToHost {
   editTaskStatuses: EditTaskStatusesMessage;
   moveStatusTags: MoveStatusTagsMessage;
   setBoardParentTag: SetBoardParentTagMessage;
+  setBoardHideDone: SetBoardHideDoneMessage;
 }
 
 /**

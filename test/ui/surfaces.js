@@ -1299,9 +1299,9 @@ function createTypesTabSurfaces(preferences) {
       zenHovered: [...ZEN_REGIONS.dashboard, '.types-row[data-zen-region]'],
     },
     {
-      // Two types opened in place: the teams, one muted for having no hub
-      // note, under what the muting means; and the decisions, which are
-      // notes. The host has sent both lists, as it does once a type opens.
+      // Two types opened in place, each a child table with the columns its
+      // rows page shows: the teams, one muted for having no hub note, under
+      // what the muting means; and the decisions, which are notes. The host has sent both lists, as it does once a type opens.
       name: 'dashboardTypesOpen',
       page: 'dashboard',
       viewport: [1100, 800],
@@ -1310,7 +1310,7 @@ function createTypesTabSurfaces(preferences) {
         ['click', '.types-toggle[data-type-key="team"]'],
         ['click', '.types-toggle[data-type-key="decision"]'],
       ],
-      scrollers: ['html', '.types-scroll'],
+      scrollers: ['html', '.types-scroll', '.types-listed-scroll'],
       clippers: [],
       hovered: ['.types-listed .types-link', '.types-row'],
       zenHovered: [...ZEN_REGIONS.dashboard, '.types-row[data-zen-region]'],

@@ -142,7 +142,8 @@ function headsOf(table: SearchPageTypeRows, axis: TypeBoardAxis, lane: boolean):
 /**
  * Group and Lanes over the board: the field the columns are by, and the
  * one the lanes are by, or None. Each offers the table's Group by fields,
- * Lanes all but the one Group uses.
+ * Lanes all but the one Group uses. Then Hide empty columns, and with
+ * lanes, Hide empty lanes.
  */
 function BoardAxes({ table, board }: { readonly table: SearchPageTypeRows; readonly board: TypeBoard }) {
   const lanes = board.lanes?.field ?? '';
@@ -163,6 +164,18 @@ function BoardAxes({ table, board }: { readonly table: SearchPageTypeRows; reado
             .map((field) => <option key={field.id} value={field.id} selected={field.id === lanes}>{field.label}</option>)}
         </select>
       </label>
+      <label class="control-label type-board-hide" data-zen-reveal="" data-tip="Leave out the columns no row is in">
+        <input type="checkbox" data-action="set-type-board-hide-empty" data-axis="group" checked={board.hideEmptyGroups === true} />
+        Hide empty columns
+      </label>
+      {board.lanes
+        ? (
+          <label class="control-label type-board-hide" data-zen-reveal="" data-tip="Leave out the lanes no row is in">
+            <input type="checkbox" data-action="set-type-board-hide-empty" data-axis="lanes" checked={board.hideEmptyLanes === true} />
+            Hide empty lanes
+          </label>
+        )
+        : null}
     </div>
   );
 }

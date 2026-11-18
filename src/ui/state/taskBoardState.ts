@@ -116,6 +116,8 @@ export interface TaskBoardOptions {
   limits?: Readonly<Record<string, number>>;
   /** Whether each card and row shows its task's nearest parent tag, as the board's gear keeps it. */
   parentTag?: boolean;
+  /** Whether done tasks are left out, the Done column with them, as the board's gear keeps it. */
+  hideDone?: boolean;
 }
 
 /** A column before it is cut to its limit and its tasks become cards. */
@@ -173,8 +175,10 @@ export function createTaskBoard({
     hiddenColumns: preferences.taskBoardHiddenColumns ?? options.hiddenColumns,
   };
   const selected = selectTasks(index, search.query, options.queryContext);
-  // A plain step rides on its task's card, so five steps are not five cards.
-  const tasks = foldSteps(selected.tasks);
+  // A plain step rides on its task's card, so five steps are not five cards;
+  // and with Hide done tasks on, a done task is drawn nowhere.
+  const folded = foldSteps(selected.tasks);
+  const tasks = options.hideDone ? folded.filter((task) => !task.completed) : folded;
   const { parkedLeftOut } = selected;
   const layout = preferences.taskBoardLayout;
   const groupBy = preferences.taskBoardGroup;
@@ -231,6 +235,7 @@ export function createTaskBoard({
     settings: {
       columns: listStatusColumns(index, boardOptions),
       parentTag: options.parentTag === true,
+      hideDone: options.hideDone === true,
     },
   };
 }
@@ -392,7 +397,8 @@ export function layoutTaskBoard({
   drafts.forEach((draft) => draft.tasks.sort((left, right) => sort?.(left, right) || compareOpen(left, right)));
   const statuses = options.queryContext.taskPolicy.statuses;
   const hideCancelled = isCancelledHidden(statuses, readColumnChoices(options));
-  const closed = closedDrafts({ done, cancelled, statuses, showSymbols: groupBy === 'status', hideCancelled });
+  const hideDone = options.hideDone === true;
+  const closed = closedDrafts({ done, cancelled, statuses, showSymbols: groupBy === 'status', hideCancelled, hideDone });
   const board = {
     groupBy,
     taskCount: tasks.length,
@@ -400,7 +406,7 @@ export function layoutTaskBoard({
     tagNamespaces: listBoardNamespaces(index),
   };
   if (laneAxis) {
-    const laneList = laneDrafts(laneAxis, { open, done, cancelled }, { index, options, hideCancelled });
+    const laneList = laneDrafts(laneAxis, { open, done, cancelled }, { index, options, hideCancelled, hideDone });
     return {
       ...board,
       ...layoutLanes({ drafts, closed, lanes: laneList, cutColumn, cutClosed, limits: options.limits }),
@@ -511,13 +517,13 @@ function createCutters(toCard: CardMaker, options: TaskBoardOptions): {
 function laneDrafts(
   axis: BoardAxis,
   tasks: { open: Task[]; done: Task[]; cancelled: Task[] },
-  { index, options, hideCancelled }: { index: WorkspaceIndex; options: TaskBoardOptions; hideCancelled: boolean },
+  { index, options, hideCancelled, hideDone }: { index: WorkspaceIndex; options: TaskBoardOptions; hideCancelled: boolean; hideDone: boolean },
 ): ColumnDraft[] {
   if (axis.by === 'status') {
     const statuses = options.queryContext.taskPolicy.statuses;
     return [
       ...createStatusColumns(tasks.open, options),
-      ...closedDrafts({ done: tasks.done, cancelled: tasks.cancelled, statuses, showSymbols: true, hideCancelled }),
+      ...closedDrafts({ done: tasks.done, cancelled: tasks.cancelled, statuses, showSymbols: true, hideCancelled, hideDone }),
     ];
   }
   return draftColumns({
@@ -588,18 +594,19 @@ function readLaneAxis(group: BoardAxis, lanes: BoardAxis | undefined): BoardAxis
 
 /**
  * The columns of closed tasks, last whatever the grouping: Done, the most
- * recent first; and, unless the gear hides it, Cancelled, closed but not
- * done. Grouped by status, each says its status's character.
+ * recent first, unless the gear hides done tasks; and, unless the gear
+ * hides it, Cancelled, closed but not done. Grouped by status, each says
+ * its status's character.
  */
 function closedDrafts(
-  tasks: { done: Task[]; cancelled: Task[]; statuses: QueryContext['taskPolicy']['statuses']; showSymbols: boolean; hideCancelled: boolean },
+  tasks: { done: Task[]; cancelled: Task[]; statuses: QueryContext['taskPolicy']['statuses']; showSymbols: boolean; hideCancelled: boolean; hideDone?: boolean },
 ): ColumnDraft[] {
   const symbolOf = (type: 'done' | 'cancelled'): Pick<ColumnDraft, 'symbol'> => {
     const symbol = tasks.showSymbols ? findClosedStatus(tasks.statuses, type)?.symbol : undefined;
     return symbol === undefined ? {} : { symbol };
   };
   return [
-    { id: 'done', label: 'Done', ...symbolOf('done'), droppable: true, tasks: tasks.done },
+    ...(tasks.hideDone ? [] : [{ id: 'done', label: 'Done', ...symbolOf('done'), droppable: true, tasks: tasks.done }]),
     ...(tasks.hideCancelled
       ? []
       : [{ id: 'cancelled', label: findClosedStatus(tasks.statuses, 'cancelled')?.name ?? 'Cancelled', ...symbolOf('cancelled'), droppable: true, tasks: tasks.cancelled }]),

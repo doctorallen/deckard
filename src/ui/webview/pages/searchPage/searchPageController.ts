@@ -905,6 +905,7 @@ export class SearchPageController implements PageController<SearchPageState, Sea
     | 'setTypeGroup'
     | 'setTypeView'
     | 'setTypeBoardAxis'
+    | 'setTypeBoardHideEmpty'
     | 'moveTypeRow'
     | 'addTypeRow'
     | 'openTypeNote'
@@ -928,6 +929,11 @@ export class SearchPageController implements PageController<SearchPageState, Sea
       setTypeView: (message) => preferences.display.setTypeTable(message.typeKey, { view: message.view === 'board' ? 'board' : undefined }),
       setTypeBoardAxis: (message) =>
         preferences.display.setTypeTable(message.typeKey, message.axis === 'group' ? { boardGroup: message.field } : { boardLanes: message.field }),
+      setTypeBoardHideEmpty: (message) =>
+        preferences.display.setTypeTable(
+          message.typeKey,
+          message.axis === 'group' ? { hideEmptyGroups: message.hide ? true : undefined } : { hideEmptyLanes: message.hide ? true : undefined },
+        ),
       // A card moved on the board: written, or refused and said, and the
       // page drawn again, which puts the card back where it was.
       moveTypeRow: async (message, page) => {

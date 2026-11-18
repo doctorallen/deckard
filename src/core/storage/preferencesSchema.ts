@@ -395,6 +395,7 @@ function normalizeTaskBoard(
     ...(order ? { taskBoardColumnOrder: order } : {}),
     ...(hidden ? { taskBoardHiddenColumns: hidden } : {}),
     ...(source.boardParentTag === true ? { boardParentTag: true as const } : {}),
+    ...(source.boardHideDone === true ? { boardHideDone: true as const } : {}),
   };
 }
 
@@ -1054,13 +1055,21 @@ function normalizeTypeTableView(value: unknown): TypeTableView | undefined {
   return Object.keys(view).length ? view : undefined;
 }
 
-/** A type's board as stored: Board when chosen, and its Group and Lanes, Lanes never the same field. */
-function normalizeTypeBoardView(value: object): Pick<TypeTableView, 'view' | 'boardGroup' | 'boardLanes'> {
-  const { view, boardGroup, boardLanes } = value as { view?: unknown; boardGroup?: unknown; boardLanes?: unknown };
+/** A type's board as stored: Board when chosen, its Group and Lanes, Lanes never the same field, and whether it hides empty columns and lanes. */
+function normalizeTypeBoardView(value: object): Pick<TypeTableView, 'view' | 'boardGroup' | 'boardLanes' | 'hideEmptyGroups' | 'hideEmptyLanes'> {
+  const { view, boardGroup, boardLanes, hideEmptyGroups, hideEmptyLanes } = value as {
+    view?: unknown;
+    boardGroup?: unknown;
+    boardLanes?: unknown;
+    hideEmptyGroups?: unknown;
+    hideEmptyLanes?: unknown;
+  };
   return {
     ...(view === 'board' ? { view } : {}),
     ...(isTypeColumnId(boardGroup) ? { boardGroup } : {}),
     ...(isTypeColumnId(boardLanes) && boardLanes !== boardGroup ? { boardLanes } : {}),
+    ...(hideEmptyGroups === true ? { hideEmptyGroups: true as const } : {}),
+    ...(hideEmptyLanes === true ? { hideEmptyLanes: true as const } : {}),
   };
 }
 

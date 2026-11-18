@@ -40,6 +40,9 @@
      lock's gold tag: dark words on gold. */
   --hover-bg: #9ad0ea;
   --hover-fg: #04060b;
+  /* The hover ink is dark for the cyan hover ground, so a link hovered on
+     no ground takes the bright amber instead. */
+  --link-hover-fg: var(--amber-bright);
   --chosen-bg: #d4922c;
   --chosen-fg: #04060b;
   --control-radius: 3px;

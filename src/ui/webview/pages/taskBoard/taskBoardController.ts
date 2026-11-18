@@ -346,6 +346,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
           ...readTaskBoardOptions(readQueryContext()),
           shownColumns: this.shownColumns,
           parentTag: preferences.boardParentTag === true,
+          hideDone: preferences.boardHideDone === true,
         },
       }),
       refineInSidebar: this.board.activeSearch.isRefineInSidebar(this.board.source),
@@ -401,6 +402,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     | 'editTaskStatuses'
     | 'moveStatusTags'
     | 'setBoardParentTag'
+    | 'setBoardHideDone'
   > {
     const { taskLayout, reader } = this.board.preferences;
     return {
@@ -463,6 +465,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         vscode.commands.executeCommand('deckard.editTaskStatuses', message.newStatus ? { newStatus: {} } : undefined),
       moveStatusTags: () => vscode.commands.executeCommand('deckard.moveStatusTagsIntoCheckboxes'),
       setBoardParentTag: (message) => taskLayout.setBoardParentTag(message.show),
+      setBoardHideDone: (message) => taskLayout.setBoardHideDone(message.hide),
     };
   }
 

@@ -27,6 +27,7 @@ import type {
   EditTaskStatusesMessage,
   SetBoardColumnOrderMessage,
   SetBoardColumnShownMessage,
+  SetBoardHideDoneMessage,
   SetBoardParentTagMessage,
   SetTableColumnsMessage,
   SetTableSortMessage,
@@ -230,6 +231,10 @@ const narrowEditTaskStatuses: Narrower<EditTaskStatusesMessage> = (value) =>
 const narrowSetBoardParentTag: Narrower<SetBoardParentTagMessage> = (value) =>
   typeof value.show === 'boolean' ? { type: 'setBoardParentTag', show: value.show } : undefined;
 
+/** Whether to leave the done tasks off the board. */
+const narrowSetBoardHideDone: Narrower<SetBoardHideDoneMessage> = (value) =>
+  typeof value.hide === 'boolean' ? { type: 'setBoardHideDone', hide: value.hide } : undefined;
+
 /** Each message the Task Board may send, and what it must hold. */
 export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   exportResults: narrowExportResults,
@@ -272,6 +277,7 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   editTaskStatuses: narrowEditTaskStatuses,
   moveStatusTags: exactlyType('moveStatusTags'),
   setBoardParentTag: narrowSetBoardParentTag,
+  setBoardHideDone: narrowSetBoardHideDone,
 };
 
 /** A message from the Task Board, narrowed by its table, or undefined. */

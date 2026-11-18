@@ -48,7 +48,7 @@ header { border-color: var(--line-strong); }
 h1, h2, h3 { font-family: var(--font-display); color: #3d4d28; letter-spacing: .04em; }
 button, select, .tag-open, .view-options summary { border-color: var(--slate-border); border-radius: 5px; background: #e9dfb7; color: var(--text); }
 button:hover:where(:not(:disabled):not([aria-disabled="true"])), button.active, select:hover:where(:not(:disabled):not([aria-disabled="true"])), .tag-open:hover, .view-options summary:hover { border-color: var(--green); background: var(--green); color: #fff7db; }
-:root { --hover-bg: var(--green); --hover-fg: #fff7db; }
+:root { --hover-bg: var(--green); --hover-fg: #fff7db; --link-hover-fg: var(--amber); }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--slate-border); border-radius: 5px; --corner-bl: 5px; --corner-br: 5px; background: #f1e8c8; box-shadow: inset 3px 0 0 var(--green); }
 .metric::before { border-bottom-color: var(--green); }
 .metric:nth-child(3n + 2)::before { border-bottom-color: var(--amber); }

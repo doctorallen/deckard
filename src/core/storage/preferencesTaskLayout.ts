@@ -122,6 +122,11 @@ export class TaskLayoutService {
     await this.repository.update({ boardParentTag: shown ? true : undefined });
   }
 
+  /** Leaves done tasks off the Task Board, or shows them again. */
+  public async setBoardHideDone(hidden: boolean): Promise<void> {
+    await this.repository.update({ boardHideDone: hidden ? true : undefined });
+  }
+
   /**
    * Chooses what the Tasks view's groups are. A tag grouping takes the
    * namespace whose tags are the groups, kept lowercased; without one, the

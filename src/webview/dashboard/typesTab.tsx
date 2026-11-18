@@ -1,13 +1,16 @@
 /**
  * The Types tab: every type as one row of a table, what its rows are, how
  * many it has, its open tasks and when it was last mentioned, with a way to
- * add a row; a type opened in place lists its rows; and under the table,
+ * add a row; a type opened in place lists its rows in a child table, with
+ * the columns its rows page shows; and under the table,
  * the hub notes no type's rows cover. Selecting a type opens its rows page.
  */
-import type { DashboardOutsideHub, DashboardType, DashboardTypeRow, DashboardTypesTab } from '../../ui/protocol/dashboard';
+import type { DashboardOutsideHub, DashboardType, DashboardTypeRows, DashboardTypesTab } from '../../ui/protocol/dashboard';
+import type { TypeTableRow } from '../../ui/protocol/searchPage';
 import { EmptyState } from '../shared/emptyState';
 import { Loading } from '../shared/loading';
 import { SortHeader } from '../shared/resultTable';
+import { CellBody } from '../shared/typeCells';
 import type { DashboardDraw, TypesSort, TypesSortColumn } from './model';
 
 /** The table's columns that sort, in the order they are drawn, with their headings. */
@@ -62,11 +65,11 @@ function listId(type: DashboardType): string {
   return `type-rows-${type.key}`;
 }
 
-/** One listed row: a tag row opens its tag's page, a note row its note; a name with no note is muted. */
-function ListedRow({ row }: { readonly row: DashboardTypeRow }) {
-  if (row.tagKey) {
+/** A listed row's title: a tag row opens its tag's page, a note row its note; a tag with no note is muted. */
+function ListedTitle({ row }: { readonly row: TypeTableRow }) {
+  if (row.tag) {
     return (
-      <button type="button" class={row.noNote ? 'types-link is-muted' : 'types-link'} data-action="open-tag" data-tag-key={row.tagKey} data-tip={row.noNote ? `Open ${row.title}'s page; it has no note yet` : `Open ${row.title}'s page`}>
+      <button type="button" class={row.noHub ? 'types-link is-muted' : 'types-link'} data-action="open-tag" data-tag-key={row.tag.key} data-tip={row.noHub ? `Open ${row.title}'s page; it has no note yet` : `Open ${row.title}'s page`}>
         {row.title}
       </button>
     );
@@ -77,10 +80,44 @@ function ListedRow({ row }: { readonly row: DashboardTypeRow }) {
   return <span class="is-muted">{row.title}</span>;
 }
 
+/** An opened type's rows as a table: the columns its rows page shows, the title's first, in that page's order. */
+function ListedTable({ type, listed }: { readonly type: DashboardType; readonly listed: DashboardTypeRows }) {
+  return (
+    <div class="types-listed-scroll">
+      <table class="result-table type-table types-listed-table" aria-label={type.plural}>
+        <thead>
+          <tr>
+            {listed.columns.map((column) => (
+              <th key={column.id} scope="col" class={`type-head is-${column.source}`} data-column={column.id}>{column.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {listed.rows.map((row) => (
+            <tr key={row.id} class="types-listed-row" data-row-id={row.id}>
+              {row.cells.map((cell, at) => {
+                const column = listed.columns[at];
+                if (column.source === 'title') {
+                  return <td key={column.id} class="result-title"><ListedTitle row={row} /></td>;
+                }
+                return (
+                  <td key={column.id} class={column.source === 'computed' ? 'is-computed' : undefined} title={cell.text && (cell.more || cell.values?.length !== 1) ? cell.text : undefined}>
+                    <CellBody cell={cell} column={column} />
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /**
- * An opened type's rows, in the row under it: the names, then the way to
- * all of them and what the list is. Until the host has sent them, it says
- * it is loading.
+ * An opened type's rows, in the row under it: a table of them with the
+ * columns its rows page shows, then the way to all of them and what the
+ * list is. Until the host has sent them, it says it is loading.
  */
 function ListedRows({ type }: { readonly type: DashboardType }) {
   const listed = type.listed;
@@ -93,9 +130,7 @@ function ListedRows({ type }: { readonly type: DashboardType }) {
   } else {
     body = (
       <>
-        <ul class="types-listed-rows" aria-label={type.plural}>
-          {listed.rows.map((row) => <li key={row.tagKey ?? row.filePath ?? row.title}><ListedRow row={row} /></li>)}
-        </ul>
+        <ListedTable type={type} listed={listed} />
         <p class="types-listed-foot">
           <button type="button" class="types-link" data-action="open-search" data-query={type.query}>{`Open all ${type.rows} ${plural}`}</button>
           {listed.note ? <span class="types-listed-note">{listed.note}</span> : null}

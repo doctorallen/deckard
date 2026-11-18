@@ -36,7 +36,7 @@ h1, h2, h3, .metric-value, .metric-label, .task-count, .section-count { font-fam
 button, select, .tag-open, .view-options summary { border-color: var(--line-strong); border-radius: 0; background: rgba(3, 13, 3, .94); color: var(--green); font-family: var(--font-mono); letter-spacing: .06em; }
 button, select { text-transform: uppercase; }
 button:hover:where(:not(:disabled):not([aria-disabled="true"])), button.active, select:hover:where(:not(:disabled):not([aria-disabled="true"])), .tag-open:hover, .view-options summary:hover { background: var(--green); border-color: var(--green); color: #071006; }
-:root { --hover-bg: var(--green); --hover-fg: #071006; }
+:root { --hover-bg: var(--green); --hover-fg: #071006; --link-hover-fg: var(--amber-bright); }
 .metric, .card, .note, .task, .tag-row, .task-row, .note-row, .entity-row, .saved-filter-row, .view-panel { border-color: var(--line); border-radius: 0; background: rgba(3, 12, 3, .9); box-shadow: inset 2px 0 0 var(--green); }
 .metric::before { border-bottom-color: var(--green); }
 .metric:nth-child(3n)::before { border-bottom-color: var(--favorite-red); }

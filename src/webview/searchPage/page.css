@@ -273,7 +273,7 @@ header { position: relative; }
 .type-board-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
 .type-card.task { grid-template-columns: minmax(0, 1fr); }
 .type-card-title .field-link.field-link { color: var(--cyan); text-decoration-color: transparent; }
-.type-card-title .field-link.field-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .type-card-title .field-link.field-link:focus-visible { color: var(--hover-fg); text-decoration-color: currentColor; }
+.type-card-title .field-link.field-link:hover:where(:not(:disabled):not([aria-disabled="true"])), .type-card-title .field-link.field-link:focus-visible { color: var(--link-hover-fg); text-decoration-color: currentColor; }
 .type-card-key { color: var(--muted); }
 .type-card-key.is-field { font-family: var(--font-mono); font-size: var(--text-xs); }
 .type-card .type-no-hub { display: flex; }

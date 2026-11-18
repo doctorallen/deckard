@@ -151,6 +151,22 @@ suite('Boards on a type’s rows, drawn', () => {
     assert.deepStrictEqual(page.findAll('.lane-column-head .lane-count').map((count) => count.textContent), ['0', '1', '0', '1', '0'], 'the heads counted again');
   });
 
+  test('Hide empty columns and Hide empty lanes are ticked as kept, and ask the host to change them', () => {
+    const plain = boardPage('type = initiative', { view: 'board', boardGroup: 'state' });
+    assert.deepStrictEqual(plain.findAll('.type-board-hide').map((label) => label.textContent?.trim()), ['Hide empty columns'], 'no lanes, so no lanes to hide');
+
+    const page = boardPage('type = initiative', { view: 'board', boardGroup: 'state', boardLanes: 'team', hideEmptyGroups: true });
+    const box = (axis: string) => page.find(`.type-board-bar [data-action="set-type-board-hide-empty"][data-axis="${axis}"]`) as HTMLInputElement;
+    assert.deepStrictEqual([box('group').checked, box('lanes').checked], [true, false]);
+    assert.deepStrictEqual(page.findAll('.lane-column-head').map((head) => head.getAttribute('data-lane-column')), ['option:proposed', 'option:active'], 'the empty columns left out');
+    box('lanes').checked = true;
+    box('lanes').dispatchEvent(new page.window.Event('change', { bubbles: true }));
+    assert.deepStrictEqual(page.lastPosted('setTypeBoardHideEmpty'), { type: 'setTypeBoardHideEmpty', typeKey: 'initiative', axis: 'lanes', hide: true });
+    box('group').checked = false;
+    box('group').dispatchEvent(new page.window.Event('change', { bubbles: true }));
+    assert.deepStrictEqual(page.lastPosted('setTypeBoardHideEmpty'), { type: 'setTypeBoardHideEmpty', typeKey: 'initiative', axis: 'group', hide: false });
+  });
+
   test('Group and Lanes choose the fields, and a reverse’s cards move only along the other axis', () => {
     const page = boardPage('type = team', { view: 'board', boardGroup: 'members', boardLanes: 'tier' }, typedWorkspace());
     select(page, '.type-board-bar [data-action="set-type-board-lanes"]', '');

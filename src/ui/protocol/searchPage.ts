@@ -264,6 +264,9 @@ export interface TypeBoard {
   /** What the columns are by, and the lanes, when there are lanes. */
   group: TypeBoardAxis;
   lanes?: TypeBoardAxis;
+  /** Whether a column no row is in is left out, and a lane. */
+  hideEmptyGroups?: boolean;
+  hideEmptyLanes?: boolean;
   /** One card per cell a row is in, in the rows' order. */
   cards: TypeBoardCard[];
 }
@@ -777,6 +780,14 @@ export interface SetTypeBoardAxisMessage {
   field?: string;
 }
 
+/** Leaves out a type's board's columns no row is in, or its lanes, or shows them again. */
+export interface SetTypeBoardHideEmptyMessage {
+  type: 'setTypeBoardHideEmpty';
+  typeKey: string;
+  axis: 'group' | 'lanes';
+  hide: boolean;
+}
+
 /**
  * A card of a type's board moved, dragged or from its ⋯: the row, the cell
  * it leaves, and the cell it enters, each by its column's and lane's value
@@ -890,6 +901,7 @@ export interface SearchPagePageToHost {
   setTypeGroup: SetTypeGroupMessage;
   setTypeView: SetTypeViewMessage;
   setTypeBoardAxis: SetTypeBoardAxisMessage;
+  setTypeBoardHideEmpty: SetTypeBoardHideEmptyMessage;
   moveTypeRow: MoveTypeRowMessage;
   addTypeRow: AddTypeRowMessage;
   openTypeNote: MessageAs<TypeActionMessage, 'openTypeNote'>;
