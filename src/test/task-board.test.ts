@@ -312,6 +312,7 @@ suite('Task board', () => {
         { id: 'cancelled', name: 'Cancelled', symbol: '-', shown: false, openTasks: 0 },
       ],
       parentTag: false,
+      hideDone: false,
     });
     const hidden = createTaskBoard({ index: createIndex(), preferences: preferencesWith({ taskBoardHiddenColumns: ['Waiting'] }), search: { query: '' }, options });
     assert.deepStrictEqual(hidden.settings.columns[2], { id: 'status:waiting', name: 'Waiting', symbol: 'w', shown: false, openTasks: 1 }, 'a hidden status still counts its open tasks');
