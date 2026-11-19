@@ -2950,7 +2950,6 @@
   },
   "dependencies": {
     "markdown-it": "^14.1.0",
-    "picomatch": "^4.0.7",
     "preact": "10.29.8"
   },
   "scripts": {
@@ -2991,7 +2990,6 @@
     "@types/markdown-it": "^14.2.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
-    "@types/picomatch": "^4.0.3",
     "@types/vscode": "^1.134.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.0.0",

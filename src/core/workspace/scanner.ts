@@ -1,10 +1,10 @@
 import * as path from 'path';
-import picomatch = require('picomatch');
 
 import type { Configuration, ConfigurationSection } from '../../ports/configuration';
 import type { FileStat, FileSystem } from '../../ports/fileSystem';
 import type { ResourceUri, WorkspaceFolder } from '../../ports/uri';
 import type { FolderPattern, WorkspaceFiles } from '../../ports/workspace';
+import { compileGlobs } from './glob';
 import type { NoteFiles } from './indexReader';
 import {
   extractTags,
@@ -749,8 +749,8 @@ export function createExcludeMatcher(...settings: unknown[]): ExcludeMatcher {
     return () => false;
   }
 
-  // VS Code's `*` also matches names that start with a dot.
-  const isMatch = picomatch(patterns, { dot: true });
+  // VS Code's dialect: its `*` also matches names that start with a dot.
+  const isMatch = compileGlobs(patterns);
   return (relativePath) => {
     const segments = relativePath.split('/');
     return segments.some((_, index) =>

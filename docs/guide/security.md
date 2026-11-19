@@ -30,7 +30,7 @@ Nothing Deckard stores is written into your workspace folder, except the notes a
 ## Updates and what ships
 
 - Deckard is published on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=esperinnovations.deckard-notes) as `esperinnovations.deckard-notes`, and updates as VS Code's `extensions.autoUpdate` says. Each release's changes are in the [changelog](../../CHANGELOG.md), and each [GitHub release](https://github.com/doctorallen/deckard/releases) carries the same VSIX.
-- The extension bundles three open-source packages: `markdown-it` (with its own small dependencies) and `picomatch` in the extension, and `preact` in its pages. Its search cache uses Node's built-in SQLite. A build check fails if anything else is bundled.
+- The extension bundles two open-source packages: `markdown-it` (with its own small dependencies) in the extension, and `preact` in its pages. Its search cache uses Node's built-in SQLite. A build check fails if anything else is bundled.
 - Its pages run under a content security policy with a fresh nonce for each script, and draw a note's Markdown without running anything in it.
 
 ---

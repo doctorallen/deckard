@@ -1,6 +1,6 @@
 # 0011. The host bundle ships no third-party code
 
-**Status:** Accepted (2026-09-30). Amended by [0015](0015-note-markdown-tokenized-by-markdown-it.md) (2026-10-01): `markdown-it` stays, as the parser the token tree is mapped from, and `sanitize-html` still goes.
+**Status:** Accepted (2026-09-30). Amended by [0015](0015-note-markdown-tokenized-by-markdown-it.md) (2026-10-01): `markdown-it` stays, as the parser the token tree is mapped from, and `sanitize-html` still goes. [0018](0018-exclude-globs-matched-by-deckard.md) (2026-11-18): `picomatch` goes too, for Deckard's own glob matcher.
 
 ## Context
 

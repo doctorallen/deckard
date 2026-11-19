@@ -384,7 +384,7 @@ All of them still take `when done`.
 
 **Edge cases:**
 - `deckard.exclude` is set at the user level. Workspace writes merge with the *workspace* value, not the effective value, so user keys aren't copied into the workspace.
-- A folder name with glob characters (`[draft]`): escape `[`, `]`, `*`, `?`, `{`, `}` in the key with `\`. The existing matcher is picomatch-style, and a test covers it.
+- A folder name with glob characters (`[draft]`): escape `[`, `]`, `*`, `?`, `{`, `}` in the key with `\`. The matcher reads `\` as an escape, as picomatch did (decision 0018), and a test covers it.
 
 ### 7d. Grammar
 

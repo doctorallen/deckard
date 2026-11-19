@@ -10,9 +10,10 @@
 // a bundle takes in that is not listed for it here:
 //
 // - The host bundles may take in only markdown-it's packages, the parser of
-//   note Markdown (decision 0015), and picomatch. The list only shrinks: it
-//   held 23 packages when this check arrived in Phase 6 step 3, and step 6
-//   removed sanitize-html and the 15 it brought.
+//   note Markdown (decision 0015). The list only shrinks: it held 23
+//   packages when this check arrived in Phase 6 step 3, step 6 removed
+//   sanitize-html and the 15 it brought, and Deckard's own exclude-glob
+//   matcher removed picomatch (decision 0018).
 // - A page's script may take in only Preact, and a page's style sheet nothing.
 const path = require('node:path');
 const { existsSync, readFileSync } = require('node:fs');
@@ -21,14 +22,12 @@ const ROOT = path.join(__dirname, '..');
 
 /**
  * The packages the host bundles may take in, as out/extension-meta.json
- * lists them: the two dependencies and the packages they bring
- * (markdown-it's argparse serves only its command line).
+ * lists them: markdown-it and the packages it brings (its argparse serves
+ * only its command line).
  */
 const HOST_PACKAGES = [
   // markdown-it and its dependencies
   'entities', 'linkify-it', 'markdown-it', 'mdurl', 'punycode.js', 'uc.micro',
-  // the exclude globs
-  'picomatch',
 ];
 
 /** What each build's bundles may take in, by the file extension of the bundle. */

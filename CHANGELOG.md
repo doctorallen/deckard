@@ -11,6 +11,7 @@
 ### Fixed
 
 - **Link hover contrast.** In Razorback, and in Tomcat, Cooper, Synthwave, LCARS, and Fellowship, a link drawn as text, such as a type's name on the Types tab, a value in a type's table, or a card's title on a type's board, no longer turns the color of the ground behind it when hovered or focused.
+- **Exclude globs.** `files.exclude`, `search.exclude`, `deckard.exclude`, and parked folders are matched by Deckard's own glob matcher, and the extension no longer bundles `picomatch`, which has an advisory with no fix. A negated class such as `[!0-9]` now means any character but a digit, as VS Code reads it.
 
 ## 2.18.0 - 2026-11-15
 
