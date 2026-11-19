@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.19.0 - 2026-11-19
+
+### Highlights
+
+- **Types tab tables**: a type opened on Home's Types tab lists its rows in the columns its rows page shows.
+- **Hide done tasks** on the Task board, and **Hide empty columns** and **lanes** on a type's board.
+- **Link hovers stay readable** in Razorback and five other themes.
+
 ### Added
 
 - **Types tab tables.** A type opened in place on Home's Types tab lists its rows as a table, with the columns its rows page shows, as you chose them there with **⋯**, in that page's sort.
