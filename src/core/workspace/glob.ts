@@ -74,46 +74,62 @@ export function expandBraces(pattern: string): string[] {
 /** The first brace group with a top-level comma: where it opens and closes, and its alternatives. */
 function findBraceGroup(pattern: string): { open: number; close: number; alternatives: string[] } | undefined {
   for (let open = 0; open < pattern.length; open++) {
-    const char = pattern[open];
-    if (char === '\\') {
-      open++;
+    const skipped = skipQuoted(pattern, open);
+    if (skipped !== open) {
+      open = skipped;
       continue;
     }
-    if (char === '[') {
-      const end = findClassEnd(pattern, open);
-      if (end !== undefined) {
-        open = end;
-      }
-      continue;
-    }
-    if (char !== '{') {
-      continue;
-    }
-    let depth = 0;
-    const commas: number[] = [];
-    for (let at = open + 1; at < pattern.length; at++) {
-      const inner = pattern[at];
-      if (inner === '\\') {
-        at++;
-      } else if (inner === '[') {
-        at = findClassEnd(pattern, at) ?? at;
-      } else if (inner === '{') {
-        depth++;
-      } else if (inner === '}' && depth > 0) {
-        depth--;
-      } else if (inner === ',' && depth === 0) {
-        commas.push(at);
-      } else if (inner === '}') {
-        if (commas.length === 0) {
-          break;
-        }
-        const bounds = [open, ...commas, at];
-        const alternatives = bounds.slice(1).map((end, index) => pattern.slice(bounds[index] + 1, end));
-        return { open, close: at, alternatives };
-      }
+    const group = pattern[open] === '{' ? readBraceGroup(pattern, open) : undefined;
+    if (group) {
+      return group;
     }
   }
   return undefined;
+}
+
+/**
+ * The brace group opening at `open`, when it closes and holds a top-level
+ * comma. Nested groups are left inside their alternative, to be expanded
+ * in turn.
+ */
+function readBraceGroup(pattern: string, open: number): { open: number; close: number; alternatives: string[] } | undefined {
+  let depth = 0;
+  const commas: number[] = [];
+  for (let at = open + 1; at < pattern.length; at++) {
+    const skipped = skipQuoted(pattern, at);
+    if (skipped !== at) {
+      at = skipped;
+      continue;
+    }
+    const char = pattern[at];
+    if (char === '{') {
+      depth++;
+    } else if (char === '}' && depth > 0) {
+      depth--;
+    } else if (char === ',' && depth === 0) {
+      commas.push(at);
+    } else if (char === '}') {
+      const bounds = [open, ...commas, at];
+      return commas.length === 0
+        ? undefined
+        : { open, close: at, alternatives: bounds.slice(1).map((end, index) => pattern.slice(bounds[index] + 1, end)) };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Where a quoted run starting at `at` ends: the character an escape makes
+ * literal, or a class's closing bracket. Anything else ends where it starts.
+ */
+function skipQuoted(pattern: string, at: number): number {
+  if (pattern[at] === '\\') {
+    return at + 1;
+  }
+  if (pattern[at] === '[') {
+    return findClassEnd(pattern, at) ?? at;
+  }
+  return at;
 }
 
 /** Where the class opening at `open` closes, or undefined when it never does. */

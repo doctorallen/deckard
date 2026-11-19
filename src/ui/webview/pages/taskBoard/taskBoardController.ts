@@ -153,7 +153,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
 
   /** Reads and writes through `board`, and is the active search as `board.source`. */
   public constructor(private readonly board: TaskBoardControllerOptions) {
-    this.handlers = { ...this.pageHandlers(), ...this.viewHandlers(), ...this.taskHandlers() };
+    this.handlers = { ...this.pageHandlers(), ...this.viewHandlers(), ...this.settingsHandlers(), ...this.taskHandlers() };
   }
 
   /** The board's template page, in a theme; it asks for its state when it loads. */
@@ -380,7 +380,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     };
   }
 
-  /** The search box, the gear's view options and settings, and Export. */
+  /** The search box, the gear's view options, and Export. */
   private viewHandlers(): Pick<
     Handlers,
     | 'exportResults'
@@ -397,12 +397,6 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
     | 'useSearchForAgenda'
     | 'saveToTasksView'
     | 'leaveTasksViewMode'
-    | 'setBoardColumnOrder'
-    | 'setBoardColumnShown'
-    | 'editTaskStatuses'
-    | 'moveStatusTags'
-    | 'setBoardParentTag'
-    | 'setBoardHideDone'
   > {
     const { taskLayout, reader } = this.board.preferences;
     return {
@@ -455,6 +449,21 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
         this.leaveTasksViewMode();
         page.refresh();
       },
+    };
+  }
+
+  /** The gear's settings: the status columns and their order, the task statuses, and what the cards show. */
+  private settingsHandlers(): Pick<
+    Handlers,
+    | 'setBoardColumnOrder'
+    | 'setBoardColumnShown'
+    | 'editTaskStatuses'
+    | 'moveStatusTags'
+    | 'setBoardParentTag'
+    | 'setBoardHideDone'
+  > {
+    const { taskLayout, reader } = this.board.preferences;
+    return {
       setBoardColumnOrder: (message) => taskLayout.setTaskBoardColumnOrder(message.names),
       setBoardColumnShown: (message) => {
         const name = normalizeStatusName(message.name);
