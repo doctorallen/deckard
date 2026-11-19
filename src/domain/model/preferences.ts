@@ -251,6 +251,8 @@ export interface PersistedPreferences {
   taskBoardHiddenColumns?: string[];
   /** Each card and row on the Task Board shows its task's nearest parent tag; stored only when on. */
   boardParentTag?: true;
+  /** The Task Board leaves out done tasks, and its Done column; stored only when on. */
+  boardHideDone?: true;
 
   /** What the Tasks view groups by, when not by due date. */
   agendaGroupBy?: Exclude<AgendaGroupBy, 'due'>;
@@ -372,6 +374,10 @@ export interface TypeTableView {
   view?: 'board';
   boardGroup?: string;
   boardLanes?: string;
+  /** The board leaves out a column no row is in; stored only when on. */
+  hideEmptyGroups?: true;
+  /** The board leaves out a lane no row is in; stored only when on. */
+  hideEmptyLanes?: true;
 }
 
 /** The column a task table is ordered by, and which way. */

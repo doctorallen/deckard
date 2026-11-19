@@ -849,6 +849,14 @@ function chooseBoardAxis(target: HTMLInputElement): void {
   send({ type: 'setTypeBoardAxis', typeKey: latest.typeRows.key, axis: action === 'set-type-board-group' ? 'group' : 'lanes', ...(target.value ? { field: target.value } : {}) });
 }
 
+/** Hide empty columns or Hide empty lanes over a type's board, ticked or cleared. */
+function hideEmptyBoardAxis(target: HTMLInputElement): void {
+  if (target.dataset.action !== 'set-type-board-hide-empty' || !latest || !latest.typeRows) {
+    return;
+  }
+  send({ type: 'setTypeBoardHideEmpty', typeKey: latest.typeRows.key, axis: target.dataset.axis === 'lanes' ? 'lanes' : 'group', hide: target.checked });
+}
+
 /**
  * A column ticked or cleared in ⋯'s list of a type's columns: added after
  * the last shown, or taken out.
@@ -1039,6 +1047,7 @@ document.addEventListener('change', (event) => {
     toggleTypeColumn(target);
   }
   chooseBoardAxis(target);
+  hideEmptyBoardAxis(target);
   if (target.dataset.action === 'choose-hierarchy' && latest) {
     setGrouping(target.value, latest);
   }

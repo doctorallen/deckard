@@ -13,6 +13,7 @@ import type {
 import type { QueryViewState } from '../../domain/model/query';
 import type { EntityKind, TagReference } from '../../domain/model/tags';
 import type { IndexingMessage, MessageAs, MessageOf, StateMessage } from './messaging';
+import type { TypeTableColumn, TypeTableRow } from './searchPage';
 
 export type {
   DashboardColumnCount,
@@ -129,20 +130,14 @@ export interface DashboardDay {
   text: string;
 }
 
-/** One of a type's rows, as the Types tab lists it under an opened type. */
-export interface DashboardTypeRow {
-  title: string;
-  /** For a tag row, the tag whose page it opens. */
-  tagKey?: string;
-  /** For a note row, the note it opens. */
-  filePath?: string;
-  /** Set on a tag row with no hub note, which is drawn muted. */
-  noNote?: true;
-}
-
-/** The rows an opened type lists in place, and what the list says of itself. */
+/**
+ * The rows an opened type lists in place, as a child table: the columns
+ * its rows page shows, as the reader chose them there, in that page's
+ * sort, and what the list says of itself.
+ */
 export interface DashboardTypeRows {
-  rows: DashboardTypeRow[];
+  columns: TypeTableColumn[];
+  rows: TypeTableRow[];
   /** What the list is and what its muted names mean: "The 12 mentioned most recently. Muted names have no note yet." */
   note: string;
 }

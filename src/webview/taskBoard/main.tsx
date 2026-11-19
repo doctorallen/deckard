@@ -139,10 +139,11 @@ function boardActions(snapshot: TaskBoardSnapshot): ViewOptionItem[] {
   ];
 }
 
-/** The ⋯'s view rows: the cards' parent tag or the table's columns, then the status columns. */
+/** The ⋯'s view rows: whether done tasks show, the cards' parent tag or the table's columns, then the status columns. */
 function boardView(snapshot: TaskBoardSnapshot): ViewOptionGroup[] {
   const isTable = snapshot.layout === 'table';
   return [
+    { label: 'Tasks', content: <HideDoneToggle snapshot={snapshot} /> },
     ...(isTable ? [] : [{ label: 'Cards', content: <ParentTagToggle snapshot={snapshot} /> }]),
     { label: 'Status columns', content: <StatusSettings snapshot={snapshot} />, stacked: true },
     ...(isTable ? [{ label: 'Columns', content: <ColumnPicker snapshot={snapshot} />, stacked: true }] : []),
@@ -163,6 +164,16 @@ function BoardControls({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
       {editing ? <SaveToTasksViewButton listed={tasksViewListsBox()} /> : null}
       <button type="button" class={editing ? undefined : 'primary'} data-action="add-task" data-help-id="add" data-tip="Write a new task in the task editor, into today's note or another you choose">Add task</button>
     </>
+  );
+}
+
+/** The switch, in ⋯'s view rows, that leaves done tasks off the board and the table, and Done drawn no column. */
+function HideDoneToggle({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
+  return (
+    <label class="board-settings-row">
+      <input type="checkbox" data-action="hide-done-tasks" checked={snapshot.settings.hideDone === true} />
+      <span>Hide done tasks</span>
+    </label>
   );
 }
 
@@ -549,6 +560,9 @@ document.addEventListener('change', (event) => {
   }
   if (target.dataset.action === 'show-parent-tag') {
     post({ type: 'setBoardParentTag', show: target.checked });
+  }
+  if (target.dataset.action === 'hide-done-tasks') {
+    post({ type: 'setBoardHideDone', hide: target.checked });
   }
   if (target.dataset.action === 'show-status-column') {
     post({ type: 'setBoardColumnShown', name: String(target.dataset.name), shown: target.checked });

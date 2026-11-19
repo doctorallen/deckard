@@ -170,6 +170,38 @@ suite('Boards on a type’s rows: columns and lanes', () => {
   });
 });
 
+suite('Boards on a type’s rows: hiding empty columns and lanes', () => {
+  test('Hide empty columns leaves out each column no row is in, No … among them', () => {
+    const board = boardOf('type = initiative', { boardGroup: 'state', boardLanes: 'team', hideEmptyGroups: true }, initiatives());
+    assert.strictEqual(board.hideEmptyGroups, true);
+    assert.deepStrictEqual(valuesOf(board.group.values), ['proposed 1', 'active 1', 'No state 1'], 'paused and done are empty');
+    assert.ok(board.lanes);
+    assert.deepStrictEqual(valuesOf(board.lanes.values), ['Credit 0', 'Payments 1', 'Rates 1', 'No team 1'], 'the lanes keep theirs');
+    assert.strictEqual(cardsOf(board).length, 3, 'and every card');
+  });
+
+  test('Hide empty lanes leaves out each lane no row is in', () => {
+    const board = boardOf('type = initiative', { boardGroup: 'state', boardLanes: 'team', hideEmptyLanes: true }, initiatives());
+    assert.strictEqual(board.hideEmptyLanes, true);
+    assert.strictEqual(board.hideEmptyGroups, undefined);
+    assert.deepStrictEqual(valuesOf(board.lanes?.values ?? []), ['Payments 1', 'Rates 1', 'No team 1']);
+    assert.deepStrictEqual(valuesOf(board.group.values), ['proposed 1', 'active 1', 'paused 0', 'done 0', 'No state 1']);
+  });
+
+  test('both are kept for each type, and the page may ask for either', () => {
+    assert.deepStrictEqual(
+      normalizePreferences({ typeTables: { team: { view: 'board', hideEmptyGroups: true, hideEmptyLanes: 'yes' } } } as never).typeTables,
+      { team: { view: 'board', hideEmptyGroups: true } },
+    );
+    assert.deepStrictEqual(
+      narrowSearchPageMessage({ type: 'setTypeBoardHideEmpty', typeKey: 'team', axis: 'lanes', hide: true }),
+      { type: 'setTypeBoardHideEmpty', typeKey: 'team', axis: 'lanes', hide: true },
+    );
+    assert.strictEqual(narrowSearchPageMessage({ type: 'setTypeBoardHideEmpty', typeKey: 'team', axis: 'rows', hide: true }), undefined);
+    assert.strictEqual(narrowSearchPageMessage({ type: 'setTypeBoardHideEmpty', typeKey: 'team', axis: 'group' }), undefined);
+  });
+});
+
 suite('Boards on a type’s rows: moves', () => {
   test('a drop changes the column’s field, the lane’s, or both, the column’s first', () => {
     const board = boardOf('type = initiative', { boardGroup: 'state', boardLanes: 'team' }, initiatives());

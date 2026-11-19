@@ -8,9 +8,11 @@
  *   many of its rows a task names; and when any row was last mentioned.
  *   The counts are the type index's, which a type's rows page reads too, so
  *   the tab and the page agree.
- * - A type the reader has opened lists its rows in place: all of them by
- *   name when they are few, else the ones mentioned most recently, or for
- *   a type whose rows are notes the ones written most recently.
+ * - A type the reader has opened lists its rows in place, as a child table
+ *   with the columns its rows page shows, as the reader chose them there,
+ *   in that page's sort: all of them when they are few, else the ones
+ *   mentioned most recently, or for a type whose rows are notes the ones
+ *   written most recently.
  * - A hub note outside every type is listed by its tag. Those of one
  *   namespace are one line, since the namespace is what a type would be
  *   made of.
@@ -21,7 +23,7 @@
 import { startOfDay } from '../../domain/markdown/calendar';
 import { formatKeyWords, readTagNamespace } from '../../domain/markdown/tagKeys';
 import type { DateFormats } from '../../domain/markdown/dateFormat';
-import type { WorkspaceIndex } from '../../domain/model';
+import type { TypeTableView, WorkspaceIndex } from '../../domain/model';
 import { listRowSources } from '../../domain/types/createType';
 import { pluralTypeName } from '../../domain/types/rowNotes';
 import { getTypeIndex, type TypeIndex, type TypeRow } from '../../domain/types/typeIndex';
@@ -30,12 +32,11 @@ import type {
   DashboardDay,
   DashboardOutsideHub,
   DashboardType,
-  DashboardTypeRow,
   DashboardTypeRows,
   DashboardTypesTab,
 } from '../protocol/dashboard';
 import { getHubGraph, hubNoteLabel, namespaceLabel } from './hubTree';
-import { describeDay, describeRowsRule } from './typeTable';
+import { createTypeTable, describeDay, describeRowsRule } from './typeTable';
 
 /** How many rows an opened type lists when its rows are tags. */
 export const LISTED_TAG_ROWS = 12;
@@ -53,6 +54,8 @@ export interface TypesTabOptions {
   dateFormats?: DateFormats;
   /** The types the reader has opened, by key: only these send their rows. */
   opened?: ReadonlySet<string>;
+  /** Each type's rows page as the reader set it, whose columns and sort an opened type's table takes. */
+  typeTables?: Readonly<Record<string, TypeTableView>>;
 }
 
 /** A type's row before its rows are listed, and the day it was worked out on. */
@@ -84,7 +87,7 @@ export function createTypesTab(index: WorkspaceIndex, options: TypesTabOptions):
   return {
     types: built.types.map((type) => {
       const definition = opened?.has(type.key) ? types.registry.get(type.key) : undefined;
-      return definition ? { ...type, listed: listRows(index, types, definition) } : type;
+      return definition ? { ...type, listed: listRows(index, types, definition, options) } : type;
     }),
     outside: built.outside,
   };
@@ -116,42 +119,40 @@ function listTypes(types: TypeIndex, options: TypesTabOptions): DashboardType[] 
 }
 
 /**
- * An opened type's rows: every one by name while they fit; else, for a
- * type whose rows are tags, the ones mentioned most recently, and for one
- * whose rows are notes, the ones written most recently.
+ * An opened type's rows, as its rows page's table draws them: every one
+ * while they fit; else, for a type whose rows are tags, the ones mentioned
+ * most recently, and for one whose rows are notes, the ones written most
+ * recently. The columns and sort are the page's, as the reader set them;
+ * its grouping and its board are the page's own.
  */
-function listRows(index: WorkspaceIndex, types: TypeIndex, type: TypeDefinition): DashboardTypeRows {
+function listRows(index: WorkspaceIndex, types: TypeIndex, type: TypeDefinition, options: TypesTabOptions): DashboardTypeRows {
   const rows = types.rows(type.key);
   const notes = type.rows?.kind === 'notes';
   const limit = notes ? LISTED_NOTE_ROWS : LISTED_TAG_ROWS;
-  const byName = (left: TypeRow, right: TypeRow): number => compareNames(left.title, right.title) || left.id.localeCompare(right.id);
-  let listed = [...rows].sort(byName);
+  let listed: readonly TypeRow[] = rows;
   let said = '';
   if (rows.length > limit) {
+    const byName = (left: TypeRow, right: TypeRow): number => compareNames(left.title, right.title) || left.id.localeCompare(right.id);
     const when = new Map(
       rows.map((row) => [row.id, notes ? index.files.get(row.filePath ?? '')?.updatedAt : types.lastMentioned(row.id)] as const),
     );
-    listed = listed.sort((left, right) => (when.get(right.id) ?? -Infinity) - (when.get(left.id) ?? -Infinity) || byName(left, right)).slice(0, limit);
+    listed = [...rows].sort((left, right) => (when.get(right.id) ?? -Infinity) - (when.get(left.id) ?? -Infinity) || byName(left, right)).slice(0, limit);
     said = notes ? `The ${limit} written most recently.` : `The ${limit} mentioned most recently.`;
   }
-  const drawn = listed.map((row) => drawRow(row));
-  const muted = drawn.some((row) => row.noNote) ? 'Muted names have no note yet.' : '';
-  return { rows: drawn, note: [said, muted].filter(Boolean).join(' ') };
-}
-
-/**
- * A row as the list draws it: a tag row opens its tag's page and a note
- * row its note; a namespace level that is no tag of its own opens nothing.
- */
-function drawRow(row: TypeRow): DashboardTypeRow {
-  if (!row.tagKeys.length) {
-    return { title: row.title, ...(row.filePath ? { filePath: row.filePath } : {}) };
-  }
-  return {
-    title: row.title,
-    ...(row.implicit ? {} : { tagKey: row.tagKeys[0] }),
-    ...(row.filePath ? {} : { noNote: true as const }),
-  };
+  const view = options.typeTables?.[type.key];
+  const table = createTypeTable(
+    types,
+    type,
+    listed.map((row) => row.id),
+    {
+      entriesOf: (tagKey) => index.tags.get(tagKey)?.count ?? 0,
+      now: options.now,
+      ...(options.dateFormats ? { dateFormats: options.dateFormats } : {}),
+      ...(view ? { view: { ...(view.columns ? { columns: view.columns } : {}), ...(view.sort ? { sort: view.sort } : {}) } } : {}),
+    },
+  );
+  const muted = table.rows.some((row) => row.noHub) ? 'Muted names have no note yet.' : '';
+  return { columns: table.columns, rows: table.rows, note: [said, muted].filter(Boolean).join(' ') };
 }
 
 /**

@@ -53,7 +53,7 @@ h1 { font-weight: 200; letter-spacing: .3em; }
 button, select, .tag-open, .view-options summary { border-color: var(--line); border-radius: 0; background: transparent; color: var(--text); font-family: var(--font-display); letter-spacing: .12em; }
 button, select { text-transform: uppercase; }
 button:hover:where(:not(:disabled):not([aria-disabled="true"])), button.active, select:hover:where(:not(:disabled):not([aria-disabled="true"])), .tag-open:hover, .view-options summary:hover { border-color: var(--text); background: var(--text); color: var(--bg-dark); }
-:root { --hover-bg: var(--text); --hover-fg: var(--bg-dark); }
+:root { --hover-bg: var(--text); --hover-fg: var(--bg-dark); --link-hover-fg: var(--amber-bright); }
 /* A tag's weight reads as a gold instrument, against faint empty steps. */
 .tag-weight-rail-segment.filled { background: var(--amber); }
 input[type='checkbox'] { accent-color: var(--amber); }

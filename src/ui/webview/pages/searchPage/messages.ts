@@ -31,6 +31,7 @@ import type {
   MoveTypeRowMessage,
   RenameTypeOptionMessage,
   SetTypeBoardAxisMessage,
+  SetTypeBoardHideEmptyMessage,
   SetTypeColumnsMessage,
   SetTypeGroupMessage,
   SetTypeSortMessage,
@@ -248,6 +249,12 @@ const narrowSetTypeBoardAxis: Narrower<SetTypeBoardAxisMessage> = (value) =>
     ? { type: 'setTypeBoardAxis', typeKey: value.typeKey, axis: value.axis, ...(value.field === undefined ? {} : { field: value.field }) }
     : undefined;
 
+/** A type's board's empty columns or lanes left out, or shown again, and nothing else. */
+const narrowSetTypeBoardHideEmpty: Narrower<SetTypeBoardHideEmptyMessage> = (value) =>
+  isTypeName(value.typeKey) && (value.axis === 'group' || value.axis === 'lanes') && typeof value.hide === 'boolean' && Object.keys(value).length === 4
+    ? { type: 'setTypeBoardHideEmpty', typeKey: value.typeKey, axis: value.axis, hide: value.hide }
+    : undefined;
+
 /**
  * The longest id of a board's column or lane: `row:` and a row's id, which
  * for a note row is `file:` and its path.
@@ -405,6 +412,7 @@ export const SEARCH_PAGE_MESSAGES: NarrowingTable<SearchPagePageToHost> = {
   setTypeGroup: narrowSetTypeGroup,
   setTypeView: narrowSetTypeView,
   setTypeBoardAxis: narrowSetTypeBoardAxis,
+  setTypeBoardHideEmpty: narrowSetTypeBoardHideEmpty,
   moveTypeRow: narrowMoveTypeRow,
   addTypeRow: narrowAddTypeRow,
   openTypeNote: narrowTypeAction('openTypeNote'),

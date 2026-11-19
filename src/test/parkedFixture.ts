@@ -1,5 +1,4 @@
-import picomatch = require('picomatch');
-
+import { compileGlobs } from '../core/workspace/glob';
 import { parseMarkdown } from '../domain/markdown/parser';
 import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { computeParked, ParkedRules, toParkedTagKey } from '../domain/index/parked';
@@ -8,7 +7,7 @@ import { ParsedFile, WorkspaceIndex } from '../domain/model';
 /** Rules as the settings would give them: tags as written, folder globs. */
 export function parkedRules(options: { tags?: string[]; folders?: string[] } = {}): ParkedRules {
   const folders = options.folders ?? [];
-  const isMatch = folders.length > 0 ? picomatch(folders, { dot: true }) : undefined;
+  const isMatch = folders.length > 0 ? compileGlobs(folders) : undefined;
   return {
     hasFolders: folders.length > 0,
     tags: (options.tags ?? ['parked'])

@@ -116,22 +116,35 @@ suite('Types tab state', () => {
     assert.deepStrictEqual(figures(createTypesTab(shared, { now })), ['Teams | #team/* | 2 · 0 with a note | 1 · 1 overdue | today · 2026-10-08']);
   });
 
-  test('sends a type\'s rows only while the reader has it opened: all of them by name when they are few', () => {
+  test('sends a type\'s rows only while the reader has it opened: all of them, in the columns its rows page shows', () => {
     const index = typedWorkspace();
     assert.ok(createTypesTab(index, { now }).types.every((type) => type.listed === undefined), 'no rows until a type is opened');
     const tab = createTypesTab(index, { now, opened: new Set(['team', 'incident', 'gone']) });
     assert.deepStrictEqual(tab.types.filter((type) => type.listed).map((type) => type.key), ['incident', 'team']);
-    assert.deepStrictEqual(tab.types.find((type) => type.key === 'team')?.listed, {
-      rows: [{ title: 'Credit', tagKey: '#team/credit' }, { title: 'Rates', tagKey: '#team/rates' }],
-      note: '',
-    });
-    assert.deepStrictEqual(tab.types.find((type) => type.key === 'incident')?.listed, {
-      rows: [{ title: 'Feed lag', filePath: 'Incidents/Feed lag.md' }, { title: 'RFQ outage', filePath: 'Incidents/RFQ outage.md' }],
-      note: '',
-    });
+    const teams = tab.types.find((type) => type.key === 'team')?.listed;
+    assert.deepStrictEqual(
+      teams?.columns.map((column) => column.id),
+      ['title', 'lead', 'owns', 'tier', 'headcount', 'on-call', 'status', 'open-tasks', 'last-mentioned'],
+      'every schema field, then Open tasks and Last mentioned, as the rows page shows them until asked for others',
+    );
+    assert.deepStrictEqual(teams?.rows.map((row) => [row.title, row.tag?.key]), [['Credit', '#team/credit'], ['Rates', '#team/rates']]);
+    assert.strictEqual(teams?.rows[1].cells[teams.columns.findIndex((column) => column.id === 'tier')].text, 'gold', 'a select as the schema spells it');
+    assert.strictEqual(teams?.note, '');
+    const incidents = tab.types.find((type) => type.key === 'incident')?.listed;
+    assert.deepStrictEqual(incidents?.rows.map((row) => [row.title, row.filePath]), [['Feed lag', 'Incidents/Feed lag.md'], ['RFQ outage', 'Incidents/RFQ outage.md']]);
+    assert.strictEqual(incidents?.note, '');
     const areas = createTypesTab(index, { now, opened: new Set(['area']) }).types.find((type) => type.key === 'area')?.listed;
-    assert.deepStrictEqual(areas?.rows.map((row) => row.noNote), [true, true], 'a tag with no hub note is muted');
+    assert.deepStrictEqual(areas?.rows.map((row) => Boolean(row.noHub)), [true, true], 'a tag with no hub note is muted');
     assert.strictEqual(areas?.note, 'Muted names have no note yet.');
+  });
+
+  test('an opened type takes the columns and sort the reader chose on its rows page, but not its grouping or board', () => {
+    const index = typedWorkspace();
+    const typeTables = { team: { columns: ['title', 'tier', 'mentions'], sort: { column: 'title', direction: 'desc' as const }, groupBy: 'tier', view: 'board' as const } };
+    const teams = createTypesTab(index, { now, opened: new Set(['team']), typeTables }).types.find((type) => type.key === 'team')?.listed;
+    assert.deepStrictEqual(teams?.columns.map((column) => column.label), ['Team', 'tier', 'Mentions']);
+    assert.deepStrictEqual(teams?.rows.map((row) => row.title), ['Rates', 'Credit'], 'Z-A, as its page is sorted');
+    assert.deepStrictEqual(teams?.rows.map((row) => row.cells.length), [3, 3]);
   });
 
   test('lists the tags mentioned most recently, or the notes written most recently, of a type with many rows', () => {
@@ -140,11 +153,11 @@ suite('Types tab state', () => {
     assert.strictEqual(projects?.rows, PROJECTS.length);
     assert.strictEqual(projects?.withNote, 1);
     assert.deepStrictEqual(
-      projects?.listed?.rows.map((row) => row.tagKey),
+      projects?.listed?.rows.map((row) => row.tag?.key),
       PROJECTS.slice(0, LISTED_TAG_ROWS).map((name) => `#project/${name}`),
-      'the latest first, and the two oldest left to the type\'s page',
+      'the latest, by name, and the two oldest left to the type\'s page',
     );
-    assert.deepStrictEqual(projects?.listed?.rows.filter((row) => !row.noNote).map((row) => row.title), ['Atlas']);
+    assert.deepStrictEqual(projects?.listed?.rows.filter((row) => !row.noHub).map((row) => row.title), ['Atlas']);
     assert.strictEqual(projects?.listed?.note, 'The 12 mentioned most recently. Muted names have no note yet.');
 
     const decisions = tab.types.find((type) => type.key === 'decision');
@@ -335,11 +348,16 @@ suite('Types tab behavior', () => {
     assert.match(shownText(page.find('#type-rows-project')), /Loading projects…/);
 
     page.send(snapshotOf(index, 'types', ['project']));
-    const listed = page.findAll('#type-rows-project .types-listed-rows li');
+    const listed = page.findAll('#type-rows-project .types-listed-table tbody tr');
     assert.strictEqual(listed.length, LISTED_TAG_ROWS);
-    assert.deepStrictEqual(listed.slice(0, 3).map((row) => row.textContent), ['Atlas', 'Borealis', 'Cinder']);
+    assert.deepStrictEqual(listed.slice(0, 3).map((row) => row.querySelector('.result-title')?.textContent), ['Atlas', 'Borealis', 'Cinder']);
     assert.deepStrictEqual(
-      page.findAll('#type-rows-project .types-listed-rows .is-muted').length,
+      page.findAll('#type-rows-project .types-listed-table thead th').map((heading) => heading.textContent),
+      ['Project', 'Open tasks', 'Last mentioned'],
+      'the columns its rows page shows',
+    );
+    assert.deepStrictEqual(
+      page.findAll('#type-rows-project .types-listed-table .is-muted').length,
       LISTED_TAG_ROWS - 1,
       'every project but the one with a note is muted',
     );

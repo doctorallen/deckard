@@ -203,7 +203,7 @@ export class DashboardController implements PageController<DashboardPageState, D
         : {}),
       // The types are read only for the tab that lists them, and their rows only for the types opened.
       ...(this.dashboardMode === 'types'
-        ? { types: createTypesTab(index, { now: queryContext.now, dateFormats: queryContext.dateFormats, opened: this.openTypes }) }
+        ? { types: createTypesTab(index, { now: queryContext.now, dateFormats: queryContext.dateFormats, opened: this.openTypes, typeTables: blob.typeTables }) }
         : {}),
     };
     return { ...data, parkedTags: listedParkedTags(indexer) };

@@ -314,11 +314,11 @@ test('the Types tab is sent its types only while it shows, and a type\'s rows on
   // Opening a type asks the host for its rows, which come with the next state.
   view.click(view.find('.types-toggle[data-type-key="team"]'));
   await delay(20);
-  assert.deepStrictEqual(lastState().data.types.types[0].listed.rows, [
-    { title: 'Credit', tagKey: '#team/credit', noNote: true },
-    { title: 'Rates', tagKey: '#team/rates' },
-  ]);
-  assert.deepStrictEqual(view.findAll('#type-rows-team .types-listed-rows li').map((row) => row.textContent), ['Credit', 'Rates']);
+  assert.deepStrictEqual(
+    lastState().data.types.types[0].listed.rows.map((row) => [row.title, row.tag && row.tag.key, Boolean(row.noHub)]),
+    [['Credit', '#team/credit', true], ['Rates', '#team/rates', false]],
+  );
+  assert.deepStrictEqual(view.findAll('#type-rows-team .types-listed-table tbody .result-title').map((cell) => cell.textContent), ['Credit', 'Rates']);
   view.click(view.find('.types-toggle[data-type-key="team"]'));
   await delay(20);
   assert.strictEqual(lastState().data.types.types[0].listed, undefined, 'and stop coming once it is closed');

@@ -68,6 +68,7 @@ Search with the same [search box](search.md#the-search-box) as search pages, suc
 - Due dates read by distance, such as **Overdue 15 days · 2026-09-08** or **Due tomorrow · 2026-09-24**; beyond a month only the date shows. A task more than `deckard.tasks.needsNewDateAfterDays` (30) days overdue reads **was due 2026-07-01** in muted text.
 - Column headers count cards and overdue ones: **40 · 38 overdue**.
 - A column over 100 cards shows **Show N more**.
+- **Hide done tasks**, in **⋯**'s **Tasks**, leaves completed tasks off the board, its **Done** column with them, and off the table, and the board keeps your choice. **Export tasks…** still writes every task the search found.
 - **Show the tag each task is under**, in **⋯**'s **Cards**, puts the tag the task is part of above its title on cards, and the board keeps your choice. Nearest first: the first tag on the nearest tagged heading above it, then its note's front-matter tag, which in a [hub note](search-pages.md#hub-notes) is the tag it describes. A tag the task's own line writes is skipped, since its title shows it, wherever on the line it is written, and so is a tag of the namespace the board is grouped by. A task under `## Launch #project/atlas` shows `#project/atlas`; `- [ ] Call Ren #project/atlas` shows the tag in its title instead. Select the tag to add it to the board's search, as **Refine** does: Shift-click adds it with OR, beside a tag of the same namespace the search already has, and Alt-click leaves it out. Cmd/Ctrl-click opens the tag's page in a new tab.
 
 ## Adding a task

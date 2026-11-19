@@ -1,6 +1,6 @@
 # 0013. Exclude globs stay on `picomatch`
 
-**Status:** Accepted (2026-09-30), from the second Phase 0 check of [the refactor plan](../../implementation/19-refactor.md) (§2.7, §8.4).
+**Status:** Superseded by [0018](0018-exclude-globs-matched-by-deckard.md) (2026-11-18). Accepted (2026-09-30), from the second Phase 0 check of [the refactor plan](../../implementation/19-refactor.md) (§2.7, §8.4).
 
 ## Context
 

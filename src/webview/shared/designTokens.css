@@ -76,6 +76,10 @@
      on whatever the background becomes. */
   --hover-bg: #121620;
   --hover-fg: #FFB000;
+  /* The ink of a link drawn as text, hovered or focused, with no hover
+     ground behind it: the hover ink, unless a theme's hover ink is dark for
+     its light hover ground, when the theme names a light one here. */
+  --link-hover-fg: var(--hover-fg);
   /* What a chosen segment looks like: the tab, filter, or option in force.
      A theme re-declares the pair, never one half. */
   --chosen-bg: #FFB000;
