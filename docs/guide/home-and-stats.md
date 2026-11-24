@@ -23,14 +23,14 @@ A widget that leads somewhere makes its title the link, with a **›** after it:
 | **Try next** | One suggestion, such as a weekly review after five daily notes. **Not now** snoozes it a week; **Do not suggest this** ends it | What it suggests |
 | **Search** | The [search box](search.md#the-search-box); <kbd>Enter</kbd> opens a search page | The search page |
 | **Tasks** | The first tasks a search finds, `is:open` by default, sorted as the Task board sorts or by its gear's **Sort** | The Task board, on that search |
-| **Tasks view** | Overdue, today's, and upcoming tasks | The Tasks view |
+| **Tasks view** | Today's [top three](tasks.md#top-three) once picked, then overdue, today's, and upcoming tasks | The Tasks view |
 | **Favorite tags** | Your favorite tags | The Tags tab |
 | **Frequent tags** | The tags you open most, lately | The Tags tab |
 | **Saved searches** | Your saved searches, each removable, and **Show results** on one until Home lists what it finds | Where each was saved |
 | **Saved search results** | What one saved search finds | Its search page, or the Task board |
 | **Recent searches** | The searches you ran lately | Their search pages |
 | **Recently opened** | Notes you opened from Deckard lately | The notes |
-| **Today** | Today's daily note and its open tasks, or **Create today's note** | Today's note |
+| **Today** | Today's daily note and its open tasks, or **Create today's note**; **Pick today's three** while today has no [top tasks](tasks.md#top-three) | Today's note |
 | **Gone quiet** | People, or another namespace, not written about for 30, 60, 90, or 180 days, with what is still open. **Only those with no open tasks** adds **Add next action**, which adds a task with the tag to today's note | The Tags tab |
 | **Progress** | Each project tag with tasks, or another namespace's, with a bar and how far along it is: *2/6 done (33%) · 1 overdue · next due in 3 days*. Unfinished first, overdue ones first among them, then by the next due date | The Tags tab |
 | **Pinned notes** | The notes you pinned, each with **×** to unpin | The note, at the heading you pinned |

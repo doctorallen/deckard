@@ -266,6 +266,7 @@ Open **Tasks** from the Deckard Activity Bar to see open tasks grouped by when t
 - **Today**: due today, or scheduled for today or earlier and started, most important first.
 - **Upcoming**: due, scheduled, or starting in the next seven days, one group per day. Drop a task on a day to make it due then.
 - **Later** (dated tasks past that) and **No date** start folded.
+- **Top three**: today's [top tasks](#top-three), first, once you have picked them.
 - **Done today**: finished today, by ✅ date. Uncheck to reopen; drop a task here to complete it.
 - **Needs a new date**: more than 30 days past due, left out of Overdue, the badge, and the status bar. Date them with the calendar button or **Reschedule All…**. `deckard.tasks.needsNewDateAfterDays` sets the days; `0` turns this off. `is:overdue` still finds them.
 
@@ -318,9 +319,51 @@ Each row shows its day. A message says when the task starts, *"Call Ren" starts 
 - **Where:** `Deckard: Snooze Task Until…` on the task at the cursor, from the palette or the editor's right-click menu; **Snooze Until…** on a task's right-click menu in the Tasks view, for the tasks selected too, as one write; and **Snooze until…** in a [Task board](task-board.md#keyboard) card's or table row's **⋯** menu, or **z** on a focused card.
 - **Until it starts:** the Tasks view keeps a task that has not started out of **Today**, and lists it under **Upcoming** or **Later** by its start date, *starts Mon 2026-11-02*. Turn on `deckard.tasks.hideNotStarted` to leave it out of the Tasks view, Home's agenda, the status bar's count, and the Task Board until that day. A search that names start dates, such as `has:start` or `start > today`, still finds it.
 
+## Top three
+
+Start the day by choosing the few tasks to do first. `Deckard: Pick Today's Top Tasks` lists your open tasks with checkboxes; what you check is written into today's daily note under `## Top three`, and shown all day. A pick lasts the day: it changes no priority, date, or tag, and tomorrow starts empty.
+
+```markdown
+# 2026-11-24
+
+## Top three
+
+- [[Ledger migration#^cutover-runbook|Draft the cutover runbook]]
+- [[Borealis#^vendor-quote|Send the vendor quote]]
+- [ ] Outline the Q1 staffing ask
+
+## Carried over
+```
+
+- **The list.** Titled **Today's top three · 2 of 3 chosen**, it holds the tasks the [Tasks view](#tasks-view) lists, each with why it is listed and where it is written, such as *Overdue 1 day · Borealis › Vendor sync*: **Chosen**, today's picks; **Left from yesterday's three**, the unfinished picks of the last daily note that has the section; **Overdue**; **Due today**; then **Most urgent**, every other open task by the [Most urgent](#most-urgent) sort. Type to narrow it. Words that match nothing offer **Add "…" as a new task in today's note**.
+- **The limit.** A fourth is refused: its row is unchecked again and the title says **Three is the limit. Uncheck one to pick "…".** Fewer is fine, and <kbd>Enter</kbd> with none checked clears the section's items and leaves its heading.
+- **What stays.** A pick that is done cannot be unchecked: *"…" is done today, so it stays.* Nor can a task written under the heading itself, since unchecking it would delete it; move or delete its line in the note.
+- **What is written.** Each pick is a list item that links to its task's line, with the task's title as the link's words, in today's note's link style (`deckard.links.style`): `[[Name#^marker|words]]`, or `[words](path.md#^marker)`. The lines are in the order you checked them. The task stays where it was written.
+- **The marker.** A link names a line by the `^marker` at the line's end. A picked task with none gets one, the only change to its own note: up to three of its title's words, as `^send-the-vendor`, with `-2` or `-3` when its note already has that one.
+- **A new task** typed in the list is written as a task under the heading, since it has no other home.
+- **The heading.** A new section goes one level below the note's title, under the title's own lines and above every other section. A heading already there is used: any heading of today's note that reads **Top** and a number, as a word or in digits (`Top three`, `Top 5`), or **Top task**, in any case, such as one your [Daily template](daily-notes.md#templates) writes. Picking again rewrites its list items only; other lines under it stay.
+- **One write.** Today's note and each task's note change together, with **Open** and **Undo** afterward, and `Deckard: Undo Last Change` takes it back. Today's note is created first if it is not there, with the tasks a [rollover](daily-notes.md#carrying-unfinished-tasks-forward) carries in, so the list shows them where they then are.
+- **Read from the note.** Deckard reads the picks back from the section, and keeps nothing elsewhere. Write or reorder the items by hand and every view follows. A fourth item written by hand is shown too. A link that leads to no task stays in the note and is shown only in the review.
+
+**Through the day:**
+
+- **Status bar.** Beside the due count: `◎ 1/3 · Draft the cutover runbook`, how many picks are done and the first that is not. Select it to open that task's line; hover for all of them. With every pick done it reads `3/3 done`, and opens the list.
+- **Tasks view.** A **Top three** group leads, in every grouping, with `1/3` beside it and **Change…** on its row. A pick is listed there only, and stays there, checked, once done. The badge and the due count are unchanged.
+- **Home.** The [Tasks view widget](home-and-stats.md#the-home-tab) shows the same group first, and the **Today** widget offers **Pick today's three** while there are none.
+- **Task board.** A pick's card says **Top three** among its details, and a table row beside its status.
+- **Search.** `is:top` finds today's picks on a search page, in a [query block](query-blocks.md), on the board, and in a Home Tasks widget.
+- **Completing a pick** ticks its own line. Today's note is not rewritten.
+- **In today's note**, a lens above the heading reads **Top three · 1 of 3 done · Change…**.
+
+**Offered, not opened.** No list opens by itself and there are no reminders. While today has no picks, the status bar item reads **Pick today's three**, and a lens above today's note's first heading reads **Pick today's three… · 1 left from yesterday**; both show only once a daily note of the last 14 days has the section. Until then the command, **Pick Today's Top Tasks** in the Tasks view's **⋯** menu, and Home's Today widget are how to start. `deckard.editor.topTasks` turns the lenses off; it follows the [editor preset](notes-and-links.md#editor-assistance) while unset, on in **Full** and **Tasks**.
+
+**The number.** `deckard.tasks.topCount` is how many a day holds: `3` unless you change it, up to `9`. The name follows it, as a word: **Top five**, and **Top task** for `1`. A day keeps the heading it was written with when the setting changes later. `0` turns all of it off: no status bar item, lens, group, or review section, and the command says so and offers the setting.
+
+**In the review.** A [weekly or monthly review](daily-notes.md#writing-a-review) gains a **Top three** section after Completed when a daily note in the period has picks: a line a day, `- Mon 2026-11-23 · 2 of 3 · left: [[Borealis#^vendor-quote|Send the vendor quote]]`, and **none picked** for a day with a note and no picks. A pick counts as done for its day when its task was completed that day, by its ✅ date, or is done with no date; the others are listed as the day's note writes them. The summary line gains **Top three:** 10 of 12.
+
 ## Status bar and reminders
 
-The status bar shows **3 due today**, or **1 overdue, 3 due today** in the warning color, counting the Tasks view's Overdue and Today groups. It is hidden while nothing is due. Select it to open the view; hover for the first few overdue tasks, how many [need a new date](#tasks-view), and how many were done today. Tasks more than `deckard.tasks.needsNewDateAfterDays` (30) days overdue are not counted. Right-click the status bar to hide it, as any status bar item.
+The status bar shows **3 due today**, or **1 overdue, 3 due today** in the warning color, counting the Tasks view's Overdue and Today groups. It is hidden while nothing is due. Select it to open the view; hover for the first few overdue tasks, how many [need a new date](#tasks-view), and how many were done today. Tasks more than `deckard.tasks.needsNewDateAfterDays` (30) days overdue are not counted. Right-click the status bar to hide it, as any status bar item. A second item beside it shows today's [top three](#top-three).
 
 - **Reminder.** Set `deckard.taskReminderTime` to a time such as `09:00` to see what is due once a day, or when VS Code next opens that day. It offers **Open Tasks View**, **Reschedule Overdue…**, and **Turn Off Reminders**. Empty by default.
 - **Word count.** While a note is open: **412 words · 2 min**, or **38 of 412 words** with a selection. Front matter, code, comments, link addresses, and task metadata are not counted; minutes are at 238 words a minute. Right-click the status bar to hide it.

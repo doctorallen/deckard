@@ -97,6 +97,7 @@ Shorthands, written the way GitHub writes them:
 | `is:periodic` | Daily, weekly, and monthly notes. `is:dated` is the same. |
 | `is:parked` | [Parked](organizing.md#parking-notes) notes, entries, and tasks: in a folder `deckard.parked.folders` names, or found by a search for a tag `deckard.parked.tags` names. |
 | `is:step`, `has:steps`, `no:steps` | Steps (checkboxes under another task), tasks with steps, and tasks with none. `-is:step` leaves steps out. |
+| `is:top` | Today's [top tasks](tasks.md#top-three), as today's daily note lists them, done ones too. `is:top is:open` is what is left of them. |
 | `is:question`, `is:unanswered`, `is:answered` | [Questions](tasks.md#questions), written `- [?]`: every one, those with no `Answer:` line under them, and those with one. A question is neither a task nor a note, so `is:open` and `is:note` leave it out. |
 
 Put `-` before a shorthand to negate it, as in `-is:done`. Deckard keeps a shorthand as written when it saves or formats a query.

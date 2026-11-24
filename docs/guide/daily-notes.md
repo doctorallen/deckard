@@ -34,6 +34,7 @@ A new daily, weekly, or monthly note starts from a file in the templates folder 
 | Section | What it lists |
 | --- | --- |
 | **Completed** | Tasks with a ✅ date in the period, oldest first |
+| **Top three** | Each day's [top tasks](tasks.md#top-three): how many were done that day, and the rest. Only when a daily note in the period has picks |
 | **Still open** | Tasks due by the end of the period that are still open |
 | **Coming up** | Open tasks due, scheduled, or starting in the next week or month, soonest first |
 | **Notes written** | Notes created in the period |
@@ -91,6 +92,10 @@ A new daily, weekly, or monthly note starts from a file in the templates folder 
 - **A meeting that recurs.** **A note of its own…** makes a note with the meeting's name, such as `Weekly staff.md`, or uses the one there is, and heads each time it is held with its day and time alone: `## 2026-11-16 10:00`. From then on the note is in the list under **Meeting notes**.
 - **What is offered.** A tag that names a person, sits in a namespace such as `#project/…`, or has a hub note, by how many headings carry it and how lately: one written two weeks ago counts half of one written today, and nothing counts after 60 days. The 12 that count most are listed. The notes under **Meeting notes** are the five with the latest [dated heading](notes-and-links.md#dated-headings) in those 60 days.
 - It is one write, and `Deckard: Undo Last Change` takes back the heading and the link together.
+
+### Today's top three
+
+`Deckard: Pick Today's Top Tasks` writes the few tasks to do first into today's note, under `## Top three`, each a link to its task's line. The status bar, the Tasks view, Home, and the review read them back from there. See [Top three](tasks.md#top-three).
 
 ### Promises in today's note
 
