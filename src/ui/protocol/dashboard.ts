@@ -235,6 +235,8 @@ export interface DashboardWidgetToday {
   filePath?: string;
   /** Its open tasks, listed or not. */
   openTaskCount: number;
+  /** The offer to pick today's top tasks, `Pick today's three`, while there are none and the feature is on. */
+  pickTop?: string;
 }
 
 /** One agenda group, as Home's agenda widget shows it. */
@@ -410,7 +412,7 @@ export interface WhatsNewMessage {
 /** Opens a Deckard view Home links to. */
 export interface OpenDeckardViewMessage {
   type: 'openView';
-  view: 'agenda' | 'questions' | 'sampleWorkspace' | 'checkSetup' | 'walkthrough';
+  view: 'agenda' | 'questions' | 'sampleWorkspace' | 'checkSetup' | 'walkthrough' | 'topTasks';
 }
 
 /**

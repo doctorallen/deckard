@@ -44,6 +44,7 @@ import {
   toggleTask,
 } from '../../host/sharedHandlers';
 import type { PageChrome } from '../../components';
+import { readTopCount } from '../../../../domain/tasks/topTasks';
 import { narrowDashboardMessage } from './messages';
 import { isDefaultHomeLayout } from '../../../../core/storage/preferencesSchema';
 
@@ -258,6 +259,7 @@ export class DashboardController implements PageController<DashboardPageState, D
         if (
           event.affectsConfiguration('deckard.agenda') ||
           event.affectsConfiguration('deckard.tasks.viewQuery') ||
+          event.affectsConfiguration('deckard.tasks.topCount') ||
           event.affectsConfiguration('deckard.tasks.hideNotStarted')
         ) {
           page.refresh();
@@ -542,6 +544,7 @@ export class DashboardController implements PageController<DashboardPageState, D
             sampleWorkspace: 'deckard.createWorkSample',
             checkSetup: 'deckard.checkSetup',
             walkthrough: 'deckard.openWalkthrough',
+            topTasks: 'deckard.pickTopTasks',
           }[message.view],
         ),
       openDailyNote: () => navigation.openDailyNote(),
@@ -636,6 +639,7 @@ export class DashboardController implements PageController<DashboardPageState, D
     return createDashboardWidgets(index, viewPreferences, {
       queryContext,
       agendaQuery: readAgendaQuery(configuration),
+      topCount: readTopCount(configuration),
       ...(tryNext ? { tryNext } : {}),
       ...(this.home.questions ? { rejectedOffers: this.home.questions.rejected() } : {}),
     });

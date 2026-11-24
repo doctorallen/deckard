@@ -195,7 +195,8 @@ const narrowOpenView: Narrower<OpenDeckardViewMessage> = (value) =>
   value.view === 'questions' ||
   value.view === 'sampleWorkspace' ||
   value.view === 'checkSetup' ||
-  value.view === 'walkthrough'
+  value.view === 'walkthrough' ||
+  value.view === 'topTasks'
     ? { type: 'openView', view: value.view }
     : undefined;
 

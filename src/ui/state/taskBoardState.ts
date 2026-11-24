@@ -10,6 +10,7 @@ import {
   readNamespaceValues,
 } from './tagGrouping';
 import { findParentTag } from '../../domain/tasks/parentTag';
+import { getTopTaskIds, topTasksName } from '../../domain/tasks/topTasks';
 import { drawTaskStatus } from './drawnStatus';
 import { describeStepParts, foldSteps } from '../../domain/markdown/taskSteps';
 import { mentionsParked, withoutParked } from '../../domain/index/parked';
@@ -118,6 +119,26 @@ export interface TaskBoardOptions {
   parentTag?: boolean;
   /** Whether done tasks are left out, the Done column with them, as the board's gear keeps it. */
   hideDone?: boolean;
+  /** `deckard.tasks.topCount`: above 0, a card or row of one of today's top tasks says so among its details. */
+  topCount?: number;
+}
+
+/** Today's top tasks, by id, and what a card or row of one says: `Top three`. */
+interface TopDetail {
+  ids: ReadonlySet<string>;
+  name: string;
+}
+
+/** A card that says it is one of today's top tasks, after its other details, when it is one. */
+function withTopDetail(card: TaskBoardCard, top: TopDetail | undefined): TaskBoardCard {
+  return top?.ids.has(card.taskId) ? { ...card, details: [...card.details, top.name] } : card;
+}
+
+/** What marks today's top tasks on the board, or undefined while the feature is off. */
+function readTopDetail(index: WorkspaceIndex, options: TaskBoardOptions): TopDetail | undefined {
+  return options.topCount
+    ? { ids: getTopTaskIds(index, options.queryContext.now), name: topTasksName(options.topCount) }
+    : undefined;
 }
 
 /** A column before it is cut to its limit and its tasks become cards. */
@@ -220,7 +241,7 @@ export function createTaskBoard({
     layout,
     table:
       layout === 'table'
-        ? createTaskTable(tasks, preferences, options)
+        ? createTaskTable(tasks, preferences, options, readTopDetail(index, options))
         : undefined,
     taskMenus:
       layout === 'table' ? createTaskMenus(tasks, options) : undefined,
@@ -258,6 +279,7 @@ export function createTaskTable(
   tasks: readonly Task[],
   preferences: PersistedPreferences,
   options: TaskBoardOptions,
+  top?: TopDetail,
 ): TaskTable {
   const columns = preferences.taskTableColumns ?? [...DEFAULT_TASK_COLUMNS];
   const sort = preferences.taskTableSort;
@@ -282,7 +304,12 @@ export function createTaskTable(
       line: task.lineNumber,
       completed: task.completed,
       ...withDrawnStatus(drawTaskStatus(task, options.queryContext.taskPolicy)),
-      cells: createTaskCells(table, columns, options.queryContext),
+      cells: createTaskCells(table, columns, options.queryContext).map((cell, at) =>
+        // The table has no line of details, so one of today's top tasks says so beside its status.
+        columns[at] === 'status' && top?.ids.has(task.id)
+          ? { ...cell, text: [cell.text, top.name].filter(Boolean).join(' · ') }
+          : cell,
+      ),
     })),
   };
 }
@@ -443,8 +470,9 @@ function createCardMaker({ index, options, groupBy, namespace, laneAxis }: {
   );
   // The tag namespaces of the board's axes, whose tags a card's menu checks.
   const tagAxes = [groupBy === 'tag' ? namespace : undefined, laneAxis?.namespace].filter((name): name is string => Boolean(name));
+  const top = readTopDetail(index, options);
   return (task, draft, lane) => {
-    const card = createCard(task, {
+    const made = createCard(task, {
       axes,
       context: options.queryContext,
       openDependencyIds,
@@ -453,6 +481,7 @@ function createCardMaker({ index, options, groupBy, namespace, laneAxis }: {
       column: laneAxis?.by === 'status' ? lane?.label : draft?.label,
       person: namedPerson(task, index, axes, options.queryContext.identity),
     });
+    const card = withTopDetail(made, top);
     const others = [...(draft?.alsoIn?.get(task.id) ?? []), ...(lane?.alsoIn?.get(task.id) ?? [])];
     const parent = withParentTag(index, task, options, groupBy === 'tag' ? namespace : laneAxis?.namespace);
     const withTags = tagAxes.length > 0

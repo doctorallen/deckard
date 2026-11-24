@@ -1,3 +1,4 @@
+import { readTopCount } from '../../domain/tasks/topTasks';
 import * as vscode from 'vscode';
 
 import { readCaptureText } from '../../domain/markdown/captureWords';
@@ -29,6 +30,7 @@ export function readTaskBoardOptions(queryContext: QueryContext): TaskBoardOptio
     queryContext,
     format: readTaskMetadataFormat(configuration),
     limits: readBoardLimits(configuration.get<unknown>('board.limits', {})),
+    topCount: readTopCount(configuration),
   };
 }
 

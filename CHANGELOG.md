@@ -2,6 +2,42 @@
 
 ## Unreleased
 
+## 2.20.0 - 2026-11-24
+
+### Highlights
+
+- **Top three**: `Deckard: Pick Today's Top Tasks` writes the day's most important tasks into today's note, as links.
+- The picks lead the Tasks view, show in the status bar, and are found by `is:top`; a review counts them.
+- **`deckard.tasks.topCount`** sets how many a day holds: three by default, up to nine, or `0` for off.
+
+### Added
+
+- **Top three.** `Deckard: Pick Today's Top Tasks` lists your open tasks
+  with checkboxes, today's picks first, then what is left of the day
+  before's, what is overdue, what is due today, and the rest most urgent
+  first, and refuses a fourth in words: **Three is the limit.** What you
+  check is written into today's daily note under `## Top three`, each a
+  link to its task's line, `[[Borealis#^vendor-quote|Send the vendor
+  quote]]`; a picked line with no `^marker` gets one, and a task typed in
+  the list is written under the heading. It is one write, with **Undo**. A
+  pick lasts the day and changes no priority, date, or tag, and Deckard
+  reads the picks back from the note, so the section can be written by
+  hand.
+- **Top three, through the day.** A status bar item beside the due count
+  reads `1/3 · Draft the cutover runbook` and opens that task's line; the
+  Tasks view and Home's Tasks view widget lead with a **Top three** group;
+  a Task board card says **Top three** among its details; `is:top` finds
+  the picks in any search; a lens in today's note reads **Top three · 1 of
+  3 done · Change…**; and a weekly or monthly review gains a **Top three**
+  section, a line a day, with **Top three:** 10 of 12 in its summary.
+  Nothing opens by itself: the status bar and the lens offer **Pick
+  today's three** only once a daily note of the last 14 days has the
+  section.
+- **`deckard.tasks.topCount`** sets how many a day holds, `3` by default
+  and up to `9`, and names the section for it: **Top five**, or **Top
+  task** for `1`. `0` turns the feature off. `deckard.editor.topTasks`
+  turns the lenses off, and follows the editor preset while unset.
+
 ## 2.19.0 - 2026-11-19
 
 ### Highlights

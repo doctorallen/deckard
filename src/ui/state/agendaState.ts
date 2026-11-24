@@ -11,7 +11,8 @@ import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { listUnknownColumns, orderOpenStatuses, readTaskColumnKey } from '../../domain/tasks/statusColumns';
 import type { TaskPolicy } from '../../domain/tasks/taskPolicy';
 import { Placement, placeTask } from '../../domain/tasks/agendaPlacement';
-import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
+import { AgendaGroupBy, TOP_GROUP_ID } from '../../domain/tasks/agendaGroups';
+import { readTodayTop, topTasksName, topTasksOf } from '../../domain/tasks/topTasks';
 import { getHeadingPath } from '../../domain/ranking/entryLabels';
 import { Task, TaskPriority, TaskSortMode, WorkspaceIndex } from '../../domain/model';
 import { createTaskComparator, type TaskSortReading } from './entryCards';
@@ -146,6 +147,13 @@ export interface AgendaOptions {
    * so a busy Thursday shows before Thursday comes.
    */
   upcomingByDay?: boolean;
+  /**
+   * `deckard.tasks.topCount`: with a number above 0, today's top tasks
+   * lead as a group of their own, in the order they were picked, the done
+   * ones too, and are listed in no other group. Left out, or 0, there is
+   * no such group.
+   */
+  topCount?: number;
 }
 
 /**
@@ -276,7 +284,9 @@ export function createAgenda(
   options: AgendaOptions,
 ): AgendaGroup[] {
   const { tasks = index.tasks.values(), upcomingDays, groupBy = 'due', taskOrder = [], taskSortMode = 'rank' } = options;
-  const listed = withoutPlainSteps([...tasks]);
+  const top = options.topCount ? topTasksOf(readTodayTop(index, context.now)) : [];
+  const picked = new Set(top.map((task) => task.id));
+  const listed = withoutPlainSteps([...tasks]).filter((task) => !picked.has(task.id));
   const byRank = sortFirst(taskOrder, taskSortMode, { now: context.now, index });
   const today = startOfDay(context.now);
   const tomorrow = addDays(today, 1);
@@ -295,8 +305,16 @@ export function createAgenda(
   const done = options.doneToday
     ? createDoneToday(listed, index, { today, tomorrow, openDependencyIds })
     : [];
+  const leading: AgendaGroup[] = top.length > 0
+    ? [{
+        id: TOP_GROUP_ID,
+        label: topTasksName(options.topCount ?? top.length),
+        entries: top.map((task) => createEntry(task, index, placeTopTask(task, window, context), openDependencyIds)),
+      }]
+    : [];
   if (groupBy === 'due') {
     return [
+      ...leading,
       ...(options.upcomingByDay
         ? byDue.flatMap((group) =>
             group.id === 'upcoming' ? splitByDay(group.entries, tomorrow, context) : [group],
@@ -311,9 +329,24 @@ export function createAgenda(
   const order = byRank(compareByDate);
   const regroup = REGROUPERS.get(groupBy);
   return [
+    ...leading,
     ...(regroup ? regroup(entries, index, { ...options, taskPolicy: context.taskPolicy }, order) : groupByAssignee(entries, index, order)),
     ...done,
   ];
+}
+
+/**
+ * Where one of today's top tasks would sit, for the words beside it: an
+ * open one as any open task is placed, a done one as done.
+ */
+function placeTopTask(
+  task: Task,
+  window: AgendaWindow,
+  context: Pick<QueryContext, 'taskPolicy'> & Partial<Pick<QueryContext, 'dateFormats'>>,
+): Placement {
+  return isOpenTask(task)
+    ? placeTask(task, window, context.taskPolicy, context.dateFormats)
+    : { group: TOP_GROUP_ID, at: task.doneAt ?? window.today, reason: task.completed ? 'done' : task.status.name.toLowerCase() };
 }
 
 /**

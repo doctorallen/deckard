@@ -49,6 +49,9 @@ export function readAgendaQuery(settings: SettingsReader): string {
   return typeof value === 'string' ? value : '';
 }
 
+/** The id of the group that leads the Tasks view with today's top tasks (topTasks.ts). */
+export const TOP_GROUP_ID = 'top';
+
 /** How many days the Tasks view's Upcoming reaches: a week. */
 export const UPCOMING_DAYS = 7;
 
@@ -63,6 +66,10 @@ export function groupColumnId(
   groupId: string,
   groupBy: AgendaGroupBy,
 ): string | undefined {
+  // A day's picks are made in the picker, not by a drop.
+  if (groupId === TOP_GROUP_ID) {
+    return undefined;
+  }
   // Dropped on Done today, a task is done: the board's Done column.
   if (groupId === 'donetoday') {
     return 'done';

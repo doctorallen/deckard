@@ -2,12 +2,13 @@ import { formatProgressCount } from '../../domain/tasks/progressCount';
 import { isOpenTask } from '../../domain/tasks/taskStatuses';
 import { isParkedTask } from '../../domain/index/parked';
 import { stripTags } from '../../domain/markdown/parser';
-import { SHORT_WEEKDAY_NAMES, formatIsoDate } from '../../domain/markdown/calendar';
+import { SHORT_WEEKDAY_NAMES, formatIsoDate, parseIsoDate } from '../../domain/markdown/calendar';
 import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { QueryContext } from '../../domain/query/queryContext';
 import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { noteTitle } from '../../domain/index/backlinks';
 import { Task, WorkspaceIndex } from '../../domain/model';
+import { listTopDays, type TopPick, topTasksName } from '../../domain/tasks/topTasks';
 
 /**
  * What a week or a month came to, written into its periodic note.
@@ -47,6 +48,8 @@ export interface ReviewOptions {
   sections?: readonly ReviewSectionSetting[];
   /** The settings and moment the sections' searches are evaluated in. */
   queryContext: QueryContext;
+  /** `deckard.tasks.topCount`: above 0, the review says how each day's top tasks went. */
+  topCount?: number;
 }
 
 /** One section from `deckard.periodicNote.reviewSections`. */
@@ -78,6 +81,28 @@ export interface ReviewSummary {
   doneOnTime: number;
   nextLabel?: string;
   custom: ReviewCustomSection[];
+  /** How each day's top tasks went; absent when no daily note in the period has picks. */
+  top?: ReviewTop;
+}
+
+/** The period's top tasks, day by day (docs/implementation/50-top-three.md). */
+export interface ReviewTop {
+  /** What the picks are called, `Top three`, from the setting. */
+  name: string;
+  /** Each day of the period that has a daily note, oldest first. */
+  days: ReviewTopDay[];
+  /** How many picks were done on their day, of how many were picked. */
+  done: number;
+  picked: number;
+}
+
+/** One day's top tasks: how many were picked and done that day, and the rest as the day's note writes them. */
+export interface ReviewTopDay {
+  /** The day, `YYYY-MM-DD`. */
+  date: string;
+  picked: number;
+  done: number;
+  left: string[];
 }
 
 /** One line of a review: what it was, and the note it is in. */
@@ -123,7 +148,36 @@ export function summarizeReview(
     doneOnTime: countDoneOnTime(due),
     ...(options.nextLabel ? { nextLabel: options.nextLabel } : {}),
     custom: (options.sections ?? []).map((section) => readSection(index, section, options.queryContext)),
+    ...summarizeTop(index, range, options.topCount ?? 0),
   };
+}
+
+/**
+ * How the period's top tasks went: each day with a daily note, how many
+ * of its picks were done that day, and the rest as written. A pick counts
+ * as done for its day when its task was completed that day, by its ✅
+ * date, or is done with no date. Nothing while the feature is off, or when
+ * no day of the period has a pick.
+ */
+function summarizeTop(index: WorkspaceIndex, range: ReviewRange, count: number): { top?: ReviewTop } {
+  if (count <= 0) {
+    return {};
+  }
+  const days = listTopDays(index, range.start, range.end).map(({ date, top }): ReviewTopDay => {
+    const picks = top?.picks ?? [];
+    const left = picks.filter((pick) => !isDoneOn(pick, date));
+    return { date, picked: picks.length, done: picks.length - left.length, left: left.map((pick) => pick.written) };
+  });
+  const picked = days.reduce((sum, day) => sum + day.picked, 0);
+  return picked === 0
+    ? {}
+    : { top: { name: topTasksName(count), days, done: days.reduce((sum, day) => sum + day.done, 0), picked } };
+}
+
+/** Whether a pick's task was done on its day, `YYYY-MM-DD`, or is done with no date. */
+function isDoneOn(pick: TopPick, date: string): boolean {
+  const task = pick.task;
+  return task !== undefined && task.completed && (task.doneAt === undefined || formatIsoDate(task.doneAt) === date);
 }
 
 /** Whether a time falls in the period. */
@@ -323,6 +377,7 @@ export function formatReview(
     appendList(lines, { heading, items, empty, limit });
 
   list('Completed', summary.completed, 'Nothing was completed in this period.');
+  appendTop(lines, summary.top);
   list(
     'Still open',
     summary.slipped,
@@ -351,6 +406,7 @@ function formatTally(summary: ReviewSummary): string {
         ? ` (${formatProgressCount(summary.doneOnTime, summary.dueInPeriod)} of those due)`
         : ''
     }`,
+    ...(summary.top ? [`**${summary.top.name}:** ${summary.top.done} of ${summary.top.picked}`] : []),
     `**Still open:** ${summary.slipped.length}`,
     `**Coming up:** ${summary.comingUp.length}`,
     `**Notes:** ${summary.created.length} new, ${summary.updated.length} updated`,
@@ -381,6 +437,24 @@ function appendList(
   if (items.length > limit) {
     lines.push(`- …and ${items.length - limit} more.`);
   }
+}
+
+/**
+ * Appends the top tasks' section, a line a day: `Mon 2026-11-23 · 2 of 3 ·
+ * left: …`, the rest as the day's note writes them, or `none picked` for a
+ * day whose note has no picks.
+ */
+function appendTop(lines: string[], top: ReviewTop | undefined): void {
+  if (!top) {
+    return;
+  }
+  lines.push('', `### ${top.name}`, '');
+  top.days.forEach((day) => {
+    const went = day.picked === 0
+      ? 'none picked'
+      : [`${day.done} of ${day.picked}`, ...(day.left.length > 0 ? [`left: ${day.left.join(', ')}`] : [])].join(' · ');
+    lines.push(`- ${formatDayShort(parseIsoDate(day.date) ?? 0)} · ${went}`);
+  });
 }
 
 /** Appends the New tags list, up to `limit` labels. */

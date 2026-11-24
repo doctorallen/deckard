@@ -13,6 +13,7 @@ import {
 import { TaskMove } from '../domain/tasks/boardMoves';
 import { countLoad, RescheduleContext } from '../domain/tasks/reschedule';
 import { quoteTitle, readMetadataFormat } from '../domain/tasks/taskLines';
+import { readTopCount } from '../domain/tasks/topTasks';
 import type { Configuration } from '../ports/configuration';
 import { TaskMetadataFormat } from '../domain/markdown/taskFields';
 
@@ -45,6 +46,8 @@ export interface AgendaBuild {
   taskSortMode?: TaskSortMode;
   doneToday?: boolean;
   upcomingByDay?: boolean;
+  /** `deckard.tasks.topCount`, when today's top tasks lead as a group of their own. */
+  topCount?: number;
 }
 
 /** The board settings a drop on a group writes with. */
@@ -207,6 +210,7 @@ export class AgendaService<G extends AgendaGroupLike> {
       taskSortMode: readAgendaSort(choices),
       doneToday: true,
       upcomingByDay: true,
+      topCount: readTopCount(settings),
     });
     // The badge counts what is overdue or due today however the Agenda is
     // grouped, since that is what it is a badge for.

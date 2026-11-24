@@ -8,7 +8,7 @@ import { clickTask, TaskWrites, toggleTask, updateTaskLine } from '../commands/t
 import { rankShown } from '../../domain/tasks/taskRank';
 import { TASK_SORT_LABELS } from '../../domain/model/sortOrders';
 import { AgendaEntry, AgendaGroup } from '../state/agendaState';
-import { AgendaGroupBy } from '../../domain/tasks/agendaGroups';
+import { AgendaGroupBy, TOP_GROUP_ID } from '../../domain/tasks/agendaGroups';
 import { Task, WorkspaceIndex } from '../../domain/model';
 import { speakRow } from './spokenRow';
 import { DATE_FORMAT_SETTINGS } from '../commands/datePrompt';
@@ -90,6 +90,7 @@ const GROUP_ICONS: Readonly<Record<string, vscode.ThemeIcon>> = {
   nodate: new vscode.ThemeIcon('inbox'),
   needsdate: new vscode.ThemeIcon('history'),
   donetoday: new vscode.ThemeIcon('pass'),
+  [TOP_GROUP_ID]: new vscode.ThemeIcon('star-full'),
 };
 
 /**
@@ -101,6 +102,8 @@ const GROUP_CONTEXT_VALUES: ReadonlyMap<string, string> = new Map([
   ['overdue', 'deckardAgendaGroup.overdue'],
   ['needsdate', 'deckardAgendaGroup.needsDate'],
   ['donetoday', 'deckardAgendaDoneGroup'],
+  // Today's top tasks: its row offers Change…, and no date for all.
+  [TOP_GROUP_ID, 'deckardAgendaTopGroup'],
 ]);
 
 /** The groups that start folded: what can wait, out of the way of what cannot. */
@@ -600,7 +603,10 @@ function createGroupItem(
       : vscode.TreeItemCollapsibleState.Expanded,
   );
   item.id = `agenda:${group.id}`;
-  item.description = String(group.entries.length);
+  // Today's top tasks say how many are done of those picked, `1/3`.
+  item.description = group.id === TOP_GROUP_ID
+    ? `${group.entries.filter((entry) => entry.task.completed).length}/${group.entries.length}`
+    : String(group.entries.length);
   if (groupBy === 'tag' && group.id.startsWith('tag:')) {
     const tag = `#${group.id.slice('tag:'.length)}`;
     item.tooltip = tag.endsWith('/')
