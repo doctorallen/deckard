@@ -39,6 +39,9 @@ import { countTypeProblems } from '../state/typeProblems';
 import { describeQuestionLenses, getAnswerOffers, toQuestionRow } from '../state/questionsState';
 import { onDidBuildLineIndex } from '../state/lineIndexBuild';
 import { readZen } from '../commands/displaySettings';
+import { PICK_TOP_TASKS_COMMAND } from '../commands/topTasks';
+import { readTopCount } from '../../domain/tasks/topTasks';
+import { describeTopLenses } from '../state/topTasksState';
 
 /** What the lenses read from the indexer, and when they redraw. */
 interface LensIndexSource {
@@ -72,7 +75,8 @@ type LensSetting =
   | 'hubProgress'
   | 'breadcrumbs'
   | 'stepProgress'
-  | 'questions';
+  | 'questions'
+  | 'topTasks';
 
 /**
  * One group of lenses, and the `deckard.editor.*` settings that show it: any
@@ -108,6 +112,7 @@ export class EditorLenses
     { settings: ['breadcrumbs'], provide: provideBreadcrumbLenses },
     { settings: ['stepProgress'], provide: provideStepProgressLenses },
     { settings: ['questions'], provide: (context) => provideQuestionLenses(context, this.questions) },
+    { settings: ['topTasks'], provide: provideTopTaskLenses },
   ];
   /** Before the first scan every other note looks empty. */
   private isReady = false;
@@ -238,6 +243,27 @@ function provideTaskDependencyLenses({
     }
     return lenses;
   });
+}
+
+/**
+ * On today's note: above its top tasks' heading, how far along they are
+ * and the way to change them; with none picked, above its first heading,
+ * the offer to pick. Either opens the picker.
+ */
+function provideTopTaskLenses({ file, index }: LensContext): LazyCodeLens[] {
+  return describeTopLenses({
+    index,
+    file,
+    now: Date.now(),
+    count: readTopCount(vscode.workspace.getConfiguration('deckard')),
+  }).map(
+    (lens) =>
+      new LazyCodeLens(new vscode.Range(lens.line, 0, lens.line, 0), () => ({
+        title: lens.title,
+        tooltip: lens.tooltip,
+        command: PICK_TOP_TASKS_COMMAND,
+      })),
+  );
 }
 
 /**

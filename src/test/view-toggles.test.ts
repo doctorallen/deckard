@@ -63,7 +63,7 @@ suite('View toggles', () => {
       .filter((entry) => entry.when.startsWith(`view == ${view}`) && (entry.group ?? '').startsWith('navigation') === inline)
       .map((entry) => entry.command);
     assert.deepStrictEqual(title('deckard.agenda', true), ['deckard.agenda.setGrouping', 'deckard.showTaskBoard']);
-    assert.deepStrictEqual(title('deckard.agenda', false), ['deckard.clearAgendaQuery', 'deckard.agenda.editQuery', 'deckard.agenda.setSort']);
+    assert.deepStrictEqual(title('deckard.agenda', false), ['deckard.clearAgendaQuery', 'deckard.agenda.editQuery', 'deckard.agenda.setSort', 'deckard.pickTopTasks']);
     // Collapse All is the tree's own, beside Filter by Tag; Unfold All only while a section is focused.
     assert.deepStrictEqual(title('deckard.outline', true), ['deckard.unfoldAllSections', 'deckard.outline.filterByTag', 'deckard.outline.clearTagFilter']);
     assert.deepStrictEqual(title('deckard.outline', false), ['deckard.outline.enableFollowCursor', 'deckard.outline.disableFollowCursor']);

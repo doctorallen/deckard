@@ -634,6 +634,17 @@
         "category": "Deckard"
       },
       {
+        "command": "deckard.pickTopTasks",
+        "title": "Pick Today's Top Tasks",
+        "category": "Deckard"
+      },
+      {
+        "command": "deckard.agenda.changeTopTasks",
+        "title": "Change…",
+        "category": "Deckard",
+        "icon": "$(edit)"
+      },
+      {
         "command": "deckard.newNoteFromTemplate",
         "title": "New Note from Template",
         "category": "Deckard"
@@ -1298,6 +1309,10 @@
           "when": "false"
         },
         {
+          "command": "deckard.agenda.changeTopTasks",
+          "when": "false"
+        },
+        {
           "command": "deckard.agenda.moveTo",
           "when": "false"
         },
@@ -1599,6 +1614,11 @@
           "group": "1_sort@1"
         },
         {
+          "command": "deckard.pickTopTasks",
+          "when": "view == deckard.agenda && config.deckard.tasks.topCount != 0",
+          "group": "2_top@1"
+        },
+        {
           "command": "deckard.showTaskBoard",
           "when": "view == deckard.agenda",
           "group": "navigation@2"
@@ -1794,6 +1814,16 @@
           "command": "deckard.agenda.reschedule",
           "when": "view == deckard.agenda && viewItem =~ /^deckardAgendaGroup/",
           "group": "1_due@1"
+        },
+        {
+          "command": "deckard.agenda.changeTopTasks",
+          "when": "view == deckard.agenda && viewItem == deckardAgendaTopGroup",
+          "group": "inline@1"
+        },
+        {
+          "command": "deckard.agenda.changeTopTasks",
+          "when": "view == deckard.agenda && viewItem == deckardAgendaTopGroup",
+          "group": "1_top@1"
         },
         {
           "command": "deckard.questions.answer",
@@ -2715,6 +2745,12 @@
             "scope": "resource",
             "description": "Draw a faint dotted line under a short term that has a definition, such as NDF or UAT, where hovering it says what it means. The hover stays when this is off, and Zen hides the line. Left unset, it follows the editor preset: on in Full, Tasks and Writing, off in Off. Set it here to override the preset.",
             "order": 17
+          },
+          "deckard.editor.topTasks": {
+            "type": "boolean",
+            "scope": "resource",
+            "description": "In today's daily note, show above the Top three heading how many of the day's top tasks are done, with Change…, and, while none is picked, offer to pick them above the note's first heading once a daily note of the last 14 days has such a section. Left unset, it follows the editor preset: on in Full and Tasks, off in Writing and Off. Set it here to override the preset.",
+            "order": 18
           }
         },
         "order": 3
@@ -2757,6 +2793,14 @@
             "type": "string",
             "default": "",
             "description": "A Deckard search that says which open tasks the Tasks view, Home's agenda, and the status bar's count are of, such as is:mine, is:available for what can be started now, or has:due OR has:scheduled OR has:start to leave out undated tasks. Empty means every open task.",
+            "order": 10
+          },
+          "deckard.tasks.topCount": {
+            "type": "integer",
+            "default": 3,
+            "minimum": 0,
+            "maximum": 9,
+            "markdownDescription": "How many tasks a day's top tasks hold, picked with **Deckard: Pick Today's Top Tasks** and written in today's daily note under a heading named for the number: `Top three`, `Top five`, or `Top task` for 1. 0 turns the feature off: no status bar item, lens, Tasks view group, or review section.",
             "order": 10
           },
           "deckard.tasks.hideNotStarted": {

@@ -50,6 +50,7 @@ import { TASK_PRIORITY_RANKS } from '../markdown/taskFields';
 import { entryText, fileEntryId, isEntrySection } from '../markdown/noteEntries';
 import { getEntryParts, getFilePreambleText } from '../index/noteEntryIndex';
 import { getQuestions, isAnswered, readQuestionTagKeys } from '../index/questions';
+import { getTopTaskIds } from '../tasks/topTasks';
 
 /** What a search finds, by kind, each list in index order. */
 export interface QueryResults {
@@ -852,6 +853,9 @@ function matchesCondition(
         const notes = condition.value === 'daily' ? periodic.daily : periodic.periodic;
         return applyNegation(condition, notes.has(unit.filePath));
       }
+      if (condition.value === 'top') {
+        return applyNegation(condition, isTopUnit(unit, context));
+      }
       return applyNegation(condition, matchesIs(condition.value, unit, context.query));
     case 'has':
       if (isTypeFieldHas(condition.value)) {
@@ -1022,6 +1026,18 @@ function matchesStatus(value: string, unit: QueryUnit): boolean {
     return unit.status.symbol === value.slice(1, -1);
   }
   return normalizeStatusName(unit.status.name) === normalizeStatusName(value);
+}
+
+/**
+ * Whether a unit is one of today's top tasks, as `is:top` asks: a task its
+ * day's note picks, on the context's today (domain/tasks/topTasks.ts).
+ */
+function isTopUnit(unit: QueryUnit, context: EvaluationContext): boolean {
+  return (
+    unit.kind === 'task' &&
+    unit.linkKey !== undefined &&
+    getTopTaskIds(context.index, context.query.now).has(unit.linkKey.slice('task:'.length))
+  );
 }
 
 /**

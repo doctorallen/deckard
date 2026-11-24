@@ -24,6 +24,7 @@ import {
 } from '../state/reviewState';
 import { chooseTargetFolder, ensurePeriodicNote, findExistingPeriodicNote } from './dailyNote';
 import { readWeekStart } from './datePrompt';
+import { readTopCount } from '../../domain/tasks/topTasks';
 import { readQueryContext } from './queryContext';
 import { revealLine } from './navigation';
 import { WorkspaceWriteHistory, WriteHandle } from './workspaceWrites';
@@ -74,7 +75,13 @@ export function createReviewService(
 ): VscodeReviewService {
   return new ReviewService<vscode.Uri, WriteHandle, ReviewSummary>({
     notes: new ReviewDocuments(history),
-    report: { summarize: summarizeReview, format: formatReview, writeInto: writeReviewInto },
+    report: {
+      // The top tasks' section is written while `deckard.tasks.topCount` is above 0.
+      summarize: (snapshot, range, options) =>
+        summarizeReview(snapshot, range, { ...options, topCount: readTopCount(vscode.workspace.getConfiguration('deckard')) }),
+      format: formatReview,
+      writeInto: writeReviewInto,
+    },
     index,
   });
 }

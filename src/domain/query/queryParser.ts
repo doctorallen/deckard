@@ -128,6 +128,7 @@ const IS_VALUE_ALIASES: Readonly<Record<string, string>> = {
   dated: 'periodic',
   parked: 'parked',
   step: 'step',
+  top: 'top',
   substep: 'step',
   subtask: 'step',
   question: 'question',

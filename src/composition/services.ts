@@ -116,6 +116,7 @@ import { startPageWidth } from '../ui/commands/displaySettings';
 import { QueryBlocks } from '../ui/preview/queryBlocks';
 import { AgendaTreeProvider } from '../ui/views/agendaTree';
 import { countDueTasks, TaskStatusBar } from '../ui/views/taskStatusBar';
+import { TopTasksStatusBar } from '../ui/views/topTasksStatusBar';
 import { AgendaGroup, createAgenda, selectAgendaTasks, selectOverdueTasks } from '../ui/state/agendaState';
 import { isNamespaceName } from '../ui/state/tagGrouping';
 import { resolveTaskMove } from '../ui/state/taskBoardState';
@@ -384,6 +385,7 @@ function holdUntilShutdown(context: vscode.ExtensionContext, shutdown: DisposalO
     trees.queryBlocks,
     trees.agenda,
     trees.taskStatusBar,
+    trees.topTasksStatusBar,
     editor.taskMetadataSuggestions,
     editor.taskEditorActions,
     editor.taskLineContext,
@@ -1182,6 +1184,8 @@ function createTreesAndAddTask(context: vscode.ExtensionContext, core: Core, pre
     { reader: preferences.repository, taskLayout: preferences.taskLayout },
   );
   const taskStatusBar = new TaskStatusBar(indexer, context.globalState);
+  // Today's top tasks, beside the due count.
+  const topTasksStatusBar = new TopTasksStatusBar(indexer);
   // Where Add Task writes outside the note being edited, and the headings
   // it remembers.
   const addTask: AddTaskContext = {
@@ -1193,7 +1197,7 @@ function createTreesAndAddTask(context: vscode.ExtensionContext, core: Core, pre
       recentHeadings: preferences.usage,
     }),
   };
-  return { outline, queryBlocks, agendaService, agenda, taskStatusBar, addTask };
+  return { outline, queryBlocks, agendaService, agenda, taskStatusBar, topTasksStatusBar, addTask };
 }
 
 /** The command each button on the unreadable-notes warning runs. */

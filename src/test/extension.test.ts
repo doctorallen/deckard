@@ -106,7 +106,8 @@ suite('Extension Test Suite', () => {
     assert.ok(sections.every((section) => section.title), 'every group has a title');
     const settings: Record<string, { default?: unknown; enum?: unknown[] }> =
       Object.assign({}, ...sections.map((section) => section.properties));
-    assert.strictEqual(Object.keys(settings).length, 56);
+    assert.strictEqual(Object.keys(settings).length, 58);
+    assert.strictEqual(settings['deckard.tasks.topCount'].default, 3);
     assert.strictEqual(settings['deckard.tasks.hideNotStarted'].default, false);
     assert.deepStrictEqual(settings['deckard.parked.tags'].default, ['parked']);
     assert.deepStrictEqual(settings['deckard.parked.folders'].default, {});
@@ -196,6 +197,8 @@ suite('Extension Test Suite', () => {
         'deckard.writeReview',
         'deckard.rollTasksForward',
         'deckard.startMeeting',
+        'deckard.pickTopTasks',
+        'deckard.agenda.changeTopTasks',
         'deckard.newNoteFromTemplate',
         'deckard.newNoteFromTemplateHere',
         'deckard.excludeFromIndex',

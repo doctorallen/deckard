@@ -111,7 +111,7 @@ function RecentSearchesBody({ widget }: WidgetBodyProps) {
   );
 }
 
-/** Today's date, and its note's open tasks, or the offer to create the note. */
+/** Today's date, and its note's open tasks, or the offer to create the note; the offer to pick today's top tasks while there are none. */
 function TodayNoteBody({ widget }: WidgetBodyProps) {
   const today = widget.today;
   const summary = (
@@ -120,10 +120,14 @@ function TodayNoteBody({ widget }: WidgetBodyProps) {
       {today && today.filePath ? null : <button type="button" data-action="open-daily-note">Create today’s note</button>}
     </div>
   );
+  // While today has no top tasks, the way to pick them, under the note's tasks.
+  const pickTop = today && today.pickTop
+    ? <p class="home-widget-footer"><button type="button" class="text-button" data-action="open-view" data-view="topTasks" data-tip="Choose the tasks to do first today">{today.pickTop}</button></p>
+    : null;
   if (!today || !today.filePath) {
-    return <>{summary}<EmptyLine text="There is no daily note for today yet." /></>;
+    return <>{summary}<EmptyLine text="There is no daily note for today yet." />{pickTop}</>;
   }
-  return <>{summary}<HomeTasks tasks={widget.tasks} empty="No open tasks in today’s note." /></>;
+  return <>{summary}<HomeTasks tasks={widget.tasks} empty="No open tasks in today’s note." />{pickTop}</>;
 }
 
 /** Tags of a namespace not written about lately; with nothing open, each offers its next action. */

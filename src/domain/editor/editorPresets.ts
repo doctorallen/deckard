@@ -31,6 +31,7 @@ export const EDITOR_TOGGLES = [
   'writtenBefore',
   'trackPromises',
   'termUnderline',
+  'topTasks',
 ] as const;
 
 /** One of those switches. */
@@ -49,7 +50,7 @@ export type EditorPreset = 'full' | 'tasks' | 'writing' | 'off';
 const OFF_IN: Readonly<Record<EditorPreset, ReadonlySet<EditorToggle>>> = {
   full: new Set(),
   tasks: new Set(['referenceCounts', 'unlinkedMentions', 'breadcrumbs']),
-  writing: new Set(['referenceCounts', 'unlinkedMentions', 'breadcrumbs', 'taskDependencies', 'dailyNoteActions', 'stepProgress', 'hubProgress', 'taskDueHints', 'trackPromises']),
+  writing: new Set(['referenceCounts', 'unlinkedMentions', 'breadcrumbs', 'taskDependencies', 'dailyNoteActions', 'stepProgress', 'hubProgress', 'taskDueHints', 'trackPromises', 'topTasks']),
   off: new Set(EDITOR_TOGGLES),
 };
 

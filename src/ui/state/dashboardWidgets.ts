@@ -7,7 +7,8 @@ import { evaluateQuery } from '../../domain/query/queryEvaluator';
 import { parseQuery } from '../../domain/query/queryParser';
 import { parseWorkspaceQuery } from '../../domain/types/typeQueryFields';
 import { QueryContext } from '../../domain/query/queryContext';
-import { UPCOMING_DAYS } from '../../domain/tasks/agendaGroups';
+import { TOP_GROUP_ID, UPCOMING_DAYS } from '../../domain/tasks/agendaGroups';
+import { readTodayTop, topOfferLabel, topTasksOf } from '../../domain/tasks/topTasks';
 import { formatLocalDate, listDailyNotes } from '../../domain/notes/periodicNotes';
 import { createAgenda, selectAgendaTasks } from './agendaState';
 import { createDashboardSavedFilters, getSavedFilterQuery, sortTags } from './dashboardState';
@@ -40,6 +41,8 @@ export interface DashboardWidgetOptions {
   queryContext: QueryContext;
   /** What the agenda widget lists, from `deckard.tasks.viewQuery`. */
   agendaQuery?: string;
+  /** `deckard.tasks.topCount`: above 0, the Tasks view widget leads with today's top tasks and Today offers to pick them. */
+  topCount?: number;
   /** Try next's suggestion, which the host chooses. */
   tryNext?: DashboardTryNext;
   /** The offered answers set aside with Not it, which Open questions leaves out. */
@@ -207,6 +210,7 @@ function buildAgendaWidget({ index, options, widget, count }: WidgetBuild): Dash
     tasks: selectAgendaTasks(index, options.agendaQuery ?? '', options.queryContext).tasks,
     upcomingDays: UPCOMING_DAYS,
     doneToday: true,
+    topCount: options.topCount,
   });
   // What needs a new date is a line under the list, not a group in it.
   const needsNewDate =
@@ -231,8 +235,8 @@ function buildAgendaWidget({ index, options, widget, count }: WidgetBuild): Dash
       id: group.id,
       label: group.label,
       count: group.entries.length,
-      tasks: group.entries
-        .slice(0, count)
+      // Today's top tasks are few, and listed whole.
+      tasks: (group.id === TOP_GROUP_ID ? group.entries : group.entries.slice(0, count))
         .map((entry) => createDashboardTask(entry.task, index.sections, options.queryContext)),
     })),
   };
@@ -358,9 +362,13 @@ function buildSavedQueryWidget({ index, preferences, options, config, widget, co
 /** Today's daily note and its open tasks. */
 function buildTodayNoteWidget({ index, options, widget, take }: WidgetBuild): DashboardWidget {
   const today = findTodayNote(index, options.queryContext.now);
+  // While the feature is on and today has no picks, the widget offers to make them.
+  const pickTop = options.topCount && topTasksOf(readTodayTop(index, options.queryContext.now)).length === 0
+    ? { pickTop: topOfferLabel(options.topCount) }
+    : {};
   return {
     ...widget,
-    today: today.summary,
+    today: { ...today.summary, ...pickTop },
     total: today.tasks.length,
     tasks: take(today.tasks)
       .map((task) => createDashboardTask(task, index.sections, options.queryContext)),
