@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2.21.0 - 2026-11-24
+
+### Highlights
+
+- **A Top three strip on the Task board**: today's picks sit above the columns, numbered, in the order you picked them.
+- Pick from the board: **Add to today's top three** in a card's menu, **p** on a card, or a drop on the strip.
+
 ### Added
 
 - **A Top three strip on the Task board.** Today's top tasks sit above
