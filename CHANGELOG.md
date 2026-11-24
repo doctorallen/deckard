@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.20.0 - 2026-11-24
+
+### Highlights
+
+- **Top three**: `Deckard: Pick Today's Top Tasks` writes the day's most important tasks into today's note, as links.
+- The picks lead the Tasks view, show in the status bar, and are found by `is:top`; a review counts them.
+- **`deckard.tasks.topCount`** sets how many a day holds: three by default, up to nine, or `0` for off.
+
 ### Added
 
 - **Top three.** `Deckard: Pick Today's Top Tasks` lists your open tasks
