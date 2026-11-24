@@ -1464,6 +1464,7 @@ function createSurfaces() {
     createStatusBoardSurface(preferences),
     createParentTagBoardSurface(preferences),
     createDatedBoardSurface(boardIndex, preferences),
+    ...createTopBoardSurfaces(preferences),
     ...createCalendarSurfaces(),
     ...createRelatedNotesSurfaces(index, files),
     ...createSummarySurfaces(index, preferences),
@@ -1511,6 +1512,90 @@ function createDatedBoardSurface(boardIndex, preferences) {
     clippers: ['.board-column'],
     hovered: ['.board-card'],
   };
+}
+
+/**
+ * A day's work with its top tasks picked (plan 50): tasks in three
+ * statuses, one long title, and today's note listing five of them, one
+ * done, under `## Top five`. NOW is 2026-09-21.
+ *
+ * @returns {object} The index the Top five surfaces draw.
+ */
+function createTopIndex() {
+  const tasks = [
+    '# Borealis #project/borealis',
+    '- [/] Chase the replicant through the neon market and file the report before the rain 📅 2026-09-18 ⏫ ^chase-the-replicant',
+    '- [ ] Send the vendor quote 📅 2026-09-21 ^vendor-quote',
+    '- [x] Book the cold room ✅ 2026-09-21 ^cold-room',
+    '- [ ] Draft the cutover runbook @dana ^cutover-runbook',
+    '- [w] Wait on the depot list 📅 2026-09-24 ^depot-list',
+    ...Array.from({ length: 8 }, (_, i) => `- [${i % 3 === 0 ? '/' : ' '}] Board task ${i + 1} 📅 ${fixtureDue(i + 5)}`),
+    '- [x] Finished task ✅ 2026-09-10',
+  ];
+  const today = [
+    '# 2026-09-21',
+    '',
+    '## Top five',
+    '',
+    '- [[tasks#^chase-the-replicant|Chase the replicant through the neon market and file the report before the rain]]',
+    '- [[tasks#^cold-room|Book the cold room]]',
+    '- [[tasks#^vendor-quote|Send the vendor quote]]',
+    '- [[tasks#^cutover-runbook|Draft the cutover runbook]]',
+    '- [[tasks#^depot-list|Wait on the depot list]]',
+  ];
+  return buildWorkspaceIndex(new Map([
+    ['notes/tasks.md', parseMarkdown('notes/tasks.md', tasks.join('\n'))],
+    ['notes/2026-09-21.md', parseMarkdown('notes/2026-09-21.md', today.join('\n'))],
+  ]));
+}
+
+/**
+ * The Task board with today's top tasks (plan 50): the strip above the
+ * columns, wide, where its five cards share one row, and narrow, where the
+ * row wraps and the page must not scroll sideways for it; and the table,
+ * whose first group they are.
+ *
+ * @param {object} preferences The preference services, whose reader holds what is stored.
+ * @returns {object[]} The wide strip, the narrow strip, and the table.
+ */
+function createTopBoardSurfaces(preferences) {
+  const index = createTopIndex();
+  const board = (values) => () => createTaskBoard({
+    index,
+    preferences: { ...preferences.reader.value, ...values },
+    search: { query: '' },
+    options: { queryContext: createQueryContext(NOW), format: 'emoji', topCount: 5 },
+  });
+  return [
+    {
+      name: 'taskBoardTop',
+      page: 'taskBoard',
+      viewport: [1400, 900],
+      snapshot: board({}),
+      scrollers: ['html', '.board-cards'],
+      clippers: ['.board-column'],
+      hovered: ['.board-top .board-card', '.board-top .lane-fold', '.board-top-change'],
+      zenHovered: ZEN_REGIONS.taskBoard,
+    },
+    {
+      name: 'taskBoardTopNarrow',
+      page: 'taskBoard',
+      viewport: [480, 900],
+      snapshot: board({}),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['.board-top .board-card'],
+    },
+    {
+      name: 'taskBoardTopTable',
+      page: 'taskBoard',
+      viewport: [900, 700],
+      snapshot: board({ taskBoardLayout: 'table' }),
+      scrollers: ['html'],
+      clippers: [],
+      hovered: ['tbody tr.result-row', '.result-group button'],
+    },
+  ];
 }
 
 /**

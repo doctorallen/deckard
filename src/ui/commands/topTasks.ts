@@ -5,11 +5,15 @@ import type { NoteLinkStyle } from '../../domain/markdown/wikiLinks';
 import type { WorkspaceIndex } from '../../domain/model';
 import { orderPicks } from '../../domain/notes/meetings';
 import {
+  describeTopLimit,
+  describeTopStays,
   findTopSection,
+  keepUnresolved,
+  planTopChange,
   planTopTasks,
+  readTodayTop,
   readTopCount,
   type TopChoice,
-  topLimitSentence,
   topTasksName,
 } from '../../domain/tasks/topTasks';
 import { settingLabel } from '../state/settingLabel';
@@ -34,6 +38,15 @@ import { WorkspaceWriteHistory, type WriteHandle } from './workspaceWrites';
 
 /** The command, which the status bar item, the lens, and the Tasks view run. */
 export const PICK_TOP_TASKS_COMMAND = 'deckard.pickTopTasks';
+
+/** The command the Task board runs to add one task to today's picks or take it out; it is not in the palette. */
+export const CHANGE_TOP_TASK_COMMAND = 'deckard.changeTopTask';
+
+/** What the command was handed, when it names a task and says which way: anything else is no change. */
+export function readTopTaskChange(value: unknown): TopTaskChange | undefined {
+  const asked = value as Partial<TopTaskChange> | null | undefined;
+  return asked && typeof asked.taskId === 'string' && typeof asked.add === 'boolean' ? { taskId: asked.taskId, add: asked.add } : undefined;
+}
 
 /** A row of the picker: a task, a new task typed in it, the offer to add one, or a line between groups. */
 export interface TopItem extends vscode.QuickPickItem {
@@ -87,19 +100,13 @@ export function reviseTopSelection(checked: readonly TopItem[], selected: readon
   if (added.length > 0 && wanted.length > count) {
     return {
       checked: orderPicks(checked, wanted.filter((item) => checked.includes(item))),
-      refused: `${topLimitSentence(count)} Uncheck one to pick "${added[0].newTitle ?? added[0].label}".`,
+      refused: describeTopLimit(count, added[0].newTitle ?? added[0].label, 'Uncheck'),
     };
   }
   const stays = kept[0];
   return {
     checked: orderPicks(checked, wanted),
-    ...(stays
-      ? {
-          refused: stays.row?.stays === 'done'
-            ? `"${stays.label}" is done today, so it stays.`
-            : `"${stays.label}" is written under the heading, so it stays. Move or delete its line to drop it.`,
-        }
-      : {}),
+    ...(stays?.row?.stays ? { refused: describeTopStays(stays.row.stays, stays.label) } : {}),
   };
 }
 
@@ -211,32 +218,50 @@ async function reportTurnedOff(): Promise<void> {
   }
 }
 
+/** Today's note, made with its rollover when it was not there, and the number a day holds. */
+interface TopDay {
+  todayUri: vscode.Uri;
+  count: number;
+  /** Whether the note was made now, so a task listed before may have been carried into it. */
+  isNew: boolean;
+}
+
 /**
- * Picks today's top tasks: makes today's note when it is not there, with
- * the tasks a rollover carries in, so the list is of the tasks as they
- * then are; asks; and writes what was checked.
+ * Makes ready to write today's picks: says so when the feature is off, and
+ * makes today's note when it is not there, with the tasks a rollover
+ * carries in, read again so the index holds them where they then are.
+ * Undefined when there is nothing to write into.
  */
-export async function pickTopTasks({ indexer, history, rollover }: TopTaskServices): Promise<void> {
+async function prepareTopDay({ indexer, rollover }: Pick<TopTaskServices, 'indexer' | 'rollover'>): Promise<TopDay | undefined> {
   const count = readTopCount(vscode.workspace.getConfiguration('deckard'));
   if (count === 0) {
     await reportTurnedOff();
-    return;
+    return undefined;
   }
   await indexer.ready;
   const folder = await chooseTargetFolder();
   if (!folder) {
-    return;
+    return undefined;
   }
   const isNew = !(await fileExists(getPeriodicNoteUri(folder, 'day', new Date())));
   const todayUri = await ensureDailyNoteWithRollover(indexer, rollover, folder);
   if (isNew) {
     await indexer.refresh();
   }
-  const rows = buildTopRows(indexer.getSnapshot(), readQueryContext(), { query: getAgendaQuery(), count });
-  const choices = await askTopTasks(rows, count);
-  if (!choices) {
-    return;
-  }
+  return { todayUri, count, isNew };
+}
+
+/**
+ * Writes a day's picks and says what was written, with Open and Undo: the
+ * one write the picker and the Task board's menu and strip both make.
+ * `said` is the message for a write that landed.
+ */
+async function commitTopTasks(
+  { indexer, history }: Pick<TopTaskServices, 'indexer' | 'history'>,
+  { todayUri, count }: TopDay,
+  choices: readonly TopChoice[],
+  said: string,
+): Promise<void> {
   const written = await writeTopTasks(history, {
     index: indexer.getSnapshot(),
     todayUri,
@@ -252,12 +277,73 @@ export async function pickTopTasks({ indexer, history, rollover }: TopTaskServic
   if (written.kind !== 'written') {
     return;
   }
-  const name = topTasksName(count).toLowerCase();
   written.handle.offerUndo(
-    choices.length > 0 ? `Today's ${name}: ${choices.length} picked, in ${noteName(todayUri)}.` : `Cleared today's ${name}.`,
+    said,
     { guard: 'latest', done: "Took today's picks back." },
     { label: 'Open', run: () => openTopSection(todayUri) },
   );
+}
+
+/**
+ * Picks today's top tasks: makes today's note when it is not there, so the
+ * list is of the tasks as they then are; asks; and writes what was checked,
+ * with the items of the section that name no task kept as they are.
+ */
+export async function pickTopTasks(services: TopTaskServices): Promise<void> {
+  const day = await prepareTopDay(services);
+  if (!day) {
+    return;
+  }
+  const index = services.indexer.getSnapshot();
+  const context = readQueryContext();
+  const picked = await askTopTasks(buildTopRows(index, context, { query: getAgendaQuery(), count: day.count }), day.count);
+  if (!picked) {
+    return;
+  }
+  const name = topTasksName(day.count).toLowerCase();
+  await commitTopTasks(
+    services,
+    day,
+    [...picked, ...keepUnresolved(readTodayTop(services.indexer.getSnapshot(), context.now))],
+    picked.length > 0 ? `Today's ${name}: ${picked.length} picked, in ${noteName(day.todayUri)}.` : `Cleared today's ${name}.`,
+  );
+}
+
+/** One task to add to today's picks, or to take out, as the Task board asks. */
+export interface TopTaskChange {
+  taskId: string;
+  add: boolean;
+}
+
+/**
+ * Adds one task to today's top tasks, or takes it out, as the Task board's
+ * menu and its strip ask: the picker's own write, of today's picks with or
+ * without the one. A change the picker would refuse is refused in its
+ * words, and nothing is written.
+ */
+export async function changeTopTask(services: TopTaskServices, { taskId, add }: TopTaskChange): Promise<void> {
+  const listed = services.indexer.getSnapshot().tasks.get(taskId);
+  const day = listed ? await prepareTopDay(services) : undefined;
+  if (!listed || !day) {
+    return;
+  }
+  const index = services.indexer.getSnapshot();
+  const task = index.tasks.get(taskId);
+  if (!task) {
+    // A rollover carried it into the note just made, where it is another line.
+    void vscode.window.showInformationMessage(`"${listed.title}" moved into today's note as it was made. Pick it again there.`);
+    return;
+  }
+  const change = planTopChange(readTodayTop(index, Date.now()), task, add, day.count);
+  if (change.kind === 'refused') {
+    void vscode.window.showInformationMessage(change.reason);
+    return;
+  }
+  if (change.kind === 'unchanged') {
+    return;
+  }
+  const name = topTasksName(day.count).toLowerCase();
+  await commitTopTasks(services, day, change.choices, add ? `Added "${task.title}" to today's ${name}.` : `Removed "${task.title}" from today's ${name}.`);
 }
 
 /** Opens today's note at its section's heading. */

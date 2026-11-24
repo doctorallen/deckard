@@ -199,6 +199,7 @@ suite('Extension Test Suite', () => {
         'deckard.startMeeting',
         'deckard.pickTopTasks',
         'deckard.agenda.changeTopTasks',
+        'deckard.changeTopTask',
         'deckard.newNoteFromTemplate',
         'deckard.newNoteFromTemplateHere',
         'deckard.excludeFromIndex',

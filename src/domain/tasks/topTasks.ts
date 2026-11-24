@@ -441,8 +441,58 @@ export function formatTopLink({
   return `${formatNoteLink(words, todayPath, targetPath, style).slice(0, -1)}#^${marker})`;
 }
 
-/** One pick as the picker hands it over: a task that exists, or the words of a new one. */
-export type TopChoice = { task: Task } | { title: string };
+/**
+ * One pick as it is handed over to be written: a task that exists, the
+ * words of a new one, or an item kept as the note writes it, such as a
+ * link that leads to no task.
+ */
+export type TopChoice = { task: Task } | { title: string } | { written: string };
+
+/** The items of a day's section that name no task, each kept as written when the section is rewritten. */
+export function keepUnresolved(top: DayTop | undefined): TopChoice[] {
+  return (top?.picks ?? []).flatMap((pick) => (pick.task ? [] : [{ written: pick.written }]));
+}
+
+/** Why a pick that is done, or is a task written under the heading itself, is not taken out of the day's picks. */
+export function describeTopStays(kind: 'done' | 'written', title: string): string {
+  return kind === 'done'
+    ? `"${title}" is done today, so it stays.`
+    : `"${title}" is written under the heading, so it stays. Move or delete its line to drop it.`;
+}
+
+/** Why one more than the limit is not picked; `free` is how to make room, `Uncheck` in the picker and `Remove` on the board. */
+export function describeTopLimit(count: number, title: string, free: 'Uncheck' | 'Remove'): string {
+  return `${topLimitSentence(count)} ${free} one to pick "${title}".`;
+}
+
+/** What adding a task to a day's picks, or taking it out, comes to. */
+export type TopChange =
+  | { kind: 'unchanged' }
+  | { kind: 'refused'; reason: string }
+  | { kind: 'change'; choices: TopChoice[] };
+
+/**
+ * A day's picks with one task added last, or taken out, as the Task
+ * board's menu and its strip ask: every other item stays, in order. One
+ * more than `count` is refused, and so is taking out a pick that is done
+ * or one written under the heading itself, in the picker's own words. A
+ * task already picked, or one to take out that is no pick, changes nothing.
+ */
+export function planTopChange(top: DayTop | undefined, task: Task, add: boolean, count: number): TopChange {
+  const picks = top?.picks ?? [];
+  const own = picks.find((pick) => pick.task?.id === task.id);
+  if (add ? own !== undefined : own === undefined) {
+    return { kind: 'unchanged' };
+  }
+  if (add && topTasksOf(top).length >= count) {
+    return { kind: 'refused', reason: describeTopLimit(count, task.title, 'Remove') };
+  }
+  if (own && (task.completed || own.ownLine)) {
+    return { kind: 'refused', reason: describeTopStays(task.completed ? 'done' : 'written', task.title) };
+  }
+  const kept = picks.filter((pick) => pick !== own).map((pick): TopChoice => (pick.task ? { task: pick.task } : { written: pick.written }));
+  return { kind: 'change', choices: add ? [...kept, { task }] : kept };
+}
 
 /** A replacement of a run of a note's text, by zero-based lines and characters. */
 export interface TopEdit {
@@ -483,8 +533,8 @@ export interface TopPlanRequest {
  * picked task whose line has none.
  *
  * A pick that is already a task line under the heading keeps its line as
- * it is; every other task is a link to its line, and a new task is written
- * as one. Only the section's list items change: other lines under the
+ * it is; every other task is a link to its line, a new task is written as
+ * one, and an item kept as written is written so again. Only the section's list items change: other lines under the
  * heading stay, after the items. With no picks the heading stays and its
  * items go; a note with no heading and no picks is left as it is. Each
  * picked task's line is taken to read as the index read it.
@@ -497,6 +547,9 @@ export function planTopTasks({ index, content, todayPath, style, count, choices 
   const base = [...lines];
   const taken = new Map<string, Set<string>>();
   const items = choices.flatMap((choice): string[] => {
+    if ('written' in choice) {
+      return [`- ${choice.written}`];
+    }
     if (!('task' in choice)) {
       return [`- [ ] ${choice.title.replace(/\s+/g, ' ').trim()}`];
     }

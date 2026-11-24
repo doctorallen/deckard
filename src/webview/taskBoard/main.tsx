@@ -21,6 +21,7 @@ import { announce } from '../shared/status';
 import { taskTitleOf } from '../shared/taskRow';
 import { installViewOptions, type ViewOptionGroup, type ViewOptionItem } from '../shared/viewOptions';
 import { keptState, vscodeApi } from '../shared/vscode';
+import { describeTopMenu, TOP_KEY, TOP_MENU_VALUE } from '../../domain/tasks/topStrip';
 import { GroupSelect, LanesSelect, TaskBoard, taskCardMoves } from './board';
 import { installLaneGrid } from '../shared/lanes';
 import { type BoardScroll, editRow, followShownCards, installBoardMoves, readBoardScroll, restoreBoardScroll, sendHeldEdits, settleRefusedEdit } from './boardMoves';
@@ -120,7 +121,7 @@ function focusSaveOnceLeft(): void {
  */
 function filterTaskEntries(): void {
   const words = editor.previewWords(editor.currentText());
-  document.querySelectorAll<HTMLElement>('.task-board .board-card, .result-table .result-row').forEach((entry) => {
+  document.querySelectorAll<HTMLElement>('.task-board .board-card, .board-top .board-card, .result-table .result-row').forEach((entry) => {
     const text = String(entry.textContent).toLowerCase();
     entry.hidden = !words.every((word) => text.includes(word));
   });
@@ -264,9 +265,9 @@ function shown(): TaskBoardSnapshot | undefined {
   return store.state.snapshot;
 }
 
-/** The ids of the tasks the table shows, in order. */
+/** The ids of the tasks the table ranks, in order: every row but today's top tasks, which keep the order they were picked in. */
 function listedTaskIds(): string[] {
-  return (shown()?.table?.rows || []).map((row) => row.taskId);
+  return (shown()?.table?.rows || []).filter((row) => !row.top).map((row) => row.taskId);
 }
 
 /** Sends the status columns' new order, by status name. */
@@ -278,7 +279,7 @@ function setColumnOrder(names: string[]): void {
 // by dragging their rows, or from their context menu.
 installRankedRows({
   kinds: {
-    tableRow: { selector: '.result-table tr.result-row[data-task-id]', key: 'taskId' },
+    tableRow: { selector: '.result-table tr.result-row[data-task-id]:not(.is-top)', key: 'taskId' },
     status: { selector: '.board-status[data-status]', key: 'status', edgeLabels: ['Move to first column', 'Move to last column'] },
   },
   canRank: (kind) => (kind === 'status' ? Boolean(shown()) : canRank(shown())),
@@ -383,6 +384,11 @@ function openRowMenu(opener: HTMLElement): boolean {
       editRow(row, (drawn) => ({ type: types[value], taskId: String(drawn.dataset.taskId) }), post);
       return;
     }
+    if (value === TOP_MENU_VALUE) {
+      // The row is a pick when it is in the table's first group; the host writes it, or says why not.
+      editRow(row, (drawn) => ({ type: 'setTopTask', taskId: String(drawn.dataset.taskId), top: !drawn.classList.contains('is-top') }), post);
+      return;
+    }
     const group = groups.find((candidate) => candidate.items.some((item) => item.value === value));
     const chosen = group ? group.items.find((item) => item.value === value) : undefined;
     if (chosen && chosen.checked) {
@@ -451,6 +457,8 @@ const ACTIONS: Readonly<Record<string, (target: HTMLElement, snapshot: TaskBoard
   'new-task-status': () => post({ type: 'editTaskStatuses', newStatus: true }),
   'edit-task-statuses': () => post({ type: 'editTaskStatuses' }),
   'move-status-tags': () => post({ type: 'moveStatusTags' }),
+  // The strip's Change…, and the table's: the picker of today's top tasks.
+  'pick-top-tasks': () => post({ type: 'pickTopTasks' }),
 };
 
 /**
@@ -643,9 +651,7 @@ onHostMessage<StateMessage<TaskBoardSnapshot>>('state', (message) => {
 });
 
 /** The keys a focused card answers, or a ranked table row, which the ? sheet lists. */
-const BOARD_KEYS: KeySection = {
-  title: 'A focused card',
-  keys: [
+const CARD_KEYS: KeySection['keys'] = [
     ['↑ ↓', 'The card above or below'],
     ['← →', 'The next column over'],
     ['Home, End', 'The first or last card in the column'],
@@ -660,9 +666,16 @@ const BOARD_KEYS: KeySection = {
     ['e', 'Edit the whole task'],
     ['s', 'Break it into steps'],
     ['Shift+F10, the menu key, or Alt+Enter', 'Open its ⋯ menu'],
-  ],
-};
+];
+
+/** A focused card's keys, with the one for today's top tasks, after Snooze, while the feature is on. */
+function boardKeys(): KeySection {
+  const top = shown()?.settings.top;
+  const at = CARD_KEYS.findIndex(([key]) => key === 'z') + 1;
+  const pick: KeySection['keys'] = top ? [[TOP_KEY, `${describeTopMenu(top.name, false)}, or remove it`]] : [];
+  return { title: 'A focused card', keys: [...CARD_KEYS.slice(0, at), ...pick, ...CARD_KEYS.slice(at)] };
+}
 const TABLE_KEYS: KeySection = { title: 'A table row, in Rank order', keys: [['Alt+↑, Alt+↓', 'Move a ranked task up or down']] };
-installKeySheet(() => (shown()?.layout === 'table' ? [TABLE_KEYS] : [BOARD_KEYS]));
+installKeySheet(() => (shown()?.layout === 'table' ? [TABLE_KEYS] : [boardKeys()]));
 
 post({ type: 'ready' });

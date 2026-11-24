@@ -141,6 +141,26 @@ export interface TaskBoardLane {
   cells: TaskBoardColumn[];
 }
 
+/**
+ * A card of the strip above the columns (plan 50): one of today's top
+ * tasks. It is in no column, so it carries the column, and on a board with
+ * lanes the lane, it would be in, which a move of it is written from.
+ */
+export interface TaskBoardTopCard extends TaskBoardCard {
+  column: string;
+  lane?: string;
+}
+
+/** The strip above the Task Board's columns: today's top tasks the board's search finds, in pick order. */
+export interface TaskBoardTop {
+  /** What the picks are called, `Top three`. */
+  name: string;
+  /** How many of today's picks are done, and how many there are, shown or not. */
+  done: number;
+  picked: number;
+  cards: TaskBoardTopCard[];
+}
+
 /** A task board's columns, whichever page chose its tasks. */
 export interface TaskBoardLayout {
   groupBy: TaskBoardGroupBy;
@@ -164,6 +184,12 @@ export interface TaskBoardLayout {
 
 /** The Task Board page, which chooses its tasks with a search. */
 export interface TaskBoardSnapshot extends TaskBoardLayout {
+  /**
+   * Today's top tasks, as a strip above the columns, present on the board
+   * layout while the feature is on and the search finds a pick. Its cards
+   * are in no column, lane, or count below it.
+   */
+  top?: TaskBoardTop;
   /** The search narrowing the tasks, as every search box shows one. */
   query: QueryViewState;
   layout: TaskLayout;
@@ -227,6 +253,11 @@ export interface TaskTable {
   /** The column the rows are ordered by; none means the list's own order. */
   sort?: TableSort;
   rows: TaskTableRow[];
+  /**
+   * Today's top tasks as the table's first group: its name, how many are
+   * done of how many picked, and how many of the first rows are its own.
+   */
+  top?: { name: string; done: number; picked: number; rows: number };
 }
 
 /** One task as a row of the table layout. */
@@ -239,6 +270,8 @@ export interface TaskTableRow {
   status?: DrawnStatus;
   /** One cell per column, in the columns' order. */
   cells: TableCell[];
+  /** Set on a row of the table's first group, today's top tasks, which keeps the order they were picked in. */
+  top?: true;
 }
 
 /** What the Task Board's view options show and edit. */
@@ -252,6 +285,8 @@ export interface TaskBoardSettings {
   parentTag?: boolean;
   /** Whether done tasks are left off the board and the table, and Done drawn no column. */
   hideDone?: boolean;
+  /** Present while `deckard.tasks.topCount` is above 0: what a day's picks are called and how many it holds, for a card's menu. */
+  top?: { name: string; limit: number };
 }
 
 /** One status as the gear lists it, a column or not. */
@@ -295,6 +330,18 @@ export interface SetTableSortMessage {
 export interface SetTableColumnsMessage {
   type: 'setTableColumns';
   columns: TaskColumnId[];
+}
+
+/** Adds a task to today's top tasks, or takes it out, from a card's or a row's menu, its key, or a drop on the strip. */
+export interface SetTopTaskMessage {
+  type: 'setTopTask';
+  taskId: string;
+  top: boolean;
+}
+
+/** Opens the picker of today's top tasks, from the strip's Change…. */
+export interface PickTopTasksMessage {
+  type: 'pickTopTasks';
 }
 
 /** Chooses whether the Task Board shows a board or a table. */
@@ -541,6 +588,8 @@ export interface TaskBoardPageToHost {
   moveStatusTags: MoveStatusTagsMessage;
   setBoardParentTag: SetBoardParentTagMessage;
   setBoardHideDone: SetBoardHideDoneMessage;
+  setTopTask: SetTopTaskMessage;
+  pickTopTasks: PickTopTasksMessage;
 }
 
 /**

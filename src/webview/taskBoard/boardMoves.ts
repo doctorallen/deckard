@@ -18,7 +18,9 @@ import { type ActionMenuGroup, openActionMenu } from '../shared/actionMenu';
 import { openSourceMessage } from '../shared/openSource';
 import { announce } from '../shared/status';
 import { taskTitleOf } from '../shared/taskRow';
-import { describeBoardColumn } from './board';
+import { setLaneFolded } from '../shared/lanes';
+import { TOP_KEY, TOP_MENU_VALUE, TOP_STRIP_ID } from '../../domain/tasks/topStrip';
+import { describeBoardColumn, TOP_FOLD_GRID } from './board';
 import { board, cardKeyOf, listsChanged } from './model';
 
 /** Sends the host one of the board's messages. */
@@ -39,18 +41,48 @@ export interface BoardMovesOptions {
   readonly lanes: () => LaneBoardRules | undefined;
 }
 
-/** The card an element is in, on the board. */
-function boardCard(target: EventTarget | null): HTMLElement | null {
-  return target instanceof Element ? target.closest<HTMLElement>('.task-board .board-card') : null;
+/** A card of the board, in a column or a cell, or in the strip of today's top tasks above them. */
+const CARD_SELECTOR = '.task-board .board-card, .board-top .board-card';
+
+/** Every card drawn, the strip's first, in the page's order. */
+function allCards(): HTMLElement[] {
+  return Array.from(document.querySelectorAll<HTMLElement>(CARD_SELECTOR));
 }
 
-/** A place for cards on the board: a column, or a cell of a board with lanes. */
-const CELL_SELECTOR = '.board-column, .lane-cell';
+/** The card an element is in, on the board. */
+function boardCard(target: EventTarget | null): HTMLElement | null {
+  return target instanceof Element ? target.closest<HTMLElement>(CARD_SELECTOR) : null;
+}
 
-/** The column or cell an element is in, on the board. */
+/** A place for cards on the board: a column, a cell of a board with lanes, or the strip above them. */
+const CELL_SELECTOR = '.board-column, .lane-cell, .board-top';
+
+/** The column, cell, or strip an element is in, on the board. */
 function cellOf(target: EventTarget | null | undefined): HTMLElement | null {
   const cell = target instanceof Element ? target.closest<HTMLElement>(CELL_SELECTOR) : null;
-  return cell && cell.closest('.task-board') ? cell : null;
+  return cell && (isTopStrip(cell) || cell.closest('.task-board')) ? cell : null;
+}
+
+/** Whether a place for cards is the strip of today's top tasks. */
+function isTopStrip(cell: Element | null | undefined): boolean {
+  return Boolean(cell && cell.classList.contains('board-top'));
+}
+
+/** Whether a card is in the strip: one of today's top tasks, which stays there whatever it is moved to. */
+function isTopCard(card: HTMLElement): boolean {
+  return card.dataset.cardColumn === TOP_STRIP_ID;
+}
+
+/** The strip's cards the words being typed have not hidden, or none while it is folded. */
+function topCards(): HTMLElement[] {
+  const list = document.querySelector<HTMLElement>('.board-top .board-top-cards');
+  return list && !list.hidden ? visibleCards(list) : [];
+}
+
+/** The column, or cell, a card of the strip left, when the board draws it. */
+function leftCell(card: HTMLElement): HTMLElement | undefined {
+  const place = placeOf(card);
+  return boardCells().find((cell) => cellColumn(cell) === place.column && cellLane(cell) === place.lane);
 }
 
 /** The id of the column a column or cell is in. */
@@ -73,8 +105,15 @@ function isFolded(cell: HTMLElement): boolean {
   return Boolean(cell.closest('.lane-row[hidden]'));
 }
 
-/** Where a card is: its column and, on a board with lanes, its lane. */
+/**
+ * Where a card is: its column and, on a board with lanes, its lane. A card
+ * of the strip is where it would be below it, the column and lane it left,
+ * which its moves are written from.
+ */
 function placeOf(card: HTMLElement): { column: string; lane?: string } {
+  if (isTopCard(card)) {
+    return { column: String(card.dataset.topColumn), ...(card.dataset.topLane === undefined ? {} : { lane: card.dataset.topLane }) };
+  }
   return { column: String(card.dataset.cardColumn), ...(card.dataset.cardLane === undefined ? {} : { lane: card.dataset.cardLane }) };
 }
 
@@ -143,7 +182,7 @@ function clearRankLine(): void {
 /** The column, or cell, a card dragged within its own, on a ranked board, is over. */
 function rankColumn(event: DragEvent, ranked: boolean): HTMLElement | undefined {
   const column = cellOf(event.target);
-  return board.dragId && carriesCard(event) && column && cellColumn(column) === board.dragColumn && cellLane(column) === board.dragLane && canRankColumn(column, ranked)
+  return board.dragId && carriesCard(event) && column && !isTopStrip(column) && cellColumn(column) === board.dragColumn && cellLane(column) === board.dragLane && canRankColumn(column, ranked)
     ? column
     : undefined;
 }
@@ -153,7 +192,7 @@ function focusCard(card: HTMLElement | undefined): void {
   if (!card) {
     return;
   }
-  document.querySelectorAll('.task-board .board-card[tabindex="0"]').forEach((other) => other.setAttribute('tabindex', '-1'));
+  allCards().filter((other) => other.getAttribute('tabindex') === '0').forEach((other) => other.setAttribute('tabindex', '-1'));
   card.setAttribute('tabindex', '0');
   board.tabStop = cardKeyOf(card);
   card.focus();
@@ -235,6 +274,10 @@ function recountLanes(grid: Element | null): void {
 
 /** A column's header, or a board with lanes' heads, counted again from the cards shown now. */
 function recount(cell: HTMLElement | null): void {
+  // The strip's head counts the day, not the cards shown.
+  if (isTopStrip(cell)) {
+    return;
+  }
   if (cell && cell.classList.contains('lane-cell')) {
     recountLanes(cell.closest('.lane-grid'));
     return;
@@ -295,10 +338,10 @@ export function restoreBoardScroll(scroll: BoardScroll | undefined): void {
 export function followShownCards(): void {
   document.querySelectorAll<HTMLElement>('.task-board .board-column').forEach((column) => recountColumn(column));
   document.querySelectorAll<HTMLElement>('.lane-grid.task-board').forEach((grid) => recountLanes(grid));
-  // A card in a folded lane is out of sight, as one the words hide is.
-  const shown = (card: HTMLElement | null): boolean => Boolean(card && !card.hidden && !card.closest('.lane-row[hidden]'));
-  const stop = document.querySelector<HTMLElement>('.task-board .board-card[tabindex="0"]');
-  const first = Array.from(document.querySelectorAll<HTMLElement>('.task-board .board-card')).find(shown);
+  // A card in a folded lane, or the folded strip, is out of sight, as one the words hide is.
+  const shown = (card: HTMLElement | null | undefined): boolean => Boolean(card && !card.hidden && !card.closest('.lane-row[hidden], .board-top-cards[hidden]'));
+  const stop = allCards().find((card) => card.getAttribute('tabindex') === '0');
+  const first = allCards().find(shown);
   if (shown(stop) || !first) {
     return;
   }
@@ -390,8 +433,8 @@ function heldEntry(edit: { written: string; column: string | undefined; lane?: s
     return document.querySelector<HTMLElement>(`.task-row${edit.written}, .result-row${edit.written}`);
   }
   const lane = edit.lane === undefined ? '' : attributeSelector('card-lane', edit.lane);
-  return document.querySelector<HTMLElement>(`.task-board .board-card${edit.written}${attributeSelector('card-column', edit.column)}${lane}`)
-    || document.querySelector<HTMLElement>(`.task-board .board-card${edit.written}`);
+  return document.querySelector<HTMLElement>(`.board-card${edit.written}${attributeSelector('card-column', edit.column)}${lane}`)
+    || document.querySelector<HTMLElement>(`.board-card${edit.written}`);
 }
 
 /**
@@ -543,7 +586,8 @@ class BoardMoves {
    * the card left (`from`), and marks the card where it is.
    */
   private move(card: HTMLElement, column: string, lane?: string, elsewhere?: { from: string }): void {
-    const target = elsewhere ? undefined : { column, ...(lane === undefined ? {} : { lane }) };
+    // A card of the strip stays in it: its move is written, and it is marked where it is.
+    const target = elsewhere || isTopCard(card) ? undefined : { column, ...(lane === undefined ? {} : { lane }) };
     whenAnswered(card, (drawn) => {
       const groups = board.moves[cardKeyOf(drawn)] || [];
       const place = placeOf(drawn);
@@ -586,6 +630,19 @@ class BoardMoves {
       return;
     }
     this.move(card, value, undefined, { from: isLane ? place.lane : place.column });
+  }
+
+  /**
+   * Adds a card's task to today's top tasks, or takes a card of the strip
+   * out of them, from its menu, its key, or a drop on the strip. The host
+   * writes it as the picker does, or says why not, and its next state
+   * draws the card where it then belongs. Nothing while the feature is off.
+   */
+  private setTop(card: HTMLElement, top: boolean): void {
+    const offered = (board.moves[cardKeyOf(card)] || []).some((group) => group.items.some((item) => item.value === TOP_MENU_VALUE));
+    if (offered) {
+      whenAnswered(card, (drawn) => this.post({ type: 'setTopTask', taskId: String(drawn.dataset.taskId), top }));
+    }
   }
 
   /** Asks the host for something about a card's task, with the id the task has once its last edit is answered. */
@@ -651,7 +708,8 @@ class BoardMoves {
     const at = cards.indexOf(card);
     if (key === 'ArrowDown' || key === 'ArrowUp') {
       const step = key === 'ArrowDown' ? 1 : -1;
-      focusCard(cards[at + step] ?? nextLaneCard(column, step));
+      // Past a column's first card, ↑ goes on into the strip above the board.
+      focusCard(cards[at + step] ?? nextLaneCard(column, step) ?? (step < 0 ? topCards()[0] : undefined));
       return;
     }
     if (key === 'Home' || key === 'End') {
@@ -665,6 +723,22 @@ class BoardMoves {
         focusCard(next[Math.min(at, next.length - 1)]);
         break;
       }
+    }
+  }
+
+  /**
+   * The arrows, Home, and End on a card of the strip: ← and → along it, and
+   * ↓ to the first card of the board under it.
+   */
+  private walkStrip(key: string, card: HTMLElement): void {
+    const cards = topCards();
+    const at = cards.indexOf(card);
+    if (key === 'ArrowDown') {
+      focusCard(allCards().find((other) => !isTopCard(other) && !other.hidden && !other.closest('.lane-row[hidden]')));
+    } else if (key === 'Home' || key === 'End') {
+      focusCard(key === 'Home' ? cards[0] : cards[cards.length - 1]);
+    } else if (key !== 'ArrowUp') {
+      focusCard(cards[at + (key === 'ArrowRight' ? 1 : -1)]);
     }
   }
 
@@ -703,6 +777,8 @@ class BoardMoves {
     } else if (/^[0-5]$/.test(key)) {
       const priority = ['', 'highest', 'high', 'medium', 'low', 'lowest'][Number(key)];
       this.moveCard(card, `priority:${priority}`, taskTitleOf(card) + (priority ? `: ${priority} priority.` : ': no priority.'));
+    } else if (key === TOP_KEY) {
+      this.setTop(card, !isTopCard(card));
     } else if (key === '[' || key === ']') {
       this.moveAcross(card, column, columns, key === ']' ? 1 : -1);
     } else if (Object.prototype.hasOwnProperty.call(asks, key)) {
@@ -715,12 +791,18 @@ class BoardMoves {
 
   /** The keys a focused card answers, which the ? sheet lists; true when the key was one. */
   private handleCardKey(event: KeyboardEvent, card: HTMLElement): boolean {
-    const column = cellOf(card) as HTMLElement;
+    const walks = ['ArrowDown', 'ArrowUp', 'Home', 'End', 'ArrowLeft', 'ArrowRight'].includes(event.key);
+    if (walks && isTopCard(card)) {
+      this.walkStrip(event.key, card);
+      return true;
+    }
+    // A card of the strip is edited as it would be in the column, or cell, it left.
+    const column = (isTopCard(card) ? leftCell(card) : cellOf(card)) ?? (cellOf(card) as HTMLElement);
     // A board's columns, or a lane's cells, in order.
     const columns = column.classList.contains('lane-cell')
       ? Array.from(column.parentElement?.children ?? []).filter((cell): cell is HTMLElement => cell instanceof HTMLElement && cell.classList.contains('lane-cell'))
       : Array.from(document.querySelectorAll<HTMLElement>('.task-board .board-column'));
-    if (['ArrowDown', 'ArrowUp', 'Home', 'End', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+    if (walks) {
       this.walk(event.key, card, column, columns);
       return true;
     }
@@ -732,6 +814,10 @@ class BoardMoves {
     const asks: Readonly<Record<string, 'pickTaskDate' | 'pickTaskAssignee' | 'snoozeTask' | 'moveTaskTo' | 'breakIntoSteps'>> = { 'pick-date': 'pickTaskDate', 'pick-assignee': 'pickTaskAssignee', snooze: 'snoozeTask', 'move-to': 'moveTaskTo', 'break-steps': 'breakIntoSteps' };
     if (Object.prototype.hasOwnProperty.call(asks, value)) {
       this.ask(card, asks[value]);
+      return;
+    }
+    if (value === TOP_MENU_VALUE) {
+      this.setTop(card, !isTopCard(card));
       return;
     }
     const already = alreadyHas(card, groups, value);
@@ -775,6 +861,11 @@ class BoardMoves {
   private onClick(event: MouseEvent): void {
     const target = event.target instanceof Element ? event.target : null;
     const closest = (selector: string): HTMLElement | null => (target ? target.closest<HTMLElement>(selector) : null);
+    const fold = closest('.board-top [data-top-fold]');
+    if (fold) {
+      foldTopStrip(fold);
+      return;
+    }
     const menuButton = closest('[data-action="board-menu"]');
     if (menuButton) {
       const card = boardCard(menuButton);
@@ -833,7 +924,7 @@ class BoardMoves {
 
   private onKeydown(event: KeyboardEvent): void {
     const target = event.target instanceof Element ? event.target : null;
-    const card = target && target.matches('.task-board .board-card') ? (target as HTMLElement) : undefined;
+    const card = target && target.matches(CARD_SELECTOR) ? (target as HTMLElement) : undefined;
     if (!card) {
       return;
     }
@@ -878,9 +969,12 @@ class BoardMoves {
       event.preventDefault();
     }
     if (column) {
-      const card = Array.from(document.querySelectorAll<HTMLElement>(`.task-board .board-card[data-task-id="${CSS.escape(String(board.dragId))}"]`))
-        .find((candidate) => (board.dragColumn === undefined || candidate.dataset.cardColumn === board.dragColumn) && candidate.dataset.cardLane === board.dragLane);
-      if (card && cellOf(card) !== column) {
+      const card = allCards()
+        .find((candidate) => candidate.dataset.taskId === String(board.dragId) && (board.dragColumn === undefined || candidate.dataset.cardColumn === board.dragColumn) && candidate.dataset.cardLane === board.dragLane);
+      if (card && isTopStrip(column)) {
+        // Dropped on the strip, a card is picked; the host says so, or why not.
+        this.setTop(card, true);
+      } else if (card && cellOf(card) !== column) {
         this.move(card, cellColumn(column), cellLane(column));
         announce(`Moved ${taskTitleOf(card)} to ${columnTitle(column)}.`);
       }
@@ -894,11 +988,11 @@ class BoardMoves {
     // A card reached by Tab or a click becomes the board's Tab stop.
     document.addEventListener('focusin', (event) => {
       const target = event.target instanceof Element ? event.target : null;
-      const card = target && target.matches('.task-board .board-card') ? target : undefined;
+      const card = target && target.matches(CARD_SELECTOR) ? target : undefined;
       if (!card || card.getAttribute('tabindex') === '0') {
         return;
       }
-      document.querySelectorAll('.task-board .board-card[tabindex="0"]').forEach((other) => other.setAttribute('tabindex', '-1'));
+      allCards().filter((other) => other.getAttribute('tabindex') === '0').forEach((other) => other.setAttribute('tabindex', '-1'));
       card.setAttribute('tabindex', '0');
       board.tabStop = cardKeyOf(card as HTMLElement);
     });
@@ -955,6 +1049,10 @@ function dropColumn(event: DragEvent): HTMLElement | undefined {
   if (!column || !board.dragId || !carriesCard(event)) {
     return undefined;
   }
+  // The strip takes a card from below it, to pick it; one of its own has nowhere in it to go.
+  if (isTopStrip(column)) {
+    return board.dragColumn === TOP_STRIP_ID ? undefined : column;
+  }
   if (column.classList.contains('lane-cell')) {
     const own = cellColumn(column) === board.dragColumn && cellLane(column) === board.dragLane;
     return own || column.classList.contains('is-refused') ? undefined : column;
@@ -963,12 +1061,12 @@ function dropColumn(event: DragEvent): HTMLElement | undefined {
 }
 
 function clearDropTargets(): void {
-  document.querySelectorAll('.board-column.drop-target, .task-board .lane-cell.drop-target').forEach((column) => column.classList.remove('drop-target'));
+  document.querySelectorAll('.board-column.drop-target, .task-board .lane-cell.drop-target, .board-top.drop-target').forEach((column) => column.classList.remove('drop-target'));
 }
 
 /** Lets go of the card being dragged, if any: its marks, the columns', the cells' refusals, and which card it was. */
 function endDrag(): void {
-  document.querySelectorAll('.task-board .board-card.dragging').forEach((card) => card.classList.remove('dragging'));
+  allCards().forEach((card) => card.classList.remove('dragging'));
   document.querySelectorAll('.task-board.is-dragging-card').forEach((element) => element.classList.remove('is-dragging-card'));
   document.querySelectorAll<HTMLElement>('.task-board .lane-cell.is-refused').forEach((cell) => {
     cell.classList.remove('is-refused');
@@ -983,12 +1081,14 @@ function endDrag(): void {
 
 /** On a board with lanes, each cell that will not take the card picked up says why, while it is held. */
 function markRefusedCells(card: HTMLElement, rules: LaneBoardRules | undefined): void {
-  const grid = card.closest('.lane-grid');
-  const lane = card.dataset.cardLane;
+  // A card of the strip is held as from the cell it left.
+  const grid = isTopCard(card) ? document.querySelector('.lane-grid.task-board') : card.closest('.lane-grid');
+  const place = placeOf(card);
+  const lane = place.lane;
   if (!grid || !rules || lane === undefined) {
     return;
   }
-  const from = { column: String(card.dataset.cardColumn), lane };
+  const from = { column: place.column, lane };
   grid.querySelectorAll<HTMLElement>('.lane-cell').forEach((cell) => {
     const to = cellLane(cell);
     const reason = to === undefined ? undefined : refuseCellMove(from, { column: cellColumn(cell), lane: to }, rules);
@@ -998,6 +1098,20 @@ function markRefusedCells(card: HTMLElement, rules: LaneBoardRules | undefined):
     cell.classList.add('is-refused');
     cell.dataset.refuses = reason;
   });
+}
+
+/** Folds or unfolds the strip from its head, kept while the page is open, as a lane's fold is. */
+function foldTopStrip(button: HTMLElement): void {
+  const folded = button.getAttribute('aria-expanded') === 'true';
+  const name = button.querySelector('.lane-label')?.textContent ?? '';
+  setLaneFolded(TOP_FOLD_GRID, TOP_STRIP_ID, folded);
+  button.setAttribute('aria-expanded', String(!folded));
+  button.setAttribute('data-tip', `${folded ? 'Show' : 'Fold'} ${name}`);
+  const cards = button.closest('.board-top')?.querySelector<HTMLElement>('.board-top-cards');
+  if (cards) {
+    cards.hidden = folded;
+  }
+  followShownCards();
 }
 
 /**
@@ -1038,7 +1152,7 @@ function listenForDrags(options: Pick<BoardMovesOptions, 'ranked' | 'lanes'>): v
     board.dragLane = card.dataset.cardLane;
     card.classList.add('dragging');
     // The columns, or cells, that will not take the card say so while it is held.
-    card.closest('.task-board')?.classList.add('is-dragging-card');
+    document.querySelectorAll('.task-board').forEach((drawn) => drawn.classList.add('is-dragging-card'));
     markRefusedCells(card, options.lanes());
     if (!event.dataTransfer) {
       return;

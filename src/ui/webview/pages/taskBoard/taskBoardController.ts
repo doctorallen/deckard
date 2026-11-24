@@ -481,7 +481,7 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
   /** What a card or row does to its task, and the page's Add task and a column's. */
   private taskHandlers(): Pick<
     Handlers,
-    'toggleTask' | 'moveTask' | 'pickTaskDate' | 'pickTaskAssignee' | 'snoozeTask' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps' | 'addTask' | 'addTaskToColumn'
+    'toggleTask' | 'moveTask' | 'pickTaskDate' | 'pickTaskAssignee' | 'snoozeTask' | 'moveTaskTo' | 'editTask' | 'breakIntoSteps' | 'addTask' | 'addTaskToColumn' | 'setTopTask' | 'pickTopTasks'
   > {
     const { indexer, preferences, writes } = this.board;
     return {
@@ -557,6 +557,10 @@ export class TaskBoardController implements PageController<TaskBoardSnapshot, Ta
       // One way to add a task: Add Task's editor, started in the column.
       addTask: () => vscode.commands.executeCommand('deckard.addTask'),
       addTaskToColumn: (message) => vscode.commands.executeCommand('deckard.addTask', { column: message.column }),
+      // Today's top tasks are written by the picker's own commands, which
+      // refuse in its words; the index that follows a write redraws the board.
+      setTopTask: (message) => vscode.commands.executeCommand('deckard.changeTopTask', { taskId: message.taskId, add: message.top }),
+      pickTopTasks: () => vscode.commands.executeCommand('deckard.pickTopTasks'),
     };
   }
 

@@ -3,6 +3,7 @@
  * and in its ⋯, and what it draws while it edits what the Tasks view
  * lists.
  */
+import { describeTopCount } from '../../domain/tasks/topStrip';
 import { describeBox, statusBoxProps } from '../shared/taskBox';
 import { TASK_SORT_LABELS } from '../../domain/model/sortOrders';
 import type { TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
@@ -45,6 +46,33 @@ function NoTasks({ snapshot, teach }: { readonly snapshot: TaskBoardSnapshot; re
 }
 
 /**
+ * The row that heads a group of the table, before the group's first row:
+ * today's top tasks, named and counted as the board's strip is, with
+ * Change…, and then every other task. Nothing in a table with no picks.
+ */
+function GroupHead({ table, at }: { readonly table: NonNullable<TaskBoardSnapshot['table']>; readonly at: number }) {
+  const top = table.top;
+  if (!top || (at !== 0 && at !== top.rows)) {
+    return null;
+  }
+  const span = table.columns.length + 2;
+  if (at === top.rows) {
+    return <tr class="result-group"><td colSpan={span}><span class="result-group-head"><span class="result-group-name">Other tasks</span></span></td></tr>;
+  }
+  return (
+    <tr class="result-group is-top">
+      <td colSpan={span}>
+        <span class="result-group-head">
+          <span class="result-group-name">{top.name}</span>
+          <span class="result-group-count">{describeTopCount({ done: top.done, picked: top.picked, shown: top.rows })}</span>
+          <button type="button" data-action="pick-top-tasks" data-tip={`Choose today's ${top.name.toLowerCase()} from a list`}>Change…</button>
+        </span>
+      </td>
+    </tr>
+  );
+}
+
+/**
  * The searched tasks as a table. The host made the rows and cells; the
  * page draws them, with a header that sorts and a checkbox that completes.
  */
@@ -69,12 +97,15 @@ export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot
         </tr>
       </thead>
       <tbody>
-        {table.rows.map((row) => {
+        {table.rows.map((row, at) => {
           // Named by the title as it reads, not its Markdown.
           const titleCell = row.cells[titleAt];
           const title = titleCell ? (titleCell.tokens && plainTitle(titleCell.tokens)) || titleCell.text : '';
-          return (
-            <tr key={row.taskId} class={['result-row', row.completed ? 'completed' : '', row.status?.type === 'cancelled' ? 'cancelled' : '', draggable ? 'is-draggable' : ''].filter(Boolean).join(' ')} tabIndex={0} data-reveal-region="" data-task-id={row.taskId} data-file-path={row.filePath} data-line={row.line}>
+          // Today's top tasks are the first group, in pick order, and are not ranked with the rest.
+          const ranks = draggable && !row.top;
+          return [
+            <GroupHead key={`group-${at}`} table={table} at={at} />,
+            <tr key={row.taskId} class={['result-row', row.top ? 'is-top' : '', row.completed ? 'completed' : '', row.status?.type === 'cancelled' ? 'cancelled' : '', ranks ? 'is-draggable' : ''].filter(Boolean).join(' ')} tabIndex={0} data-reveal-region="" data-task-id={row.taskId} data-file-path={row.filePath} data-line={row.line}>
               <td class="result-check"><input type="checkbox" data-action="toggle-task" data-task-id={row.taskId} {...statusBoxProps(row.completed, row.status)} aria-label={describeBox(title, row.status)} /></td>
               {row.cells.map((cell, at) => {
                 const classes = [cell.kind === 'overdue' ? 'is-overdue' : '', cell.kind === 'muted' ? 'is-muted' : '', at === titleAt ? 'result-title' : ''].filter(Boolean).join(' ');
@@ -83,8 +114,8 @@ export function ResultTable({ snapshot }: { readonly snapshot: TaskBoardSnapshot
                 return <td class={classes || undefined}>{cell.tokens ? <TaskTitle tokens={cell.tokens} /> : cell.text}</td>;
               })}
               <td class="result-menu"><RowMenuButton taskId={row.taskId} title={title} /></td>
-            </tr>
-          );
+            </tr>,
+          ];
         })}
       </tbody>
     </table>

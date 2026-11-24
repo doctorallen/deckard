@@ -58,6 +58,7 @@ export const TASK_BOARD_HELP: PageHelpMap = {
     { id: 'move', kind: 'feature', guide: 'task-board#moving-a-card', ring: 'card-menu', settings: ['tasks.statuses'] },
     { id: 'keep', kind: 'feature', guide: 'task-board#keeping-a-search', ring: 'page-menu' },
     { id: 'limits', kind: 'feature', guide: 'task-board#work-in-progress-limits', settings: ['board.limits'] },
+    { id: 'top-strip', kind: 'feature', guide: 'task-board#top-three', settings: ['tasks.topCount'] },
     { id: 'keyboard', kind: 'feature', guide: 'task-board#keyboard', ring: 'card-menu' },
     {
       id: 'search',
@@ -92,6 +93,7 @@ export const TASK_BOARD_HELP: PageHelpMap = {
     'tasks.checkboxClick',
     'tasks.statuses',
     'tasks.needsNewDateAfterDays',
+    'tasks.topCount',
     'display.zen',
     'theme',
   ],

@@ -109,6 +109,15 @@ export function isLaneFolded(grid: string, lane: string): boolean {
   return laneGrid.folded.has(foldKey(grid, lane));
 }
 
+/** Folds or unfolds a lane of a grid, kept while the page is open. */
+export function setLaneFolded(grid: string, lane: string, folded: boolean): void {
+  if (folded) {
+    laneGrid.folded.add(foldKey(grid, lane));
+  } else {
+    laneGrid.folded.delete(foldKey(grid, lane));
+  }
+}
+
 /** The attributes a card's own element carries: draggable, its key in its cell, and what it stands for, which the heads count once. */
 export function laneCardAttributes(key: string, item: string): Record<string, string> {
   return { draggable: 'true', 'data-lane-card': key, 'data-lane-item': item };

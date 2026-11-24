@@ -645,6 +645,11 @@
         "icon": "$(edit)"
       },
       {
+        "command": "deckard.changeTopTask",
+        "title": "Add to or Remove from Today's Top Tasks",
+        "category": "Deckard"
+      },
+      {
         "command": "deckard.newNoteFromTemplate",
         "title": "New Note from Template",
         "category": "Deckard"
@@ -1310,6 +1315,10 @@
         },
         {
           "command": "deckard.agenda.changeTopTasks",
+          "when": "false"
+        },
+        {
+          "command": "deckard.changeTopTask",
           "when": "false"
         },
         {
