@@ -8,6 +8,7 @@ import { buildWorkspaceIndex } from '../domain/index/indexState';
 import { parseMarkdown } from '../domain/markdown/parser';
 import type { Task, WorkspaceIndex } from '../domain/model';
 import { createQueryContext } from '../domain/query/queryContext';
+import { planTopChange, readTodayTop } from '../domain/tasks/topTasks';
 import { buildTopItems, createTopOffer, describeTopTitle, reviseTopSelection, type TopItem, writeTopTasks } from '../ui/commands/topTasks';
 import { WorkspaceWriteHistory } from '../ui/commands/workspaceWrites';
 import { buildTopRows } from '../ui/state/topTasksState';
@@ -197,6 +198,41 @@ suite('Pick Today\'s Top Tasks: its list and what it writes', () => {
         { kind: 'unchanged' },
       );
       assert.strictEqual(await read('journal/2026-11-24.md'), NOTES['journal/2026-11-24.md']);
+    });
+  });
+
+  test('one task added from the Task board is the picker\'s write: today\'s picks and the one, as one change', async () => {
+    await withNotes(async (uriOf, read) => {
+      const change = planTopChange(readTodayTop(index, now), taskTitled('Send the vendor quote'), true, 3);
+      assert.strictEqual(change.kind, 'change');
+      const history = new WorkspaceWriteHistory();
+      const written = await writeTopTasks(history, {
+        index,
+        todayUri: uriOf('journal/2026-11-24.md'),
+        todayPath: 'journal/2026-11-24.md',
+        count: 3,
+        choices: change.kind === 'change' ? change.choices : [],
+        uriOf: async (filePath) => uriOf(filePath),
+      });
+      assert.strictEqual(written.kind, 'written');
+      assert.ok((await read('journal/2026-11-24.md')).includes([
+        '## Top three',
+        '',
+        '- [[Borealis#^cold-room|Book the cold room]]',
+        '- [ ] Outline the Q1 staffing ask',
+        '- [[Borealis#^send-the-vendor|Send the vendor quote]]',
+        '',
+        '## Carried over',
+      ].join('\n')));
+      assert.ok((await read('projects/Borealis.md')).includes('^send-the-vendor\n'));
+      assert.ok(await history.undo());
+      assert.strictEqual(await read('journal/2026-11-24.md'), NOTES['journal/2026-11-24.md']);
+      assert.strictEqual(await read('projects/Borealis.md'), NOTES['projects/Borealis.md']);
+      // A fourth is refused before anything is written, in the picker's words.
+      assert.deepStrictEqual(planTopChange(readTodayTop(index, now), taskTitled('Reply to Dana'), true, 2), {
+        kind: 'refused',
+        reason: 'Two is the limit. Remove one to pick "Reply to Dana".',
+      });
     });
   });
 

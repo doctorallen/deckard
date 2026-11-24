@@ -7,14 +7,15 @@ import { speakProgressText } from '../../domain/tasks/progressCount';
 import { ProgressText } from '../shared/progressText';
 import type { ComponentChild } from 'preact';
 
-import type { CardDetailParts, TaskBoardCard, TaskBoardColumn, TaskBoardLane, TaskBoardSettings, TaskBoardSnapshot } from '../../ui/protocol/taskBoard';
+import type { CardDetailParts, TaskBoardCard, TaskBoardColumn, TaskBoardLane, TaskBoardSettings, TaskBoardSnapshot, TaskBoardTop, TaskBoardTopCard } from '../../ui/protocol/taskBoard';
 import { listLaneAxes } from '../../domain/tasks/boardLanes';
+import { describeTopCount, describeTopMenu, speakTopCount, TOP_KEY, TOP_MENU_VALUE, TOP_MOVE, TOP_STRIP_ID } from '../../domain/tasks/topStrip';
 import type { ActionMenuGroup, ActionMenuItem } from '../shared/actionMenu';
 import { IconButton } from '../shared/buttons';
 import { DueText } from '../shared/dueText';
 import { EmptyState } from '../shared/emptyState';
-import { LaneGrid, laneCardAttributes, type LaneCell, type LaneHead } from '../shared/lanes';
-import { EllipsisIcon, PlusIcon } from '../shared/strokeIcons';
+import { isLaneFolded, LaneGrid, laneCardAttributes, type LaneCell, type LaneHead } from '../shared/lanes';
+import { ChevronRightIcon, EllipsisIcon, PlusIcon, TargetIcon } from '../shared/strokeIcons';
 import { formatSourceLocation, plainTitle, PriorityBadge, TaskDetails, trimHeadingPath } from '../shared/taskRow';
 import { ParentTag } from '../shared/tagButton';
 import { TaskTitle } from '../shared/taskTitle';
@@ -40,8 +41,8 @@ export interface CardLanes {
 /**
  * Every edit a card can make, whatever the board is grouped by: its status,
  * priority, and due date as single choices, each checked where the task is
- * and showing its key, Snooze until…, the board's other columns, its steps,
- * done, and Move to… The menu used to offer the columns of the current grouping alone, so
+ * and showing its key, Snooze until…, today's top tasks, which it joins or
+ * leaves, the board's other columns, its steps, done, and Move to… The menu used to offer the columns of the current grouping alone, so
  * changing a due date meant regrouping the whole board first. The statuses
  * the board draws a column for come first; every other one is under More
  * statuses.
@@ -81,6 +82,8 @@ export function taskCardMoves(
     { label: 'Priority', items: priorityOptions },
     { label: 'Due', items: dueOptions },
     { label: 'Snooze', items: card.completed ? [] : [{ value: 'snooze', label: 'Snooze until…', key: 'z' }] },
+    // Offered while the feature is on: a pick is taken out, any other task added.
+    { label: 'Today', items: settings?.top ? [{ value: TOP_MENU_VALUE, label: describeTopMenu(settings.top.name, current.includes(TOP_MOVE)), key: TOP_KEY }] : [] },
     { label: 'This board', items: others },
     // Lanes by tag or person have no moves of their own above; status,
     // priority, and due date lanes are moved to by theirs.
@@ -162,6 +165,8 @@ interface CardProps {
   readonly columnId: string;
   readonly columns: readonly TaskBoardColumn[];
   readonly lane?: TaskBoardLane;
+  /** On a card of the strip above the columns: its place among today's picks, from 1, and the column and lane it left. */
+  readonly pick?: { readonly number: number; readonly column: string; readonly lane?: string };
 }
 
 /** A card's classes: done, cancelled, or neither. */
@@ -177,19 +182,26 @@ function CardBox({ card, title }: { readonly card: TaskBoardCard; readonly title
   return card.status?.icon === undefined ? box : <span class="task-box-with-icon">{box}<StatusIcon status={card.status} /></span>;
 }
 
+/**
+ * A short name for a card as a whole, since a focused article is read in
+ * full otherwise: its title, its place among today's picks in the strip,
+ * its column and lane, when it is due, and its steps.
+ */
+function nameCard(title: string, { card, columnId, columns, lane, pick }: CardProps): string {
+  const columnLabel = columns.find((column) => column.id === columnId)?.label;
+  const dueDetail = (card.details || []).find((detail) => /^(due|overdue|was due)/i.test(detail));
+  return [title, pick ? `pick ${pick.number}` : '', columnLabel, lane?.label, dueDetail, card.steps ? speakProgressText(card.steps.label) : ''].filter(Boolean).join(', ');
+}
+
 /** One task card, with its checkbox and the menu that edits it. */
-function BoardCard({ card, columnId, columns, lane }: CardProps) {
+function BoardCard({ card, columnId, columns, lane, pick }: CardProps) {
   // The title as it reads names the card and its controls, not its Markdown.
   const title = plainTitle(card.titleTokens || []) || String(card.title || '');
   const fileName = String(card.filePath).split('/').pop() || card.filePath;
   // The file and line, then the headings above, go on the line the card
   // keeps for its details, as they do on a row.
   const steps = trimHeadingPath(card.headingPath, fileName, '');
-  // A short name for the card as a whole, since a focused article is read in
-  // full otherwise: its title, its column, and when it is due.
-  const columnLabel = columns.find((column) => column.id === columnId)?.label;
-  const dueDetail = (card.details || []).find((detail) => /^(due|overdue|was due)/i.test(detail));
-  const cardName = [title, columnLabel, lane?.label, dueDetail, card.steps ? speakProgressText(card.steps.label) : ''].filter(Boolean).join(', ');
+  const cardName = nameCard(title, { card, columnId, columns, lane, pick });
   // The board is one Tab stop: the card last focused, or the first. Arrow
   // keys move between cards, and a card's checkbox and menu are keys of
   // their own, so neither is a Tab stop either.
@@ -206,10 +218,12 @@ function BoardCard({ card, columnId, columns, lane }: CardProps) {
       data-reveal-region=""
       tabIndex={tabStop ? 0 : -1}
       aria-label={cardName}
-      aria-keyshortcuts="x t m d f e s 1 2 3 4 5 [ ]"
+      aria-keyshortcuts="x t m d f e s p 1 2 3 4 5 [ ]"
       data-task-id={card.taskId}
       data-card-column={columnId}
       data-card-lane={lane?.id}
+      data-top-column={pick?.column}
+      data-top-lane={pick?.lane}
       data-file-path={card.filePath}
       data-line={card.line}
       {...(lane ? laneCardAttributes(key, card.taskId) : {})}
@@ -217,7 +231,10 @@ function BoardCard({ card, columnId, columns, lane }: CardProps) {
       <CardBox card={card} title={title} />
       <div class="task-summary">
         <ParentTag tag={card.parentTag} />
-        <div key={card.title} class="task-title"><TaskTitle tokens={card.titleTokens} tags={card.titleTags} /></div>
+        <div key={card.title} class="task-title">
+          {pick ? <span key="pick" class="board-top-number" aria-hidden="true">{String(pick.number)}</span> : null}
+          <TaskTitle tokens={card.titleTokens} tags={card.titleTags} />
+        </div>
         <CardDetails card={card} />
         {card.steps
           ? (
@@ -313,17 +330,84 @@ function BoardColumn({ column, cards, columns }: ColumnProps) {
   );
 }
 
+/** The name the strip's fold is kept under, beside the lanes' own. */
+export const TOP_FOLD_GRID = 'task-board-top';
+
+/** The key of a strip card: the strip's id where a column's would be. */
+function topCardKey(card: TaskBoardTopCard): string {
+  return boardCardKey(TOP_STRIP_ID, card.taskId);
+}
+
+/**
+ * Makes the menu of each card of the strip, by the column and lane the
+ * card left, so its choices are checked as they would be there, and
+ * returns the strip's card keys, which lead the board's.
+ */
+function registerTopMoves(snapshot: TaskBoardSnapshot): string[] {
+  const top = snapshot.top;
+  if (!top) {
+    return [];
+  }
+  for (const card of top.cards) {
+    const lanes = snapshot.lanes && snapshot.lanesBy && card.lane !== undefined
+      ? { by: snapshot.lanesBy, lanes: snapshot.lanes, laneId: card.lane }
+      : undefined;
+    board.moves[topCardKey(card)] = taskCardMoves(card, card.column, snapshot.columns, { settings: snapshot.settings, ...(lanes ? { lanes } : {}) });
+  }
+  return isLaneFolded(TOP_FOLD_GRID, TOP_STRIP_ID) ? [] : top.cards.map(topCardKey);
+}
+
+/**
+ * The strip above the columns (plan 50): today's top tasks the board's
+ * search finds, as cards in one row, in the order they were picked, each
+ * led by its number. Its head names it, counts the day, folds it, as a
+ * lane's does, and opens the picker; a card dropped on it is picked.
+ */
+function TopStrip({ top, columns }: { readonly top: TaskBoardTop; readonly columns: readonly TaskBoardColumn[] }) {
+  const folded = isLaneFolded(TOP_FOLD_GRID, TOP_STRIP_ID);
+  const count = { done: top.done, picked: top.picked, shown: top.cards.length };
+  return (
+    <section
+      key={`top-${board.generation}`}
+      class="board-top"
+      data-column-id={TOP_STRIP_ID}
+      data-droppable="true"
+      data-help-id="top-strip"
+      aria-label={speakTopCount(top.name, count)}
+    >
+      <div class="board-top-head">
+        <h2 class="lane-title">
+          <button type="button" class="lane-fold" data-top-fold="" aria-expanded={!folded} data-tip={folded ? `Show ${top.name}` : `Fold ${top.name}`}>
+            <ChevronRightIcon />
+            <span class="board-top-mark"><TargetIcon /></span>
+            <span class="lane-label">{top.name}</span>
+            <span class="lane-count">{describeTopCount(count)}</span>
+          </button>
+        </h2>
+        <button type="button" class="board-top-change" data-action="pick-top-tasks" data-tip={`Choose today's ${top.name.toLowerCase()} from a list`}>Change…</button>
+      </div>
+      <div class="board-top-cards" role="list" aria-label={top.name} hidden={folded}>
+        {top.cards.map((card, at) => (
+          <BoardCard key={topCardKey(card)} card={card} columnId={TOP_STRIP_ID} columns={columns} pick={{ number: at + 1, column: card.column, ...(card.lane === undefined ? {} : { lane: card.lane }) }} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /**
  * The board, from the host's columns. Drawing it makes each card's menu,
  * and keeps the Tab stop on a card that is drawn; the page then hides the
  * cards the words being typed leave out, and counts the columns again.
+ * Today's top tasks, when the board has any to show, are a strip above it.
  */
 export function TaskBoard({ snapshot }: { readonly snapshot: TaskBoardSnapshot }) {
+  const strip = snapshot.top ? <TopStrip key="top" top={snapshot.top} columns={snapshot.columns} /> : null;
   if (snapshot.lanes && snapshot.lanesBy) {
-    return <LaneTaskBoard key={`lanes-${board.generation}`} snapshot={snapshot} lanes={snapshot.lanes} by={snapshot.lanesBy} />;
+    return <>{strip}<LaneTaskBoard key={`lanes-${board.generation}`} snapshot={snapshot} lanes={snapshot.lanes} by={snapshot.lanesBy} /></>;
   }
   board.moves = {};
-  const drawn = snapshot.columns.flatMap((column) => column.cards.map((card) => boardCardKey(column.id, card.taskId)));
+  const drawn = [...registerTopMoves(snapshot), ...snapshot.columns.flatMap((column) => column.cards.map((card) => boardCardKey(column.id, card.taskId)))];
   if (board.tabStop === undefined || !drawn.includes(board.tabStop)) {
     board.tabStop = drawn.length ? drawn[0] : undefined;
   }
@@ -334,6 +418,7 @@ export function TaskBoard({ snapshot }: { readonly snapshot: TaskBoardSnapshot }
   }
   return (
     <>
+      {strip}
       <div key={`board-${board.generation}`} class="board task-board" role="group" aria-label="Task board">
         {snapshot.columns.map((column) => <BoardColumn key={column.id} column={column} cards={column.cards} columns={snapshot.columns} />)}
       </div>
@@ -452,7 +537,7 @@ function LaneTaskBoard({ snapshot, lanes, by }: { readonly snapshot: TaskBoardSn
     const column = lane?.cells[at.get(cell.column) ?? -1];
     return lane && column ? { lane, column } : undefined;
   };
-  const drawn = lanes.flatMap((lane) => lane.cells.flatMap((cell) => cell.cards.map((card) => boardCardKey(cell.id, card.taskId, lane.id))));
+  const drawn = [...registerTopMoves(snapshot), ...lanes.flatMap((lane) => lane.cells.flatMap((cell) => cell.cards.map((card) => boardCardKey(cell.id, card.taskId, lane.id))))];
   if (board.tabStop === undefined || !drawn.includes(board.tabStop)) {
     board.tabStop = drawn.length ? drawn[0] : undefined;
   }

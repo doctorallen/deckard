@@ -6,7 +6,7 @@ import { openDailyNoteForDate } from '../dailyNoteForDate';
 import { createDailyNoteWithRollover, rollTasksForward } from '../rollover';
 import { registerCommand } from '../runCommand';
 import { startMeeting } from '../startMeeting';
-import { PICK_TOP_TASKS_COMMAND, pickTopTasks } from '../topTasks';
+import { CHANGE_TOP_TASK_COMMAND, changeTopTask, PICK_TOP_TASKS_COMMAND, pickTopTasks, readTopTaskChange } from '../topTasks';
 
 /**
  * Daily notes: today's note, another day's, the day before and after,
@@ -36,6 +36,13 @@ export function register(context: vscode.ExtensionContext, services: Services): 
     registerCommand('deckard.agenda.changeTopTasks', () =>
       pickTopTasks({ indexer, history, rollover }),
     ),
+    // The Task board's menu and strip add one task to today's picks, or take it out.
+    registerCommand(CHANGE_TOP_TASK_COMMAND, async (change: unknown) => {
+      const asked = readTopTaskChange(change);
+      if (asked) {
+        await changeTopTask({ indexer, history, rollover }, asked);
+      }
+    }),
     registerCommand('deckard.previousDailyNote', () =>
       openAdjacentDailyNote(indexer, 'previous'),
     ),

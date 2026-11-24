@@ -10,7 +10,8 @@ import {
   readNamespaceValues,
 } from './tagGrouping';
 import { findParentTag } from '../../domain/tasks/parentTag';
-import { getTopTaskIds, topTasksName } from '../../domain/tasks/topTasks';
+import { readTodayTop, topTasksName, topTasksOf } from '../../domain/tasks/topTasks';
+import { TOP_MOVE } from '../../domain/tasks/topStrip';
 import { drawTaskStatus } from './drawnStatus';
 import { describeStepParts, foldSteps } from '../../domain/markdown/taskSteps';
 import { mentionsParked, withoutParked } from '../../domain/index/parked';
@@ -57,6 +58,8 @@ import {
   TaskBoardCard,
   TaskBoardColumn,
   TaskBoardLane,
+  TaskBoardTop,
+  TaskTableRow,
   TaskBoardLayout,
   TaskBoardSnapshot,
   TaskMenuState,
@@ -119,26 +122,39 @@ export interface TaskBoardOptions {
   parentTag?: boolean;
   /** Whether done tasks are left out, the Done column with them, as the board's gear keeps it. */
   hideDone?: boolean;
-  /** `deckard.tasks.topCount`: above 0, a card or row of one of today's top tasks says so among its details. */
+  /** `deckard.tasks.topCount`: above 0, today's top tasks are a strip above the board's columns and the table's first group. */
   topCount?: number;
 }
 
-/** Today's top tasks, by id, and what a card or row of one says: `Top three`. */
-interface TopDetail {
-  ids: ReadonlySet<string>;
+/** Today's top tasks as the board draws them: every pick that names a task, and those its search finds. */
+interface BoardTop {
+  /** What the picks are called, `Top three`. */
   name: string;
+  /** `deckard.tasks.topCount`. */
+  limit: number;
+  /** Every pick of today that names a task, in pick order. */
+  picks: Task[];
+  /** The picks the board's search finds, in pick order, done ones too, whatever Hide done tasks says. */
+  shown: Task[];
 }
 
-/** A card that says it is one of today's top tasks, after its other details, when it is one. */
-function withTopDetail(card: TaskBoardCard, top: TopDetail | undefined): TaskBoardCard {
-  return top?.ids.has(card.taskId) ? { ...card, details: [...card.details, top.name] } : card;
+/**
+ * Today's top tasks for a board whose search found `found`, or undefined
+ * while the feature is off. A pick that is a step folded onto its task's
+ * card is still a pick, and is shown as a card of its own.
+ */
+function readBoardTop(index: WorkspaceIndex, found: readonly Task[], options: TaskBoardOptions): BoardTop | undefined {
+  if (!options.topCount) {
+    return undefined;
+  }
+  const picks = topTasksOf(readTodayTop(index, options.queryContext.now));
+  const ids = new Set(found.map((task) => task.id));
+  return { name: topTasksName(options.topCount), limit: options.topCount, picks, shown: picks.filter((task) => ids.has(task.id)) };
 }
 
-/** What marks today's top tasks on the board, or undefined while the feature is off. */
-function readTopDetail(index: WorkspaceIndex, options: TaskBoardOptions): TopDetail | undefined {
-  return options.topCount
-    ? { ids: getTopTaskIds(index, options.queryContext.now), name: topTasksName(options.topCount) }
-    : undefined;
+/** How many of a day's picks are done, and how many there are, as a strip's head and the table's group say them. */
+function countTop(top: BoardTop): { done: number; picked: number } {
+  return { done: top.picks.filter((task) => task.completed).length, picked: top.picks.length };
 }
 
 /** A column before it is cut to its limit and its tasks become cards. */
@@ -198,26 +214,25 @@ export function createTaskBoard({
   const selected = selectTasks(index, search.query, options.queryContext);
   // A plain step rides on its task's card, so five steps are not five cards;
   // and with Hide done tasks on, a done task is drawn nowhere.
-  const folded = foldSteps(selected.tasks);
-  const tasks = options.hideDone ? folded.filter((task) => !task.completed) : folded;
+  const { top, rest, tasks } = splitTop(index, selected.tasks, options);
   const { parkedLeftOut } = selected;
   const layout = preferences.taskBoardLayout;
   const groupBy = preferences.taskBoardGroup;
 
-  const board: TaskBoardLayout =
+  const request: Omit<TaskBoardLayoutRequest, 'tasks'> = {
+    index,
+    requestedGroupBy: groupBy,
+    options: boardOptions,
+    namespace: preferences.taskBoardGroupNamespace,
+    // Lanes are the page's alone: the Dashboard's board draws none (plan 46, D6).
+    ...(preferences.taskBoardLanes
+      ? { lanes: { by: preferences.taskBoardLanes, namespace: preferences.taskBoardLanesNamespace } }
+      : {}),
+    sort: createTaskComparator(preferences.taskOrder, preferences.taskSortMode, { now: options.queryContext.now, index }),
+  };
+  const board: TaskBoardLayout & Pick<TaskBoardSnapshot, 'top'> =
     layout === 'board'
-      ? layoutTaskBoard({
-          index,
-          tasks,
-          requestedGroupBy: groupBy,
-          options: boardOptions,
-          namespace: preferences.taskBoardGroupNamespace,
-          // Lanes are the page's alone: the Dashboard's board draws none (plan 46, D6).
-          ...(preferences.taskBoardLanes
-            ? { lanes: { by: preferences.taskBoardLanes, namespace: preferences.taskBoardLanesNamespace } }
-            : {}),
-          sort: createTaskComparator(preferences.taskOrder, preferences.taskSortMode, { now: options.queryContext.now, index }),
-        })
+      ? { ...layoutTaskBoard({ ...request, tasks: rest }), taskCount: tasks.length, ...(top && top.shown.length > 0 ? { top: createTopStrip(top, request) } : {}) }
       : { groupBy, columns: [], taskCount: tasks.length };
   return {
     ...board,
@@ -241,10 +256,10 @@ export function createTaskBoard({
     layout,
     table:
       layout === 'table'
-        ? createTaskTable(tasks, preferences, options, readTopDetail(index, options))
+        ? createTaskTable(rest, preferences, options, top)
         : undefined,
     taskMenus:
-      layout === 'table' ? createTaskMenus(tasks, options) : undefined,
+      layout === 'table' ? createTaskMenus(tasks, options, new Set(top?.picks.map((task) => task.id))) : undefined,
     taskCounts: {
       all: tasks.length,
       active: tasks.filter(isOpenTask).length,
@@ -257,8 +272,65 @@ export function createTaskBoard({
       columns: listStatusColumns(index, boardOptions),
       parentTag: options.parentTag === true,
       hideDone: options.hideDone === true,
+      ...(top ? { top: { name: top.name, limit: top.limit } } : {}),
     },
   };
+}
+
+/**
+ * The tasks a search found as the board draws them: a plain step folded
+ * onto its task's card, a done task left out with Hide done tasks on, and
+ * today's top tasks apart, done ones too, since they are drawn once, in
+ * their strip or the table's first group, and not again among the rest.
+ * `tasks` is both, the picks first.
+ */
+function splitTop(index: WorkspaceIndex, found: readonly Task[], options: TaskBoardOptions): { top: BoardTop | undefined; rest: Task[]; tasks: Task[] } {
+  const folded = foldSteps(found);
+  const top = readBoardTop(index, found, options);
+  const picked = new Set(top?.shown.map((task) => task.id));
+  const rest = (options.hideDone ? folded.filter((task) => !task.completed) : folded).filter((task) => !picked.has(task.id));
+  return { top, rest, tasks: [...(top?.shown ?? []), ...rest] };
+}
+
+/**
+ * The strip above the board's columns (plan 50): today's picks the search
+ * finds, as cards in pick order. A card left its column for the strip, so
+ * it says everything a card can say, its status too, and carries the
+ * column, and on a board with lanes the lane, it would be in, which a move
+ * is written from. Those are found by laying the picks out as the board
+ * is, with every status a column and Done drawn, so each has a place.
+ */
+function createTopStrip(top: BoardTop, request: Omit<TaskBoardLayoutRequest, 'tasks'>): TaskBoardTop {
+  const { index, options } = request;
+  const placed = layoutTaskBoard({ ...request, tasks: top.shown, options: { ...options, hideDone: false, hiddenColumns: [] } });
+  const groupBy = placed.groupBy;
+  const toCard = createCardMaker({
+    index,
+    options,
+    groupBy,
+    namespace: placed.groupNamespace,
+    laneAxis: placed.lanesBy ? { by: placed.lanesBy, namespace: placed.lanesNamespace } : undefined,
+    strip: true,
+  });
+  return {
+    name: top.name,
+    ...countTop(top),
+    cards: top.shown.map((task) => {
+      const card = toCard(task);
+      return { ...card, current: [...card.current, TOP_MOVE], ...findCardPlace(placed, task.id) };
+    }),
+  };
+}
+
+/** The column, and on a board with lanes the lane, a task's card is in on a laid-out board: the first that holds it. */
+function findCardPlace(layout: TaskBoardLayout, taskId: string): { column: string; lane?: string } {
+  for (const lane of layout.lanes ?? []) {
+    const cell = lane.cells.find((candidate) => candidate.cards.some((card) => card.taskId === taskId));
+    if (cell) {
+      return { column: cell.id, lane: lane.id };
+    }
+  }
+  return { column: layout.columns.find((column) => column.cards.some((card) => card.taskId === taskId))?.id ?? '' };
 }
 
 /**
@@ -279,7 +351,7 @@ export function createTaskTable(
   tasks: readonly Task[],
   preferences: PersistedPreferences,
   options: TaskBoardOptions,
-  top?: TopDetail,
+  top?: BoardTop,
 ): TaskTable {
   const columns = preferences.taskTableColumns ?? [...DEFAULT_TASK_COLUMNS];
   const sort = preferences.taskTableSort;
@@ -294,23 +366,22 @@ export function createTaskTable(
       )
     : asRows;
   const label = (id: TaskColumnId) => ({ id, label: getTaskColumn(id).label });
+  const toRow = ({ task, table }: { task: Task; table: TableTask }): TaskTableRow => ({
+    taskId: task.id,
+    filePath: task.filePath,
+    line: task.lineNumber,
+    completed: task.completed,
+    ...withDrawnStatus(drawTaskStatus(task, options.queryContext.taskPolicy)),
+    cells: createTaskCells(table, columns, options.queryContext),
+  });
+  // Today's top tasks are the table's first group, in pick order whatever the sort.
+  const picks = (top?.shown ?? []).map((task) => ({ ...toRow({ task, table: toTableTask(task) }), top: true as const }));
   return {
     columns: columns.map(label),
     available: TASK_COLUMNS.map((column) => label(column.id)),
     sort,
-    rows: ordered.map(({ task, table }) => ({
-      taskId: task.id,
-      filePath: task.filePath,
-      line: task.lineNumber,
-      completed: task.completed,
-      ...withDrawnStatus(drawTaskStatus(task, options.queryContext.taskPolicy)),
-      cells: createTaskCells(table, columns, options.queryContext).map((cell, at) =>
-        // The table has no line of details, so one of today's top tasks says so beside its status.
-        columns[at] === 'status' && top?.ids.has(task.id)
-          ? { ...cell, text: [cell.text, top.name].filter(Boolean).join(' · ') }
-          : cell,
-      ),
-    })),
+    rows: [...picks, ...ordered.map(toRow)],
+    ...(top && picks.length > 0 ? { top: { name: top.name, ...countTop(top), rows: picks.length } } : {}),
   };
 }
 
@@ -318,13 +389,14 @@ export function createTaskTable(
 function createTaskMenus(
   tasks: readonly Task[],
   options: TaskBoardOptions,
+  picked: ReadonlySet<string> = new Set(),
 ): Record<string, TaskMenuState> {
   const today = startOfDay(options.queryContext.now);
   return Object.fromEntries(
     tasks.map((task) => [
       task.id,
       {
-        current: currentMoves(task, today, options.queryContext.taskPolicy.statuses),
+        current: [...currentMoves(task, today, options.queryContext.taskPolicy.statuses), ...(picked.has(task.id) ? [TOP_MOVE] : [])],
         ...(task.steps ? { steps: true } : {}),
       },
     ]),
@@ -455,14 +527,17 @@ type CardMaker = (task: Task, draft?: ColumnDraft, lane?: ColumnDraft) => TaskBo
  * Makes a board's cards: each says what its column and lane do not, and its
  * menu checks the tags of the board's tag axes.
  */
-function createCardMaker({ index, options, groupBy, namespace, laneAxis }: {
+function createCardMaker({ index, options, groupBy, namespace, laneAxis, strip = false }: {
   index: WorkspaceIndex;
   options: TaskBoardOptions;
   groupBy: TaskBoardGroupBy;
   namespace: string | undefined;
   laneAxis: BoardAxis | undefined;
+  /** Makes the cards of the strip above the columns, which are in no column or lane and so say what those would. */
+  strip?: boolean;
 }): CardMaker {
   const axes: TaskBoardGroupBy[] = laneAxis ? [groupBy, laneAxis.by] : [groupBy];
+  const said: TaskBoardGroupBy[] = strip ? [] : axes;
   const openDependencyIds = new Set(
     [...index.tasks.values()]
       .filter((task) => isOpenTask(task) && task.dependencyId)
@@ -470,18 +545,16 @@ function createCardMaker({ index, options, groupBy, namespace, laneAxis }: {
   );
   // The tag namespaces of the board's axes, whose tags a card's menu checks.
   const tagAxes = [groupBy === 'tag' ? namespace : undefined, laneAxis?.namespace].filter((name): name is string => Boolean(name));
-  const top = readTopDetail(index, options);
   return (task, draft, lane) => {
-    const made = createCard(task, {
-      axes,
+    const card = createCard(task, {
+      axes: said,
       context: options.queryContext,
       openDependencyIds,
       sections: index.sections,
       // The status a card's column or lane already says, which it does not say again.
       column: laneAxis?.by === 'status' ? lane?.label : draft?.label,
-      person: namedPerson(task, index, axes, options.queryContext.identity),
+      person: namedPerson(task, index, said, options.queryContext.identity),
     });
-    const card = withTopDetail(made, top);
     const others = [...(draft?.alsoIn?.get(task.id) ?? []), ...(lane?.alsoIn?.get(task.id) ?? [])];
     const parent = withParentTag(index, task, options, groupBy === 'tag' ? namespace : laneAxis?.namespace);
     const withTags = tagAxes.length > 0

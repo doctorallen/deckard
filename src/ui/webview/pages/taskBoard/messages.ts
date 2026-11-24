@@ -28,6 +28,7 @@ import type {
   SetBoardColumnOrderMessage,
   SetBoardColumnShownMessage,
   SetBoardHideDoneMessage,
+  SetTopTaskMessage,
   SetBoardParentTagMessage,
   SetTableColumnsMessage,
   SetTableSortMessage,
@@ -235,6 +236,12 @@ const narrowSetBoardParentTag: Narrower<SetBoardParentTagMessage> = (value) =>
 const narrowSetBoardHideDone: Narrower<SetBoardHideDoneMessage> = (value) =>
   typeof value.hide === 'boolean' ? { type: 'setBoardHideDone', hide: value.hide } : undefined;
 
+/** A task to add to today's top tasks, or to take out. */
+const narrowSetTopTask: Narrower<SetTopTaskMessage> = (value) =>
+  typeof value.taskId === 'string' && value.taskId.length > 0 && typeof value.top === 'boolean'
+    ? { type: 'setTopTask', taskId: value.taskId, top: value.top }
+    : undefined;
+
 /** Each message the Task Board may send, and what it must hold. */
 export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   exportResults: narrowExportResults,
@@ -278,6 +285,8 @@ export const TASK_BOARD_MESSAGES: NarrowingTable<TaskBoardPageToHost> = {
   moveStatusTags: exactlyType('moveStatusTags'),
   setBoardParentTag: narrowSetBoardParentTag,
   setBoardHideDone: narrowSetBoardHideDone,
+  setTopTask: narrowSetTopTask,
+  pickTopTasks: exactlyType('pickTopTasks'),
 };
 
 /** A message from the Task Board, narrowed by its table, or undefined. */

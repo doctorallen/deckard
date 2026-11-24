@@ -8,7 +8,7 @@
     "type": "git",
     "url": "https://github.com/doctorallen/deckard.git"
   },
-  "version": "2.20.0",
+  "version": "2.21.0",
   "license": "MIT",
   "engines": {
     "vscode": "^1.134.0"
@@ -643,6 +643,11 @@
         "title": "Change…",
         "category": "Deckard",
         "icon": "$(edit)"
+      },
+      {
+        "command": "deckard.changeTopTask",
+        "title": "Add to or Remove from Today's Top Tasks",
+        "category": "Deckard"
       },
       {
         "command": "deckard.newNoteFromTemplate",
@@ -1310,6 +1315,10 @@
         },
         {
           "command": "deckard.agenda.changeTopTasks",
+          "when": "false"
+        },
+        {
+          "command": "deckard.changeTopTask",
           "when": "false"
         },
         {

@@ -23,7 +23,6 @@ Drag a card to another column, or choose one from its **⋯** menu, to change th
 - Every grouping ends with **Done**, showing the 20 most recently completed tasks. Drop a card there to complete it, with its done date and next occurrence; drag it out to reopen it.
 - **Cancelled**, ticked in **⋯**'s **Status columns**, draws a **Cancelled [-]** column after Done. Dropping a card there cancels it, with its ❌ date.
 - A card shows its status when its column doesn't, such as **In progress** on a card grouped by priority.
-- A card of one of today's [top three](tasks.md#top-three) says **Top three** after its other details, and in the [table](#table) a row says it beside its status. `is:top` in the search box lists them alone.
 - A card says who its task is for, such as **for @dana**, unless the board is grouped by **Person** or the task is yours: the person `deckard.me` names, as `is:mine` reads it. With no one named there, every card with a person shows it.
 
 ## Lanes
@@ -86,9 +85,25 @@ A limit on a status makes its column say when it holds too many cards. `deckard.
 
 - **Rank a card** by dragging it up or down its own column, or with <kbd>Alt</kbd>+<kbd>↑</kbd> and <kbd>Alt</kbd>+<kbd>↓</kbd>, while the board is sorted by **Rank**. A line shows where it will land. There is one rank for all your tasks, kept outside your notes, shared with the table and the [Tasks view](tasks.md#tasks-view): grouped by priority or by tag, the cards you ranked keep their order among themselves. Dragging a card to another column still changes the task, and it keeps its rank.
 
+## Top three
+
+Once you have picked today's [top three](tasks.md#top-three), they sit in a strip above the columns, and above the lanes when the board has them: **◎ Top three  1/3 done**, then the picks as cards in one row, in the order you picked them, each led by its number. The row wraps when the cards do not fit. `deckard.tasks.topCount` names it and sets how many it holds; `0` turns it off.
+
+- **A pick is in the strip, not in its column**, nor in a lane's cell. A column's count, and its [limit](#work-in-progress-limits), count the cards the column shows.
+- **A strip card is a whole card**: its checkbox, its **⋯** menu, and every [key](#keyboard) work as on any card. Since it left its column, it also says what the column would: its status, such as **In progress**, its priority, its due date, and who it is for.
+- **Done picks stay** for the day, struck through, even with **Hide done tasks** on: the strip is the day's score.
+- **The search applies.** A pick the board's search leaves out is not in the strip, and the head then says **1/3 done · 2 of 3 shown**. With no pick shown there is no strip.
+- **Change…**, at the head's right, opens the [picker](tasks.md#top-three). Select the head's name to fold the strip or show it again, for as long as the board is open, as a lane folds.
+- **Drag a card onto the strip** to pick it; it goes last. One more than the limit is refused, and a message says **Three is the limit. Remove one to pick "…".**
+- **Drag a strip card onto a column**, or a lane's cell, to change the task as any card dropped there is changed. It stays a pick, in the strip. Dragging within the strip does nothing: the order is the order you picked in.
+- **Add to today's top three**, in a card's or a table row's **⋯** menu, or **p** on a focused card, picks a task; on a pick it reads **Remove from today's top three**. A pick that is done stays, and so does one written as a task under the heading in today's note: *"…" is done today, so it stays.*
+- Each of these writes what the picker writes: today's note's `## Top three` section, and a `^marker` at the end of a picked line that has none, as one change, with **Open** and **Undo**. Today's note is created first if it is not there.
+- **In the table**, the picks are the first group, headed **Top three  1/3 done** with **Change…**, in pick order whatever the sort, then **Other tasks**. A pick's row is not ranked with the rest.
+- <kbd>←</kbd> and <kbd>→</kbd> move along the strip, <kbd>↓</kbd> goes into the board under it, and <kbd>↑</kbd> from a column's first card goes back up to it.
+
 ## A card's menu
 
-A card's **⋯** menu changes the task without opening its note: status, priority, due date or **Due on a date…**, **For someone…**, **Snooze until…**, **Move to…**, and **Move to lane** when the lanes are tags or people. It checks the task's current status, priority, and due date, and shows the key for each choice; the keys work in the menu too. Right-click a card, or press <kbd>Shift</kbd>+<kbd>F10</kbd>, the menu key, or <kbd>Alt</kbd>+<kbd>Enter</kbd> on a focused one, to open the same menu.
+A card's **⋯** menu changes the task without opening its note: status, priority, due date or **Due on a date…**, **For someone…**, **Snooze until…**, **Add to today's top three** (or **Remove from…** on a [pick](#top-three)), **Move to…**, and **Move to lane** when the lanes are tags or people. It checks the task's current status, priority, and due date, and shows the key for each choice; the keys work in the menu too. Right-click a card, or press <kbd>Shift</kbd>+<kbd>F10</kbd>, the menu key, or <kbd>Alt</kbd>+<kbd>Enter</kbd> on a focused one, to open the same menu.
 
 ## The board's menu
 
@@ -104,7 +119,7 @@ A card's **⋯** menu changes the task without opening its note: status, priorit
 
 Every card can be moved and changed from the keyboard. The board is one Tab stop. Arrow keys move between cards and columns. On a focused card:
 
-- **x** completes it; **t** and **m** make it due today or tomorrow; **d** asks for a date in plain words; **f** asks who it is for; **z** [snoozes it](tasks.md#snoozing-a-task) until tomorrow, next week, or a day you type.
+- **x** completes it; **t** and **m** make it due today or tomorrow; **d** asks for a date in plain words; **f** asks who it is for; **z** [snoozes it](tasks.md#snoozing-a-task) until tomorrow, next week, or a day you type; **p** adds it to today's [top three](#top-three), or takes it out.
 - **1** to **5** set priority; **0** clears it.
 - **[** and **]** move it to the adjacent column.
 - **e** opens the task editor; **s** [breaks it into steps](tasks.md#breaking-a-task-into-steps); **Enter** opens its line, and **Cmd+Enter** (Ctrl+Enter on Windows and Linux) opens it beside the board.

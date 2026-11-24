@@ -350,7 +350,7 @@ Start the day by choosing the few tasks to do first. `Deckard: Pick Today's Top 
 - **Status bar.** Beside the due count: `◎ 1/3 · Draft the cutover runbook`, how many picks are done and the first that is not. Select it to open that task's line; hover for all of them. With every pick done it reads `3/3 done`, and opens the list.
 - **Tasks view.** A **Top three** group leads, in every grouping, with `1/3` beside it and **Change…** on its row. A pick is listed there only, and stays there, checked, once done. The badge and the due count are unchanged.
 - **Home.** The [Tasks view widget](home-and-stats.md#the-home-tab) shows the same group first, and the **Today** widget offers **Pick today's three** while there are none.
-- **Task board.** A pick's card says **Top three** among its details, and a table row beside its status.
+- **Task board.** The picks are a strip above the board's columns, each a numbered card, and the table's first group. Drag a card onto the strip, or choose **Add to today's top three** in a card's **⋯** menu (**p** on a focused card), to pick it there; see [Top three on the Task board](task-board.md#top-three).
 - **Search.** `is:top` finds today's picks on a search page, in a [query block](query-blocks.md), on the board, and in a Home Tasks widget.
 - **Completing a pick** ticks its own line. Today's note is not rewritten.
 - **In today's note**, a lens above the heading reads **Top three · 1 of 3 done · Change…**.

@@ -2,6 +2,48 @@
 
 ## Unreleased
 
+## 2.21.0 - 2026-11-24
+
+### Highlights
+
+- **A Top three strip on the Task board**: today's picks sit above the columns, numbered, in the order you picked them.
+- Pick from the board: **Add to today's top three** in a card's menu, **p** on a card, or a drop on the strip.
+
+### Added
+
+- **A Top three strip on the Task board.** Today's top tasks sit above
+  the board's columns, and above its lanes: **Top three  1/3 done**, then
+  each pick as a card, led by its number, in the order you picked them, in
+  a row that wraps. A strip card is a whole card, with its checkbox, menu,
+  and keys, and says its status, since it is in no column. Done picks stay
+  for the day, even with **Hide done tasks** on; the board's search
+  narrows the strip, whose head then says **2 of 3 shown**; **Change…**
+  opens the picker, and the head folds the strip. In the table the picks
+  are the first group.
+- **Pick from a card.** A card's and a table row's **⋯** menu gain **Add
+  to today's top three**, **p** on a focused card, and **Remove from
+  today's top three** on a pick. It writes what the picker writes, with
+  **Undo**, and refuses what the picker refuses: a fourth, a pick that is
+  done, and a task written under the heading itself.
+- **Drag to pick.** A card dropped on the strip is picked; one more than
+  the limit is refused: **Three is the limit. Remove one to pick "…".** A
+  strip card dropped on a column is changed as any card is, and stays a
+  pick.
+
+### Changed
+
+- **Picks leave their columns.** On the Task board a pick is in the strip
+  and not in its column or a lane's cell, so a column's count is of the
+  cards it shows, and a pick's card no longer says **Top three** among its
+  details, nor a table row beside its status.
+
+### Fixed
+
+- **Picking again keeps a link that leads nowhere.** An item of today's
+  `## Top three` that names no task, such as a link to a line since
+  deleted, was dropped when the picks were written again; it stays, after
+  the picks.
+
 ## 2.20.0 - 2026-11-24
 
 ### Highlights

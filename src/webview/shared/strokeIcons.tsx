@@ -123,6 +123,16 @@ export function OpenInNewIcon() {
   );
 }
 
+/** A ring around a dot: today's top tasks, the day's target. */
+export function TargetIcon() {
+  return (
+    <StrokeIcon>
+      <circle cx="8" cy="8" r="5.5" />
+      <circle cx="8" cy="8" r="1.6" fill="currentColor" stroke="none" />
+    </StrokeIcon>
+  );
+}
+
 /** A chevron pointing right: a row that unfolds, or a way on. */
 export function ChevronRightIcon() {
   return (
