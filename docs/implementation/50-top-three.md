@@ -128,8 +128,8 @@ note commands.
   The view's badge and the due count are unchanged.
 - **Home.** The Tasks view widget shows the same group first. The Today
   widget offers **Pick today's three** while there are none.
-- **Task board.** A pick's card and table row show **Top three** among
-  their details.
+- **Task board.** The picks are a strip above the columns, and the
+  table's first group; see On the Task board.
 - **Search.** `is:top` finds today's picks, on search pages, in query
   blocks, on the board, and in a Home Tasks widget. It is offered where
   `is:` terms are.
@@ -170,6 +170,57 @@ when any daily note in the period has picks, and its summary line gains
 - **Left** lists the others as written in the day's note.
 - A day with a daily note and no picks reads **none picked**; a day with
   no daily note is not listed.
+
+## On the Task board
+
+A pick that only says **Top three** at the end of its card's details is
+lost among forty cards. On the board the day's picks have a place of
+their own.
+
+**The strip.** While the feature is on and the board's search finds a
+pick, a strip sits above the column heads, and above the lanes: a head,
+`◎ Top three  1/3 done`, with **Change…** at its right, which opens the
+picker, then the picks as cards in one row, in pick order, each led by
+its number in a small filled circle. The row wraps when the cards do not
+fit, and a card keeps about a column's width.
+
+- **A pick in the strip is in no column below**, nor in a lane's cell.
+  Column counts and limits count what the column shows.
+- **A strip card is a whole card**: checkbox, title, details, **⋯** menu,
+  keys, and focus as any card. It left its column, so it says what the
+  column would have: its status, with everything else a card can say.
+- **Done picks stay** for the day, drawn as done, even when the board
+  hides done tasks: the strip is the day's score.
+- **The search applies.** A pick the search leaves out is not in the
+  strip, and the head then reads `1/3 done · 2 of 3 shown`. With no pick
+  shown there is no strip.
+- **It folds** from its head, as a lane does.
+
+**Drag.** A column card dropped on the strip is picked, last. One more
+than the limit is refused: **Three is the limit. Remove one to pick
+"…".** A strip card dropped on a column, or a lane's cell, takes that
+column's edit as any card does, and stays a pick, in the strip. Dragging
+within the strip does nothing: its order is the pick order. Dragging
+never un-picks; the menu does.
+
+**The menu.** A card's and a table row's **⋯** menu gains **Add to
+today's top three**, and on a pick **Remove from today's top three**,
+with a key on a focused card, listed with the others. Removing a pick
+that is done, or one written as a task under the heading itself, is
+refused in the picker's sentences. The row is not offered while the
+feature is off.
+
+**One write.** Adding and removing write what the picker writes, through
+the same code: `planTopTasks` with today's picks and the one, or without
+it, today's note made with its rollover when it is missing, as one
+undoable change.
+
+**The table.** The picks are the table's first group, headed `Top three
+1/3 done`, in pick order, and are not repeated below.
+
+`domain/tasks/topStrip.ts` holds what the host and the page both say;
+`ui/state/taskBoardState.ts` builds the strip and the group;
+`webview/taskBoard/board.tsx` draws them and `boardMoves.ts` moves them.
 
 ## Decisions
 
@@ -215,9 +266,8 @@ silent.
   and in the group's right-click menu, since a tree row's inline action
   draws an icon. It is its own command, `deckard.agenda.changeTopTasks`,
   kept out of the palette.
-- **The table row says it beside its status**, `Todo · Top three`, when
-  the Status column is shown: a row has no line of details. A card says
-  it after its other details.
+- **The table row said it beside its status**, and a card after its other
+  details, until the strip replaced both (On the Task board).
 - **The lens above the first heading shows when today's note has the
   heading and no picks**, as well as when a daily note of the last 14 days
   has a section, so a Daily template that writes the heading offers
@@ -272,3 +322,64 @@ silent.
 - **After the write** a message says how many were picked, with **Open**,
   which opens today's note at the heading, and **Undo**.
 - **In the review's summary line**, the figure follows **Done**.
+
+### On the Task board, as built
+
+**Departures**
+
+- **The key is p, not t.** On a focused card **t** already makes the task
+  due today, and is in the key sheet and the guide as that; **p**, for
+  pick, was free.
+- **The fold is kept while the board is open**, not in the board's
+  preferences. That is how a lane's fold is kept (`laneGrid.folded`), and
+  the strip folds as a lane does, under a name of its own beside them.
+- **The limit's refusal, and the picker's other two, are a VS Code
+  notification**, as the Tasks view says a drop it refuses. The board's
+  own line for what it could not do is read aloud and not drawn, so a
+  refusal said only there would be seen by no one.
+- **The strip has no drop refusal drawn on it while a card is held.** The
+  host knows the limit and the page does not ask it before the drop; the
+  drop is taken and then refused in words.
+- **The table's rest is headed Other tasks**, so the first group has an
+  end.
+- **A strip card says its status, priority, due date, and person**, all a
+  card can say, in place of the column's name. On a board grouped by a
+  tag it does not name the tag column it left; its title's own tags and
+  its parent tag say that.
+
+**Choices**
+
+- **A strip card's moves are written from the column, and the lane, it
+  would be in**, found by laying the picks out as the board is, with every
+  status a column and Done drawn. Its menu checks its choices as there;
+  **[** and **]** move it along those columns; and it is marked pending
+  where it is, in the strip, until the next state.
+- **← and → walk the strip, ↓ goes to the first card under it, and ↑ from
+  a column's first card goes up to the strip's first.**
+- **Typed words hide strip cards** as they hide any card, at once; the
+  head's count is the host's, of the day, and does not change until
+  Enter.
+- **The strip is the board's first Tab stop** when it is drawn and not
+  folded.
+- **A pick's row in the table is not ranked** with the rest, by drag or by
+  key, and ranking the rest leaves the picks out of the order sent.
+- **A pick that is a plain step**, folded onto its task's card elsewhere,
+  is a card of its own in the strip.
+- **The board counts every task it draws**, the strip's with the columns'.
+- **A task a rollover moved while today's note was being made** for this
+  pick is not picked: a message says it moved into today's note, to pick
+  it there. It happens only on the day's first pick from the board.
+- **An item that names no task is kept when the picks are written
+  again**, after them, by the picker as well: before this it was dropped,
+  against the plan.
+- **After the write** the message is **Added "…" to today's top three.**
+  or **Removed "…" from today's top three.**, with **Open** and **Undo**.
+- **The strip's ground** is the faint amber a column takes under a held
+  card, from the theme's own tokens, with no rule of any theme's; the
+  number is in the colors of the page's filled button. Zen keeps all of
+  it.
+- **Home draws no board of cards now**, so there is nothing there to keep
+  or remove.
+- **`deckard.changeTopTask`** is the command the board runs; it is kept
+  out of the palette.
+
